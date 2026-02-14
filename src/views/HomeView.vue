@@ -9,6 +9,7 @@ import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
+import { i18n } from "../locales";
 
 const router = useRouter();
 const store = useServerStore();
@@ -109,11 +110,11 @@ function getStatusVariant(status: string | undefined) {
 
 function getStatusText(status: string | undefined): string {
   switch (status) {
-    case "Running": return "运行中";
-    case "Starting": return "启动中";
-    case "Stopping": return "停止中";
-    case "Error": return "异常";
-    default: return "已停止";
+    case "Running": return i18n.t('home.running');
+    case "Starting": return i18n.t('home.starting');
+    case "Stopping": return i18n.t('home.stopping');
+    case "Error": return i18n.t('home.error');
+    default: return i18n.t('home.stopped');
   }
 }
 
@@ -149,10 +150,10 @@ async function handleDelete(id: string) {
 
     <!-- Top Row: Quick Actions + System Stats -->
     <div class="top-row">
-      <SLCard title="快速开始" subtitle="创建或导入你的 Minecraft 服务器" class="quick-start-card">
+      <SLCard :title="i18n.t('home.title')" :subtitle="i18n.t('home.create_first')" class="quick-start-card">
         <div class="quick-actions">
           <SLButton variant="primary" size="lg" @click="router.push('/create')">
-            创建新服务器
+            {{ i18n.t('common.create_server') }}
           </SLButton>
         </div>
       </SLCard>
@@ -160,8 +161,8 @@ async function handleDelete(id: string) {
       <SLCard class="stats-card">
         <template #header>
           <div class="stats-card-header">
-            <span class="card-title">系统资源</span>
-            <button class="view-toggle" @click="statsViewMode = statsViewMode === 'gauge' ? 'detail' : 'gauge'" :title="statsViewMode === 'gauge' ? '切换到详细视图' : '切换到仪表盘'">
+            <span class="card-title">{{ i18n.t('home.system_resources') }}</span>
+            <button class="view-toggle" @click="statsViewMode = statsViewMode === 'gauge' ? 'detail' : 'gauge'" :title="statsViewMode === 'gauge' ? i18n.t('home.detail_view') : i18n.t('home.gauge_view')">
               <svg v-if="statsViewMode === 'gauge'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
               <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </button>
@@ -239,22 +240,22 @@ async function handleDelete(id: string) {
     <!-- Server List -->
     <div class="section-header">
       <h3 class="section-title">
-        服务器列表
+        {{ i18n.t('home.title') }}
         <span class="server-count">{{ store.servers.length }}</span>
       </h3>
     </div>
 
     <div v-if="store.loading" class="loading-state">
       <div class="spinner"></div>
-      <span>加载中...</span>
+      <span>{{ i18n.t('common.loading') }}</span>
     </div>
 
     <div v-else-if="store.servers.length === 0" class="empty-state">
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--sl-text-tertiary)" stroke-width="1" stroke-linecap="round">
         <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
       </svg>
-      <p class="text-body">还没有服务器</p>
-      <p class="text-caption">点击「创建新服务器」开始吧</p>
+      <p class="text-body">{{ i18n.t('home.no_servers') }}</p>
+      <p class="text-caption">{{ i18n.t('home.create_first') }}</p>
     </div>
 
     <div v-else class="server-grid">
@@ -286,21 +287,21 @@ async function handleDelete(id: string) {
             variant="primary" size="sm"
             :loading="actionLoading[server.id]"
             @click="handleStart(server.id)"
-          >启动</SLButton>
+          >{{ i18n.t('home.start') }}</SLButton>
           <SLButton
             v-else
             variant="danger" size="sm"
             :loading="actionLoading[server.id]"
             @click="handleStop(server.id)"
-          >停止</SLButton>
+          >{{ i18n.t('home.stop') }}</SLButton>
           <SLButton variant="ghost" size="sm" @click="store.setCurrentServer(server.id); router.push('/console/' + server.id)">
-            控制台
+            {{ i18n.t('common.console') }}
           </SLButton>
           <SLButton variant="ghost" size="sm" @click="store.setCurrentServer(server.id); router.push('/config/' + server.id)">
-            配置
+            {{ i18n.t('common.config_edit') }}
           </SLButton>
           <SLButton variant="ghost" size="sm" @click="handleDelete(server.id)">
-            删除
+            {{ i18n.t('home.delete') }}
           </SLButton>
         </div>
       </div>
@@ -308,7 +309,7 @@ async function handleDelete(id: string) {
 
     <!-- Recent Alerts -->
     <div v-if="recentAlerts.length > 0" class="alerts-section">
-      <h3 class="section-title">最近警告 / 错误</h3>
+      <h3 class="section-title">{{ i18n.t('home.recent_alerts') }}</h3>
       <div class="alerts-list">
         <div
           v-for="(alert, i) in recentAlerts"
