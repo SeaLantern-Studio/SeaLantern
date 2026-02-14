@@ -37,6 +37,23 @@ npm run tauri build
 
 产物在 `src-tauri/target/release/bundle/` 里。
 
+### 代码质量检查
+
+提交代码前，建议运行以下命令检查代码质量：
+
+```bash
+# 检查代码格式
+cargo fmt --all -- --check
+
+# 运行 Clippy 检查
+cargo clippy --workspace -- -D warnings
+
+# 自动格式化代码
+cargo fmt --all
+```
+
+项目已配置 CI 自动检查，确保所有提交的代码都符合规范。
+
 
 ## 技术栈
 
@@ -232,13 +249,15 @@ sea-lantern/
 
 ## 参与开发
 
+欢迎贡献代码！在开始之前，请阅读 [贡献指南](CONTRIBUTING.md) 了解代码规范和开发流程。
+
 界面也是。颜色在 CSS 变量里，组件是独立的，不喜欢就换。
 想做个主题皮肤？做。想把整个布局推翻重来？也行。
 
 ### 怎么贡献
 
 1. Fork 这个仓库
-2. 建分支写代码
+2. 建分支写代码（遵循 [贡献指南](CONTRIBUTING.md)）
 3. 提 Pull Request
 4. 你的名字会出现在关于页面的贡献者墙上
 

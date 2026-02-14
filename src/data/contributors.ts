@@ -53,11 +53,24 @@ export const contributors: Contributor[] = [
     name: "Little_100",
     role: "打杂",
     avatar: "https://minotar.net/avatar/Little100/64",
+    url : "https://gitee.com/little_100",
   },
   {
     name: "MinecraftYJQ",
     role: "小修小改罢",
     avatar: "https://minotar.net/avatar/MinecraftYJQ_/64",
+    url: "https://gitee.com/minecraftyjq",
+  },
+  {
+    name: "HKYZYH",
+    role: "修复Wayland协议下白屏问题",
+    avatar: "https://minotar.net/avatar/HKYZYH/64",
+    url: "https://gitee.com/HKYZYHgezi",
+  },
+  {
+    name: "清初Lucky",
+    role: "喵喵喵~",
+    avatar: "https://minotar.net/avatar/qingchu2010/64",
   },
 
   

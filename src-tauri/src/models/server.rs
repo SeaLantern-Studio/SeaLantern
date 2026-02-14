@@ -55,6 +55,7 @@ pub struct ImportServerRequest {
     pub max_memory: u32,
     pub min_memory: u32,
     pub port: u16,
+    pub online_mode: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

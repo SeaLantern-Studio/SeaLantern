@@ -340,12 +340,12 @@ function handleClearLogs() {
 .quick-groups { display: flex; gap: 4px; }
 .quick-btn { padding: 3px 10px; border-radius: var(--sl-radius-sm); font-size: 0.75rem; cursor: pointer; border: 1px solid var(--sl-border); color: var(--sl-text-secondary); background: var(--sl-bg-secondary); white-space: nowrap; transition: all var(--sl-transition-fast); }
 .quick-btn:hover { border-color: var(--sl-primary); color: var(--sl-primary); background: var(--sl-primary-bg); }
-.console-output { flex: 1; background: #f8fafc; border: 1px solid var(--sl-border-light); border-radius: var(--sl-radius-md); padding: var(--sl-space-md); overflow-y: auto; font-family: var(--sl-font-mono); line-height: 1.7; color: var(--sl-text-primary); min-height: 0; user-select: text; -webkit-user-select: text; cursor: text; }
+.console-output { flex: 1; background: var(--sl-bg-secondary); border: 1px solid var(--sl-border-light); border-radius: var(--sl-radius-md); padding: var(--sl-space-md); overflow-y: auto; font-family: var(--sl-font-mono); line-height: 1.7; color: var(--sl-text-primary); min-height: 0; user-select: text; -webkit-user-select: text; cursor: text; }
 .log-line { white-space: pre-wrap; word-break: break-all; }
-.log-error { color: #dc2626; font-weight: 500; }
-.log-warn { color: #ea580c; font-weight: 500; }
-.log-command { color: #2563eb; font-weight: 600; }
-.log-system { color: #16a34a; font-style: italic; }
+.log-error { color: var(--sl-error); font-weight: 500; }
+.log-warn { color: var(--sl-warning); font-weight: 500; }
+.log-command { color: var(--sl-info); font-weight: 600; }
+.log-system { color: var(--sl-success); font-style: italic; }
 .log-empty { color: var(--sl-text-tertiary); font-style: italic; }
 .scroll-btn { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); padding: 6px 16px; background: var(--sl-primary); color: white; border-radius: var(--sl-radius-full); font-size: 0.75rem; cursor: pointer; box-shadow: var(--sl-shadow-md); z-index: 10; }
 .console-input-wrapper { position: relative; flex-shrink: 0; }

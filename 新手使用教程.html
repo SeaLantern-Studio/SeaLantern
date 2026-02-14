@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sea Lantern（海晶灯）新手使用教程</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #5d6d7e;
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            overflow-x: auto;
+        }
+        ul, ol {
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #2196f3;
+        }
+        .tip {
+            background-color: #fff8e1;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #ffc107;
+        }
+        .warning {
+            background-color: #ffebee;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #f44336;
+        }
+        .version-info {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #4caf50;
+            margin-bottom: 20px;
+        }
+        .version-info p {
+            margin: 5px 0;
+            color: #2e7d32;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .feature-card h4 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .authors-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .author-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            flex: 1;
+            min-width: 250px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sea Lantern（海晶灯）新手使用教程</h1>
+        
+        <div class="version-info">
+            <p><strong>文档版本：</strong>0.0.1</p>
+            <p><strong>状态：</strong>持续更新中</p>
+        </div>
+        
+        <div class="highlight">
+            <h2>项目概述</h2>
+            <p><strong>Sea Lantern（海晶灯）</strong>是一个专为Minecraft服务器设计的管理工具。它使用Tauri 2 + Rust + Vue 3技术栈开发，具有启动快、体积小、内存占用少的特点。</p>
+        </div>
+        
+        <h3>项目功能</h3>
+        <div class="feature-list">
+            <div class="feature-card">
+                <h4>简单启动</h4>
+                <p>导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。</p>
+            </div>
+            <div class="feature-card">
+                <h4>实时控制台</h4>
+                <p>控制台实时看日志，直接输命令</p>
+            </div>
+            <div class="feature-card">
+                <h4>图形化配置</h4>
+                <p>server.properties 图形化编辑，不用手改文件</p>
+            </div>
+            <div class="feature-card">
+                <h4>玩家管理</h4>
+                <p>白名单、封禁、OP 一键管理</p>
+            </div>
+            <div class="feature-card">
+                <h4>自动保存</h4>
+                <p>关软件的时候自动帮你停服务器，不会丢存档</p>
+            </div>
+            <div class="feature-card">
+                <h4>自动更新</h4>
+                <p>检查更新，一键下载新版本</p>
+            </div>
+        </div>
+        
+        <h2>系统要求</h2>
+        
+        <h3>作为用户使用</h3>
+        <p>如果你只是想使用Sea Lantern来管理Minecraft服务器，你只需要下载发布版本即可，无需安装额外软件。</p>
+        
+        <h3>支持的操作系统版本</h3>
+        <ul>
+            <li><strong>Windows</strong>：Windows 10 (版本 1909 及以上) 或 Windows 11</li>
+            <li><strong>macOS</strong>：macOS 10.15 (Catalina) 及以上</li>
+            <li><strong>Linux</strong>：支持现代Linux发行版（Ubuntu 20.04+, Fedora 34+, Debian 11+ 等）</li>
+        </ul>
+        
+        <h3>Windows版本兼容性说明</h3>
+        <p>Sea Lantern基于现代Tauri框架开发，需要较新版本的Windows系统组件支持。因此，官方支持以下Windows版本：</p>
+        <ul>
+            <li><strong>Windows 10</strong>：版本 1909 (10.0.18363) 及以上（推荐版本 20H2 或更高）</li>
+            <li><strong>Windows 11</strong>：所有版本</li>
+        </ul>
+        <p><strong>不支持的Windows版本</strong>：Windows 7, Windows 8, Windows 8.1</p>
+        
+        <h3>作为开发者开发</h3>
+        <p>如果你希望参与开发或自定义编译，需要：</p>
+        <ul>
+            <li>Node.js 20+</li>
+            <li>Rust 1.70+</li>
+            <li>对于Windows开发：Windows 10/11开发环境</li>
+        </ul>
+        
+        <div class="highlight">
+            <h2>快速开始</h2>
+            
+            <h3>下载与安装</h3>
+            <ol>
+                <li><strong>下载Sea Lantern</strong>
+                    <ul>
+                        <li>访问Sea Lantern的发布页面（Gitee）</li>
+                        <li>下载最新版本的安装包</li>
+                        <li>根据你的操作系统选择相应的版本（Windows、macOS、Linux）</li>
+                    </ul>
+                </li>
+                <li><strong>安装Sea Lantern</strong>
+                    <ul>
+                        <li>Windows用户：运行下载的<code>.exe</code>安装文件</li>
+                        <li>macOS用户：运行<code>.dmg</code>文件</li>
+                        <li>Linux用户：运行<code>.AppImage</code>文件或使用包管理器安装</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+        
+        <div class="tip">
+            <h2>获取服务器启动核心（JAR文件）</h2>
+            
+            <h3>什么是服务器JAR文件？</h3>
+            <p>服务器JAR文件（Java Archive）是Minecraft服务器的启动文件，它包含了运行服务器所需的所有代码和资源。根据你的需求，可以选择不同类型的服务器JAR文件：</p>
+            <ul>
+                <li><strong>原版服务器（Vanilla）</strong>：Mojang官方发布的纯净服务器，没有任何修改</li>
+                <li><strong>Spigot服务器</strong>：基于原版的高性能服务器，支持插件</li>
+                <li><strong>Paper服务器</strong>：基于Spigot的高性能服务器，优化了性能和功能</li>
+                <li><strong>Bukkit服务器</strong>：较早的插件API服务器（现已不推荐使用）</li>
+                <li><strong>Forge服务器</strong>：支持模组（Mod）的服务器</li>
+                <li><strong>Fabric服务器</strong>：轻量级模组API服务器</li>
+            </ul>
+            
+            <h3>获取原版服务器JAR</h3>
+            <ol>
+                <li>访问 <a href="https://www.minecraft.net/download/server" target="_blank">Minecraft官网服务器页面</a></li>
+                <li>下载服务器JAR文件（文件名通常为<code>server.jar</code>）</li>
+                <li>注意：需要Minecraft账户才能下载</li>
+            </ol>
+            
+            <h3>获取高性能服务器JAR（Spigot或Paper）</h3>
+            <ol>
+                <li><strong>获取Paper服务器（推荐）</strong>：
+                    <ul>
+                        <li>访问 <a href="https://papermc.io/downloads/paper" target="_blank">PaperMC官方网站</a></li>
+                        <li>选择适合的Minecraft版本</li>
+                        <li>点击"Download"按钮下载对应的JAR文件</li>
+                    </ul>
+                </li>
+                <li><strong>获取Spigot服务器</strong>：
+                    <ul>
+                        <li>访问 <a href="https://getbukkit.org/download/spigot" target="_blank">Bukkit官方网站</a>（注意：由于Spigot不直接提供预编译版本，需要使用BuildTools编译）</li>
+                        <li>由于Spigot不直接提供预编译版本，需要使用BuildTools编译</li>
+                        <li>下载BuildTools.jar文件并按照官方指南编译</li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <h3>获取模组服务器JAR（Forge或Fabric）</h3>
+            <ol>
+                <li><strong>获取Forge服务器</strong>：
+                    <ul>
+                        <li>访问 <a href="https://files.minecraftforge.net/" target="_blank">Forge官网</a></li>
+                        <li>选择适合的Minecraft版本</li>
+                        <li>下载"Installer"版本的JAR文件</li>
+                        <li>双击运行安装器来设置服务器</li>
+                    </ul>
+                </li>
+                <li><strong>获取Fabric服务器</strong>：
+                    <ul>
+                        <li>访问 <a href="https://fabricmc.net/use/installer/" target="_blank">Fabric官网</a></li>
+                        <li>下载Fabric安装器</li>
+                        <li>运行安装器来设置服务器</li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <h3>注意事项</h3>
+            <ul>
+                <li>确保选择的服务器JAR与你计划使用的客户端版本兼容</li>
+                <li>Paper和Spigot服务器在第一次运行时会自动生成EULA文件，需要同意才能使用</li>
+                <li>模组服务器（Forge/Fabric）需要额外安装模组才能发挥功能</li>
+                <li>选择服务器时要考虑性能需求、插件兼容性和易用性</li>
+            </ul>
+        </div>
+        
+        <h3>创建第一个Minecraft服务器</h3>
+        <ol>
+            <li><strong>启动Sea Lantern</strong>
+                <ul>
+                    <li>双击桌面图标启动Sea Lantern</li>
+                    <li>等待应用加载完成（你会看到启动画面）</li>
+                </ul>
+            </li>
+            <li><strong>导入服务器</strong>
+                <ul>
+                    <li>点击侧边栏的"创建服务器"选项</li>
+                    <li>点击"导入服务器"按钮</li>
+                    <li>选择你的Minecraft服务器JAR文件（如<code>server.jar</code>）</li>
+                    <li>选择服务器名称和保存位置</li>
+                    <li>点击"创建服务器"</li>
+                </ul>
+            </li>
+            <li><strong>配置Java环境</strong>
+                <ul>
+                    <li>Sea Lantern会自动检测系统中的Java环境</li>
+                    <li>如果自动检测失败，可以手动指定Java路径</li>
+                    <li>点击"Java检测"按钮，选择合适的Java版本（推荐使用与你的Minecraft版本兼容的Java版本）</li>
+                </ul>
+            </li>
+            <li><strong>配置服务器参数</strong>
+                <ul>
+                    <li>点击"配置编辑"选项卡</li>
+                    <li>你可以在这里图形化编辑<code>server.properties</code>文件</li>
+                    <li>修改服务器名称、游戏模式、难度等参数</li>
+                    <li>点击"保存配置"按钮保存更改</li>
+                </ul>
+            </li>
+        </ol>
+        
+        <div class="highlight">
+            <h2>启动和管理服务器</h2>
+            
+            <h3>启动服务器</h3>
+            <ul>
+                <li>回到首页，你会看到刚刚创建的服务器</li>
+                <li>点击"启动"按钮启动服务器</li>
+                <li>等待服务器启动完成（控制台会显示启动日志）</li>
+            </ul>
+            
+            <h3>使用控制台</h3>
+            <ul>
+                <li>点击"控制台"选项卡</li>
+                <li>你可以在这里查看服务器日志</li>
+                <li>在底部输入框中输入Minecraft命令（如<code>/help</code>、<code>/op username</code>等）</li>
+                <li>控制台支持命令历史（上下箭头键）和Tab补全</li>
+            </ul>
+            
+            <h3>管理玩家</h3>
+            <ul>
+                <li>点击"玩家管理"选项卡</li>
+                <li>你可以管理白名单、封禁列表和OP列表</li>
+                <li>点击"+"按钮添加玩家到相应列表</li>
+                <li>点击"-"按钮移除玩家</li>
+                <li>也可以直接在控制台输入相关命令</li>
+            </ul>
+        </div>
+        
+        <h2>服务器配置详解</h2>
+        
+        <h3>基本设置</h3>
+        <ul>
+            <li><strong>服务器名称</strong>：服务器的显示名称</li>
+            <li><strong>服务器端口</strong>：服务器监听的端口，默认为25565</li>
+            <li><strong>最大玩家数</strong>：服务器允许的最大在线玩家数</li>
+            <li><strong>游戏模式</strong>：生存模式、创造模式、冒险模式或旁观模式</li>
+            <li><strong>难度</strong>：和平、简单、普通或困难</li>
+        </ul>
+        
+        <h3>游戏设置</h3>
+        <ul>
+            <li><strong>PVP</strong>：是否允许玩家之间战斗</li>
+            <li><strong>生成建筑</strong>：是否在世界中生成要塞、村庄等建筑</li>
+            <li><strong>生成矿石</strong>：是否生成矿物</li>
+            <li><strong>世界类型</strong>：默认世界生成类型</li>
+        </ul>
+        
+        <h3>网络设置</h3>
+        <ul>
+            <li><strong>最大构建宽度</strong>：客户端可以达到的最大构建宽度</li>
+            <li><strong>最大跟踪距离</strong>：服务器向客户端发送数据的最大距离</li>
+            <li><strong>在线模式</strong>：是否验证玩家的Minecraft账户</li>
+        </ul>
+        
+        <div class="tip">
+            <h2>获取和安装服务器插件</h2>
+            
+            <h3>什么是服务器插件？</h3>
+            <p>服务器插件是为Minecraft服务器添加额外功能的程序。它们可以添加新的命令、修改游戏机制、提供管理工具等。插件通常以<code>.jar</code>文件形式分发。</p>
+            
+            <h3>支持插件的服务器类型</h3>
+            <ul>
+                <li><strong>Paper服务器</strong>：支持所有Bukkit/Spigot插件，性能优秀</li>
+                <li><strong>Spigot服务器</strong>：支持Bukkit插件，功能丰富</li>
+                <li><strong>Bukkit服务器</strong>：最早的插件API（现已不推荐使用）</li>
+                <li><strong>Purpur服务器</strong>：基于Paper的分支，提供更多配置选项</li>
+            </ul>
+            <p>注意：原版服务器、Forge和Fabric不支持传统插件，需要使用模组。</p>
+            
+            <h3>获取插件的途径</h3>
+            <ol>
+                <li><strong>SpigotMC资源站</strong>：
+                    <ul>
+                        <li>访问 <a href="https://www.spigotmc.org/resources/" target="_blank">SpigotMC资源页面</a></li>
+                        <li>注册账户（免费）</li>
+                        <li>搜索和下载所需的插件</li>
+                        <li>注意检查插件的兼容性版本和评分</li>
+                    </ul>
+                </li>
+                <li><strong>Polymart资源站</strong>：
+                    <ul>
+                        <li>访问 <a href="https://polymart.org/resources" target="_blank">Polymart资源页面</a></li>
+                        <li>类似于SpigotMC，提供大量插件</li>
+                        <li>界面更现代化</li>
+                    </ul>
+                </li>
+                <li><strong>GitHub开源项目</strong>：
+                    <ul>
+                        <li>搜索GitHub上的开源插件项目</li>
+                        <li>通常在Releases部分提供下载</li>
+                        <li>可以查看源代码和提交的Issue</li>
+                    </ul>
+                </li>
+                <li><strong>Planet Minecraft</strong>：
+                    <ul>
+                        <li>访问 <a href="https://www.planetminecraft.com/resources/servers/" target="_blank">Planet Minecraft资源页面</a></li>
+                        <li>提供多种类型的Minecraft资源</li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <h3>安装插件的步骤</h3>
+            <ol>
+                <li><strong>准备工作</strong>：
+                    <ul>
+                        <li>确保服务器已停止（如果正在运行）</li>
+                        <li>找到服务器目录中的<code>plugins</code>文件夹</li>
+                        <li>如果没有<code>plugins</code>文件夹，可手动创建一个</li>
+                    </ul>
+                </li>
+                <li><strong>放置插件文件</strong>：
+                    <ul>
+                        <li>将下载的插件JAR文件复制到<code>plugins</code>文件夹中</li>
+                        <li>确保插件文件名不包含特殊字符或空格</li>
+                        <li>每次只安装一个插件以避免冲突</li>
+                    </ul>
+                </li>
+                <li><strong>配置插件</strong>：
+                    <ul>
+                        <li>启动服务器，插件会自动生成配置文件</li>
+                        <li>在<code>plugins</code>文件夹中找到插件的配置文件夹</li>
+                        <li>根据需要编辑配置文件（通常是<code>config.yml</code>）</li>
+                    </ul>
+                </li>
+                <li><strong>重启服务器</strong>：
+                    <ul>
+                        <li>重启服务器以使插件生效</li>
+                        <li>检查控制台日志确认插件加载成功</li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <h3>使用Sea Lantern管理插件</h3>
+            <p>虽然Sea Lantern目前没有专门的插件管理界面，但你可以通过以下方式使用它来管理插件：</p>
+            <ul>
+                <li><strong>启动服务器</strong>：使用Sea Lantern启动服务器时会自动加载插件</li>
+                <li><strong>查看日志</strong>：通过控制台查看插件是否正确加载</li>
+                <li><strong>执行命令</strong>：某些插件需要在启动后执行特定命令来完成安装</li>
+                <li><strong>查看插件列表</strong>：使用<code>/plugins</code>命令查看已加载的插件</li>
+                <li><strong>停止服务器</strong>：使用Sea Lantern停止服务器以安全地修改插件</li>
+            </ul>
+            
+            <h3>常见插件类型</h3>
+            <ul>
+                <li><strong>管理类插件</strong>：
+                    <ul>
+                        <li><strong>EssentialsX</strong>：提供基础管理命令（传送、家、经济等）</li>
+                        <li><strong>WorldEdit</strong>：强大的世界编辑工具</li>
+                        <li><strong>WorldGuard</strong>：区域保护和权限管理</li>
+                    </ul>
+                </li>
+                <li><strong>游戏增强类插件</strong>：
+                    <ul>
+                        <li><strong>CoreProtect</strong>：区块和玩家操作日志记录</li>
+                        <li><strong>Multiverse-Core</strong>：多世界管理</li>
+                        <li><strong>DiscordSRV</strong>：服务器与Discord的集成</li>
+                    </ul>
+                </li>
+                <li><strong>经济系统插件</strong>：
+                    <ul>
+                        <li><strong>Vault</strong>：经济API（需要配合经济插件使用）</li>
+                        <li><strong>Shopkeepers</strong>：商人NPC系统</li>
+                    </ul>
+                </li>
+            </ul>
+            
+            <h3>插件兼容性注意事项</h3>
+            <ul>
+                <li>确保插件与你的服务器版本兼容</li>
+                <li>检查插件之间的依赖关系</li>
+                <li>避免安装功能重复的插件</li>
+                <li>定期更新插件以获得新功能和安全修复</li>
+                <li>备份服务器数据后再安装新插件</li>
+            </ul>
+        </div>
+        
+        <div class="tip">
+            <h2>高级功能</h2>
+            
+            <h3>自动更新</h3>
+            <p>Sea Lantern支持自动检查更新功能。在"关于"页面中点击"检查更新"可以手动检查新版本。如果有新版本，会显示更新日志并提供下载链接。</p>
+            
+            <h3>应用设置</h3>
+            <ol>
+                <li><strong>自动停止服务器</strong>
+                    <p>在设置页面可以启用"关闭软件时自动停止服务器"。这样可以防止在关闭Sea Lantern时丢失存档。</p>
+                </li>
+                <li><strong>内存设置</strong>
+                    <p>可以设置默认的Java堆内存大小。根据你的系统配置和服务器需求调整。</p>
+                </li>
+                <li><strong>JVM参数</strong>
+                    <p>可以自定义JVM启动参数。高级用户可以优化服务器性能。</p>
+                </li>
+            </ol>
+        </div>
+        
+        <div class="warning">
+            <h2>故障排除</h2>
+            
+            <h3>无法启动服务器</h3>
+            <ol>
+                <li>检查Java路径是否正确</li>
+                <li>确保服务器JAR文件完整且兼容</li>
+                <li>检查端口是否被其他程序占用</li>
+                <li>查看控制台日志以获取错误信息</li>
+            </ol>
+            
+            <h3>控制台无响应</h3>
+            <ol>
+                <li>检查服务器是否正常运行</li>
+                <li>确认网络连接正常</li>
+                <li>重启Sea Lantern应用</li>
+            </ol>
+            
+            <h3>无法连接服务器</h3>
+            <ol>
+                <li>检查服务器是否已启动</li>
+                <li>确认端口设置正确</li>
+                <li>检查防火墙设置</li>
+                <li>确保服务器设置为允许外部连接</li>
+            </ol>
+        </div>
+        
+        <h2>开发者指南</h2>
+        <p>如果你想参与Sea Lantern的开发：</p>
+        
+        <h3>1. 克隆项目</h3>
+        <pre><code>git clone https://gitee.com/fps_z/SeaLantern.git
+cd SeaLantern</code></pre>
+        
+        <h3>2. 安装依赖</h3>
+        <pre><code>npm install</code></pre>
+        
+        <h3>3. 启动开发模式</h3>
+        <pre><code>npm run tauri dev</code></pre>
+        
+        <h3>4. 构建发布版</h3>
+        <pre><code>npm run tauri build</code></pre>
+        <p>构建产物位于 <code>src-tauri/target/release/bundle/</code> 目录中。</p>
+        
+        <h2>技术架构</h2>
+        <p>Sea Lantern采用前后端分离架构：</p>
+        <ul>
+            <li><strong>前端</strong>：Vue 3 + TypeScript + Vite + Pinia</li>
+            <li><strong>后端</strong>：Rust + Tauri 2</li>
+            <li><strong>样式</strong>：纯 CSS</li>
+            <li><strong>通信</strong>：Tauri invoke（前端调用Rust函数）</li>
+        </ul>
+        
+        <h2>贡献项目</h2>
+        <p>如果你希望为Sea Lantern贡献代码：</p>
+        <ol>
+            <li>Fork这个仓库</li>
+            <li>创建新分支进行开发</li>
+            <li>提交Pull Request</li>
+            <li>你的名字将出现在贡献者墙上</li>
+        </ol>
+        
+        <h2>常见问题解答</h2>
+        <table>
+            <tr>
+                <th>问题</th>
+                <th>答案</th>
+            </tr>
+            <tr>
+                <td>Sea Lantern需要什么权限？</td>
+                <td>Sea Lantern需要访问文件系统、网络和执行程序的权限，这些是管理Minecraft服务器所必需的。</td>
+            </tr>
+            <tr>
+                <td>如何备份服务器？</td>
+                <td>目前需要手动备份服务器目录，未来版本将集成备份功能。</td>
+            </tr>
+            <tr>
+                <td>Sea Lantern是否安全？</td>
+                <td>Sea Lantern是开源软件，代码完全透明。它不会连接到任何第三方服务器，所有数据都保存在本地。</td>
+            </tr>
+            <tr>
+                <td>支持哪些Minecraft版本？</td>
+                <td>Sea Lantern支持所有标准的Minecraft服务器版本，只需使用对应版本的服务器JAR文件。</td>
+            </tr>
+            <tr>
+                <td>可以在Windows 7/8/8.1上运行Sea Lantern吗？</td>
+                <td>Sea Lantern官方不支持Windows 7/8/8.1系统。默认情况下Sea Lantern不支持原生Windows 7运行，但可以通过安装VxKex扩展内核以补全所需运行库来运行。详情请参考"旧版Windows运行方案"章节。</td>
+            </tr>
+        </table>
+        
+        <div class="warning">
+            <h2>旧版Windows运行方案</h2>
+            <p>关于Sea Lantern在Win10以下系统运行：默认情况下Sea Lantern不支持原生Windows 7运行，通过安装VxKex 扩展内核以补全所需运行库来运行，这对已然处于旧系统的用户提供了一个解决方案（注：此方式同样适用于一些无法在老系统上正常运行的软件）</p>
+            
+            <h3>具体步骤</h3>
+            <ol>
+                <li><strong>获取Sea Lantern软件压缩包</strong>：
+                    <ul>
+                        <li>前往Sea Lantern官网下载Windows压缩包</li>
+                        <li>解压完成不要打开Sea Lantern</li>
+                    </ul>
+                </li>
+                <li><strong>下载并安装VxKex 扩展内核</strong>：
+                    <ul>
+                        <li>此处提供的是国内的一个分支</li>
+                                        <li>VxKex-NEXT：<a href="https://github.com/YuZhouRen86/VxKex-NEXT" target="_blank">github.com/YuZhouRen86/VxKex-NEXT</a></li>
+                                        <li>蓝奏云：<a href="https://geekerz.lanzoue.com/b0ra5olfi" target="_blank">geekerz.lanzoue.com/b0ra5olfi</a></li>
+                                        <li>百度网盘：<a href="https://pan.baidu.com/s/1w0JUk4JpoKiZQVi2LMoqwA?pwd=0000" target="_blank">pan.baidu.com/s/1w0JUk4JpoKiZQVi2LMoqwA?pwd=0000</a></li>                        <li>提取码：0000</li>
+                        <li>下载完成无脑安装即可</li>
+                    </ul>
+                </li>
+                <li><strong>给Sea Lantern启用VxKex</strong>：
+                    <ul>
+                        <li>右键Sea Lantern主程序，选择属性，选择[VxKex]</li>
+                        <li>勾选[为此程序启用VxKex NEXT]和[报告其他版本的Windows]，应用，确定</li>
+                        <li>此时Sea Lantern即可在Windows 7上正常运行</li>
+                        <li>除联机外，其他功能均正常</li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <h3>视频参考</h3>
+            <p>如果不会操作请参考以下视频：<a href="https://www.bilibili.com/video/BV1SedHYsE6b/?share_source=copy_web&vd_source=bcfefb5f9c9518f3326b2f5096fea0fc" target="_blank">【让 Win7 强行兼容 Win10 应用？VxKex 扩展内核安装体验】</a></p>
+            
+            <h3>结语</h3>
+            <p>此方法通过VxKex扩展内核为旧版Windows系统补全运行库，以支持现代软件运行。虽然Sea Lantern在旧版系统上大部分功能可以正常运行，但可能某些高级功能会受限。</p>
+        </div>
+        
+        <h2>未来功能</h2>
+        <p>Sea Lantern持续开发中，以下功能正在计划中：</p>
+        <ul>
+            <li>下载中心（下载服务端核心、插件、模组）</li>
+            <li>备份管理（世界存档的增量备份和还原）</li>
+            <li>内网穿透（集成FRP）</li>
+            <li>定时任务（自动重启、定时备份、定时执行命令）</li>
+            <li>资源管理（从Modrinth/CurseForge搜索安装插件和Mod）</li>
+            <li>暗色主题</li>
+            <li>国际化</li>
+        </ul>
+        
+        <div class="highlight">
+            <h2>总结</h2>
+            <p>Sea Lantern是一个功能强大且易于使用的Minecraft服务器管理工具。通过本教程，你应该已经学会了如何安装、配置和管理Minecraft服务器。如果遇到问题，可以查看控制台日志获取更多信息，或者在项目社区中寻求帮助。</p>
+        </div>
+        
+        <div class="warning">
+            <h2>重要警告与免责声明</h2>
+            <p><strong>关于在旧版Windows系统上运行Sea Lantern的警告：</strong></p>
+            <ul>
+                <li>使用非官方方法（如VxKex扩展内核）在Windows 7/8/8.1等旧版系统上运行Sea Lantern<strong>并不保证能正常工作</strong>，可能会出现各种错误和兼容性问题。</li>
+                <li><strong>开发者不会接受任何通过此方法运行软件所产生的错误反馈，也不会对由此产生的问题进行修复。</strong></li>
+                <li>使用此类方法可能存在系统安全风险，用户需自行承担相关责任。</li>
+                <li>强烈建议升级到受支持的Windows版本（Windows 10/11）以获得最佳体验和完整功能支持。</li>
+                <li>Sea Lantern的开发和测试均基于现代Windows系统，对旧版系统的兼容性不在官方支持范围内。</li>
+            </ul>
+        </div>
+        
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
+        
+        <div class="signature">
+            <h3>文档信息</h3>
+            <p><strong>版本：</strong>0.0.1</p>
+            
+            <div class="authors-section">
+                <h4>修改者</h4>
+                <div class="author-card">
+                    <p><strong>作者：</strong>龙腾</p>
+                    <p><strong>B站主页：</strong><a href="https://b23.tv/bbK4irn" target="_blank">https://b23.tv/bbK4irn</a></p>
+                    <p><strong>修改时间：</strong>2026-02-14 16:37:07</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

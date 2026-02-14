@@ -38,6 +38,7 @@ export const serverApi = {
     maxMemory: number;
     minMemory: number;
     port: number;
+    onlineMode: boolean;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_server", {
       name: params.name,
@@ -46,6 +47,7 @@ export const serverApi = {
       maxMemory: params.maxMemory,
       minMemory: params.minMemory,
       port: params.port,
+      onlineMode: params.onlineMode,
     });
   },
 

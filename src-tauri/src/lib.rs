@@ -1,14 +1,14 @@
 mod commands;
-mod services;
 mod models;
+mod services;
 mod utils;
 
-use commands::server as server_commands;
-use commands::java as java_commands;
 use commands::config as config_commands;
-use commands::system as system_commands;
+use commands::java as java_commands;
 use commands::player as player_commands;
+use commands::server as server_commands;
 use commands::settings as settings_commands;
+use commands::system as system_commands;
 use commands::update as update_commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -69,19 +69,14 @@ pub fn run() {
             update_commands::open_download_url,
         ])
         .on_window_event(|_window, event| {
-            match event {
-                tauri::WindowEvent::CloseRequested { .. } => {
-                    let settings = services::global::settings_manager().get();
-                    if settings.close_servers_on_exit {
-                        services::global::server_manager().stop_all_servers();
-                    }
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                let settings = services::global::settings_manager().get();
+                if settings.close_servers_on_exit {
+                    services::global::server_manager().stop_all_servers();
                 }
-                _ => {}
             }
         })
-        .setup(|_app| {
-            Ok(())
-        })
+        .setup(|_app| Ok(()))
         .run(tauri::generate_context!())
         .expect("error while running Sea Lantern");
 }
