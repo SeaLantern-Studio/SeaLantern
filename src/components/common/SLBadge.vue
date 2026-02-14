@@ -39,7 +39,7 @@ const badgeStyle = computed(() => {
 });
 
 
-const handleClose = (event: MouseEvent) => {
+const handleClose = (event: Event) => {
   event.stopPropagation();
   emit('close');
 };
