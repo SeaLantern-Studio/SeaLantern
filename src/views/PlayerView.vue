@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useRoute } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLSelect from "../components/common/SLSelect.vue";
@@ -10,7 +9,6 @@ import SLModal from "../components/common/SLModal.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
-import { serverApi } from "../api/server";
 import { TIME, MESSAGES } from "../utils/constants";
 import { validatePlayerName, handleError } from "../utils/errorHandler";
 

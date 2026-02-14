@@ -6,7 +6,6 @@ import SLSelect from "../components/common/SLSelect.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
-import { playerApi } from "../api/player";
 import { settingsApi } from "../api/settings";
 
 const route = useRoute();

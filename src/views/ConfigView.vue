@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
@@ -109,10 +108,6 @@ function getBoolValue(key: string): boolean {
   return editValues.value[key] === "true";
 }
 
-function getServerName(): string {
-  const s = store.servers.find((s) => s.id === selectedServerId.value);
-  return s ? s.name : "";
-}
 </script>
 
 <template>

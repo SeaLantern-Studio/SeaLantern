@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Write, Read};
+use std::io::{Write, Read};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -264,7 +264,7 @@ impl ServerManager {
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let mut child = cmd.spawn().map_err(|e| format!("启动失败: {}", e))?;
+        let child = cmd.spawn().map_err(|e| format!("启动失败: {}", e))?;
         println!("Java进程已启动，PID: {:?}", child.id());
 
         self.processes.lock().unwrap().insert(id.to_string(), child);

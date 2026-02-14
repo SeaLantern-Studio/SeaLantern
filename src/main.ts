@@ -8,7 +8,7 @@ const app = createApp(App);
 
 // 全局错误处理（仅在开发环境）
 if (import.meta.env.DEV) {
-  app.config.errorHandler = (err, instance, info) => {
+  app.config.errorHandler = (err, _instance, _info) => {
     console.error('App Error:', err);
   };
 

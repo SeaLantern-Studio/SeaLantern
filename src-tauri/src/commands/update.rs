@@ -12,6 +12,7 @@ pub struct UpdateInfo {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct GiteeRelease {
     tag_name: String,
     name: String,

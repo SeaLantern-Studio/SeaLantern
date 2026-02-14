@@ -4,7 +4,6 @@ import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
-import SLSelect from "../components/common/SLSelect.vue";
 import { serverApi } from "../api/server";
 import { javaApi, type JavaInfo } from "../api/java";
 import { systemApi } from "../api/system";

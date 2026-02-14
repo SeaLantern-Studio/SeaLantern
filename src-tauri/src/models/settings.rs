@@ -49,18 +49,6 @@ pub struct AppSettings {
     #[serde(default = "default_bg_size")]
     pub background_size: String,
 
-    // 窗口状态
-    #[serde(default = "default_window_width")]
-    pub window_width: u32,
-    #[serde(default = "default_window_height")]
-    pub window_height: u32,
-    #[serde(default)]
-    pub window_x: Option<i32>,
-    #[serde(default)]
-    pub window_y: Option<i32>,
-    #[serde(default)]
-    pub window_maximized: bool,
-
     // 亚克力/毛玻璃效果 (Windows 专属，默认关闭)
     #[serde(default)]
     pub acrylic_enabled: bool,
@@ -108,14 +96,6 @@ fn default_bg_size() -> String {
     "cover".to_string()
 }
 
-fn default_window_width() -> u32 {
-    1200
-}
-
-fn default_window_height() -> u32 {
-    720
-}
-
 fn default_theme() -> String {
     "auto".to_string()
 }
@@ -144,11 +124,6 @@ impl Default for AppSettings {
             background_blur: 0,
             background_brightness: 1.0,
             background_size: "cover".to_string(),
-            window_width: 1200,
-            window_height: 720,
-            window_x: None,
-            window_y: None,
-            window_maximized: false,
             acrylic_enabled: false,
             theme: "auto".to_string(),
             font_size: 14,
