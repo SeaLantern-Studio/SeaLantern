@@ -42,17 +42,19 @@ pub fn read_ops(server_path: &str) -> Result<Vec<OpEntry>, String> {
     read_json_list(server_path, "ops.json")
 }
 
-fn read_json_list<T: serde::de::DeserializeOwned>(server_path: &str, filename: &str) -> Result<Vec<T>, String> {
+fn read_json_list<T: serde::de::DeserializeOwned>(
+    server_path: &str,
+    filename: &str,
+) -> Result<Vec<T>, String> {
     let path = std::path::Path::new(server_path).join(filename);
     if !path.exists() {
         return Ok(Vec::new());
     }
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| format!("读取{}失败: {}", filename, e))?;
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| format!("读取{}失败: {}", filename, e))?;
     let trimmed = content.trim();
     if trimmed.is_empty() || trimmed == "[]" {
         return Ok(Vec::new());
     }
-    serde_json::from_str(trimmed)
-        .map_err(|e| format!("解析{}失败: {}", filename, e))
+    serde_json::from_str(trimmed).map_err(|e| format!("解析{}失败: {}", filename, e))
 }

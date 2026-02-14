@@ -1,11 +1,10 @@
-use crate::services::player_manager;
-use crate::services::player_manager::{PlayerEntry, BanEntry, OpEntry};
 use crate::services::global;
+use crate::services::player_manager;
+use crate::services::player_manager::{BanEntry, OpEntry, PlayerEntry};
 
 fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
 }
-
 
 // ---- Read lists from files ----
 
@@ -49,7 +48,9 @@ pub fn remove_from_whitelist(server_id: String, name: String) -> Result<String, 
         let whitelist_path = std::path::Path::new(&server.path).join("whitelist.json");
         if whitelist_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&whitelist_path) {
-                if let Ok(mut list) = serde_json::from_str::<Vec<player_manager::PlayerEntry>>(&content) {
+                if let Ok(mut list) =
+                    serde_json::from_str::<Vec<player_manager::PlayerEntry>>(&content)
+                {
                     // Remove player from list (case-insensitive comparison)
                     list.retain(|p| !p.name.eq_ignore_ascii_case(&name));
                     // Write back to file
@@ -113,6 +114,5 @@ pub fn kick_player(server_id: String, name: String, reason: String) -> Result<St
 #[tauri::command]
 pub fn export_logs(logs: Vec<String>, save_path: String) -> Result<(), String> {
     let content = logs.join("\n");
-    std::fs::write(&save_path, content)
-        .map_err(|e| format!("保存失败: {}", e))
+    std::fs::write(&save_path, content).map_err(|e| format!("保存失败: {}", e))
 }

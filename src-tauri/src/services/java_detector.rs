@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
-use std::process::Command;
-use std::path::{Path, PathBuf};
-use std::fs;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -59,23 +59,36 @@ fn get_candidate_paths() -> Vec<String> {
     #[cfg(target_os = "windows")]
     {
         let mut scan_roots = Vec::new();
-        
+
         for drive_letter in b'C'..=b'E' {
             let drive = format!("{}:\\", drive_letter as char);
             if Path::new(&drive).exists() {
                 scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Java"));
                 scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Zulu"));
-                scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Eclipse Adoptium"));
+                scan_roots.push(
+                    PathBuf::from(&drive)
+                        .join("Program Files")
+                        .join("Eclipse Adoptium"),
+                );
                 scan_roots.push(PathBuf::from(&drive).join("Program Files").join("BellSoft"));
             }
         }
 
         if let Ok(appdata) = std::env::var("APPDATA") {
             scan_roots.push(PathBuf::from(&appdata).join(".minecraft").join("runtime"));
-            scan_roots.push(PathBuf::from(&appdata).join(".minecraft").join("cache").join("java"));
+            scan_roots.push(
+                PathBuf::from(&appdata)
+                    .join(".minecraft")
+                    .join("cache")
+                    .join("java"),
+            );
         }
         if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
-            scan_roots.push(PathBuf::from(&local_appdata).join("Programs").join("Adoptium"));
+            scan_roots.push(
+                PathBuf::from(&local_appdata)
+                    .join("Programs")
+                    .join("Adoptium"),
+            );
         }
 
         for root in scan_roots {
@@ -92,7 +105,11 @@ fn get_candidate_paths() -> Vec<String> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        let common_dirs = vec!["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];
+        let common_dirs = vec![
+            "/usr/lib/jvm",
+            "/usr/local/lib/jvm",
+            "/Library/Java/JavaVirtualMachines",
+        ];
         for dir in common_dirs {
             deep_scan_recursive(Path::new(dir), &mut paths, 4);
         }
@@ -102,15 +119,21 @@ fn get_candidate_paths() -> Vec<String> {
 }
 
 fn deep_scan_recursive(dir: &Path, paths: &mut Vec<String>, depth: u32) {
-    if depth == 0 || !dir.is_dir() { return; }
+    if depth == 0 || !dir.is_dir() {
+        return;
+    }
 
-    let target_name = if cfg!(target_os = "windows") { "java.exe" } else { "java" };
+    let target_name = if cfg!(target_os = "windows") {
+        "java.exe"
+    } else {
+        "java"
+    };
 
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
-                if path.file_name().map_or(false, |n| n == "bin") {
+                if path.file_name().is_some_and(|n| n == "bin") {
                     let java_exe = path.join(target_name);
                     if java_exe.exists() {
                         paths.push(java_exe.to_string_lossy().into_owned());
@@ -128,7 +151,9 @@ fn check_java(path: &str) -> Option<JavaInfo> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let combined = if stderr.is_empty() { stdout } else { stderr };
 
-    if combined.is_empty() { return None; }
+    if combined.is_empty() {
+        return None;
+    }
 
     let re = Regex::new(r#"(?i)(?:java|openjdk) version "\s*(?P<version>[^"\s]+)\s*""#).ok()?;
     let caps = re.captures(&combined)?;
@@ -136,7 +161,7 @@ fn check_java(path: &str) -> Option<JavaInfo> {
 
     let major_version = parse_major_version(&version);
     let is_64bit = combined.contains("64-Bit") || combined.contains("64-bit");
-    
+
     let vendor = if combined.to_lowercase().contains("zulu") {
         "Zulu".to_string()
     } else if combined.to_lowercase().contains("openjdk") {
@@ -163,8 +188,8 @@ fn check_java(path: &str) -> Option<JavaInfo> {
 
 fn clean_windows_path(path: &Path) -> String {
     let path_str = path.to_string_lossy();
-    if path_str.starts_with(r"\\?\") {
-        path_str[4..].to_string()
+    if let Some(stripped) = path_str.strip_prefix(r"\\?\") {
+        stripped.to_string()
     } else {
         path_str.into_owned()
     }
@@ -172,7 +197,7 @@ fn clean_windows_path(path: &Path) -> String {
 
 fn parse_major_version(version: &str) -> u32 {
     let parts: Vec<&str> = version.split('.').collect();
-    let first: u32 = parts.get(0).and_then(|s| s.parse().ok()).unwrap_or(0);
+    let first: u32 = parts.first().and_then(|s| s.parse().ok()).unwrap_or(0);
     if first == 1 && parts.len() > 1 {
         parts[1].parse().unwrap_or(first)
     } else {
@@ -210,7 +235,13 @@ fn search_reg_recursive(key: &RegKey, results: &mut Vec<String>) {
 }
 
 fn push_java_exe(dir: &str, paths: &mut Vec<String>) {
-    let bin = Path::new(dir).join("bin").join(if cfg!(target_os = "windows") { "java.exe" } else { "java" });
+    let bin = Path::new(dir)
+        .join("bin")
+        .join(if cfg!(target_os = "windows") {
+            "java.exe"
+        } else {
+            "java"
+        });
     if bin.exists() {
         paths.push(bin.to_string_lossy().into_owned());
     }
@@ -220,11 +251,17 @@ fn resolve_path_from_env(cmd: &str) -> Option<String> {
     #[cfg(target_os = "windows")]
     {
         let output = Command::new("where").arg(cmd).output().ok()?;
-        String::from_utf8_lossy(&output.stdout).lines().next().map(|s| s.trim().to_string())
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .next()
+            .map(|s| s.trim().to_string())
     }
     #[cfg(not(target_os = "windows"))]
     {
         let output = Command::new("which").arg(cmd).output().ok()?;
-        String::from_utf8_lossy(&output.stdout).lines().next().map(|s| s.trim().to_string())
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .next()
+            .map(|s| s.trim().to_string())
     }
 }
