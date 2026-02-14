@@ -33,23 +33,6 @@ impl SettingsManager {
         save_settings(&self.data_dir, &default)?;
         Ok(default)
     }
-
-    pub fn update_window_state(
-        &self,
-        width: u32,
-        height: u32,
-        x: Option<i32>,
-        y: Option<i32>,
-        maximized: bool,
-    ) -> Result<(), String> {
-        let mut settings = self.settings.lock().unwrap();
-        settings.window_width = width;
-        settings.window_height = height;
-        settings.window_x = x;
-        settings.window_y = y;
-        settings.window_maximized = maximized;
-        save_settings(&self.data_dir, &settings)
-    }
 }
 
 fn get_data_dir() -> String {

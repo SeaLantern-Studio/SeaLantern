@@ -58,7 +58,7 @@ async function applyAcrylicEffect(enabled: boolean, theme: string) {
 // 系统主题变化处理
 function handleSystemThemeChange() {
   if (currentTheme.value === "auto") {
-    const effectiveTheme = applyTheme("auto");
+    applyTheme("auto");
     // 如果亚克力开启，需要重新应用以匹配新主题
     if (acrylicEnabled.value && acrylicSupported.value) {
       applyAcrylicEffect(true, "auto");
