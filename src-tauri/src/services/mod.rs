@@ -5,3 +5,4 @@ pub mod player_manager;
 pub mod server_manager;
 pub mod settings_manager;
 pub mod mod_manager;
+pub mod join_manager;

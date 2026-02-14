@@ -43,6 +43,14 @@ pub fn handle_cli() {
             }
             std::process::exit(0);
         }
+        "join" => {
+            if args.len() > 2 {
+                join_server(&args[2]);
+            } else {
+                println!("用法: join <服务器ID>");
+            }
+            std::process::exit(0);
+        }
         "help" | "--help" | "-h" => {
             print_help();
             std::process::exit(0);
@@ -66,6 +74,7 @@ fn print_help() {
     println!("  start <ID>       启动指定服务器");
     println!("  stop <ID>        停止指定服务器");
     println!("  search-mods <关键词> <版本> [加载器]  搜索模组");
+    println!("  join <ID>        通过 ID 加入服务器");
     println!("  help             显示帮助信息");
 }
 
@@ -117,6 +126,23 @@ fn search_mods(query: &str, version: &str, loader: &str) {
                 }
             }
             Err(e) => println!("搜索失败: {}", e),
+        }
+    });
+}
+
+fn join_server(id: &str) {
+    println!("正在解析服务器 ID: {}...", id);
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let join_manager = global::join_manager();
+        match join_manager.resolve_id(id).await {
+            Ok(addr) => {
+                println!("成功解析！服务器地址: {}:{}", addr.host, addr.port);
+                println!("正在启动 Minecraft 并连接...");
+                // 这里可以调用启动逻辑，目前先输出连接指令
+                println!("请在 Minecraft 中连接到: {}:{}", addr.host, addr.port);
+            }
+            Err(e) => println!("解析失败: {}", e),
         }
     });
 }
