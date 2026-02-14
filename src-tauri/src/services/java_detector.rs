@@ -1,7 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 #[cfg(target_os = "windows")]
@@ -20,7 +20,7 @@ pub struct JavaInfo {
 
 pub fn detect_java_installations() -> Vec<JavaInfo> {
     let mut results = Vec::new();
-    let mut candidate_paths = get_candidate_paths();
+    let candidate_paths = get_candidate_paths();
 
     #[cfg(target_os = "windows")]
     {
@@ -105,11 +105,8 @@ fn get_candidate_paths() -> Vec<String> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        let common_dirs = vec![
-            "/usr/lib/jvm",
-            "/usr/local/lib/jvm",
-            "/Library/Java/JavaVirtualMachines",
-        ];
+        let common_dirs =
+            vec!["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];
         for dir in common_dirs {
             deep_scan_recursive(Path::new(dir), &mut paths, 4);
         }
