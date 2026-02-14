@@ -11,7 +11,7 @@ import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
 import { serverApi } from "../api/server";
-import { TIME, MESSAGES } from "../utils/constants";
+import { TIME } from "../utils/constants";
 import { validatePlayerName, handleError } from "../utils/errorHandler";
 import { useI18n } from 'vue-i18n';
 
@@ -137,12 +137,12 @@ async function handleAdd() {
   // 验证玩家名
   const validation = validatePlayerName(addPlayerName.value);
   if (!validation.valid) {
-    error.value = validation.error || MESSAGES.ERROR.INVALID_PLAYER_NAME;
+    error.value = validation.error || t('messages.error.invalidPlayerName');
     return;
   }
 
   if (!isRunning.value) {
-    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    error.value = t('messages.error.serverNotRunning');
     return;
   }
 
@@ -153,15 +153,15 @@ async function handleAdd() {
     switch (activeTab.value) {
       case "whitelist":
         await playerApi.addToWhitelist(sid, addPlayerName.value);
-        success.value = MESSAGES.SUCCESS.WHITELIST_ADDED;
+        success.value = t('messages.success.whitelistAdded');
         break;
       case "banned":
         await playerApi.banPlayer(sid, addPlayerName.value, addBanReason.value);
-        success.value = MESSAGES.SUCCESS.PLAYER_BANNED;
+        success.value = t('messages.success.playerBanned');
         break;
       case "ops":
         await playerApi.addOp(sid, addPlayerName.value);
-        success.value = MESSAGES.SUCCESS.OP_ADDED;
+        success.value = t('messages.success.opAdded');
         break;
     }
     showAddModal.value = false;
@@ -174,37 +174,37 @@ async function handleAdd() {
 }
 
 async function handleRemoveWhitelist(name: string) {
-  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
+  if (!isRunning.value) { error.value = t('messages.error.serverNotRunning'); return; }
   try {
     await playerApi.removeFromWhitelist(selectedServerId.value, name);
-    success.value = MESSAGES.SUCCESS.WHITELIST_REMOVED;
+    success.value = t('messages.success.whitelistRemoved');
     setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) { error.value = handleError(e, "RemoveWhitelist"); }
 }
 
 async function handleUnban(name: string) {
-  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
+  if (!isRunning.value) { error.value = t('messages.error.serverNotRunning'); return; }
   try {
     await playerApi.unbanPlayer(selectedServerId.value, name);
-    success.value = MESSAGES.SUCCESS.PLAYER_UNBANNED;
+    success.value = t('messages.success.playerUnbanned');
     setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) { error.value = handleError(e, "UnbanPlayer"); }
 }
 
 async function handleRemoveOp(name: string) {
-  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
+  if (!isRunning.value) { error.value = t('messages.error.serverNotRunning'); return; }
   try {
     await playerApi.removeOp(selectedServerId.value, name);
-    success.value = MESSAGES.SUCCESS.OP_REMOVED;
+    success.value = t('messages.success.opRemoved');
     setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) { error.value = handleError(e, "RemoveOp"); }
 }
 
 async function handleKick(name: string) {
-  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
+  if (!isRunning.value) { error.value = t('messages.error.serverNotRunning'); return; }
   try {
     await playerApi.kickPlayer(selectedServerId.value, name);
-    success.value = `${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`;
+    success.value = `${name} ${t('messages.success.playerKicked')}`;
     setTimeout(() => { success.value = null; parseOnlinePlayers(); }, TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) { error.value = handleError(e, "KickPlayer"); }
 }

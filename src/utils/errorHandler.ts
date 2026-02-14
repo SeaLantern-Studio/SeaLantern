@@ -2,7 +2,7 @@
  * 统一错误处理工具
  */
 
-import { MESSAGES } from "./constants";
+import i18n from "../i18n";
 
 /**
  * 错误类型
@@ -45,7 +45,7 @@ export function formatError(error: unknown): string {
   if (typeof error === "string") {
     return error;
   }
-  return MESSAGES.ERROR.UNKNOWN_ERROR;
+  return i18n.global.t('messages.error.unknownError');
 }
 
 /**
@@ -67,15 +67,15 @@ export function handleError(error: unknown, context?: string): string {
  */
 export function validatePlayerName(name: string): { valid: boolean; error?: string } {
   if (!name || name.trim().length === 0) {
-    return { valid: false, error: MESSAGES.HINT.ENTER_PLAYER_NAME };
+    return { valid: false, error: i18n.global.t('messages.hint.enterPlayerName') };
   }
 
   if (name.length < 3 || name.length > 16) {
-    return { valid: false, error: "玩家名长度必须在3-16个字符之间" };
+    return { valid: false, error: i18n.global.t('validation.playerNameTooShort') };
   }
 
   if (!/^[a-zA-Z0-9_]+$/.test(name)) {
-    return { valid: false, error: "玩家名只能包含字母、数字和下划线" };
+    return { valid: false, error: i18n.global.t('validation.playerNameInvalid') };
   }
 
   return { valid: true };

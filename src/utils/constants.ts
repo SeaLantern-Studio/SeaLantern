@@ -49,53 +49,8 @@ export const SERVER_STATUS = {
   ERROR: "Error",
 } as const;
 
-export const SERVER_STATUS_TEXT = {
-  [SERVER_STATUS.STOPPED]: "已停止",
-  [SERVER_STATUS.STARTING]: "启动中",
-  [SERVER_STATUS.RUNNING]: "运行中",
-  [SERVER_STATUS.STOPPING]: "停止中",
-  [SERVER_STATUS.ERROR]: "错误",
-} as const;
-
-// ==================== 日志前缀 ====================
-export const LOG_PREFIX = {
-  SEA_LANTERN: "[Sea Lantern]",
-  ERROR: "[ERROR]",
-  WARN: "[WARN]",
-  STDERR: "[STDERR]",
-} as const;
-
-// ==================== 消息模板 ====================
-export const MESSAGES = {
-  // 成功消息
-  SUCCESS: {
-    SERVER_STARTED: "服务器已启动",
-    SERVER_STOPPED: "服务器已停止",
-    COMMAND_SENT: "命令已发送",
-    WHITELIST_ADDED: "已添加到白名单",
-    WHITELIST_REMOVED: "已从白名单移除",
-    PLAYER_BANNED: "玩家已被封禁",
-    PLAYER_UNBANNED: "玩家已被解封",
-    OP_ADDED: "已添加管理员权限",
-    OP_REMOVED: "已移除管理员权限",
-    PLAYER_KICKED: "玩家已被踢出",
-  },
-  // 错误消息
-  ERROR: {
-    SERVER_NOT_RUNNING: "服务器未运行",
-    SERVER_ALREADY_RUNNING: "服务器已在运行中",
-    SERVER_NOT_FOUND: "未找到服务器",
-    INVALID_PLAYER_NAME: "无效的玩家名称",
-    NETWORK_ERROR: "网络错误",
-    UNKNOWN_ERROR: "未知错误",
-  },
-  // 提示消息
-  HINT: {
-    SELECT_SERVER: "请选择一个服务器",
-    SERVER_REQUIRED: "需要服务器运行中才能操作",
-    ENTER_PLAYER_NAME: "请输入玩家名",
-  },
-} as const;
+// SERVER_STATUS_TEXT 和 MESSAGES 已迁移至 i18n 语言包 (src/i18n/locales/)\r
+// 请使用 t('serverStatus.xxx') 和 t('messages.xxx') 替代
 
 // ==================== 正则表达式 ====================
 export const REGEX = {
