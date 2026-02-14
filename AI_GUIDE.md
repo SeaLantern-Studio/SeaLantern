@@ -8,7 +8,8 @@
 **项目类型**: Minecraft 服务器管理工具
 **技术栈**: Tauri 2 + Rust + Vue 3 + TypeScript + Pinia
 **当前版本**: 0.3.0
-**仓库地址**: https://gitee.com/fps_z/SeaLantern
+**Gitee仓库**: https://gitee.com/fps_z/SeaLantern
+**Github仓库**: https://github.com/FPSZ/SeaLantern
 
 ### 核心特点
 - 前端使用 Vue 3 Composition API + TypeScript
