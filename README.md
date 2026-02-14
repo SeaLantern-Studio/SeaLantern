@@ -29,6 +29,13 @@ npm install
 npm run tauri dev
 ```
 
+Rust 相关命令可以直接在根目录执行：
+
+```bash
+cargo check
+cargo build --release
+```
+
 构建发布版：
 
 ```bash
@@ -168,6 +175,7 @@ sea-lantern/
 │
 ├── public/                            静态资源
 │
+├── Cargo.toml                         Rust Workspace 配置（可在根目录执行 cargo 命令）
 ├── index.html                         HTML 入口文件
 ├── package.json                       Node.js 依赖配置
 ├── package-lock.json                  Node.js 依赖锁定文件
@@ -239,8 +247,14 @@ sea-lantern/
 
 1. Fork 这个仓库
 2. 建分支写代码
-3. 提 Pull Request
-4. 你的名字会出现在关于页面的贡献者墙上
+3. 推送前确保通过检查：
+   ```bash
+   cargo fmt --check     # 代码格式
+   cargo clippy          # 代码质量
+   npm run build:check   # 前端类型检查 + 构建
+   ```
+4. 提 Pull Request
+5. 你的名字会出现在关于页面的贡献者墙上
 
 不会写代码也行。说你想要什么功能，或者画个 UI 草图发出来，都算贡献。
 

@@ -29,10 +29,7 @@ struct GiteeAsset {
 
 /// 检查Gitee上的更新
 #[command]
-pub async fn check_update(
-    owner: String,
-    repo: String,
-) -> Result<UpdateInfo, String> {
+pub async fn check_update(owner: String, repo: String) -> Result<UpdateInfo, String> {
     let current_version = env!("CARGO_PKG_VERSION");
 
     // 构建Gitee API URL
@@ -66,7 +63,9 @@ pub async fn check_update(
     let has_update = compare_versions(current_version, latest_version);
 
     // 查找Windows安装包
-    let download_url = release.assets.iter()
+    let download_url = release
+        .assets
+        .iter()
         .find(|asset| {
             let name = asset.name.to_lowercase();
             name.ends_with(".exe") || name.ends_with(".msi")
@@ -92,11 +91,8 @@ pub async fn check_update(
 
 /// 简单的版本号比较（支持 x.y.z 格式）
 fn compare_versions(current: &str, latest: &str) -> bool {
-    let parse_version = |v: &str| -> Vec<u32> {
-        v.split('.')
-            .filter_map(|s| s.parse::<u32>().ok())
-            .collect()
-    };
+    let parse_version =
+        |v: &str| -> Vec<u32> { v.split('.').filter_map(|s| s.parse::<u32>().ok()).collect() };
 
     let current_parts = parse_version(current);
     let latest_parts = parse_version(latest);

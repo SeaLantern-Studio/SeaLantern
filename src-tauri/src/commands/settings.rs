@@ -28,8 +28,7 @@ pub fn export_settings() -> Result<String, String> {
 
 #[tauri::command]
 pub fn import_settings(json: String) -> Result<AppSettings, String> {
-    let s: AppSettings = serde_json::from_str(&json)
-        .map_err(|e| format!("Invalid JSON: {}", e))?;
+    let s: AppSettings = serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
     global::settings_manager().update(s.clone())?;
     Ok(s)
 }
@@ -77,15 +76,17 @@ pub fn apply_acrylic(window: tauri::Window, enabled: bool, dark_mode: bool) -> R
 #[tauri::command]
 pub fn get_system_fonts() -> Result<Vec<String>, String> {
     let source = SystemSource::new();
-    let fonts = source.all_families().map_err(|e| format!("Failed to get fonts: {}", e))?;
-    
+    let fonts = source
+        .all_families()
+        .map_err(|e| format!("Failed to get fonts: {}", e))?;
+
     let mut unique_fonts: HashSet<String> = HashSet::new();
     for font in fonts {
         unique_fonts.insert(font);
     }
-    
+
     let mut sorted_fonts: Vec<String> = unique_fonts.into_iter().collect();
-    sorted_fonts.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
-    
+    sorted_fonts.sort_by_key(|a| a.to_lowercase());
+
     Ok(sorted_fonts)
 }
