@@ -1,0 +1,96 @@
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.glass-subtle {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--sl-radius-lg);
+  box-shadow: var(--sl-shadow-md);
+  transition: all var(--sl-transition-normal);
+}
+
+.glass-card:hover {
+  box-shadow: var(--sl-shadow-lg);
+  transform: translateY(-2px);
+  border-color: var(--sl-primary-light);
+}
+
+[data-color-mode="dark"] .glass {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-color-mode="dark"] .glass-subtle {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-color-mode="dark"] .glass-strong {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-color-mode="dark"] .glass-card {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-acrylic="true"] .glass {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+}
+
+[data-acrylic="true"] .glass-subtle {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(4px) saturate(120%);
+  -webkit-backdrop-filter: blur(4px) saturate(120%);
+}
+
+[data-acrylic="true"] .glass-strong {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+}
+
+[data-acrylic="true"] .glass-card {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+}
+
+[data-color-mode="dark"][data-acrylic="true"] .glass {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+[data-color-mode="dark"][data-acrylic="true"] .glass-subtle {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+[data-color-mode="dark"][data-acrylic="true"] .glass-strong {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+[data-color-mode="dark"][data-acrylic="true"] .glass-card {
+  background: rgba(30, 41, 59, 0.5);
+}

@@ -1,0 +1,222 @@
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed } from "vue";
+import AppSidebar from "./AppSidebar.vue";
+import AppHeader from "./AppHeader.vue";
+import { useUiStore } from "../../stores/uiStore";
+import { settingsApi, applyAcrylic, checkAcrylicSupport } from "../../api/settings";
+import { convertFileSrc } from "@tauri-apps/api/core";
+
+const ui = useUiStore();
+const backgroundImage = ref("");
+const backgroundOpacity = ref(0.3);
+const backgroundBlur = ref(0);
+const backgroundBrightness = ref(1.0);
+const backgroundSize = ref("cover");
+const acrylicEnabled = ref(false);
+const acrylicSupported = ref(false);
+const currentColorMode = ref("auto");
+
+let systemThemeQuery: MediaQueryList | null = null;
+
+function getEffectiveColorMode(mode: string): "light" | "dark" {
+  if (mode === "auto") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return mode as "light" | "dark";
+}
+
+function applyColorMode(mode: string) {
+  const effectiveMode = getEffectiveColorMode(mode);
+  document.documentElement.setAttribute("data-color-mode", effectiveMode);
+  return effectiveMode;
+}
+
+async function applyAcrylicEffect(enabled: boolean, mode: string) {
+  document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
+  
+  if (!acrylicSupported.value) {
+    return;
+  }
+  
+  if (enabled) {
+    const effectiveMode = getEffectiveColorMode(mode);
+    const isDark = effectiveMode === "dark";
+    try {
+      await applyAcrylic(true, isDark);
+    } catch (e) {
+      console.error("Failed to apply acrylic:", e);
+    }
+  } else {
+    try {
+      await applyAcrylic(false, false);
+    } catch (e) {
+      console.error("Failed to clear acrylic:", e);
+    }
+  }
+}
+
+function handleSystemThemeChange() {
+  if (currentColorMode.value === "auto") {
+    const effectiveMode = applyColorMode("auto");
+    if (acrylicEnabled.value && acrylicSupported.value) {
+      applyAcrylicEffect(true, "auto");
+    }
+  }
+}
+
+onMounted(async () => {
+  try {
+    acrylicSupported.value = await checkAcrylicSupport();
+  } catch {
+    acrylicSupported.value = false;
+  }
+  
+  await loadBackgroundSettings();
+
+  window.addEventListener("settings-updated", loadBackgroundSettings);
+
+  systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  systemThemeQuery.addEventListener("change", handleSystemThemeChange);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("settings-updated", loadBackgroundSettings);
+  if (systemThemeQuery) {
+    systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
+  }
+});
+
+async function loadBackgroundSettings() {
+  try {
+    const settings = await settingsApi.get();
+
+    currentColorMode.value = settings.color_mode || "auto";
+    acrylicEnabled.value = settings.acrylic_enabled;
+
+    const effectiveMode = applyColorMode(settings.color_mode || "auto");
+
+    document.documentElement.style.fontSize = (settings.font_size || 14) + "px";
+
+    if (acrylicSupported.value) {
+      await applyAcrylicEffect(settings.acrylic_enabled, settings.color_mode || "auto");
+    } else {
+      document.documentElement.setAttribute("data-acrylic", "false");
+    }
+
+    if (settings.background_image) {
+      backgroundImage.value = convertFileSrc(settings.background_image);
+    } else {
+      backgroundImage.value = "";
+    }
+    backgroundOpacity.value = settings.background_opacity;
+    backgroundBlur.value = settings.background_blur;
+    backgroundBrightness.value = settings.background_brightness;
+    backgroundSize.value = settings.background_size;
+    console.log("Settings loaded:", {
+      colorMode: settings.color_mode,
+      colorScheme: settings.color_scheme,
+      effectiveMode,
+      fontSize: settings.font_size,
+      acrylicEnabled: settings.acrylic_enabled,
+      acrylicSupported: acrylicSupported.value,
+      image: backgroundImage.value,
+      opacity: backgroundOpacity.value,
+      blur: backgroundBlur.value,
+      brightness: backgroundBrightness.value,
+      size: backgroundSize.value,
+    });
+  } catch (e) {
+    console.error("Failed to load settings:", e);
+  }
+}
+
+const backgroundStyle = computed(() => {
+  if (!backgroundImage.value) return {};
+  return {
+    backgroundImage: `url(${backgroundImage.value})`,
+    backgroundSize: backgroundSize.value,
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    opacity: backgroundOpacity.value,
+    filter: `blur(${backgroundBlur.value}px) brightness(${backgroundBrightness.value})`,
+  };
+});
+</script>
+
+<template>
+  <div class="app-layout">
+    <div class="app-background" :style="backgroundStyle"></div>
+    <AppSidebar />
+    <div class="app-main" :class="{ 'sidebar-collapsed': ui.sidebarCollapsed }">
+      <AppHeader />
+      <main class="app-content">
+        <router-view v-slot="{ Component }">
+          <transition name="page-fade" mode="out-in">
+            <keep-alive :max="5">
+              <component :is="Component" />
+            </keep-alive>
+          </transition>
+        </router-view>
+      </main>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.app-layout {
+  position: relative;
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--sl-bg);
+  overflow: hidden;
+}
+
+.app-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.app-main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sl-sidebar-width);
+  transition: margin-left var(--sl-transition-normal);
+  min-width: 0;
+}
+
+.app-main.sidebar-collapsed {
+  margin-left: var(--sl-sidebar-collapsed-width);
+}
+
+.app-content {
+  flex: 1;
+  padding: var(--sl-space-lg);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-2px);
+}
+</style>
