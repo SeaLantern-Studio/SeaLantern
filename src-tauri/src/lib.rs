@@ -10,6 +10,7 @@ use commands::server as server_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
 use commands::update as update_commands;
+use commands::mods as mods_commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -70,6 +71,8 @@ pub fn run() {
             settings_commands::get_system_fonts,
             update_commands::check_update,
             update_commands::open_download_url,
+            mods_commands::search_mods,
+            mods_commands::install_mod,
         ])
         .on_window_event(|_window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

@@ -35,6 +35,14 @@ pub fn handle_cli() {
             }
             std::process::exit(0);
         }
+        "search-mods" => {
+            if args.len() > 3 {
+                search_mods(&args[2], &args[3], args.get(4).unwrap_or(&"Fabric".to_string()));
+            } else {
+                println!("用法: search-mods <关键词> <游戏版本> [加载器(默认Fabric)]");
+            }
+            std::process::exit(0);
+        }
         "help" | "--help" | "-h" => {
             print_help();
             std::process::exit(0);
@@ -57,6 +65,7 @@ fn print_help() {
     println!("  list             列出所有服务器");
     println!("  start <ID>       启动指定服务器");
     println!("  stop <ID>        停止指定服务器");
+    println!("  search-mods <关键词> <版本> [加载器]  搜索模组");
     println!("  help             显示帮助信息");
 }
 
@@ -88,6 +97,28 @@ fn stop_server(id: &str) {
         Ok(_) => println!("服务器 {} 已停止。", id),
         Err(e) => println!("停止失败: {}", e),
     }
+}
+
+fn search_mods(query: &str, version: &str, loader: &str) {
+    println!("正在搜索 Modrinth: {} (版本: {}, 加载器: {})...", query, version, loader);
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mod_manager = global::mod_manager();
+        match mod_manager.search_modrinth(query, version, loader).await {
+            Ok(mods) => {
+                if mods.is_empty() {
+                    println!("未找到匹配的模组。");
+                } else {
+                    println!("{:<20} {:<15} {:<50}", "名称", "来源", "下载链接");
+                    println!("{}", "-".repeat(85));
+                    for m in mods {
+                        println!("{:<20} {:<15} {:<50}", m.name, m.source, m.download_url);
+                    }
+                }
+            }
+            Err(e) => println!("搜索失败: {}", e),
+        }
+    });
 }
 
 fn run_interactive_cli() {
