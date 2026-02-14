@@ -1,0 +1,408 @@
+name: '发布 Tauri 桌面应用'
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '发布标签 (例如 v0.4.1) - 如果不填则自动从版本号生成'
+        required: false
+        default: ''
+      prerelease:
+        description: '标记为预发布版本'
+        required: false
+        type: boolean
+        default: false
+      draft:
+        description: '创建为草稿发布（需手动发布）'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  get-version:
+    name: 获取版本信息
+    runs-on: ubuntu-latest
+    outputs:
+      app-version: ${{ steps.get-version.outputs.app-version }}
+      app-name: ${{ steps.get-version.outputs.app-name }}
+      release-tag: ${{ steps.get-version.outputs.release-tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 从 tauri.conf.json 读取应用版本和名称
+        id: get-version
+        run: |
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          PRODUCT_NAME=$(jq -r '.productName' src-tauri/tauri.conf.json)
+          echo "app-version=$VERSION" >> $GITHUB_OUTPUT
+          echo "app-name=$PRODUCT_NAME" >> $GITHUB_OUTPUT
+          
+          # Use provided tag or generate from version
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="v$VERSION"
+          fi
+          echo "release-tag=$TAG" >> $GITHUB_OUTPUT
+          
+          echo "::notice title=发布信息::📦 版本: $VERSION | 📛 应用名: $PRODUCT_NAME | 🏷️ 标签: $TAG"
+
+  publish-tauri:
+    name: 构建与发布 (${{ matrix.platform }})
+    needs: get-version
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            target: 'macos-aarch64'
+            build-name: 'macOS ARM64 (M1/M2/M3)'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            target: 'macos-x64'
+            build-name: 'macOS Intel x64'
+          # Linux
+          - platform: 'ubuntu-22.04'
+            args: ''
+            target: 'linux-x64'
+            build-name: 'Linux x64'
+          # Windows
+          - platform: 'windows-latest'
+            args: ''
+            target: 'windows-x64'
+            build-name: 'Windows x64'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装依赖 (Ubuntu 专用)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: 安装 Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: 安装 Rust 稳定版
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust 缓存
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: 安装前端依赖
+        run: bun install
+
+      - name: 构建与签署 Tauri 应用 (${{ matrix.build-name }})
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Windows signing
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          # macOS signing
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ needs.get-version.outputs.release-tag }}
+          releaseName: '${{ needs.get-version.outputs.app-name }} ${{ needs.get-version.outputs.release-tag }}'
+          releaseBody: |
+            # ${{ needs.get-version.outputs.app-name }} ${{ needs.get-version.outputs.release-tag }}
+            
+            **版本**: ${{ needs.get-version.outputs.app-version }}
+            
+            ## 🎉 发布亮点
+            
+            请在此添加发布说明和亮点描述。
+            
+            ## 📥 下载
+            
+            请根据你的系统平台选择合适的安装包：
+            
+            ### 🪟 Windows
+            - **Sea-Lantern_${{ needs.get-version.outputs.app-version }}_x64-setup.msi** - Windows 版本安装程序（推荐）
+            
+            ### 🍎 macOS
+            - **Sea-Lantern_${{ needs.get-version.outputs.app-version }}_aarch64.dmg** - 苹果芯片版 (M1, M2, M3 等)
+            - **Sea-Lantern_${{ needs.get-version.outputs.app-version }}_x64.dmg** - Intel 芯片版
+            - **Sea-Lantern_${{ needs.get-version.outputs.app-version }}_x64.app.tar.gz** - 压缩格式备选
+            
+            ### 🐧 Linux
+            - **sea-lantern_${{ needs.get-version.outputs.app-version }}_x86_64.AppImage** - 通用版 (适用于大多数 Linux 发行版)
+            - **sea-lantern_${{ needs.get-version.outputs.app-version }}_amd64.deb** - Debian/Ubuntu 系列
+            - **sea-lantern-${{ needs.get-version.outputs.app-version }}-1.x86_64.rpm** - Fedora/RHEL 系列
+            
+            ## ✨ 功能特性
+            
+            - 支持多平台 (Windows, macOS, Linux)
+            - 原生桌面应用
+            - 高效快速
+            
+            ## 🔑 数字签名与验证
+            
+            所有版本均使用密钥签名：
+            - **Windows**: Microsoft Authenticode 签名
+            - **macOS**: Apple Developer ID 签名
+            - **Linux**: AppImage 自解压格式
+          releaseDraft: ${{ github.event.inputs.draft || true }}
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          args: ${{ matrix.args }}
+
+  build-linux-bundles:
+    name: 构建 Linux 包 (AppImage, deb, rpm)
+    needs: get-version
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: 安装 Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: 安装 Rust 稳定版
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust 缓存
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: 安装前端依赖
+        run: bun install
+
+      - name: 构建前端
+        run: bun run build
+
+      - name: 构建 Linux 包 (AppImage, deb, rpm)
+        run: |
+          echo "🐧 Building AppImage..."
+          bun run tauri build -- --bundles appimage
+          
+          echo "📦 Building Debian packages..."
+          bun run tauri build -- --bundles deb
+          
+          echo "📦 Building RPM packages..."
+          bun run tauri build -- --bundles rpm
+
+      - name: 列出构建的产物
+        run: |
+          echo "::group::已构建的产物"
+          find src-tauri/target/release/bundle -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) -exec ls -lh {} \;
+          echo "::endgroup::"
+
+      - name: 上传产物以供发布
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-bundles-${{ needs.get-version.outputs.app-version }}
+          path: |
+            src-tauri/target/release/bundle/appimage/
+            src-tauri/target/release/bundle/deb/
+            src-tauri/target/release/bundle/rpm/
+          retention-days: 1
+          compression-level: 0
+
+  upload-to-release:
+    name: 上传产物到发布
+    needs: [get-version, publish-tauri, build-linux-bundles]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载所有产物
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 列出所有已下载的产物
+        run: |
+          echo "::group::所有产物"
+          find artifacts -type f
+          echo "::endgroup::"
+
+      - name: 重命名 Linux 产物并添加版本后缀
+        run: |
+          VERSION="${{ needs.get-version.outputs.app-version }}"
+          APP_NAME="sea-lantern"
+          
+          # Create temporary directory for renamed files
+          mkdir -p release-artifacts
+          
+          # Copy and rename artifacts
+          echo "📝 Renaming artifacts with version suffix..."
+          
+          # AppImage files
+          if find artifacts -name "*.AppImage" -type f 2>/dev/null | grep -q .; then
+            for file in $(find artifacts -name "*.AppImage" -type f); do
+              filename=$(basename "$file")
+              # Format: app_VERSION_ARCH.AppImage
+              newname="${APP_NAME}_${VERSION}_$(basename "$file" | sed -E 's/_[^_]*\.AppImage/_/; s/([a-z0-9]+)\.AppImage/\1.AppImage/')"
+              cp "$file" "release-artifacts/$newname"
+              echo "  ✓ AppImage: $newname"
+            done
+          fi
+          
+          # Debian files (.deb)
+          if find artifacts -name "*.deb" -type f 2>/dev/null | grep -q .; then
+            for file in $(find artifacts -name "*.deb" -type f); do
+              filename=$(basename "$file")
+              # Extract architecture from filename (amd64, arm64, etc.)
+              arch=$(echo "$filename" | grep -oE '[a-z0-9]+\.deb' | sed 's/\.deb//')
+              newname="${APP_NAME}_${VERSION}_${arch}.deb"
+              cp "$file" "release-artifacts/$newname"
+              echo "  ✓ DEB: $newname"
+            done
+          fi
+          
+          # RPM files
+          if find artifacts -name "*.rpm" -type f 2>/dev/null | grep -q .; then
+            for file in $(find artifacts -name "*.rpm" -type f); do
+              filename=$(basename "$file")
+              # Extract architecture from RPM filename
+              arch=$(echo "$filename" | grep -oE '\.(x86_64|aarch64|ppc64le|s390x|armv7l)\.rpm' | sed 's/\.//g; s/\.rpm//')
+              newname="${APP_NAME}-${VERSION}-1.${arch}.rpm"
+              cp "$file" "release-artifacts/$newname"
+              echo "  ✓ RPM: $newname"
+            done
+          fi
+          
+          # Copy Windows and macOS artifacts (from tauri-action, already in releases)
+          echo ""
+          echo "✅ Linux artifacts staged for upload:"
+          ls -lh release-artifacts/ || echo "No Linux artifacts found"
+
+      - name: 准备发布说明与校验和
+        run: |
+          cat > release-notes.md << 'EOF'
+          # ${{ needs.get-version.outputs.app-name }} ${{ needs.get-version.outputs.release-tag }}
+          
+          **版本**: ${{ needs.get-version.outputs.app-version }}
+          **发布日期**: $(date -u +'%Y-%m-%d %H:%M UTC')
+          
+          ## 🎉 发布亮点
+          
+          请在此处添加发布说明和亮点描述。
+          
+          ### 主要更新
+          - 新功能 1
+          - 修复问题 1
+          - 性能改进 1
+          
+          ## 📥 下载链接
+          
+          ### 🪟 Windows
+          | 文件 | 说明 |
+          |------|------|
+          | Sea-Lantern_${{ needs.get-version.outputs.app-version }}_x64-setup.msi | Windows x64 安装程序（推荐） |
+          
+          ### 🍎 macOS
+          | 文件 | 架构 | 说明 |
+          |------|--------|------|
+          | Sea-Lantern_${{ needs.get-version.outputs.app-version }}_aarch64.dmg | Apple Silicon | 适用于现代 Mac (M1/M2/M3) |
+          | Sea-Lantern_${{ needs.get-version.outputs.app-version }}_x64.dmg | Intel x64 | 适用于 Intel 芯片 Mac |
+          
+          ### 🐧 Linux
+          | 文件 | 格式 | 发行版 |
+          |------|--------|--------|
+          | sea-lantern_${{ needs.get-version.outputs.app-version }}_x86_64.AppImage | AppImage | 通用 (大多数发行版) |
+          | sea-lantern_${{ needs.get-version.outputs.app-version }}_amd64.deb | Debian | Ubuntu、Debian |
+          | sea-lantern-${{ needs.get-version.outputs.app-version }}-1.x86_64.rpm | RPM | Fedora、RHEL、CentOS |
+          
+          ## 🔐 验证与签名
+          
+          所有版本均通过密钥进行签名：
+          - **Windows**: Microsoft Authenticode 签名
+          - **macOS**: Apple Developer ID 签名
+          - **Linux**: GPG 签名（如适用）
+          
+          ## 📋 系统要求
+          
+          - **Windows**: Windows 7 或更高版本 (x64)
+          - **macOS**: macOS 10.13 或更高版本
+          - **Linux**: glibc 2.29 或更高版本（大多数现代发行版）
+          
+          ## 🆘 支持帮助
+          
+          如有问题或疑问，请访问 [GitHub Issues](../../issues)
+          EOF
+          cat release-notes.md
+
+      - name: 上传 Linux 产物到发布
+        uses: softprops/action-gh-release@v2
+        if: always()
+        with:
+          tag_name: ${{ needs.get-version.outputs.release-tag }}
+          draft: ${{ github.event.inputs.draft || true }}
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          files: release-artifacts/*
+          body_path: release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  finalize:
+    name: 完成发布
+    needs: [get-version, upload-to-release]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: 发布完成摘要
+        run: |
+          cat << EOF
+          ✅ 发布工作流已成功完成！
+          
+          📦 发布信息:
+            - 应用名称: ${{ needs.get-version.outputs.app-name }}
+            - 应用版本: ${{ needs.get-version.outputs.app-version }}
+            - 发布标签: ${{ needs.get-version.outputs.release-tag }}
+            - 草稿模式: ${{ github.event.inputs.draft || true }}
+            - 预发布标记: ${{ github.event.inputs.prerelease || false }}
+          
+          📍 后续步骤:
+            1. 前往: https://github.com/${{ github.repository }}/releases/tag/${{ needs.get-version.outputs.release-tag }}
+            2. 审核发布说明和构建产物
+            3. 根据需要编辑发布说明
+            4. 点击"Publish release"按钮发布正式版本
+          
+          EOF
