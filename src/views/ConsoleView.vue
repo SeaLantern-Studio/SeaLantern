@@ -81,10 +81,12 @@ watch(() => currentLogs.value.length, () => {
 });
 
 function switchServer(id: string | number) {
+  if (serverId.value && logContainer.value) {
+    consoleStore.setScrollPosition(serverId.value, logContainer.value.scrollTop);
+  }
   consoleStore.setActiveServer(String(id));
   serverStore.setCurrentServer(String(id));
-  userScrolledUp.value = false;
-  nextTick(() => doScroll());
+  nextTick(() => restoreScrollPosition());
 }
 
 onMounted(async () => {
@@ -103,10 +105,13 @@ onMounted(async () => {
     await serverStore.refreshStatus(serverId.value);
   }
   startPolling();
-  nextTick(() => doScroll());
+  nextTick(() => restoreScrollPosition());
 });
 
 onUnmounted(() => {
+  if (serverId.value && logContainer.value) {
+    consoleStore.setScrollPosition(serverId.value, logContainer.value.scrollTop);
+  }
   stopPolling();
 });
 
@@ -198,6 +203,18 @@ function handleKeydown(e: KeyboardEvent) {
 
 function doScroll() {
   nextTick(() => { if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight; });
+}
+
+function restoreScrollPosition() {
+  if (!logContainer.value || !serverId.value) return;
+  const savedPosition = consoleStore.getScrollPosition(serverId.value);
+  if (savedPosition === -1) {
+    doScroll();
+  } else {
+    logContainer.value.scrollTop = savedPosition;
+    const el = logContainer.value;
+    userScrolledUp.value = el.scrollHeight - el.scrollTop - el.clientHeight > 40;
+  }
 }
 
 function handleScroll() {

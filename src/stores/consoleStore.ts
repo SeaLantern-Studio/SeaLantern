@@ -8,6 +8,7 @@ export const useConsoleStore = defineStore("console", () => {
   const logCursors = ref<Record<string, number>>({});
   // Currently selected console server
   const activeServerId = ref<string | null>(null);
+  const scrollPositions = ref<Record<string, number>>({});
 
   function appendLogs(serverId: string, newLines: string[]) {
     if (!logs.value[serverId]) {
@@ -53,15 +54,26 @@ export const useConsoleStore = defineStore("console", () => {
     activeServerId.value = id;
   }
 
+  function getScrollPosition(serverId: string): number {
+    return scrollPositions.value[serverId] ?? -1;
+  }
+
+  function setScrollPosition(serverId: string, position: number) {
+    scrollPositions.value[serverId] = position;
+  }
+
   return {
     logs,
     logCursors,
     activeServerId,
+    scrollPositions,
     appendLogs,
     appendLocal,
     getLogCursor,
     setLogCursor,
     clearLogs,
     setActiveServer,
+    getScrollPosition,
+    setScrollPosition,
   };
 });
