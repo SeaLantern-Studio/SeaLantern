@@ -23,7 +23,7 @@ Minecraft 服务器管理工具 · Tauri 2 + Rust + Vue 3
 
 
 ```bash
-git clone https://gitee.com/fps_z/SeaLantern.git
+git clone https://github.com/FPSZ/SeaLantern.git
 cd SeaLantern
 npm install
 npm run tauri dev
@@ -212,7 +212,7 @@ sea-lantern/
 - 默认内存、端口、JVM 参数，全部可配
 
 ### 软件更新
-- 检查 Gitee 发行版，获取最新版本信息
+- 检查来自 Gitee（或Github）  的发行版，获取最新版本信息
 - 显示更新日志，一键打开下载链接
 - 版本号自动比较，提示用户更新
 
