@@ -2,12 +2,12 @@ use ncmapi::NcmApi;
 use serde::{Serialize, Deserialize};
 use tokio::task;
 use futures::executor;
+use tauri::AppHandle;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Artist {
     pub id: u64,
     pub name: String,
-    // 可能有 alias 等，忽略或可选
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -15,8 +15,7 @@ pub struct Artist {
 pub struct Album {
     pub id: u64,
     pub name: String,
-    pub picUrl: Option<String>, // 直接使用驼峰，允许非蛇形
-    // 其他字段忽略
+    pub picUrl: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -44,14 +43,19 @@ pub struct ApiResponse {
     pub code: i32,
 }
 
-pub async fn ncm_search(keyword: String) -> Result<Vec<NCMMusic>, String> {
-    let result = tokio::task::spawn_blocking(move || -> Result<Vec<NCMMusic>, String> {
+pub async fn ncm_search(app: AppHandle, keyword: String) -> Result<Vec<NCMMusic>, String> {
+    // 直接使用临时目录，不单独写函数
+    let mut cookie_path = std::env::temp_dir();
+    cookie_path.push("sea-lantern-cookies.json");
+    let cookie_path_str = cookie_path.to_string_lossy().to_string();
+
+    let result = task::spawn_blocking(move || -> Result<Vec<NCMMusic>, String> {
         let api = NcmApi::new(
             true,
             std::time::Duration::from_secs(60),
             std::time::Duration::from_secs(120),
             false,
-            "./cookies.json",
+            &cookie_path_str,
         );
 
         let rsp = futures::executor::block_on(api.search(keyword.as_str(), None))
@@ -60,8 +64,6 @@ pub async fn ncm_search(keyword: String) -> Result<Vec<NCMMusic>, String> {
         let raw_value = rsp.deserialize_to_implict();
         let value = serde_json::to_value(raw_value)
             .map_err(|e| format!("序列化失败: {}", e))?;
-
-        //println!("{}", serde_json::to_string_pretty(&value).unwrap());
 
         let api_rsp: ApiResponse = serde_json::from_value(value)
             .map_err(|e| format!("反序列化失败: {}", e))?;
@@ -72,14 +74,20 @@ pub async fn ncm_search(keyword: String) -> Result<Vec<NCMMusic>, String> {
         .map_err(|e| format!("线程池错误: {}", e))??;
     Ok(result)
 }
-pub async fn ncm_geturl(music_id: u64) -> Result<String, String> {
+
+pub async fn ncm_geturl(app: AppHandle, music_id: u64) -> Result<String, String> {
+    // 同样使用临时目录
+    let mut cookie_path = std::env::temp_dir();
+    cookie_path.push("sea-lantern-cookies.json");
+    let cookie_path_str = cookie_path.to_string_lossy().to_string();
+
     let result = task::spawn_blocking(move || -> Result<String, String> {
         let api = NcmApi::new(
             true,
             std::time::Duration::from_secs(60),
             std::time::Duration::from_secs(120),
             false,
-            "./cookies.json",
+            &cookie_path_str,
         );
 
         let resp = executor::block_on(api.song_url(&vec![music_id as usize]))
@@ -97,6 +105,5 @@ pub async fn ncm_geturl(music_id: u64) -> Result<String, String> {
     })
         .await
         .map_err(|e| format!("线程池错误: {}", e))??;
-
     Ok(result)
 }
