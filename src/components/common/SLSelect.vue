@@ -69,6 +69,16 @@ function updateDropdownPosition() {
   };
 }
 
+function addPositionListeners() {
+  window.addEventListener("scroll", updateDropdownPosition, true);
+  window.addEventListener("resize", updateDropdownPosition);
+}
+
+function removePositionListeners() {
+  window.removeEventListener("scroll", updateDropdownPosition, true);
+  window.removeEventListener("resize", updateDropdownPosition);
+}
+
 function toggleDropdown() {
   if (props.disabled) return;
   isOpen.value = !isOpen.value;
@@ -77,10 +87,13 @@ function toggleDropdown() {
     highlightedIndex.value = -1;
     nextTick(() => {
       updateDropdownPosition();
+      addPositionListeners();
       if (props.searchable) {
         inputRef.value?.focus();
       }
     });
+  } else {
+    removePositionListeners();
   }
 }
 
@@ -88,6 +101,7 @@ function selectOption(option: Option) {
   emit("update:modelValue", option.value);
   isOpen.value = false;
   searchQuery.value = "";
+  removePositionListeners();
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -121,6 +135,7 @@ function handleKeydown(e: KeyboardEvent) {
       break;
     case "Escape":
       isOpen.value = false;
+      removePositionListeners();
       break;
   }
 }
@@ -134,9 +149,10 @@ function scrollToHighlighted() {
 
 function handleClickOutside(e: MouseEvent) {
   const target = e.target as Node;
-  if (containerRef.value && !containerRef.value.contains(target) && 
+  if (containerRef.value && !containerRef.value.contains(target) &&
       dropdownRef.value && !dropdownRef.value.contains(target)) {
     isOpen.value = false;
+    removePositionListeners();
   }
 }
 
@@ -150,6 +166,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
+  removePositionListeners();
 });
 </script>
 
