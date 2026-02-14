@@ -54,7 +54,7 @@ jobs:
         run: bun tauri build ${{ matrix.args }}
 
       - name: 上传构建产物
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-${{ matrix.args }}
           path: |
@@ -69,7 +69,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: 下载所有构建产物
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: 提取版本号
         run: echo "APP_VERSION=$(jq -r .version src-tauri/tauri.conf.json)" >> $GITHUB_ENV
