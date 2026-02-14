@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from 'vue-i18n';
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLBadge from "../components/common/SLBadge.vue";
@@ -11,6 +12,7 @@ import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
 
 const router = useRouter();
+const { t } = useI18n();
 const store = useServerStore();
 const consoleStore = useConsoleStore();
 
@@ -109,11 +111,11 @@ function getStatusVariant(status: string | undefined) {
 
 function getStatusText(status: string | undefined): string {
   switch (status) {
-    case "Running": return "运行中";
-    case "Starting": return "启动中";
-    case "Stopping": return "停止中";
-    case "Error": return "异常";
-    default: return "已停止";
+    case "Running": return t('home.statusRunning');
+    case "Starting": return t('home.statusStarting');
+    case "Stopping": return t('home.statusStopping');
+    case "Error": return t('home.statusError');
+    default: return t('home.statusStopped');
   }
 }
 
@@ -149,10 +151,10 @@ async function handleDelete(id: string) {
 
     <!-- Top Row: Quick Actions + System Stats -->
     <div class="top-row">
-      <SLCard title="快速开始" subtitle="创建或导入你的 Minecraft 服务器" class="quick-start-card">
+      <SLCard :title="t('home.quickStart')" :subtitle="t('home.quickStartDesc')" class="quick-start-card">
         <div class="quick-actions">
           <SLButton variant="primary" size="lg" @click="router.push('/create')">
-            创建新服务器
+            {{ t('home.createServer') }}
           </SLButton>
         </div>
       </SLCard>
@@ -160,8 +162,8 @@ async function handleDelete(id: string) {
       <SLCard class="stats-card">
         <template #header>
           <div class="stats-card-header">
-            <span class="card-title">系统资源</span>
-            <button class="view-toggle" @click="statsViewMode = statsViewMode === 'gauge' ? 'detail' : 'gauge'" :title="statsViewMode === 'gauge' ? '切换到详细视图' : '切换到仪表盘'">
+            <span class="card-title">{{ t('home.systemResources') }}</span>
+            <button class="view-toggle" @click="statsViewMode = statsViewMode === 'gauge' ? 'detail' : 'gauge'" :title="statsViewMode === 'gauge' ? t('home.switchToDetail') : t('home.switchToGauge')">
               <svg v-if="statsViewMode === 'gauge'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
               <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             </button>
@@ -187,7 +189,7 @@ async function handleDelete(id: string) {
               </svg>
               <div class="gauge-text">
                 <span class="gauge-value">{{ memUsage }}%</span>
-                <span class="gauge-label">内存</span>
+                <span class="gauge-label">{{ t('home.memory') }}</span>
               </div>
             </div>
             <div class="gauge-item">
@@ -197,21 +199,21 @@ async function handleDelete(id: string) {
               </svg>
               <div class="gauge-text">
                 <span class="gauge-value">{{ diskUsage }}%</span>
-                <span class="gauge-label">磁盘</span>
+                <span class="gauge-label">{{ t('home.disk') }}</span>
               </div>
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
-            <div class="gauge-detail-item"><span class="detail-label">CPU</span><span class="detail-value">{{ systemInfo.cpu.count }} 核心</span></div>
-            <div class="gauge-detail-item"><span class="detail-label">内存</span><span class="detail-value">{{ formatBytes(systemInfo.memory.used) }} / {{ formatBytes(systemInfo.memory.total) }}</span></div>
-            <div class="gauge-detail-item"><span class="detail-label">磁盘</span><span class="detail-value">{{ formatBytes(systemInfo.disk.used) }} / {{ formatBytes(systemInfo.disk.total) }}</span></div>
+            <div class="gauge-detail-item"><span class="detail-label">CPU</span><span class="detail-value">{{ t('home.cores', { count: systemInfo.cpu.count }) }}</span></div>
+            <div class="gauge-detail-item"><span class="detail-label">{{ t('home.memory') }}</span><span class="detail-value">{{ formatBytes(systemInfo.memory.used) }} / {{ formatBytes(systemInfo.memory.total) }}</span></div>
+            <div class="gauge-detail-item"><span class="detail-label">{{ t('home.disk') }}</span><span class="detail-value">{{ formatBytes(systemInfo.disk.used) }} / {{ formatBytes(systemInfo.disk.total) }}</span></div>
           </div>
         </div>
         <!-- 详细视图 -->
         <div v-else class="stats-grid">
           <div class="stat-item">
             <div class="stat-header">
-              <span class="stat-label">CPU<span v-if="systemInfo" class="stat-detail"> · {{ systemInfo.cpu.count }} 核心</span></span>
+              <span class="stat-label">CPU<span v-if="systemInfo" class="stat-detail"> · {{ t('home.cores', { count: systemInfo.cpu.count }) }}</span></span>
               <span class="stat-value">{{ cpuUsage }}%</span>
             </div>
             <SLProgress :value="cpuUsage" variant="primary" :showPercent="false" />
@@ -219,7 +221,7 @@ async function handleDelete(id: string) {
           </div>
           <div class="stat-item">
             <div class="stat-header">
-              <span class="stat-label">内存<span v-if="systemInfo" class="stat-detail"> · {{ formatBytes(systemInfo.memory.used) }} / {{ formatBytes(systemInfo.memory.total) }}</span></span>
+              <span class="stat-label">{{ t('home.memory') }}<span v-if="systemInfo" class="stat-detail"> · {{ formatBytes(systemInfo.memory.used) }} / {{ formatBytes(systemInfo.memory.total) }}</span></span>
               <span class="stat-value">{{ memUsage }}%</span>
             </div>
             <SLProgress :value="memUsage" variant="success" :showPercent="false" />
@@ -227,7 +229,7 @@ async function handleDelete(id: string) {
           </div>
           <div class="stat-item">
             <div class="stat-header">
-              <span class="stat-label">磁盘<span v-if="systemInfo" class="stat-detail"> · {{ formatBytes(systemInfo.disk.used) }} / {{ formatBytes(systemInfo.disk.total) }}</span></span>
+              <span class="stat-label">{{ t('home.disk') }}<span v-if="systemInfo" class="stat-detail"> · {{ formatBytes(systemInfo.disk.used) }} / {{ formatBytes(systemInfo.disk.total) }}</span></span>
               <span class="stat-value">{{ diskUsage }}%</span>
             </div>
             <SLProgress :value="diskUsage" variant="warning" :showPercent="false" />
@@ -239,22 +241,22 @@ async function handleDelete(id: string) {
     <!-- Server List -->
     <div class="section-header">
       <h3 class="section-title">
-        服务器列表
+        {{ t('home.serverList') }}
         <span class="server-count">{{ store.servers.length }}</span>
       </h3>
     </div>
 
     <div v-if="store.loading" class="loading-state">
       <div class="spinner"></div>
-      <span>加载中...</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <div v-else-if="store.servers.length === 0" class="empty-state">
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--sl-text-tertiary)" stroke-width="1" stroke-linecap="round">
         <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
       </svg>
-      <p class="text-body">还没有服务器</p>
-      <p class="text-caption">点击「创建新服务器」开始吧</p>
+      <p class="text-body">{{ t('home.noServers') }}</p>
+      <p class="text-caption">{{ t('home.noServersHint') }}</p>
     </div>
 
     <div v-else class="server-grid">
@@ -267,7 +269,7 @@ async function handleDelete(id: string) {
           <div class="server-info">
             <h4 class="server-name">{{ server.name }}</h4>
             <span class="server-meta text-caption">
-              {{ server.core_type }} | 端口 {{ server.port }} | {{ server.max_memory }}MB
+              {{ server.core_type }} | {{ t('home.port') }} {{ server.port }} | {{ server.max_memory }}MB
             </span>
           </div>
           <SLBadge
@@ -286,21 +288,21 @@ async function handleDelete(id: string) {
             variant="primary" size="sm"
             :loading="actionLoading[server.id]"
             @click="handleStart(server.id)"
-          >启动</SLButton>
+          >{{ t('home.start') }}</SLButton>
           <SLButton
             v-else
             variant="danger" size="sm"
             :loading="actionLoading[server.id]"
             @click="handleStop(server.id)"
-          >停止</SLButton>
+          >{{ t('home.stop') }}</SLButton>
           <SLButton variant="ghost" size="sm" @click="store.setCurrentServer(server.id); router.push('/console/' + server.id)">
-            控制台
+            {{ t('home.console') }}
           </SLButton>
           <SLButton variant="ghost" size="sm" @click="store.setCurrentServer(server.id); router.push('/config/' + server.id)">
-            配置
+            {{ t('home.config') }}
           </SLButton>
           <SLButton variant="ghost" size="sm" @click="handleDelete(server.id)">
-            删除
+            {{ t('common.delete') }}
           </SLButton>
         </div>
       </div>
@@ -308,7 +310,7 @@ async function handleDelete(id: string) {
 
     <!-- Recent Alerts -->
     <div v-if="recentAlerts.length > 0" class="alerts-section">
-      <h3 class="section-title">最近警告 / 错误</h3>
+      <h3 class="section-title">{{ t('home.recentAlerts') }}</h3>
       <div class="alerts-list">
         <div
           v-for="(alert, i) in recentAlerts"

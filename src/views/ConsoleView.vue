@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from 'vue-i18n';
 import SLButton from "../components/common/SLButton.vue";
 import SLSelect from "../components/common/SLSelect.vue";
 import { useServerStore } from "../stores/serverStore";
@@ -10,6 +11,7 @@ import { playerApi } from "../api/player";
 import { settingsApi } from "../api/settings";
 
 const route = useRoute();
+const { t } = useI18n();
 const serverStore = useServerStore();
 const consoleStore = useConsoleStore();
 
@@ -40,18 +42,18 @@ const allCommands = [
   "save-all", "tps", "plugins", "version",
 ];
 
-const quickCommands = [
-  { label: "白天", cmd: "time set day" },
-  { label: "夜晚", cmd: "time set night" },
-  { label: "晴天", cmd: "weather clear" },
-  { label: "下雨", cmd: "weather rain" },
-  { label: "保存", cmd: "save-all" },
-  { label: "玩家列表", cmd: "list" },
+const quickCommands = computed(() => [
+  { label: t('console.quickCommands.day'), cmd: "time set day" },
+  { label: t('console.quickCommands.night'), cmd: "time set night" },
+  { label: t('console.quickCommands.clear'), cmd: "weather clear" },
+  { label: t('console.quickCommands.rain'), cmd: "weather rain" },
+  { label: t('console.quickCommands.save'), cmd: "save-all" },
+  { label: t('console.quickCommands.playerList'), cmd: "list" },
   { label: "TPS", cmd: "tps" },
-  { label: "保留物品 开", cmd: "gamerule keepInventory true" },
-  { label: "保留物品 关", cmd: "gamerule keepInventory false" },
-  { label: "怪物破坏 关", cmd: "gamerule mobGriefing false" },
-];
+  { label: t('console.quickCommands.keepInvOn'), cmd: "gamerule keepInventory true" },
+  { label: t('console.quickCommands.keepInvOff'), cmd: "gamerule keepInventory false" },
+  { label: t('console.quickCommands.mobGriefOff'), cmd: "gamerule mobGriefing false" },
+]);
 
 const filteredSuggestions = computed(() => {
   const input = commandInput.value.trim().toLowerCase();
@@ -264,10 +266,10 @@ function handleClearLogs() {
     <div class="console-toolbar">
       <div class="toolbar-left">
         <div v-if="serverOptions.length > 0" class="server-selector">
-          <SLSelect :options="serverOptions" :modelValue="serverId" placeholder="选择服务器" @update:modelValue="switchServer" />
+          <SLSelect :options="serverOptions" :modelValue="serverId" :placeholder="t('console.selectServer')" @update:modelValue="switchServer" />
         </div>
         <div v-else class="server-name-display">
-          暂无服务器
+          {{ t('console.noServer') }}
         </div>
         <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
           <span class="status-dot"></span>
@@ -275,18 +277,18 @@ function handleClearLogs() {
         </div>
       </div>
       <div class="toolbar-right">
-        <SLButton variant="primary" size="sm" :loading="startLoading" :disabled="isRunning || startLoading" @click="handleStart">启动</SLButton>
-        <SLButton variant="danger" size="sm" :loading="stopLoading" :disabled="isStopped || stopLoading" @click="handleStop">停止</SLButton>
-        <SLButton variant="secondary" size="sm" @click="exportLogs">复制日志</SLButton>
-        <SLButton variant="ghost" size="sm" @click="handleClearLogs">清屏</SLButton>
+        <SLButton variant="primary" size="sm" :loading="startLoading" :disabled="isRunning || startLoading" @click="handleStart">{{ t('console.start') }}</SLButton>
+        <SLButton variant="danger" size="sm" :loading="stopLoading" :disabled="isStopped || stopLoading" @click="handleStop">{{ t('console.stop') }}</SLButton>
+        <SLButton variant="secondary" size="sm" @click="exportLogs">{{ t('console.copyLogs') }}</SLButton>
+        <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{ t('console.clearScreen') }}</SLButton>
       </div>
     </div>
 
-    <div v-if="!serverId" class="no-server"><p class="text-body">请先创建并选择一个服务器</p></div>
+    <div v-if="!serverId" class="no-server"><p class="text-body">{{ t('console.noServerSelected') }}</p></div>
 
     <template v-else>
       <div class="quick-commands">
-        <span class="quick-label">快捷:</span>
+        <span class="quick-label">{{ t('console.shortcut') }}</span>
         <div class="quick-groups">
           <div v-for="cmd in quickCommands" :key="cmd.cmd" class="quick-btn" @click="sendCommand(cmd.cmd)" :title="cmd.cmd">{{ cmd.label }}</div>
         </div>
@@ -299,20 +301,20 @@ function handleClearLogs() {
           'log-command': line.startsWith('>'),
           'log-system': line.startsWith('[Sea Lantern]'),
         }">{{ line }}</div>
-        <div v-if="currentLogs.length === 0" class="log-empty">等待输出...</div>
+        <div v-if="currentLogs.length === 0" class="log-empty">{{ t('console.waitingOutput') }}</div>
       </div>
 
-      <div v-if="userScrolledUp" class="scroll-btn" @click="userScrolledUp = false; doScroll()">回到底部</div>
+      <div v-if="userScrolledUp" class="scroll-btn" @click="userScrolledUp = false; doScroll()">{{ t('console.scrollToBottom') }}</div>
 
       <div class="console-input-wrapper">
         <div v-if="showSuggestions && filteredSuggestions.length > 0" class="suggestions-popup">
           <div v-for="(sug, i) in filteredSuggestions" :key="sug" class="suggestion-item" :class="{ active: i === suggestionIndex }" @mousedown.prevent="commandInput = sug; showSuggestions = false">{{ sug }}</div>
-          <div class="suggestion-hint">Tab 补全 / Up Down 选择</div>
+          <div class="suggestion-hint">{{ t('console.suggestionHint') }}</div>
         </div>
         <div class="console-input-bar">
           <span class="input-prefix">&gt;</span>
-          <input class="console-input" v-model="commandInput" placeholder="输入命令... (Tab 补全)" @keydown="handleKeydown" :style="{ fontSize: consoleFontSize + 'px' }" />
-          <SLButton variant="primary" size="sm" @click="sendCommand()">发送</SLButton>
+          <input class="console-input" v-model="commandInput" :placeholder="t('console.inputPlaceholder')" @keydown="handleKeydown" :style="{ fontSize: consoleFontSize + 'px' }" />
+          <SLButton variant="primary" size="sm" @click="sendCommand()">{{ t('common.send') }}</SLButton>
         </div>
       </div>
     </template>

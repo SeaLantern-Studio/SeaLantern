@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from 'vue-i18n';
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
@@ -11,6 +12,7 @@ import { configApi, type ConfigEntry } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
 
 const route = useRoute();
+const { t } = useI18n();
 const store = useServerStore();
 
 const entries = ref<ConfigEntry[]>([]);
@@ -37,10 +39,10 @@ const categories = computed(() => {
   return ["all", ...Array.from(cats)];
 });
 
-const categoryLabels: Record<string, string> = {
-  all: "全部", network: "网络", player: "玩家", game: "游戏",
-  world: "世界", performance: "性能", display: "显示", other: "其他",
-};
+const categoryLabels = computed(() => ({
+  all: t('config.catAll'), network: t('config.catNetwork'), player: t('config.catPlayer'), game: t('config.catGame'),
+  world: t('config.catWorld'), performance: t('config.catPerformance'), display: t('config.catDisplay'), other: t('config.catOther'),
+} as Record<string, string>));
 
 const filteredEntries = computed(() => {
   return entries.value.filter((e) => {
@@ -92,7 +94,7 @@ async function saveProperties() {
   successMsg.value = null;
   try {
     await configApi.writeServerProperties(serverPath.value, editValues.value);
-    successMsg.value = "配置已保存";
+    successMsg.value = t('config.configSaved');
     setTimeout(() => (successMsg.value = null), 3000);
   } catch (e) {
     error.value = String(e);
@@ -121,10 +123,10 @@ function getServerName(): string {
     <div class="config-header">
       <div class="server-picker">
         <SLSelect
-          label="选择服务器"
+          :label="t('config.selectServer')"
           :options="serverOptions"
           v-model="selectedServerId"
-          placeholder="选择要编辑配置的服务器"
+          :placeholder="t('config.selectServerPlaceholder')"
         />
       </div>
       <div v-if="selectedServerId" class="server-path-display text-mono text-caption">
@@ -133,7 +135,7 @@ function getServerName(): string {
     </div>
 
     <div v-if="!selectedServerId" class="empty-state">
-      <p class="text-body">请选择一个服务器来编辑配置</p>
+      <p class="text-body">{{ t('config.pleaseSelectServer') }}</p>
     </div>
 
     <template v-else>
@@ -147,11 +149,11 @@ function getServerName(): string {
 
       <div class="config-toolbar">
         <div class="toolbar-left">
-          <SLInput placeholder="搜索配置项..." v-model="searchQuery" />
+          <SLInput :placeholder="t('config.searchPlaceholder')" v-model="searchQuery" />
         </div>
         <div class="toolbar-right">
-          <SLButton variant="secondary" size="sm" @click="loadProperties">刷新</SLButton>
-          <SLButton variant="primary" size="sm" :loading="saving" @click="saveProperties">保存配置</SLButton>
+          <SLButton variant="secondary" size="sm" @click="loadProperties">{{ t('common.refresh') }}</SLButton>
+          <SLButton variant="primary" size="sm" :loading="saving" @click="saveProperties">{{ t('config.saveConfig') }}</SLButton>
         </div>
       </div>
 
@@ -163,7 +165,7 @@ function getServerName(): string {
 
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
-        <span>加载配置中...</span>
+        <span>{{ t('config.loadingConfig') }}</span>
       </div>
 
       <div v-else class="config-entries">
@@ -177,13 +179,13 @@ function getServerName(): string {
           </div>
           <div class="entry-control">
             <SLSwitch v-if="entry.value_type === 'boolean'" :modelValue="getBoolValue(entry.key)" @update:modelValue="updateValue(entry.key, $event)" />
-            <SLSelect v-else-if="entry.key === 'gamemode'" :modelValue="editValues[entry.key]" :options="[{label:'生存',value:'survival'},{label:'创造',value:'creative'},{label:'冒险',value:'adventure'},{label:'旁观',value:'spectator'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
-            <SLSelect v-else-if="entry.key === 'difficulty'" :modelValue="editValues[entry.key]" :options="[{label:'和平',value:'peaceful'},{label:'简单',value:'easy'},{label:'普通',value:'normal'},{label:'困难',value:'hard'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
+            <SLSelect v-else-if="entry.key === 'gamemode'" :modelValue="editValues[entry.key]" :options="[{label:t('config.gameSurvival'),value:'survival'},{label:t('config.gameCreative'),value:'creative'},{label:t('config.gameAdventure'),value:'adventure'},{label:t('config.gameSpectator'),value:'spectator'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
+            <SLSelect v-else-if="entry.key === 'difficulty'" :modelValue="editValues[entry.key]" :options="[{label:t('config.diffPeaceful'),value:'peaceful'},{label:t('config.diffEasy'),value:'easy'},{label:t('config.diffNormal'),value:'normal'},{label:t('config.diffHard'),value:'hard'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
             <SLInput v-else :modelValue="editValues[entry.key]" :type="entry.value_type === 'number' ? 'number' : 'text'" :placeholder="entry.default_value" @update:modelValue="updateValue(entry.key, $event)" />
           </div>
         </div>
         <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
-          <p class="text-caption">没有找到配置文件，请先启动一次服务器以生成 server.properties</p>
+          <p class="text-caption">{{ t('config.noConfigFound') }}</p>
         </div>
       </div>
     </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from 'vue-i18n';
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
@@ -13,6 +14,7 @@ import { settingsApi } from "../api/settings";
 import { useServerStore } from "../stores/serverStore";
 
 const router = useRouter();
+const { t } = useI18n();
 const store = useServerStore();
 
 const serverName = ref("My Server");
@@ -107,9 +109,9 @@ async function pickJavaFile() {
 async function handleCreate() {
   errorMsg.value = null;
 
-  if (!jarPath.value) { errorMsg.value = "请选择服务端 JAR 文件"; return; }
-  if (!selectedJava.value) { errorMsg.value = "请选择 Java 路径"; return; }
-  if (!serverName.value.trim()) { errorMsg.value = "请输入服务器名称"; return; }
+  if (!jarPath.value) { errorMsg.value = t('create.errorNoJar'); return; }
+  if (!selectedJava.value) { errorMsg.value = t('create.errorNoJava'); return; }
+  if (!serverName.value.trim()) { errorMsg.value = t('create.errorNoName'); return; }
 
   creating.value = true;
   try {
@@ -152,67 +154,67 @@ const javaOptions = computed(() => {
       <button class="error-close" @click="errorMsg = null">x</button>
     </div>
 
-    <SLCard title="Java 环境" subtitle="扫描系统中所有磁盘的 Java 安装">
+    <SLCard :title="t('create.javaEnv')" :subtitle="t('create.javaEnvDesc')">
       <div v-if="javaLoading" class="java-loading">
         <div class="spinner"></div>
-        <span>正在扫描所有磁盘...</span>
+        <span>{{ t('create.scanning') }}</span>
       </div>
       <div v-else-if="javaList.length === 0" class="java-empty">
-        <p class="text-body">未检测到 Java，请点击下方按钮扫描</p>
+        <p class="text-body">{{ t('create.noJavaDetected') }}</p>
         <SLButton variant="primary" @click="detectJava" style="margin-top: 12px;">
-          扫描 Java
+          {{ t('create.scanJava') }}
         </SLButton>
       </div>
       <div v-else class="java-select-container">
         <div class="java-header">
-          <div class="java-found text-caption">找到 {{ javaList.length }} 个 Java</div>
+          <div class="java-found text-caption">{{ t('create.javaFound', { count: javaList.length }) }}</div>
           <button class="rescan-btn" @click="detectJava" :disabled="javaLoading">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
             </svg>
-            重新扫描
+            {{ t('create.rescan') }}
           </button>
         </div>
         <SLSelect
           v-model="selectedJava"
           :options="javaOptions"
-          placeholder="选择 Java 版本"
+          :placeholder="t('create.selectJavaVersion')"
           searchable
           maxHeight="240px"
         />
         <div v-if="selectedJava" class="selected-java-path">
-          <span class="text-caption">路径：</span>
+          <span class="text-caption">{{ t('create.javaPath') }}</span>
           <span class="text-mono text-caption">{{ selectedJava }}</span>
         </div>
       </div>
       <div class="java-manual">
-        <SLInput label="或手动指定 Java 路径" v-model="selectedJava" placeholder="点击浏览选择 java.exe">
+        <SLInput :label="t('create.manualJavaPath')" v-model="selectedJava" :placeholder="t('create.pickJavaPlaceholder')">
           <template #suffix>
-            <button class="pick-btn" @click="pickJavaFile">浏览</button>
+            <button class="pick-btn" @click="pickJavaFile">{{ t('common.browse') }}</button>
           </template>
         </SLInput>
       </div>
     </SLCard>
 
-    <SLCard title="服务器配置">
+    <SLCard :title="t('create.serverConfig')">
       <div class="form-grid">
         <div class="server-name-row">
-          <SLInput label="服务器名称" placeholder="输入名称" v-model="serverName" />
+          <SLInput :label="t('create.serverName')" :placeholder="t('create.serverNamePlaceholder')" v-model="serverName" />
         </div>
         <div class="jar-picker">
-          <SLInput label="服务端 JAR 文件" v-model="jarPath" placeholder="点击浏览选择 .jar 文件">
+          <SLInput :label="t('create.jarFile')" v-model="jarPath" :placeholder="t('create.jarFilePlaceholder')">
             <template #suffix>
-              <button class="pick-btn" @click="pickJarFile">浏览</button>
+              <button class="pick-btn" @click="pickJarFile">{{ t('common.browse') }}</button>
             </template>
           </SLInput>
         </div>
-        <SLInput label="最大内存 (MB)" type="number" v-model="maxMemory" />
-        <SLInput label="最小内存 (MB)" type="number" v-model="minMemory" />
-        <SLInput label="服务器端口" type="number" v-model="port" placeholder="默认 25565" />
+        <SLInput :label="t('create.maxMemory')" type="number" v-model="maxMemory" />
+        <SLInput :label="t('create.minMemory')" type="number" v-model="minMemory" />
+        <SLInput :label="t('create.serverPort')" type="number" v-model="port" :placeholder="t('create.portPlaceholder')" />
         <div class="online-mode-cell">
-          <span class="online-mode-label">正版验证</span>
+          <span class="online-mode-label">{{ t('create.onlineMode') }}</span>
           <div class="online-mode-box">
-            <span class="online-mode-text">{{ onlineMode ? '已开启' : '已关闭' }}</span>
+            <span class="online-mode-text">{{ onlineMode ? t('create.onlineModeOn') : t('create.onlineModeOff') }}</span>
             <SLSwitch v-model="onlineMode" />
           </div>
         </div>
@@ -220,9 +222,9 @@ const javaOptions = computed(() => {
     </SLCard>
 
     <div class="create-actions">
-      <SLButton variant="secondary" size="lg" @click="router.push('/')">取消</SLButton>
+      <SLButton variant="secondary" size="lg" @click="router.push('/')">{{ t('common.cancel') }}</SLButton>
       <SLButton variant="primary" size="lg" :loading="creating" @click="handleCreate">
-        导入服务器
+        {{ t('create.importServer') }}
       </SLButton>
     </div>
   </div>

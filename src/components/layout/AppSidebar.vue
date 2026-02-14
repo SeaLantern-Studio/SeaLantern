@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useI18n } from 'vue-i18n';
 import { useUiStore } from "../../stores/uiStore";
 
+const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const ui = useUiStore();
@@ -14,21 +17,21 @@ interface NavItem {
   group: string;
 }
 
-const navItems: NavItem[] = [
-  { name: "home", path: "/", icon: "home", label: "首页", group: "main" },
-  { name: "create", path: "/create", icon: "plus", label: "创建服务器", group: "main" },
-  { name: "console", path: "/console", icon: "terminal", label: "控制台", group: "server" },
-  { name: "config", path: "/config", icon: "settings", label: "配置编辑", group: "server" },
-  { name: "players", path: "/players", icon: "users", label: "玩家管理", group: "server" },
-  { name: "settings", path: "/settings", icon: "sliders", label: "设置", group: "system" },
-  { name: "about", path: "/about", icon: "info", label: "关于", group: "system" },
-];
+const navItems = computed<NavItem[]>(() => [
+  { name: "home", path: "/", icon: "home", label: t('nav.home'), group: "main" },
+  { name: "create", path: "/create", icon: "plus", label: t('nav.create'), group: "main" },
+  { name: "console", path: "/console", icon: "terminal", label: t('nav.console'), group: "server" },
+  { name: "config", path: "/config", icon: "settings", label: t('nav.config'), group: "server" },
+  { name: "players", path: "/players", icon: "users", label: t('nav.players'), group: "server" },
+  { name: "settings", path: "/settings", icon: "sliders", label: t('nav.settings'), group: "system" },
+  { name: "about", path: "/about", icon: "info", label: t('nav.about'), group: "system" },
+]);
 
-const groups = [
-  { key: "main", label: "通用" },
-  { key: "server", label: "服务器" },
-  { key: "system", label: "系统" },
-];
+const groups = computed(() => [
+  { key: "main", label: t('nav.groupMain') },
+  { key: "server", label: t('nav.groupServer') },
+  { key: "system", label: t('nav.groupSystem') },
+]);
 
 function navigateTo(path: string) {
   router.push(path);
@@ -90,7 +93,7 @@ const iconMap: Record<string, string> = {
           <path :d="iconMap.chevron" />
         </svg>
         <transition name="fade">
-          <span v-if="!ui.sidebarCollapsed" class="nav-label">收起侧栏</span>
+          <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ ui.sidebarCollapsed ? t('nav.expand') : t('nav.collapse') }}</span>
         </transition>
       </div>
     </div>

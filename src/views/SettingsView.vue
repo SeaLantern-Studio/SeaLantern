@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from "vue";
+import { useI18n } from 'vue-i18n';
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
@@ -10,6 +11,7 @@ import { settingsApi, checkAcrylicSupport, applyAcrylic, getSystemFonts, type Ap
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
+const { t } = useI18n();
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
 const fontsLoading = ref(false);
@@ -32,21 +34,21 @@ const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
 const uiFontSize = ref("14");
 
-const backgroundSizeOptions = [
-  { label: "覆盖 (Cover)", value: "cover" },
-  { label: "包含 (Contain)", value: "contain" },
-  { label: "拉伸 (Fill)", value: "fill" },
-  { label: "原始大小 (Auto)", value: "auto" },
-];
+const backgroundSizeOptions = computed(() => [
+  { label: t('settings.bgSizeCover'), value: "cover" },
+  { label: t('settings.bgSizeContain'), value: "contain" },
+  { label: t('settings.bgSizeFill'), value: "fill" },
+  { label: t('settings.bgSizeAuto'), value: "auto" },
+]);
 
-const themeOptions = [
-  { label: "跟随系统", value: "auto" },
-  { label: "浅色", value: "light" },
-  { label: "深色", value: "dark" },
-];
+const themeOptions = computed(() => [
+  { label: t('settings.themeAuto'), value: "auto" },
+  { label: t('settings.themeLight'), value: "light" },
+  { label: t('settings.themeDark'), value: "dark" },
+]);
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
-  { label: "系统默认", value: "" },
+  { label: t('settings.fontDefault'), value: "" },
 ]);
 
 const showImportModal = ref(false);
@@ -87,7 +89,7 @@ async function loadSystemFonts() {
   try {
     const fonts = await getSystemFonts();
     fontFamilyOptions.value = [
-      { label: "系统默认", value: "" },
+      { label: t('settings.fontDefault'), value: "" },
       ...fonts.map(font => ({ label: font, value: `'${font}'` }))
     ];
   } catch (e) {
@@ -223,7 +225,7 @@ async function saveSettings() {
   error.value = null;
   try {
     await settingsApi.save(settings.value);
-    success.value = "设置已保存";
+    success.value = t('settings.settingsSaved');
     hasChanges.value = false;
     setTimeout(() => (success.value = null), 3000);
 
@@ -260,7 +262,7 @@ async function resetSettings() {
     uiFontSize.value = String(s.font_size);
     showResetConfirm.value = false;
     hasChanges.value = false;
-    success.value = "已恢复默认设置";
+    success.value = t('settings.settingsReset');
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -274,7 +276,7 @@ async function exportSettings() {
   try {
     const json = await settingsApi.exportJson();
     await navigator.clipboard.writeText(json);
-    success.value = "设置 JSON 已复制到剪贴板";
+    success.value = t('settings.settingsExported');
     setTimeout(() => (success.value = null), 3000);
   } catch (e) {
     error.value = String(e);
@@ -282,7 +284,7 @@ async function exportSettings() {
 }
 
 async function handleImport() {
-  if (!importJson.value.trim()) { error.value = "请粘贴 JSON"; return; }
+  if (!importJson.value.trim()) { error.value = t('settings.importJsonError'); return; }
   try {
     const s = await settingsApi.importJson(importJson.value);
     settings.value = s;
@@ -298,7 +300,7 @@ async function handleImport() {
     showImportModal.value = false;
     importJson.value = "";
     hasChanges.value = false;
-    success.value = "设置已导入";
+    success.value = t('settings.settingsImported');
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -342,25 +344,25 @@ function clearBackgroundImage() {
 
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <span>加载设置...</span>
+      <span>{{ t('settings.loadingSettings') }}</span>
     </div>
 
     <template v-else-if="settings">
       <!-- General -->
-      <SLCard title="通用" subtitle="基本行为设置">
+      <SLCard :title="t('settings.general')" :subtitle="t('settings.generalDesc')">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">关闭软件时停止所有服务器</span>
-              <span class="setting-desc">退出 Sea Lantern 时自动向运行中的服务器发送 stop 命令，防止数据丢失</span>
+              <span class="setting-label">{{ t('settings.closeServers') }}</span>
+              <span class="setting-desc">{{ t('settings.closeServersDesc') }}</span>
             </div>
             <SLSwitch v-model="settings.close_servers_on_exit" @update:modelValue="markChanged" />
           </div>
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">自动同意 EULA</span>
-              <span class="setting-desc">启动服务器前自动写入 eula=true，省去手动修改的步骤</span>
+              <span class="setting-label">{{ t('settings.autoEula') }}</span>
+              <span class="setting-desc">{{ t('settings.autoEulaDesc') }}</span>
             </div>
             <SLSwitch v-model="settings.auto_accept_eula" @update:modelValue="markChanged" />
           </div>
@@ -368,12 +370,12 @@ function clearBackgroundImage() {
       </SLCard>
 
       <!-- Server Defaults -->
-      <SLCard title="服务器默认值" subtitle="创建新服务器时使用的默认参数">
+      <SLCard :title="t('settings.serverDefaults')" :subtitle="t('settings.serverDefaultsDesc')">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">默认最大内存 (MB)</span>
-              <span class="setting-desc">建议至少 1024MB。大型模组服可能需要 4096MB 以上</span>
+              <span class="setting-label">{{ t('settings.defaultMaxMemory') }}</span>
+              <span class="setting-desc">{{ t('settings.defaultMaxMemoryDesc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="maxMem" type="number" @update:modelValue="markChanged" />
@@ -382,8 +384,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">默认最小内存 (MB)</span>
-              <span class="setting-desc">建议设为最大内存的 1/4 到 1/2</span>
+              <span class="setting-label">{{ t('settings.defaultMinMemory') }}</span>
+              <span class="setting-desc">{{ t('settings.defaultMinMemoryDesc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="minMem" type="number" @update:modelValue="markChanged" />
@@ -392,8 +394,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">默认端口</span>
-              <span class="setting-desc">Minecraft 默认端口为 25565。多服务器需要设置不同端口</span>
+              <span class="setting-label">{{ t('settings.defaultPort') }}</span>
+              <span class="setting-desc">{{ t('settings.defaultPortDesc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="port" type="number" @update:modelValue="markChanged" />
@@ -402,18 +404,18 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">默认 Java 路径</span>
-              <span class="setting-desc">留空则每次创建服务器时自动检测最合适的 Java</span>
+              <span class="setting-label">{{ t('settings.defaultJavaPath') }}</span>
+              <span class="setting-desc">{{ t('settings.defaultJavaPathDesc') }}</span>
             </div>
             <div class="input-lg">
-              <SLInput v-model="settings.default_java_path" placeholder="留空自动检测" @update:modelValue="markChanged" />
+              <SLInput v-model="settings.default_java_path" :placeholder="t('settings.defaultJavaPathPlaceholder')" @update:modelValue="markChanged" />
             </div>
           </div>
 
           <div class="setting-row full-width">
             <div class="setting-info">
-              <span class="setting-label">默认 JVM 参数</span>
-              <span class="setting-desc">所有服务器启动时都会附加这些参数。适合设置 GC 优化参数</span>
+              <span class="setting-label">{{ t('settings.defaultJvmArgs') }}</span>
+              <span class="setting-desc">{{ t('settings.defaultJvmArgsDesc') }}</span>
             </div>
             <textarea
               class="jvm-textarea"
@@ -427,12 +429,12 @@ function clearBackgroundImage() {
       </SLCard>
 
       <!-- Console -->
-      <SLCard title="控制台" subtitle="控制台显示相关设置">
+      <SLCard :title="t('settings.consoleSettings')" :subtitle="t('settings.consoleSettingsDesc')">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">控制台字体大小 (px)</span>
-              <span class="setting-desc">控制台日志文字的大小，默认 13</span>
+              <span class="setting-label">{{ t('settings.consoleFontSize') }}</span>
+              <span class="setting-desc">{{ t('settings.consoleFontSizeDesc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="fontSize" type="number" @update:modelValue="markChanged" />
@@ -441,8 +443,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">最大日志行数</span>
-              <span class="setting-desc">单个服务器最多保留的日志行数，超出后自动清除旧日志。默认 5000</span>
+              <span class="setting-label">{{ t('settings.maxLogLines') }}</span>
+              <span class="setting-desc">{{ t('settings.maxLogLinesDesc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="logLines" type="number" @update:modelValue="markChanged" />
@@ -452,12 +454,12 @@ function clearBackgroundImage() {
       </SLCard>
 
       <!-- Appearance -->
-      <SLCard title="外观" subtitle="自定义软件背景和视觉效果">
+      <SLCard :title="t('settings.appearance')" :subtitle="t('settings.appearanceDesc')">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">主题模式</span>
-              <span class="setting-desc">选择应用的主题外观，"跟随系统"会自动匹配系统的深色/浅色模式</span>
+              <span class="setting-label">{{ t('settings.themeMode') }}</span>
+              <span class="setting-desc">{{ t('settings.themeModeDesc') }}</span>
             </div>
             <div class="input-lg">
               <SLSelect
@@ -470,8 +472,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">文本大小</span>
-              <span class="setting-desc">调整界面文本的大小</span>
+              <span class="setting-label">{{ t('settings.textSize') }}</span>
+              <span class="setting-desc">{{ t('settings.textSizeDesc') }}</span>
             </div>
             <div class="slider-control">
               <input
@@ -489,8 +491,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">字体</span>
-              <span class="setting-desc">选择界面使用的字体，部分字体需要系统已安装或从网络加载</span>
+              <span class="setting-label">{{ t('settings.font') }}</span>
+              <span class="setting-desc">{{ t('settings.fontDesc') }}</span>
             </div>
             <div class="input-lg">
               <SLSelect
@@ -507,9 +509,9 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">亚克力效果 (毛玻璃)</span>
+              <span class="setting-label">{{ t('settings.acrylic') }}</span>
               <span class="setting-desc">
-                {{ acrylicSupported ? '启用 Windows 系统级亚克力毛玻璃效果，与背景图片兼容' : '当前系统不支持亚克力效果' }}
+                {{ acrylicSupported ? t('settings.acrylicDescSupported') : t('settings.acrylicDescNotSupported') }}
               </span>
             </div>
             <SLSwitch
@@ -523,8 +525,8 @@ function clearBackgroundImage() {
           <div class="collapsible-section">
             <div class="collapsible-header" @click="bgSettingsExpanded = !bgSettingsExpanded">
               <div class="setting-info">
-                <span class="setting-label">背景图片</span>
-                <span class="setting-desc">上传一张图片作为软件背景，支持 PNG、JPG、WEBP 等格式</span>
+                <span class="setting-label">{{ t('settings.bgImage') }}</span>
+                <span class="setting-desc">{{ t('settings.bgImageDesc') }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -539,7 +541,7 @@ function clearBackgroundImage() {
                     <div v-if="settings.background_image" class="bg-preview">
                       <div v-if="bgPreviewLoading && !bgPreviewLoaded" class="bg-preview-loading">
                         <div class="loading-spinner"></div>
-                        <span>加载预览中...</span>
+                        <span>{{ t('settings.bgPreviewLoading') }}</span>
                       </div>
                       <img
                         v-show="bgPreviewLoaded || !bgPreviewLoading"
@@ -551,26 +553,26 @@ function clearBackgroundImage() {
                         loading="lazy"
                       />
                       <div v-if="isAnimatedImage(settings.background_image)" class="bg-animated-badge">
-                        动图
+                        {{ t('settings.bgAnimated') }}
                       </div>
                       <div class="bg-preview-overlay">
                         <span class="bg-preview-path">{{ settings.background_image.split('\\').pop() }}</span>
-                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">移除</SLButton>
+                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">{{ t('settings.bgRemove') }}</SLButton>
                       </div>
                     </div>
                     <SLButton v-else variant="secondary" @click="pickBackgroundImage">
-                      选择图片
+                      {{ t('settings.bgSelect') }}
                     </SLButton>
                     <SLButton v-if="settings.background_image" variant="secondary" size="sm" @click="pickBackgroundImage">
-                      更换图片
+                      {{ t('settings.bgChange') }}
                     </SLButton>
                   </div>
                 </div>
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">不透明度</span>
-                    <span class="setting-desc">调节背景图片的不透明度 (0.0 - 1.0)，数值越小越透明</span>
+                    <span class="setting-label">{{ t('settings.bgOpacity') }}</span>
+                    <span class="setting-desc">{{ t('settings.bgOpacityDesc') }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -588,8 +590,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">模糊程度 (px)</span>
-                    <span class="setting-desc">为背景添加模糊效果，让前景内容更清晰</span>
+                    <span class="setting-label">{{ t('settings.bgBlur') }}</span>
+                    <span class="setting-desc">{{ t('settings.bgBlurDesc') }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -607,8 +609,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">亮度</span>
-                    <span class="setting-desc">调节背景图片的亮度 (0.0 - 2.0)，1.0 为原始亮度</span>
+                    <span class="setting-label">{{ t('settings.bgBrightness') }}</span>
+                    <span class="setting-desc">{{ t('settings.bgBrightnessDesc') }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -626,8 +628,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">图片填充方式</span>
-                    <span class="setting-desc">选择背景图片的显示方式</span>
+                    <span class="setting-label">{{ t('settings.bgSize') }}</span>
+                    <span class="setting-desc">{{ t('settings.bgSizeDesc') }}</span>
                   </div>
                   <div class="input-lg">
                     <SLSelect
@@ -647,35 +649,35 @@ function clearBackgroundImage() {
       <div class="settings-actions">
         <div class="actions-left">
           <SLButton variant="primary" size="lg" :loading="saving" @click="saveSettings">
-            保存设置
+            {{ t('settings.saveSettings') }}
           </SLButton>
-          <SLButton variant="secondary" @click="loadSettings">放弃修改</SLButton>
-          <span v-if="hasChanges" class="unsaved-hint">有未保存的更改</span>
+          <SLButton variant="secondary" @click="loadSettings">{{ t('settings.discardChanges') }}</SLButton>
+          <span v-if="hasChanges" class="unsaved-hint">{{ t('settings.unsavedChanges') }}</span>
         </div>
         <div class="actions-right">
-          <SLButton variant="ghost" size="sm" @click="exportSettings">导出</SLButton>
-          <SLButton variant="ghost" size="sm" @click="showImportModal = true">导入</SLButton>
-          <SLButton variant="danger" size="sm" @click="showResetConfirm = true">恢复默认</SLButton>
+          <SLButton variant="ghost" size="sm" @click="exportSettings">{{ t('common.export') }}</SLButton>
+          <SLButton variant="ghost" size="sm" @click="showImportModal = true">{{ t('common.import') }}</SLButton>
+          <SLButton variant="danger" size="sm" @click="showResetConfirm = true">{{ t('settings.restoreDefaults') }}</SLButton>
         </div>
       </div>
     </template>
 
-    <SLModal :visible="showImportModal" title="导入设置" @close="showImportModal = false">
+    <SLModal :visible="showImportModal" :title="t('settings.importSettings')" @close="showImportModal = false">
       <div class="import-form">
-        <p class="text-caption">粘贴之前导出的 JSON 数据</p>
+        <p class="text-caption">{{ t('settings.importHint') }}</p>
         <textarea class="import-textarea" v-model="importJson" placeholder='{"close_servers_on_exit": true, ...}' rows="10"></textarea>
       </div>
       <template #footer>
-        <SLButton variant="secondary" @click="showImportModal = false">取消</SLButton>
-        <SLButton variant="primary" @click="handleImport">导入</SLButton>
+        <SLButton variant="secondary" @click="showImportModal = false">{{ t('common.cancel') }}</SLButton>
+        <SLButton variant="primary" @click="handleImport">{{ t('common.import') }}</SLButton>
       </template>
     </SLModal>
 
-    <SLModal :visible="showResetConfirm" title="确认恢复默认" @close="showResetConfirm = false">
-      <p class="text-body">确定要将所有设置恢复为默认值吗？此操作不可撤销。</p>
+    <SLModal :visible="showResetConfirm" :title="t('settings.confirmRestoreTitle')" @close="showResetConfirm = false">
+      <p class="text-body">{{ t('settings.confirmRestoreMessage') }}</p>
       <template #footer>
-        <SLButton variant="secondary" @click="showResetConfirm = false">取消</SLButton>
-        <SLButton variant="danger" @click="resetSettings">确认恢复</SLButton>
+        <SLButton variant="secondary" @click="showResetConfirm = false">{{ t('common.cancel') }}</SLButton>
+        <SLButton variant="danger" @click="resetSettings">{{ t('settings.confirmRestore') }}</SLButton>
       </template>
     </SLModal>
   </div>
