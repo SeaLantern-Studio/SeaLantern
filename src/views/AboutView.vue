@@ -814,4 +814,21 @@ async function handleManualDownload() {
   .contribute-ways { grid-template-columns: 1fr; }
   .contributor-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }
+
+.contributor-link {
+  display: inline-block;
+  cursor: pointer;
+  transition: all var(--sl-transition-normal);
+  border-radius: var(--sl-radius-md);
+  line-height: 0;  
+}
+
+.contributor-link:hover {
+  transform: translateY(-4px);
+}
+
+.contributor-link:hover .contributor-avatar {
+  box-shadow: var(--sl-shadow-lg);
+}
+
 </style>

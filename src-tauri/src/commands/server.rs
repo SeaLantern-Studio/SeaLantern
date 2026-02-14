@@ -31,8 +31,9 @@ pub fn import_server(
     max_memory: u32,
     min_memory: u32,
     port: u16,
+    online_mode: bool,
 ) -> Result<ServerInstance, String> {
-    let req = ImportServerRequest { name, jar_path, java_path, max_memory, min_memory, port };
+    let req = ImportServerRequest { name, jar_path, java_path, max_memory, min_memory, port, online_mode };
     manager().import_server(req)
 }
 
