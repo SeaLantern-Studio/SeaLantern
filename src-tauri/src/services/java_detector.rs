@@ -1,7 +1,9 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(target_os = "windows")]
+use std::path::PathBuf;
 use std::process::Command;
 
 #[cfg(target_os = "windows")]
@@ -20,6 +22,7 @@ pub struct JavaInfo {
 
 pub fn detect_java_installations() -> Vec<JavaInfo> {
     let mut results = Vec::new();
+    #[allow(unused_mut)]
     let mut candidate_paths = get_candidate_paths();
 
     #[cfg(target_os = "windows")]
