@@ -1,4 +1,4 @@
-name: '发布'
+name: 发布
 
 on:
   workflow_dispatch:
@@ -28,31 +28,30 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - name: 检出代码
+        uses: actions/checkout@v4
 
-      - name: 安装系统依赖 (Ubuntu 专用)
+      - name: 安装系统依赖 (Ubuntu)
         if: matrix.platform == 'ubuntu-24.04'
         run: |
-          sudo apt update
-          sudo apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
+          cache: 'npm'
 
-      - name: 安装 Rust 稳定版
+      - name: 安装 Rust 工具链
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Rust 缓存
+      - name: 缓存 Rust 编译产物
         uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
 
-      - name: 安装前端依赖 (npm)
-        # 即使项目用 bun，在 action 里临时用 npm 为了兼容性也是可以的，tauri-apps/tauri-action 对 npm 支持最好
+      - name: 安装前端依赖
         run: npm install
 
       - name: 构建并发布
@@ -63,10 +62,9 @@ jobs:
           tagName: sea-lantern-v__VERSION__
           releaseName: 'Sea Lantern v__VERSION__'
           releaseBody: |
-            ## 🎉 发布 Sea Lantern v__VERSION__
-            
+            ## 发布 Sea Lantern v__VERSION__
+
             请在此处添加发布说明。
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
-
