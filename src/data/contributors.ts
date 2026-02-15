@@ -102,6 +102,12 @@ export const contributors: Contributor[] = [
     avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
     url: "https://github.com/maobuben",
   },
+  {
+    name: "xingwangzhe",
+    role: "贡献者",
+    avatar: "https://mc-heads.net/avatar/xingwangzhe_/64",
+    url: "https://github.com/xingwangzhe",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
