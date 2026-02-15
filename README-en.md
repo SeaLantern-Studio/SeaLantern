@@ -1,12 +1,3 @@
-
-# 海晶灯（Sea Lantern）
-
-[简体中文文档](README.md)
-
-[English version Doc(Present)](README-en.md)
-
-
-Minecraft Server Manager · Tauri 2 + Rust + Vue 3
 <div align="center">
 <img src="https://gitee.com/fps_z/SeaLantern/raw/master/src/assets/logo.svg" alt="logo" width="200" height="200">
 
@@ -20,6 +11,10 @@ Minecraft Server Manager · Tauri 2 + Rust + Vue 3
 ====
 
 </div>
+
+> 您正在浏览英文版的readme，点击[此处](README.md)前往简体中文版
+
+> You are browsing the English version of the readme. Click [here](README.md) to go to the Simplified Chinese version
 
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
