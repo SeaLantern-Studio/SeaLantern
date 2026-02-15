@@ -63,17 +63,11 @@ struct RepoConfig {
 
 impl RepoConfig {
     fn api_url(&self) -> String {
-        format!(
-            "{}/{}/{}/releases/latest",
-            self.api_base, self.owner, self.repo
-        )
+        format!("{}/{}/{}/releases/latest", self.api_base, self.owner, self.repo)
     }
 
     fn release_url(&self, tag: &str) -> String {
-        format!(
-            "{}/{}/{}/releases/tag/{}",
-            self.web_base, self.owner, self.repo, tag
-        )
+        format!("{}/{}/{}/releases/tag/{}", self.web_base, self.owner, self.repo, tag)
     }
 }
 
@@ -105,34 +99,23 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
     let gitee_source = UpdateSource::Gitee;
     let gitee_config = gitee_source.config();
 
-    let gitee_error = match fetch_release(
-        &client,
-        &gitee_config,
-        current_version,
-        gitee_source.as_str(),
-    )
-    .await
-    {
-        Ok(info) => return Ok(info),
-        Err(err) => err,
-    };
+    let gitee_error =
+        match fetch_release(&client, &gitee_config, current_version, gitee_source.as_str()).await {
+            Ok(info) => return Ok(info),
+            Err(err) => err,
+        };
 
     let github_source = UpdateSource::GitHub;
     let github_config = github_source.config();
 
-    fetch_release(
-        &client,
-        &github_config,
-        current_version,
-        github_source.as_str(),
-    )
-    .await
-    .map_err(|github_error| {
-        format!(
-            "Both Gitee and GitHub failed. Gitee: {}; GitHub: {}",
-            gitee_error, github_error
-        )
-    })
+    fetch_release(&client, &github_config, current_version, github_source.as_str())
+        .await
+        .map_err(|github_error| {
+            format!(
+                "Both Gitee and GitHub failed. Gitee: {}; GitHub: {}",
+                gitee_error, github_error
+            )
+        })
 }
 
 async fn fetch_release(

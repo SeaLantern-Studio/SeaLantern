@@ -13,12 +13,6 @@ use_field_init_shorthand = true
 # 使用 try 简写（? 操作符）
 use_try_shorthand = true
 
-# 导入语句合并
-imports_granularity = "Crate"
-
-# 导入语句排序
-group_imports = "StdExternalCrate"
-
 # 链式调用缩进
 chain_width = 60
 
@@ -30,9 +24,6 @@ struct_lit_width = 40
 
 # 数组宽度
 array_width = 80
-
-# 注释宽度
-comment_width = 100
 
 # 换行风格
 newline_style = "Unix"

@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
-use std::process::Command;
-use std::path::{Path, PathBuf};
-use std::fs;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -67,17 +67,30 @@ fn get_candidate_paths() -> Vec<String> {
             if Path::new(&drive).exists() {
                 scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Java"));
                 scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Zulu"));
-                scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Eclipse Adoptium"));
+                scan_roots.push(
+                    PathBuf::from(&drive)
+                        .join("Program Files")
+                        .join("Eclipse Adoptium"),
+                );
                 scan_roots.push(PathBuf::from(&drive).join("Program Files").join("BellSoft"));
             }
         }
 
         if let Ok(appdata) = std::env::var("APPDATA") {
             scan_roots.push(PathBuf::from(&appdata).join(".minecraft").join("runtime"));
-            scan_roots.push(PathBuf::from(&appdata).join(".minecraft").join("cache").join("java"));
+            scan_roots.push(
+                PathBuf::from(&appdata)
+                    .join(".minecraft")
+                    .join("cache")
+                    .join("java"),
+            );
         }
         if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
-            scan_roots.push(PathBuf::from(&local_appdata).join("Programs").join("Adoptium"));
+            scan_roots.push(
+                PathBuf::from(&local_appdata)
+                    .join("Programs")
+                    .join("Adoptium"),
+            );
         }
 
         for root in scan_roots {
@@ -94,7 +107,8 @@ fn get_candidate_paths() -> Vec<String> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        let common_dirs = vec!["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];
+        let common_dirs =
+            vec!["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];
         for dir in common_dirs {
             deep_scan_recursive(Path::new(dir), &mut paths, 4);
         }
@@ -104,9 +118,15 @@ fn get_candidate_paths() -> Vec<String> {
 }
 
 fn deep_scan_recursive(dir: &Path, paths: &mut Vec<String>, depth: u32) {
-    if depth == 0 || !dir.is_dir() { return; }
+    if depth == 0 || !dir.is_dir() {
+        return;
+    }
 
-    let target_name = if cfg!(target_os = "windows") { "java.exe" } else { "java" };
+    let target_name = if cfg!(target_os = "windows") {
+        "java.exe"
+    } else {
+        "java"
+    };
 
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -130,7 +150,9 @@ fn check_java(path: &str) -> Option<JavaInfo> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let combined = if stderr.is_empty() { stdout } else { stderr };
 
-    if combined.is_empty() { return None; }
+    if combined.is_empty() {
+        return None;
+    }
 
     let re = Regex::new(r#"(?i)(?:java|openjdk) version "\s*(?P<version>[^"\s]+)\s*""#).ok()?;
     let caps = re.captures(&combined)?;
@@ -212,7 +234,13 @@ fn search_reg_recursive(key: &RegKey, results: &mut Vec<String>) {
 }
 
 fn push_java_exe(dir: &str, paths: &mut Vec<String>) {
-    let bin = Path::new(dir).join("bin").join(if cfg!(target_os = "windows") { "java.exe" } else { "java" });
+    let bin = Path::new(dir)
+        .join("bin")
+        .join(if cfg!(target_os = "windows") {
+            "java.exe"
+        } else {
+            "java"
+        });
     if bin.exists() {
         paths.push(bin.to_string_lossy().into_owned());
     }
@@ -222,12 +250,18 @@ fn resolve_path_from_env(cmd: &str) -> Option<String> {
     #[cfg(target_os = "windows")]
     {
         let output = command_output("where", &[cmd])?;
-        String::from_utf8_lossy(&output.stdout).lines().next().map(|s| s.trim().to_string())
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .next()
+            .map(|s| s.trim().to_string())
     }
     #[cfg(not(target_os = "windows"))]
     {
         let output = command_output("which", &[cmd])?;
-        String::from_utf8_lossy(&output.stdout).lines().next().map(|s| s.trim().to_string())
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .next()
+            .map(|s| s.trim().to_string())
     }
 }
 

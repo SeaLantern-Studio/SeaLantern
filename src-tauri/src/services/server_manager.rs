@@ -111,10 +111,7 @@ impl ServerManager {
         std::fs::write(&server_properties_path, server_properties_content)
             .map_err(|e| format!("创建 server.properties 失败: {}", e))?;
 
-        println!(
-            "已创建 server.properties: {}",
-            server_properties_path.display()
-        );
+        println!("已创建 server.properties: {}", server_properties_path.display());
 
         // 创建服务器实例
         let now = SystemTime::now()
@@ -167,11 +164,7 @@ impl ServerManager {
         std::fs::create_dir_all(&server_dir).map_err(|e| format!("无法创建服务器目录: {}", e))?;
 
         // 复制整合包文件夹的所有内容到服务器目录
-        println!(
-            "正在复制整合包文件: {} -> {}",
-            source_path.display(),
-            server_dir.display()
-        );
+        println!("正在复制整合包文件: {} -> {}", source_path.display(), server_dir.display());
         copy_dir_recursive(source_path, &server_dir)
             .map_err(|e| format!("复制整合包文件失败: {}", e))?;
 

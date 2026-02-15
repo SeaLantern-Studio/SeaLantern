@@ -12,10 +12,7 @@ impl SettingsManager {
     pub fn new() -> Self {
         let data_dir = get_data_dir();
         let settings = load_settings(&data_dir);
-        SettingsManager {
-            settings: Mutex::new(settings),
-            data_dir,
-        }
+        SettingsManager { settings: Mutex::new(settings), data_dir }
     }
 
     pub fn get(&self) -> AppSettings {
