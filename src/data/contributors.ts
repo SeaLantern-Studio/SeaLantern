@@ -84,6 +84,12 @@ export const contributors: Contributor[] = [
     avatar: "https://mc-heads.net/avatar/zhu_hao_tian/64",
     url: "https://github.com/zhu1h1t1",
   },
+  {
+    name: "猫不笨qwq",
+    role: "找到软件图形化错误",
+    avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
+    url: "https://github.com/maobuben",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
