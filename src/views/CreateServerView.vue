@@ -85,9 +85,13 @@ async function pickJarFile() {
     const result = await systemApi.pickJarFile();
     if (result) {
       jarPath.value = result;
+    } else {
+      // 重置 jarPath，防炸...
+      jarPath.value = "";
     }
   } catch (e) {
     console.error("Pick file error:", e);
+    jarPath.value = "";
   }
 }
 
@@ -105,8 +109,12 @@ async function pickJavaFile() {
 async function handleCreate() {
   errorMsg.value = null;
 
+  // 直接弹出文件选择窗口
+  await pickJarFile();
+  
+  // 选择文件后检查其他条件
   if (!jarPath.value) {
-    errorMsg.value = "请选择服务端 JAR 文件";
+    // 用户取消了文件选择，不显示错误信息
     return;
   }
   if (!selectedJava.value) {
@@ -215,13 +223,7 @@ const javaOptions = computed(() => {
         <div class="server-name-row">
           <SLInput :label="i18n.t('create.server_name')" :placeholder="i18n.t('create.server_name')" v-model="serverName" />
         </div>
-        <div class="jar-picker">
-          <SLInput :label="i18n.t('create.jar_file')" v-model="jarPath" :placeholder="i18n.t('create.jar_file')">
-            <template #suffix>
-              <button class="pick-btn" @click="pickJarFile">{{ i18n.t('create.browse') }}</button>
-            </template>
-          </SLInput>
-        </div>
+
         <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
         <SLInput :label="i18n.t('create.min_memory')" type="number" v-model="minMemory" />
         <SLInput :label="i18n.t('settings.default_port')" type="number" v-model="port" :placeholder="i18n.t('create.default_port_placeholder')" />
@@ -340,9 +342,7 @@ const javaOptions = computed(() => {
 .server-name-row {
   grid-column: 1 / -1;
 }
-.jar-picker {
-  grid-column: 1 / -1;
-}
+
 .pick-btn {
   padding: 4px 12px;
   font-size: 0.8125rem;
