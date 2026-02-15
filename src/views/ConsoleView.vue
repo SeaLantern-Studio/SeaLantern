@@ -3,12 +3,15 @@ import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import SLButton from "../components/common/SLButton.vue";
 import SLSelect from "../components/common/SLSelect.vue";
+import SLInput from "../components/common/SLInput.vue";
+import SLModal from "../components/common/SLModal.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { playerApi } from "../api/player";
 import { settingsApi } from "../api/settings";
 import { i18n } from "../locales";
+import type { ServerCommand } from "../types/server";
 
 const route = useRoute();
 const serverStore = useServerStore();
@@ -26,6 +29,14 @@ const startLoading = ref(false);
 const stopLoading = ref(false);
 const isPolling = ref(false); // 添加轮询锁
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+// 自定义指令相关
+const showCommandModal = ref(false);
+const editingCommand = ref<ServerCommand | null>(null);
+const commandName = ref("");
+const commandText = ref("");
+const commandModalTitle = ref("");
+const commandLoading = ref(false);
 
 const allCommands = [
   "help",
@@ -109,6 +120,11 @@ const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status
 
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopped = computed(() => serverStatus.value === "Stopped");
+
+const currentServerCommands = computed(() => {
+  const server = serverStore.servers.find(s => s.id === serverId.value);
+  return server?.commands || [];
+});
 
 watch(
   () => currentLogs.value.length,
@@ -343,6 +359,76 @@ function handleClearLogs() {
   console.log("[清屏] 清空后日志数量:", currentLogs.value.length);
   userScrolledUp.value = false;
 }
+
+// 自定义指令相关方法
+function openAddCommandModal() {
+  editingCommand.value = null;
+  commandName.value = "";
+  commandText.value = "";
+  commandModalTitle.value = "添加自定义指令";
+  showCommandModal.value = true;
+}
+
+function openEditCommandModal(cmd: ServerCommand) {
+  editingCommand.value = cmd;
+  commandName.value = cmd.name;
+  commandText.value = cmd.command;
+  commandModalTitle.value = "编辑自定义指令";
+  showCommandModal.value = true;
+}
+
+async function saveCommand() {
+  const sid = serverId.value;
+  if (!sid || !commandName.value.trim() || !commandText.value.trim()) return;
+  
+  commandLoading.value = true;
+  try {
+    if (editingCommand.value) {
+      // 更新现有指令
+      await serverApi.updateServerCommand(
+        sid,
+        editingCommand.value.id,
+        commandName.value.trim(),
+        commandText.value.trim()
+      );
+    } else {
+      // 添加新指令
+      await serverApi.addServerCommand(
+        sid,
+        commandName.value.trim(),
+        commandText.value.trim()
+      );
+    }
+    // 刷新服务器列表以获取更新的指令
+    await serverStore.refreshList();
+    showCommandModal.value = false;
+  } catch (e) {
+    console.error("保存指令失败:", e);
+    consoleStore.appendLocal(sid, "[ERROR] 保存自定义指令失败: " + String(e));
+  } finally {
+    commandLoading.value = false;
+  }
+}
+
+async function deleteCommand(cmd: ServerCommand) {
+  const sid = serverId.value;
+  if (!sid) return;
+  
+  try {
+    await serverApi.deleteServerCommand(sid, cmd.id);
+    // 刷新服务器列表以获取更新的指令
+    await serverStore.refreshList();
+    // 关闭模态框
+    showCommandModal.value = false;
+  } catch (e) {
+    console.error("删除指令失败:", e);
+    consoleStore.appendLocal(sid, "[ERROR] 删除自定义指令失败: " + String(e));
+  }
+}
+
+function executeCustomCommand(cmd: ServerCommand) {
+  sendCommand(cmd.command);
+}
 </script>
 
 <template>
@@ -382,6 +468,32 @@ function handleClearLogs() {
             :title="cmd.cmd"
           >
             {{ cmd.label }}
+          </div>
+        </div>
+        
+        <!-- 自定义指令部分 -->
+        <div v-if="serverId" class="custom-commands">
+          <div class="custom-label">自定义:</div>
+          <div class="custom-buttons">
+            <div
+              v-for="cmd in currentServerCommands"
+              :key="cmd.id"
+              class="custom-btn"
+              @click="executeCustomCommand(cmd)"
+              :title="cmd.command"
+            >
+              <span class="custom-btn-name">{{ cmd.name }}</span>
+              <span class="custom-btn-edit" @click.stop="openEditCommandModal(cmd)">
+                ⚙️
+              </span>
+            </div>
+            <div
+              class="custom-btn add-btn"
+              @click="openAddCommandModal()"
+              title="添加自定义指令"
+            >
+              <span class="add-btn-plus">+</span>
+            </div>
           </div>
         </div>
       </div>
@@ -442,6 +554,63 @@ function handleClearLogs() {
           <SLButton variant="primary" size="sm" @click="sendCommand()">{{ i18n.t('console.send_command') }}</SLButton>
         </div>
       </div>
+
+      <!-- 自定义指令模态框 -->
+      <SLModal
+        :visible="showCommandModal"
+        :title="commandModalTitle"
+        :close-on-overlay="false"
+        @close="showCommandModal = false"
+      >
+        <div class="command-modal-content">
+          <div class="form-group">
+            <label for="command-name">指令名称</label>
+            <SLInput
+              id="command-name"
+              v-model="commandName"
+              placeholder="输入指令名称"
+              :disabled="commandLoading"
+            />
+          </div>
+          <div class="form-group">
+            <label for="command-text">指令内容</label>
+            <SLInput
+              id="command-text"
+              v-model="commandText"
+              placeholder="输入指令内容"
+              :disabled="commandLoading"
+            />
+          </div>
+        </div>
+        <template #footer>
+          <div class="modal-footer">
+            <SLButton
+              variant="secondary"
+              @click="showCommandModal = false"
+              :disabled="commandLoading"
+            >
+              取消
+            </SLButton>
+            <SLButton
+              v-if="editingCommand"
+              variant="danger"
+              @click="deleteCommand(editingCommand)"
+              :disabled="commandLoading"
+              :loading="commandLoading"
+            >
+              删除
+            </SLButton>
+            <SLButton
+              variant="primary"
+              @click="saveCommand"
+              :disabled="!commandName.trim() || !commandText.trim() || commandLoading"
+              :loading="commandLoading"
+            >
+              {{ editingCommand ? '更新' : '添加' }}
+            </SLButton>
+          </div>
+        </template>
+      </SLModal>
     </template>
   </div>
 </template>
@@ -673,5 +842,119 @@ function handleClearLogs() {
 }
 .console-input::placeholder {
   color: var(--sl-text-tertiary);
+}
+
+/* 自定义指令样式 */
+.custom-commands {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  margin-left: var(--sl-space-md);
+  padding-left: var(--sl-space-md);
+  border-left: 1px solid var(--sl-border-light);
+}
+
+.custom-label {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  white-space: nowrap;
+}
+
+.custom-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.custom-btn {
+  position: relative;
+  padding: 3px 10px;
+  border-radius: var(--sl-radius-sm);
+  font-size: 0.75rem;
+  cursor: pointer;
+  border: 1px solid var(--sl-border);
+  color: var(--sl-text-secondary);
+  background: var(--sl-bg-secondary);
+  white-space: nowrap;
+  transition: all var(--sl-transition-fast);
+  min-width: 60px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.custom-btn:hover {
+  border-color: var(--sl-primary);
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+}
+
+.custom-btn-name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.custom-btn-edit {
+  margin-left: 6px;
+  font-size: 0.85rem;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all var(--sl-transition-fast);
+  cursor: pointer;
+}
+
+.custom-btn:hover .custom-btn-edit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.custom-btn.add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 1.2rem;
+  color: var(--sl-text-tertiary);
+  border: 1px dashed var(--sl-border-light);
+  background: transparent;
+}
+
+.custom-btn.add-btn:hover {
+  border-color: var(--sl-primary);
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+}
+
+.add-btn-plus {
+  line-height: 1;
+}
+
+/* 自定义指令模态框样式 */
+.command-modal-content {
+  padding: var(--sl-space-md);
+  min-height: 120px;
+}
+
+.form-group {
+  margin-bottom: var(--sl-space-md);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--sl-space-xs);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sl-text-primary);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-md);
+  border-top: 1px solid var(--sl-border-light);
 }
 </style>

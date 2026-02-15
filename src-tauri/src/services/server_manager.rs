@@ -68,6 +68,7 @@ impl ServerManager {
             port: req.port,
             created_at: now,
             last_started_at: None,
+            commands: Vec::new(),
         };
         self.servers.lock().unwrap().push(server.clone());
         self.logs.lock().unwrap().insert(id, Vec::new());
@@ -133,6 +134,7 @@ impl ServerManager {
             port: req.port,
             created_at: now,
             last_started_at: None,
+            commands: Vec::new(),
         };
 
         self.servers.lock().unwrap().push(server.clone());
@@ -198,6 +200,7 @@ impl ServerManager {
             port: req.port,
             created_at: now,
             last_started_at: None,
+            commands: Vec::new(),
         };
 
         println!(
@@ -624,6 +627,57 @@ impl ServerManager {
         let ids: Vec<String> = self.processes.lock().unwrap().keys().cloned().collect();
         for id in ids {
             let _ = self.stop_server(&id);
+        }
+    }
+
+    pub fn add_server_command(&self, server_id: &str, name: &str, command: &str) -> Result<(), String> {
+        let mut servers = self.servers.lock().unwrap();
+        if let Some(server) = servers.iter_mut().find(|s| s.id == server_id) {
+            let command_id = uuid::Uuid::new_v4().to_string();
+            server.commands.push(ServerCommand {
+                id: command_id,
+                name: name.to_string(),
+                command: command.to_string(),
+            });
+            drop(servers);
+            self.save();
+            Ok(())
+        } else {
+            Err("未找到服务器".to_string())
+        }
+    }
+
+    pub fn update_server_command(&self, server_id: &str, command_id: &str, name: &str, command: &str) -> Result<(), String> {
+        let mut servers = self.servers.lock().unwrap();
+        if let Some(server) = servers.iter_mut().find(|s| s.id == server_id) {
+            if let Some(cmd) = server.commands.iter_mut().find(|c| c.id == command_id) {
+                cmd.name = name.to_string();
+                cmd.command = command.to_string();
+                drop(servers);
+                self.save();
+                Ok(())
+            } else {
+                Err("未找到自定义指令".to_string())
+            }
+        } else {
+            Err("未找到服务器".to_string())
+        }
+    }
+
+    pub fn delete_server_command(&self, server_id: &str, command_id: &str) -> Result<(), String> {
+        let mut servers = self.servers.lock().unwrap();
+        if let Some(server) = servers.iter_mut().find(|s| s.id == server_id) {
+            let initial_len = server.commands.len();
+            server.commands.retain(|c| c.id != command_id);
+            if initial_len != server.commands.len() {
+                drop(servers);
+                self.save();
+                Ok(())
+            } else {
+                Err("未找到自定义指令".to_string())
+            }
+        } else {
+            Err("未找到服务器".to_string())
         }
     }
 }
