@@ -5,6 +5,7 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
+use uuid;
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 
