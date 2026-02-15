@@ -804,8 +804,21 @@ function applyColors() {
   // 计算并应用其他相关变量
   
   // 表面颜色
-  const surfaceColor = isDark ? colors.bgSecondary : '#ffffff';
-  const surfaceHoverColor = isDark ? colors.bgTertiary : colors.bg;
+  let surfaceColor, surfaceHoverColor;
+  if (isAcrylic) {
+    // 参考 variables.css 为亚克力方案设置 rgba 颜色
+    if (isDark) {
+      surfaceColor = 'rgba(30, 33, 48, 0.6)';
+      surfaceHoverColor = 'rgba(40, 44, 62, 0.7)';
+    } else {
+      surfaceColor = 'rgba(255, 255, 255, 0.6)';
+      surfaceHoverColor = 'rgba(248, 250, 252, 0.7)';
+    }
+  } else {
+    // 非亚克力方案使用原来的颜色
+    surfaceColor = isDark ? colors.bgSecondary : '#ffffff';
+    surfaceHoverColor = isDark ? colors.bgTertiary : colors.bg;
+  }
   document.documentElement.style.setProperty('--sl-surface', surfaceColor);
   document.documentElement.style.setProperty('--sl-surface-hover', surfaceHoverColor);
   
@@ -823,7 +836,7 @@ function applyColors() {
   
   // 文本颜色变体
   const textTertiary = isDark ? adjustBrightness(colors.textSecondary, -20) : adjustBrightness(colors.textSecondary, 20);
-  const textInverse = isDark ? colors.bg : colors.textPrimary;
+  const textInverse = '#ffffff';
   document.documentElement.style.setProperty('--sl-text-tertiary', textTertiary);
   document.documentElement.style.setProperty('--sl-text-inverse', textInverse);
   
