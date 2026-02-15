@@ -182,8 +182,28 @@ async function handleManualDownload() {
         </div>
 
         <div class="contributor-grid">
-          <div v-for="c in contributors" :key="c.name" class="contributor-card glass-card">
-            <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
+          <div
+            v-for="c in contributors"
+            :key="c.name"
+            class="contributor-card glass-card"
+          >
+            <!-- 如果存在 url，则用 a 标签包裹头像；否则只显示图片 -->
+            <a 
+              v-if="c.url" 
+              :href="c.url" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="contributor-link"
+            >
+              <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
+            </a>
+            <img 
+              v-else 
+              :src="c.avatar" 
+              :alt="c.name" 
+              class="contributor-avatar" 
+            />
+            
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>
               <span class="contributor-role">{{ c.role }}</span>
@@ -961,4 +981,5 @@ async function handleManualDownload() {
 .contributor-link:hover .contributor-avatar {
   box-shadow: var(--sl-shadow-lg);
 }
+
 </style>

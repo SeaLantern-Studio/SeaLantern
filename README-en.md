@@ -12,6 +12,10 @@ Minecraft Server Manager · Tauri 2 + Rust + Vue 3
 
 </div>
 
+> 您正在浏览英文版的readme，点击[此处](README.md)前往简体中文版
+
+> You are browsing the English version of the readme. Click [here](README.md) to go to the Simplified Chinese version
+
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
 ## What can it do?
@@ -320,6 +324,7 @@ Frontend/Backend each 3 files,Change one line each for the router and the sideba
 
 GPLv3
 
+## Thank
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=FPSZ/SeaLantern&type=Date)](https://star-history.com/#FPSZ/SeaLantern&Date)

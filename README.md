@@ -12,6 +12,10 @@
 
 </div>
 
+> 您正在浏览简体中文版的readme，点击[此处](README-en.md)前往英文版
+
+> You are browsing the Simplified Chinese version of the readme. Click [here](README-en.md) to go to the English version
+
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
 ## 能干什么
