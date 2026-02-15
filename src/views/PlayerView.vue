@@ -98,6 +98,11 @@ async function loadAll() {
 }
 
 function parseOnlinePlayers() {
+  if (!isRunning.value) {
+    onlinePlayers.value = [];
+    return;
+  }
+
   const sid = selectedServerId.value;
   const logs = consoleStore.logs[sid] || [];
   const players = new Set<string>();
