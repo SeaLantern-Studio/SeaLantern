@@ -1,6 +1,6 @@
 # 海晶灯（Sea Lantern）
 
-
+[简体中文文档(当前)](README.md)
 [English Version Doc](README-en.md)
 
 Minecraft 服务器管理工具 · Tauri 2 + Rust + Vue 3
