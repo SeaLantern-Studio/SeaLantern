@@ -102,19 +102,14 @@ const filteredSuggestions = computed(() => {
     .slice(0, 8);
 });
 
-const serverId = computed(
-  () =>
-    consoleStore.activeServerId || serverStore.currentServerId || (route.params.id as string) || "",
-);
+// 优先使用serverStore.currentServerId，确保与侧栏同步
+const serverId = computed(() => {
+  return serverStore.currentServerId || consoleStore.activeServerId || (route.params.id as string) || "";
+});
 
 const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
 
-const serverOptions = computed(() =>
-  serverStore.servers.map((s) => ({
-    label: s.name + " (" + s.id.substring(0, 8) + ")",
-    value: s.id,
-  })),
-);
+
 
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
@@ -130,6 +125,36 @@ watch(
   () => currentLogs.value.length,
   () => {
     if (!userScrolledUp.value) doScroll();
+  },
+);
+
+watch(
+  () => serverId.value,
+  async (newServerId, oldServerId) => {
+    if (newServerId && newServerId !== oldServerId) {
+      // 确保consoleStore与serverStore保持同步
+      consoleStore.setActiveServer(newServerId);
+      // 同时更新serverStore的当前服务器，确保双向同步
+      if (newServerId !== serverStore.currentServerId) {
+        serverStore.setCurrentServer(newServerId);
+      }
+      await serverStore.refreshStatus(newServerId);
+      userScrolledUp.value = false;
+      nextTick(() => doScroll());
+    }
+  },
+);
+
+// 直接监听serverStore.currentServerId的变化，确保侧栏选择能立即同步到控制台
+watch(
+  () => serverStore.currentServerId,
+  async (newServerId) => {
+    if (newServerId && newServerId !== consoleStore.activeServerId) {
+      consoleStore.setActiveServer(newServerId);
+      await serverStore.refreshStatus(newServerId);
+      userScrolledUp.value = false;
+      nextTick(() => doScroll());
+    }
   },
 );
 
@@ -434,18 +459,18 @@ function executeCustomCommand(cmd: ServerCommand) {
 <template>
   <div class="console-view animate-fade-in-up">
     <div class="console-toolbar">
-      <div class="toolbar-left">
-        <div v-if="serverOptions.length > 0" class="server-selector">
-          <SLSelect :options="serverOptions" :modelValue="serverId" :placeholder="i18n.t('common.console')" @update:modelValue="switchServer" />
+        <div class="toolbar-left">
+          <div v-if="serverId" class="server-name-display">
+            {{ serverStore.servers.find(s => s.id === serverId)?.name || i18n.t('common.console') }}
+          </div>
+          <div v-else class="server-name-display">
+            {{ i18n.t('home.no_servers') }}
+          </div>
+          <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
+            <span class="status-dot"></span>
+            <span class="status-label">{{ getStatusText() }}</span>
+          </div>
         </div>
-        <div v-else class="server-name-display">
-          {{ i18n.t('home.no_servers') }}
-        </div>
-        <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
-          <span class="status-dot"></span>
-          <span class="status-label">{{ getStatusText() }}</span>
-        </div>
-      </div>
       <div class="toolbar-right">
         <SLButton variant="primary" size="sm" :loading="startLoading" :disabled="isRunning || startLoading" @click="handleStart">{{ i18n.t('home.start') }}</SLButton>
         <SLButton variant="danger" size="sm" :loading="stopLoading" :disabled="isStopped || stopLoading" @click="handleStop">{{ i18n.t('home.stop') }}</SLButton>

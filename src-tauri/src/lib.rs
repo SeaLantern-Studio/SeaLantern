@@ -38,6 +38,7 @@ pub fn run() {
             server_commands::add_server_command,
             server_commands::update_server_command,
             server_commands::delete_server_command,
+            server_commands::update_server_name,
             java_commands::detect_java,
             java_commands::validate_java_path,
             config_commands::read_config,

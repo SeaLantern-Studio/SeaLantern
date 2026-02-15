@@ -680,6 +680,18 @@ impl ServerManager {
             Err("未找到服务器".to_string())
         }
     }
+
+    pub fn update_server_name(&self, id: &str, name: &str) -> Result<(), String> {
+        let mut servers = self.servers.lock().unwrap();
+        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
+            server.name = name.to_string();
+            drop(servers);
+            self.save();
+            Ok(())
+        } else {
+            Err("未找到服务器".to_string())
+        }
+    }
 }
 
 fn get_data_dir() -> String {

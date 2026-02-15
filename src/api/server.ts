@@ -108,4 +108,8 @@ export const serverApi = {
   async deleteServerCommand(id: string, commandId: string): Promise<void> {
     return tauriInvoke("delete_server_command", { id, commandId });
   },
+
+  async updateServerName(id: string, name: string): Promise<void> {
+    return tauriInvoke("update_server_name", { id, name });
+  },
 };

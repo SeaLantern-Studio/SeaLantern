@@ -4,7 +4,6 @@ import { useRoute } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
-import SLSelect from "../components/common/SLSelect.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLModal from "../components/common/SLModal.vue";
 import SLSpinner from "../components/common/SLSpinner.vue";
@@ -20,7 +19,6 @@ const route = useRoute();
 const store = useServerStore();
 const consoleStore = useConsoleStore();
 
-const selectedServerId = ref("");
 const activeTab = ref<"online" | "whitelist" | "banned" | "ops">("online");
 
 const whitelist = ref<PlayerEntry[]>([]);
@@ -39,25 +37,29 @@ const addLoading = ref(false);
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-const serverOptions = computed(() => store.servers.map((s) => ({ label: s.name, value: s.id })));
-
 const serverPath = computed(() => {
-  const server = store.servers.find((s) => s.id === selectedServerId.value);
+  const server = store.servers.find((s) => s.id === store.currentServerId);
   return server?.path || "";
 });
 
 const isRunning = computed(() => {
-  return store.statuses[selectedServerId.value]?.status === "Running";
+  return store.statuses[store.currentServerId]?.status === "Running";
 });
+
+const currentServerId = computed(() => store.currentServerId);
 
 onMounted(async () => {
   await store.refreshList();
   const routeId = route.params.id as string;
-  if (routeId) selectedServerId.value = routeId;
-  else if (store.currentServerId) selectedServerId.value = store.currentServerId;
-  else if (store.servers.length > 0) selectedServerId.value = store.servers[0].id;
+  if (routeId) store.setCurrentServer(routeId);
+  else if (!store.currentServerId && store.servers.length > 0) store.setCurrentServer(store.servers[0].id);
 
   startRefresh();
+  if (store.currentServerId) {
+    await store.refreshStatus(store.currentServerId);
+    await loadAll();
+    parseOnlinePlayers();
+  }
 });
 
 onUnmounted(() => {
@@ -67,17 +69,17 @@ onUnmounted(() => {
 function startRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(async () => {
-    if (selectedServerId.value) {
-      await store.refreshStatus(selectedServerId.value);
+    if (store.currentServerId) {
+      await store.refreshStatus(store.currentServerId);
       await loadAll();
       parseOnlinePlayers();
     }
   }, 5000);
 }
 
-watch(selectedServerId, async () => {
-  if (selectedServerId.value) {
-    await store.refreshStatus(selectedServerId.value);
+watch(() => store.currentServerId, async () => {
+  if (store.currentServerId) {
+    await store.refreshStatus(store.currentServerId);
     await loadAll();
     parseOnlinePlayers();
   }
@@ -99,7 +101,7 @@ async function loadAll() {
 }
 
 function parseOnlinePlayers() {
-  const sid = selectedServerId.value;
+  const sid = store.currentServerId;
   const logs = consoleStore.logs[sid] || [];
   const players: string[] = [];
 
@@ -149,7 +151,7 @@ async function handleAdd() {
   addLoading.value = true;
   error.value = null;
   try {
-    const sid = selectedServerId.value;
+    const sid = store.currentServerId;
     switch (activeTab.value) {
       case "whitelist":
         await playerApi.addToWhitelist(sid, addPlayerName.value);
@@ -182,7 +184,7 @@ async function handleRemoveWhitelist(name: string) {
     return;
   }
   try {
-    await playerApi.removeFromWhitelist(selectedServerId.value, name);
+    await playerApi.removeFromWhitelist(store.currentServerId, name);
     success.value = MESSAGES.SUCCESS.WHITELIST_REMOVED;
     setTimeout(() => {
       success.value = null;
@@ -199,7 +201,7 @@ async function handleUnban(name: string) {
     return;
   }
   try {
-    await playerApi.unbanPlayer(selectedServerId.value, name);
+    await playerApi.unbanPlayer(store.currentServerId, name);
     success.value = MESSAGES.SUCCESS.PLAYER_UNBANNED;
     setTimeout(() => {
       success.value = null;
@@ -216,7 +218,7 @@ async function handleRemoveOp(name: string) {
     return;
   }
   try {
-    await playerApi.removeOp(selectedServerId.value, name);
+    await playerApi.removeOp(store.currentServerId, name);
     success.value = MESSAGES.SUCCESS.OP_REMOVED;
     setTimeout(() => {
       success.value = null;
@@ -233,7 +235,7 @@ async function handleKick(name: string) {
     return;
   }
   try {
-    await playerApi.kickPlayer(selectedServerId.value, name);
+    await playerApi.kickPlayer(store.currentServerId, name);
     success.value = `${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`;
     setTimeout(() => {
       success.value = null;
@@ -257,16 +259,13 @@ function getAddLabel(): string {
 <template>
   <div class="player-view animate-fade-in-up">
     <div class="player-header">
-      <div class="server-picker">
-        <SLSelect :label="i18n.t('common.player_manage')" :options="serverOptions" v-model="selectedServerId" :placeholder="i18n.t('players.select_server')" />
-      </div>
-      <div v-if="selectedServerId" class="server-status">
+      <div v-if="currentServerId" class="server-status">
         <SLBadge :text="isRunning ? i18n.t('home.running') : i18n.t('home.stopped')" :variant="isRunning ? 'success' : 'neutral'" />
         <span v-if="!isRunning" class="status-hint text-caption">{{ i18n.t('players.server_not_running') }}</span>
       </div>
     </div>
 
-    <div v-if="!selectedServerId" class="empty-state"><p class="text-body">{{ i18n.t('players.no_server') }}</p></div>
+    <div v-if="!currentServerId" class="empty-state"><p class="text-body">{{ i18n.t('players.no_server') }}</p></div>
 
     <template v-else>
       <div v-if="error" class="msg-banner error-banner">

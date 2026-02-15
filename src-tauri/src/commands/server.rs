@@ -121,3 +121,8 @@ pub fn update_server_command(id: String, commandId: String, name: String, comman
 pub fn delete_server_command(id: String, commandId: String) -> Result<(), String> {
     manager().delete_server_command(&id, &commandId)
 }
+
+#[tauri::command]
+pub fn update_server_name(id: String, name: String) -> Result<(), String> {
+    manager().update_server_name(&id, &name)
+}

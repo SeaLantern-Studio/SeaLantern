@@ -23,14 +23,12 @@ const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
 const searchQuery = ref("");
 const activeCategory = ref("all");
-const selectedServerId = ref("");
-
-const serverOptions = computed(() => store.servers.map((s) => ({ label: s.name, value: s.id })));
-
 const serverPath = computed(() => {
-  const server = store.servers.find((s) => s.id === selectedServerId.value);
+  const server = store.servers.find((s) => s.id === store.currentServerId);
   return server?.path || "";
 });
+
+const currentServerId = computed(() => store.currentServerId);
 
 const categories = computed(() => {
   const cats = new Set(entries.value.map((e) => e.category));
@@ -63,16 +61,15 @@ onMounted(async () => {
   await store.refreshList();
   const routeId = route.params.id as string;
   if (routeId) {
-    selectedServerId.value = routeId;
-  } else if (store.currentServerId) {
-    selectedServerId.value = store.currentServerId;
-  } else if (store.servers.length > 0) {
-    selectedServerId.value = store.servers[0].id;
+    store.setCurrentServer(routeId);
+  } else if (!store.currentServerId && store.servers.length > 0) {
+    store.setCurrentServer(store.servers[0].id);
   }
+  await loadProperties();
 });
 
-watch(selectedServerId, async () => {
-  if (selectedServerId.value) {
+watch(() => store.currentServerId, async () => {
+  if (store.currentServerId) {
     await loadProperties();
   }
 });
@@ -119,29 +116,21 @@ function getBoolValue(key: string): boolean {
 }
 
 function getServerName(): string {
-  const s = store.servers.find((s) => s.id === selectedServerId.value);
+  const s = store.servers.find((s) => s.id === store.currentServerId);
   return s ? s.name : "";
 }
 </script>
 
 <template>
   <div class="config-view animate-fade-in-up">
-    <!-- Server Selector -->
+    <!-- 服务器配置编辑 -->
     <div class="config-header">
-      <div class="server-picker">
-        <SLSelect
-          :label="i18n.t('common.config_edit')"
-          :options="serverOptions"
-          v-model="selectedServerId"
-          :placeholder="i18n.t('config.select_server')"
-        />
-      </div>
-      <div v-if="selectedServerId" class="server-path-display text-mono text-caption">
+      <div class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
       </div>
     </div>
 
-    <div v-if="!selectedServerId" class="empty-state">
+    <div v-if="!currentServerId" class="empty-state">
       <p class="text-body">{{ i18n.t('config.no_server') }}</p>
     </div>
 

@@ -8,7 +8,8 @@
     "player_manage": "玩家管理",
     "settings": "设置",
     "about": "关于",
-    "loading": "加载中..."
+    "loading": "加载中...",
+    "select_server": "选择服务器"
   },
   "sidebar": {
     "groups": {

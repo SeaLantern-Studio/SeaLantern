@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { useRouter, useRoute, computed } from "vue-router";
+import { computed, ref } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
+import { useServerStore } from "../../stores/serverStore";
 import { i18n } from "../../locales";
+import SLSelect from "../../components/common/SLSelect.vue";
 
 const router = useRouter();
 const route = useRoute();
 const ui = useUiStore();
+const serverStore = useServerStore();
 
 interface NavItem {
   name: string;
@@ -34,6 +38,28 @@ const groups = [
 function navigateTo(path: string) {
   router.push(path);
 }
+
+function handleServerChange(value: string) {
+  serverStore.setCurrentServer(value);
+  // 如果当前在服务器相关页面，更新路由
+  if (route.path.startsWith('/console') || route.path.startsWith('/config') || route.path.startsWith('/players')) {
+    const currentPath = route.path.split('/')[1];
+    router.push(`/${currentPath}/${value}`);
+  }
+}
+
+// 服务器选项
+const serverOptions = computed(() => {
+  return serverStore.servers.map((s) => ({
+    label: s.name + ' (' + s.id.substring(0, 8) + ')',
+    value: s.id,
+  }));
+});
+
+// 当前选中的服务器
+const currentServerId = computed(() => {
+  return serverStore.currentServerId;
+});
 
 function isActive(path: string): boolean {
   if (path === "/") return route.path === "/";
@@ -67,6 +93,18 @@ const iconMap: Record<string, string> = {
     </div>
 
     <nav class="sidebar-nav">
+      <!-- 服务器选择 -->
+      <div v-if="!ui.sidebarCollapsed && serverOptions.length > 0" class="server-selector">
+        <div class="server-selector-label">服务器</div>
+        <SLSelect
+          :options="serverOptions"
+          :modelValue="currentServerId"
+          @update:modelValue="handleServerChange"
+          :placeholder="i18n.t('common.select_server')"
+          size="sm"
+        />
+      </div>
+      
       <div v-for="group in groups" :key="group.key" class="nav-group">
         <transition name="fade">
           <div v-if="!ui.sidebarCollapsed" class="nav-group-label">{{ i18n.t(group.labelKey) }}</div>
@@ -186,6 +224,32 @@ const iconMap: Record<string, string> = {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
+}
+
+/* 服务器选择器样式 */
+.server-selector {
+  padding: var(--sl-space-sm);
+  margin-bottom: var(--sl-space-sm);
+  border-bottom: 1px solid var(--sl-border-light);
+}
+
+.server-selector-label {
+  padding: var(--sl-space-xs) var(--sl-space-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--sl-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  margin-bottom: var(--sl-space-xs);
+}
+
+.server-selector :deep(.sl-select) {
+  width: 100%;
+}
+
+.server-selector :deep(.sl-select__input) {
+  font-size: 0.8125rem;
 }
 
 .nav-item {

@@ -20,6 +20,11 @@ const consoleStore = useConsoleStore();
 const actionLoading = ref<Record<string, boolean>>({});
 const actionError = ref<string | null>(null);
 
+// 编辑服务器名称相关
+const editingServerId = ref<string | null>(null);
+const editName = ref("");
+const editLoading = ref(false);
+
 // 系统信息
 const systemInfo = ref<SystemInfo | null>(null);
 const cpuUsage = ref(0);
@@ -152,6 +157,36 @@ async function handleDelete(id: string) {
   } catch (e) {
     actionError.value = String(e);
   }
+}
+
+// 开始就地编辑服务器名称
+function startEditServerName(server: any) {
+  editingServerId.value = server.id;
+  editName.value = server.name;
+}
+
+// 保存服务器名称更改
+async function saveServerName(serverId: string) {
+  if (!serverId || !editName.value.trim()) return;
+  
+  editLoading.value = true;
+  actionError.value = null;
+  
+  try {
+    await serverApi.updateServerName(serverId, editName.value.trim());
+    await store.refreshList();
+    editingServerId.value = null;
+  } catch (e) {
+    actionError.value = String(e);
+  } finally {
+    editLoading.value = false;
+  }
+}
+
+// 取消编辑服务器名称
+function cancelEdit() {
+  editingServerId.value = null;
+  editName.value = "";
 }
 </script>
 
@@ -369,7 +404,44 @@ async function handleDelete(id: string) {
       <div v-for="server in store.servers" :key="server.id" class="server-card glass-card">
         <div class="server-card-header">
           <div class="server-info">
-            <h4 class="server-name">{{ server.name }}</h4>
+            <div class="server-name-container">
+              <template v-if="editingServerId === server.id">
+                <div class="inline-edit">
+                  <input 
+                    type="text" 
+                    v-model="editName" 
+                    class="server-name-input"
+                    @keyup.enter="saveServerName(server.id)"
+                    @keyup.esc="cancelEdit"
+                    @blur="saveServerName(server.id)"
+                    ref="editInput"
+                  />
+                  <div class="inline-edit-actions">
+                    <button 
+                      class="inline-edit-btn save" 
+                      @click="saveServerName(server.id)"
+                      :disabled="!editName.trim() || editLoading"
+                      :class="{ loading: editLoading }"
+                    >
+                      ✓
+                    </button>
+                    <button 
+                      class="inline-edit-btn cancel" 
+                      @click="cancelEdit"
+                      :disabled="editLoading"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <h4 class="server-name">{{ server.name }}</h4>
+                <button class="edit-server-name" @click="startEditServerName(server)" title="编辑服务器名称">
+                  ✏️
+                </button>
+              </template>
+            </div>
             <span class="server-meta text-caption">
               {{ server.core_type }} | 端口 {{ server.port }} | {{ server.max_memory }}MB
             </span>
@@ -433,6 +505,8 @@ async function handleDelete(id: string) {
         </div>
       </div>
     </div>
+
+
   </div>
 </template>
 
@@ -579,12 +653,112 @@ async function handleDelete(id: string) {
   justify-content: space-between;
 }
 
+.server-name-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .server-name {
   font-size: 1rem;
   font-weight: 600;
 }
+
+.edit-server-name {
+  opacity: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: opacity 0.2s ease;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.server-card:hover .edit-server-name {
+  opacity: 1;
+}
+
+.edit-server-name:hover {
+  background: var(--sl-bg-secondary);
+}
+
 .server-meta {
   margin-top: 2px;
+}
+
+/* 就地编辑样式 */
+.inline-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.server-name-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--sl-primary);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.server-name-input:focus {
+  box-shadow: 0 0 0 2px var(--sl-primary-bg);
+}
+
+.inline-edit-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.inline-edit-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--sl-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.inline-edit-btn.save {
+  background: var(--sl-primary);
+  color: white;
+}
+
+.inline-edit-btn.save:hover:not(:disabled) {
+  background: var(--sl-primary-dark);
+}
+
+.inline-edit-btn.cancel {
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-secondary);
+  border-color: var(--sl-border);
+}
+
+.inline-edit-btn.cancel:hover:not(:disabled) {
+  background: var(--sl-bg-tertiary);
+}
+
+.inline-edit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inline-edit-btn.loading {
+  opacity: 0.8;
 }
 
 .server-card-path {
@@ -759,4 +933,6 @@ async function handleDelete(id: string) {
     grid-template-columns: 1fr;
   }
 }
+
+
 </style>
