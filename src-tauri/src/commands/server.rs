@@ -113,13 +113,13 @@ pub fn add_server_command(id: String, name: String, command: String) -> Result<(
 }
 
 #[tauri::command]
-pub fn update_server_command(id: String, commandId: String, name: String, command: String) -> Result<(), String> {
-    manager().update_server_command(&id, &commandId, &name, &command)
+pub fn update_server_command(id: String, command_id: String, name: String, command: String) -> Result<(), String> {
+    manager().update_server_command(&id, &command_id, &name, &command)
 }
 
 #[tauri::command]
-pub fn delete_server_command(id: String, commandId: String) -> Result<(), String> {
-    manager().delete_server_command(&id, &commandId)
+pub fn delete_server_command(id: String, command_id: String) -> Result<(), String> {
+    manager().delete_server_command(&id, &command_id)
 }
 
 #[tauri::command]
