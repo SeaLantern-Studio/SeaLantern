@@ -100,30 +100,28 @@ async function loadAll() {
 function parseOnlinePlayers() {
   const sid = selectedServerId.value;
   const logs = consoleStore.logs[sid] || [];
-  const players: string[] = [];
+  const players = new Set<string>();
 
-  for (let i = logs.length - 1; i >= 0; i--) {
-    const line = logs[i];
+  for (const line of logs) {
     const joinMatch = line.match(/\]: (\w+) joined the game/);
     const loginMatch = line.match(/\]: UUID of player (\w+) is/);
     const leftMatch = line.match(/\]: (\w+) left the game/);
 
     if (joinMatch) {
       const name = joinMatch[1];
-      if (!players.includes(name)) players.push(name);
+      players.add(name);
     }
     if (loginMatch) {
       const name = loginMatch[1];
-      if (!players.includes(name)) players.push(name);
+      players.add(name);
     }
     if (leftMatch) {
       const name = leftMatch[1];
-      const idx = players.indexOf(name);
-      if (idx > -1) players.splice(idx, 1);
+      players.delete(name);
     }
   }
 
-  onlinePlayers.value = players;
+  onlinePlayers.value = Array.from(players);
 }
 
 function openAddModal() {
