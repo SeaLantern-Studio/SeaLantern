@@ -249,7 +249,7 @@ impl ServerManager {
         }
 
         //预处理脚本
-        match self.load_preload_script(&id, &server) {
+        match self.load_preload_script(id, &server) {
             Ok(msg) => {
                 self.append_log(id, &format!("[preload] 预加载脚本执行完毕：{}", msg));
                 println!("预处理脚本执行完毕：{}", msg);
