@@ -297,10 +297,10 @@ If you are going to add a「Save Management」：
 
 **Fronted**：
 
-1. `src/api/` 下建 `backup.ts`，封装 invoke 调用
-2. `src/views/` 下建 `BackupView.vue`，画页面
-3. `src/router/index.ts` 里加路由
-4. `AppSidebar.vue` 的 `navItems` 数组里加一项
+1. Create `backup.ts` under `src/api/`,Encapsulate invoke calls
+2. Create `BackupView.vue` under `src/views/`,draw the page
+3. Add routes in src/router/index.ts
+4. Add an item to the navItems array in AppSidebar.vue
 
 Frontend/Backend each 3 files,Change one line each for the router and the sidebar。
 
