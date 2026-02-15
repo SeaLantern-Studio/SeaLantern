@@ -1,9 +1,7 @@
-海晶灯（Sea Lantern）
-===========
+# 海晶灯（Sea Lantern）
 
-Minecraft 服务器管理工具 · Tauri 2 + Rust + Vue 3 
+Minecraft 服务器管理工具 · Tauri 2 + Rust + Vue 3
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
-
 
 ## 能干什么
 
@@ -21,7 +19,6 @@ Minecraft 服务器管理工具 · Tauri 2 + Rust + Vue 3
 
 - 如果你是开发者，需要 Node.js 20+ 和 Rust 1.70+。
 
-
 ```bash
 git clone https://gitee.com/fps_z/SeaLantern.git
 cd SeaLantern
@@ -37,6 +34,40 @@ npm run tauri build
 
 产物在 `src-tauri/target/release/bundle/` 里。
 
+### 代码质量检查
+
+提交代码前，建议运行以下命令检查代码质量：
+
+前端检查：
+
+```bash
+# 代码质量检查
+npm run lint
+
+# 自动修复可修复问题
+npm run lint:fix
+
+# 格式化代码
+npm run fmt
+
+# 检查格式（不改动文件）
+npm run fmt:check
+```
+
+后端检查：
+
+```bash
+# 检查代码格式
+cargo fmt --all -- --check
+
+# 运行 Clippy 检查
+cargo clippy --workspace -- -D warnings
+
+# 自动格式化代码
+cargo fmt --all
+```
+
+项目已配置 CI 自动检查，确保所有提交的代码都符合规范。
 
 ## 技术栈
 
@@ -46,7 +77,6 @@ npm run tauri build
 - **通信**: Tauri invoke（前端调 Rust 函数，直接拿返回值）
 
 没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
-
 
 ## 项目结构
 
@@ -178,44 +208,49 @@ sea-lantern/
 └── README.md                          项目说明文档（你正在看的这个）
 ```
 
-
 ## 已实现功能
 
 ### 服务器管理
+
 - 导入 JAR 文件创建服务器，一键启动和停止
 - 数据保存到 JSON，重启软件不丢失
 
 ### 实时控制台
+
 - 后端用独立线程读 stdout 和 stderr
 - 前端每 800ms 轮询拉新日志
 - 支持命令输入、Tab 补全、上下键历史、快捷指令按钮
 - 日志存在全局 store 里，切页面不丢
 
 ### Java 检测
+
 - 启动时扫描 A 到 Z 所有盘符
 - 递归搜索常见安装路径，包括 .minecraft/runtime 里 MC 自带的 Java
 - 按版本号排序，标记推荐
 
 ### 配置编辑
+
 - 读取 server.properties，解析成带描述和分类的结构化数据
 - 布尔值用开关，枚举用下拉，数字和字符串用输入框
 - 改完直接写回文件
 
 ### 玩家管理
+
 - 读取 whitelist.json / banned-players.json / ops.json 显示列表
 - 添加和移除通过向运行中的服务器发送 MC 命令实现
 - 解析日志判断在线玩家
 
 ### 应用设置
+
 - 关闭软件时自动停止所有服务器（默认开启）
 - 自动同意 EULA
 - 默认内存、端口、JVM 参数，全部可配
 
 ### 软件更新
+
 - 检查 Gitee 发行版，获取最新版本信息
 - 显示更新日志，一键打开下载链接
 - 版本号自动比较，提示用户更新
-
 
 ## 待开发功能
 
@@ -229,8 +264,9 @@ sea-lantern/
 - 暗色主题 - CSS 变量都准备好了，加一套 dark 的值就行
 - 国际化 - 目前全是中文硬编码，可以抽成语言文件
 
-
 ## 参与开发
+
+欢迎贡献代码！在开始之前，请阅读 [贡献指南](CONTRIBUTING.md) 了解代码规范和开发流程。
 
 界面也是。颜色在 CSS 变量里，组件是独立的，不喜欢就换。
 想做个主题皮肤？做。想把整个布局推翻重来？也行。
@@ -238,7 +274,7 @@ sea-lantern/
 ### 怎么贡献
 
 1. Fork 这个仓库
-2. 建分支写代码
+2. 建分支写代码（遵循 [贡献指南](CONTRIBUTING.md)）
 3. 提 Pull Request
 4. 你的名字会出现在关于页面的贡献者墙上
 
@@ -249,12 +285,14 @@ sea-lantern/
 假设你要加一个「备份管理」功能：
 
 **后端**：
+
 1. `src-tauri/src/services/` 下建 `backup_manager.rs`，写逻辑
 2. `src-tauri/src/commands/` 下建 `backup.rs`，写 Tauri 命令
 3. 在 `commands/mod.rs` 里加 `pub mod backup`
 4. 在 `lib.rs` 的 `generate_handler!` 宏里注册命令
 
 **前端**：
+
 1. `src/api/` 下建 `backup.ts`，封装 invoke 调用
 2. `src/views/` 下建 `BackupView.vue`，画页面
 3. `src/router/index.ts` 里加路由
@@ -262,11 +300,9 @@ sea-lantern/
 
 前后端各三个文件，路由和侧栏各改一行。
 
-
 ## License
 
 GPLv3
-
 
 ## 致谢
 

@@ -1,0 +1,24 @@
+# EditorConfig 帮助开发者在不同编辑器和 IDE 中保持一致的编码风格
+# https://editorconfig.org
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{js,ts,vue,json,html,css}]
+indent_style = space
+indent_size = 2
+
+[*.{rs,toml}]
+indent_style = space
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

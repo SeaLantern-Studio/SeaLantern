@@ -7,10 +7,12 @@
 **项目名称**: 海晶灯 (Sea Lantern)
 **项目类型**: Minecraft 服务器管理工具
 **技术栈**: Tauri 2 + Rust + Vue 3 + TypeScript + Pinia
-**当前版本**: 0.3.0
-**仓库地址**: https://gitee.com/fps_z/SeaLantern
+**当前版本**: 0.5.0
+**Gitee仓库**: https://gitee.com/fps_z/SeaLantern (master 分支)
+**Github仓库**: https://github.com/FPSZ/SeaLantern (main 分支)
 
 ### 核心特点
+
 - 前端使用 Vue 3 Composition API + TypeScript
 - 后端使用 Rust，通过 Tauri invoke 与前端通信
 - 无 Electron，无 Node 后端，体积小，性能好
@@ -21,16 +23,19 @@
 ## 关键文件速查表
 
 ### 版本号相关（修改版本时必须同步更新）
+
 - 版本号来源：`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`
 - 前端展示版本：`src/utils/version.ts` 通过 `@tauri-apps/api/app` 的 `getVersion()` 从后端读取
 
 ### 配置文件
+
 - `vite.config.ts` - Vite 构建配置，开发服务器端口 1420
 - `tsconfig.json` - TypeScript 编译配置
 - `src-tauri/tauri.conf.json` - Tauri 应用配置（窗口大小、标题、权限等）
 - `src-tauri/capabilities/default.json` - Tauri 权限配置
 
 ### 入口文件
+
 - `src/main.ts` - 前端入口，初始化 Vue、Pinia、Router
 - `src-tauri/src/main.rs` - Rust 应用入口
 - `src-tauri/src/lib.rs` - Tauri 库入口，注册命令和插件
@@ -54,6 +59,7 @@ src-tauri/src/models/*.rs (数据结构)
 ```
 
 **示例**：检查软件更新
+
 1. 前端: `AboutView.vue` 调用 `checkUpdate()`
 2. API 层: `src/api/update.ts` 的 `checkUpdate()` 调用 `tauriInvoke('check_update', ...)`
 3. 命令层: `src-tauri/src/commands/update.rs` 的 `#[command] check_update()` 处理请求
@@ -64,6 +70,7 @@ src-tauri/src/models/*.rs (数据结构)
 #### 前端 (`src/`)
 
 **api/** - 与 Rust 后端通信的封装层
+
 - `tauri.ts` - 基础 invoke 封装，导出 `tauriInvoke` 函数
 - `server.ts` - 服务器管理 API（创建、启动、停止、日志）
 - `java.ts` - Java 环境检测 API
@@ -74,11 +81,13 @@ src-tauri/src/models/*.rs (数据结构)
 - `update.ts` - 软件更新检查 API
 
 **components/** - UI 组件
+
 - `common/` - 通用组件（SLButton、SLCard、SLInput、SLSelect、SLSwitch、SLModal、SLProgress、SLBadge）
 - `layout/` - 布局组件（AppLayout、AppSidebar、AppHeader）
 - `splash/` - 启动画面（SplashScreen）
 
 **views/** - 页面视图
+
 - `HomeView.vue` - 首页（服务器列表）
 - `CreateServerView.vue` - 创建/导入服务器
 - `ConsoleView.vue` - 控制台（实时日志、命令输入）
@@ -88,11 +97,13 @@ src-tauri/src/models/*.rs (数据结构)
 - `AboutView.vue` - 关于页面（贡献者墙、更新检查）
 
 **stores/** - Pinia 状态管理
+
 - `serverStore.ts` - 服务器列表和运行状态
 - `consoleStore.ts` - 控制台日志（切换页面不丢失）
 - `uiStore.ts` - 界面状态（侧栏折叠等）
 
 **styles/** - 全局样式
+
 - `variables.css` - CSS 变量（颜色、间距、圆角、字体、阴影）
 - `reset.css` - 浏览器样式重置
 - `typography.css` - 排版样式
@@ -102,6 +113,7 @@ src-tauri/src/models/*.rs (数据结构)
 #### 后端 (`src-tauri/src/`)
 
 **commands/** - Tauri 命令（前端 invoke 调用的 API）
+
 - `server.rs` - 服务器管理命令
 - `java.rs` - Java 检测命令
 - `config.rs` - 配置文件读写命令
@@ -111,6 +123,7 @@ src-tauri/src/models/*.rs (数据结构)
 - `update.rs` - 软件更新检查命令
 
 **services/** - 业务逻辑层
+
 - `server_manager.rs` - 服务器进程管理、日志读取
 - `java_detector.rs` - Java 环境扫描器
 - `config_parser.rs` - .properties 文件解析器
@@ -119,6 +132,7 @@ src-tauri/src/models/*.rs (数据结构)
 - `global.rs` - 全局单例管理器
 
 **models/** - 数据结构定义
+
 - `server.rs` - 服务器实例、状态数据结构
 - `config.rs` - 配置项数据结构
 - `settings.rs` - 应用设置数据结构
@@ -131,28 +145,33 @@ src-tauri/src/models/*.rs (数据结构)
 ### 前端规范
 
 #### 1. API 调用规范
+
 ```typescript
 // src/api/example.ts
-import { tauriInvoke } from './tauri'
+import { tauriInvoke } from "./tauri";
 
 export async function someFunction(param: string): Promise<ReturnType> {
-  return tauriInvoke<ReturnType>('command_name', { param })
+  return tauriInvoke<ReturnType>("command_name", { param });
 }
 ```
 
 #### 2. Vue 组件规范
+
 - 使用 Composition API (`<script setup lang="ts">`)
 - 使用 TypeScript
 - Props 使用 `defineProps<{ ... }>()`
 - Emits 使用 `defineEmits<{ ... }>()`
 
 #### 3. 样式规范
+
 - 使用 scoped CSS
 - 使用 CSS 变量（定义在 `src/styles/variables.css`）
 - 毛玻璃效果使用 `backdrop-filter: blur(10px)`
 
 #### 4. 路由规范
+
 路由定义在 `src/router/index.ts`，格式：
+
 ```typescript
 {
   path: '/path',
@@ -166,6 +185,7 @@ export async function someFunction(param: string): Promise<ReturnType> {
 ### 后端规范
 
 #### 1. 命令定义规范
+
 ```rust
 // src-tauri/src/commands/example.rs
 use tauri::command;
@@ -178,14 +198,17 @@ pub async fn command_name(param: String) -> Result<ReturnType, String> {
 ```
 
 #### 2. 命令注册流程
+
 1. 在 `src-tauri/src/commands/mod.rs` 中添加 `pub mod example;`
 2. 在 `src-tauri/src/lib.rs` 的 `generate_handler!` 宏中添加命令名
 
 #### 3. 错误处理规范
+
 - 命令返回 `Result<T, String>`
 - 使用 `.map_err(|e| e.to_string())` 转换错误
 
 #### 4. 异步规范
+
 - 需要异步操作的命令使用 `async fn`
 - 使用 `tokio` 运行时
 
@@ -196,6 +219,7 @@ pub async fn command_name(param: String) -> Result<ReturnType, String> {
 ### 场景 1: 添加新的 Tauri 命令
 
 **步骤**：
+
 1. 在 `src-tauri/src/commands/` 创建或修改对应的 `.rs` 文件
 2. 定义命令函数，添加 `#[command]` 宏
 3. 在 `src-tauri/src/commands/mod.rs` 中导出模块
@@ -204,6 +228,7 @@ pub async fn command_name(param: String) -> Result<ReturnType, String> {
 6. 在 Vue 组件中调用 API 函数
 
 **示例**：添加 `get_system_info` 命令
+
 ```rust
 // src-tauri/src/commands/system.rs
 #[command]
@@ -215,13 +240,14 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
 ```typescript
 // src/api/system.ts
 export async function getSystemInfo(): Promise<SystemInfo> {
-  return tauriInvoke<SystemInfo>('get_system_info')
+  return tauriInvoke<SystemInfo>("get_system_info");
 }
 ```
 
 ### 场景 2: 添加新页面
 
 **步骤**：
+
 1. 在 `src/views/` 创建新的 `.vue` 文件
 2. 在 `src/router/index.ts` 添加路由
 3. 在 `src/components/layout/AppSidebar.vue` 的 `navItems` 添加导航项
@@ -230,6 +256,7 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 ### 场景 3: 修改版本号
 
 **必须同步修改以下 3 个文件**：
+
 1. `package.json` - `"version": "x.x.x"`
 2. `src-tauri/Cargo.toml` - `version = "x.x.x"`
 3. `src-tauri/tauri.conf.json` - `"version": "x.x.x"`
@@ -239,11 +266,10 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 在 `src-tauri/capabilities/default.json` 的 `permissions` 数组中添加权限。
 
 **示例**：添加 opener 插件的 openUrl 权限
+
 ```json
 {
-  "permissions": [
-    "opener:allow-open-url"
-  ]
+  "permissions": ["opener:allow-open-url"]
 }
 ```
 
@@ -252,6 +278,7 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 ### 场景 5: 修改窗口配置
 
 在 `src-tauri/tauri.conf.json` 的 `windows` 数组中修改：
+
 - `width` / `height` - 窗口大小
 - `title` - 窗口标题
 - `resizable` - 是否可调整大小
@@ -269,22 +296,24 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 ### 1. Tauri 插件使用
 
 #### opener 插件（打开外部链接）
-```typescript
-import { openUrl } from '@tauri-apps/plugin-opener'
 
-await openUrl('https://example.com')
+```typescript
+import { openUrl } from "@tauri-apps/plugin-opener";
+
+await openUrl("https://example.com");
 ```
 
 **权限**：`opener:allow-open-url`
 
 #### dialog 插件（文件对话框）
+
 ```typescript
-import { open } from '@tauri-apps/plugin-dialog'
+import { open } from "@tauri-apps/plugin-dialog";
 
 const file = await open({
   multiple: false,
-  filters: [{ name: 'JAR', extensions: ['jar'] }]
-})
+  filters: [{ name: "JAR", extensions: ["jar"] }],
+});
 ```
 
 **权限**：`dialog:allow-open`
@@ -292,6 +321,7 @@ const file = await open({
 ### 2. 版本比较逻辑
 
 在 `src-tauri/src/commands/update.rs` 中实现了语义化版本比较：
+
 ```rust
 fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
     // 比较 major.minor.patch
@@ -301,12 +331,13 @@ fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
 ### 3. 控制台日志轮询
 
 前端每 800ms 轮询一次后端获取新日志：
+
 ```typescript
 // src/stores/consoleStore.ts
 setInterval(async () => {
-  const logs = await getServerLogs(serverId)
+  const logs = await getServerLogs(serverId);
   // 更新 store
-}, 800)
+}, 800);
 ```
 
 ### 4. 毛玻璃效果实现
@@ -324,11 +355,12 @@ setInterval(async () => {
 使用 Pinia，状态定义在 `src/stores/` 中。
 
 **示例**：访问 serverStore
-```typescript
-import { useServerStore } from '@/stores/serverStore'
 
-const serverStore = useServerStore()
-const servers = serverStore.servers
+```typescript
+import { useServerStore } from "@/stores/serverStore";
+
+const serverStore = useServerStore();
+const servers = serverStore.servers;
 ```
 
 ---
@@ -340,12 +372,14 @@ const servers = serverStore.servers
 **原因**：opener 插件导入错误或权限配置错误
 
 **解决方案**：
+
 1. 确保导入正确：`import { openUrl } from '@tauri-apps/plugin-opener'`
 2. 确保权限正确：`opener:allow-open-url`（不是 `opener:allow-open`）
 
 ### 问题 2: 命令调用失败
 
 **检查清单**：
+
 1. 命令是否在 `lib.rs` 的 `generate_handler!` 中注册
 2. 命令函数是否添加了 `#[command]` 宏
 3. 参数类型是否匹配
@@ -354,16 +388,19 @@ const servers = serverStore.servers
 ### 问题 3: 端口冲突
 
 **默认端口**：
+
 - 海晶灯主项目：1420
 - 开发者工具：1430
 
 **修改位置**：
+
 - `vite.config.ts` - `server.port`
 - `src-tauri/tauri.conf.json` - `devUrl`
 
 ### 问题 4: 构建失败
 
 **常见原因**：
+
 1. Rust 依赖未安装：运行 `cargo build`
 2. Node 依赖未安装：运行 `npm install`
 3. Tauri CLI 未安装：运行 `npm install -g @tauri-apps/cli`
@@ -397,6 +434,7 @@ cd src-tauri && cargo test
 ## Git 工作流
 
 ### 发布新版本流程
+
 1. 修改版本号（3 个文件）
 2. 提交代码：`git add . && git commit -m "chore: bump version to x.x.x"`
 3. 创建标签：`git tag vx.x.x`
@@ -410,6 +448,7 @@ cd src-tauri && cargo test
 ## 项目依赖
 
 ### 前端依赖
+
 - `vue` - Vue 3 框架
 - `vue-router` - 路由管理
 - `pinia` - 状态管理
@@ -420,6 +459,7 @@ cd src-tauri && cargo test
 - `vite` - 构建工具
 
 ### 后端依赖（Cargo.toml）
+
 - `tauri` - Tauri 框架
 - `serde` - 序列化/反序列化
 - `serde_json` - JSON 处理
@@ -431,6 +471,7 @@ cd src-tauri && cargo test
 ## 注意事项
 
 ### 1. 不要修改的文件
+
 - `node_modules/` - 自动生成
 - `src-tauri/target/` - 构建产物
 - `dist/` - 前端构建产物
@@ -438,17 +479,20 @@ cd src-tauri && cargo test
 - `Cargo.lock` - 自动生成
 
 ### 2. 修改时需要同步的文件
+
 - 版本号：3 个文件（package.json, Cargo.toml, tauri.conf.json）
-- 添加命令：commands/*.rs + mod.rs + lib.rs + api/*.ts
+- 添加命令：commands/_.rs + mod.rs + lib.rs + api/_.ts
 - 添加路由：router/index.ts + AppSidebar.vue
 
 ### 3. 代码风格
+
 - 前端：使用 2 空格缩进
 - 后端：使用 4 空格缩进（Rust 标准）
 - 使用有意义的变量名和函数名
 - 添加必要的注释
 
 ### 4. 性能优化建议
+
 - 避免在循环中调用 Tauri 命令
 - 大量数据传输时考虑分页
 - 使用 Pinia store 缓存数据，减少重复请求
@@ -458,6 +502,7 @@ cd src-tauri && cargo test
 ## 相关项目
 
 ### sea-lantern-dev-tools
+
 独立的开发者工具项目，用于可视化编辑海晶灯的配置文件。
 
 **位置**：`D:\Game\minecraft\server\Sea Lantern\sea-lantern-dev-tools\`
@@ -465,7 +510,6 @@ cd src-tauri && cargo test
 **功能**：编辑应用信息（版本、名称、作者、构建年份）
 
 ---
-
 
 ## 联系方式
 

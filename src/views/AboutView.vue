@@ -10,24 +10,24 @@ import { checkUpdate, type UpdateInfo } from "../api/update";
 import { getAppVersion, BUILD_YEAR } from "../utils/version";
 import { i18n } from "../locales";
 
-const version = ref('加载中...');
+const version = ref("加载中...");
 const buildDate = BUILD_YEAR;
 
 const contributors = ref(contributorsList);
 
 const updateInfo = ref<UpdateInfo | null>(null);
 const updateError = ref<string | null>(null);
-const updateStatus = ref<'idle' | 'checking' | 'latest' | 'available' | 'error'>('idle');
+const updateStatus = ref<"idle" | "checking" | "latest" | "available" | "error">("idle");
 let resetTimer: ReturnType<typeof setTimeout> | null = null;
 
 const showUpdateModal = ref(false);
 const modalUpdateInfo = ref<UpdateInfo | null>(null);
 
 const showNotification = ref(false);
-const notificationMessage = ref('');
-const notificationType = ref<'success' | 'error' | 'warning' | 'info'>('info');
+const notificationMessage = ref("");
+const notificationType = ref<"success" | "error" | "warning" | "info">("info");
 
-function showNotify(msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
+function showNotify(msg: string, type: "success" | "error" | "warning" | "info" = "info") {
   notificationMessage.value = msg;
   notificationType.value = type;
   showNotification.value = true;
@@ -55,16 +55,16 @@ function closeUpdateModal() {
 
 function getButtonVariant(): "primary" | "secondary" | "danger" | "success" {
   switch (updateStatus.value) {
-    case 'checking':
-      return 'secondary';
-    case 'latest':
-      return 'success';
-    case 'available':
-      return 'primary';
-    case 'error':
-      return 'danger';
+    case "checking":
+      return "secondary";
+    case "latest":
+      return "success";
+    case "available":
+      return "primary";
+    case "error":
+      return "danger";
     default:
-      return 'secondary';
+      return "secondary";
   }
 }
 
@@ -82,8 +82,8 @@ async function handleCheckUpdate() {
     clearTimeout(resetTimer);
     resetTimer = null;
   }
-  
-  updateStatus.value = 'checking';
+
+  updateStatus.value = "checking";
   updateError.value = null;
   updateInfo.value = null;
 
@@ -92,11 +92,11 @@ async function handleCheckUpdate() {
 
     if (info && info.has_update) {
       updateInfo.value = info;
-      updateStatus.value = 'available';
+      updateStatus.value = "available";
       modalUpdateInfo.value = info;
       showUpdateModal.value = true;
-      if (info.source === 'github') {
-        showNotify('Gitee 不可用，已切换到 GitHub', 'warning');
+      if (info.source === "github") {
+        showNotify("Gitee 不可用，已切换到 GitHub", "warning");
       }
     } else {
       updateInfo.value = {
@@ -104,24 +104,24 @@ async function handleCheckUpdate() {
         latest_version: version.value,
         current_version: version.value,
       };
-      updateStatus.value = 'latest';
-      
-      if (info?.source === 'github') {
-        showNotify('Gitee 不可用，已切换到 GitHub', 'warning');
+      updateStatus.value = "latest";
+
+      if (info?.source === "github") {
+        showNotify("Gitee 不可用，已切换到 GitHub", "warning");
       }
-      
+
       resetTimer = setTimeout(() => {
-        updateStatus.value = 'idle';
+        updateStatus.value = "idle";
         updateInfo.value = null;
         resetTimer = null;
       }, 3000);
     }
   } catch (error) {
-    showNotify('检查更新失败: ' + (error as string), 'error');
-    updateStatus.value = 'error';
-    
+    showNotify("检查更新失败: " + (error as string), "error");
+    updateStatus.value = "error";
+
     resetTimer = setTimeout(() => {
-      updateStatus.value = 'idle';
+      updateStatus.value = "idle";
       resetTimer = null;
     }, 3000);
   }
@@ -173,7 +173,7 @@ async function handleManualDownload() {
 
       <!-- 此处缺一段代码 -->
       <!-- 点击加入开发 -->
-      
+
       <!-- Contributor Wall -->
       <div class="contributor-section">
         <div class="section-header">
@@ -182,11 +182,7 @@ async function handleManualDownload() {
         </div>
 
         <div class="contributor-grid">
-          <div
-            v-for="c in contributors"
-            :key="c.name"
-            class="contributor-card glass-card"
-          >
+          <div v-for="c in contributors" :key="c.name" class="contributor-card glass-card">
             <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>
@@ -197,7 +193,15 @@ async function handleManualDownload() {
           <!-- Join Card -->
           <div class="contributor-card glass-card join-card">
             <div class="join-icon">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--sl-primary)" stroke-width="1.5" stroke-linecap="round">
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--sl-primary)"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              >
                 <path d="M12 4v16m8-8H4" />
               </svg>
             </div>
@@ -245,19 +249,66 @@ async function handleManualDownload() {
               style="width: 100%"
             >
               <span class="btn-content">
-                <svg v-if="updateStatus === 'checking'" class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
-                  <path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-5.07l-2.83 2.83M9.76 14.24l-2.83 2.83m11.14 0l-2.83-2.83M9.76 9.76L6.93 6.93" />
+                <svg
+                  v-if="updateStatus === 'checking'"
+                  class="animate-spin"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="margin-right: 6px"
+                >
+                  <path
+                    d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-5.07l-2.83 2.83M9.76 14.24l-2.83 2.83m11.14 0l-2.83-2.83M9.76 9.76L6.93 6.93"
+                  />
                 </svg>
-                <svg v-else-if="updateStatus === 'latest'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <svg
+                  v-else-if="updateStatus === 'latest'"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="margin-right: 6px"
+                >
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
-                <svg v-else-if="updateStatus === 'available'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <svg
+                  v-else-if="updateStatus === 'available'"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="margin-right: 6px"
+                >
                   <polyline points="17 1 21 5 17 9"></polyline>
                   <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
                   <polyline points="7 23 3 19 7 15"></polyline>
                   <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
                 </svg>
-                <svg v-else-if="updateStatus === 'error'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <svg
+                  v-else-if="updateStatus === 'error'"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="margin-right: 6px"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="8" x2="12" y2="12"></line>
                   <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -276,7 +327,16 @@ async function handleManualDownload() {
           <div class="contribute-ways">
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <polyline points="16 18 22 12 16 6"></polyline>
                   <polyline points="8 6 2 12 8 18"></polyline>
                 </svg>
@@ -288,7 +348,16 @@ async function handleManualDownload() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d="M12 19l7 2-7-18-7 18 7-2zm0 0v-8"></path>
                 </svg>
               </div>
@@ -299,7 +368,16 @@ async function handleManualDownload() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                   <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -312,7 +390,16 @@ async function handleManualDownload() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                   <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
@@ -324,10 +411,21 @@ async function handleManualDownload() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  <path
+                    d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+                  ></path>
                 </svg>
               </div>
               <div class="way-info">
@@ -337,7 +435,16 @@ async function handleManualDownload() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
                   <polyline points="16 6 12 2 8 6"></polyline>
                   <line x1="12" y1="2" x2="12" y2="15"></line>
@@ -460,7 +567,9 @@ async function handleManualDownload() {
   animation: sl-fade-in-up 0.6s ease 0.3s both;
 }
 
-.version-badge, .tech-badge, .license-badge {
+.version-badge,
+.tech-badge,
+.license-badge {
   padding: 4px 14px;
   border-radius: var(--sl-radius-full);
   font-size: 0.8125rem;
@@ -629,7 +738,9 @@ async function handleManualDownload() {
   border-bottom: 1px solid var(--sl-border-light);
 }
 
-.info-item:last-child { border-bottom: none; }
+.info-item:last-child {
+  border-bottom: none;
+}
 
 .info-label {
   font-size: 0.875rem;
@@ -809,9 +920,15 @@ async function handleManualDownload() {
 }
 
 @media (max-width: 768px) {
-  .info-grid { grid-template-columns: 1fr; }
-  .contribute-ways { grid-template-columns: 1fr; }
-  .contributor-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  .contribute-ways {
+    grid-template-columns: 1fr;
+  }
+  .contributor-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
 }
 
 .contributor-link {
@@ -819,7 +936,7 @@ async function handleManualDownload() {
   cursor: pointer;
   transition: all var(--sl-transition-normal);
   border-radius: var(--sl-radius-md);
-  line-height: 0;  
+  line-height: 0;
 }
 
 .contributor-link:hover {
@@ -829,5 +946,4 @@ async function handleManualDownload() {
 .contributor-link:hover .contributor-avatar {
   box-shadow: var(--sl-shadow-lg);
 }
-
 </style>

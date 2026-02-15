@@ -1,28 +1,26 @@
 <script setup lang="ts">
 const PADDING_MAP = {
-  none: '0',
-  sm: 'var(--sl-space-sm, 0.5rem)',
-  md: 'var(--sl-space-md, 1rem)',
-  lg: 'var(--sl-space-lg, 1.5rem)'
-} as const
+  none: "0",
+  sm: "var(--sl-space-sm, 0.5rem)",
+  md: "var(--sl-space-md, 1rem)",
+  lg: "var(--sl-space-lg, 1.5rem)",
+} as const;
 
-
-type PaddingType = keyof typeof PADDING_MAP
+type PaddingType = keyof typeof PADDING_MAP;
 
 interface Props {
-  title?: string
-  subtitle?: string
-  hoverable?: boolean
-  padding?: PaddingType
+  title?: string;
+  subtitle?: string;
+  hoverable?: boolean;
+  padding?: PaddingType;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   hoverable: false,
-  padding: 'md'
-})
+  padding: "md",
+});
 
-
-const paddingValue = PADDING_MAP[props.padding as PaddingType]
+const paddingValue = PADDING_MAP[props.padding as PaddingType];
 </script>
 
 <template>
@@ -56,7 +54,7 @@ const paddingValue = PADDING_MAP[props.padding as PaddingType]
   flex-direction: column;
   background: var(--sl-surface, #fff);
   border-radius: var(--sl-radius-md, 6px);
-  box-shadow: var(--sl-shadow-sm, 0 1px 3px rgba(0,0,0,0.1));
+  box-shadow: var(--sl-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
   transition: box-shadow 0.2s ease;
 }
 
@@ -65,7 +63,7 @@ const paddingValue = PADDING_MAP[props.padding as PaddingType]
 }
 
 .sl-card--hoverable:hover {
-  box-shadow: var(--sl-shadow-md, 0 4px 12px rgba(0,0,0,0.15));
+  box-shadow: var(--sl-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.15));
 }
 
 .sl-card-header {

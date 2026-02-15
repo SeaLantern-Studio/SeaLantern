@@ -7,6 +7,7 @@ import SLInput from "../components/common/SLInput.vue";
 import SLSelect from "../components/common/SLSelect.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLModal from "../components/common/SLModal.vue";
+import SLSpinner from "../components/common/SLSpinner.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
@@ -38,9 +39,7 @@ const addLoading = ref(false);
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-const serverOptions = computed(() =>
-  store.servers.map((s) => ({ label: s.name, value: s.id }))
-);
+const serverOptions = computed(() => store.servers.map((s) => ({ label: s.name, value: s.id })));
 
 const serverPath = computed(() => {
   const server = store.servers.find((s) => s.id === selectedServerId.value);
@@ -61,7 +60,9 @@ onMounted(async () => {
   startRefresh();
 });
 
-onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer);
+});
 
 function startRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
@@ -164,7 +165,10 @@ async function handleAdd() {
         break;
     }
     showAddModal.value = false;
-    setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
+    setTimeout(() => {
+      success.value = null;
+      loadAll();
+    }, TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
     error.value = handleError(e, "AddPlayer");
   } finally {
@@ -173,39 +177,71 @@ async function handleAdd() {
 }
 
 async function handleRemoveWhitelist(name: string) {
-  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
+  if (!isRunning.value) {
+    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    return;
+  }
   try {
     await playerApi.removeFromWhitelist(selectedServerId.value, name);
     success.value = MESSAGES.SUCCESS.WHITELIST_REMOVED;
-    setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
-  } catch (e) { error.value = handleError(e, "RemoveWhitelist"); }
+    setTimeout(() => {
+      success.value = null;
+      loadAll();
+    }, TIME.SUCCESS_MESSAGE_DURATION);
+  } catch (e) {
+    error.value = handleError(e, "RemoveWhitelist");
+  }
 }
 
 async function handleUnban(name: string) {
-  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
+  if (!isRunning.value) {
+    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    return;
+  }
   try {
     await playerApi.unbanPlayer(selectedServerId.value, name);
     success.value = MESSAGES.SUCCESS.PLAYER_UNBANNED;
-    setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
-  } catch (e) { error.value = handleError(e, "UnbanPlayer"); }
+    setTimeout(() => {
+      success.value = null;
+      loadAll();
+    }, TIME.SUCCESS_MESSAGE_DURATION);
+  } catch (e) {
+    error.value = handleError(e, "UnbanPlayer");
+  }
 }
 
 async function handleRemoveOp(name: string) {
-  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
+  if (!isRunning.value) {
+    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    return;
+  }
   try {
     await playerApi.removeOp(selectedServerId.value, name);
     success.value = MESSAGES.SUCCESS.OP_REMOVED;
-    setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
-  } catch (e) { error.value = handleError(e, "RemoveOp"); }
+    setTimeout(() => {
+      success.value = null;
+      loadAll();
+    }, TIME.SUCCESS_MESSAGE_DURATION);
+  } catch (e) {
+    error.value = handleError(e, "RemoveOp");
+  }
 }
 
 async function handleKick(name: string) {
-  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
+  if (!isRunning.value) {
+    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    return;
+  }
   try {
     await playerApi.kickPlayer(selectedServerId.value, name);
     success.value = `${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`;
-    setTimeout(() => { success.value = null; parseOnlinePlayers(); }, TIME.SUCCESS_MESSAGE_DURATION);
-  } catch (e) { error.value = handleError(e, "KickPlayer"); }
+    setTimeout(() => {
+      success.value = null;
+      parseOnlinePlayers();
+    }, TIME.SUCCESS_MESSAGE_DURATION);
+  } catch (e) {
+    error.value = handleError(e, "KickPlayer");
+  }
 }
 
 function getAddLabel(): string {
@@ -237,7 +273,9 @@ function getAddLabel(): string {
         <span>{{ error }}</span>
         <button @click="error = null">x</button>
       </div>
-      <div v-if="success" class="msg-banner success-banner"><span>{{ success }}</span></div>
+      <div v-if="success" class="msg-banner success-banner">
+        <span>{{ success }}</span>
+      </div>
 
       <div class="tab-bar">
         <button class="tab-btn" :class="{ active: activeTab === 'online' }" @click="activeTab = 'online'">
@@ -267,7 +305,11 @@ function getAddLabel(): string {
         <div v-else-if="onlinePlayers.length === 0" class="empty-list"><p class="text-caption">{{ i18n.t('players.no_players') }}</p></div>
         <div v-for="name in onlinePlayers" :key="name" class="player-item glass-card">
           <div class="player-avatar">
-            <img :src="'https://mc-heads.net/avatar/' + name + '/32'" :alt="name" class="avatar-img" />
+            <img
+              :src="'https://mc-heads.net/avatar/' + name + '/32'"
+              :alt="name"
+              class="avatar-img"
+            />
           </div>
           <div class="player-info">
             <span class="player-name">{{ name }}</span>
@@ -283,7 +325,9 @@ function getAddLabel(): string {
       <div v-else-if="activeTab === 'whitelist'" class="player-list">
         <div v-if="whitelist.length === 0" class="empty-list"><p class="text-caption">{{ i18n.t('players.empty_whitelist') }}</p></div>
         <div v-for="p in whitelist" :key="p.name" class="player-item glass-card">
-          <div class="player-avatar"><img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" /></div>
+          <div class="player-avatar">
+            <img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" />
+          </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
             <span class="player-uuid text-mono text-caption">{{ p.uuid }}</span>
@@ -298,7 +342,9 @@ function getAddLabel(): string {
       <div v-else-if="activeTab === 'banned'" class="player-list">
         <div v-if="bannedPlayers.length === 0" class="empty-list"><p class="text-caption">{{ i18n.t('players.empty_banned') }}</p></div>
         <div v-for="p in bannedPlayers" :key="p.name" class="player-item glass-card">
-          <div class="player-avatar"><img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" /></div>
+          <div class="player-avatar">
+            <img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" />
+          </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
             <span class="text-caption">{{ i18n.t('players.ban_reason') }}: {{ p.reason || i18n.t('players.empty') }}</span>
@@ -314,7 +360,9 @@ function getAddLabel(): string {
       <div v-else-if="activeTab === 'ops'" class="player-list">
         <div v-if="ops.length === 0" class="empty-list"><p class="text-caption">{{ i18n.t('players.empty_ops') }}</p></div>
         <div v-for="p in ops" :key="p.name" class="player-item glass-card">
-          <div class="player-avatar"><img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" /></div>
+          <div class="player-avatar">
+            <img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" />
+          </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
             <span class="text-caption">{{ i18n.t('players.level') }}: {{ p.level }}</span>
@@ -342,32 +390,157 @@ function getAddLabel(): string {
 </template>
 
 <style scoped>
-.player-view { display: flex; flex-direction: column; gap: var(--sl-space-md); }
-.player-header { display: flex; align-items: flex-end; gap: var(--sl-space-lg); }
-.server-picker { min-width: 300px; }
-.server-status { display: flex; align-items: center; gap: var(--sl-space-sm); padding-bottom: 4px; }
-.status-hint { color: var(--sl-warning); }
-.empty-state { display: flex; align-items: center; justify-content: center; padding: var(--sl-space-2xl); }
-.msg-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-radius: var(--sl-radius-md); font-size: 0.875rem; }
-.error-banner { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--sl-error); }
-.success-banner { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: var(--sl-success); }
-.msg-banner button { font-weight: 600; color: inherit; }
-.tab-bar { display: flex; gap: 2px; background: var(--sl-bg-secondary); border-radius: var(--sl-radius-md); padding: 3px; width: fit-content; }
-.tab-btn { display: flex; align-items: center; gap: var(--sl-space-xs); padding: 8px 18px; border-radius: var(--sl-radius-sm); font-size: 0.875rem; font-weight: 500; color: var(--sl-text-secondary); transition: all var(--sl-transition-fast); }
-.tab-btn.active { background: var(--sl-surface); color: var(--sl-primary); box-shadow: var(--sl-shadow-sm); }
-.tab-count { min-width: 20px; height: 20px; padding: 0 6px; background: var(--sl-bg-tertiary); border-radius: var(--sl-radius-full); font-size: 0.6875rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
-.tab-btn.active .tab-count { background: var(--sl-primary-bg); color: var(--sl-primary); }
-.action-bar { display: flex; gap: var(--sl-space-sm); }
-.loading-state { display: flex; align-items: center; justify-content: center; gap: var(--sl-space-sm); padding: var(--sl-space-2xl); color: var(--sl-text-tertiary); }
-.spinner { width: 18px; height: 18px; border: 2px solid var(--sl-border); border-top-color: var(--sl-primary); border-radius: 50%; animation: sl-spin 0.8s linear infinite; }
-.player-list { display: flex; flex-direction: column; gap: var(--sl-space-sm); }
-.empty-list { display: flex; flex-direction: column; align-items: center; padding: var(--sl-space-2xl); }
-.player-item { display: flex; align-items: center; gap: var(--sl-space-md); padding: var(--sl-space-md); }
-.player-avatar { flex-shrink: 0; }
-.avatar-img { width: 36px; height: 36px; border-radius: var(--sl-radius-sm); background: var(--sl-bg-tertiary); }
-.player-info { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-.player-name { font-size: 0.9375rem; font-weight: 600; }
-.player-uuid { font-size: 0.6875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.player-actions { flex-shrink: 0; }
-.modal-form { display: flex; flex-direction: column; gap: var(--sl-space-md); }
+.player-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
+.player-header {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sl-space-lg);
+}
+.server-picker {
+  min-width: 300px;
+}
+.server-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  padding-bottom: 4px;
+}
+.status-hint {
+  color: var(--sl-warning);
+}
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sl-space-2xl);
+}
+.msg-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: var(--sl-radius-md);
+  font-size: 0.875rem;
+}
+.error-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--sl-error);
+}
+.success-banner {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: var(--sl-success);
+}
+.msg-banner button {
+  font-weight: 600;
+  color: inherit;
+}
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  background: var(--sl-bg-secondary);
+  border-radius: var(--sl-radius-md);
+  padding: 3px;
+  width: fit-content;
+}
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: 8px 18px;
+  border-radius: var(--sl-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+  transition: all var(--sl-transition-fast);
+}
+.tab-btn.active {
+  background: var(--sl-surface);
+  color: var(--sl-primary);
+  box-shadow: var(--sl-shadow-sm);
+}
+.tab-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--sl-bg-tertiary);
+  border-radius: var(--sl-radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tab-btn.active .tab-count {
+  background: var(--sl-primary-bg);
+  color: var(--sl-primary);
+}
+.action-bar {
+  display: flex;
+  gap: var(--sl-space-sm);
+}
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-2xl);
+  color: var(--sl-text-tertiary);
+}
+.player-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+.empty-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sl-space-2xl);
+}
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-md);
+  padding: var(--sl-space-md);
+}
+.player-avatar {
+  flex-shrink: 0;
+}
+.avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-tertiary);
+}
+.player-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.player-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.player-uuid {
+  font-size: 0.6875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.player-actions {
+  flex-shrink: 0;
+}
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
 </style>

@@ -66,7 +66,9 @@ const handleInput = (e: Event) => {
   background: var(--sl-surface, #fff);
   border: 1px solid var(--sl-border, #ddd);
   border-radius: 6px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   overflow: hidden;
 }
 

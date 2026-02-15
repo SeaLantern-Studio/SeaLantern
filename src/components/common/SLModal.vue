@@ -88,7 +88,9 @@ const handleClose = () => emit("close");
   background: transparent;
   color: var(--sl-text-tertiary, #6b7280);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -113,16 +115,20 @@ const handleClose = () => emit("close");
 }
 
 @keyframes overlay-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes modal-slide {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(-10px) scale(0.98);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }

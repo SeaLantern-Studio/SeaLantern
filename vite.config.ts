@@ -10,19 +10,19 @@ export default defineConfig(async () => ({
 
   // 构建优化
   build: {
-    target: 'esnext',
-    minify: 'terser',
+    target: "esnext",
+    minify: "terser",
     terserOptions: {
       compress: {
-        drop_console: false,  // 保留 console，方便调试
+        drop_console: false, // 保留 console，方便调试
         drop_debugger: true,
       },
     },
     rollupOptions: {
       output: {
         manualChunks: {
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'tauri-vendor': ['@tauri-apps/api', '@tauri-apps/plugin-dialog'],
+          "vue-vendor": ["vue", "vue-router", "pinia"],
+          "tauri-vendor": ["@tauri-apps/api", "@tauri-apps/plugin-dialog"],
         },
       },
     },

@@ -6,6 +6,7 @@ import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLSelect from "../components/common/SLSelect.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
+import SLSpinner from "../components/common/SLSpinner.vue";
 import { serverApi } from "../api/server";
 import { javaApi, type JavaInfo } from "../api/java";
 import { systemApi } from "../api/system";
@@ -50,9 +51,7 @@ async function loadDefaultSettings() {
       if (settings.default_java_path) {
         selectedJava.value = settings.default_java_path;
       } else if (javaList.value.length > 0) {
-        const preferred = javaList.value.find(
-          (j) => j.is_64bit && j.major_version >= 17
-        );
+        const preferred = javaList.value.find((j) => j.is_64bit && j.major_version >= 17);
         selectedJava.value = preferred ? preferred.path : javaList.value[0].path;
       }
     }
@@ -66,9 +65,7 @@ async function detectJava() {
   try {
     javaList.value = await javaApi.detect();
     if (javaList.value.length > 0) {
-      const preferred = javaList.value.find(
-        (j) => j.is_64bit && j.major_version >= 17
-      );
+      const preferred = javaList.value.find((j) => j.is_64bit && j.major_version >= 17);
       selectedJava.value = preferred ? preferred.path : javaList.value[0].path;
     }
 
@@ -108,9 +105,18 @@ async function pickJavaFile() {
 async function handleCreate() {
   errorMsg.value = null;
 
-  if (!jarPath.value) { errorMsg.value = "请选择服务端 JAR 文件"; return; }
-  if (!selectedJava.value) { errorMsg.value = "请选择 Java 路径"; return; }
-  if (!serverName.value.trim()) { errorMsg.value = "请输入服务器名称"; return; }
+  if (!jarPath.value) {
+    errorMsg.value = "请选择服务端 JAR 文件";
+    return;
+  }
+  if (!selectedJava.value) {
+    errorMsg.value = "请选择 Java 路径";
+    return;
+  }
+  if (!serverName.value.trim()) {
+    errorMsg.value = "请输入服务器名称";
+    return;
+  }
 
   creating.value = true;
   try {
@@ -139,9 +145,9 @@ function getJavaLabel(java: JavaInfo): string {
 }
 
 const javaOptions = computed(() => {
-  return javaList.value.map(java => ({
+  return javaList.value.map((java) => ({
     label: getJavaLabel(java),
-    value: java.path
+    value: java.path,
   }));
 });
 </script>
@@ -168,8 +174,17 @@ const javaOptions = computed(() => {
         <div class="java-header">
           <div class="java-found text-caption">{{ i18n.t('create.java_found', { count: javaList.length }) }}</div>
           <button class="rescan-btn" @click="detectJava" :disabled="javaLoading">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
+              />
             </svg>
             {{ i18n.t('create.rescan') }}
           </button>
@@ -230,30 +245,150 @@ const javaOptions = computed(() => {
 </template>
 
 <style scoped>
-.create-view { display: flex; flex-direction: column; gap: var(--sl-space-lg); max-width: 760px; margin: 0 auto; }
-.error-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--sl-radius-md); color: var(--sl-error); font-size: 0.875rem; }
-.error-close { color: var(--sl-error); font-weight: 600; }
-.java-loading { display: flex; align-items: center; gap: var(--sl-space-sm); padding: var(--sl-space-lg); color: var(--sl-text-tertiary); }
-.spinner { width: 18px; height: 18px; border: 2px solid var(--sl-border); border-top-color: var(--sl-primary); border-radius: 50%; animation: sl-spin 0.8s linear infinite; }
-.java-empty { padding: var(--sl-space-lg); text-align: center; }
-.java-select-container { display: flex; flex-direction: column; gap: var(--sl-space-sm); }
-.java-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sl-space-xs); }
-.java-found { margin: 0; }
-.rescan-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.8125rem; font-weight: 500; color: var(--sl-primary); background: var(--sl-primary-bg); border-radius: var(--sl-radius-sm); cursor: pointer; transition: all var(--sl-transition-fast); }
-.rescan-btn:hover:not(:disabled) { background: var(--sl-primary); color: white; }
-.rescan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.selected-java-path { display: flex; align-items: center; gap: var(--sl-space-xs); padding: 8px 12px; background: var(--sl-bg-tertiary); border-radius: var(--sl-radius-sm); overflow: hidden; }
-.selected-java-path .text-mono { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.java-manual { padding-top: var(--sl-space-sm); border-top: 1px solid var(--sl-border-light); }
-.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sl-space-md); }
-.server-name-row { grid-column: 1 / -1; }
-.jar-picker { grid-column: 1 / -1; }
-.pick-btn { padding: 4px 12px; font-size: 0.8125rem; font-weight: 500; color: var(--sl-primary); background: var(--sl-primary-bg); border-radius: var(--sl-radius-sm); cursor: pointer; white-space: nowrap; }
-.pick-btn:hover { background: var(--sl-primary); color: white; }
-.online-mode-cell { display: flex; flex-direction: column; gap: var(--sl-space-xs); }
-.online-mode-label { font-size: 0.8125rem; font-weight: 500; color: var(--sl-text-secondary); }
-.online-mode-box { display: flex; align-items: center; justify-content: space-between; gap: var(--sl-space-md); padding: 6px 12px; background: var(--sl-surface); border: 1px solid var(--sl-border); border-radius: var(--sl-radius-md); height: 36px; box-sizing: border-box; }
-.online-mode-text { font-size: 0.875rem; color: var(--sl-text-tertiary); }
-.create-actions { display: flex; justify-content: center; gap: var(--sl-space-md); }
-.create-actions :deep(.sl-button) { min-width: 120px; }
+.create-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-lg);
+  max-width: 760px;
+  margin: 0 auto;
+}
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-error);
+  font-size: 0.875rem;
+}
+.error-close {
+  color: var(--sl-error);
+  font-weight: 600;
+}
+.java-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-lg);
+  color: var(--sl-text-tertiary);
+}
+.java-empty {
+  padding: var(--sl-space-lg);
+  text-align: center;
+}
+.java-select-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+.java-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sl-space-xs);
+}
+.java-found {
+  margin: 0;
+}
+.rescan-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+}
+.rescan-btn:hover:not(:disabled) {
+  background: var(--sl-primary);
+  color: white;
+}
+.rescan-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.selected-java-path {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: 8px 12px;
+  background: var(--sl-bg-tertiary);
+  border-radius: var(--sl-radius-sm);
+  overflow: hidden;
+}
+.selected-java-path .text-mono {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.java-manual {
+  padding-top: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sl-space-md);
+}
+.server-name-row {
+  grid-column: 1 / -1;
+}
+.jar-picker {
+  grid-column: 1 / -1;
+}
+.pick-btn {
+  padding: 4px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pick-btn:hover {
+  background: var(--sl-primary);
+  color: white;
+}
+.online-mode-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+}
+.online-mode-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+}
+.online-mode-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-md);
+  padding: 6px 12px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  height: 36px;
+  box-sizing: border-box;
+}
+.online-mode-text {
+  font-size: 0.875rem;
+  color: var(--sl-text-tertiary);
+}
+.create-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--sl-space-md);
+}
+.create-actions :deep(.sl-button) {
+  min-width: 120px;
+}
 </style>

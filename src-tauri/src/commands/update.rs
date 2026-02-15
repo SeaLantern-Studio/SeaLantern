@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tauri::command;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -99,10 +99,11 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
     let gitee_source = UpdateSource::Gitee;
     let gitee_config = gitee_source.config();
 
-    let gitee_error = match fetch_release(&client, &gitee_config, current_version, gitee_source.as_str()).await {
-        Ok(info) => return Ok(info),
-        Err(err) => err,
-    };
+    let gitee_error =
+        match fetch_release(&client, &gitee_config, current_version, gitee_source.as_str()).await {
+            Ok(info) => return Ok(info),
+            Err(err) => err,
+        };
 
     let github_source = UpdateSource::GitHub;
     let github_config = github_source.config();

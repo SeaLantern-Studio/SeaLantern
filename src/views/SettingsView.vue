@@ -6,7 +6,14 @@ import SLInput from "../components/common/SLInput.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
 import SLModal from "../components/common/SLModal.vue";
 import SLSelect from "../components/common/SLSelect.vue";
-import { settingsApi, checkAcrylicSupport, applyAcrylic, getSystemFonts, type AppSettings } from "../api/settings";
+import SLSpinner from "../components/common/SLSpinner.vue";
+import {
+  settingsApi,
+  checkAcrylicSupport,
+  applyAcrylic,
+  getSystemFonts,
+  type AppSettings,
+} from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { i18n } from "../locales";
@@ -64,12 +71,12 @@ const backgroundPreviewUrl = computed(() => {
 });
 
 function getFileExtension(path: string): string {
-  return path.split('.').pop()?.toLowerCase() || '';
+  return path.split(".").pop()?.toLowerCase() || "";
 }
 
 function isAnimatedImage(path: string): boolean {
   const ext = getFileExtension(path);
-  return ext === 'gif' || ext === 'webp' || ext === 'apng';
+  return ext === "gif" || ext === "webp" || ext === "apng";
 }
 
 onMounted(async () => {
@@ -89,7 +96,7 @@ async function loadSystemFonts() {
     const fonts = await getSystemFonts();
     fontFamilyOptions.value = [
       { label: "系统默认", value: "" },
-      ...fonts.map(font => ({ label: font, value: `'${font}'` }))
+      ...fonts.map((font) => ({ label: font, value: `'${font}'` })),
     ];
   } catch (e) {
     console.error("Failed to load system fonts:", e);
@@ -145,7 +152,7 @@ function getEffectiveTheme(theme: string): "light" | "dark" {
 
 function applyTheme(theme: string) {
   const effectiveTheme = getEffectiveTheme(theme);
-  document.documentElement.setAttribute('data-theme', effectiveTheme);
+  document.documentElement.setAttribute("data-theme", effectiveTheme);
   return effectiveTheme;
 }
 
@@ -161,11 +168,11 @@ function handleFontSizeChange() {
 
 function applyFontFamily(fontFamily: string) {
   if (fontFamily) {
-    document.documentElement.style.setProperty('--sl-font-sans', fontFamily);
-    document.documentElement.style.setProperty('--sl-font-display', fontFamily);
+    document.documentElement.style.setProperty("--sl-font-sans", fontFamily);
+    document.documentElement.style.setProperty("--sl-font-display", fontFamily);
   } else {
-    document.documentElement.style.removeProperty('--sl-font-sans');
-    document.documentElement.style.removeProperty('--sl-font-display');
+    document.documentElement.style.removeProperty("--sl-font-sans");
+    document.documentElement.style.removeProperty("--sl-font-display");
   }
 }
 
@@ -179,11 +186,11 @@ function handleFontFamilyChange() {
 async function handleAcrylicChange(enabled: boolean) {
   markChanged();
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
-  
+
   if (!acrylicSupported.value) {
     return;
   }
-  
+
   try {
     const theme = settings.value?.theme || "auto";
     const isDark = getEffectiveTheme(theme) === "dark";
@@ -196,9 +203,9 @@ async function handleAcrylicChange(enabled: boolean) {
 async function handleThemeChange() {
   markChanged();
   if (!settings.value) return;
-  
+
   const effectiveTheme = applyTheme(settings.value.theme);
-  
+
   if (settings.value.acrylic_enabled && acrylicSupported.value) {
     try {
       const isDark = effectiveTheme === "dark";
@@ -238,7 +245,7 @@ async function saveSettings() {
       } catch {}
     }
 
-    window.dispatchEvent(new CustomEvent('settings-updated'));
+    window.dispatchEvent(new CustomEvent("settings-updated"));
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -283,7 +290,10 @@ async function exportSettings() {
 }
 
 async function handleImport() {
-  if (!importJson.value.trim()) { error.value = "请粘贴 JSON"; return; }
+  if (!importJson.value.trim()) {
+    error.value = "请粘贴 JSON";
+    return;
+  }
   try {
     const s = await settingsApi.importJson(importJson.value);
     settings.value = s;
@@ -528,7 +538,14 @@ function clearBackgroundImage() {
                 <span class="setting-desc">{{ i18n.t('settings.background_desc') }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </div>
@@ -546,7 +563,10 @@ function clearBackgroundImage() {
                         v-show="bgPreviewLoaded || !bgPreviewLoading"
                         :src="backgroundPreviewUrl"
                         alt="Background preview"
-                        @load="bgPreviewLoaded = true; bgPreviewLoading = false"
+                        @load="
+                          bgPreviewLoaded = true;
+                          bgPreviewLoading = false;
+                        "
                         @loadstart="bgPreviewLoading = true"
                         @error="bgPreviewLoading = false"
                         loading="lazy"
@@ -684,65 +704,143 @@ function clearBackgroundImage() {
 
 <style scoped>
 .settings-view {
-  display: flex; flex-direction: column; gap: var(--sl-space-lg);
-  max-width: 860px; margin: 0 auto; padding-bottom: var(--sl-space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-lg);
+  max-width: 860px;
+  margin: 0 auto;
+  padding-bottom: var(--sl-space-2xl);
 }
 
 .msg-banner {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; border-radius: var(--sl-radius-md); font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: var(--sl-radius-md);
+  font-size: 0.875rem;
 }
-.error-banner { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--sl-error); }
-.success-banner { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: var(--sl-success); }
-.msg-banner button { font-weight: 600; color: inherit; }
+.error-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--sl-error);
+}
+.success-banner {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: var(--sl-success);
+}
+.msg-banner button {
+  font-weight: 600;
+  color: inherit;
+}
 
 .loading-state {
-  display: flex; align-items: center; justify-content: center;
-  gap: var(--sl-space-sm); padding: var(--sl-space-2xl); color: var(--sl-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-2xl);
+  color: var(--sl-text-tertiary);
 }
-.spinner { width: 18px; height: 18px; border: 2px solid var(--sl-border); border-top-color: var(--sl-primary); border-radius: 50%; animation: sl-spin 0.8s linear infinite; }
 
-.settings-group { display: flex; flex-direction: column; }
+.settings-group {
+  display: flex;
+  flex-direction: column;
+}
 
 .setting-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sl-space-md) 0; border-bottom: 1px solid var(--sl-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sl-space-md) 0;
+  border-bottom: 1px solid var(--sl-border-light);
   gap: var(--sl-space-lg);
 }
-.setting-row:last-child { border-bottom: none; }
-.setting-row.full-width { flex-direction: column; align-items: stretch; }
-
-.setting-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.setting-label { font-size: 0.9375rem; font-weight: 500; color: var(--sl-text-primary); }
-.setting-desc { font-size: 0.8125rem; color: var(--sl-text-tertiary); line-height: 1.4; }
-
-.input-sm { width: 120px; flex-shrink: 0; }
-.input-lg { width: 320px; flex-shrink: 0; }
-
-.jvm-textarea, .import-textarea {
-  width: 100%; margin-top: var(--sl-space-sm);
-  padding: var(--sl-space-sm) var(--sl-space-md);
-  font-family: var(--sl-font-mono); font-size: 0.8125rem;
-  color: var(--sl-text-primary); background: var(--sl-surface);
-  border: 1px solid var(--sl-border); border-radius: var(--sl-radius-md);
-  resize: vertical; line-height: 1.6;
+.setting-row:last-child {
+  border-bottom: none;
 }
-.jvm-textarea:focus, .import-textarea:focus {
-  border-color: var(--sl-primary); box-shadow: 0 0 0 3px var(--sl-primary-bg); outline: none;
+.setting-row.full-width {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.setting-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.setting-label {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--sl-text-primary);
+}
+.setting-desc {
+  font-size: 0.8125rem;
+  color: var(--sl-text-tertiary);
+  line-height: 1.4;
+}
+
+.input-sm {
+  width: 120px;
+  flex-shrink: 0;
+}
+.input-lg {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.jvm-textarea,
+.import-textarea {
+  width: 100%;
+  margin-top: var(--sl-space-sm);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  font-family: var(--sl-font-mono);
+  font-size: 0.8125rem;
+  color: var(--sl-text-primary);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  resize: vertical;
+  line-height: 1.6;
+}
+.jvm-textarea:focus,
+.import-textarea:focus {
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 3px var(--sl-primary-bg);
+  outline: none;
 }
 
 .settings-actions {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sl-space-md) 0; border-top: 1px solid var(--sl-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sl-space-md) 0;
+  border-top: 1px solid var(--sl-border);
 }
-.actions-left, .actions-right { display: flex; align-items: center; gap: var(--sl-space-sm); }
+.actions-left,
+.actions-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+}
 
 .unsaved-hint {
-  font-size: 0.8125rem; color: var(--sl-warning); font-weight: 500;
-  padding: 2px 10px; background: rgba(245,158,11,0.1); border-radius: var(--sl-radius-full);
+  font-size: 0.8125rem;
+  color: var(--sl-warning);
+  font-weight: 500;
+  padding: 2px 10px;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: var(--sl-radius-full);
 }
 
-.import-form { display: flex; flex-direction: column; gap: var(--sl-space-md); }
+.import-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
 
 .bg-image-picker {
   display: flex;
@@ -789,11 +887,7 @@ function clearBackgroundImage() {
   border: 3px solid var(--sl-border);
   border-top-color: var(--sl-primary);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  animation: sl-spin 1s linear infinite;
 }
 
 .bg-animated-badge {
@@ -814,7 +908,7 @@ function clearBackgroundImage() {
   left: 0;
   right: 0;
   padding: var(--sl-space-sm) var(--sl-space-md);
-  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
