@@ -84,6 +84,12 @@ export const contributors: Contributor[] = [
     avatar: "https://mc-heads.net/avatar/zhu_hao_tian/64",
     url: "https://github.com/zhu1h1t1",
   },
+  {
+    name: "欧耶熊猫人",
+    role: "Github文档转英文",
+    avatar: "https://mc-heads.net/avatar/Pandaman_AF/64",
+    url: "https://github.com/PandamanAF",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
