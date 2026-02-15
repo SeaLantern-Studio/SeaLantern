@@ -10,4 +10,8 @@ SETTINGS_VERIFICATION.md
 *.backup
 test-router.html
 sync.bat
+# 忽略包管理器生成的锁文件
+package-lock.json
+yarn.lock
 bun.lock
+pnpm-lock.yaml
