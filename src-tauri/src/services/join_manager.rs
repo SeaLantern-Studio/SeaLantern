@@ -49,10 +49,4 @@ impl JoinManager {
 
         Err(format!("无法解析服务器 ID: {}", id))
     }
-
-    /// 注册一个新的 ID 映射（本地）
-    pub fn register_id(&self, id: String, host: String, port: u16) {
-        let mut map = self.id_map.lock().unwrap();
-        map.insert(id, ServerAddress { host, port });
-    }
 }

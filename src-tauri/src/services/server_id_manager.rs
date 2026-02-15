@@ -77,6 +77,10 @@ impl ServerIdManager {
             .filter(|c| c.is_alphanumeric() || *c == '-')
             .collect::<String>();
 
+        if sanitized.is_empty() {
+            return Self::generate_id();
+        }
+
         format!("{}-{}", sanitized, Uuid::new_v4().to_string()[..4].to_lowercase())
     }
 

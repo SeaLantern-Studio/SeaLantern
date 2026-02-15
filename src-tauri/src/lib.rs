@@ -80,7 +80,7 @@ pub fn run() {
             update_commands::open_download_url,
             mods_commands::search_mods,
             mods_commands::install_mod,
-            join_commands::resolve_server_id,
+            join_commands::resolve_join_server_id,
             join_commands::join_server_by_id,
             server_id_commands::create_server_id,
             server_id_commands::resolve_server_id,
