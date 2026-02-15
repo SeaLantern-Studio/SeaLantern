@@ -10,7 +10,8 @@ export const useI18nStore = defineStore('i18n', {
     isChinese: (state) => state.locale === 'zh-CN' || state.locale === 'zh-TW',
     isSimplifiedChinese: (state) => state.locale === 'zh-CN',
     isTraditionalChinese: (state) => state.locale === 'zh-TW',
-    isEnglish: (state) => state.locale === 'en-US'
+    isEnglish: (state) => state.locale === 'en-US',
+    isDongbeiChinese: (state) => state.locale === 'zh-NE'
   },
   actions: {
     setLocale(locale: string) {

@@ -1,6 +1,7 @@
 import zhCN from './zh-CN.json';
 import enUS from './en-US.json';
 import zhTW from './zh-TW.json';
+import zhNE from './zh-NE.json';
 
 interface Translation {
   [key: string]: any;
@@ -13,7 +14,8 @@ interface Translations {
 const translations: Translations = {
   'zh-CN': zhCN,
   'en-US': enUS,
-  'zh-TW': zhTW
+  'zh-TW': zhTW,
+  'zh-NE': zhNE
 };
 
 import { ref } from 'vue';

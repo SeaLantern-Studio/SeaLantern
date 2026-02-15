@@ -22,7 +22,8 @@
     "language": "語言",
     "chinese": "簡中",
     "english": "EN",
-    "chinese_tw": "繁中"
+    "chinese_tw": "繁中",
+    "chinese_dongbei": "东北话"
   },
   "home": {
     "title": "伺服器管理",
