@@ -83,231 +83,235 @@ No Electron,No Node Backend,No Webpack.Quick launch,small size,save RAM.
 ```
 sea-lantern/
 │
-├── src/                                前端代码（Vue 3 + TypeScript）
+├── src/                                Frontend Code (Vue 3 + TypeScript)
 │   │
-│   ├── api/                           与 Rust 后端通信的封装层
-│   │   ├── tauri.ts                  基础 invoke 封装，所有 API 的入口
-│   │   ├── server.ts                 服务器管理 API（创建、启动、停止、日志）
-│   │   ├── java.ts                   Java 环境检测 API
-│   │   ├── config.ts                 配置文件读写 API
-│   │   ├── player.ts                 玩家管理 API（白名单、封禁、OP）
-│   │   ├── settings.ts               应用设置 API
-│   │   ├── system.ts                 系统信息、文件对话框 API
-│   │   └── update.ts                 软件更新检查 API
+│   ├── api/                           Encapsulation layer for communicating with Rust backend
+│   │   ├── tauri.ts                  Basic invoke encapsulation, entry point for all APIs
+│   │   ├── server.ts                 Server management APIs (create, start, stop, logs)
+│   │   ├── java.ts                   Java environment detection APIs
+│   │   ├── config.ts                 Configuration file read/write APIs
+│   │   ├── player.ts                 Player management APIs (whitelist, ban, OP)
+│   │   ├── settings.ts               Application settings APIs
+│   │   ├── system.ts                 System information, file dialog APIs
+│   │   └── update.ts                 Software update check APIs
 │   │
-│   ├── components/                    UI 组件
-│   │   ├── common/                   通用组件（整个项目的积木块）
-│   │   │   ├── SLButton.vue         按钮组件
-│   │   │   ├── SLCard.vue           卡片容器
-│   │   │   ├── SLInput.vue          输入框组件
-│   │   │   ├── SLSelect.vue         下拉选择组件
-│   │   │   ├── SLSwitch.vue         开关组件
-│   │   │   ├── SLModal.vue          弹窗组件
-│   │   │   ├── SLProgress.vue       进度条组件
-│   │   │   └── SLBadge.vue          状态标签组件
+│   ├── components/                    UI Components
+│   │   ├── common/                   Common components (building blocks for the entire project)
+│   │   │   ├── SLButton.vue         Button component
+│   │   │   ├── SLCard.vue           Card container
+│   │   │   ├── SLInput.vue          Input component
+│   │   │   ├── SLSelect.vue         Dropdown select component
+│   │   │   ├── SLSwitch.vue         Switch component
+│   │   │   ├── SLModal.vue          Modal dialog component
+│   │   │   ├── SLProgress.vue       Progress bar component
+│   │   │   └── SLBadge.vue          Status badge component
 │   │   │
-│   │   ├── layout/                   页面布局组件
-│   │   │   ├── AppLayout.vue        总布局（左侧栏 + 右侧内容区）
-│   │   │   ├── AppSidebar.vue       侧边导航栏
-│   │   │   └── AppHeader.vue        顶部标题栏
+│   │   ├── layout/                   Page layout components
+│   │   │   ├── AppLayout.vue        Main layout (sidebar + content area)
+│   │   │   ├── AppSidebar.vue       Side navigation bar
+│   │   │   └── AppHeader.vue        Top header bar
 │   │   │
-│   │   └── splash/                   启动画面
-│   │       └── SplashScreen.vue     应用启动时的加载动画
+│   │   └── splash/                   Splash screen
+│   │       └── SplashScreen.vue     Loading animation when app starts
 │   │
-│   ├── views/                         页面视图（每个路由对应一个）
-│   │   ├── HomeView.vue              首页（服务器列表、系统状态）
-│   │   ├── CreateServerView.vue     创建/导入服务器页面
-│   │   ├── ConsoleView.vue          控制台页面（实时日志、命令输入）
-│   │   ├── ConfigView.vue           配置编辑页面（server.properties）
-│   │   ├── PlayerView.vue           玩家管理页面（白名单、封禁、OP）
-│   │   ├── SettingsView.vue         应用设置页面
-│   │   └── AboutView.vue            关于页面（贡献者墙、更新检查）
+│   ├── views/                         Page views (one per route)
+│   │   ├── HomeView.vue              Home page (server list, system status)
+│   │   ├── CreateServerView.vue     Create/import server page
+│   │   ├── ConsoleView.vue          Console page (real-time logs, command input)
+│   │   ├── ConfigView.vue           Configuration edit page (server.properties)
+│   │   ├── PlayerView.vue           Player management page (whitelist, ban, OP)
+│   │   ├── SettingsView.vue         Application settings page
+│   │   └── AboutView.vue            About page (contributor wall, update check)
 │   │
-│   ├── stores/                        Pinia 状态管理
-│   │   ├── index.ts                  Pinia 实例初始化
-│   │   ├── serverStore.ts           服务器列表和运行状态
-│   │   ├── consoleStore.ts          控制台日志（切换页面不丢失）
-│   │   └── uiStore.ts               界面状态（侧栏折叠等）
+│   ├── stores/                        Pinia state management
+│   │   ├── index.ts                  Pinia instance initialization
+│   │   ├── serverStore.ts           Server list and running status
+│   │   ├── consoleStore.ts          Console logs (persist across page switches)
+│   │   └── uiStore.ts               UI state (sidebar collapse, etc.)
 │   │
-│   ├── styles/                        全局样式
-│   │   ├── variables.css            CSS 变量（颜色、间距、圆角、字体、阴影）
-│   │   ├── reset.css                浏览器样式重置
-│   │   ├── typography.css           排版样式
-│   │   ├── animations.css           动画关键帧
-│   │   └── glass.css                毛玻璃效果样式
+│   ├── styles/                        Global styles
+│   │   ├── variables.css            CSS variables (colors, spacing, border radius, fonts, shadows)
+│   │   ├── reset.css                Browser style reset
+│   │   ├── typography.css           Typography styles
+│   │   ├── animations.css           Animation keyframes
+│   │   └── glass.css                Glass morphism effect styles
 │   │
-│   ├── data/                          静态数据
-│   │   └── contributors.ts          贡献者信息列表
+│   ├── data/                          Static data
+│   │   └── contributors.ts          Contributor information list
 │   │
-│   ├── router/                        路由配置
-│   │   └── index.ts                 路由表定义
+│   ├── router/                        Routing configuration
+│   │   └── index.ts                 Route table definition
 │   │
-│   ├── App.vue                        根组件
-│   ├── main.ts                        应用入口（初始化 Vue、Pinia、Router）
-│   └── style.css                      样式汇总导入
+│   ├── App.vue                        Root component
+│   ├── main.ts                        App entry point (initialize Vue, Pinia, Router)
+│   └── style.css                      Style summary import
 │
-├── src-tauri/                         后端代码（Rust + Tauri 2）
+├── src-tauri/                         Backend code (Rust + Tauri 2)
 │   │
 │   ├── src/
 │   │   │
-│   │   ├── commands/                 Tauri 命令（前端 invoke 调用的 API）
-│   │   │   ├── mod.rs               模块导出
-│   │   │   ├── server.rs            服务器管理命令
-│   │   │   ├── java.rs              Java 检测命令
-│   │   │   ├── config.rs            配置文件读写命令
-│   │   │   ├── player.rs            玩家管理命令
-│   │   │   ├── settings.rs          应用设置命令
-│   │   │   ├── system.rs            系统信息、文件对话框命令
-│   │   │   └── update.rs            软件更新检查命令
+│   │   ├── commands/                 Tauri commands (APIs called by frontend invoke)
+│   │   │   ├── mod.rs               Module exports
+│   │   │   ├── server.rs            Server management commands
+│   │   │   ├── java.rs              Java detection commands
+│   │   │   ├── config.rs            Configuration file read/write commands
+│   │   │   ├── player.rs            Player management commands
+│   │   │   ├── settings.rs          Application settings commands
+│   │   │   ├── system.rs            System information, file dialog commands
+│   │   │   └── update.rs            Software update check commands
 │   │   │
-│   │   ├── services/                业务逻辑层
-│   │   │   ├── mod.rs               模块导出
-│   │   │   ├── server_manager.rs   服务器进程管理、日志读取
-│   │   │   ├── java_detector.rs    Java 环境扫描器
-│   │   │   ├── config_parser.rs    .properties 文件解析器
-│   │   │   ├── player_manager.rs   玩家数据文件读取
-│   │   │   ├── settings_manager.rs 应用设置持久化
-│   │   │   └── global.rs            全局单例管理器
+│   │   ├── services/                Business logic layer
+│   │   │   ├── mod.rs               Module exports
+│   │   │   ├── server_manager.rs   Server process management, log reading
+│   │   │   ├── java_detector.rs    Java environment scanner
+│   │   │   ├── config_parser.rs    .properties file parser
+│   │   │   ├── player_manager.rs   Player data file reader
+│   │   │   ├── settings_manager.rs Application settings persistence
+│   │   │   └── global.rs            Global singleton manager
 │   │   │
-│   │   ├── models/                  数据结构定义
-│   │   │   ├── mod.rs               模块导出
-│   │   │   ├── server.rs            服务器实例、状态数据结构
-│   │   │   ├── config.rs            配置项数据结构
-│   │   │   ├── settings.rs          应用设置数据结构
-│   │   │   └── dev_config.rs        开发者配置数据结构
+│   │   ├── models/                  Data structure definitions
+│   │   │   ├── mod.rs               Module exports
+│   │   │   ├── server.rs            Server instance, status data structures
+│   │   │   ├── config.rs            Configuration item data structures
+│   │   │   ├── settings.rs          Application settings data structures
+│   │   │   └── dev_config.rs        Developer configuration data structures
 │   │   │
-│   │   ├── utils/                   工具函数
-│   │   │   └── mod.rs               工具模块
+│   │   ├── utils/                   Utility functions
+│   │   │   └── mod.rs               Utility module
 │   │   │
-│   │   ├── lib.rs                   Tauri 库入口（插件注册、命令注册）
-│   │   └── main.rs                  应用主函数
+│   │   ├── lib.rs                   Tauri library entry (plugin registration, command registration)
+│   │   └── main.rs                  Application main function
 │   │
-│   ├── capabilities/                 Tauri 权限配置
-│   │   └── default.json             默认权限设置
+│   ├── capabilities/                 Tauri permission configuration
+│   │   └── default.json             Default permission settings
 │   │
-│   ├── icons/                        应用图标
+│   ├── icons/                        Application icons
 │   │   ├── 32x32.png
 │   │   ├── 128x128.png
-│   │   ├── icon.icns                macOS 图标
-│   │   └── icon.ico                 Windows 图标
+│   │   ├── icon.icns                macOS icon
+│   │   └── icon.ico                 Windows icon
 │   │
-│   ├── Cargo.toml                    Rust 依赖配置
-│   ├── Cargo.lock                    Rust 依赖锁定文件
-│   ├── tauri.conf.json              Tauri 配置（窗口大小、标题、版本等）
-│   └── build.rs                      构建脚本
+│   ├── Cargo.toml                    Rust dependency configuration
+│   ├── Cargo.lock                    Rust dependency lock file
+│   ├── tauri.conf.json              Tauri configuration (window size, title, version, etc.)
+│   └── build.rs                      Build script
 │
-├── public/                            静态资源
+├── public/                            Static assets
 │
-├── index.html                         HTML 入口文件
-├── package.json                       Node.js 依赖配置
-├── package-lock.json                  Node.js 依赖锁定文件
-├── vite.config.ts                     Vite 构建配置
-├── tsconfig.json                      TypeScript 配置
-├── tsconfig.node.json                 Node.js 环境 TypeScript 配置
-├── .gitignore                         Git 忽略文件配置
-└── README.md                          项目说明文档（你正在看的这个）
+├── index.html                         HTML entry file
+├── package.json                       Node.js dependency configuration
+├── package-lock.json                  Node.js dependency lock file
+├── vite.config.ts                     Vite build configuration
+├── tsconfig.json                      TypeScript configuration
+├── tsconfig.node.json                 TypeScript configuration for Node.js environment
+├── .gitignore                         Git ignore file configuration
+└── README.md                          Project documentation (what you're reading now)
 ```
 
-## 已实现功能
+## Implemented Features
 
-### 服务器管理
+### Server Management
 
-- 导入 JAR 文件创建服务器，一键启动和停止
-- 数据保存到 JSON，重启软件不丢失
+- Create servers by importing JAR files, with one-click start and stop functionality
+- Data saved to JSON files, ensuring persistence across application restarts
 
-### 实时控制台
+### Real-time Console
 
-- 后端用独立线程读 stdout 和 stderr
-- 前端每 800ms 轮询拉新日志
-- 支持命令输入、Tab 补全、上下键历史、快捷指令按钮
-- 日志存在全局 store 里，切页面不丢
+- Backend uses independent threads to read stdout and stderr streams
+- Frontend polls for new logs every 800ms
+- Supports command input, Tab completion, up/down arrow history navigation, and shortcut command buttons
+- Logs stored in global store, persisting when switching between pages
+  
+### Java Detection
 
-### Java 检测
+- Scans all drives from A to Z on application startup
+- Recursively searches common installation paths, including Minecraft's bundled Java in .minecraft/runtime
+- Sorts by version number and marks recommended Java versions
 
-- 启动时扫描 A 到 Z 所有盘符
-- 递归搜索常见安装路径，包括 .minecraft/runtime 里 MC 自带的 Java
-- 按版本号排序，标记推荐
+### Configuration Editing
 
-### 配置编辑
+- Reads server.properties and parses it into structured data with descriptions and categories
+- Boolean values use toggle switches, enums use dropdown selectors, numbers/strings use input fields
+- Changes are written directly back to the configuration file
 
-- 读取 server.properties，解析成带描述和分类的结构化数据
-- 布尔值用开关，枚举用下拉，数字和字符串用输入框
-- 改完直接写回文件
+### Player Management
 
-### 玩家管理
+- Reads whitelist.json / banned-players.json / ops.json to display player lists
+- Adds/removes players by sending Minecraft commands to the running server
+- Parses server logs to determine online player status
 
-- 读取 whitelist.json / banned-players.json / ops.json 显示列表
-- 添加和移除通过向运行中的服务器发送 MC 命令实现
-- 解析日志判断在线玩家
+### Application Settings
 
-### 应用设置
+- Automatically stops all servers when closing the application (enabled by default)
+- Auto-accepts EULA agreements
+- Configurable default memory allocation, port numbers, and JVM parameters
 
-- 关闭软件时自动停止所有服务器（默认开启）
-- 自动同意 EULA
-- 默认内存、端口、JVM 参数，全部可配
+### Software Updates
 
-### 软件更新
+- Checks Gitee releases to retrieve the latest version information
+- Displays update logs and provides one-click access to download links
+- Automatically compares version numbers and prompts users for updates
 
-- 检查 Gitee 发行版，获取最新版本信息
-- 显示更新日志，一键打开下载链接
-- 版本号自动比较，提示用户更新
+## Planned Features
 
-## 待开发功能
+Placeholders have been reserved for these features with existing code 
+skeletons—waiting for your contributions:
 
-这些功能的位置都预留好了，代码骨架是现成的，等你来写：
+- Download Center - Download server cores, plugins, and mods
+- Backup Management - Incremental backup and restoration of world save files
+- Intranet Penetration - FRP integration
+- Scheduled Tasks - Automatic restarts, scheduled backups, and scheduled command execution
+- Resource Management - Search and install plugins/mods from Modrinth / CurseForge
+- Dark Theme - CSS variables are already configured; just add a dark mode value set
+- Internationalization - Currently hardcoded in Chinese; can be extracted into language files(Thanks to https://github.com/FPSZ/SeaLantern/pull/20)
 
-- 下载中心 - 下载服务端核心，插件，模组
-- 备份管理 - 世界存档的增量备份和还原
-- 内网穿透 - 集成 FRP
-- 定时任务 - 自动重启、定时备份、定时执行命令
-- 资源管理 - 从 Modrinth / CurseForge 搜索安装插件和 Mod
-- 暗色主题 - CSS 变量都准备好了，加一套 dark 的值就行
-- 国际化 - 目前全是中文硬编码，可以抽成语言文件
+## Contributing
 
-## 参与开发
+Contributions are welcome! Before you start, please read the [Contributing Guidelines](CONTRIBUTING-en.md) to understand code standards and development workflows.
 
-欢迎贡献代码！在开始之前，请阅读 [贡献指南](CONTRIBUTING.md) 了解代码规范和开发流程。
+The UI is also fully customizable:
+- Colors are managed via CSS variables
+- Components are modular—replace any part you dislike
+Want to create a theme skin? Go for it.
+Want to completely redesign the layout? That's fine too.
 
-界面也是。颜色在 CSS 变量里，组件是独立的，不喜欢就换。
-想做个主题皮肤？做。想把整个布局推翻重来？也行。
+### How to Contribute
 
-### 怎么贡献
+1. Fork this repository
+2. Create a branch and implement your changes (following the [Contributing Guidelines](CONTRIBUTING-en.md)）
+3. Submit a Pull Request
+4. Your name will be added to the contributor wall on the About page
 
-1. Fork 这个仓库
-2. 建分支写代码（遵循 [贡献指南](CONTRIBUTING.md)）
-3. 提 Pull Request
-4. 你的名字会出现在关于页面的贡献者墙上
+Coding skills aren't required to contribute:just sugget what new features you want,or share UI mockups/sketches,All contributions are valued.
 
-不会写代码也行。说你想要什么功能，或者画个 UI 草图发出来，都算贡献。
+### Add a new function
 
-### 添加新功能
+If you are going to add a「Save Management」：
 
-假设你要加一个「备份管理」功能：
+**Backend**：
 
-**后端**：
+1. Create `backup_manager.rs` under `src-tauri/src/services/`,code the logic.
+2. Create `backup.rs` under `src-tauri/src/commands/`,code the Tauri command
+3. Add `pub mod backup` into `commands/mod.rs`
+4. Regist the command in `lib.rs`'s  `generate_handler!` macro.
 
-1. `src-tauri/src/services/` 下建 `backup_manager.rs`，写逻辑
-2. `src-tauri/src/commands/` 下建 `backup.rs`，写 Tauri 命令
-3. 在 `commands/mod.rs` 里加 `pub mod backup`
-4. 在 `lib.rs` 的 `generate_handler!` 宏里注册命令
-
-**前端**：
+**Fronted**：
 
 1. `src/api/` 下建 `backup.ts`，封装 invoke 调用
 2. `src/views/` 下建 `BackupView.vue`，画页面
 3. `src/router/index.ts` 里加路由
 4. `AppSidebar.vue` 的 `navItems` 数组里加一项
 
-前后端各三个文件，路由和侧栏各改一行。
+Frontend/Backend each 3 files,Change one line each for the router and the sidebar。
 
 ## License
 
 GPLv3
 
-## 致谢
+## Thank
 
-Sea Lantern 是一个开源项目，遵循 GPLv3 协议。
+Sea Lantern is an OPEN SOURCE project,Complies with the GPLv3 license.
 
-Minecraft 是 Mojang Studios 的注册商标。本项目与 Mojang 无关。
+Minecraft is Mojang Studios's trademark.Not associated with Mojang.
 
-"我们搭建了骨架，而灵魂，交给你们。"
+"We built the framework, but the soul,is up to you."
