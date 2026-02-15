@@ -6,11 +6,13 @@ import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLSelect from "../components/common/SLSelect.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
+import SLSpinner from "../components/common/SLSpinner.vue";
 import { serverApi } from "../api/server";
 import { javaApi, type JavaInfo } from "../api/java";
 import { systemApi } from "../api/system";
 import { settingsApi } from "../api/settings";
 import { useServerStore } from "../stores/serverStore";
+import { i18n } from "../locales";
 
 const router = useRouter();
 const store = useServerStore();
@@ -49,9 +51,7 @@ async function loadDefaultSettings() {
       if (settings.default_java_path) {
         selectedJava.value = settings.default_java_path;
       } else if (javaList.value.length > 0) {
-        const preferred = javaList.value.find(
-          (j) => j.is_64bit && j.major_version >= 17
-        );
+        const preferred = javaList.value.find((j) => j.is_64bit && j.major_version >= 17);
         selectedJava.value = preferred ? preferred.path : javaList.value[0].path;
       }
     }
@@ -65,9 +65,7 @@ async function detectJava() {
   try {
     javaList.value = await javaApi.detect();
     if (javaList.value.length > 0) {
-      const preferred = javaList.value.find(
-        (j) => j.is_64bit && j.major_version >= 17
-      );
+      const preferred = javaList.value.find((j) => j.is_64bit && j.major_version >= 17);
       selectedJava.value = preferred ? preferred.path : javaList.value[0].path;
     }
 
@@ -87,9 +85,13 @@ async function pickJarFile() {
     const result = await systemApi.pickJarFile();
     if (result) {
       jarPath.value = result;
+    } else {
+      // 重置 jarPath，防炸...
+      jarPath.value = "";
     }
   } catch (e) {
     console.error("Pick file error:", e);
+    jarPath.value = "";
   }
 }
 
@@ -107,9 +109,22 @@ async function pickJavaFile() {
 async function handleCreate() {
   errorMsg.value = null;
 
-  if (!jarPath.value) { errorMsg.value = "请选择服务端 JAR 文件"; return; }
-  if (!selectedJava.value) { errorMsg.value = "请选择 Java 路径"; return; }
-  if (!serverName.value.trim()) { errorMsg.value = "请输入服务器名称"; return; }
+  // 直接弹出文件选择窗口
+  await pickJarFile();
+
+  // 选择文件后检查其他条件
+  if (!jarPath.value) {
+    // 用户取消了文件选择，不显示错误信息
+    return;
+  }
+  if (!selectedJava.value) {
+    errorMsg.value = "请选择 Java 路径";
+    return;
+  }
+  if (!serverName.value.trim()) {
+    errorMsg.value = "请输入服务器名称";
+    return;
+  }
 
   creating.value = true;
   try {
@@ -138,9 +153,9 @@ function getJavaLabel(java: JavaInfo): string {
 }
 
 const javaOptions = computed(() => {
-  return javaList.value.map(java => ({
+  return javaList.value.map((java) => ({
     label: getJavaLabel(java),
-    value: java.path
+    value: java.path,
   }));
 });
 </script>
@@ -152,67 +167,87 @@ const javaOptions = computed(() => {
       <button class="error-close" @click="errorMsg = null">x</button>
     </div>
 
-    <SLCard title="Java 环境" subtitle="扫描系统中所有磁盘的 Java 安装">
+    <SLCard :title="i18n.t('create.java_env')" :subtitle="i18n.t('create.java_scan')">
       <div v-if="javaLoading" class="java-loading">
         <div class="spinner"></div>
-        <span>正在扫描所有磁盘...</span>
+        <span>{{ i18n.t("create.scanning") }}</span>
       </div>
       <div v-else-if="javaList.length === 0" class="java-empty">
-        <p class="text-body">未检测到 Java，请点击下方按钮扫描</p>
-        <SLButton variant="primary" @click="detectJava" style="margin-top: 12px;">
-          扫描 Java
+        <p class="text-body">{{ i18n.t("create.no_java") }}</p>
+        <SLButton variant="primary" @click="detectJava" style="margin-top: 12px">
+          {{ i18n.t("create.browse") }}
         </SLButton>
       </div>
       <div v-else class="java-select-container">
         <div class="java-header">
-          <div class="java-found text-caption">找到 {{ javaList.length }} 个 Java</div>
+          <div class="java-found text-caption">
+            {{ i18n.t("create.java_found", { count: javaList.length }) }}
+          </div>
           <button class="rescan-btn" @click="detectJava" :disabled="javaLoading">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
+              />
             </svg>
-            重新扫描
+            {{ i18n.t("create.rescan") }}
           </button>
         </div>
         <SLSelect
           v-model="selectedJava"
           :options="javaOptions"
-          placeholder="选择 Java 版本"
+          :placeholder="i18n.t('create.select_java')"
           searchable
           maxHeight="240px"
         />
         <div v-if="selectedJava" class="selected-java-path">
-          <span class="text-caption">路径：</span>
+          <span class="text-caption">{{ i18n.t("create.server_path") }}：</span>
           <span class="text-mono text-caption">{{ selectedJava }}</span>
         </div>
       </div>
       <div class="java-manual">
-        <SLInput label="或手动指定 Java 路径" v-model="selectedJava" placeholder="点击浏览选择 java.exe">
+        <SLInput
+          :label="i18n.t('create.java_version')"
+          v-model="selectedJava"
+          :placeholder="i18n.t('create.java_manual')"
+        >
           <template #suffix>
-            <button class="pick-btn" @click="pickJavaFile">浏览</button>
+            <button class="pick-btn" @click="pickJavaFile">{{ i18n.t("create.browse") }}</button>
           </template>
         </SLInput>
       </div>
     </SLCard>
 
-    <SLCard title="服务器配置">
+    <SLCard :title="i18n.t('create.title')">
       <div class="form-grid">
         <div class="server-name-row">
-          <SLInput label="服务器名称" placeholder="输入名称" v-model="serverName" />
+          <SLInput
+            :label="i18n.t('create.server_name')"
+            :placeholder="i18n.t('create.server_name')"
+            v-model="serverName"
+          />
         </div>
-        <div class="jar-picker">
-          <SLInput label="服务端 JAR 文件" v-model="jarPath" placeholder="点击浏览选择 .jar 文件">
-            <template #suffix>
-              <button class="pick-btn" @click="pickJarFile">浏览</button>
-            </template>
-          </SLInput>
-        </div>
-        <SLInput label="最大内存 (MB)" type="number" v-model="maxMemory" />
-        <SLInput label="最小内存 (MB)" type="number" v-model="minMemory" />
-        <SLInput label="服务器端口" type="number" v-model="port" placeholder="默认 25565" />
+
+        <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
+        <SLInput :label="i18n.t('create.min_memory')" type="number" v-model="minMemory" />
+        <SLInput
+          :label="i18n.t('settings.default_port')"
+          type="number"
+          v-model="port"
+          :placeholder="i18n.t('create.default_port_placeholder')"
+        />
         <div class="online-mode-cell">
-          <span class="online-mode-label">正版验证</span>
+          <span class="online-mode-label">{{ i18n.t("create.online_mode") }}</span>
           <div class="online-mode-box">
-            <span class="online-mode-text">{{ onlineMode ? '已开启' : '已关闭' }}</span>
+            <span class="online-mode-text">{{
+              onlineMode ? i18n.t("create.online_mode_on") : i18n.t("create.online_mode_off")
+            }}</span>
             <SLSwitch v-model="onlineMode" />
           </div>
         </div>
@@ -220,39 +255,159 @@ const javaOptions = computed(() => {
     </SLCard>
 
     <div class="create-actions">
-      <SLButton variant="secondary" size="lg" @click="router.push('/')">取消</SLButton>
+      <SLButton variant="secondary" size="lg" @click="router.push('/')">{{
+        i18n.t("create.cancel")
+      }}</SLButton>
       <SLButton variant="primary" size="lg" :loading="creating" @click="handleCreate">
-        导入服务器
+        {{ i18n.t("create.create") }}
       </SLButton>
     </div>
   </div>
 </template>
 
 <style scoped>
-.create-view { display: flex; flex-direction: column; gap: var(--sl-space-lg); max-width: 760px; margin: 0 auto; }
-.error-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--sl-radius-md); color: var(--sl-error); font-size: 0.875rem; }
-.error-close { color: var(--sl-error); font-weight: 600; }
-.java-loading { display: flex; align-items: center; gap: var(--sl-space-sm); padding: var(--sl-space-lg); color: var(--sl-text-tertiary); }
-.spinner { width: 18px; height: 18px; border: 2px solid var(--sl-border); border-top-color: var(--sl-primary); border-radius: 50%; animation: sl-spin 0.8s linear infinite; }
-.java-empty { padding: var(--sl-space-lg); text-align: center; }
-.java-select-container { display: flex; flex-direction: column; gap: var(--sl-space-sm); }
-.java-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sl-space-xs); }
-.java-found { margin: 0; }
-.rescan-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.8125rem; font-weight: 500; color: var(--sl-primary); background: var(--sl-primary-bg); border-radius: var(--sl-radius-sm); cursor: pointer; transition: all var(--sl-transition-fast); }
-.rescan-btn:hover:not(:disabled) { background: var(--sl-primary); color: white; }
-.rescan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.selected-java-path { display: flex; align-items: center; gap: var(--sl-space-xs); padding: 8px 12px; background: var(--sl-bg-tertiary); border-radius: var(--sl-radius-sm); overflow: hidden; }
-.selected-java-path .text-mono { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.java-manual { padding-top: var(--sl-space-sm); border-top: 1px solid var(--sl-border-light); }
-.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sl-space-md); }
-.server-name-row { grid-column: 1 / -1; }
-.jar-picker { grid-column: 1 / -1; }
-.pick-btn { padding: 4px 12px; font-size: 0.8125rem; font-weight: 500; color: var(--sl-primary); background: var(--sl-primary-bg); border-radius: var(--sl-radius-sm); cursor: pointer; white-space: nowrap; }
-.pick-btn:hover { background: var(--sl-primary); color: white; }
-.online-mode-cell { display: flex; flex-direction: column; gap: var(--sl-space-xs); }
-.online-mode-label { font-size: 0.8125rem; font-weight: 500; color: var(--sl-text-secondary); }
-.online-mode-box { display: flex; align-items: center; justify-content: space-between; gap: var(--sl-space-md); padding: 6px 12px; background: var(--sl-surface); border: 1px solid var(--sl-border); border-radius: var(--sl-radius-md); height: 36px; box-sizing: border-box; }
-.online-mode-text { font-size: 0.875rem; color: var(--sl-text-tertiary); }
-.create-actions { display: flex; justify-content: center; gap: var(--sl-space-md); }
-.create-actions :deep(.sl-button) { min-width: 120px; }
+.create-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-lg);
+  max-width: 760px;
+  margin: 0 auto;
+}
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-error);
+  font-size: 0.875rem;
+}
+.error-close {
+  color: var(--sl-error);
+  font-weight: 600;
+}
+.java-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-lg);
+  color: var(--sl-text-tertiary);
+}
+.java-empty {
+  padding: var(--sl-space-lg);
+  text-align: center;
+}
+.java-select-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+.java-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sl-space-xs);
+}
+.java-found {
+  margin: 0;
+}
+.rescan-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+}
+.rescan-btn:hover:not(:disabled) {
+  background: var(--sl-primary);
+  color: white;
+}
+.rescan-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.selected-java-path {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: 8px 12px;
+  background: var(--sl-bg-tertiary);
+  border-radius: var(--sl-radius-sm);
+  overflow: hidden;
+}
+.selected-java-path .text-mono {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.java-manual {
+  padding-top: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sl-space-md);
+}
+.server-name-row {
+  grid-column: 1 / -1;
+}
+
+.pick-btn {
+  padding: 4px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pick-btn:hover {
+  background: var(--sl-primary);
+  color: white;
+}
+.online-mode-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+}
+.online-mode-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+}
+.online-mode-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-md);
+  padding: 6px 12px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  height: 36px;
+  box-sizing: border-box;
+}
+.online-mode-text {
+  font-size: 0.875rem;
+  color: var(--sl-text-tertiary);
+}
+.create-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--sl-space-md);
+}
+.create-actions :deep(.sl-button) {
+  min-width: 120px;
+}
 </style>

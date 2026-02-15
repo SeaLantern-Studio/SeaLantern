@@ -106,3 +106,28 @@ pub fn delete_server(id: String) -> Result<(), String> {
 pub fn get_server_logs(id: String, since: usize) -> Vec<String> {
     manager().get_logs(&id, since)
 }
+
+#[tauri::command]
+pub fn add_server_command(id: String, name: String, command: String) -> Result<(), String> {
+    manager().add_server_command(&id, &name, &command)
+}
+
+#[tauri::command]
+pub fn update_server_command(
+    id: String,
+    command_id: String,
+    name: String,
+    command: String,
+) -> Result<(), String> {
+    manager().update_server_command(&id, &command_id, &name, &command)
+}
+
+#[tauri::command]
+pub fn delete_server_command(id: String, command_id: String) -> Result<(), String> {
+    manager().delete_server_command(&id, &command_id)
+}
+
+#[tauri::command]
+pub fn update_server_name(id: String, name: String) -> Result<(), String> {
+    manager().update_server_name(&id, &name)
+}

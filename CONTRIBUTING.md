@@ -1,5 +1,11 @@
 # 贡献指南
 
+切换语言(Change Language)
+
+[简体中文(当前)](CONTRIBUTING.md)
+
+[English Version Doc](CONTRIBUTING-en.md)
+
 感谢你对 Sea Lantern 项目的关注！这份文档将帮助你了解如何为项目做出贡献。
 
 ## 开发环境要求
@@ -13,12 +19,14 @@
 ### Rust 代码规范
 
 1. **格式化**
+
    ```bash
    # 提交前必须运行
    cargo fmt --all
    ```
 
 2. **代码检查**
+
    ```bash
    # 必须通过所有 clippy 检查
    cargo clippy --workspace -- -D warnings
@@ -79,6 +87,7 @@ Co-Authored-By: 贡献者名 <email>
 ```
 
 **类型**：
+
 - `feat`: 新功能
 - `fix`: Bug 修复
 - `docs`: 文档更新
@@ -89,6 +98,7 @@ Co-Authored-By: 贡献者名 <email>
 - `chore`: 构建/工具链相关
 
 **示例**：
+
 ```
 feat: 添加服务器备份功能
 
@@ -100,11 +110,13 @@ feat: 添加服务器备份功能
 ### Pull Request 流程
 
 1. **Fork 项目并创建分支**
+
    ```bash
    git checkout -b feature/your-feature
    ```
 
 2. **开发并提交**
+
    ```bash
    # 确保代码通过检查
    cargo fmt --all
@@ -117,6 +129,7 @@ feat: 添加服务器备份功能
    ```
 
 3. **推送并创建 PR**
+
    ```bash
    git push origin feature/your-feature
    ```

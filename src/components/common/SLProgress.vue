@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 显式导入 Vue Composition API
-import { computed } from 'vue';
+import { computed } from "vue";
 
 // 组件属性接口
 interface Props {
@@ -19,9 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 // 计算属性 - 缓存计算结果，避免重复计算
-const percentage = computed(() => 
-  Math.min((props.value / props.max) * 100, 100)
-);
+const percentage = computed(() => Math.min((props.value / props.max) * 100, 100));
 
 // 计算属性 - 四舍五入后的百分比值
 const roundedPercent = computed(() => Math.round(percentage.value));
@@ -41,11 +39,9 @@ const barClass = computed(() => `sl-progress-bar--${props.variant}`);
     <!-- 头部：标签和百分比 -->
     <div v-if="hasHeader" class="sl-progress-header">
       <span v-if="label" class="sl-progress-label">{{ label }}</span>
-      <span v-if="showPercent" class="sl-progress-percent">
-        {{ roundedPercent }}%
-      </span>
+      <span v-if="showPercent" class="sl-progress-percent"> {{ roundedPercent }}% </span>
     </div>
-    
+
     <!-- 进度条轨道 -->
     <div class="sl-progress-track">
       <!-- 进度条本身 -->
@@ -96,7 +92,7 @@ const barClass = computed(() => `sl-progress-bar--${props.variant}`);
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--sl-text-primary, #333);
-  font-family: var(--sl-font-mono, 'Menlo', 'Monaco', 'Consolas', monospace);
+  font-family: var(--sl-font-mono, "Menlo", "Monaco", "Consolas", monospace);
   flex-shrink: 0; /* 防止百分比被挤压 */
   margin-left: 0.5rem; /* 与标签保持间距 */
 }
@@ -121,29 +117,33 @@ const barClass = computed(() => `sl-progress-bar--${props.variant}`);
 
 /* 颜色变体 - 为CSS变量提供降级默认值 */
 .sl-progress-bar--primary {
-  background: linear-gradient(90deg, 
-    var(--sl-primary, #3b82f6) 0%, 
+  background: linear-gradient(
+    90deg,
+    var(--sl-primary, #3b82f6) 0%,
     color-mix(in srgb, var(--sl-primary, #3b82f6) 80%, transparent) 100%
   );
 }
 
 .sl-progress-bar--success {
-  background: linear-gradient(90deg, 
-    var(--sl-success, #10b981) 0%, 
+  background: linear-gradient(
+    90deg,
+    var(--sl-success, #10b981) 0%,
     color-mix(in srgb, var(--sl-success, #10b981) 80%, transparent) 100%
   );
 }
 
 .sl-progress-bar--warning {
-  background: linear-gradient(90deg, 
-    var(--sl-warning, #f59e0b) 0%, 
+  background: linear-gradient(
+    90deg,
+    var(--sl-warning, #f59e0b) 0%,
     color-mix(in srgb, var(--sl-warning, #f59e0b) 80%, transparent) 100%
   );
 }
 
 .sl-progress-bar--error {
-  background: linear-gradient(90deg, 
-    var(--sl-error, #ef4444) 0%, 
+  background: linear-gradient(
+    90deg,
+    var(--sl-error, #ef4444) 0%,
     color-mix(in srgb, var(--sl-error, #ef4444) 80%, transparent) 100%
   );
 }

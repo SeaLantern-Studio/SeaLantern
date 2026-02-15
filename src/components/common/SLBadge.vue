@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from "vue";
 
 export type BadgeVariant = "primary" | "success" | "warning" | "error" | "neutral" | "info";
 export type BadgeSize = "small" | "medium" | "large";
@@ -15,7 +15,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'close'): void;
+  (e: "close"): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -27,21 +27,17 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>();
 
-
 const badgeStyle = computed(() => {
   const style: Record<string, string> = {};
   if (props.maxWidth) {
-    style.maxWidth = typeof props.maxWidth === 'number' 
-      ? `${props.maxWidth}px` 
-      : props.maxWidth;
+    style.maxWidth = typeof props.maxWidth === "number" ? `${props.maxWidth}px` : props.maxWidth;
   }
   return style;
 });
 
-
 const handleClose = (event: MouseEvent) => {
   event.stopPropagation();
-  emit('close');
+  emit("close");
 };
 </script>
 
@@ -57,7 +53,7 @@ const handleClose = (event: MouseEvent) => {
         'sl-badge--rounded-medium': rounded === 'medium',
         'sl-badge--has-icon': icon,
         'sl-badge--closable': closable,
-      }
+      },
     ]"
     :style="badgeStyle"
     :title="text"
@@ -84,7 +80,6 @@ const handleClose = (event: MouseEvent) => {
 </template>
 
 <style scoped lang="scss">
-
 .sl-badge {
   --badge-padding-x: 8px;
   --badge-padding-y: 2px;
@@ -103,7 +98,9 @@ const handleClose = (event: MouseEvent) => {
   border-radius: var(--badge-radius);
   gap: var(--badge-gap);
   vertical-align: middle;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
   box-sizing: border-box;
   user-select: none;
 
@@ -201,7 +198,9 @@ const handleClose = (event: MouseEvent) => {
     cursor: pointer;
     color: inherit;
     opacity: 0.6;
-    transition: opacity 0.2s ease, background-color 0.2s ease;
+    transition:
+      opacity 0.2s ease,
+      background-color 0.2s ease;
     font-size: 0.875em;
 
     &:hover,

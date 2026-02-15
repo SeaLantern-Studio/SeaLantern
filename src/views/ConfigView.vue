@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, computed, watch, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -7,8 +7,10 @@ import SLInput from "../components/common/SLInput.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
 import SLSelect from "../components/common/SLSelect.vue";
 import SLBadge from "../components/common/SLBadge.vue";
+import SLSpinner from "../components/common/SLSpinner.vue";
 import { configApi, type ConfigEntry } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
+import { i18n } from "../locales";
 
 const route = useRoute();
 const store = useServerStore();
@@ -21,16 +23,13 @@ const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
 const searchQuery = ref("");
 const activeCategory = ref("all");
-const selectedServerId = ref("");
-
-const serverOptions = computed(() =>
-  store.servers.map((s) => ({ label: s.name, value: s.id }))
-);
-
+const categoryIndicator = ref<HTMLElement | null>(null);
 const serverPath = computed(() => {
-  const server = store.servers.find((s) => s.id === selectedServerId.value);
+  const server = store.servers.find((s) => s.id === store.currentServerId);
   return server?.path || "";
 });
+
+const currentServerId = computed(() => store.currentServerId);
 
 const categories = computed(() => {
   const cats = new Set(entries.value.map((e) => e.category));
@@ -38,14 +37,23 @@ const categories = computed(() => {
 });
 
 const categoryLabels: Record<string, string> = {
-  all: "全部", network: "网络", player: "玩家", game: "游戏",
-  world: "世界", performance: "性能", display: "显示", other: "其他",
+  all: "全部",
+  network: "网络",
+  player: "玩家",
+  game: "游戏",
+  world: "世界",
+  performance: "性能",
+  display: "显示",
+  other: "其他",
 };
 
 const filteredEntries = computed(() => {
   return entries.value.filter((e) => {
     const matchCat = activeCategory.value === "all" || e.category === activeCategory.value;
-    const matchSearch = !searchQuery.value || e.key.toLowerCase().includes(searchQuery.value.toLowerCase()) || e.description.toLowerCase().includes(searchQuery.value.toLowerCase());
+    const matchSearch =
+      !searchQuery.value ||
+      e.key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      e.description.toLowerCase().includes(searchQuery.value.toLowerCase());
     return matchCat && matchSearch;
   });
 });
@@ -54,19 +62,21 @@ onMounted(async () => {
   await store.refreshList();
   const routeId = route.params.id as string;
   if (routeId) {
-    selectedServerId.value = routeId;
-  } else if (store.currentServerId) {
-    selectedServerId.value = store.currentServerId;
-  } else if (store.servers.length > 0) {
-    selectedServerId.value = store.servers[0].id;
+    store.setCurrentServer(routeId);
+  } else if (!store.currentServerId && store.servers.length > 0) {
+    store.setCurrentServer(store.servers[0].id);
   }
+  await loadProperties();
 });
 
-watch(selectedServerId, async () => {
-  if (selectedServerId.value) {
-    await loadProperties();
-  }
-});
+watch(
+  () => store.currentServerId,
+  async () => {
+    if (store.currentServerId) {
+      await loadProperties();
+    }
+  },
+);
 
 async function loadProperties() {
   if (!serverPath.value) return;
@@ -110,30 +120,53 @@ function getBoolValue(key: string): boolean {
 }
 
 function getServerName(): string {
-  const s = store.servers.find((s) => s.id === selectedServerId.value);
+  const s = store.servers.find((s) => s.id === store.currentServerId);
   return s ? s.name : "";
 }
+
+// 选择分类并更新指示器位置
+function selectCategory(category: string) {
+  activeCategory.value = category;
+  updateCategoryIndicator();
+}
+
+// 更新分类指示器位置
+function updateCategoryIndicator() {
+  nextTick(() => {
+    if (!categoryIndicator.value) return;
+    
+    const activeTab = document.querySelector('.category-tab.active');
+    if (activeTab) {
+      const { offsetLeft, offsetWidth } = activeTab as HTMLElement;
+      categoryIndicator.value.style.left = `${offsetLeft}px`;
+      categoryIndicator.value.style.width = `${offsetWidth}px`;
+    }
+  });
+}
+
+// 监听分类变化，更新指示器位置
+watch(activeCategory, () => {
+  updateCategoryIndicator();
+});
+
+// 组件挂载后初始化指示器位置
+onMounted(() => {
+  // 原有代码...
+  updateCategoryIndicator();
+});
 </script>
 
 <template>
   <div class="config-view animate-fade-in-up">
-    <!-- Server Selector -->
+    <!-- 服务器配置编辑 -->
     <div class="config-header">
-      <div class="server-picker">
-        <SLSelect
-          label="选择服务器"
-          :options="serverOptions"
-          v-model="selectedServerId"
-          placeholder="选择要编辑配置的服务器"
-        />
-      </div>
-      <div v-if="selectedServerId" class="server-path-display text-mono text-caption">
+      <div class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
       </div>
     </div>
 
-    <div v-if="!selectedServerId" class="empty-state">
-      <p class="text-body">请选择一个服务器来编辑配置</p>
+    <div v-if="!currentServerId" class="empty-state">
+      <p class="text-body">{{ i18n.t("config.no_server") }}</p>
     </div>
 
     <template v-else>
@@ -142,28 +175,39 @@ function getServerName(): string {
         <button class="banner-close" @click="error = null">x</button>
       </div>
       <div v-if="successMsg" class="success-banner">
-        <span>{{ successMsg }}</span>
+        <span>{{ i18n.t("config.saved") }}</span>
       </div>
 
       <div class="config-toolbar">
         <div class="toolbar-left">
-          <SLInput placeholder="搜索配置项..." v-model="searchQuery" />
+          <SLInput :placeholder="i18n.t('config.search')" v-model="searchQuery" />
         </div>
         <div class="toolbar-right">
-          <SLButton variant="secondary" size="sm" @click="loadProperties">刷新</SLButton>
-          <SLButton variant="primary" size="sm" :loading="saving" @click="saveProperties">保存配置</SLButton>
+          <SLButton variant="secondary" size="sm" @click="loadProperties">{{
+            i18n.t("config.reload")
+          }}</SLButton>
+          <SLButton variant="primary" size="sm" :loading="saving" @click="saveProperties">{{
+            i18n.t("config.save")
+          }}</SLButton>
         </div>
       </div>
 
       <div class="category-tabs">
-        <button v-for="cat in categories" :key="cat" class="category-tab" :class="{ active: activeCategory === cat }" @click="activeCategory = cat">
-          {{ categoryLabels[cat] || cat }}
+        <div class="category-indicator" ref="categoryIndicator"></div>
+        <button
+          v-for="cat in categories"
+          :key="cat"
+          class="category-tab"
+          :class="{ active: activeCategory === cat }"
+          @click="selectCategory(cat)"
+        >
+          {{ i18n.t(`config.categories.${cat}`) || cat }}
         </button>
       </div>
 
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
-        <span>加载配置中...</span>
+        <span>{{ i18n.t("config.loading") }}</span>
       </div>
 
       <div v-else class="config-entries">
@@ -171,19 +215,52 @@ function getServerName(): string {
           <div class="entry-header">
             <div class="entry-key-row">
               <span class="entry-key text-mono">{{ entry.key }}</span>
-              <SLBadge :text="categoryLabels[entry.category] || entry.category" variant="neutral" />
+              <SLBadge
+                :text="i18n.t(`config.categories.${entry.category}`) || entry.category"
+                variant="neutral"
+              />
             </div>
             <p v-if="entry.description" class="entry-desc text-caption">{{ entry.description }}</p>
           </div>
           <div class="entry-control">
-            <SLSwitch v-if="entry.value_type === 'boolean'" :modelValue="getBoolValue(entry.key)" @update:modelValue="updateValue(entry.key, $event)" />
-            <SLSelect v-else-if="entry.key === 'gamemode'" :modelValue="editValues[entry.key]" :options="[{label:'生存',value:'survival'},{label:'创造',value:'creative'},{label:'冒险',value:'adventure'},{label:'旁观',value:'spectator'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
-            <SLSelect v-else-if="entry.key === 'difficulty'" :modelValue="editValues[entry.key]" :options="[{label:'和平',value:'peaceful'},{label:'简单',value:'easy'},{label:'普通',value:'normal'},{label:'困难',value:'hard'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
-            <SLInput v-else :modelValue="editValues[entry.key]" :type="entry.value_type === 'number' ? 'number' : 'text'" :placeholder="entry.default_value" @update:modelValue="updateValue(entry.key, $event)" />
+            <SLSwitch
+              v-if="entry.value_type === 'boolean'"
+              :modelValue="getBoolValue(entry.key)"
+              @update:modelValue="updateValue(entry.key, $event)"
+            />
+            <SLSelect
+              v-else-if="entry.key === 'gamemode'"
+              :modelValue="editValues[entry.key]"
+              :options="[
+                { label: i18n.t('config.gamemode.survival'), value: 'survival' },
+                { label: i18n.t('config.gamemode.creative'), value: 'creative' },
+                { label: i18n.t('config.gamemode.adventure'), value: 'adventure' },
+                { label: i18n.t('config.gamemode.spectator'), value: 'spectator' },
+              ]"
+              @update:modelValue="updateValue(entry.key, $event as string)"
+            />
+            <SLSelect
+              v-else-if="entry.key === 'difficulty'"
+              :modelValue="editValues[entry.key]"
+              :options="[
+                { label: i18n.t('config.difficulty.peaceful'), value: 'peaceful' },
+                { label: i18n.t('config.difficulty.easy'), value: 'easy' },
+                { label: i18n.t('config.difficulty.normal'), value: 'normal' },
+                { label: i18n.t('config.difficulty.hard'), value: 'hard' },
+              ]"
+              @update:modelValue="updateValue(entry.key, $event as string)"
+            />
+            <SLInput
+              v-else
+              :modelValue="editValues[entry.key]"
+              :type="entry.value_type === 'number' ? 'number' : 'text'"
+              :placeholder="entry.default_value"
+              @update:modelValue="updateValue(entry.key, $event)"
+            />
           </div>
         </div>
         <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
-          <p class="text-caption">没有找到配置文件，请先启动一次服务器以生成 server.properties</p>
+          <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
         </div>
       </div>
     </template>
@@ -191,28 +268,138 @@ function getServerName(): string {
 </template>
 
 <style scoped>
-.config-view { display: flex; flex-direction: column; gap: var(--sl-space-md); }
-.config-header { display: flex; flex-direction: column; gap: var(--sl-space-sm); }
-.server-picker { max-width: 400px; }
-.server-path-display { color: var(--sl-text-tertiary); font-size: 0.75rem; }
-.empty-state { display: flex; align-items: center; justify-content: center; padding: var(--sl-space-2xl); }
-.error-banner, .success-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-radius: var(--sl-radius-md); font-size: 0.875rem; }
-.error-banner { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--sl-error); }
-.success-banner { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: var(--sl-success); }
-.banner-close { font-weight: 600; }
-.config-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--sl-space-md); }
-.toolbar-left { flex: 1; max-width: 360px; }
-.toolbar-right { display: flex; gap: var(--sl-space-xs); }
-.category-tabs { display: flex; gap: 2px; background: var(--sl-bg-secondary); border-radius: var(--sl-radius-md); padding: 3px; width: fit-content; flex-wrap: wrap; }
-.category-tab { padding: 6px 14px; border-radius: var(--sl-radius-sm); font-size: 0.8125rem; font-weight: 500; color: var(--sl-text-secondary); transition: all var(--sl-transition-fast); }
-.category-tab.active { background: var(--sl-surface); color: var(--sl-primary); box-shadow: var(--sl-shadow-sm); }
-.loading-state { display: flex; align-items: center; justify-content: center; gap: var(--sl-space-sm); padding: var(--sl-space-2xl); color: var(--sl-text-tertiary); }
-.spinner { width: 18px; height: 18px; border: 2px solid var(--sl-border); border-top-color: var(--sl-primary); border-radius: 50%; animation: sl-spin 0.8s linear infinite; }
-.config-entries { display: flex; flex-direction: column; gap: var(--sl-space-sm); }
-.config-entry { display: flex; align-items: center; justify-content: space-between; padding: var(--sl-space-md); gap: var(--sl-space-lg); }
-.entry-header { flex: 1; min-width: 0; }
-.entry-key-row { display: flex; align-items: center; gap: var(--sl-space-sm); }
-.entry-key { font-size: 0.875rem; font-weight: 600; color: var(--sl-text-primary); }
-.entry-desc { margin-top: 2px; }
-.entry-control { flex-shrink: 0; min-width: 200px; }
+.config-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
+.config-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+.server-picker {
+  max-width: 400px;
+}
+.server-path-display {
+  color: var(--sl-text-tertiary);
+  font-size: 0.75rem;
+}
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sl-space-2xl);
+}
+.error-banner,
+.success-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: var(--sl-radius-md);
+  font-size: 0.875rem;
+}
+.error-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--sl-error);
+}
+.success-banner {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: var(--sl-success);
+}
+.banner-close {
+  font-weight: 600;
+}
+.config-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-md);
+}
+.toolbar-left {
+  flex: 1;
+  max-width: 360px;
+}
+.toolbar-right {
+  display: flex;
+  gap: var(--sl-space-xs);
+}
+.category-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--sl-bg-secondary);
+  border-radius: var(--sl-radius-md);
+  padding: 3px;
+  width: fit-content;
+  flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
+}
+.category-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  background: var(--sl-surface);
+  border-radius: var(--sl-radius-sm);
+  transition: all var(--sl-transition-normal);
+  box-shadow: var(--sl-shadow-sm);
+  z-index: 1;
+}
+.category-tab {
+  padding: 6px 14px;
+  border-radius: var(--sl-radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+  transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
+}
+.category-tab.active {
+  color: var(--sl-primary);
+}
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-2xl);
+  color: var(--sl-text-tertiary);
+}
+.config-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+.config-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sl-space-md);
+  gap: var(--sl-space-lg);
+}
+.entry-header {
+  flex: 1;
+  min-width: 0;
+}
+.entry-key-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+}
+.entry-key {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+.entry-desc {
+  margin-top: 2px;
+}
+.entry-control {
+  flex-shrink: 0;
+  min-width: 200px;
+}
 </style>

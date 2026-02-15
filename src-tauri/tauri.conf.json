@@ -21,16 +21,15 @@
         "center": true,
         "decorations": false,
         "resizable": true,
-        "transparent": true
+        "transparent": false,
+        "visible": false
       }
     ],
     "security": {
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "**"
-        ]
+        "scope": ["**"]
       }
     }
   },
@@ -49,9 +48,7 @@
         "language": "zh-CN"
       },
       "nsis": {
-        "languages": [
-          "SimpChinese"
-        ]
+        "languages": ["SimpChinese"]
       }
     },
     "linux": {

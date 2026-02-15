@@ -65,8 +65,10 @@ const handleInput = (e: Event) => {
   align-items: center;
   background: var(--sl-surface, #fff);
   border: 1px solid var(--sl-border, #ddd);
-  border-radius: 6px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border-radius: var(--sl-radius-sm);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   overflow: hidden;
 }
 

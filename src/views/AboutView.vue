@@ -8,25 +8,26 @@ import SLNotification from "../components/common/SLNotification.vue";
 import { contributors as contributorsList } from "../data/contributors";
 import { checkUpdate, type UpdateInfo } from "../api/update";
 import { getAppVersion, BUILD_YEAR } from "../utils/version";
+import { i18n } from "../locales";
 
-const version = ref('加载中...');
+const version = ref("加载中...");
 const buildDate = BUILD_YEAR;
 
 const contributors = ref(contributorsList);
 
 const updateInfo = ref<UpdateInfo | null>(null);
 const updateError = ref<string | null>(null);
-const updateStatus = ref<'idle' | 'checking' | 'latest' | 'available' | 'error'>('idle');
+const updateStatus = ref<"idle" | "checking" | "latest" | "available" | "error">("idle");
 let resetTimer: ReturnType<typeof setTimeout> | null = null;
 
 const showUpdateModal = ref(false);
 const modalUpdateInfo = ref<UpdateInfo | null>(null);
 
 const showNotification = ref(false);
-const notificationMessage = ref('');
-const notificationType = ref<'success' | 'error' | 'warning' | 'info'>('info');
+const notificationMessage = ref("");
+const notificationType = ref<"success" | "error" | "warning" | "info">("info");
 
-function showNotify(msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
+function showNotify(msg: string, type: "success" | "error" | "warning" | "info" = "info") {
   notificationMessage.value = msg;
   notificationType.value = type;
   showNotification.value = true;
@@ -54,16 +55,16 @@ function closeUpdateModal() {
 
 function getButtonVariant(): "primary" | "secondary" | "danger" | "success" {
   switch (updateStatus.value) {
-    case 'checking':
-      return 'secondary';
-    case 'latest':
-      return 'success';
-    case 'available':
-      return 'primary';
-    case 'error':
-      return 'danger';
+    case "checking":
+      return "secondary";
+    case "latest":
+      return "success";
+    case "available":
+      return "primary";
+    case "error":
+      return "danger";
     default:
-      return 'secondary';
+      return "secondary";
   }
 }
 
@@ -81,8 +82,8 @@ async function handleCheckUpdate() {
     clearTimeout(resetTimer);
     resetTimer = null;
   }
-  
-  updateStatus.value = 'checking';
+
+  updateStatus.value = "checking";
   updateError.value = null;
   updateInfo.value = null;
 
@@ -91,11 +92,11 @@ async function handleCheckUpdate() {
 
     if (info && info.has_update) {
       updateInfo.value = info;
-      updateStatus.value = 'available';
+      updateStatus.value = "available";
       modalUpdateInfo.value = info;
       showUpdateModal.value = true;
-      if (info.source === 'github') {
-        showNotify('Gitee 不可用，已切换到 GitHub', 'warning');
+      if (info.source === "github") {
+        showNotify("Gitee 不可用，已切换到 GitHub", "warning");
       }
     } else {
       updateInfo.value = {
@@ -103,24 +104,24 @@ async function handleCheckUpdate() {
         latest_version: version.value,
         current_version: version.value,
       };
-      updateStatus.value = 'latest';
-      
-      if (info?.source === 'github') {
-        showNotify('Gitee 不可用，已切换到 GitHub', 'warning');
+      updateStatus.value = "latest";
+
+      if (info?.source === "github") {
+        showNotify("Gitee 不可用，已切换到 GitHub", "warning");
       }
-      
+
       resetTimer = setTimeout(() => {
-        updateStatus.value = 'idle';
+        updateStatus.value = "idle";
         updateInfo.value = null;
         resetTimer = null;
       }, 3000);
     }
   } catch (error) {
-    showNotify('检查更新失败: ' + (error as string), 'error');
-    updateStatus.value = 'error';
-    
+    showNotify("检查更新失败: " + (error as string), "error");
+    updateStatus.value = "error";
+
     resetTimer = setTimeout(() => {
-      updateStatus.value = 'idle';
+      updateStatus.value = "idle";
       resetTimer = null;
     }, 3000);
   }
@@ -143,43 +144,41 @@ async function handleManualDownload() {
       <!-- Hero Section -->
       <div class="hero-section">
         <div class="hero-logo">
-          <img src="../assets/logo.svg" alt="Sea Lantern" width="72" height="72" />
+          <img src="../assets/logo.svg" :alt="i18n.t('common.app_name')" width="72" height="72" />
         </div>
-        <h1 class="hero-title">Sea Lantern</h1>
-        <p class="hero-subtitle">Minecraft 服务器管理工具</p>
+        <h1 class="hero-title">{{ i18n.t("common.app_name") }}</h1>
+        <p class="hero-subtitle">{{ i18n.t("about.subtitle") }}</p>
         <div class="hero-badges">
           <span class="version-badge">v{{ version }}</span>
-          <span class="tech-badge">Tauri 2 + Vue 3</span>
-          <span class="license-badge">GPLv3</span>
+          <span class="tech-badge">{{ i18n.t("about.tech_badge") }}</span>
+          <span class="license-badge">{{ i18n.t("about.license_badge") }}</span>
         </div>
         <p class="hero-desc">
-          一个由社区共同打造的 Minecraft 开服器。<br/>
-          不仅代码开源，连灵魂都由你们定义。
+          {{ i18n.t("about.hero_desc") }}
         </p>
       </div>
 
       <!-- Manifesto -->
       <SLCard>
         <div class="manifesto">
-          <h3 class="manifesto-title">为什么叫 Sea Lantern？</h3>
+          <h3 class="manifesto-title">{{ i18n.t("about.manifesto_title") }}</h3>
           <p class="manifesto-text">
-            海晶灯（Sea Lantern）是 Minecraft 中一种发光方块——它由无数碎片组合而成，却能发出柔和而持久的光。
+            {{ i18n.t("about.manifesto_text1") }}
           </p>
           <p class="manifesto-text">
-            就像这个项目一样，每一位贡献者都是一片海晶碎片。<br/>
-            当我们聚在一起，就能照亮整个社区。
+            {{ i18n.t("about.manifesto_text2") }}
           </p>
         </div>
       </SLCard>
 
       <!-- 此处缺一段代码 -->
       <!-- 点击加入开发 -->
-      
+
       <!-- Contributor Wall -->
       <div class="contributor-section">
         <div class="section-header">
-          <h2 class="section-title">贡献者墙</h2>
-          <p class="section-desc">每一个让这个项目变得更好的人</p>
+          <h2 class="section-title">{{ i18n.t("about.contributor_wall") }}</h2>
+          <p class="section-desc">{{ i18n.t("about.contributor_desc") }}</p>
         </div>
 
         <div class="contributor-grid">
@@ -188,7 +187,23 @@ async function handleManualDownload() {
             :key="c.name"
             class="contributor-card glass-card"
           >
-            <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
+            <!-- 如果存在 url，则用 a 标签包裹头像；否则只显示图片 -->
+            <a 
+              v-if="c.url" 
+              :href="c.url" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="contributor-link"
+            >
+              <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
+            </a>
+            <img 
+              v-else 
+              :src="c.avatar" 
+              :alt="c.name" 
+              class="contributor-avatar" 
+            />
+            
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>
               <span class="contributor-role">{{ c.role }}</span>
@@ -198,13 +213,21 @@ async function handleManualDownload() {
           <!-- Join Card -->
           <div class="contributor-card glass-card join-card">
             <div class="join-icon">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--sl-primary)" stroke-width="1.5" stroke-linecap="round">
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--sl-primary)"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              >
                 <path d="M12 4v16m8-8H4" />
               </svg>
             </div>
             <div class="contributor-info">
-              <span class="contributor-name join-text">你的名字</span>
-              <span class="contributor-role">参与贡献，加入我们</span>
+              <span class="contributor-name join-text">{{ i18n.t("about.join_text") }}</span>
+              <span class="contributor-role">{{ i18n.t("about.join_desc") }}</span>
             </div>
           </div>
         </div>
@@ -212,26 +235,26 @@ async function handleManualDownload() {
 
       <!-- Project Info -->
       <div class="info-grid">
-        <SLCard title="项目信息">
+        <SLCard :title="i18n.t('about.project_info')">
           <div class="info-list">
             <div class="info-item">
-              <span class="info-label">版本</span>
+              <span class="info-label">{{ i18n.t("about.version") }}</span>
               <span class="info-value">{{ version }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">构建年份</span>
+              <span class="info-label">{{ i18n.t("about.build_year") }}</span>
               <span class="info-value">{{ buildDate }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">前端</span>
+              <span class="info-label">{{ i18n.t("about.frontend") }}</span>
               <span class="info-value">Vue 3 + TypeScript + Vite</span>
             </div>
             <div class="info-item">
-              <span class="info-label">后端</span>
+              <span class="info-label">{{ i18n.t("about.backend") }}</span>
               <span class="info-value">Rust + Tauri 2</span>
             </div>
             <div class="info-item">
-              <span class="info-label">许可证</span>
+              <span class="info-label">{{ i18n.t("about.license") }}</span>
               <span class="info-value">GNU GPLv3</span>
             </div>
           </div>
@@ -246,107 +269,216 @@ async function handleManualDownload() {
               style="width: 100%"
             >
               <span class="btn-content">
-                <svg v-if="updateStatus === 'checking'" class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
-                  <path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-5.07l-2.83 2.83M9.76 14.24l-2.83 2.83m11.14 0l-2.83-2.83M9.76 9.76L6.93 6.93" />
+                <svg
+                  v-if="updateStatus === 'checking'"
+                  class="animate-spin"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="margin-right: 6px"
+                >
+                  <path
+                    d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-5.07l-2.83 2.83M9.76 14.24l-2.83 2.83m11.14 0l-2.83-2.83M9.76 9.76L6.93 6.93"
+                  />
                 </svg>
-                <svg v-else-if="updateStatus === 'latest'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <svg
+                  v-else-if="updateStatus === 'latest'"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="margin-right: 6px"
+                >
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
-                <svg v-else-if="updateStatus === 'available'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <svg
+                  v-else-if="updateStatus === 'available'"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="margin-right: 6px"
+                >
                   <polyline points="17 1 21 5 17 9"></polyline>
                   <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
                   <polyline points="7 23 3 19 7 15"></polyline>
                   <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
                 </svg>
-                <svg v-else-if="updateStatus === 'error'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <svg
+                  v-else-if="updateStatus === 'error'"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="margin-right: 6px"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="8" x2="12" y2="12"></line>
                   <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <span v-if="updateStatus === 'checking'">检查中...</span>
-                <span v-else-if="updateStatus === 'latest'">已是最新版本</span>
-                <span v-else-if="updateStatus === 'available'">发现新版本</span>
-                <span v-else-if="updateStatus === 'error'">更新失败</span>
-                <span v-else>检查更新</span>
+                <span v-if="updateStatus === 'checking'">{{
+                  i18n.t("about.update_checking")
+                }}</span>
+                <span v-else-if="updateStatus === 'latest'">{{
+                  i18n.t("about.update_latest")
+                }}</span>
+                <span v-else-if="updateStatus === 'available'">{{
+                  i18n.t("about.update_available")
+                }}</span>
+                <span v-else-if="updateStatus === 'error'">{{ i18n.t("about.update_error") }}</span>
+                <span v-else>{{ i18n.t("about.check_update") }}</span>
               </span>
             </SLButton>
           </div>
         </SLCard>
 
-        <SLCard title="参与方式">
+        <SLCard :title="i18n.t('about.contribute_ways')">
           <div class="contribute-ways">
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <polyline points="16 18 22 12 16 6"></polyline>
                   <polyline points="8 6 2 12 8 18"></polyline>
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">写代码</span>
-                <span class="way-desc">提交 PR，修 Bug 或加新功能</span>
+                <span class="way-title">{{ i18n.t("about.way_code") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_code_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d="M12 19l7 2-7-18-7 18 7-2zm0 0v-8"></path>
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">做设计</span>
-                <span class="way-desc">设计 UI、图标、主题皮肤</span>
+                <span class="way-title">{{ i18n.t("about.way_design") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_design_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                   <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">提建议</span>
-                <span class="way-desc">在 Issues 里提出你的想法</span>
+                <span class="way-title">{{ i18n.t("about.way_idea") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_idea_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                   <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">写文档</span>
-                <span class="way-desc">完善教程和使用说明</span>
+                <span class="way-title">{{ i18n.t("about.way_doc") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_doc_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  <path
+                    d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+                  ></path>
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">翻译</span>
-                <span class="way-desc">帮助翻译成其他语言</span>
+                <span class="way-title">{{ i18n.t("about.way_translate") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_translate_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
                   <polyline points="16 6 12 2 8 6"></polyline>
                   <line x1="12" y1="2" x2="12" y2="15"></line>
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">推广</span>
-                <span class="way-desc">分享给更多 MC 服主</span>
+                <span class="way-title">{{ i18n.t("about.way_promote") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_promote_desc") }}</span>
               </div>
             </div>
           </div>
@@ -355,24 +487,32 @@ async function handleManualDownload() {
 
       <!-- Links -->
       <div class="links-section">
-        <SLButton variant="primary" size="lg" @click="openLink('https://gitee.com/fps_z/SeaLantern')">
-          Gitee 仓库
+        <SLButton
+          variant="primary"
+          size="lg"
+          @click="openLink('https://gitee.com/fps_z/SeaLantern')"
+        >
+          {{ i18n.t("about.gitee_repo") }}
         </SLButton>
-        <SLButton variant="secondary" size="lg" @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')">
-          B站主页
+        <SLButton
+          variant="secondary"
+          size="lg"
+          @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')"
+        >
+          {{ i18n.t("about.bilibili") }}
         </SLButton>
       </div>
 
       <!-- Footer -->
       <div class="about-footer">
         <p class="footer-text">
-          Sea Lantern 是一个开源项目，遵循 GPLv3 协议。
+          {{ i18n.t("about.footer_text1") }}
         </p>
         <p class="footer-text">
-          Minecraft 是 Mojang Studios 的注册商标。本项目与 Mojang 无关。
+          {{ i18n.t("about.footer_text2") }}
         </p>
         <p class="footer-quote">
-          "我们搭建了骨架，而灵魂，交给你们。"
+          {{ i18n.t("about.footer_quote") }}
         </p>
       </div>
     </div>
@@ -380,25 +520,26 @@ async function handleManualDownload() {
     <!-- 更新日志弹窗 -->
     <SLModal
       :visible="showUpdateModal"
-      :title="modalUpdateInfo ? `新版本 v${modalUpdateInfo.latest_version}` : '发现新版本'"
+      :title="
+        modalUpdateInfo
+          ? `${i18n.t('about.update_title')} v${modalUpdateInfo.latest_version}`
+          : i18n.t('about.update_title')
+      "
       @close="closeUpdateModal"
     >
       <div v-if="modalUpdateInfo" class="modal-update-content">
         <div class="modal-update-header">
-          <div class="modal-current-version">当前版本: v{{ modalUpdateInfo.current_version }}</div>
+          <div class="modal-current-version">
+            {{ i18n.t("about.update_current") }}: v{{ modalUpdateInfo.current_version }}
+          </div>
         </div>
         <div v-if="modalUpdateInfo.release_notes" class="modal-release-notes">
-          <div class="modal-notes-title">更新内容:</div>
+          <div class="modal-notes-title">{{ i18n.t("about.update_release_notes") }}:</div>
           <div class="modal-notes-content">{{ modalUpdateInfo.release_notes }}</div>
         </div>
         <div class="modal-update-actions">
-          <SLButton
-            variant="primary"
-            size="md"
-            @click="handleManualDownload"
-            style="width: 100%"
-          >
-            立即更新
+          <SLButton variant="primary" size="md" @click="handleManualDownload" style="width: 100%">
+            {{ i18n.t("about.update_now") }}
           </SLButton>
         </div>
       </div>
@@ -461,7 +602,9 @@ async function handleManualDownload() {
   animation: sl-fade-in-up 0.6s ease 0.3s both;
 }
 
-.version-badge, .tech-badge, .license-badge {
+.version-badge,
+.tech-badge,
+.license-badge {
   padding: 4px 14px;
   border-radius: var(--sl-radius-full);
   font-size: 0.8125rem;
@@ -630,7 +773,9 @@ async function handleManualDownload() {
   border-bottom: 1px solid var(--sl-border-light);
 }
 
-.info-item:last-child { border-bottom: none; }
+.info-item:last-child {
+  border-bottom: none;
+}
 
 .info-label {
   font-size: 0.875rem;
@@ -756,17 +901,17 @@ async function handleManualDownload() {
 
 .btn-fade-enter-active,
 .btn-fade-leave-active {
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-fade-enter-from {
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateX(-6px);
 }
 
 .btn-fade-leave-to {
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(6px);
 }
 
 /* 弹窗内容样式 */
@@ -810,9 +955,15 @@ async function handleManualDownload() {
 }
 
 @media (max-width: 768px) {
-  .info-grid { grid-template-columns: 1fr; }
-  .contribute-ways { grid-template-columns: 1fr; }
-  .contributor-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  .contribute-ways {
+    grid-template-columns: 1fr;
+  }
+  .contributor-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
 }
 
 .contributor-link {
@@ -820,7 +971,7 @@ async function handleManualDownload() {
   cursor: pointer;
   transition: all var(--sl-transition-normal);
   border-radius: var(--sl-radius-md);
-  line-height: 0;  
+  line-height: 0;
 }
 
 .contributor-link:hover {

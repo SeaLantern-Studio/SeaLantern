@@ -55,20 +55,18 @@ const filteredOptions = computed(() => {
   if (!props.searchable || !searchQuery.value.trim()) return props.options;
 
   const query = searchQuery.value.toLowerCase();
-  return props.options.filter((opt: Option) =>
-    opt.label.toLowerCase().includes(query)
-  );
+  return props.options.filter((opt: Option) => opt.label.toLowerCase().includes(query));
 });
 
 const updateDropdownPosition = () => {
   if (!containerRef.value) return;
   const rect = containerRef.value.getBoundingClientRect();
   dropdownStyle.value = {
-    position: 'fixed',
+    position: "fixed",
     top: `${rect.bottom + 4}px`,
     left: `${rect.left}px`,
     width: `${rect.width}px`,
-    zIndex: '99999',
+    zIndex: "99999",
   };
 };
 
@@ -105,10 +103,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 
   const handleArrowDown = () => {
     e.preventDefault();
-    highlightedIndex.value = Math.min(
-      highlightedIndex.value + 1,
-      filteredOptions.value.length - 1
-    );
+    highlightedIndex.value = Math.min(highlightedIndex.value + 1, filteredOptions.value.length - 1);
     scrollToHighlighted();
   };
 
@@ -150,8 +145,12 @@ const scrollToHighlighted = () => {
 
 const handleClickOutside = (e: MouseEvent) => {
   const target = e.target as Node;
-  if (containerRef.value && !containerRef.value.contains(target) &&
-      dropdownRef.value && !dropdownRef.value.contains(target)) {
+  if (
+    containerRef.value &&
+    !containerRef.value.contains(target) &&
+    dropdownRef.value &&
+    !dropdownRef.value.contains(target)
+  ) {
     isOpen.value = false;
   }
 };
@@ -194,12 +193,27 @@ onUnmounted(() => {
         </svg>
         加载中...
       </span>
-      <span v-else-if="selectedOption" class="sl-select-value" :style="getFontStyle(selectedOption.value)">
+      <span
+        v-else-if="selectedOption"
+        class="sl-select-value"
+        :style="getFontStyle(selectedOption.value)"
+      >
         {{ selectedOption.label }}
       </span>
       <span v-else class="sl-select-placeholder">{{ placeholder }}</span>
 
-      <svg class="sl-select-arrow" :class="{ open: isOpen }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <svg
+        class="sl-select-arrow"
+        :class="{ open: isOpen }"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
         <path d="M6 9l6 6 6-6" />
       </svg>
     </div>
@@ -208,7 +222,16 @@ onUnmounted(() => {
       <Transition name="dropdown">
         <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef" :style="dropdownStyle">
           <div v-if="searchable" class="sl-select-search">
-            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <svg
+              class="search-icon"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
@@ -224,16 +247,14 @@ onUnmounted(() => {
           </div>
 
           <div class="sl-select-options" :style="{ maxHeight }" role="presentation">
-            <div v-if="filteredOptions.length === 0" class="sl-select-empty">
-              未找到匹配项
-            </div>
+            <div v-if="filteredOptions.length === 0" class="sl-select-empty">未找到匹配项</div>
             <div
               v-for="(option, index) in filteredOptions"
               :key="option.value"
               class="sl-select-option"
               :class="{
                 selected: option.value === modelValue,
-                highlighted: index === highlightedIndex
+                highlighted: index === highlightedIndex,
               }"
               :style="getFontStyle(option.value)"
               @click="selectOption(option)"
@@ -242,7 +263,17 @@ onUnmounted(() => {
               :aria-selected="option.value === modelValue"
             >
               <span class="option-label">{{ option.label }}</span>
-              <svg v-if="option.value === modelValue" class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <svg
+                v-if="option.value === modelValue"
+                class="check-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
                 <path d="M20 6L9 17l-5-5" />
               </svg>
             </div>
@@ -330,8 +361,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .sl-select-arrow {
@@ -413,7 +448,7 @@ onUnmounted(() => {
 
 .sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb {
   background: var(--sl-border);
-  border-radius: 3px;
+  border-radius: var(--sl-radius-sm);
 }
 
 .sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb:hover {

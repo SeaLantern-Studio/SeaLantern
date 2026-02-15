@@ -15,18 +15,13 @@ export interface ServerProperties {
 }
 
 export const configApi = {
-  async readServerProperties(
-    serverPath: string
-  ): Promise<ServerProperties> {
+  async readServerProperties(serverPath: string): Promise<ServerProperties> {
     return tauriInvoke("read_server_properties", {
       serverPath,
     });
   },
 
-  async writeServerProperties(
-    serverPath: string,
-    values: Record<string, string>
-  ): Promise<void> {
+  async writeServerProperties(serverPath: string, values: Record<string, string>): Promise<void> {
     return tauriInvoke("write_server_properties", {
       serverPath,
       values,
@@ -37,10 +32,7 @@ export const configApi = {
     return tauriInvoke("read_config", { path });
   },
 
-  async writeConfig(
-    path: string,
-    values: Record<string, string>
-  ): Promise<void> {
+  async writeConfig(path: string, values: Record<string, string>): Promise<void> {
     return tauriInvoke("write_config", { path, values });
   },
 };

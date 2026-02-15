@@ -1,13 +1,24 @@
-海晶灯（Sea Lantern）
-===========
+<div align="center">
+<img src="https://gitee.com/fps_z/SeaLantern/raw/master/src/assets/logo.svg" alt="logo" width="200" height="200">
 
-Minecraft 服务器管理工具 · Tauri 2 + Rust + Vue 3 
+# 海晶灯(Sea Lantern)
+
+一个轻量化的 Minecraft 服务器管理工具 ，基于 Tauri 2 + Rust + Vue 3
+
+[![star](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)[![fork](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)
+[![GitHub Repo stars](https://img.shields.io/github/stars/FPSZ/SeaLantern?style=flat&logo=github&label=stars)](https://github.com/FPSZ/SeaLantern)[![GitHub forks](https://img.shields.io/github/forks/FPSZ/SeaLantern?style=flat&logo=github&label=forks)](https://github.com/FPSZ/SeaLantern/network/members)
+[![最新版本](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=最新版本&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)[![GitHub release](https://img.shields.io/github/v/release/FPSZ/SeaLantern?style=flat&logo=github&label=latest)](https://github.com/FPSZ/SeaLantern/releases)
+====
+
+</div>
+
+> 您正在浏览简体中文版的readme，点击[此处](README-en.md)前往英文版
+
+> You are browsing the Simplified Chinese version of the readme. Click [here](README-en.md) to go to the English version
+
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
-
 ## 能干什么
-
-导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
 
 - 控制台实时看日志，直接输命令
 - server.properties 图形化编辑，不用手改文件
@@ -17,13 +28,12 @@ Minecraft 服务器管理工具 · Tauri 2 + Rust + Vue 3
 
 ## 快速开始
 
-- 如果你是使用者，在右侧下载Release版本
+- 如果你是使用者，在右侧下载Release版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
 
 - 如果你是开发者，需要 Node.js 20+ 和 Rust 1.70+。
 
-
 ```bash
-git clone https://gitee.com/fps_z/SeaLantern.git
+git clone https://github.com/FPSZ/SeaLantern.git
 cd SeaLantern
 npm install
 npm run tauri dev
@@ -41,6 +51,24 @@ npm run tauri build
 
 提交代码前，建议运行以下命令检查代码质量：
 
+前端检查：
+
+```bash
+# 代码质量检查
+npm run lint
+
+# 自动修复可修复问题
+npm run lint:fix
+
+# 格式化代码
+npm run fmt
+
+# 检查格式（不改动文件）
+npm run fmt:check
+```
+
+后端检查：
+
 ```bash
 # 检查代码格式
 cargo fmt --all -- --check
@@ -54,7 +82,6 @@ cargo fmt --all
 
 项目已配置 CI 自动检查，确保所有提交的代码都符合规范。
 
-
 ## 技术栈
 
 - **前端**: Vue 3 + TypeScript + Vite + Pinia
@@ -63,7 +90,6 @@ cargo fmt --all
 - **通信**: Tauri invoke（前端调 Rust 函数，直接拿返回值）
 
 没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
-
 
 ## 项目结构
 
@@ -195,44 +221,49 @@ sea-lantern/
 └── README.md                          项目说明文档（你正在看的这个）
 ```
 
-
 ## 已实现功能
 
 ### 服务器管理
+
 - 导入 JAR 文件创建服务器，一键启动和停止
 - 数据保存到 JSON，重启软件不丢失
 
 ### 实时控制台
+
 - 后端用独立线程读 stdout 和 stderr
 - 前端每 800ms 轮询拉新日志
 - 支持命令输入、Tab 补全、上下键历史、快捷指令按钮
 - 日志存在全局 store 里，切页面不丢
 
 ### Java 检测
+
 - 启动时扫描 A 到 Z 所有盘符
 - 递归搜索常见安装路径，包括 .minecraft/runtime 里 MC 自带的 Java
 - 按版本号排序，标记推荐
 
 ### 配置编辑
+
 - 读取 server.properties，解析成带描述和分类的结构化数据
 - 布尔值用开关，枚举用下拉，数字和字符串用输入框
 - 改完直接写回文件
 
 ### 玩家管理
+
 - 读取 whitelist.json / banned-players.json / ops.json 显示列表
 - 添加和移除通过向运行中的服务器发送 MC 命令实现
 - 解析日志判断在线玩家
 
 ### 应用设置
+
 - 关闭软件时自动停止所有服务器（默认开启）
 - 自动同意 EULA
 - 默认内存、端口、JVM 参数，全部可配
 
 ### 软件更新
-- 检查 Gitee 发行版，获取最新版本信息
+
+- 检查来自 Gitee（或Github） 的发行版，获取最新版本信息
 - 显示更新日志，一键打开下载链接
 - 版本号自动比较，提示用户更新
-
 
 ## 待开发功能
 
@@ -245,7 +276,6 @@ sea-lantern/
 - 资源管理 - 从 Modrinth / CurseForge 搜索安装插件和 Mod
 - 暗色主题 - CSS 变量都准备好了，加一套 dark 的值就行
 - 国际化 - 目前全是中文硬编码，可以抽成语言文件
-
 
 ## 参与开发
 
@@ -268,12 +298,14 @@ sea-lantern/
 假设你要加一个「备份管理」功能：
 
 **后端**：
+
 1. `src-tauri/src/services/` 下建 `backup_manager.rs`，写逻辑
 2. `src-tauri/src/commands/` 下建 `backup.rs`，写 Tauri 命令
 3. 在 `commands/mod.rs` 里加 `pub mod backup`
 4. 在 `lib.rs` 的 `generate_handler!` 宏里注册命令
 
 **前端**：
+
 1. `src/api/` 下建 `backup.ts`，封装 invoke 调用
 2. `src/views/` 下建 `BackupView.vue`，画页面
 3. `src/router/index.ts` 里加路由
@@ -281,11 +313,19 @@ sea-lantern/
 
 前后端各三个文件，路由和侧栏各改一行。
 
-
 ## License
 
 GPLv3
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=FPSZ/SeaLantern&type=Date)](https://star-history.com/#FPSZ/SeaLantern&Date)
+
+## 贡献者
+
+感谢所有为 Sea Lantern 做出贡献的人！
+
+[![Contributors](https://contrib.rocks/image?repo=FPSZ/SeaLantern)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
 
 ## 致谢
 
