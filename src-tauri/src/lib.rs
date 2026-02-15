@@ -12,6 +12,7 @@ use commands::system as system_commands;
 use commands::update as update_commands;
 use commands::mods as mods_commands;
 use commands::join as join_commands;
+use commands::server_id as server_id_commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -76,6 +77,14 @@ pub fn run() {
             mods_commands::install_mod,
             join_commands::resolve_server_id,
             join_commands::join_server_by_id,
+            server_id_commands::create_server_id,
+            server_id_commands::resolve_server_id,
+            server_id_commands::get_server_id,
+            server_id_commands::list_server_ids,
+            server_id_commands::update_server_id,
+            server_id_commands::deactivate_server_id,
+            server_id_commands::delete_server_id,
+            server_id_commands::search_server_ids,
         ])
         .on_window_event(|_window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
