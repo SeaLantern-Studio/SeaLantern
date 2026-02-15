@@ -5,7 +5,6 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
-use uuid;
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 
@@ -631,7 +630,12 @@ impl ServerManager {
         }
     }
 
-    pub fn add_server_command(&self, server_id: &str, name: &str, command: &str) -> Result<(), String> {
+    pub fn add_server_command(
+        &self,
+        server_id: &str,
+        name: &str,
+        command: &str,
+    ) -> Result<(), String> {
         let mut servers = self.servers.lock().unwrap();
         if let Some(server) = servers.iter_mut().find(|s| s.id == server_id) {
             let command_id = uuid::Uuid::new_v4().to_string();
@@ -648,7 +652,13 @@ impl ServerManager {
         }
     }
 
-    pub fn update_server_command(&self, server_id: &str, command_id: &str, name: &str, command: &str) -> Result<(), String> {
+    pub fn update_server_command(
+        &self,
+        server_id: &str,
+        command_id: &str,
+        name: &str,
+        command: &str,
+    ) -> Result<(), String> {
         let mut servers = self.servers.lock().unwrap();
         if let Some(server) = servers.iter_mut().find(|s| s.id == server_id) {
             if let Some(cmd) = server.commands.iter_mut().find(|c| c.id == command_id) {

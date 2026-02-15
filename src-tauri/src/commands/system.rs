@@ -198,7 +198,7 @@ pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, St
 #[tauri::command]
 pub fn open_folder(path: String) -> Result<(), String> {
     use std::process::Command;
-    
+
     #[cfg(target_os = "windows")]
     {
         let status = Command::new("explorer")
@@ -211,7 +211,7 @@ pub fn open_folder(path: String) -> Result<(), String> {
             Err("Failed to open folder".to_string())
         }
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         let status = Command::new("open")
@@ -224,7 +224,7 @@ pub fn open_folder(path: String) -> Result<(), String> {
             Err("Failed to open folder".to_string())
         }
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         let status = Command::new("xdg-open")
