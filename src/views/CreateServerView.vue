@@ -219,13 +219,7 @@ const javaOptions = computed(() => {
         <div class="server-name-row">
           <SLInput :label="i18n.t('create.server_name')" :placeholder="i18n.t('create.server_name')" v-model="serverName" />
         </div>
-        <div class="jar-picker">
-          <SLInput :label="i18n.t('create.jar_file')" v-model="jarPath" :placeholder="i18n.t('create.jar_file')">
-            <template #suffix>
-              <button class="pick-btn" @click="pickJarFile">{{ i18n.t('create.browse') }}</button>
-            </template>
-          </SLInput>
-        </div>
+
         <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
         <SLInput :label="i18n.t('create.min_memory')" type="number" v-model="minMemory" />
         <SLInput :label="i18n.t('settings.default_port')" type="number" v-model="port" :placeholder="i18n.t('create.default_port_placeholder')" />
@@ -344,9 +338,7 @@ const javaOptions = computed(() => {
 .server-name-row {
   grid-column: 1 / -1;
 }
-.jar-picker {
-  grid-column: 1 / -1;
-}
+
 .pick-btn {
   padding: 4px 12px;
   font-size: 0.8125rem;
