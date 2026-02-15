@@ -37,8 +37,8 @@ export const useConsoleStore = defineStore("console", () => {
   }
 
   function clearLogs(serverId: string) {
-    console.log('[Store] clearLogs 被调用, serverId:', serverId);
-    console.log('[Store] 清空前 logs:', logs.value[serverId]?.length || 0);
+    console.log("[Store] clearLogs 被调用, serverId:", serverId);
+    console.log("[Store] 清空前 logs:", logs.value[serverId]?.length || 0);
     if (logs.value[serverId]) {
       logs.value[serverId].splice(0, logs.value[serverId].length);
     } else {
@@ -46,7 +46,7 @@ export const useConsoleStore = defineStore("console", () => {
     }
     // 不重置 cursor，避免重新读取已读过的日志
     // logCursors.value[serverId] = 0;
-    console.log('[Store] 清空后 logs:', logs.value[serverId]?.length || 0);
+    console.log("[Store] 清空后 logs:", logs.value[serverId]?.length || 0);
   }
 
   function setActiveServer(id: string | null) {

@@ -1,4 +1,4 @@
-import { tauriInvoke } from './tauri';
+import { tauriInvoke } from "./tauri";
 
 export interface UpdateInfo {
   has_update: boolean;
@@ -12,10 +12,10 @@ export interface UpdateInfo {
 
 export async function checkUpdate(): Promise<UpdateInfo | null> {
   try {
-    const result = await tauriInvoke<UpdateInfo>('check_update');
+    const result = await tauriInvoke<UpdateInfo>("check_update");
     return result;
   } catch (error) {
-    console.error('检查更新失败:', error);
+    console.error("检查更新失败:", error);
     throw error;
   }
 }

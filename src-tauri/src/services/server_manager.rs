@@ -111,10 +111,7 @@ impl ServerManager {
         std::fs::write(&server_properties_path, server_properties_content)
             .map_err(|e| format!("创建 server.properties 失败: {}", e))?;
 
-        println!(
-            "已创建 server.properties: {}",
-            server_properties_path.display()
-        );
+        println!("已创建 server.properties: {}", server_properties_path.display());
 
         // 创建服务器实例
         let now = SystemTime::now()
@@ -167,11 +164,7 @@ impl ServerManager {
         std::fs::create_dir_all(&server_dir).map_err(|e| format!("无法创建服务器目录: {}", e))?;
 
         // 复制整合包文件夹的所有内容到服务器目录
-        println!(
-            "正在复制整合包文件: {} -> {}",
-            source_path.display(),
-            server_dir.display()
-        );
+        println!("正在复制整合包文件: {} -> {}", source_path.display(), server_dir.display());
         copy_dir_recursive(source_path, &server_dir)
             .map_err(|e| format!("复制整合包文件失败: {}", e))?;
 
@@ -253,6 +246,89 @@ impl ServerManager {
         if settings.auto_accept_eula {
             let eula = std::path::Path::new(&server.path).join("eula.txt");
             let _ = std::fs::write(&eula, "# Auto-accepted by Sea Lantern\neula=true\n");
+        }
+
+        // 预处理脚本：在服务器启动前执行自定义脚本
+        #[cfg(target_os = "windows")]
+        {
+            let preload_script = std::path::Path::new(&server.path).join("preload.bat");
+            if preload_script.exists() {
+                println!("发现预加载脚本: {:?}", preload_script);
+                self.append_log(id, "[preload] 开始执行预加载脚本...");
+
+                // Windows 下执行 bat 文件，使用 CREATE_NO_WINDOW 避免弹窗
+                let mut cmd = std::process::Command::new("cmd");
+                cmd.args(["/c", preload_script.to_str().unwrap_or("preload.bat")])
+                    .current_dir(&server.path);
+
+                // 隐藏命令行窗口
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                cmd.creation_flags(CREATE_NO_WINDOW);
+
+                match cmd.output() {
+                    Ok(result) => {
+                        if result.status.success() {
+                            println!("preload.bat 执行成功");
+                            if !result.stdout.is_empty() {
+                                let output = String::from_utf8_lossy(&result.stdout);
+                                for line in output.lines() {
+                                    self.append_log(id, &format!("[preload] {}", line));
+                                }
+                            }
+                            self.append_log(id, "[preload] 预加载脚本执行成功");
+                        } else {
+                            let error = String::from_utf8_lossy(&result.stderr);
+                            println!("preload.bat 执行失败: {}", error);
+                            self.append_log(id, &format!("[preload] 执行失败: {}", error));
+                        }
+                    }
+                    Err(e) => {
+                        let error_msg = format!("执行 preload.bat 失败: {}", e);
+                        println!("{}", error_msg);
+                        self.append_log(id, &format!("[preload] {}", error_msg));
+                    }
+                }
+            }
+        }
+
+        // 非 Windows 系统：检查服务器目录下是否有 preload.sh 文件
+        #[cfg(not(target_os = "windows"))]
+        {
+            let preload_script = std::path::Path::new(&server.path).join("preload.sh");
+            if preload_script.exists() {
+                println!("发现预加载脚本: {:?}", preload_script);
+                self.append_log(id, "[preload] 开始执行预加载脚本...");
+
+                // 非 Windows 系统下，作为 shell 脚本执行
+                match std::process::Command::new("sh")
+                    .arg(&preload_script)
+                    .current_dir(&server.path)
+                    .output()
+                {
+                    Ok(result) => {
+                        if result.status.success() {
+                            println!("preload.sh 执行成功");
+                            if !result.stdout.is_empty() {
+                                let output = String::from_utf8_lossy(&result.stdout);
+                                for line in output.lines() {
+                                    self.append_log(id, &format!("[preload] {}", line));
+                                }
+                            }
+                            self.append_log(id, "[preload] 预加载脚本执行成功");
+                        } else {
+                            let error = String::from_utf8_lossy(&result.stderr);
+                            println!("preload.sh 执行失败: {}", error);
+                            self.append_log(id, &format!("[preload] 执行失败: {}", error));
+                        }
+                    }
+                    Err(e) => {
+                        let error_msg = format!("执行 preload.sh 失败: {}", e);
+                        println!("{}", error_msg);
+                        self.append_log(id, &format!("[preload] {}", error_msg));
+                    }
+                }
+            }
         }
 
         // 使用最简单的方式直接启动Java
