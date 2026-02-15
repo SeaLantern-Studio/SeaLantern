@@ -66,15 +66,21 @@ function handleSystemThemeChange() {
   }
 }
 
-onMounted(async () => {
-  // 检测亚克力支持
-  try {
-    acrylicSupported.value = await checkAcrylicSupport();
-  } catch {
+onMounted(() => {
+  // 立即应用默认主题，确保 UI 快速显示
+  applyTheme("auto");
+  
+  // 检测亚克力支持（异步，不阻塞 UI）
+  checkAcrylicSupport().then(supported => {
+    acrylicSupported.value = supported;
+  }).catch(() => {
     acrylicSupported.value = false;
-  }
+  });
 
-  await loadBackgroundSettings();
+  // 异步加载背景设置，不阻塞 UI 渲染
+  loadBackgroundSettings().catch(err => {
+    console.error("Failed to load settings initially:", err);
+  });
 
   // 监听设置更新事件
   window.addEventListener("settings-updated", loadBackgroundSettings);

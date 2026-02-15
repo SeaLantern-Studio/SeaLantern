@@ -66,13 +66,21 @@ const recentAlerts = computed(() => {
   return alerts.slice(-10);
 });
 
-onMounted(async () => {
-  await store.refreshList();
-  for (const s of store.servers) {
-    await store.refreshStatus(s.id);
-  }
+onMounted(() => {
+  // 异步加载服务器列表，不阻塞页面渲染
+  const loadServers = async () => {
+    try {
+      await store.refreshList();
+      // 服务器列表加载完成后，异步加载每个服务器的状态
+      for (const s of store.servers) {
+        await store.refreshStatus(s.id);
+      }
+    } catch (e) {
+      console.error("Failed to load servers:", e);
+    }
+  };
 
-  // 获取真实系统信息
+  // 获取真实系统信息（异步，不阻塞页面渲染）
   const fetchSystemInfo = async () => {
     try {
       const info = await systemApi.getSystemInfo();
@@ -89,7 +97,11 @@ onMounted(async () => {
     }
   };
 
-  await fetchSystemInfo();
+  // 启动异步加载
+  loadServers();
+  fetchSystemInfo();
+  
+  // 设置定时任务
   statsTimer = setInterval(fetchSystemInfo, 2000);
 
   // Refresh server statuses
