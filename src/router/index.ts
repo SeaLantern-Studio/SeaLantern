@@ -38,6 +38,12 @@ const routes = [
     meta: { title: "设置", icon: "sliders" },
   },
   {
+    path: "/paint",
+    name: "paint",
+    component: () => import("../views/PaintView.vue"),
+    meta: { title: "个性化", icon: "paint" },
+  },
+  {
     path: "/about",
     name: "about",
     component: () => import("../views/AboutView.vue"),

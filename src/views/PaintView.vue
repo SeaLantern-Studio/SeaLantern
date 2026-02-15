@@ -346,110 +346,198 @@ function clearBackgroundImage() {
     </div>
 
     <template v-else-if="settings">
-      <!-- General -->
-      <SLCard title="通用" subtitle="基本行为设置">
+      <!-- Appearance -->
+      <SLCard title="外观" subtitle="自定义软件背景和视觉效果">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">关闭软件时停止所有服务器</span>
-              <span class="setting-desc">退出 Sea Lantern 时自动向运行中的服务器发送 stop 命令，防止数据丢失</span>
-            </div>
-            <SLSwitch v-model="settings.close_servers_on_exit" @update:modelValue="markChanged" />
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">自动同意 EULA</span>
-              <span class="setting-desc">启动服务器前自动写入 eula=true，省去手动修改的步骤</span>
-            </div>
-            <SLSwitch v-model="settings.auto_accept_eula" @update:modelValue="markChanged" />
-          </div>
-        </div>
-      </SLCard>
-
-      <!-- Server Defaults -->
-      <SLCard title="服务器默认值" subtitle="创建新服务器时使用的默认参数">
-        <div class="settings-group">
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">默认最大内存 (MB)</span>
-              <span class="setting-desc">建议至少 1024MB。大型模组服可能需要 4096MB 以上</span>
-            </div>
-            <div class="input-sm">
-              <SLInput v-model="maxMem" type="number" @update:modelValue="markChanged" />
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">默认最小内存 (MB)</span>
-              <span class="setting-desc">建议设为最大内存的 1/4 到 1/2</span>
-            </div>
-            <div class="input-sm">
-              <SLInput v-model="minMem" type="number" @update:modelValue="markChanged" />
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">默认端口</span>
-              <span class="setting-desc">Minecraft 默认端口为 25565。多服务器需要设置不同端口</span>
-            </div>
-            <div class="input-sm">
-              <SLInput v-model="port" type="number" @update:modelValue="markChanged" />
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">默认 Java 路径</span>
-              <span class="setting-desc">留空则每次创建服务器时自动检测最合适的 Java</span>
+              <span class="setting-label">主题模式</span>
+              <span class="setting-desc">选择应用的主题外观，"跟随系统"会自动匹配系统的深色/浅色模式</span>
             </div>
             <div class="input-lg">
-              <SLInput v-model="settings.default_java_path" placeholder="留空自动检测" @update:modelValue="markChanged" />
-            </div>
-          </div>
-
-          <div class="setting-row full-width">
-            <div class="setting-info">
-              <span class="setting-label">默认 JVM 参数</span>
-              <span class="setting-desc">所有服务器启动时都会附加这些参数。适合设置 GC 优化参数</span>
-            </div>
-            <textarea
-              class="jvm-textarea"
-              v-model="settings.default_jvm_args"
-              placeholder="-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC"
-              rows="3"
-              @input="markChanged"
-            ></textarea>
-          </div>
-        </div>
-      </SLCard>
-
-      <!-- Console -->
-      <SLCard title="控制台" subtitle="控制台显示相关设置">
-        <div class="settings-group">
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">控制台字体大小 (px)</span>
-              <span class="setting-desc">控制台日志文字的大小，默认 13</span>
-            </div>
-            <div class="input-sm">
-              <SLInput v-model="fontSize" type="number" @update:modelValue="markChanged" />
+              <SLSelect
+                v-model="settings.theme"
+                :options="themeOptions"
+                @update:modelValue="handleThemeChange"
+              />
             </div>
           </div>
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">最大日志行数</span>
-              <span class="setting-desc">单个服务器最多保留的日志行数，超出后自动清除旧日志。默认 5000</span>
+              <span class="setting-label">文本大小</span>
+              <span class="setting-desc">调整界面文本的大小</span>
             </div>
-            <div class="input-sm">
-              <SLInput v-model="logLines" type="number" @update:modelValue="markChanged" />
+            <div class="slider-control">
+              <input
+                type="range"
+                min="12"
+                max="24"
+                step="1"
+                v-model="uiFontSize"
+                @input="handleFontSizeChange"
+                class="sl-slider"
+              />
+              <span class="slider-value">{{ uiFontSize }}px</span>
             </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">字体</span>
+              <span class="setting-desc">选择界面使用的字体，部分字体需要系统已安装或从网络加载</span>
+            </div>
+            <div class="input-lg">
+              <SLSelect
+                v-model="settings.font_family"
+                :options="fontFamilyOptions"
+                :searchable="true"
+                :loading="fontsLoading"
+                :previewFont="true"
+                placeholder="搜索字体..."
+                @update:modelValue="handleFontFamilyChange"
+              />
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">亚克力效果 (毛玻璃)</span>
+              <span class="setting-desc">
+                {{ acrylicSupported ? '启用 Windows 系统级亚克力毛玻璃效果，与背景图片兼容' : '当前系统不支持亚克力效果' }}
+              </span>
+            </div>
+            <SLSwitch
+              v-model="settings.acrylic_enabled"
+              :disabled="!acrylicSupported"
+              @update:modelValue="handleAcrylicChange"
+            />
+          </div>
+
+          <!-- 背景图片折叠区域 -->
+          <div class="collapsible-section">
+            <div class="collapsible-header" @click="bgSettingsExpanded = !bgSettingsExpanded">
+              <div class="setting-info">
+                <span class="setting-label">背景图片</span>
+                <span class="setting-desc">上传一张图片作为软件背景，支持 PNG、JPG、WEBP 等格式</span>
+              </div>
+              <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </div>
+            <Transition name="collapse">
+              <div v-show="bgSettingsExpanded" class="collapsible-content">
+                <div class="setting-row full-width">
+                  <div class="bg-image-picker">
+                    <div v-if="settings.background_image" class="bg-preview">
+                      <div v-if="bgPreviewLoading && !bgPreviewLoaded" class="bg-preview-loading">
+                        <div class="loading-spinner"></div>
+                        <span>加载预览中...</span>
+                      </div>
+                      <img
+                        v-show="bgPreviewLoaded || !bgPreviewLoading"
+                        :src="backgroundPreviewUrl"
+                        alt="Background preview"
+                        @load="bgPreviewLoaded = true; bgPreviewLoading = false"
+                        @loadstart="bgPreviewLoading = true"
+                        @error="bgPreviewLoading = false"
+                        loading="lazy"
+                      />
+                      <div v-if="isAnimatedImage(settings.background_image)" class="bg-animated-badge">
+                        动图
+                      </div>
+                      <div class="bg-preview-overlay">
+                        <span class="bg-preview-path">{{ settings.background_image.split('\\').pop() }}</span>
+                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">移除</SLButton>
+                      </div>
+                    </div>
+                    <SLButton v-else variant="secondary" @click="pickBackgroundImage">
+                      选择图片
+                    </SLButton>
+                    <SLButton v-if="settings.background_image" variant="secondary" size="sm" @click="pickBackgroundImage">
+                      更换图片
+                    </SLButton>
+                  </div>
+                </div>
+
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-label">不透明度</span>
+                    <span class="setting-desc">调节背景图片的不透明度 (0.0 - 1.0)，数值越小越透明</span>
+                  </div>
+                  <div class="slider-control">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      v-model="bgOpacity"
+                      @input="markChanged"
+                      class="sl-slider"
+                    />
+                    <span class="slider-value">{{ bgOpacity }}</span>
+                  </div>
+                </div>
+
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-label">模糊程度 (px)</span>
+                    <span class="setting-desc">为背景添加模糊效果，让前景内容更清晰</span>
+                  </div>
+                  <div class="slider-control">
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      step="1"
+                      v-model="bgBlur"
+                      @input="markChanged"
+                      class="sl-slider"
+                    />
+                    <span class="slider-value">{{ bgBlur }}px</span>
+                  </div>
+                </div>
+
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-label">亮度</span>
+                    <span class="setting-desc">调节背景图片的亮度 (0.0 - 2.0)，1.0 为原始亮度</span>
+                  </div>
+                  <div class="slider-control">
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      v-model="bgBrightness"
+                      @input="markChanged"
+                      class="sl-slider"
+                    />
+                    <span class="slider-value">{{ bgBrightness }}</span>
+                  </div>
+                </div>
+
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-label">图片填充方式</span>
+                    <span class="setting-desc">选择背景图片的显示方式</span>
+                  </div>
+                  <div class="input-lg">
+                    <SLSelect
+                      v-model="settings.background_size"
+                      :options="backgroundSizeOptions"
+                      @update:modelValue="markChanged"
+                    />
+                  </div>
+                </div>
+              </div>
+            </Transition>
           </div>
         </div>
       </SLCard>
+
       <!-- Actions -->
       <div class="settings-actions">
         <div class="actions-left">
@@ -460,9 +548,7 @@ function clearBackgroundImage() {
           <span v-if="hasChanges" class="unsaved-hint">有未保存的更改</span>
         </div>
         <div class="actions-right">
-          <SLButton variant="ghost" size="sm" @click="exportSettings">导出</SLButton>
-          <SLButton variant="ghost" size="sm" @click="showImportModal = true">导入</SLButton>
-          <SLButton variant="danger" size="sm" @click="showResetConfirm = true">恢复默认</SLButton>
+            请前往“设置”页面进行导入/导出操作。
         </div>
       </div>
     </template>
