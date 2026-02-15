@@ -101,7 +101,12 @@ export const serverApi = {
     return tauriInvoke("add_server_command", { id, name, command });
   },
 
-  async updateServerCommand(id: string, commandId: string, name: string, command: string): Promise<void> {
+  async updateServerCommand(
+    id: string,
+    commandId: string,
+    name: string,
+    command: string,
+  ): Promise<void> {
     return tauriInvoke("update_server_command", { id, commandId, name, command });
   },
 

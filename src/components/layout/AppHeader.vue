@@ -11,14 +11,14 @@ const i18nStore = useI18nStore();
 const showLanguageMenu = ref(false);
 
 const pageTitle = computed(() => {
-  return (route.meta?.title as string) || i18n.t('common.app_name');
+  return (route.meta?.title as string) || i18n.t("common.app_name");
 });
 
 const currentLanguageText = computed(() => {
   const locale = i18n.getLocale();
-  if (locale === 'zh-CN') return i18n.t('header.chinese');
-  if (locale === 'zh-TW') return i18n.t('header.chinese_tw');
-  return i18n.t('header.english');
+  if (locale === "zh-CN") return i18n.t("header.chinese");
+  if (locale === "zh-TW") return i18n.t("header.chinese_tw");
+  return i18n.t("header.english");
 });
 
 async function minimizeWindow() {
@@ -60,20 +60,20 @@ function handleClickOutside() {
         <span class="language-text">{{ currentLanguageText }}</span>
         <div class="language-menu" v-if="showLanguageMenu">
           <div class="language-item" @click.stop="setLanguage('zh-CN')">
-            {{ i18n.t('header.chinese') }}
+            {{ i18n.t("header.chinese") }}
           </div>
           <div class="language-item" @click.stop="setLanguage('zh-TW')">
-            {{ i18n.t('header.chinese_tw') }}
+            {{ i18n.t("header.chinese_tw") }}
           </div>
           <div class="language-item" @click.stop="setLanguage('en-US')">
-            {{ i18n.t('header.english') }}
+            {{ i18n.t("header.english") }}
           </div>
         </div>
       </div>
 
       <div class="header-status">
         <span class="status-dot online"></span>
-        <span class="status-text">{{ i18n.t('common.app_name') }}</span>
+        <span class="status-text">{{ i18n.t("common.app_name") }}</span>
       </div>
 
       <div class="window-controls">

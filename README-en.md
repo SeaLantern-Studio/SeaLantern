@@ -23,6 +23,7 @@ Import a server JAR file,choose a Java version,then click START!It's that simple
 - Whitelist,Ban,OP Manage easily.
 - It will shut server down when you close the software which won't let your saves be damaged.
 - Check update,update with one click
+
 ## Quick Start
 
 - If you are a user,download the software from RELEASE
@@ -42,7 +43,7 @@ Build release：
 npm run tauri build
 ```
 
-The built things are in  `src-tauri/target/release/bundle/`.
+The built things are in `src-tauri/target/release/bundle/`.
 
 ### Code Quality Check
 
@@ -231,7 +232,7 @@ sea-lantern/
 - Frontend polls for new logs every 800ms
 - Supports command input, Tab completion, up/down arrow history navigation, and shortcut command buttons
 - Logs stored in global store, persisting when switching between pages
-  
+
 ### Java Detection
 
 - Scans all drives from A to Z on application startup
@@ -264,7 +265,7 @@ sea-lantern/
 
 ## Planned Features
 
-Placeholders have been reserved for these features with existing code 
+Placeholders have been reserved for these features with existing code
 skeletons—waiting for your contributions:
 
 - Download Center - Download server cores, plugins, and mods
@@ -280,10 +281,11 @@ skeletons—waiting for your contributions:
 Contributions are welcome! Before you start, please read the [Contributing Guidelines](CONTRIBUTING-en.md) to understand code standards and development workflows.
 
 The UI is also fully customizable:
+
 - Colors are managed via CSS variables
 - Components are modular—replace any part you dislike
-Want to create a theme skin? Go for it.
-Want to completely redesign the layout? That's fine too.
+  Want to create a theme skin? Go for it.
+  Want to completely redesign the layout? That's fine too.
 
 ### How to Contribute
 
@@ -303,7 +305,7 @@ If you are going to add a「Save Management」：
 1. Create `backup_manager.rs` under `src-tauri/src/services/`,code the logic.
 2. Create `backup.rs` under `src-tauri/src/commands/`,code the Tauri command
 3. Add `pub mod backup` into `commands/mod.rs`
-4. Regist the command in `lib.rs`'s  `generate_handler!` macro.
+4. Regist the command in `lib.rs`'s `generate_handler!` macro.
 
 **Fronted**：
 

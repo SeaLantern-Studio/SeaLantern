@@ -68,7 +68,7 @@ const handleClick = () => {
   height: var(--switch-height);
   background: var(--sl-border, #e5e7eb);
   border-radius: var(--sl-radius-full, 9999px);
-  transition: background var(--sl-transition-fast, 150ms) ease;
+  transition: background 0.3s ease;
   flex-shrink: 0;
 }
 
@@ -85,7 +85,7 @@ const handleClick = () => {
   background: var(--sl-surface, white);
   border-radius: 50%;
   box-shadow: var(--sl-shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
-  transition: transform var(--sl-transition-fast, 150ms) ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 

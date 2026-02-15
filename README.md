@@ -12,12 +12,9 @@
 
 </div>
 
-
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
-
 ## 能干什么
-
 
 - 控制台实时看日志，直接输命令
 - server.properties 图形化编辑，不用手改文件
@@ -259,7 +256,8 @@ sea-lantern/
 - 默认内存、端口、JVM 参数，全部可配
 
 ### 软件更新
-- 检查来自 Gitee（或Github）  的发行版，获取最新版本信息
+
+- 检查来自 Gitee（或Github） 的发行版，获取最新版本信息
 - 显示更新日志，一键打开下载链接
 - 版本号自动比较，提示用户更新
 

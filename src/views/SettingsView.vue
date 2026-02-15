@@ -353,7 +353,7 @@ function clearBackgroundImage() {
 
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <span>{{ i18n.t('settings.loading') }}</span>
+      <span>{{ i18n.t("settings.loading") }}</span>
     </div>
 
     <template v-else-if="settings">
@@ -362,16 +362,16 @@ function clearBackgroundImage() {
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.auto_stop') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.auto_stop_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.auto_stop") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.auto_stop_desc") }}</span>
             </div>
             <SLSwitch v-model="settings.close_servers_on_exit" @update:modelValue="markChanged" />
           </div>
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.auto_eula') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.auto_eula_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.auto_eula") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.auto_eula_desc") }}</span>
             </div>
             <SLSwitch v-model="settings.auto_accept_eula" @update:modelValue="markChanged" />
           </div>
@@ -379,12 +379,15 @@ function clearBackgroundImage() {
       </SLCard>
 
       <!-- Server Defaults -->
-      <SLCard :title="i18n.t('settings.server_defaults')" :subtitle="i18n.t('settings.server_defaults_desc')">
+      <SLCard
+        :title="i18n.t('settings.server_defaults')"
+        :subtitle="i18n.t('settings.server_defaults_desc')"
+      >
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.default_memory') }} (MB)</span>
-              <span class="setting-desc">{{ i18n.t('settings.max_memory_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.default_memory") }} (MB)</span>
+              <span class="setting-desc">{{ i18n.t("settings.max_memory_desc") }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="maxMem" type="number" @update:modelValue="markChanged" />
@@ -393,8 +396,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.min_memory') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.min_memory_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.min_memory") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.min_memory_desc") }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="minMem" type="number" @update:modelValue="markChanged" />
@@ -403,8 +406,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.default_port') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.port_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.default_port") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.port_desc") }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="port" type="number" @update:modelValue="markChanged" />
@@ -413,18 +416,22 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.default_java') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.default_java_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.default_java") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.default_java_desc") }}</span>
             </div>
             <div class="input-lg">
-              <SLInput v-model="settings.default_java_path" :placeholder="i18n.t('settings.default_java_desc')" @update:modelValue="markChanged" />
+              <SLInput
+                v-model="settings.default_java_path"
+                :placeholder="i18n.t('settings.default_java_desc')"
+                @update:modelValue="markChanged"
+              />
             </div>
           </div>
 
           <div class="setting-row full-width">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.jvm_args') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.jvm_args_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.jvm_args") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
             </div>
             <textarea
               class="jvm-textarea"
@@ -442,8 +449,8 @@ function clearBackgroundImage() {
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.console_font_size') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.console_font_size_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.console_font_size") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.console_font_size_desc") }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="fontSize" type="number" @update:modelValue="markChanged" />
@@ -452,8 +459,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.max_log_lines') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.max_log_lines_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.max_log_lines") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.max_log_lines_desc") }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="logLines" type="number" @update:modelValue="markChanged" />
@@ -467,8 +474,8 @@ function clearBackgroundImage() {
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.theme') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.theme_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.theme") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
             </div>
             <div class="input-lg">
               <SLSelect
@@ -481,8 +488,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.font_size') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.font_size_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
             </div>
             <div class="slider-control">
               <input
@@ -500,8 +507,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.font_family') }}</span>
-              <span class="setting-desc">{{ i18n.t('settings.font_family_desc') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.font_family") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.font_family_desc") }}</span>
             </div>
             <div class="input-lg">
               <SLSelect
@@ -518,9 +525,13 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t('settings.acrylic') }}</span>
+              <span class="setting-label">{{ i18n.t("settings.acrylic") }}</span>
               <span class="setting-desc">
-                {{ acrylicSupported ? i18n.t('settings.acrylic_desc') : i18n.t('settings.acrylic_not_supported') }}
+                {{
+                  acrylicSupported
+                    ? i18n.t("settings.acrylic_desc")
+                    : i18n.t("settings.acrylic_not_supported")
+                }}
               </span>
             </div>
             <SLSwitch
@@ -534,8 +545,8 @@ function clearBackgroundImage() {
           <div class="collapsible-section">
             <div class="collapsible-header" @click="bgSettingsExpanded = !bgSettingsExpanded">
               <div class="setting-info">
-                <span class="setting-label">{{ i18n.t('settings.background') }}</span>
-                <span class="setting-desc">{{ i18n.t('settings.background_desc') }}</span>
+                <span class="setting-label">{{ i18n.t("settings.background") }}</span>
+                <span class="setting-desc">{{ i18n.t("settings.background_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
                 <svg
@@ -557,7 +568,7 @@ function clearBackgroundImage() {
                     <div v-if="settings.background_image" class="bg-preview">
                       <div v-if="bgPreviewLoading && !bgPreviewLoaded" class="bg-preview-loading">
                         <div class="loading-spinner"></div>
-                        <span>{{ i18n.t('settings.loading') }}</span>
+                        <span>{{ i18n.t("settings.loading") }}</span>
                       </div>
                       <img
                         v-show="bgPreviewLoaded || !bgPreviewLoading"
@@ -571,27 +582,39 @@ function clearBackgroundImage() {
                         @error="bgPreviewLoading = false"
                         loading="lazy"
                       />
-                      <div v-if="isAnimatedImage(settings.background_image)" class="bg-animated-badge">
-                        {{ i18n.t('settings.animated') }}
+                      <div
+                        v-if="isAnimatedImage(settings.background_image)"
+                        class="bg-animated-badge"
+                      >
+                        {{ i18n.t("settings.animated") }}
                       </div>
                       <div class="bg-preview-overlay">
-                        <span class="bg-preview-path">{{ settings.background_image.split('\\').pop() }}</span>
-                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">{{ i18n.t('settings.remove') }}</SLButton>
+                        <span class="bg-preview-path">{{
+                          settings.background_image.split("\\").pop()
+                        }}</span>
+                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">{{
+                          i18n.t("settings.remove")
+                        }}</SLButton>
                       </div>
                     </div>
                     <SLButton v-else variant="secondary" @click="pickBackgroundImage">
-                      {{ i18n.t('settings.select_image') }}
+                      {{ i18n.t("settings.select_image") }}
                     </SLButton>
-                    <SLButton v-if="settings.background_image" variant="secondary" size="sm" @click="pickBackgroundImage">
-                      {{ i18n.t('settings.change_image') }}
+                    <SLButton
+                      v-if="settings.background_image"
+                      variant="secondary"
+                      size="sm"
+                      @click="pickBackgroundImage"
+                    >
+                      {{ i18n.t("settings.change_image") }}
                     </SLButton>
                   </div>
                 </div>
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t('settings.opacity') }}</span>
-                    <span class="setting-desc">{{ i18n.t('settings.opacity_desc') }}</span>
+                    <span class="setting-label">{{ i18n.t("settings.opacity") }}</span>
+                    <span class="setting-desc">{{ i18n.t("settings.opacity_desc") }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -609,8 +632,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t('settings.blur') }}</span>
-                    <span class="setting-desc">{{ i18n.t('settings.blur_desc') }}</span>
+                    <span class="setting-label">{{ i18n.t("settings.blur") }}</span>
+                    <span class="setting-desc">{{ i18n.t("settings.blur_desc") }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -628,8 +651,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t('settings.brightness') }}</span>
-                    <span class="setting-desc">{{ i18n.t('settings.brightness_desc') }}</span>
+                    <span class="setting-label">{{ i18n.t("settings.brightness") }}</span>
+                    <span class="setting-desc">{{ i18n.t("settings.brightness_desc") }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -647,8 +670,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t('settings.background_size') }}</span>
-                    <span class="setting-desc">{{ i18n.t('settings.background_size_desc') }}</span>
+                    <span class="setting-label">{{ i18n.t("settings.background_size") }}</span>
+                    <span class="setting-desc">{{ i18n.t("settings.background_size_desc") }}</span>
                   </div>
                   <div class="input-lg">
                     <SLSelect
@@ -668,35 +691,64 @@ function clearBackgroundImage() {
       <div class="settings-actions">
         <div class="actions-left">
           <SLButton variant="primary" size="lg" :loading="saving" @click="saveSettings">
-            {{ i18n.t('settings.save') }}
+            {{ i18n.t("settings.save") }}
           </SLButton>
-          <SLButton variant="secondary" @click="loadSettings">{{ i18n.t('settings.discard') }}</SLButton>
-          <span v-if="hasChanges" class="unsaved-hint">{{ i18n.t('settings.unsaved_changes') }}</span>
+          <SLButton variant="secondary" @click="loadSettings">{{
+            i18n.t("settings.discard")
+          }}</SLButton>
+          <span v-if="hasChanges" class="unsaved-hint">{{
+            i18n.t("settings.unsaved_changes")
+          }}</span>
         </div>
         <div class="actions-right">
-          <SLButton variant="ghost" size="sm" @click="exportSettings">{{ i18n.t('settings.export') }}</SLButton>
-          <SLButton variant="ghost" size="sm" @click="showImportModal = true">{{ i18n.t('settings.import') }}</SLButton>
-          <SLButton variant="danger" size="sm" @click="showResetConfirm = true">{{ i18n.t('settings.reset') }}</SLButton>
+          <SLButton variant="ghost" size="sm" @click="exportSettings">{{
+            i18n.t("settings.export")
+          }}</SLButton>
+          <SLButton variant="ghost" size="sm" @click="showImportModal = true">{{
+            i18n.t("settings.import")
+          }}</SLButton>
+          <SLButton variant="danger" size="sm" @click="showResetConfirm = true">{{
+            i18n.t("settings.reset")
+          }}</SLButton>
         </div>
       </div>
     </template>
 
-    <SLModal :visible="showImportModal" :title="i18n.t('settings.import_title')" @close="showImportModal = false">
+    <SLModal
+      :visible="showImportModal"
+      :title="i18n.t('settings.import_title')"
+      @close="showImportModal = false"
+    >
       <div class="import-form">
-        <p class="text-caption">{{ i18n.t('settings.import_desc') }}</p>
-        <textarea class="import-textarea" v-model="importJson" :placeholder="i18n.t('settings.import_placeholder')" rows="10"></textarea>
+        <p class="text-caption">{{ i18n.t("settings.import_desc") }}</p>
+        <textarea
+          class="import-textarea"
+          v-model="importJson"
+          :placeholder="i18n.t('settings.import_placeholder')"
+          rows="10"
+        ></textarea>
       </div>
       <template #footer>
-        <SLButton variant="secondary" @click="showImportModal = false">{{ i18n.t('settings.cancel') }}</SLButton>
-        <SLButton variant="primary" @click="handleImport">{{ i18n.t('settings.import') }}</SLButton>
+        <SLButton variant="secondary" @click="showImportModal = false">{{
+          i18n.t("settings.cancel")
+        }}</SLButton>
+        <SLButton variant="primary" @click="handleImport">{{ i18n.t("settings.import") }}</SLButton>
       </template>
     </SLModal>
 
-    <SLModal :visible="showResetConfirm" :title="i18n.t('settings.reset_title')" @close="showResetConfirm = false">
-      <p class="text-body">{{ i18n.t('settings.reset_desc') }}</p>
+    <SLModal
+      :visible="showResetConfirm"
+      :title="i18n.t('settings.reset_title')"
+      @close="showResetConfirm = false"
+    >
+      <p class="text-body">{{ i18n.t("settings.reset_desc") }}</p>
       <template #footer>
-        <SLButton variant="secondary" @click="showResetConfirm = false">{{ i18n.t('settings.cancel') }}</SLButton>
-        <SLButton variant="danger" @click="resetSettings">{{ i18n.t('settings.reset_confirm') }}</SLButton>
+        <SLButton variant="secondary" @click="showResetConfirm = false">{{
+          i18n.t("settings.cancel")
+        }}</SLButton>
+        <SLButton variant="danger" @click="resetSettings">{{
+          i18n.t("settings.reset_confirm")
+        }}</SLButton>
       </template>
     </SLModal>
   </div>
@@ -1028,7 +1080,7 @@ function clearBackgroundImage() {
 
 .collapse-enter-active,
 .collapse-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 

@@ -104,12 +104,12 @@ const filteredSuggestions = computed(() => {
 
 // 优先使用serverStore.currentServerId，确保与侧栏同步
 const serverId = computed(() => {
-  return serverStore.currentServerId || consoleStore.activeServerId || (route.params.id as string) || "";
+  return (
+    serverStore.currentServerId || consoleStore.activeServerId || (route.params.id as string) || ""
+  );
 });
 
 const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
-
-
 
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
@@ -117,7 +117,7 @@ const isRunning = computed(() => serverStatus.value === "Running");
 const isStopped = computed(() => serverStatus.value === "Stopped");
 
 const currentServerCommands = computed(() => {
-  const server = serverStore.servers.find(s => s.id === serverId.value);
+  const server = serverStore.servers.find((s) => s.id === serverId.value);
   return server?.commands || [];
 });
 
@@ -405,7 +405,7 @@ function openEditCommandModal(cmd: ServerCommand) {
 async function saveCommand() {
   const sid = serverId.value;
   if (!sid || !commandName.value.trim() || !commandText.value.trim()) return;
-  
+
   commandLoading.value = true;
   try {
     if (editingCommand.value) {
@@ -414,15 +414,11 @@ async function saveCommand() {
         sid,
         editingCommand.value.id,
         commandName.value.trim(),
-        commandText.value.trim()
+        commandText.value.trim(),
       );
     } else {
       // 添加新指令
-      await serverApi.addServerCommand(
-        sid,
-        commandName.value.trim(),
-        commandText.value.trim()
-      );
+      await serverApi.addServerCommand(sid, commandName.value.trim(), commandText.value.trim());
     }
     // 刷新服务器列表以获取更新的指令
     await serverStore.refreshList();
@@ -438,7 +434,7 @@ async function saveCommand() {
 async function deleteCommand(cmd: ServerCommand) {
   const sid = serverId.value;
   if (!sid) return;
-  
+
   try {
     await serverApi.deleteServerCommand(sid, cmd.id);
     // 刷新服务器列表以获取更新的指令
@@ -459,27 +455,47 @@ function executeCustomCommand(cmd: ServerCommand) {
 <template>
   <div class="console-view animate-fade-in-up">
     <div class="console-toolbar">
-        <div class="toolbar-left">
-          <div v-if="serverId" class="server-name-display">
-            {{ serverStore.servers.find(s => s.id === serverId)?.name || i18n.t('common.console') }}
-          </div>
-          <div v-else class="server-name-display">
-            {{ i18n.t('home.no_servers') }}
-          </div>
-          <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
-            <span class="status-dot"></span>
-            <span class="status-label">{{ getStatusText() }}</span>
-          </div>
+      <div class="toolbar-left">
+        <div v-if="serverId" class="server-name-display">
+          {{ serverStore.servers.find((s) => s.id === serverId)?.name || i18n.t("common.console") }}
         </div>
+        <div v-else class="server-name-display">
+          {{ i18n.t("home.no_servers") }}
+        </div>
+        <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
+          <span class="status-dot"></span>
+          <span class="status-label">{{ getStatusText() }}</span>
+        </div>
+      </div>
       <div class="toolbar-right">
-        <SLButton variant="primary" size="sm" :loading="startLoading" :disabled="isRunning || startLoading" @click="handleStart">{{ i18n.t('home.start') }}</SLButton>
-        <SLButton variant="danger" size="sm" :loading="stopLoading" :disabled="isStopped || stopLoading" @click="handleStop">{{ i18n.t('home.stop') }}</SLButton>
-        <SLButton variant="secondary" size="sm" @click="exportLogs">{{ i18n.t('console.copy_log') }}</SLButton>
-        <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{ i18n.t('console.clear_log') }}</SLButton>
+        <SLButton
+          variant="primary"
+          size="sm"
+          :loading="startLoading"
+          :disabled="isRunning || startLoading"
+          @click="handleStart"
+          >{{ i18n.t("home.start") }}</SLButton
+        >
+        <SLButton
+          variant="danger"
+          size="sm"
+          :loading="stopLoading"
+          :disabled="isStopped || stopLoading"
+          @click="handleStop"
+          >{{ i18n.t("home.stop") }}</SLButton
+        >
+        <SLButton variant="secondary" size="sm" @click="exportLogs">{{
+          i18n.t("console.copy_log")
+        }}</SLButton>
+        <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
+          i18n.t("console.clear_log")
+        }}</SLButton>
       </div>
     </div>
 
-    <div v-if="!serverId" class="no-server"><p class="text-body">{{ i18n.t('home.no_servers') }}</p></div>
+    <div v-if="!serverId" class="no-server">
+      <p class="text-body">{{ i18n.t("home.no_servers") }}</p>
+    </div>
 
     <template v-else>
       <!-- 快捷指令和自定义指令部分 -->
@@ -499,7 +515,7 @@ function executeCustomCommand(cmd: ServerCommand) {
             </div>
           </div>
         </div>
-        
+
         <!-- 自定义指令行 -->
         <div v-if="serverId" class="command-row custom-commands-row">
           <div class="custom-label">自定义:</div>
@@ -512,15 +528,9 @@ function executeCustomCommand(cmd: ServerCommand) {
               :title="cmd.command"
             >
               <span class="custom-btn-name">{{ cmd.name }}</span>
-              <span class="custom-btn-edit" @click.stop="openEditCommandModal(cmd)">
-                ⚙️
-              </span>
+              <span class="custom-btn-edit" @click.stop="openEditCommandModal(cmd)"> ⚙️ </span>
             </div>
-            <div
-              class="custom-btn add-btn"
-              @click="openAddCommandModal()"
-              title="添加自定义指令"
-            >
+            <div class="custom-btn add-btn" @click="openAddCommandModal()" title="添加自定义指令">
               <span class="add-btn-plus">+</span>
             </div>
           </div>
@@ -546,9 +556,15 @@ function executeCustomCommand(cmd: ServerCommand) {
           }"
         >
           <!-- 解析日志行，提取时间和等级 -->
-          <template v-if="line.match(/^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/)">
+          <template
+            v-if="
+              line.match(/^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/)
+            "
+          >
             <span class="log-time">[{{ RegExp.$1 }}]</span>
-            <span class="log-level" :class="'level-' + RegExp.$3.toLowerCase()">[{{ RegExp.$2 }}/{{ RegExp.$3 }}]</span>
+            <span class="log-level" :class="'level-' + RegExp.$3.toLowerCase()"
+              >[{{ RegExp.$2 }}/{{ RegExp.$3 }}]</span
+            >
             <span class="log-content">{{ RegExp.$4 }}</span>
           </template>
           <!-- 对于不符合标准格式的日志行，直接显示 -->
@@ -588,8 +604,16 @@ function executeCustomCommand(cmd: ServerCommand) {
         </div>
         <div class="console-input-bar">
           <span class="input-prefix">&gt;</span>
-          <input class="console-input" v-model="commandInput" placeholder="输入命令... (Tab 补全)" @keydown="handleKeydown" :style="{ fontSize: consoleFontSize + 'px' }" />
-          <SLButton variant="primary" size="sm" @click="sendCommand()">{{ i18n.t('console.send_command') }}</SLButton>
+          <input
+            class="console-input"
+            v-model="commandInput"
+            placeholder="输入命令... (Tab 补全)"
+            @keydown="handleKeydown"
+            :style="{ fontSize: consoleFontSize + 'px' }"
+          />
+          <SLButton variant="primary" size="sm" @click="sendCommand()">{{
+            i18n.t("console.send_command")
+          }}</SLButton>
         </div>
       </div>
 
@@ -644,7 +668,7 @@ function executeCustomCommand(cmd: ServerCommand) {
               :disabled="!commandName.trim() || !commandText.trim() || commandLoading"
               :loading="commandLoading"
             >
-              {{ editingCommand ? '更新' : '添加' }}
+              {{ editingCommand ? "更新" : "添加" }}
             </SLButton>
           </div>
         </template>

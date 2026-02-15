@@ -69,16 +69,18 @@ function handleSystemThemeChange() {
 onMounted(() => {
   // 立即应用默认主题，确保 UI 快速显示
   applyTheme("auto");
-  
+
   // 检测亚克力支持（异步，不阻塞 UI）
-  checkAcrylicSupport().then(supported => {
-    acrylicSupported.value = supported;
-  }).catch(() => {
-    acrylicSupported.value = false;
-  });
+  checkAcrylicSupport()
+    .then((supported) => {
+      acrylicSupported.value = supported;
+    })
+    .catch(() => {
+      acrylicSupported.value = false;
+    });
 
   // 异步加载背景设置，不阻塞 UI 渲染
-  loadBackgroundSettings().catch(err => {
+  loadBackgroundSettings().catch((err) => {
     console.error("Failed to load settings initially:", err);
   });
 
@@ -206,7 +208,7 @@ const backgroundStyle = computed(() => {
   display: flex;
   flex-direction: column;
   margin-left: var(--sl-sidebar-width);
-  transition: margin-left var(--sl-transition-normal);
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 0;
 }
 
@@ -224,8 +226,8 @@ const backgroundStyle = computed(() => {
 .page-fade-enter-active,
 .page-fade-leave-active {
   transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
+    opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-fade-enter-from {
