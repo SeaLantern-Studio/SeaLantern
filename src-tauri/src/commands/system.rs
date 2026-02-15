@@ -194,3 +194,47 @@ pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, St
 
     rx.recv().map_err(|e| format!("Dialog error: {}", e))
 }
+
+#[tauri::command]
+pub fn open_folder(path: String) -> Result<(), String> {
+    use std::process::Command;
+    
+    #[cfg(target_os = "windows")]
+    {
+        let status = Command::new("explorer")
+            .arg(path)
+            .status()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to open folder".to_string())
+        }
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        let status = Command::new("open")
+            .arg(path)
+            .status()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to open folder".to_string())
+        }
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        let status = Command::new("xdg-open")
+            .arg(path)
+            .status()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to open folder".to_string())
+        }
+    }
+}

@@ -402,6 +402,9 @@ async function handleDelete(id: string) {
           <SLButton variant="ghost" size="sm" @click="store.setCurrentServer(server.id); router.push('/console/' + server.id)">
             {{ i18n.t('common.console') }}
           </SLButton>
+          <SLButton variant="ghost" size="sm" @click="systemApi.openFolder(server.path)">
+            打开文件夹
+          </SLButton>
           <SLButton variant="ghost" size="sm" @click="store.setCurrentServer(server.id); router.push('/config/' + server.id)">
             {{ i18n.t('common.config_edit') }}
           </SLButton>
