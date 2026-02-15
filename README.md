@@ -12,10 +12,9 @@
 
 </div>
 
+> 您正在浏览简体中文版的readme，点击[此处](README-en.md)前往英文版
 
-[简体中文文档(当前)](README.md)
-
-[English Version Doc](README-en.md)
+> You are browsing the Simplified Chinese version of the readme. Click [here](README-en.md) to go to the English version
 
 Minecraft 服务器管理工具 · Tauri 2 + Rust + Vue 3
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
