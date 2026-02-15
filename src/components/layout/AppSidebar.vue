@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { useRouter, useRoute } from "vue-router";
+import { useRouter, useRoute, computed } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
+import { i18n } from "../../locales";
 
 const router = useRouter();
 const route = useRoute();
@@ -10,24 +11,24 @@ interface NavItem {
   name: string;
   path: string;
   icon: string;
-  label: string;
+  labelKey: string;
   group: string;
 }
 
 const navItems: NavItem[] = [
-  { name: "home", path: "/", icon: "home", label: "首页", group: "main" },
-  { name: "create", path: "/create", icon: "plus", label: "创建服务器", group: "main" },
-  { name: "console", path: "/console", icon: "terminal", label: "控制台", group: "server" },
-  { name: "config", path: "/config", icon: "settings", label: "配置编辑", group: "server" },
-  { name: "players", path: "/players", icon: "users", label: "玩家管理", group: "server" },
-  { name: "settings", path: "/settings", icon: "sliders", label: "设置", group: "system" },
-  { name: "about", path: "/about", icon: "info", label: "关于", group: "system" },
+  { name: "home", path: "/", icon: "home", labelKey: "common.home", group: "main" },
+  { name: "create", path: "/create", icon: "plus", labelKey: "common.create_server", group: "main" },
+  { name: "console", path: "/console", icon: "terminal", labelKey: "common.console", group: "server" },
+  { name: "config", path: "/config", icon: "settings", labelKey: "common.config_edit", group: "server" },
+  { name: "players", path: "/players", icon: "users", labelKey: "common.player_manage", group: "server" },
+  { name: "settings", path: "/settings", icon: "sliders", labelKey: "common.settings", group: "system" },
+  { name: "about", path: "/about", icon: "info", labelKey: "common.about", group: "system" },
 ];
 
 const groups = [
-  { key: "main", label: "通用" },
-  { key: "server", label: "服务器" },
-  { key: "system", label: "系统" },
+  { key: "main", labelKey: "sidebar.groups.main" },
+  { key: "server", labelKey: "sidebar.groups.server" },
+  { key: "system", labelKey: "sidebar.groups.system" },
 ];
 
 function navigateTo(path: string) {
@@ -40,7 +41,7 @@ function isActive(path: string): boolean {
 }
 
 const iconMap: Record<string, string> = {
-  home: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1",
+  home: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1H5z",
   plus: "M12 4v16m8-8H4",
   terminal: "M4 17l6-6-6-6m8 14h8",
   settings:
@@ -58,17 +59,17 @@ const iconMap: Record<string, string> = {
   <aside class="sidebar glass-strong" :class="{ collapsed: ui.sidebarCollapsed }">
     <div class="sidebar-logo" @click="navigateTo('/')">
       <div class="logo-icon">
-        <img src="../../assets/logo.svg" alt="Sea Lantern" width="28" height="28" />
+        <img src="../../assets/logo.svg" :alt="i18n.t('common.app_name')" width="28" height="28" />
       </div>
       <transition name="fade">
-        <span v-if="!ui.sidebarCollapsed" class="logo-text">Sea Lantern</span>
+        <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t('common.app_name') }}</span>
       </transition>
     </div>
 
     <nav class="sidebar-nav">
       <div v-for="group in groups" :key="group.key" class="nav-group">
         <transition name="fade">
-          <div v-if="!ui.sidebarCollapsed" class="nav-group-label">{{ group.label }}</div>
+          <div v-if="!ui.sidebarCollapsed" class="nav-group-label">{{ i18n.t(group.labelKey) }}</div>
         </transition>
         <div
           v-for="item in navItems.filter((i) => i.group === group.key)"
@@ -92,7 +93,7 @@ const iconMap: Record<string, string> = {
             <path :d="iconMap[item.icon] || iconMap.info" />
           </svg>
           <transition name="fade">
-            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
           </transition>
           <div v-if="isActive(item.path)" class="nav-active-indicator" />
         </div>
@@ -116,7 +117,7 @@ const iconMap: Record<string, string> = {
           <path :d="iconMap.chevron" />
         </svg>
         <transition name="fade">
-          <span v-if="!ui.sidebarCollapsed" class="nav-label">收起侧栏</span>
+          <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t('sidebar.collapse_btn') }}</span>
         </transition>
       </div>
     </div>

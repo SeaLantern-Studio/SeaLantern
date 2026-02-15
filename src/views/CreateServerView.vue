@@ -12,6 +12,7 @@ import { javaApi, type JavaInfo } from "../api/java";
 import { systemApi } from "../api/system";
 import { settingsApi } from "../api/settings";
 import { useServerStore } from "../stores/serverStore";
+import { i18n } from "../locales";
 
 const router = useRouter();
 const store = useServerStore();
@@ -158,20 +159,20 @@ const javaOptions = computed(() => {
       <button class="error-close" @click="errorMsg = null">x</button>
     </div>
 
-    <SLCard title="Java 环境" subtitle="扫描系统中所有磁盘的 Java 安装">
+    <SLCard :title="i18n.t('create.java_env')" :subtitle="i18n.t('create.java_scan')">
       <div v-if="javaLoading" class="java-loading">
-        <SLSpinner />
-        <span>正在扫描所有磁盘...</span>
+        <div class="spinner"></div>
+        <span>{{ i18n.t('create.scanning') }}</span>
       </div>
       <div v-else-if="javaList.length === 0" class="java-empty">
-        <p class="text-body">未检测到 Java，请点击下方按钮扫描</p>
-        <SLButton variant="primary" @click="detectJava" style="margin-top: 12px">
-          扫描 Java
+        <p class="text-body">{{ i18n.t('create.no_java') }}</p>
+        <SLButton variant="primary" @click="detectJava" style="margin-top: 12px;">
+          {{ i18n.t('create.browse') }}
         </SLButton>
       </div>
       <div v-else class="java-select-container">
         <div class="java-header">
-          <div class="java-found text-caption">找到 {{ javaList.length }} 个 Java</div>
+          <div class="java-found text-caption">{{ i18n.t('create.java_found', { count: javaList.length }) }}</div>
           <button class="rescan-btn" @click="detectJava" :disabled="javaLoading">
             <svg
               width="14"
@@ -185,53 +186,49 @@ const javaOptions = computed(() => {
                 d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
               />
             </svg>
-            重新扫描
+            {{ i18n.t('create.rescan') }}
           </button>
         </div>
         <SLSelect
           v-model="selectedJava"
           :options="javaOptions"
-          placeholder="选择 Java 版本"
+          :placeholder="i18n.t('create.select_java')"
           searchable
           maxHeight="240px"
         />
         <div v-if="selectedJava" class="selected-java-path">
-          <span class="text-caption">路径：</span>
+          <span class="text-caption">{{ i18n.t('create.server_path') }}：</span>
           <span class="text-mono text-caption">{{ selectedJava }}</span>
         </div>
       </div>
       <div class="java-manual">
-        <SLInput
-          label="或手动指定 Java 路径"
-          v-model="selectedJava"
-          placeholder="点击浏览选择 java.exe"
-        >
+        <SLInput :label="i18n.t('create.java_version')" v-model="selectedJava" :placeholder="i18n.t('create.java_manual')">
           <template #suffix>
-            <button class="pick-btn" @click="pickJavaFile">浏览</button>
+            <button class="pick-btn" @click="pickJavaFile">{{ i18n.t('create.browse') }}</button>
           </template>
         </SLInput>
       </div>
     </SLCard>
 
-    <SLCard title="服务器配置">
+    <SLCard :title="i18n.t('create.title')">
       <div class="form-grid">
         <div class="server-name-row">
-          <SLInput label="服务器名称" placeholder="输入名称" v-model="serverName" />
+          <SLInput :label="i18n.t('create.server_name')" :placeholder="i18n.t('create.server_name')" v-model="serverName" />
         </div>
         <div class="jar-picker">
-          <SLInput label="服务端 JAR 文件" v-model="jarPath" placeholder="点击浏览选择 .jar 文件">
+          <SLInput :label="i18n.t('create.jar_file')" v-model="jarPath" :placeholder="i18n.t('create.jar_file')">
             <template #suffix>
-              <button class="pick-btn" @click="pickJarFile">浏览</button>
+              <button class="pick-btn" @click="pickJarFile">{{ i18n.t('create.browse') }}</button>
             </template>
           </SLInput>
         </div>
-        <SLInput label="最大内存 (MB)" type="number" v-model="maxMemory" />
-        <SLInput label="最小内存 (MB)" type="number" v-model="minMemory" />
-        <SLInput label="服务器端口" type="number" v-model="port" placeholder="默认 25565" />
+        <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
+        <SLInput :label="i18n.t('create.min_memory')" type="number" v-model="minMemory" />
+        <SLInput :label="i18n.t('settings.default_port')" type="number" v-model="port" :placeholder="i18n.t('create.default_port_placeholder')" />
         <div class="online-mode-cell">
-          <span class="online-mode-label">正版验证</span>
+          <span class="online-mode-label">{{ i18n.t('create.online_mode') }}</span>
           <div class="online-mode-box">
-            <span class="online-mode-text">{{ onlineMode ? "已开启" : "已关闭" }}</span>
+            <span class="online-mode-text">{{ onlineMode ? i18n.t('create.online_mode_on') : i18n.t('create.online_mode_off') }}</span>
             <SLSwitch v-model="onlineMode" />
           </div>
         </div>
@@ -239,9 +236,9 @@ const javaOptions = computed(() => {
     </SLCard>
 
     <div class="create-actions">
-      <SLButton variant="secondary" size="lg" @click="router.push('/')">取消</SLButton>
+      <SLButton variant="secondary" size="lg" @click="router.push('/')">{{ i18n.t('create.cancel') }}</SLButton>
       <SLButton variant="primary" size="lg" :loading="creating" @click="handleCreate">
-        导入服务器
+        {{ i18n.t('create.create') }}
       </SLButton>
     </div>
   </div>

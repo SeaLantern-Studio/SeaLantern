@@ -10,6 +10,7 @@ import SLBadge from "../components/common/SLBadge.vue";
 import SLSpinner from "../components/common/SLSpinner.vue";
 import { configApi, type ConfigEntry } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
+import { i18n } from "../locales";
 
 const route = useRoute();
 const store = useServerStore();
@@ -129,10 +130,10 @@ function getServerName(): string {
     <div class="config-header">
       <div class="server-picker">
         <SLSelect
-          label="选择服务器"
+          :label="i18n.t('common.config_edit')"
           :options="serverOptions"
           v-model="selectedServerId"
-          placeholder="选择要编辑配置的服务器"
+          :placeholder="i18n.t('config.select_server')"
         />
       </div>
       <div v-if="selectedServerId" class="server-path-display text-mono text-caption">
@@ -141,7 +142,7 @@ function getServerName(): string {
     </div>
 
     <div v-if="!selectedServerId" class="empty-state">
-      <p class="text-body">请选择一个服务器来编辑配置</p>
+      <p class="text-body">{{ i18n.t('config.no_server') }}</p>
     </div>
 
     <template v-else>
@@ -150,36 +151,28 @@ function getServerName(): string {
         <button class="banner-close" @click="error = null">x</button>
       </div>
       <div v-if="successMsg" class="success-banner">
-        <span>{{ successMsg }}</span>
+        <span>{{ i18n.t('config.saved') }}</span>
       </div>
 
       <div class="config-toolbar">
         <div class="toolbar-left">
-          <SLInput placeholder="搜索配置项..." v-model="searchQuery" />
+          <SLInput :placeholder="i18n.t('config.search')" v-model="searchQuery" />
         </div>
         <div class="toolbar-right">
-          <SLButton variant="secondary" size="sm" @click="loadProperties">刷新</SLButton>
-          <SLButton variant="primary" size="sm" :loading="saving" @click="saveProperties"
-            >保存配置</SLButton
-          >
+          <SLButton variant="secondary" size="sm" @click="loadProperties">{{ i18n.t('config.reload') }}</SLButton>
+          <SLButton variant="primary" size="sm" :loading="saving" @click="saveProperties">{{ i18n.t('config.save') }}</SLButton>
         </div>
       </div>
 
       <div class="category-tabs">
-        <button
-          v-for="cat in categories"
-          :key="cat"
-          class="category-tab"
-          :class="{ active: activeCategory === cat }"
-          @click="activeCategory = cat"
-        >
-          {{ categoryLabels[cat] || cat }}
+        <button v-for="cat in categories" :key="cat" class="category-tab" :class="{ active: activeCategory === cat }" @click="activeCategory = cat">
+          {{ i18n.t(`config.categories.${cat}`) || cat }}
         </button>
       </div>
 
       <div v-if="loading" class="loading-state">
-        <SLSpinner />
-        <span>加载配置中...</span>
+        <div class="spinner"></div>
+        <span>{{ i18n.t('config.loading') }}</span>
       </div>
 
       <div v-else class="config-entries">
@@ -187,49 +180,19 @@ function getServerName(): string {
           <div class="entry-header">
             <div class="entry-key-row">
               <span class="entry-key text-mono">{{ entry.key }}</span>
-              <SLBadge :text="categoryLabels[entry.category] || entry.category" variant="neutral" />
+              <SLBadge :text="i18n.t(`config.categories.${entry.category}`) || entry.category" variant="neutral" />
             </div>
             <p v-if="entry.description" class="entry-desc text-caption">{{ entry.description }}</p>
           </div>
           <div class="entry-control">
-            <SLSwitch
-              v-if="entry.value_type === 'boolean'"
-              :modelValue="getBoolValue(entry.key)"
-              @update:modelValue="updateValue(entry.key, $event)"
-            />
-            <SLSelect
-              v-else-if="entry.key === 'gamemode'"
-              :modelValue="editValues[entry.key]"
-              :options="[
-                { label: '生存', value: 'survival' },
-                { label: '创造', value: 'creative' },
-                { label: '冒险', value: 'adventure' },
-                { label: '旁观', value: 'spectator' },
-              ]"
-              @update:modelValue="updateValue(entry.key, $event as string)"
-            />
-            <SLSelect
-              v-else-if="entry.key === 'difficulty'"
-              :modelValue="editValues[entry.key]"
-              :options="[
-                { label: '和平', value: 'peaceful' },
-                { label: '简单', value: 'easy' },
-                { label: '普通', value: 'normal' },
-                { label: '困难', value: 'hard' },
-              ]"
-              @update:modelValue="updateValue(entry.key, $event as string)"
-            />
-            <SLInput
-              v-else
-              :modelValue="editValues[entry.key]"
-              :type="entry.value_type === 'number' ? 'number' : 'text'"
-              :placeholder="entry.default_value"
-              @update:modelValue="updateValue(entry.key, $event)"
-            />
+            <SLSwitch v-if="entry.value_type === 'boolean'" :modelValue="getBoolValue(entry.key)" @update:modelValue="updateValue(entry.key, $event)" />
+            <SLSelect v-else-if="entry.key === 'gamemode'" :modelValue="editValues[entry.key]" :options="[{label:i18n.t('config.gamemode.survival'),value:'survival'},{label:i18n.t('config.gamemode.creative'),value:'creative'},{label:i18n.t('config.gamemode.adventure'),value:'adventure'},{label:i18n.t('config.gamemode.spectator'),value:'spectator'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
+            <SLSelect v-else-if="entry.key === 'difficulty'" :modelValue="editValues[entry.key]" :options="[{label:i18n.t('config.difficulty.peaceful'),value:'peaceful'},{label:i18n.t('config.difficulty.easy'),value:'easy'},{label:i18n.t('config.difficulty.normal'),value:'normal'},{label:i18n.t('config.difficulty.hard'),value:'hard'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
+            <SLInput v-else :modelValue="editValues[entry.key]" :type="entry.value_type === 'number' ? 'number' : 'text'" :placeholder="entry.default_value" @update:modelValue="updateValue(entry.key, $event)" />
           </div>
         </div>
         <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
-          <p class="text-caption">没有找到配置文件，请先启动一次服务器以生成 server.properties</p>
+          <p class="text-caption">{{ i18n.t('config.no_config') }}</p>
         </div>
       </div>
     </template>

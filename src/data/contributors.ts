@@ -78,7 +78,12 @@ export const contributors: Contributor[] = [
     avatar: "https://mc-heads.net/avatar/LingyeNB/64",
     url: "https://github.com/LingyeNBird",
   },
-
+  {
+    name: "皓天是条龙",
+    role: "增加了一点新功能",
+    avatar: "https://mc-heads.net/avatar/zhu_hao_tian/64",
+    url: "https://github.com/zhu1h1t1",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
