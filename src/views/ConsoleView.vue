@@ -355,7 +355,6 @@ function handleClearLogs() {
         <div v-else class="server-name-display">
           {{ i18n.t('home.no_servers') }}
         </div>
-        <div v-else class="server-name-display">暂无服务器</div>
         <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
           <span class="status-dot"></span>
           <span class="status-label">{{ getStatusText() }}</span>
