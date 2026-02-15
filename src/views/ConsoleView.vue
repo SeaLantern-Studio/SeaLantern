@@ -457,22 +457,26 @@ function executeCustomCommand(cmd: ServerCommand) {
     <div v-if="!serverId" class="no-server"><p class="text-body">{{ i18n.t('home.no_servers') }}</p></div>
 
     <template v-else>
+      <!-- 快捷指令和自定义指令部分 -->
       <div class="quick-commands">
-        <span class="quick-label">快捷:</span>
-        <div class="quick-groups">
-          <div
-            v-for="cmd in quickCommands"
-            :key="cmd.cmd"
-            class="quick-btn"
-            @click="sendCommand(cmd.cmd)"
-            :title="cmd.cmd"
-          >
-            {{ cmd.label }}
+        <!-- 快捷指令行 -->
+        <div class="command-row">
+          <span class="quick-label">快捷:</span>
+          <div class="quick-groups">
+            <div
+              v-for="cmd in quickCommands"
+              :key="cmd.cmd"
+              class="quick-btn"
+              @click="sendCommand(cmd.cmd)"
+              :title="cmd.cmd"
+            >
+              {{ cmd.label }}
+            </div>
           </div>
         </div>
         
-        <!-- 自定义指令部分 -->
-        <div v-if="serverId" class="custom-commands">
+        <!-- 自定义指令行 -->
+        <div v-if="serverId" class="command-row custom-commands-row">
           <div class="custom-label">自定义:</div>
           <div class="custom-buttons">
             <div
@@ -693,23 +697,38 @@ function executeCustomCommand(cmd: ServerCommand) {
 }
 .quick-commands {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--sl-space-sm);
-  padding: var(--sl-space-xs) var(--sl-space-sm);
+  padding: var(--sl-space-sm);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
   flex-shrink: 0;
-  overflow-x: auto;
+}
+
+.command-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sl-space-sm);
+  flex-wrap: wrap;
+}
+
+.custom-commands-row {
+  margin-top: 2px;
 }
 .quick-label {
   font-size: 0.75rem;
   color: var(--sl-text-tertiary);
   white-space: nowrap;
+  margin-top: 3px;
 }
 .quick-groups {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
 }
 .quick-btn {
   padding: 3px 10px;
@@ -847,23 +866,26 @@ function executeCustomCommand(cmd: ServerCommand) {
 /* 自定义指令样式 */
 .custom-commands {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sl-space-sm);
-  margin-left: var(--sl-space-md);
-  padding-left: var(--sl-space-md);
-  border-left: 1px solid var(--sl-border-light);
+  flex-wrap: wrap;
+  align-content: flex-start;
 }
 
 .custom-label {
   font-size: 0.75rem;
   color: var(--sl-text-tertiary);
   white-space: nowrap;
+  margin-top: 3px;
 }
 
 .custom-buttons {
   display: flex;
   gap: 4px;
   align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .custom-btn {
