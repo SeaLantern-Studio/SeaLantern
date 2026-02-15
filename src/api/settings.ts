@@ -42,13 +42,13 @@ export const settingsApi = {
 };
 
 export async function checkAcrylicSupport(): Promise<boolean> {
-  return tauriInvoke<boolean>('check_acrylic_support');
+  return tauriInvoke<boolean>("check_acrylic_support");
 }
 
 export async function applyAcrylic(enabled: boolean, darkMode: boolean): Promise<void> {
-  return tauriInvoke<void>('apply_acrylic', { enabled, darkMode });
+  return tauriInvoke<void>("apply_acrylic", { enabled, darkMode });
 }
 
 export async function getSystemFonts(): Promise<string[]> {
-  return tauriInvoke<string[]>('get_system_fonts');
+  return tauriInvoke<string[]>("get_system_fonts");
 }

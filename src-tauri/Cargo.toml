@@ -1,6 +1,6 @@
 [package]
 name = "sea-lantern"
-version = "0.4.1"
+version = "0.5.0"
 description = "Minecraft Server Manager"
 authors = ["FPS_Z"]
 edition = "2021"
@@ -18,7 +18,16 @@ tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "process", "io-util", "net", "time", "sync"] }
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "fs",
+    "process",
+    "io-util",
+    "net",
+    "time",
+    "sync",
+] }
 uuid = { version = "1", features = ["v4"] }
 dirs-next = "2"
 reqwest = { version = "0.12", features = ["json"] }
@@ -33,11 +42,3 @@ sysinfo = "0.32"
 regex = "1.10"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
-
-# 优化配置
-[profile.release]
-opt-level = "z"        # 优化二进制大小
-lto = true             # 启用链接时优化
-codegen-units = 1      # 更好的优化，但编译较慢
-panic = "abort"        # 减少二进制大小
-strip = true           # 移除调试符号

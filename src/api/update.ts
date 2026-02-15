@@ -1,4 +1,4 @@
-import { tauriInvoke } from './tauri';
+import { tauriInvoke } from "./tauri";
 
 export interface UpdateInfo {
   has_update: boolean;
@@ -7,22 +7,15 @@ export interface UpdateInfo {
   download_url?: string;
   release_notes?: string;
   published_at?: string;
+  source?: string;
 }
 
-/**
- * 检查更新（通过后端命令调用 Gitee API）
- */
 export async function checkUpdate(): Promise<UpdateInfo | null> {
   try {
-    // 调用后端命令检查更新
-    const result = await tauriInvoke<UpdateInfo>('check_update', {
-      owner: 'fps_z',
-      repo: 'SeaLantern'
-    });
-
+    const result = await tauriInvoke<UpdateInfo>("check_update");
     return result;
   } catch (error) {
-    console.error('检查更新失败:', error);
+    console.error("检查更新失败:", error);
     throw error;
   }
 }

@@ -5,6 +5,7 @@ interface Props {
   label?: string;
   type?: string;
   disabled?: boolean;
+  maxlength?: number;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -14,9 +15,13 @@ withDefaults(defineProps<Props>(), {
   disabled: false,
 });
 
-defineEmits<{
+const emit = defineEmits<{
   "update:modelValue": [value: string];
 }>();
+
+const handleInput = (e: Event) => {
+  emit("update:modelValue", (e.target as HTMLInputElement).value);
+};
 </script>
 
 <template>
@@ -32,7 +37,8 @@ defineEmits<{
         :value="modelValue"
         :placeholder="placeholder"
         :disabled="disabled"
-        @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        :maxlength="maxlength"
+        @input="handleInput"
       />
       <div v-if="$slots.suffix" class="sl-input-suffix">
         <slot name="suffix" />
@@ -45,47 +51,56 @@ defineEmits<{
 .sl-input-wrapper {
   display: flex;
   flex-direction: column;
-  gap: var(--sl-space-xs);
+  gap: 4px;
 }
 
 .sl-input-label {
-  font-size: 0.8125rem;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--sl-text-secondary);
+  color: #666;
 }
 
 .sl-input-container {
   display: flex;
   align-items: center;
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  transition: all var(--sl-transition-fast);
+  background: var(--sl-surface, #fff);
+  border: 1px solid var(--sl-border, #ddd);
+  border-radius: 6px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   overflow: hidden;
 }
 
 .sl-input-container:focus-within {
-  border-color: var(--sl-primary);
-  box-shadow: 0 0 0 3px var(--sl-primary-bg);
+  border-color: #007aff;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .sl-input {
   flex: 1;
   padding: 8px 12px;
-  font-size: 0.875rem;
+  font-size: 14px;
   background: transparent;
+  border: 0;
+  outline: 0;
   min-width: 0;
 }
 
+.sl-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .sl-input::placeholder {
-  color: var(--sl-text-tertiary);
+  color: #999;
 }
 
 .sl-input-prefix,
 .sl-input-suffix {
   display: flex;
   align-items: center;
-  padding: 0 var(--sl-space-sm);
-  color: var(--sl-text-tertiary);
+  padding: 0 8px;
+  color: #999;
 }
 </style>

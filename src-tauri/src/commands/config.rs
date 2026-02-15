@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use crate::services::config_parser;
 use crate::models::config::ServerProperties;
+use crate::services::config_parser;
+use std::collections::HashMap;
 
 #[tauri::command]
 pub fn read_config(path: String) -> Result<HashMap<String, String>, String> {

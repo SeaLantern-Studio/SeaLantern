@@ -1,4 +1,4 @@
-import { getVersion } from '@tauri-apps/api/app';
+import { getVersion } from "@tauri-apps/api/app";
 
 /**
  * 应用版本号管理
@@ -24,8 +24,8 @@ export async function getAppVersion(): Promise<string> {
     cachedVersion = await getVersion();
     return cachedVersion;
   } catch (error) {
-    console.error('获取版本号失败:', error);
-    return '0.0.0';
+    console.error("获取版本号失败:", error);
+    return "0.0.0";
   }
 }
 
@@ -34,7 +34,7 @@ export async function getAppVersion(): Promise<string> {
  * 注意：首次调用时可能返回 '加载中...'，需要配合 onMounted 使用
  */
 export function getAppVersionSync(): string {
-  return cachedVersion || '加载中...';
+  return cachedVersion || "加载中...";
 }
 
 export const BUILD_YEAR = "2026";

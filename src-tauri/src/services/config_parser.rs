@@ -26,10 +26,7 @@ pub fn read_properties(file_path: &str) -> Result<HashMap<String, String>, Strin
 }
 
 /// Write a HashMap to a .properties file, preserving comments
-pub fn write_properties(
-    file_path: &str,
-    values: &HashMap<String, String>,
-) -> Result<(), String> {
+pub fn write_properties(file_path: &str, values: &HashMap<String, String>) -> Result<(), String> {
     let original = fs::read_to_string(file_path).unwrap_or_default();
 
     let mut output = String::new();
@@ -79,15 +76,11 @@ pub fn parse_server_properties(file_path: &str) -> Result<ServerProperties, Stri
         entries.push(ConfigEntry {
             key: key.clone(),
             value: value.clone(),
-            description: desc_info
-                .map(|d| d.0.to_string())
-                .unwrap_or_default(),
+            description: desc_info.map(|d| d.0.to_string()).unwrap_or_default(),
             value_type: desc_info
                 .map(|d| d.1.to_string())
                 .unwrap_or_else(|| "string".to_string()),
-            default_value: desc_info
-                .map(|d| d.2.to_string())
-                .unwrap_or_default(),
+            default_value: desc_info.map(|d| d.2.to_string()).unwrap_or_default(),
             category: desc_info
                 .map(|d| d.3.to_string())
                 .unwrap_or_else(|| "other".to_string()),
@@ -101,7 +94,8 @@ pub fn parse_server_properties(file_path: &str) -> Result<ServerProperties, Stri
 }
 
 /// Property descriptions: (description, type, default, category)
-fn get_property_descriptions() -> HashMap<&'static str, (&'static str, &'static str, &'static str, &'static str)> {
+fn get_property_descriptions(
+) -> HashMap<&'static str, (&'static str, &'static str, &'static str, &'static str)> {
     let mut m = HashMap::new();
     m.insert("server-port", ("服务器端口", "number", "25565", "network"));
     m.insert("server-ip", ("服务器绑定IP，留空表示所有", "string", "", "network"));
@@ -124,8 +118,14 @@ fn get_property_descriptions() -> HashMap<&'static str, (&'static str, &'static 
     m.insert("level-type", ("世界类型", "string", "minecraft:normal", "world"));
     m.insert("view-distance", ("视距", "number", "10", "performance"));
     m.insert("simulation-distance", ("模拟距离", "number", "10", "performance"));
-    m.insert("max-tick-time", ("最大tick时间(ms)，-1为禁用", "number", "60000", "performance"));
-    m.insert("network-compression-threshold", ("网络压缩阈值", "number", "256", "performance"));
+    m.insert(
+        "max-tick-time",
+        ("最大tick时间(ms)，-1为禁用", "number", "60000", "performance"),
+    );
+    m.insert(
+        "network-compression-threshold",
+        ("网络压缩阈值", "number", "256", "performance"),
+    );
     m.insert("motd", ("服务器描述(MOTD)", "string", "A Minecraft Server", "display"));
     m.insert("enable-command-block", ("启用命令方块", "boolean", "false", "game"));
     m.insert("enable-query", ("启用Query协议", "boolean", "false", "network"));

@@ -9,75 +9,148 @@ pub struct UpdateInfo {
     pub download_url: Option<String>,
     pub release_notes: Option<String>,
     pub published_at: Option<String>,
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum UpdateSource {
+    Gitee,
+    GitHub,
+}
+
+impl UpdateSource {
+    fn config(self) -> RepoConfig {
+        match self {
+            Self::Gitee => RepoConfig {
+                owner: "fps_z",
+                repo: "SeaLantern",
+                api_base: "https://gitee.com/api/v5/repos",
+                web_base: "https://gitee.com",
+                accept_header: self.accept_header(),
+            },
+            Self::GitHub => RepoConfig {
+                owner: "FPSZ",
+                repo: "SeaLantern",
+                api_base: "https://api.github.com/repos",
+                web_base: "https://github.com",
+                accept_header: self.accept_header(),
+            },
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Gitee => "gitee",
+            Self::GitHub => "github",
+        }
+    }
+
+    fn accept_header(self) -> &'static str {
+        match self {
+            Self::Gitee => "application/json",
+            Self::GitHub => "application/vnd.github+json",
+        }
+    }
+}
+
+struct RepoConfig {
+    owner: &'static str,
+    repo: &'static str,
+    api_base: &'static str,
+    web_base: &'static str,
+    accept_header: &'static str,
+}
+
+impl RepoConfig {
+    fn api_url(&self) -> String {
+        format!("{}/{}/{}/releases/latest", self.api_base, self.owner, self.repo)
+    }
+
+    fn release_url(&self, tag: &str) -> String {
+        format!("{}/{}/{}/releases/tag/{}", self.web_base, self.owner, self.repo, tag)
+    }
 }
 
 #[derive(Debug, Deserialize)]
-struct GiteeRelease {
+struct ReleaseResponse {
     tag_name: String,
-    name: String,
+    html_url: Option<String>,
     body: Option<String>,
-    assets: Vec<GiteeAsset>,
-    created_at: String,
+    assets: Vec<ReleaseAsset>,
+    published_at: Option<String>,
+    created_at: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-struct GiteeAsset {
+struct ReleaseAsset {
     name: String,
     browser_download_url: String,
 }
 
-/// 检查Gitee上的更新
 #[command]
-pub async fn check_update(
-    owner: String,
-    repo: String,
-) -> Result<UpdateInfo, String> {
+pub async fn check_update() -> Result<UpdateInfo, String> {
     let current_version = env!("CARGO_PKG_VERSION");
 
-    // 构建Gitee API URL
-    let url = format!(
-        "https://gitee.com/api/v5/repos/{}/{}/releases/latest",
-        owner, repo
-    );
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .build()
+        .map_err(|e| format!("HTTP client init failed: {}", e))?;
 
-    // 发送HTTP请求
-    let client = reqwest::Client::new();
-    let response = client
+    let gitee_source = UpdateSource::Gitee;
+    let gitee_config = gitee_source.config();
+
+    let gitee_error =
+        match fetch_release(&client, &gitee_config, current_version, gitee_source.as_str()).await {
+            Ok(info) => return Ok(info),
+            Err(err) => err,
+        };
+
+    let github_source = UpdateSource::GitHub;
+    let github_config = github_source.config();
+
+    fetch_release(&client, &github_config, current_version, github_source.as_str())
+        .await
+        .map_err(|github_error| {
+            format!(
+                "Both Gitee and GitHub failed. Gitee: {}; GitHub: {}",
+                gitee_error, github_error
+            )
+        })
+}
+
+async fn fetch_release(
+    client: &reqwest::Client,
+    config: &RepoConfig,
+    current_version: &str,
+    source: &str,
+) -> Result<UpdateInfo, String> {
+    let url = config.api_url();
+
+    let resp = client
         .get(&url)
-        .header("User-Agent", "Sea-Lantern")
+        .header("Accept", config.accept_header)
         .send()
         .await
-        .map_err(|e| format!("请求失败: {}", e))?;
+        .map_err(|e| format!("request failed: {}", e))?;
 
-    if !response.status().is_success() {
-        return Err(format!("API返回错误: {}", response.status()));
+    if !resp.status().is_success() {
+        return Err(format!("API status: {}", resp.status()));
     }
 
-    let release: GiteeRelease = response
+    let release: ReleaseResponse = resp
         .json()
         .await
-        .map_err(|e| format!("解析响应失败: {}", e))?;
+        .map_err(|e| format!("response parse failed: {}", e))?;
 
-    // 解析版本号（去掉v前缀）
-    let latest_version = release.tag_name.trim_start_matches('v');
-
-    // 比较版本号
+    let latest_version = release.tag_name.trim_start_matches(['v', 'V']);
     let has_update = compare_versions(current_version, latest_version);
 
-    // 查找Windows安装包
-    let download_url = release.assets.iter()
-        .find(|asset| {
-            let name = asset.name.to_lowercase();
-            name.ends_with(".exe") || name.ends_with(".msi")
-        })
-        .map(|asset| asset.browser_download_url.clone())
-        .or_else(|| {
-            // 如果没有找到安装包，返回Release页面链接
-            Some(format!(
-                "https://gitee.com/{}/{}/releases/tag/{}",
-                owner, repo, release.tag_name
-            ))
-        });
+    let download_url = find_suitable_asset(&release.assets).or_else(|| {
+        release
+            .html_url
+            .clone()
+            .or_else(|| Some(config.release_url(&release.tag_name)))
+    });
 
     Ok(UpdateInfo {
         has_update,
@@ -85,39 +158,167 @@ pub async fn check_update(
         current_version: current_version.to_string(),
         download_url,
         release_notes: release.body,
-        published_at: Some(release.created_at),
+        published_at: release.published_at.or(release.created_at),
+        source: Some(source.to_string()),
     })
 }
 
-/// 简单的版本号比较（支持 x.y.z 格式）
-fn compare_versions(current: &str, latest: &str) -> bool {
-    let parse_version = |v: &str| -> Vec<u32> {
-        v.split('.')
-            .filter_map(|s| s.parse::<u32>().ok())
-            .collect()
+fn find_suitable_asset(assets: &[ReleaseAsset]) -> Option<String> {
+    let target_suffixes: &[&str] = if cfg!(target_os = "windows") {
+        &[".msi", ".exe"]
+    } else if cfg!(target_os = "macos") {
+        &[".dmg", ".app", ".tar.gz"]
+    } else {
+        &[".appimage", ".deb", ".rpm", ".tar.gz"]
     };
 
-    let current_parts = parse_version(current);
-    let latest_parts = parse_version(latest);
-
-    for i in 0..current_parts.len().max(latest_parts.len()) {
-        let c = current_parts.get(i).unwrap_or(&0);
-        let l = latest_parts.get(i).unwrap_or(&0);
-
-        if l > c {
-            return true;
-        } else if l < c {
-            return false;
+    for suffix in target_suffixes {
+        if let Some(asset) = assets
+            .iter()
+            .find(|a| a.name.to_ascii_lowercase().ends_with(suffix))
+        {
+            return Some(asset.browser_download_url.clone());
         }
     }
 
-    false
+    None
 }
 
-/// 打开下载链接
+fn compare_versions(current: &str, latest: &str) -> bool {
+    let current_v = parse_version(current);
+    let latest_v = parse_version(latest);
+    latest_v > current_v
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct ParsedVersion {
+    core: [u64; 3],
+    pre: Option<Vec<PreIdent>>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum PreIdent {
+    Numeric(u64),
+    AlphaNum(String),
+}
+
+impl Ord for PreIdent {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering;
+
+        match (self, other) {
+            (Self::Numeric(a), Self::Numeric(b)) => a.cmp(b),
+            (Self::Numeric(_), Self::AlphaNum(_)) => Ordering::Less,
+            (Self::AlphaNum(_), Self::Numeric(_)) => Ordering::Greater,
+            (Self::AlphaNum(a), Self::AlphaNum(b)) => a.cmp(b),
+        }
+    }
+}
+
+impl PartialOrd for PreIdent {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ParsedVersion {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering;
+
+        match self.core.cmp(&other.core) {
+            Ordering::Equal => {}
+            ord => return ord,
+        }
+
+        match (&self.pre, &other.pre) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(a), Some(b)) => {
+                for i in 0..std::cmp::max(a.len(), b.len()) {
+                    match (a.get(i), b.get(i)) {
+                        (Some(x), Some(y)) => match x.cmp(y) {
+                            Ordering::Equal => continue,
+                            ord => return ord,
+                        },
+                        (Some(_), None) => return Ordering::Greater,
+                        (None, Some(_)) => return Ordering::Less,
+                        (None, None) => return Ordering::Equal,
+                    }
+                }
+
+                Ordering::Equal
+            }
+        }
+    }
+}
+
+impl PartialOrd for ParsedVersion {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn parse_version(input: &str) -> ParsedVersion {
+    let normalized = input.trim().trim_start_matches(['v', 'V']);
+    let no_build = normalized.split('+').next().unwrap_or(normalized);
+
+    let (core_part, pre_part) = no_build
+        .split_once('-')
+        .map_or((no_build, None), |(core, pre)| (core, Some(pre)));
+
+    let mut core = [0_u64; 3];
+    for (idx, piece) in core_part.split('.').take(3).enumerate() {
+        core[idx] = piece.trim().parse::<u64>().unwrap_or(0);
+    }
+
+    let pre = pre_part.and_then(|p| {
+        let idents: Vec<PreIdent> = p
+            .split('.')
+            .filter(|s| !s.is_empty())
+            .map(|s| match s.parse::<u64>() {
+                Ok(n) => PreIdent::Numeric(n),
+                Err(_) => PreIdent::AlphaNum(s.to_ascii_lowercase()),
+            })
+            .collect();
+
+        if idents.is_empty() {
+            None
+        } else {
+            Some(idents)
+        }
+    });
+
+    ParsedVersion { core, pre }
+}
+
 #[command]
 pub async fn open_download_url(url: String) -> Result<(), String> {
-    // 注意：这个命令实际上不需要了，因为前端可以直接使用 @tauri-apps/plugin-opener
-    // 但为了保持API的完整性，我们保留它
-    opener::open(&url).map_err(|e| format!("打开链接失败: {}", e))
+    opener::open(&url).map_err(|e| format!("open link failed: {}", e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compare_versions_handles_prerelease() {
+        assert!(compare_versions("1.2.3-beta.1", "1.2.3"));
+        assert!(!compare_versions("1.2.3", "1.2.3-beta.1"));
+        assert!(compare_versions("1.2.3-beta.1", "1.2.3-beta.2"));
+        assert!(!compare_versions("1.2.3-rc.2", "1.2.3-rc.1"));
+    }
+
+    #[test]
+    fn compare_versions_handles_basic_semver() {
+        assert!(compare_versions("1.2.3", "1.2.4"));
+        assert!(!compare_versions("1.2.4", "1.2.3"));
+        assert!(compare_versions("v1.9.9", "2.0.0"));
+        assert!(!compare_versions("2.0.0", "2.0.0"));
+    }
+
+    #[test]
+    fn parse_version_ignores_build_metadata() {
+        assert_eq!(parse_version("1.2.3+abc"), parse_version("1.2.3+def"));
+    }
 }

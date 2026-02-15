@@ -6,9 +6,17 @@ import SLInput from "../components/common/SLInput.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
 import SLModal from "../components/common/SLModal.vue";
 import SLSelect from "../components/common/SLSelect.vue";
-import { settingsApi, checkAcrylicSupport, applyAcrylic, getSystemFonts, type AppSettings } from "../api/settings";
+import SLSpinner from "../components/common/SLSpinner.vue";
+import {
+  settingsApi,
+  checkAcrylicSupport,
+  applyAcrylic,
+  getSystemFonts,
+  type AppSettings,
+} from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { i18n } from "../locales";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
@@ -63,12 +71,12 @@ const backgroundPreviewUrl = computed(() => {
 });
 
 function getFileExtension(path: string): string {
-  return path.split('.').pop()?.toLowerCase() || '';
+  return path.split(".").pop()?.toLowerCase() || "";
 }
 
 function isAnimatedImage(path: string): boolean {
   const ext = getFileExtension(path);
-  return ext === 'gif' || ext === 'webp' || ext === 'apng';
+  return ext === "gif" || ext === "webp" || ext === "apng";
 }
 
 onMounted(async () => {
@@ -88,7 +96,7 @@ async function loadSystemFonts() {
     const fonts = await getSystemFonts();
     fontFamilyOptions.value = [
       { label: "系统默认", value: "" },
-      ...fonts.map(font => ({ label: font, value: `'${font}'` }))
+      ...fonts.map((font) => ({ label: font, value: `'${font}'` })),
     ];
   } catch (e) {
     console.error("Failed to load system fonts:", e);
@@ -144,7 +152,7 @@ function getEffectiveTheme(theme: string): "light" | "dark" {
 
 function applyTheme(theme: string) {
   const effectiveTheme = getEffectiveTheme(theme);
-  document.documentElement.setAttribute('data-theme', effectiveTheme);
+  document.documentElement.setAttribute("data-theme", effectiveTheme);
   return effectiveTheme;
 }
 
@@ -160,11 +168,11 @@ function handleFontSizeChange() {
 
 function applyFontFamily(fontFamily: string) {
   if (fontFamily) {
-    document.documentElement.style.setProperty('--sl-font-sans', fontFamily);
-    document.documentElement.style.setProperty('--sl-font-display', fontFamily);
+    document.documentElement.style.setProperty("--sl-font-sans", fontFamily);
+    document.documentElement.style.setProperty("--sl-font-display", fontFamily);
   } else {
-    document.documentElement.style.removeProperty('--sl-font-sans');
-    document.documentElement.style.removeProperty('--sl-font-display');
+    document.documentElement.style.removeProperty("--sl-font-sans");
+    document.documentElement.style.removeProperty("--sl-font-display");
   }
 }
 
@@ -178,11 +186,11 @@ function handleFontFamilyChange() {
 async function handleAcrylicChange(enabled: boolean) {
   markChanged();
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
-  
+
   if (!acrylicSupported.value) {
     return;
   }
-  
+
   try {
     const theme = settings.value?.theme || "auto";
     const isDark = getEffectiveTheme(theme) === "dark";
@@ -195,9 +203,9 @@ async function handleAcrylicChange(enabled: boolean) {
 async function handleThemeChange() {
   markChanged();
   if (!settings.value) return;
-  
+
   const effectiveTheme = applyTheme(settings.value.theme);
-  
+
   if (settings.value.acrylic_enabled && acrylicSupported.value) {
     try {
       const isDark = effectiveTheme === "dark";
@@ -237,7 +245,7 @@ async function saveSettings() {
       } catch {}
     }
 
-    window.dispatchEvent(new CustomEvent('settings-updated'));
+    window.dispatchEvent(new CustomEvent("settings-updated"));
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -282,7 +290,10 @@ async function exportSettings() {
 }
 
 async function handleImport() {
-  if (!importJson.value.trim()) { error.value = "请粘贴 JSON"; return; }
+  if (!importJson.value.trim()) {
+    error.value = "请粘贴 JSON";
+    return;
+  }
   try {
     const s = await settingsApi.importJson(importJson.value);
     settings.value = s;
@@ -342,25 +353,25 @@ function clearBackgroundImage() {
 
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <span>加载设置...</span>
+      <span>{{ i18n.t('settings.loading') }}</span>
     </div>
 
     <template v-else-if="settings">
       <!-- General -->
-      <SLCard title="通用" subtitle="基本行为设置">
+      <SLCard :title="i18n.t('settings.general')" :subtitle="i18n.t('settings.general_desc')">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">关闭软件时停止所有服务器</span>
-              <span class="setting-desc">退出 Sea Lantern 时自动向运行中的服务器发送 stop 命令，防止数据丢失</span>
+              <span class="setting-label">{{ i18n.t('settings.auto_stop') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.auto_stop_desc') }}</span>
             </div>
             <SLSwitch v-model="settings.close_servers_on_exit" @update:modelValue="markChanged" />
           </div>
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">自动同意 EULA</span>
-              <span class="setting-desc">启动服务器前自动写入 eula=true，省去手动修改的步骤</span>
+              <span class="setting-label">{{ i18n.t('settings.auto_eula') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.auto_eula_desc') }}</span>
             </div>
             <SLSwitch v-model="settings.auto_accept_eula" @update:modelValue="markChanged" />
           </div>
@@ -368,12 +379,12 @@ function clearBackgroundImage() {
       </SLCard>
 
       <!-- Server Defaults -->
-      <SLCard title="服务器默认值" subtitle="创建新服务器时使用的默认参数">
+      <SLCard :title="i18n.t('settings.server_defaults')" :subtitle="i18n.t('settings.server_defaults_desc')">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">默认最大内存 (MB)</span>
-              <span class="setting-desc">建议至少 1024MB。大型模组服可能需要 4096MB 以上</span>
+              <span class="setting-label">{{ i18n.t('settings.default_memory') }} (MB)</span>
+              <span class="setting-desc">{{ i18n.t('settings.max_memory_desc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="maxMem" type="number" @update:modelValue="markChanged" />
@@ -382,8 +393,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">默认最小内存 (MB)</span>
-              <span class="setting-desc">建议设为最大内存的 1/4 到 1/2</span>
+              <span class="setting-label">{{ i18n.t('settings.min_memory') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.min_memory_desc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="minMem" type="number" @update:modelValue="markChanged" />
@@ -392,8 +403,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">默认端口</span>
-              <span class="setting-desc">Minecraft 默认端口为 25565。多服务器需要设置不同端口</span>
+              <span class="setting-label">{{ i18n.t('settings.default_port') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.port_desc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="port" type="number" @update:modelValue="markChanged" />
@@ -402,23 +413,23 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">默认 Java 路径</span>
-              <span class="setting-desc">留空则每次创建服务器时自动检测最合适的 Java</span>
+              <span class="setting-label">{{ i18n.t('settings.default_java') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.default_java_desc') }}</span>
             </div>
             <div class="input-lg">
-              <SLInput v-model="settings.default_java_path" placeholder="留空自动检测" @update:modelValue="markChanged" />
+              <SLInput v-model="settings.default_java_path" :placeholder="i18n.t('settings.default_java_desc')" @update:modelValue="markChanged" />
             </div>
           </div>
 
           <div class="setting-row full-width">
             <div class="setting-info">
-              <span class="setting-label">默认 JVM 参数</span>
-              <span class="setting-desc">所有服务器启动时都会附加这些参数。适合设置 GC 优化参数</span>
+              <span class="setting-label">{{ i18n.t('settings.jvm_args') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.jvm_args_desc') }}</span>
             </div>
             <textarea
               class="jvm-textarea"
               v-model="settings.default_jvm_args"
-              placeholder="-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC"
+              :placeholder="i18n.t('settings.jvm_args_placeholder')"
               rows="3"
               @input="markChanged"
             ></textarea>
@@ -427,12 +438,12 @@ function clearBackgroundImage() {
       </SLCard>
 
       <!-- Console -->
-      <SLCard title="控制台" subtitle="控制台显示相关设置">
+      <SLCard :title="i18n.t('settings.console')" :subtitle="i18n.t('settings.console_desc')">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">控制台字体大小 (px)</span>
-              <span class="setting-desc">控制台日志文字的大小，默认 13</span>
+              <span class="setting-label">{{ i18n.t('settings.console_font_size') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.console_font_size_desc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="fontSize" type="number" @update:modelValue="markChanged" />
@@ -441,8 +452,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">最大日志行数</span>
-              <span class="setting-desc">单个服务器最多保留的日志行数，超出后自动清除旧日志。默认 5000</span>
+              <span class="setting-label">{{ i18n.t('settings.max_log_lines') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.max_log_lines_desc') }}</span>
             </div>
             <div class="input-sm">
               <SLInput v-model="logLines" type="number" @update:modelValue="markChanged" />
@@ -452,12 +463,12 @@ function clearBackgroundImage() {
       </SLCard>
 
       <!-- Appearance -->
-      <SLCard title="外观" subtitle="自定义软件背景和视觉效果">
+      <SLCard :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">主题模式</span>
-              <span class="setting-desc">选择应用的主题外观，"跟随系统"会自动匹配系统的深色/浅色模式</span>
+              <span class="setting-label">{{ i18n.t('settings.theme') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.theme_desc') }}</span>
             </div>
             <div class="input-lg">
               <SLSelect
@@ -470,8 +481,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">文本大小</span>
-              <span class="setting-desc">调整界面文本的大小</span>
+              <span class="setting-label">{{ i18n.t('settings.font_size') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.font_size_desc') }}</span>
             </div>
             <div class="slider-control">
               <input
@@ -489,8 +500,8 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">字体</span>
-              <span class="setting-desc">选择界面使用的字体，部分字体需要系统已安装或从网络加载</span>
+              <span class="setting-label">{{ i18n.t('settings.font_family') }}</span>
+              <span class="setting-desc">{{ i18n.t('settings.font_family_desc') }}</span>
             </div>
             <div class="input-lg">
               <SLSelect
@@ -499,7 +510,7 @@ function clearBackgroundImage() {
                 :searchable="true"
                 :loading="fontsLoading"
                 :previewFont="true"
-                placeholder="搜索字体..."
+                :placeholder="i18n.t('settings.font_family_desc')"
                 @update:modelValue="handleFontFamilyChange"
               />
             </div>
@@ -507,9 +518,9 @@ function clearBackgroundImage() {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">亚克力效果 (毛玻璃)</span>
+              <span class="setting-label">{{ i18n.t('settings.acrylic') }}</span>
               <span class="setting-desc">
-                {{ acrylicSupported ? '启用 Windows 系统级亚克力毛玻璃效果，与背景图片兼容' : '当前系统不支持亚克力效果' }}
+                {{ acrylicSupported ? i18n.t('settings.acrylic_desc') : i18n.t('settings.acrylic_not_supported') }}
               </span>
             </div>
             <SLSwitch
@@ -523,11 +534,18 @@ function clearBackgroundImage() {
           <div class="collapsible-section">
             <div class="collapsible-header" @click="bgSettingsExpanded = !bgSettingsExpanded">
               <div class="setting-info">
-                <span class="setting-label">背景图片</span>
-                <span class="setting-desc">上传一张图片作为软件背景，支持 PNG、JPG、WEBP 等格式</span>
+                <span class="setting-label">{{ i18n.t('settings.background') }}</span>
+                <span class="setting-desc">{{ i18n.t('settings.background_desc') }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </div>
@@ -539,38 +557,41 @@ function clearBackgroundImage() {
                     <div v-if="settings.background_image" class="bg-preview">
                       <div v-if="bgPreviewLoading && !bgPreviewLoaded" class="bg-preview-loading">
                         <div class="loading-spinner"></div>
-                        <span>加载预览中...</span>
+                        <span>{{ i18n.t('settings.loading') }}</span>
                       </div>
                       <img
                         v-show="bgPreviewLoaded || !bgPreviewLoading"
                         :src="backgroundPreviewUrl"
                         alt="Background preview"
-                        @load="bgPreviewLoaded = true; bgPreviewLoading = false"
+                        @load="
+                          bgPreviewLoaded = true;
+                          bgPreviewLoading = false;
+                        "
                         @loadstart="bgPreviewLoading = true"
                         @error="bgPreviewLoading = false"
                         loading="lazy"
                       />
                       <div v-if="isAnimatedImage(settings.background_image)" class="bg-animated-badge">
-                        动图
+                        {{ i18n.t('settings.animated') }}
                       </div>
                       <div class="bg-preview-overlay">
                         <span class="bg-preview-path">{{ settings.background_image.split('\\').pop() }}</span>
-                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">移除</SLButton>
+                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">{{ i18n.t('settings.remove') }}</SLButton>
                       </div>
                     </div>
                     <SLButton v-else variant="secondary" @click="pickBackgroundImage">
-                      选择图片
+                      {{ i18n.t('settings.select_image') }}
                     </SLButton>
                     <SLButton v-if="settings.background_image" variant="secondary" size="sm" @click="pickBackgroundImage">
-                      更换图片
+                      {{ i18n.t('settings.change_image') }}
                     </SLButton>
                   </div>
                 </div>
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">不透明度</span>
-                    <span class="setting-desc">调节背景图片的不透明度 (0.0 - 1.0)，数值越小越透明</span>
+                    <span class="setting-label">{{ i18n.t('settings.opacity') }}</span>
+                    <span class="setting-desc">{{ i18n.t('settings.opacity_desc') }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -588,8 +609,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">模糊程度 (px)</span>
-                    <span class="setting-desc">为背景添加模糊效果，让前景内容更清晰</span>
+                    <span class="setting-label">{{ i18n.t('settings.blur') }}</span>
+                    <span class="setting-desc">{{ i18n.t('settings.blur_desc') }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -607,8 +628,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">亮度</span>
-                    <span class="setting-desc">调节背景图片的亮度 (0.0 - 2.0)，1.0 为原始亮度</span>
+                    <span class="setting-label">{{ i18n.t('settings.brightness') }}</span>
+                    <span class="setting-desc">{{ i18n.t('settings.brightness_desc') }}</span>
                   </div>
                   <div class="slider-control">
                     <input
@@ -626,8 +647,8 @@ function clearBackgroundImage() {
 
                 <div class="setting-row">
                   <div class="setting-info">
-                    <span class="setting-label">图片填充方式</span>
-                    <span class="setting-desc">选择背景图片的显示方式</span>
+                    <span class="setting-label">{{ i18n.t('settings.background_size') }}</span>
+                    <span class="setting-desc">{{ i18n.t('settings.background_size_desc') }}</span>
                   </div>
                   <div class="input-lg">
                     <SLSelect
@@ -647,35 +668,35 @@ function clearBackgroundImage() {
       <div class="settings-actions">
         <div class="actions-left">
           <SLButton variant="primary" size="lg" :loading="saving" @click="saveSettings">
-            保存设置
+            {{ i18n.t('settings.save') }}
           </SLButton>
-          <SLButton variant="secondary" @click="loadSettings">放弃修改</SLButton>
-          <span v-if="hasChanges" class="unsaved-hint">有未保存的更改</span>
+          <SLButton variant="secondary" @click="loadSettings">{{ i18n.t('settings.discard') }}</SLButton>
+          <span v-if="hasChanges" class="unsaved-hint">{{ i18n.t('settings.unsaved_changes') }}</span>
         </div>
         <div class="actions-right">
-          <SLButton variant="ghost" size="sm" @click="exportSettings">导出</SLButton>
-          <SLButton variant="ghost" size="sm" @click="showImportModal = true">导入</SLButton>
-          <SLButton variant="danger" size="sm" @click="showResetConfirm = true">恢复默认</SLButton>
+          <SLButton variant="ghost" size="sm" @click="exportSettings">{{ i18n.t('settings.export') }}</SLButton>
+          <SLButton variant="ghost" size="sm" @click="showImportModal = true">{{ i18n.t('settings.import') }}</SLButton>
+          <SLButton variant="danger" size="sm" @click="showResetConfirm = true">{{ i18n.t('settings.reset') }}</SLButton>
         </div>
       </div>
     </template>
 
-    <SLModal :visible="showImportModal" title="导入设置" @close="showImportModal = false">
+    <SLModal :visible="showImportModal" :title="i18n.t('settings.import_title')" @close="showImportModal = false">
       <div class="import-form">
-        <p class="text-caption">粘贴之前导出的 JSON 数据</p>
-        <textarea class="import-textarea" v-model="importJson" placeholder='{"close_servers_on_exit": true, ...}' rows="10"></textarea>
+        <p class="text-caption">{{ i18n.t('settings.import_desc') }}</p>
+        <textarea class="import-textarea" v-model="importJson" :placeholder="i18n.t('settings.import_placeholder')" rows="10"></textarea>
       </div>
       <template #footer>
-        <SLButton variant="secondary" @click="showImportModal = false">取消</SLButton>
-        <SLButton variant="primary" @click="handleImport">导入</SLButton>
+        <SLButton variant="secondary" @click="showImportModal = false">{{ i18n.t('settings.cancel') }}</SLButton>
+        <SLButton variant="primary" @click="handleImport">{{ i18n.t('settings.import') }}</SLButton>
       </template>
     </SLModal>
 
-    <SLModal :visible="showResetConfirm" title="确认恢复默认" @close="showResetConfirm = false">
-      <p class="text-body">确定要将所有设置恢复为默认值吗？此操作不可撤销。</p>
+    <SLModal :visible="showResetConfirm" :title="i18n.t('settings.reset_title')" @close="showResetConfirm = false">
+      <p class="text-body">{{ i18n.t('settings.reset_desc') }}</p>
       <template #footer>
-        <SLButton variant="secondary" @click="showResetConfirm = false">取消</SLButton>
-        <SLButton variant="danger" @click="resetSettings">确认恢复</SLButton>
+        <SLButton variant="secondary" @click="showResetConfirm = false">{{ i18n.t('settings.cancel') }}</SLButton>
+        <SLButton variant="danger" @click="resetSettings">{{ i18n.t('settings.reset_confirm') }}</SLButton>
       </template>
     </SLModal>
   </div>
@@ -683,65 +704,143 @@ function clearBackgroundImage() {
 
 <style scoped>
 .settings-view {
-  display: flex; flex-direction: column; gap: var(--sl-space-lg);
-  max-width: 860px; margin: 0 auto; padding-bottom: var(--sl-space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-lg);
+  max-width: 860px;
+  margin: 0 auto;
+  padding-bottom: var(--sl-space-2xl);
 }
 
 .msg-banner {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; border-radius: var(--sl-radius-md); font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: var(--sl-radius-md);
+  font-size: 0.875rem;
 }
-.error-banner { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--sl-error); }
-.success-banner { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: var(--sl-success); }
-.msg-banner button { font-weight: 600; color: inherit; }
+.error-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--sl-error);
+}
+.success-banner {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: var(--sl-success);
+}
+.msg-banner button {
+  font-weight: 600;
+  color: inherit;
+}
 
 .loading-state {
-  display: flex; align-items: center; justify-content: center;
-  gap: var(--sl-space-sm); padding: var(--sl-space-2xl); color: var(--sl-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-2xl);
+  color: var(--sl-text-tertiary);
 }
-.spinner { width: 18px; height: 18px; border: 2px solid var(--sl-border); border-top-color: var(--sl-primary); border-radius: 50%; animation: sl-spin 0.8s linear infinite; }
 
-.settings-group { display: flex; flex-direction: column; }
+.settings-group {
+  display: flex;
+  flex-direction: column;
+}
 
 .setting-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sl-space-md) 0; border-bottom: 1px solid var(--sl-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sl-space-md) 0;
+  border-bottom: 1px solid var(--sl-border-light);
   gap: var(--sl-space-lg);
 }
-.setting-row:last-child { border-bottom: none; }
-.setting-row.full-width { flex-direction: column; align-items: stretch; }
-
-.setting-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.setting-label { font-size: 0.9375rem; font-weight: 500; color: var(--sl-text-primary); }
-.setting-desc { font-size: 0.8125rem; color: var(--sl-text-tertiary); line-height: 1.4; }
-
-.input-sm { width: 120px; flex-shrink: 0; }
-.input-lg { width: 320px; flex-shrink: 0; }
-
-.jvm-textarea, .import-textarea {
-  width: 100%; margin-top: var(--sl-space-sm);
-  padding: var(--sl-space-sm) var(--sl-space-md);
-  font-family: var(--sl-font-mono); font-size: 0.8125rem;
-  color: var(--sl-text-primary); background: var(--sl-surface);
-  border: 1px solid var(--sl-border); border-radius: var(--sl-radius-md);
-  resize: vertical; line-height: 1.6;
+.setting-row:last-child {
+  border-bottom: none;
 }
-.jvm-textarea:focus, .import-textarea:focus {
-  border-color: var(--sl-primary); box-shadow: 0 0 0 3px var(--sl-primary-bg); outline: none;
+.setting-row.full-width {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.setting-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.setting-label {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--sl-text-primary);
+}
+.setting-desc {
+  font-size: 0.8125rem;
+  color: var(--sl-text-tertiary);
+  line-height: 1.4;
+}
+
+.input-sm {
+  width: 120px;
+  flex-shrink: 0;
+}
+.input-lg {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.jvm-textarea,
+.import-textarea {
+  width: 100%;
+  margin-top: var(--sl-space-sm);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  font-family: var(--sl-font-mono);
+  font-size: 0.8125rem;
+  color: var(--sl-text-primary);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  resize: vertical;
+  line-height: 1.6;
+}
+.jvm-textarea:focus,
+.import-textarea:focus {
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 3px var(--sl-primary-bg);
+  outline: none;
 }
 
 .settings-actions {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sl-space-md) 0; border-top: 1px solid var(--sl-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sl-space-md) 0;
+  border-top: 1px solid var(--sl-border);
 }
-.actions-left, .actions-right { display: flex; align-items: center; gap: var(--sl-space-sm); }
+.actions-left,
+.actions-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+}
 
 .unsaved-hint {
-  font-size: 0.8125rem; color: var(--sl-warning); font-weight: 500;
-  padding: 2px 10px; background: rgba(245,158,11,0.1); border-radius: var(--sl-radius-full);
+  font-size: 0.8125rem;
+  color: var(--sl-warning);
+  font-weight: 500;
+  padding: 2px 10px;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: var(--sl-radius-full);
 }
 
-.import-form { display: flex; flex-direction: column; gap: var(--sl-space-md); }
+.import-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
 
 .bg-image-picker {
   display: flex;
@@ -788,11 +887,7 @@ function clearBackgroundImage() {
   border: 3px solid var(--sl-border);
   border-top-color: var(--sl-primary);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  animation: sl-spin 1s linear infinite;
 }
 
 .bg-animated-badge {
@@ -813,7 +908,7 @@ function clearBackgroundImage() {
   left: 0;
   right: 0;
   padding: var(--sl-space-sm) var(--sl-space-md);
-  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;

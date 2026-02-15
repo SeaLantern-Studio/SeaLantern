@@ -1,0 +1,11 @@
+[workspace]
+members = ["src-tauri"]
+resolver = "2"
+
+# 优化配置（从 src-tauri/Cargo.toml 移到这里统一管理）
+[profile.release]
+opt-level = "z" # 优化二进制大小
+lto = true # 启用链接时优化
+codegen-units = 1 # 更好的优化，但编译较慢
+panic = "abort" # 减少二进制大小
+strip = true # 移除调试符号

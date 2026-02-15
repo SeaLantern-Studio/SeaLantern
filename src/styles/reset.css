@@ -36,7 +36,9 @@ button {
   color: inherit;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
@@ -45,7 +47,8 @@ input, select, textarea {
   background: none;
 }
 
-ul, ol {
+ul,
+ol {
   list-style: none;
 }
 

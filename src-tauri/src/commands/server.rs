@@ -5,8 +5,8 @@ fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
 }
 
-
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn create_server(
     name: String,
     core_type: String,
@@ -18,7 +18,14 @@ pub fn create_server(
     jar_path: String,
 ) -> Result<ServerInstance, String> {
     let req = CreateServerRequest {
-        name, core_type, mc_version, max_memory, min_memory, port, java_path, jar_path,
+        name,
+        core_type,
+        mc_version,
+        max_memory,
+        min_memory,
+        port,
+        java_path,
+        jar_path,
     };
     manager().create_server(req)
 }
@@ -31,8 +38,17 @@ pub fn import_server(
     max_memory: u32,
     min_memory: u32,
     port: u16,
+    online_mode: bool,
 ) -> Result<ServerInstance, String> {
-    let req = ImportServerRequest { name, jar_path, java_path, max_memory, min_memory, port };
+    let req = ImportServerRequest {
+        name,
+        jar_path,
+        java_path,
+        max_memory,
+        min_memory,
+        port,
+        online_mode,
+    };
     manager().import_server(req)
 }
 
@@ -45,7 +61,14 @@ pub fn import_modpack(
     min_memory: u32,
     port: u16,
 ) -> Result<ServerInstance, String> {
-    let req = ImportModpackRequest { name, modpack_path, java_path, max_memory, min_memory, port };
+    let req = ImportModpackRequest {
+        name,
+        modpack_path,
+        java_path,
+        max_memory,
+        min_memory,
+        port,
+    };
     manager().import_modpack(req)
 }
 

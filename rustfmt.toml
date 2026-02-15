@@ -1,0 +1,29 @@
+# Rust 代码格式化配置
+# https://rust-lang.github.io/rustfmt/
+
+# 每行最大字符数
+max_width = 100
+
+# 硬标签宽度
+tab_spaces = 4
+
+# 使用字段初始化简写
+use_field_init_shorthand = true
+
+# 使用 try 简写（? 操作符）
+use_try_shorthand = true
+
+# 链式调用缩进
+chain_width = 60
+
+# 函数调用宽度
+fn_call_width = 80
+
+# 结构体字面量宽度
+struct_lit_width = 40
+
+# 数组宽度
+array_width = 80
+
+# 换行风格
+newline_style = "Unix"

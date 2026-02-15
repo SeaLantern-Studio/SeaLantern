@@ -1,6 +1,6 @@
 <script setup lang="ts">
 interface Props {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
   loading?: boolean;
@@ -18,23 +18,31 @@ withDefaults(defineProps<Props>(), {
   <button
     class="sl-button"
     :class="[
-      'sl-button--' + variant,
-      'sl-button--' + size,
-      { 'sl-button--disabled': disabled, 'sl-button--loading': loading }
+      `sl-button--${variant}`,
+      `sl-button--${size}`,
+      { 'sl-button--disabled': disabled || loading },
     ]"
     :disabled="disabled || loading"
+    :aria-busy="loading"
   >
     <svg
       v-if="loading"
-      class="sl-button-spinner animate-spin"
+      class="sl-button-spinner"
       width="16"
       height="16"
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
+      aria-hidden="true"
     >
-      <path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-5.07l-2.83 2.83M9.76 14.24l-2.83 2.83m11.14 0l-2.83-2.83M9.76 9.76L6.93 6.93" />
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-dasharray="15.7 15.7"
+        stroke-linecap="round"
+      />
     </svg>
     <slot />
   </button>
@@ -45,68 +53,95 @@ withDefaults(defineProps<Props>(), {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sl-space-xs);
+  gap: var(--sl-space-xs, 0.5rem);
   font-weight: 500;
-  border-radius: var(--sl-radius-md);
-  transition: all var(--sl-transition-fast);
+  border-radius: var(--sl-radius-md, 0.375rem);
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out,
+    transform 0.1s ease-in-out;
   cursor: pointer;
   white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform, box-shadow;
 }
 
 .sl-button--sm {
-  padding: 6px 12px;
+  padding: 0.375rem 0.75rem;
   font-size: 0.8125rem;
+  line-height: 1.25;
 }
 
 .sl-button--md {
-  padding: 8px 20px;
+  padding: 0.5rem 1.25rem;
   font-size: 0.875rem;
+  line-height: 1.375;
 }
 
 .sl-button--lg {
-  padding: 12px 28px;
+  padding: 0.75rem 1.75rem;
   font-size: 1rem;
+  line-height: 1.5;
 }
 
 .sl-button--primary {
-  background: var(--sl-primary);
-  color: var(--sl-text-inverse);
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+  background-color: var(--sl-primary, #2563eb);
+  color: var(--sl-text-inverse, #ffffff);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
 }
 
-.sl-button--primary:hover {
-  background: var(--sl-primary-dark);
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+.sl-button--primary:hover:not(:disabled) {
+  background-color: var(--sl-primary-dark, #1d4ed8);
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.4);
   transform: translateY(-1px);
 }
 
-.sl-button--secondary {
-  background: var(--sl-bg-secondary);
-  color: var(--sl-text-primary);
-  border: 1px solid var(--sl-border);
+.sl-button--primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
-.sl-button--secondary:hover {
-  background: var(--sl-bg-tertiary);
-  border-color: var(--sl-primary-light);
+.sl-button--secondary {
+  background-color: var(--sl-bg-secondary, #f8fafc);
+  color: var(--sl-text-primary, #1e293b);
+  border-color: var(--sl-border, #cbd5e1);
+}
+
+.sl-button--secondary:hover:not(:disabled) {
+  background-color: var(--sl-bg-tertiary, #f1f5f9);
+  border-color: var(--sl-primary-light, #93c5fd);
 }
 
 .sl-button--ghost {
-  background: transparent;
-  color: var(--sl-text-secondary);
+  background-color: transparent;
+  color: var(--sl-text-secondary, #64748b);
 }
 
-.sl-button--ghost:hover {
-  background: var(--sl-primary-bg);
-  color: var(--sl-primary);
+.sl-button--ghost:hover:not(:disabled) {
+  background-color: var(--sl-primary-bg, #eff6ff);
+  color: var(--sl-primary, #2563eb);
 }
 
 .sl-button--danger {
-  background: var(--sl-error);
+  background-color: var(--sl-error, #dc2626);
+  color: var(--sl-text-inverse, #ffffff);
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.3);
+}
+
+.sl-button--danger:hover:not(:disabled) {
+  background-color: #b91c1c;
+  box-shadow: 0 2px 5px rgba(220, 38, 38, 0.4);
+  transform: translateY(-1px);
+}
+
+.sl-button--success {
+  background: var(--sl-success);
   color: var(--sl-text-inverse);
 }
 
-.sl-button--danger:hover {
+.sl-button--success:hover {
   opacity: 0.9;
   transform: translateY(-1px);
 }
@@ -115,9 +150,20 @@ withDefaults(defineProps<Props>(), {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
+  box-shadow: none !important;
 }
 
 .sl-button-spinner {
   flex-shrink: 0;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
