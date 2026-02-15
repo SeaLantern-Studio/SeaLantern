@@ -1,198 +1,197 @@
-# 贡献指南
+# Contributing Guidelines
 
-感谢你对 Sea Lantern 项目的关注！这份文档将帮助你了解如何为项目做出贡献。
+Thank you for your interest in Project Sea Lantern! This document will help you understand how to contribute to the project.
 
-## 开发环境要求
+## Development Environment Requirements
 
 - **Node.js**: 20+
 - **Rust**: 1.70+
-- **Git**: 最新版本
+- **Git**: Latest version
 
-## 代码规范
+## Code Standards
 
-### Rust 代码规范
+### Rust Code Standards
 
-1. **格式化**
+1. **Formatting**
 
    ```bash
-   # 提交前必须运行
+   # Must be run before submission
    cargo fmt --all
    ```
 
-2. **代码检查**
+2. **Code Linting**
 
    ```bash
-   # 必须通过所有 clippy 检查
+   # Must pass all clippy checks
    cargo clippy --workspace -- -D warnings
    ```
 
-3. **命名规范**
-   - 文件名：使用 `snake_case`（如 `server_manager.rs`）
-   - 函数名：使用 `snake_case`（如 `get_server_list`）
-   - 结构体：使用 `PascalCase`（如 `ServerInstance`）
-   - 常量：使用 `SCREAMING_SNAKE_CASE`（如 `MAX_MEMORY`）
+3. **Naming Conventions**
+   - File names: Use `snake_case`(e.g., `server_manager.rs`)
+   - Function names: Use `snake_case`(e.g., `get_server_list`)
+   - Structs: Use `PascalCase`(e.g., `ServerInstance`)
+   - Constants：Use `SCREAMING_SNAKE_CASE`(e.g., `MAX_MEMORY`)
 
-4. **注释规范**
-   - 公共 API 必须有文档注释（`///`）
-   - 复杂逻辑需要添加行内注释（`//`）
-   - 避免无意义的注释
+4. **Comment Standards**
+   - Public APIs must have documentation comments（`///`）
+   - Complex logic requires inline comments（`//`）
+   - Avoid meaningless comments
 
-5. **错误处理**
-   - 使用 `Result<T, String>` 返回错误
-   - 错误信息要清晰、用户友好
-   - 避免使用 `unwrap()`，优先使用 `?` 或 `unwrap_or`
+5. **Error Handling**
+   - Use Result<T, String> to return errors
+   - Error messages should be clear and user-friendly
+   - Avoid using unwrap(), prefer ? or unwrap_or instead
 
-### 前端代码规范
+### Frontend Code Standards
 
-1. **Vue 组件**
-   - 组件名使用 `PascalCase`（如 `ServerCard.vue`）
-   - 使用 `<script setup>` 语法
-   - Props 和 emits 必须定义类型
+1. **Vue Components**
+   - Component names: Use PascalCase (e.g., ServerCard.vue)
+   - Use <script setup> syntax
+   - Props and emits must define types
 
 2. **TypeScript**
-   - 启用严格模式
-   - 避免使用 `any`，优先使用具体类型
-   - 接口名使用 `PascalCase`
+   - Enable strict mode
+   - Avoid using any, prefer specific types
+   - Interface names: Use PascalCase
 
-3. **样式**
-   - 使用 CSS 变量（`var(--sl-*)`）
-   - 避免硬编码颜色值
-   - 使用 scoped 样式
+3. **Styling**
+   - Use CSS variables(`var(--sl-*)`)
+   - Avoid hardcoded color values
+   - Use scoped styles
 
-## Git 工作流
+## Git Workflow
 
 ### 分支命名
 
-- `feature/功能名` - 新功能
-- `fix/问题描述` - Bug 修复
-- `chore/任务描述` - 杂项任务
-- `docs/文档说明` - 文档更新
+- feature/feature-name - New features
+- fix/issue-description - Bug fixes
+- chore/task-description - Miscellaneous tasks
+- docs/documentation-description - Documentation updates
 
-### Commit 规范
+### Commit Standards
 
-使用约定式提交（Conventional Commits）：
-
-```
-<类型>: <简短描述>
-
-<详细描述>（可选）
-
-Co-Authored-By: 贡献者名 <email>
-```
-
-**类型**：
-
-- `feat`: 新功能
-- `fix`: Bug 修复
-- `docs`: 文档更新
-- `style`: 代码格式（不影响功能）
-- `refactor`: 重构
-- `perf`: 性能优化
-- `test`: 测试相关
-- `chore`: 构建/工具链相关
-
-**示例**：
+Follow Conventional Commits:
 
 ```
-feat: 添加服务器备份功能
+<type>: <short description>
 
-- 实现增量备份
-- 支持自动备份计划
-- 添加备份恢复功能
+<detailed description> (optional)
+
+Co-Authored-By: Contributor Name <email>
 ```
 
-### Pull Request 流程
+**Types**：
 
-1. **Fork 项目并创建分支**
+- feat: New feature
+- fix: Bug fix
+- docs: Documentation update
+- style: Code formatting (no functional changes)
+- refactor: Code refactoring
+- perf: Performance optimization
+- test: Testing related changes
+- chore: Build/toolchain related changes
+- 
+**Example**:
+
+```
+feat: add server backup functionality
+
+- Implement incremental backup
+- Support scheduled automatic backups
+- Add backup restoration feature
+```
+
+### Pull Request Process
+
+1. **Fork the project and create a branch**
 
    ```bash
    git checkout -b feature/your-feature
    ```
 
-2. **开发并提交**
+2. **Develop and commit changes**
 
    ```bash
-   # 确保代码通过检查
+   # Ensure code passes all checks
    cargo fmt --all
    cargo clippy --workspace -- -D warnings
    npm run build
 
-   # 提交变更
+   # Commit changes
    git add .
-   git commit -m "feat: 你的功能描述"
+   git commit -m "feat: your deature description"
    ```
 
-3. **推送并创建 PR**
+3. **Push and create PR**
 
    ```bash
    git push origin feature/your-feature
    ```
 
-4. **PR 标题和描述**
-   - 标题简洁明了（不超过 70 字符）
-   - 描述包含：
-     - 变更摘要
-     - 测试方法
-     - 相关 Issue（如有）
+4. **PR Title and Description**
+   - Title should be concise and clear (no more than 70 characters)
+   - Description should include:
+     - Summary of changes
+     - Testing methods
+     - Related Issues (if any)
+## Code Review Standards
 
-## 代码审查标准
+### Must Meet
 
-### 必须满足
+- ✅ Pass all CI checks
+- ✅ Correct code formatting (cargo fmt)
+- ✅ No clippy warnings
+- ✅ Complete and functional features
+- ✅ No obvious performance issues
+- 
+### Recommended to Meet
 
-- ✅ 通过所有 CI 检查
-- ✅ 代码格式正确（cargo fmt）
-- ✅ 无 clippy 警告
-- ✅ 功能完整且可用
-- ✅ 无明显的性能问题
+- Appropriate comments
+- Relevant tests (if applicable)
+- Updated relevant documentation
+- UI changes comply with design standards
 
-### 建议满足
+## Frequently Asked Questions
 
-- 有适当的注释
-- 有相关测试（如适用）
-- 更新了相关文档
-- UI 变更符合设计规范
-
-## 常见问题
-
-### 如何运行开发环境？
+### How to run the development environment?
 
 ```bash
 npm install
 npm run tauri dev
 ```
 
-### 如何构建发布版本？
+### How to build a release version?
 
 ```bash
 npm run tauri build
 ```
 
-### Clippy 检查失败怎么办？
+### What to do if Clippy checks fail?
 
-1. 查看具体警告信息
-2. 运行 `cargo clippy --fix` 自动修复（部分问题）
-3. 手动修复剩余问题
-4. 如果某些警告不合理，可以使用 `#[allow(clippy::...)]` 标记
+1. Check the specific warning messages
+2.Run cargo clippy --fix to auto-fix (some issues)
+3.Manually fix remaining issues
+4.If some warnings are unreasonable, use #[allow(clippy::...)] annotation
 
-### 格式化检查失败怎么办？
+### What to do if formatting checks fail?
 
 ```bash
 cargo fmt --all
 ```
 
-## 获取帮助
+## Getting Help
 
-- 在 Issue 中提问
-- 联系维护者
-- 查看项目文档
+- Ask questions in Issues
+- Contact maintainers
+- Check project documentation
 
-## 行为准则
+## Code of Conduct
 
-- 尊重所有贡献者
-- 保持友好和专业
-- 接受建设性的反馈
-- 帮助新手贡献者
+- Respect all contributors
+- Maintain friendliness and professionalism
+- Accept constructive feedback
+- Help new contributors
 
 ---
 
-再次感谢你的贡献！
+Thank you again for your contributions!
