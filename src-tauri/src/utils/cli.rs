@@ -52,7 +52,12 @@ pub fn handle_cli() {
         }
         "create-id" => {
             if args.len() > 4 {
-                create_server_id(&args[2], &args[3], &args[4], args.get(5).map(|s| s.as_str()).unwrap_or("25565"));
+                create_server_id(
+                    &args[2],
+                    &args[3],
+                    &args[4],
+                    args.get(5).map(|s| s.as_str()).unwrap_or("25565"),
+                );
             } else {
                 println!("用法: create-id <ID> <名称> <地址> [端口]");
             }
@@ -205,7 +210,10 @@ fn list_server_ids() {
         println!("{:<20} {:<20} {:<20} {:<10}", "ID", "名称", "地址", "端口");
         println!("{}", "-".repeat(70));
         for entry in ids {
-            println!("{:<20} {:<20} {:<20} {:<10}", entry.id, entry.name, entry.address, entry.port);
+            println!(
+                "{:<20} {:<20} {:<20} {:<10}",
+                entry.id, entry.name, entry.address, entry.port
+            );
         }
     });
 }
@@ -259,7 +267,12 @@ fn run_interactive_cli() {
             }
             "create-id" => {
                 if parts.len() > 3 {
-                    create_server_id(parts[1], parts[2], parts[3], parts.get(4).unwrap_or(&"25565"));
+                    create_server_id(
+                        parts[1],
+                        parts[2],
+                        parts[3],
+                        parts.get(4).unwrap_or(&"25565"),
+                    );
                 } else {
                     println!("用法: create-id <ID> <名称> <地址> [端口]");
                 }

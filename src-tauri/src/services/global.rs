@@ -1,8 +1,8 @@
+use super::join_manager::JoinManager;
+use super::mod_manager::ModManager;
+use super::server_id_manager::ServerIdManager;
 use super::server_manager::ServerManager;
 use super::settings_manager::SettingsManager;
-use super::mod_manager::ModManager;
-use super::join_manager::JoinManager;
-use super::server_id_manager::ServerIdManager;
 use std::sync::OnceLock;
 
 pub fn server_manager() -> &'static ServerManager {

@@ -89,6 +89,8 @@ export const contributors: Contributor[] = [
     role: "适人握持",
     avatar: "https://mc-heads.net/avatar/CmzYa/64",
     url: "https://github.com/CmzYa",
+  },
+  {
     name: "ieshishinjin",
     role: "新增了功能，并吃了明太鱼干",
     avatar: "https://minotar.net/avatar/ieshishinjin/64",

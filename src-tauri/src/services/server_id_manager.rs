@@ -1,8 +1,8 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use chrono::Utc;
 use uuid::Uuid;
 
 /// Server ID entry with metadata
@@ -76,7 +76,11 @@ impl ServerIdManager {
             .chars()
             .filter(|c| c.is_alphanumeric() || *c == '-')
             .collect::<String>();
-        
+
+        if sanitized.is_empty() {
+            return Self::generate_id();
+        }
+
         format!("{}-{}", sanitized, Uuid::new_v4().to_string()[..4].to_lowercase())
     }
 
@@ -87,8 +91,14 @@ impl ServerIdManager {
             if custom_id.len() < 3 || custom_id.len() > 32 {
                 return Err("Server ID must be between 3 and 32 characters".to_string());
             }
-            if !custom_id.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
-                return Err("Server ID can only contain alphanumeric characters, hyphens, and underscores".to_string());
+            if !custom_id
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+            {
+                return Err(
+                    "Server ID can only contain alphanumeric characters, hyphens, and underscores"
+                        .to_string(),
+                );
             }
             custom_id
         } else {
@@ -124,7 +134,7 @@ impl ServerIdManager {
     /// Resolve a server ID to its address
     pub async fn resolve_id(&self, id: &str) -> Result<(String, u16), String> {
         let mut entries = self.entries.write().await;
-        
+
         match entries.get_mut(id) {
             Some(entry) => {
                 if !entry.is_active {
@@ -150,17 +160,19 @@ impl ServerIdManager {
     /// List all active server IDs
     pub async fn list_ids(&self) -> Vec<ServerIdEntry> {
         let entries = self.entries.read().await;
-        entries
-            .values()
-            .filter(|e| e.is_active)
-            .cloned()
-            .collect()
+        entries.values().filter(|e| e.is_active).cloned().collect()
     }
 
     /// Update a server ID
-    pub async fn update_id(&self, id: &str, name: Option<String>, address: Option<String>, port: Option<u16>) -> Result<ServerIdEntry, String> {
+    pub async fn update_id(
+        &self,
+        id: &str,
+        name: Option<String>,
+        address: Option<String>,
+        port: Option<u16>,
+    ) -> Result<ServerIdEntry, String> {
         let mut entries = self.entries.write().await;
-        
+
         match entries.get_mut(id) {
             Some(entry) => {
                 if let Some(n) = name {
@@ -181,7 +193,7 @@ impl ServerIdManager {
     /// Deactivate a server ID
     pub async fn deactivate_id(&self, id: &str) -> Result<(), String> {
         let mut entries = self.entries.write().await;
-        
+
         match entries.get_mut(id) {
             Some(entry) => {
                 entry.is_active = false;
@@ -194,7 +206,7 @@ impl ServerIdManager {
     /// Delete a server ID
     pub async fn delete_id(&self, id: &str) -> Result<(), String> {
         let mut entries = self.entries.write().await;
-        
+
         if entries.remove(id).is_some() {
             Ok(())
         } else {
@@ -206,15 +218,16 @@ impl ServerIdManager {
     pub async fn search_ids(&self, query: &str) -> Vec<ServerIdEntry> {
         let entries = self.entries.read().await;
         let query_lower = query.to_lowercase();
-        
+
         entries
             .values()
             .filter(|e| {
-                e.is_active && (
-                    e.name.to_lowercase().contains(&query_lower)
-                    || e.id.to_lowercase().contains(&query_lower)
-                    || e.tags.iter().any(|t| t.to_lowercase().contains(&query_lower))
-                )
+                e.is_active
+                    && (e.name.to_lowercase().contains(&query_lower)
+                        || e.id.to_lowercase().contains(&query_lower)
+                        || e.tags
+                            .iter()
+                            .any(|t| t.to_lowercase().contains(&query_lower)))
             })
             .cloned()
             .collect()
@@ -228,7 +241,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_and_resolve_id() {
         let manager = ServerIdManager::new();
-        
+
         let req = CreateServerIdRequest {
             id: Some("test-server".to_string()),
             name: "Test Server".to_string(),
@@ -250,7 +263,7 @@ mod tests {
     #[tokio::test]
     async fn test_duplicate_id() {
         let manager = ServerIdManager::new();
-        
+
         let req1 = CreateServerIdRequest {
             id: Some("duplicate".to_string()),
             name: "Server 1".to_string(),
@@ -278,7 +291,7 @@ mod tests {
     #[tokio::test]
     async fn test_search_ids() {
         let manager = ServerIdManager::new();
-        
+
         let req1 = CreateServerIdRequest {
             id: Some("survival-1".to_string()),
             name: "Survival World".to_string(),

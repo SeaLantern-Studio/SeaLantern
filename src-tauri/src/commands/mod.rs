@@ -1,10 +1,10 @@
 pub mod config;
 pub mod java;
+pub mod join;
+pub mod mods;
 pub mod player;
 pub mod server;
+pub mod server_id;
 pub mod settings;
 pub mod system;
 pub mod update;
-pub mod mods;
-pub mod join;
-pub mod server_id;

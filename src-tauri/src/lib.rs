@@ -5,14 +5,14 @@ mod utils;
 
 use commands::config as config_commands;
 use commands::java as java_commands;
+use commands::join as join_commands;
+use commands::mods as mods_commands;
 use commands::player as player_commands;
 use commands::server as server_commands;
+use commands::server_id as server_id_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
 use commands::update as update_commands;
-use commands::mods as mods_commands;
-use commands::join as join_commands;
-use commands::server_id as server_id_commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -80,7 +80,7 @@ pub fn run() {
             update_commands::open_download_url,
             mods_commands::search_mods,
             mods_commands::install_mod,
-            join_commands::resolve_server_id,
+            join_commands::resolve_join_server_id,
             join_commands::join_server_by_id,
             server_id_commands::create_server_id,
             server_id_commands::resolve_server_id,

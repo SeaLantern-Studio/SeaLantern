@@ -21,7 +21,7 @@ pub async fn create_server_id(
     };
 
     let entry = server_id_manager().create_id(req).await?;
-    
+
     Ok(ServerIdResponse {
         id: entry.id,
         name: entry.name,
@@ -58,7 +58,9 @@ pub async fn update_server_id(
     address: Option<String>,
     port: Option<u16>,
 ) -> Result<ServerIdEntry, String> {
-    server_id_manager().update_id(&id, name, address, port).await
+    server_id_manager()
+        .update_id(&id, name, address, port)
+        .await
 }
 
 /// Deactivate a server ID
