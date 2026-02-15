@@ -105,8 +105,12 @@ async function pickJavaFile() {
 async function handleCreate() {
   errorMsg.value = null;
 
+  // 直接弹出文件选择窗口
+  await pickJarFile();
+  
+  // 选择文件后检查其他条件
   if (!jarPath.value) {
-    errorMsg.value = "请选择服务端 JAR 文件";
+    // 用户取消了文件选择，不显示错误信息
     return;
   }
   if (!selectedJava.value) {
