@@ -311,6 +311,16 @@ sea-lantern/
 
 GPLv3
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=FPSZ/SeaLantern&type=Date)](https://star-history.com/#FPSZ/SeaLantern&Date)
+
+## 贡献者
+
+感谢所有为 Sea Lantern 做出贡献的人！
+
+[![Contributors](https://contrib.rocks/image?repo=FPSZ/SeaLantern)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
+
 ## 致谢
 
 Sea Lantern 是一个开源项目，遵循 GPLv3 协议。
