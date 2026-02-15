@@ -17,7 +17,11 @@ withDefaults(defineProps<Props>(), {
 <template>
   <button
     class="sl-button"
-    :class="[`sl-button--${variant}`, `sl-button--${size}`, { 'sl-button--disabled': disabled || loading }]"
+    :class="[
+      `sl-button--${variant}`,
+      `sl-button--${size}`,
+      { 'sl-button--disabled': disabled || loading },
+    ]"
     :disabled="disabled || loading"
     :aria-busy="loading"
   >
@@ -29,7 +33,16 @@ withDefaults(defineProps<Props>(), {
       viewBox="0 0 24 24"
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="15.7 15.7" stroke-linecap="round" />
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-dasharray="15.7 15.7"
+        stroke-linecap="round"
+      />
     </svg>
     <slot />
   </button>
@@ -44,7 +57,7 @@ withDefaults(defineProps<Props>(), {
   font-weight: 500;
   border-radius: var(--sl-radius-md, 0.375rem);
   border: 1px solid transparent;
-  transition: 
+  transition:
     background-color 0.15s ease-in-out,
     border-color 0.15s ease-in-out,
     box-shadow 0.15s ease-in-out,
@@ -146,7 +159,11 @@ withDefaults(defineProps<Props>(), {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

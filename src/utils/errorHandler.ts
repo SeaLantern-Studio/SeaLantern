@@ -25,7 +25,7 @@ export class AppError extends Error {
   constructor(
     message: string,
     public type: ErrorType = ErrorType.UNKNOWN,
-    public context?: string
+    public context?: string,
   ) {
     super(message);
     this.name = "AppError";
@@ -98,7 +98,7 @@ export function safeJsonParse<T>(json: string, fallback: T): T {
 export async function retry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  delay: number = 1000
+  delay: number = 1000,
 ): Promise<T> {
   let lastError: unknown;
 

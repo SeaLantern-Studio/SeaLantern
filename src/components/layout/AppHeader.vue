@@ -40,24 +40,37 @@ async function closeWindow() {
       <div class="window-controls">
         <button class="win-btn" @click="minimizeWindow" title="最小化">
           <svg width="12" height="12" viewBox="0 0 12 12">
-            <rect x="1" y="5.5" width="10" height="1" fill="currentColor"/>
+            <rect x="1" y="5.5" width="10" height="1" fill="currentColor" />
           </svg>
         </button>
         <button class="win-btn" @click="toggleMaximize" title="最大化">
           <svg width="12" height="12" viewBox="0 0 12 12">
-            <rect x="1.5" y="1.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/>
+            <rect
+              x="1.5"
+              y="1.5"
+              width="9"
+              height="9"
+              rx="1"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1"
+            />
           </svg>
         </button>
         <button class="win-btn win-btn-close" @click="closeWindow" title="关闭">
           <svg width="12" height="12" viewBox="0 0 12 12">
-            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <path
+              d="M2 2l8 8M10 2l-8 8"
+              stroke="currentColor"
+              stroke-width="1.2"
+              stroke-linecap="round"
+            />
           </svg>
         </button>
       </div>
     </div>
   </header>
 </template>
-
 
 <style scoped>
 .app-header {
@@ -89,7 +102,6 @@ async function closeWindow() {
   min-height: var(--sl-header-height);
   -webkit-app-region: drag;
 }
-
 
 .header-right {
   display: flex;

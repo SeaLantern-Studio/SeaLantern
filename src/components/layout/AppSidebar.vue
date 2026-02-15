@@ -43,9 +43,12 @@ const iconMap: Record<string, string> = {
   home: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1",
   plus: "M12 4v16m8-8H4",
   terminal: "M4 17l6-6-6-6m8 14h8",
-  settings: "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4",
-  users: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
-  sliders: "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4",
+  settings:
+    "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4",
+  users:
+    "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+  sliders:
+    "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4",
   info: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   chevron: "M15 19l-7-7 7-7",
 };
@@ -67,11 +70,25 @@ const iconMap: Record<string, string> = {
         <transition name="fade">
           <div v-if="!ui.sidebarCollapsed" class="nav-group-label">{{ group.label }}</div>
         </transition>
-        <div v-for="item in navItems.filter(i => i.group === group.key)" :key="item.name" class="nav-item"
-          :class="{ active: isActive(item.path) }" @click="navigateTo(item.path)"
-          :title="ui.sidebarCollapsed ? item.label : ''">
-          <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <div
+          v-for="item in navItems.filter((i) => i.group === group.key)"
+          :key="item.name"
+          class="nav-item"
+          :class="{ active: isActive(item.path) }"
+          @click="navigateTo(item.path)"
+          :title="ui.sidebarCollapsed ? item.label : ''"
+        >
+          <svg
+            class="nav-icon"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path :d="iconMap[item.icon] || iconMap.info" />
           </svg>
           <transition name="fade">
@@ -84,9 +101,18 @@ const iconMap: Record<string, string> = {
 
     <div class="sidebar-footer">
       <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
-        <svg class="nav-icon" :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : '' }" width="20" height="20"
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-          stroke-linejoin="round">
+        <svg
+          class="nav-icon"
+          :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : '' }"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path :d="iconMap.chevron" />
         </svg>
         <transition name="fade">

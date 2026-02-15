@@ -33,11 +33,11 @@ function applyTheme(theme: string) {
 
 async function applyAcrylicEffect(enabled: boolean, theme: string) {
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
-  
+
   if (!acrylicSupported.value) {
     return;
   }
-  
+
   if (enabled) {
     const effectiveTheme = getEffectiveTheme(theme);
     const isDark = effectiveTheme === "dark";
@@ -73,7 +73,7 @@ onMounted(async () => {
   } catch {
     acrylicSupported.value = false;
   }
-  
+
   await loadBackgroundSettings();
 
   // 监听设置更新事件
@@ -217,7 +217,9 @@ const backgroundStyle = computed(() => {
 
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
 }
 
 .page-fade-enter-from {

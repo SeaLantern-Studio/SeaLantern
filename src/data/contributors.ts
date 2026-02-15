@@ -6,10 +6,10 @@
  */
 
 export interface Contributor {
-  name: string;        // 名字或昵称
-  role: string;        // 角色描述
-  avatar: string;      // 头像 URL
-  url?: string;        // 可选：个人主页链接
+  name: string; // 名字或昵称
+  role: string; // 角色描述
+  avatar: string; // 头像 URL
+  url?: string; // 可选：个人主页链接
 }
 
 export const contributors: Contributor[] = [
@@ -24,7 +24,7 @@ export const contributors: Contributor[] = [
     role: "自定义背景图方案",
     avatar: "https://mc-heads.net/avatar/Alex/64",
     //url: "https://gitee.com/fps_z",
-  },  
+  },
   {
     name: "OMIILII",
     role: "精神支柱",
@@ -36,7 +36,7 @@ export const contributors: Contributor[] = [
     role: "自定义配色/宣传",
     avatar: "https://mc-heads.net/avatar/Jinby_6325/64",
     //url: "https://gitee.com/fps_z",
-  },  
+  },
   {
     name: "凋空凌",
     role: "修复文档bug",
@@ -53,7 +53,7 @@ export const contributors: Contributor[] = [
     name: "Little_100",
     role: "打杂",
     avatar: "https://minotar.net/avatar/Little100/64",
-    url : "https://gitee.com/little_100",
+    url: "https://gitee.com/little_100",
   },
   {
     name: "MinecraftYJQ",
@@ -77,9 +77,8 @@ export const contributors: Contributor[] = [
     role: "+3",
     avatar: "https://mc-heads.net/avatar/LingyeNB/64",
     url: "https://github.com/LingyeNBird",
-  }
+  },
 
-  
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================

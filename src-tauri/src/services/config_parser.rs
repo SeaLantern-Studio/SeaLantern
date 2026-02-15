@@ -98,17 +98,11 @@ fn get_property_descriptions(
 ) -> HashMap<&'static str, (&'static str, &'static str, &'static str, &'static str)> {
     let mut m = HashMap::new();
     m.insert("server-port", ("服务器端口", "number", "25565", "network"));
-    m.insert(
-        "server-ip",
-        ("服务器绑定IP，留空表示所有", "string", "", "network"),
-    );
+    m.insert("server-ip", ("服务器绑定IP，留空表示所有", "string", "", "network"));
     m.insert("max-players", ("最大玩家数", "number", "20", "player"));
     m.insert("online-mode", ("正版验证", "boolean", "true", "player"));
     m.insert("white-list", ("启用白名单", "boolean", "false", "player"));
-    m.insert(
-        "enforce-whitelist",
-        ("强制白名单", "boolean", "false", "player"),
-    );
+    m.insert("enforce-whitelist", ("强制白名单", "boolean", "false", "player"));
     m.insert("gamemode", ("默认游戏模式", "select", "survival", "game"));
     m.insert("difficulty", ("游戏难度", "select", "easy", "game"));
     m.insert("hardcore", ("极限模式", "boolean", "false", "game"));
@@ -118,70 +112,27 @@ fn get_property_descriptions(
     m.insert("spawn-monsters", ("生成怪物", "boolean", "true", "world"));
     m.insert("spawn-animals", ("生成动物", "boolean", "true", "world"));
     m.insert("spawn-npcs", ("生成NPC", "boolean", "true", "world"));
-    m.insert(
-        "generate-structures",
-        ("生成结构", "boolean", "true", "world"),
-    );
+    m.insert("generate-structures", ("生成结构", "boolean", "true", "world"));
     m.insert("level-name", ("世界名称", "string", "world", "world"));
     m.insert("level-seed", ("世界种子", "string", "", "world"));
-    m.insert(
-        "level-type",
-        ("世界类型", "string", "minecraft:normal", "world"),
-    );
+    m.insert("level-type", ("世界类型", "string", "minecraft:normal", "world"));
     m.insert("view-distance", ("视距", "number", "10", "performance"));
-    m.insert(
-        "simulation-distance",
-        ("模拟距离", "number", "10", "performance"),
-    );
+    m.insert("simulation-distance", ("模拟距离", "number", "10", "performance"));
     m.insert(
         "max-tick-time",
-        (
-            "最大tick时间(ms)，-1为禁用",
-            "number",
-            "60000",
-            "performance",
-        ),
+        ("最大tick时间(ms)，-1为禁用", "number", "60000", "performance"),
     );
     m.insert(
         "network-compression-threshold",
         ("网络压缩阈值", "number", "256", "performance"),
     );
-    m.insert(
-        "motd",
-        (
-            "服务器描述(MOTD)",
-            "string",
-            "A Minecraft Server",
-            "display",
-        ),
-    );
-    m.insert(
-        "enable-command-block",
-        ("启用命令方块", "boolean", "false", "game"),
-    );
-    m.insert(
-        "enable-query",
-        ("启用Query协议", "boolean", "false", "network"),
-    );
-    m.insert(
-        "enable-rcon",
-        ("启用RCON远程控制", "boolean", "false", "network"),
-    );
-    m.insert(
-        "enable-status",
-        ("启用服务器列表状态", "boolean", "true", "network"),
-    );
-    m.insert(
-        "force-gamemode",
-        ("强制游戏模式", "boolean", "false", "game"),
-    );
-    m.insert(
-        "spawn-protection",
-        ("出生点保护半径", "number", "16", "world"),
-    );
-    m.insert(
-        "sync-chunk-writes",
-        ("同步区块写入", "boolean", "true", "performance"),
-    );
+    m.insert("motd", ("服务器描述(MOTD)", "string", "A Minecraft Server", "display"));
+    m.insert("enable-command-block", ("启用命令方块", "boolean", "false", "game"));
+    m.insert("enable-query", ("启用Query协议", "boolean", "false", "network"));
+    m.insert("enable-rcon", ("启用RCON远程控制", "boolean", "false", "network"));
+    m.insert("enable-status", ("启用服务器列表状态", "boolean", "true", "network"));
+    m.insert("force-gamemode", ("强制游戏模式", "boolean", "false", "game"));
+    m.insert("spawn-protection", ("出生点保护半径", "number", "16", "world"));
+    m.insert("sync-chunk-writes", ("同步区块写入", "boolean", "true", "performance"));
     m
 }

@@ -1,4 +1,4 @@
-name: '代码质量检查'
+name: "代码质量检查"
 
 on:
   pull_request:
@@ -22,7 +22,7 @@ jobs:
       - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          node-version: "lts/*"
 
       - name: 安装 Rust 工具链
         uses: dtolnay/rust-toolchain@stable
@@ -32,7 +32,7 @@ jobs:
       - name: 缓存 Rust 编译产物
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: 检查代码格式
         run: cargo fmt --all -- --check
