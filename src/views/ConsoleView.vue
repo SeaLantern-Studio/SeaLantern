@@ -545,7 +545,16 @@ function executeCustomCommand(cmd: ServerCommand) {
             'log-system': line.startsWith('[Sea Lantern]'),
           }"
         >
-          {{ line }}
+          <!-- 解析日志行，提取时间和等级 -->
+          <template v-if="line.match(/^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/)">
+            <span class="log-time">[{{ RegExp.$1 }}]</span>
+            <span class="log-level" :class="'level-' + RegExp.$3.toLowerCase()">[{{ RegExp.$2 }}/{{ RegExp.$3 }}]</span>
+            <span class="log-content">{{ RegExp.$4 }}</span>
+          </template>
+          <!-- 对于不符合标准格式的日志行，直接显示 -->
+          <template v-else>
+            {{ line }}
+          </template>
         </div>
         <div v-if="currentLogs.length === 0" class="log-empty">等待输出...</div>
       </div>
@@ -809,6 +818,42 @@ function executeCustomCommand(cmd: ServerCommand) {
 .log-empty {
   color: var(--sl-text-tertiary);
   font-style: italic;
+}
+
+/* 日志时间和等级样式 */
+.log-time {
+  color: var(--sl-text-tertiary);
+  margin-right: 8px;
+}
+
+.log-level {
+  margin-right: 8px;
+  font-weight: 500;
+}
+
+.log-level.level-error {
+  color: var(--sl-error);
+}
+
+.log-level.level-info {
+  color: var(--sl-success);
+}
+
+.log-level.level-warn {
+  color: var(--sl-warning);
+}
+
+.log-level.level-debug {
+  color: var(--sl-info);
+}
+
+.log-level.level-fatal {
+  color: var(--sl-error);
+  font-weight: 700;
+}
+
+.log-content {
+  color: var(--sl-text-primary);
 }
 .scroll-btn {
   position: absolute;
