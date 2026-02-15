@@ -1,7 +1,26 @@
 
 # 海晶灯（Sea Lantern）
 
+[简体中文文档](README.md)
+
+[English version Doc(Present)](README-en.md)
+
+
 Minecraft Server Manager · Tauri 2 + Rust + Vue 3
+<div align="center">
+<img src="https://gitee.com/fps_z/SeaLantern/raw/master/src/assets/logo.svg" alt="logo" width="200" height="200">
+
+# Sea Lantern(海晶灯)
+
+Minecraft Server Manager · Tauri 2 + Rust + Vue 3
+
+[![star](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)[![fork](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)
+[![GitHub Repo stars](https://img.shields.io/github/stars/FPSZ/SeaLantern?style=flat&logo=github&label=stars)](https://github.com/FPSZ/SeaLantern)[![GitHub forks](https://img.shields.io/github/forks/FPSZ/SeaLantern?style=flat&logo=github&label=forks)](https://github.com/FPSZ/SeaLantern/network/members)
+[![最新版本](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=latest_version&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)[![GitHub release](https://img.shields.io/github/v/release/FPSZ/SeaLantern?style=flat&logo=github&label=latest)](https://github.com/FPSZ/SeaLantern/releases)
+====
+
+</div>
+
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
 ## What can it do?
@@ -309,6 +328,17 @@ Frontend/Backend each 3 files,Change one line each for the router and the sideba
 GPLv3
 
 ## Thank
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=FPSZ/SeaLantern&type=Date)](https://star-history.com/#FPSZ/SeaLantern&Date)
+
+## Contributors
+
+Thanks to everyone who contributed to Sea Lantern!
+
+[![Contributors](https://contrib.rocks/image?repo=FPSZ/SeaLantern)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
+
+## Acknowledgments
 
 Sea Lantern is an OPEN SOURCE project,Complies with the GPLv3 license.
 
