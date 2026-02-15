@@ -226,7 +226,13 @@ const iconMap: Record<string, string> = {
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <path d="M15 19l-7-7 7-7" />
+              <!-- 服务器图标（与侧边栏其他图标风格一致） -->
+              <rect x="4" y="6" width="10" height="12" rx="1" />
+              <rect x="12" y="10" width="6" height="8" rx="1" />
+              <line x1="6" y1="10" x2="10" y2="10" />
+              <line x1="6" y1="14" x2="10" y2="14" />
+              <line x1="14" y1="12" x2="16" y2="12" />
+              <line x1="14" y1="16" x2="16" y2="16" />
             </svg>
           </div>
         </template>
