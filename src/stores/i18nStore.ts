@@ -7,7 +7,9 @@ export const useI18nStore = defineStore('i18n', {
   }),
   getters: {
     currentLocale: (state) => state.locale,
-    isChinese: (state) => state.locale === 'zh-CN',
+    isChinese: (state) => state.locale === 'zh-CN' || state.locale === 'zh-TW',
+    isSimplifiedChinese: (state) => state.locale === 'zh-CN',
+    isTraditionalChinese: (state) => state.locale === 'zh-TW',
     isEnglish: (state) => state.locale === 'en-US'
   },
   actions: {
@@ -16,7 +18,12 @@ export const useI18nStore = defineStore('i18n', {
       i18n.setLocale(locale);
     },
     toggleLocale() {
-      const newLocale = this.locale === 'zh-CN' ? 'en-US' : 'zh-CN';
+      let newLocale = 'zh-CN';
+      if (this.locale === 'zh-CN') {
+        newLocale = 'zh-TW';
+      } else if (this.locale === 'zh-TW') {
+        newLocale = 'en-US';
+      }
       this.setLocale(newLocale);
     }
   }

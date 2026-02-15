@@ -15,7 +15,10 @@ const pageTitle = computed(() => {
 });
 
 const currentLanguageText = computed(() => {
-  return i18nStore.isChinese ? i18n.t('header.chinese') : i18n.t('header.english');
+  const locale = i18n.getLocale();
+  if (locale === 'zh-CN') return i18n.t('header.chinese');
+  if (locale === 'zh-TW') return i18n.t('header.chinese_tw');
+  return i18n.t('header.english');
 });
 
 async function minimizeWindow() {
@@ -58,6 +61,9 @@ function handleClickOutside() {
         <div class="language-menu" v-if="showLanguageMenu">
           <div class="language-item" @click.stop="setLanguage('zh-CN')">
             {{ i18n.t('header.chinese') }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('zh-TW')">
+            {{ i18n.t('header.chinese_tw') }}
           </div>
           <div class="language-item" @click.stop="setLanguage('en-US')">
             {{ i18n.t('header.english') }}

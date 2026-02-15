@@ -20,8 +20,9 @@
   },
   "header": {
     "language": "语言",
-    "chinese": "中文",
-    "english": "EN"
+    "chinese": "简中",
+    "english": "EN",
+    "chinese_tw": "繁中"
   },
   "home": {
     "title": "服务器管理",

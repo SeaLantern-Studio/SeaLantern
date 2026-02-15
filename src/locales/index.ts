@@ -1,5 +1,6 @@
 import zhCN from './zh-CN.json';
 import enUS from './en-US.json';
+import zhTW from './zh-TW.json';
 
 interface Translation {
   [key: string]: any;
@@ -11,7 +12,8 @@ interface Translations {
 
 const translations: Translations = {
   'zh-CN': zhCN,
-  'en-US': enUS
+  'en-US': enUS,
+  'zh-TW': zhTW
 };
 
 import { ref } from 'vue';
@@ -33,7 +35,7 @@ class I18n {
     return this.currentLocale.value;
   }
 
-  t(key: string, defaultValue: string = key): string {
+  t(key: string, options: any = {}): string {
     // Access currentLocale.value to establish reactive dependency
     const currentLocaleValue = this.currentLocale.value;
     const keys = key.split('.');
@@ -49,13 +51,23 @@ class I18n {
           if (value && typeof value === 'object' && k in value) {
             value = value[k];
           } else {
-            return defaultValue;
+            return key;
           }
         }
       }
     }
 
-    return typeof value === 'string' ? value : defaultValue;
+    let result = typeof value === 'string' ? value : key;
+
+    // Replace variables like {{count}} with values from options
+    if (typeof result === 'string' && typeof options === 'object' && options !== null) {
+      result = result.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
+        const trimmedVarName = varName.trim();
+        return options[trimmedVarName] !== undefined ? options[trimmedVarName] : match;
+      });
+    }
+
+    return result;
   }
 
   getTranslations(): Translations {
