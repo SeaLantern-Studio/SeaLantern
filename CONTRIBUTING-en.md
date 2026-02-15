@@ -1,5 +1,10 @@
 # Contributing Guidelines
 
+Change Language(切换语言)
+
+[简体中文](CONTRIBUTING.md)
+[English version Doc](CONTRIBUTING-en.md)
+
 Thank you for your interest in Project Sea Lantern! This document will help you understand how to contribute to the project.
 
 ## Development Environment Requirements

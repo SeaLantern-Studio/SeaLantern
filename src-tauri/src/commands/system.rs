@@ -56,8 +56,33 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
         })
         .collect();
 
-    let total_disk_space: u64 = disks.iter().map(|d| d.total_space()).sum();
-    let total_disk_available: u64 = disks.iter().map(|d| d.available_space()).sum();
+    // 针对不同平台计算磁盘空间
+    let (total_disk_space, total_disk_available): (u64, u64) = {
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        {
+            // 在 macOS 和 Linux 上，只计算根目录 (/) 的磁盘空间
+            if let Some(root_disk) = disks
+                .iter()
+                .find(|d| d.mount_point().to_string_lossy() == "/")
+            {
+                (root_disk.total_space(), root_disk.available_space())
+            } else {
+                // 如果找不到根目录，回退到计算所有磁盘
+                (
+                    disks.iter().map(|d| d.total_space()).sum(),
+                    disks.iter().map(|d| d.available_space()).sum(),
+                )
+            }
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        {
+            // 在其他平台，继续计算所有磁盘空间
+            (
+                disks.iter().map(|d| d.total_space()).sum(),
+                disks.iter().map(|d| d.available_space()).sum(),
+            )
+        }
+    };
     let total_disk_used = total_disk_space.saturating_sub(total_disk_available);
     let total_disk_usage = if total_disk_space > 0 {
         (total_disk_used as f64 / total_disk_space as f64 * 100.0) as f32

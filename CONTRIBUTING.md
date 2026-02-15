@@ -1,5 +1,11 @@
 # 贡献指南
 
+切换语言(Change Language)
+
+[简体中文(当前)](CONTRIBUTING.md)
+
+[English Version Doc](CONTRIBUTING-en.md)
+
 感谢你对 Sea Lantern 项目的关注！这份文档将帮助你了解如何为项目做出贡献。
 
 ## 开发环境要求

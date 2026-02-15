@@ -90,6 +90,18 @@ export const contributors: Contributor[] = [
     avatar: "https://minotar.net/avatar/ieshishinjin/64",
     url: "https://github.com/ieshishinjin",
   },
+  {
+    name: "欧耶熊猫人",
+    role: "Github文档转英文",
+    avatar: "https://mc-heads.net/avatar/Pandaman_AF/64",
+    url: "https://github.com/PandamanAF",
+  },
+  {
+    name: "猫不笨qwq",
+    role: "找到软件图形化错误",
+    avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
+    url: "https://github.com/maobuben",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
