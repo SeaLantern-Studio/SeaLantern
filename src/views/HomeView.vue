@@ -319,6 +319,7 @@ function handleAnimationEnd(event: AnimationEvent) {
 
     <!-- Top Row: Quick Actions + System Stats -->
      <!-- 百宝箱相关，改了后记得添加i18n哦-->
+      
     <div class="top-row">
       <SLCard
         :title="store.servers.length > 0 ? '百宝箱' : i18n.t('home.title')"
