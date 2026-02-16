@@ -18,25 +18,18 @@ const pageTitle = computed(() => {
   return i18n.t("common.app_name");
 });
 
-const currentLanguageText = computed(() => {
-  const locale = i18n.getLocale();
-  if (locale === "zh-CN") return i18n.t("header.chinese");
-  if (locale === "zh-TW") return i18n.t("header.chinese_tw");
-  if (locale === "ja-JP") return i18n.t("header.japanese");
-  if (locale === "fr-FR") return i18n.t("header.french");
-  if (locale === "de-DE") return i18n.t("header.german");
-  if (locale === "ru-RU") return i18n.t("header.russian");
-  if (locale === "ar-SA") return i18n.t("header.arabic");
-  if (locale === "es-ES") return i18n.t("header.spanish");
-  if (locale === "it-IT") return i18n.t("header.italian");
-  if (locale === "pt-BR") return i18n.t("header.portuguese");
-  if (locale === "ko-KR") return i18n.t("header.korean");
-  if (locale === "nl-NL") return i18n.t("header.dutch");
-  if (locale === "pl-PL") return i18n.t("header.polish");
-  if (locale === "tr-TR") return i18n.t("header.turkish");
-  if (locale === "vi-VN") return i18n.t("header.vietnamese");
+const languageOptions = computed(() =>
+  i18nStore.localeOptions.map((option) => ({
+    code: option.code,
+    label: i18n.t(option.labelKey),
+  }))
+);
 
-  return i18n.t("header.english");
+const currentLanguageText = computed(() => {
+  const current = languageOptions.value.find(
+    (option) => option.code === i18nStore.currentLocale
+  );
+  return current?.label ?? i18n.t("header.english");
 });
 
 async function minimizeWindow() {
@@ -77,14 +70,13 @@ function handleClickOutside() {
       <div class="language-selector" @click="toggleLanguageMenu">
         <span class="language-text">{{ currentLanguageText }}</span>
         <div class="language-menu" v-if="showLanguageMenu">
-          <div class="language-item" @click.stop="setLanguage('zh-CN')">
-            {{ i18n.t("header.chinese") }}
-          </div>
-          <div class="language-item" @click.stop="setLanguage('zh-TW')">
-            {{ i18n.t("header.chinese_tw") }}
-          </div>
-          <div class="language-item" @click.stop="setLanguage('en-US')">
-            {{ i18n.t("header.english") }}
+          <div
+            v-for="option in languageOptions"
+            :key="option.code"
+            class="language-item"
+            @click.stop="setLanguage(option.code)"
+          >
+            {{ option.label }}
           </div>
           <div class="language-item" @click.stop="setLanguage('ja-JP')">
             {{ i18n.t("header.japanese") }}

@@ -325,6 +325,7 @@ Frontend/Backend each 3 files,Change one line each for the router and the sideba
 GPLv3
 
 ## Thank
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=FPSZ/SeaLantern&type=Date)](https://star-history.com/#FPSZ/SeaLantern&Date)

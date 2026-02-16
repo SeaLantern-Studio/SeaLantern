@@ -1,5 +1,11 @@
+import { computed } from "vue";
 import { defineStore } from "pinia";
-import { i18n } from "../locales";
+import { i18n, type LocaleCode } from "../locales";
+
+import { computed } from "vue";
+import { defineStore } from "pinia";
+import { i18n, type LocaleCode } from "../locales";
+
 
 const AVAILABLE_LOCALES = [
   "zh-CN",
@@ -20,40 +26,88 @@ const AVAILABLE_LOCALES = [
   "vi-VN",
 ] as const;
 
-export const useI18nStore = defineStore("i18n", {
-  state: () => ({
-    locale: "zh-CN" as string,
-  }),
-  getters: {
-    currentLocale: (state) => state.locale,
-    isChinese: (state) => state.locale === "zh-CN" || state.locale === "zh-TW",
-    isSimplifiedChinese: (state) => state.locale === "zh-CN",
-    isTraditionalChinese: (state) => state.locale === "zh-TW",
-    isEnglish: (state) => state.locale === "en-US",
-    isJapanese: (state) => state.locale === "ja-JP",
-    isFrench: (state) => state.locale === "fr-FR",
-    isGerman: (state) => state.locale === "de-DE",
-    isRussian: (state) => state.locale === "ru-RU",
-    isArabic: (state) => state.locale === "ar-SA",
-    isSpanish: (state) => state.locale === "es-ES",
-    isItalian: (state) => state.locale === "it-IT",
-    isPortuguese: (state) => state.locale === "pt-BR",
-    isKorean: (state) => state.locale === "ko-KR",
-    isDutch: (state) => state.locale === "nl-NL",
-    isPolish: (state) => state.locale === "pl-PL",
-    isTurkish: (state) => state.locale === "tr-TR",
-    isVietnamese: (state) => state.locale === "vi-VN",
-    availableLocales: () => AVAILABLE_LOCALES,
-  },
-  actions: {
-    setLocale(locale: string) {
-      this.locale = locale;
-      i18n.setLocale(locale);
-    },
-    toggleLocale() {
-      const currentIndex = AVAILABLE_LOCALES.indexOf(this.locale as any);
-      const nextIndex = (currentIndex + 1) % AVAILABLE_LOCALES.length;
-      this.setLocale(AVAILABLE_LOCALES[nextIndex]);
-    },
-  },
+const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
+  "zh-CN": "header.chinese",
+  "zh-TW": "header.chinese_tw",
+  "en-US": "header.english",
+  "ja-JP": "header.japanese",
+  "fr-FR": "header.french",
+  "de-DE": "header.german",
+  "ru-RU": "header.russian",
+  "ar-SA": "header.arabic",
+  "es-ES": "header.spanish",
+  "it-IT": "header.italian",
+  "pt-BR": "header.portuguese_br",
+  "ko-KR": "header.korean",
+  "nl-NL": "header.dutch",
+  "pl-PL": "header.polish",
+  "tr-TR": "header.turkish",
+  "vi-VN": "header.vietnamese",
+};
+export const useI18nStore = defineStore("i18n", () => {
+  const localeRef = i18n.getLocaleRef();
+  const supportedLocales = i18n.getAvailableLocales();
+  const locale = computed(() => localeRef.value);
+  const currentLocale = computed(() => localeRef.value);
+  const isChinese = computed(
+    () => localeRef.value === "zh-CN" || localeRef.value === "zh-TW"
+  );
+  const isSimplifiedChinese = computed(() => localeRef.value === "zh-CN");
+  const isTraditionalChinese = computed(() => localeRef.value === "zh-TW");
+  const isEnglish = computed(() => localeRef.value === "en-US");
+  const isJapanese = computed(() => localeRef.value === "ja-JP");
+  const isFrench = computed(() => localeRef.value === "fr-FR");
+  const isGerman = computed(() => localeRef.value === "de-DE");
+  const isRussian = computed(() => localeRef.value === "ru-RU");
+  const isArabic = computed(() => localeRef.value === "ar-SA");
+  const isSpanish = computed(() => localeRef.value === "es-ES");
+  const isItalian = computed(() => localeRef.value === "it-IT");
+  const isPortuguese = computed(() => localeRef.value === "pt-BR");
+  const isKorean = computed(() => localeRef.value === "ko-KR");
+  const isDutch = computed(() => localeRef.value === "nl-NL");
+  const isPolish = computed(() => localeRef.value === "pl-PL");
+  const isTurkish = computed(() => localeRef.value === "tr-TR");
+  const isVietnamese = computed(() => localeRef.value === "vi-VN");
+  const availableLocales = computed(() => AVAILABLE_LOCALES);
+  const localeOptions = computed(() =>
+    supportedLocales.map((code) => ({
+      code,
+      labelKey: LOCALE_LABEL_KEYS[code],
+    }))
+  );
+  function setLocale(nextLocale: string) {
+    i18n.setLocale(nextLocale);
+  }
+
+  function toggleLocale() {
+    const currentIndex = AVAILABLE_LOCALES.indexOf(localeRef.value as any);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % AVAILABLE_LOCALES.length;
+    i18n.setLocale(AVAILABLE_LOCALES[nextIndex]);
+  }
+  return {
+    locale,
+    currentLocale,
+    isChinese,
+    isSimplifiedChinese,
+    isTraditionalChinese,
+    isEnglish,
+    isJapanese,
+    isFrench,
+    isGerman,
+    isRussian,
+    isArabic,
+    isSpanish,
+    isItalian,
+    isPortuguese,
+    isKorean,
+    isDutch,
+    isPolish,
+    isTurkish,
+    isVietnamese,
+    availableLocales,
+    localeOptions,
+    setLocale,
+    toggleLocale,
+  };
+});
 });
