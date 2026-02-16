@@ -22,13 +22,11 @@ const languageOptions = computed(() =>
   i18nStore.localeOptions.map((option) => ({
     code: option.code,
     label: i18n.t(option.labelKey),
-  }))
+  })),
 );
 
 const currentLanguageText = computed(() => {
-  const current = languageOptions.value.find(
-    (option) => option.code === i18nStore.currentLocale
-  );
+  const current = languageOptions.value.find((option) => option.code === i18nStore.currentLocale);
   return current?.label ?? i18n.t("header.english");
 });
 

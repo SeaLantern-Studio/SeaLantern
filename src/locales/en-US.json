@@ -202,6 +202,11 @@
     "title": "Settings",
     "auto_stop": "Auto stop servers when closing",
     "auto_eula": "Auto agree EULA",
+    "close_behavior": "Close Behavior",
+    "close_behavior_desc": "Select behavior when clicking close button",
+    "close_behavior_minimize": "Minimize to Tray",
+    "close_behavior_ask": "Ask",
+    "close_behavior_exit": "Exit Directly",
     "default_memory": "Default Memory",
     "default_port": "Default Port",
     "jvm_args": "JVM Arguments",
@@ -389,5 +394,10 @@
     "update_check_failed": "Failed to check updates",
     "update_download_failed": "Download failed",
     "github_repo": "GitHub Repository"
+  },
+  "tray": {
+    "minimize": "Minimize to Tray",
+    "show": "Show",
+    "quit": "Quit"
   }
 }

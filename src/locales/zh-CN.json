@@ -390,18 +390,9 @@
     "update_download_failed": "下载失败",
     "github_repo": "GitHub 仓库"
   },
-  "tools": {
-    "memory_cleaner": {
-      "title": "内存清理",
-      "description": "清理系统内存，释放可用空间",
-      "clean_memory": "清理内存",
-      "cleaning": "清理中...",
-      "success": "清理成功",
-      "failed": "清理失败",
-      "total": "总内存",
-      "used": "已用内存",
-      "available": "可用内存",
-      "usage": "内存使用率"
-    }
+  "tray": {
+    "minimize": "最小化到后台",
+    "show": "显示",
+    "quit": "退出"
   }
 }

@@ -318,29 +318,13 @@ function handleAnimationEnd(event: AnimationEvent) {
     </div>
 
     <!-- Top Row: Quick Actions + System Stats -->
-     <!-- 百宝箱相关，改了后记得添加i18n哦-->
-      
     <div class="top-row">
       <SLCard
-        :title="store.servers.length > 0 ? '百宝箱' : i18n.t('home.title')"
-        :subtitle="store.servers.length > 0 ? '服务器管理工具集合' : i18n.t('home.create_first')"
+        :title="i18n.t('home.title')"
+        :subtitle="i18n.t('home.create_first')"
         class="quick-start-card"
       >
         <div class="quick-actions">
-          <div v-if="store.servers.length > 0" class="tools-container">
-            <SLButton variant="secondary" size="lg">
-              工具1
-            </SLButton>
-            <SLButton variant="secondary" size="lg">
-              工具2
-            </SLButton>
-            <SLButton variant="secondary" size="lg">
-              工具3
-            </SLButton>
-            <SLButton variant="secondary" size="lg">
-              工具4
-            </SLButton>
-          </div>
           <SLButton variant="primary" size="lg" @click="router.push('/create')">
             {{ i18n.t("common.create_server") }}
           </SLButton>
@@ -676,9 +660,7 @@ function handleAnimationEnd(event: AnimationEvent) {
             @animationend="handleAnimationEnd"
           >
             <p class="delete-confirm-message">
-              {{ i18n.t("home.delete_confirm_message").split('{server}')[0] }}
-              <strong>{{ server.name }}</strong>
-              {{ i18n.t("home.delete_confirm_message").split('{server}')[1] || '' }}
+              {{ i18n.t("home.delete_confirm_message", { server: server.name }) }}
             </p>
             <div class="delete-input-group">
               <input
@@ -693,8 +675,12 @@ function handleAnimationEnd(event: AnimationEvent) {
               <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
             </div>
             <div class="delete-actions">
-              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{ i18n.t('home.delete_cancel') }}</SLButton>
-              <SLButton variant="danger" size="sm" @click="confirmDelete">{{ i18n.t('home.delete_confirm') }}</SLButton>
+              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
+                i18n.t("home.delete_cancel")
+              }}</SLButton>
+              <SLButton variant="danger" size="sm" @click="confirmDelete">{{
+                i18n.t("home.delete_confirm")
+              }}</SLButton>
             </div>
           </div>
         </div>
@@ -753,20 +739,8 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .quick-actions {
   display: flex;
-  flex-direction: column;
   gap: var(--sl-space-md);
   margin-top: var(--sl-space-sm);
-}
-
-.tools-container {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--sl-space-md);
-  width: 100%;
-}
-
-.tools-container sl-button {
-  width: 100%;
 }
 
 .stats-grid {

@@ -4,11 +4,7 @@ import SLModal from "./SLModal.vue";
 import SLButton from "./SLButton.vue";
 import { useUpdateStore } from "../../stores/updateStore";
 import { i18n } from "../../locales";
-import {
-  downloadUpdate,
-  installUpdate,
-  onDownloadProgress,
-} from "../../api/update";
+import { downloadUpdate, installUpdate, onDownloadProgress } from "../../api/update";
 import { serverApi } from "../../api/server";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
@@ -88,7 +84,7 @@ async function handleUpdateClick() {
     updateStore.setDownloading(0);
     const filePath = await downloadUpdate(
       updateStore.updateInfo.download_url,
-      updateStore.updateInfo.sha256
+      updateStore.updateInfo.sha256,
     );
     updateStore.setDownloaded(filePath);
   } catch (error) {
@@ -110,7 +106,7 @@ async function getRunningServerNames(): Promise<string[]> {
       } catch {
         return null;
       }
-    })
+    }),
   );
 
   return snapshots
@@ -151,10 +147,7 @@ async function performInstall() {
   updateStore.setInstalling();
 
   try {
-    await installUpdate(
-      updateStore.downloadedFilePath,
-      updateStore.updateInfo.latest_version
-    );
+    await installUpdate(updateStore.downloadedFilePath, updateStore.updateInfo.latest_version);
     window.close();
   } catch (error) {
     console.error("Install failed:", error);

@@ -33,10 +33,7 @@ function resolveNestedValue(source: TranslationNode, keys: string[]): string | u
 }
 
 function interpolateVariables(template: string, options: Record<string, unknown>): string {
-  // 同时支持单大括号 {variable} 和双大括号 {{variable}} 格式
-  return template.replace(/\{\{([^}]+)\}\}|\{([^}]+)\}/g, (match, varName1, varName2) => {
-    const varName = varName1 || varName2;
-    if (!varName) return match;
+  return template.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
     const value = options[varName.trim()];
     return value === undefined || value === null ? match : String(value);
   });

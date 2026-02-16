@@ -229,7 +229,6 @@ sea-lantern/
 └── README.md                          Project documentation (what you're reading now)
 ```
 
-
 ## Planned Features
 
 Placeholders have been reserved for these features with existing code
