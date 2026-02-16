@@ -31,6 +31,7 @@ const currentLanguageText = computed(() => {
   if (locale === 'zh-CY') return i18n.t('header.chinese_cy');
   if (locale === 'zh-WU') return i18n.t('header.chinese_wu');
   if (locale === 'zh-MN') return i18n.t('header.chinese_hokkien');
+  if (locale === 'zh-HN') return i18n.t('header.chinese_hn');
   return i18n.t('header.english');
 });
 
@@ -107,6 +108,9 @@ function handleClickOutside() {
           </div>
           <div class="language-item" @click.stop="setLanguage('zh-MN')">
             {{ i18n.t('header.chinese_hokkien') }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('zh-HN')">
+            {{ i18n.t('header.chinese_hn') }}
           </div>
           <div class="language-item" @click.stop="setLanguage('ja-JP')">
             {{ i18n.t('header.japanese') }}
