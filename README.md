@@ -1,20 +1,19 @@
 <div align="center">
 <img src="https://gitee.com/fps_z/SeaLantern/raw/master/src/assets/logo.svg" alt="logo" width="200" height="200">
 
-# 海晶灯(Sea Lantern)
+# 海晶灯（Sea Lantern）
 
-一个轻量化的 Minecraft 服务器管理工具 ，基于 Tauri 2 + Rust + Vue 3
+一个轻量化的 Minecraft 服务器管理工具，基于 Tauri 2 + Rust + Vue 3
 
-[![star](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)[![fork](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)
-[![GitHub Repo stars](https://img.shields.io/github/stars/FPSZ/SeaLantern?style=flat&logo=github&label=stars)](https://github.com/FPSZ/SeaLantern)[![GitHub forks](https://img.shields.io/github/forks/FPSZ/SeaLantern?style=flat&logo=github&label=forks)](https://github.com/FPSZ/SeaLantern/network/members)
-[![最新版本](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=最新版本&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)[![GitHub release](https://img.shields.io/github/v/release/FPSZ/SeaLantern?style=flat&logo=github&label=latest)](https://github.com/FPSZ/SeaLantern/releases)
-====
+|[![github-stars](https://img.shields.io/github/stars/FPSZ/SeaLantern?style=flat&logo=github&label=stars)](https://github.com/FPSZ/SeaLantern/stargazers)|[![github-forks](https://img.shields.io/github/forks/FPSZ/SeaLantern?style=flat&logo=github&label=forks)](https://github.com/FPSZ/SeaLantern/network/members)|[![github-latest](https://img.shields.io/github/v/release/FPSZ/SeaLantern?style=flat&logo=github&label=latest)](https://github.com/FPSZ/SeaLantern/releases)|
+|---|---|---|
+|[![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)|[![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)|[![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=最新版本&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)|
+
+<kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
+
+---
 
 </div>
-
-> 您正在浏览简体中文版的readme，点击[此处](README-en.md)前往英文版
-
-> You are browsing the Simplified Chinese version of the readme. Click [here](README-en.md) to go to the English version
 
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
@@ -95,9 +94,7 @@ cargo fmt --all
 
 ```
 sea-lantern/
-│
 ├── src/                                前端代码（Vue 3 + TypeScript）
-│   │
 │   ├── api/                           与 Rust 后端通信的封装层
 │   │   ├── tauri.ts                  基础 invoke 封装，所有 API 的入口
 │   │   ├── server.ts                 服务器管理 API（创建、启动、停止、日志）
@@ -160,9 +157,7 @@ sea-lantern/
 │   └── style.css                      样式汇总导入
 │
 ├── src-tauri/                         后端代码（Rust + Tauri 2）
-│   │
 │   ├── src/
-│   │   │
 │   │   ├── commands/                 Tauri 命令（前端 invoke 调用的 API）
 │   │   │   ├── mod.rs               模块导出
 │   │   │   ├── server.rs            服务器管理命令
@@ -210,7 +205,6 @@ sea-lantern/
 │   └── build.rs                      构建脚本
 │
 ├── public/                            静态资源
-│
 ├── index.html                         HTML 入口文件
 ├── package.json                       Node.js 依赖配置
 ├── package-lock.json                  Node.js 依赖锁定文件
@@ -315,7 +309,7 @@ sea-lantern/
 
 ## License
 
-GPLv3
+[GNU General Public License v3.0](LICENSE)
 
 ## Star History
 
@@ -333,4 +327,4 @@ Sea Lantern 是一个开源项目，遵循 GPLv3 协议。
 
 Minecraft 是 Mojang Studios 的注册商标。本项目与 Mojang 无关。
 
-"我们搭建了骨架，而灵魂，交给你们。"
+“我们搭建了骨架，而灵魂，交给你们。”
