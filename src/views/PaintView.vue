@@ -17,6 +17,262 @@ import {
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
+// 预设主题颜色定义
+const presetThemes = {
+  default: {
+    light: {
+      bg: "#f8fafc",
+      bgSecondary: "#f1f5f9",
+      bgTertiary: "#e2e8f0",
+      primary: "#0ea5e9",
+      secondary: "#06b6d4",
+      textPrimary: "#0f172a",
+      textSecondary: "#475569",
+      border: "#e2e8f0",
+    },
+    dark: {
+      bg: "#0f1117",
+      bgSecondary: "#1a1d28",
+      bgTertiary: "#242836",
+      primary: "#60a5fa",
+      secondary: "#22d3ee",
+      textPrimary: "#e2e8f0",
+      textSecondary: "#94a3b8",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(248, 250, 252, 0.7)",
+      bgSecondary: "rgba(241, 245, 249, 0.6)",
+      bgTertiary: "rgba(226, 232, 240, 0.5)",
+      primary: "#0ea5e9",
+      secondary: "#06b6d4",
+      textPrimary: "#0f172a",
+      textSecondary: "#475569",
+      border: "#e2e8f0",
+    },
+    dark_acrylic: {
+      bg: "rgba(15, 17, 23, 0.7)",
+      bgSecondary: "rgba(26, 29, 40, 0.6)",
+      bgTertiary: "rgba(36, 40, 54, 0.5)",
+      primary: "#60a5fa",
+      secondary: "#22d3ee",
+      textPrimary: "#e2e8f0",
+      textSecondary: "#94a3b8",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  midnight: {
+    light: {
+      bg: "#f0f4f8",
+      bgSecondary: "#e2e8f0",
+      bgTertiary: "#cbd5e1",
+      primary: "#3b82f6",
+      secondary: "#6366f1",
+      textPrimary: "#0f172a",
+      textSecondary: "#475569",
+      border: "#e2e8f0",
+    },
+    dark: {
+      bg: "#0f172a",
+      bgSecondary: "#1e293b",
+      bgTertiary: "#334155",
+      primary: "#60a5fa",
+      secondary: "#818cf8",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(240, 244, 248, 0.7)",
+      bgSecondary: "rgba(226, 232, 240, 0.6)",
+      bgTertiary: "rgba(203, 213, 225, 0.5)",
+      primary: "#3b82f6",
+      secondary: "#6366f1",
+      textPrimary: "#0f172a",
+      textSecondary: "#475569",
+      border: "#e2e8f0",
+    },
+    dark_acrylic: {
+      bg: "rgba(15, 23, 42, 0.7)",
+      bgSecondary: "rgba(30, 41, 59, 0.6)",
+      bgTertiary: "rgba(51, 65, 85, 0.5)",
+      primary: "#60a5fa",
+      secondary: "#818cf8",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  forest: {
+    light: {
+      bg: "#f0fdf4",
+      bgSecondary: "#dcfce7",
+      bgTertiary: "#bbf7d0",
+      primary: "#10b981",
+      secondary: "#059669",
+      textPrimary: "#064e3b",
+      textSecondary: "#15803d",
+      border: "#dcfce7",
+    },
+    dark: {
+      bg: "#064e3b",
+      bgSecondary: "#065f46",
+      bgTertiary: "#047857",
+      primary: "#34d399",
+      secondary: "#10b981",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(240, 253, 244, 0.7)",
+      bgSecondary: "rgba(220, 252, 231, 0.6)",
+      bgTertiary: "rgba(187, 247, 208, 0.5)",
+      primary: "#10b981",
+      secondary: "#059669",
+      textPrimary: "#064e3b",
+      textSecondary: "#15803d",
+      border: "#dcfce7",
+    },
+    dark_acrylic: {
+      bg: "rgba(6, 78, 59, 0.7)",
+      bgSecondary: "rgba(6, 95, 70, 0.6)",
+      bgTertiary: "rgba(4, 120, 87, 0.5)",
+      primary: "#34d399",
+      secondary: "#10b981",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  sunset: {
+    light: {
+      bg: "#fffbeb",
+      bgSecondary: "#fef3c7",
+      bgTertiary: "#fde68a",
+      primary: "#f97316",
+      secondary: "#ea580c",
+      textPrimary: "#7c2d12",
+      textSecondary: "#9a3412",
+      border: "#fef3c7",
+    },
+    dark: {
+      bg: "#7c2d12",
+      bgSecondary: "#9a3412",
+      bgTertiary: "#b45309",
+      primary: "#fb923c",
+      secondary: "#fdba74",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(255, 251, 235, 0.7)",
+      bgSecondary: "rgba(254, 243, 199, 0.6)",
+      bgTertiary: "rgba(253, 230, 138, 0.5)",
+      primary: "#f97316",
+      secondary: "#ea580c",
+      textPrimary: "#7c2d12",
+      textSecondary: "#9a3412",
+      border: "#fef3c7",
+    },
+    dark_acrylic: {
+      bg: "rgba(124, 45, 18, 0.7)",
+      bgSecondary: "rgba(154, 52, 18, 0.6)",
+      bgTertiary: "rgba(180, 83, 9, 0.5)",
+      primary: "#fb923c",
+      secondary: "#fdba74",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  ocean: {
+    light: {
+      bg: "#f0fdfa",
+      bgSecondary: "#ccfbf1",
+      bgTertiary: "#99f6e4",
+      primary: "#06b6d4",
+      secondary: "#0891b2",
+      textPrimary: "#0e7490",
+      textSecondary: "#155e75",
+      border: "#ccfbf1",
+    },
+    dark: {
+      bg: "#0e7490",
+      bgSecondary: "#0c4a6e",
+      bgTertiary: "#0891b2",
+      primary: "#22d3ee",
+      secondary: "#67e8f9",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(240, 253, 250, 0.7)",
+      bgSecondary: "rgba(204, 251, 241, 0.6)",
+      bgTertiary: "rgba(153, 246, 228, 0.5)",
+      primary: "#06b6d4",
+      secondary: "#0891b2",
+      textPrimary: "#0e7490",
+      textSecondary: "#155e75",
+      border: "#ccfbf1",
+    },
+    dark_acrylic: {
+      bg: "rgba(14, 116, 144, 0.7)",
+      bgSecondary: "rgba(12, 74, 110, 0.6)",
+      bgTertiary: "rgba(8, 145, 178, 0.5)",
+      primary: "#22d3ee",
+      secondary: "#67e8f9",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  rose: {
+    light: {
+      bg: "#fdf2f8",
+      bgSecondary: "#fce7f3",
+      bgTertiary: "#fbcfe8",
+      primary: "#ec4899",
+      secondary: "#db2777",
+      textPrimary: "#831843",
+      textSecondary: "#9f1239",
+      border: "#fce7f3",
+    },
+    dark: {
+      bg: "#831843",
+      bgSecondary: "#9f1239",
+      bgTertiary: "#be123c",
+      primary: "#f472b6",
+      secondary: "#f9a8d4",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(253, 242, 248, 0.7)",
+      bgSecondary: "rgba(252, 231, 243, 0.6)",
+      bgTertiary: "rgba(251, 207, 232, 0.5)",
+      primary: "#ec4899",
+      secondary: "#db2777",
+      textPrimary: "#831843",
+      textSecondary: "#9f1239",
+      border: "#fce7f3",
+    },
+    dark_acrylic: {
+      bg: "rgba(131, 24, 67, 0.7)",
+      bgSecondary: "rgba(159, 18, 57, 0.6)",
+      bgTertiary: "rgba(190, 18, 60, 0.5)",
+      primary: "#f472b6",
+      secondary: "#f9a8d4",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+};
+
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
 const fontsLoading = ref(false);
@@ -79,12 +335,565 @@ const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
 const bgPreviewLoaded = ref(false);
 const bgPreviewLoading = ref(false);
+const colorSettingsExpanded = ref(false);
+const editColorPlan = ref("light");
 
 const backgroundPreviewUrl = computed(() => {
   if (!settings.value?.background_image) return "";
   if (!bgSettingsExpanded.value) return "";
   return convertFileSrc(settings.value.background_image);
 });
+
+const bgColor = computed({
+  get: () => {
+    if (!settings.value) return "#f8fafc";
+    
+    const colorMap = {
+      light: settings.value.bg_color,
+      dark: settings.value.bg_dark,
+      light_acrylic: settings.value.bg_acrylic,
+      dark_acrylic: settings.value.bg_dark_acrylic
+    };
+    
+    return colorMap[editColorPlan.value as keyof typeof colorMap] || "#f8fafc";
+  },
+  set: (value) => {
+    if (!settings.value) return;
+    
+    const colorMap = {
+      light: 'bg_color',
+      dark: 'bg_dark',
+      light_acrylic: 'bg_acrylic',
+      dark_acrylic: 'bg_dark_acrylic'
+    };
+    
+    const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
+    if (colorKey) {
+      (settings.value as any)[colorKey] = value;
+      settings.value.color = "custom";
+      markChanged();
+      applyColors();
+    }
+  }
+});
+
+const bgSecondaryColor = computed({
+  get: () => {
+    if (!settings.value) return "#ffffff";
+    
+    const colorMap = {
+      light: settings.value.bg_secondary_color,
+      dark: settings.value.bg_secondary_dark,
+      light_acrylic: settings.value.bg_secondary_acrylic,
+      dark_acrylic: settings.value.bg_secondary_dark_acrylic
+    };
+    
+    return colorMap[editColorPlan.value as keyof typeof colorMap] || "#ffffff";
+  },
+  set: (value) => {
+    if (!settings.value) return;
+    
+    const colorMap = {
+      light: 'bg_secondary_color',
+      dark: 'bg_secondary_dark',
+      light_acrylic: 'bg_secondary_acrylic',
+      dark_acrylic: 'bg_secondary_dark_acrylic'
+    };
+    
+    const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
+    if (colorKey) {
+      (settings.value as any)[colorKey] = value;
+      settings.value.color = "custom";
+      markChanged();
+      applyColors();
+    }
+  }
+});
+
+const bgTertiaryColor = computed({
+  get: () => {
+    if (!settings.value) return "#f1f5f9";
+    
+    const colorMap = {
+      light: settings.value.bg_tertiary_color,
+      dark: settings.value.bg_tertiary_dark,
+      light_acrylic: settings.value.bg_tertiary_acrylic,
+      dark_acrylic: settings.value.bg_tertiary_dark_acrylic
+    };
+    
+    return colorMap[editColorPlan.value as keyof typeof colorMap] || "#f1f5f9";
+  },
+  set: (value) => {
+    if (!settings.value) return;
+    
+    const colorMap = {
+      light: 'bg_tertiary_color',
+      dark: 'bg_tertiary_dark',
+      light_acrylic: 'bg_tertiary_acrylic',
+      dark_acrylic: 'bg_tertiary_dark_acrylic'
+    };
+    
+    const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
+    if (colorKey) {
+      (settings.value as any)[colorKey] = value;
+      settings.value.color = "custom";
+      markChanged();
+      applyColors();
+    }
+  }
+});
+
+const primaryColor = computed({
+  get: () => {
+    if (!settings.value) return "#3b82f6";
+    
+    const colorMap = {
+      light: settings.value.primary_color,
+      dark: settings.value.primary_dark,
+      light_acrylic: settings.value.primary_acrylic,
+      dark_acrylic: settings.value.primary_dark_acrylic
+    };
+    
+    return colorMap[editColorPlan.value as keyof typeof colorMap] || "#3b82f6";
+  },
+  set: (value) => {
+    if (!settings.value) return;
+    
+    const colorMap = {
+      light: 'primary_color',
+      dark: 'primary_dark',
+      light_acrylic: 'primary_acrylic',
+      dark_acrylic: 'primary_dark_acrylic'
+    };
+    
+    const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
+    if (colorKey) {
+      (settings.value as any)[colorKey] = value;
+      settings.value.color = "custom";
+      markChanged();
+      applyColors();
+    }
+  }
+});
+
+const secondaryColor = computed({
+  get: () => {
+    if (!settings.value) return "#8b5cf6";
+    
+    const colorMap = {
+      light: settings.value.secondary_color,
+      dark: settings.value.secondary_dark,
+      light_acrylic: settings.value.secondary_acrylic,
+      dark_acrylic: settings.value.secondary_dark_acrylic
+    };
+    
+    return colorMap[editColorPlan.value as keyof typeof colorMap] || "#8b5cf6";
+  },
+  set: (value) => {
+    if (!settings.value) return;
+    
+    const colorMap = {
+      light: 'secondary_color',
+      dark: 'secondary_dark',
+      light_acrylic: 'secondary_acrylic',
+      dark_acrylic: 'secondary_dark_acrylic'
+    };
+    
+    const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
+    if (colorKey) {
+      (settings.value as any)[colorKey] = value;
+      settings.value.color = "custom";
+      markChanged();
+      applyColors();
+    }
+  }
+});
+
+const textPrimaryColor = computed({
+  get: () => {
+    if (!settings.value) return "#1e293b";
+    
+    const colorMap = {
+      light: settings.value.text_primary_color,
+      dark: settings.value.text_primary_dark,
+      light_acrylic: settings.value.text_primary_acrylic,
+      dark_acrylic: settings.value.text_primary_dark_acrylic
+    };
+    
+    return colorMap[editColorPlan.value as keyof typeof colorMap] || "#1e293b";
+  },
+  set: (value) => {
+    if (!settings.value) return;
+    
+    const colorMap = {
+      light: 'text_primary_color',
+      dark: 'text_primary_dark',
+      light_acrylic: 'text_primary_acrylic',
+      dark_acrylic: 'text_primary_dark_acrylic'
+    };
+    
+    const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
+    if (colorKey) {
+      (settings.value as any)[colorKey] = value;
+      settings.value.color = "custom";
+      markChanged();
+      applyColors();
+    }
+  }
+});
+
+const textSecondaryColor = computed({
+  get: () => {
+    if (!settings.value) return "#64748b";
+    
+    const colorMap = {
+      light: settings.value.text_secondary_color,
+      dark: settings.value.text_secondary_dark,
+      light_acrylic: settings.value.text_secondary_acrylic,
+      dark_acrylic: settings.value.text_secondary_dark_acrylic
+    };
+    
+    return colorMap[editColorPlan.value as keyof typeof colorMap] || "#64748b";
+  },
+  set: (value) => {
+    if (!settings.value) return;
+    
+    const colorMap = {
+      light: 'text_secondary_color',
+      dark: 'text_secondary_dark',
+      light_acrylic: 'text_secondary_acrylic',
+      dark_acrylic: 'text_secondary_dark_acrylic'
+    };
+    
+    const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
+    if (colorKey) {
+      (settings.value as any)[colorKey] = value;
+      settings.value.color = "custom";
+      markChanged();
+      applyColors();
+    }
+  }
+});
+
+const borderColor = computed({
+  get: () => {
+    if (!settings.value) return "#e2e8f0";
+    
+    const colorMap = {
+      light: settings.value.border_color,
+      dark: settings.value.border_dark,
+      light_acrylic: settings.value.border_acrylic,
+      dark_acrylic: settings.value.border_dark_acrylic
+    };
+    
+    return colorMap[editColorPlan.value as keyof typeof colorMap] || "#e2e8f0";
+  },
+  set: (value) => {
+    if (!settings.value) return;
+    
+    const colorMap = {
+      light: 'border_color',
+      dark: 'border_dark',
+      light_acrylic: 'border_acrylic',
+      dark_acrylic: 'border_dark_acrylic'
+    };
+    
+    const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
+    if (colorKey) {
+      (settings.value as any)[colorKey] = value;
+      settings.value.color = "custom";
+      markChanged();
+      applyColors();
+    }
+  }
+});
+
+// 颜色选择器状态
+const showColorPickerDialog = ref(false);
+const currentColorProp = ref('');
+const currentColorValue = ref('');
+const originalColorValue = ref('');
+const rgb = ref({ r: 0, g: 0, b: 0, a: 1 });
+const hsl = ref({ h: 0, s: 0, l: 0 });
+
+// 显示颜色选择器
+function showColorPicker(prop: string) {
+  currentColorProp.value = prop;
+  
+  // 根据属性名获取当前颜色值
+  switch (prop) {
+    case 'bgColor':
+      currentColorValue.value = bgColor.value;
+      originalColorValue.value = bgColor.value;
+      break;
+    case 'bgSecondaryColor':
+      currentColorValue.value = bgSecondaryColor.value;
+      originalColorValue.value = bgSecondaryColor.value;
+      break;
+    case 'bgTertiaryColor':
+      currentColorValue.value = bgTertiaryColor.value;
+      originalColorValue.value = bgTertiaryColor.value;
+      break;
+    case 'primaryColor':
+      currentColorValue.value = primaryColor.value;
+      originalColorValue.value = primaryColor.value;
+      break;
+    case 'secondaryColor':
+      currentColorValue.value = secondaryColor.value;
+      originalColorValue.value = secondaryColor.value;
+      break;
+    case 'textPrimaryColor':
+      currentColorValue.value = textPrimaryColor.value;
+      originalColorValue.value = textPrimaryColor.value;
+      break;
+    case 'textSecondaryColor':
+      currentColorValue.value = textSecondaryColor.value;
+      originalColorValue.value = textSecondaryColor.value;
+      break;
+    case 'borderColor':
+      currentColorValue.value = borderColor.value;
+      originalColorValue.value = borderColor.value;
+      break;
+  }
+  
+  // 解析颜色值为 RGB
+  parseColor(currentColorValue.value);
+  
+  showColorPickerDialog.value = true;
+}
+
+// 解析颜色值
+function parseColor(color: string) {
+  try {
+    // 创建临时元素来解析颜色
+    const temp = document.createElement('div');
+    temp.style.color = color;
+    document.body.appendChild(temp);
+    
+    // 获取计算后的颜色值
+    const computedColor = window.getComputedStyle(temp).color;
+    document.body.removeChild(temp);
+    
+    // 从 rgba(r, g, b, a) 格式中提取值
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/) || computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/);
+    if (match) {
+      rgb.value = {
+        r: parseInt(match[1]),
+        g: parseInt(match[2]),
+        b: parseInt(match[3]),
+        a: match[4] ? parseFloat(match[4]) : 1
+      };
+      
+      // 转换为 HSL
+      rgbToHsl(rgb.value.r, rgb.value.g, rgb.value.b);
+    }
+  } catch (e) {
+    // 如果解析失败，使用默认值
+    rgb.value = { r: 0, g: 0, b: 0, a: 1 };
+    hsl.value = { h: 0, s: 0, l: 0 };
+  }
+}
+
+// RGB 转 HSL
+function rgbToHsl(r: number, g: number, b: number) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    
+    h /= 6;
+  }
+  
+  hsl.value = {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100)
+  };
+}
+
+// HSL 转 RGB
+function hslToRgb(h: number, s: number, l: number) {
+  h /= 360;
+  s /= 100;
+  l /= 100;
+  
+  let r, g, b;
+  
+  if (s === 0) {
+    r = g = b = l; // 灰色
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  
+  return {
+    r: Math.round(r * 255),
+    g: Math.round(g * 255),
+    b: Math.round(b * 255)
+  };
+}
+
+// 关闭颜色选择器
+function closeColorPicker() {
+  showColorPickerDialog.value = false;
+}
+
+// 更新颜色值
+function updateColor(value: string) {
+  currentColorValue.value = value;
+  parseColor(value);
+}
+
+// 确认颜色选择
+function confirmColorPicker() {
+  if (currentColorProp.value) {
+    const value = currentColorValue.value;
+    switch (currentColorProp.value) {
+      case 'bgColor':
+        bgColor.value = value;
+        break;
+      case 'bgSecondaryColor':
+        bgSecondaryColor.value = value;
+        break;
+      case 'bgTertiaryColor':
+        bgTertiaryColor.value = value;
+        break;
+      case 'primaryColor':
+        primaryColor.value = value;
+        break;
+      case 'secondaryColor':
+        secondaryColor.value = value;
+        break;
+      case 'textPrimaryColor':
+        textPrimaryColor.value = value;
+        break;
+      case 'textSecondaryColor':
+        textSecondaryColor.value = value;
+        break;
+      case 'borderColor':
+        borderColor.value = value;
+        break;
+    }
+  }
+  showColorPickerDialog.value = false;
+}
+
+// 取消颜色选择
+function cancelColorPicker() {
+  // 恢复原始颜色值
+  currentColorValue.value = originalColorValue.value;
+  parseColor(originalColorValue.value);
+  showColorPickerDialog.value = false;
+}
+
+// RGB 转 HEX
+function rgbToHex(r: number, g: number, b: number): string {
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+}
+
+// 从 RGB 值更新颜色
+function updateFromRGB() {
+  const { r, g, b, a } = rgb.value;
+  let colorValue;
+  
+  // 如果透明度为 1，使用 HEX 格式，否则使用 RGBA 格式
+  if (a === 1) {
+    colorValue = rgbToHex(r, g, b);
+  } else {
+    colorValue = `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  
+  currentColorValue.value = colorValue;
+  updateColor(colorValue);
+  rgbToHsl(r, g, b);
+}
+
+// 从点击事件更新色相
+function updateHueFromClick(event: MouseEvent) {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const offsetX = event.clientX - rect.left;
+  const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+  
+  hsl.value.h = Math.round(percentage * 360);
+  const rgbValues = hslToRgb(hsl.value.h, hsl.value.s, hsl.value.l);
+  rgb.value.r = rgbValues.r;
+  rgb.value.g = rgbValues.g;
+  rgb.value.b = rgbValues.b;
+  
+  updateFromRGB();
+}
+
+// 从点击事件更新饱和度
+function updateSaturationFromClick(event: MouseEvent) {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const offsetX = event.clientX - rect.left;
+  const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+  
+  hsl.value.s = Math.round(percentage * 100);
+  const rgbValues = hslToRgb(hsl.value.h, hsl.value.s, hsl.value.l);
+  rgb.value.r = rgbValues.r;
+  rgb.value.g = rgbValues.g;
+  rgb.value.b = rgbValues.b;
+  
+  updateFromRGB();
+}
+
+// 从点击事件更新亮度
+function updateLightnessFromClick(event: MouseEvent) {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const offsetX = event.clientX - rect.left;
+  const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+  
+  hsl.value.l = Math.round(percentage * 100);
+  const rgbValues = hslToRgb(hsl.value.h, hsl.value.s, hsl.value.l);
+  rgb.value.r = rgbValues.r;
+  rgb.value.g = rgbValues.g;
+  rgb.value.b = rgbValues.b;
+  
+  updateFromRGB();
+}
+
+// 从点击事件更新透明度
+function updateAlphaFromClick(event: MouseEvent) {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const offsetX = event.clientX - rect.left;
+  const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+  
+  rgb.value.a = parseFloat(percentage.toFixed(2));
+  updateFromRGB();
+}
 
 function getFileExtension(path: string): string {
   return path.split(".").pop()?.toLowerCase() || "";
@@ -370,13 +1179,87 @@ async function handleThemeChange() {
 
   const effectiveTheme = applyTheme(settings.value.theme);
 
+  // 如果选择了预设主题，更新颜色值
+  if (settings.value.color !== "custom") {
+    const preset = settings.value.color;
+    
+    // 颜色方案映射
+    const colorPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
+    
+    // 颜色类型映射
+    const colorTypes = {
+      bg: {
+        light: "bg_color",
+        dark: "bg_dark",
+        light_acrylic: "bg_acrylic",
+        dark_acrylic: "bg_dark_acrylic"
+      },
+      bgSecondary: {
+        light: "bg_secondary_color",
+        dark: "bg_secondary_dark",
+        light_acrylic: "bg_secondary_acrylic",
+        dark_acrylic: "bg_secondary_dark_acrylic"
+      },
+      bgTertiary: {
+        light: "bg_tertiary_color",
+        dark: "bg_tertiary_dark",
+        light_acrylic: "bg_tertiary_acrylic",
+        dark_acrylic: "bg_tertiary_dark_acrylic"
+      },
+      primary: {
+        light: "primary_color",
+        dark: "primary_dark",
+        light_acrylic: "primary_acrylic",
+        dark_acrylic: "primary_dark_acrylic"
+      },
+      secondary: {
+        light: "secondary_color",
+        dark: "secondary_dark",
+        light_acrylic: "secondary_acrylic",
+        dark_acrylic: "secondary_dark_acrylic"
+      },
+      textPrimary: {
+        light: "text_primary_color",
+        dark: "text_primary_dark",
+        light_acrylic: "text_primary_acrylic",
+        dark_acrylic: "text_primary_dark_acrylic"
+      },
+      textSecondary: {
+        light: "text_secondary_color",
+        dark: "text_secondary_dark",
+        light_acrylic: "text_secondary_acrylic",
+        dark_acrylic: "text_secondary_dark_acrylic"
+      },
+      border: {
+        light: "border_color",
+        dark: "border_dark",
+        light_acrylic: "border_acrylic",
+        dark_acrylic: "border_dark_acrylic"
+      }
+    };
+
+    // 更新所有颜色方案的颜色值
+    if (presetThemes[preset]) {
+      Object.keys(colorTypes).forEach(colorType => {
+        colorPlans.forEach(plan => {
+          const settingsKey = colorTypes[colorType][plan];
+          if (settingsKey && settings.value[settingsKey] !== undefined) {
+            const presetColors = presetThemes[preset][plan];
+            if (presetColors && presetColors[colorType]) {
+              settings.value[settingsKey] = presetColors[colorType];
+            }
+          }
+        });
+      });
+    }
+  }
+
   if (settings.value.acrylic_enabled && acrylicSupported.value) {
     try {
       const isDark = effectiveTheme === "dark";
       await applyAcrylic(true, isDark);
     } catch {}
   }
-
   // 应用颜色变化
   applyColors();
 }
@@ -564,7 +1447,127 @@ function clearBackgroundImage() {
             />
           </div>
         </div>
+
+      <!-- 颜色编辑折叠区域 -->
+        <div class="collapsible-section">
+          <div class="collapsible-header" @click="colorSettingsExpanded = !colorSettingsExpanded">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.color_editing") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.color_editing_desc") }}</span>
+            </div>
+            <div class="collapsible-toggle" :class="{ expanded: colorSettingsExpanded }">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+          </div>
+          <Transition name="collapse">
+            <div v-show="colorSettingsExpanded" class="collapsible-content">
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.color_plan") }}</span>
+                  <span class="setting-desc">{{ i18n.t("settings.color_plan_desc") }}</span>
+                </div>
+                <div class="input-lg">
+                  <SLSelect
+                    v-model="editColorPlan"
+                    :options="editColorOptions"
+                    @update:modelValue="applyColors"
+                  />
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.primary_background_color") }}</span>
+                </div>
+                <div class="input-lg color-input-container">
+                  <SLInput v-model="bgColor" type="text" :placeholder="i18n.t('settings.color_value')" />
+                  <div class="color-preview" :style="{ backgroundColor: bgColor }" @click="showColorPicker('bgColor')"></div>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.secondary_background_color") }}</span>
+                </div>
+                <div class="input-lg color-input-container">
+                  <SLInput v-model="bgSecondaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
+                  <div class="color-preview" :style="{ backgroundColor: bgSecondaryColor }" @click="showColorPicker('bgSecondaryColor')"></div>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.tertiary_background_color") }}</span>
+                </div>
+                <div class="input-lg color-input-container">
+                  <SLInput v-model="bgTertiaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
+                  <div class="color-preview" :style="{ backgroundColor: bgTertiaryColor }" @click="showColorPicker('bgTertiaryColor')"></div>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.primary_color") }}</span>
+                </div>
+                <div class="input-lg color-input-container">
+                  <SLInput v-model="primaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
+                  <div class="color-preview" :style="{ backgroundColor: primaryColor }" @click="showColorPicker('primaryColor')"></div>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.secondary_color") }}</span>
+                </div>
+                <div class="input-lg color-input-container">
+                  <SLInput v-model="secondaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
+                  <div class="color-preview" :style="{ backgroundColor: secondaryColor }" @click="showColorPicker('secondaryColor')"></div>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.primary_text_color") }}</span>
+                </div>
+                <div class="input-lg color-input-container">
+                  <SLInput v-model="textPrimaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
+                  <div class="color-preview" :style="{ backgroundColor: textPrimaryColor, color: textPrimaryColor === '#ffffff' ? '#000000' : '#ffffff' }" @click="showColorPicker('textPrimaryColor')"></div>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.secondary_text_color") }}</span>
+                </div>
+                <div class="input-lg color-input-container">
+                  <SLInput v-model="textSecondaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
+                  <div class="color-preview" :style="{ backgroundColor: textSecondaryColor, color: textSecondaryColor === '#ffffff' ? '#000000' : '#ffffff' }" @click="showColorPicker('textSecondaryColor')"></div>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">{{ i18n.t("settings.border_color") }}</span>
+                </div>
+                <div class="input-lg color-input-container">
+                  <SLInput v-model="borderColor" type="text" :placeholder="i18n.t('settings.color_value')" />
+                  <div class="color-preview" :style="{ backgroundColor: borderColor }" @click="showColorPicker('borderColor')"></div>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </div>
       </SLCard>
+
       <!-- Appearance -->
       <SLCard :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
         <div class="settings-group">
@@ -837,6 +1840,90 @@ function clearBackgroundImage() {
         <SLButton variant="danger" @click="resetSettings">{{
           i18n.t("settings.confirm_reset")
         }}</SLButton>
+      </template>
+    </SLModal>
+    
+    <!-- 颜色选择器对话框 -->
+    <SLModal
+      :visible="showColorPickerDialog"
+      :title="i18n.t('settings.color_picker')"
+      @close="closeColorPicker"
+      :width="320"
+    >
+      <div class="color-picker-content">
+        <!-- 颜色预览 -->
+        <div class="color-preview-container">
+          <div class="color-preview-background"></div>
+          <div class="color-preview-large" :style="{ backgroundColor: currentColorValue }"></div>
+        </div>
+        
+        <!-- 颜色值输入 -->
+        <div class="color-value-input">
+          <SLInput v-model="currentColorValue" type="text" :placeholder="i18n.t('settings.input_color_placeholder')" @input="updateColor(currentColorValue)" />
+        </div>
+        
+        <!-- 色相滑动条 -->
+        <div class="picker-section">
+          <label>{{ i18n.t("settings.color_hue") }}</label>
+          <div class="hue-slider" @click="updateHueFromClick($event)">
+            <div class="hue-track"></div>
+            <div class="hue-thumb" :style="{ left: (hsl.h / 360 * 100) + '%' }"></div>
+          </div>
+        </div>
+        
+        <!-- 饱和度滑动条 -->
+        <div class="picker-section">
+          <label>{{ i18n.t("settings.color_saturation") }}</label>
+          <div class="saturation-slider" @click="updateSaturationFromClick($event)">
+            <div class="saturation-track" :style="{ background: `linear-gradient(to right, hsl(${hsl.h}, 0%, 50%), hsl(${hsl.h}, 100%, 50%))` }"></div>
+            <div class="saturation-thumb" :style="{ left: hsl.s + '%' }"></div>
+          </div>
+        </div>
+        
+        <!-- 亮度滑动条 -->
+        <div class="picker-section">
+          <label>{{ i18n.t("settings.color_lightness") }}</label>
+          <div class="lightness-slider" @click="updateLightnessFromClick($event)">
+            <div class="lightness-track" :style="{ background: `linear-gradient(to right, hsl(${hsl.h}, ${hsl.s}%, 0%), hsl(${hsl.h}, ${hsl.s}%, 50%), hsl(${hsl.h}, ${hsl.s}%, 100%))` }"></div>
+            <div class="lightness-thumb" :style="{ left: hsl.l + '%' }"></div>
+          </div>
+        </div>
+        
+        <!-- 透明度滑动条 -->
+        <div class="picker-section">
+          <label>{{ i18n.t("settings.color_alpha") }}</label>
+          <div class="alpha-slider-container">
+            <div class="alpha-slider-background"></div>
+            <div class="alpha-slider" @click="updateAlphaFromClick($event)">
+              <div class="alpha-track" :style="{ background: `linear-gradient(to right, transparent, hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%))` }"></div>
+              <div class="alpha-thumb" :style="{ left: (rgb.a * 100) + '%' }"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- RGB输入 -->
+        <div class="rgb-inputs">
+          <div class="rgb-input-item">
+            <label>R</label>
+            <SLInput type="number" min="0" max="255" v-model="rgb.r" @input="updateFromRGB" style="width: 100px;" />
+          </div>
+          <div class="rgb-input-item">
+            <label>G</label>
+            <SLInput type="number" min="0" max="255" v-model="rgb.g" @input="updateFromRGB" style="width: 100px;" />
+          </div>
+          <div class="rgb-input-item">
+            <label>B</label>
+            <SLInput type="number" min="0" max="255" v-model="rgb.b" @input="updateFromRGB" style="width: 100px;" />
+          </div>
+          <div class="rgb-input-item">
+            <label>A</label>
+            <SLInput type="number" min="0" max="1" step="0.01" v-model="rgb.a" @input="updateFromRGB" style="width: 100px;" />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <SLButton variant="secondary" @click="cancelColorPicker">{{ i18n.t("settings.cancel") }}</SLButton>
+        <SLButton variant="primary" @click="confirmColorPicker">{{ i18n.t("settings.confirm") }}</SLButton>
       </template>
     </SLModal>
   </div>
@@ -1213,5 +2300,209 @@ function clearBackgroundImage() {
 .collapse-leave-from {
   opacity: 1;
   max-height: 800px;
+}
+
+/* 颜色选择器样式 */
+.color-picker-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+  padding: var(--sl-space-sm);
+}
+
+.color-preview-container {
+  position: relative;
+  width: 100%;
+  height: 60px;
+  border-radius: var(--sl-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--sl-border);
+}
+
+.color-preview-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: linear-gradient(45deg, #f0f0f0 25%, #ffffff 25%, #ffffff 50%, #f0f0f0 50%, #f0f0f0 75%, #ffffff 75%, #ffffff 100%);
+  background-size: 16px 16px;
+}
+
+.color-preview-large {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.color-value-input {
+  width: 100%;
+}
+
+.picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+}
+
+.picker-section label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sl-text-primary);
+}
+
+.hue-slider {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hue-track {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+}
+
+.hue-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--sl-border);
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.saturation-slider {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.saturation-track {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(to right, #808080, #ff0000);
+}
+
+.saturation-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--sl-border);
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.lightness-slider {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.lightness-track {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(to right, #000000, #ff0000, #ffffff);
+}
+
+.lightness-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--sl-border);
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.alpha-slider-container {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.alpha-slider-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: linear-gradient(45deg, #f0f0f0 25%, #ffffff 25%, #ffffff 50%, #f0f0f0 50%, #f0f0f0 75%, #ffffff 75%, #ffffff 100%);
+  background-size: 8px 8px;
+}
+
+.alpha-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.alpha-track {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.alpha-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--sl-border);
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.rgb-inputs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sl-space-sm);
+}
+
+.rgb-input-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+}
+
+.rgb-input-item label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sl-text-primary);
+}
+
+.rgb-input-item .sl-input {
+  width: 100%;
 }
 </style>
