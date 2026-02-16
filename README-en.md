@@ -267,6 +267,13 @@ sea-lantern/
 - Displays update logs and provides one-click access to download links
 - Automatically compares version numbers and prompts users for updates
 
+###International Localization
+(Thanks to TNTXZ - https://github.com/FPSZ/SeaLantern/pull/20
+The main module of Localization has been completed.)
+English(United State)
+Chinese(Simplified)
+Chinese(Traditional)
+
 ## Planned Features
 
 Placeholders have been reserved for these features with existing code
