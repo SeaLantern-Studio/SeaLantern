@@ -220,7 +220,7 @@ onMounted(() => {
                 variant="neutral"
               />
             </div>
-            <p v-if="entry.description" class="entry-desc text-caption">{{ entry.description }}</p>
+            <p v-if="i18n.t(`config.properties.${entry.key}`)" class="entry-desc text-caption">{{ i18n.t(`config.properties.${entry.key}`) }}</p>
           </div>
           <div class="entry-control">
             <SLSwitch
@@ -342,11 +342,13 @@ onMounted(() => {
   position: absolute;
   top: 3px;
   bottom: 3px;
-  background: var(--sl-surface);
+  background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-sm);
   transition: all var(--sl-transition-normal);
   box-shadow: var(--sl-shadow-sm);
   z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
 }
 .category-tab {
   padding: 6px 14px;

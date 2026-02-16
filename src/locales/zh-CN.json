@@ -10,7 +10,8 @@
     "personalize": "个性化",
     "about": "关于",
     "loading": "加载中...",
-    "select_server": "选择服务器"
+    "select_server": "选择服务器",
+    "open_folder": "打开文件夹"
   },
   "sidebar": {
     "groups": {
@@ -43,7 +44,12 @@
     "system_resources": "系统资源",
     "detail_view": "切换到详细视图",
     "gauge_view": "切换到仪表盘",
-    "recent_alerts": "最近警告 / 错误"
+    "recent_alerts": "最近警告 / 错误",
+    "delete_confirm_message": "请输入服务器名称 {server} 以确认删除",
+    "delete_input_placeholder": "输入服务器名称",
+    "delete_cancel": "取消",
+    "delete_confirm": "确认删除",
+    "delete_error": "服务器名称输入错误，请重新输入"
   },
   "create": {
     "title": "创建服务器",
@@ -74,7 +80,25 @@
     "title": "控制台",
     "send_command": "发送命令",
     "clear_log": "清空日志",
-    "copy_log": "复制日志"
+    "copy_log": "复制日志",
+    "add_custom_command": "添加自定义指令",
+    "edit_custom_command": "编辑自定义指令",
+    "command_name": "指令名称",
+    "command_content": "指令内容",
+    "enter_command_name": "输入指令名称",
+    "enter_command_content": "输入指令内容",
+    "cancel": "取消",
+    "delete": "删除",
+    "add": "添加",
+    "update": "更新",
+    "back_to_bottom": "回到底部",
+    "waiting_for_output": "等待输出...",
+    "quick": "快捷:",
+    "custom": "自定义:",
+    "running": "运行中",
+    "starting": "启动中",
+    "stopping": "停止中",
+    "stopped": "已停止"
   },
   "config": {
     "title": "配置编辑",
@@ -107,6 +131,39 @@
       "easy": "简单",
       "normal": "普通",
       "hard": "困难"
+    },
+    "properties": {
+      "server-port": "服务器端口",
+      "server-ip": "服务器绑定IP，留空表示所有",
+      "max-players": "最大玩家数",
+      "online-mode": "正版验证",
+      "white-list": "启用白名单",
+      "enforce-whitelist": "强制白名单",
+      "gamemode": "默认游戏模式",
+      "difficulty": "游戏难度",
+      "hardcore": "极限模式",
+      "pvp": "允许PVP",
+      "allow-flight": "允许飞行",
+      "allow-nether": "允许下界",
+      "spawn-monsters": "生成怪物",
+      "spawn-animals": "生成动物",
+      "spawn-npcs": "生成NPC",
+      "generate-structures": "生成结构",
+      "level-name": "世界名称",
+      "level-seed": "世界种子",
+      "level-type": "世界类型",
+      "view-distance": "视距",
+      "simulation-distance": "模拟距离",
+      "max-tick-time": "最大tick时间(ms)，-1为禁用",
+      "network-compression-threshold": "网络压缩阈值",
+      "motd": "服务器描述(MOTD)",
+      "enable-command-block": "启用命令方块",
+      "enable-query": "启用Query协议",
+      "enable-rcon": "启用RCON远程控制",
+      "enable-status": "启用服务器列表状态",
+      "force-gamemode": "强制游戏模式",
+      "spawn-protection": "出生点保护半径",
+      "sync-chunk-writes": "同步区块写入"
     }
   },
   "players": {
