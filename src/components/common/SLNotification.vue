@@ -290,7 +290,7 @@ onUnmounted(() => {
   width: 360px;
   max-width: 90vw;
   color: #fff;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   overflow: hidden;
@@ -382,7 +382,7 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.15);
   border: none;
   color: #fff;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   padding: 4px;
   cursor: pointer;
   transition: all 0.2s;

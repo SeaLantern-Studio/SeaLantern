@@ -85,9 +85,13 @@ async function pickJarFile() {
     const result = await systemApi.pickJarFile();
     if (result) {
       jarPath.value = result;
+    } else {
+      // 重置 jarPath，防炸...
+      jarPath.value = "";
     }
   } catch (e) {
     console.error("Pick file error:", e);
+    jarPath.value = "";
   }
 }
 
@@ -105,8 +109,12 @@ async function pickJavaFile() {
 async function handleCreate() {
   errorMsg.value = null;
 
+  // 直接弹出文件选择窗口
+  await pickJarFile();
+
+  // 选择文件后检查其他条件
   if (!jarPath.value) {
-    errorMsg.value = "请选择服务端 JAR 文件";
+    // 用户取消了文件选择，不显示错误信息
     return;
   }
   if (!selectedJava.value) {
@@ -162,17 +170,19 @@ const javaOptions = computed(() => {
     <SLCard :title="i18n.t('create.java_env')" :subtitle="i18n.t('create.java_scan')">
       <div v-if="javaLoading" class="java-loading">
         <div class="spinner"></div>
-        <span>{{ i18n.t('create.scanning') }}</span>
+        <span>{{ i18n.t("create.scanning") }}</span>
       </div>
       <div v-else-if="javaList.length === 0" class="java-empty">
-        <p class="text-body">{{ i18n.t('create.no_java') }}</p>
-        <SLButton variant="primary" @click="detectJava" style="margin-top: 12px;">
-          {{ i18n.t('create.browse') }}
+        <p class="text-body">{{ i18n.t("create.no_java") }}</p>
+        <SLButton variant="primary" @click="detectJava" style="margin-top: 12px">
+          {{ i18n.t("create.scan") }}
         </SLButton>
       </div>
       <div v-else class="java-select-container">
         <div class="java-header">
-          <div class="java-found text-caption">{{ i18n.t('create.java_found', { count: javaList.length }) }}</div>
+          <div class="java-found text-caption">
+            {{ i18n.t("create.java_found", { count: javaList.length }) }}
+          </div>
           <button class="rescan-btn" @click="detectJava" :disabled="javaLoading">
             <svg
               width="14"
@@ -186,7 +196,7 @@ const javaOptions = computed(() => {
                 d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
               />
             </svg>
-            {{ i18n.t('create.rescan') }}
+            {{ i18n.t("create.rescan") }}
           </button>
         </div>
         <SLSelect
@@ -197,14 +207,18 @@ const javaOptions = computed(() => {
           maxHeight="240px"
         />
         <div v-if="selectedJava" class="selected-java-path">
-          <span class="text-caption">{{ i18n.t('create.server_path') }}：</span>
+          <span class="text-caption">{{ i18n.t("create.server_path") }}：</span>
           <span class="text-mono text-caption">{{ selectedJava }}</span>
         </div>
       </div>
       <div class="java-manual">
-        <SLInput :label="i18n.t('create.java_version')" v-model="selectedJava" :placeholder="i18n.t('create.java_manual')">
+        <SLInput
+          :label="i18n.t('create.java_version')"
+          v-model="selectedJava"
+          :placeholder="i18n.t('create.java_manual')"
+        >
           <template #suffix>
-            <button class="pick-btn" @click="pickJavaFile">{{ i18n.t('create.browse') }}</button>
+            <button class="pick-btn" @click="pickJavaFile">{{ i18n.t("create.browse") }}</button>
           </template>
         </SLInput>
       </div>
@@ -213,22 +227,27 @@ const javaOptions = computed(() => {
     <SLCard :title="i18n.t('create.title')">
       <div class="form-grid">
         <div class="server-name-row">
-          <SLInput :label="i18n.t('create.server_name')" :placeholder="i18n.t('create.server_name')" v-model="serverName" />
+          <SLInput
+            :label="i18n.t('create.server_name')"
+            :placeholder="i18n.t('create.server_name')"
+            v-model="serverName"
+          />
         </div>
-        <div class="jar-picker">
-          <SLInput :label="i18n.t('create.jar_file')" v-model="jarPath" :placeholder="i18n.t('create.jar_file')">
-            <template #suffix>
-              <button class="pick-btn" @click="pickJarFile">{{ i18n.t('create.browse') }}</button>
-            </template>
-          </SLInput>
-        </div>
+
         <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
         <SLInput :label="i18n.t('create.min_memory')" type="number" v-model="minMemory" />
-        <SLInput :label="i18n.t('settings.default_port')" type="number" v-model="port" :placeholder="i18n.t('create.default_port_placeholder')" />
+        <SLInput
+          :label="i18n.t('settings.default_port')"
+          type="number"
+          v-model="port"
+          :placeholder="i18n.t('create.default_port_placeholder')"
+        />
         <div class="online-mode-cell">
-          <span class="online-mode-label">{{ i18n.t('create.online_mode') }}</span>
+          <span class="online-mode-label">{{ i18n.t("create.online_mode") }}</span>
           <div class="online-mode-box">
-            <span class="online-mode-text">{{ onlineMode ? i18n.t('create.online_mode_on') : i18n.t('create.online_mode_off') }}</span>
+            <span class="online-mode-text">{{
+              onlineMode ? i18n.t("create.online_mode_on") : i18n.t("create.online_mode_off")
+            }}</span>
             <SLSwitch v-model="onlineMode" />
           </div>
         </div>
@@ -236,9 +255,11 @@ const javaOptions = computed(() => {
     </SLCard>
 
     <div class="create-actions">
-      <SLButton variant="secondary" size="lg" @click="router.push('/')">{{ i18n.t('create.cancel') }}</SLButton>
+      <SLButton variant="secondary" size="lg" @click="router.push('/')">{{
+        i18n.t("create.cancel")
+      }}</SLButton>
       <SLButton variant="primary" size="lg" :loading="creating" @click="handleCreate">
-        {{ i18n.t('create.create') }}
+        {{ i18n.t("create.create") }}
       </SLButton>
     </div>
   </div>
@@ -340,9 +361,7 @@ const javaOptions = computed(() => {
 .server-name-row {
   grid-column: 1 / -1;
 }
-.jar-picker {
-  grid-column: 1 / -1;
-}
+
 .pick-btn {
   padding: 4px 12px;
   font-size: 0.8125rem;

@@ -5,14 +5,20 @@ mod utils;
 
 use commands::config as config_commands;
 use commands::java as java_commands;
+use commands::join as join_commands;
+use commands::mods as mods_commands;
 use commands::player as player_commands;
 use commands::server as server_commands;
+use commands::server_id as server_id_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
 use commands::update as update_commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Handle CLI mode
+    utils::cli::handle_cli();
+
     // Fix white screen issue on Wayland desktop environments (tested on Arch Linux + KDE Plasma)
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
@@ -35,6 +41,10 @@ pub fn run() {
             server_commands::get_server_status,
             server_commands::delete_server,
             server_commands::get_server_logs,
+            server_commands::add_server_command,
+            server_commands::update_server_command,
+            server_commands::delete_server_command,
+            server_commands::update_server_name,
             java_commands::detect_java,
             java_commands::validate_java_path,
             config_commands::read_config,
@@ -46,6 +56,7 @@ pub fn run() {
             system_commands::pick_java_file,
             system_commands::pick_folder,
             system_commands::pick_image_file,
+            system_commands::open_folder,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -67,6 +78,18 @@ pub fn run() {
             settings_commands::get_system_fonts,
             update_commands::check_update,
             update_commands::open_download_url,
+            mods_commands::search_mods,
+            mods_commands::install_mod,
+            join_commands::resolve_join_server_id,
+            join_commands::join_server_by_id,
+            server_id_commands::create_server_id,
+            server_id_commands::resolve_server_id,
+            server_id_commands::get_server_id,
+            server_id_commands::list_server_ids,
+            server_id_commands::update_server_id,
+            server_id_commands::deactivate_server_id,
+            server_id_commands::delete_server_id,
+            server_id_commands::search_server_ids,
         ])
         .on_window_event(|_window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, computed, watch, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -23,14 +23,13 @@ const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
 const searchQuery = ref("");
 const activeCategory = ref("all");
-const selectedServerId = ref("");
-
-const serverOptions = computed(() => store.servers.map((s) => ({ label: s.name, value: s.id })));
-
+const categoryIndicator = ref<HTMLElement | null>(null);
 const serverPath = computed(() => {
-  const server = store.servers.find((s) => s.id === selectedServerId.value);
+  const server = store.servers.find((s) => s.id === store.currentServerId);
   return server?.path || "";
 });
+
+const currentServerId = computed(() => store.currentServerId);
 
 const categories = computed(() => {
   const cats = new Set(entries.value.map((e) => e.category));
@@ -63,19 +62,21 @@ onMounted(async () => {
   await store.refreshList();
   const routeId = route.params.id as string;
   if (routeId) {
-    selectedServerId.value = routeId;
-  } else if (store.currentServerId) {
-    selectedServerId.value = store.currentServerId;
-  } else if (store.servers.length > 0) {
-    selectedServerId.value = store.servers[0].id;
+    store.setCurrentServer(routeId);
+  } else if (!store.currentServerId && store.servers.length > 0) {
+    store.setCurrentServer(store.servers[0].id);
   }
+  await loadProperties();
 });
 
-watch(selectedServerId, async () => {
-  if (selectedServerId.value) {
-    await loadProperties();
-  }
-});
+watch(
+  () => store.currentServerId,
+  async () => {
+    if (store.currentServerId) {
+      await loadProperties();
+    }
+  },
+);
 
 async function loadProperties() {
   if (!serverPath.value) return;
@@ -119,30 +120,53 @@ function getBoolValue(key: string): boolean {
 }
 
 function getServerName(): string {
-  const s = store.servers.find((s) => s.id === selectedServerId.value);
+  const s = store.servers.find((s) => s.id === store.currentServerId);
   return s ? s.name : "";
 }
+
+// 选择分类并更新指示器位置
+function selectCategory(category: string) {
+  activeCategory.value = category;
+  updateCategoryIndicator();
+}
+
+// 更新分类指示器位置
+function updateCategoryIndicator() {
+  nextTick(() => {
+    if (!categoryIndicator.value) return;
+    
+    const activeTab = document.querySelector('.category-tab.active');
+    if (activeTab) {
+      const { offsetLeft, offsetWidth } = activeTab as HTMLElement;
+      categoryIndicator.value.style.left = `${offsetLeft}px`;
+      categoryIndicator.value.style.width = `${offsetWidth}px`;
+    }
+  });
+}
+
+// 监听分类变化，更新指示器位置
+watch(activeCategory, () => {
+  updateCategoryIndicator();
+});
+
+// 组件挂载后初始化指示器位置
+onMounted(() => {
+  // 原有代码...
+  updateCategoryIndicator();
+});
 </script>
 
 <template>
   <div class="config-view animate-fade-in-up">
-    <!-- Server Selector -->
+    <!-- 服务器配置编辑 -->
     <div class="config-header">
-      <div class="server-picker">
-        <SLSelect
-          :label="i18n.t('common.config_edit')"
-          :options="serverOptions"
-          v-model="selectedServerId"
-          :placeholder="i18n.t('config.select_server')"
-        />
-      </div>
-      <div v-if="selectedServerId" class="server-path-display text-mono text-caption">
+      <div class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
       </div>
     </div>
 
-    <div v-if="!selectedServerId" class="empty-state">
-      <p class="text-body">{{ i18n.t('config.no_server') }}</p>
+    <div v-if="!currentServerId" class="empty-state">
+      <p class="text-body">{{ i18n.t("config.no_server") }}</p>
     </div>
 
     <template v-else>
@@ -151,7 +175,7 @@ function getServerName(): string {
         <button class="banner-close" @click="error = null">x</button>
       </div>
       <div v-if="successMsg" class="success-banner">
-        <span>{{ i18n.t('config.saved') }}</span>
+        <span>{{ i18n.t("config.saved") }}</span>
       </div>
 
       <div class="config-toolbar">
@@ -159,20 +183,31 @@ function getServerName(): string {
           <SLInput :placeholder="i18n.t('config.search')" v-model="searchQuery" />
         </div>
         <div class="toolbar-right">
-          <SLButton variant="secondary" size="sm" @click="loadProperties">{{ i18n.t('config.reload') }}</SLButton>
-          <SLButton variant="primary" size="sm" :loading="saving" @click="saveProperties">{{ i18n.t('config.save') }}</SLButton>
+          <SLButton variant="secondary" size="sm" @click="loadProperties">{{
+            i18n.t("config.reload")
+          }}</SLButton>
+          <SLButton variant="primary" size="sm" :loading="saving" @click="saveProperties">{{
+            i18n.t("config.save")
+          }}</SLButton>
         </div>
       </div>
 
       <div class="category-tabs">
-        <button v-for="cat in categories" :key="cat" class="category-tab" :class="{ active: activeCategory === cat }" @click="activeCategory = cat">
+        <div class="category-indicator" ref="categoryIndicator"></div>
+        <button
+          v-for="cat in categories"
+          :key="cat"
+          class="category-tab"
+          :class="{ active: activeCategory === cat }"
+          @click="selectCategory(cat)"
+        >
           {{ i18n.t(`config.categories.${cat}`) || cat }}
         </button>
       </div>
 
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
-        <span>{{ i18n.t('config.loading') }}</span>
+        <span>{{ i18n.t("config.loading") }}</span>
       </div>
 
       <div v-else class="config-entries">
@@ -180,19 +215,52 @@ function getServerName(): string {
           <div class="entry-header">
             <div class="entry-key-row">
               <span class="entry-key text-mono">{{ entry.key }}</span>
-              <SLBadge :text="i18n.t(`config.categories.${entry.category}`) || entry.category" variant="neutral" />
+              <SLBadge
+                :text="i18n.t(`config.categories.${entry.category}`) || entry.category"
+                variant="neutral"
+              />
             </div>
             <p v-if="entry.description" class="entry-desc text-caption">{{ entry.description }}</p>
           </div>
           <div class="entry-control">
-            <SLSwitch v-if="entry.value_type === 'boolean'" :modelValue="getBoolValue(entry.key)" @update:modelValue="updateValue(entry.key, $event)" />
-            <SLSelect v-else-if="entry.key === 'gamemode'" :modelValue="editValues[entry.key]" :options="[{label:i18n.t('config.gamemode.survival'),value:'survival'},{label:i18n.t('config.gamemode.creative'),value:'creative'},{label:i18n.t('config.gamemode.adventure'),value:'adventure'},{label:i18n.t('config.gamemode.spectator'),value:'spectator'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
-            <SLSelect v-else-if="entry.key === 'difficulty'" :modelValue="editValues[entry.key]" :options="[{label:i18n.t('config.difficulty.peaceful'),value:'peaceful'},{label:i18n.t('config.difficulty.easy'),value:'easy'},{label:i18n.t('config.difficulty.normal'),value:'normal'},{label:i18n.t('config.difficulty.hard'),value:'hard'}]" @update:modelValue="updateValue(entry.key, $event as string)" />
-            <SLInput v-else :modelValue="editValues[entry.key]" :type="entry.value_type === 'number' ? 'number' : 'text'" :placeholder="entry.default_value" @update:modelValue="updateValue(entry.key, $event)" />
+            <SLSwitch
+              v-if="entry.value_type === 'boolean'"
+              :modelValue="getBoolValue(entry.key)"
+              @update:modelValue="updateValue(entry.key, $event)"
+            />
+            <SLSelect
+              v-else-if="entry.key === 'gamemode'"
+              :modelValue="editValues[entry.key]"
+              :options="[
+                { label: i18n.t('config.gamemode.survival'), value: 'survival' },
+                { label: i18n.t('config.gamemode.creative'), value: 'creative' },
+                { label: i18n.t('config.gamemode.adventure'), value: 'adventure' },
+                { label: i18n.t('config.gamemode.spectator'), value: 'spectator' },
+              ]"
+              @update:modelValue="updateValue(entry.key, $event as string)"
+            />
+            <SLSelect
+              v-else-if="entry.key === 'difficulty'"
+              :modelValue="editValues[entry.key]"
+              :options="[
+                { label: i18n.t('config.difficulty.peaceful'), value: 'peaceful' },
+                { label: i18n.t('config.difficulty.easy'), value: 'easy' },
+                { label: i18n.t('config.difficulty.normal'), value: 'normal' },
+                { label: i18n.t('config.difficulty.hard'), value: 'hard' },
+              ]"
+              @update:modelValue="updateValue(entry.key, $event as string)"
+            />
+            <SLInput
+              v-else
+              :modelValue="editValues[entry.key]"
+              :type="entry.value_type === 'number' ? 'number' : 'text'"
+              :placeholder="entry.default_value"
+              @update:modelValue="updateValue(entry.key, $event)"
+            />
           </div>
         </div>
         <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
-          <p class="text-caption">{{ i18n.t('config.no_config') }}</p>
+          <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
         </div>
       </div>
     </template>
@@ -267,6 +335,18 @@ function getServerName(): string {
   padding: 3px;
   width: fit-content;
   flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
+}
+.category-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  background: var(--sl-surface);
+  border-radius: var(--sl-radius-sm);
+  transition: all var(--sl-transition-normal);
+  box-shadow: var(--sl-shadow-sm);
+  z-index: 1;
 }
 .category-tab {
   padding: 6px 14px;
@@ -275,11 +355,11 @@ function getServerName(): string {
   font-weight: 500;
   color: var(--sl-text-secondary);
   transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
 }
 .category-tab.active {
-  background: var(--sl-surface);
   color: var(--sl-primary);
-  box-shadow: var(--sl-shadow-sm);
 }
 .loading-state {
   display: flex;

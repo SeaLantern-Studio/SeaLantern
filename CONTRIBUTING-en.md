@@ -1,5 +1,10 @@
 # Contributing Guidelines
 
+Change Language(切换语言)
+
+[简体中文](CONTRIBUTING.md)
+[English version Doc](CONTRIBUTING-en.md)
+
 Thank you for your interest in Project Sea Lantern! This document will help you understand how to contribute to the project.
 
 ## Development Environment Requirements
@@ -90,8 +95,7 @@ Co-Authored-By: Contributor Name <email>
 - perf: Performance optimization
 - test: Testing related changes
 - chore: Build/toolchain related changes
-- 
-**Example**:
+- **Example**:
 
 ```
 feat: add server backup functionality
@@ -134,6 +138,7 @@ feat: add server backup functionality
      - Summary of changes
      - Testing methods
      - Related Issues (if any)
+
 ## Code Review Standards
 
 ### Must Meet
@@ -143,7 +148,8 @@ feat: add server backup functionality
 - ✅ No clippy warnings
 - ✅ Complete and functional features
 - ✅ No obvious performance issues
-- 
+-
+
 ### Recommended to Meet
 
 - Appropriate comments
@@ -169,9 +175,9 @@ npm run tauri build
 ### What to do if Clippy checks fail?
 
 1. Check the specific warning messages
-2.Run cargo clippy --fix to auto-fix (some issues)
-3.Manually fix remaining issues
-4.If some warnings are unreasonable, use #[allow(clippy::...)] annotation
+   2.Run cargo clippy --fix to auto-fix (some issues)
+   3.Manually fix remaining issues
+   4.If some warnings are unreasonable, use #[allow(clippy::...)] annotation
 
 ### What to do if formatting checks fail?
 

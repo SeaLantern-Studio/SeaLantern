@@ -1,3 +1,9 @@
+export interface ServerCommand {
+  id: string;
+  name: string;
+  command: string;
+}
+
 export interface ServerInstance {
   id: string;
   name: string;
@@ -13,6 +19,7 @@ export interface ServerInstance {
   port: number;
   created_at: number;
   last_started_at: number | null;
+  commands: ServerCommand[];
 }
 
 export type ServerStatus = "Stopped" | "Starting" | "Running" | "Stopping" | "Error";

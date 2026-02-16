@@ -29,6 +29,7 @@ tokio = { version = "1", features = [
     "sync",
 ] }
 uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
 dirs-next = "2"
 reqwest = { version = "0.12", features = ["json"] }
 opener = "0.7"
@@ -40,5 +41,7 @@ window-vibrancy = "0.5"
 font-kit = "0.14"
 sysinfo = "0.32"
 regex = "1.10"
+futures = "0.3.32"
+indicatif = "0.18.4"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"

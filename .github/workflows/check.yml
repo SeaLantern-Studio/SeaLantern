@@ -8,21 +8,17 @@ on:
       - dev
 
 jobs:
-  check:
+  backend:
+    name: 后端检查 (Rust)
     runs-on: ubuntu-24.04
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 安装系统依赖
+      - name: 安装系统依赖 (后端需要)
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-      - name: 安装 Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
 
       - name: 安装 Rust 工具链
         uses: dtolnay/rust-toolchain@stable
@@ -34,14 +30,30 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
-      - name: 检查代码格式
+      - name: 检查代码格式 (Rust)
         run: cargo fmt --all -- --check
 
       - name: 运行 Clippy 检查
         run: cargo clippy --workspace -- -D warnings
 
+  frontend:
+    name: 前端检查 (Node)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
       - name: 安装前端依赖
         run: npm install
+
+      - name: 运行格式化并检查前端 Lint
+        run: |
+          npm run fmt && npm run lint
 
       - name: 检查前端构建
         run: npm run build

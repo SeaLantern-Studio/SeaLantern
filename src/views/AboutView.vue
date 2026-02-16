@@ -146,27 +146,27 @@ async function handleManualDownload() {
         <div class="hero-logo">
           <img src="../assets/logo.svg" :alt="i18n.t('common.app_name')" width="72" height="72" />
         </div>
-        <h1 class="hero-title">{{ i18n.t('common.app_name') }}</h1>
-        <p class="hero-subtitle">{{ i18n.t('about.subtitle') }}</p>
+        <h1 class="hero-title">{{ i18n.t("common.app_name") }}</h1>
+        <p class="hero-subtitle">{{ i18n.t("about.subtitle") }}</p>
         <div class="hero-badges">
           <span class="version-badge">v{{ version }}</span>
-          <span class="tech-badge">{{ i18n.t('about.tech_badge') }}</span>
-          <span class="license-badge">{{ i18n.t('about.license_badge') }}</span>
+          <span class="tech-badge">{{ i18n.t("about.tech_badge") }}</span>
+          <span class="license-badge">{{ i18n.t("about.license_badge") }}</span>
         </div>
         <p class="hero-desc">
-          {{ i18n.t('about.hero_desc') }}
+          {{ i18n.t("about.hero_desc") }}
         </p>
       </div>
 
       <!-- Manifesto -->
       <SLCard>
         <div class="manifesto">
-          <h3 class="manifesto-title">{{ i18n.t('about.manifesto_title') }}</h3>
+          <h3 class="manifesto-title">{{ i18n.t("about.manifesto_title") }}</h3>
           <p class="manifesto-text">
-            {{ i18n.t('about.manifesto_text1') }}
+            {{ i18n.t("about.manifesto_text1") }}
           </p>
           <p class="manifesto-text">
-            {{ i18n.t('about.manifesto_text2') }}
+            {{ i18n.t("about.manifesto_text2") }}
           </p>
         </div>
       </SLCard>
@@ -177,13 +177,33 @@ async function handleManualDownload() {
       <!-- Contributor Wall -->
       <div class="contributor-section">
         <div class="section-header">
-          <h2 class="section-title">{{ i18n.t('about.contributor_wall') }}</h2>
-          <p class="section-desc">{{ i18n.t('about.contributor_desc') }}</p>
+          <h2 class="section-title">{{ i18n.t("about.contributor_wall") }}</h2>
+          <p class="section-desc">{{ i18n.t("about.contributor_desc") }}</p>
         </div>
 
         <div class="contributor-grid">
-          <div v-for="c in contributors" :key="c.name" class="contributor-card glass-card">
-            <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
+          <div
+            v-for="c in contributors"
+            :key="c.name"
+            class="contributor-card glass-card"
+          >
+            <!-- 如果存在 url，则用 a 标签包裹头像；否则只显示图片 -->
+            <a 
+              v-if="c.url" 
+              :href="c.url" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="contributor-link"
+            >
+              <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
+            </a>
+            <img 
+              v-else 
+              :src="c.avatar" 
+              :alt="c.name" 
+              class="contributor-avatar" 
+            />
+            
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>
               <span class="contributor-role">{{ c.role }}</span>
@@ -206,8 +226,8 @@ async function handleManualDownload() {
               </svg>
             </div>
             <div class="contributor-info">
-              <span class="contributor-name join-text">{{ i18n.t('about.join_text') }}</span>
-              <span class="contributor-role">{{ i18n.t('about.join_desc') }}</span>
+              <span class="contributor-name join-text">{{ i18n.t("about.join_text") }}</span>
+              <span class="contributor-role">{{ i18n.t("about.join_desc") }}</span>
             </div>
           </div>
         </div>
@@ -218,23 +238,23 @@ async function handleManualDownload() {
         <SLCard :title="i18n.t('about.project_info')">
           <div class="info-list">
             <div class="info-item">
-              <span class="info-label">{{ i18n.t('about.version') }}</span>
+              <span class="info-label">{{ i18n.t("about.version") }}</span>
               <span class="info-value">{{ version }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">{{ i18n.t('about.build_year') }}</span>
+              <span class="info-label">{{ i18n.t("about.build_year") }}</span>
               <span class="info-value">{{ buildDate }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">{{ i18n.t('about.frontend') }}</span>
+              <span class="info-label">{{ i18n.t("about.frontend") }}</span>
               <span class="info-value">Vue 3 + TypeScript + Vite</span>
             </div>
             <div class="info-item">
-              <span class="info-label">{{ i18n.t('about.backend') }}</span>
+              <span class="info-label">{{ i18n.t("about.backend") }}</span>
               <span class="info-value">Rust + Tauri 2</span>
             </div>
             <div class="info-item">
-              <span class="info-label">{{ i18n.t('about.license') }}</span>
+              <span class="info-label">{{ i18n.t("about.license") }}</span>
               <span class="info-value">GNU GPLv3</span>
             </div>
           </div>
@@ -313,11 +333,17 @@ async function handleManualDownload() {
                   <line x1="12" y1="8" x2="12" y2="12"></line>
                   <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <span v-if="updateStatus === 'checking'">{{ i18n.t('about.update_checking') }}</span>
-                <span v-else-if="updateStatus === 'latest'">{{ i18n.t('about.update_latest') }}</span>
-                <span v-else-if="updateStatus === 'available'">{{ i18n.t('about.update_available') }}</span>
-                <span v-else-if="updateStatus === 'error'">{{ i18n.t('about.update_error') }}</span>
-                <span v-else>{{ i18n.t('about.check_update') }}</span>
+                <span v-if="updateStatus === 'checking'">{{
+                  i18n.t("about.update_checking")
+                }}</span>
+                <span v-else-if="updateStatus === 'latest'">{{
+                  i18n.t("about.update_latest")
+                }}</span>
+                <span v-else-if="updateStatus === 'available'">{{
+                  i18n.t("about.update_available")
+                }}</span>
+                <span v-else-if="updateStatus === 'error'">{{ i18n.t("about.update_error") }}</span>
+                <span v-else>{{ i18n.t("about.check_update") }}</span>
               </span>
             </SLButton>
           </div>
@@ -342,8 +368,8 @@ async function handleManualDownload() {
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">{{ i18n.t('about.way_code') }}</span>
-                <span class="way-desc">{{ i18n.t('about.way_code_desc') }}</span>
+                <span class="way-title">{{ i18n.t("about.way_code") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_code_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
@@ -362,8 +388,8 @@ async function handleManualDownload() {
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">{{ i18n.t('about.way_design') }}</span>
-                <span class="way-desc">{{ i18n.t('about.way_design_desc') }}</span>
+                <span class="way-title">{{ i18n.t("about.way_design") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_design_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
@@ -384,8 +410,8 @@ async function handleManualDownload() {
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">{{ i18n.t('about.way_idea') }}</span>
-                <span class="way-desc">{{ i18n.t('about.way_idea_desc') }}</span>
+                <span class="way-title">{{ i18n.t("about.way_idea") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_idea_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
@@ -405,8 +431,8 @@ async function handleManualDownload() {
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">{{ i18n.t('about.way_doc') }}</span>
-                <span class="way-desc">{{ i18n.t('about.way_doc_desc') }}</span>
+                <span class="way-title">{{ i18n.t("about.way_doc") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_doc_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
@@ -429,8 +455,8 @@ async function handleManualDownload() {
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">{{ i18n.t('about.way_translate') }}</span>
-                <span class="way-desc">{{ i18n.t('about.way_translate_desc') }}</span>
+                <span class="way-title">{{ i18n.t("about.way_translate") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_translate_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
@@ -451,8 +477,8 @@ async function handleManualDownload() {
                 </svg>
               </div>
               <div class="way-info">
-                <span class="way-title">{{ i18n.t('about.way_promote') }}</span>
-                <span class="way-desc">{{ i18n.t('about.way_promote_desc') }}</span>
+                <span class="way-title">{{ i18n.t("about.way_promote") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_promote_desc") }}</span>
               </div>
             </div>
           </div>
@@ -461,24 +487,32 @@ async function handleManualDownload() {
 
       <!-- Links -->
       <div class="links-section">
-        <SLButton variant="primary" size="lg" @click="openLink('https://gitee.com/fps_z/SeaLantern')">
-          {{ i18n.t('about.gitee_repo') }}
+        <SLButton
+          variant="primary"
+          size="lg"
+          @click="openLink('https://gitee.com/fps_z/SeaLantern')"
+        >
+          {{ i18n.t("about.gitee_repo") }}
         </SLButton>
-        <SLButton variant="secondary" size="lg" @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')">
-          {{ i18n.t('about.bilibili') }}
+        <SLButton
+          variant="secondary"
+          size="lg"
+          @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')"
+        >
+          {{ i18n.t("about.bilibili") }}
         </SLButton>
       </div>
 
       <!-- Footer -->
       <div class="about-footer">
         <p class="footer-text">
-          {{ i18n.t('about.footer_text1') }}
+          {{ i18n.t("about.footer_text1") }}
         </p>
         <p class="footer-text">
-          {{ i18n.t('about.footer_text2') }}
+          {{ i18n.t("about.footer_text2") }}
         </p>
         <p class="footer-quote">
-          {{ i18n.t('about.footer_quote') }}
+          {{ i18n.t("about.footer_quote") }}
         </p>
       </div>
     </div>
@@ -486,25 +520,26 @@ async function handleManualDownload() {
     <!-- 更新日志弹窗 -->
     <SLModal
       :visible="showUpdateModal"
-      :title="modalUpdateInfo ? `${i18n.t('about.update_title')} v${modalUpdateInfo.latest_version}` : i18n.t('about.update_title')"
+      :title="
+        modalUpdateInfo
+          ? `${i18n.t('about.update_title')} v${modalUpdateInfo.latest_version}`
+          : i18n.t('about.update_title')
+      "
       @close="closeUpdateModal"
     >
       <div v-if="modalUpdateInfo" class="modal-update-content">
         <div class="modal-update-header">
-          <div class="modal-current-version">{{ i18n.t('about.update_current') }}: v{{ modalUpdateInfo.current_version }}</div>
+          <div class="modal-current-version">
+            {{ i18n.t("about.update_current") }}: v{{ modalUpdateInfo.current_version }}
+          </div>
         </div>
         <div v-if="modalUpdateInfo.release_notes" class="modal-release-notes">
-          <div class="modal-notes-title">{{ i18n.t('about.update_release_notes') }}:</div>
+          <div class="modal-notes-title">{{ i18n.t("about.update_release_notes") }}:</div>
           <div class="modal-notes-content">{{ modalUpdateInfo.release_notes }}</div>
         </div>
         <div class="modal-update-actions">
-          <SLButton
-            variant="primary"
-            size="md"
-            @click="handleManualDownload"
-            style="width: 100%"
-          >
-            {{ i18n.t('about.update_now') }}
+          <SLButton variant="primary" size="md" @click="handleManualDownload" style="width: 100%">
+            {{ i18n.t("about.update_now") }}
           </SLButton>
         </div>
       </div>
@@ -866,17 +901,17 @@ async function handleManualDownload() {
 
 .btn-fade-enter-active,
 .btn-fade-leave-active {
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-fade-enter-from {
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateX(-6px);
 }
 
 .btn-fade-leave-to {
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(6px);
 }
 
 /* 弹窗内容样式 */
@@ -946,4 +981,5 @@ async function handleManualDownload() {
 .contributor-link:hover .contributor-avatar {
   box-shadow: var(--sl-shadow-lg);
 }
+
 </style>
