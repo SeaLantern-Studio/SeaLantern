@@ -23,7 +23,20 @@
     "language": "Language",
     "chinese": "简体中文",
     "english": "English",
-    "chinese_tw": "繁體中文"
+    "chinese_tw": "繁體中文",
+    "japanese": "日本語",
+    "french": "Français",
+    "german": "Deutsch",
+    "russian": "Русский",
+    "arabic": "العربية",
+    "spanish": "Español",
+    "italian": "Italiano",
+    "portuguese": "Português",
+    "korean": "한국어",
+    "dutch": "Nederlands",
+    "polish": "Polski",
+    "turkish": "Türkçe",
+    "vietnamese": "Tiếng Việt"
   },
   "home": {
     "title": "Server Management",
@@ -67,7 +80,11 @@
     "default_port_placeholder": "Default 25565",
     "java_env": "Java Environment",
     "java_scan": "Scan all disks for Java installations",
-    "java_manual": "Manually select Java path"
+    "java_manual": "Manually select Java path",
+    "select_version": "Select Server Version",
+    "select_type": "Select Server Type",
+    "server_type_text": "Server Type",
+    "selevt_version_text": "Server Version"
   },
   "console": {
     "title": "Console",

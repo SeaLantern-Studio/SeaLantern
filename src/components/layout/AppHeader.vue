@@ -22,6 +22,20 @@ const currentLanguageText = computed(() => {
   const locale = i18n.getLocale();
   if (locale === "zh-CN") return i18n.t("header.chinese");
   if (locale === "zh-TW") return i18n.t("header.chinese_tw");
+  if (locale === "ja-JP") return i18n.t("header.japanese");
+  if (locale === "fr-FR") return i18n.t("header.french");
+  if (locale === "de-DE") return i18n.t("header.german");
+  if (locale === "ru-RU") return i18n.t("header.russian");
+  if (locale === "ar-SA") return i18n.t("header.arabic");
+  if (locale === "es-ES") return i18n.t("header.spanish");
+  if (locale === "it-IT") return i18n.t("header.italian");
+  if (locale === "pt-BR") return i18n.t("header.portuguese");
+  if (locale === "ko-KR") return i18n.t("header.korean");
+  if (locale === "nl-NL") return i18n.t("header.dutch");
+  if (locale === "pl-PL") return i18n.t("header.polish");
+  if (locale === "tr-TR") return i18n.t("header.turkish");
+  if (locale === "vi-VN") return i18n.t("header.vietnamese");
+
   return i18n.t("header.english");
 });
 
@@ -71,6 +85,45 @@ function handleClickOutside() {
           </div>
           <div class="language-item" @click.stop="setLanguage('en-US')">
             {{ i18n.t("header.english") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('ja-JP')">
+            {{ i18n.t("header.japanese") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('fr-FR')">
+            {{ i18n.t("header.french") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('de-DE')">
+            {{ i18n.t("header.german") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('ru-RU')">
+            {{ i18n.t("header.russian") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('ar-SA')">
+            {{ i18n.t("header.arabic") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('es-ES')">
+            {{ i18n.t("header.spanish") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('it-IT')">
+            {{ i18n.t("header.italian") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('pt-BR')">
+            {{ i18n.t("header.portuguese") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('ko-KR')">
+            {{ i18n.t("header.korean") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('nl-NL')">
+            {{ i18n.t("header.dutch") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('pl-PL')">
+            {{ i18n.t("header.polish") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('tr-TR')">
+            {{ i18n.t("header.turkish") }}
+          </div>
+          <div class="language-item" @click.stop="setLanguage('vi-VN')">
+            {{ i18n.t("header.vietnamese") }}
           </div>
         </div>
       </div>

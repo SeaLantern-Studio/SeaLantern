@@ -24,7 +24,20 @@
     "language": "语言",
     "chinese": "简体中文",
     "english": "English",
-    "chinese_tw": "繁體中文"
+    "chinese_tw": "繁體中文",
+    "japanese": "日本語",
+    "french": "Français",
+    "german": "Deutsch",
+    "russian": "Русский",
+    "arabic": "العربية",
+    "spanish": "Español",
+    "italian": "Italiano",
+    "portuguese": "Português",
+    "korean": "한국어",
+    "dutch": "Nederlands",
+    "polish": "Polski",
+    "turkish": "Türkçe",
+    "vietnamese": "Tiếng Việt"
   },
   "home": {
     "title": "服务器管理",
@@ -68,7 +81,11 @@
     "default_port_placeholder": "默认 25565",
     "java_env": "Java 环境",
     "java_scan": "扫描系统中所有磁盘的 Java 安装",
-    "java_manual": "手动选择 Java 路径"
+    "java_manual": "手动选择 Java 路径",
+    "select_version": "选择服务器版本",
+    "select_type": "选择服务器类型",
+    "server_type_text": "服务器类型",
+    "selevt_version_text": "服务器版本"
   },
   "console": {
     "title": "控制台",

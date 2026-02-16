@@ -1,6 +1,19 @@
 import zhCN from "./zh-CN.json";
 import enUS from "./en-US.json";
 import zhTW from "./zh-TW.json";
+import jaJP from "./ja-JP.json";
+import frFR from "./fr-FR.json";
+import deDE from "./de-DE.json";
+import ruRU from "./ru-RU.json";
+import arSA from "./ar-SA.json";
+import esES from "./es-ES.json";
+import itIT from "./it-IT.json";
+import ptBR from "./pt-BR.json";
+import koKR from "./ko-KR.json";
+import nlNL from "./nl-NL.json";
+import plPL from "./pl-PL.json";
+import trTR from "./tr-TR.json";
+import viVN from "./vi-VN.json";
 
 interface Translation {
   [key: string]: any;
@@ -14,6 +27,19 @@ const translations: Translations = {
   "zh-CN": zhCN,
   "en-US": enUS,
   "zh-TW": zhTW,
+  "ja-JP": jaJP,
+  "fr-FR": frFR,
+  "de-DE": deDE,
+  "ru-RU": ruRU,
+  "ar-SA": arSA,
+  "es-ES": esES,
+  "it-IT": itIT,
+  "pt-BR": ptBR,
+  "ko-KR": koKR,
+  "nl-NL": nlNL,
+  "pl-PL": plPL,
+  "tr-TR": trTR,
+  "vi-VN": viVN,
 };
 
 import { ref } from "vue";
