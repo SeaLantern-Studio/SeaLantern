@@ -8,9 +8,7 @@ import { contributors as contributorsList } from "../data/contributors";
 import { useUpdateStore } from "../stores/updateStore";
 import { getAppVersion, BUILD_YEAR } from "../utils/version";
 import { i18n } from "../locales";
-import {
-  onDownloadProgress,
-} from "../api/update";
+import { onDownloadProgress } from "../api/update";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const version = ref(i18n.t("common.loading"));
@@ -61,15 +59,31 @@ onUnmounted(() => {
 const buttonState = computed(() => {
   switch (updateStore.status) {
     case "checking":
-      return { text: i18n.t("about.update_checking"), variant: "secondary" as const, disabled: true };
+      return {
+        text: i18n.t("about.update_checking"),
+        variant: "secondary" as const,
+        disabled: true,
+      };
     case "latest":
       return { text: i18n.t("about.update_latest"), variant: "success" as const, disabled: true };
     case "available":
-      return { text: i18n.t("about.update_available"), variant: "primary" as const, disabled: false };
+      return {
+        text: i18n.t("about.update_available"),
+        variant: "primary" as const,
+        disabled: false,
+      };
     case "downloading":
-      return { text: `${i18n.t("about.update_downloading")} ${progressPercent.value}%`, variant: "secondary" as const, disabled: false };
+      return {
+        text: `${i18n.t("about.update_downloading")} ${progressPercent.value}%`,
+        variant: "secondary" as const,
+        disabled: false,
+      };
     case "installing":
-      return { text: i18n.t("about.update_installing"), variant: "secondary" as const, disabled: false };
+      return {
+        text: i18n.t("about.update_installing"),
+        variant: "secondary" as const,
+        disabled: false,
+      };
     case "downloaded":
       return { text: i18n.t("about.update_ready"), variant: "success" as const, disabled: false };
     case "error":
@@ -176,11 +190,7 @@ function toggleDebugInput() {
         </div>
 
         <div class="contributor-grid">
-          <div
-            v-for="c in contributors"
-            :key="c.name"
-            class="contributor-card glass-card"
-          >
+          <div v-for="c in contributors" :key="c.name" class="contributor-card glass-card">
             <a
               v-if="c.url"
               :href="c.url"
@@ -190,12 +200,7 @@ function toggleDebugInput() {
             >
               <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
             </a>
-            <img
-              v-else
-              :src="c.avatar"
-              :alt="c.name"
-              class="contributor-avatar"
-            />
+            <img v-else :src="c.avatar" :alt="c.name" class="contributor-avatar" />
 
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>

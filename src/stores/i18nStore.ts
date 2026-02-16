@@ -14,9 +14,7 @@ export const useI18nStore = defineStore("i18n", () => {
 
   const locale = computed(() => localeRef.value);
   const currentLocale = computed(() => localeRef.value);
-  const isChinese = computed(
-    () => localeRef.value === "zh-CN" || localeRef.value === "zh-TW"
-  );
+  const isChinese = computed(() => localeRef.value === "zh-CN" || localeRef.value === "zh-TW");
   const isSimplifiedChinese = computed(() => localeRef.value === "zh-CN");
   const isTraditionalChinese = computed(() => localeRef.value === "zh-TW");
   const isEnglish = computed(() => localeRef.value === "en-US");
@@ -24,7 +22,7 @@ export const useI18nStore = defineStore("i18n", () => {
     supportedLocales.map((code) => ({
       code,
       labelKey: LOCALE_LABEL_KEYS[code],
-    }))
+    })),
   );
 
   function setLocale(nextLocale: string) {
