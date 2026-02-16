@@ -35,22 +35,21 @@ const statsLoading = ref(true); // 视图模式
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-// 名言警句
-const quotes = [
-  { text: "海内存知己，天涯若比邻", author: "王勃" },
-  { text: "人生得意须尽欢，莫使金樽空对月", author: "李白" },
-  { text: "会当凌绝顶，一览众山小", author: "杜甫" },
-  { text: "大漠孤烟直，长河落日圆", author: "王维" },
-  { text: "春蚕到死丝方尽，蜡炬成灰泪始干", author: "李商隐" },
-  { text: "山重水复疑无路，柳暗花明又一村", author: "陆游" },
-  { text: "但愿人长久，千里共婵娟", author: "苏轼" },
-  { text: "落霞与孤鹜齐飞，秋水共长天一色", author: "王勃" },
-  { text: "欲穷千里目，更上一层楼", author: "王之涣" },
-  { text: "举头望明月，低头思故乡", author: "李白" },
-  { text: "随风潜入夜，润物细无声", author: "杜甫" },
-  { text: "海上生明月，天涯共此时", author: "张九龄" },
-];
-const currentQuote = ref(quotes[0]);
+// 一言 API 相关
+interface HitokotoResponse {
+  id: number;
+  hitokoto: string;
+  type: string;
+  from: string;
+  from_who: string | null;
+  creator: string;
+  creator_uid: number;
+  review_status: number;
+  uuid: string;
+  created_at: string;
+}
+
+const currentQuote = ref<{ text: string; author: string }>({ text: "", author: "" });
 const displayText = ref("");
 const isTyping = ref(false);
 let typeTimer: ReturnType<typeof setInterval> | null = null;
@@ -92,20 +91,58 @@ function typeWriterOut(callback?: () => void) {
   }, 30);
 }
 
-function updateQuote() {
+/**
+ * 从一言 API 获取名言
+ */
+async function fetchHitokoto(): Promise<{ text: string; author: string }> {
+  try {
+    const response = await fetch('https://v1.hitokoto.cn/?encode=json');
+    if (!response.ok) {
+      throw new Error('Failed to fetch hitokoto');
+    }
+    const data: HitokotoResponse = await response.json();
+    return {
+      text: data.hitokoto,
+      author: data.from_who || data.from || '未知'
+    };
+  } catch (error) {
+    console.error('Error fetching hitokoto:', error);
+    // 失败时返回默认名言
+    return { text: "我们搭建了骨架,而灵魂,交给你们。", author: "Sea Lantern" };
+  }
+}
+
+/**
+ * 更新名言
+ */
+async function updateQuote() {
   if (isTyping.value) return;
-  const otherQuotes = quotes.filter((q) => q.text !== currentQuote.value.text);
-  const newQuote = otherQuotes[Math.floor(Math.random() * otherQuotes.length)];
   // 先打字消失
-  typeWriterOut(() => {
-    currentQuote.value = newQuote;
-    // 再打字出现
-    typeWriter(newQuote.text);
+  typeWriterOut(async () => {
+    try {
+      const newQuote = await fetchHitokoto();
+      currentQuote.value = newQuote;
+      // 再打字出现
+      typeWriter(newQuote.text);
+    } catch (error) {
+      console.error('Error updating quote:', error);
+    }
   });
 }
 
 // 初始化打字机效果
-typeWriter(currentQuote.value.text);
+async function initQuote() {
+  try {
+    const initialQuote = await fetchHitokoto();
+    currentQuote.value = initialQuote;
+    typeWriter(initialQuote.text);
+  } catch (error) {
+    console.error('Error initializing quote:', error);
+  }
+}
+
+// 初始化获取名言
+initQuote();
 
 let quoteTimer: ReturnType<typeof setInterval> | null = null;
 
