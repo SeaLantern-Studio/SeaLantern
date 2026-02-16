@@ -114,6 +114,12 @@ export const contributors: Contributor[] = [
     avatar: "https://mc-heads.net/avatar/xingwangzhe_/64",
     url: "https://github.com/xingwangzhe",
   },
+  {
+    name: "FurrySeaSky",
+    role: "福瑞控天下第一!",
+    avatar: "https://crafthead.net/avatar/01dfa2e127884fd7b4c6a5b46d49e2c2",
+    url: "https://gitee.com/pnchsb_admin",
+  }
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
