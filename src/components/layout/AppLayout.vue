@@ -1,26 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { onMounted, onUnmounted, computed, watch } from "vue";
 import AppSidebar from "./AppSidebar.vue";
 import AppHeader from "./AppHeader.vue";
 import { useUiStore } from "../../stores/uiStore";
-import {
-  settingsApi,
-  applyAcrylic,
-  checkAcrylicSupport,
-  type AppSettings,
-} from "../../api/settings";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { applyAcrylic } from "../../api/settings";
+import type { AppSettings } from "../../api/settings";
 
 const ui = useUiStore();
-const backgroundImage = ref("");
-const backgroundOpacity = ref(0.3);
-const backgroundBlur = ref(0);
-const backgroundBrightness = ref(1.0);
-const backgroundSize = ref("cover");
-const acrylicEnabled = ref(false);
-const acrylicSupported = ref(false);
-const currentColor = ref("default");
-const currentTheme = ref("auto");
+const settingsStore = useSettingsStore();
+
+const backgroundImage = computed(() => settingsStore.backgroundImage);
+const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
+const backgroundBlur = computed(() => settingsStore.backgroundBlur);
+const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
+const backgroundSize = computed(() => settingsStore.backgroundSize);
 
 let systemThemeQuery: MediaQueryList | null = null;
 
@@ -40,7 +34,7 @@ function applyTheme(theme: string) {
 async function applyAcrylicEffect(enabled: boolean, theme: string) {
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
 
-  if (!acrylicSupported.value) {
+  if (!settingsStore.acrylicSupported) {
     return;
   }
 
@@ -61,105 +55,73 @@ async function applyAcrylicEffect(enabled: boolean, theme: string) {
   }
 }
 
-// 系统主题变化处理
 function handleSystemThemeChange() {
-  if (currentTheme.value === "auto") {
-    const effectiveTheme = applyTheme("auto");
-    // 如果亚克力开启，需要重新应用以匹配新主题
-    if (acrylicEnabled.value && acrylicSupported.value) {
+  const settings = settingsStore.settings;
+  if (settings.theme === "auto") {
+    applyTheme("auto");
+    if (settings.acrylic_enabled && settingsStore.acrylicSupported) {
       applyAcrylicEffect(true, "auto");
     }
+    applyColors(settings);
   }
 }
 
-onMounted(() => {
-  // 立即应用默认主题，确保 UI 快速显示
-  applyTheme("auto");
+function applyFontFamily(fontFamily: string) {
+  if (fontFamily) {
+    document.documentElement.style.setProperty("--sl-font-sans", fontFamily);
+    document.documentElement.style.setProperty("--sl-font-display", fontFamily);
+  } else {
+    document.documentElement.style.removeProperty("--sl-font-sans");
+    document.documentElement.style.removeProperty("--sl-font-display");
+  }
+}
 
-  // 检测亚克力支持（异步，不阻塞 UI）
-  checkAcrylicSupport()
-    .then((supported) => {
-      acrylicSupported.value = supported;
-    })
-    .catch(() => {
-      acrylicSupported.value = false;
-    });
+async function applyAllSettings() {
+  const settings = settingsStore.settings;
 
-  // 异步加载背景设置，不阻塞 UI 渲染
-  loadBackgroundSettings().catch((err) => {
-    console.error("Failed to load settings initially:", err);
-  });
+  applyTheme(settings.theme || "auto");
 
-  // 监听设置更新事件
-  window.addEventListener("settings-updated", loadBackgroundSettings);
+  document.documentElement.style.fontSize = (settings.font_size || 14) + "px";
 
-  // 监听系统主题变化
+  applyFontFamily(settings.font_family || "");
+
+  if (settingsStore.acrylicSupported) {
+    await applyAcrylicEffect(settings.acrylic_enabled, settings.theme || "auto");
+  } else {
+    document.documentElement.setAttribute("data-acrylic", "false");
+  }
+
+  applyColors(settings);
+}
+
+onMounted(async () => {
+  await applyAllSettings();
+
+  window.addEventListener("settings-updated", handleSettingsUpdated);
+
   systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
   systemThemeQuery.addEventListener("change", handleSystemThemeChange);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("settings-updated", loadBackgroundSettings);
+  window.removeEventListener("settings-updated", handleSettingsUpdated);
   if (systemThemeQuery) {
     systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
   }
 });
 
-async function loadBackgroundSettings() {
-  try {
-    const settings = await settingsApi.get();
-
-    // 应用颜色方案
-    currentColor.value = settings.color || "default";
-
-    // 保存当前主题设置
-    currentTheme.value = settings.theme || "auto";
-    acrylicEnabled.value = settings.acrylic_enabled;
-
-    // 应用主题
-    const effectiveTheme = applyTheme(settings.theme || "auto");
-
-    // 应用字体大小
-    document.documentElement.style.fontSize = (settings.font_size || 14) + "px";
-
-    // 应用亚克力效果（只有在支持的系统上）
-    if (acrylicSupported.value) {
-      await applyAcrylicEffect(settings.acrylic_enabled, settings.theme || "auto");
-    } else {
-      // 不支持亚克力时，确保 data-acrylic 为 false
-      document.documentElement.setAttribute("data-acrylic", "false");
-    }
-
-    // 应用背景图片设置
-    if (settings.background_image) {
-      backgroundImage.value = convertFileSrc(settings.background_image);
-    } else {
-      backgroundImage.value = "";
-    }
-    backgroundOpacity.value = settings.background_opacity;
-    backgroundBlur.value = settings.background_blur;
-    backgroundBrightness.value = settings.background_brightness;
-    backgroundSize.value = settings.background_size;
-
-    // 应用颜色主题
-    applyColors(settings);
-
-    console.log("Settings loaded:", {
-      theme: settings.theme,
-      effectiveTheme,
-      fontSize: settings.font_size,
-      acrylicEnabled: settings.acrylic_enabled,
-      acrylicSupported: acrylicSupported.value,
-      image: backgroundImage.value,
-      opacity: backgroundOpacity.value,
-      blur: backgroundBlur.value,
-      brightness: backgroundBrightness.value,
-      size: backgroundSize.value,
-    });
-  } catch (e) {
-    console.error("Failed to load settings:", e);
-  }
+async function handleSettingsUpdated() {
+  await settingsStore.loadSettings();
+  await applyAllSettings();
 }
+
+watch(
+  () => settingsStore.settings,
+  async () => {
+    await applyAllSettings();
+  },
+  { deep: true }
+);
 
 const backgroundStyle = computed(() => {
   if (!backgroundImage.value) return {};
@@ -173,7 +135,6 @@ const backgroundStyle = computed(() => {
   };
 });
 
-// 辅助函数：调整颜色亮度
 function adjustBrightness(hex: string, percent: number): string {
   const num = parseInt(hex.replace("#", ""), 16);
   const amt = Math.round(2.55 * percent);
@@ -193,7 +154,6 @@ function adjustBrightness(hex: string, percent: number): string {
   );
 }
 
-// 辅助函数：将十六进制颜色转换为 RGBA
 function rgbaFromHex(hex: string, alpha: number): string {
   const num = parseInt(hex.replace("#", ""), 16);
   const R = (num >> 16) & 0xff;
@@ -202,7 +162,6 @@ function rgbaFromHex(hex: string, alpha: number): string {
   return `rgba(${R}, ${G}, ${B}, ${alpha})`;
 }
 
-// 预设主题颜色定义
 const presetThemes = {
   midnight: {
     light: {
@@ -416,7 +375,6 @@ const presetThemes = {
   },
 };
 
-// 获取预设主题颜色
 function getPresetColor(preset: string, plan: string, colorType: string): string {
   if (!presetThemes[preset as keyof typeof presetThemes]) return "";
 
@@ -442,7 +400,6 @@ function getPresetColor(preset: string, plan: string, colorType: string): string
   return presetTheme[themeKey][colorType as keyof typeof presetTheme.light] || "";
 }
 
-// 获取颜色值
 function getColorValue(settings: AppSettings, colorType: string, theme: string): string {
   if (!settings) return "";
 
@@ -508,7 +465,7 @@ function getColorValue(settings: AppSettings, colorType: string, theme: string):
     return getPresetColor(settings.color, theme, colorType);
   }
 
-  const customColor = {
+  const customColor: Record<string, Record<string, string | undefined>> = {
     light: {
       bg: settings.bg_color,
       bgSecondary: settings.bg_secondary_color,
@@ -549,90 +506,23 @@ function getColorValue(settings: AppSettings, colorType: string, theme: string):
       textSecondary: settings.text_secondary_dark_acrylic,
       border: settings.border_dark_acrylic,
     },
-  }[theme as keyof typeof customColor];
+  };
 
-  if (customColor) {
-    return customColor[colorType as keyof typeof customColor.light] || "";
-  }
-
-  // 如果没有自定义颜色，使用当前预设的颜色值
-  if (settings.color_prev) {
-    if (settings.color_prev === "default") {
-      switch (theme) {
-        case "light":
-          return (
-            {
-              bg: "#f8fafc",
-              bgSecondary: "#f1f5f9",
-              bgTertiary: "#e2e8f0",
-              primary: "#0ea5e9",
-              secondary: "#06b6d4",
-              textPrimary: "#0f172a",
-              textSecondary: "#475569",
-              border: "#e2e8f0",
-            }[colorType] || ""
-          );
-        case "dark":
-          return (
-            {
-              bg: "#0f1117",
-              bgSecondary: "#1a1d28",
-              bgTertiary: "#242836",
-              primary: "#60a5fa",
-              secondary: "#22d3ee",
-              textPrimary: "#e2e8f0",
-              textSecondary: "#94a3b8",
-              border: "rgba(255, 255, 255, 0.1)",
-            }[colorType] || ""
-          );
-        case "light_acrylic":
-          return (
-            {
-              bg: "rgba(248, 250, 252, 0.7)",
-              bgSecondary: "rgba(241, 245, 249, 0.6)",
-              bgTertiary: "rgba(226, 232, 240, 0.5)",
-              primary: "#0ea5e9",
-              secondary: "#06b6d4",
-              textPrimary: "#0f172a",
-              textSecondary: "#475569",
-              border: "#e2e8f0",
-            }[colorType] || ""
-          );
-        case "dark_acrylic":
-          return (
-            {
-              bg: "rgba(15, 17, 23, 0.7)",
-              bgSecondary: "rgba(26, 29, 40, 0.6)",
-              bgTertiary: "rgba(36, 40, 54, 0.5)",
-              primary: "#60a5fa",
-              secondary: "#22d3ee",
-              textPrimary: "#e2e8f0",
-              textSecondary: "#94a3b8",
-              border: "rgba(255, 255, 255, 0.1)",
-            }[colorType] || ""
-          );
-        default:
-          return "";
-      }
-    }
-    return getPresetColor(settings.color_prev, theme, colorType);
+  const themeColors = customColor[theme];
+  if (themeColors) {
+    return themeColors[colorType] || "";
   }
 
   return "";
 }
 
-// 应用颜色
 function applyColors(settings: AppSettings) {
   if (!settings) return;
 
-  // 确定当前的主题模式
   const effectiveTheme = getEffectiveTheme(settings.theme);
   const isDark = effectiveTheme === "dark";
-
-  // 确定当前是否启用了亚克力
   const isAcrylic = settings.acrylic_enabled;
 
-  // 根据实际情况确定当前的颜色方案
   const actualPlan = isDark
     ? isAcrylic
       ? "dark_acrylic"
@@ -641,7 +531,6 @@ function applyColors(settings: AppSettings) {
       ? "light_acrylic"
       : "light";
 
-  // 获取当前的颜色值
   const colors = {
     bg: getColorValue(settings, "bg", actualPlan),
     bgSecondary: getColorValue(settings, "bgSecondary", actualPlan),
@@ -653,7 +542,6 @@ function applyColors(settings: AppSettings) {
     border: getColorValue(settings, "border", actualPlan),
   };
 
-  // 应用颜色值到 CSS 变量
   document.documentElement.style.setProperty("--sl-bg", colors.bg);
   document.documentElement.style.setProperty("--sl-bg-secondary", colors.bgSecondary);
   document.documentElement.style.setProperty("--sl-bg-tertiary", colors.bgTertiary);
@@ -664,12 +552,8 @@ function applyColors(settings: AppSettings) {
   document.documentElement.style.setProperty("--sl-border", colors.border);
   document.documentElement.style.setProperty("--sl-border-light", colors.border);
 
-  // 计算并应用其他相关变量
-
-  // 表面颜色
   let surfaceColor, surfaceHoverColor;
   if (isAcrylic) {
-    // 参考 variables.css 为亚克力方案设置 rgba 颜色
     if (isDark) {
       surfaceColor = "rgba(30, 33, 48, 0.6)";
       surfaceHoverColor = "rgba(40, 44, 62, 0.7)";
@@ -678,14 +562,12 @@ function applyColors(settings: AppSettings) {
       surfaceHoverColor = "rgba(248, 250, 252, 0.7)";
     }
   } else {
-    // 非亚克力方案使用原来的颜色
     surfaceColor = isDark ? colors.bgSecondary : "#ffffff";
     surfaceHoverColor = isDark ? colors.bgTertiary : colors.bg;
   }
   document.documentElement.style.setProperty("--sl-surface", surfaceColor);
   document.documentElement.style.setProperty("--sl-surface-hover", surfaceHoverColor);
 
-  // 主要颜色变体
   const primaryLight = isDark
     ? adjustBrightness(colors.primary, 30)
     : adjustBrightness(colors.primary, 20);
@@ -697,20 +579,16 @@ function applyColors(settings: AppSettings) {
   document.documentElement.style.setProperty("--sl-primary-dark", primaryDark);
   document.documentElement.style.setProperty("--sl-primary-bg", primaryBg);
 
-  // 强调色变体
   const accentLight = adjustBrightness(colors.secondary, 20);
   document.documentElement.style.setProperty("--sl-accent-light", accentLight);
 
-  // 文本颜色变体
   const textTertiary = isDark
     ? adjustBrightness(colors.textSecondary, -20)
     : adjustBrightness(colors.textSecondary, 20);
-  // 确保主要按钮、危险按钮和成功按钮的文字颜色始终是白色
   const textInverse = "#ffffff";
   document.documentElement.style.setProperty("--sl-text-tertiary", textTertiary);
   document.documentElement.style.setProperty("--sl-text-inverse", textInverse);
 
-  // 阴影
   const shadowOpacity = isDark ? 0.4 : 0.06;
   document.documentElement.style.setProperty(
     "--sl-shadow-sm",

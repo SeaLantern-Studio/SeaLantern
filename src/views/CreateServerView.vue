@@ -22,6 +22,8 @@ const maxMemory = ref("2048");
 const minMemory = ref("512");
 const port = ref("25565");
 const jarPath = ref("");
+type StartupMode = "jar" | "bat" | "sh";
+const startupMode = ref<StartupMode>("jar");
 const selectedJava = ref("");
 const onlineMode = ref(true);
 
@@ -82,7 +84,7 @@ async function detectJava() {
 
 async function pickJarFile() {
   try {
-    const result = await systemApi.pickJarFile();
+    const result = await systemApi.pickStartupFile(startupMode.value);
     if (result) {
       jarPath.value = result;
     } else {
@@ -93,6 +95,14 @@ async function pickJarFile() {
     console.error("Pick file error:", e);
     jarPath.value = "";
   }
+}
+
+function setStartupMode(mode: StartupMode) {
+  if (startupMode.value === mode) {
+    return;
+  }
+  startupMode.value = mode;
+  jarPath.value = "";
 }
 
 async function pickJavaFile() {
@@ -109,8 +119,9 @@ async function pickJavaFile() {
 async function handleCreate() {
   errorMsg.value = null;
 
-  // 直接弹出文件选择窗口
-  await pickJarFile();
+  if (!jarPath.value) {
+    await pickJarFile();
+  }
 
   // 选择文件后检查其他条件
   if (!jarPath.value) {
@@ -131,6 +142,7 @@ async function handleCreate() {
     await serverApi.importServer({
       name: serverName.value,
       jarPath: jarPath.value,
+      startupMode: startupMode.value,
       javaPath: selectedJava.value,
       maxMemory: parseInt(maxMemory.value) || 2048,
       minMemory: parseInt(minMemory.value) || 512,
@@ -146,18 +158,58 @@ async function handleCreate() {
   }
 }
 
-function getJavaLabel(java: JavaInfo): string {
-  const type = java.major_version <= 8 ? "JRE" : "JDK";
-  const arch = java.is_64bit ? "64-bit" : "32-bit";
-  return `${type} ${java.major_version} (${java.version}) - ${java.vendor} [${arch}]`;
+function getJavaLabel(java: JavaInfo): { label: string; subLabel: string } {
+  // 简化 Java 显示名称
+  // label: 简短名称（如 "Java 17 Eclipse Temurin 64位"）
+  // subLabel: 路径
+  const version = java.major_version;
+  const arch = java.is_64bit ? "64位" : "32位";
+  
+  // 简化 vendor 名称
+  let vendor = java.vendor;
+  if (vendor.includes("Oracle") || vendor.includes("Sun")) {
+    vendor = "Oracle";
+  } else if (vendor.includes("Temurin") || vendor.includes("Adopt")) {
+    vendor = "Eclipse Temurin";
+  } else if (vendor.includes("Amazon")) {
+    vendor = "Amazon Corretto";
+  } else if (vendor.includes("Microsoft")) {
+    vendor = "Microsoft";
+  } else if (vendor.includes("Zulu") || vendor.includes("Azul")) {
+    vendor = "Azul Zulu";
+  } else if (vendor.includes("Liberica") || vendor.includes("BellSoft")) {
+    vendor = "Liberica";
+  }
+  
+  return {
+    label: `Java ${version} ${vendor} ${arch}`,
+    subLabel: java.path
+  };
 }
 
 const javaOptions = computed(() => {
-  return javaList.value.map((java) => ({
-    label: getJavaLabel(java),
-    value: java.path,
-  }));
+  return javaList.value.map((java) => {
+    const labelInfo = getJavaLabel(java);
+    return {
+      label: labelInfo.label,
+      subLabel: labelInfo.subLabel,
+      value: java.path,
+    };
+  });
 });
+
+const startupModes: StartupMode[] = ["jar", "bat", "sh"];
+
+const startupFileLabel = computed(() => {
+  if (startupMode.value === "bat") {
+    return i18n.t("create.bat_file");
+  }
+  if (startupMode.value === "sh") {
+    return i18n.t("create.sh_file");
+  }
+  return i18n.t("create.jar_file");
+});
+
 </script>
 
 <template>
@@ -206,14 +258,10 @@ const javaOptions = computed(() => {
           searchable
           maxHeight="240px"
         />
-        <div v-if="selectedJava" class="selected-java-path">
-          <span class="text-caption">{{ i18n.t("create.server_path") }}：</span>
-          <span class="text-mono text-caption">{{ selectedJava }}</span>
-        </div>
       </div>
       <div class="java-manual">
         <SLInput
-          :label="i18n.t('create.java_version')"
+          :label="i18n.t('create.java_path')"
           v-model="selectedJava"
           :placeholder="i18n.t('create.java_manual')"
         >
@@ -232,6 +280,28 @@ const javaOptions = computed(() => {
             :placeholder="i18n.t('create.server_name')"
             v-model="serverName"
           />
+        </div>
+        <div class="startup-mode-row">
+          <span class="startup-mode-label">{{ i18n.t("create.startup_mode") }}</span>
+          <div class="startup-mode-control">
+            <button
+              v-for="mode in startupModes"
+              :key="mode"
+              type="button"
+              class="startup-mode-btn"
+              :class="{ active: startupMode === mode }"
+              @click="setStartupMode(mode)"
+            >
+              {{ mode === "jar" ? "JAR" : mode }}
+            </button>
+          </div>
+        </div>
+        <div class="jar-picker">
+          <SLInput :label="startupFileLabel" v-model="jarPath" :placeholder="startupFileLabel">
+            <template #suffix>
+              <button class="pick-btn" @click="pickJarFile">{{ i18n.t("create.browse") }}</button>
+            </template>
+          </SLInput>
         </div>
 
         <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
@@ -361,7 +431,48 @@ const javaOptions = computed(() => {
 .server-name-row {
   grid-column: 1 / -1;
 }
-
+.startup-mode-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+}
+.startup-mode-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+}
+.startup-mode-control {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-surface);
+}
+.startup-mode-btn {
+  flex: 1;
+  height: 32px;
+  border: none;
+  border-radius: var(--sl-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sl-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+}
+.startup-mode-btn:hover {
+  background: var(--sl-bg-tertiary);
+}
+.startup-mode-btn.active {
+  background: var(--sl-primary);
+  color: #fff;
+}
+.jar-picker {
+  grid-column: 1 / -1;
+}
 .pick-btn {
   padding: 4px 12px;
   font-size: 0.8125rem;

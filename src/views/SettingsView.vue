@@ -23,8 +23,6 @@ const loading = ref(true);
 const fontsLoading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
-const success = ref<string | null>(null);
-const hasChanges = ref(false);
 
 // 亚克力支持检测
 const acrylicSupported = ref(true);
@@ -144,7 +142,6 @@ async function loadSettings() {
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
-    hasChanges.value = false;
     settings.value.color = s.color || "default";
     // 应用已保存的设置
     applyTheme(s.theme);
@@ -158,7 +155,7 @@ async function loadSettings() {
 }
 
 function markChanged() {
-  hasChanges.value = true;
+  saveSettings();
 }
 
 function getEffectiveTheme(theme: string): "light" | "dark" {
@@ -250,9 +247,14 @@ async function saveSettings() {
   error.value = null;
   try {
     await settingsApi.save(settings.value);
-    success.value = "设置已保存";
-    hasChanges.value = false;
-    setTimeout(() => (success.value = null), 3000);
+
+    localStorage.setItem(
+      "sl_theme_cache",
+      JSON.stringify({
+        theme: settings.value.theme || "auto",
+        fontSize: settings.value.font_size || 14,
+      })
+    );
 
     applyTheme(settings.value.theme);
     applyFontSize(settings.value.font_size);
@@ -286,10 +288,16 @@ async function resetSettings() {
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
     showResetConfirm.value = false;
-    hasChanges.value = false;
     settings.value.color = "default";
-    success.value = "已恢复默认设置";
-    setTimeout(() => (success.value = null), 3000);
+
+    localStorage.setItem(
+      "sl_theme_cache",
+      JSON.stringify({
+        theme: s.theme || "auto",
+        fontSize: s.font_size || 14,
+      })
+    );
+
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
@@ -302,8 +310,6 @@ async function exportSettings() {
   try {
     const json = await settingsApi.exportJson();
     await navigator.clipboard.writeText(json);
-    success.value = "设置 JSON 已复制到剪贴板";
-    setTimeout(() => (success.value = null), 3000);
   } catch (e) {
     error.value = String(e);
   }
@@ -328,9 +334,6 @@ async function handleImport() {
     uiFontSize.value = String(s.font_size);
     showImportModal.value = false;
     importJson.value = "";
-    hasChanges.value = false;
-    success.value = "设置已导入";
-    setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
@@ -366,9 +369,6 @@ function clearBackgroundImage() {
     <div v-if="error" class="msg-banner error-banner">
       <span>{{ error }}</span>
       <button @click="error = null">x</button>
-    </div>
-    <div v-if="success" class="msg-banner success-banner">
-      <span>{{ success }}</span>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -491,15 +491,6 @@ function clearBackgroundImage() {
       <!-- Actions -->
       <div class="settings-actions">
         <div class="actions-left">
-          <SLButton variant="primary" size="lg" :loading="saving" @click="saveSettings">
-            {{ i18n.t("settings.save") }}
-          </SLButton>
-          <SLButton variant="secondary" @click="loadSettings">{{
-            i18n.t("settings.discard")
-          }}</SLButton>
-          <span v-if="hasChanges" class="unsaved-hint">{{
-            i18n.t("settings.unsaved_changes")
-          }}</span>
         </div>
         <div class="actions-right">
           <SLButton variant="ghost" size="sm" @click="exportSettings">{{
@@ -577,11 +568,6 @@ function clearBackgroundImage() {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: var(--sl-error);
-}
-.success-banner {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  color: var(--sl-success);
 }
 .msg-banner button {
   font-weight: 600;
@@ -678,15 +664,6 @@ function clearBackgroundImage() {
   display: flex;
   align-items: center;
   gap: var(--sl-space-sm);
-}
-
-.unsaved-hint {
-  font-size: 0.8125rem;
-  color: var(--sl-warning);
-  font-weight: 500;
-  padding: 2px 10px;
-  background: rgba(245, 158, 11, 0.1);
-  border-radius: var(--sl-radius-full);
 }
 
 .import-form {

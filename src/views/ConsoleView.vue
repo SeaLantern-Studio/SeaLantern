@@ -115,6 +115,7 @@ const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status
 
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopped = computed(() => serverStatus.value === "Stopped");
+const isStopping = computed(() => serverStatus.value === "Stopping");
 
 const currentServerCommands = computed(() => {
   const server = serverStore.servers.find((s) => s.id === serverId.value);
@@ -472,7 +473,7 @@ function executeCustomCommand(cmd: ServerCommand) {
           variant="primary"
           size="sm"
           :loading="startLoading"
-          :disabled="isRunning || startLoading"
+          :disabled="isRunning || isStopping || startLoading"
           @click="handleStart"
           >{{ i18n.t("home.start") }}</SLButton
         >
@@ -480,7 +481,7 @@ function executeCustomCommand(cmd: ServerCommand) {
           variant="danger"
           size="sm"
           :loading="stopLoading"
-          :disabled="isStopped || stopLoading"
+          :disabled="isStopped || isStopping || stopLoading"
           @click="handleStop"
           >{{ i18n.t("home.stop") }}</SLButton
         >

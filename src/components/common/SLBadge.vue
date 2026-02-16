@@ -35,7 +35,8 @@ const badgeStyle = computed(() => {
   return style;
 });
 
-const handleClose = (event: MouseEvent) => {
+const handleClose = (event: Event) => {
+  event.preventDefault();
   event.stopPropagation();
   emit("close");
 };
@@ -69,7 +70,7 @@ const handleClose = (event: MouseEvent) => {
       class="sl-badge__close"
       @click="handleClose"
       @keydown.enter="handleClose"
-      @keydown.space="handleClose"
+      @keydown.space.prevent="handleClose"
       type="button"
       aria-label="关闭标签"
       tabindex="0"

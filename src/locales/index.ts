@@ -33,10 +33,16 @@ function resolveNestedValue(source: TranslationNode, keys: string[]): string | u
 }
 
 function interpolateVariables(template: string, options: Record<string, unknown>): string {
-  return template.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
-    const value = options[varName.trim()];
-    return value === undefined || value === null ? match : String(value);
-  });
+  // 同时支持 {{variable}} 和 {variable} 两种格式的占位符
+  return template
+    .replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
+      const value = options[varName.trim()];
+      return value === undefined || value === null ? match : String(value);
+    })
+    .replace(/\{([^}]+)\}/g, (match, varName) => {
+      const value = options[varName.trim()];
+      return value === undefined || value === null ? match : String(value);
+    });
 }
 
 class I18n {

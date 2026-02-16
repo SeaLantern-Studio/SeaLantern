@@ -45,15 +45,27 @@
     "detail_view": "Switch to detail view",
     "gauge_view": "Switch to gauge view",
     "recent_alerts": "Recent Warnings / Errors",
-    "delete_confirm_message": "Please enter server name {server} to confirm deletion",
+    "delete_confirm_message": "Please enter server name {{server}} to confirm deletion",
     "delete_input_placeholder": "Enter server name",
     "delete_cancel": "Cancel",
     "delete_confirm": "Confirm Delete",
-    "delete_error": "Server name input error, please re-enter"
+    "delete_error": "Server name input error, please re-enter",
+    "close_action": "Close Behavior",
+    "close_action_desc": "Select default behavior when clicking the close button",
+    "close_action_ask": "Ask",
+    "close_action_minimize": "Minimize to Tray",
+    "close_action_close": "Close Directly",
+    "close_window_title": "Close Window",
+    "close_window_message": "Are you sure you want to close SeaLantern?",
+    "remember_choice": "Remember my choice"
   },
   "create": {
     "title": "Create Server",
+    "startup_mode": "Startup Mode",
     "jar_file": "Server JAR File",
+    "bat_file": "Server BAT File",
+    "sh_file": "Server SH File",
+    "select_startup_file": "Please select a server {{mode}} file",
     "browse": "Browse",
     "scan": "Scan",
     "java_version": "Java Version",
@@ -74,7 +86,8 @@
     "default_port_placeholder": "Default 25565",
     "java_env": "Java Environment",
     "java_scan": "Scan all disks for Java installations",
-    "java_manual": "Manually select Java path"
+    "java_manual": "Manually select Java path",
+    "java_path": "Java Path"
   },
   "console": {
     "title": "Console",
@@ -202,6 +215,11 @@
     "title": "Settings",
     "auto_stop": "Auto stop servers when closing",
     "auto_eula": "Auto agree EULA",
+    "close_behavior": "Close Behavior",
+    "close_behavior_desc": "Select behavior when clicking close button",
+    "close_behavior_minimize": "Minimize to Tray",
+    "close_behavior_ask": "Ask",
+    "close_behavior_exit": "Exit Directly",
     "default_memory": "Default Memory",
     "default_port": "Default Port",
     "jvm_args": "JVM Arguments",
@@ -214,7 +232,7 @@
     "max_memory_desc": "Recommended at least 1024MB. Large modded servers may need 4096MB or more",
     "min_memory": "Min Memory (MB)",
     "min_memory_desc": "Recommended to set to 1/4 to 1/2 of max memory",
-    "default_java": "Default Java Path",
+    "default_java": "Default Java Version",
     "default_java_desc": "Leave blank to automatically detect the most suitable Java each time",
     "jvm_args_desc": "These parameters will be added to all server startups. Suitable for GC optimization parameters",
     "port_desc": "Minecraft default port is 25565. Multiple servers need different ports",
@@ -332,7 +350,11 @@
     "color_hue": "Hue",
     "color_saturation": "Saturation",
     "color_lightness": "Lightness",
-    "color_alpha": "Alpha"
+    "color_alpha": "Alpha",
+    "developer_mode": "Developer Mode",
+    "developer_mode_desc": "Enable advanced features and debug tools",
+    "developer_mode_toggle": "Open Developer Mode",
+    "developer_mode_toggle_desc": "Enable to use debug tools when in developer mode"
   },
   "about": {
     "title": "About",

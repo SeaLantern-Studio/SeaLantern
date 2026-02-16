@@ -12,6 +12,7 @@ export interface ServerInstance {
   mc_version: string;
   path: string;
   jar_path: string;
+  startup_mode: "jar" | "bat" | "sh";
   java_path: string;
   max_memory: number;
   min_memory: number;
