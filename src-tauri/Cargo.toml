@@ -46,3 +46,6 @@ indicatif = "0.18.4"
 sha2 = "0.10"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"
