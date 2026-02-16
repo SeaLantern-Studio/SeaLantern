@@ -347,26 +347,26 @@ const backgroundPreviewUrl = computed(() => {
 const bgColor = computed({
   get: () => {
     if (!settings.value) return "#f8fafc";
-    
+
     const colorMap = {
       light: settings.value.bg_color,
       dark: settings.value.bg_dark,
       light_acrylic: settings.value.bg_acrylic,
-      dark_acrylic: settings.value.bg_dark_acrylic
+      dark_acrylic: settings.value.bg_dark_acrylic,
     };
-    
+
     return colorMap[editColorPlan.value as keyof typeof colorMap] || "#f8fafc";
   },
   set: (value) => {
     if (!settings.value) return;
-    
+
     const colorMap = {
-      light: 'bg_color',
-      dark: 'bg_dark',
-      light_acrylic: 'bg_acrylic',
-      dark_acrylic: 'bg_dark_acrylic'
+      light: "bg_color",
+      dark: "bg_dark",
+      light_acrylic: "bg_acrylic",
+      dark_acrylic: "bg_dark_acrylic",
     };
-    
+
     const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
     if (colorKey) {
       (settings.value as any)[colorKey] = value;
@@ -374,32 +374,32 @@ const bgColor = computed({
       markChanged();
       applyColors();
     }
-  }
+  },
 });
 
 const bgSecondaryColor = computed({
   get: () => {
     if (!settings.value) return "#ffffff";
-    
+
     const colorMap = {
       light: settings.value.bg_secondary_color,
       dark: settings.value.bg_secondary_dark,
       light_acrylic: settings.value.bg_secondary_acrylic,
-      dark_acrylic: settings.value.bg_secondary_dark_acrylic
+      dark_acrylic: settings.value.bg_secondary_dark_acrylic,
     };
-    
+
     return colorMap[editColorPlan.value as keyof typeof colorMap] || "#ffffff";
   },
   set: (value) => {
     if (!settings.value) return;
-    
+
     const colorMap = {
-      light: 'bg_secondary_color',
-      dark: 'bg_secondary_dark',
-      light_acrylic: 'bg_secondary_acrylic',
-      dark_acrylic: 'bg_secondary_dark_acrylic'
+      light: "bg_secondary_color",
+      dark: "bg_secondary_dark",
+      light_acrylic: "bg_secondary_acrylic",
+      dark_acrylic: "bg_secondary_dark_acrylic",
     };
-    
+
     const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
     if (colorKey) {
       (settings.value as any)[colorKey] = value;
@@ -407,32 +407,32 @@ const bgSecondaryColor = computed({
       markChanged();
       applyColors();
     }
-  }
+  },
 });
 
 const bgTertiaryColor = computed({
   get: () => {
     if (!settings.value) return "#f1f5f9";
-    
+
     const colorMap = {
       light: settings.value.bg_tertiary_color,
       dark: settings.value.bg_tertiary_dark,
       light_acrylic: settings.value.bg_tertiary_acrylic,
-      dark_acrylic: settings.value.bg_tertiary_dark_acrylic
+      dark_acrylic: settings.value.bg_tertiary_dark_acrylic,
     };
-    
+
     return colorMap[editColorPlan.value as keyof typeof colorMap] || "#f1f5f9";
   },
   set: (value) => {
     if (!settings.value) return;
-    
+
     const colorMap = {
-      light: 'bg_tertiary_color',
-      dark: 'bg_tertiary_dark',
-      light_acrylic: 'bg_tertiary_acrylic',
-      dark_acrylic: 'bg_tertiary_dark_acrylic'
+      light: "bg_tertiary_color",
+      dark: "bg_tertiary_dark",
+      light_acrylic: "bg_tertiary_acrylic",
+      dark_acrylic: "bg_tertiary_dark_acrylic",
     };
-    
+
     const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
     if (colorKey) {
       (settings.value as any)[colorKey] = value;
@@ -440,32 +440,32 @@ const bgTertiaryColor = computed({
       markChanged();
       applyColors();
     }
-  }
+  },
 });
 
 const primaryColor = computed({
   get: () => {
     if (!settings.value) return "#3b82f6";
-    
+
     const colorMap = {
       light: settings.value.primary_color,
       dark: settings.value.primary_dark,
       light_acrylic: settings.value.primary_acrylic,
-      dark_acrylic: settings.value.primary_dark_acrylic
+      dark_acrylic: settings.value.primary_dark_acrylic,
     };
-    
+
     return colorMap[editColorPlan.value as keyof typeof colorMap] || "#3b82f6";
   },
   set: (value) => {
     if (!settings.value) return;
-    
+
     const colorMap = {
-      light: 'primary_color',
-      dark: 'primary_dark',
-      light_acrylic: 'primary_acrylic',
-      dark_acrylic: 'primary_dark_acrylic'
+      light: "primary_color",
+      dark: "primary_dark",
+      light_acrylic: "primary_acrylic",
+      dark_acrylic: "primary_dark_acrylic",
     };
-    
+
     const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
     if (colorKey) {
       (settings.value as any)[colorKey] = value;
@@ -473,32 +473,32 @@ const primaryColor = computed({
       markChanged();
       applyColors();
     }
-  }
+  },
 });
 
 const secondaryColor = computed({
   get: () => {
     if (!settings.value) return "#8b5cf6";
-    
+
     const colorMap = {
       light: settings.value.secondary_color,
       dark: settings.value.secondary_dark,
       light_acrylic: settings.value.secondary_acrylic,
-      dark_acrylic: settings.value.secondary_dark_acrylic
+      dark_acrylic: settings.value.secondary_dark_acrylic,
     };
-    
+
     return colorMap[editColorPlan.value as keyof typeof colorMap] || "#8b5cf6";
   },
   set: (value) => {
     if (!settings.value) return;
-    
+
     const colorMap = {
-      light: 'secondary_color',
-      dark: 'secondary_dark',
-      light_acrylic: 'secondary_acrylic',
-      dark_acrylic: 'secondary_dark_acrylic'
+      light: "secondary_color",
+      dark: "secondary_dark",
+      light_acrylic: "secondary_acrylic",
+      dark_acrylic: "secondary_dark_acrylic",
     };
-    
+
     const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
     if (colorKey) {
       (settings.value as any)[colorKey] = value;
@@ -506,32 +506,32 @@ const secondaryColor = computed({
       markChanged();
       applyColors();
     }
-  }
+  },
 });
 
 const textPrimaryColor = computed({
   get: () => {
     if (!settings.value) return "#1e293b";
-    
+
     const colorMap = {
       light: settings.value.text_primary_color,
       dark: settings.value.text_primary_dark,
       light_acrylic: settings.value.text_primary_acrylic,
-      dark_acrylic: settings.value.text_primary_dark_acrylic
+      dark_acrylic: settings.value.text_primary_dark_acrylic,
     };
-    
+
     return colorMap[editColorPlan.value as keyof typeof colorMap] || "#1e293b";
   },
   set: (value) => {
     if (!settings.value) return;
-    
+
     const colorMap = {
-      light: 'text_primary_color',
-      dark: 'text_primary_dark',
-      light_acrylic: 'text_primary_acrylic',
-      dark_acrylic: 'text_primary_dark_acrylic'
+      light: "text_primary_color",
+      dark: "text_primary_dark",
+      light_acrylic: "text_primary_acrylic",
+      dark_acrylic: "text_primary_dark_acrylic",
     };
-    
+
     const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
     if (colorKey) {
       (settings.value as any)[colorKey] = value;
@@ -539,32 +539,32 @@ const textPrimaryColor = computed({
       markChanged();
       applyColors();
     }
-  }
+  },
 });
 
 const textSecondaryColor = computed({
   get: () => {
     if (!settings.value) return "#64748b";
-    
+
     const colorMap = {
       light: settings.value.text_secondary_color,
       dark: settings.value.text_secondary_dark,
       light_acrylic: settings.value.text_secondary_acrylic,
-      dark_acrylic: settings.value.text_secondary_dark_acrylic
+      dark_acrylic: settings.value.text_secondary_dark_acrylic,
     };
-    
+
     return colorMap[editColorPlan.value as keyof typeof colorMap] || "#64748b";
   },
   set: (value) => {
     if (!settings.value) return;
-    
+
     const colorMap = {
-      light: 'text_secondary_color',
-      dark: 'text_secondary_dark',
-      light_acrylic: 'text_secondary_acrylic',
-      dark_acrylic: 'text_secondary_dark_acrylic'
+      light: "text_secondary_color",
+      dark: "text_secondary_dark",
+      light_acrylic: "text_secondary_acrylic",
+      dark_acrylic: "text_secondary_dark_acrylic",
     };
-    
+
     const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
     if (colorKey) {
       (settings.value as any)[colorKey] = value;
@@ -572,32 +572,32 @@ const textSecondaryColor = computed({
       markChanged();
       applyColors();
     }
-  }
+  },
 });
 
 const borderColor = computed({
   get: () => {
     if (!settings.value) return "#e2e8f0";
-    
+
     const colorMap = {
       light: settings.value.border_color,
       dark: settings.value.border_dark,
       light_acrylic: settings.value.border_acrylic,
-      dark_acrylic: settings.value.border_dark_acrylic
+      dark_acrylic: settings.value.border_dark_acrylic,
     };
-    
+
     return colorMap[editColorPlan.value as keyof typeof colorMap] || "#e2e8f0";
   },
   set: (value) => {
     if (!settings.value) return;
-    
+
     const colorMap = {
-      light: 'border_color',
-      dark: 'border_dark',
-      light_acrylic: 'border_acrylic',
-      dark_acrylic: 'border_dark_acrylic'
+      light: "border_color",
+      dark: "border_dark",
+      light_acrylic: "border_acrylic",
+      dark_acrylic: "border_dark_acrylic",
     };
-    
+
     const colorKey = colorMap[editColorPlan.value as keyof typeof colorMap];
     if (colorKey) {
       (settings.value as any)[colorKey] = value;
@@ -605,60 +605,60 @@ const borderColor = computed({
       markChanged();
       applyColors();
     }
-  }
+  },
 });
 
 // 颜色选择器状态
 const showColorPickerDialog = ref(false);
-const currentColorProp = ref('');
-const currentColorValue = ref('');
-const originalColorValue = ref('');
+const currentColorProp = ref("");
+const currentColorValue = ref("");
+const originalColorValue = ref("");
 const rgb = ref({ r: 0, g: 0, b: 0, a: 1 });
 const hsl = ref({ h: 0, s: 0, l: 0 });
 
 // 显示颜色选择器
 function showColorPicker(prop: string) {
   currentColorProp.value = prop;
-  
+
   // 根据属性名获取当前颜色值
   switch (prop) {
-    case 'bgColor':
+    case "bgColor":
       currentColorValue.value = bgColor.value;
       originalColorValue.value = bgColor.value;
       break;
-    case 'bgSecondaryColor':
+    case "bgSecondaryColor":
       currentColorValue.value = bgSecondaryColor.value;
       originalColorValue.value = bgSecondaryColor.value;
       break;
-    case 'bgTertiaryColor':
+    case "bgTertiaryColor":
       currentColorValue.value = bgTertiaryColor.value;
       originalColorValue.value = bgTertiaryColor.value;
       break;
-    case 'primaryColor':
+    case "primaryColor":
       currentColorValue.value = primaryColor.value;
       originalColorValue.value = primaryColor.value;
       break;
-    case 'secondaryColor':
+    case "secondaryColor":
       currentColorValue.value = secondaryColor.value;
       originalColorValue.value = secondaryColor.value;
       break;
-    case 'textPrimaryColor':
+    case "textPrimaryColor":
       currentColorValue.value = textPrimaryColor.value;
       originalColorValue.value = textPrimaryColor.value;
       break;
-    case 'textSecondaryColor':
+    case "textSecondaryColor":
       currentColorValue.value = textSecondaryColor.value;
       originalColorValue.value = textSecondaryColor.value;
       break;
-    case 'borderColor':
+    case "borderColor":
       currentColorValue.value = borderColor.value;
       originalColorValue.value = borderColor.value;
       break;
   }
-  
+
   // 解析颜色值为 RGB
   parseColor(currentColorValue.value);
-  
+
   showColorPickerDialog.value = true;
 }
 
@@ -666,24 +666,26 @@ function showColorPicker(prop: string) {
 function parseColor(color: string) {
   try {
     // 创建临时元素来解析颜色
-    const temp = document.createElement('div');
+    const temp = document.createElement("div");
     temp.style.color = color;
     document.body.appendChild(temp);
-    
+
     // 获取计算后的颜色值
     const computedColor = window.getComputedStyle(temp).color;
     document.body.removeChild(temp);
-    
+
     // 从 rgba(r, g, b, a) 格式中提取值
-    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/) || computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/);
+    const match =
+      color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/) ||
+      computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/);
     if (match) {
       rgb.value = {
         r: parseInt(match[1]),
         g: parseInt(match[2]),
         b: parseInt(match[3]),
-        a: match[4] ? parseFloat(match[4]) : 1
+        a: match[4] ? parseFloat(match[4]) : 1,
       };
-      
+
       // 转换为 HSL
       rgbToHsl(rgb.value.r, rgb.value.g, rgb.value.b);
     }
@@ -699,30 +701,36 @@ function rgbToHsl(r: number, g: number, b: number) {
   r /= 255;
   g /= 255;
   b /= 255;
-  
+
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   let h = 0;
   let s = 0;
   const l = (max + min) / 2;
-  
+
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    
+
     switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
     }
-    
+
     h /= 6;
   }
-  
+
   hsl.value = {
     h: Math.round(h * 360),
     s: Math.round(s * 100),
-    l: Math.round(l * 100)
+    l: Math.round(l * 100),
   };
 }
 
@@ -731,33 +739,33 @@ function hslToRgb(h: number, s: number, l: number) {
   h /= 360;
   s /= 100;
   l /= 100;
-  
+
   let r, g, b;
-  
+
   if (s === 0) {
     r = g = b = l; // 灰色
   } else {
     const hue2rgb = (p: number, q: number, t: number) => {
       if (t < 0) t += 1;
       if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
       return p;
     };
-    
+
     const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     const p = 2 * l - q;
-    
-    r = hue2rgb(p, q, h + 1/3);
+
+    r = hue2rgb(p, q, h + 1 / 3);
     g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1/3);
+    b = hue2rgb(p, q, h - 1 / 3);
   }
-  
+
   return {
     r: Math.round(r * 255),
     g: Math.round(g * 255),
-    b: Math.round(b * 255)
+    b: Math.round(b * 255),
   };
 }
 
@@ -777,28 +785,28 @@ function confirmColorPicker() {
   if (currentColorProp.value) {
     const value = currentColorValue.value;
     switch (currentColorProp.value) {
-      case 'bgColor':
+      case "bgColor":
         bgColor.value = value;
         break;
-      case 'bgSecondaryColor':
+      case "bgSecondaryColor":
         bgSecondaryColor.value = value;
         break;
-      case 'bgTertiaryColor':
+      case "bgTertiaryColor":
         bgTertiaryColor.value = value;
         break;
-      case 'primaryColor':
+      case "primaryColor":
         primaryColor.value = value;
         break;
-      case 'secondaryColor':
+      case "secondaryColor":
         secondaryColor.value = value;
         break;
-      case 'textPrimaryColor':
+      case "textPrimaryColor":
         textPrimaryColor.value = value;
         break;
-      case 'textSecondaryColor':
+      case "textSecondaryColor":
         textSecondaryColor.value = value;
         break;
-      case 'borderColor':
+      case "borderColor":
         borderColor.value = value;
         break;
     }
@@ -823,14 +831,14 @@ function rgbToHex(r: number, g: number, b: number): string {
 function updateFromRGB() {
   const { r, g, b, a } = rgb.value;
   let colorValue;
-  
+
   // 如果透明度为 1，使用 HEX 格式，否则使用 RGBA 格式
   if (a === 1) {
     colorValue = rgbToHex(r, g, b);
   } else {
     colorValue = `rgba(${r}, ${g}, ${b}, ${a})`;
   }
-  
+
   currentColorValue.value = colorValue;
   updateColor(colorValue);
   rgbToHsl(r, g, b);
@@ -842,13 +850,13 @@ function updateHueFromClick(event: MouseEvent) {
   const rect = target.getBoundingClientRect();
   const offsetX = event.clientX - rect.left;
   const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
-  
+
   hsl.value.h = Math.round(percentage * 360);
   const rgbValues = hslToRgb(hsl.value.h, hsl.value.s, hsl.value.l);
   rgb.value.r = rgbValues.r;
   rgb.value.g = rgbValues.g;
   rgb.value.b = rgbValues.b;
-  
+
   updateFromRGB();
 }
 
@@ -858,13 +866,13 @@ function updateSaturationFromClick(event: MouseEvent) {
   const rect = target.getBoundingClientRect();
   const offsetX = event.clientX - rect.left;
   const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
-  
+
   hsl.value.s = Math.round(percentage * 100);
   const rgbValues = hslToRgb(hsl.value.h, hsl.value.s, hsl.value.l);
   rgb.value.r = rgbValues.r;
   rgb.value.g = rgbValues.g;
   rgb.value.b = rgbValues.b;
-  
+
   updateFromRGB();
 }
 
@@ -874,13 +882,13 @@ function updateLightnessFromClick(event: MouseEvent) {
   const rect = target.getBoundingClientRect();
   const offsetX = event.clientX - rect.left;
   const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
-  
+
   hsl.value.l = Math.round(percentage * 100);
   const rgbValues = hslToRgb(hsl.value.h, hsl.value.s, hsl.value.l);
   rgb.value.r = rgbValues.r;
   rgb.value.g = rgbValues.g;
   rgb.value.b = rgbValues.b;
-  
+
   updateFromRGB();
 }
 
@@ -890,7 +898,7 @@ function updateAlphaFromClick(event: MouseEvent) {
   const rect = target.getBoundingClientRect();
   const offsetX = event.clientX - rect.left;
   const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
-  
+
   rgb.value.a = parseFloat(percentage.toFixed(2));
   updateFromRGB();
 }
@@ -1182,66 +1190,66 @@ async function handleThemeChange() {
   // 如果选择了预设主题，更新颜色值
   if (settings.value.color !== "custom") {
     const preset = settings.value.color;
-    
+
     // 颜色方案映射
     const colorPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
-    
+
     // 颜色类型映射
     const colorTypes = {
       bg: {
         light: "bg_color",
         dark: "bg_dark",
         light_acrylic: "bg_acrylic",
-        dark_acrylic: "bg_dark_acrylic"
+        dark_acrylic: "bg_dark_acrylic",
       },
       bgSecondary: {
         light: "bg_secondary_color",
         dark: "bg_secondary_dark",
         light_acrylic: "bg_secondary_acrylic",
-        dark_acrylic: "bg_secondary_dark_acrylic"
+        dark_acrylic: "bg_secondary_dark_acrylic",
       },
       bgTertiary: {
         light: "bg_tertiary_color",
         dark: "bg_tertiary_dark",
         light_acrylic: "bg_tertiary_acrylic",
-        dark_acrylic: "bg_tertiary_dark_acrylic"
+        dark_acrylic: "bg_tertiary_dark_acrylic",
       },
       primary: {
         light: "primary_color",
         dark: "primary_dark",
         light_acrylic: "primary_acrylic",
-        dark_acrylic: "primary_dark_acrylic"
+        dark_acrylic: "primary_dark_acrylic",
       },
       secondary: {
         light: "secondary_color",
         dark: "secondary_dark",
         light_acrylic: "secondary_acrylic",
-        dark_acrylic: "secondary_dark_acrylic"
+        dark_acrylic: "secondary_dark_acrylic",
       },
       textPrimary: {
         light: "text_primary_color",
         dark: "text_primary_dark",
         light_acrylic: "text_primary_acrylic",
-        dark_acrylic: "text_primary_dark_acrylic"
+        dark_acrylic: "text_primary_dark_acrylic",
       },
       textSecondary: {
         light: "text_secondary_color",
         dark: "text_secondary_dark",
         light_acrylic: "text_secondary_acrylic",
-        dark_acrylic: "text_secondary_dark_acrylic"
+        dark_acrylic: "text_secondary_dark_acrylic",
       },
       border: {
         light: "border_color",
         dark: "border_dark",
         light_acrylic: "border_acrylic",
-        dark_acrylic: "border_dark_acrylic"
-      }
+        dark_acrylic: "border_dark_acrylic",
+      },
     };
 
     // 更新所有颜色方案的颜色值
     if (presetThemes[preset]) {
-      Object.keys(colorTypes).forEach(colorType => {
-        colorPlans.forEach(plan => {
+      Object.keys(colorTypes).forEach((colorType) => {
+        colorPlans.forEach((plan) => {
           const settingsKey = colorTypes[colorType][plan];
           if (settingsKey && settings.value[settingsKey] !== undefined) {
             const presetColors = presetThemes[preset][plan];
@@ -1448,7 +1456,7 @@ function clearBackgroundImage() {
           </div>
         </div>
 
-      <!-- 颜色编辑折叠区域 -->
+        <!-- 颜色编辑折叠区域 -->
         <div class="collapsible-section">
           <div class="collapsible-header" @click="colorSettingsExpanded = !colorSettingsExpanded">
             <div class="setting-info">
@@ -1486,31 +1494,61 @@ function clearBackgroundImage() {
 
               <div class="setting-row">
                 <div class="setting-info">
-                  <span class="setting-label">{{ i18n.t("settings.primary_background_color") }}</span>
+                  <span class="setting-label">{{
+                    i18n.t("settings.primary_background_color")
+                  }}</span>
                 </div>
                 <div class="input-lg color-input-container">
-                  <SLInput v-model="bgColor" type="text" :placeholder="i18n.t('settings.color_value')" />
-                  <div class="color-preview" :style="{ backgroundColor: bgColor }" @click="showColorPicker('bgColor')"></div>
+                  <SLInput
+                    v-model="bgColor"
+                    type="text"
+                    :placeholder="i18n.t('settings.color_value')"
+                  />
+                  <div
+                    class="color-preview"
+                    :style="{ backgroundColor: bgColor }"
+                    @click="showColorPicker('bgColor')"
+                  ></div>
                 </div>
               </div>
 
               <div class="setting-row">
                 <div class="setting-info">
-                  <span class="setting-label">{{ i18n.t("settings.secondary_background_color") }}</span>
+                  <span class="setting-label">{{
+                    i18n.t("settings.secondary_background_color")
+                  }}</span>
                 </div>
                 <div class="input-lg color-input-container">
-                  <SLInput v-model="bgSecondaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
-                  <div class="color-preview" :style="{ backgroundColor: bgSecondaryColor }" @click="showColorPicker('bgSecondaryColor')"></div>
+                  <SLInput
+                    v-model="bgSecondaryColor"
+                    type="text"
+                    :placeholder="i18n.t('settings.color_value')"
+                  />
+                  <div
+                    class="color-preview"
+                    :style="{ backgroundColor: bgSecondaryColor }"
+                    @click="showColorPicker('bgSecondaryColor')"
+                  ></div>
                 </div>
               </div>
 
               <div class="setting-row">
                 <div class="setting-info">
-                  <span class="setting-label">{{ i18n.t("settings.tertiary_background_color") }}</span>
+                  <span class="setting-label">{{
+                    i18n.t("settings.tertiary_background_color")
+                  }}</span>
                 </div>
                 <div class="input-lg color-input-container">
-                  <SLInput v-model="bgTertiaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
-                  <div class="color-preview" :style="{ backgroundColor: bgTertiaryColor }" @click="showColorPicker('bgTertiaryColor')"></div>
+                  <SLInput
+                    v-model="bgTertiaryColor"
+                    type="text"
+                    :placeholder="i18n.t('settings.color_value')"
+                  />
+                  <div
+                    class="color-preview"
+                    :style="{ backgroundColor: bgTertiaryColor }"
+                    @click="showColorPicker('bgTertiaryColor')"
+                  ></div>
                 </div>
               </div>
 
@@ -1519,8 +1557,16 @@ function clearBackgroundImage() {
                   <span class="setting-label">{{ i18n.t("settings.primary_color") }}</span>
                 </div>
                 <div class="input-lg color-input-container">
-                  <SLInput v-model="primaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
-                  <div class="color-preview" :style="{ backgroundColor: primaryColor }" @click="showColorPicker('primaryColor')"></div>
+                  <SLInput
+                    v-model="primaryColor"
+                    type="text"
+                    :placeholder="i18n.t('settings.color_value')"
+                  />
+                  <div
+                    class="color-preview"
+                    :style="{ backgroundColor: primaryColor }"
+                    @click="showColorPicker('primaryColor')"
+                  ></div>
                 </div>
               </div>
 
@@ -1529,8 +1575,16 @@ function clearBackgroundImage() {
                   <span class="setting-label">{{ i18n.t("settings.secondary_color") }}</span>
                 </div>
                 <div class="input-lg color-input-container">
-                  <SLInput v-model="secondaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
-                  <div class="color-preview" :style="{ backgroundColor: secondaryColor }" @click="showColorPicker('secondaryColor')"></div>
+                  <SLInput
+                    v-model="secondaryColor"
+                    type="text"
+                    :placeholder="i18n.t('settings.color_value')"
+                  />
+                  <div
+                    class="color-preview"
+                    :style="{ backgroundColor: secondaryColor }"
+                    @click="showColorPicker('secondaryColor')"
+                  ></div>
                 </div>
               </div>
 
@@ -1539,8 +1593,19 @@ function clearBackgroundImage() {
                   <span class="setting-label">{{ i18n.t("settings.primary_text_color") }}</span>
                 </div>
                 <div class="input-lg color-input-container">
-                  <SLInput v-model="textPrimaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
-                  <div class="color-preview" :style="{ backgroundColor: textPrimaryColor, color: textPrimaryColor === '#ffffff' ? '#000000' : '#ffffff' }" @click="showColorPicker('textPrimaryColor')"></div>
+                  <SLInput
+                    v-model="textPrimaryColor"
+                    type="text"
+                    :placeholder="i18n.t('settings.color_value')"
+                  />
+                  <div
+                    class="color-preview"
+                    :style="{
+                      backgroundColor: textPrimaryColor,
+                      color: textPrimaryColor === '#ffffff' ? '#000000' : '#ffffff',
+                    }"
+                    @click="showColorPicker('textPrimaryColor')"
+                  ></div>
                 </div>
               </div>
 
@@ -1549,8 +1614,19 @@ function clearBackgroundImage() {
                   <span class="setting-label">{{ i18n.t("settings.secondary_text_color") }}</span>
                 </div>
                 <div class="input-lg color-input-container">
-                  <SLInput v-model="textSecondaryColor" type="text" :placeholder="i18n.t('settings.color_value')" />
-                  <div class="color-preview" :style="{ backgroundColor: textSecondaryColor, color: textSecondaryColor === '#ffffff' ? '#000000' : '#ffffff' }" @click="showColorPicker('textSecondaryColor')"></div>
+                  <SLInput
+                    v-model="textSecondaryColor"
+                    type="text"
+                    :placeholder="i18n.t('settings.color_value')"
+                  />
+                  <div
+                    class="color-preview"
+                    :style="{
+                      backgroundColor: textSecondaryColor,
+                      color: textSecondaryColor === '#ffffff' ? '#000000' : '#ffffff',
+                    }"
+                    @click="showColorPicker('textSecondaryColor')"
+                  ></div>
                 </div>
               </div>
 
@@ -1559,8 +1635,16 @@ function clearBackgroundImage() {
                   <span class="setting-label">{{ i18n.t("settings.border_color") }}</span>
                 </div>
                 <div class="input-lg color-input-container">
-                  <SLInput v-model="borderColor" type="text" :placeholder="i18n.t('settings.color_value')" />
-                  <div class="color-preview" :style="{ backgroundColor: borderColor }" @click="showColorPicker('borderColor')"></div>
+                  <SLInput
+                    v-model="borderColor"
+                    type="text"
+                    :placeholder="i18n.t('settings.color_value')"
+                  />
+                  <div
+                    class="color-preview"
+                    :style="{ backgroundColor: borderColor }"
+                    @click="showColorPicker('borderColor')"
+                  ></div>
                 </div>
               </div>
             </div>
@@ -1842,7 +1926,7 @@ function clearBackgroundImage() {
         }}</SLButton>
       </template>
     </SLModal>
-    
+
     <!-- 颜色选择器对话框 -->
     <SLModal
       :visible="showColorPickerDialog"
@@ -1856,74 +1940,127 @@ function clearBackgroundImage() {
           <div class="color-preview-background"></div>
           <div class="color-preview-large" :style="{ backgroundColor: currentColorValue }"></div>
         </div>
-        
+
         <!-- 颜色值输入 -->
         <div class="color-value-input">
-          <SLInput v-model="currentColorValue" type="text" :placeholder="i18n.t('settings.input_color_placeholder')" @input="updateColor(currentColorValue)" />
+          <SLInput
+            v-model="currentColorValue"
+            type="text"
+            :placeholder="i18n.t('settings.input_color_placeholder')"
+            @input="updateColor(currentColorValue)"
+          />
         </div>
-        
+
         <!-- 色相滑动条 -->
         <div class="picker-section">
           <label>{{ i18n.t("settings.color_hue") }}</label>
           <div class="hue-slider" @click="updateHueFromClick($event)">
             <div class="hue-track"></div>
-            <div class="hue-thumb" :style="{ left: (hsl.h / 360 * 100) + '%' }"></div>
+            <div class="hue-thumb" :style="{ left: (hsl.h / 360) * 100 + '%' }"></div>
           </div>
         </div>
-        
+
         <!-- 饱和度滑动条 -->
         <div class="picker-section">
           <label>{{ i18n.t("settings.color_saturation") }}</label>
           <div class="saturation-slider" @click="updateSaturationFromClick($event)">
-            <div class="saturation-track" :style="{ background: `linear-gradient(to right, hsl(${hsl.h}, 0%, 50%), hsl(${hsl.h}, 100%, 50%))` }"></div>
+            <div
+              class="saturation-track"
+              :style="{
+                background: `linear-gradient(to right, hsl(${hsl.h}, 0%, 50%), hsl(${hsl.h}, 100%, 50%))`,
+              }"
+            ></div>
             <div class="saturation-thumb" :style="{ left: hsl.s + '%' }"></div>
           </div>
         </div>
-        
+
         <!-- 亮度滑动条 -->
         <div class="picker-section">
           <label>{{ i18n.t("settings.color_lightness") }}</label>
           <div class="lightness-slider" @click="updateLightnessFromClick($event)">
-            <div class="lightness-track" :style="{ background: `linear-gradient(to right, hsl(${hsl.h}, ${hsl.s}%, 0%), hsl(${hsl.h}, ${hsl.s}%, 50%), hsl(${hsl.h}, ${hsl.s}%, 100%))` }"></div>
+            <div
+              class="lightness-track"
+              :style="{
+                background: `linear-gradient(to right, hsl(${hsl.h}, ${hsl.s}%, 0%), hsl(${hsl.h}, ${hsl.s}%, 50%), hsl(${hsl.h}, ${hsl.s}%, 100%))`,
+              }"
+            ></div>
             <div class="lightness-thumb" :style="{ left: hsl.l + '%' }"></div>
           </div>
         </div>
-        
+
         <!-- 透明度滑动条 -->
         <div class="picker-section">
           <label>{{ i18n.t("settings.color_alpha") }}</label>
           <div class="alpha-slider-container">
             <div class="alpha-slider-background"></div>
             <div class="alpha-slider" @click="updateAlphaFromClick($event)">
-              <div class="alpha-track" :style="{ background: `linear-gradient(to right, transparent, hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%))` }"></div>
-              <div class="alpha-thumb" :style="{ left: (rgb.a * 100) + '%' }"></div>
+              <div
+                class="alpha-track"
+                :style="{
+                  background: `linear-gradient(to right, transparent, hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%))`,
+                }"
+              ></div>
+              <div class="alpha-thumb" :style="{ left: rgb.a * 100 + '%' }"></div>
             </div>
           </div>
         </div>
-        
+
         <!-- RGB输入 -->
         <div class="rgb-inputs">
           <div class="rgb-input-item">
             <label>R</label>
-            <SLInput type="number" min="0" max="255" v-model="rgb.r" @input="updateFromRGB" style="width: 100px;" />
+            <SLInput
+              type="number"
+              min="0"
+              max="255"
+              v-model="rgb.r"
+              @input="updateFromRGB"
+              style="width: 100px"
+            />
           </div>
           <div class="rgb-input-item">
             <label>G</label>
-            <SLInput type="number" min="0" max="255" v-model="rgb.g" @input="updateFromRGB" style="width: 100px;" />
+            <SLInput
+              type="number"
+              min="0"
+              max="255"
+              v-model="rgb.g"
+              @input="updateFromRGB"
+              style="width: 100px"
+            />
           </div>
           <div class="rgb-input-item">
             <label>B</label>
-            <SLInput type="number" min="0" max="255" v-model="rgb.b" @input="updateFromRGB" style="width: 100px;" />
+            <SLInput
+              type="number"
+              min="0"
+              max="255"
+              v-model="rgb.b"
+              @input="updateFromRGB"
+              style="width: 100px"
+            />
           </div>
           <div class="rgb-input-item">
             <label>A</label>
-            <SLInput type="number" min="0" max="1" step="0.01" v-model="rgb.a" @input="updateFromRGB" style="width: 100px;" />
+            <SLInput
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              v-model="rgb.a"
+              @input="updateFromRGB"
+              style="width: 100px"
+            />
           </div>
         </div>
       </div>
       <template #footer>
-        <SLButton variant="secondary" @click="cancelColorPicker">{{ i18n.t("settings.cancel") }}</SLButton>
-        <SLButton variant="primary" @click="confirmColorPicker">{{ i18n.t("settings.confirm") }}</SLButton>
+        <SLButton variant="secondary" @click="cancelColorPicker">{{
+          i18n.t("settings.cancel")
+        }}</SLButton>
+        <SLButton variant="primary" @click="confirmColorPicker">{{
+          i18n.t("settings.confirm")
+        }}</SLButton>
       </template>
     </SLModal>
   </div>
@@ -2325,7 +2462,16 @@ function clearBackgroundImage() {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: linear-gradient(45deg, #f0f0f0 25%, #ffffff 25%, #ffffff 50%, #f0f0f0 50%, #f0f0f0 75%, #ffffff 75%, #ffffff 100%);
+  background-image: linear-gradient(
+    45deg,
+    #f0f0f0 25%,
+    #ffffff 25%,
+    #ffffff 50%,
+    #f0f0f0 50%,
+    #f0f0f0 75%,
+    #ffffff 75%,
+    #ffffff 100%
+  );
   background-size: 16px 16px;
 }
 
@@ -2365,7 +2511,16 @@ function clearBackgroundImage() {
   width: 100%;
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+  background: linear-gradient(
+    to right,
+    #ff0000,
+    #ffff00,
+    #00ff00,
+    #00ffff,
+    #0000ff,
+    #ff00ff,
+    #ff0000
+  );
 }
 
 .hue-thumb {
@@ -2451,7 +2606,16 @@ function clearBackgroundImage() {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: linear-gradient(45deg, #f0f0f0 25%, #ffffff 25%, #ffffff 50%, #f0f0f0 50%, #f0f0f0 75%, #ffffff 75%, #ffffff 100%);
+  background-image: linear-gradient(
+    45deg,
+    #f0f0f0 25%,
+    #ffffff 25%,
+    #ffffff 50%,
+    #f0f0f0 50%,
+    #f0f0f0 75%,
+    #ffffff 75%,
+    #ffffff 100%
+  );
   background-size: 8px 8px;
 }
 
