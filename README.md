@@ -127,6 +127,12 @@ sea-lantern/
 │   │   └── splash/                   启动画面
 │   │       └── SplashScreen.vue     应用启动时的加载动画
 │   │
+│   ├── locales/                      国际化资源
+│   │   ├── index.ts                  语言文件入口
+│   │   ├── en-US.json                英文翻译
+│   │   ├── zh-CN.json                简体中文翻译
+│   │   └── zh-TW.json                繁体中文翻译
+│   │
 │   ├── views/                         页面视图（每个路由对应一个）
 │   │   ├── HomeView.vue              首页（服务器列表、系统状态）
 │   │   ├── CreateServerView.vue     创建/导入服务器页面
@@ -274,8 +280,6 @@ sea-lantern/
 - 内网穿透 - 集成 FRP
 - 定时任务 - 自动重启、定时备份、定时执行命令
 - 资源管理 - 从 Modrinth / CurseForge 搜索安装插件和 Mod
-- 暗色主题 - CSS 变量都准备好了，加一套 dark 的值就行
-- 国际化 - 目前全是中文硬编码，可以抽成语言文件
 
 ## 参与开发
 
@@ -312,6 +316,10 @@ sea-lantern/
 4. `AppSidebar.vue` 的 `navItems` 数组里加一项
 
 前后端各三个文件，路由和侧栏各改一行。
+
+### i18n 国际化支持指南
+
+Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文。如果你需要添加新的翻译或语言支持，请参考 [i18n 国际化指南](i18n.md)。
 
 ## License
 

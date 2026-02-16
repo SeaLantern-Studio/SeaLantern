@@ -114,6 +114,12 @@ export const contributors: Contributor[] = [
     avatar: "https://mc-heads.net/avatar/xingwangzhe_/64",
     url: "https://github.com/xingwangzhe",
   },
+  {
+    name: "TNTXZ",
+    role: "诶嘿~",
+    avatar: "https://minotar.net/avatar/_TNTXZ_/64",
+    url: "https://github.com/TNTXZ",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================

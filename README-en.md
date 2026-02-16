@@ -129,6 +129,12 @@ sea-lantern/
 │   │   └── splash/                   Splash screen
 │   │       └── SplashScreen.vue     Loading animation when app starts
 │   │
+│   ├── locales/                      国际化资源
+│   │   ├── index.ts                  语言文件入口
+│   │   ├── en-US.json                英文翻译
+│   │   ├── zh-CN.json                简体中文翻译
+│   │   └── zh-TW.json                繁体中文翻译
+│   │
 │   ├── views/                         Page views (one per route)
 │   │   ├── HomeView.vue              Home page (server list, system status)
 │   │   ├── CreateServerView.vue     Create/import server page
