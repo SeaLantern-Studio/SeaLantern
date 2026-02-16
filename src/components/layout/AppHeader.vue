@@ -123,9 +123,25 @@ function setLanguage(locale: string) {
   showLanguageMenu.value = false;
 }
 
-function handleClickOutside() {
-  showLanguageMenu.value = false;
+// 处理点击外部关闭语言菜单
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+  // 检查是否点击了语言选择器或语言菜单内部
+  const isLanguageSelector = target.closest(".language-selector");
+  
+  // 如果没有点击语言选择器或语言菜单，则关闭菜单
+  if (!isLanguageSelector) {
+    showLanguageMenu.value = false;
+  }
 }
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
 </script>
 
 <template>
@@ -188,8 +204,6 @@ function handleClickOutside() {
         </button>
       </div>
     </div>
-
-    <div v-if="showLanguageMenu" class="click-outside" @click="handleClickOutside"></div>
   </header>
 
   <!-- 关闭窗口确认模态框 -->

@@ -53,10 +53,6 @@ export async function restartAndInstall(): Promise<void> {
   return tauriInvoke<void>("restart_and_install");
 }
 
-export async function downloadUpdateFromDebugUrl(url: string): Promise<string> {
-  return tauriInvoke<string>("download_update_from_debug_url", { url });
-}
-
 export function onDownloadProgress(
   callback: (progress: DownloadProgress) => void,
 ): Promise<UnlistenFn> {

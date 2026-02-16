@@ -87,7 +87,8 @@
     "default_port_placeholder": "Default 25565",
     "java_env": "Java Environment",
     "java_scan": "Scan all disks for Java installations",
-    "java_manual": "Manually select Java path"
+    "java_manual": "Manually select Java path",
+    "java_path": "Java Path"
   },
   "console": {
     "title": "Console",
@@ -232,7 +233,7 @@
     "max_memory_desc": "Recommended at least 1024MB. Large modded servers may need 4096MB or more",
     "min_memory": "Min Memory (MB)",
     "min_memory_desc": "Recommended to set to 1/4 to 1/2 of max memory",
-    "default_java": "Default Java Path",
+    "default_java": "Default Java Version",
     "default_java_desc": "Leave blank to automatically detect the most suitable Java each time",
     "jvm_args_desc": "These parameters will be added to all server startups. Suitable for GC optimization parameters",
     "port_desc": "Minecraft default port is 25565. Multiple servers need different ports",

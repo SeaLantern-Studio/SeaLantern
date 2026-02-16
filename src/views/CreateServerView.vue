@@ -184,17 +184,44 @@ async function handleCreate() {
   }
 }
 
-function getJavaLabel(java: JavaInfo): string {
-  const type = java.major_version <= 8 ? "JRE" : "JDK";
-  const arch = java.is_64bit ? "64-bit" : "32-bit";
-  return `${type} ${java.major_version} (${java.version}) - ${java.vendor} [${arch}]`;
+function getJavaLabel(java: JavaInfo): { label: string; subLabel: string } {
+  // 简化 Java 显示名称
+  // label: 简短名称（如 "Java 17 Eclipse Temurin 64位"）
+  // subLabel: 路径
+  const version = java.major_version;
+  const arch = java.is_64bit ? "64位" : "32位";
+  
+  // 简化 vendor 名称
+  let vendor = java.vendor;
+  if (vendor.includes("Oracle") || vendor.includes("Sun")) {
+    vendor = "Oracle";
+  } else if (vendor.includes("Temurin") || vendor.includes("Adopt")) {
+    vendor = "Eclipse Temurin";
+  } else if (vendor.includes("Amazon")) {
+    vendor = "Amazon Corretto";
+  } else if (vendor.includes("Microsoft")) {
+    vendor = "Microsoft";
+  } else if (vendor.includes("Zulu") || vendor.includes("Azul")) {
+    vendor = "Azul Zulu";
+  } else if (vendor.includes("Liberica") || vendor.includes("BellSoft")) {
+    vendor = "Liberica";
+  }
+  
+  return {
+    label: `Java ${version} ${vendor} ${arch}`,
+    subLabel: java.path
+  };
 }
 
 const javaOptions = computed(() => {
-  return javaList.value.map((java) => ({
-    label: getJavaLabel(java),
-    value: java.path,
-  }));
+  return javaList.value.map((java) => {
+    const labelInfo = getJavaLabel(java);
+    return {
+      label: labelInfo.label,
+      subLabel: labelInfo.subLabel,
+      value: java.path,
+    };
+  });
 });
 
 const startupModes: StartupMode[] = ["jar", "bat", "sh"];
@@ -257,14 +284,10 @@ const startupFileLabel = computed(() => {
           searchable
           maxHeight="240px"
         />
-        <div v-if="selectedJava" class="selected-java-path">
-          <span class="text-caption">{{ i18n.t("create.server_path") }}：</span>
-          <span class="text-mono text-caption">{{ selectedJava }}</span>
-        </div>
       </div>
       <div class="java-manual">
         <SLInput
-          :label="i18n.t('create.java_version')"
+          :label="i18n.t('create.java_path')"
           v-model="selectedJava"
           :placeholder="i18n.t('create.java_manual')"
         >

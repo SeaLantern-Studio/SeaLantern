@@ -1,9 +1,14 @@
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 use sysinfo::{Disks, Networks, System};
 use tauri_plugin_dialog::DialogExt;
 
+static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new_all()));
+
 #[tauri::command]
 pub fn get_system_info() -> Result<serde_json::Value, String> {
-    let mut sys = System::new_all();
+    let mut sys = SYSTEM.lock().map_err(|e| e.to_string())?;
+
     sys.refresh_all();
 
     let cpu_usage = sys.global_cpu_usage();
