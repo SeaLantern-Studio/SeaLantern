@@ -13,9 +13,9 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 ---
 
-![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
-
 </div>
+
+![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
 ## What can it do?
 
