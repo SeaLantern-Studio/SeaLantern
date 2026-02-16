@@ -12,7 +12,19 @@ enum TrayMenuId {
 }
 
 // 创建托盘菜单
+// 存储托盘图标实例，防止重复创建
+let trayIconInstance: any = null;
+
+/**
+ * 设置托盘图标
+ * 确保只创建一个托盘图标实例
+ */
 export async function setupTray() {
+  // 如果已经创建了托盘图标实例，直接返回
+  if (trayIconInstance) {
+    return;
+  }
+
   const menu = await Menu.new({
     items: [
       {
@@ -70,5 +82,26 @@ export async function setupTray() {
     menuOnLeftClick: false, // 禁用左键显示菜单，改为点击打开主界面
   };
 
-  await TrayIcon.new(options as any);
+  // 创建托盘图标实例并存储
+  trayIconInstance = await TrayIcon.new(options as any);
+  
+  // 添加左键点击事件处理
+  if (trayIconInstance && typeof trayIconInstance.onClick === 'function') {
+    trayIconInstance.onClick(async () => {
+      const w = getCurrentWindow();
+      try {
+        const isVisible = await w.isVisible();
+        if (isVisible) {
+          await w.hide();
+        } else {
+          await w.show();
+          await w.setFocus();
+        }
+      } catch (e) {
+        console.warn("Failed to toggle window visibility:", e);
+        await w.show();
+        await w.setFocus();
+      }
+    });
+  }
 }

@@ -659,9 +659,7 @@ function handleAnimationEnd(event: AnimationEvent) {
             :class="['delete-confirm-input', { closing: isClosing }]"
             @animationend="handleAnimationEnd"
           >
-            <p class="delete-confirm-message">
-              {{ i18n.t("home.delete_confirm_message", { server: server.name }) }}
-            </p>
+            <p class="delete-confirm-message" v-html="i18n.t('home.delete_confirm_message', { server: server.name })"></p>
             <div class="delete-input-group">
               <input
                 type="text"
