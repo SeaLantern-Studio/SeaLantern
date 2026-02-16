@@ -645,6 +645,18 @@ impl ServerManager {
         }
     }
 
+    pub fn force_stop_all_servers(&self) {
+        let ids: Vec<String> = self.processes.lock().unwrap().keys().cloned().collect();
+        let mut procs = self.processes.lock().unwrap();
+        for id in ids {
+            if let Some(mut child) = procs.remove(&id) {
+                let _ = child.kill();
+                let _ = child.wait();
+                self.append_log(&id, "[Sea Lantern] 已强制终止服务器进程");
+            }
+        }
+    }
+
     pub fn add_server_command(
         &self,
         server_id: &str,

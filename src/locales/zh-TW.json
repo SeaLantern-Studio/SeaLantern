@@ -9,7 +9,8 @@
     "settings": "設定",
     "personalize": "個人化",
     "about": "關於",
-    "loading": "載入中..."
+    "loading": "載入中...",
+    "select_server": "選擇伺服器"
   },
   "sidebar": {
     "groups": {
@@ -21,7 +22,7 @@
   },
   "header": {
     "language": "語言",
-    "chinese": "简体中文",
+    "chinese": "簡體中文",
     "english": "English",
     "chinese_tw": "繁體中文"
   },
@@ -276,7 +277,7 @@
     "hero_desc": "一個由社區共同打造的 Minecraft 開服器。\n不僅程式碼開源，連靈魂都由你們定義。",
     "manifesto_title": "為什麼叫 Sea Lantern？",
     "manifesto_text1": "海晶燈（Sea Lantern）是 Minecraft 中一種發光方塊——它由無數碎片組合而成，卻能發出柔和而持久的光。",
-    "manifesto_text2": "就像這個專案一樣，每一為貢獻者都是一片海晶碎片。\n當我們聚在一起，就能照亮整個社區。",
+    "manifesto_text2": "就像這個專案一樣，每一位貢獻者都是一片海晶碎片。\n當我們聚在一起，就能照亮整個社區。",
     "contributor_wall": "貢獻者牆",
     "contributor_desc": "每一個讓這個專案變得更好的人",
     "join_text": "你的名字",
@@ -310,7 +311,26 @@
     "update_error": "更新失敗",
     "update_title": "發現新版本",
     "update_current": "目前版本",
+    "update_latest_version": "最新版本",
     "update_release_notes": "更新內容",
-    "update_now": "立即更新"
+    "update_now": "立即更新",
+    "update_downloading": "下載中...",
+    "update_installing": "正在啟動安裝程式...",
+    "update_restart_install": "重啟並安裝",
+    "update_ready": "你的更新已就緒",
+    "update_download_complete": "下載完成，點擊安裝",
+    "update_debug": "除錯",
+    "update_debug_placeholder": "輸入更新包URL進行測試",
+    "update_debug_download": "下載測試",
+    "update_running_warning_title": "更新風險提示",
+    "update_running_warning_desc": "偵測到目前有伺服器正在運行。",
+    "update_running_warning_hint": "點擊繼續更新將強制關閉所有伺服器進程，可能導致資料遺失。",
+    "update_running_servers": "運行中的伺服器",
+    "update_cancel_update": "取消並先關閉伺服器",
+    "update_force_auto": "繼續更新",
+    "open_link_failed": "無法打開連結",
+    "update_check_failed": "檢查更新失敗",
+    "update_download_failed": "下載失敗",
+    "github_repo": "GitHub 倉庫"
   }
 }

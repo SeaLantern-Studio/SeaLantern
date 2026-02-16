@@ -2,12 +2,19 @@
 import { ref } from "vue";
 import AppLayout from "./components/layout/AppLayout.vue";
 import SplashScreen from "./components/splash/SplashScreen.vue";
+import UpdateModal from "./components/common/UpdateModal.vue";
+import { useUpdateStore } from "./stores/updateStore";
 
 const showSplash = ref(true);
+const updateStore = useUpdateStore();
 
 function handleSplashReady() {
-  // 立即淡出，不额外延迟
   showSplash.value = false;
+  updateStore.checkForUpdateOnStartup();
+}
+
+function handleUpdateModalClose() {
+  updateStore.hideUpdateModal();
 }
 </script>
 
@@ -15,7 +22,15 @@ function handleSplashReady() {
   <transition name="splash-fade">
     <SplashScreen v-if="showSplash" @ready="handleSplashReady" />
   </transition>
-  <AppLayout v-if="!showSplash" />
+  
+  <template v-if="!showSplash">
+    <AppLayout />
+    
+    <UpdateModal
+      v-if="updateStore.isUpdateModalVisible && updateStore.isUpdateAvailable"
+      @close="handleUpdateModalClose"
+    />
+  </template>
 </template>
 
 <style>
@@ -25,7 +40,6 @@ function handleSplashReady() {
   overflow: hidden;
 }
 
-/* 启动画面淡出动画 */
 .splash-fade-leave-active {
   transition: opacity 0.3s ease;
 }

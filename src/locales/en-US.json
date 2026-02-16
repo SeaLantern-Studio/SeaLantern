@@ -9,7 +9,8 @@
     "settings": "Settings",
     "personalize": "Personalize",
     "about": "About",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "select_server": "Select server"
   },
   "sidebar": {
     "groups": {
@@ -234,6 +235,8 @@
     "export_success": "Settings JSON copied to clipboard",
     "import_success": "Settings imported",
     "no_json": "Please paste JSON",
+    "import_title": "Import Settings",
+    "reset_title": "Confirm Restore Defaults",
     "browse_java": "Browse for java.exe",
     "browse_jar": "Browse for .jar file",
     "server_name_placeholder": "Enter name",
@@ -308,7 +311,26 @@
     "update_error": "Update failed",
     "update_title": "New Version Found",
     "update_current": "Current Version",
+    "update_latest_version": "Latest Version",
     "update_release_notes": "Release Notes",
-    "update_now": "Update Now"
+    "update_now": "Update Now",
+    "update_downloading": "Downloading...",
+    "update_installing": "Launching installer...",
+    "update_restart_install": "Restart and Install",
+    "update_ready": "Your Update Is Ready",
+    "update_download_complete": "Download complete, click to install",
+    "update_debug": "Debug",
+    "update_debug_placeholder": "Enter update package URL for testing",
+    "update_debug_download": "Download Test",
+    "update_running_warning_title": "Update Risk Warning",
+    "update_running_warning_desc": "Detected running servers.",
+    "update_running_warning_hint": "Click Continue Update to forcibly terminate all server processes, which may cause data loss.",
+    "update_running_servers": "Running Servers",
+    "update_cancel_update": "Cancel and close servers first",
+    "update_force_auto": "Continue Update",
+    "open_link_failed": "Failed to open link",
+    "update_check_failed": "Failed to check updates",
+    "update_download_failed": "Download failed",
+    "github_repo": "GitHub Repository"
   }
 }

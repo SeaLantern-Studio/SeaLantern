@@ -83,6 +83,12 @@ pub fn stop_server(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn force_stop_all_servers() -> Result<(), String> {
+    manager().force_stop_all_servers();
+    Ok(())
+}
+
+#[tauri::command]
 pub fn send_command(id: String, command: String) -> Result<(), String> {
     manager().send_command(&id, &command)
 }

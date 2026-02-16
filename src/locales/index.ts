@@ -1,78 +1,82 @@
 import zhCN from "./zh-CN.json";
 import enUS from "./en-US.json";
 import zhTW from "./zh-TW.json";
+import { ref, type Ref } from "vue";
 
-interface Translation {
-  [key: string]: any;
-}
+type TranslationNode = {
+  [key: string]: string | TranslationNode;
+};
 
-interface Translations {
-  [locale: string]: Translation;
-}
+export const SUPPORTED_LOCALES = ["zh-CN", "en-US", "zh-TW"] as const;
+export type LocaleCode = (typeof SUPPORTED_LOCALES)[number];
 
-const translations: Translations = {
+const translations: Record<LocaleCode, TranslationNode> = {
   "zh-CN": zhCN,
   "en-US": enUS,
   "zh-TW": zhTW,
 };
 
-import { ref } from "vue";
+function isSupportedLocale(locale: string): locale is LocaleCode {
+  return (SUPPORTED_LOCALES as readonly string[]).includes(locale);
+}
+
+function resolveNestedValue(source: TranslationNode, keys: string[]): string | undefined {
+  let current: string | TranslationNode | undefined = source;
+  for (const key of keys) {
+    if (!current || typeof current === "string") {
+      return undefined;
+    }
+    current = current[key];
+  }
+
+  return typeof current === "string" ? current : undefined;
+}
+
+function interpolateVariables(template: string, options: Record<string, unknown>): string {
+  return template.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
+    const value = options[varName.trim()];
+    return value === undefined || value === null ? match : String(value);
+  });
+}
 
 class I18n {
-  private currentLocale = ref("zh-CN");
-  private fallbackLocale = "zh-CN";
+  private currentLocale: Ref<LocaleCode> = ref("zh-CN");
+  private fallbackLocale: LocaleCode = "zh-CN";
 
   setLocale(locale: string) {
-    if (translations[locale]) {
+    if (isSupportedLocale(locale)) {
       this.currentLocale.value = locale;
     }
   }
 
-  getLocale(): string {
+  getLocale(): LocaleCode {
     return this.currentLocale.value;
   }
 
-  t(key: string, options: any = {}): string {
-    // Access currentLocale.value to establish reactive dependency
-    const currentLocaleValue = this.currentLocale.value;
+  t(key: string, options: Record<string, unknown> = {}): string {
     const keys = key.split(".");
-    let value: any = translations[currentLocaleValue];
+    const currentLocaleValue = this.currentLocale.value;
+    const resolved =
+      resolveNestedValue(translations[currentLocaleValue], keys) ??
+      resolveNestedValue(translations[this.fallbackLocale], keys);
 
-    for (const k of keys) {
-      if (value && typeof value === "object" && k in value) {
-        value = value[k];
-      } else {
-        // Try fallback locale
-        value = translations[this.fallbackLocale];
-        for (const k of keys) {
-          if (value && typeof value === "object" && k in value) {
-            value = value[k];
-          } else {
-            return key;
-          }
-        }
-      }
+    if (resolved === undefined) {
+      return key;
     }
 
-    let result = typeof value === "string" ? value : key;
-
-    // Replace variables like {{count}} with values from options
-    if (typeof result === "string" && typeof options === "object" && options !== null) {
-      result = result.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
-        const trimmedVarName = varName.trim();
-        return options[trimmedVarName] !== undefined ? options[trimmedVarName] : match;
-      });
-    }
-
-    return result;
+    return interpolateVariables(resolved, options);
   }
 
-  getTranslations(): Translations {
+  getTranslations() {
     return translations;
   }
 
   getLocaleRef() {
     return this.currentLocale;
+  }
+
+  getAvailableLocales(): readonly LocaleCode[] {
+    return SUPPORTED_LOCALES;
   }
 }
 
