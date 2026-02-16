@@ -33,7 +33,8 @@
     "chinese_tj": "天津话",
     "cantonese": "粤语",
     "russian": "Русский",
-    "chinese_cy": "川渝话"
+    "chinese_cy": "川渝话",
+    "chinese_wu": "吴语"
   },
   "home": {
     "title": "服务器管理",
