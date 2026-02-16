@@ -23,7 +23,9 @@
     "chinese": "简中",
     "english": "EN",
     "chinese_tw": "繁中",
-    "chinese_dongbei": "东北话"
+    "chinese_dongbei": "东北话",
+    "japanese" : "日本語",
+    "upsidedown": "ƎƃuɐuɐW"
   },
   "home": {
     "title": "服务器管理",
