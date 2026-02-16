@@ -9,7 +9,9 @@
     "settings": "設定",
     "personalize": "個人化",
     "about": "關於",
-    "loading": "載入中..."
+    "loading": "載入中...",
+    "select_server": "選擇伺服器",
+    "open_folder": "開啟資料夾"
   },
   "sidebar": {
     "groups": {
@@ -21,7 +23,7 @@
   },
   "header": {
     "language": "語言",
-    "chinese": "简体中文",
+    "chinese": "簡體中文",
     "english": "English",
     "chinese_tw": "繁體中文"
   },
@@ -42,7 +44,12 @@
     "system_resources": "系統資源",
     "detail_view": "切換到詳細檢視",
     "gauge_view": "切換到儀表盤",
-    "recent_alerts": "最近警告 / 錯誤"
+    "recent_alerts": "最近警告 / 錯誤",
+    "delete_confirm_message": "請輸入伺服器名稱 {server} 以確認刪除",
+    "delete_input_placeholder": "輸入伺服器名稱",
+    "delete_cancel": "取消",
+    "delete_confirm": "確認刪除",
+    "delete_error": "伺服器名稱輸入錯誤，請重新輸入"
   },
   "create": {
     "title": "建立伺服器",
@@ -73,7 +80,25 @@
     "title": "控制台",
     "send_command": "發送命令",
     "clear_log": "清空日誌",
-    "copy_log": "複製日誌"
+    "copy_log": "複製日誌",
+    "add_custom_command": "新增自訂指令",
+    "edit_custom_command": "編輯自訂指令",
+    "command_name": "指令名稱",
+    "command_content": "指令內容",
+    "enter_command_name": "輸入指令名稱",
+    "enter_command_content": "輸入指令內容",
+    "cancel": "取消",
+    "delete": "刪除",
+    "add": "新增",
+    "update": "更新",
+    "back_to_bottom": "回到底部",
+    "waiting_for_output": "等待輸出...",
+    "quick": "快捷:",
+    "custom": "自訂:",
+    "running": "運行中",
+    "starting": "啟動中",
+    "stopping": "停止中",
+    "stopped": "已停止"
   },
   "config": {
     "title": "配置編輯",
@@ -106,6 +131,39 @@
       "easy": "簡單",
       "normal": "普通",
       "hard": "困難"
+    },
+    "properties": {
+      "server-port": "伺服器埠號",
+      "server-ip": "伺服器綁定IP，留空表示所有",
+      "max-players": "最大玩家數",
+      "online-mode": "正版驗證",
+      "white-list": "啟用白名單",
+      "enforce-whitelist": "強制白名單",
+      "gamemode": "預設遊戲模式",
+      "difficulty": "遊戲難度",
+      "hardcore": "極限模式",
+      "pvp": "允許PVP",
+      "allow-flight": "允許飛行",
+      "allow-nether": "允許下界",
+      "spawn-monsters": "生成怪物",
+      "spawn-animals": "生成動物",
+      "spawn-npcs": "生成NPC",
+      "generate-structures": "生成結構",
+      "level-name": "世界名稱",
+      "level-seed": "世界種子",
+      "level-type": "世界類型",
+      "view-distance": "視距",
+      "simulation-distance": "模擬距離",
+      "max-tick-time": "最大tick時間(ms)，-1為禁用",
+      "network-compression-threshold": "網路壓縮閾值",
+      "motd": "伺服器描述(MOTD)",
+      "enable-command-block": "啟用命令方塊",
+      "enable-query": "啟用Query協議",
+      "enable-rcon": "啟用RCON遠端控制",
+      "enable-status": "啟用伺服器列表狀態",
+      "force-gamemode": "強制遊戲模式",
+      "spawn-protection": "出生點保護半徑",
+      "sync-chunk-writes": "同步區塊寫入"
     }
   },
   "players": {
@@ -287,7 +345,7 @@
     "hero_desc": "一個由社區共同打造的 Minecraft 開服器。\n不僅程式碼開源，連靈魂都由你們定義。",
     "manifesto_title": "為什麼叫 Sea Lantern？",
     "manifesto_text1": "海晶燈（Sea Lantern）是 Minecraft 中一種發光方塊——它由無數碎片組合而成，卻能發出柔和而持久的光。",
-    "manifesto_text2": "就像這個專案一樣，每一為貢獻者都是一片海晶碎片。\n當我們聚在一起，就能照亮整個社區。",
+    "manifesto_text2": "就像這個專案一樣，每一位貢獻者都是一片海晶碎片。\n當我們聚在一起，就能照亮整個社區。",
     "contributor_wall": "貢獻者牆",
     "contributor_desc": "每一個讓這個專案變得更好的人",
     "join_text": "你的名字",
@@ -321,7 +379,26 @@
     "update_error": "更新失敗",
     "update_title": "發現新版本",
     "update_current": "目前版本",
+    "update_latest_version": "最新版本",
     "update_release_notes": "更新內容",
-    "update_now": "立即更新"
+    "update_now": "立即更新",
+    "update_downloading": "下載中...",
+    "update_installing": "正在啟動安裝程式...",
+    "update_restart_install": "重啟並安裝",
+    "update_ready": "你的更新已就緒",
+    "update_download_complete": "下載完成，點擊安裝",
+    "update_debug": "除錯",
+    "update_debug_placeholder": "輸入更新包URL進行測試",
+    "update_debug_download": "下載測試",
+    "update_running_warning_title": "更新風險提示",
+    "update_running_warning_desc": "偵測到目前有伺服器正在運行。",
+    "update_running_warning_hint": "點擊繼續更新將強制關閉所有伺服器進程，可能導致資料遺失。",
+    "update_running_servers": "運行中的伺服器",
+    "update_cancel_update": "取消並先關閉伺服器",
+    "update_force_auto": "繼續更新",
+    "open_link_failed": "無法打開連結",
+    "update_check_failed": "檢查更新失敗",
+    "update_download_failed": "下載失敗",
+    "github_repo": "GitHub 倉庫"
   }
 }

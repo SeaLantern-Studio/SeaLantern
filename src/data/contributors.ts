@@ -17,37 +17,32 @@ export const contributors: Contributor[] = [
     name: "FPS_Z",
     role: "创始人 / 主要开发者",
     avatar: "https://mc-heads.net/avatar/FPS_Z/64",
-    url: "https://gitee.com/fps_z",
+    url: "https://github.com/FPSZ",
   },
   {
     name: "鸽德迪",
     role: "自定义背景图方案",
     avatar: "https://mc-heads.net/avatar/Alex/64",
-    //url: "https://gitee.com/fps_z",
   },
   {
     name: "OMIILII",
     role: "精神支柱",
     avatar: "https://mc-heads.net/avatar/Alex/64",
-    //url: "https://gitee.com/fps_z",
   },
   {
     name: "烬白Jinby",
     role: "自定义配色/宣传",
     avatar: "https://mc-heads.net/avatar/Jinby_6325/64",
-    //url: "https://gitee.com/fps_z",
   },
   {
     name: "凋空凌",
     role: "修复文档bug",
     avatar: "https://mc-heads.net/avatar/Alex/64",
-    //url: "https://gitee.com/fps_z",
   },
   {
     name: "NIUNIU3303",
     role: "必火推荐！",
     avatar: "https://mc-heads.net/avatar/NIUNIU3303/64",
-    //url: "https://gitee.com/fps_z",
   },
   {
     name: "Little_100",
@@ -86,7 +81,7 @@ export const contributors: Contributor[] = [
   },
   {
     name: "CmzYa",
-    role: "适人握持",
+    role: "不明所以的commit带来了巨量的体验优化",
     avatar: "https://mc-heads.net/avatar/CmzYa/64",
     url: "https://github.com/CmzYa",
   },
@@ -108,11 +103,23 @@ export const contributors: Contributor[] = [
     avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
     url: "https://github.com/maobuben",
   },
+    {
+    name: "橙子冰棒",
+    role: "修复Java查找算法",
+    avatar: "https://blog.orllow.cn/images/author.webp",
+    url: "https://github.com/Orange-Icepop",
+  },
   {
     name: "xingwangzhe",
     role: "贡献者",
     avatar: "https://mc-heads.net/avatar/xingwangzhe_/64",
     url: "https://github.com/xingwangzhe",
+  },
+  {
+    name: "TNTXZ",
+    role: "诶嘿~",
+    avatar: "https://minotar.net/avatar/_TNTXZ_/64",
+    url: "https://github.com/TNTXZ",
   },
   // ============================================
   // 在这里添加更多贡献者！
