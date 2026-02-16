@@ -13,11 +13,7 @@ use commands::server_id as server_id_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
 use commands::update as update_commands;
-use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{Manager, tray::TrayIconEvent, tray::MouseButton, tray::MouseButtonState};
-
-// 全局状态变量，跟踪主窗口是否可见
-static mut IS_WINDOW_VISIBLE: AtomicBool = AtomicBool::new(true);
+use tauri::{tray::MouseButton, tray::MouseButtonState, tray::TrayIconEvent, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
