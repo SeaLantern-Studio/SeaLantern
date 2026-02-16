@@ -108,7 +108,7 @@ async function fetchHitokoto(): Promise<{ text: string; author: string }> {
   } catch (error) {
     console.error('Error fetching hitokoto:', error);
     // 失败时返回默认名言
-    return { text: "海内存知己，天涯若比邻", author: "王勃" };
+    return { text: "我们搭建了骨架,而灵魂,交给你们。", author: "Sea Lantern" };
   }
 }
 
