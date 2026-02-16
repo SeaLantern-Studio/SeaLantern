@@ -8,6 +8,7 @@ import zhME from './zh-ME.json';
 import esES from './es-ES.json';
 import deDE from './de-DE.json';
 import enPT from './en-PT.json';
+import zhTJ from './zh-TJ.json';
 
 interface Translation {
   [key: string]: any;
@@ -27,7 +28,8 @@ const translations: Translations = {
   'zh-ME': zhME,
   'es-ES': esES,
   'de-DE': deDE,
-  'en-PT': enPT
+  'en-PT': enPT,
+  'zh-TJ': zhTJ
 };
 
 import { ref } from 'vue';
