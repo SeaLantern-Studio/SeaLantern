@@ -134,8 +134,8 @@ function selectCategory(category: string) {
 function updateCategoryIndicator() {
   nextTick(() => {
     if (!categoryIndicator.value) return;
-    
-    const activeTab = document.querySelector('.category-tab.active');
+
+    const activeTab = document.querySelector(".category-tab.active");
     if (activeTab) {
       const { offsetLeft, offsetWidth } = activeTab as HTMLElement;
       categoryIndicator.value.style.left = `${offsetLeft}px`;

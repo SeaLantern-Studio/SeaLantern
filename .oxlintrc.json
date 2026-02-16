@@ -1,12 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "vue",
-    "typescript",
-    "import",
-    "promise",
-    "unicorn"
-  ],
+  "plugins": ["vue", "typescript", "import", "promise", "unicorn"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -16,31 +10,18 @@
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": "off",
     "import/no-unused-modules": "off",
-    "import/no-unresolved": [
-      "error"
-    ],
+    "import/no-unresolved": ["error"],
     "import/no-unassigned-import": [
       "error",
       {
-        "allow": [
-          "**/*.css",
-          "**/*.scss",
-          "**/*.less"
-        ]
+        "allow": ["**/*.css", "**/*.scss", "**/*.less"]
       }
     ]
   },
   "settings": {
     "import/resolver": {
       "node": {
-        "extensions": [
-          ".js",
-          ".jsx",
-          ".ts",
-          ".tsx",
-          ".vue",
-          ".css"
-        ]
+        "extensions": [".js", ".jsx", ".ts", ".tsx", ".vue", ".css"]
       }
     },
     "jsx-a11y": {
@@ -78,9 +59,5 @@
     "es2022": true
   },
   "globals": {},
-  "ignorePatterns": [
-    "dist",
-    "node_modules",
-    "src-tauri/**"
-  ]
+  "ignorePatterns": ["dist", "node_modules", "src-tauri/**"]
 }
