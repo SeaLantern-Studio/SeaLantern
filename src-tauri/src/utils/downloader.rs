@@ -2,6 +2,7 @@ use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use reqwest::Client;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt, SeekFrom};
 
@@ -39,7 +40,11 @@ pub struct MultiThreadDownloader {
 impl MultiThreadDownloader {
     pub fn new(thread_count: usize, user_agent: &str) -> Self {
         Self {
-            client: Client::builder().user_agent(user_agent).build().unwrap(),
+            client: Client::builder()
+                .timeout(Duration::from_secs(30))
+                .user_agent(user_agent)
+                .build()
+                .unwrap(),
             thread_count,
         }
     }
@@ -89,7 +94,7 @@ impl MultiThreadDownloader {
             let client_ptr = Arc::clone(&client);
 
             tasks.push(tokio::spawn(async move {
-                Self::download_range(client_ptr, url, path, start, end, pb).await
+                Self::_download_range(client_ptr, url, path, start, end, pb).await
             }));
         }
 
@@ -98,7 +103,7 @@ impl MultiThreadDownloader {
         Ok(())
     }
 
-    async fn download_range(
+    async fn _download_range(
         client: Arc<Client>,
         url: String,
         path: String,
