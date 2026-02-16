@@ -265,7 +265,7 @@ sea-lantern/
 - 显示更新日志，一键打开下载链接
 - 版本号自动比较，提示用户更新
 
-### 多语言支持
+### 多语言支持(国际化)
 (感谢 TNTXZ 的PRhttps://github.com/FPSZ/SeaLantern/pull/20 ，该模块已完成)
 English(United State)
 简体中文
@@ -281,7 +281,6 @@ English(United State)
 - 定时任务 - 自动重启、定时备份、定时执行命令
 - 资源管理 - 从 Modrinth / CurseForge 搜索安装插件和 Mod
 - 暗色主题 - CSS 变量都准备好了，加一套 dark 的值就行
-- 国际化 - 目前全是中文硬编码，可以抽成语言文件(感谢TNTXZ-https://github.com/FPSZ/SeaLantern/pull/20 国际化模块已完成)
 
 ## 参与开发
 
