@@ -20,7 +20,8 @@ export const useI18nStore = defineStore('i18n', {
     isPirate : (state) => state.locale === 'en-PT',
     isTianjin : (state) => state.locale === 'zh-TJ',
     isCantonese : (state) => state.locale === 'zh-CT',
-    isRussian : (state) => state.locale === 'ru-RU'
+    isRussian : (state) => state.locale === 'ru-RU',
+    isChuanyu : (state) => state.locale === 'zh-CY'
   },
   actions: {
     setLocale(locale: string) {
