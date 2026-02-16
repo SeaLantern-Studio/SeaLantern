@@ -337,7 +337,11 @@
     "color_hue": "Hue",
     "color_saturation": "Saturation",
     "color_lightness": "Lightness",
-    "color_alpha": "Alpha"
+    "color_alpha": "Alpha",
+    "developer_mode": "Developer Mode",
+    "developer_mode_desc": "Enable advanced features and debug tools",
+    "developer_mode_toggle": "Open Developer Mode",
+    "developer_mode_toggle_desc": "Enable to use debug tools when in developer mode"
   },
   "about": {
     "title": "About",
