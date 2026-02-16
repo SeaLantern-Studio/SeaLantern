@@ -112,25 +112,25 @@ onMounted(() => {
   }, 3000);
 
   // 添加全局点击事件监听器，点击空白区域收回删除确认输入框
-  document.addEventListener('click', handleClickOutside);
+  document.addEventListener("click", handleClickOutside);
 });
 
 onUnmounted(() => {
   if (statsTimer) clearInterval(statsTimer);
   if (refreshTimer) clearInterval(refreshTimer);
   // 移除全局点击事件监听器
-  document.removeEventListener('click', handleClickOutside);
+  document.removeEventListener("click", handleClickOutside);
 });
 
 // 处理点击空白区域的逻辑
 function handleClickOutside(event: MouseEvent) {
   if (!deletingServerId.value) return;
-  
+
   const target = event.target as HTMLElement;
   // 检查是否点击了删除确认输入框或删除按钮
-  const isDeleteConfirmInput = target.closest('.delete-confirm-input');
-  const isDeleteButton = target.closest('.server-card-actions')?.querySelector('button');
-  
+  const isDeleteConfirmInput = target.closest(".delete-confirm-input");
+  const isDeleteButton = target.closest(".server-card-actions")?.querySelector("button");
+
   // 如果没有点击这些元素，则收回输入框
   if (!isDeleteConfirmInput && !isDeleteButton) {
     cancelDelete();
@@ -255,7 +255,7 @@ function showDeleteConfirmInput(server: any) {
 // 验证并执行删除
 async function confirmDelete() {
   if (!deletingServerId.value) return;
-  
+
   if (inputServerName.value.trim() !== deleteServerName.value.trim()) {
     deleteError.value = "服务器名称输入错误，请重新输入";
     return;
@@ -266,7 +266,7 @@ async function confirmDelete() {
     await store.refreshList();
     // 添加关闭动画类
     isClosing.value = true;
-    
+
     // 动画结束后重置状态
     setTimeout(() => {
       deletingServerId.value = null;
@@ -283,10 +283,10 @@ async function confirmDelete() {
 // 取消删除
 function cancelDelete() {
   if (!deletingServerId.value) return;
-  
+
   // 添加关闭动画类
   isClosing.value = true;
-  
+
   // 动画结束后重置状态
   setTimeout(() => {
     deletingServerId.value = null;
@@ -299,7 +299,7 @@ function cancelDelete() {
 
 // 处理动画结束事件
 function handleAnimationEnd(event: AnimationEvent) {
-  if (event.animationName === 'deleteInputCollapse') {
+  if (event.animationName === "deleteInputCollapse") {
     deletingServerId.value = null;
     deleteServerName.value = "";
     inputServerName.value = "";
@@ -654,8 +654,8 @@ function handleAnimationEnd(event: AnimationEvent) {
             {{ i18n.t("home.delete") }}
           </SLButton>
           <!-- 删除确认输入框 -->
-          <div 
-            v-if="deletingServerId === server.id" 
+          <div
+            v-if="deletingServerId === server.id"
             :class="['delete-confirm-input', { closing: isClosing }]"
             @animationend="handleAnimationEnd"
           >
@@ -671,7 +671,7 @@ function handleAnimationEnd(event: AnimationEvent) {
                 @keyup.enter="confirmDelete"
                 @keyup.esc="cancelDelete"
                 ref="deleteInput"
-              >
+              />
               <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
             </div>
             <div class="delete-actions">
@@ -701,8 +701,6 @@ function handleAnimationEnd(event: AnimationEvent) {
         </div>
       </div>
     </div>
-
-
   </div>
 </template>
 
@@ -1235,6 +1233,4 @@ function handleAnimationEnd(event: AnimationEvent) {
     grid-template-columns: 1fr;
   }
 }
-
-
 </style>

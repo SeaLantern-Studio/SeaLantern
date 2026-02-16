@@ -87,8 +87,8 @@ function selectServer(serverId: string) {
 function updateNavIndicator() {
   nextTick(() => {
     if (!navIndicator.value) return;
-    
-    const activeNavItem = document.querySelector('.nav-item.active');
+
+    const activeNavItem = document.querySelector(".nav-item.active");
     if (activeNavItem) {
       const { offsetTop, offsetHeight } = activeNavItem as HTMLElement;
       navIndicator.value.style.top = `${offsetTop + (offsetHeight - 16) / 2}px`;
@@ -97,47 +97,74 @@ function updateNavIndicator() {
 }
 
 // 监听侧边栏折叠状态变化，更新指示器位置
-watch(() => ui.sidebarCollapsed, () => {
-  // 延迟更新，确保动画完成后再计算位置
-  setTimeout(() => {
-    updateNavIndicator();
-  }, 300); // 等待300ms，确保CSS过渡动画完成
-});
+watch(
+  () => ui.sidebarCollapsed,
+  () => {
+    // 延迟更新，确保动画完成后再计算位置
+    setTimeout(() => {
+      updateNavIndicator();
+    }, 300); // 等待300ms，确保CSS过渡动画完成
+  },
+);
 
 // 监听路由变化，更新指示器位置
-watch(() => route.path, () => {
-  updateNavIndicator();
-});
+watch(
+  () => route.path,
+  () => {
+    updateNavIndicator();
+  },
+);
 
-// 组件挂载后初始化指示器位置
-onMounted(() => {
+// 监听服务器列表变化，更新指示器位置
+watch(
+  () => serverOptions.length,
+  () => {
+    updateNavIndicator();
+  },
+);
+
+// 监听当前服务器变化，更新指示器位置
+watch(
+  () => currentServerId,
+  () => {
+    updateNavIndicator();
+  },
+);
+
+// 组件挂载后初始化指示器位置和服务器列表
+onMounted(async () => {
   updateNavIndicator();
-  
+
+  // 加载服务器列表
+  await serverStore.refreshList();
+
   // 添加全局点击事件监听器，点击外部关闭气泡
-  document.addEventListener('click', handleClickOutside);
+  document.addEventListener("click", handleClickOutside);
 });
 
 // 点击外部关闭服务器选择气泡
 function handleClickOutside(event: MouseEvent) {
   if (showServerBubble.value) {
-    const bubble = document.querySelector('.server-select-bubble');
-    const trigger = document.querySelector('.server-selector-icon');
-    
+    const bubble = document.querySelector(".server-select-bubble");
+    const trigger = document.querySelector(".server-selector-icon");
+
     if (bubble && trigger) {
       const bubbleRect = bubble.getBoundingClientRect();
       const triggerRect = trigger.getBoundingClientRect();
-      
+
       // 检查点击是否在气泡或触发按钮之外
-      const clickedInsideBubble = event.clientX >= bubbleRect.left && 
-                                event.clientX <= bubbleRect.right && 
-                                event.clientY >= bubbleRect.top && 
-                                event.clientY <= bubbleRect.bottom;
-      
-      const clickedInsideTrigger = event.clientX >= triggerRect.left && 
-                                 event.clientX <= triggerRect.right && 
-                                 event.clientY >= triggerRect.top && 
-                                 event.clientY <= triggerRect.bottom;
-      
+      const clickedInsideBubble =
+        event.clientX >= bubbleRect.left &&
+        event.clientX <= bubbleRect.right &&
+        event.clientY >= bubbleRect.top &&
+        event.clientY <= bubbleRect.bottom;
+
+      const clickedInsideTrigger =
+        event.clientX >= triggerRect.left &&
+        event.clientX <= triggerRect.right &&
+        event.clientY >= triggerRect.top &&
+        event.clientY <= triggerRect.bottom;
+
       if (!clickedInsideBubble && !clickedInsideTrigger) {
         showServerBubble.value = false;
       }
@@ -186,7 +213,8 @@ const iconMap: Record<string, string> = {
     "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
   sliders:
     "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4",
-  paint: "M6 6 L9 9 L17 17 L20 20 L18 22 L15 19 L7 11 L4 8 L6 6 M14 14 L16 16 M19 9 L21 11",
+  paint:
+    "M18 4h-3.5l-1-1h-5l-1 1H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M8 14a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm4 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm4 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
   info: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   chevron: "M15 19l-7-7 7-7",
 };
@@ -207,7 +235,6 @@ const iconMap: Record<string, string> = {
       <!-- 服务器选择 -->
       <div v-if="serverOptions.length > 0" class="server-selector">
         <template v-if="!ui.sidebarCollapsed">
-          <div class="server-selector-label">服务器</div>
           <SLSelect
             :options="serverOptions"
             :modelValue="currentServerId"
@@ -219,8 +246,8 @@ const iconMap: Record<string, string> = {
         <template v-else>
           <div class="server-selector-icon" @click="toggleServerBubble">
             <svg
-              width="20"
-              height="20"
+              width="22"
+              height="22"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -228,13 +255,12 @@ const iconMap: Record<string, string> = {
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <!-- 服务器图标（与侧边栏其他图标风格一致） -->
-              <rect x="4" y="6" width="10" height="12" rx="1" />
-              <rect x="12" y="10" width="6" height="8" rx="1" />
-              <line x1="6" y1="10" x2="10" y2="10" />
-              <line x1="6" y1="14" x2="10" y2="14" />
-              <line x1="14" y1="12" x2="16" y2="12" />
-              <line x1="14" y1="16" x2="16" y2="16" />
+              <!-- 服务器图标 -->
+              <rect x="8" y="4" width="8" height="12" rx="1" />
+              <rect x="8" y="18" width="8" height="2" rx="1" />
+              <line x1="12" y1="16" x2="12" y2="18" />
+              <line x1="10" y1="8" x2="14" y2="8" />
+              <line x1="10" y1="12" x2="14" y2="12" />
             </svg>
           </div>
         </template>
@@ -243,10 +269,71 @@ const iconMap: Record<string, string> = {
       <!-- 导航激活指示器 -->
       <div class="nav-active-indicator" ref="navIndicator"></div>
 
-      <div v-for="group in groups" :key="group.key" class="nav-group">
+      <!-- 主菜单组 -->
+      <div class="nav-group">
+        <div v-if="serverOptions.length > 0" class="nav-group-label"></div>
+        <div
+          v-for="item in navItems.filter((i) => i.group === 'main')"
+          :key="item.name"
+          class="nav-item"
+          :class="{ active: isActive(item.path) }"
+          @click="navigateTo(item.path)"
+          :title="ui.sidebarCollapsed ? item.label : ''"
+        >
+          <svg
+            class="nav-icon"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path :d="iconMap[item.icon] || iconMap.info" />
+          </svg>
+          <transition name="fade">
+            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+          </transition>
+        </div>
+      </div>
+
+      <!-- 服务器菜单组 -->
+      <div v-if="serverOptions.length > 0" class="nav-group">
         <div class="nav-group-label"></div>
         <div
-          v-for="item in navItems.filter((i) => i.group === group.key)"
+          v-for="item in navItems.filter((i) => i.group === 'server')"
+          :key="item.name"
+          class="nav-item"
+          :class="{ active: isActive(item.path) }"
+          @click="navigateTo(item.path)"
+          :title="ui.sidebarCollapsed ? item.label : ''"
+        >
+          <svg
+            class="nav-icon"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path :d="iconMap[item.icon] || iconMap.info" />
+          </svg>
+          <transition name="fade">
+            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+          </transition>
+        </div>
+      </div>
+
+      <!-- 系统菜单组 -->
+      <div class="nav-group">
+        <div class="nav-group-label"></div>
+        <div
+          v-for="item in navItems.filter((i) => i.group === 'system')"
           :key="item.name"
           class="nav-item"
           :class="{ active: isActive(item.path) }"
@@ -281,8 +368,8 @@ const iconMap: Record<string, string> = {
             <h3>选择服务器</h3>
           </div>
           <div class="server-select-bubble-body">
-            <div 
-              v-for="option in serverOptions" 
+            <div
+              v-for="option in serverOptions"
               :key="option.value"
               class="server-select-option"
               :class="{ active: option.value === currentServerId }"
@@ -291,7 +378,6 @@ const iconMap: Record<string, string> = {
               {{ option.label }}
             </div>
           </div>
-
         </div>
       </div>
     </Transition>
@@ -393,7 +479,6 @@ const iconMap: Record<string, string> = {
   padding: var(--sl-space-sm);
   margin-bottom: var(--sl-space-sm);
   display: flex;
-  align-items: center;
   justify-content: center;
 }
 
@@ -422,9 +507,10 @@ const iconMap: Record<string, string> = {
   cursor: pointer;
   color: var(--sl-text-secondary);
   transition: all var(--sl-transition-fast);
-}
-
-.server-selector-icon:hover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
   background-color: var(--sl-primary-bg);
   color: var(--sl-primary);
 }
@@ -465,8 +551,8 @@ const iconMap: Record<string, string> = {
 }
 
 .server-select-bubble-content {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-lg);
   padding: var(--sl-space-lg);
   width: 300px;
@@ -475,29 +561,29 @@ const iconMap: Record<string, string> = {
 }
 
 .server-select-bubble-header h3 {
-  color: #1f2937;
+  color: var(--sl-text-primary);
 }
 
 .server-select-option {
-  color: #4b5563;
+  color: var(--sl-text-secondary);
 }
 
 .server-select-option:hover {
-  background-color: #f3f4f6;
-  color: #1f2937;
+  background-color: var(--sl-primary-bg);
+  color: var(--sl-primary);
 }
 
 .server-select-option.active {
-  background-color: #e0f2fe;
-  color: #0284c7;
+  background-color: var(--sl-primary-bg);
+  color: var(--sl-primary);
 }
 
 .bubble-close {
-  color: #6b7280;
+  color: var(--sl-text-tertiary);
 }
 
 .bubble-close:hover {
-  color: #1f2937;
+  color: var(--sl-text-primary);
 }
 
 .server-select-bubble-header {
@@ -531,8 +617,6 @@ const iconMap: Record<string, string> = {
   overflow-y: auto;
 }
 
-
-
 .server-select-option {
   padding: 10px 14px;
   border-radius: var(--sl-radius-md);
@@ -556,6 +640,7 @@ const iconMap: Record<string, string> = {
 .nav-item {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--sl-space-sm);
   padding: 8px 12px;
   border-radius: var(--sl-radius-md);
@@ -565,6 +650,7 @@ const iconMap: Record<string, string> = {
   position: relative;
   white-space: nowrap;
   margin-top: 5px;
+  min-height: 36px;
 }
 
 .nav-item:hover {
@@ -593,6 +679,9 @@ const iconMap: Record<string, string> = {
 .nav-icon {
   flex-shrink: 0;
   transition: transform var(--sl-transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-label {

@@ -19,7 +19,7 @@ const route = useRoute();
 const store = useServerStore();
 const consoleStore = useConsoleStore();
 
-const activeTab = ref<"online" | "whitelist" | "banned" | "ops">('online');
+const activeTab = ref<"online" | "whitelist" | "banned" | "ops">("online");
 const tabIndicator = ref<HTMLElement | null>(null);
 
 const whitelist = ref<PlayerEntry[]>([]);
@@ -277,8 +277,8 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 function updateTabIndicator() {
   setTimeout(() => {
     if (!tabIndicator.value) return;
-    
-    const activeTabBtn = document.querySelector('.tab-btn.active');
+
+    const activeTabBtn = document.querySelector(".tab-btn.active");
     if (activeTabBtn) {
       const { offsetLeft, offsetWidth } = activeTabBtn as HTMLElement;
       tabIndicator.value.style.left = `${offsetLeft}px`;
