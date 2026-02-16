@@ -10,8 +10,6 @@ import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const updateStore = useUpdateStore();
 
-const showDebugInput = ref(false);
-const debugUrl = ref("");
 const showInstallRiskConfirm = ref(false);
 const runningServerNames = ref<string[]>([]);
 let unlistenProgress: UnlistenFn | null = null;
@@ -110,7 +108,7 @@ async function getRunningServerNames(): Promise<string[]> {
   );
 
   return snapshots
-    .filter((item): item is { name: string; status: string } => item !== null)
+    .filter((item): item is { name: string; status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error" } => item !== null)
     .filter((item) => item.status === "Running")
     .map((item) => item.name);
 }
@@ -173,27 +171,6 @@ async function handleForceAutoUpdate() {
 function closeInstallRiskConfirm() {
   showInstallRiskConfirm.value = false;
 }
-
-async function handleDebugDownload() {
-  if (!debugUrl.value.trim()) {
-    return;
-  }
-
-  try {
-    updateStore.setDownloading(0);
-    const { downloadUpdateFromDebugUrl } = await import("../../api/update");
-    const filePath = await downloadUpdateFromDebugUrl(debugUrl.value.trim());
-    updateStore.setDownloaded(filePath);
-    showDebugInput.value = false;
-    debugUrl.value = "";
-  } catch (error) {
-    updateStore.setDownloadError(String(error));
-  }
-}
-
-function toggleDebugInput() {
-  showDebugInput.value = !showDebugInput.value;
-}
 </script>
 
 <template>
@@ -245,23 +222,6 @@ function toggleDebugInput() {
             <span class="update-btn-label">{{ buttonState.text }}</span>
           </span>
         </SLButton>
-      </div>
-
-      <div class="debug-section">
-        <button class="debug-toggle" @click="toggleDebugInput">
-          {{ i18n.t("about.update_debug") }}
-        </button>
-        <div v-if="showDebugInput" class="debug-input-row">
-          <input
-            v-model="debugUrl"
-            type="text"
-            :placeholder="i18n.t('about.update_debug_placeholder')"
-            class="debug-input"
-          />
-          <SLButton variant="secondary" size="sm" @click="handleDebugDownload">
-            {{ i18n.t("about.update_debug_download") }}
-          </SLButton>
-        </div>
       </div>
     </div>
   </SLModal>
@@ -405,48 +365,9 @@ function toggleDebugInput() {
   white-space: nowrap;
 }
 
-.debug-section {
-  padding-top: var(--sl-space-md);
-  border-top: 1px solid var(--sl-border-light);
-}
-
 :deep(.update-action-btn) {
   position: relative;
   overflow: hidden;
-}
-
-.debug-toggle {
-  background: none;
-  border: none;
-  color: var(--sl-text-tertiary);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0;
-}
-
-.debug-toggle:hover {
-  color: var(--sl-text-secondary);
-}
-
-.debug-input-row {
-  display: flex;
-  gap: var(--sl-space-sm);
-  margin-top: var(--sl-space-sm);
-}
-
-.debug-input {
-  flex: 1;
-  padding: var(--sl-space-xs) var(--sl-space-sm);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  background: var(--sl-bg);
-  color: var(--sl-text-primary);
-  font-size: 0.875rem;
-}
-
-.debug-input:focus {
-  outline: none;
-  border-color: var(--sl-primary);
 }
 
 .install-risk-content {

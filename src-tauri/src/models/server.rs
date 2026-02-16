@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+fn default_startup_mode() -> String {
+    "jar".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerStatus {
     Stopped,
@@ -25,6 +29,8 @@ pub struct ServerInstance {
     pub mc_version: String,
     pub path: String,
     pub jar_path: String,
+    #[serde(default = "default_startup_mode")]
+    pub startup_mode: String,
     pub java_path: String,
     pub max_memory: u32,
     pub min_memory: u32,
@@ -53,6 +59,8 @@ pub struct CreateServerRequest {
     pub port: u16,
     pub java_path: String,
     pub jar_path: String,
+    #[serde(default = "default_startup_mode")]
+    pub startup_mode: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +68,8 @@ pub struct ImportServerRequest {
     pub name: String,
     pub jar_path: String,
     pub java_path: String,
+    #[serde(default = "default_startup_mode")]
+    pub startup_mode: String,
     pub max_memory: u32,
     pub min_memory: u32,
     pub port: u16,

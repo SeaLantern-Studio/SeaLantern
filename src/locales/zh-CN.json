@@ -61,7 +61,11 @@
   },
   "create": {
     "title": "创建服务器",
+    "startup_mode": "启动方式",
     "jar_file": "服务端 JAR 文件",
+    "bat_file": "服务端 BAT 文件",
+    "sh_file": "服务端 SH 文件",
+    "select_startup_file": "请选择服务端 {{mode}} 文件",
     "browse": "浏览",
     "scan": "扫描",
     "java_version": "Java 版本",
@@ -69,6 +73,7 @@
     "server_name": "服务器名称",
     "server_path": "服务器路径",
     "create": "创建",
+    "select_and_create": "选择并创建",
     "max_memory": "最大内存 (MB)",
     "min_memory": "最小内存 (MB)",
     "online_mode": "正版验证",
@@ -82,7 +87,8 @@
     "default_port_placeholder": "默认 25565",
     "java_env": "Java 环境",
     "java_scan": "扫描系统中所有磁盘的 Java 安装",
-    "java_manual": "手动选择 Java 路径"
+    "java_manual": "手动选择 Java 路径",
+    "java_path": "Java 路径"
   },
   "console": {
     "title": "控制台",
@@ -419,3 +425,4 @@
     "quit": "退出"
   }
 }
+

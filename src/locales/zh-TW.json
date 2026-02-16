@@ -23,7 +23,7 @@
   },
   "header": {
     "language": "語言",
-    "chinese": "簡體中文",
+    "chinese": "简体中文",
     "english": "English",
     "chinese_tw": "繁體中文"
   },
@@ -61,7 +61,11 @@
   },
   "create": {
     "title": "建立伺服器",
+    "startup_mode": "啟動方式",
     "jar_file": "服務端 JAR 檔案",
+    "bat_file": "服務端 BAT 檔案",
+    "sh_file": "服務端 SH 檔案",
+    "select_startup_file": "請選擇服務端 {{mode}} 檔案",
     "browse": "瀏覽",
     "scan": "掃描",
     "java_version": "Java 版本",
@@ -69,6 +73,7 @@
     "server_name": "伺服器名稱",
     "server_path": "伺服器路徑",
     "create": "建立",
+    "select_and_create": "選擇並建立",
     "max_memory": "最大記憶體 (MB)",
     "min_memory": "最小記憶體 (MB)",
     "online_mode": "正版驗證",
@@ -82,7 +87,8 @@
     "default_port_placeholder": "預設 25565",
     "java_env": "Java 環境",
     "java_scan": "掃描系統中所有磁碟的 Java 安裝",
-    "java_manual": "手動選擇 Java 路徑"
+    "java_manual": "手動選擇 Java 路徑",
+    "java_path": "Java 路徑"
   },
   "console": {
     "title": "控制台",
@@ -227,7 +233,7 @@
     "max_memory_desc": "建議至少 1024MB。大型模組服可能需要 4096MB 以上",
     "min_memory": "預設最小記憶體 (MB)",
     "min_memory_desc": "建議設為最大記憶體的 1/4 到 1/2",
-    "default_java": "預設 Java 路徑",
+    "default_java": "預設 Java 版本",
     "default_java_desc": "留空則每次建立伺服器時自動檢測最合適的 Java",
     "jvm_args_desc": "所有伺服器啟動時都會附加這些參數。適合設定 GC 優化參數",
     "port_desc": "Minecraft 預設埠號為 25565。多伺服器需要不同埠號",
