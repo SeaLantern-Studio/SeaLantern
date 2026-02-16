@@ -265,6 +265,12 @@ sea-lantern/
 - 显示更新日志，一键打开下载链接
 - 版本号自动比较，提示用户更新
 
+### 多语言支持
+(感谢 TNTXZ 的PRhttps://github.com/FPSZ/SeaLantern/pull/20 ，该模块已完成)
+English(United State)
+简体中文
+繁体中文
+
 ## 待开发功能
 
 这些功能的位置都预留好了，代码骨架是现成的，等你来写：
