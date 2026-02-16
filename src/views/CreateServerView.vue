@@ -119,8 +119,9 @@ async function pickJavaFile() {
 async function handleCreate() {
   errorMsg.value = null;
 
-  // 直接弹出文件选择窗口
-  await pickJarFile();
+  if (!jarPath.value) {
+    await pickJarFile();
+  }
 
   // 选择文件后检查其他条件
   if (!jarPath.value) {
