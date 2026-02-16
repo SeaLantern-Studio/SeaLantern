@@ -675,8 +675,12 @@ function handleAnimationEnd(event: AnimationEvent) {
               <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
             </div>
             <div class="delete-actions">
-              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{ i18n.t('home.delete_cancel') }}</SLButton>
-              <SLButton variant="danger" size="sm" @click="confirmDelete">{{ i18n.t('home.delete_confirm') }}</SLButton>
+              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
+                i18n.t("home.delete_cancel")
+              }}</SLButton>
+              <SLButton variant="danger" size="sm" @click="confirmDelete">{{
+                i18n.t("home.delete_confirm")
+              }}</SLButton>
             </div>
           </div>
         </div>

@@ -72,10 +72,7 @@
   },
   "overrides": [
     {
-      "files": ["**/*.ts", "**/*.tsx", "**/*.vue"],
-      "parserOptions": {
-        "project": "./tsconfig.json"
-      }
+      "files": ["**/*.ts", "**/*.tsx", "**/*.vue"]
     }
   ],
   "globals": {},

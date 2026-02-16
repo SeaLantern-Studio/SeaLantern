@@ -1,9 +1,7 @@
 {
   "identifier": "default",
   "description": "Default capabilities",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "core:path:default",
@@ -33,8 +31,6 @@
     "window-state:default"
   ],
   "remote": {
-    "urls": [
-      "https://gitee.com/api/**"
-    ]
+    "urls": ["https://gitee.com/api/**"]
   }
 }

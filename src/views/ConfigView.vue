@@ -220,7 +220,9 @@ onMounted(() => {
                 variant="neutral"
               />
             </div>
-            <p v-if="i18n.t(`config.properties.${entry.key}`)" class="entry-desc text-caption">{{ i18n.t(`config.properties.${entry.key}`) }}</p>
+            <p v-if="i18n.t(`config.properties.${entry.key}`)" class="entry-desc text-caption">
+              {{ i18n.t(`config.properties.${entry.key}`) }}
+            </p>
           </div>
           <div class="entry-control">
             <SLSwitch
