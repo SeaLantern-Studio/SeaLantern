@@ -158,7 +158,7 @@ const handleClickOutside = (e: MouseEvent) => {
 
 const handleScroll = () => {
   if (isOpen.value) {
-    isOpen.value = false;
+    updateDropdownPosition();
   }
 };
 
@@ -169,11 +169,13 @@ const stopWatch = watch(searchQuery, () => {
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
   window.addEventListener("scroll", handleScroll, true);
+  window.addEventListener("resize", handleScroll);
 });
 
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
   window.removeEventListener("scroll", handleScroll, true);
+  window.removeEventListener("resize", handleScroll);
   stopWatch();
 
   containerRef.value = null;

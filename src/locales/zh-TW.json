@@ -73,6 +73,7 @@
     "server_name": "伺服器名稱",
     "server_path": "伺服器路徑",
     "create": "建立",
+    "select_and_create": "選擇並建立",
     "max_memory": "最大記憶體 (MB)",
     "min_memory": "最小記憶體 (MB)",
     "online_mode": "正版驗證",

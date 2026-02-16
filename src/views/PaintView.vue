@@ -1225,7 +1225,6 @@ function rgbaFromHex(hex: string, alpha: number): string {
 }
 
 async function handleThemeChange() {
-  markChanged();
   if (!settings.value) return;
 
   const effectiveTheme = applyTheme(settings.value.theme);
@@ -1233,10 +1232,10 @@ async function handleThemeChange() {
   // 如果选择了预设主题，更新颜色值
   if (settings.value.color !== "custom") {
     const preset = settings.value.color;
-    
+
     // 颜色方案映射
     const colorPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
-    
+
     // 颜色类型映射
     const colorTypes = {
       bg: {
@@ -1313,6 +1312,9 @@ async function handleThemeChange() {
   }
   // 应用颜色变化
   applyColors();
+
+  // 在颜色值更新后再保存
+  markChanged();
 }
 
 async function saveSettings() {
