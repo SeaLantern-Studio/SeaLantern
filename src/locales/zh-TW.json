@@ -7,6 +7,7 @@
     "config_edit": "配置編輯",
     "player_manage": "玩家管理",
     "settings": "設定",
+    "personalize": "個人化",
     "about": "關於",
     "loading": "載入中..."
   },
@@ -20,9 +21,9 @@
   },
   "header": {
     "language": "語言",
-    "chinese": "簡中",
-    "english": "EN",
-    "chinese_tw": "繁中"
+    "chinese": "简体中文",
+    "english": "English",
+    "chinese_tw": "繁體中文"
   },
   "home": {
     "title": "伺服器管理",
@@ -47,6 +48,7 @@
     "title": "建立伺服器",
     "jar_file": "服務端 JAR 檔案",
     "browse": "瀏覽",
+    "scan": "掃描",
     "java_version": "Java 版本",
     "select_java": "選擇 Java",
     "server_name": "伺服器名稱",
@@ -192,6 +194,21 @@
       "fill": "拉伸 (Fill)",
       "auto": "原始大小 (Auto)"
     },
+    "color_options": {
+      "default": "默認",
+      "midnight": "Midnight",
+      "forest": "Forest",
+      "sunset": "Sunset",
+      "ocean": "Ocean",
+      "rose": "Rose",
+      "custom": "自訂"
+    },
+    "edit_colorplan_options": {
+      "light": "淺色",
+      "dark": "深色",
+      "light_acrylic": "淺色毛玻璃",
+      "dark_acrylic": "深色毛玻璃"
+    },
     "theme_options": {
       "auto": "跟隨系統",
       "light": "淺色",
@@ -221,7 +238,32 @@
     "reset_title": "確認恢復預設",
     "browse_java": "點擊瀏覽選擇 java.exe",
     "browse_jar": "點擊瀏覽選擇 .jar 檔案",
-    "server_name_placeholder": "輸入名稱"
+    "server_name_placeholder": "輸入名稱",
+    "color_theme": "顏色主題",
+    "color_theme_desc": "自訂軟體顏色主題",
+    "use_preset_colortheme": "使用預設",
+    "use_preset_colortheme_desc": "選擇預設的顏色主題，或自訂顏色",
+    "color_editing": "顏色編輯",
+    "color_editing_desc": "設定自訂的顏色值",
+    "current_edit_colorplan": "目前編輯方案",
+    "current_edit_colorplan_desc": "選擇目前編輯的顏色方案",
+    "primary_background_color": "主背景色",
+    "secondary_background_color": "次背景色",
+    "tertiary_background_color": "第三背景色",
+    "primary_emphasis_color": "主強調色",
+    "secondary_emphasis_color": "次強調色",
+    "text_primary_color": "主文字色",
+    "text_secondary_color": "次文字色",
+    "border_color": "框線顏色",
+    "color_value": "顏色值",
+    "search_font": "搜尋字體",
+    "loading_preview": "載入預覽中...",
+    "animated_image": "動圖",
+    "remove": "移除",
+    "pick_image": "選擇圖片",
+    "replace_image": "更換圖片",
+    "personalize_page_import_export": "請前往「設定」頁面進行匯入/匯出操作。",
+    "font_family_default": "系統預設"
   },
   "about": {
     "title": "關於",

@@ -7,6 +7,7 @@
     "config_edit": "Config Edit",
     "player_manage": "Player Manage",
     "settings": "Settings",
+    "personalize": "Personalize",
     "about": "About",
     "loading": "Loading..."
   },
@@ -20,9 +21,9 @@
   },
   "header": {
     "language": "Language",
-    "chinese": "简中",
-    "english": "EN",
-    "chinese_tw": "繁中"
+    "chinese": "简体中文",
+    "english": "English",
+    "chinese_tw": "繁體中文"
   },
   "home": {
     "title": "Server Management",
@@ -47,6 +48,7 @@
     "title": "Create Server",
     "jar_file": "Server JAR File",
     "browse": "Browse",
+    "scan": "Scan",
     "java_version": "Java Version",
     "select_java": "Select Java",
     "server_name": "Server Name",
@@ -192,6 +194,21 @@
       "fill": "Fill",
       "auto": "Auto"
     },
+    "color_options": {
+      "default": "Default",
+      "midnight": "Midnight",
+      "forest": "Forest",
+      "sunset": "Sunset",
+      "ocean": "Ocean",
+      "rose": "Rose",
+      "custom": "Custom"
+    },
+    "edit_colorplan_options": {
+      "light": "Light",
+      "dark": "Dark",
+      "light_acrylic": "Light with Acrylic",
+      "dark_acrylic": "Dark with Acrylic"
+    },
     "theme_options": {
       "auto": "Follow System",
       "light": "Light",
@@ -219,7 +236,32 @@
     "no_json": "Please paste JSON",
     "browse_java": "Browse for java.exe",
     "browse_jar": "Browse for .jar file",
-    "server_name_placeholder": "Enter name"
+    "server_name_placeholder": "Enter name",
+    "color_theme": "Color Theme",
+    "color_theme_desc": "Customize the color theme of the software",
+    "use_preset_colortheme": "Use Preset",
+    "use_preset_colortheme_desc": "Select a preset color theme or customize colors",
+    "color_editing": "Color Editing",
+    "color_editing_desc": "Set custom color values",
+    "current_edit_colorplan": "Current Edit Color Plan",
+    "current_edit_colorplan_desc": "Select the current color plan to edit",
+    "primary_background_color": "Primary Background Color",
+    "secondary_background_color": "Secondary Background Color",
+    "tertiary_background_color": "Tertiary Background Color",
+    "primary_emphasis_color": "Primary Emphasis Color",
+    "secondary_emphasis_color": "Secondary Emphasis Color",
+    "text_primary_color": "Primary Text Color",
+    "text_secondary_color": "Secondary Text Color",
+    "border_color": "Border Color",
+    "color_value": "Color Value",
+    "search_font": "Search Font",
+    "loading_preview": "Loading Preview...",
+    "animated_image": "Animated Image",
+    "remove": "Remove",
+    "pick_image": "Pick Image",
+    "replace_image": "Replace Image",
+    "personalize_page_import_export": "Please go to the \"Settings\" page for import/export operations.",
+    "font_family_default": "System Default"
   },
   "about": {
     "title": "About",

@@ -7,6 +7,7 @@
     "config_edit": "配置编辑",
     "player_manage": "玩家管理",
     "settings": "设置",
+    "personalize": "个性化",
     "about": "关于",
     "loading": "加载中...",
     "select_server": "选择服务器"
@@ -21,9 +22,9 @@
   },
   "header": {
     "language": "语言",
-    "chinese": "简中",
-    "english": "EN",
-    "chinese_tw": "繁中"
+    "chinese": "简体中文",
+    "english": "English",
+    "chinese_tw": "繁體中文"
   },
   "home": {
     "title": "服务器管理",
@@ -48,6 +49,7 @@
     "title": "创建服务器",
     "jar_file": "服务端 JAR 文件",
     "browse": "浏览",
+    "scan": "扫描",
     "java_version": "Java 版本",
     "select_java": "选择 Java",
     "server_name": "服务器名称",
@@ -193,6 +195,21 @@
       "fill": "拉伸 (Fill)",
       "auto": "原始大小 (Auto)"
     },
+    "color_options": {
+      "default": "默认",
+      "midnight": "Midnight",
+      "forest": "Forest",
+      "sunset": "Sunset",
+      "ocean": "Ocean",
+      "rose": "Rose",
+      "custom": "自定义"
+    },
+    "edit_colorplan_options": {
+      "light": "浅色",
+      "dark": "深色",
+      "light_acrylic": "浅色毛玻璃",
+      "dark_acrylic": "深色毛玻璃"
+    },
     "theme_options": {
       "auto": "跟随系统",
       "light": "浅色",
@@ -222,7 +239,32 @@
     "reset_title": "确认恢复默认",
     "browse_java": "点击浏览选择 java.exe",
     "browse_jar": "点击浏览选择 .jar 文件",
-    "server_name_placeholder": "输入名称"
+    "server_name_placeholder": "输入名称",
+    "color_theme": "颜色主题",
+    "color_theme_desc": "自定义软件颜色主题",
+    "use_preset_colortheme": "使用预设",
+    "use_preset_colortheme_desc": "选择预设的颜色主题，或自定义颜色",
+    "color_editing": "颜色编辑",
+    "color_editing_desc": "设置自定义的颜色值",
+    "current_edit_colorplan": "当前编辑方案",
+    "current_edit_colorplan_desc": "选择当前编辑的颜色方案",
+    "primary_background_color": "主背景色",
+    "secondary_background_color": "次背景色",
+    "tertiary_background_color": "第三背景色",
+    "primary_emphasis_color": "主强调色",
+    "secondary_emphasis_color": "次强调色",
+    "text_primary_color": "主文字色",
+    "text_secondary_color": "次文字色",
+    "border_color": "边框颜色",
+    "color_value": "颜色值",
+    "search_font": "搜索字体",
+    "loading_preview": "加载预览中...",
+    "animated_image": "动图",
+    "remove": "移除",
+    "pick_image": "选择图片",
+    "replace_image": "更换图片",
+    "personalize_page_import_export": "请前往“设置”页面进行导入/导出操作。",
+    "font_family_default": "系统默认"
   },
   "about": {
     "title": "关于",

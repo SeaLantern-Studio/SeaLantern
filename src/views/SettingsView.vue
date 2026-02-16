@@ -47,6 +47,22 @@ const backgroundSizeOptions = [
   { label: "原始大小 (Auto)", value: "auto" },
 ];
 
+const colorOptions = [
+  { label: "默认", value: "default" },
+  { label: "Midnight", value: "midnight" },
+  { label: "Sunset", value: "sunset" },
+  { label: "Ocean", value: "ocean" },
+  { label: "Rose", value: "rose" },
+  { label: "自定义", value: "custom" },
+];
+
+const editColorOptions = [
+  { label: "浅色", value: "light" },
+  { label: "深色", value: "dark" },
+  { label: "浅色毛玻璃", value: "light_acrylic" },
+  { label: "深色毛玻璃", value: "dark_acrylic" },
+];
+
 const themeOptions = [
   { label: "跟随系统", value: "auto" },
   { label: "浅色", value: "light" },
@@ -61,6 +77,7 @@ const showImportModal = ref(false);
 const importJson = ref("");
 const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
+const colorSettingsExpanded = ref(false);
 const bgPreviewLoaded = ref(false);
 const bgPreviewLoading = ref(false);
 
@@ -128,6 +145,7 @@ async function loadSettings() {
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
     hasChanges.value = false;
+    settings.value.color = s.color || "default";
     // 应用已保存的设置
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -226,6 +244,7 @@ async function saveSettings() {
   settings.value.background_blur = parseInt(bgBlur.value) || 0;
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
   settings.value.font_size = parseInt(uiFontSize.value) || 14;
+  settings.value.color = settings.value.color || "default";
 
   saving.value = true;
   error.value = null;
@@ -268,6 +287,7 @@ async function resetSettings() {
     uiFontSize.value = String(s.font_size);
     showResetConfirm.value = false;
     hasChanges.value = false;
+    settings.value.color = "default";
     success.value = "已恢复默认设置";
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
@@ -468,225 +488,6 @@ function clearBackgroundImage() {
           </div>
         </div>
       </SLCard>
-
-      <!-- Appearance -->
-      <SLCard :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
-        <div class="settings-group">
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.theme") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
-            </div>
-            <div class="input-lg">
-              <SLSelect
-                v-model="settings.theme"
-                :options="themeOptions"
-                @update:modelValue="handleThemeChange"
-              />
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
-            </div>
-            <div class="slider-control">
-              <input
-                type="range"
-                min="12"
-                max="24"
-                step="1"
-                v-model="uiFontSize"
-                @input="handleFontSizeChange"
-                class="sl-slider"
-              />
-              <span class="slider-value">{{ uiFontSize }}px</span>
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.font_family") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.font_family_desc") }}</span>
-            </div>
-            <div class="input-lg">
-              <SLSelect
-                v-model="settings.font_family"
-                :options="fontFamilyOptions"
-                :searchable="true"
-                :loading="fontsLoading"
-                :previewFont="true"
-                :placeholder="i18n.t('settings.font_family_desc')"
-                @update:modelValue="handleFontFamilyChange"
-              />
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.acrylic") }}</span>
-              <span class="setting-desc">
-                {{
-                  acrylicSupported
-                    ? i18n.t("settings.acrylic_desc")
-                    : i18n.t("settings.acrylic_not_supported")
-                }}
-              </span>
-            </div>
-            <SLSwitch
-              v-model="settings.acrylic_enabled"
-              :disabled="!acrylicSupported"
-              @update:modelValue="handleAcrylicChange"
-            />
-          </div>
-
-          <!-- 背景图片折叠区域 -->
-          <div class="collapsible-section">
-            <div class="collapsible-header" @click="bgSettingsExpanded = !bgSettingsExpanded">
-              <div class="setting-info">
-                <span class="setting-label">{{ i18n.t("settings.background") }}</span>
-                <span class="setting-desc">{{ i18n.t("settings.background_desc") }}</span>
-              </div>
-              <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </div>
-            </div>
-            <Transition name="collapse">
-              <div v-show="bgSettingsExpanded" class="collapsible-content">
-                <div class="setting-row full-width">
-                  <div class="bg-image-picker">
-                    <div v-if="settings.background_image" class="bg-preview">
-                      <div v-if="bgPreviewLoading && !bgPreviewLoaded" class="bg-preview-loading">
-                        <div class="loading-spinner"></div>
-                        <span>{{ i18n.t("settings.loading") }}</span>
-                      </div>
-                      <img
-                        v-show="bgPreviewLoaded || !bgPreviewLoading"
-                        :src="backgroundPreviewUrl"
-                        alt="Background preview"
-                        @load="
-                          bgPreviewLoaded = true;
-                          bgPreviewLoading = false;
-                        "
-                        @loadstart="bgPreviewLoading = true"
-                        @error="bgPreviewLoading = false"
-                        loading="lazy"
-                      />
-                      <div
-                        v-if="isAnimatedImage(settings.background_image)"
-                        class="bg-animated-badge"
-                      >
-                        {{ i18n.t("settings.animated") }}
-                      </div>
-                      <div class="bg-preview-overlay">
-                        <span class="bg-preview-path">{{
-                          settings.background_image.split("\\").pop()
-                        }}</span>
-                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">{{
-                          i18n.t("settings.remove")
-                        }}</SLButton>
-                      </div>
-                    </div>
-                    <SLButton v-else variant="secondary" @click="pickBackgroundImage">
-                      {{ i18n.t("settings.select_image") }}
-                    </SLButton>
-                    <SLButton
-                      v-if="settings.background_image"
-                      variant="secondary"
-                      size="sm"
-                      @click="pickBackgroundImage"
-                    >
-                      {{ i18n.t("settings.change_image") }}
-                    </SLButton>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t("settings.opacity") }}</span>
-                    <span class="setting-desc">{{ i18n.t("settings.opacity_desc") }}</span>
-                  </div>
-                  <div class="slider-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      v-model="bgOpacity"
-                      @input="markChanged"
-                      class="sl-slider"
-                    />
-                    <span class="slider-value">{{ bgOpacity }}</span>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t("settings.blur") }}</span>
-                    <span class="setting-desc">{{ i18n.t("settings.blur_desc") }}</span>
-                  </div>
-                  <div class="slider-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      step="1"
-                      v-model="bgBlur"
-                      @input="markChanged"
-                      class="sl-slider"
-                    />
-                    <span class="slider-value">{{ bgBlur }}px</span>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t("settings.brightness") }}</span>
-                    <span class="setting-desc">{{ i18n.t("settings.brightness_desc") }}</span>
-                  </div>
-                  <div class="slider-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="2"
-                      step="0.1"
-                      v-model="bgBrightness"
-                      @input="markChanged"
-                      class="sl-slider"
-                    />
-                    <span class="slider-value">{{ bgBrightness }}</span>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t("settings.background_size") }}</span>
-                    <span class="setting-desc">{{ i18n.t("settings.background_size_desc") }}</span>
-                  </div>
-                  <div class="input-lg">
-                    <SLSelect
-                      v-model="settings.background_size"
-                      :options="backgroundSizeOptions"
-                      @update:modelValue="markChanged"
-                    />
-                  </div>
-                </div>
-              </div>
-            </Transition>
-          </div>
-        </div>
-      </SLCard>
-
       <!-- Actions -->
       <div class="settings-actions">
         <div class="actions-left">
