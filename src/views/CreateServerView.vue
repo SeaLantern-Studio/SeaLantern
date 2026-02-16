@@ -273,13 +273,7 @@ const startupFileLabel = computed(() => {
             </button>
           </div>
         </div>
-        <div class="jar-picker">
-          <SLInput :label="startupFileLabel" v-model="jarPath" :placeholder="startupFileLabel">
-            <template #suffix>
-              <button class="pick-btn" @click="pickJarFile">{{ i18n.t("create.browse") }}</button>
-            </template>
-          </SLInput>
-        </div>
+
 
         <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
         <SLInput :label="i18n.t('create.min_memory')" type="number" v-model="minMemory" />
@@ -306,7 +300,7 @@ const startupFileLabel = computed(() => {
         i18n.t("create.cancel")
       }}</SLButton>
       <SLButton variant="primary" size="lg" :loading="creating" @click="handleCreate">
-        {{ i18n.t("create.create") }}
+        {{ i18n.t("create.select_and_create") }}
       </SLButton>
     </div>
   </div>

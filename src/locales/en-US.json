@@ -73,6 +73,7 @@
     "server_name": "Server Name",
     "server_path": "Server Path",
     "create": "Create",
+    "select_and_create": "Select and Create",
     "max_memory": "Max Memory (MB)",
     "min_memory": "Min Memory (MB)",
     "online_mode": "Online Mode",

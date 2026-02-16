@@ -73,6 +73,7 @@
     "server_name": "服务器名称",
     "server_path": "服务器路径",
     "create": "创建",
+    "select_and_create": "选择并创建",
     "max_memory": "最大内存 (MB)",
     "min_memory": "最小内存 (MB)",
     "online_mode": "正版验证",
