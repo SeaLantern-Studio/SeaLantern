@@ -44,6 +44,12 @@ const routes = [
     meta: { titleKey: "common.personalize", icon: "paint" },
   },
   {
+    path: "/paint",
+    name: "paint",
+    component: () => import("../views/PaintView.vue"),
+    meta: { titleKey: "common.personalize", icon: "paint" },
+  },
+  {
     path: "/about",
     name: "about",
     component: () => import("../views/AboutView.vue"),
