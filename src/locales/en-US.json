@@ -332,5 +332,10 @@
     "update_check_failed": "Failed to check updates",
     "update_download_failed": "Download failed",
     "github_repo": "GitHub Repository"
+  },
+  "tray": {
+    "minimize": "Minimize to Tray",
+    "show": "Show",
+    "quit": "Quit"
   }
 }

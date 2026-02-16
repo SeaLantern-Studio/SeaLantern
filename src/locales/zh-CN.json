@@ -332,5 +332,10 @@
     "update_check_failed": "检查更新失败",
     "update_download_failed": "下载失败",
     "github_repo": "GitHub 仓库"
+  },
+  "tray": {
+    "minimize": "最小化到后台",
+    "show": "显示",
+    "quit": "退出"
   }
 }

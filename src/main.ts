@@ -3,6 +3,7 @@ import App from "./App.vue";
 import router from "./router";
 import pinia from "./stores";
 import "./style.css";
+import { setupTray } from "./utils/tray";
 
 const app = createApp(App);
 
@@ -44,3 +45,5 @@ window.addEventListener("load", async () => {
     console.log("Tauri API not available, running in non-Tauri environment:", e);
   }
 });
+
+setupTray();
