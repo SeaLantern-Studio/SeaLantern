@@ -45,7 +45,7 @@
     "detail_view": "切換到詳細檢視",
     "gauge_view": "切換到儀表盤",
     "recent_alerts": "最近警告 / 錯誤",
-    "delete_confirm_message": "請輸入伺服器名稱 {server} 以確認刪除",
+    "delete_confirm_message": "請輸入伺服器名稱 {{server}} 以確認刪除",
     "delete_input_placeholder": "輸入伺服器名稱",
     "delete_cancel": "取消",
     "delete_confirm": "確認刪除",
