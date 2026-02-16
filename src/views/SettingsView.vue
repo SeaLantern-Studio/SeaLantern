@@ -146,10 +146,12 @@ async function loadSettings() {
     uiFontSize.value = String(s.font_size);
     hasChanges.value = false;
     settings.value.color = s.color || "default";
+    settings.value.developer_mode = s.developer_mode || false;
     // 应用已保存的设置
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    applyDeveloperMode(s.developer_mode || false);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -194,10 +196,40 @@ function applyFontFamily(fontFamily: string) {
   }
 }
 
+function applyDeveloperMode(enabled: boolean) {
+  if (enabled) {
+    // 开启开发者模式，移除限制
+    document.removeEventListener("contextmenu", blockContextMenu);
+    document.removeEventListener("keydown", blockDevTools);
+  } else {
+    // 关闭开发者模式，添加限制
+    document.addEventListener("contextmenu", blockContextMenu);
+    document.addEventListener("keydown", blockDevTools);
+  }
+}
+
+function blockContextMenu(e: Event) {
+  e.preventDefault();
+}
+
+function blockDevTools(e: KeyboardEvent) {
+  // 阻止 F12 键
+  if (e.key === "F12") {
+    e.preventDefault();
+  }
+}
+
 function handleFontFamilyChange() {
   markChanged();
   if (settings.value) {
     applyFontFamily(settings.value.font_family);
+  }
+}
+
+function handleDeveloperModeChange() {
+  markChanged();
+  if (settings.value) {
+    applyDeveloperMode(settings.value.developer_mode);
   }
 }
 
@@ -245,6 +277,7 @@ async function saveSettings() {
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
   settings.value.font_size = parseInt(uiFontSize.value) || 14;
   settings.value.color = settings.value.color || "default";
+  settings.value.developer_mode = settings.value.developer_mode || false;
 
   saving.value = true;
   error.value = null;
@@ -288,11 +321,13 @@ async function resetSettings() {
     showResetConfirm.value = false;
     hasChanges.value = false;
     settings.value.color = "default";
+    settings.value.developer_mode = false;
     success.value = "已恢复默认设置";
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    applyDeveloperMode(false);
   } catch (e) {
     error.value = String(e);
   }
@@ -329,11 +364,13 @@ async function handleImport() {
     showImportModal.value = false;
     importJson.value = "";
     hasChanges.value = false;
+    settings.value.developer_mode = settings.value.developer_mode || false;
     success.value = "设置已导入";
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    applyDeveloperMode(settings.value.developer_mode);
   } catch (e) {
     error.value = String(e);
   }
@@ -488,6 +525,20 @@ function clearBackgroundImage() {
           </div>
         </div>
       </SLCard>
+
+      <!-- Developer Mode -->
+      <SLCard title="开发者模式" subtitle="启用高级功能和调试选项">
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">启用开发者模式</span>
+              <span class="setting-desc">启用后将允许使用调试工具</span>
+            </div>
+            <SLSwitch v-model="settings.developer_mode" @update:modelValue="handleDeveloperModeChange" />
+          </div>
+        </div>
+      </SLCard>
+
       <!-- Actions -->
       <div class="settings-actions">
         <div class="actions-left">

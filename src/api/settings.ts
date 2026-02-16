@@ -23,6 +23,7 @@ export interface AppSettings {
   font_family: string;
   color: string;
   language: string;
+  developer_mode: boolean;
   bg_color?: string;
   bg_secondary_color?: string;
   bg_tertiary_color?: string;

@@ -148,10 +148,18 @@ pub struct AppSettings {
     // 语言设置
     #[serde(default = "default_language")]
     pub language: String,
+
+    // 开发者模式
+    #[serde(default = "default_false")]
+    pub developer_mode: bool,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_false() -> bool {
+    false
 }
 fn default_max_memory() -> u32 {
     2048
@@ -271,6 +279,7 @@ impl Default for AppSettings {
             font_family: String::new(),
             color: "default".to_string(),
             language: "zh-CN".to_string(),
+            developer_mode: false,
         }
     }
 }
