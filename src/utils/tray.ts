@@ -67,7 +67,7 @@ export async function setupTray() {
   const options = {
     icon: await defaultWindowIcon(),
     menu,
-    menuOnLeftClick: true,
+    menuOnLeftClick: false, // 禁用左键显示菜单，改为点击打开主界面
   };
 
   await TrayIcon.new(options as any);
