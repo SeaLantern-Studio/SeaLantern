@@ -389,5 +389,10 @@
     "update_check_failed": "檢查更新失敗",
     "update_download_failed": "下載失敗",
     "github_repo": "GitHub 倉庫"
+  },
+  "tray": {
+    "minimize": "最小化到後台",
+    "show": "顯示",
+    "quit": "退出"
   }
 }

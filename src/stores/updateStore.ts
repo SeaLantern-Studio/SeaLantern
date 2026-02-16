@@ -27,7 +27,7 @@ export const useUpdateStore = defineStore("update", () => {
       status.value === "available" ||
       status.value === "downloading" ||
       status.value === "downloaded" ||
-      status.value === "installing"
+      status.value === "installing",
   );
   const isDownloading = computed(() => status.value === "downloading");
   const isInstalling = computed(() => status.value === "installing");
