@@ -149,18 +149,34 @@ fn deep_scan_recursive(dir: &Path, paths: &mut Vec<String>, depth: u32) {
 }
 
 fn check_java(path: &str) -> Option<JavaInfo> {
+    // 检查路径是否为空
+    if path.trim().is_empty() {
+        return None;
+    }
+    
     let output = command_output(path, &["-version"])?;
+    
+    // 检查输出是否有效
+    if output.status.code().is_none() {
+        return None; // 进程异常终止
+    }
+    
     let stderr = String::from_utf8_lossy(&output.stderr);
     let stdout = String::from_utf8_lossy(&output.stdout);
     let combined = if stderr.is_empty() { stdout } else { stderr };
 
-    if combined.is_empty() {
+    if combined.trim().is_empty() {
         return None;
     }
 
     let re = Regex::new(r#"(?i)(?:java|openjdk) version "\s*(?P<version>[^"\s]+)\s*""#).ok()?;
     let caps = re.captures(&combined)?;
-    let version = caps["version"].to_string();
+    let version = caps.name("version").map(|m| m.as_str()).unwrap_or("").to_string();
+    
+    // 验证版本号格式
+    if version.is_empty() || !version.chars().any(|c| c.is_numeric()) {
+        return None;
+    }
 
     let major_version = parse_major_version(&version);
     let is_64bit = combined.contains("64-Bit") || combined.contains("64-bit");
@@ -169,11 +185,13 @@ fn check_java(path: &str) -> Option<JavaInfo> {
         "Zulu".to_string()
     } else if combined.to_lowercase().contains("openjdk") {
         "OpenJDK".to_string()
-    } else {
+    } else if combined.to_lowercase().contains("oracle") {
         "Oracle".to_string()
+    } else {
+        "Unknown".to_string()
     };
 
-    let resolved = if path == "java" {
+    let resolved = if path.trim() == "java" {
         resolve_path_from_env(path)?
     } else {
         let p = fs::canonicalize(path).ok()?;
@@ -191,6 +209,11 @@ fn check_java(path: &str) -> Option<JavaInfo> {
             p.to_string_lossy().into_owned()
         }
     };
+    
+    // 验证解析后的路径
+    if resolved.trim().is_empty() {
+        return None;
+    }
 
     Some(JavaInfo {
         path: resolved,

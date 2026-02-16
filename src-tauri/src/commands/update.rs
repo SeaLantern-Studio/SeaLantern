@@ -93,6 +93,8 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
 
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .timeout(std::time::Duration::from_secs(30)) // 添加30秒超时
+        .connect_timeout(std::time::Duration::from_secs(10)) // 连接超时10秒
         .build()
         .map_err(|e| format!("HTTP client init failed: {}", e))?;
 
@@ -129,9 +131,18 @@ async fn fetch_release(
     let resp = client
         .get(&url)
         .header("Accept", config.accept_header)
+        .timeout(std::time::Duration::from_secs(30)) // 请求超时30秒
         .send()
         .await
-        .map_err(|e| format!("request failed: {}", e))?;
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("请求超时 (30秒): {}", e)
+            } else if e.is_connect() {
+                format!("连接失败: {}", e)
+            } else {
+                format!("请求失败: {}", e)
+            }
+        })?;
 
     if !resp.status().is_success() {
         return Err(format!("API status: {}", resp.status()));
