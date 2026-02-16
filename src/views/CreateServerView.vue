@@ -175,7 +175,7 @@ const javaOptions = computed(() => {
       <div v-else-if="javaList.length === 0" class="java-empty">
         <p class="text-body">{{ i18n.t("create.no_java") }}</p>
         <SLButton variant="primary" @click="detectJava" style="margin-top: 12px">
-          {{ i18n.t("create.browse") }}
+          {{ i18n.t("create.scan") }}
         </SLButton>
       </div>
       <div v-else class="java-select-container">

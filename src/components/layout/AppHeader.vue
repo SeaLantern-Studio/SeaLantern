@@ -11,7 +11,11 @@ const i18nStore = useI18nStore();
 const showLanguageMenu = ref(false);
 
 const pageTitle = computed(() => {
-  return (route.meta?.title as string) || i18n.t("common.app_name");
+  const titleKey = route.meta?.titleKey as string;
+  if (titleKey) {
+    return i18n.t(titleKey);
+  }
+  return i18n.t("common.app_name");
 });
 
 const currentLanguageText = computed(() => {

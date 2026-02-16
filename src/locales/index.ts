@@ -22,8 +22,6 @@ class I18n {
   private currentLocale = ref("zh-CN");
   private fallbackLocale = "zh-CN";
 
-  
-
   setLocale(locale: string) {
     if (translations[locale]) {
       this.currentLocale.value = locale;

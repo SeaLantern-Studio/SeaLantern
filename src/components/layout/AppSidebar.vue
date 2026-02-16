@@ -58,6 +58,7 @@ const navItems: NavItem[] = [
     labelKey: "common.settings",
     group: "system",
   },
+  { name: "paint", path: "/paint", icon: "paint", labelKey: "common.personalize", group: "system" },
   { name: "about", path: "/about", icon: "info", labelKey: "common.about", group: "system" },
 ];
 
@@ -185,6 +186,7 @@ const iconMap: Record<string, string> = {
     "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
   sliders:
     "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4",
+  paint: "M6 6 L9 9 L17 17 L20 20 L18 22 L15 19 L7 11 L4 8 L6 6 M14 14 L16 16 M19 9 L21 11",
   info: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   chevron: "M15 19l-7-7 7-7",
 };
