@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -16,6 +16,7 @@ import { i18n } from "../locales";
 
 const router = useRouter();
 const store = useServerStore();
+const startupModeIndicator = ref<HTMLElement | null>(null);
 
 const serverName = ref("My Server");
 const maxMemory = ref("2048");
@@ -103,7 +104,32 @@ function setStartupMode(mode: StartupMode) {
   }
   startupMode.value = mode;
   jarPath.value = "";
+  updateStartupModeIndicator();
 }
+
+// 更新启动方式指示器位置
+function updateStartupModeIndicator() {
+  nextTick(() => {
+    if (!startupModeIndicator.value) return;
+
+    const activeTab = document.querySelector(".startup-mode-tab.active");
+    if (activeTab) {
+      const { offsetLeft, offsetWidth } = activeTab as HTMLElement;
+      startupModeIndicator.value.style.left = `${offsetLeft}px`;
+      startupModeIndicator.value.style.width = `${offsetWidth}px`;
+    }
+  });
+}
+
+// 监听启动方式变化，更新指示器位置
+watch(startupMode, () => {
+  updateStartupModeIndicator();
+});
+
+// 组件挂载后初始化指示器位置
+onMounted(() => {
+  updateStartupModeIndicator();
+});
 
 async function pickJavaFile() {
   try {
@@ -261,16 +287,19 @@ const startupFileLabel = computed(() => {
         <div class="startup-mode-row">
           <span class="startup-mode-label">{{ i18n.t("create.startup_mode") }}</span>
           <div class="startup-mode-control">
-            <button
-              v-for="mode in startupModes"
-              :key="mode"
-              type="button"
-              class="startup-mode-btn"
-              :class="{ active: startupMode === mode }"
-              @click="setStartupMode(mode)"
-            >
-              {{ mode === "jar" ? "JAR" : mode }}
-            </button>
+            <div class="startup-mode-tabs">
+              <div class="startup-mode-indicator" ref="startupModeIndicator"></div>
+              <button
+                v-for="mode in startupModes"
+                :key="mode"
+                type="button"
+                class="startup-mode-tab"
+                :class="{ active: startupMode === mode }"
+                @click="setStartupMode(mode)"
+              >
+                {{ mode === "jar" ? "JAR" : mode }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -416,30 +445,49 @@ const startupFileLabel = computed(() => {
 .startup-mode-control {
   display: flex;
   align-items: center;
+}
+.startup-mode-tabs {
+  display: flex;
   gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--sl-border);
+  background: var(--sl-bg-secondary);
   border-radius: var(--sl-radius-md);
-  background: var(--sl-surface);
+  padding: 3px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
 }
-.startup-mode-btn {
-  flex: 1;
-  height: 32px;
-  border: none;
+.startup-mode-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-sm);
-  font-size: 0.875rem;
-  font-weight: 600;
+  transition: all var(--sl-transition-normal);
+  box-shadow: var(--sl-shadow-sm);
+  z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
+}
+.startup-mode-tab {
+  flex: 1;
+  padding: 6px 14px;
+  border-radius: var(--sl-radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--sl-text-secondary);
-  background: transparent;
-  cursor: pointer;
   transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: center;
 }
-.startup-mode-btn:hover {
-  background: var(--sl-bg-tertiary);
+.startup-mode-tab:hover {
+  color: var(--sl-primary);
 }
-.startup-mode-btn.active {
-  background: var(--sl-primary);
-  color: #fff;
+.startup-mode-tab.active {
+  color: var(--sl-primary);
 }
 .jar-picker {
   grid-column: 1 / -1;
