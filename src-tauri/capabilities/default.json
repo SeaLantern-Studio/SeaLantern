@@ -1,7 +1,9 @@
 {
   "identifier": "default",
   "description": "Default capabilities",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:path:default",
@@ -15,6 +17,10 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:app:allow-default-window-icon",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-skip-taskbar",
+    "core:window:allow-set-focus",
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",
@@ -27,6 +33,8 @@
     "window-state:default"
   ],
   "remote": {
-    "urls": ["https://gitee.com/api/**"]
+    "urls": [
+      "https://gitee.com/api/**"
+    ]
   }
 }

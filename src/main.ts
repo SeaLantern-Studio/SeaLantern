@@ -3,7 +3,7 @@ import App from "./App.vue";
 import router from "./router";
 import pinia from "./stores";
 import "./style.css";
-import { setupTray } from "./utils/tray";
+// `setupTray` 在浏览器环境中会引用 Tauri API，改为运行时按需导入
 
 const app = createApp(App);
 
@@ -23,7 +23,6 @@ app.use(router);
 
 // 挂载应用
 app.mount("#app");
-
 // 当应用准备就绪后显示主窗口
 window.addEventListener("load", async () => {
   try {
@@ -41,9 +40,16 @@ window.addEventListener("load", async () => {
         }
       }
     }
+    // 在 Tauri 环境下按需加载并设置托盘
+    try {
+      const { setupTray } = await import("./utils/tray");
+      if (typeof setupTray === "function") {
+        await setupTray();
+      }
+    } catch (trayErr) {
+      console.warn("Failed to set up tray, tray functionality will be unavailable:", trayErr);
+    }
   } catch (e) {
     console.log("Tauri API not available, running in non-Tauri environment:", e);
   }
 });
-
-setupTray();
