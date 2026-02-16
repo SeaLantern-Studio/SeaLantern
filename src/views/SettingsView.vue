@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
@@ -73,6 +73,12 @@ const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: "系统默认", value: "" },
 ]);
 
+const closeActionOptions = [
+  { label: i18n.t("home.close_action_ask"), value: "ask" },
+  { label: i18n.t("home.close_action_minimize"), value: "minimize" },
+  { label: i18n.t("home.close_action_close"), value: "close" },
+];
+
 const showImportModal = ref(false);
 const importJson = ref("");
 const showResetConfirm = ref(false);
@@ -105,6 +111,14 @@ onMounted(async () => {
   } catch {
     acrylicSupported.value = false;
   }
+  
+  // 监听设置更新事件
+  window.addEventListener("settings-updated", loadSettings);
+});
+
+onUnmounted(() => {
+  // 移除设置更新事件监听
+  window.removeEventListener("settings-updated", loadSettings);
 });
 
 async function loadSystemFonts() {
@@ -146,10 +160,13 @@ async function loadSettings() {
     uiFontSize.value = String(s.font_size);
     hasChanges.value = false;
     settings.value.color = s.color || "default";
+    settings.value.developer_mode = s.developer_mode || false;
+    settings.value.close_action = s.close_action || "ask";
     // 应用已保存的设置
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    applyDeveloperMode(s.developer_mode || false);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -194,10 +211,40 @@ function applyFontFamily(fontFamily: string) {
   }
 }
 
+function applyDeveloperMode(enabled: boolean) {
+  if (enabled) {
+    // 开启开发者模式，移除限制
+    document.removeEventListener("contextmenu", blockContextMenu);
+    document.removeEventListener("keydown", blockDevTools);
+  } else {
+    // 关闭开发者模式，添加限制
+    document.addEventListener("contextmenu", blockContextMenu);
+    document.addEventListener("keydown", blockDevTools);
+  }
+}
+
+function blockContextMenu(e: Event) {
+  e.preventDefault();
+}
+
+function blockDevTools(e: KeyboardEvent) {
+  // 阻止 F12 键
+  if (e.key === "F12") {
+    e.preventDefault();
+  }
+}
+
 function handleFontFamilyChange() {
   markChanged();
   if (settings.value) {
     applyFontFamily(settings.value.font_family);
+  }
+}
+
+function handleDeveloperModeChange() {
+  markChanged();
+  if (settings.value) {
+    applyDeveloperMode(settings.value.developer_mode);
   }
 }
 
@@ -245,6 +292,7 @@ async function saveSettings() {
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
   settings.value.font_size = parseInt(uiFontSize.value) || 14;
   settings.value.color = settings.value.color || "default";
+  settings.value.developer_mode = settings.value.developer_mode || false;
 
   saving.value = true;
   error.value = null;
@@ -288,11 +336,13 @@ async function resetSettings() {
     showResetConfirm.value = false;
     hasChanges.value = false;
     settings.value.color = "default";
+    settings.value.developer_mode = false;
     success.value = "已恢复默认设置";
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    applyDeveloperMode(false);
   } catch (e) {
     error.value = String(e);
   }
@@ -329,11 +379,13 @@ async function handleImport() {
     showImportModal.value = false;
     importJson.value = "";
     hasChanges.value = false;
+    settings.value.developer_mode = settings.value.developer_mode || false;
     success.value = "设置已导入";
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    applyDeveloperMode(settings.value.developer_mode);
   } catch (e) {
     error.value = String(e);
   }
@@ -394,6 +446,16 @@ function clearBackgroundImage() {
               <span class="setting-desc">{{ i18n.t("settings.auto_eula_desc") }}</span>
             </div>
             <SLSwitch v-model="settings.auto_accept_eula" @update:modelValue="markChanged" />
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("home.close_action") }}</span>
+              <span class="setting-desc">{{ i18n.t("home.close_action_desc") }}</span>
+            </div>
+            <div class="select-container">
+              <SLSelect :options="closeActionOptions" v-model="settings.close_action" @update:modelValue="markChanged" />
+            </div>
           </div>
         </div>
       </SLCard>
@@ -488,6 +550,23 @@ function clearBackgroundImage() {
           </div>
         </div>
       </SLCard>
+
+      <!-- Developer Mode -->
+      <SLCard
+        :title="i18n.t('settings.developer_mode')"
+        :subtitle="i18n.t('settings.developer_mode_desc')"
+      >
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
+            </div>
+            <SLSwitch v-model="settings.developer_mode" @update:modelValue="handleDeveloperModeChange" />
+          </div>
+        </div>
+      </SLCard>
+
       <!-- Actions -->
       <div class="settings-actions">
         <div class="actions-left">
@@ -642,6 +721,10 @@ function clearBackgroundImage() {
 }
 .input-lg {
   width: 320px;
+  flex-shrink: 0;
+}
+.select-container {
+  width: 200px;
   flex-shrink: 0;
 }
 

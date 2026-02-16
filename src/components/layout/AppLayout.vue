@@ -21,6 +21,7 @@ const acrylicEnabled = ref(false);
 const acrylicSupported = ref(false);
 const currentColor = ref("default");
 const currentTheme = ref("auto");
+const developerMode = ref(false);
 
 let systemThemeQuery: MediaQueryList | null = null;
 
@@ -29,6 +30,29 @@ function getEffectiveTheme(theme: string): "light" | "dark" {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
   return theme as "light" | "dark";
+}
+
+function applyDeveloperMode(enabled: boolean) {
+  if (enabled) {
+    // 开启开发者模式，移除限制
+    document.removeEventListener("contextmenu", blockContextMenu);
+    document.removeEventListener("keydown", blockDevTools);
+  } else {
+    // 关闭开发者模式，添加限制
+    document.addEventListener("contextmenu", blockContextMenu);
+    document.addEventListener("keydown", blockDevTools);
+  }
+}
+
+function blockContextMenu(e: Event) {
+  e.preventDefault();
+}
+
+function blockDevTools(e: KeyboardEvent) {
+  // 阻止 F12 键
+  if (e.key === "F12") {
+    e.preventDefault();
+  }
 }
 
 function applyTheme(theme: string) {
@@ -115,6 +139,7 @@ async function loadBackgroundSettings() {
     // 保存当前主题设置
     currentTheme.value = settings.theme || "auto";
     acrylicEnabled.value = settings.acrylic_enabled;
+    developerMode.value = settings.developer_mode || false;
 
     // 应用主题
     const effectiveTheme = applyTheme(settings.theme || "auto");
@@ -144,11 +169,15 @@ async function loadBackgroundSettings() {
     // 应用颜色主题
     applyColors(settings);
 
+    // 应用开发者模式限制
+    applyDeveloperMode(settings.developer_mode || false);
+
     console.log("Settings loaded:", {
       theme: settings.theme,
       effectiveTheme,
       fontSize: settings.font_size,
       acrylicEnabled: settings.acrylic_enabled,
+      developerMode: settings.developer_mode,
       acrylicSupported: acrylicSupported.value,
       image: backgroundImage.value,
       opacity: backgroundOpacity.value,

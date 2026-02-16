@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18nStore } from "../../stores/i18nStore";
 import { i18n } from "../../locales";
+import SLModal from "../common/SLModal.vue";
+import SLButton from "../common/SLButton.vue";
+import { settingsApi, type AppSettings } from "../../api/settings";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
 const i18nStore = useI18nStore();
 const showLanguageMenu = ref(false);
+const showCloseModal = ref(false);
+const settings = ref<AppSettings | null>(null);
+const closeAction = ref<string>("ask"); // ask, minimize, close
+const rememberChoice = ref(false);
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -30,6 +37,28 @@ const currentLanguageText = computed(() => {
   return current?.label ?? i18n.t("header.english");
 });
 
+onMounted(async () => {
+  await loadSettings();
+  
+  // 监听设置更新事件
+  window.addEventListener("settings-updated", loadSettings);
+});
+
+onUnmounted(() => {
+  // 移除设置更新事件监听
+  window.removeEventListener("settings-updated", loadSettings);
+});
+
+async function loadSettings() {
+  try {
+    const s = await settingsApi.get();
+    settings.value = s;
+    closeAction.value = s.close_action || "ask";
+  } catch (e) {
+    console.error("Failed to load settings:", e);
+  }
+}
+
 async function minimizeWindow() {
   await appWindow.minimize();
 }
@@ -39,7 +68,50 @@ async function toggleMaximize() {
 }
 
 async function closeWindow() {
-  await appWindow.close();
+  if (closeAction.value === "ask") {
+    showCloseModal.value = true;
+  } else if (closeAction.value === "minimize") {
+    await minimizeToTray();
+  } else {
+    await appWindow.close();
+  }
+}
+
+async function handleCloseOption(option: string) {
+  if (rememberChoice.value && settings.value) {
+    settings.value.close_action = option === "minimize" ? "minimize" : "close";
+    closeAction.value = settings.value.close_action;
+    try {
+      await settingsApi.save(settings.value);
+      // 触发设置更新事件，以便设置界面能够及时更新
+      window.dispatchEvent(new CustomEvent("settings-updated"));
+    } catch (e) {
+      console.error("Failed to save settings:", e);
+    }
+  }
+  
+  if (option === "minimize") {
+    await minimizeToTray();
+  } else {
+    await appWindow.close();
+  }
+  showCloseModal.value = false;
+  rememberChoice.value = false;
+}
+
+async function minimizeToTray() {
+  try {
+    const w = getCurrentWindow();
+    await w.hide();
+    try {
+      await w.setSkipTaskbar(true);
+    } catch (e) {
+      console.warn("Failed to set skip taskbar:", e);
+    }
+  } catch (e) {
+    console.warn("Failed to hide window for tray minimize:", e);
+    await appWindow.minimize();
+  }
 }
 
 function toggleLanguageMenu() {
@@ -119,6 +191,21 @@ function handleClickOutside() {
 
     <div v-if="showLanguageMenu" class="click-outside" @click="handleClickOutside"></div>
   </header>
+
+  <!-- 关闭窗口确认模态框 -->
+  <SLModal :visible="showCloseModal" :title="i18n.t('home.close_window_title')" @close="showCloseModal = false">
+    <div class="close-modal-content">
+      <p>{{ i18n.t('home.close_window_message') }}</p>
+      <div class="remember-option">
+        <input type="checkbox" id="remember-choice" v-model="rememberChoice">
+        <label for="remember-choice">{{ i18n.t('home.remember_choice') }}</label>
+      </div>
+      <div class="close-options">
+        <SLButton variant="secondary" @click="handleCloseOption('minimize')">{{ i18n.t('home.close_action_minimize') }}</SLButton>
+        <SLButton variant="danger" @click="handleCloseOption('close')">{{ i18n.t('home.close_action_close') }}</SLButton>
+      </div>
+    </div>
+  </SLModal>
 </template>
 
 <style scoped>
@@ -274,5 +361,49 @@ function handleClickOutside() {
   bottom: 0;
   z-index: 999;
   pointer-events: auto;
+}
+
+.close-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+  padding: var(--sl-space-md) 0;
+}
+
+.remember-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  margin-top: var(--sl-space-sm);
+  margin-bottom: var(--sl-space-md);
+}
+
+.remember-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--sl-primary);
+  background-color: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-sm);
+  transition: all var(--sl-transition-fast);
+}
+
+.remember-option input[type="checkbox"]:checked {
+  background-color: var(--sl-primary);
+  border-color: var(--sl-primary);
+}
+
+.remember-option label {
+  font-size: 0.875rem;
+  color: var(--sl-text-secondary);
+  cursor: pointer;
+}
+
+.close-options {
+  display: flex;
+  gap: var(--sl-space-md);
+  justify-content: center;
+  margin-top: var(--sl-space-md);
 }
 </style>
