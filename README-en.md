@@ -285,7 +285,6 @@ skeletons—waiting for your contributions:
 - Scheduled Tasks - Automatic restarts, scheduled backups, and scheduled command execution
 - Resource Management - Search and install plugins/mods from Modrinth / CurseForge
 - Dark Theme - CSS variables are already configured; just add a dark mode value set
-- Internationalization - Currently hardcoded in Chinese; can be extracted into language files(Thanks to TNTXZ-https://github.com/FPSZ/SeaLantern/pull/20,the International Localization module has been completed)
 
 ## Contributing
 
