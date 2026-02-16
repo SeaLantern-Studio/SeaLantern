@@ -8,10 +8,10 @@ use tokio::io::{AsyncSeekExt, AsyncWriteExt, SeekFrom};
 //由于本代码可能暂时未能投入使用，故加上#[allow(dead_code)]以消除提示
 //在以后的开发中，如果使用到该下载器，请删去#[allow(dead_code)]
 //示例：
-//     let downloader = MultiPartDownloader::new(8); //下载的线程数，不建议过少/过多
+//     let downloader = MultiThreadDownloader::new(8, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0"); //下载的线程数, User-agent
 //
 //     let url = "https://download-cdn.jetbrains.com/rustrover/RustRover-2025.3.3.exe"; // 一个大文件
-//     let save_path = "path\to\your\file";
+//     let save_path = "path\\to\\your\\file";
 //
 //     match downloader.download(url, save_path).await {
 //         Ok(_) => {
@@ -37,8 +37,11 @@ pub struct MultiThreadDownloader {
 
 #[allow(dead_code)]
 impl MultiThreadDownloader {
-    pub fn new(thread_count: usize) -> Self {
-        Self { client: Client::new(), thread_count }
+    pub fn new(thread_count: usize, user_agent: &str) -> Self {
+        Self {
+            client: Client::builder().user_agent(user_agent).build().unwrap(),
+            thread_count,
+        }
     }
 
     pub async fn download(
