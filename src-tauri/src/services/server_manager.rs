@@ -8,6 +8,31 @@ use crate::models::server::*;
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 
+#[derive(Clone, Copy, Debug)]
+enum ManagedConsoleEncoding {
+    Utf8,
+    #[cfg(target_os = "windows")]
+    Gbk,
+}
+
+impl ManagedConsoleEncoding {
+    fn java_name(self) -> &'static str {
+        match self {
+            ManagedConsoleEncoding::Utf8 => "UTF-8",
+            #[cfg(target_os = "windows")]
+            ManagedConsoleEncoding::Gbk => "GBK",
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn cmd_code_page(self) -> &'static str {
+        match self {
+            ManagedConsoleEncoding::Utf8 => "65001",
+            ManagedConsoleEncoding::Gbk => "936",
+        }
+    }
+}
+
 pub struct ServerManager {
     pub servers: Mutex<Vec<ServerInstance>>,
     pub processes: Mutex<HashMap<String, Child>>,
@@ -84,13 +109,15 @@ impl ServerManager {
         &self,
         server: &ServerInstance,
         settings: &crate::models::settings::AppSettings,
+        console_encoding: ManagedConsoleEncoding,
     ) -> Vec<String> {
+        let java_encoding = console_encoding.java_name();
         let mut args = vec![
             format!("-Xmx{}M", server.max_memory),
             format!("-Xms{}M", server.min_memory),
-            "-Dfile.encoding=UTF-8".to_string(),
-            "-Dsun.stdout.encoding=UTF-8".to_string(),
-            "-Dsun.stderr.encoding=UTF-8".to_string(),
+            format!("-Dfile.encoding={}", java_encoding),
+            format!("-Dsun.stdout.encoding={}", java_encoding),
+            format!("-Dsun.stderr.encoding={}", java_encoding),
         ];
 
         let jvm = settings.default_jvm_args.trim();
@@ -106,8 +133,9 @@ impl ServerManager {
         &self,
         server: &ServerInstance,
         settings: &crate::models::settings::AppSettings,
+        console_encoding: ManagedConsoleEncoding,
     ) -> Result<(), String> {
-        let args = self.build_managed_jvm_args(server, settings);
+        let args = self.build_managed_jvm_args(server, settings, console_encoding);
         let user_jvm_args_path = std::path::Path::new(&server.path).join("user_jvm_args.txt");
         let content = if args.is_empty() {
             String::new()
@@ -368,6 +396,10 @@ impl ServerManager {
         }
 
         let startup_mode = normalize_startup_mode(&server.startup_mode);
+        let startup_path_obj = std::path::Path::new(&server.jar_path);
+        let managed_console_encoding =
+            resolve_managed_console_encoding(startup_mode, startup_path_obj);
+
         if startup_mode != "jar" {
             if let Some(major_version) = detect_java_major_version(&server.java_path) {
                 if major_version < 9 {
@@ -379,7 +411,6 @@ impl ServerManager {
             }
         }
 
-        let startup_path_obj = std::path::Path::new(&server.jar_path);
         let java_path_obj = std::path::Path::new(&server.java_path);
         let java_bin_dir = java_path_obj
             .parent()
@@ -394,15 +425,17 @@ impl ServerManager {
 
         let mut cmd = match startup_mode {
             "bat" => {
-                self.write_user_jvm_args(&server, &settings)?;
+                self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
 
                 #[cfg(target_os = "windows")]
                 {
                     use std::os::windows::process::CommandExt;
 
                     let mut bat_cmd = Command::new("cmd");
+                    let code_page = managed_console_encoding.cmd_code_page();
                     let launch_command = format!(
-                        "chcp 65001>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & call \"{}\" nogui",
+                        "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & call \"{}\" nogui",
+                        code_page,
                         java_home_dir_str.replace('"', "\"\""),
                         java_bin_dir_str.replace('"', "\"\""),
                         startup_filename.replace('"', "\"\"")
@@ -418,7 +451,7 @@ impl ServerManager {
                 }
             }
             "sh" => {
-                self.write_user_jvm_args(&server, &settings)?;
+                self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
                 let mut sh_cmd = Command::new("sh");
                 sh_cmd.arg(&startup_filename);
                 sh_cmd.arg("nogui");
@@ -434,7 +467,8 @@ impl ServerManager {
             }
             _ => {
                 let mut jar_cmd = Command::new(&server.java_path);
-                for arg in self.build_managed_jvm_args(&server, &settings) {
+                for arg in self.build_managed_jvm_args(&server, &settings, managed_console_encoding)
+                {
                     jar_cmd.arg(arg);
                 }
                 jar_cmd.arg("-jar");
@@ -906,6 +940,36 @@ fn normalize_startup_mode(mode: &str) -> &str {
         "bat" => "bat",
         "sh" => "sh",
         _ => "jar",
+    }
+}
+
+fn resolve_managed_console_encoding(
+    startup_mode: &str,
+    startup_path: &std::path::Path,
+) -> ManagedConsoleEncoding {
+    #[cfg(target_os = "windows")]
+    {
+        if startup_mode == "bat" {
+            return detect_windows_batch_encoding(startup_path);
+        }
+    }
+
+    let _ = startup_mode;
+    let _ = startup_path;
+    ManagedConsoleEncoding::Utf8
+}
+
+#[cfg(target_os = "windows")]
+fn detect_windows_batch_encoding(startup_path: &std::path::Path) -> ManagedConsoleEncoding {
+    let bytes = match std::fs::read(startup_path) {
+        Ok(bytes) => bytes,
+        Err(_) => return ManagedConsoleEncoding::Utf8,
+    };
+
+    if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) || std::str::from_utf8(&bytes).is_ok() {
+        ManagedConsoleEncoding::Utf8
+    } else {
+        ManagedConsoleEncoding::Gbk
     }
 }
 
