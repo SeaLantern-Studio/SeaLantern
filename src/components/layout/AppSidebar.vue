@@ -23,7 +23,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: "home", path: "/", icon: "home", labelKey: "common.home", label: i18n.t("common.home"), group: "main" },
+  {
+    name: "home",
+    path: "/",
+    icon: "home",
+    labelKey: "common.home",
+    label: i18n.t("common.home"),
+    group: "main",
+  },
   {
     name: "create",
     path: "/create",
@@ -64,8 +71,22 @@ const navItems: NavItem[] = [
     label: i18n.t("common.settings"),
     group: "system",
   },
-  { name: "paint", path: "/paint", icon: "paint", labelKey: "common.personalize", label: i18n.t("common.personalize"), group: "system" },
-  { name: "about", path: "/about", icon: "info", labelKey: "common.about", label: i18n.t("common.about"), group: "system" },
+  {
+    name: "paint",
+    path: "/paint",
+    icon: "paint",
+    labelKey: "common.personalize",
+    label: i18n.t("common.personalize"),
+    group: "system",
+  },
+  {
+    name: "about",
+    path: "/about",
+    icon: "info",
+    labelKey: "common.about",
+    label: i18n.t("common.about"),
+    group: "system",
+  },
 ];
 
 function navigateTo(path: string) {

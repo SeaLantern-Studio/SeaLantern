@@ -253,7 +253,7 @@ async function saveSettings() {
       JSON.stringify({
         theme: settings.value.theme || "auto",
         fontSize: settings.value.font_size || 14,
-      })
+      }),
     );
 
     applyTheme(settings.value.theme);
@@ -295,7 +295,7 @@ async function resetSettings() {
       JSON.stringify({
         theme: s.theme || "auto",
         fontSize: s.font_size || 14,
-      })
+      }),
     );
 
     applyTheme(s.theme);
@@ -490,8 +490,7 @@ function clearBackgroundImage() {
       </SLCard>
       <!-- Actions -->
       <div class="settings-actions">
-        <div class="actions-left">
-        </div>
+        <div class="actions-left"></div>
         <div class="actions-right">
           <SLButton variant="ghost" size="sm" @click="exportSettings">{{
             i18n.t("settings.export")

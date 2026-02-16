@@ -71,11 +71,7 @@ function handleUpdateModalClose() {
 
 <template>
   <transition name="splash-fade">
-    <SplashScreen
-      v-if="showSplash"
-      :loading="isInitializing"
-      @ready="handleSplashReady"
-    />
+    <SplashScreen v-if="showSplash" :loading="isInitializing" @ready="handleSplashReady" />
   </transition>
 
   <template v-if="!showSplash">

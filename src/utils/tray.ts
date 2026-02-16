@@ -84,9 +84,9 @@ export async function setupTray() {
 
   // 创建托盘图标实例并存储
   trayIconInstance = await TrayIcon.new(options as any);
-  
+
   // 添加左键点击事件处理
-  if (trayIconInstance && typeof trayIconInstance.onClick === 'function') {
+  if (trayIconInstance && typeof trayIconInstance.onClick === "function") {
     trayIconInstance.onClick(async () => {
       const w = getCurrentWindow();
       try {

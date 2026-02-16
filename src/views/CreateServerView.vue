@@ -190,7 +190,7 @@ function getJavaLabel(java: JavaInfo): { label: string; subLabel: string } {
   // subLabel: 路径
   const version = java.major_version;
   const arch = java.is_64bit ? "64位" : "32位";
-  
+
   // 简化 vendor 名称
   let vendor = java.vendor;
   if (vendor.includes("Oracle") || vendor.includes("Sun")) {
@@ -206,10 +206,10 @@ function getJavaLabel(java: JavaInfo): { label: string; subLabel: string } {
   } else if (vendor.includes("Liberica") || vendor.includes("BellSoft")) {
     vendor = "Liberica";
   }
-  
+
   return {
     label: `Java ${version} ${vendor} ${arch}`,
-    subLabel: java.path
+    subLabel: java.path,
   };
 }
 
@@ -235,7 +235,6 @@ const startupFileLabel = computed(() => {
   }
   return i18n.t("create.jar_file");
 });
-
 </script>
 
 <template>
@@ -325,7 +324,6 @@ const startupFileLabel = computed(() => {
             </div>
           </div>
         </div>
-
 
         <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
         <SLInput :label="i18n.t('create.min_memory')" type="number" v-model="minMemory" />

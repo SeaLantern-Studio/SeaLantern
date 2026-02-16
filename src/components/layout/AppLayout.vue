@@ -120,7 +120,7 @@ watch(
   async () => {
     await applyAllSettings();
   },
-  { deep: true }
+  { deep: true },
 );
 
 const backgroundStyle = computed(() => {
