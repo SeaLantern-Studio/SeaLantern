@@ -22,6 +22,7 @@ export interface AppSettings {
   font_size: number;
   font_family: string;
   color: string;
+  language: string;
   bg_color?: string;
   bg_secondary_color?: string;
   bg_tertiary_color?: string;

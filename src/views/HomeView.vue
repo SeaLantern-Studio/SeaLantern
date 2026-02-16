@@ -257,7 +257,7 @@ async function confirmDelete() {
   if (!deletingServerId.value) return;
 
   if (inputServerName.value.trim() !== deleteServerName.value.trim()) {
-    deleteError.value = "服务器名称输入错误，请重新输入";
+    deleteError.value = i18n.t("home.delete_error");
     return;
   }
 
@@ -638,7 +638,7 @@ function handleAnimationEnd(event: AnimationEvent) {
             {{ i18n.t("common.console") }}
           </SLButton>
           <SLButton variant="ghost" size="sm" @click="systemApi.openFolder(server.path)">
-            打开文件夹
+            {{ i18n.t("common.open_folder") }}
           </SLButton>
           <SLButton
             variant="ghost"
@@ -660,14 +660,14 @@ function handleAnimationEnd(event: AnimationEvent) {
             @animationend="handleAnimationEnd"
           >
             <p class="delete-confirm-message">
-              请输入服务器名称 <strong>{{ server.name }}</strong> 以确认删除
+              {{ i18n.t("home.delete_confirm_message", { server: server.name }) }}
             </p>
             <div class="delete-input-group">
               <input
                 type="text"
                 v-model="inputServerName"
                 class="delete-input"
-                placeholder="输入服务器名称"
+                :placeholder="i18n.t('home.delete_input_placeholder')"
                 @keyup.enter="confirmDelete"
                 @keyup.esc="cancelDelete"
                 ref="deleteInput"
@@ -675,8 +675,8 @@ function handleAnimationEnd(event: AnimationEvent) {
               <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
             </div>
             <div class="delete-actions">
-              <SLButton variant="ghost" size="sm" @click="cancelDelete">取消</SLButton>
-              <SLButton variant="danger" size="sm" @click="confirmDelete">确认删除</SLButton>
+              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{ i18n.t('home.delete_cancel') }}</SLButton>
+              <SLButton variant="danger" size="sm" @click="confirmDelete">{{ i18n.t('home.delete_confirm') }}</SLButton>
             </div>
           </div>
         </div>

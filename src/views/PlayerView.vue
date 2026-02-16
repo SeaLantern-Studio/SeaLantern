@@ -575,11 +575,13 @@ onMounted(() => {
   position: absolute;
   top: 3px;
   bottom: 3px;
-  background: white;
+  background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-sm);
   transition: all 0.3s ease;
   box-shadow: var(--sl-shadow-sm);
   z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
 }
 .tab-btn {
   display: flex;

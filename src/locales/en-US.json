@@ -10,7 +10,8 @@
     "personalize": "Personalize",
     "about": "About",
     "loading": "Loading...",
-    "select_server": "Select server"
+    "select_server": "Select server",
+    "open_folder": "Open Folder"
   },
   "sidebar": {
     "groups": {
@@ -43,7 +44,12 @@
     "system_resources": "System Resources",
     "detail_view": "Switch to detail view",
     "gauge_view": "Switch to gauge view",
-    "recent_alerts": "Recent Warnings / Errors"
+    "recent_alerts": "Recent Warnings / Errors",
+    "delete_confirm_message": "Please enter server name {server} to confirm deletion",
+    "delete_input_placeholder": "Enter server name",
+    "delete_cancel": "Cancel",
+    "delete_confirm": "Confirm Delete",
+    "delete_error": "Server name input error, please re-enter"
   },
   "create": {
     "title": "Create Server",
@@ -74,7 +80,25 @@
     "title": "Console",
     "send_command": "Send Command",
     "clear_log": "Clear Log",
-    "copy_log": "Copy Log"
+    "copy_log": "Copy Log",
+    "add_custom_command": "Add Custom Command",
+    "edit_custom_command": "Edit Custom Command",
+    "command_name": "Command Name",
+    "command_content": "Command Content",
+    "enter_command_name": "Enter command name",
+    "enter_command_content": "Enter command content",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "add": "Add",
+    "update": "Update",
+    "back_to_bottom": "Back to bottom",
+    "waiting_for_output": "Waiting for output...",
+    "quick": "Quick:",
+    "custom": "Custom:",
+    "running": "Running",
+    "starting": "Starting",
+    "stopping": "Stopping",
+    "stopped": "Stopped"
   },
   "config": {
     "title": "Config Edit",
@@ -107,6 +131,39 @@
       "easy": "Easy",
       "normal": "Normal",
       "hard": "Hard"
+    },
+    "properties": {
+      "server-port": "Server Port",
+      "server-ip": "Server Bind IP, leave empty for all",
+      "max-players": "Max Players",
+      "online-mode": "Online Mode",
+      "white-list": "Enable Whitelist",
+      "enforce-whitelist": "Enforce Whitelist",
+      "gamemode": "Default Game Mode",
+      "difficulty": "Game Difficulty",
+      "hardcore": "Hardcore Mode",
+      "pvp": "Allow PVP",
+      "allow-flight": "Allow Flight",
+      "allow-nether": "Allow Nether",
+      "spawn-monsters": "Spawn Monsters",
+      "spawn-animals": "Spawn Animals",
+      "spawn-npcs": "Spawn NPCs",
+      "generate-structures": "Generate Structures",
+      "level-name": "World Name",
+      "level-seed": "World Seed",
+      "level-type": "World Type",
+      "view-distance": "View Distance",
+      "simulation-distance": "Simulation Distance",
+      "max-tick-time": "Max Tick Time (ms), -1 to disable",
+      "network-compression-threshold": "Network Compression Threshold",
+      "motd": "Server Description (MOTD)",
+      "enable-command-block": "Enable Command Blocks",
+      "enable-query": "Enable Query Protocol",
+      "enable-rcon": "Enable RCON Remote Control",
+      "enable-status": "Enable Server List Status",
+      "force-gamemode": "Force Game Mode",
+      "spawn-protection": "Spawn Protection Radius",
+      "sync-chunk-writes": "Sync Chunk Writes"
     }
   },
   "players": {

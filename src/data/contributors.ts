@@ -81,7 +81,7 @@ export const contributors: Contributor[] = [
   },
   {
     name: "CmzYa",
-    role: "适人握持",
+    role: "不明所以的commit带来了巨量的体验优化",
     avatar: "https://mc-heads.net/avatar/CmzYa/64",
     url: "https://github.com/CmzYa",
   },
