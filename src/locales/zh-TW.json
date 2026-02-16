@@ -10,7 +10,8 @@
     "personalize": "個人化",
     "about": "關於",
     "loading": "載入中...",
-    "select_server": "選擇伺服器"
+    "select_server": "選擇伺服器",
+    "open_folder": "開啟資料夾"
   },
   "sidebar": {
     "groups": {
@@ -43,7 +44,12 @@
     "system_resources": "系統資源",
     "detail_view": "切換到詳細檢視",
     "gauge_view": "切換到儀表盤",
-    "recent_alerts": "最近警告 / 錯誤"
+    "recent_alerts": "最近警告 / 錯誤",
+    "delete_confirm_message": "請輸入伺服器名稱 {server} 以確認刪除",
+    "delete_input_placeholder": "輸入伺服器名稱",
+    "delete_cancel": "取消",
+    "delete_confirm": "確認刪除",
+    "delete_error": "伺服器名稱輸入錯誤，請重新輸入"
   },
   "create": {
     "title": "建立伺服器",
@@ -74,7 +80,25 @@
     "title": "控制台",
     "send_command": "發送命令",
     "clear_log": "清空日誌",
-    "copy_log": "複製日誌"
+    "copy_log": "複製日誌",
+    "add_custom_command": "新增自訂指令",
+    "edit_custom_command": "編輯自訂指令",
+    "command_name": "指令名稱",
+    "command_content": "指令內容",
+    "enter_command_name": "輸入指令名稱",
+    "enter_command_content": "輸入指令內容",
+    "cancel": "取消",
+    "delete": "刪除",
+    "add": "新增",
+    "update": "更新",
+    "back_to_bottom": "回到底部",
+    "waiting_for_output": "等待輸出...",
+    "quick": "快捷:",
+    "custom": "自訂:",
+    "running": "運行中",
+    "starting": "啟動中",
+    "stopping": "停止中",
+    "stopped": "已停止"
   },
   "config": {
     "title": "配置編輯",
@@ -107,6 +131,39 @@
       "easy": "簡單",
       "normal": "普通",
       "hard": "困難"
+    },
+    "properties": {
+      "server-port": "伺服器埠號",
+      "server-ip": "伺服器綁定IP，留空表示所有",
+      "max-players": "最大玩家數",
+      "online-mode": "正版驗證",
+      "white-list": "啟用白名單",
+      "enforce-whitelist": "強制白名單",
+      "gamemode": "預設遊戲模式",
+      "difficulty": "遊戲難度",
+      "hardcore": "極限模式",
+      "pvp": "允許PVP",
+      "allow-flight": "允許飛行",
+      "allow-nether": "允許下界",
+      "spawn-monsters": "生成怪物",
+      "spawn-animals": "生成動物",
+      "spawn-npcs": "生成NPC",
+      "generate-structures": "生成結構",
+      "level-name": "世界名稱",
+      "level-seed": "世界種子",
+      "level-type": "世界類型",
+      "view-distance": "視距",
+      "simulation-distance": "模擬距離",
+      "max-tick-time": "最大tick時間(ms)，-1為禁用",
+      "network-compression-threshold": "網路壓縮閾值",
+      "motd": "伺服器描述(MOTD)",
+      "enable-command-block": "啟用命令方塊",
+      "enable-query": "啟用Query協議",
+      "enable-rcon": "啟用RCON遠端控制",
+      "enable-status": "啟用伺服器列表狀態",
+      "force-gamemode": "強制遊戲模式",
+      "spawn-protection": "出生點保護半徑",
+      "sync-chunk-writes": "同步區塊寫入"
     }
   },
   "players": {

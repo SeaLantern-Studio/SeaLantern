@@ -78,6 +78,10 @@ class I18n {
   getAvailableLocales(): readonly LocaleCode[] {
     return SUPPORTED_LOCALES;
   }
+
+  isSupportedLocale(locale: string): boolean {
+    return isSupportedLocale(locale);
+  }
 }
 
 export const i18n = new I18n();
