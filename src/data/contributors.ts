@@ -121,12 +121,6 @@ export const contributors: Contributor[] = [
     avatar: "https://minotar.net/avatar/_TNTXZ_/64",
     url: "https://github.com/TNTXZ",
   },
-  {
-    name: "I账户已注销I",
-    role: "提出了个性化页面，提供了颜色编辑和颜色选择器",
-    avatar: "https://zhuxiaojt.github.io/favicon.ico",
-    url: "https://github.com/zhuxiaojt",
-  }
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
@@ -73,6 +73,12 @@ const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: "系统默认", value: "" },
 ]);
 
+const closeActionOptions = [
+  { label: i18n.t("home.close_action_ask"), value: "ask" },
+  { label: i18n.t("home.close_action_minimize"), value: "minimize" },
+  { label: i18n.t("home.close_action_close"), value: "close" },
+];
+
 const showImportModal = ref(false);
 const importJson = ref("");
 const showResetConfirm = ref(false);
@@ -105,6 +111,14 @@ onMounted(async () => {
   } catch {
     acrylicSupported.value = false;
   }
+  
+  // 监听设置更新事件
+  window.addEventListener("settings-updated", loadSettings);
+});
+
+onUnmounted(() => {
+  // 移除设置更新事件监听
+  window.removeEventListener("settings-updated", loadSettings);
 });
 
 async function loadSystemFonts() {
@@ -146,6 +160,7 @@ async function loadSettings() {
     uiFontSize.value = String(s.font_size);
     hasChanges.value = false;
     settings.value.color = s.color || "default";
+    settings.value.close_action = s.close_action || "ask";
     // 应用已保存的设置
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -395,6 +410,16 @@ function clearBackgroundImage() {
             </div>
             <SLSwitch v-model="settings.auto_accept_eula" @update:modelValue="markChanged" />
           </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("home.close_action") }}</span>
+              <span class="setting-desc">{{ i18n.t("home.close_action_desc") }}</span>
+            </div>
+            <div class="select-container">
+              <SLSelect :options="closeActionOptions" v-model="settings.close_action" @update:modelValue="markChanged" />
+            </div>
+          </div>
         </div>
       </SLCard>
 
@@ -642,6 +667,10 @@ function clearBackgroundImage() {
 }
 .input-lg {
   width: 320px;
+  flex-shrink: 0;
+}
+.select-container {
+  width: 200px;
   flex-shrink: 0;
 }
 

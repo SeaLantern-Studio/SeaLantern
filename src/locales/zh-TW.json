@@ -45,11 +45,19 @@
     "detail_view": "切換到詳細檢視",
     "gauge_view": "切換到儀表盤",
     "recent_alerts": "最近警告 / 錯誤",
-    "delete_confirm_message": "請輸入伺服器名稱 {{server}} 以確認刪除",
+    "delete_confirm_message": "請輸入伺服器名稱 <strong>{server}</strong> 以確認刪除",
     "delete_input_placeholder": "輸入伺服器名稱",
     "delete_cancel": "取消",
     "delete_confirm": "確認刪除",
-    "delete_error": "伺服器名稱輸入錯誤，請重新輸入"
+    "delete_error": "伺服器名稱輸入錯誤，請重新輸入",
+    "close_action": "關閉行為",
+    "close_action_desc": "選擇點擊關閉按鈕時的預設行為",
+    "close_action_ask": "詢問",
+    "close_action_minimize": "最小化到托盤",
+    "close_action_close": "直接關閉",
+    "close_window_title": "關閉視窗",
+    "close_window_message": "您確定要關閉 SeaLantern 嗎？",
+    "remember_choice": "記住我的選擇"
   },
   "create": {
     "title": "建立伺服器",

@@ -45,11 +45,19 @@
     "detail_view": "Switch to detail view",
     "gauge_view": "Switch to gauge view",
     "recent_alerts": "Recent Warnings / Errors",
-    "delete_confirm_message": "Please enter server name {{server}} to confirm deletion",
+    "delete_confirm_message": "Please enter the server name <strong>{server}</strong> to confirm deletion",
     "delete_input_placeholder": "Enter server name",
     "delete_cancel": "Cancel",
     "delete_confirm": "Confirm Delete",
-    "delete_error": "Server name input error, please re-enter"
+    "delete_error": "Server name input error, please re-enter",
+    "close_action": "Close Behavior",
+    "close_action_desc": "Select default behavior when clicking the close button",
+    "close_action_ask": "Ask",
+    "close_action_minimize": "Minimize to Tray",
+    "close_action_close": "Close Directly",
+    "close_window_title": "Close Window",
+    "close_window_message": "Are you sure you want to close SeaLantern?",
+    "remember_choice": "Remember my choice"
   },
   "create": {
     "title": "Create Server",

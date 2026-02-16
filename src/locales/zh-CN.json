@@ -45,11 +45,19 @@
     "detail_view": "切换到详细视图",
     "gauge_view": "切换到仪表盘",
     "recent_alerts": "最近警告 / 错误",
-    "delete_confirm_message": "请输入服务器名称 {{server}} 以确认删除",
+    "delete_confirm_message": "请输入服务器名称 <strong>{server}</strong> 以确认删除",
     "delete_input_placeholder": "输入服务器名称",
     "delete_cancel": "取消",
     "delete_confirm": "确认删除",
-    "delete_error": "服务器名称输入错误，请重新输入"
+    "delete_error": "服务器名称输入错误，请重新输入",
+    "close_action": "关闭行为",
+    "close_action_desc": "选择点击关闭按钮时的默认行为",
+    "close_action_ask": "询问",
+    "close_action_minimize": "最小化到托盘",
+    "close_action_close": "直接关闭",
+    "close_window_title": "关闭窗口",
+    "close_window_message": "您确定要关闭 SeaLantern 吗？",
+    "remember_choice": "记住我的选择"
   },
   "create": {
     "title": "创建服务器",
