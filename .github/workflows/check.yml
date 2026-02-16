@@ -43,50 +43,61 @@ jobs:
   backend:
     name: 后端检查 (Rust)
     needs: changes
-    # 关键：只有 backend 文件变更时才运行
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-24.04
     steps:
+      - name: 后端变更检测
+        run: echo "backend changed=${{ needs.changes.outputs.backend }}"
+
       - name: 检出代码
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: actions/checkout@v4
 
       - name: 安装系统依赖
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: 安装 Rust 工具链
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
 
       - name: 缓存 Rust 编译产物
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
 
       - name: 检查代码格式 (Rust)
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: cargo fmt --all -- --check
 
       - name: 运行 Clippy 检查
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: cargo clippy --workspace -- -D warnings
 
   frontend:
     name: 前端检查 (Node)
     needs: changes
-    # 关键：只有 frontend 文件变更时才运行
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-24.04
     steps:
+      - name: 前端变更检测
+        run: echo "frontend changed=${{ needs.changes.outputs.frontend }}"
+
       - name: 检出代码
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/checkout@v4
 
       - name: 安装 Node.js
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
 
       - name: 缓存 npm 依赖
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -95,11 +106,14 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: 安装前端依赖
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: npm ci
 
       - name: 运行格式化并检查前端 Lint
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
           npm run fmt && npm run lint
 
       - name: 检查前端构建
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: npm run build
