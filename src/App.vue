@@ -22,10 +22,10 @@ function handleUpdateModalClose() {
   <transition name="splash-fade">
     <SplashScreen v-if="showSplash" @ready="handleSplashReady" />
   </transition>
-  
+
   <template v-if="!showSplash">
     <AppLayout />
-    
+
     <UpdateModal
       v-if="updateStore.isUpdateModalVisible && updateStore.isUpdateAvailable"
       @close="handleUpdateModalClose"
