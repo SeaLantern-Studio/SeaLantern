@@ -171,6 +171,39 @@ async function handleManualDownload() {
         </div>
       </SLCard>
 
+      <!-- Bug Fixes -->
+      <SLCard :title="i18n.t('about.bug_fixes')">
+        <div class="bug-fixes-section">
+          <p class="section-desc">{{ i18n.t("about.bug_fixes_desc") }}</p>
+          <div class="fix-list">
+            <div class="fix-item">
+              <span class="fix-label">{{ i18n.t("about.memory_leak_fix") }}</span>
+              <span class="fix-status fixed">已修复</span>
+            </div>
+            <div class="fix-item">
+              <span class="fix-label">{{ i18n.t("about.zombie_process_fix") }}</span>
+              <span class="fix-status fixed">已修复</span>
+            </div>
+            <div class="fix-item">
+              <span class="fix-label">{{ i18n.t("about.file_io_fix") }}</span>
+              <span class="fix-status fixed">已修复</span>
+            </div>
+            <div class="fix-item">
+              <span class="fix-label">{{ i18n.t("about.race_condition_fix") }}</span>
+              <span class="fix-status fixed">已修复</span>
+            </div>
+            <div class="fix-item">
+              <span class="fix-label">{{ i18n.t("about.network_timeout_fix") }}</span>
+              <span class="fix-status fixed">已修复</span>
+            </div>
+            <div class="fix-item">
+              <span class="fix-label">{{ i18n.t("about.null_pointer_fix") }}</span>
+              <span class="fix-status fixed">已修复</span>
+            </div>
+          </div>
+        </div>
+      </SLCard>
+
       <!-- 此处缺一段代码 -->
       <!-- 点击加入开发 -->
 
@@ -642,6 +675,46 @@ async function handleManualDownload() {
   color: var(--sl-text-secondary);
   line-height: 1.8;
   margin-bottom: var(--sl-space-sm);
+}
+
+/* Bug Fixes */
+.bug-fixes-section {
+  padding: var(--sl-space-lg);
+}
+
+.fix-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+  margin-top: var(--sl-space-md);
+}
+
+.fix-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  background: var(--sl-bg-secondary);
+  border-radius: var(--sl-radius-md);
+  border-left: 4px solid var(--sl-success);
+}
+
+.fix-label {
+  font-size: 0.875rem;
+  color: var(--sl-text-primary);
+  font-weight: 500;
+}
+
+.fix-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--sl-radius-full);
+}
+
+.fix-status.fixed {
+  background: var(--sl-success-bg);
+  color: var(--sl-success);
 }
 
 /* Contributor Wall */

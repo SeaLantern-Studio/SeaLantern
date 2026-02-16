@@ -114,6 +114,12 @@ export const contributors: Contributor[] = [
     avatar: "https://mc-heads.net/avatar/xingwangzhe_/64",
     url: "https://github.com/xingwangzhe",
   },
+  {
+    name: "XOX-zip",
+    role: "修复重大Bug",
+    avatar: "https://avatars.githubusercontent.com/u/235296676?v=4&size=64",
+    url: "https://github.com/XOX-zip",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================

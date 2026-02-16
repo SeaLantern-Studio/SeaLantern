@@ -312,6 +312,15 @@
     "update_title": "发现新版本",
     "update_current": "当前版本",
     "update_release_notes": "更新内容",
-    "update_now": "立即更新"
+    "update_now": "立即更新",
+    "bug_fixes": "Bug修复记录",
+    "bug_fixes_desc": "修复影响正常使用的重大Bug",
+    "major_bug_fixes": "重大Bug修复",
+    "memory_leak_fix": "内存泄漏修复",
+    "zombie_process_fix": "僵尸进程修复",
+    "file_io_fix": "文件I/O错误修复",
+    "race_condition_fix": "竞争条件修复",
+    "network_timeout_fix": "网络请求超时修复",
+    "null_pointer_fix": "空指针风险修复"
   }
 }

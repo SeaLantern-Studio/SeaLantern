@@ -48,6 +48,12 @@ onMounted(() => {
           <span></span>
         </div>
       </div>
+
+      <!-- 修复信息 -->
+      <div class="splash-fix-info" :style="{ opacity: textOpacity }">
+        <span class="fix-icon">🔧</span>
+        <span class="fix-text">XOX-zip 已修复重大Bug</span>
+      </div>
     </div>
   </div>
 </template>
@@ -133,5 +139,32 @@ onMounted(() => {
     transform: scale(1.2);
     opacity: 1;
   }
+}
+
+/* Fix Info */
+.splash-fix-info {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  color: #22c55e;
+  backdrop-filter: blur(10px);
+  transition: opacity 0.4s ease;
+}
+
+.fix-icon {
+  font-size: 1rem;
+}
+
+.fix-text {
+  font-weight: 500;
 }
 </style>

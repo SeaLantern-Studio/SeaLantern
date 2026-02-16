@@ -317,6 +317,14 @@ function handleAnimationEnd(event: AnimationEvent) {
       <button class="error-close" @click="actionError = null">x</button>
     </div>
 
+    <!-- Bug Fix Notification -->
+    <div class="bug-fix-notification">
+      <div class="fix-badge">
+        <span class="fix-icon">🔧</span>
+        <span class="fix-text">XOX-zip 修复重大Bug</span>
+      </div>
+    </div>
+
     <!-- Top Row: Quick Actions + System Stats -->
     <div class="top-row">
       <SLCard
@@ -724,6 +732,35 @@ function handleAnimationEnd(event: AnimationEvent) {
 }
 .error-close {
   color: var(--sl-error);
+  font-weight: 600;
+}
+
+/* Bug Fix Notification */
+.bug-fix-notification {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--sl-space-sm);
+}
+
+.fix-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: 6px 12px;
+  background: linear-gradient(135deg, var(--sl-success-bg), rgba(34, 197, 94, 0.1));
+  border: 1px solid var(--sl-success);
+  border-radius: var(--sl-radius-full);
+  font-size: 0.8125rem;
+  color: var(--sl-success);
+  font-weight: 500;
+  animation: sl-fade-in-up 0.5s ease;
+}
+
+.fix-icon {
+  font-size: 1rem;
+}
+
+.fix-text {
   font-weight: 600;
 }
 

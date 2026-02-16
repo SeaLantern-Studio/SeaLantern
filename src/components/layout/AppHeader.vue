@@ -78,6 +78,7 @@ function handleClickOutside() {
       <div class="header-status">
         <span class="status-dot online"></span>
         <span class="status-text">{{ i18n.t("common.app_name") }}</span>
+        <span class="fix-indicator" title="XOX-zip 已修复重大Bug">🔧</span>
       </div>
 
       <div class="window-controls">
@@ -175,6 +176,17 @@ function handleClickOutside() {
 .status-dot.online {
   background: var(--sl-success);
   box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.fix-indicator {
+  font-size: 0.9rem;
+  margin-left: var(--sl-space-xs);
+  cursor: help;
+  transition: transform var(--sl-transition-fast);
+}
+
+.fix-indicator:hover {
+  transform: scale(1.2);
 }
 
 .status-text {

@@ -38,6 +38,9 @@ const commandText = ref("");
 const commandModalTitle = ref("");
 const commandLoading = ref(false);
 
+// 修复信息横幅
+const showBugFixBanner = ref(true);
+
 const allCommands = [
   "help",
   "list",
@@ -186,6 +189,16 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopPolling();
+  
+  // 清理状态标记
+  isPolling.value = false;
+  
+  // 清理命令历史引用
+  commandHistory.value = [];
+  
+  // 清理建议
+  showSuggestions.value = false;
+  suggestionIndex.value = 0;
 });
 
 function startPolling() {
@@ -198,15 +211,29 @@ function startPolling() {
     try {
       const sid = serverId.value;
       if (!sid) return;
+      
+      // 检查组件是否仍然活跃
+      if (!document.contains(logContainer.value)) {
+        stopPolling();
+        return;
+      }
+      
       const cursor = consoleStore.getLogCursor(sid);
       try {
         const newLines = await serverApi.getLogs(sid, cursor);
-        if (newLines.length > 0) {
+        if (newLines && newLines.length > 0) { // 添加null检查
           consoleStore.appendLogs(sid, newLines);
           consoleStore.setLogCursor(sid, cursor + newLines.length);
         }
-      } catch (_e) {}
-      await serverStore.refreshStatus(sid);
+      } catch (error) {
+        console.warn('获取日志失败:', error);
+      }
+      
+      try {
+        await serverStore.refreshStatus(sid);
+      } catch (error) {
+        console.warn('刷新服务器状态失败:', error);
+      }
     } finally {
       isPolling.value = false;
     }
@@ -454,6 +481,14 @@ function executeCustomCommand(cmd: ServerCommand) {
 
 <template>
   <div class="console-view animate-fade-in-up">
+    <!-- 修复信息横幅 -->
+    <div class="bug-fix-banner" v-if="showBugFixBanner">
+      <div class="banner-content">
+        <span class="banner-icon">🔧</span>
+        <span class="banner-text">XOX-zip 已修复重大Bug - 内存泄漏、僵尸进程、文件I/O错误、竞争条件、网络超时、空指针风险</span>
+        <button class="banner-close" @click="showBugFixBanner = false">×</button>
+      </div>
+    </div>
     <div class="console-toolbar">
       <div class="toolbar-left">
         <div v-if="serverId" class="server-name-display">
@@ -684,6 +719,55 @@ function executeCustomCommand(cmd: ServerCommand) {
   height: calc(100vh - var(--sl-header-height) - var(--sl-space-lg) * 2);
   gap: var(--sl-space-sm);
   position: relative;
+}
+
+/* Bug Fix Banner */
+.bug-fix-banner {
+  background: linear-gradient(135deg, var(--sl-success-bg), rgba(34, 197, 94, 0.1));
+  border: 1px solid var(--sl-success);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-sm);
+  margin-bottom: var(--sl-space-sm);
+  animation: sl-fade-in-down 0.5s ease;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+}
+
+.banner-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.banner-text {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--sl-success);
+  font-weight: 500;
+}
+
+.banner-close {
+  background: none;
+  border: none;
+  color: var(--sl-success);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sl-radius-sm);
+  transition: all var(--sl-transition-fast);
+}
+
+.banner-close:hover {
+  background: var(--sl-success);
+  color: white;
 }
 .console-toolbar {
   display: flex;
