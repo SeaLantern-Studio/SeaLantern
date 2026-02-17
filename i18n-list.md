@@ -23,6 +23,48 @@
 - common.settings
 - common.unknown
 - common.update_title
+- common.no_match
+- common.paste_json
+- common.font_system_default
+- common.command_day
+- common.command_night
+- common.command_clear
+- common.command_rain
+- common.command_save
+- common.command_list
+- common.command_keep_inventory_on
+- common.command_keep_inventory_off
+- common.command_mob_griefing_off
+- common.select_java_path
+- common.enter_server_name
+- common.java_32bit
+- common.java_64bit
+- common.paste_json
+- common.select_java_path
+- common.enter_server_name
+- common.font_system_default
+- common.background_size_cover
+- common.background_size_contain
+- common.background_size_fill
+- common.background_size_auto
+- common.color_default
+- common.color_custom
+- common.edit_color_light
+- common.edit_color_dark
+- common.edit_color_light_acrylic
+- common.edit_color_dark_acrylic
+- common.theme_auto
+- common.theme_light
+- common.theme_dark
+- common.command_day
+- common.command_night
+- common.command_clear
+- common.command_rain
+- common.command_save
+- common.command_list
+- common.command_keep_inventory_on
+- common.command_keep_inventory_off
+- common.command_mob_griefing_off
 
 ## 首页 (home)
 
@@ -47,10 +89,37 @@
 ## 侧边栏 (sidebar)
 
 - sidebar.collapse_btn
+- sidebar.groups.main
+- sidebar.groups.server
+- sidebar.groups.system
 
 ## 头部 (header)
 
 - header.english
+- header.language
+- header.chinese
+- header.chinese_tw
+- header.chinese_jb
+- header.chinese_dongbei
+- header.japanese
+- header.upsidedown
+- header.chinese_meow
+- header.spanish
+- header.deutsch
+- header.pirate
+- header.chinese_tj
+- header.cantonese
+- header.russian
+- header.chinese_cy
+- header.chinese_wu
+- header.chinese_hokkien
+- header.chinese_hn
+- header.chinese_jl
+- header.vietnamese
+- header.british
+- header.aussie
+- header.kansaiben
+- header.hokkaidou
 
 ## 创建服务器 (create)
 
@@ -65,18 +134,82 @@
 - create.select_java
 - create.server_name
 - create.title
+- create.startup_mode
+- create.jar_file
+- create.bat_file
+- create.sh_file
+- create.select_startup_file
+- create.browse
+- create.scan
+- create.java_version
+- create.server_path
+- create.create
+- create.select_and_create
+- create.online_mode
+- create.online_mode_on
+- create.online_mode_off
+- create.cancel
+- create.scanning
+- create.no_java
+- create.rescan
+- create.java_manual
+- create.java_path
 
 ## 控制台 (console)
 
 - console.add_custom_command
 - console.enter_command_content
 - console.enter_command_name
+- console.title
+- console.send_command
+- console.clear_log
+- console.copy_log
+- console.edit_custom_command
+- console.command_name
+- console.command_content
+- console.cancel
+- console.delete
+- console.save
+- console.add
+- console.update
+- console.back_to_bottom
+- console.waiting_for_output
+- console.quick
+- console.custom
+- console.running
+- console.starting
+- console.stopping
+- console.stopped
 
 ## 配置 (config)
 
 - config.default
 - config.search
 - config.properties.* (动态生成)
+- config.title
+- config.save
+- config.reload
+- config.select_server
+- config.no_server
+- config.loading
+- config.no_config
+- config.saved
+- config.categories.all
+- config.categories.network
+- config.categories.player
+- config.categories.game
+- config.categories.world
+- config.categories.performance
+- config.categories.display
+- config.categories.other
+- config.gamemode.survival
+- config.gamemode.creative
+- config.gamemode.adventure
+- config.gamemode.spectator
+- config.difficulty.peaceful
+- config.difficulty.easy
+- config.difficulty.normal
+- config.difficulty.hard
 
 ## 玩家 (players)
 
@@ -90,6 +223,26 @@
 - players.player_id
 - players.player_name
 - players.whitelist
+- players.title
+- players.add
+- players.remove
+- players.select_server
+- players.no_server
+- players.server_not_running
+- players.online_players
+- players.server_offline
+- players.no_players
+- players.kick
+- players.empty_whitelist
+- players.empty_banned
+- players.unban
+- players.empty_ops
+- players.deop
+- players.ban_player
+- players.add_op
+- players.cancel
+- players.confirm
+- players.server_not_running_hint
 
 ## 设置 (settings)
 
@@ -136,7 +289,6 @@
 - settings.confirm_import
 - settings.confirm_reset
 - settings.cancel
-- settings.delete_confirm_message
 - settings.default_port
 - settings.font_family
 - settings.font_family_default
@@ -172,7 +324,6 @@
 - settings.secondary_text_color
 - settings.server_defaults
 - settings.server_defaults_desc
-- settings.spawn_monsters
 - settings.theme
 - settings.theme_desc
 - settings.theme_options.auto
@@ -180,6 +331,58 @@
 - settings.theme_options.light
 - settings.tertiary_background_color
 - settings.title
+- settings.auto_stop
+- settings.auto_eula
+- settings.close_action
+- settings.default_memory
+- settings.jvm_args
+- settings.auto_stop_desc
+- settings.auto_eula_desc
+- settings.max_memory_desc
+- settings.min_memory
+- settings.min_memory_desc
+- settings.default_java
+- settings.default_java_desc
+- settings.jvm_args_desc
+- settings.port_desc
+- settings.jvm_args_placeholder
+- settings.console
+- settings.console_desc
+- settings.console_font_size
+- settings.console_font_size_desc
+- settings.max_log_lines
+- settings.max_log_lines_desc
+- settings.discard
+- settings.unsaved_changes
+- settings.export
+- settings.import
+- settings.reset
+- settings.confirm_reset
+- settings.confirm_import
+- settings.saved
+- settings.export_success
+- settings.import_title
+- settings.reset_title
+- settings.browse_java
+- settings.browse_jar
+- settings.server_name_placeholder
+- settings.use_preset_colortheme
+- settings.use_preset_colortheme_desc
+- settings.current_edit_colorplan
+- settings.current_edit_colorplan_desc
+- settings.color_plan
+- settings.color_plan_desc
+- settings.border_color
+- settings.search_font
+- settings.color_picker
+- settings.developer_mode
+- settings.developer_mode_desc
+- settings.developer_mode_toggle
+- settings.developer_mode_toggle_desc
+- settings.edit_colorplan_options.light
+- settings.edit_colorplan_options.dark
+- settings.edit_colorplan_options.light_acrylic
+- settings.edit_colorplan_options.dark_acrylic
 
 ## 关于 (about)
 
@@ -190,6 +393,64 @@
 - about.update_downloading
 - about.update_running_warning_title
 - about.update_title
+- about.title
+- about.version
+- about.check_update
+- about.contributors
+- about.subtitle
+- about.tech_badge
+- about.license_badge
+- about.hero_desc
+- about.manifesto_title
+- about.manifesto_text1
+- about.manifesto_text2
+- about.contributor_wall
+- about.contributor_desc
+- about.join_text
+- about.join_desc
+- about.build_year
+- about.frontend
+- about.backend
+- about.license
+- about.way_code
+- about.way_code_desc
+- about.way_design
+- about.way_design_desc
+- about.way_idea
+- about.way_idea_desc
+- about.way_doc
+- about.way_doc_desc
+- about.way_translate
+- about.way_translate_desc
+- about.way_promote
+- about.way_promote_desc
+- about.gitee_repo
+- about.bilibili
+- about.footer_text1
+- about.footer_text2
+- about.footer_quote
+- about.update_checking
+- about.update_latest
+- about.update_available
+- about.update_error
+- about.update_current
+- about.update_latest_version
+- about.update_release_notes
+- about.update_now
+- about.update_installing
+- about.update_restart_install
+- about.update_ready
+- about.update_download_complete
+- about.update_debug
+- about.update_debug_placeholder
+- about.update_debug_download
+- about.update_running_warning_desc
+- about.update_running_warning_hint
+- about.update_running_servers
+- about.update_cancel_update
+- about.update_force_auto
+- about.update_download_failed
+- about.github_repo
 
 ## 托盘 (tray)
 
