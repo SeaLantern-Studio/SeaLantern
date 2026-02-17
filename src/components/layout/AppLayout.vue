@@ -126,6 +126,13 @@ async function applyAllSettings() {
 
   // 应用开发者模式限制
   applyDeveloperMode(settings.developer_mode || false);
+
+  // Apply senior mode attribute
+  if (settings.senior_mode) {
+    document.documentElement.setAttribute("data-senior", "true");
+  } else {
+    document.documentElement.removeAttribute("data-senior");
+  }
 }
 
 onMounted(async () => {
@@ -688,7 +695,6 @@ function applyColors(settings: AppSettings) {
 <template>
   <div class="app-layout">
     <div class="app-background" :style="backgroundStyle"></div>
-    <ZombieOverlay v-if="settingsStore.settings.color === 'zombie'" />
     <AppSidebar />
     <div class="app-main" :class="{ 'sidebar-collapsed': ui.sidebarCollapsed }">
       <AppHeader />
@@ -702,6 +708,7 @@ function applyColors(settings: AppSettings) {
         </router-view>
       </main>
     </div>
+    <ZombieOverlay v-if="settingsStore.settings.color === 'zombie'" />
   </div>
 </template>
 

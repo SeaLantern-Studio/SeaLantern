@@ -397,6 +397,8 @@
     "acrylic": "亚克力效果 (毛玻璃)",
     "acrylic_desc": "启用 Windows 系统级亚克力毛玻璃效果，与背景图片兼容",
     "acrylic_not_supported": "当前系统不支持亚克力效果",
+    "senior_mode": "长辈模式",
+    "senior_mode_desc": "开启后将调大全局字号及间距，并优化界面对比度，让长辈读得清、看得明。",
     "background": "背景图片",
     "background_desc": "上传一张图片作为软件背景，支持 PNG、JPG、WEBP 等格式",
     "opacity": "不透明度",

@@ -146,3 +146,39 @@
   text-shadow: 2px 0 #FF0033, -2px 0 #00FF41, 0 2px #8B0000;
   letter-spacing: 1px;
 }
+
+[data-senior="true"] {
+  /* Increase root font size to scale rem units */
+  font-size: 1.25em !important;
+
+  /* Increase base variables directly on the element with the attribute */
+  --sl-font-size-base: 18px !important;
+
+  /* High contrast colors for light mode (default) */
+  --sl-text-primary: #000000 !important;
+  --sl-text-secondary: #222222 !important;
+  --sl-text-tertiary: #444444 !important;
+  --sl-primary: #0284c7 !important;
+
+  /* Increased spacing */
+  --sl-space-xs: 6px !important;
+  --sl-space-sm: 12px !important;
+  --sl-space-md: 20px !important;
+  --sl-space-lg: 32px !important;
+  --sl-space-xl: 40px !important;
+
+  /* Bolder weights */
+  --sl-font-weight-medium: 600 !important;
+  --sl-font-weight-semibold: 700 !important;
+  --sl-font-weight-bold: 800 !important;
+}
+
+[data-theme="dark"][data-senior="true"] {
+  /* High contrast colors for dark mode */
+  --sl-text-primary: #ffffff !important;
+  --sl-text-secondary: #eeeeee !important;
+  --sl-text-tertiary: #cccccc !important;
+  --sl-primary: #38bdf8 !important;
+  --sl-bg: #000000 !important;
+  --sl-surface: #111111 !important;
+}

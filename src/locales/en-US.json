@@ -393,6 +393,8 @@
     "acrylic": "Acrylic Effect (Glass)",
     "acrylic_desc": "Enable Windows system-level acrylic glass effect, compatible with background images",
     "acrylic_not_supported": "Acrylic effect not supported on current system",
+    "senior_mode": "Senior Mode",
+    "senior_mode_desc": "Increase font sizes, spacing, and contrast globally to improve readability for elderly users.",
     "background": "Background Image",
     "background_desc": "Upload an image as software background, supports PNG, JPG, WEBP and other formats",
     "opacity": "Opacity",
