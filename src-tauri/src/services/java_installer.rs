@@ -8,6 +8,7 @@ use std::sync::Arc;
 #[cfg(not(target_os = "windows"))]
 use tar::Archive;
 use tauri::{Emitter, Manager, Window};
+#[cfg(target_os = "windows")]
 use zip::ZipArchive;
 
 #[derive(Clone, serde::Serialize)]
