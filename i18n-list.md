@@ -35,6 +35,10 @@
 - common.command_keep_inventory_on
 - common.command_keep_inventory_off
 - common.command_mob_griefing_off
+- common.config_saved
+- common.home
+- common.player_manage
+- common.personalize
 - common.select_java_path
 - common.enter_server_name
 - common.java_32bit
@@ -56,6 +60,14 @@
 - common.theme_auto
 - common.theme_light
 - common.theme_dark
+- common.config_all
+- common.config_network
+- common.config_player
+- common.config_game
+- common.config_world
+- common.config_performance
+- common.config_display
+- common.config_other
 - common.command_day
 - common.command_night
 - common.command_clear
@@ -85,6 +97,11 @@
 - home.stop
 - home.system_resources
 - home.title
+- home.close_window_title
+- home.close_window_message
+- home.remember_choice
+- home.close_action_minimize
+- home.close_action_close
 
 ## 侧边栏 (sidebar)
 
