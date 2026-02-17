@@ -183,7 +183,7 @@ function handleServerChange(value: string | number) {
 // 服务器选项
 const serverOptions = computed(() => {
   return serverStore.servers.map((s) => ({
-    label: s.name + " (" + s.id.substring(0, 8) + ")",
+    label: s.name,
     value: s.id,
   }));
 });
@@ -258,11 +258,9 @@ function isActive(path: string): boolean {
             class="server-selector-button"
             :aria-label="i18n.t('common.select_server')"
           >
+            <Server :size="20" :stroke-width="1.8" class="server-icon" />
             <template v-if="!ui.sidebarCollapsed">
               <div class="server-select-box">{{ getCurrentServerLabel }}</div>
-            </template>
-            <template v-else>
-              <Server :size="22" :stroke-width="1.8" />
             </template>
           </ListboxButton>
 
@@ -291,13 +289,9 @@ function isActive(path: string): boolean {
       <div class="nav-active-indicator" ref="navIndicator"></div>
 
       <!-- 主菜单组 -->
-      <Disclosure as="div" class="nav-group" default-open>
-        <DisclosureButton
-          as="div"
-          v-if="serverOptions.length > 0"
-          class="nav-group-label"
-        ></DisclosureButton>
-        <DisclosurePanel>
+      <div class="nav-group">
+        <div v-if="serverOptions.length > 0" class="nav-group-label"></div>
+        <div>
           <div
             v-for="item in navItems.filter((i) => i.group === 'main')"
             :key="item.name"
@@ -348,13 +342,13 @@ function isActive(path: string): boolean {
               <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
             </transition>
           </div>
-        </DisclosurePanel>
-      </Disclosure>
+        </div>
+      </div>
 
       <!-- 服务器菜单组 -->
-      <Disclosure v-if="serverOptions.length > 0" as="div" class="nav-group" default-open>
-        <DisclosureButton as="div" class="nav-group-label"></DisclosureButton>
-        <DisclosurePanel>
+      <div v-if="serverOptions.length > 0" class="nav-group">
+        <div class="nav-group-label"></div>
+        <div>
           <div
             v-for="item in navItems.filter((i) => i.group === 'server')"
             :key="item.name"
@@ -405,13 +399,13 @@ function isActive(path: string): boolean {
               <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
             </transition>
           </div>
-        </DisclosurePanel>
-      </Disclosure>
+        </div>
+      </div>
 
       <!-- 系统菜单组 -->
-      <Disclosure as="div" class="nav-group" default-open>
-        <DisclosureButton as="div" class="nav-group-label"></DisclosureButton>
-        <DisclosurePanel>
+      <div class="nav-group">
+        <div class="nav-group-label"></div>
+        <div>
           <div
             v-for="item in navItems.filter((i) => i.group === 'system')"
             :key="item.name"
@@ -462,8 +456,8 @@ function isActive(path: string): boolean {
               <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
             </transition>
           </div>
-        </DisclosurePanel>
-      </Disclosure>
+        </div>
+      </div>
     </nav>
 
     <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
@@ -582,45 +576,63 @@ function isActive(path: string): boolean {
 }
 
 .server-selector-button {
-  width: 90%;
-  padding: var(--sl-space-sm);
+  width: 100%;
+  padding: 8px 8px;
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   background-color: var(--sl-surface);
-  transition: all 0.3s ease;
+  transition: all var(--sl-transition-fast);
   cursor: pointer;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sl-space-sm);
   min-height: 40px;
-  will-change: width, border, background-color, padding, align-items;
+  white-space: nowrap;
+  margin-top: 5px;
+}
+
+.server-select-box {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--sl-text-secondary);
+  transition: color var(--sl-transition-fast);
 }
 
 .sidebar.collapsed .server-selector-button {
   width: 40px;
   height: 40px;
   align-items: center;
+  justify-content: center;
   padding: var(--sl-space-xs);
   border: none;
   background-color: transparent;
   min-height: 40px;
+  gap: 0;
+}
+
+.server-icon {
+  color: var(--sl-text-secondary);
+  transition: color var(--sl-transition-fast);
 }
 
 .server-selector-button:hover {
-  border-color: var(--sl-primary);
   background-color: var(--sl-primary-bg);
+  color: var(--sl-primary);
 }
 
-.server-select-box {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--sl-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
+.server-selector-button:hover .server-icon {
+  color: var(--sl-primary);
 }
+
+.server-selector-button:hover .server-select-box {
+  color: var(--sl-primary);
+}
+
+
 
 .server-selector-icon {
   padding: 8px;
@@ -796,6 +808,8 @@ function isActive(path: string): boolean {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 20px;
+  height: 20px;
 }
 
 .nav-label {
