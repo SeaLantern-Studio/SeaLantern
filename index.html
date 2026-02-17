@@ -45,10 +45,12 @@
             if (parsed.fontSize) fontSize = parsed.fontSize;
           }
         } catch (e) {}
-        
+
         var effectiveTheme = theme;
         if (theme === "auto") {
-          effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
         }
         document.documentElement.setAttribute("data-theme", effectiveTheme);
         document.documentElement.style.fontSize = fontSize + "px";

@@ -26,12 +26,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <SLModal
-    :visible="visible"
-    :title="title"
-    :close-on-overlay="false"
-    @close="emit('close')"
-  >
+  <SLModal :visible="visible" :title="title" :close-on-overlay="false" @close="emit('close')">
     <div class="command-modal-content">
       <div class="form-group">
         <label for="command-name">{{ i18n.t("console.command_name") }}</label>
@@ -56,11 +51,7 @@ const emit = defineEmits<{
     </div>
     <template #footer>
       <div class="modal-footer">
-        <SLButton
-          variant="secondary"
-          @click="emit('close')"
-          :disabled="loading"
-        >
+        <SLButton variant="secondary" @click="emit('close')" :disabled="loading">
           {{ i18n.t("console.cancel") }}
         </SLButton>
         <SLButton

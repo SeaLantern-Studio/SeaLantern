@@ -108,7 +108,14 @@ async function getRunningServerNames(): Promise<string[]> {
   );
 
   return snapshots
-    .filter((item): item is { name: string; status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error" } => item !== null)
+    .filter(
+      (
+        item,
+      ): item is {
+        name: string;
+        status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
+      } => item !== null,
+    )
     .filter((item) => item.status === "Running")
     .map((item) => item.name);
 }
