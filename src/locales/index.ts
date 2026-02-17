@@ -92,7 +92,7 @@ function interpolateVariables(template: string, options: Record<string, unknown>
 
 class I18n {
   private currentLocale: Ref<LocaleCode> = ref("zh-CN");
-  private fallbackLocale: LocaleCode = "zh-CN";
+  private fallbackLocale: LocaleCode = "en-US";
 
   setLocale(locale: string) {
     if (isSupportedLocale(locale)) {

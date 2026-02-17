@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { i18n } from "../../locales";
 import SLInput from "../common/SLInput.vue";
 import SLSwitch from "../common/SLSwitch.vue";
 import SLBadge from "../common/SLBadge.vue";
@@ -48,7 +49,7 @@ function isBooleanType(entry: ConfigEntry): boolean {
         />
       </template>
     </div>
-    <div class="entry-default">{{ $t("config.default") }}: {{ entry.default }}</div>
+    <div class="entry-default">{{ i18n.t("config.default") }}: {{ entry.default }}</div>
   </div>
 </template>
 

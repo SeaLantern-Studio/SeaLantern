@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "../components/common/SLSpinner.vue";
+import SLSwitch from "../components/common/SLSwitch.vue";
 import { configApi } from "../api/config";
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
@@ -27,6 +28,10 @@ const serverPath = computed(() => {
   const server = store.servers.find((s) => s.id === store.currentServerId);
   return server?.path || "";
 });
+
+// 自动保存相关
+const autoSaveDebounceTimer = ref<number | null>(null);
+const AUTO_SAVE_DELAY = 1000; // 1秒防抖延迟
 
 const currentServerId = computed(() => store.currentServerId);
 
@@ -54,6 +59,18 @@ onMounted(async () => {
   } else if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
   }
+  await loadProperties();
+});
+
+onUnmounted(() => {
+  // 清理防抖计时器
+  if (autoSaveDebounceTimer.value) {
+    clearTimeout(autoSaveDebounceTimer.value);
+  }
+});
+
+onActivated(async () => {
+  // 当组件被激活时自动刷新配置
   await loadProperties();
 });
 
@@ -101,6 +118,35 @@ async function saveProperties() {
 
 function updateValue(key: string, value: string | boolean) {
   editValues.value[key] = String(value);
+  
+  // 启动自动保存防抖
+  if (autoSaveDebounceTimer.value) {
+    clearTimeout(autoSaveDebounceTimer.value);
+  }
+  
+  autoSaveDebounceTimer.value = window.setTimeout(() => {
+    autoSaveProperties();
+  }, AUTO_SAVE_DELAY);
+}
+
+function autoSaveProperties() {
+  if (!serverPath.value) return;
+  
+  saving.value = true;
+  error.value = null;
+  successMsg.value = null;
+  
+  configApi.writeServerProperties(serverPath.value, editValues.value)
+    .then(() => {
+      successMsg.value = i18n.t("config.saved");
+      setTimeout(() => (successMsg.value = null), 3000);
+    })
+    .catch((e) => {
+      error.value = String(e);
+    })
+    .finally(() => {
+      saving.value = false;
+    });
 }
 
 function handleCategoryChange(category: string) {
@@ -136,22 +182,13 @@ function handleSearchUpdate(value: string) {
         <span>{{ i18n.t("config.saved") }}</span>
       </div>
 
-      <!-- 工具栏 -->
-      <ConfigToolbar
-        :serverPath="serverPath"
-        :loading="loading"
-        :saving="saving"
-        :searchQuery="searchQuery"
-        @reload="loadProperties"
-        @save="saveProperties"
-        @updateSearch="handleSearchUpdate"
-      />
-
-      <!-- 分类选择 -->
+      <!-- 分类选择和搜索 -->
       <ConfigCategories
         :categories="categories"
         :activeCategory="activeCategory"
+        :searchQuery="searchQuery"
         @updateCategory="handleCategoryChange"
+        @updateSearch="handleSearchUpdate"
       />
 
       <div v-if="loading" class="loading-state">
@@ -170,12 +207,10 @@ function handleSearchUpdate(value: string) {
             </p>
           </div>
           <div class="entry-control">
-            <template v-if="entry.value_type === 'boolean'">
-              <input
-                type="checkbox"
-                :checked="editValues[entry.key] === 'true'"
-                @change="updateValue(entry.key, $event.target.checked)"
-                class="checkbox"
+            <template v-if="entry.value_type === 'boolean' || editValues[entry.key] === 'true' || editValues[entry.key] === 'false'">
+              <SLSwitch
+                :modelValue="editValues[entry.key] === 'true'"
+                @update:modelValue="updateValue(entry.key, $event)"
               />
             </template>
             <template v-else-if="entry.key === 'gamemode'">
@@ -317,10 +352,7 @@ function handleSearchUpdate(value: string) {
   flex-shrink: 0;
   min-width: 200px;
 }
-.checkbox {
-  width: 16px;
-  height: 16px;
-}
+
 .select,
 .input {
   width: 200px;

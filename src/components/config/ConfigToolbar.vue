@@ -6,16 +6,12 @@ import SLSpinner from "../common/SLSpinner.vue";
 
 interface Props {
   serverPath: string;
-  loading: boolean;
-  saving: boolean;
   searchQuery: string;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: "reload"): void;
-  (e: "save"): void;
   (e: "updateSearch", value: string): void;
 }>();
 </script>
@@ -31,24 +27,7 @@ const emit = defineEmits<{
       />
     </div>
     <div class="toolbar-right">
-      <SLButton
-        variant="secondary"
-        size="sm"
-        @click="emit('reload')"
-        :loading="loading"
-        :disabled="loading || saving"
-      >
-        {{ i18n.t("common.refresh") }}
-      </SLButton>
-      <SLButton
-        variant="primary"
-        size="sm"
-        @click="emit('save')"
-        :loading="saving"
-        :disabled="loading || saving"
-      >
-        {{ i18n.t("common.save") }}
-      </SLButton>
+
     </div>
   </div>
 </template>

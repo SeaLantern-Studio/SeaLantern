@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { i18n } from "../../locales";
+import SLInput from "../common/SLInput.vue";
 
 interface Props {
   categories: string[];
   activeCategory: string;
+  searchQuery: string;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: "updateCategory", category: string): void;
+  (e: "updateSearch", value: string): void;
 }>();
 
 const categoryLabels: Record<string, string> = {
@@ -26,14 +29,24 @@ const categoryLabels: Record<string, string> = {
 
 <template>
   <div class="config-categories">
-    <div
-      v-for="cat in categories"
-      :key="cat"
-      class="category-item"
-      :class="{ active: activeCategory === cat }"
-      @click="emit('updateCategory', cat)"
-    >
-      {{ categoryLabels[cat] || cat }}
+    <div class="categories-container">
+      <div
+        v-for="cat in categories"
+        :key="cat"
+        class="category-item"
+        :class="{ active: activeCategory === cat }"
+        @click="emit('updateCategory', cat)"
+      >
+        {{ categoryLabels[cat] || cat }}
+      </div>
+    </div>
+    <div class="search-container">
+      <SLInput
+        :modelValue="searchQuery"
+        :placeholder="i18n.t('config.search')"
+        @input="emit('updateSearch', $event.target.value)"
+        style="width: 220px"
+      />
     </div>
   </div>
 </template>
@@ -41,7 +54,8 @@ const categoryLabels: Record<string, string> = {
 <style scoped>
 .config-categories {
   display: flex;
-  gap: var(--sl-space-xs);
+  align-items: center;
+  gap: var(--sl-space-md);
   padding: var(--sl-space-sm);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
@@ -49,6 +63,32 @@ const categoryLabels: Record<string, string> = {
   margin-bottom: var(--sl-space-md);
   overflow-x: auto;
   scrollbar-width: thin;
+}
+
+.search-container {
+  flex-shrink: 0;
+}
+
+.categories-container {
+  display: flex;
+  gap: var(--sl-space-xs);
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.categories-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.categories-container::-webkit-scrollbar-track {
+  background: var(--sl-bg-secondary);
+  border-radius: var(--sl-radius-full);
+}
+
+.categories-container::-webkit-scrollbar-thumb {
+  background: var(--sl-border);
+  border-radius: var(--sl-radius-full);
 }
 
 .config-categories::-webkit-scrollbar {
