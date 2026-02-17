@@ -127,6 +127,12 @@ export const contributors: Contributor[] = [
     avatar: "https://zhuxiaojt.github.io/favicon.ico",
     url: "https://github.com/zhuxiaojt",
   },
+  {
+    name: "学渣驹",
+    role: "Arch Linux 的 AUR 包维护者",
+    avatar: "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
+    url: "https://github.com/xuezhaju",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
