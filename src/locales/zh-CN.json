@@ -85,7 +85,9 @@
     "config_performance": "性能",
     "config_display": "显示",
     "config_other": "其他",
-    "config_saved": "配置已保存"
+    "config_saved": "配置已保存",
+    "refresh": "刷新",
+    "save": "保存"
   },
   "sidebar": {
     "groups": {

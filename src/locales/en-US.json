@@ -74,7 +74,7 @@
     "java_64bit": "64-bit",
     "java_32bit": "32-bit",
     "unknown": "Unknown",
-    "quote_text": "We built the skeleton, and the soul is entrusted to you.",
+    "quote_text": "We built the skeleton, and the soul is up to you.",
     "click_to_refresh": "Click to refresh",
     "edit_server_name": "Edit server name",
     "config_all": "All",
@@ -85,7 +85,9 @@
     "config_performance": "Performance",
     "config_display": "Display",
     "config_other": "Other",
-    "config_saved": "Config saved"
+    "config_saved": "Config saved",
+    "refresh": "Refresh",
+    "save": "Save"
   },
   "sidebar": {
     "groups": {
