@@ -1000,7 +1000,7 @@ function handleAnimationEnd(event: AnimationEvent) {
           >
             <p
               class="delete-confirm-message"
-              v-html="i18n.t('home.delete_confirm_message', { server: server.name })"
+              v-html="i18n.t('home.delete_confirm_message', { server: '<strong>' + server.name + '</strong>' })"
             ></p>
             <div class="delete-input-group">
               <input
@@ -1461,7 +1461,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   border-radius: var(--sl-radius-md);
   margin: var(--sl-space-xs) 0;
   border: 1px solid var(--sl-border);
-  border-left: 4px solid var(--sl-primary);
   transition: all 0.2s ease;
   cursor: pointer;
   user-select: none;

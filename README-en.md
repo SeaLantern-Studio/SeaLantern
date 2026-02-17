@@ -243,7 +243,7 @@ skeletons—waiting for your contributions:
 
 ## Contributing
 
-Contributions are welcome! Before you start, please read the [Contributing Guidelines](CONTRIBUTING-en.md) to understand code standards and development workflows.
+Contributions are welcome! Before you start, please read the [Contributing Guidelines](docs/CONTRIBUTING-en.md) to understand code standards and development workflows.
 
 The UI is also fully customizable:
 
@@ -255,7 +255,7 @@ The UI is also fully customizable:
 ### How to Contribute
 
 1. Fork this repository
-2. Create a branch and implement your changes (following the [Contributing Guidelines](CONTRIBUTING-en.md)）
+2. Create a branch and implement your changes (following the [Contributing Guidelines](docs/CONTRIBUTING-en.md)）
 3. Submit a Pull Request
 4. Your name will be added to the contributor wall on the About page
 
