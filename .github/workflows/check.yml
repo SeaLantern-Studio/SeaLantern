@@ -3,57 +3,117 @@ name: "代码质量检查"
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - dev
+    branches: [main, dev]
 
 jobs:
+  # 第一步：检测变更文件
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src-tauri/**'
+              - 'src-tauri/Cargo.toml'
+              - 'src-tauri/**/*.rs'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            frontend:
+              - 'src/**'
+              - 'package*.json'
+              - 'package-lock.json'
+              - 'pnpm-lock.yaml'
+              - 'yarn.lock'
+              - 'vite.config.ts'
+              - 'tsconfig*.json'
+              - 'index.html'
+              - 'public/**'
+              - 'assets/**'
+              - 'src/**/*.vue'
+              - 'src/**/*.ts'
+              - 'src/**/*.css'
+
   backend:
     name: 后端检查 (Rust)
+    needs: changes
     runs-on: ubuntu-24.04
     steps:
+      - name: 后端变更检测
+        run: echo "backend changed=${{ needs.changes.outputs.backend }}"
+
       - name: 检出代码
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: actions/checkout@v4
 
-      - name: 安装系统依赖 (后端需要)
+      - name: 安装系统依赖
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: 安装 Rust 工具链
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
 
       - name: 缓存 Rust 编译产物
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
 
       - name: 检查代码格式 (Rust)
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: cargo fmt --all -- --check
 
       - name: 运行 Clippy 检查
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: cargo clippy --workspace -- -D warnings
 
   frontend:
     name: 前端检查 (Node)
+    needs: changes
     runs-on: ubuntu-24.04
     steps:
+      - name: 前端变更检测
+        run: echo "frontend changed=${{ needs.changes.outputs.frontend }}"
+
       - name: 检出代码
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/checkout@v4
 
       - name: 安装 Node.js
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
 
+      - name: 缓存 npm 依赖
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: 安装前端依赖
-        run: npm install
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        run: npm ci
 
       - name: 运行格式化并检查前端 Lint
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
           npm run fmt && npm run lint
 
       - name: 检查前端构建
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: npm run build
