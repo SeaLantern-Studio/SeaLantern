@@ -102,7 +102,7 @@ jobs:
 
       - name: 安装前端依赖
         if: ${{ needs.changes.outputs.frontend == 'true' }}
-        run: npm ci
+        run: npm install
 
       - name: 运行格式化并检查前端 Lint
         if: ${{ needs.changes.outputs.frontend == 'true' }}
