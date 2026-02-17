@@ -118,12 +118,12 @@ async function saveProperties() {
 
 function updateValue(key: string, value: string | boolean) {
   editValues.value[key] = String(value);
-  
+
   // 启动自动保存防抖
   if (autoSaveDebounceTimer.value) {
     clearTimeout(autoSaveDebounceTimer.value);
   }
-  
+
   autoSaveDebounceTimer.value = window.setTimeout(() => {
     autoSaveProperties();
   }, AUTO_SAVE_DELAY);
@@ -131,18 +131,21 @@ function updateValue(key: string, value: string | boolean) {
 
 function autoSaveProperties() {
   if (!serverPath.value) return;
-  
+
   saving.value = true;
   error.value = null;
   successMsg.value = null;
-  
-  configApi.writeServerProperties(serverPath.value, editValues.value)
+
+  configApi
+    .writeServerProperties(serverPath.value, editValues.value)
     .then(() => {
       successMsg.value = i18n.t("config.saved");
       setTimeout(() => (successMsg.value = null), 3000);
+      return Promise.resolve();
     })
     .catch((e) => {
       error.value = String(e);
+      return Promise.resolve();
     })
     .finally(() => {
       saving.value = false;
@@ -207,7 +210,13 @@ function handleSearchUpdate(value: string) {
             </p>
           </div>
           <div class="entry-control">
-            <template v-if="entry.value_type === 'boolean' || editValues[entry.key] === 'true' || editValues[entry.key] === 'false'">
+            <template
+              v-if="
+                entry.value_type === 'boolean' ||
+                editValues[entry.key] === 'true' ||
+                editValues[entry.key] === 'false'
+              "
+            >
               <SLSwitch
                 :modelValue="editValues[entry.key] === 'true'"
                 @update:modelValue="updateValue(entry.key, $event)"

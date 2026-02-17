@@ -56,7 +56,7 @@ const handleClose = () => emit("close");
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  animation: overlay-fade 0.2s ease;
+  animation: overlay-fade var(--sl-transition-fast) ease;
 }
 
 .sl-modal {
@@ -65,7 +65,7 @@ const handleClose = () => emit("close");
   border-radius: var(--sl-radius-lg, 8px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   background: var(--sl-surface, #fff);
-  animation: modal-slide 0.25s ease;
+  animation: modal-slide var(--sl-transition-normal) ease;
 }
 
 .sl-modal-header {

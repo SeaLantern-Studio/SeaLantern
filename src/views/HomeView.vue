@@ -527,11 +527,7 @@ function handleAnimationEnd(event: AnimationEvent) {
           </SLButton>
         </div>
         <div class="card-spacer"></div>
-        <div
-          class="quote-display"
-          @click="updateQuote"
-          :title="i18n.t('common.click_to_refresh')"
-        >
+        <div class="quote-display" @click="updateQuote" :title="i18n.t('common.click_to_refresh')">
           <span v-if="displayText && !isTyping" class="quote-text">「{{ displayText }}」</span>
           <span v-if="currentQuote && !isTyping" class="quote-author"
             >—— {{ currentQuote.author }}</span
@@ -695,9 +691,14 @@ function handleAnimationEnd(event: AnimationEvent) {
                 <polygon
                   :points="
                     '0,40 ' +
-                    cpuHistory.map((v, i) =>
-                      (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) + ',' + (40 - v * 0.4)
-                    ).join(' ') +
+                    cpuHistory
+                      .map(
+                        (v, i) =>
+                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
+                          ',' +
+                          (40 - v * 0.4),
+                      )
+                      .join(' ') +
                     ' 300,40'
                   "
                   fill="var(--sl-primary)"
@@ -705,9 +706,16 @@ function handleAnimationEnd(event: AnimationEvent) {
                 />
                 <!-- 曲线 -->
                 <polyline
-                  :points="cpuHistory.map((v, i) =>
-                    (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) + ',' + (40 - v * 0.4)
-                  ).join(' ')"
+                  :points="
+                    cpuHistory
+                      .map(
+                        (v, i) =>
+                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
+                          ',' +
+                          (40 - v * 0.4),
+                      )
+                      .join(' ')
+                  "
                   fill="none"
                   stroke="var(--sl-primary)"
                   stroke-width="2"
@@ -740,9 +748,14 @@ function handleAnimationEnd(event: AnimationEvent) {
                 <polygon
                   :points="
                     '0,40 ' +
-                    memHistory.map((v, i) =>
-                      (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) + ',' + (40 - v * 0.4)
-                    ).join(' ') +
+                    memHistory
+                      .map(
+                        (v, i) =>
+                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
+                          ',' +
+                          (40 - v * 0.4),
+                      )
+                      .join(' ') +
                     ' 300,40'
                   "
                   fill="var(--sl-success)"
@@ -750,9 +763,16 @@ function handleAnimationEnd(event: AnimationEvent) {
                 />
                 <!-- 曲线 -->
                 <polyline
-                  :points="memHistory.map((v, i) =>
-                    (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) + ',' + (40 - v * 0.4)
-                  ).join(' ')"
+                  :points="
+                    memHistory
+                      .map(
+                        (v, i) =>
+                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
+                          ',' +
+                          (40 - v * 0.4),
+                      )
+                      .join(' ')
+                  "
                   fill="none"
                   stroke="var(--sl-success)"
                   stroke-width="2"
@@ -830,14 +850,39 @@ function handleAnimationEnd(event: AnimationEvent) {
                       :disabled="!editName.trim() || editLoading"
                       :class="{ loading: editLoading }"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
                     </button>
                     <button
                       class="inline-edit-btn cancel"
                       @click="cancelEdit"
                       :disabled="editLoading"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -849,7 +894,19 @@ function handleAnimationEnd(event: AnimationEvent) {
                   @click="startEditServerName(server)"
                   :title="i18n.t('common.edit_server_name')"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                  </svg>
                 </button>
               </template>
             </div>
@@ -883,7 +940,9 @@ function handleAnimationEnd(event: AnimationEvent) {
             stroke-linecap="round"
             stroke-linejoin="round"
           >
-            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+            <path
+              d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+            />
           </svg>
         </div>
 
@@ -941,7 +1000,7 @@ function handleAnimationEnd(event: AnimationEvent) {
           >
             <p
               class="delete-confirm-message"
-              v-html="i18n.t('home.delete_confirm_message', { server: server.name })"
+              v-html="i18n.t('home.delete_confirm_message', { server: '<strong>' + server.name + '</strong>' })"
             ></p>
             <div class="delete-input-group">
               <input
@@ -1215,7 +1274,7 @@ function handleAnimationEnd(event: AnimationEvent) {
 }
 
 .server-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -1402,7 +1461,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   border-radius: var(--sl-radius-md);
   margin: var(--sl-space-xs) 0;
   border: 1px solid var(--sl-border);
-  border-left: 4px solid var(--sl-primary);
   transition: all 0.2s ease;
   cursor: pointer;
   user-select: none;
@@ -1472,7 +1530,7 @@ function handleAnimationEnd(event: AnimationEvent) {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .server-card-actions .sl-button {
     flex: 1;
     min-width: unset;
