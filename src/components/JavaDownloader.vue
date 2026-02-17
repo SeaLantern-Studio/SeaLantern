@@ -1,3 +1,4 @@
+<template>
   <div class="java-downloader p-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
     <h3 class="text-lg font-medium mb-2 flex items-center gap-2">
       <svg class="text-primary-500" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -44,7 +45,7 @@
         <div 
           class="h-full bg-primary-500 transition-all duration-300 ease-out" 
           :style="{ width: `${progress}%` }"
-        />
+        ></div>
       </div>
     </div>
 
@@ -62,6 +63,7 @@
       <span>{{ successMessage }}</span>
     </div>
   </div>
+</template>
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue';
