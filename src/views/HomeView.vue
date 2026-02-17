@@ -230,6 +230,20 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
+// 格式化服务器路径，只显示 servers 目录及其后面的内容
+function formatServerPath(path: string): string {
+  const serversIndex = path.indexOf("servers/");
+  if (serversIndex !== -1) {
+    return path.substring(serversIndex);
+  }
+  // 尝试使用反斜杠查找
+  const serversIndexBackslash = path.indexOf("servers\\");
+  if (serversIndexBackslash !== -1) {
+    return path.substring(serversIndexBackslash);
+  }
+  return path;
+}
+
 // Recent warning/error logs across all servers
 const recentAlerts = computed(() => {
   const alerts: { server: string; line: string }[] = [];
@@ -512,6 +526,19 @@ function handleAnimationEnd(event: AnimationEvent) {
             {{ i18n.t("common.create_server") }}
           </SLButton>
         </div>
+        <div class="card-spacer"></div>
+        <div
+          class="quote-display"
+          @click="updateQuote"
+          :title="i18n.t('common.click_to_refresh')"
+        >
+          <span v-if="displayText && !isTyping" class="quote-text">「{{ displayText }}」</span>
+          <span v-if="currentQuote && !isTyping" class="quote-author"
+            >—— {{ currentQuote.author }}</span
+          >
+          <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
+          <span v-if="!displayText && !isTyping" class="quote-loading">加载中...</span>
+        </div>
       </SLCard>
 
       <SLCard class="stats-card">
@@ -642,18 +669,6 @@ function handleAnimationEnd(event: AnimationEvent) {
                 {{ formatBytes(systemInfo.disk.total) }}</span
               >
             </div>
-          </div>
-          <div
-            class="quote-display"
-            @click="updateQuote"
-            :title="i18n.t('common.click_to_refresh')"
-          >
-            <span v-if="displayText && !isTyping" class="quote-text">「{{ displayText }}」</span>
-            <span v-if="currentQuote && !isTyping" class="quote-author"
-              >—— {{ currentQuote.author }}</span
-            >
-            <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
-            <span v-if="!displayText && !isTyping" class="quote-loading">加载中...</span>
           </div>
         </div>
         <!-- 详细视图 -->
@@ -807,14 +822,14 @@ function handleAnimationEnd(event: AnimationEvent) {
                       :disabled="!editName.trim() || editLoading"
                       :class="{ loading: editLoading }"
                     >
-                      ✓
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </button>
                     <button
                       class="inline-edit-btn cancel"
                       @click="cancelEdit"
                       :disabled="editLoading"
                     >
-                      ✕
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   </div>
                 </div>
@@ -826,22 +841,29 @@ function handleAnimationEnd(event: AnimationEvent) {
                   @click="startEditServerName(server)"
                   :title="i18n.t('common.edit_server_name')"
                 >
-                  ✏️
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 </button>
               </template>
             </div>
-            <span class="server-meta text-caption">
-              {{ server.core_type }} | 端口 {{ server.port }} | {{ server.max_memory }}MB
-            </span>
+            <div class="server-meta">
+              <span>{{ server.core_type }}</span>
+              <span>端口 {{ server.port }}</span>
+              <span>{{ server.max_memory }}MB</span>
+            </div>
           </div>
           <SLBadge
             :text="getStatusText(store.statuses[server.id]?.status)"
             :variant="getStatusVariant(store.statuses[server.id]?.status)"
+            size="large"
           />
         </div>
 
-        <div class="server-card-path text-mono text-caption" :title="server.jar_path">
-          {{ server.jar_path }}
+        <div 
+          class="server-card-path text-mono text-caption" 
+          :title="server.jar_path"
+          @click="systemApi.openFolder(server.path)"
+        >
+          {{ formatServerPath(server.jar_path) }}
         </div>
 
         <div class="server-card-actions">
@@ -876,9 +898,6 @@ function handleAnimationEnd(event: AnimationEvent) {
             "
           >
             {{ i18n.t("common.console") }}
-          </SLButton>
-          <SLButton variant="ghost" size="sm" @click="systemApi.openFolder(server.path)">
-            {{ i18n.t("common.open_folder") }}
           </SLButton>
           <SLButton
             variant="ghost"
@@ -980,12 +999,54 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .quick-actions {
   display: flex;
-  gap: var(--sl-space-md);
+  gap: var(--sl-space-sm);
   margin-top: var(--sl-space-sm);
+  flex-wrap: wrap;
+}
+
+.card-spacer {
+  flex-grow: 1;
+}
+
+.quick-start-card .quote-display {
+  margin-top: var(--sl-space-md);
+  padding-top: var(--sl-space-md);
+  border-top: 1px solid var(--sl-border-light);
+  text-align: center;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.quick-start-card {
+  display: flex;
+  flex-direction: column;
+  height: 280px;
+  padding: var(--sl-space-sm);
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-sm);
+  border-radius: var(--sl-radius-lg);
+}
+
+.quick-start-card .sl-card__header {
+  margin-bottom: var(--sl-space-sm);
+}
+
+.quick-start-card .sl-card__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+  margin-bottom: var(--sl-space-xs);
+}
+
+.quick-start-card .sl-card__subtitle {
+  font-size: 0.875rem;
+  color: var(--sl-text-secondary);
+  line-height: 1.4;
 }
 
 .gauge-view {
-  min-height: 200px;
+  min-height: 240px;
 }
 
 .stats-grid {
@@ -993,7 +1054,7 @@ function handleAnimationEnd(event: AnimationEvent) {
   flex-direction: column;
   gap: var(--sl-space-sm);
   padding: var(--sl-space-xs) 0;
-  min-height: 200px;
+  min-height: 240px;
 }
 
 .stats-loading {
@@ -1001,8 +1062,19 @@ function handleAnimationEnd(event: AnimationEvent) {
   align-items: center;
   justify-content: center;
   gap: var(--sl-space-sm);
-  min-height: 200px;
+  min-height: 240px;
   color: var(--sl-text-tertiary);
+}
+
+.stats-card {
+  height: 280px;
+  padding: var(--sl-space-sm);
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-sm);
+  border-radius: var(--sl-radius-lg);
+  display: flex;
+  flex-direction: column;
 }
 
 .stat-item {
@@ -1035,13 +1107,15 @@ function handleAnimationEnd(event: AnimationEvent) {
 }
 
 .mini-chart {
-  height: 40px;
+  width: 100%;
+  height: 30px;
 }
 
 .mini-chart.taskmgr-style {
   background: var(--sl-bg-secondary);
   border-radius: 4px;
   overflow: hidden;
+  width: 100%;
 }
 
 .mini-chart.taskmgr-style .chart-svg {
@@ -1096,33 +1170,87 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .server-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: var(--sl-space-md);
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--sl-space-lg);
 }
 
 .server-card {
-  padding: var(--sl-space-md);
+  padding: var(--sl-space-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--sl-space-sm);
+  gap: var(--sl-space-md);
+  border-radius: var(--sl-radius-lg);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-sm);
+}
+
+.server-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sl-shadow-lg);
+  border-color: var(--sl-primary-light);
+}
+
+.server-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sl-primary), var(--sl-secondary));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.server-card:hover::before {
+  transform: scaleX(1);
+}
+
+@media (max-width: 768px) {
+  .server-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .server-card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sl-space-md);
+}
+
+.server-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .server-name-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sl-space-sm);
   flex-wrap: wrap;
+  margin-bottom: var(--sl-space-xs);
 }
 
 .server-name {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--sl-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-card-header .sl-badge {
+  flex-shrink: 0;
 }
 
 .edit-server-name {
@@ -1131,9 +1259,10 @@ function handleAnimationEnd(event: AnimationEvent) {
   border: none;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: opacity 0.2s ease;
-  padding: 2px;
+  transition: all 0.2s ease;
+  padding: 4px;
   border-radius: var(--sl-radius-sm);
+  flex-shrink: 0;
 }
 
 .server-card:hover .edit-server-name {
@@ -1142,10 +1271,30 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .edit-server-name:hover {
   background: var(--sl-bg-secondary);
+  transform: scale(1.05);
 }
 
 .server-meta {
-  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-xs);
+  margin-top: var(--sl-space-xs);
+}
+
+.server-meta span {
+  background: var(--sl-bg-tertiary);
+  padding: 4px 12px;
+  border-radius: var(--sl-radius-full);
+  white-space: nowrap;
+  border: 1px solid var(--sl-border);
+  transition: all 0.2s ease;
+}
+
+.server-meta span:hover {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-primary-light);
 }
 
 /* 就地编辑样式 */
@@ -1226,15 +1375,85 @@ function handleAnimationEnd(event: AnimationEvent) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
+  color: var(--sl-text-secondary);
+  background: var(--sl-bg-tertiary);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  border-radius: var(--sl-radius-md);
+  margin: var(--sl-space-xs) 0;
+  border: 1px solid var(--sl-border);
+  border-left: 4px solid var(--sl-primary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.server-card-path::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z'/%3E%3C/svg%3E");
+  position: absolute;
+  right: var(--sl-space-md);
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.server-card-path:hover {
+  background: var(--sl-bg-secondary);
+  border-top-color: var(--sl-primary-light);
+  border-right-color: var(--sl-primary-light);
+  border-bottom-color: var(--sl-primary-light);
+  color: var(--sl-text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.server-card-path:hover::after {
+  opacity: 1;
+}
+
+.server-card-path:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .server-card-actions {
   display: flex;
-  gap: var(--sl-space-xs);
-  padding-top: var(--sl-space-sm);
+  gap: var(--sl-space-sm);
+  padding-top: var(--sl-space-md);
   border-top: 1px solid var(--sl-border-light);
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.server-card-actions .sl-button {
+  flex: 1;
+  min-width: 90px;
+  border-radius: var(--sl-radius-md);
+  transition: all 0.2s ease;
+}
+
+.server-card-actions .sl-button:hover {
+  transform: translateY(-1px);
+}
+
+.server-card-actions .sl-button:not(.sl-button--variant-primary):not(.sl-button--variant-danger) {
+  flex: 0 0 auto;
+  min-width: unset;
+}
+
+@media (max-width: 480px) {
+  .server-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .server-card-actions .sl-button {
+    flex: 1;
+    min-width: unset;
+  }
 }
 
 /* 删除确认输入框样式 */
@@ -1394,40 +1613,44 @@ function handleAnimationEnd(event: AnimationEvent) {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  margin-bottom: var(--sl-space-sm);
 }
 .card-title {
   font-size: 1rem;
   font-weight: 600;
+  color: var(--sl-text-primary);
 }
 .view-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: transparent;
+  width: 28px;
+  height: 28px;
+  background: var(--sl-bg-tertiary);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-sm);
   color: var(--sl-text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
 }
 .view-toggle:hover {
   background: var(--sl-bg-hover);
   color: var(--sl-text-primary);
+  transform: scale(1.05);
 }
 
 .gauge-grid {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  gap: var(--sl-space-sm);
-  padding: var(--sl-space-xs) 0;
+  gap: var(--sl-space-xs);
+  padding: 0;
+  margin-bottom: 4px;
 }
 .gauge-item {
   position: relative;
-  width: 70px;
-  height: 70px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1461,20 +1684,20 @@ function handleAnimationEnd(event: AnimationEvent) {
   line-height: 1.2;
 }
 .gauge-value {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   font-family: var(--sl-font-mono);
 }
 .gauge-label {
-  font-size: 0.625rem;
+  font-size: 0.5625rem;
   color: var(--sl-text-tertiary);
 }
 
 .gauge-details {
   display: flex;
   justify-content: space-between;
-  padding-top: var(--sl-space-sm);
-  margin-top: var(--sl-space-sm);
+  padding-top: 4px;
+  margin-top: 4px;
   border-top: 1px solid var(--sl-border-light);
 }
 .gauge-detail-item {
@@ -1485,11 +1708,11 @@ function handleAnimationEnd(event: AnimationEvent) {
   flex: 1;
 }
 .detail-label {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   color: var(--sl-text-tertiary);
 }
 .detail-value {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-family: var(--sl-font-mono);
   color: var(--sl-text-secondary);
 }
@@ -1498,13 +1721,13 @@ function handleAnimationEnd(event: AnimationEvent) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: var(--sl-space-sm) var(--sl-space-md);
-  margin-top: var(--sl-space-sm);
+  gap: 4px;
+  padding: var(--sl-space-xs) var(--sl-space-sm);
+  margin-top: var(--sl-space-xs);
   border-top: 1px solid var(--sl-border-light);
   cursor: pointer;
   transition: all 0.3s ease;
-  border-radius: var(--sl-radius-md);
+  border-radius: var(--sl-radius-sm);
   position: relative;
   overflow: hidden;
 }
@@ -1515,7 +1738,7 @@ function handleAnimationEnd(event: AnimationEvent) {
   box-shadow: var(--sl-shadow-sm);
 }
 .quote-text {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: var(--sl-text-secondary);
   font-style: italic;
   text-align: center;
@@ -1537,7 +1760,7 @@ function handleAnimationEnd(event: AnimationEvent) {
   transform: translateY(5px);
 }
 .quote-loading {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: var(--sl-text-tertiary);
   font-style: italic;
   animation: quoteLoading 1.5s ease-in-out infinite;

@@ -85,7 +85,9 @@
     "config_performance": "效能",
     "config_display": "顯示",
     "config_other": "其他",
-    "config_saved": "設定已儲存"
+    "config_saved": "設定已儲存",
+    "refresh": "重新整理",
+    "save": "儲存"
   },
   "sidebar": {
     "groups": {
