@@ -155,11 +155,11 @@ async function handleCreate() {
     return;
   }
   if (!selectedJava.value) {
-    errorMsg.value = "请选择 Java 路径";
+    errorMsg.value = i18n.t("common.select_java_path");
     return;
   }
   if (!serverName.value.trim()) {
-    errorMsg.value = "请输入服务器名称";
+    errorMsg.value = i18n.t("common.enter_server_name");
     return;
   }
 
@@ -186,10 +186,10 @@ async function handleCreate() {
 
 function getJavaLabel(java: JavaInfo): { label: string; subLabel: string } {
   // 简化 Java 显示名称
-  // label: 简短名称（如 "Java 17 Eclipse Temurin 64位"）
+  // label: 简短名称（如 "Java 17 Eclipse Temurin 64-bit"）
   // subLabel: 路径
   const version = java.major_version;
-  const arch = java.is_64bit ? "64位" : "32位";
+  const arch = java.is_64bit ? i18n.t("common.java_64bit") : i18n.t("common.java_32bit");
   
   // 简化 vendor 名称
   let vendor = java.vendor;

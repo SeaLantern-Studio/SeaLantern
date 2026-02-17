@@ -5,8 +5,9 @@ import { settingsApi } from "../api/settings";
 
 const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
   "zh-CN": "header.chinese",
-  "zh-TW": "header.chinese_tw",
   "en-US": "header.english",
+  "zh-TW": "header.chinese_tw",
+  "zh-JB": "header.chinese_jb",
 };
 
 export const useI18nStore = defineStore("i18n", () => {

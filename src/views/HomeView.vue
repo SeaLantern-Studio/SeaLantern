@@ -35,24 +35,24 @@ const statsLoading = ref(true); // 视图模式
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-// 名言警句
-const quotes = [
-  { text: "海内存知己，天涯若比邻", author: "王勃" },
-  { text: "人生得意须尽欢，莫使金樽空对月", author: "李白" },
-  { text: "会当凌绝顶，一览众山小", author: "杜甫" },
-  { text: "大漠孤烟直，长河落日圆", author: "王维" },
-  { text: "春蚕到死丝方尽，蜡炬成灰泪始干", author: "李商隐" },
-  { text: "山重水复疑无路，柳暗花明又一村", author: "陆游" },
-  { text: "但愿人长久，千里共婵娟", author: "苏轼" },
-  { text: "落霞与孤鹜齐飞，秋水共长天一色", author: "王勃" },
-  { text: "欲穷千里目，更上一层楼", author: "王之涣" },
-  { text: "举头望明月，低头思故乡", author: "李白" },
-  { text: "随风潜入夜，润物细无声", author: "杜甫" },
-  { text: "海上生明月，天涯共此时", author: "张九龄" },
-];
-const currentQuote = ref(quotes[0]);
+// 一言 API 相关
+interface HitokotoResponse {
+  id: number;
+  hitokoto: string;
+  type: string;
+  from: string;
+  from_who: string | null;
+  creator: string;
+  creator_uid: number;
+  review_status: number;
+  uuid: string;
+  created_at: string;
+}
+
+const currentQuote = ref<{ text: string; author: string }>({ text: "", author: "" });
 const displayText = ref("");
 const isTyping = ref(false);
+const quoteCache = ref<Array<{ text: string; author: string }>>([]);
 let typeTimer: ReturnType<typeof setInterval> | null = null;
 
 function typeWriter(text: string, callback?: () => void) {
@@ -92,20 +92,132 @@ function typeWriterOut(callback?: () => void) {
   }, 30);
 }
 
-function updateQuote() {
-  if (isTyping.value) return;
-  const otherQuotes = quotes.filter((q) => q.text !== currentQuote.value.text);
-  const newQuote = otherQuotes[Math.floor(Math.random() * otherQuotes.length)];
+/**
+ * 从一言 API 获取名言
+ */
+async function fetchHitokoto(): Promise<{ text: string; author: string }> {
+  console.log('获取一言，当前缓存数量:', quoteCache.value.length);
+  // 优先从缓存中获取
+  if (quoteCache.value.length > 0) {
+    const quote = quoteCache.value.shift();
+    console.log('从缓存中获取一言:', quote);
+    console.log('缓存剩余数量:', quoteCache.value.length);
+    // 异步补充缓存
+    replenishCache();
+    return quote!;
+  }
+  
+  try {
+    console.log('缓存为空，从API获取一言');
+    const response = await fetch('https://v1.hitokoto.cn/?encode=json');
+    if (!response.ok) {
+      throw new Error('Failed to fetch hitokoto');
+    }
+    const data: HitokotoResponse = await response.json();
+    const quote = {
+      text: data.hitokoto,
+      author: data.from_who || data.from || i18n.t("common.unknown")
+    };
+    console.log('从API获取一言成功:', quote);
+    // 补充缓存
+    replenishCache();
+    return quote;
+  } catch (error) {
+    console.error('Error fetching hitokoto:', error);
+    // 失败时返回默认名言
+    const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
+    console.log('使用默认一言:', defaultQuote);
+    return defaultQuote;
+  }
+}
+
+/**
+ * 检查一言是否已在缓存中
+ */
+function isQuoteInCache(quote: { text: string; author: string }): boolean {
+  return quoteCache.value.some(cachedQuote => cachedQuote.text === quote.text);
+}
+
+/**
+ * 补充一言缓存，确保缓存中有至少2个一言，且不重复
+ */
+async function replenishCache() {
+  console.log('开始补充缓存，当前缓存数量:', quoteCache.value.length);
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (quoteCache.value.length < 2 && attempts < maxAttempts) {
+    try {
+      const response = await fetch('https://v1.hitokoto.cn/?encode=json');
+      if (!response.ok) {
+        throw new Error('Failed to fetch hitokoto');
+      }
+      const data: HitokotoResponse = await response.json();
+      const newQuote = {
+        text: data.hitokoto,
+        author: data.from_who || data.from || i18n.t("common.unknown")
+      };
+      
+      // 检查是否已在缓存中
+      if (!isQuoteInCache(newQuote)) {
+        quoteCache.value.push(newQuote);
+        console.log('补充缓存成功，当前缓存数量:', quoteCache.value.length);
+        console.log('新缓存的一言:', newQuote);
+      } else {
+        console.log('一言已在缓存中，跳过:', newQuote.text.substring(0, 20) + '...');
+        attempts++;
+      }
+    } catch (error) {
+      console.error('Error replenishing quote cache:', error);
+      break;
+    }
+  }
+  
+  if (attempts >= maxAttempts) {
+    console.log('达到最大尝试次数，停止补充缓存');
+  }
+}
+
+/**
+ * 更新名言
+ */
+async function updateQuote() {
+  console.log('触发更新一言');
+  if (isTyping.value) {
+    console.log('正在打字中，取消更新');
+    return;
+  }
   // 先打字消失
-  typeWriterOut(() => {
-    currentQuote.value = newQuote;
-    // 再打字出现
-    typeWriter(newQuote.text);
+  typeWriterOut(async () => {
+    try {
+      console.log('开始获取新一言');
+      const newQuote = await fetchHitokoto();
+      console.log('获取新一言成功:', newQuote);
+      currentQuote.value = newQuote;
+      // 再打字出现
+      console.log('开始打字显示新一言');
+      typeWriter(newQuote.text);
+    } catch (error) {
+      console.error('Error updating quote:', error);
+    }
   });
 }
 
 // 初始化打字机效果
-typeWriter(currentQuote.value.text);
+async function initQuote() {
+  try {
+    // 确保缓存中有足够的一言
+    await replenishCache();
+    const initialQuote = await fetchHitokoto();
+    currentQuote.value = initialQuote;
+    typeWriter(initialQuote.text);
+  } catch (error) {
+    console.error('Error initializing quote:', error);
+  }
+}
+
+// 初始化获取名言
+initQuote();
 
 let quoteTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -531,10 +643,11 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
             </div>
           </div>
-          <div class="quote-display" @click="updateQuote" :title="'点击刷新'">
-            <span v-if="displayText" class="quote-text">「{{ displayText }}」</span>
-            <span v-if="currentQuote" class="quote-author">—— {{ currentQuote.author }}</span>
-            <span v-else class="quote-text">加载中...</span>
+          <div class="quote-display" @click="updateQuote" :title="i18n.t('common.click_to_refresh')">
+            <span v-if="displayText && !isTyping" class="quote-text">「{{ displayText }}」</span>
+            <span v-if="currentQuote && !isTyping" class="quote-author">—— {{ currentQuote.author }}</span>
+            <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
+            <span v-if="!displayText && !isTyping" class="quote-loading">加载中...</span>
           </div>
         </div>
         <!-- 详细视图 -->
@@ -697,7 +810,7 @@ function handleAnimationEnd(event: AnimationEvent) {
                 <button
                   class="edit-server-name"
                   @click="startEditServerName(server)"
-                  title="编辑服务器名称"
+                  :title="i18n.t('common.edit_server_name')"
                 >
                   ✏️
                 </button>
@@ -1364,25 +1477,57 @@ function handleAnimationEnd(event: AnimationEvent) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: var(--sl-space-sm) 0;
+  gap: 6px;
+  padding: var(--sl-space-sm) var(--sl-space-md);
   margin-top: var(--sl-space-sm);
   border-top: 1px solid var(--sl-border-light);
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.3s ease;
+  border-radius: var(--sl-radius-md);
+  position: relative;
+  overflow: hidden;
 }
 .quote-display:hover {
-  opacity: 0.8;
+  opacity: 0.9;
+  background: var(--sl-bg-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--sl-shadow-sm);
 }
 .quote-text {
   font-size: 0.8125rem;
   color: var(--sl-text-secondary);
   font-style: italic;
   text-align: center;
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+.quote-text.fading {
+  opacity: 0;
+  transform: translateY(5px);
 }
 .quote-author {
   font-size: 0.75rem;
   color: var(--sl-text-tertiary);
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+.quote-author.fading {
+  opacity: 0;
+  transform: translateY(5px);
+}
+.quote-loading {
+  font-size: 0.8125rem;
+  color: var(--sl-text-tertiary);
+  font-style: italic;
+  animation: quoteLoading 1.5s ease-in-out infinite;
+}
+@keyframes quoteLoading {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 900px) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { i18n } from "../../locales";
 
 interface Option {
   label: string;
@@ -20,7 +21,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  placeholder: "请选择",
+  placeholder: () => i18n.t("common.select"),
   disabled: false,
   searchable: false,
   loading: false,
@@ -202,7 +203,7 @@ onUnmounted(() => {
         <svg class="spinner" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" />
         </svg>
-        加载中...
+        {{ i18n.t("common.loading") }}
       </span>
       <span
         v-else-if="selectedOption"
@@ -250,15 +251,15 @@ onUnmounted(() => {
               ref="inputRef"
               v-model="searchQuery"
               type="text"
-              placeholder="搜索..."
+              :placeholder="i18n.t('common.search')"
               class="sl-select-input"
               @keydown="handleKeydown"
-              aria-label="搜索选项"
+              :aria-label="i18n.t('common.search_options')"
             />
           </div>
 
           <div class="sl-select-options" :style="{ maxHeight }" role="presentation">
-            <div v-if="filteredOptions.length === 0" class="sl-select-empty">未找到匹配项</div>
+            <div v-if="filteredOptions.length === 0" class="sl-select-empty">{{ i18n.t('common.no_match') }}</div>
             <div
               v-for="(option, index) in filteredOptions"
               :key="option.value"
