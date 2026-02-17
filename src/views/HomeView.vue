@@ -103,12 +103,12 @@ async function fetchHitokoto(): Promise<{ text: string; author: string }> {
     const data: HitokotoResponse = await response.json();
     return {
       text: data.hitokoto,
-      author: data.from_who || data.from || '未知'
+      author: data.from_who || data.from || i18n.t("common.unknown")
     };
   } catch (error) {
     console.error('Error fetching hitokoto:', error);
     // 失败时返回默认名言
-    return { text: "我们搭建了骨架,而灵魂,交给你们。", author: "Sea Lantern" };
+    return { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
   }
 }
 
@@ -568,7 +568,7 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
             </div>
           </div>
-          <div class="quote-display" @click="updateQuote" :title="'点击刷新'">
+          <div class="quote-display" @click="updateQuote" :title="i18n.t('common.click_to_refresh')">
             <span v-if="displayText" class="quote-text">「{{ displayText }}」</span>
             <span v-if="currentQuote" class="quote-author">—— {{ currentQuote.author }}</span>
             <span v-else class="quote-text">加载中...</span>
@@ -734,7 +734,7 @@ function handleAnimationEnd(event: AnimationEvent) {
                 <button
                   class="edit-server-name"
                   @click="startEditServerName(server)"
-                  title="编辑服务器名称"
+                  :title="i18n.t('common.edit_server_name')"
                 >
                   ✏️
                 </button>

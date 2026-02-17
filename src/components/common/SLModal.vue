@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { i18n } from "../../locales";
+
 interface Props {
   visible: boolean;
   title?: string;
@@ -24,7 +26,7 @@ const handleClose = () => emit("close");
       <div class="sl-modal glass-strong" :style="{ maxWidth: width }" @click.stop>
         <div class="sl-modal-header">
           <h3 v-if="title" class="sl-modal-title">{{ title }}</h3>
-          <button class="sl-modal-close" @click="handleClose" aria-label="关闭弹窗">
+          <button class="sl-modal-close" @click="handleClose" :aria-label="i18n.t('common.close_modal')">
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path d="M18 6 6 18 M6 6l12 12" stroke="currentColor" stroke-width="2" />
             </svg>

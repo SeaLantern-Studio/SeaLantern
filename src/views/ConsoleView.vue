@@ -82,16 +82,16 @@ const allCommands = [
 ];
 
 const quickCommands = [
-  { label: "白天", cmd: "time set day" },
-  { label: "夜晚", cmd: "time set night" },
-  { label: "晴天", cmd: "weather clear" },
-  { label: "下雨", cmd: "weather rain" },
-  { label: "保存", cmd: "save-all" },
-  { label: "玩家列表", cmd: "list" },
-  { label: "TPS", cmd: "tps" },
-  { label: "保留物品 开", cmd: "gamerule keepInventory true" },
-  { label: "保留物品 关", cmd: "gamerule keepInventory false" },
-  { label: "怪物破坏 关", cmd: "gamerule mobGriefing false" },
+  { label: i18n.t("common.command_day"), cmd: "time set day" },
+  { label: i18n.t("common.command_night"), cmd: "time set night" },
+  { label: i18n.t("common.command_clear"), cmd: "weather clear" },
+  { label: i18n.t("common.command_rain"), cmd: "weather rain" },
+  { label: i18n.t("common.command_save"), cmd: "save-all" },
+  { label: i18n.t("common.command_list"), cmd: "list" },
+  { label: "", cmd: "" },
+  { label: i18n.t("common.command_keep_inventory_on"), cmd: "gamerule keepInventory true" },
+  { label: i18n.t("common.command_keep_inventory_off"), cmd: "gamerule keepInventory false" },
+  { label: i18n.t("common.command_mob_griefing_off"), cmd: "gamerule mobGriefing false" },
 ];
 
 const filteredSuggestions = computed(() => {
@@ -614,7 +614,7 @@ function executeCustomCommand(cmd: ServerCommand) {
           <input
             class="console-input"
             v-model="commandInput"
-            placeholder="输入命令... (Tab 补全)"
+            :placeholder="i18n.t('common.enter_command')"
             @keydown="handleKeydown"
             :style="{ fontSize: consoleFontSize + 'px' }"
           />
