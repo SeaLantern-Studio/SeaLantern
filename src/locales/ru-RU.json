@@ -120,7 +120,13 @@
     "british": "British English",
     "aussie": "Aussie English",
     "kansaiben": "関西弁",
-    "hokkaidou": "北海道"
+    "hokkaidou": "北海道",
+    "korean": "한국어",
+    "north_korean": "조선말",
+    "french": "Français",
+    "french_ca": "Français (Canada)",
+    "spanish_ar": "Español (Argentina)",
+    "huoxing": "焱暒妏"
   },
   "home": {
     "title": "Управление серверами",
