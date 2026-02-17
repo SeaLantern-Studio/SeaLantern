@@ -1,4 +1,4 @@
-﻿﻿
+﻿
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -581,7 +581,6 @@ async function handlePrimaryUpdateAction() {
   height: 48px;
   border-radius: var(--sl-radius-md);
   flex-shrink: 0;
-  background: var(--sl-bg-tertiary);
   image-rendering: pixelated;
 }
 
