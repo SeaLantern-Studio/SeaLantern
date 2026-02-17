@@ -387,11 +387,7 @@ onMounted(() => {
         </div>
         <div v-for="name in onlinePlayers" :key="name" class="player-item glass-card">
           <div class="player-avatar">
-            <img
-              :src="'https://api.rms.net.cn/head/' + name"
-              :alt="name"
-              class="avatar-img"
-            />
+            <img :src="'https://api.rms.net.cn/head/' + name" :alt="name" class="avatar-img" />
           </div>
           <div class="player-info">
             <span class="player-name">{{ name }}</span>

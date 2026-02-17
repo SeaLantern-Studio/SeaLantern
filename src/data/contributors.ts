@@ -68,6 +68,12 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/qingchu2010",
   },
   {
+    name: "CmzYa",
+    role: "不明所以的commit带来了巨量的体验优化",
+    avatar: "https://api.rms.net.cn/head/CmzYa",
+    url: "https://github.com/CmzYa",
+  },
+  {
     name: "LingyeNB",
     role: "+3",
     avatar: "https://api.rms.net.cn/head/LingyeNB",
@@ -78,12 +84,6 @@ export const contributors: Contributor[] = [
     role: "增加了一点新功能",
     avatar: "https://api.rms.net.cn/head/zhu_hao_tian",
     url: "https://github.com/zhu1h1t1",
-  },
-  {
-    name: "CmzYa",
-    role: "不明所以的commit带来了巨量的体验优化",
-    avatar: "https://api.rms.net.cn/head/CmzYa",
-    url: "https://github.com/CmzYa",
   },
   {
     name: "ieshishinjin",

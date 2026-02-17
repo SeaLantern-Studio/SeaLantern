@@ -202,7 +202,7 @@
 
 - config.default
 - config.search
-- config.properties.* (动态生成)
+- config.properties.\* (动态生成)
 - config.title
 - config.save
 - config.reload
@@ -484,7 +484,7 @@
 
 ### 动态生成的键名
 
-- config.properties.*: 根据配置项键名动态生成，完整列表如下：
+- config.properties.\*: 根据配置项键名动态生成，完整列表如下：
   - config.properties.accepts-transfers: 接受传输
   - config.properties.allow-flight: 允许飞行
   - config.properties.allow-nether: 允许下界
@@ -546,4 +546,3 @@
   - config.properties.use-native-transport: 使用原生传输
   - config.properties.view-distance: 视距
   - config.properties.white-list: 白名单
-

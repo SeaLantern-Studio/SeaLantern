@@ -815,6 +815,16 @@ function rgbToHsl(r: number, g: number, b: number) {
   };
 }
 
+// 辅助函数：HSL 转 RGB 的内部计算
+function hue2rgb(p: number, q: number, t: number) {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1 / 6) return p + (q - p) * 6 * t;
+  if (t < 1 / 2) return q;
+  if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+  return p;
+}
+
 // HSL 转 RGB
 function hslToRgb(h: number, s: number, l: number) {
   h /= 360;
@@ -826,15 +836,6 @@ function hslToRgb(h: number, s: number, l: number) {
   if (s === 0) {
     r = g = b = l; // 灰色
   } else {
-    const hue2rgb = (p: number, q: number, t: number) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-
     const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     const p = 2 * l - q;
 

@@ -141,9 +141,11 @@ function autoSaveProperties() {
     .then(() => {
       successMsg.value = i18n.t("config.saved");
       setTimeout(() => (successMsg.value = null), 3000);
+      return Promise.resolve();
     })
     .catch((e) => {
       error.value = String(e);
+      return Promise.resolve();
     })
     .finally(() => {
       saving.value = false;
