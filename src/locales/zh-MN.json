@@ -285,7 +285,36 @@
       "generator-settings": "生成器設定",
       "hide-online-players": "隱藏線上玩家",
       "initial-disabled-packs": "一開始關掉的資料包",
-      "accepts-transfers": "接受傳輸"
+      "accepts-transfers": "接受傳輸",
+      "enable-code-of-conduct":"啟用行為準則",
+      "initial-enabled-packs":"一開始就開的資料包",
+      "management-server-allowed-origins":"管理伺服器允准的資源包來源",
+      "management-server-enabled":"啟用遠端管理接口",
+      "management-server-host" : "管理協議綁定的IP",
+      "management-server-port": "管理協議綁定的埠",
+      "management-server-secret": "管理服務訪問密鑰",
+      "management-server-tls-enabled": "啟用TLS加密",
+      "management-server-tls-keystore": "TLS密鑰庫檔案路徑",
+      "management-server-tls-keystore-password":"TLS密鑰庫密碼",
+      "use-native-transport": "啟用Linux原生傳輸優化",
+      "log-ips": "記錄玩家IP位址",
+      "max-chained-neighbor-updates": "上濟連鎖鄰居更新",
+      "max-world-size": "世界邊界上大範圍",
+      "op-permission-level": "OP權限等級",
+      "player-idle-timeout": "玩家閒置超時（分鐘），0關掉",
+      "prevent-proxy-connections": "防止代理連線",
+      "rate-limit": "每分鐘請求限制，0關掉",
+      "rcon": {
+        "port": "RCON埠",
+        "password": "RCON密碼"
+      },
+      "query": {
+        "port": "Query協定埠"
+      },
+      "require-resource-pack": "要求資源包",
+      "pause-when-empty-seconds": "無人時自動暫停秒數",
+      "region-file-compression": "區域檔案壓縮方式",
+      "status-heartbeat-interval": "狀態心跳間隔（秒）"
     }
   },
   "players": {

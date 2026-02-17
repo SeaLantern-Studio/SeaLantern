@@ -285,7 +285,36 @@
       "generator-settings": "How the world be born",
       "hide-online-players": "Hide who's aboard",
       "initial-disabled-packs": "Locked treasure chests at start",
-      "accepts-transfers": "Take in new crew"
+      "accepts-transfers": "Take in new crew",
+      "enable-code-of-conduct":"Make 'em follow the pirate code",
+      "initial-enabled-packs":"Chests open from the start",
+      "management-server-allowed-origins":"Where the treasure maps can come from",
+      "management-server-enabled":"Let the captain shout from afar",
+      "management-server-host" : "Where the shoutin' horn be",
+      "management-server-port": "Which hole to shout through",
+      "management-server-secret": "The captain's secret whistle",
+      "management-server-tls-enabled": "Wrap yer shouts in a secret code",
+      "management-server-tls-keystore": "Where the code book be hid",
+      "management-server-tls-keystore-password":"Password to read the code book",
+      "use-native-transport": "Use the ship's own fast rowers",
+      "log-ips": "Keep a log of who comes aboard",
+      "max-chained-neighbor-updates": "How many chain reactions ye can have",
+      "max-world-size": "How far the world stretches",
+      "op-permission-level": "How much power the officers have",
+      "player-idle-timeout": "How long a lazy sailor can stand around (minutes)",
+      "prevent-proxy-connections": "No sneaky back doors",
+      "rate-limit": "How many shouts per minute, 0 means no limit",
+      "rcon": {
+        "port": "The officer's private horn hole",
+        "password": "The officer's secret word"
+      },
+      "query": {
+        "port": "The askin' horn hole"
+      },
+      "require-resource-pack": "Make 'em all use the same treasure map",
+      "pause-when-empty-seconds": "Rest the ship when no crew aboard",
+      "region-file-compression": "How we fold the map pieces",
+      "status-heartbeat-interval": "How often the ship sends smoke signals"
     }
   },
   "players": {

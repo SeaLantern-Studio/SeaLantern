@@ -285,7 +285,36 @@
       "generator-settings": "生成器设置",
       "hide-online-players": "藏着在线玩家",
       "initial-disabled-packs": "一开始不让用的数据包",
-      "accepts-transfers": "接收传输"
+      "accepts-transfers": "接收传输",
+      "enable-code-of-conduct":"开行为守则",
+      "initial-enabled-packs":"一开始就能用的数据包",
+      "management-server-allowed-origins":"管理服务器让哪来的资源包",
+      "management-server-enabled":"开远程管理接口",
+      "management-server-host" : "管理协议绑哪个IP",
+      "management-server-port": "管理协议绑哪个口",
+      "management-server-secret": "管理服务进门钥匙",
+      "management-server-tls-enabled": "开不开TLS加密",
+      "management-server-tls-keystore": "TLS钥匙串搁哪",
+      "management-server-tls-keystore-password":"开钥匙串的密码",
+      "use-native-transport": "开不开Linux平台优化",
+      "log-ips": "记不记玩家IP",
+      "max-chained-neighbor-updates": "最多连着更新几回",
+      "max-world-size": "世界边界最大多大",
+      "op-permission-level": "当官儿的权限等级",
+      "player-idle-timeout": "玩家干坐着多久踢，0就是不踢",
+      "prevent-proxy-connections": "让不让走代理",
+      "rate-limit": "一分钟最多整多少请求，0就是不限",
+      "rcon": {
+        "port": "RCON走哪个口",
+        "password": "RCON进门密码"
+      },
+      "query": {
+        "port": "Query协议走哪个口"
+      },
+      "require-resource-pack": "非让玩家用资源包不",
+      "pause-when-empty-seconds": "没人自动暂停几秒",
+      "region-file-compression": "区域文件咋压缩",
+      "status-heartbeat-interval": "状态心跳几秒蹦一回"
     }
   },
   "players": {
