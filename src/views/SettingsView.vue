@@ -38,34 +38,34 @@ const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
 const uiFontSize = ref("14");
 
-const backgroundSizeOptions = [
+const backgroundSizeOptions = computed(() => [
   { label: i18n.t("common.background_size_cover"), value: "cover" },
   { label: i18n.t("common.background_size_contain"), value: "contain" },
   { label: i18n.t("common.background_size_fill"), value: "fill" },
   { label: i18n.t("common.background_size_auto"), value: "auto" },
-];
+]);
 
-const colorOptions = [
+const colorOptions = computed(() => [
   { label: i18n.t("common.color_default"), value: "default" },
   { label: "Midnight", value: "midnight" },
   { label: "Sunset", value: "sunset" },
   { label: "Ocean", value: "ocean" },
   { label: "Rose", value: "rose" },
   { label: i18n.t("common.color_custom"), value: "custom" },
-];
+]);
 
-const editColorOptions = [
+const editColorOptions = computed(() => [
   { label: i18n.t("common.edit_color_light"), value: "light" },
   { label: i18n.t("common.edit_color_dark"), value: "dark" },
   { label: i18n.t("common.edit_color_light_acrylic"), value: "light_acrylic" },
   { label: i18n.t("common.edit_color_dark_acrylic"), value: "dark_acrylic" },
-];
+]);
 
-const themeOptions = [
+const themeOptions = computed(() => [
   { label: i18n.t("common.theme_auto"), value: "auto" },
   { label: i18n.t("common.theme_light"), value: "light" },
   { label: i18n.t("common.theme_dark"), value: "dark" },
-];
+]);
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("common.font_system_default"), value: "" },

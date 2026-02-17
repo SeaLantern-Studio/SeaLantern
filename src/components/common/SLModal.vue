@@ -150,6 +150,6 @@ const handleClose = () => emit("close");
 /* 毛玻璃效果可选，默认关闭以节省性能 */
 .glass-strong {
   backdrop-filter: blur(4px);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--sl-surface, rgba(255, 255, 255, 0.95));
 }
 </style>

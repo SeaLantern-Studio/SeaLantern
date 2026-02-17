@@ -532,6 +532,9 @@ const iconMap: Record<string, string> = {
   align-items: center;
   justify-content: center;
   min-height: 36px;
+}
+
+.server-selector-icon:hover {
   background-color: var(--sl-primary-bg);
   color: var(--sl-primary);
 }
