@@ -294,14 +294,14 @@ const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
 const uiFontSize = ref("14");
 
-const backgroundSizeOptions = [
+const backgroundSizeOptions = computed(() => [
   { label: i18n.t("settings.background_size_options.cover"), value: "cover" },
   { label: i18n.t("settings.background_size_options.contain"), value: "contain" },
   { label: i18n.t("settings.background_size_options.fill"), value: "fill" },
   { label: i18n.t("settings.background_size_options.auto"), value: "auto" },
-];
+]);
 
-const colorOptions = [
+const colorOptions = computed(() => [
   { label: i18n.t("settings.color_options.default"), value: "default" },
   { label: i18n.t("settings.color_options.midnight"), value: "midnight" },
   { label: i18n.t("settings.color_options.forest"), value: "forest" },
@@ -309,14 +309,14 @@ const colorOptions = [
   { label: i18n.t("settings.color_options.ocean"), value: "ocean" },
   { label: i18n.t("settings.color_options.rose"), value: "rose" },
   { label: i18n.t("settings.color_options.custom"), value: "custom" },
-];
+]);
 
-const editColorOptions = [
+const editColorOptions = computed(() => [
   { label: i18n.t("settings.edit_colorplan_options.light"), value: "light" },
   { label: i18n.t("settings.edit_colorplan_options.dark"), value: "dark" },
   { label: i18n.t("settings.edit_colorplan_options.light_acrylic"), value: "light_acrylic" },
   { label: i18n.t("settings.edit_colorplan_options.dark_acrylic"), value: "dark_acrylic" },
-];
+]);
 
 const editColorPlan = ref<"light" | "dark" | "light_acrylic" | "dark_acrylic">("light");
 

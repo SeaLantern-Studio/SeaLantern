@@ -1205,7 +1205,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   position: relative;
   overflow: hidden;
   background: var(--sl-bg-secondary);
-  border: 1px solid var(--sl-border);
   box-shadow: var(--sl-shadow-sm);
 }
 
@@ -1485,18 +1484,12 @@ function handleAnimationEnd(event: AnimationEvent) {
   width: 100%;
   margin-top: var(--sl-space-sm);
   padding: var(--sl-space-sm);
-  background: rgba(26, 29, 40, 0.8);
+  background: var(--sl-bg-secondary);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--sl-radius-md);
   overflow: hidden;
   animation: deleteInputExpand 0.3s ease forwards;
-}
-
-[data-theme="light"] .delete-confirm-input {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .delete-confirm-input.closing {
