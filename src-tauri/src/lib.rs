@@ -136,65 +136,62 @@ pub fn run() {
             server_id_commands::search_server_ids,
         ])
         .on_window_event(|window, event| {
-            match event {
-                tauri::WindowEvent::CloseRequested { api, .. } => {
-                    // 阻止默认关闭行为
-                    api.prevent_close();
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // 阻止默认关闭行为
+                api.prevent_close();
 
-                    // 读取关闭行为设置
-                    let settings = services::global::settings_manager().get();
-                    let close_action = settings.close_action.as_str();
+                // 读取关闭行为设置
+                let settings = services::global::settings_manager().get();
+                let close_action = settings.close_action.as_str();
 
-                    match close_action {
-                        "minimize" => {
-                            // 直接最小化到托盘
-                            let _ = window.hide();
+                match close_action {
+                    "minimize" => {
+                        // 直接最小化到托盘
+                        let _ = window.hide();
+                    }
+                    "close" => {
+                        // 直接关闭应用
+                        if settings.close_servers_on_exit {
+                            services::global::server_manager().stop_all_servers();
                         }
-                        "close" => {
-                            // 直接关闭应用
-                            if settings.close_servers_on_exit {
-                                services::global::server_manager().stop_all_servers();
-                            }
-                            let _ = window.destroy();
-                        }
-                        _ => {
-                            // "ask" 或其他值：显示对话框询问
-                            let window = window.clone();
-                            tauri::async_runtime::spawn(async move {
-                                use tauri_plugin_dialog::{
-                                    DialogExt, MessageDialogButtons, MessageDialogKind,
-                                };
+                        let _ = window.destroy();
+                    }
+                    _ => {
+                        // "ask" 或其他值：显示对话框询问
+                        let window = window.clone();
+                        tauri::async_runtime::spawn(async move {
+                            use tauri_plugin_dialog::{
+                                DialogExt, MessageDialogButtons, MessageDialogKind,
+                            };
 
-                                let answer = window
-                                    .dialog()
-                                    .message("确定要关闭海晶灯吗？")
-                                    .title("确认关闭")
-                                    .kind(MessageDialogKind::Warning)
-                                    .buttons(MessageDialogButtons::OkCancelCustom(
-                                        "最小化到托盘".to_string(),
-                                        "退出应用".to_string(),
-                                    ))
-                                    .blocking_show();
+                            let answer = window
+                                .dialog()
+                                .message("确定要关闭海晶灯吗？")
+                                .title("确认关闭")
+                                .kind(MessageDialogKind::Warning)
+                                .buttons(MessageDialogButtons::OkCancelCustom(
+                                    "最小化到托盘".to_string(),
+                                    "退出应用".to_string(),
+                                ))
+                                .blocking_show();
 
-                                match answer {
-                                    true => {
-                                        // 用户选择"最小化到托盘"
-                                        let _ = window.hide();
-                                    }
-                                    false => {
-                                        // 用户选择"退出应用"
-                                        let settings = services::global::settings_manager().get();
-                                        if settings.close_servers_on_exit {
-                                            services::global::server_manager().stop_all_servers();
-                                        }
-                                        let _ = window.destroy();
-                                    }
+                            match answer {
+                                true => {
+                                    // 用户选择"最小化到托盘"
+                                    let _ = window.hide();
                                 }
-                            });
-                        }
+                                false => {
+                                    // 用户选择"退出应用"
+                                    let settings = services::global::settings_manager().get();
+                                    if settings.close_servers_on_exit {
+                                        services::global::server_manager().stop_all_servers();
+                                    }
+                                    let _ = window.destroy();
+                                }
+                            }
+                        });
                     }
                 }
-                _ => {}
             }
         })
         .setup(|_app| Ok(()))
