@@ -242,6 +242,7 @@ async function saveSettings() {
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
   settings.value.font_size = parseInt(uiFontSize.value) || 14;
   settings.value.color = settings.value.color || "default";
+  settings.value.developer_mode = settings.value.developer_mode || false;
 
   saving.value = true;
   error.value = null;
@@ -361,6 +362,10 @@ function clearBackgroundImage() {
     settings.value.background_image = "";
     markChanged();
   }
+}
+
+function handleDeveloperModeChange() {
+  markChanged();
 }
 </script>
 
