@@ -353,9 +353,9 @@
     "color_lightness": "亮度",
     "color_alpha": "透明度",
     "developer_mode": "開發者模式",
-    "developer_mode_desc": "啟用後將顯示高級設置和除錯工具",
-    "developer_mode_toggle": "啟用開發者模式",
-    "developer_mode_toggle_desc": "啟用後將允許使用除錯工具"
+    "developer_mode_desc": "啟用高級功能和調試選項",
+    "developer_mode_toggle": "切換開發者模式",
+    "developer_mode_toggle_desc": "啟用後將允許使用調試工具"
   },
   "about": {
     "title": "關於",

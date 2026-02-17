@@ -488,6 +488,23 @@ function clearBackgroundImage() {
           </div>
         </div>
       </SLCard>
+
+      <!-- Developer Mode -->
+      <SLCard
+        :title="i18n.t('settings.developer_mode')"
+        :subtitle="i18n.t('settings.developer_mode_desc')"
+      >
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
+            </div>
+            <SLSwitch v-model="settings.developer_mode" @update:modelValue="handleDeveloperModeChange" />
+          </div>
+        </div>
+      </SLCard>
+
       <!-- Actions -->
       <div class="settings-actions">
         <div class="actions-left">
