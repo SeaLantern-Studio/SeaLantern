@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
+
 :root {
   /* -- Primary Colors -- */
   --sl-primary: #0ea5e9;
@@ -114,4 +116,33 @@
   --sl-bg-tertiary: rgba(36, 40, 54, 0.5);
   --sl-surface: rgba(30, 33, 48, 0.6);
   --sl-surface-hover: rgba(40, 44, 62, 0.7);
+}
+
+[data-zombie="true"] {
+  --sl-radius-sm: 0px !important;
+  --sl-radius-md: 0px !important;
+  --sl-radius-lg: 0px !important;
+  --sl-radius-xl: 0px !important;
+  --sl-radius-full: 0px !important;
+
+  --sl-shadow-sm: 0 0 5px rgba(139, 0, 0, 0.5) !important;
+  --sl-shadow-md: 0 0 15px rgba(139, 0, 0, 0.4) !important;
+  --sl-shadow-lg: 0 0 30px rgba(139, 0, 0, 0.3) !important;
+  --sl-shadow-xl: 0 0 50px rgba(139, 0, 0, 0.2) !important;
+
+  --sl-font-display: 'Creepster', cursive !important;
+  --sl-font-sans: 'Creepster', cursive !important;
+}
+
+[data-zombie="true"] .sl-card,
+[data-zombie="true"] .sl-button {
+  border-style: dashed !important;
+  border-width: 2px !important;
+}
+
+[data-zombie="true"] h1,
+[data-zombie="true"] h2,
+[data-zombie="true"] h3 {
+  text-shadow: 2px 0 #FF0033, -2px 0 #00FF41, 0 2px #8B0000;
+  letter-spacing: 1px;
 }
