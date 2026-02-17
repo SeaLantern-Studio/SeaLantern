@@ -720,19 +720,8 @@ function showColorPicker(prop: string) {
 // 解析颜色值
 function parseColor(color: string) {
   try {
-    // 创建临时元素来解析颜色
-    const temp = document.createElement("div");
-    temp.style.color = color;
-    document.body.appendChild(temp);
-
-    // 获取计算后的颜色值
-    const computedColor = window.getComputedStyle(temp).color;
-    document.body.removeChild(temp);
-
     // 从 rgba(r, g, b, a) 格式中提取值
-    const match =
-      color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/) ||
-      computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/);
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)/);
     if (match) {
       rgb.value = {
         r: parseInt(match[1]),
@@ -743,7 +732,44 @@ function parseColor(color: string) {
 
       // 转换为 HSL
       rgbToHsl(rgb.value.r, rgb.value.g, rgb.value.b);
+      return;
     }
+
+    // 处理 HEX 格式
+    if (color.startsWith("#")) {
+      // 移除 # 号
+      const hex = color.slice(1);
+      let r, g, b;
+
+      if (hex.length === 3) {
+        // 3 位 HEX: #RGB
+        r = parseInt(hex[0] + hex[0], 16);
+        g = parseInt(hex[1] + hex[1], 16);
+        b = parseInt(hex[2] + hex[2], 16);
+      } else if (hex.length === 6) {
+        // 6 位 HEX: #RRGGBB
+        r = parseInt(hex.slice(0, 2), 16);
+        g = parseInt(hex.slice(2, 4), 16);
+        b = parseInt(hex.slice(4, 6), 16);
+      } else {
+        // 无效的 HEX 格式
+        throw new Error("Invalid HEX color format");
+      }
+
+      rgb.value = {
+        r,
+        g,
+        b,
+        a: 1,
+      };
+
+      // 转换为 HSL
+      rgbToHsl(r, g, b);
+      return;
+    }
+
+    // 如果解析失败，使用默认值
+    throw new Error("Invalid color format");
   } catch (e) {
     // 如果解析失败，使用默认值
     rgb.value = { r: 0, g: 0, b: 0, a: 1 };
@@ -895,7 +921,7 @@ function updateFromRGB() {
   }
 
   currentColorValue.value = colorValue;
-  updateColor(colorValue);
+  // 直接更新 HSL 值，避免重复调用 updateColor 和 rgbToHsl
   rgbToHsl(r, g, b);
 }
 

@@ -456,5 +456,4 @@ onUnmounted(() => {
   justify-content: center;
   margin-top: var(--sl-space-md);
 }
-
 </style>

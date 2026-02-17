@@ -124,7 +124,7 @@ watch(
     // 延迟更新，确保动画完成后再计算位置
     setTimeout(() => {
       updateNavIndicator();
-    }, 300); // 等待300ms，确保CSS过渡动画完成
+    }, 350); // 等待350ms，确保CSS过渡动画完全完成
   },
 );
 
@@ -440,7 +440,10 @@ const iconMap: Record<string, string> = {
   flex-direction: column;
   z-index: 100;
   border-right: 1px solid var(--sl-border-light);
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--sl-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .sidebar.collapsed {
@@ -696,8 +699,11 @@ const iconMap: Record<string, string> = {
   height: 16px;
   background-color: var(--sl-primary);
   border-radius: var(--sl-radius-full);
-  transition: top 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: top var(--sl-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
+  will-change: top;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .nav-icon {

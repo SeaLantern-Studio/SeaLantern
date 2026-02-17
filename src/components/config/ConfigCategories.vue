@@ -44,14 +44,21 @@ function updateTabIndicator() {
 }
 
 // 监听分类变化，更新指示器位置
-watch(() => props.activeCategory, () => {
-  updateTabIndicator();
-});
+watch(
+  () => props.activeCategory,
+  () => {
+    updateTabIndicator();
+  },
+);
 
 // 监听分类列表变化，更新指示器位置
-watch(() => props.categories, () => {
-  updateTabIndicator();
-}, { deep: true });
+watch(
+  () => props.categories,
+  () => {
+    updateTabIndicator();
+  },
+  { deep: true },
+);
 
 // 组件挂载后初始化指示器位置
 onMounted(() => {

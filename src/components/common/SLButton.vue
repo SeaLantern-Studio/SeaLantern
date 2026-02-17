@@ -58,9 +58,9 @@ withDefaults(defineProps<Props>(), {
   border-radius: var(--sl-radius-md, 0.375rem);
   border: 1px solid transparent;
   transition:
-    background-color 0.15s ease-in-out,
-    border-color 0.15s ease-in-out,
-    box-shadow 0.15s ease-in-out,
+    background-color var(--sl-transition-fast) ease-in-out,
+    border-color var(--sl-transition-fast) ease-in-out,
+    box-shadow var(--sl-transition-fast) ease-in-out,
     transform 0.1s ease-in-out;
   cursor: pointer;
   white-space: nowrap;

@@ -26,9 +26,7 @@ const emit = defineEmits<{
         style="width: 200px"
       />
     </div>
-    <div class="toolbar-right">
-
-    </div>
+    <div class="toolbar-right"></div>
   </div>
 </template>
 

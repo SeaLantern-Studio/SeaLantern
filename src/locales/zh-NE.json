@@ -19,12 +19,12 @@
     "collapse_btn": "改起侧栏"
   },
   "header": {
-   "language": "语言",
+    "language": "语言",
     "chinese": "简中",
     "english": "EN",
     "chinese_tw": "繁中",
     "chinese_dongbei": "东北话",
-    "japanese" : "日本語",
+    "japanese": "日本語",
     "upsidedown": "ƎƃuɐuɐW",
     "chinese_meow": "喵语",
     "spanish": "Español",
@@ -36,7 +36,7 @@
     "chinese_cy": "川渝话",
     "chinese_wu": "吴语",
     "chinese_hokkien": "闽南语",
-    "chinese_hn" : "河南话",
+    "chinese_hn": "河南话",
     "chinese_jl": "胶辽官话",
     "vietnamese": "Tiếng Việt",
     "british": "British English",
