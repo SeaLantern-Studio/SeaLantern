@@ -130,8 +130,15 @@ export const contributors: Contributor[] = [
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar: "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
+    avatar:
+      "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
     url: "https://github.com/xuezhaju",
+  },
+  {
+    name: "福瑞控海天",
+    role: "福瑞程序员！去支持一下兽薄荷吧",
+    avatar: "https://minotar.net/avatar/LucyKitter/64",
+    url: "https://gitee.com/pnshcb_admin",
   },
   // ============================================
   // 在这里添加更多贡献者！

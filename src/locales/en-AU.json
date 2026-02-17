@@ -97,7 +97,7 @@
   },
   "header": {
     "language": "Language",
-   "chinese": "简体中文",
+    "chinese": "简体中文",
     "english": "English",
     "chinese_tw": "繁體中文",
     "chinese_jb": "梗体中文",
@@ -114,7 +114,7 @@
     "chinese_cy": "川渝話",
     "chinese_wu": "吳語",
     "chinese_hokkien": "閩南語",
-    "chinese_hn" : "河南話",
+    "chinese_hn": "河南話",
     "chinese_jl": "膠遼官話",
     "vietnamese": "Tiếng Việt",
     "british": "British English",

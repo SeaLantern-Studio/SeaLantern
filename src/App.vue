@@ -101,6 +101,21 @@ function handleUpdateModalClose() {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  background-color: var(--sl-bg);
+}
+
+#app[data-has-background="true"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--sl-bg);
+  opacity: var(--bg-opacity, 0.3);
+  filter: blur(var(--bg-blur, 0px)) brightness(var(--bg-brightness, 1));
+  z-index: -1;
+  pointer-events: none;
 }
 
 .splash-fade-leave-active {

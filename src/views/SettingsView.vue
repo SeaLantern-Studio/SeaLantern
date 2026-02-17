@@ -512,6 +512,148 @@ function handleDeveloperModeChange() {
         </div>
       </SLCard>
 
+      <!-- Appearance -->
+      <SLCard :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.theme") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
+            </div>
+            <div class="input-md">
+              <SLSelect
+                v-model="settings.theme"
+                :options="themeOptions"
+                @update:modelValue="handleThemeChange"
+              />
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
+            </div>
+            <div class="input-sm">
+              <SLInput
+                v-model="uiFontSize"
+                type="number"
+                @update:modelValue="handleFontSizeChange"
+              />
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.font_family") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.font_family_desc") }}</span>
+            </div>
+            <div class="input-lg">
+              <SLSelect
+                v-model="settings.font_family"
+                :options="fontFamilyOptions"
+                :loading="fontsLoading"
+                @update:modelValue="handleFontFamilyChange"
+              />
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.acrylic") }}</span>
+              <span class="setting-desc">{{
+                acrylicSupported
+                  ? i18n.t("settings.acrylic_desc")
+                  : i18n.t("settings.acrylic_not_supported")
+              }}</span>
+            </div>
+            <SLSwitch
+              v-model="settings.acrylic_enabled"
+              :disabled="!acrylicSupported"
+              @update:modelValue="handleAcrylicChange"
+            />
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.background") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.background_desc") }}</span>
+            </div>
+            <div class="background-actions">
+              <SLButton variant="secondary" size="sm" @click="pickBackgroundImage">
+                {{ i18n.t("common.select") }}
+              </SLButton>
+              <SLButton
+                v-if="settings.background_image"
+                variant="ghost"
+                size="sm"
+                @click="clearBackgroundImage"
+              >
+                {{ i18n.t("common.clear") }}
+              </SLButton>
+            </div>
+          </div>
+
+          <div v-if="settings.background_image" class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.opacity") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.opacity_desc") }}</span>
+            </div>
+            <div class="input-sm">
+              <SLInput
+                v-model="bgOpacity"
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                @update:modelValue="markChanged"
+              />
+            </div>
+          </div>
+
+          <div v-if="settings.background_image" class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.blur") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.blur_desc") }}</span>
+            </div>
+            <div class="input-sm">
+              <SLInput v-model="bgBlur" type="number" min="0" @update:modelValue="markChanged" />
+            </div>
+          </div>
+
+          <div v-if="settings.background_image" class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.brightness") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.brightness_desc") }}</span>
+            </div>
+            <div class="input-sm">
+              <SLInput
+                v-model="bgBrightness"
+                type="number"
+                step="0.1"
+                min="0"
+                max="2"
+                @update:modelValue="markChanged"
+              />
+            </div>
+          </div>
+
+          <div v-if="settings.background_image" class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.background_size") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.background_size_desc") }}</span>
+            </div>
+            <div class="input-md">
+              <SLSelect
+                v-model="settings.background_size"
+                :options="backgroundSizeOptions"
+                @update:modelValue="markChanged"
+              />
+            </div>
+          </div>
+        </div>
+      </SLCard>
+
       <!-- Developer Mode -->
       <SLCard
         :title="i18n.t('settings.developer_mode')"
@@ -696,6 +838,12 @@ function handleDeveloperModeChange() {
   border-color: var(--sl-primary);
   box-shadow: 0 0 0 3px var(--sl-primary-bg);
   outline: none;
+}
+
+.background-actions {
+  display: flex;
+  gap: var(--sl-space-sm);
+  align-items: center;
 }
 
 .settings-actions {

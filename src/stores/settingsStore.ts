@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { settingsApi, checkAcrylicSupport, applyAcrylic, type AppSettings } from "../api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
@@ -35,6 +35,35 @@ export function getInitialFontSize(): number {
     return cache.fontSize;
   }
   return 14;
+}
+
+function applyBackgroundSettingsToDOM(settings: AppSettings) {
+  const appElement = document.getElementById("app");
+  if (!appElement) return;
+
+  if (settings.background_image) {
+    const imageUrl = convertFileSrc(settings.background_image);
+    appElement.style.backgroundImage = `url(${imageUrl})`;
+    appElement.style.backgroundSize = settings.background_size || "cover";
+    appElement.style.backgroundPosition = "center";
+    appElement.style.backgroundRepeat = "no-repeat";
+
+    const opacity = settings.background_opacity ?? 0.3;
+    const blur = settings.background_blur ?? 0;
+    const brightness = settings.background_brightness ?? 1.0;
+
+    appElement.style.setProperty("--bg-opacity", String(opacity));
+    appElement.style.setProperty("--bg-blur", `${blur}px`);
+    appElement.style.setProperty("--bg-brightness", String(brightness));
+
+    appElement.setAttribute("data-has-background", "true");
+  } else {
+    appElement.style.backgroundImage = "";
+    appElement.style.backgroundSize = "";
+    appElement.style.backgroundPosition = "";
+    appElement.style.backgroundRepeat = "";
+    appElement.removeAttribute("data-has-background");
+  }
 }
 
 const defaultSettings: AppSettings = {
@@ -82,6 +111,20 @@ export const useSettingsStore = defineStore("settings", () => {
   const backgroundBrightness = computed(() => settings.value.background_brightness);
   const backgroundSize = computed(() => settings.value.background_size);
 
+  watch(
+    () => ({
+      background_image: settings.value.background_image,
+      background_opacity: settings.value.background_opacity,
+      background_blur: settings.value.background_blur,
+      background_brightness: settings.value.background_brightness,
+      background_size: settings.value.background_size,
+    }),
+    (newValues) => {
+      applyBackgroundSettingsToDOM(settings.value);
+    },
+    { deep: true },
+  );
+
   async function loadSettings(): Promise<void> {
     if (isLoading.value) return;
 
@@ -98,6 +141,7 @@ export const useSettingsStore = defineStore("settings", () => {
       acrylicSupported.value = supported;
       isLoaded.value = true;
       saveThemeCache(loadedSettings.theme || "auto", loadedSettings.font_size || 14);
+      applyBackgroundSettingsToDOM(loadedSettings);
     } catch (e) {
       console.error("Failed to load settings:", e);
       loadError.value = e instanceof Error ? e.message : String(e);
@@ -118,6 +162,7 @@ export const useSettingsStore = defineStore("settings", () => {
     const defaultSettingsResult = await settingsApi.reset();
     settings.value = defaultSettingsResult;
     saveThemeCache(defaultSettingsResult.theme || "auto", defaultSettingsResult.font_size || 14);
+    applyBackgroundSettingsToDOM(defaultSettingsResult);
   }
 
   function updateSettings(partial: Partial<AppSettings>): void {
