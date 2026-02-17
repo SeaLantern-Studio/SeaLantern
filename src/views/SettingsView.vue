@@ -7,6 +7,7 @@ import SLSwitch from "../components/common/SLSwitch.vue";
 import SLModal from "../components/common/SLModal.vue";
 import SLSelect from "../components/common/SLSelect.vue";
 import SLSpinner from "../components/common/SLSpinner.vue";
+import JavaDownloader from "../components/JavaDownloader.vue";
 import {
   settingsApi,
   checkAcrylicSupport,
@@ -51,6 +52,7 @@ const colorOptions = computed(() => [
   { label: "Sunset", value: "sunset" },
   { label: "Ocean", value: "ocean" },
   { label: "Rose", value: "rose" },
+  { label: "Zombie", value: "zombie" },
   { label: i18n.t("common.color_custom"), value: "custom" },
 ]);
 
@@ -469,6 +471,10 @@ function handleDeveloperModeChange() {
                 @update:modelValue="markChanged"
               />
             </div>
+          </div>
+
+          <div class="setting-row full-width">
+            <JavaDownloader @installed="(path) => { if(settings) { settings.default_java_path = path; markChanged(); } }" />
           </div>
 
           <div class="setting-row full-width">

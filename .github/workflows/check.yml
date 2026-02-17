@@ -60,8 +60,18 @@ jobs:
 
       - name: 安装 Rust 工具链
         if: ${{ needs.changes.outputs.backend == 'true' }}
+        id: rust_setup
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: stable
+          components: rustfmt, clippy
+        continue-on-error: true
+
+      - name: 重试安装 Rust 工具链
+        if: ${{ steps.rust_setup.outcome == 'failure' && needs.changes.outputs.backend == 'true' }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
           components: rustfmt, clippy
 
       - name: 缓存 Rust 编译产物

@@ -271,6 +271,48 @@ const presetThemes = {
       border: "rgba(255, 255, 255, 0.1)",
     },
   },
+  zombie: {
+    light: {
+      bg: "#0A0A0A",
+      bgSecondary: "#111111",
+      bgTertiary: "#1A1A1A",
+      primary: "#C8FFB0",
+      secondary: "#8B0000",
+      textPrimary: "#C8FFB0",
+      textSecondary: "#6B8F5E",
+      border: "rgba(139, 0, 0, 0.5)",
+    },
+    dark: {
+      bg: "#0A0A0A",
+      bgSecondary: "#111111",
+      bgTertiary: "#1A1A1A",
+      primary: "#C8FFB0",
+      secondary: "#8B0000",
+      textPrimary: "#C8FFB0",
+      textSecondary: "#6B8F5E",
+      border: "rgba(139, 0, 0, 0.5)",
+    },
+    lightAcrylic: {
+      bg: "rgba(10, 10, 10, 0.8)",
+      bgSecondary: "rgba(17, 17, 17, 0.7)",
+      bgTertiary: "rgba(26, 26, 26, 0.6)",
+      primary: "#C8FFB0",
+      secondary: "#8B0000",
+      textPrimary: "#C8FFB0",
+      textSecondary: "#6B8F5E",
+      border: "rgba(139, 0, 0, 0.5)",
+    },
+    darkAcrylic: {
+      bg: "rgba(10, 10, 10, 0.8)",
+      bgSecondary: "rgba(17, 17, 17, 0.7)",
+      bgTertiary: "rgba(26, 26, 26, 0.6)",
+      primary: "#C8FFB0",
+      secondary: "#8B0000",
+      textPrimary: "#C8FFB0",
+      textSecondary: "#6B8F5E",
+      border: "rgba(139, 0, 0, 0.5)",
+    },
+  },
 };
 
 const settings = ref<AppSettings | null>(null);
@@ -308,6 +350,7 @@ const colorOptions = computed(() => [
   { label: i18n.t("settings.color_options.sunset"), value: "sunset" },
   { label: i18n.t("settings.color_options.ocean"), value: "ocean" },
   { label: i18n.t("settings.color_options.rose"), value: "rose" },
+  { label: i18n.t("settings.color_options.zombie"), value: "zombie" },
   { label: i18n.t("settings.color_options.custom"), value: "custom" },
 ]);
 
@@ -1468,6 +1511,18 @@ async function handleThemeChange() {
   markChanged();
 }
 
+function handleSeniorModeChange() {
+  if (!settings.value) return;
+
+  if (settings.value.senior_mode) {
+    document.documentElement.setAttribute("data-senior", "true");
+  } else {
+    document.documentElement.removeAttribute("data-senior");
+  }
+
+  markChanged();
+}
+
 async function saveSettings() {
   if (!settings.value) return;
 
@@ -1868,6 +1923,17 @@ function clearBackgroundImage() {
                 @update:modelValue="handleThemeChange"
               />
             </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.senior_mode") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.senior_mode_desc") }}</span>
+            </div>
+            <SLSwitch
+              v-model="settings.senior_mode"
+              @update:modelValue="handleSeniorModeChange"
+            />
           </div>
 
           <div class="setting-row">
