@@ -12,9 +12,7 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "fmt:check": "oxfmt --check"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -37,8 +35,6 @@
     "terser": "^5.46.0",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
-    "vitest": "^3.1.4",
-    "@vitest/coverage-v8": "^3.1.4",
     "vue-tsc": "^2.1.10"
   }
 }
