@@ -5,6 +5,7 @@ import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLProgress from "../components/common/SLProgress.vue";
+import SLInput from "../components/common/SLInput.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
@@ -834,14 +835,12 @@ function handleAnimationEnd(event: AnimationEvent) {
             <div class="server-name-container">
               <template v-if="editingServerId === server.id">
                 <div class="inline-edit">
-                  <input
-                    type="text"
+                  <SLInput
                     v-model="editName"
-                    class="server-name-input"
+                    type="text"
                     @keyup.enter="saveServerName(server.id)"
                     @keyup.esc="cancelEdit"
                     @blur="saveServerName(server.id)"
-                    ref="editInput"
                   />
                   <div class="inline-edit-actions">
                     <button
@@ -1003,14 +1002,12 @@ function handleAnimationEnd(event: AnimationEvent) {
               v-html="i18n.t('home.delete_confirm_message', { server: '<strong>' + server.name + '</strong>' })"
             ></p>
             <div class="delete-input-group">
-              <input
-                type="text"
+              <SLInput
                 v-model="inputServerName"
-                class="delete-input"
+                type="text"
                 :placeholder="i18n.t('home.delete_input_placeholder')"
                 @keyup.enter="confirmDelete"
                 @keyup.esc="cancelDelete"
-                ref="deleteInput"
               />
               <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
             </div>

@@ -4,11 +4,8 @@ import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
 import { useServerStore } from "../../stores/serverStore";
 import { i18n } from "../../locales";
+import SLSelect from "../common/SLSelect.vue";
 import {
-  Listbox,
-  ListboxButton,
-  ListboxOptions,
-  ListboxOption,
   Disclosure,
   DisclosureButton,
   DisclosurePanel,
@@ -260,44 +257,24 @@ function isActive(path: string): boolean {
 
     <nav class="sidebar-nav">
       <!-- 服务器选择（Headless UI Listbox） -->
-      <Listbox v-if="serverOptions.length > 0" v-model="currentServerRef" class="server-selector">
-        <div>
-          <ListboxButton
-            class="server-selector-button"
-            :aria-label="i18n.t('common.select_server')"
-          >
-            <template v-if="!ui.sidebarCollapsed">
-              <div class="server-selector-label">{{ i18n.t("common.select_server") }}</div>
-              <div class="server-current">{{ getCurrentServerLabel }}</div>
-            </template>
-            <template v-else>
-              <Server :size="22" :stroke-width="1.8" />
-            </template>
-          </ListboxButton>
+      <!-- 服务器选择器 -->
+      <div v-if="serverOptions.length > 0 && !ui.sidebarCollapsed" class="server-selector">
+        <div class="server-selector-label">{{ i18n.t("common.select_server") }}</div>
+        <SLSelect
+          v-model="currentServerRef"
+          :options="serverOptions"
+          :placeholder="i18n.t('common.select_server')"
+        />
+      </div>
 
-          <transition name="bubble">
-            <ListboxOptions class="server-select-bubble-content">
-              <div class="server-select-bubble-header">
-                <h3>选择服务器</h3>
-              </div>
-              <div class="server-select-bubble-body">
-                <ListboxOption
-                  v-for="option in serverOptions"
-                  :key="option.value"
-                  :value="option.value"
-                  v-slot="{ selected }"
-                >
-                  <div
-                    :class="['server-select-option', { active: option.value === currentServerRef }]"
-                  >
-                    {{ option.label }}
-                  </div>
-                </ListboxOption>
-              </div>
-            </ListboxOptions>
-          </transition>
-        </div>
-      </Listbox>
+      <!-- 折叠状态下的服务器图标 -->
+      <div
+        v-if="serverOptions.length > 0 && ui.sidebarCollapsed"
+        class="server-selector-icon"
+        :title="i18n.t('common.select_server')"
+      >
+        <Server :size="22" :stroke-width="1.8" />
+      </div>
 
       <!-- 导航激活指示器 -->
       <div class="nav-active-indicator" ref="navIndicator"></div>
@@ -571,8 +548,6 @@ function isActive(path: string): boolean {
 .server-selector {
   padding: var(--sl-space-sm);
   margin-bottom: var(--sl-space-sm);
-  display: flex;
-  justify-content: center;
 }
 
 .server-selector-label {
@@ -604,133 +579,12 @@ function isActive(path: string): boolean {
   align-items: center;
   justify-content: center;
   min-height: 36px;
+  margin: var(--sl-space-sm);
 }
 
 .server-selector-icon:hover {
   background-color: var(--sl-primary-bg);
   color: var(--sl-primary);
-}
-
-/* 弹出的服务器选择气泡 */
-.server-select-bubble {
-  position: fixed;
-  left: var(--sl-sidebar-collapsed-width, 60px);
-  top: 60px;
-  z-index: 9999;
-  pointer-events: none;
-}
-
-.server-select-bubble-content {
-  pointer-events: auto;
-}
-
-/* 气泡动画 */
-.bubble-enter-active,
-.bubble-leave-active {
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.bubble-enter-from {
-  opacity: 0;
-  transform: translateX(-10px) scale(0.95);
-}
-
-.bubble-leave-to {
-  opacity: 0;
-  transform: translateX(-10px) scale(0.9);
-}
-
-.bubble-enter-to,
-.bubble-leave-from {
-  opacity: 1;
-  transform: translateX(0) scale(1);
-}
-
-.server-select-bubble-content {
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-lg);
-  padding: var(--sl-space-lg);
-  width: 300px;
-  box-shadow: var(--sl-shadow-lg);
-  position: relative;
-}
-
-.server-select-bubble-header h3 {
-  color: var(--sl-text-primary);
-}
-
-.server-select-option {
-  color: var(--sl-text-secondary);
-}
-
-.server-select-option:hover {
-  background-color: var(--sl-primary-bg);
-  color: var(--sl-primary);
-}
-
-.server-select-option.active {
-  background-color: var(--sl-primary-bg);
-  color: var(--sl-primary);
-}
-
-.bubble-close {
-  color: var(--sl-text-tertiary);
-}
-
-.bubble-close:hover {
-  color: var(--sl-text-primary);
-}
-
-.server-select-bubble-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sl-space-md);
-}
-
-.server-select-bubble-header h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.bubble-close {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  cursor: pointer;
-  color: var(--sl-text-tertiary);
-  transition: color var(--sl-transition-fast);
-}
-
-.bubble-close:hover {
-  color: var(--sl-text-primary);
-}
-
-.server-select-bubble-body {
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.server-select-option {
-  padding: 10px 14px;
-  border-radius: var(--sl-radius-md);
-  cursor: pointer;
-  color: var(--sl-text-secondary);
-  transition: all var(--sl-transition-fast);
-  margin-bottom: 4px;
-}
-
-.server-select-option:hover {
-  background-color: var(--sl-primary-bg);
-  color: var(--sl-primary);
-}
-
-.server-select-option.active {
-  background-color: var(--sl-primary-bg);
-  color: var(--sl-primary);
-  font-weight: 500;
 }
 
 .nav-item {

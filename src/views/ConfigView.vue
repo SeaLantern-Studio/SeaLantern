@@ -3,6 +3,8 @@ import { ref, computed, watch, onMounted, onUnmounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "../components/common/SLSpinner.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
+import SLSelect from "../components/common/SLSelect.vue";
+import SLInput from "../components/common/SLInput.vue";
 import { configApi } from "../api/config";
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
@@ -50,6 +52,22 @@ const filteredEntries = computed(() => {
     return matchCat && matchSearch;
   });
 });
+
+// 游戏模式选项
+const gamemodeOptions = [
+  { label: i18n.t("config.gamemode.survival"), value: "survival" },
+  { label: i18n.t("config.gamemode.creative"), value: "creative" },
+  { label: i18n.t("config.gamemode.adventure"), value: "adventure" },
+  { label: i18n.t("config.gamemode.spectator"), value: "spectator" },
+];
+
+// 难度选项
+const difficultyOptions = [
+  { label: i18n.t("config.difficulty.peaceful"), value: "peaceful" },
+  { label: i18n.t("config.difficulty.easy"), value: "easy" },
+  { label: i18n.t("config.difficulty.normal"), value: "normal" },
+  { label: i18n.t("config.difficulty.hard"), value: "hard" },
+];
 
 onMounted(async () => {
   await store.refreshList();
@@ -223,36 +241,25 @@ function handleSearchUpdate(value: string) {
               />
             </template>
             <template v-else-if="entry.key === 'gamemode'">
-              <select
-                :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target.value)"
-                class="select"
-              >
-                <option value="survival">{{ i18n.t("config.gamemode.survival") }}</option>
-                <option value="creative">{{ i18n.t("config.gamemode.creative") }}</option>
-                <option value="adventure">{{ i18n.t("config.gamemode.adventure") }}</option>
-                <option value="spectator">{{ i18n.t("config.gamemode.spectator") }}</option>
-              </select>
+              <SLSelect
+                :modelValue="editValues[entry.key] || 'survival'"
+                @update:modelValue="updateValue(entry.key, $event)"
+                :options="gamemodeOptions"
+              />
             </template>
             <template v-else-if="entry.key === 'difficulty'">
-              <select
-                :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target.value)"
-                class="select"
-              >
-                <option value="peaceful">{{ i18n.t("config.difficulty.peaceful") }}</option>
-                <option value="easy">{{ i18n.t("config.difficulty.easy") }}</option>
-                <option value="normal">{{ i18n.t("config.difficulty.normal") }}</option>
-                <option value="hard">{{ i18n.t("config.difficulty.hard") }}</option>
-              </select>
+              <SLSelect
+                :modelValue="editValues[entry.key] || 'normal'"
+                @update:modelValue="updateValue(entry.key, $event)"
+                :options="difficultyOptions"
+              />
             </template>
             <template v-else>
-              <input
-                :value="editValues[entry.key]"
+              <SLInput
+                :modelValue="editValues[entry.key] || ''"
+                @update:modelValue="updateValue(entry.key, $event)"
                 :type="entry.value_type === 'number' ? 'number' : 'text'"
                 :placeholder="entry.default_value"
-                @input="updateValue(entry.key, $event.target.value)"
-                class="input"
               />
             </template>
           </div>
@@ -360,6 +367,19 @@ function handleSearchUpdate(value: string) {
 .entry-control {
   flex-shrink: 0;
   min-width: 200px;
+  width: 200px;
+}
+
+.entry-control :deep(.sl-input-wrapper) {
+  width: 100%;
+}
+
+.entry-control :deep(.sl-select) {
+  width: 100%;
+}
+
+.entry-control :deep(.sl-input-container) {
+  width: 100%;
 }
 
 .select,
