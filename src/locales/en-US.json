@@ -46,7 +46,6 @@
     "gauge_view": "Switch to gauge view",
     "recent_alerts": "Recent Warnings / Errors",
     "delete_confirm_message": "Please enter server name {{server}} to confirm deletion",
-    "delete_confirm_message": "Please enter the server name <strong>{server}</strong> to confirm deletion",
     "delete_input_placeholder": "Enter server name",
     "delete_cancel": "Cancel",
     "delete_confirm": "Confirm Delete",
