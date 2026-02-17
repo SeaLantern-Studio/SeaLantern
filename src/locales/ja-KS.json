@@ -84,8 +84,7 @@
     "config_world": "ワールド",
     "config_performance": "パフォーマンス",
     "config_display": "表示",
-    "config_other": "その他",
-    "config_saved": "設定保存したで"
+    "config_other": "その他"
   },
   "sidebar": {
     "groups": {
@@ -269,7 +268,53 @@
       "enable-status": "ステータス表示",
       "force-gamemode": "ゲームモード強制",
       "spawn-protection": "スポーン保護",
-      "sync-chunk-writes": "チャンク同期書き込み"
+      "sync-chunk-writes": "チャンク書き込み同期やで",
+      "resource-pack": "リソースパックURLや",
+      "resource-pack-id": "リソースパックIDや",
+      "resource-pack-prompt": "リソースパックの案内や",
+      "resource-pack-sha1": "リソースパックSHA1ハッシュや",
+      "text-filtering-config": "テキストフィルタリング設定や",
+      "text-filtering-version": "テキストフィルタリングバージョンや",
+      "broadcast-rcon-to-ops": "OPにRCONメッセージを教えたる",
+      "bug-report-link": "バグ報告リンクや",
+      "enable-jmx-monitoring": "JMX監視を有効にするで",
+      "enforce-secure-profile": "セキュアプロファイルを強制するで",
+      "entity-broadcast-range-percentage": "エンティティ放送範囲の割合や",
+      "function-permission-level": "関数の権限レベルや",
+      "generator-settings": "ワールド生成設定や",
+      "hide-online-players": "オンラインプレイヤーを隠すで",
+      "initial-disabled-packs": "最初に無効なデータパックや",
+      "accepts-transfers": "転送を受け入れるで",
+      "config_saved": "設定保存したで",
+      "enable-code-of-conduct":"行動規範を有効にするで",
+      "initial-enabled-packs":"最初に有効なデータパックや",
+      "management-server-allowed-origins":"管理サーバーが許可するリソースパックの出どころや",
+      "management-server-enabled":"リモート管理APIを有効にするで",
+      "management-server-host" : "管理サーバーがバインドするホストや",
+      "management-server-port": "管理サーバーがバインドするポートや",
+      "management-server-secret": "管理サービスのアクセスキーや",
+      "management-server-tls-enabled": "TLS暗号化を有効にするで",
+      "management-server-tls-keystore": "TLSキーストアのファイルパスや",
+      "management-server-tls-keystore-password":"TLSキーストアのパスワードや",
+      "use-native-transport": "Linuxネイティブ転送を使うで",
+      "log-ips": "プレイヤーのIPアドレスをログに残すで",
+      "max-chained-neighbor-updates": "最大連鎖隣接更新数や",
+      "max-world-size": "ワールド境界の最大半径や",
+      "op-permission-level": "OP権限レベルや",
+      "player-idle-timeout": "放置タイムアウト（分）、0で無効や",
+      "prevent-proxy-connections": "プロキシ接続を禁止するで",
+      "rate-limit": "1分あたりの最大リクエスト数、0で無効や",
+      "rcon": {
+        "port": "RCONポートや",
+        "password": "RCONパスワードや"
+      },
+      "query": {
+        "port": "Queryプロトコルのポートや"
+      },
+      "require-resource-pack": "リソースパックを要求するで",
+      "pause-when-empty-seconds": "無人時の自動停止秒数や",
+      "region-file-compression": "リージョンファイルの圧縮方式や",
+      "status-heartbeat-interval": "ステータスハートビート間隔（秒）や"
     }
   },
   "players": {
