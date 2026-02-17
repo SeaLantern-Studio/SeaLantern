@@ -527,12 +527,15 @@ function clearBackgroundImage() {
       </SLCard>
 
       <!-- Developer Mode -->
-      <SLCard title="开发者模式" subtitle="启用高级功能和调试选项">
+      <SLCard
+        :title="i18n.t('settings.developer_mode')"
+        :subtitle="i18n.t('settings.developer_mode_desc')"
+      >
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">启用开发者模式</span>
-              <span class="setting-desc">启用后将允许使用调试工具</span>
+              <span class="setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
             </div>
             <SLSwitch v-model="settings.developer_mode" @update:modelValue="handleDeveloperModeChange" />
           </div>
