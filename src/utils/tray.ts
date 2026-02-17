@@ -1,6 +1,6 @@
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Menu } from "@tauri-apps/api/menu";
-import i18n from "../locales";
+import { i18n } from "../locales";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { defaultWindowIcon } from "@tauri-apps/api/app";
 import { exit } from "@tauri-apps/plugin-process";

@@ -1,6 +1,6 @@
 [package]
 name = "sea-lantern"
-version = "0.6.0"
+version = "0.6.2"
 description = "Minecraft Server Manager"
 authors = ["FPS_Z"]
 edition = "2021"

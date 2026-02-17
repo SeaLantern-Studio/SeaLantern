@@ -110,9 +110,22 @@ function updateNavIndicator() {
     if (!navIndicator.value) return;
 
     const activeNavItem = document.querySelector(".nav-item.active");
-    if (activeNavItem) {
-      const { offsetTop, offsetHeight } = activeNavItem as HTMLElement;
-      navIndicator.value.style.top = `${offsetTop + (offsetHeight - 16) / 2}px`;
+    if (activeNavItem && navIndicator.value.parentElement) {
+      // 使用 getBoundingClientRect 来获取相对于父元素的正确位置
+      const navItemRect = activeNavItem.getBoundingClientRect();
+      const navRect = navIndicator.value.parentElement.getBoundingClientRect();
+      const top = navItemRect.top - navRect.top + (navItemRect.height - 16) / 2;
+      
+      // 确保导航指示器可见
+      navIndicator.value.style.display = 'block';
+      
+      // 强制触发重排，确保动画能够正确执行
+      void navIndicator.value.offsetHeight; // 触发重排
+      
+      // 使用 requestAnimationFrame 确保动画在正确的时机执行
+      requestAnimationFrame(() => {
+        navIndicator.value!.style.top = `${top}px`;
+      });
     }
   });
 }
@@ -124,7 +137,7 @@ watch(
     // 延迟更新，确保动画完成后再计算位置
     setTimeout(() => {
       updateNavIndicator();
-    }, 300); // 等待300ms，确保CSS过渡动画完成
+    }, 350); // 等待350ms，确保CSS过渡动画完全完成
   },
 );
 
@@ -132,16 +145,22 @@ watch(
 watch(
   () => route.path,
   () => {
-    updateNavIndicator();
+    // 使用 nextTick 确保 DOM 已经更新
+    nextTick(() => {
+      updateNavIndicator();
+    });
   },
 );
 
 // 组件挂载后初始化指示器位置和服务器列表
 onMounted(async () => {
-  updateNavIndicator();
-
   // 加载服务器列表
   await serverStore.refreshList();
+
+  // 等待服务器列表加载完成后再更新指示器位置
+  nextTick(() => {
+    updateNavIndicator();
+  });
 
   // 添加全局点击事件监听器，点击外部关闭气泡
   document.addEventListener("click", handleClickOutside);
@@ -440,7 +459,10 @@ const iconMap: Record<string, string> = {
   flex-direction: column;
   z-index: 100;
   border-right: 1px solid var(--sl-border-light);
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--sl-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .sidebar.collapsed {
@@ -698,6 +720,9 @@ const iconMap: Record<string, string> = {
   border-radius: var(--sl-radius-full);
   transition: top 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
+  will-change: top;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .nav-icon {

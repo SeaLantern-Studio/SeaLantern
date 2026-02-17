@@ -387,11 +387,7 @@ onMounted(() => {
         </div>
         <div v-for="name in onlinePlayers" :key="name" class="player-item glass-card">
           <div class="player-avatar">
-            <img
-              :src="'https://mc-heads.net/avatar/' + name + '/32'"
-              :alt="name"
-              class="avatar-img"
-            />
+            <img :src="'https://api.rms.net.cn/head/' + name" :alt="name" class="avatar-img" />
           </div>
           <div class="player-info">
             <span class="player-name">{{ name }}</span>
@@ -412,7 +408,7 @@ onMounted(() => {
         </div>
         <div v-for="p in whitelist" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" />
+            <img :src="'https://api.rms.net.cn/head/' + p.name" class="avatar-img" />
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
@@ -437,7 +433,7 @@ onMounted(() => {
         </div>
         <div v-for="p in bannedPlayers" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" />
+            <img :src="'https://api.rms.net.cn/head/' + p.name" class="avatar-img" />
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
@@ -465,7 +461,7 @@ onMounted(() => {
         </div>
         <div v-for="p in ops" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img :src="'https://mc-heads.net/avatar/' + p.name + '/32'" class="avatar-img" />
+            <img :src="'https://api.rms.net.cn/head/' + p.name" class="avatar-img" />
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
@@ -659,7 +655,6 @@ onMounted(() => {
   width: 36px;
   height: 36px;
   border-radius: var(--sl-radius-sm);
-  background: var(--sl-bg-tertiary);
 }
 .player-info {
   flex: 1;
