@@ -254,7 +254,7 @@ async function saveSettings() {
       JSON.stringify({
         theme: settings.value.theme || "auto",
         fontSize: settings.value.font_size || 14,
-      })
+      }),
     );
 
     applyTheme(settings.value.theme);
@@ -296,7 +296,7 @@ async function resetSettings() {
       JSON.stringify({
         theme: s.theme || "auto",
         fontSize: s.font_size || 14,
-      })
+      }),
     );
 
     applyTheme(s.theme);
@@ -407,13 +407,13 @@ function handleDeveloperModeChange() {
               <span class="setting-desc">{{ i18n.t("settings.close_action_desc") }}</span>
             </div>
             <div class="input-md">
-              <SLSelect 
-                v-model="settings.close_action" 
+              <SLSelect
+                v-model="settings.close_action"
                 :options="[
                   { label: i18n.t('settings.close_action_ask'), value: 'ask' },
                   { label: i18n.t('settings.close_action_minimize'), value: 'minimize' },
-                  { label: i18n.t('settings.close_action_close'), value: 'close' }
-                ]" 
+                  { label: i18n.t('settings.close_action_close'), value: 'close' },
+                ]"
                 @update:modelValue="markChanged"
               />
             </div>
@@ -523,15 +523,17 @@ function handleDeveloperModeChange() {
               <span class="setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
               <span class="setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
             </div>
-            <SLSwitch v-model="settings.developer_mode" @update:modelValue="handleDeveloperModeChange" />
+            <SLSwitch
+              v-model="settings.developer_mode"
+              @update:modelValue="handleDeveloperModeChange"
+            />
           </div>
         </div>
       </SLCard>
 
       <!-- Actions -->
       <div class="settings-actions">
-        <div class="actions-left">
-        </div>
+        <div class="actions-left"></div>
         <div class="actions-right">
           <SLButton variant="ghost" size="sm" @click="exportSettings">{{
             i18n.t("settings.export")

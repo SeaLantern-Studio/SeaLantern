@@ -184,10 +184,10 @@ function handleSearchUpdate(value: string) {
                 @change="updateValue(entry.key, $event.target.value)"
                 class="select"
               >
-                <option value="survival">{{ i18n.t('config.gamemode.survival') }}</option>
-                <option value="creative">{{ i18n.t('config.gamemode.creative') }}</option>
-                <option value="adventure">{{ i18n.t('config.gamemode.adventure') }}</option>
-                <option value="spectator">{{ i18n.t('config.gamemode.spectator') }}</option>
+                <option value="survival">{{ i18n.t("config.gamemode.survival") }}</option>
+                <option value="creative">{{ i18n.t("config.gamemode.creative") }}</option>
+                <option value="adventure">{{ i18n.t("config.gamemode.adventure") }}</option>
+                <option value="spectator">{{ i18n.t("config.gamemode.spectator") }}</option>
               </select>
             </template>
             <template v-else-if="entry.key === 'difficulty'">
@@ -196,10 +196,10 @@ function handleSearchUpdate(value: string) {
                 @change="updateValue(entry.key, $event.target.value)"
                 class="select"
               >
-                <option value="peaceful">{{ i18n.t('config.difficulty.peaceful') }}</option>
-                <option value="easy">{{ i18n.t('config.difficulty.easy') }}</option>
-                <option value="normal">{{ i18n.t('config.difficulty.normal') }}</option>
-                <option value="hard">{{ i18n.t('config.difficulty.hard') }}</option>
+                <option value="peaceful">{{ i18n.t("config.difficulty.peaceful") }}</option>
+                <option value="easy">{{ i18n.t("config.difficulty.easy") }}</option>
+                <option value="normal">{{ i18n.t("config.difficulty.normal") }}</option>
+                <option value="hard">{{ i18n.t("config.difficulty.hard") }}</option>
               </select>
             </template>
             <template v-else>

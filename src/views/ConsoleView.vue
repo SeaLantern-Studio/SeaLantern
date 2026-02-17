@@ -343,15 +343,15 @@ async function deleteCommand(cmd: ServerCommand) {
         :logs="currentLogs"
         :consoleFontSize="consoleFontSize"
         :userScrolledUp="userScrolledUp"
-        @scroll="(value) => userScrolledUp = value"
-        @scrollToBottom="userScrolledUp = false; doScroll()"
+        @scroll="(value) => (userScrolledUp = value)"
+        @scrollToBottom="
+          userScrolledUp = false;
+          doScroll();
+        "
       />
 
       <!-- 控制台输入部分 -->
-      <ConsoleInput
-        :consoleFontSize="consoleFontSize"
-        @sendCommand="sendCommand"
-      />
+      <ConsoleInput :consoleFontSize="consoleFontSize" @sendCommand="sendCommand" />
 
       <!-- 自定义指令模态框 -->
       <CommandModal
@@ -364,8 +364,8 @@ async function deleteCommand(cmd: ServerCommand) {
         @close="showCommandModal = false"
         @save="saveCommand"
         @delete="deleteCommand"
-        @updateName="(value) => commandName = value"
-        @updateText="(value) => commandText = value"
+        @updateName="(value) => (commandName = value)"
+        @updateText="(value) => (commandText = value)"
       />
     </template>
   </div>

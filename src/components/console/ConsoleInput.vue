@@ -71,7 +71,7 @@ const filteredSuggestions = computed(() => {
 function sendCommand() {
   const command = commandInput.value.trim();
   if (!command) return;
-  emit('sendCommand', command);
+  emit("sendCommand", command);
   commandInput.value = "";
   showSuggestions.value = false;
 }

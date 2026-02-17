@@ -33,7 +33,7 @@ function doScroll() {
 function handleScroll() {
   if (!logContainer.value) return;
   const el = logContainer.value;
-  emit('scroll', el.scrollHeight - el.scrollTop - el.clientHeight > 40);
+  emit("scroll", el.scrollHeight - el.scrollTop - el.clientHeight > 40);
 }
 </script>
 
@@ -77,11 +77,7 @@ function handleScroll() {
       {{ i18n.t("console.waiting_for_output") }}
     </div>
   </div>
-  <div
-    v-if="userScrolledUp"
-    class="scroll-btn"
-    @click="emit('scrollToBottom')"
-  >
+  <div v-if="userScrolledUp" class="scroll-btn" @click="emit('scrollToBottom')">
     {{ i18n.t("console.back_to_bottom") }}
   </div>
 </template>
