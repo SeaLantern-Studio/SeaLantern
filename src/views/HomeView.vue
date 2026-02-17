@@ -1402,7 +1402,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   border-radius: var(--sl-radius-md);
   margin: var(--sl-space-xs) 0;
   border: 1px solid var(--sl-border);
-  border-left: 4px solid var(--sl-primary);
   transition: all 0.2s ease;
   cursor: pointer;
   user-select: none;

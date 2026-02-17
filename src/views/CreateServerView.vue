@@ -470,7 +470,8 @@ const startupFileLabel = computed(() => {
 .startup-mode-tabs {
   display: flex;
   gap: 2px;
-  background: var(--sl-bg-secondary);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   padding: 3px;
   width: 100%;
@@ -505,10 +506,23 @@ const startupFileLabel = computed(() => {
   text-align: center;
 }
 .startup-mode-tab:hover {
-  color: var(--sl-primary);
+  color: var(--sl-text-primary);
 }
 .startup-mode-tab.active {
   color: var(--sl-primary);
+}
+
+/* 增强暗色模式下的对比度 */
+@media (prefers-color-scheme: dark) {
+  .startup-mode-tab {
+    color: var(--sl-text-tertiary);
+  }
+  .startup-mode-tab:hover {
+    color: var(--sl-text-primary);
+  }
+  .startup-mode-tab.active {
+    color: var(--sl-primary);
+  }
 }
 .jar-picker {
   grid-column: 1 / -1;
