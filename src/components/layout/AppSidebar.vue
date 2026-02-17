@@ -4,8 +4,27 @@ import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
 import { useServerStore } from "../../stores/serverStore";
 import { i18n } from "../../locales";
-import { Listbox, ListboxButton, ListboxOptions, ListboxOption, Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue';
-import { Home, Plus, Terminal, Settings, Users, Sliders, Palette, Info, Server, ChevronRight } from 'lucide-vue-next';
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOptions,
+  ListboxOption,
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from "@headlessui/vue";
+import {
+  Home,
+  Plus,
+  Terminal,
+  Settings,
+  Users,
+  Sliders,
+  Palette,
+  Info,
+  Server,
+  ChevronRight,
+} from "lucide-vue-next";
 
 const router = useRouter();
 const route = useRoute();
@@ -108,7 +127,7 @@ function updateNavIndicator() {
       const top = navItemRect.top - navRect.top + (navItemRect.height - 16) / 2;
 
       // 确保导航指示器可见
-      navIndicator.value.style.display = 'block';
+      navIndicator.value.style.display = "block";
 
       // 强制触发重排，确保动画能够正确执行
       void navIndicator.value.offsetHeight; // 触发重排
@@ -217,7 +236,7 @@ watch(
 // 便捷计算当前服务器标签
 const getCurrentServerLabel = computed(() => {
   const cur = serverOptions.value.find((o) => o.value === currentServerRef.value);
-  return cur ? cur.label : i18n.t('common.select_server');
+  return cur ? cur.label : i18n.t("common.select_server");
 });
 
 function isActive(path: string): boolean {
@@ -243,9 +262,12 @@ function isActive(path: string): boolean {
       <!-- 服务器选择（Headless UI Listbox） -->
       <Listbox v-if="serverOptions.length > 0" v-model="currentServerRef" class="server-selector">
         <div>
-          <ListboxButton class="server-selector-button" :aria-label="i18n.t('common.select_server')">
+          <ListboxButton
+            class="server-selector-button"
+            :aria-label="i18n.t('common.select_server')"
+          >
             <template v-if="!ui.sidebarCollapsed">
-              <div class="server-selector-label">{{ i18n.t('common.select_server') }}</div>
+              <div class="server-selector-label">{{ i18n.t("common.select_server") }}</div>
               <div class="server-current">{{ getCurrentServerLabel }}</div>
             </template>
             <template v-else>
@@ -259,8 +281,17 @@ function isActive(path: string): boolean {
                 <h3>选择服务器</h3>
               </div>
               <div class="server-select-bubble-body">
-                <ListboxOption v-for="option in serverOptions" :key="option.value" :value="option.value" v-slot="{ selected }">
-                  <div :class="['server-select-option', { active: option.value === currentServerRef }]">{{ option.label }}</div>
+                <ListboxOption
+                  v-for="option in serverOptions"
+                  :key="option.value"
+                  :value="option.value"
+                  v-slot="{ selected }"
+                >
+                  <div
+                    :class="['server-select-option', { active: option.value === currentServerRef }]"
+                  >
+                    {{ option.label }}
+                  </div>
                 </ListboxOption>
               </div>
             </ListboxOptions>
@@ -273,7 +304,11 @@ function isActive(path: string): boolean {
 
       <!-- 主菜单组 -->
       <Disclosure as="div" class="nav-group" default-open>
-        <DisclosureButton as="div" v-if="serverOptions.length > 0" class="nav-group-label"></DisclosureButton>
+        <DisclosureButton
+          as="div"
+          v-if="serverOptions.length > 0"
+          class="nav-group-label"
+        ></DisclosureButton>
         <DisclosurePanel>
           <div
             v-for="item in navItems.filter((i) => i.group === 'main')"
@@ -284,12 +319,42 @@ function isActive(path: string): boolean {
             :title="ui.sidebarCollapsed ? item.label : ''"
           >
             <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Plus v-else-if="item.icon === 'plus'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Terminal v-else-if="item.icon === 'terminal'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Settings v-else-if="item.icon === 'settings'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Users v-else-if="item.icon === 'users'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Sliders v-else-if="item.icon === 'sliders'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Palette v-else-if="item.icon === 'paint'" class="nav-icon" :size="20" :stroke-width="1.8" />
+            <Plus
+              v-else-if="item.icon === 'plus'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Terminal
+              v-else-if="item.icon === 'terminal'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Settings
+              v-else-if="item.icon === 'settings'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Users
+              v-else-if="item.icon === 'users'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Sliders
+              v-else-if="item.icon === 'sliders'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Palette
+              v-else-if="item.icon === 'paint'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
             <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
             <transition name="fade">
               <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
@@ -311,12 +376,42 @@ function isActive(path: string): boolean {
             :title="ui.sidebarCollapsed ? item.label : ''"
           >
             <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Plus v-else-if="item.icon === 'plus'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Terminal v-else-if="item.icon === 'terminal'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Settings v-else-if="item.icon === 'settings'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Users v-else-if="item.icon === 'users'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Sliders v-else-if="item.icon === 'sliders'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Palette v-else-if="item.icon === 'paint'" class="nav-icon" :size="20" :stroke-width="1.8" />
+            <Plus
+              v-else-if="item.icon === 'plus'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Terminal
+              v-else-if="item.icon === 'terminal'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Settings
+              v-else-if="item.icon === 'settings'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Users
+              v-else-if="item.icon === 'users'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Sliders
+              v-else-if="item.icon === 'sliders'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Palette
+              v-else-if="item.icon === 'paint'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
             <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
             <transition name="fade">
               <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
@@ -338,12 +433,42 @@ function isActive(path: string): boolean {
             :title="ui.sidebarCollapsed ? item.label : ''"
           >
             <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Plus v-else-if="item.icon === 'plus'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Terminal v-else-if="item.icon === 'terminal'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Settings v-else-if="item.icon === 'settings'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Users v-else-if="item.icon === 'users'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Sliders v-else-if="item.icon === 'sliders'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Palette v-else-if="item.icon === 'paint'" class="nav-icon" :size="20" :stroke-width="1.8" />
+            <Plus
+              v-else-if="item.icon === 'plus'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Terminal
+              v-else-if="item.icon === 'terminal'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Settings
+              v-else-if="item.icon === 'settings'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Users
+              v-else-if="item.icon === 'users'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Sliders
+              v-else-if="item.icon === 'sliders'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Palette
+              v-else-if="item.icon === 'paint'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
             <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
             <transition name="fade">
               <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
@@ -357,7 +482,12 @@ function isActive(path: string): boolean {
 
     <div class="sidebar-footer">
       <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
-        <ChevronRight class="nav-icon" :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : '' }" :size="20" :stroke-width="1.8" />
+        <ChevronRight
+          class="nav-icon"
+          :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : '' }"
+          :size="20"
+          :stroke-width="1.8"
+        />
         <transition name="fade">
           <span v-if="!ui.sidebarCollapsed" class="nav-label">{{
             i18n.t("sidebar.collapse_btn")
