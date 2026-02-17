@@ -20,5 +20,9 @@ export const javaApi = {
   async installJava(url: string, versionName: string): Promise<string> {
     return tauriInvoke("install_java", { url, versionName });
   },
+
+  async cancelInstall(): Promise<void> {
+    return tauriInvoke("cancel_java_install");
+  },
 };
 

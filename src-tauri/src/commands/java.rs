@@ -1,4 +1,10 @@
 use crate::services::java_detector;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use once_cell::sync::Lazy;
+
+// Global flag to control cancellation of Java installation
+static JAVA_INSTALL_CANCEL_FLAG: Lazy<Mutex<Option<Arc<AtomicBool>>>> = Lazy::new(|| Mutex::new(None));
 
 #[tauri::command]
 pub async fn detect_java() -> Result<Vec<java_detector::JavaInfo>, String> {
@@ -22,5 +28,32 @@ pub async fn install_java<R: tauri::Runtime>(
     version_name: String,
 ) -> Result<String, String> {
     use crate::services::java_installer;
-    java_installer::download_and_install_java(url, version_name, window).await
+    
+    let cancel_flag = Arc::new(AtomicBool::new(false));
+    
+    // Scoping the lock
+    {
+        let mut lock = JAVA_INSTALL_CANCEL_FLAG.lock().map_err(|_| "无法获取锁".to_string())?;
+        *lock = Some(cancel_flag.clone());
+    }
+
+    let result = java_installer::download_and_install_java(url, version_name, window, cancel_flag).await;
+
+    // Clear flag after done
+    if let Ok(mut lock) = JAVA_INSTALL_CANCEL_FLAG.lock() {
+        *lock = None;
+    }
+    
+    result
+}
+
+#[tauri::command]
+pub async fn cancel_java_install() -> Result<(), String> {
+    let lock = JAVA_INSTALL_CANCEL_FLAG.lock().map_err(|_| "无法获取锁".to_string())?;
+    
+    if let Some(flag) = &*lock {
+        flag.store(true, Ordering::Relaxed);
+    }
+    
+    Ok(())
 }

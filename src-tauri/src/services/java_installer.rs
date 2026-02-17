@@ -1,6 +1,8 @@
 use std::fs;
 use std::io::Cursor;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tauri::{Emitter, Manager, Window};
 use zip::ZipArchive;
 #[cfg(not(target_os = "windows"))]
@@ -20,6 +22,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
     url: String,
     version_name: String,
     window: Window<R>,
+    cancel_flag: Arc<AtomicBool>,
 ) -> Result<String, String> {
     let app_handle = window.app_handle();
     let app_dir = app_handle
@@ -72,6 +75,9 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
     let mut last_emit = std::time::Instant::now();
 
     while let Some(chunk) = stream.next().await {
+        if cancel_flag.load(Ordering::Relaxed) {
+             return Err("用户取消下载".to_string());
+        }
         let chunk = chunk.map_err(|e| format!("下载流错误: {}", e))?;
         data.extend_from_slice(&chunk);
         downloaded += chunk.len() as u64;
@@ -100,6 +106,10 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
         },
     );
 
+    if cancel_flag.load(Ordering::Relaxed) {
+         return Err("用户取消下载".to_string());
+    }
+
     // 2. Extract
     let _ = window.emit(
         "java-install-progress",
@@ -117,18 +127,30 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
     }
     fs::create_dir_all(&temp_dir).map_err(|e| format!("无法创建临时目录: {}", e))?;
 
+    // Check file signature (Magic Numbers)
     #[cfg(target_os = "windows")]
-    if url.ends_with(".zip") {
-        extract_zip(&data, &temp_dir)?;
-    } else {
-        return Err("不支持的文件格式 (Windows 仅支持 .zip)".to_string());
+    {
+        if data.len() > 2 && &data[0..2] == b"PK" {
+            extract_zip(&data, &temp_dir, &cancel_flag)?;
+        } else {
+             return Err("下载的文件不是有效的 ZIP 格式".to_string());
+        }
     }
 
     #[cfg(not(target_os = "windows"))]
-    if url.ends_with(".tar.gz") || url.ends_with(".tgz") {
-        extract_tar_gz(&data, &temp_dir)?;
-    } else {
-         return Err("不支持的文件格式 (非 Windows 需 .tar.gz)".to_string());
+    {
+        // Gzip header is usually 1F 8B
+        if data.len() > 2 && data[0] == 0x1f && data[1] == 0x8b {
+            extract_tar_gz(&data, &temp_dir, &cancel_flag)?;
+        } else {
+             return Err("下载的文件不是有效的 tar.gz 格式".to_string());
+        }
+    }
+
+    if cancel_flag.load(Ordering::Relaxed) {
+         // Cleanup
+         let _ = fs::remove_dir_all(&temp_dir);
+         return Err("用户取消安装".to_string());
     }
 
     // 3. Move Logic
@@ -196,11 +218,14 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
 }
 
 #[cfg(target_os = "windows")]
-fn extract_zip(data: &[u8], target_dir: &Path) -> Result<(), String> {
+fn extract_zip(data: &[u8], target_dir: &Path, cancel_flag: &AtomicBool) -> Result<(), String> {
     let cursor = Cursor::new(data);
     let mut archive = ZipArchive::new(cursor).map_err(|e| format!("ZIP 解析失败: {}", e))?;
 
     for i in 0..archive.len() {
+        if cancel_flag.load(Ordering::Relaxed) {
+             return Err("用户取消解压".to_string());
+        }
         let mut file = archive.by_index(i).map_err(|e| format!("读取文件失败: {}", e))?;
         let outpath = target_dir.join(file.mangled_name());
 
@@ -220,10 +245,17 @@ fn extract_zip(data: &[u8], target_dir: &Path) -> Result<(), String> {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn extract_tar_gz(data: &[u8], target_dir: &Path) -> Result<(), String> {
+fn extract_tar_gz(data: &[u8], target_dir: &Path, cancel_flag: &AtomicBool) -> Result<(), String> {
     let cursor = Cursor::new(data);
     let tar = GzDecoder::new(cursor);
     let mut archive = Archive::new(tar);
+    
+    // tar archive unpacking is usually one-shot, but we can check if there's a way to iterate.
+    // The `unpack` method is convenient but not cancellable per-entry easily without manual iteration.
+    // For now, check flag before. Note: unpacking fully is usually fast on modern SSDs unless huge.
+    if cancel_flag.load(Ordering::Relaxed) {
+         return Err("用户取消解压".to_string());
+    }
     archive.unpack(target_dir).map_err(|e| format!("解压失败: {}", e))?;
     Ok(())
 }
