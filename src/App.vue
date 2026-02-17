@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted } from "vue";
 import AppLayout from "./components/layout/AppLayout.vue";
 import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
@@ -71,11 +71,7 @@ function handleUpdateModalClose() {
 
 <template>
   <transition name="splash-fade">
-    <SplashScreen
-      v-if="showSplash"
-      :loading="isInitializing"
-      @ready="handleSplashReady"
-    />
+    <SplashScreen v-if="showSplash" :loading="isInitializing" @ready="handleSplashReady" />
   </transition>
 
   <template v-if="!showSplash">

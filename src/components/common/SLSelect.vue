@@ -259,7 +259,9 @@ onUnmounted(() => {
           </div>
 
           <div class="sl-select-options" :style="{ maxHeight }" role="presentation">
-            <div v-if="filteredOptions.length === 0" class="sl-select-empty">{{ i18n.t('common.no_match') }}</div>
+            <div v-if="filteredOptions.length === 0" class="sl-select-empty">
+              {{ i18n.t("common.no_match") }}
+            </div>
             <div
               v-for="(option, index) in filteredOptions"
               :key="option.value"

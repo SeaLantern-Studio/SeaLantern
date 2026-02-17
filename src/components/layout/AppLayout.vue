@@ -76,6 +76,29 @@ function applyFontFamily(fontFamily: string) {
   }
 }
 
+function applyDeveloperMode(enabled: boolean) {
+  if (enabled) {
+    // 开启开发者模式，移除限制
+    document.removeEventListener("contextmenu", blockContextMenu);
+    document.removeEventListener("keydown", blockDevTools);
+  } else {
+    // 关闭开发者模式，添加限制
+    document.addEventListener("contextmenu", blockContextMenu);
+    document.addEventListener("keydown", blockDevTools);
+  }
+}
+
+function blockContextMenu(e: Event) {
+  e.preventDefault();
+}
+
+function blockDevTools(e: KeyboardEvent) {
+  // 阻止 F12 键
+  if (e.key === "F12") {
+    e.preventDefault();
+  }
+}
+
 async function applyAllSettings() {
   const settings = settingsStore.settings;
 
@@ -92,6 +115,9 @@ async function applyAllSettings() {
   }
 
   applyColors(settings);
+
+  // 应用开发者模式限制
+  applyDeveloperMode(settings.developer_mode || false);
 }
 
 onMounted(async () => {
@@ -120,7 +146,7 @@ watch(
   async () => {
     await applyAllSettings();
   },
-  { deep: true }
+  { deep: true },
 );
 
 const backgroundStyle = computed(() => {

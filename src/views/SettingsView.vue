@@ -242,6 +242,7 @@ async function saveSettings() {
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
   settings.value.font_size = parseInt(uiFontSize.value) || 14;
   settings.value.color = settings.value.color || "default";
+  settings.value.developer_mode = settings.value.developer_mode || false;
 
   saving.value = true;
   error.value = null;
@@ -253,7 +254,7 @@ async function saveSettings() {
       JSON.stringify({
         theme: settings.value.theme || "auto",
         fontSize: settings.value.font_size || 14,
-      })
+      }),
     );
 
     applyTheme(settings.value.theme);
@@ -295,7 +296,7 @@ async function resetSettings() {
       JSON.stringify({
         theme: s.theme || "auto",
         fontSize: s.font_size || 14,
-      })
+      }),
     );
 
     applyTheme(s.theme);
@@ -362,6 +363,10 @@ function clearBackgroundImage() {
     markChanged();
   }
 }
+
+function handleDeveloperModeChange() {
+  markChanged();
+}
 </script>
 
 <template>
@@ -402,13 +407,13 @@ function clearBackgroundImage() {
               <span class="setting-desc">{{ i18n.t("settings.close_action_desc") }}</span>
             </div>
             <div class="input-md">
-              <SLSelect 
-                v-model="settings.close_action" 
+              <SLSelect
+                v-model="settings.close_action"
                 :options="[
                   { label: i18n.t('settings.close_action_ask'), value: 'ask' },
                   { label: i18n.t('settings.close_action_minimize'), value: 'minimize' },
-                  { label: i18n.t('settings.close_action_close'), value: 'close' }
-                ]" 
+                  { label: i18n.t('settings.close_action_close'), value: 'close' },
+                ]"
                 @update:modelValue="markChanged"
               />
             </div>
@@ -506,10 +511,29 @@ function clearBackgroundImage() {
           </div>
         </div>
       </SLCard>
+
+      <!-- Developer Mode -->
+      <SLCard
+        :title="i18n.t('settings.developer_mode')"
+        :subtitle="i18n.t('settings.developer_mode_desc')"
+      >
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
+            </div>
+            <SLSwitch
+              v-model="settings.developer_mode"
+              @update:modelValue="handleDeveloperModeChange"
+            />
+          </div>
+        </div>
+      </SLCard>
+
       <!-- Actions -->
       <div class="settings-actions">
-        <div class="actions-left">
-        </div>
+        <div class="actions-left"></div>
         <div class="actions-right">
           <SLButton variant="ghost" size="sm" @click="exportSettings">{{
             i18n.t("settings.export")
