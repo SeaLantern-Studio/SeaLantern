@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted } from "vue";
 import AppLayout from "./components/layout/AppLayout.vue";
 import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
