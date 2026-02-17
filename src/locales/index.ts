@@ -1,19 +1,21 @@
 import zhCN from "./zh-CN.json";
 import enUS from "./en-US.json";
 import zhTW from "./zh-TW.json";
+import zhJB from "./zh-JB.json";
 import { ref, type Ref } from "vue";
 
 type TranslationNode = {
   [key: string]: string | TranslationNode;
 };
 
-export const SUPPORTED_LOCALES = ["zh-CN", "en-US", "zh-TW"] as const;
+export const SUPPORTED_LOCALES = ["zh-CN", "en-US", "zh-TW", "zh-JB"] as const;
 export type LocaleCode = (typeof SUPPORTED_LOCALES)[number];
 
 const translations: Record<LocaleCode, TranslationNode> = {
   "zh-CN": zhCN,
   "en-US": enUS,
   "zh-TW": zhTW,
+  "zh-JB": zhJB,
 };
 
 function isSupportedLocale(locale: string): locale is LocaleCode {

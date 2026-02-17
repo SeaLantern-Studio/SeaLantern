@@ -37,14 +37,14 @@ const categories = computed(() => {
 });
 
 const categoryLabels: Record<string, string> = {
-  all: "全部",
-  network: "网络",
-  player: "玩家",
-  game: "游戏",
-  world: "世界",
-  performance: "性能",
-  display: "显示",
-  other: "其他",
+  all: i18n.t("common.config_all"),
+  network: i18n.t("common.config_network"),
+  player: i18n.t("common.config_player"),
+  game: i18n.t("common.config_game"),
+  world: i18n.t("common.config_world"),
+  performance: i18n.t("common.config_performance"),
+  display: i18n.t("common.config_display"),
+  other: i18n.t("common.config_other"),
 };
 
 const filteredEntries = computed(() => {
@@ -102,7 +102,7 @@ async function saveProperties() {
   successMsg.value = null;
   try {
     await configApi.writeServerProperties(serverPath.value, editValues.value);
-    successMsg.value = "配置已保存";
+    successMsg.value = i18n.t("common.config_saved");
     setTimeout(() => (successMsg.value = null), 3000);
   } catch (e) {
     error.value = String(e);
