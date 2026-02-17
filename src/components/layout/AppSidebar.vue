@@ -18,16 +18,18 @@ interface NavItem {
   path: string;
   icon: string;
   labelKey: string;
+  label: string;
   group: string;
 }
 
 const navItems: NavItem[] = [
-  { name: "home", path: "/", icon: "home", labelKey: "common.home", group: "main" },
+  { name: "home", path: "/", icon: "home", labelKey: "common.home", label: i18n.t("common.home"), group: "main" },
   {
     name: "create",
     path: "/create",
     icon: "plus",
     labelKey: "common.create_server",
+    label: i18n.t("common.create_server"),
     group: "main",
   },
   {
@@ -35,6 +37,7 @@ const navItems: NavItem[] = [
     path: "/console",
     icon: "terminal",
     labelKey: "common.console",
+    label: i18n.t("common.console"),
     group: "server",
   },
   {
@@ -42,6 +45,7 @@ const navItems: NavItem[] = [
     path: "/config",
     icon: "settings",
     labelKey: "common.config_edit",
+    label: i18n.t("common.config_edit"),
     group: "server",
   },
   {
@@ -49,6 +53,7 @@ const navItems: NavItem[] = [
     path: "/players",
     icon: "users",
     labelKey: "common.player_manage",
+    label: i18n.t("common.player_manage"),
     group: "server",
   },
   {
@@ -56,16 +61,11 @@ const navItems: NavItem[] = [
     path: "/settings",
     icon: "sliders",
     labelKey: "common.settings",
+    label: i18n.t("common.settings"),
     group: "system",
   },
-  { name: "paint", path: "/paint", icon: "paint", labelKey: "common.personalize", group: "system" },
-  { name: "about", path: "/about", icon: "info", labelKey: "common.about", group: "system" },
-];
-
-const groups = [
-  { key: "main", labelKey: "sidebar.groups.main" },
-  { key: "server", labelKey: "sidebar.groups.server" },
-  { key: "system", labelKey: "sidebar.groups.system" },
+  { name: "paint", path: "/paint", icon: "paint", labelKey: "common.personalize", label: i18n.t("common.personalize"), group: "system" },
+  { name: "about", path: "/about", icon: "info", labelKey: "common.about", label: i18n.t("common.about"), group: "system" },
 ];
 
 function navigateTo(path: string) {
@@ -115,22 +115,6 @@ watch(
   },
 );
 
-// 监听服务器列表变化，更新指示器位置
-watch(
-  () => serverOptions.length,
-  () => {
-    updateNavIndicator();
-  },
-);
-
-// 监听当前服务器变化，更新指示器位置
-watch(
-  () => currentServerId,
-  () => {
-    updateNavIndicator();
-  },
-);
-
 // 组件挂载后初始化指示器位置和服务器列表
 onMounted(async () => {
   updateNavIndicator();
@@ -172,8 +156,8 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-function handleServerChange(value: string) {
-  serverStore.setCurrentServer(value);
+function handleServerChange(value: string | number) {
+  serverStore.setCurrentServer(String(value));
   // 如果当前在服务器相关页面，更新路由
   if (
     route.path.startsWith("/console") ||
@@ -195,8 +179,24 @@ const serverOptions = computed(() => {
 
 // 当前选中的服务器
 const currentServerId = computed(() => {
-  return serverStore.currentServerId;
+  return serverStore.currentServerId ?? undefined;
 });
+
+// 监听服务器列表变化，更新指示器位置
+watch(
+  () => serverOptions.value.length,
+  () => {
+    updateNavIndicator();
+  },
+);
+
+// 监听当前服务器变化，更新指示器位置
+watch(
+  () => currentServerId.value,
+  () => {
+    updateNavIndicator();
+  },
+);
 
 function isActive(path: string): boolean {
   if (path === "/") return route.path === "/";

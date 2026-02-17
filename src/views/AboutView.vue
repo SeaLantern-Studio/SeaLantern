@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+﻿﻿<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
@@ -21,9 +21,6 @@ const updateStore = useUpdateStore();
 const showNotification = ref(false);
 const notificationMessage = ref("");
 const notificationType = ref<"success" | "error" | "warning" | "info">("info");
-
-const showDebugInput = ref(false);
-const debugUrl = ref("");
 
 let unlistenProgress: UnlistenFn | null = null;
 let resetTimer: ReturnType<typeof setTimeout> | null = null;
@@ -123,29 +120,6 @@ async function handlePrimaryUpdateAction() {
     return;
   }
   await handleCheckUpdate();
-}
-
-async function handleDebugDownload() {
-  if (!debugUrl.value.trim()) {
-    return;
-  }
-
-  try {
-    updateStore.setDownloading(0);
-    const { downloadUpdateFromDebugUrl } = await import("../api/update");
-    const filePath = await downloadUpdateFromDebugUrl(debugUrl.value.trim());
-    updateStore.setDownloaded(filePath);
-    showDebugInput.value = false;
-    debugUrl.value = "";
-    showNotify(i18n.t("about.update_download_complete"), "success");
-  } catch (error) {
-    updateStore.setDownloadError(String(error));
-    showNotify(`${i18n.t("about.update_download_failed")}: ${String(error)}`, "error");
-  }
-}
-
-function toggleDebugInput() {
-  showDebugInput.value = !showDebugInput.value;
 }
 </script>
 
@@ -276,24 +250,6 @@ function toggleDebugInput() {
                 <span class="update-btn-label">{{ buttonState.text }}</span>
               </span>
             </SLButton>
-
-            <!-- 璋冭瘯鎸夐挳 -->
-            <div class="debug-section-inline">
-              <button class="debug-toggle" @click="toggleDebugInput">
-                {{ i18n.t("about.update_debug") }}
-              </button>
-              <div v-if="showDebugInput" class="debug-input-row">
-                <input
-                  v-model="debugUrl"
-                  type="text"
-                  :placeholder="i18n.t('about.update_debug_placeholder')"
-                  class="debug-input"
-                />
-                <SLButton variant="secondary" size="sm" @click="handleDebugDownload">
-                  {{ i18n.t("about.update_debug_download") }}
-                </SLButton>
-              </div>
-            </div>
           </div>
         </SLCard>
 
@@ -841,44 +797,6 @@ function toggleDebugInput() {
 :deep(.update-action-btn) {
   position: relative;
   overflow: hidden;
-}
-
-.debug-section-inline {
-  margin-top: var(--sl-space-sm);
-}
-
-.debug-toggle {
-  background: none;
-  border: none;
-  color: var(--sl-text-tertiary);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0;
-}
-
-.debug-toggle:hover {
-  color: var(--sl-text-secondary);
-}
-
-.debug-input-row {
-  display: flex;
-  gap: var(--sl-space-sm);
-  margin-top: var(--sl-space-xs);
-}
-
-.debug-input {
-  flex: 1;
-  padding: var(--sl-space-xs) var(--sl-space-sm);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  background: var(--sl-bg);
-  color: var(--sl-text-primary);
-  font-size: 0.8125rem;
-}
-
-.debug-input:focus {
-  outline: none;
-  border-color: var(--sl-primary);
 }
 
 @media (max-width: 768px) {

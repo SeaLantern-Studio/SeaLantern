@@ -5,13 +5,11 @@ import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLProgress from "../components/common/SLProgress.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
 import { i18n } from "../locales";
-import { getStatusVariant, getStatusText } from "../utils/serverStatus";
 
 const router = useRouter();
 const store = useServerStore();
@@ -32,9 +30,121 @@ const memUsage = ref(0);
 const diskUsage = ref(0);
 const cpuHistory = ref<number[]>([]);
 const memHistory = ref<number[]>([]);
-const statsViewMode = ref<"detail" | "gauge">("gauge"); // 视图模式
+const statsViewMode = ref<"detail" | "gauge">("gauge");
+const statsLoading = ref(true); // 视图模式
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+// 一言 API 相关
+interface HitokotoResponse {
+  id: number;
+  hitokoto: string;
+  type: string;
+  from: string;
+  from_who: string | null;
+  creator: string;
+  creator_uid: number;
+  review_status: number;
+  uuid: string;
+  created_at: string;
+}
+
+const currentQuote = ref<{ text: string; author: string }>({ text: "", author: "" });
+const displayText = ref("");
+const isTyping = ref(false);
+let typeTimer: ReturnType<typeof setInterval> | null = null;
+
+function typeWriter(text: string, callback?: () => void) {
+  if (typeTimer) clearInterval(typeTimer);
+  displayText.value = "";
+  isTyping.value = true;
+  let index = 0;
+  typeTimer = setInterval(() => {
+    if (index < text.length) {
+      displayText.value += text[index];
+      index++;
+    } else {
+      if (typeTimer) clearInterval(typeTimer);
+      isTyping.value = false;
+      if (callback) callback();
+    }
+  }, 50);
+}
+
+function typeWriterOut(callback?: () => void) {
+  if (typeTimer) clearInterval(typeTimer);
+  if (!displayText.value) {
+    if (callback) callback();
+    return;
+  }
+  isTyping.value = true;
+  let chars = displayText.value.split("");
+  typeTimer = setInterval(() => {
+    if (chars.length > 0) {
+      chars.pop();
+      displayText.value = chars.join("");
+    } else {
+      if (typeTimer) clearInterval(typeTimer);
+      isTyping.value = false;
+      if (callback) callback();
+    }
+  }, 30);
+}
+
+/**
+ * 从一言 API 获取名言
+ */
+async function fetchHitokoto(): Promise<{ text: string; author: string }> {
+  try {
+    const response = await fetch('https://v1.hitokoto.cn/?encode=json');
+    if (!response.ok) {
+      throw new Error('Failed to fetch hitokoto');
+    }
+    const data: HitokotoResponse = await response.json();
+    return {
+      text: data.hitokoto,
+      author: data.from_who || data.from || '未知'
+    };
+  } catch (error) {
+    console.error('Error fetching hitokoto:', error);
+    // 失败时返回默认名言
+    return { text: "我们搭建了骨架,而灵魂,交给你们。", author: "Sea Lantern" };
+  }
+}
+
+/**
+ * 更新名言
+ */
+async function updateQuote() {
+  if (isTyping.value) return;
+  // 先打字消失
+  typeWriterOut(async () => {
+    try {
+      const newQuote = await fetchHitokoto();
+      currentQuote.value = newQuote;
+      // 再打字出现
+      typeWriter(newQuote.text);
+    } catch (error) {
+      console.error('Error updating quote:', error);
+    }
+  });
+}
+
+// 初始化打字机效果
+async function initQuote() {
+  try {
+    const initialQuote = await fetchHitokoto();
+    currentQuote.value = initialQuote;
+    typeWriter(initialQuote.text);
+  } catch (error) {
+    console.error('Error initializing quote:', error);
+  }
+}
+
+// 初始化获取名言
+initQuote();
+
+let quoteTimer: ReturnType<typeof setInterval> | null = null;
 
 // 格式化字节
 function formatBytes(bytes: number): string {
@@ -85,15 +195,18 @@ onMounted(() => {
     try {
       const info = await systemApi.getSystemInfo();
       systemInfo.value = info;
-      cpuUsage.value = Math.round(info.cpu.usage);
-      memUsage.value = Math.round(info.memory.usage);
-      diskUsage.value = Math.round(info.disk.usage);
+      // clamp CPU usage to 0-100 (sysinfo can sometimes return >100%)
+      cpuUsage.value = Math.min(100, Math.max(0, Math.round(info.cpu.usage)));
+      memUsage.value = Math.min(100, Math.max(0, Math.round(info.memory.usage)));
+      diskUsage.value = Math.min(100, Math.max(0, Math.round(info.disk.usage)));
       cpuHistory.value.push(cpuUsage.value);
       memHistory.value.push(memUsage.value);
       if (cpuHistory.value.length > 30) cpuHistory.value.shift();
       if (memHistory.value.length > 30) memHistory.value.shift();
+      statsLoading.value = false;
     } catch (e) {
       console.error("Failed to fetch system info:", e);
+      statsLoading.value = false;
     }
   };
 
@@ -102,7 +215,10 @@ onMounted(() => {
   fetchSystemInfo();
 
   // 设置定时任务
-  statsTimer = setInterval(fetchSystemInfo, 2000);
+  statsTimer = setInterval(fetchSystemInfo, 1000);
+
+  // 名言每30秒更新一次
+  quoteTimer = setInterval(updateQuote, 30000);
 
   // Refresh server statuses
   refreshTimer = setInterval(async () => {
@@ -118,6 +234,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (statsTimer) clearInterval(statsTimer);
   if (refreshTimer) clearInterval(refreshTimer);
+  if (quoteTimer) clearInterval(quoteTimer);
   // 移除全局点击事件监听器
   document.removeEventListener("click", handleClickOutside);
 });
@@ -189,15 +306,6 @@ async function handleStop(id: string) {
     actionError.value = String(e);
   } finally {
     actionLoading.value[id] = false;
-  }
-}
-
-async function handleDelete(id: string) {
-  try {
-    await serverApi.deleteServer(id);
-    await store.refreshList();
-  } catch (e) {
-    actionError.value = String(e);
   }
 }
 
@@ -368,8 +476,13 @@ function handleAnimationEnd(event: AnimationEvent) {
             </button>
           </div>
         </template>
+        <!-- 加载状态 -->
+        <div v-if="statsLoading" class="stats-loading">
+          <div class="spinner"></div>
+          <span>{{ i18n.t("common.loading") }}</span>
+        </div>
         <!-- 仪表盘视图 -->
-        <div v-if="statsViewMode === 'gauge'" class="gauge-view">
+        <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
           <div class="gauge-grid">
             <div class="gauge-item">
               <svg class="gauge-svg" viewBox="0 0 36 36">
@@ -455,6 +568,11 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
             </div>
           </div>
+          <div class="quote-display" @click="updateQuote" :title="'点击刷新'">
+            <span v-if="displayText" class="quote-text">「{{ displayText }}」</span>
+            <span v-if="currentQuote" class="quote-author">—— {{ currentQuote.author }}</span>
+            <span v-else class="quote-text">加载中...</span>
+          </div>
         </div>
         <!-- 详细视图 -->
         <div v-else class="stats-grid">
@@ -467,14 +585,27 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
             </div>
-            <SLProgress :value="cpuUsage" variant="primary" :showPercent="false" />
-            <div class="mini-chart">
-              <svg viewBox="0 0 120 20" class="chart-svg">
+            <div class="mini-chart taskmgr-style">
+              <svg viewBox="0 0 300 40" class="chart-svg">
+                <!-- 网格线 -->
+                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
+                  <line x1="0" y1="8" x2="300" y2="8"/>
+                  <line x1="0" y1="16" x2="300" y2="16"/>
+                  <line x1="0" y1="24" x2="300" y2="24"/>
+                  <line x1="0" y1="32" x2="300" y2="32"/>
+                </g>
+                <!-- 填充区域 -->
+                <polygon
+                  :points="'0,40 ' + cpuHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ') + ',300,40'"
+                  fill="var(--sl-primary)"
+                  fill-opacity="0.15"
+                />
+                <!-- 曲线 -->
                 <polyline
-                  :points="cpuHistory.map((v, i) => i * 4 + ',' + (20 - v * 0.2)).join(' ')"
+                  :points="cpuHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ')"
                   fill="none"
                   stroke="var(--sl-primary)"
-                  stroke-width="1.5"
+                  stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
@@ -491,14 +622,27 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
               <span class="stat-value">{{ memUsage }}%</span>
             </div>
-            <SLProgress :value="memUsage" variant="success" :showPercent="false" />
-            <div class="mini-chart">
-              <svg viewBox="0 0 120 20" class="chart-svg">
+            <div class="mini-chart taskmgr-style">
+              <svg viewBox="0 0 300 40" class="chart-svg">
+                <!-- 网格线 -->
+                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
+                  <line x1="0" y1="8" x2="300" y2="8"/>
+                  <line x1="0" y1="16" x2="300" y2="16"/>
+                  <line x1="0" y1="24" x2="300" y2="24"/>
+                  <line x1="0" y1="32" x2="300" y2="32"/>
+                </g>
+                <!-- 填充区域 -->
+                <polygon
+                  :points="'0,40 ' + memHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ') + ',300,40'"
+                  fill="var(--sl-success)"
+                  fill-opacity="0.15"
+                />
+                <!-- 曲线 -->
                 <polyline
-                  :points="memHistory.map((v, i) => i * 4 + ',' + (20 - v * 0.2)).join(' ')"
+                  :points="memHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ')"
                   fill="none"
                   stroke="var(--sl-success)"
-                  stroke-width="1.5"
+                  stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
@@ -612,10 +756,11 @@ function handleAnimationEnd(event: AnimationEvent) {
 
         <div class="server-card-actions">
           <SLButton
-            v-if="store.statuses[server.id]?.status !== 'Running'"
+            v-if="store.statuses[server.id]?.status === 'Stopped' || store.statuses[server.id]?.status === 'Error' || !store.statuses[server.id]?.status"
             variant="primary"
             size="sm"
             :loading="actionLoading[server.id]"
+            :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
             @click="handleStart(server.id)"
             >{{ i18n.t("home.start") }}</SLButton
           >
@@ -624,6 +769,7 @@ function handleAnimationEnd(event: AnimationEvent) {
             variant="danger"
             size="sm"
             :loading="actionLoading[server.id]"
+            :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
             @click="handleStop(server.id)"
             >{{ i18n.t("home.stop") }}</SLButton
           >
@@ -741,16 +887,31 @@ function handleAnimationEnd(event: AnimationEvent) {
   margin-top: var(--sl-space-sm);
 }
 
+.gauge-view {
+  min-height: 200px;
+}
+
 .stats-grid {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-sm);
+  padding: var(--sl-space-xs) 0;
+  min-height: 200px;
+}
+
+.stats-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  min-height: 200px;
+  color: var(--sl-text-tertiary);
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .stat-header {
@@ -777,10 +938,16 @@ function handleAnimationEnd(event: AnimationEvent) {
 }
 
 .mini-chart {
-  height: 20px;
+  height: 40px;
 }
 
-.chart-svg {
+.mini-chart.taskmgr-style {
+  background: var(--sl-bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mini-chart.taskmgr-style .chart-svg {
   width: 100%;
   height: 100%;
 }
@@ -1228,6 +1395,31 @@ function handleAnimationEnd(event: AnimationEvent) {
   font-size: 0.75rem;
   font-family: var(--sl-font-mono);
   color: var(--sl-text-secondary);
+}
+
+.quote-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--sl-space-sm) 0;
+  margin-top: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.quote-display:hover {
+  opacity: 0.8;
+}
+.quote-text {
+  font-size: 0.8125rem;
+  color: var(--sl-text-secondary);
+  font-style: italic;
+  text-align: center;
+}
+.quote-author {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
 }
 
 @media (max-width: 900px) {

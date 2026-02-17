@@ -90,6 +90,7 @@ pub fn run() {
             config_commands::write_server_properties,
             system_commands::get_system_info,
             system_commands::pick_jar_file,
+            system_commands::pick_startup_file,
             system_commands::pick_java_file,
             system_commands::pick_folder,
             system_commands::pick_image_file,
