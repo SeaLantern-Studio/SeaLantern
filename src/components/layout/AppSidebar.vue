@@ -69,7 +69,7 @@ const navItems: NavItem[] = [
   {
     name: "config",
     path: "/config",
-    icon: "settings",
+    icon: "sliders",
     labelKey: "common.config_edit",
     label: i18n.t("common.config_edit"),
     group: "server",
@@ -83,14 +83,6 @@ const navItems: NavItem[] = [
     group: "server",
   },
   {
-    name: "settings",
-    path: "/settings",
-    icon: "sliders",
-    labelKey: "common.settings",
-    label: i18n.t("common.settings"),
-    group: "system",
-  },
-  {
     name: "paint",
     path: "/paint",
     icon: "paint",
@@ -99,11 +91,11 @@ const navItems: NavItem[] = [
     group: "system",
   },
   {
-    name: "about",
-    path: "/about",
-    icon: "info",
-    labelKey: "common.about",
-    label: i18n.t("common.about"),
+    name: "settings",
+    path: "/settings",
+    icon: "settings",
+    labelKey: "common.settings",
+    label: i18n.t("common.settings"),
     group: "system",
   },
 ];
@@ -267,8 +259,7 @@ function isActive(path: string): boolean {
             :aria-label="i18n.t('common.select_server')"
           >
             <template v-if="!ui.sidebarCollapsed">
-              <div class="server-selector-label">{{ i18n.t("common.select_server") }}</div>
-              <div class="server-current">{{ getCurrentServerLabel }}</div>
+              <div class="server-select-box">{{ getCurrentServerLabel }}</div>
             </template>
             <template v-else>
               <Server :size="22" :stroke-width="1.8" />
@@ -277,9 +268,6 @@ function isActive(path: string): boolean {
 
           <transition name="bubble">
             <ListboxOptions class="server-select-bubble-content">
-              <div class="server-select-bubble-header">
-                <h3>选择服务器</h3>
-              </div>
               <div class="server-select-bubble-body">
                 <ListboxOption
                   v-for="option in serverOptions"
@@ -481,6 +469,12 @@ function isActive(path: string): boolean {
     <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
 
     <div class="sidebar-footer">
+      <div class="nav-item" @click="navigateTo('/about')" :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''">
+        <Info class="nav-icon" :size="20" :stroke-width="1.8" />
+        <transition name="fade">
+          <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
+        </transition>
+      </div>
       <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
         <ChevronRight
           class="nav-icon"
@@ -509,7 +503,7 @@ function isActive(path: string): boolean {
   flex-direction: column;
   z-index: 100;
   border-right: 1px solid var(--sl-border-light);
-  transition: width var(--sl-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: width;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -573,6 +567,7 @@ function isActive(path: string): boolean {
   margin-bottom: var(--sl-space-sm);
   display: flex;
   justify-content: center;
+  position: relative;
 }
 
 .server-selector-label {
@@ -586,12 +581,45 @@ function isActive(path: string): boolean {
   margin-bottom: var(--sl-space-xs);
 }
 
-.server-selector :deep(.sl-select) {
-  width: 100%;
+.server-selector-button {
+  width: 90%;
+  padding: var(--sl-space-sm);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background-color: var(--sl-surface);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 40px;
+  will-change: width, border, background-color, padding, align-items;
 }
 
-.server-selector :deep(.sl-select__input) {
-  font-size: 0.8125rem;
+.sidebar.collapsed .server-selector-button {
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  padding: var(--sl-space-xs);
+  border: none;
+  background-color: transparent;
+  min-height: 40px;
+}
+
+.server-selector-button:hover {
+  border-color: var(--sl-primary);
+  background-color: var(--sl-primary-bg);
+}
+
+.server-select-box {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sl-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .server-selector-icon {
@@ -612,16 +640,13 @@ function isActive(path: string): boolean {
 }
 
 /* 弹出的服务器选择气泡 */
-.server-select-bubble {
-  position: fixed;
-  left: var(--sl-sidebar-collapsed-width, 60px);
-  top: 60px;
-  z-index: 9999;
-  pointer-events: none;
-}
-
 .server-select-bubble-content {
   pointer-events: auto;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  z-index: 9999;
 }
 
 /* 气泡动画 */
@@ -632,28 +657,27 @@ function isActive(path: string): boolean {
 
 .bubble-enter-from {
   opacity: 0;
-  transform: translateX(-10px) scale(0.95);
+  transform: translateY(-10px) scale(0.95);
 }
 
 .bubble-leave-to {
   opacity: 0;
-  transform: translateX(-10px) scale(0.9);
+  transform: translateY(-10px) scale(0.9);
 }
 
 .bubble-enter-to,
 .bubble-leave-from {
   opacity: 1;
-  transform: translateX(0) scale(1);
+  transform: translateY(0) scale(1);
 }
 
 .server-select-bubble-content {
   background: var(--sl-surface);
   border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-lg);
-  padding: var(--sl-space-lg);
-  width: 300px;
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-sm);
+  width: 200px;
   box-shadow: var(--sl-shadow-lg);
-  position: relative;
 }
 
 .server-select-bubble-header h3 {
@@ -682,18 +706,9 @@ function isActive(path: string): boolean {
   color: var(--sl-text-primary);
 }
 
-.server-select-bubble-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sl-space-md);
-}
 
-.server-select-bubble-header h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
+
+
 
 .bubble-close {
   background: none;
@@ -714,7 +729,7 @@ function isActive(path: string): boolean {
 }
 
 .server-select-option {
-  padding: 10px 14px;
+  padding: 10px;
   border-radius: var(--sl-radius-md);
   cursor: pointer;
   color: var(--sl-text-secondary);
