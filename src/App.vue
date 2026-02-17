@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import AppLayout from "./components/layout/AppLayout.vue";
 import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
@@ -42,11 +42,12 @@ onMounted(async () => {
     document.documentElement.style.fontSize = (settings.font_size || 14) + "px";
     applyFontFamily(settings.font_family || "");
 
-    // 初始化托盘功能
+    // 初始化托盘功能（只在首次挂载时创建）
     try {
       const { setupTray } = await import("./utils/tray");
       if (typeof setupTray === "function") {
         await setupTray();
+        console.log("Tray setup completed");
       }
     } catch (trayErr) {
       console.warn("Failed to set up tray, tray functionality will be unavailable:", trayErr);
@@ -56,6 +57,17 @@ onMounted(async () => {
   } finally {
     isInitializing.value = false;
   }
+});
+
+onUnmounted(async () => {
+  // 注意：通常不需要清理托盘，因为应用关闭时会自动清理
+  // 但如果需要手动清理，可以取消注释以下代码
+  // try {
+  //   const { cleanupTray } = await import("./utils/tray");
+  //   await cleanupTray();
+  // } catch (e) {
+  //   console.warn("Failed to cleanup tray:", e);
+  // }
 });
 
 function handleSplashReady() {
@@ -71,11 +83,7 @@ function handleUpdateModalClose() {
 
 <template>
   <transition name="splash-fade">
-    <SplashScreen
-      v-if="showSplash"
-      :loading="isInitializing"
-      @ready="handleSplashReady"
-    />
+    <SplashScreen v-if="showSplash" :loading="isInitializing" @ready="handleSplashReady" />
   </transition>
 
   <template v-if="!showSplash">

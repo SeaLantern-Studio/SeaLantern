@@ -59,6 +59,8 @@ const defaultSettings: AppSettings = {
   font_family: "",
   color: "default",
   language: "zh-CN",
+  developer_mode: false,
+  close_action: "ask",
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -73,7 +75,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const acrylicEnabled = computed(() => settings.value.acrylic_enabled);
   const colorScheme = computed(() => settings.value.color || "default");
   const backgroundImage = computed(() =>
-    settings.value.background_image ? convertFileSrc(settings.value.background_image) : ""
+    settings.value.background_image ? convertFileSrc(settings.value.background_image) : "",
   );
   const backgroundOpacity = computed(() => settings.value.background_opacity);
   const backgroundBlur = computed(() => settings.value.background_blur);

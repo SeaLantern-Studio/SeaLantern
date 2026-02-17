@@ -52,6 +52,7 @@ interface HitokotoResponse {
 const currentQuote = ref<{ text: string; author: string }>({ text: "", author: "" });
 const displayText = ref("");
 const isTyping = ref(false);
+const quoteCache = ref<Array<{ text: string; author: string }>>([]);
 let typeTimer: ReturnType<typeof setInterval> | null = null;
 
 function typeWriter(text: string, callback?: () => void) {
@@ -95,20 +96,85 @@ function typeWriterOut(callback?: () => void) {
  * 从一言 API 获取名言
  */
 async function fetchHitokoto(): Promise<{ text: string; author: string }> {
+  console.log("获取一言，当前缓存数量:", quoteCache.value.length);
+  // 优先从缓存中获取
+  if (quoteCache.value.length > 0) {
+    const quote = quoteCache.value.shift();
+    console.log("从缓存中获取一言:", quote);
+    console.log("缓存剩余数量:", quoteCache.value.length);
+    // 异步补充缓存
+    replenishCache();
+    return quote!;
+  }
+
   try {
-    const response = await fetch('https://v1.hitokoto.cn/?encode=json');
+    console.log("缓存为空，从API获取一言");
+    const response = await fetch("https://v1.hitokoto.cn/?encode=json");
     if (!response.ok) {
-      throw new Error('Failed to fetch hitokoto');
+      throw new Error("Failed to fetch hitokoto");
     }
     const data: HitokotoResponse = await response.json();
-    return {
+    const quote = {
       text: data.hitokoto,
-      author: data.from_who || data.from || '未知'
+      author: data.from_who || data.from || i18n.t("common.unknown"),
     };
+    console.log("从API获取一言成功:", quote);
+    // 补充缓存
+    replenishCache();
+    return quote;
   } catch (error) {
-    console.error('Error fetching hitokoto:', error);
+    console.error("Error fetching hitokoto:", error);
     // 失败时返回默认名言
-    return { text: "我们搭建了骨架,而灵魂,交给你们。", author: "Sea Lantern" };
+    const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
+    console.log("使用默认一言:", defaultQuote);
+    return defaultQuote;
+  }
+}
+
+/**
+ * 检查一言是否已在缓存中
+ */
+function isQuoteInCache(quote: { text: string; author: string }): boolean {
+  return quoteCache.value.some((cachedQuote) => cachedQuote.text === quote.text);
+}
+
+/**
+ * 补充一言缓存，确保缓存中有至少2个一言，且不重复
+ */
+async function replenishCache() {
+  console.log("开始补充缓存，当前缓存数量:", quoteCache.value.length);
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (quoteCache.value.length < 2 && attempts < maxAttempts) {
+    try {
+      const response = await fetch("https://v1.hitokoto.cn/?encode=json");
+      if (!response.ok) {
+        throw new Error("Failed to fetch hitokoto");
+      }
+      const data: HitokotoResponse = await response.json();
+      const newQuote = {
+        text: data.hitokoto,
+        author: data.from_who || data.from || i18n.t("common.unknown"),
+      };
+
+      // 检查是否已在缓存中
+      if (!isQuoteInCache(newQuote)) {
+        quoteCache.value.push(newQuote);
+        console.log("补充缓存成功，当前缓存数量:", quoteCache.value.length);
+        console.log("新缓存的一言:", newQuote);
+      } else {
+        console.log("一言已在缓存中，跳过:", newQuote.text.substring(0, 20) + "...");
+        attempts++;
+      }
+    } catch (error) {
+      console.error("Error replenishing quote cache:", error);
+      break;
+    }
+  }
+
+  if (attempts >= maxAttempts) {
+    console.log("达到最大尝试次数，停止补充缓存");
   }
 }
 
@@ -116,16 +182,23 @@ async function fetchHitokoto(): Promise<{ text: string; author: string }> {
  * 更新名言
  */
 async function updateQuote() {
-  if (isTyping.value) return;
+  console.log("触发更新一言");
+  if (isTyping.value) {
+    console.log("正在打字中，取消更新");
+    return;
+  }
   // 先打字消失
   typeWriterOut(async () => {
     try {
+      console.log("开始获取新一言");
       const newQuote = await fetchHitokoto();
+      console.log("获取新一言成功:", newQuote);
       currentQuote.value = newQuote;
       // 再打字出现
+      console.log("开始打字显示新一言");
       typeWriter(newQuote.text);
     } catch (error) {
-      console.error('Error updating quote:', error);
+      console.error("Error updating quote:", error);
     }
   });
 }
@@ -133,11 +206,13 @@ async function updateQuote() {
 // 初始化打字机效果
 async function initQuote() {
   try {
+    // 确保缓存中有足够的一言
+    await replenishCache();
     const initialQuote = await fetchHitokoto();
     currentQuote.value = initialQuote;
     typeWriter(initialQuote.text);
   } catch (error) {
-    console.error('Error initializing quote:', error);
+    console.error("Error initializing quote:", error);
   }
 }
 
@@ -153,6 +228,20 @@ function formatBytes(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+// 格式化服务器路径，只显示 servers 目录及其后面的内容
+function formatServerPath(path: string): string {
+  const serversIndex = path.indexOf("servers/");
+  if (serversIndex !== -1) {
+    return path.substring(serversIndex);
+  }
+  // 尝试使用反斜杠查找
+  const serversIndexBackslash = path.indexOf("servers\\");
+  if (serversIndexBackslash !== -1) {
+    return path.substring(serversIndexBackslash);
+  }
+  return path;
 }
 
 // Recent warning/error logs across all servers
@@ -437,6 +526,19 @@ function handleAnimationEnd(event: AnimationEvent) {
             {{ i18n.t("common.create_server") }}
           </SLButton>
         </div>
+        <div class="card-spacer"></div>
+        <div
+          class="quote-display"
+          @click="updateQuote"
+          :title="i18n.t('common.click_to_refresh')"
+        >
+          <span v-if="displayText && !isTyping" class="quote-text">「{{ displayText }}」</span>
+          <span v-if="currentQuote && !isTyping" class="quote-author"
+            >—— {{ currentQuote.author }}</span
+          >
+          <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
+          <span v-if="!displayText && !isTyping" class="quote-loading">加载中...</span>
+        </div>
       </SLCard>
 
       <SLCard class="stats-card">
@@ -568,11 +670,6 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
             </div>
           </div>
-          <div class="quote-display" @click="updateQuote" :title="'点击刷新'">
-            <span v-if="displayText" class="quote-text">「{{ displayText }}」</span>
-            <span v-if="currentQuote" class="quote-author">—— {{ currentQuote.author }}</span>
-            <span v-else class="quote-text">加载中...</span>
-          </div>
         </div>
         <!-- 详细视图 -->
         <div v-else class="stats-grid">
@@ -586,23 +683,31 @@ function handleAnimationEnd(event: AnimationEvent) {
               <span class="stat-value">{{ cpuUsage }}%</span>
             </div>
             <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg">
+              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
                 <!-- 网格线 -->
                 <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8"/>
-                  <line x1="0" y1="16" x2="300" y2="16"/>
-                  <line x1="0" y1="24" x2="300" y2="24"/>
-                  <line x1="0" y1="32" x2="300" y2="32"/>
+                  <line x1="0" y1="8" x2="300" y2="8" />
+                  <line x1="0" y1="16" x2="300" y2="16" />
+                  <line x1="0" y1="24" x2="300" y2="24" />
+                  <line x1="0" y1="32" x2="300" y2="32" />
                 </g>
                 <!-- 填充区域 -->
                 <polygon
-                  :points="'0,40 ' + cpuHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ') + ',300,40'"
+                  :points="
+                    '0,40 ' +
+                    cpuHistory.map((v, i) =>
+                      (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) + ',' + (40 - v * 0.4)
+                    ).join(' ') +
+                    ' 300,40'
+                  "
                   fill="var(--sl-primary)"
                   fill-opacity="0.15"
                 />
                 <!-- 曲线 -->
                 <polyline
-                  :points="cpuHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ')"
+                  :points="cpuHistory.map((v, i) =>
+                    (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) + ',' + (40 - v * 0.4)
+                  ).join(' ')"
                   fill="none"
                   stroke="var(--sl-primary)"
                   stroke-width="2"
@@ -623,23 +728,31 @@ function handleAnimationEnd(event: AnimationEvent) {
               <span class="stat-value">{{ memUsage }}%</span>
             </div>
             <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg">
+              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
                 <!-- 网格线 -->
                 <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8"/>
-                  <line x1="0" y1="16" x2="300" y2="16"/>
-                  <line x1="0" y1="24" x2="300" y2="24"/>
-                  <line x1="0" y1="32" x2="300" y2="32"/>
+                  <line x1="0" y1="8" x2="300" y2="8" />
+                  <line x1="0" y1="16" x2="300" y2="16" />
+                  <line x1="0" y1="24" x2="300" y2="24" />
+                  <line x1="0" y1="32" x2="300" y2="32" />
                 </g>
                 <!-- 填充区域 -->
                 <polygon
-                  :points="'0,40 ' + memHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ') + ',300,40'"
+                  :points="
+                    '0,40 ' +
+                    memHistory.map((v, i) =>
+                      (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) + ',' + (40 - v * 0.4)
+                    ).join(' ') +
+                    ' 300,40'
+                  "
                   fill="var(--sl-success)"
                   fill-opacity="0.15"
                 />
                 <!-- 曲线 -->
                 <polyline
-                  :points="memHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ')"
+                  :points="memHistory.map((v, i) =>
+                    (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) + ',' + (40 - v * 0.4)
+                  ).join(' ')"
                   fill="none"
                   stroke="var(--sl-success)"
                   stroke-width="2"
@@ -717,14 +830,14 @@ function handleAnimationEnd(event: AnimationEvent) {
                       :disabled="!editName.trim() || editLoading"
                       :class="{ loading: editLoading }"
                     >
-                      ✓
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </button>
                     <button
                       class="inline-edit-btn cancel"
                       @click="cancelEdit"
                       :disabled="editLoading"
                     >
-                      ✕
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   </div>
                 </div>
@@ -734,29 +847,53 @@ function handleAnimationEnd(event: AnimationEvent) {
                 <button
                   class="edit-server-name"
                   @click="startEditServerName(server)"
-                  title="编辑服务器名称"
+                  :title="i18n.t('common.edit_server_name')"
                 >
-                  ✏️
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 </button>
               </template>
             </div>
-            <span class="server-meta text-caption">
-              {{ server.core_type }} | 端口 {{ server.port }} | {{ server.max_memory }}MB
-            </span>
+            <div class="server-meta">
+              <span>{{ server.core_type }}</span>
+              <span>端口 {{ server.port }}</span>
+              <span>{{ server.max_memory }}MB</span>
+            </div>
           </div>
           <SLBadge
             :text="getStatusText(store.statuses[server.id]?.status)"
             :variant="getStatusVariant(store.statuses[server.id]?.status)"
+            size="large"
           />
         </div>
 
-        <div class="server-card-path text-mono text-caption" :title="server.jar_path">
-          {{ server.jar_path }}
+        <div
+          class="server-card-path text-mono text-caption"
+          :title="server.jar_path"
+          @click="systemApi.openFolder(server.path)"
+        >
+          <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
+          <svg
+            class="folder-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+          </svg>
         </div>
 
         <div class="server-card-actions">
           <SLButton
-            v-if="store.statuses[server.id]?.status === 'Stopped' || store.statuses[server.id]?.status === 'Error' || !store.statuses[server.id]?.status"
+            v-if="
+              store.statuses[server.id]?.status === 'Stopped' ||
+              store.statuses[server.id]?.status === 'Error' ||
+              !store.statuses[server.id]?.status
+            "
             variant="primary"
             size="sm"
             :loading="actionLoading[server.id]"
@@ -783,9 +920,6 @@ function handleAnimationEnd(event: AnimationEvent) {
           >
             {{ i18n.t("common.console") }}
           </SLButton>
-          <SLButton variant="ghost" size="sm" @click="systemApi.openFolder(server.path)">
-            {{ i18n.t("common.open_folder") }}
-          </SLButton>
           <SLButton
             variant="ghost"
             size="sm"
@@ -805,7 +939,10 @@ function handleAnimationEnd(event: AnimationEvent) {
             :class="['delete-confirm-input', { closing: isClosing }]"
             @animationend="handleAnimationEnd"
           >
-            <p class="delete-confirm-message" v-html="i18n.t('home.delete_confirm_message', { server: server.name })"></p>
+            <p
+              class="delete-confirm-message"
+              v-html="i18n.t('home.delete_confirm_message', { server: server.name })"
+            ></p>
             <div class="delete-input-group">
               <input
                 type="text"
@@ -883,12 +1020,54 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .quick-actions {
   display: flex;
-  gap: var(--sl-space-md);
+  gap: var(--sl-space-sm);
   margin-top: var(--sl-space-sm);
+  flex-wrap: wrap;
+}
+
+.card-spacer {
+  flex-grow: 1;
+}
+
+.quick-start-card .quote-display {
+  margin-top: var(--sl-space-md);
+  padding-top: var(--sl-space-md);
+  border-top: 1px solid var(--sl-border-light);
+  text-align: center;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.quick-start-card {
+  display: flex;
+  flex-direction: column;
+  height: 280px;
+  padding: var(--sl-space-sm);
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-sm);
+  border-radius: var(--sl-radius-lg);
+}
+
+.quick-start-card .sl-card__header {
+  margin-bottom: var(--sl-space-sm);
+}
+
+.quick-start-card .sl-card__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+  margin-bottom: var(--sl-space-xs);
+}
+
+.quick-start-card .sl-card__subtitle {
+  font-size: 0.875rem;
+  color: var(--sl-text-secondary);
+  line-height: 1.4;
 }
 
 .gauge-view {
-  min-height: 200px;
+  min-height: 240px;
 }
 
 .stats-grid {
@@ -896,7 +1075,7 @@ function handleAnimationEnd(event: AnimationEvent) {
   flex-direction: column;
   gap: var(--sl-space-sm);
   padding: var(--sl-space-xs) 0;
-  min-height: 200px;
+  min-height: 240px;
 }
 
 .stats-loading {
@@ -904,8 +1083,19 @@ function handleAnimationEnd(event: AnimationEvent) {
   align-items: center;
   justify-content: center;
   gap: var(--sl-space-sm);
-  min-height: 200px;
+  min-height: 240px;
   color: var(--sl-text-tertiary);
+}
+
+.stats-card {
+  height: 280px;
+  padding: var(--sl-space-sm);
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-sm);
+  border-radius: var(--sl-radius-lg);
+  display: flex;
+  flex-direction: column;
 }
 
 .stat-item {
@@ -938,13 +1128,15 @@ function handleAnimationEnd(event: AnimationEvent) {
 }
 
 .mini-chart {
-  height: 40px;
+  width: 100%;
+  height: 30px;
 }
 
 .mini-chart.taskmgr-style {
   background: var(--sl-bg-secondary);
   border-radius: 4px;
   overflow: hidden;
+  width: 100%;
 }
 
 .mini-chart.taskmgr-style .chart-svg {
@@ -999,33 +1191,87 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .server-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: var(--sl-space-md);
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--sl-space-lg);
 }
 
 .server-card {
-  padding: var(--sl-space-md);
+  padding: var(--sl-space-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--sl-space-sm);
+  gap: var(--sl-space-md);
+  border-radius: var(--sl-radius-lg);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-sm);
+}
+
+.server-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sl-shadow-lg);
+  border-color: var(--sl-primary-light);
+}
+
+.server-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sl-primary), var(--sl-secondary));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.server-card:hover::before {
+  transform: scaleX(1);
+}
+
+@media (max-width: 768px) {
+  .server-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .server-card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sl-space-md);
+}
+
+.server-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .server-name-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sl-space-sm);
   flex-wrap: wrap;
+  margin-bottom: var(--sl-space-xs);
 }
 
 .server-name {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--sl-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-card-header .sl-badge {
+  flex-shrink: 0;
 }
 
 .edit-server-name {
@@ -1034,9 +1280,10 @@ function handleAnimationEnd(event: AnimationEvent) {
   border: none;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: opacity 0.2s ease;
-  padding: 2px;
+  transition: all 0.2s ease;
+  padding: 4px;
   border-radius: var(--sl-radius-sm);
+  flex-shrink: 0;
 }
 
 .server-card:hover .edit-server-name {
@@ -1045,10 +1292,30 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .edit-server-name:hover {
   background: var(--sl-bg-secondary);
+  transform: scale(1.05);
 }
 
 .server-meta {
-  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-xs);
+  margin-top: var(--sl-space-xs);
+}
+
+.server-meta span {
+  background: var(--sl-bg-tertiary);
+  padding: 4px 12px;
+  border-radius: var(--sl-radius-full);
+  white-space: nowrap;
+  border: 1px solid var(--sl-border);
+  transition: all 0.2s ease;
+}
+
+.server-meta span:hover {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-primary-light);
 }
 
 /* 就地编辑样式 */
@@ -1125,19 +1392,92 @@ function handleAnimationEnd(event: AnimationEvent) {
 }
 
 .server-card-path {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-sm);
+  font-size: 0.75rem;
+  color: var(--sl-text-secondary);
+  background: var(--sl-bg-tertiary);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  border-radius: var(--sl-radius-md);
+  margin: var(--sl-space-xs) 0;
+  border: 1px solid var(--sl-border);
+  border-left: 4px solid var(--sl-primary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.server-path-text {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
+  min-width: 0;
+}
+
+.folder-icon {
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  color: var(--sl-text-secondary);
+}
+
+.server-card-path:hover {
+  background: var(--sl-bg-secondary);
+  border-top-color: var(--sl-primary-light);
+  border-right-color: var(--sl-primary-light);
+  border-bottom-color: var(--sl-primary-light);
+  color: var(--sl-text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.server-card-path:hover .folder-icon {
+  opacity: 1;
+  color: var(--sl-text-primary);
+}
+
+.server-card-path:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .server-card-actions {
   display: flex;
-  gap: var(--sl-space-xs);
-  padding-top: var(--sl-space-sm);
+  gap: var(--sl-space-sm);
+  padding-top: var(--sl-space-md);
   border-top: 1px solid var(--sl-border-light);
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.server-card-actions .sl-button {
+  flex: 1;
+  min-width: 90px;
+  border-radius: var(--sl-radius-md);
+  transition: all 0.2s ease;
+}
+
+.server-card-actions .sl-button:hover {
+  transform: translateY(-1px);
+}
+
+.server-card-actions .sl-button:not(.sl-button--variant-primary):not(.sl-button--variant-danger) {
+  flex: 0 0 auto;
+  min-width: unset;
+}
+
+@media (max-width: 480px) {
+  .server-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .server-card-actions .sl-button {
+    flex: 1;
+    min-width: unset;
+  }
 }
 
 /* 删除确认输入框样式 */
@@ -1297,40 +1637,44 @@ function handleAnimationEnd(event: AnimationEvent) {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  margin-bottom: var(--sl-space-sm);
 }
 .card-title {
   font-size: 1rem;
   font-weight: 600;
+  color: var(--sl-text-primary);
 }
 .view-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: transparent;
+  width: 28px;
+  height: 28px;
+  background: var(--sl-bg-tertiary);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-sm);
   color: var(--sl-text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
 }
 .view-toggle:hover {
   background: var(--sl-bg-hover);
   color: var(--sl-text-primary);
+  transform: scale(1.05);
 }
 
 .gauge-grid {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  gap: var(--sl-space-sm);
-  padding: var(--sl-space-xs) 0;
+  gap: var(--sl-space-xs);
+  padding: 0;
+  margin-bottom: 4px;
 }
 .gauge-item {
   position: relative;
-  width: 70px;
-  height: 70px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1364,20 +1708,20 @@ function handleAnimationEnd(event: AnimationEvent) {
   line-height: 1.2;
 }
 .gauge-value {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   font-family: var(--sl-font-mono);
 }
 .gauge-label {
-  font-size: 0.625rem;
+  font-size: 0.5625rem;
   color: var(--sl-text-tertiary);
 }
 
 .gauge-details {
   display: flex;
   justify-content: space-between;
-  padding-top: var(--sl-space-sm);
-  margin-top: var(--sl-space-sm);
+  padding-top: 4px;
+  margin-top: 4px;
   border-top: 1px solid var(--sl-border-light);
 }
 .gauge-detail-item {
@@ -1388,11 +1732,11 @@ function handleAnimationEnd(event: AnimationEvent) {
   flex: 1;
 }
 .detail-label {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   color: var(--sl-text-tertiary);
 }
 .detail-value {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-family: var(--sl-font-mono);
   color: var(--sl-text-secondary);
 }
@@ -1402,24 +1746,57 @@ function handleAnimationEnd(event: AnimationEvent) {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: var(--sl-space-sm) 0;
-  margin-top: var(--sl-space-sm);
+  padding: var(--sl-space-xs) var(--sl-space-sm);
+  margin-top: var(--sl-space-xs);
   border-top: 1px solid var(--sl-border-light);
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.3s ease;
+  border-radius: var(--sl-radius-sm);
+  position: relative;
+  overflow: hidden;
 }
 .quote-display:hover {
-  opacity: 0.8;
+  opacity: 0.9;
+  background: var(--sl-bg-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--sl-shadow-sm);
 }
 .quote-text {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: var(--sl-text-secondary);
   font-style: italic;
   text-align: center;
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+.quote-text.fading {
+  opacity: 0;
+  transform: translateY(5px);
 }
 .quote-author {
   font-size: 0.75rem;
   color: var(--sl-text-tertiary);
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+.quote-author.fading {
+  opacity: 0;
+  transform: translateY(5px);
+}
+.quote-loading {
+  font-size: 0.875rem;
+  color: var(--sl-text-tertiary);
+  font-style: italic;
+  animation: quoteLoading 1.5s ease-in-out infinite;
+}
+@keyframes quoteLoading {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 900px) {

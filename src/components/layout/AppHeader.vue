@@ -39,7 +39,7 @@ const currentLanguageText = computed(() => {
 
 onMounted(async () => {
   await loadSettings();
-  
+
   // 监听设置更新事件
   window.addEventListener("settings-updated", loadSettings);
 });
@@ -89,7 +89,7 @@ async function handleCloseOption(option: string) {
       console.error("Failed to save settings:", e);
     }
   }
-  
+
   if (option === "minimize") {
     await minimizeToTray();
   } else {
@@ -128,7 +128,7 @@ function handleClickOutside(event: MouseEvent) {
   const target = event.target as HTMLElement;
   // 检查是否点击了语言选择器或语言菜单内部
   const isLanguageSelector = target.closest(".language-selector");
-  
+
   // 如果没有点击语言选择器或语言菜单，则关闭菜单
   if (!isLanguageSelector) {
     showLanguageMenu.value = false;
@@ -207,21 +207,28 @@ onUnmounted(() => {
   </header>
 
   <!-- 关闭窗口确认模态框 -->
-  <SLModal :visible="showCloseModal" :title="i18n.t('home.close_window_title')" @close="showCloseModal = false">
+  <SLModal
+    :visible="showCloseModal"
+    :title="i18n.t('home.close_window_title')"
+    @close="showCloseModal = false"
+  >
     <div class="close-modal-content">
-      <p>{{ i18n.t('home.close_window_message') }}</p>
+      <p>{{ i18n.t("home.close_window_message") }}</p>
       <div class="remember-option">
-        <input type="checkbox" id="remember-choice" v-model="rememberChoice">
-        <label for="remember-choice">{{ i18n.t('home.remember_choice') }}</label>
+        <input type="checkbox" id="remember-choice" v-model="rememberChoice" />
+        <label for="remember-choice">{{ i18n.t("home.remember_choice") }}</label>
       </div>
       <div class="close-options">
-        <SLButton variant="secondary" @click="handleCloseOption('minimize')">{{ i18n.t('home.close_action_minimize') }}</SLButton>
-        <SLButton variant="danger" @click="handleCloseOption('close')">{{ i18n.t('home.close_action_close') }}</SLButton>
+        <SLButton variant="secondary" @click="handleCloseOption('minimize')">{{
+          i18n.t("home.close_action_minimize")
+        }}</SLButton>
+        <SLButton variant="danger" @click="handleCloseOption('close')">{{
+          i18n.t("home.close_action_close")
+        }}</SLButton>
       </div>
     </div>
   </SLModal>
 </template>
-
 <style scoped>
 .app-header {
   display: flex;
@@ -234,7 +241,6 @@ onUnmounted(() => {
   user-select: none;
   position: relative;
   z-index: 100;
-  /* 不要在这里加 drag */
 }
 
 .header-left,
@@ -344,27 +350,57 @@ onUnmounted(() => {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 4px;
+  margin-top: 8px;
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  min-width: 100px;
+  border-radius: var(--sl-radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  min-width: 260px;
+  max-width: 300px;
+  max-height: 320px;
   z-index: 9999;
-  overflow: hidden;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  overflow-y: auto;
 }
 
 .language-item {
-  padding: 8px 16px;
+  padding: 8px 12px;
   font-size: 0.8125rem;
   color: var(--sl-text-secondary);
   cursor: pointer;
   transition: all var(--sl-transition-fast);
+  border-radius: var(--sl-radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .language-item:hover {
   background: var(--sl-primary-bg);
   color: var(--sl-primary);
+}
+
+.language-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.language-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.language-menu::-webkit-scrollbar-thumb {
+  background: var(--sl-border-light);
+  border-radius: var(--sl-radius-full);
+}
+
+.language-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--sl-text-tertiary);
 }
 
 .click-outside {
