@@ -144,10 +144,25 @@ pub struct AppSettings {
 
     #[serde(default = "default_font_family")]
     pub font_family: String,
+
+    // 语言设置
+    #[serde(default = "default_language")]
+    pub language: String,
+
+    // 开发者模式
+    #[serde(default = "default_false")]
+    pub developer_mode: bool,
+    // 关闭行为: "ask", "minimize", "close"，默认 "ask"
+    #[serde(default = "default_close_action")]
+    pub close_action: String,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_false() -> bool {
+    false
 }
 fn default_max_memory() -> u32 {
     2048
@@ -196,6 +211,14 @@ fn default_font_size() -> u32 {
 }
 fn default_font_family() -> String {
     String::new()
+}
+
+fn default_language() -> String {
+    "zh-CN".to_string()
+}
+
+fn default_close_action() -> String {
+    "ask".to_string()
 }
 
 impl Default for AppSettings {
@@ -262,6 +285,9 @@ impl Default for AppSettings {
             font_size: 14,
             font_family: String::new(),
             color: "default".to_string(),
+            language: "zh-CN".to_string(),
+            developer_mode: false,
+            close_action: "ask".to_string(),
         }
     }
 }

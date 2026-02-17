@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { i18n } from "../../locales";
 
 interface Option {
   label: string;
   value: string | number;
+  subLabel?: string;
 }
 
 interface Props {
@@ -19,7 +21,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  placeholder: "请选择",
+  placeholder: () => i18n.t("common.select"),
   disabled: false,
   searchable: false,
   loading: false,
@@ -155,16 +157,26 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 };
 
+const handleScroll = () => {
+  if (isOpen.value) {
+    updateDropdownPosition();
+  }
+};
+
 const stopWatch = watch(searchQuery, () => {
   highlightedIndex.value = filteredOptions.value.length > 0 ? 0 : -1;
 });
 
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
+  window.addEventListener("scroll", handleScroll, true);
+  window.addEventListener("resize", handleScroll);
 });
 
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
+  window.removeEventListener("scroll", handleScroll, true);
+  window.removeEventListener("resize", handleScroll);
   stopWatch();
 
   containerRef.value = null;
@@ -191,7 +203,7 @@ onUnmounted(() => {
         <svg class="spinner" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" />
         </svg>
-        加载中...
+        {{ i18n.t("common.loading") }}
       </span>
       <span
         v-else-if="selectedOption"
@@ -239,15 +251,15 @@ onUnmounted(() => {
               ref="inputRef"
               v-model="searchQuery"
               type="text"
-              placeholder="搜索..."
+              :placeholder="i18n.t('common.search')"
               class="sl-select-input"
               @keydown="handleKeydown"
-              aria-label="搜索选项"
+              :aria-label="i18n.t('common.search_options')"
             />
           </div>
 
           <div class="sl-select-options" :style="{ maxHeight }" role="presentation">
-            <div v-if="filteredOptions.length === 0" class="sl-select-empty">未找到匹配项</div>
+            <div v-if="filteredOptions.length === 0" class="sl-select-empty">{{ i18n.t('common.no_match') }}</div>
             <div
               v-for="(option, index) in filteredOptions"
               :key="option.value"
@@ -262,7 +274,10 @@ onUnmounted(() => {
               role="option"
               :aria-selected="option.value === modelValue"
             >
-              <span class="option-label">{{ option.label }}</span>
+              <span class="option-label-wrap">
+                <span class="option-label">{{ option.label }}</span>
+                <span v-if="option.subLabel" class="option-sublabel">{{ option.subLabel }}</span>
+              </span>
               <svg
                 v-if="option.value === modelValue"
                 class="check-icon"
@@ -484,6 +499,23 @@ onUnmounted(() => {
 
 .sl-select-dropdown .sl-select-option .option-label {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-select-dropdown .sl-select-option .option-label-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.sl-select-dropdown .sl-select-option .option-sublabel {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  font-family: var(--sl-font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

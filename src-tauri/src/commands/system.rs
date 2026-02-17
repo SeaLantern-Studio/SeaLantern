@@ -1,9 +1,14 @@
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 use sysinfo::{Disks, Networks, System};
 use tauri_plugin_dialog::DialogExt;
 
+static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new_all()));
+
 #[tauri::command]
 pub fn get_system_info() -> Result<serde_json::Value, String> {
-    let mut sys = System::new_all();
+    let mut sys = SYSTEM.lock().map_err(|e| e.to_string())?;
+
     sys.refresh_all();
 
     let cpu_usage = sys.global_cpu_usage();
@@ -162,6 +167,43 @@ pub async fn pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, Stri
         .file()
         .set_title("Select server JAR file")
         .add_filter("JAR Files", &["jar"])
+        .add_filter("All Files", &["*"])
+        .pick_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
+pub async fn pick_startup_file(
+    app: tauri::AppHandle,
+    mode: String,
+) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mode = mode.to_ascii_lowercase();
+
+    let mut dialog = app.dialog().file();
+    match mode.as_str() {
+        "bat" => {
+            dialog = dialog
+                .set_title("Select server BAT file")
+                .add_filter("BAT Files", &["bat"]);
+        }
+        "sh" => {
+            dialog = dialog
+                .set_title("Select server SH file")
+                .add_filter("Shell Scripts", &["sh"]);
+        }
+        _ => {
+            dialog = dialog
+                .set_title("Select server JAR file")
+                .add_filter("JAR Files", &["jar"]);
+        }
+    }
+
+    dialog
         .add_filter("All Files", &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());

@@ -13,6 +13,7 @@ use commands::server_id as server_id_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
 use commands::update as update_commands;
+use tauri::{tray::MouseButton, tray::MouseButtonState, tray::TrayIconEvent, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -30,6 +31,41 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            let _ = app
+                .get_webview_window("main")
+                .expect("no main window")
+                .set_focus();
+            print!("Received second instance with args: {:?}, cwd: {:?}", args, cwd);
+        }))
+        .on_tray_icon_event(|app, event| {
+            if let TrayIconEvent::Click { button, button_state, .. } = event {
+                // 只处理鼠标释放事件，确保只触发一次
+                if button == MouseButton::Left && button_state == MouseButtonState::Up {
+                    // 左键点击切换主界面显示/隐藏
+                    if let Some(window) = app.get_webview_window("main") {
+                        // 先尝试获取窗口可见性状态
+                        match window.is_visible() {
+                            Ok(is_visible) => {
+                                if is_visible {
+                                    // 如果窗口可见，则隐藏它
+                                    let _ = window.hide();
+                                } else {
+                                    // 如果窗口隐藏，则显示它
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                            }
+                            Err(_) => {
+                                // 如果获取状态失败，默认显示窗口
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             server_commands::create_server,
             server_commands::import_server,
@@ -54,6 +90,7 @@ pub fn run() {
             config_commands::write_server_properties,
             system_commands::get_system_info,
             system_commands::pick_jar_file,
+            system_commands::pick_startup_file,
             system_commands::pick_java_file,
             system_commands::pick_folder,
             system_commands::pick_image_file,

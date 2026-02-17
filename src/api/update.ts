@@ -33,17 +33,11 @@ export async function checkUpdate(): Promise<UpdateInfo | null> {
   }
 }
 
-export async function downloadUpdate(
-  url: string,
-  expectedHash?: string
-): Promise<string> {
+export async function downloadUpdate(url: string, expectedHash?: string): Promise<string> {
   return tauriInvoke<string>("download_update", { url, expectedHash });
 }
 
-export async function installUpdate(
-  filePath: string,
-  version: string
-): Promise<void> {
+export async function installUpdate(filePath: string, version: string): Promise<void> {
   return tauriInvoke<void>("install_update", { filePath, version });
 }
 
@@ -59,12 +53,8 @@ export async function restartAndInstall(): Promise<void> {
   return tauriInvoke<void>("restart_and_install");
 }
 
-export async function downloadUpdateFromDebugUrl(url: string): Promise<string> {
-  return tauriInvoke<string>("download_update_from_debug_url", { url });
-}
-
 export function onDownloadProgress(
-  callback: (progress: DownloadProgress) => void
+  callback: (progress: DownloadProgress) => void,
 ): Promise<UnlistenFn> {
   return listen<DownloadProgress>("update-download-progress", (event) => {
     callback(event.payload);

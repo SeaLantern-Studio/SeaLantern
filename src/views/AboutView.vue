@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+﻿﻿<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
@@ -8,9 +8,7 @@ import { contributors as contributorsList } from "../data/contributors";
 import { useUpdateStore } from "../stores/updateStore";
 import { getAppVersion, BUILD_YEAR } from "../utils/version";
 import { i18n } from "../locales";
-import {
-  onDownloadProgress,
-} from "../api/update";
+import { onDownloadProgress } from "../api/update";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const version = ref(i18n.t("common.loading"));
@@ -23,9 +21,6 @@ const updateStore = useUpdateStore();
 const showNotification = ref(false);
 const notificationMessage = ref("");
 const notificationType = ref<"success" | "error" | "warning" | "info">("info");
-
-const showDebugInput = ref(false);
-const debugUrl = ref("");
 
 let unlistenProgress: UnlistenFn | null = null;
 let resetTimer: ReturnType<typeof setTimeout> | null = null;
@@ -61,15 +56,31 @@ onUnmounted(() => {
 const buttonState = computed(() => {
   switch (updateStore.status) {
     case "checking":
-      return { text: i18n.t("about.update_checking"), variant: "secondary" as const, disabled: true };
+      return {
+        text: i18n.t("about.update_checking"),
+        variant: "secondary" as const,
+        disabled: true,
+      };
     case "latest":
       return { text: i18n.t("about.update_latest"), variant: "success" as const, disabled: true };
     case "available":
-      return { text: i18n.t("about.update_available"), variant: "primary" as const, disabled: false };
+      return {
+        text: i18n.t("about.update_available"),
+        variant: "primary" as const,
+        disabled: false,
+      };
     case "downloading":
-      return { text: `${i18n.t("about.update_downloading")} ${progressPercent.value}%`, variant: "secondary" as const, disabled: false };
+      return {
+        text: `${i18n.t("about.update_downloading")} ${progressPercent.value}%`,
+        variant: "secondary" as const,
+        disabled: false,
+      };
     case "installing":
-      return { text: i18n.t("about.update_installing"), variant: "secondary" as const, disabled: false };
+      return {
+        text: i18n.t("about.update_installing"),
+        variant: "secondary" as const,
+        disabled: false,
+      };
     case "downloaded":
       return { text: i18n.t("about.update_ready"), variant: "success" as const, disabled: false };
     case "error":
@@ -109,29 +120,6 @@ async function handlePrimaryUpdateAction() {
     return;
   }
   await handleCheckUpdate();
-}
-
-async function handleDebugDownload() {
-  if (!debugUrl.value.trim()) {
-    return;
-  }
-
-  try {
-    updateStore.setDownloading(0);
-    const { downloadUpdateFromDebugUrl } = await import("../api/update");
-    const filePath = await downloadUpdateFromDebugUrl(debugUrl.value.trim());
-    updateStore.setDownloaded(filePath);
-    showDebugInput.value = false;
-    debugUrl.value = "";
-    showNotify(i18n.t("about.update_download_complete"), "success");
-  } catch (error) {
-    updateStore.setDownloadError(String(error));
-    showNotify(`${i18n.t("about.update_download_failed")}: ${String(error)}`, "error");
-  }
-}
-
-function toggleDebugInput() {
-  showDebugInput.value = !showDebugInput.value;
 }
 </script>
 
@@ -176,11 +164,7 @@ function toggleDebugInput() {
         </div>
 
         <div class="contributor-grid">
-          <div
-            v-for="c in contributors"
-            :key="c.name"
-            class="contributor-card glass-card"
-          >
+          <div v-for="c in contributors" :key="c.name" class="contributor-card glass-card">
             <a
               v-if="c.url"
               :href="c.url"
@@ -190,12 +174,7 @@ function toggleDebugInput() {
             >
               <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
             </a>
-            <img
-              v-else
-              :src="c.avatar"
-              :alt="c.name"
-              class="contributor-avatar"
-            />
+            <img v-else :src="c.avatar" :alt="c.name" class="contributor-avatar" />
 
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>
@@ -271,24 +250,6 @@ function toggleDebugInput() {
                 <span class="update-btn-label">{{ buttonState.text }}</span>
               </span>
             </SLButton>
-
-            <!-- 璋冭瘯鎸夐挳 -->
-            <div class="debug-section-inline">
-              <button class="debug-toggle" @click="toggleDebugInput">
-                {{ i18n.t("about.update_debug") }}
-              </button>
-              <div v-if="showDebugInput" class="debug-input-row">
-                <input
-                  v-model="debugUrl"
-                  type="text"
-                  :placeholder="i18n.t('about.update_debug_placeholder')"
-                  class="debug-input"
-                />
-                <SLButton variant="secondary" size="sm" @click="handleDebugDownload">
-                  {{ i18n.t("about.update_debug_download") }}
-                </SLButton>
-              </div>
-            </div>
           </div>
         </SLCard>
 
@@ -836,44 +797,6 @@ function toggleDebugInput() {
 :deep(.update-action-btn) {
   position: relative;
   overflow: hidden;
-}
-
-.debug-section-inline {
-  margin-top: var(--sl-space-sm);
-}
-
-.debug-toggle {
-  background: none;
-  border: none;
-  color: var(--sl-text-tertiary);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0;
-}
-
-.debug-toggle:hover {
-  color: var(--sl-text-secondary);
-}
-
-.debug-input-row {
-  display: flex;
-  gap: var(--sl-space-sm);
-  margin-top: var(--sl-space-xs);
-}
-
-.debug-input {
-  flex: 1;
-  padding: var(--sl-space-xs) var(--sl-space-sm);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  background: var(--sl-bg);
-  color: var(--sl-text-primary);
-  font-size: 0.8125rem;
-}
-
-.debug-input:focus {
-  outline: none;
-  border-color: var(--sl-primary);
 }
 
 @media (max-width: 768px) {

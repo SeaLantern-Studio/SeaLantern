@@ -23,8 +23,6 @@ const loading = ref(true);
 const fontsLoading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
-const success = ref<string | null>(null);
-const hasChanges = ref(false);
 
 // 亚克力支持检测
 const acrylicSupported = ref(true);
@@ -41,36 +39,36 @@ const bgBrightness = ref("1.0");
 const uiFontSize = ref("14");
 
 const backgroundSizeOptions = [
-  { label: "覆盖 (Cover)", value: "cover" },
-  { label: "包含 (Contain)", value: "contain" },
-  { label: "拉伸 (Fill)", value: "fill" },
-  { label: "原始大小 (Auto)", value: "auto" },
+  { label: i18n.t("common.background_size_cover"), value: "cover" },
+  { label: i18n.t("common.background_size_contain"), value: "contain" },
+  { label: i18n.t("common.background_size_fill"), value: "fill" },
+  { label: i18n.t("common.background_size_auto"), value: "auto" },
 ];
 
 const colorOptions = [
-  { label: "默认", value: "default" },
+  { label: i18n.t("common.color_default"), value: "default" },
   { label: "Midnight", value: "midnight" },
   { label: "Sunset", value: "sunset" },
   { label: "Ocean", value: "ocean" },
   { label: "Rose", value: "rose" },
-  { label: "自定义", value: "custom" },
+  { label: i18n.t("common.color_custom"), value: "custom" },
 ];
 
 const editColorOptions = [
-  { label: "浅色", value: "light" },
-  { label: "深色", value: "dark" },
-  { label: "浅色毛玻璃", value: "light_acrylic" },
-  { label: "深色毛玻璃", value: "dark_acrylic" },
+  { label: i18n.t("common.edit_color_light"), value: "light" },
+  { label: i18n.t("common.edit_color_dark"), value: "dark" },
+  { label: i18n.t("common.edit_color_light_acrylic"), value: "light_acrylic" },
+  { label: i18n.t("common.edit_color_dark_acrylic"), value: "dark_acrylic" },
 ];
 
 const themeOptions = [
-  { label: "跟随系统", value: "auto" },
-  { label: "浅色", value: "light" },
-  { label: "深色", value: "dark" },
+  { label: i18n.t("common.theme_auto"), value: "auto" },
+  { label: i18n.t("common.theme_light"), value: "light" },
+  { label: i18n.t("common.theme_dark"), value: "dark" },
 ];
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
-  { label: "系统默认", value: "" },
+  { label: i18n.t("common.font_system_default"), value: "" },
 ]);
 
 const showImportModal = ref(false);
@@ -112,7 +110,7 @@ async function loadSystemFonts() {
   try {
     const fonts = await getSystemFonts();
     fontFamilyOptions.value = [
-      { label: "系统默认", value: "" },
+      { label: i18n.t("common.font_system_default"), value: "" },
       ...fonts.map((font) => ({ label: font, value: `'${font}'` })),
     ];
   } catch (e) {
@@ -144,7 +142,6 @@ async function loadSettings() {
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
-    hasChanges.value = false;
     settings.value.color = s.color || "default";
     // 应用已保存的设置
     applyTheme(s.theme);
@@ -158,7 +155,7 @@ async function loadSettings() {
 }
 
 function markChanged() {
-  hasChanges.value = true;
+  saveSettings();
 }
 
 function getEffectiveTheme(theme: string): "light" | "dark" {
@@ -245,14 +242,20 @@ async function saveSettings() {
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
   settings.value.font_size = parseInt(uiFontSize.value) || 14;
   settings.value.color = settings.value.color || "default";
+  settings.value.developer_mode = settings.value.developer_mode || false;
 
   saving.value = true;
   error.value = null;
   try {
     await settingsApi.save(settings.value);
-    success.value = "设置已保存";
-    hasChanges.value = false;
-    setTimeout(() => (success.value = null), 3000);
+
+    localStorage.setItem(
+      "sl_theme_cache",
+      JSON.stringify({
+        theme: settings.value.theme || "auto",
+        fontSize: settings.value.font_size || 14,
+      })
+    );
 
     applyTheme(settings.value.theme);
     applyFontSize(settings.value.font_size);
@@ -286,10 +289,16 @@ async function resetSettings() {
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
     showResetConfirm.value = false;
-    hasChanges.value = false;
     settings.value.color = "default";
-    success.value = "已恢复默认设置";
-    setTimeout(() => (success.value = null), 3000);
+
+    localStorage.setItem(
+      "sl_theme_cache",
+      JSON.stringify({
+        theme: s.theme || "auto",
+        fontSize: s.font_size || 14,
+      })
+    );
+
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
@@ -302,8 +311,6 @@ async function exportSettings() {
   try {
     const json = await settingsApi.exportJson();
     await navigator.clipboard.writeText(json);
-    success.value = "设置 JSON 已复制到剪贴板";
-    setTimeout(() => (success.value = null), 3000);
   } catch (e) {
     error.value = String(e);
   }
@@ -311,7 +318,7 @@ async function exportSettings() {
 
 async function handleImport() {
   if (!importJson.value.trim()) {
-    error.value = "请粘贴 JSON";
+    error.value = i18n.t("common.paste_json");
     return;
   }
   try {
@@ -328,9 +335,6 @@ async function handleImport() {
     uiFontSize.value = String(s.font_size);
     showImportModal.value = false;
     importJson.value = "";
-    hasChanges.value = false;
-    success.value = "设置已导入";
-    setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
@@ -359,6 +363,10 @@ function clearBackgroundImage() {
     markChanged();
   }
 }
+
+function handleDeveloperModeChange() {
+  markChanged();
+}
 </script>
 
 <template>
@@ -366,9 +374,6 @@ function clearBackgroundImage() {
     <div v-if="error" class="msg-banner error-banner">
       <span>{{ error }}</span>
       <button @click="error = null">x</button>
-    </div>
-    <div v-if="success" class="msg-banner success-banner">
-      <span>{{ success }}</span>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -394,6 +399,24 @@ function clearBackgroundImage() {
               <span class="setting-desc">{{ i18n.t("settings.auto_eula_desc") }}</span>
             </div>
             <SLSwitch v-model="settings.auto_accept_eula" @update:modelValue="markChanged" />
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.close_action") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.close_action_desc") }}</span>
+            </div>
+            <div class="input-md">
+              <SLSelect 
+                v-model="settings.close_action" 
+                :options="[
+                  { label: i18n.t('settings.close_action_ask'), value: 'ask' },
+                  { label: i18n.t('settings.close_action_minimize'), value: 'minimize' },
+                  { label: i18n.t('settings.close_action_close'), value: 'close' }
+                ]" 
+                @update:modelValue="markChanged"
+              />
+            </div>
           </div>
         </div>
       </SLCard>
@@ -488,18 +511,26 @@ function clearBackgroundImage() {
           </div>
         </div>
       </SLCard>
+
+      <!-- Developer Mode -->
+      <SLCard
+        :title="i18n.t('settings.developer_mode')"
+        :subtitle="i18n.t('settings.developer_mode_desc')"
+      >
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
+            </div>
+            <SLSwitch v-model="settings.developer_mode" @update:modelValue="handleDeveloperModeChange" />
+          </div>
+        </div>
+      </SLCard>
+
       <!-- Actions -->
       <div class="settings-actions">
         <div class="actions-left">
-          <SLButton variant="primary" size="lg" :loading="saving" @click="saveSettings">
-            {{ i18n.t("settings.save") }}
-          </SLButton>
-          <SLButton variant="secondary" @click="loadSettings">{{
-            i18n.t("settings.discard")
-          }}</SLButton>
-          <span v-if="hasChanges" class="unsaved-hint">{{
-            i18n.t("settings.unsaved_changes")
-          }}</span>
         </div>
         <div class="actions-right">
           <SLButton variant="ghost" size="sm" @click="exportSettings">{{
@@ -578,11 +609,6 @@ function clearBackgroundImage() {
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: var(--sl-error);
 }
-.success-banner {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  color: var(--sl-success);
-}
 .msg-banner button {
   font-weight: 600;
   color: inherit;
@@ -640,6 +666,10 @@ function clearBackgroundImage() {
   width: 120px;
   flex-shrink: 0;
 }
+.input-md {
+  width: 200px;
+  flex-shrink: 0;
+}
 .input-lg {
   width: 320px;
   flex-shrink: 0;
@@ -678,15 +708,6 @@ function clearBackgroundImage() {
   display: flex;
   align-items: center;
   gap: var(--sl-space-sm);
-}
-
-.unsaved-hint {
-  font-size: 0.8125rem;
-  color: var(--sl-warning);
-  font-weight: 500;
-  padding: 2px 10px;
-  background: rgba(245, 158, 11, 0.1);
-  border-radius: var(--sl-radius-full);
 }
 
 .import-form {

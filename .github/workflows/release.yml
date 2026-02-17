@@ -53,7 +53,7 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: 安装前端依赖 (npm)
-        # 即使项目用 bun，在 action 里临时用 npm 为了兼容性也是可以的，tauri-apps/tauri-action 对 npm 支持最好
+        # 默认用npm,最稳妥
         run: npm install
 
       - name: 构建并发布

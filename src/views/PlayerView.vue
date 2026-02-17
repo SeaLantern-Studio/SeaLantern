@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useRoute } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLModal from "../components/common/SLModal.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
-import { serverApi } from "../api/server";
 import { TIME, MESSAGES } from "../utils/constants";
 import { validatePlayerName, handleError } from "../utils/errorHandler";
 import { i18n } from "../locales";
@@ -44,7 +41,8 @@ const serverPath = computed(() => {
 });
 
 const isRunning = computed(() => {
-  return store.statuses[store.currentServerId]?.status === "Running";
+  const id = store.currentServerId;
+  return id ? store.statuses[id]?.status === "Running" : false;
 });
 
 const currentServerId = computed(() => store.currentServerId);
@@ -107,6 +105,7 @@ async function loadAll() {
 
 function parseOnlinePlayers() {
   const sid = store.currentServerId;
+  if (!sid) return;
   const logs = consoleStore.logs[sid] || [];
   const players = new Set<string>();
 
@@ -160,6 +159,7 @@ async function handleAdd() {
   error.value = null;
   try {
     const sid = store.currentServerId;
+    if (!sid) return;
     switch (activeTab.value) {
       case "whitelist":
         await playerApi.addToWhitelist(sid, addPlayerName.value);
@@ -187,12 +187,14 @@ async function handleAdd() {
 }
 
 async function handleRemoveWhitelist(name: string) {
+  const sid = store.currentServerId;
+  if (!sid) return;
   if (!isRunning.value) {
     error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
     return;
   }
   try {
-    await playerApi.removeFromWhitelist(store.currentServerId, name);
+    await playerApi.removeFromWhitelist(sid, name);
     success.value = MESSAGES.SUCCESS.WHITELIST_REMOVED;
     setTimeout(() => {
       success.value = null;
@@ -204,12 +206,14 @@ async function handleRemoveWhitelist(name: string) {
 }
 
 async function handleUnban(name: string) {
+  const sid = store.currentServerId;
+  if (!sid) return;
   if (!isRunning.value) {
     error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
     return;
   }
   try {
-    await playerApi.unbanPlayer(store.currentServerId, name);
+    await playerApi.unbanPlayer(sid, name);
     success.value = MESSAGES.SUCCESS.PLAYER_UNBANNED;
     setTimeout(() => {
       success.value = null;
@@ -221,12 +225,14 @@ async function handleUnban(name: string) {
 }
 
 async function handleRemoveOp(name: string) {
+  const sid = store.currentServerId;
+  if (!sid) return;
   if (!isRunning.value) {
     error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
     return;
   }
   try {
-    await playerApi.removeOp(store.currentServerId, name);
+    await playerApi.removeOp(sid, name);
     success.value = MESSAGES.SUCCESS.OP_REMOVED;
     setTimeout(() => {
       success.value = null;
@@ -238,12 +244,14 @@ async function handleRemoveOp(name: string) {
 }
 
 async function handleKick(name: string) {
+  const sid = store.currentServerId;
+  if (!sid) return;
   if (!isRunning.value) {
     error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
     return;
   }
   try {
-    await playerApi.kickPlayer(store.currentServerId, name);
+    await playerApi.kickPlayer(sid, name);
     success.value = `${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`;
     setTimeout(() => {
       success.value = null;
@@ -575,11 +583,13 @@ onMounted(() => {
   position: absolute;
   top: 3px;
   bottom: 3px;
-  background: white;
+  background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-sm);
   transition: all 0.3s ease;
   box-shadow: var(--sl-shadow-sm);
   z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
 }
 .tab-btn {
   display: flex;

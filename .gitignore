@@ -13,3 +13,6 @@ sync.bat
 bun.lock
 nul
 changelogs/
+.claude/
+.trae/
+changelog/

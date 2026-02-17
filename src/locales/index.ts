@@ -14,13 +14,14 @@ import nlNL from "./nl-NL.json";
 import plPL from "./pl-PL.json";
 import trTR from "./tr-TR.json";
 import viVN from "./vi-VN.json";
+import zhJB from "./zh-JB.json";
 import { ref, type Ref } from "vue";
 
 type TranslationNode = {
   [key: string]: string | TranslationNode;
 };
 
-export const SUPPORTED_LOCALES = ["zh-CN", "en-US", "zh-TW"] as const;
+export const SUPPORTED_LOCALES = ["zh-CN", "en-US", "zh-TW", "zh-JB"] as const;
 export type LocaleCode = (typeof SUPPORTED_LOCALES)[number];
 
 const translations: Record<LocaleCode, TranslationNode> = {
@@ -40,6 +41,7 @@ const translations: Record<LocaleCode, TranslationNode> = {
   "pl-PL": plPL,
   "tr-TR": trTR,
   "vi-VN": viVN,
+  "zh-JB": zhJB,
 };
 
 function isSupportedLocale(locale: string): locale is LocaleCode {
@@ -59,10 +61,16 @@ function resolveNestedValue(source: TranslationNode, keys: string[]): string | u
 }
 
 function interpolateVariables(template: string, options: Record<string, unknown>): string {
-  return template.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
-    const value = options[varName.trim()];
-    return value === undefined || value === null ? match : String(value);
-  });
+  // 同时支持 {{variable}} 和 {variable} 两种格式的占位符
+  return template
+    .replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
+      const value = options[varName.trim()];
+      return value === undefined || value === null ? match : String(value);
+    })
+    .replace(/\{([^}]+)\}/g, (match, varName) => {
+      const value = options[varName.trim()];
+      return value === undefined || value === null ? match : String(value);
+    });
 }
 
 class I18n {
@@ -103,6 +111,10 @@ class I18n {
 
   getAvailableLocales(): readonly LocaleCode[] {
     return SUPPORTED_LOCALES;
+  }
+
+  isSupportedLocale(locale: string): boolean {
+    return isSupportedLocale(locale);
   }
 }
 

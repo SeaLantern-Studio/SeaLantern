@@ -82,16 +82,16 @@ const allCommands = [
 ];
 
 const quickCommands = [
-  { label: "白天", cmd: "time set day" },
-  { label: "夜晚", cmd: "time set night" },
-  { label: "晴天", cmd: "weather clear" },
-  { label: "下雨", cmd: "weather rain" },
-  { label: "保存", cmd: "save-all" },
-  { label: "玩家列表", cmd: "list" },
-  { label: "TPS", cmd: "tps" },
-  { label: "保留物品 开", cmd: "gamerule keepInventory true" },
-  { label: "保留物品 关", cmd: "gamerule keepInventory false" },
-  { label: "怪物破坏 关", cmd: "gamerule mobGriefing false" },
+  { label: i18n.t("common.command_day"), cmd: "time set day" },
+  { label: i18n.t("common.command_night"), cmd: "time set night" },
+  { label: i18n.t("common.command_clear"), cmd: "weather clear" },
+  { label: i18n.t("common.command_rain"), cmd: "weather rain" },
+  { label: i18n.t("common.command_save"), cmd: "save-all" },
+  { label: i18n.t("common.command_list"), cmd: "list" },
+  { label: "", cmd: "" },
+  { label: i18n.t("common.command_keep_inventory_on"), cmd: "gamerule keepInventory true" },
+  { label: i18n.t("common.command_keep_inventory_off"), cmd: "gamerule keepInventory false" },
+  { label: i18n.t("common.command_mob_griefing_off"), cmd: "gamerule mobGriefing false" },
 ];
 
 const filteredSuggestions = computed(() => {
@@ -115,6 +115,7 @@ const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status
 
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopped = computed(() => serverStatus.value === "Stopped");
+const isStopping = computed(() => serverStatus.value === "Stopping");
 
 const currentServerCommands = computed(() => {
   const server = serverStore.servers.find((s) => s.id === serverId.value);
@@ -364,12 +365,12 @@ function getStatusClass(): string {
 function getStatusText(): string {
   const s = serverStore.statuses[serverId.value]?.status;
   return s === "Running"
-    ? "Running"
+    ? i18n.t("console.running")
     : s === "Starting"
-      ? "Starting"
+      ? i18n.t("console.starting")
       : s === "Stopping"
-        ? "Stopping"
-        : "Stopped";
+        ? i18n.t("console.stopping")
+        : i18n.t("console.stopped");
 }
 
 function handleClearLogs() {
@@ -390,7 +391,7 @@ function openAddCommandModal() {
   editingCommand.value = null;
   commandName.value = "";
   commandText.value = "";
-  commandModalTitle.value = "添加自定义指令";
+  commandModalTitle.value = i18n.t("console.add_custom_command");
   showCommandModal.value = true;
 }
 
@@ -398,7 +399,7 @@ function openEditCommandModal(cmd: ServerCommand) {
   editingCommand.value = cmd;
   commandName.value = cmd.name;
   commandText.value = cmd.command;
-  commandModalTitle.value = "编辑自定义指令";
+  commandModalTitle.value = i18n.t("console.edit_custom_command");
   showCommandModal.value = true;
 }
 
@@ -472,7 +473,7 @@ function executeCustomCommand(cmd: ServerCommand) {
           variant="primary"
           size="sm"
           :loading="startLoading"
-          :disabled="isRunning || startLoading"
+          :disabled="isRunning || isStopping || startLoading"
           @click="handleStart"
           >{{ i18n.t("home.start") }}</SLButton
         >
@@ -480,7 +481,7 @@ function executeCustomCommand(cmd: ServerCommand) {
           variant="danger"
           size="sm"
           :loading="stopLoading"
-          :disabled="isStopped || stopLoading"
+          :disabled="isStopped || isStopping || stopLoading"
           @click="handleStop"
           >{{ i18n.t("home.stop") }}</SLButton
         >
@@ -502,7 +503,7 @@ function executeCustomCommand(cmd: ServerCommand) {
       <div class="quick-commands">
         <!-- 快捷指令行 -->
         <div class="command-row">
-          <span class="quick-label">快捷:</span>
+          <span class="quick-label">{{ i18n.t("console.quick") }}</span>
           <div class="quick-groups">
             <div
               v-for="cmd in quickCommands"
@@ -518,7 +519,7 @@ function executeCustomCommand(cmd: ServerCommand) {
 
         <!-- 自定义指令行 -->
         <div v-if="serverId" class="command-row custom-commands-row">
-          <div class="custom-label">自定义:</div>
+          <div class="custom-label">{{ i18n.t("console.custom") }}</div>
           <div class="custom-buttons">
             <div
               v-for="cmd in currentServerCommands"
@@ -530,7 +531,11 @@ function executeCustomCommand(cmd: ServerCommand) {
               <span class="custom-btn-name">{{ cmd.name }}</span>
               <span class="custom-btn-edit" @click.stop="openEditCommandModal(cmd)"> ⚙️ </span>
             </div>
-            <div class="custom-btn add-btn" @click="openAddCommandModal()" title="添加自定义指令">
+            <div
+              class="custom-btn add-btn"
+              @click="openAddCommandModal()"
+              :title="i18n.t('console.add_custom_command')"
+            >
               <span class="add-btn-plus">+</span>
             </div>
           </div>
@@ -572,7 +577,9 @@ function executeCustomCommand(cmd: ServerCommand) {
             {{ line }}
           </template>
         </div>
-        <div v-if="currentLogs.length === 0" class="log-empty">等待输出...</div>
+        <div v-if="currentLogs.length === 0" class="log-empty">
+          {{ i18n.t("console.waiting_for_output") }}
+        </div>
       </div>
 
       <div
@@ -583,7 +590,7 @@ function executeCustomCommand(cmd: ServerCommand) {
           doScroll();
         "
       >
-        回到底部
+        {{ i18n.t("console.back_to_bottom") }}
       </div>
 
       <div class="console-input-wrapper">
@@ -607,7 +614,7 @@ function executeCustomCommand(cmd: ServerCommand) {
           <input
             class="console-input"
             v-model="commandInput"
-            placeholder="输入命令... (Tab 补全)"
+            :placeholder="i18n.t('common.enter_command')"
             @keydown="handleKeydown"
             :style="{ fontSize: consoleFontSize + 'px' }"
           />
@@ -626,20 +633,20 @@ function executeCustomCommand(cmd: ServerCommand) {
       >
         <div class="command-modal-content">
           <div class="form-group">
-            <label for="command-name">指令名称</label>
+            <label for="command-name">{{ i18n.t("console.command_name") }}</label>
             <SLInput
               id="command-name"
               v-model="commandName"
-              placeholder="输入指令名称"
+              :placeholder="i18n.t('console.enter_command_name')"
               :disabled="commandLoading"
             />
           </div>
           <div class="form-group">
-            <label for="command-text">指令内容</label>
+            <label for="command-text">{{ i18n.t("console.command_content") }}</label>
             <SLInput
               id="command-text"
               v-model="commandText"
-              placeholder="输入指令内容"
+              :placeholder="i18n.t('console.enter_command_content')"
               :disabled="commandLoading"
             />
           </div>
@@ -651,7 +658,7 @@ function executeCustomCommand(cmd: ServerCommand) {
               @click="showCommandModal = false"
               :disabled="commandLoading"
             >
-              取消
+              {{ i18n.t("console.cancel") }}
             </SLButton>
             <SLButton
               v-if="editingCommand"
@@ -660,7 +667,7 @@ function executeCustomCommand(cmd: ServerCommand) {
               :disabled="commandLoading"
               :loading="commandLoading"
             >
-              删除
+              {{ i18n.t("console.delete") }}
             </SLButton>
             <SLButton
               variant="primary"
@@ -668,7 +675,7 @@ function executeCustomCommand(cmd: ServerCommand) {
               :disabled="!commandName.trim() || !commandText.trim() || commandLoading"
               :loading="commandLoading"
             >
-              {{ editingCommand ? "更新" : "添加" }}
+              {{ editingCommand ? i18n.t("console.update") : i18n.t("console.add") }}
             </SLButton>
           </div>
         </template>

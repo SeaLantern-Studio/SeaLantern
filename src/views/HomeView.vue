@@ -5,13 +5,11 @@ import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLProgress from "../components/common/SLProgress.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
 import { i18n } from "../locales";
-import { getStatusVariant, getStatusText } from "../utils/serverStatus";
 
 const router = useRouter();
 const store = useServerStore();
@@ -32,9 +30,196 @@ const memUsage = ref(0);
 const diskUsage = ref(0);
 const cpuHistory = ref<number[]>([]);
 const memHistory = ref<number[]>([]);
-const statsViewMode = ref<"detail" | "gauge">("gauge"); // 视图模式
+const statsViewMode = ref<"detail" | "gauge">("gauge");
+const statsLoading = ref(true); // 视图模式
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+// 一言 API 相关
+interface HitokotoResponse {
+  id: number;
+  hitokoto: string;
+  type: string;
+  from: string;
+  from_who: string | null;
+  creator: string;
+  creator_uid: number;
+  review_status: number;
+  uuid: string;
+  created_at: string;
+}
+
+const currentQuote = ref<{ text: string; author: string }>({ text: "", author: "" });
+const displayText = ref("");
+const isTyping = ref(false);
+const quoteCache = ref<Array<{ text: string; author: string }>>([]);
+let typeTimer: ReturnType<typeof setInterval> | null = null;
+
+function typeWriter(text: string, callback?: () => void) {
+  if (typeTimer) clearInterval(typeTimer);
+  displayText.value = "";
+  isTyping.value = true;
+  let index = 0;
+  typeTimer = setInterval(() => {
+    if (index < text.length) {
+      displayText.value += text[index];
+      index++;
+    } else {
+      if (typeTimer) clearInterval(typeTimer);
+      isTyping.value = false;
+      if (callback) callback();
+    }
+  }, 50);
+}
+
+function typeWriterOut(callback?: () => void) {
+  if (typeTimer) clearInterval(typeTimer);
+  if (!displayText.value) {
+    if (callback) callback();
+    return;
+  }
+  isTyping.value = true;
+  let chars = displayText.value.split("");
+  typeTimer = setInterval(() => {
+    if (chars.length > 0) {
+      chars.pop();
+      displayText.value = chars.join("");
+    } else {
+      if (typeTimer) clearInterval(typeTimer);
+      isTyping.value = false;
+      if (callback) callback();
+    }
+  }, 30);
+}
+
+/**
+ * 从一言 API 获取名言
+ */
+async function fetchHitokoto(): Promise<{ text: string; author: string }> {
+  console.log('获取一言，当前缓存数量:', quoteCache.value.length);
+  // 优先从缓存中获取
+  if (quoteCache.value.length > 0) {
+    const quote = quoteCache.value.shift();
+    console.log('从缓存中获取一言:', quote);
+    console.log('缓存剩余数量:', quoteCache.value.length);
+    // 异步补充缓存
+    replenishCache();
+    return quote!;
+  }
+  
+  try {
+    console.log('缓存为空，从API获取一言');
+    const response = await fetch('https://v1.hitokoto.cn/?encode=json');
+    if (!response.ok) {
+      throw new Error('Failed to fetch hitokoto');
+    }
+    const data: HitokotoResponse = await response.json();
+    const quote = {
+      text: data.hitokoto,
+      author: data.from_who || data.from || i18n.t("common.unknown")
+    };
+    console.log('从API获取一言成功:', quote);
+    // 补充缓存
+    replenishCache();
+    return quote;
+  } catch (error) {
+    console.error('Error fetching hitokoto:', error);
+    // 失败时返回默认名言
+    const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
+    console.log('使用默认一言:', defaultQuote);
+    return defaultQuote;
+  }
+}
+
+/**
+ * 检查一言是否已在缓存中
+ */
+function isQuoteInCache(quote: { text: string; author: string }): boolean {
+  return quoteCache.value.some(cachedQuote => cachedQuote.text === quote.text);
+}
+
+/**
+ * 补充一言缓存，确保缓存中有至少2个一言，且不重复
+ */
+async function replenishCache() {
+  console.log('开始补充缓存，当前缓存数量:', quoteCache.value.length);
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (quoteCache.value.length < 2 && attempts < maxAttempts) {
+    try {
+      const response = await fetch('https://v1.hitokoto.cn/?encode=json');
+      if (!response.ok) {
+        throw new Error('Failed to fetch hitokoto');
+      }
+      const data: HitokotoResponse = await response.json();
+      const newQuote = {
+        text: data.hitokoto,
+        author: data.from_who || data.from || i18n.t("common.unknown")
+      };
+      
+      // 检查是否已在缓存中
+      if (!isQuoteInCache(newQuote)) {
+        quoteCache.value.push(newQuote);
+        console.log('补充缓存成功，当前缓存数量:', quoteCache.value.length);
+        console.log('新缓存的一言:', newQuote);
+      } else {
+        console.log('一言已在缓存中，跳过:', newQuote.text.substring(0, 20) + '...');
+        attempts++;
+      }
+    } catch (error) {
+      console.error('Error replenishing quote cache:', error);
+      break;
+    }
+  }
+  
+  if (attempts >= maxAttempts) {
+    console.log('达到最大尝试次数，停止补充缓存');
+  }
+}
+
+/**
+ * 更新名言
+ */
+async function updateQuote() {
+  console.log('触发更新一言');
+  if (isTyping.value) {
+    console.log('正在打字中，取消更新');
+    return;
+  }
+  // 先打字消失
+  typeWriterOut(async () => {
+    try {
+      console.log('开始获取新一言');
+      const newQuote = await fetchHitokoto();
+      console.log('获取新一言成功:', newQuote);
+      currentQuote.value = newQuote;
+      // 再打字出现
+      console.log('开始打字显示新一言');
+      typeWriter(newQuote.text);
+    } catch (error) {
+      console.error('Error updating quote:', error);
+    }
+  });
+}
+
+// 初始化打字机效果
+async function initQuote() {
+  try {
+    // 确保缓存中有足够的一言
+    await replenishCache();
+    const initialQuote = await fetchHitokoto();
+    currentQuote.value = initialQuote;
+    typeWriter(initialQuote.text);
+  } catch (error) {
+    console.error('Error initializing quote:', error);
+  }
+}
+
+// 初始化获取名言
+initQuote();
+
+let quoteTimer: ReturnType<typeof setInterval> | null = null;
 
 // 格式化字节
 function formatBytes(bytes: number): string {
@@ -85,15 +270,18 @@ onMounted(() => {
     try {
       const info = await systemApi.getSystemInfo();
       systemInfo.value = info;
-      cpuUsage.value = Math.round(info.cpu.usage);
-      memUsage.value = Math.round(info.memory.usage);
-      diskUsage.value = Math.round(info.disk.usage);
+      // clamp CPU usage to 0-100 (sysinfo can sometimes return >100%)
+      cpuUsage.value = Math.min(100, Math.max(0, Math.round(info.cpu.usage)));
+      memUsage.value = Math.min(100, Math.max(0, Math.round(info.memory.usage)));
+      diskUsage.value = Math.min(100, Math.max(0, Math.round(info.disk.usage)));
       cpuHistory.value.push(cpuUsage.value);
       memHistory.value.push(memUsage.value);
       if (cpuHistory.value.length > 30) cpuHistory.value.shift();
       if (memHistory.value.length > 30) memHistory.value.shift();
+      statsLoading.value = false;
     } catch (e) {
       console.error("Failed to fetch system info:", e);
+      statsLoading.value = false;
     }
   };
 
@@ -102,7 +290,10 @@ onMounted(() => {
   fetchSystemInfo();
 
   // 设置定时任务
-  statsTimer = setInterval(fetchSystemInfo, 2000);
+  statsTimer = setInterval(fetchSystemInfo, 1000);
+
+  // 名言每30秒更新一次
+  quoteTimer = setInterval(updateQuote, 30000);
 
   // Refresh server statuses
   refreshTimer = setInterval(async () => {
@@ -118,6 +309,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (statsTimer) clearInterval(statsTimer);
   if (refreshTimer) clearInterval(refreshTimer);
+  if (quoteTimer) clearInterval(quoteTimer);
   // 移除全局点击事件监听器
   document.removeEventListener("click", handleClickOutside);
 });
@@ -192,15 +384,6 @@ async function handleStop(id: string) {
   }
 }
 
-async function handleDelete(id: string) {
-  try {
-    await serverApi.deleteServer(id);
-    await store.refreshList();
-  } catch (e) {
-    actionError.value = String(e);
-  }
-}
-
 // 开始就地编辑服务器名称
 function startEditServerName(server: any) {
   editingServerId.value = server.id;
@@ -257,7 +440,7 @@ async function confirmDelete() {
   if (!deletingServerId.value) return;
 
   if (inputServerName.value.trim() !== deleteServerName.value.trim()) {
-    deleteError.value = "服务器名称输入错误，请重新输入";
+    deleteError.value = i18n.t("home.delete_error");
     return;
   }
 
@@ -368,8 +551,13 @@ function handleAnimationEnd(event: AnimationEvent) {
             </button>
           </div>
         </template>
+        <!-- 加载状态 -->
+        <div v-if="statsLoading" class="stats-loading">
+          <div class="spinner"></div>
+          <span>{{ i18n.t("common.loading") }}</span>
+        </div>
         <!-- 仪表盘视图 -->
-        <div v-if="statsViewMode === 'gauge'" class="gauge-view">
+        <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
           <div class="gauge-grid">
             <div class="gauge-item">
               <svg class="gauge-svg" viewBox="0 0 36 36">
@@ -455,6 +643,12 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
             </div>
           </div>
+          <div class="quote-display" @click="updateQuote" :title="i18n.t('common.click_to_refresh')">
+            <span v-if="displayText && !isTyping" class="quote-text">「{{ displayText }}」</span>
+            <span v-if="currentQuote && !isTyping" class="quote-author">—— {{ currentQuote.author }}</span>
+            <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
+            <span v-if="!displayText && !isTyping" class="quote-loading">加载中...</span>
+          </div>
         </div>
         <!-- 详细视图 -->
         <div v-else class="stats-grid">
@@ -467,14 +661,27 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
             </div>
-            <SLProgress :value="cpuUsage" variant="primary" :showPercent="false" />
-            <div class="mini-chart">
-              <svg viewBox="0 0 120 20" class="chart-svg">
+            <div class="mini-chart taskmgr-style">
+              <svg viewBox="0 0 300 40" class="chart-svg">
+                <!-- 网格线 -->
+                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
+                  <line x1="0" y1="8" x2="300" y2="8"/>
+                  <line x1="0" y1="16" x2="300" y2="16"/>
+                  <line x1="0" y1="24" x2="300" y2="24"/>
+                  <line x1="0" y1="32" x2="300" y2="32"/>
+                </g>
+                <!-- 填充区域 -->
+                <polygon
+                  :points="'0,40 ' + cpuHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ') + ',300,40'"
+                  fill="var(--sl-primary)"
+                  fill-opacity="0.15"
+                />
+                <!-- 曲线 -->
                 <polyline
-                  :points="cpuHistory.map((v, i) => i * 4 + ',' + (20 - v * 0.2)).join(' ')"
+                  :points="cpuHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ')"
                   fill="none"
                   stroke="var(--sl-primary)"
-                  stroke-width="1.5"
+                  stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
@@ -491,14 +698,27 @@ function handleAnimationEnd(event: AnimationEvent) {
               >
               <span class="stat-value">{{ memUsage }}%</span>
             </div>
-            <SLProgress :value="memUsage" variant="success" :showPercent="false" />
-            <div class="mini-chart">
-              <svg viewBox="0 0 120 20" class="chart-svg">
+            <div class="mini-chart taskmgr-style">
+              <svg viewBox="0 0 300 40" class="chart-svg">
+                <!-- 网格线 -->
+                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
+                  <line x1="0" y1="8" x2="300" y2="8"/>
+                  <line x1="0" y1="16" x2="300" y2="16"/>
+                  <line x1="0" y1="24" x2="300" y2="24"/>
+                  <line x1="0" y1="32" x2="300" y2="32"/>
+                </g>
+                <!-- 填充区域 -->
+                <polygon
+                  :points="'0,40 ' + memHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ') + ',300,40'"
+                  fill="var(--sl-success)"
+                  fill-opacity="0.15"
+                />
+                <!-- 曲线 -->
                 <polyline
-                  :points="memHistory.map((v, i) => i * 4 + ',' + (20 - v * 0.2)).join(' ')"
+                  :points="memHistory.map((v, i) => i * 10 + ',' + (40 - v * 0.4)).join(' ')"
                   fill="none"
                   stroke="var(--sl-success)"
-                  stroke-width="1.5"
+                  stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
@@ -590,7 +810,7 @@ function handleAnimationEnd(event: AnimationEvent) {
                 <button
                   class="edit-server-name"
                   @click="startEditServerName(server)"
-                  title="编辑服务器名称"
+                  :title="i18n.t('common.edit_server_name')"
                 >
                   ✏️
                 </button>
@@ -612,10 +832,11 @@ function handleAnimationEnd(event: AnimationEvent) {
 
         <div class="server-card-actions">
           <SLButton
-            v-if="store.statuses[server.id]?.status !== 'Running'"
+            v-if="store.statuses[server.id]?.status === 'Stopped' || store.statuses[server.id]?.status === 'Error' || !store.statuses[server.id]?.status"
             variant="primary"
             size="sm"
             :loading="actionLoading[server.id]"
+            :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
             @click="handleStart(server.id)"
             >{{ i18n.t("home.start") }}</SLButton
           >
@@ -624,6 +845,7 @@ function handleAnimationEnd(event: AnimationEvent) {
             variant="danger"
             size="sm"
             :loading="actionLoading[server.id]"
+            :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
             @click="handleStop(server.id)"
             >{{ i18n.t("home.stop") }}</SLButton
           >
@@ -638,7 +860,7 @@ function handleAnimationEnd(event: AnimationEvent) {
             {{ i18n.t("common.console") }}
           </SLButton>
           <SLButton variant="ghost" size="sm" @click="systemApi.openFolder(server.path)">
-            打开文件夹
+            {{ i18n.t("common.open_folder") }}
           </SLButton>
           <SLButton
             variant="ghost"
@@ -659,15 +881,13 @@ function handleAnimationEnd(event: AnimationEvent) {
             :class="['delete-confirm-input', { closing: isClosing }]"
             @animationend="handleAnimationEnd"
           >
-            <p class="delete-confirm-message">
-              请输入服务器名称 <strong>{{ server.name }}</strong> 以确认删除
-            </p>
+            <p class="delete-confirm-message" v-html="i18n.t('home.delete_confirm_message', { server: server.name })"></p>
             <div class="delete-input-group">
               <input
                 type="text"
                 v-model="inputServerName"
                 class="delete-input"
-                placeholder="输入服务器名称"
+                :placeholder="i18n.t('home.delete_input_placeholder')"
                 @keyup.enter="confirmDelete"
                 @keyup.esc="cancelDelete"
                 ref="deleteInput"
@@ -675,8 +895,12 @@ function handleAnimationEnd(event: AnimationEvent) {
               <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
             </div>
             <div class="delete-actions">
-              <SLButton variant="ghost" size="sm" @click="cancelDelete">取消</SLButton>
-              <SLButton variant="danger" size="sm" @click="confirmDelete">确认删除</SLButton>
+              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
+                i18n.t("home.delete_cancel")
+              }}</SLButton>
+              <SLButton variant="danger" size="sm" @click="confirmDelete">{{
+                i18n.t("home.delete_confirm")
+              }}</SLButton>
             </div>
           </div>
         </div>
@@ -739,16 +963,31 @@ function handleAnimationEnd(event: AnimationEvent) {
   margin-top: var(--sl-space-sm);
 }
 
+.gauge-view {
+  min-height: 200px;
+}
+
 .stats-grid {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-sm);
+  padding: var(--sl-space-xs) 0;
+  min-height: 200px;
+}
+
+.stats-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  min-height: 200px;
+  color: var(--sl-text-tertiary);
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .stat-header {
@@ -775,10 +1014,16 @@ function handleAnimationEnd(event: AnimationEvent) {
 }
 
 .mini-chart {
-  height: 20px;
+  height: 40px;
 }
 
-.chart-svg {
+.mini-chart.taskmgr-style {
+  background: var(--sl-bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mini-chart.taskmgr-style .chart-svg {
   width: 100%;
   height: 100%;
 }
@@ -1226,6 +1471,63 @@ function handleAnimationEnd(event: AnimationEvent) {
   font-size: 0.75rem;
   font-family: var(--sl-font-mono);
   color: var(--sl-text-secondary);
+}
+
+.quote-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  margin-top: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: var(--sl-radius-md);
+  position: relative;
+  overflow: hidden;
+}
+.quote-display:hover {
+  opacity: 0.9;
+  background: var(--sl-bg-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--sl-shadow-sm);
+}
+.quote-text {
+  font-size: 0.8125rem;
+  color: var(--sl-text-secondary);
+  font-style: italic;
+  text-align: center;
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+.quote-text.fading {
+  opacity: 0;
+  transform: translateY(5px);
+}
+.quote-author {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+.quote-author.fading {
+  opacity: 0;
+  transform: translateY(5px);
+}
+.quote-loading {
+  font-size: 0.8125rem;
+  color: var(--sl-text-tertiary);
+  font-style: italic;
+  animation: quoteLoading 1.5s ease-in-out infinite;
+}
+@keyframes quoteLoading {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 900px) {
