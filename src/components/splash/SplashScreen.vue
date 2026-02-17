@@ -36,7 +36,7 @@ watch(
     if (!newLoading && animationComplete.value) {
       emit("ready");
     }
-  }
+  },
 );
 </script>
 

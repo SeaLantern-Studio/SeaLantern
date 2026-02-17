@@ -136,11 +136,14 @@ pub fn run() {
             server_id_commands::search_server_ids,
         ])
         .on_window_event(|_window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
+            if let tauri::WindowEvent::CloseRequested { api: _, .. } = event {
+                // 允许默认关闭行为，由前端处理确认逻辑
+                // 直接关闭应用
                 let settings = services::global::settings_manager().get();
                 if settings.close_servers_on_exit {
                     services::global::server_manager().stop_all_servers();
                 }
+                // 不阻止默认关闭，让前端的确认对话框处理
             }
         })
         .setup(|_app| Ok(()))

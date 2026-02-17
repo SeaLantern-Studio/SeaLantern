@@ -85,7 +85,9 @@
     "config_performance": "效能",
     "config_display": "顯示",
     "config_other": "其他",
-    "config_saved": "設定已儲存"
+    "config_saved": "設定已儲存",
+    "refresh": "重新整理",
+    "save": "儲存"
   },
   "sidebar": {
     "groups": {
@@ -112,8 +114,26 @@
     "dutch": "Nederlands",
     "polish": "Polski",
     "turkish": "Türkçe",
-    "vietnamese": "Tiếng Việt"
-    "chinese_jb": "梗体中文"
+    "vietnamese": "Tiếng Việt",
+    "chinese_jb": "梗体中文",
+    "chinese_dongbei": "东北话",
+    "upsidedown": "ƎƃuɐuɐW",
+    "chinese_meow": "喵语",
+    "spanish": "Español",
+    "deutsch": "Deutsch",
+    "pirate": "Pirate",
+    "chinese_tj": "天津话",
+    "cantonese": "粤语",
+    "russian": "Русский",
+    "chinese_cy": "川渝话",
+    "chinese_wu": "吴语",
+    "chinese_hokkien": "闽南语",
+    "chinese_hn" : "河南话",
+    "chinese_jl": "胶辽官话",
+    "vietnamese": "Tiếng Việt",
+    "british": "British English",
+    "aussie": "Aussie English",
+    "kansaiben": "関西弁"
   },
   "home": {
     "title": "伺服器管理",
