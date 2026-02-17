@@ -13,9 +13,9 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50 # v3.0.2
         id: filter
         with:
           filters: |
@@ -56,13 +56,13 @@ jobs:
 
       - name: 安装 Rust 工具链
         if: ${{ needs.changes.outputs.backend == 'true' }}
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@61041b65f82449a2a01a471f127282206c8df374 # stable
         with:
           components: rustfmt, clippy
 
       - name: 缓存 Rust 编译产物
         if: ${{ needs.changes.outputs.backend == 'true' }}
-        uses: swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@3cf9dcb432a897d2e6772e2d6674d38bed64cbc1 # v2.7.4
         with:
           workspaces: "./src-tauri -> target"
 
@@ -84,13 +84,13 @@ jobs:
 
       - name: 安装 Node.js
         if: ${{ needs.changes.outputs.frontend == 'true' }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
           node-version: "lts/*"
 
       - name: 缓存 npm 依赖
         if: ${{ needs.changes.outputs.frontend == 'true' }}
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
         with:
           path: |
             ~/.npm
