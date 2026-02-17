@@ -133,6 +133,12 @@ export const contributors: Contributor[] = [
     avatar: "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
     url: "https://github.com/xuezhaju",
   },
+  {
+    name: "LING71671",
+    role: "各种奇思妙想，用户的真许愿树",
+    avatar: "https://api.rms.net.cn/head/LING71671",
+    url: "https://github.com/LING71671",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
