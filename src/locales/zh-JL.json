@@ -269,7 +269,23 @@
       "enable-status": "列表里显示",
       "force-gamemode": "强游戏模式",
       "spawn-protection": "出生点护多老远",
-      "sync-chunk-writes": "同步区块写入"
+      "sync-chunk-writes": "同步区块写入",
+      "resource-pack": "资源包URL",
+      "resource-pack-id": "资源包ID",
+      "resource-pack-prompt": "资源包提示",
+      "resource-pack-sha1": "资源包SHA1哈希",
+      "text-filtering-config": "文本过滤配置",
+      "text-filtering-version": "文本过滤版本",
+      "broadcast-rcon-to-ops": "给官儿广播RCON消息",
+      "bug-report-link": "Bug报告链接",
+      "enable-jmx-monitoring": "启用JMX监控",
+      "enforce-secure-profile": "强制安全配置文件",
+      "entity-broadcast-range-percentage": "实体广播范围百分比",
+      "function-permission-level": "函数权限级别",
+      "generator-settings": "生成器设置",
+      "hide-online-players": "藏起在线玩家",
+      "initial-disabled-packs": "一开始不让使的数据包",
+      "accepts-transfers": "接收传输"
     }
   },
   "players": {

@@ -269,7 +269,23 @@
       "enable-status": "開伺服器列表狀態",
       "force-gamemode": "強制遊戲模式",
       "spawn-protection": "出生點保護半徑",
-      "sync-chunk-writes": "同步區塊寫入"
+      "sync-chunk-writes": "同步區塊寫入",
+      "resource-pack": "資源包URL",
+      "resource-pack-id": "資源包ID",
+      "resource-pack-prompt": "資源包提示",
+      "resource-pack-sha1": "資源包SHA1哈希",
+      "text-filtering-config": "文字過濾設定",
+      "text-filtering-version": "文字過濾版本",
+      "broadcast-rcon-to-ops": "向OP廣播RCON訊息",
+      "bug-report-link": "Bug報告連結",
+      "enable-jmx-monitoring": "啟用JMX監控",
+      "enforce-secure-profile": "強制安全設定檔",
+      "entity-broadcast-range-percentage": "實體廣播範圍百分比",
+      "function-permission-level": "函數權限等級",
+      "generator-settings": "生成器設定",
+      "hide-online-players": "隱藏在線玩家",
+      "initial-disabled-packs": "初始停用嘅數據包",
+      "accepts-transfers": "接受傳輸"
     }
   },
   "players": {

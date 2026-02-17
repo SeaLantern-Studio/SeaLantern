@@ -269,7 +269,23 @@
       "enable-status": "Show in Server List",
       "force-gamemode": "Force Game Mode",
       "spawn-protection": "Spawn Protection",
-      "sync-chunk-writes": "Sync Chunk Writes"
+      "sync-chunk-writes": "Sync the plank writin's",
+      "resource-pack": "Treasure map URL",
+      "resource-pack-id": "Map ID",
+      "resource-pack-prompt": "The map's message",
+      "resource-pack-sha1": "Map's secret seal",
+      "text-filtering-config": "Censorin' the scallywags",
+      "text-filtering-version": "Censor version",
+      "broadcast-rcon-to-ops": "Shout RCON to officers",
+      "bug-report-link": "Where to report the barnacles",
+      "enable-jmx-monitoring": "Keep an eye on the ship's guts",
+      "enforce-secure-profile": "Make 'em show papers",
+      "entity-broadcast-range-percentage": "How far the crew sees ye",
+      "function-permission-level": "How high yer rank be",
+      "generator-settings": "How the world be born",
+      "hide-online-players": "Hide who's aboard",
+      "initial-disabled-packs": "Locked treasure chests at start",
+      "accepts-transfers": "Take in new crew"
     }
   },
   "players": {

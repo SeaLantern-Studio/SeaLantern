@@ -269,7 +269,23 @@
       "enable-status": "Enable Server List Status",
       "force-gamemode": "Force Game Mode",
       "spawn-protection": "Spawn Protection Radius",
-      "sync-chunk-writes": "Sync Chunk Writes"
+      "sync-chunk-writes": "Sync Chunk Writes",
+      "resource-pack": "Resource Pack URL",
+      "resource-pack-id": "Resource Pack ID",
+      "resource-pack-prompt": "Resource Pack Prompt",
+      "resource-pack-sha1": "Resource Pack SHA1 Hash",
+      "text-filtering-config": "Text Filtering Configuration",
+      "text-filtering-version": "Text Filtering Version",
+      "broadcast-rcon-to-ops": "Broadcast RCON to Ops",
+      "bug-report-link": "Bug Report Link",
+      "enable-jmx-monitoring": "Enable JMX Monitoring",
+      "enforce-secure-profile": "Enforce Secure Profile",
+      "entity-broadcast-range-percentage": "Entity Broadcast Range Percentage",
+      "function-permission-level": "Function Permission Level",
+      "generator-settings": "Generator Settings",
+      "hide-online-players": "Hide Online Players",
+      "initial-disabled-packs": "Initial Disabled Packs",
+      "accepts-transfers": "Accepts Transfers"
     }
   },
   "players": {

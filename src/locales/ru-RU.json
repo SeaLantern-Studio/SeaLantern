@@ -269,7 +269,23 @@
       "enable-status": "Статус в списке",
       "force-gamemode": "Принудительный режим",
       "spawn-protection": "Защита спавна",
-      "sync-chunk-writes": "Синхронная запись чанков"
+      "sync-chunk-writes": "Синхронизация записи чанков",
+      "resource-pack": "URL ресурс-пака",
+      "resource-pack-id": "ID ресурс-пака",
+      "resource-pack-prompt": "Подсказка ресурс-пака",
+      "resource-pack-sha1": "SHA1 хеш ресурс-пака",
+      "text-filtering-config": "Конфигурация фильтрации текста",
+      "text-filtering-version": "Версия фильтрации текста",
+      "broadcast-rcon-to-ops": "Транслировать RCON сообщения операторам",
+      "bug-report-link": "Ссылка для отчёта об ошибках",
+      "enable-jmx-monitoring": "Включить JMX мониторинг",
+      "enforce-secure-profile": "Принудительный безопасный профиль",
+      "entity-broadcast-range-percentage": "Процент диапазона трансляции сущностей",
+      "function-permission-level": "Уровень разрешения функций",
+      "generator-settings": "Настройки генератора",
+      "hide-online-players": "Скрыть онлайн игроков",
+      "initial-disabled-packs": "Изначально отключённые датапаки",
+      "accepts-transfers": "Принимать передачи"
     }
   },
   "players": {

@@ -269,7 +269,23 @@
       "enable-status": "sʇɐʇnS ʇsıꞀ ɹǝʌɹǝS ǝꞁqɐuƎ",
       "force-gamemode": "ǝpoW ǝɯɐ⅁ ǝɔɹoℲ",
       "spawn-protection": "snıpɐǝᴚ uoıʇɔǝʇoɹԀ uʍɐdS",
-      "sync-chunk-writes": "sǝʇıɹʍ ʞunɥƆ ɔuʎS"
+      "sync-chunk-writes": "sǝʇıɹʍ ʞunɥƆ ɔuʎS",
+      "resource-pack": "Ꞁᴚ∩ ʞɔɐԀ ǝɔɹnosǝᴚ",
+      "resource-pack-id": "ᗡI ʞɔɐԀ ǝɔɹnosǝᴚ",
+      "resource-pack-prompt": "ʇdɯoɹԀ ʞɔɐԀ ǝɔɹnosǝᴚ",
+      "resource-pack-sha1": "ɥsɐH ıꞀⱯHƧ ʞɔɐԀ ǝɔɹnosǝᴚ",
+      "text-filtering-config": "ƃıɟuoƆ ƃuıɹǝʇꞁıℲ ʇxǝꞀ",
+      "text-filtering-version": "uoısɹǝΛ ƃuıɹǝʇꞁıℲ ʇxǝꞀ",
+      "broadcast-rcon-to-ops": "sdo ɹnoʎ ʇɐ ɯǝɥʇ ʇɹǝqɐ pןnoɥs",
+      "bug-report-link": "ʞuıꞀ ʇɹodǝᴚ ɓnᗺ",
+      "enable-jmx-monitoring": "ƃuıɹoʇıuoW XWſ ǝꞁqɐuƎ",
+      "enforce-secure-profile": "ǝןıɟoɹd ǝɹnɔǝs ǝɔɹoɟuƎ",
+      "entity-broadcast-range-percentage": "ǝƃɐʇuǝɔɹǝԀ ǝƃuɐᴚ ʇsɐɔpɐoɹᗺ ʎʇıʇuƎ",
+      "function-permission-level": "ꞁǝʌǝꞀ uoıssıɯɹǝԀ uoıʇɔunℲ",
+      "generator-settings": "sƃuıʇʇǝS ɹoʇɐɹǝuǝ⅁",
+      "hide-online-players": "sɹǝʎɐꞁԀ ǝuıꞁuo ǝpıH",
+      "initial-disabled-packs": "sʞɔɐԀ pǝꞁqɐsıᗡ ꞁɐıʇıuI",
+      "accepts-transfers": "sɹǝɟsuɐɹꞀ sʇdǝɔɔⱯ"
     }
   },
   "players": {

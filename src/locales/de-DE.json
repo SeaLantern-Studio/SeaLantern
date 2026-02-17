@@ -269,7 +269,23 @@
       "enable-status": "Serverlisten-Status aktivieren",
       "force-gamemode": "Spielmodus erzwingen",
       "spawn-protection": "Spawn-Schutzradius",
-      "sync-chunk-writes": "Chunk-Schreibvorgänge synchronisieren"
+      "sync-chunk-writes": "Chunk-Schreibvorgänge synchronisieren",
+      "resource-pack": "Ressourcenpaket-URL",
+      "resource-pack-id": "Ressourcenpaket-ID",
+      "resource-pack-prompt": "Ressourcenpaket-Hinweis",
+      "resource-pack-sha1": "Ressourcenpaket-SHA1-Hash",
+      "text-filtering-config": "Textfilter-Konfiguration",
+      "text-filtering-version": "Textfilter-Version",
+      "broadcast-rcon-to-ops": "RCON-Nachrichten an OPs senden",
+      "bug-report-link": "Bugmelde-Link",
+      "enable-jmx-monitoring": "JMX-Überwachung aktivieren",
+      "enforce-secure-profile": "Sicheres Profil erzwingen",
+      "entity-broadcast-range-percentage": "Entity-Sendebereichsprozentsatz",
+      "function-permission-level": "Funktionsberechtigungsstufe",
+      "generator-settings": "Generator-Einstellungen",
+      "hide-online-players": "Online-Spieler verbergen",
+      "initial-disabled-packs": "Initial deaktivierte Datenpakete",
+      "accepts-transfers": "Übertragungen akzeptieren"
     }
   },
   "players": {

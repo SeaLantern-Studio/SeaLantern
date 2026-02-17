@@ -269,7 +269,23 @@
       "enable-status": "ステータス表示",
       "force-gamemode": "ゲームモード強制",
       "spawn-protection": "スポーン保護",
-      "sync-chunk-writes": "チャンク同期書き込み"
+      "sync-chunk-writes": "チャンク書き込み同期やで",
+      "resource-pack": "リソースパックURLや",
+      "resource-pack-id": "リソースパックIDや",
+      "resource-pack-prompt": "リソースパックの案内や",
+      "resource-pack-sha1": "リソースパックSHA1ハッシュや",
+      "text-filtering-config": "テキストフィルタリング設定や",
+      "text-filtering-version": "テキストフィルタリングバージョンや",
+      "broadcast-rcon-to-ops": "OPにRCONメッセージを教えたる",
+      "bug-report-link": "バグ報告リンクや",
+      "enable-jmx-monitoring": "JMX監視を有効にするで",
+      "enforce-secure-profile": "セキュアプロファイルを強制するで",
+      "entity-broadcast-range-percentage": "エンティティ放送範囲の割合や",
+      "function-permission-level": "関数の権限レベルや",
+      "generator-settings": "ワールド生成設定や",
+      "hide-online-players": "オンラインプレイヤーを隠すで",
+      "initial-disabled-packs": "最初に無効なデータパックや",
+      "accepts-transfers": "転送を受け入れるで"
     }
   },
   "players": {
