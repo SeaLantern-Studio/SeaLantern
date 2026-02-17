@@ -135,8 +135,8 @@ pub fn run() {
             server_id_commands::delete_server_id,
             server_id_commands::search_server_ids,
         ])
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::CloseRequested { api: _, .. } = event {
                 // 允许默认关闭行为，由前端处理确认逻辑
                 // 直接关闭应用
                 let settings = services::global::settings_manager().get();
