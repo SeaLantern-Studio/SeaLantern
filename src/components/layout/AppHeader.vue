@@ -35,7 +35,7 @@ const languageOptions = computed(() =>
 );
 
 const currentLanguageText = computed(() => {
-  const current = languageOptions.value.find((option) => option.code === (i18nStore.currentLocale as any).value || i18nStore.currentLocale);
+  const current = languageOptions.value.find((option) => option.code === i18nStore.currentLocale);
   return current?.label ?? i18n.t("header.english");
 });
 
