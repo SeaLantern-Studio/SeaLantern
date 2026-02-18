@@ -130,7 +130,8 @@ export const contributors: Contributor[] = [
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar: "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
+    avatar:
+      "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
     url: "https://github.com/xuezhaju",
   },
   {
@@ -138,13 +139,19 @@ export const contributors: Contributor[] = [
     role: "贡献者",
     avatar: "https://api.rms.net.cn/head/Yang4893",
     url: "https://github.com/minecraft-Yang458",
-   },
-   {
+  },
+  {
     name: "福瑞控海天",
     role: "海内存知己，天涯若比邻",
     avatar: "https://api.rms.net.cn/head/LucyKitter",
     url: "https://gitee.com/pnchsb_admin",
-   },
+  },
+  {
+    name: "LING71671",
+    role: "各种奇思妙想，用户的真许愿树",
+    avatar: "https://api.rms.net.cn/head/LING71671",
+    url: "https://github.com/LING71671",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
