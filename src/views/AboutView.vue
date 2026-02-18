@@ -1,5 +1,6 @@
 ﻿﻿﻿﻿<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -185,17 +186,7 @@ async function handlePrimaryUpdateAction() {
           <!-- Join Card -->
           <div class="contributor-card glass-card join-card">
             <div class="join-icon">
-              <svg
-                width="40"
-                height="40"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--sl-primary)"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              >
-                <path d="M12 4v16m8-8H4" />
-              </svg>
+                <Plus :size="40" stroke-width="1.5" :color="'var(--sl-primary)'" />
             </div>
             <div class="contributor-info">
               <span class="contributor-name join-text">{{ i18n.t("about.join_text") }}</span>
@@ -257,19 +248,7 @@ async function handlePrimaryUpdateAction() {
           <div class="contribute-ways">
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="16 18 22 12 16 6"></polyline>
-                  <polyline points="8 6 2 12 8 18"></polyline>
-                </svg>
+                <Code2 :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_code") }}</span>
@@ -278,18 +257,7 @@ async function handlePrimaryUpdateAction() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M12 19l7 2-7-18-7 18 7-2zm0 0v-8"></path>
-                </svg>
+                <PenTool :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_design") }}</span>
@@ -298,20 +266,7 @@ async function handlePrimaryUpdateAction() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
+                <HelpCircle :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_idea") }}</span>
@@ -320,19 +275,7 @@ async function handlePrimaryUpdateAction() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                </svg>
+                <BookText :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_doc") }}</span>
@@ -341,22 +284,7 @@ async function handlePrimaryUpdateAction() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path
-                    d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-                  ></path>
-                </svg>
+                <Globe :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_translate") }}</span>
@@ -365,20 +293,7 @@ async function handlePrimaryUpdateAction() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-                  <polyline points="16 6 12 2 8 6"></polyline>
-                  <line x1="12" y1="2" x2="12" y2="15"></line>
-                </svg>
+                <Megaphone :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_promote") }}</span>
