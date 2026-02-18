@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDown } from 'lucide-vue-next';
 import { ref, onMounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -1719,16 +1720,7 @@ function clearBackgroundImage() {
                 <span class="setting-desc">{{ i18n.t("settings.color_editing_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: colorSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown :size="20" />
               </div>
             </div>
             <Transition name="collapse">
@@ -1999,16 +1991,7 @@ function clearBackgroundImage() {
                 <span class="setting-desc">{{ i18n.t("settings.background_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown :size="20" />
               </div>
             </div>
             <Transition name="collapse">

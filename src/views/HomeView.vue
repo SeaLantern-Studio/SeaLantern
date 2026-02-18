@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Menu, Clock } from 'lucide-vue-next';
+import { Menu, Clock, Server, Pencil, Folder } from 'lucide-vue-next';
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -791,17 +791,7 @@ function handleAnimationEnd(event: AnimationEvent) {
     </div>
 
     <div v-else-if="store.servers.length === 0" class="empty-state">
-      <svg
-        width="64"
-        height="64"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="var(--sl-text-tertiary)"
-        stroke-width="1"
-        stroke-linecap="round"
-      >
-        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
+      <Server :size="64" :color="'var(--sl-text-tertiary)'" stroke-width="1" />
       <p class="text-body">{{ i18n.t("home.no_servers") }}</p>
       <p class="text-caption">{{ i18n.t("home.create_first") }}</p>
     </div>
@@ -873,19 +863,7 @@ function handleAnimationEnd(event: AnimationEvent) {
                   @click="startEditServerName(server)"
                   :title="i18n.t('common.edit_server_name')"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                  </svg>
+                  <Pencil :size="16" />
                 </button>
               </template>
             </div>
@@ -908,21 +886,7 @@ function handleAnimationEnd(event: AnimationEvent) {
           @click="systemApi.openFolder(server.path)"
         >
           <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
-          <svg
-            class="folder-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-            />
-          </svg>
+          <Folder class="folder-icon" :size="16" />
         </div>
 
         <div class="server-card-actions">
