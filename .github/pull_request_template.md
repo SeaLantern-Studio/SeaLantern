@@ -1,5 +1,5 @@
 <!--
-  双语 GitHub Pull Request 模板
+  双语 GitHub Pull Request 模板（fallback 单文件）
   Bilingual PR template (Chinese / English)
 -->
 
