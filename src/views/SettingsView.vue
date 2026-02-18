@@ -17,9 +17,10 @@ import {
 } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 import { useMessage } from "../composables/useMessage";
 import { useLoading } from "../composables/useAsync";
+import { getThemeOptions } from "../themes";
 
 const { error, showError, clearError } = useMessage();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
@@ -49,14 +50,13 @@ const backgroundSizeOptions = computed(() => [
   { label: i18n.t("common.background_size_auto"), value: "auto" },
 ]);
 
-const colorOptions = computed(() => [
-  { label: i18n.t("common.color_default"), value: "default" },
-  { label: "Midnight", value: "midnight" },
-  { label: "Sunset", value: "sunset" },
-  { label: "Ocean", value: "ocean" },
-  { label: "Rose", value: "rose" },
-  { label: i18n.t("common.color_custom"), value: "custom" },
-]);
+const colorOptions = computed(() => {
+  const themes = getThemeOptions();
+  return [
+    ...themes,
+    { label: i18n.t("common.color_custom"), value: "custom" },
+  ];
+});
 
 const editColorOptions = computed(() => [
   { label: i18n.t("common.edit_color_light"), value: "light" },

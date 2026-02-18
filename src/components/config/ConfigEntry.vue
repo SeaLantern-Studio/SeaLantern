@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { i18n } from "../../locales";
+import { i18n } from "../../language";
 import SLInput from "../common/SLInput.vue";
 import SLSwitch from "../common/SLSwitch.vue";
 import SLBadge from "../common/SLBadge.vue";

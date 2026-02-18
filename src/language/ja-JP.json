@@ -388,15 +388,6 @@
       "fill": "フィル",
       "auto": "自動"
     },
-    "color_options": {
-      "default": "デフォルト",
-      "midnight": "ミッドナイト",
-      "forest": "フォレスト",
-      "sunset": "サンセット",
-      "ocean": "オーシャン",
-      "rose": "ローズ",
-      "custom": "カスタム"
-    },
     "edit_colorplan_options": {
       "light": "ライト",
       "dark": "ダーク",
@@ -475,7 +466,10 @@
     "developer_mode": "開発者モード",
     "developer_mode_desc": "高度な機能とデバッグオプションを有効化",
     "developer_mode_toggle": "開発者モードを有効化",
-    "developer_mode_toggle_desc": "有効にするとデバッグツールが使用可能になります"
+    "developer_mode_toggle_desc": "有効にするとデバッグツールが使用可能になります",
+    "color_options": {
+      "custom": "カスタム"
+    }
   },
   "about": {
     "title": "このソフトについて",

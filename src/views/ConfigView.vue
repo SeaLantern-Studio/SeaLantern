@@ -7,7 +7,7 @@ import SLSelect from "../components/common/SLSelect.vue";
 import { configApi } from "../api/config";
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 
 // 导入拆分后的组件
 import ConfigToolbar from "../components/config/ConfigToolbar.vue";

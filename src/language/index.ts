@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
 
 // 动态导入所有语言文件
-const languageFiles: Record<string, any> = import.meta.glob("../../lang/*.json", { eager: true });
+const languageFiles: Record<string, any> = import.meta.glob("./*.json", { eager: true });
 
 // 处理语言文件，提取语言代码和数据
 const processLanguageFiles = () => {
@@ -10,8 +10,8 @@ const processLanguageFiles = () => {
   
   // 遍历所有导入的语言文件
   for (const [path, module] of Object.entries(languageFiles)) {
-    // 从文件路径中提取语言代码，如 "../../lang/zh-CN.json" -> "zh-CN"
-    const match = path.match(/\.\.\/\.\.\/lang\/(.*)\.json$/);
+    // 从文件路径中提取语言代码，如 "./zh-CN.json" -> "zh-CN"
+    const match = path.match(/\.\/(.*)\.json$/);
     if (match) {
       const localeCode = match[1];
       const data = (module as any).default;
@@ -40,8 +40,8 @@ type LanguageFile = TranslationNode & {
 const { translations, supportedLocales } = processLanguageFiles();
 
 // 导出支持的语言列表
-export const SUPPORTED_LOCALES = supportedLocales as const;
-export type LocaleCode = (typeof SUPPORTED_LOCALES)[number];
+export const SUPPORTED_LOCALES: readonly string[] = supportedLocales;
+export type LocaleCode = string;
 
 export function setTranslations(locale: LocaleCode, data: LanguageFile) {
   if (isSupportedLocale(locale)) {
