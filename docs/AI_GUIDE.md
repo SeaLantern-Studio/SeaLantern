@@ -43,7 +43,7 @@
 
 ### 配置文件
 
-- `vite.config.ts` - Vite 构建配置，开发服务器端口 1420
+- `vite.config.ts` - Vite 构建配置，开发服务器端口 5173
 - `tsconfig.json` - TypeScript 编译配置
 - `src-tauri/tauri.conf.json` - Tauri 应用配置（窗口大小、标题、权限等）
 - `src-tauri/capabilities/default.json` - Tauri 权限配置
