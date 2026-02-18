@@ -221,7 +221,7 @@ onUnmounted(() => {
                 </div>
               </template>
             </ListboxOptions>
-          </Transition>
+          </transition>
         </Teleport>
       </div>
     </Listbox>
