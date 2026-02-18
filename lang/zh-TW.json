@@ -124,7 +124,11 @@
     "close_window_message": "您確定要關閉 SeaLantern 嗎？",
     "remember_choice": "記住我的選擇",
     "close_action_minimize": "最小化到系統匣",
-    "close_action_close": "直接關閉"
+    "close_action_close": "直接關閉",
+    "cpu": "CPU",
+    "memory": "記憶體",
+    "disk": "磁碟",
+    "core": "核心"
   },
   "create": {
     "title": "建立伺服器",

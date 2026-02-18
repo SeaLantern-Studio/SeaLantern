@@ -124,7 +124,11 @@
     "close_window_message": "SeaLanternを終了しますか？",
     "remember_choice": "選択を記憶する",
     "close_action_minimize": "トレイに格納",
-    "close_action_close": "直接終了"
+    "close_action_close": "直接終了",
+    "cpu": "CPU",
+    "memory": "メモリ",
+    "disk": "ディスク",
+    "core": "コア"
   },
   "create": {
     "title": "サーバー作成",

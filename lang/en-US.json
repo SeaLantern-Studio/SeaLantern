@@ -124,7 +124,13 @@
     "delete_error": "Server name input error, please re-enter",
     "close_window_title": "Close Window",
     "close_window_message": "Are you sure you want to close SeaLantern?",
-    "remember_choice": "Remember my choice"
+    "remember_choice": "Remember my choice",
+    "close_action_minimize": "minimize to tray",
+    "close_action_close": "close window",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "disk": "Disk",
+    "core": "Core"
   },
   "create": {
     "title": "Create Server",

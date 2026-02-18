@@ -124,7 +124,11 @@
     "close_window_message": "Bist du sicher, dass du SeaLantern schließen möchtest?",
     "remember_choice": "Auswahl merken",
     "close_action_minimize": "In Taskleiste minimieren",
-    "close_action_close": "Direkt schließen"
+    "close_action_close": "Direkt schließen",
+    "cpu": "CPU",
+    "memory": "Arbeitsspeicher",
+    "disk": "Festplatte",
+    "core": "Kern"
   },
   "create": {
     "title": "Server erstellen",
