@@ -134,11 +134,17 @@ export const contributors: Contributor[] = [
     url: "https://github.com/xuezhaju",
   },
   {
+    name: "Yang458",
+    role: "贡献者",
+    avatar: "https://api.rms.net.cn/head/Yang4893",
+    url: "https://github.com/minecraft-Yang458",
+   },
+   {
     name: "福瑞控海天",
     role: "海内存知己，天涯若比邻",
     avatar: "https://api.rms.net.cn/head/LucyKitter",
     url: "https://gitee.com/pnchsb_admin",
-  },
+   },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
