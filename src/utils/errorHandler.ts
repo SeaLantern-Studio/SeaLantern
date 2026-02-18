@@ -102,12 +102,15 @@ export async function retry<T>(
 ): Promise<T> {
   let lastError: unknown;
 
+  // eslint-disable-next-line no-await-in-loop
   for (let i = 0; i < maxRetries; i++) {
     try {
+      // eslint-disable-next-line no-await-in-loop
       return await fn();
     } catch (error) {
       lastError = error;
       if (i < maxRetries - 1) {
+        // eslint-disable-next-line no-await-in-loop
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }

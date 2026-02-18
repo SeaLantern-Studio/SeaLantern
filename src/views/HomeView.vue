@@ -147,12 +147,15 @@ async function replenishCache() {
   let attempts = 0;
   const maxAttempts = 10;
 
+  // eslint-disable-next-line no-await-in-loop
   while (quoteCache.value.length < 2 && attempts < maxAttempts) {
     try {
+      // eslint-disable-next-line no-await-in-loop
       const response = await fetch("https://v1.hitokoto.cn/?encode=json");
       if (!response.ok) {
         throw new Error("Failed to fetch hitokoto");
       }
+      // eslint-disable-next-line no-await-in-loop
       const data: HitokotoResponse = await response.json();
       const newQuote = {
         text: data.hitokoto,
@@ -271,10 +274,8 @@ onMounted(() => {
   const loadServers = async () => {
     try {
       await store.refreshList();
-      // 服务器列表加载完成后，异步加载每个服务器的状态
-      for (const s of store.servers) {
-        await store.refreshStatus(s.id);
-      }
+      // 服务器列表加载完成后，并行加载每个服务器的状态
+      await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
@@ -312,9 +313,7 @@ onMounted(() => {
 
   // Refresh server statuses
   refreshTimer = setInterval(async () => {
-    for (const s of store.servers) {
-      await store.refreshStatus(s.id);
-    }
+    await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
   }, 3000);
 
   // 添加全局点击事件监听器，点击空白区域收回删除确认输入框
