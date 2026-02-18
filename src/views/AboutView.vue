@@ -4,6 +4,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLNotification from "../components/common/SLNotification.vue";
+import SLModal from "../components/common/SLModal.vue";
 import { contributors as contributorsList } from "../data/contributors";
 import { useUpdateStore } from "../stores/updateStore";
 import { getAppVersion, BUILD_YEAR } from "../utils/version";
@@ -22,8 +23,8 @@ const showNotification = ref(false);
 const notificationMessage = ref("");
 const notificationType = ref<"success" | "error" | "warning" | "info">("info");
 
-// ===== 新增：AUR 更新提示框 =====
-const showAurModal = ref(false);
+// ===== 新增：AUR 更新提示窗口 =====
+const showAurWindow = ref(false);
 const aurUpdateInfo = ref<{
   hasUpdate: boolean;
   currentVersion: string;
@@ -45,22 +46,10 @@ function closeNotification() {
   showNotification.value = false;
 }
 
-// ===== 新增：关闭 AUR 提示框 =====
-function closeAurModal() {
-  showAurModal.value = false;
+// ===== 新增：关闭 AUR 提示窗口 =====
+function closeAurWindow() {
+  showAurWindow.value = false;
   aurUpdateInfo.value = null;
-}
-
-// ===== 新增：复制命令到剪贴板 =====
-async function copyAurCommand() {
-  if (!aurUpdateInfo.value) return;
-  
-  try {
-    await navigator.clipboard.writeText(aurUpdateInfo.value.command);
-    showNotify("命令已复制到剪贴板", "success");
-  } catch (e) {
-    showNotify("复制失败", "error");
-  }
 }
 
 onMounted(async () => {
@@ -155,7 +144,7 @@ async function handleCheckUpdate() {
   try {
     const info = await updateStore.checkForUpdate();
     
-    // ===== 新增：如果是 AUR 更新，显示提示框 =====
+    // ===== 新增：如果是 AUR 更新，显示提示窗口 =====
     if (info?.source === 'arch-aur') {
       const helper = info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || 'yay';
       const hasUpdate = info.has_update;
@@ -165,10 +154,10 @@ async function handleCheckUpdate() {
         currentVersion: info.current_version,
         latestVersion: info.latest_version,
         helper: helper,
-        command: `${helper} -Syu sealantern`
+        command: `${helper} -S sealantern`
       };
       
-      showAurModal.value = true;
+      showAurWindow.value = true;
     }
   } catch (error) {
     showNotify(`${i18n.t("about.update_check_failed")}: ${String(error)}`, "error");
@@ -176,7 +165,7 @@ async function handleCheckUpdate() {
 }
 
 async function handlePrimaryUpdateAction() {
-  // 如果是 AUR 更新，显示提示框
+  // 如果是 AUR 更新，显示提示窗口
   if (isAurUpdate.value && updateStore.updateInfo) {
     const helper = updateStore.updateInfo.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || 'yay';
     
@@ -185,10 +174,10 @@ async function handlePrimaryUpdateAction() {
       currentVersion: updateStore.updateInfo.current_version,
       latestVersion: updateStore.updateInfo.latest_version,
       helper: helper,
-      command: `${helper} -Syu sealantern`
+      command: `${helper} -S sealantern`
     };
     
-    showAurModal.value = true;
+    showAurWindow.value = true;
     return;
   }
   
@@ -505,62 +494,55 @@ async function handlePrimaryUpdateAction() {
       </div>
     </div>
 
-    <!-- ===== 新增：AUR 更新提示框 ===== -->
+    <!-- ===== 新增：AUR 更新提示窗口 ===== -->
     <SLModal
-      :visible="showAurModal"
+      v-if="showAurWindow"
+      :visible="showAurWindow"
       :title="aurUpdateInfo?.hasUpdate ? 'AUR 更新可用' : 'AUR 版本信息'"
-      @close="closeAurModal"
+      @close="closeAurWindow"
     >
-      <div class="aur-modal-content">
-        <div class="aur-modal-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0099cc" stroke-width="1.5">
+      <div class="aur-window-content">
+        <div class="aur-window-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#0099cc" stroke-width="1.5">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 8v4M12 16h.01" />
           </svg>
         </div>
         
-        <div class="aur-modal-message" v-if="aurUpdateInfo">
-          <p v-if="aurUpdateInfo.hasUpdate">
-            检测到 AUR 上有新版本可用
+        <div class="aur-window-message" v-if="aurUpdateInfo">
+          <p class="aur-title" v-if="aurUpdateInfo.hasUpdate">
+            AUR 上有新版本可用！
           </p>
-          <p v-else>
+          <p class="aur-title" v-else>
             您使用的是 AUR 版本
           </p>
           
           <div class="version-info">
-            <span class="version-label">当前版本:</span>
-            <span class="version-value">{{ aurUpdateInfo.currentVersion }}</span>
-          </div>
-          
-          <div v-if="aurUpdateInfo.hasUpdate" class="version-info">
-            <span class="version-label">最新版本:</span>
-            <span class="version-value">{{ aurUpdateInfo.latestVersion }}</span>
+            <div class="version-row">
+              <span class="version-label">当前版本：</span>
+              <span class="version-value">{{ aurUpdateInfo.currentVersion }}</span>
+            </div>
+            <div v-if="aurUpdateInfo.hasUpdate" class="version-row">
+              <span class="version-label">最新版本：</span>
+              <span class="version-value">{{ aurUpdateInfo.latestVersion }}</span>
+            </div>
           </div>
           
           <div class="command-box">
             <p class="command-label">更新命令：</p>
-            <div class="command-wrapper">
-              <code class="aur-command">{{ aurUpdateInfo.command }}</code>
-              <button class="copy-button" @click="copyAurCommand">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              </button>
+            <div class="command-display">
+              <code>{{ aurUpdateInfo.command }}</code>
             </div>
           </div>
           
           <p class="aur-note">
-            请打开终端执行上述命令进行更新
+            请在终端中执行上述命令进行更新
           </p>
         </div>
         
-        <div class="aur-modal-actions">
-          <SLButton variant="secondary" size="sm" @click="closeAurModal">
-            关闭
-          </SLButton>
-          <SLButton variant="primary" size="sm" @click="copyAurCommand">
-            复制命令
+        <div class="aur-window-actions">
+          <SLButton variant="primary" size="md" @click="closeAurWindow">
+            我知道了
           </SLButton>
         </div>
       </div>
@@ -625,7 +607,8 @@ async function handlePrimaryUpdateAction() {
 
 .version-badge,
 .tech-badge,
-.license-badge {
+.license-badge,
+.aur-badge {
   padding: 4px 14px;
   border-radius: var(--sl-radius-full);
   font-size: 0.8125rem;
@@ -645,6 +628,12 @@ async function handlePrimaryUpdateAction() {
 .license-badge {
   background: rgba(168, 85, 247, 0.1);
   color: #a855f7;
+}
+
+/* AUR 徽章样式 */
+.aur-badge {
+  background: rgba(0, 153, 204, 0.1);
+  color: #0099cc;
 }
 
 .hero-desc {
@@ -971,127 +960,97 @@ async function handlePrimaryUpdateAction() {
   box-shadow: var(--sl-shadow-lg);
 }
 
-/* ===== 新增：AUR 徽章样式 ===== */
-.aur-badge {
-  background: rgba(0, 153, 204, 0.1);
-  color: #0099cc;
-  padding: 4px 14px;
-  border-radius: var(--sl-radius-full);
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-/* ===== 新增：AUR 模态框样式 ===== */
-.aur-modal-content {
+/* AUR 窗口样式 */
+.aur-window-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--sl-space-lg);
-  gap: var(--sl-space-md);
+  padding: var(--sl-space-xl);
+  gap: var(--sl-space-lg);
 }
 
-.aur-modal-icon {
+.aur-window-icon {
   margin-bottom: var(--sl-space-sm);
 }
 
-.aur-modal-message {
+.aur-window-message {
   text-align: center;
   width: 100%;
 }
 
-.aur-modal-message p {
-  font-size: 1rem;
+.aur-title {
+  font-size: 1.25rem;
+  font-weight: 600;
   color: var(--sl-text-primary);
-  margin-bottom: var(--sl-space-md);
+  margin-bottom: var(--sl-space-lg);
 }
 
 .version-info {
+  background: var(--sl-bg-secondary);
+  border-radius: var(--sl-radius-lg);
+  padding: var(--sl-space-md);
+  margin-bottom: var(--sl-space-lg);
+}
+
+.version-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--sl-space-xs) var(--sl-space-md);
-  background: var(--sl-bg-secondary);
-  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-xs) 0;
+}
+
+.version-row:first-child {
+  border-bottom: 1px solid var(--sl-border-light);
   margin-bottom: var(--sl-space-xs);
 }
 
 .version-label {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   color: var(--sl-text-tertiary);
 }
 
 .version-value {
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--sl-primary);
   font-family: var(--sl-font-mono);
 }
 
 .command-box {
-  margin-top: var(--sl-space-md);
-  text-align: left;
-  width: 100%;
+  margin-bottom: var(--sl-space-lg);
 }
 
 .command-label {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   color: var(--sl-text-secondary);
-  margin-bottom: var(--sl-space-xs);
+  margin-bottom: var(--sl-space-sm);
+  text-align: left;
 }
 
-.command-wrapper {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-xs);
-  background: var(--sl-bg-secondary);
+.command-display {
+  background: var(--sl-bg-tertiary);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-xs);
+  padding: var(--sl-space-md);
 }
 
-.aur-command {
-  flex: 1;
+.command-display code {
   font-family: var(--sl-font-mono);
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   color: var(--sl-primary);
-  padding: var(--sl-space-xs) var(--sl-space-sm);
-  background: transparent;
-  border: none;
-  overflow-x: auto;
-  white-space: nowrap;
-}
-
-.copy-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--sl-primary-bg);
-  border: none;
-  border-radius: var(--sl-radius-md);
-  color: var(--sl-primary);
-  cursor: pointer;
-  transition: all var(--sl-transition-fast);
-}
-
-.copy-button:hover {
-  background: var(--sl-primary);
-  color: white;
+  word-break: break-all;
 }
 
 .aur-note {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: var(--sl-text-tertiary);
-  margin-top: var(--sl-space-sm);
   font-style: italic;
 }
 
-.aur-modal-actions {
+.aur-window-actions {
   display: flex;
   justify-content: center;
-  gap: var(--sl-space-md);
-  margin-top: var(--sl-space-md);
   width: 100%;
+  margin-top: var(--sl-space-sm);
 }
 </style>
