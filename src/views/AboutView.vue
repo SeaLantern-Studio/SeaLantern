@@ -23,7 +23,7 @@ const showNotification = ref(false);
 const notificationMessage = ref("");
 const notificationType = ref<"success" | "error" | "warning" | "info">("info");
 
-// ===== 新增：AUR 更新提示窗口 =====
+// ===== AUR 更新提示窗口 =====
 const showAurWindow = ref(false);
 const aurUpdateInfo = ref<{
   hasUpdate: boolean;
@@ -46,19 +46,19 @@ function closeNotification() {
   showNotification.value = false;
 }
 
-// ===== 新增：关闭 AUR 提示窗口 =====
+// ===== 关闭 AUR 提示窗口 =====
 function closeAurWindow() {
   showAurWindow.value = false;
   aurUpdateInfo.value = null;
 }
 
-// ===== 新增：复制 AUR 命令 =====
+// ===== 复制 AUR 命令 =====
 async function copyAurCommand(command: string) {
   try {
     await navigator.clipboard.writeText(command);
-    showNotify("命令已复制到剪贴板", "success");
+    showNotify(i18n.t("about.aur_window_copy_success"), "success");
   } catch (e) {
-    showNotify("复制失败", "error");
+    showNotify(i18n.t("about.aur_window_copy_failed"), "error");
   }
 }
 
@@ -80,13 +80,29 @@ onUnmounted(() => {
   }
 });
 
-// ===== 新增：判断是否是 AUR 更新 =====
+// ===== 判断是否是 AUR 更新 =====
 const isAurUpdate = computed(() => updateStore.updateInfo?.source === 'arch-aur');
 
-// ===== 新增：获取 AUR 助手名称 =====
+// ===== 获取 AUR 助手名称 =====
 const aurHelper = computed(() => {
   return updateStore.updateInfo?.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || 'yay';
 });
+
+// ===== AUR 窗口响应式文本 =====
+const aurModalTitle = computed(() => 
+  aurUpdateInfo.value?.hasUpdate 
+    ? i18n.t('about.aur_window_title_update') 
+    : i18n.t('about.aur_window_title_info')
+);
+
+const aurNewVersionText = computed(() => i18n.t('about.aur_window_new_version'));
+const aurCurrentVersionText = computed(() => i18n.t('about.aur_window_current_version'));
+const aurLatestVersionText = computed(() => i18n.t('about.aur_window_latest_version'));
+const aurSingleUpdateText = computed(() => i18n.t('about.aur_window_single_update'));
+const aurGlobalUpdateText = computed(() => i18n.t('about.aur_window_global_update'));
+const aurGlobalNoteText = computed(() => i18n.t('about.aur_window_global_note'));
+const aurCopyTipText = computed(() => i18n.t('about.aur_window_copy_tip'));
+const aurButtonText = computed(() => i18n.t('about.aur_window_button'));
 
 const buttonState = computed(() => {
   // 如果是 AUR 更新，显示特殊按钮文字
@@ -154,7 +170,7 @@ async function handleCheckUpdate() {
   try {
     const info = await updateStore.checkForUpdate();
     
-    // ===== 新增：如果是 AUR 更新，显示提示窗口 =====
+    // 如果是 AUR 更新，显示提示窗口
     if (info?.source === 'arch-aur') {
       const helper = info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || 'yay';
       const hasUpdate = info.has_update;
@@ -213,7 +229,7 @@ async function handlePrimaryUpdateAction() {
           <span class="version-badge">v{{ version }}</span>
           <span class="tech-badge">{{ i18n.t("about.tech_badge") }}</span>
           <span class="license-badge">{{ i18n.t("about.license_badge") }}</span>
-          <!-- 新增：AUR 徽章 -->
+          <!-- AUR 徽章 -->
           <span v-if="isAurUpdate" class="aur-badge">AUR</span>
         </div>
         <p class="hero-desc">
@@ -307,7 +323,7 @@ async function handlePrimaryUpdateAction() {
               <span class="info-label">{{ i18n.t("about.license") }}</span>
               <span class="info-value">GNU GPLv3</span>
             </div>
-            <!-- 新增：安装来源显示 -->
+            <!-- 安装来源显示 -->
             <div v-if="updateStore.updateInfo?.source" class="info-item">
               <span class="info-label">{{ i18n.t("about.install_source") }}</span>
               <span class="info-value">{{ updateStore.updateInfo.source }}</span>
@@ -504,11 +520,11 @@ async function handlePrimaryUpdateAction() {
       </div>
     </div>
 
-<!-- ===== 新增：AUR 更新提示窗口 ===== -->
+    <!-- ===== AUR 更新提示窗口 ===== -->
 <SLModal
-  v-if="showAurWindow"
+  v-if="showAurWindow && aurUpdateInfo?.hasUpdate"
   :visible="showAurWindow"
-  :title="aurUpdateInfo?.hasUpdate ? 'AUR 更新可用' : 'AUR 版本信息'"
+  :title="aurUpdateInfo?.hasUpdate ? i18n.t('about.aur_window_title_update') : i18n.t('about.aur_window_title_info')"
   @close="closeAurWindow"
 >
   <div class="aur-window-content">
@@ -520,31 +536,28 @@ async function handlePrimaryUpdateAction() {
     </div>
     
     <div class="aur-window-message" v-if="aurUpdateInfo">
-      <p class="aur-title" v-if="aurUpdateInfo.hasUpdate">
-        AUR 上有新版本可用！
-      </p>
-      <p class="aur-title" v-else>
-        您使用的是 AUR 版本
+      <p class="aur-title">
+        {{ aurNewVersionText }}
       </p>
       
       <div class="version-info">
         <div class="version-row">
-          <span class="version-label">当前版本：</span>
+          <span class="version-label">{{ i18n.t('about.aur_window_current_version') }}</span>
           <span class="version-value">{{ aurUpdateInfo.currentVersion }}</span>
         </div>
-        <div v-if="aurUpdateInfo.hasUpdate" class="version-row">
-          <span class="version-label">最新版本：</span>
+        <div class="version-row">
+          <span class="version-label">{{ i18n.t('about.aur_window_latest_version') }}</span>
           <span class="version-value">{{ aurUpdateInfo.latestVersion }}</span>
         </div>
       </div>
       
       <div class="command-box">
-        <p class="command-label">单独更新（推荐）：</p>
+        <p class="command-label">{{ i18n.t('about.aur_window_single_update') }}</p>
         <div class="command-wrapper">
           <div class="command-display">
             <code>{{ aurUpdateInfo.command }}</code>
           </div>
-          <button class="copy-button" @click="copyAurCommand(aurUpdateInfo.command)" title="复制命令">
+          <button class="copy-button" @click="copyAurCommand(aurUpdateInfo.command)" :title="i18n.t('about.aur_window_copy_tip')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
@@ -553,35 +566,35 @@ async function handlePrimaryUpdateAction() {
         </div>
       </div>
 
-      <!-- ===== 新增：全局更新提示 ===== -->
       <div class="global-update-box">
-        <p class="global-update-label">或者全局更新：</p>
+        <p class="global-update-label">{{ i18n.t('about.aur_window_global_update') }}</p>
         <div class="command-wrapper">
           <div class="command-display global-command">
             <code>{{ aurUpdateInfo.helper }} -Syu</code>
           </div>
-          <button class="copy-button" @click="copyAurCommand(aurUpdateInfo.helper + ' -Syu')" title="复制命令">
+          <button class="copy-button" @click="copyAurCommand(aurUpdateInfo.helper + ' -Syu')" :title="i18n.t('about.aur_window_copy_tip')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
           </button>
         </div>
-        <p class="global-update-note">⚠️ 注意：这会更新系统中所有通过 AUR 安装的包</p>
+        <p class="global-update-note">{{ i18n.t('about.aur_window_global_note') }}</p>
       </div>
       
       <p class="aur-note">
-        点击复制按钮，然后在终端中粘贴执行
+        {{ i18n.t('about.aur_window_copy_tip') }}
       </p>
     </div>
     
     <div class="aur-window-actions">
       <SLButton variant="primary" size="md" @click="closeAurWindow">
-        我知道了
+        {{ i18n.t('about.aur_window_button') }}
       </SLButton>
     </div>
   </div>
 </SLModal>
+
     <!-- 通知组件 -->
     <SLNotification
       :visible="showNotification"
@@ -594,6 +607,7 @@ async function handlePrimaryUpdateAction() {
 </template>
 
 <style scoped>
+/* 样式保持不变 */
 .about-view {
   display: flex;
   flex-direction: column;
@@ -1111,20 +1125,6 @@ async function handlePrimaryUpdateAction() {
   text-align: left;
 }
 
-.command-display {
-  background: var(--sl-bg-tertiary);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-md);
-}
-
-.command-display code {
-  font-family: var(--sl-font-mono);
-  font-size: 0.9375rem;
-  color: var(--sl-primary);
-  word-break: break-all;
-}
-
 .aur-note {
   font-size: 0.875rem;
   color: var(--sl-text-tertiary);
@@ -1169,5 +1169,4 @@ async function handlePrimaryUpdateAction() {
   font-style: italic;
   text-align: left;
 }
-
 </style>

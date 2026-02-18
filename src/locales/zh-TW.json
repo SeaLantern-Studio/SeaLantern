@@ -517,7 +517,22 @@
     "aur_update_tip": "您通過 {helper} 安裝了 SeaLantern，請打開終端執行：{helper} -Syu sealantern",
     "aur_update_available": "AUR 更新可用",
     "aur_detected": "檢測到您通過 AUR 安裝了 SeaLantern，請使用套件管理器更新：",
-    "install_source": "安裝來源"
+    "install_source": "安裝來源",
+    "aur_window_title_update": "AUR 更新可用",
+    "aur_window_title_info": "AUR 版本資訊",
+    "aur_window_new_version": "AUR 上有新版本可用！",
+    "aur_window_aur_version": "您使用的是 AUR 版本",
+    "aur_window_current_version": "目前版本：",
+    "aur_window_latest_version": "最新版本：",
+    "aur_window_release_notes": "📝 更新內容：",
+    "aur_window_no_notes": "暫無更新說明",
+    "aur_window_single_update": "單獨更新（推薦）：",
+    "aur_window_global_update": "或者全域更新：",
+    "aur_window_global_note": "⚠️ 注意：這會更新系統中所有通過 AUR 安裝的套件",
+    "aur_window_copy_tip": "點擊複製按鈕，然後在終端機中貼上執行",
+    "aur_window_copy_success": "命令已複製到剪貼板",
+    "aur_window_copy_failed": "複製失敗",
+    "aur_window_button": "我知道了"
   },
   "tray": {
     "minimize": "最小化到後台",

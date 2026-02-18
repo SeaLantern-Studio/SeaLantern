@@ -553,7 +553,22 @@
     "aur_update_tip": "You installed SeaLantern via {helper}, please run in terminal: {helper} -Syu sealantern",
     "aur_update_available": "AUR Update Available",
     "aur_detected": "Detected AUR installation of SeaLantern, please use package manager to update:",
-    "install_source": "Installation Source"
+    "install_source": "Installation Source",
+        "aur_window_title_update": "AUR Update Available",
+    "aur_window_title_info": "AUR Version Info",
+    "aur_window_new_version": "New version available on AUR!",
+    "aur_window_aur_version": "You are using AUR version",
+    "aur_window_current_version": "Current version:",
+    "aur_window_latest_version": "Latest version:",
+    "aur_window_release_notes": "📝 Release Notes:",
+    "aur_window_no_notes": "No release notes",
+    "aur_window_single_update": "Single update (recommended):",
+    "aur_window_global_update": "Or global update:",
+    "aur_window_global_note": "⚠️ Note: This will update all packages installed via AUR",
+    "aur_window_copy_tip": "Click copy button, then paste in terminal",
+    "aur_window_copy_success": "Command copied to clipboard",
+    "aur_window_copy_failed": "Copy failed",
+    "aur_window_button": "Got it"
   },
   "tray": {
     "minimize": "Minimize to Tray",
