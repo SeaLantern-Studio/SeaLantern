@@ -6,22 +6,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sea Lantern</title>
     <style>
-      body {
+      html {
         background-color: #f8fafc;
+      }
+      html[data-theme="dark"] {
+        background-color: #0f1117;
+      }
+      body {
         margin: 0;
         padding: 0;
+        font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
       }
-      html[data-theme="dark"] body {
-        background-color: #0f1117;
+
+      :root {
+        --sl-bg: #f8fafc;
+        --sl-bg-secondary: #f1f5f9;
+        --sl-primary: #0ea5e9;
+        --sl-text-primary: #0f172a;
+        --sl-text-secondary: #475569;
+      }
+      [data-theme="dark"] {
+        --sl-bg: #0f1117;
+        --sl-bg-secondary: #1a1d28;
+        --sl-primary: #60a5fa;
+        --sl-text-primary: #e2e8f0;
+        --sl-text-secondary: #94a3b8;
       }
     </style>
     <script>
       (function () {
-        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-          document.documentElement.setAttribute("data-theme", "dark");
-        } else {
-          document.documentElement.setAttribute("data-theme", "light");
+        var theme = "auto";
+        var fontSize = 14;
+        try {
+          var cached = localStorage.getItem("sl_theme_cache");
+          if (cached) {
+            var parsed = JSON.parse(cached);
+            if (parsed.theme) theme = parsed.theme;
+            if (parsed.fontSize) fontSize = parsed.fontSize;
+          }
+        } catch (e) {}
+
+        var effectiveTheme = theme;
+        if (theme === "auto") {
+          effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
         }
+        document.documentElement.setAttribute("data-theme", effectiveTheme);
+        document.documentElement.style.fontSize = fontSize + "px";
       })();
     </script>
   </head>

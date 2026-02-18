@@ -11,3 +11,8 @@ SETTINGS_VERIFICATION.md
 test-router.html
 sync.bat
 bun.lock
+nul
+changelogs/
+.claude/
+.trae/
+changelog/

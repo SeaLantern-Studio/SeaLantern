@@ -23,8 +23,6 @@ const loading = ref(true);
 const fontsLoading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
-const success = ref<string | null>(null);
-const hasChanges = ref(false);
 
 // 亚克力支持检测
 const acrylicSupported = ref(true);
@@ -40,27 +38,44 @@ const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
 const uiFontSize = ref("14");
 
-const backgroundSizeOptions = [
-  { label: "覆盖 (Cover)", value: "cover" },
-  { label: "包含 (Contain)", value: "contain" },
-  { label: "拉伸 (Fill)", value: "fill" },
-  { label: "原始大小 (Auto)", value: "auto" },
-];
+const backgroundSizeOptions = computed(() => [
+  { label: i18n.t("common.background_size_cover"), value: "cover" },
+  { label: i18n.t("common.background_size_contain"), value: "contain" },
+  { label: i18n.t("common.background_size_fill"), value: "fill" },
+  { label: i18n.t("common.background_size_auto"), value: "auto" },
+]);
 
-const themeOptions = [
-  { label: "跟随系统", value: "auto" },
-  { label: "浅色", value: "light" },
-  { label: "深色", value: "dark" },
-];
+const colorOptions = computed(() => [
+  { label: i18n.t("common.color_default"), value: "default" },
+  { label: "Midnight", value: "midnight" },
+  { label: "Sunset", value: "sunset" },
+  { label: "Ocean", value: "ocean" },
+  { label: "Rose", value: "rose" },
+  { label: i18n.t("common.color_custom"), value: "custom" },
+]);
+
+const editColorOptions = computed(() => [
+  { label: i18n.t("common.edit_color_light"), value: "light" },
+  { label: i18n.t("common.edit_color_dark"), value: "dark" },
+  { label: i18n.t("common.edit_color_light_acrylic"), value: "light_acrylic" },
+  { label: i18n.t("common.edit_color_dark_acrylic"), value: "dark_acrylic" },
+]);
+
+const themeOptions = computed(() => [
+  { label: i18n.t("common.theme_auto"), value: "auto" },
+  { label: i18n.t("common.theme_light"), value: "light" },
+  { label: i18n.t("common.theme_dark"), value: "dark" },
+]);
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
-  { label: "系统默认", value: "" },
+  { label: i18n.t("common.font_system_default"), value: "" },
 ]);
 
 const showImportModal = ref(false);
 const importJson = ref("");
 const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
+const colorSettingsExpanded = ref(false);
 const bgPreviewLoaded = ref(false);
 const bgPreviewLoading = ref(false);
 
@@ -95,7 +110,7 @@ async function loadSystemFonts() {
   try {
     const fonts = await getSystemFonts();
     fontFamilyOptions.value = [
-      { label: "系统默认", value: "" },
+      { label: i18n.t("common.font_system_default"), value: "" },
       ...fonts.map((font) => ({ label: font, value: `'${font}'` })),
     ];
   } catch (e) {
@@ -127,7 +142,7 @@ async function loadSettings() {
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
-    hasChanges.value = false;
+    settings.value.color = s.color || "default";
     // 应用已保存的设置
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -140,7 +155,7 @@ async function loadSettings() {
 }
 
 function markChanged() {
-  hasChanges.value = true;
+  saveSettings();
 }
 
 function getEffectiveTheme(theme: string): "light" | "dark" {
@@ -226,14 +241,21 @@ async function saveSettings() {
   settings.value.background_blur = parseInt(bgBlur.value) || 0;
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
   settings.value.font_size = parseInt(uiFontSize.value) || 14;
+  settings.value.color = settings.value.color || "default";
+  settings.value.developer_mode = settings.value.developer_mode || false;
 
   saving.value = true;
   error.value = null;
   try {
     await settingsApi.save(settings.value);
-    success.value = "设置已保存";
-    hasChanges.value = false;
-    setTimeout(() => (success.value = null), 3000);
+
+    localStorage.setItem(
+      "sl_theme_cache",
+      JSON.stringify({
+        theme: settings.value.theme || "auto",
+        fontSize: settings.value.font_size || 14,
+      }),
+    );
 
     applyTheme(settings.value.theme);
     applyFontSize(settings.value.font_size);
@@ -267,9 +289,16 @@ async function resetSettings() {
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
     showResetConfirm.value = false;
-    hasChanges.value = false;
-    success.value = "已恢复默认设置";
-    setTimeout(() => (success.value = null), 3000);
+    settings.value.color = "default";
+
+    localStorage.setItem(
+      "sl_theme_cache",
+      JSON.stringify({
+        theme: s.theme || "auto",
+        fontSize: s.font_size || 14,
+      }),
+    );
+
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
@@ -282,8 +311,6 @@ async function exportSettings() {
   try {
     const json = await settingsApi.exportJson();
     await navigator.clipboard.writeText(json);
-    success.value = "设置 JSON 已复制到剪贴板";
-    setTimeout(() => (success.value = null), 3000);
   } catch (e) {
     error.value = String(e);
   }
@@ -291,7 +318,7 @@ async function exportSettings() {
 
 async function handleImport() {
   if (!importJson.value.trim()) {
-    error.value = "请粘贴 JSON";
+    error.value = i18n.t("common.paste_json");
     return;
   }
   try {
@@ -308,9 +335,6 @@ async function handleImport() {
     uiFontSize.value = String(s.font_size);
     showImportModal.value = false;
     importJson.value = "";
-    hasChanges.value = false;
-    success.value = "设置已导入";
-    setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
@@ -339,6 +363,10 @@ function clearBackgroundImage() {
     markChanged();
   }
 }
+
+function handleDeveloperModeChange() {
+  markChanged();
+}
 </script>
 
 <template>
@@ -346,9 +374,6 @@ function clearBackgroundImage() {
     <div v-if="error" class="msg-banner error-banner">
       <span>{{ error }}</span>
       <button @click="error = null">x</button>
-    </div>
-    <div v-if="success" class="msg-banner success-banner">
-      <span>{{ success }}</span>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -374,6 +399,24 @@ function clearBackgroundImage() {
               <span class="setting-desc">{{ i18n.t("settings.auto_eula_desc") }}</span>
             </div>
             <SLSwitch v-model="settings.auto_accept_eula" @update:modelValue="markChanged" />
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">{{ i18n.t("settings.close_action") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.close_action_desc") }}</span>
+            </div>
+            <div class="input-md">
+              <SLSelect
+                v-model="settings.close_action"
+                :options="[
+                  { label: i18n.t('settings.close_action_ask'), value: 'ask' },
+                  { label: i18n.t('settings.close_action_minimize'), value: 'minimize' },
+                  { label: i18n.t('settings.close_action_close'), value: 'close' },
+                ]"
+                @update:modelValue="markChanged"
+              />
+            </div>
           </div>
         </div>
       </SLCard>
@@ -469,237 +512,28 @@ function clearBackgroundImage() {
         </div>
       </SLCard>
 
-      <!-- Appearance -->
-      <SLCard :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
+      <!-- Developer Mode -->
+      <SLCard
+        :title="i18n.t('settings.developer_mode')"
+        :subtitle="i18n.t('settings.developer_mode_desc')"
+      >
         <div class="settings-group">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.theme") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
-            </div>
-            <div class="input-lg">
-              <SLSelect
-                v-model="settings.theme"
-                :options="themeOptions"
-                @update:modelValue="handleThemeChange"
-              />
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
-            </div>
-            <div class="slider-control">
-              <input
-                type="range"
-                min="12"
-                max="24"
-                step="1"
-                v-model="uiFontSize"
-                @input="handleFontSizeChange"
-                class="sl-slider"
-              />
-              <span class="slider-value">{{ uiFontSize }}px</span>
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.font_family") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.font_family_desc") }}</span>
-            </div>
-            <div class="input-lg">
-              <SLSelect
-                v-model="settings.font_family"
-                :options="fontFamilyOptions"
-                :searchable="true"
-                :loading="fontsLoading"
-                :previewFont="true"
-                :placeholder="i18n.t('settings.font_family_desc')"
-                @update:modelValue="handleFontFamilyChange"
-              />
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.acrylic") }}</span>
-              <span class="setting-desc">
-                {{
-                  acrylicSupported
-                    ? i18n.t("settings.acrylic_desc")
-                    : i18n.t("settings.acrylic_not_supported")
-                }}
-              </span>
+              <span class="setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
+              <span class="setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
             </div>
             <SLSwitch
-              v-model="settings.acrylic_enabled"
-              :disabled="!acrylicSupported"
-              @update:modelValue="handleAcrylicChange"
+              v-model="settings.developer_mode"
+              @update:modelValue="handleDeveloperModeChange"
             />
-          </div>
-
-          <!-- 背景图片折叠区域 -->
-          <div class="collapsible-section">
-            <div class="collapsible-header" @click="bgSettingsExpanded = !bgSettingsExpanded">
-              <div class="setting-info">
-                <span class="setting-label">{{ i18n.t("settings.background") }}</span>
-                <span class="setting-desc">{{ i18n.t("settings.background_desc") }}</span>
-              </div>
-              <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </div>
-            </div>
-            <Transition name="collapse">
-              <div v-show="bgSettingsExpanded" class="collapsible-content">
-                <div class="setting-row full-width">
-                  <div class="bg-image-picker">
-                    <div v-if="settings.background_image" class="bg-preview">
-                      <div v-if="bgPreviewLoading && !bgPreviewLoaded" class="bg-preview-loading">
-                        <div class="loading-spinner"></div>
-                        <span>{{ i18n.t("settings.loading") }}</span>
-                      </div>
-                      <img
-                        v-show="bgPreviewLoaded || !bgPreviewLoading"
-                        :src="backgroundPreviewUrl"
-                        alt="Background preview"
-                        @load="
-                          bgPreviewLoaded = true;
-                          bgPreviewLoading = false;
-                        "
-                        @loadstart="bgPreviewLoading = true"
-                        @error="bgPreviewLoading = false"
-                        loading="lazy"
-                      />
-                      <div
-                        v-if="isAnimatedImage(settings.background_image)"
-                        class="bg-animated-badge"
-                      >
-                        {{ i18n.t("settings.animated") }}
-                      </div>
-                      <div class="bg-preview-overlay">
-                        <span class="bg-preview-path">{{
-                          settings.background_image.split("\\").pop()
-                        }}</span>
-                        <SLButton variant="danger" size="sm" @click="clearBackgroundImage">{{
-                          i18n.t("settings.remove")
-                        }}</SLButton>
-                      </div>
-                    </div>
-                    <SLButton v-else variant="secondary" @click="pickBackgroundImage">
-                      {{ i18n.t("settings.select_image") }}
-                    </SLButton>
-                    <SLButton
-                      v-if="settings.background_image"
-                      variant="secondary"
-                      size="sm"
-                      @click="pickBackgroundImage"
-                    >
-                      {{ i18n.t("settings.change_image") }}
-                    </SLButton>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t("settings.opacity") }}</span>
-                    <span class="setting-desc">{{ i18n.t("settings.opacity_desc") }}</span>
-                  </div>
-                  <div class="slider-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      v-model="bgOpacity"
-                      @input="markChanged"
-                      class="sl-slider"
-                    />
-                    <span class="slider-value">{{ bgOpacity }}</span>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t("settings.blur") }}</span>
-                    <span class="setting-desc">{{ i18n.t("settings.blur_desc") }}</span>
-                  </div>
-                  <div class="slider-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      step="1"
-                      v-model="bgBlur"
-                      @input="markChanged"
-                      class="sl-slider"
-                    />
-                    <span class="slider-value">{{ bgBlur }}px</span>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t("settings.brightness") }}</span>
-                    <span class="setting-desc">{{ i18n.t("settings.brightness_desc") }}</span>
-                  </div>
-                  <div class="slider-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="2"
-                      step="0.1"
-                      v-model="bgBrightness"
-                      @input="markChanged"
-                      class="sl-slider"
-                    />
-                    <span class="slider-value">{{ bgBrightness }}</span>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <span class="setting-label">{{ i18n.t("settings.background_size") }}</span>
-                    <span class="setting-desc">{{ i18n.t("settings.background_size_desc") }}</span>
-                  </div>
-                  <div class="input-lg">
-                    <SLSelect
-                      v-model="settings.background_size"
-                      :options="backgroundSizeOptions"
-                      @update:modelValue="markChanged"
-                    />
-                  </div>
-                </div>
-              </div>
-            </Transition>
           </div>
         </div>
       </SLCard>
 
       <!-- Actions -->
       <div class="settings-actions">
-        <div class="actions-left">
-          <SLButton variant="primary" size="lg" :loading="saving" @click="saveSettings">
-            {{ i18n.t("settings.save") }}
-          </SLButton>
-          <SLButton variant="secondary" @click="loadSettings">{{
-            i18n.t("settings.discard")
-          }}</SLButton>
-          <span v-if="hasChanges" class="unsaved-hint">{{
-            i18n.t("settings.unsaved_changes")
-          }}</span>
-        </div>
+        <div class="actions-left"></div>
         <div class="actions-right">
           <SLButton variant="ghost" size="sm" @click="exportSettings">{{
             i18n.t("settings.export")
@@ -777,11 +611,6 @@ function clearBackgroundImage() {
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: var(--sl-error);
 }
-.success-banner {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  color: var(--sl-success);
-}
 .msg-banner button {
   font-weight: 600;
   color: inherit;
@@ -839,6 +668,10 @@ function clearBackgroundImage() {
   width: 120px;
   flex-shrink: 0;
 }
+.input-md {
+  width: 200px;
+  flex-shrink: 0;
+}
 .input-lg {
   width: 320px;
   flex-shrink: 0;
@@ -877,15 +710,6 @@ function clearBackgroundImage() {
   display: flex;
   align-items: center;
   gap: var(--sl-space-sm);
-}
-
-.unsaved-hint {
-  font-size: 0.8125rem;
-  color: var(--sl-warning);
-  font-weight: 500;
-  padding: 2px 10px;
-  background: rgba(245, 158, 11, 0.1);
-  border-radius: var(--sl-radius-full);
 }
 
 .import-form {

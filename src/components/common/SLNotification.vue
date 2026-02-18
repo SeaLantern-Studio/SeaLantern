@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed, onMounted } from "vue";
+import { i18n } from "../../locales";
 
 type NotificationType = "success" | "error" | "warning" | "info";
 type Position =
@@ -239,7 +240,11 @@ onUnmounted(() => {
             <div v-if="title" class="sl-notify__title">{{ title }}</div>
             <div class="sl-notify__message">{{ message }}</div>
           </div>
-          <button class="sl-notify__close" @click.stop="handleClose" aria-label="关闭通知">
+          <button
+            class="sl-notify__close"
+            @click.stop="handleClose"
+            :aria-label="i18n.t('common.close_notification')"
+          >
             <svg
               width="18"
               height="18"
@@ -300,6 +305,9 @@ onUnmounted(() => {
     -apple-system,
     sans-serif;
   user-select: none;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Position variants */
@@ -432,10 +440,10 @@ onUnmounted(() => {
 
 /* Animations */
 .notify-slide-enter-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all var(--sl-transition-slow) cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .notify-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--sl-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sl-notify--top-left.notify-slide-enter-from,

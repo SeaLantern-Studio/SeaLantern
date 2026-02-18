@@ -1,0 +1,45 @@
+# sealantern.install
+
+_update_desktop_database() {
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database -q 2>/dev/null || true
+    fi
+}
+
+_update_icon_cache() {
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+    fi
+}
+
+_show_completion_message() {
+    echo ":: SeaLantern 安装完成！"
+    echo ":: 你可以通过应用程序菜单启动 SeaLantern"
+    echo ":: 或直接在终端执行 'sealantern' 命令"
+}
+
+post_install() {
+    _update_desktop_database
+    _update_icon_cache
+    _show_completion_message
+}
+
+pre_upgrade() {
+    return 0
+}
+
+post_upgrade() {
+    _update_desktop_database
+    _update_icon_cache
+    echo ":: SeaLantern 升级完成！"
+}
+
+pre_remove() {
+    return 0
+}
+
+post_remove() {
+    _update_desktop_database
+    _update_icon_cache
+    echo ":: SeaLantern 已移除"
+}

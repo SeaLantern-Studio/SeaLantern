@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
+
+const props = defineProps<{
+  loading?: boolean;
+}>();
 
 const emit = defineEmits<{
   ready: [];
@@ -7,40 +11,47 @@ const emit = defineEmits<{
 
 const logoScale = ref(0);
 const textOpacity = ref(0);
+const animationComplete = ref(false);
 
 onMounted(() => {
-  // Logo 缩放动画
   setTimeout(() => {
     logoScale.value = 1;
   }, 50);
 
-  // 文字淡入
   setTimeout(() => {
     textOpacity.value = 1;
   }, 200);
 
-  // 启动完成，通知父组件（总共只显示600ms）
   setTimeout(() => {
-    emit("ready");
+    animationComplete.value = true;
+    if (!props.loading) {
+      emit("ready");
+    }
   }, 600);
 });
+
+watch(
+  () => props.loading,
+  (newLoading) => {
+    if (!newLoading && animationComplete.value) {
+      emit("ready");
+    }
+  },
+);
 </script>
 
 <template>
   <div class="splash-screen">
     <div class="splash-content">
-      <!-- Logo -->
       <div class="splash-logo" :style="{ transform: `scale(${logoScale})` }">
         <img src="../../assets/logo.svg" alt="Sea Lantern" width="120" height="120" />
       </div>
 
-      <!-- 标题 -->
       <div class="splash-text" :style="{ opacity: textOpacity }">
         <h1 class="splash-title">Sea Lantern</h1>
         <p class="splash-subtitle">Minecraft 服务器管理工具</p>
       </div>
 
-      <!-- 加载指示器 -->
       <div class="splash-loader" :style="{ opacity: textOpacity }">
         <div class="loader-dots">
           <span></span>
@@ -59,7 +70,7 @@ onMounted(() => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(135deg, var(--sl-bg) 0%, var(--sl-bg-secondary) 100%);
+  background-color: var(--sl-bg, #f8fafc);
   display: flex;
   align-items: center;
   justify-content: center;

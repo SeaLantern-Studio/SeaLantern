@@ -6,8 +6,36 @@
     "suspicious": "warn",
     "perf": "warn"
   },
-  "rules": {},
+  "rules": {
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "off",
+    "import/no-unused-modules": "off",
+    "import/no-unresolved": ["error"],
+    "import/named": ["error"],
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["**/*.css", "**/*.scss", "**/*.less"]
+      }
+    ]
+  },
   "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx", ".vue", ".css"]
+      },
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": "./tsconfig.json"
+      },
+      "alias": {
+        "map": [["@", "./src"]],
+        "extensions": [".js", ".jsx", ".ts", ".tsx", ".vue"]
+      }
+    },
+    "import/parsers": {
+      "@typescript-eslint/parser": [".ts", ".tsx", ".vue"]
+    },
     "jsx-a11y": {
       "polymorphicPropName": null,
       "components": {},
@@ -42,6 +70,11 @@
     "node": true,
     "es2022": true
   },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx", "**/*.vue"]
+    }
+  ],
   "globals": {},
   "ignorePatterns": ["dist", "node_modules", "src-tauri/**"]
 }

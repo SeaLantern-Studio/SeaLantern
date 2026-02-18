@@ -126,6 +126,12 @@ sea-lantern/
 │   │   └── splash/                   Splash screen
 │   │       └── SplashScreen.vue     Loading animation when app starts
 │   │
+│   ├── locales/                      国际化资源
+│   │   ├── index.ts                  语言文件入口
+│   │   ├── en-US.json                英文翻译
+│   │   ├── zh-CN.json                简体中文翻译
+│   │   └── zh-TW.json                繁体中文翻译
+│   │
 │   ├── views/                         Page views (one per route)
 │   │   ├── HomeView.vue              Home page (server list, system status)
 │   │   ├── CreateServerView.vue     Create/import server page
@@ -217,50 +223,6 @@ sea-lantern/
 └── README.md                          Project documentation (what you're reading now)
 ```
 
-## Implemented Features
-
-### Server Management
-
-- Create servers by importing JAR files, with one-click start and stop functionality
-- Data saved to JSON files, ensuring persistence across application restarts
-
-### Real-time Console
-
-- Backend uses independent threads to read stdout and stderr streams
-- Frontend polls for new logs every 800ms
-- Supports command input, Tab completion, up/down arrow history navigation, and shortcut command buttons
-- Logs stored in global store, persisting when switching between pages
-
-### Java Detection
-
-- Scans all drives from A to Z on application startup
-- Recursively searches common installation paths, including Minecraft's bundled Java in .minecraft/runtime
-- Sorts by version number and marks recommended Java versions
-
-### Configuration Editing
-
-- Reads server.properties and parses it into structured data with descriptions and categories
-- Boolean values use toggle switches, enums use dropdown selectors, numbers/strings use input fields
-- Changes are written directly back to the configuration file
-
-### Player Management
-
-- Reads whitelist.json / banned-players.json / ops.json to display player lists
-- Adds/removes players by sending Minecraft commands to the running server
-- Parses server logs to determine online player status
-
-### Application Settings
-
-- Automatically stops all servers when closing the application (enabled by default)
-- Auto-accepts EULA agreements
-- Configurable default memory allocation, port numbers, and JVM parameters
-
-### Software Updates
-
-- Checks Gitee releases to retrieve the latest version information
-- Displays update logs and provides one-click access to download links
-- Automatically compares version numbers and prompts users for updates
-
 ## Planned Features
 
 Placeholders have been reserved for these features with existing code
@@ -272,11 +234,10 @@ skeletons—waiting for your contributions:
 - Scheduled Tasks - Automatic restarts, scheduled backups, and scheduled command execution
 - Resource Management - Search and install plugins/mods from Modrinth & CurseForge
 - Dark Theme - CSS variables are already configured; just add a dark mode value set
-- Internationalization - Currently hardcoded in Chinese; can be extracted into language files (thanks to [TNTXZ](https://github.com/FPSZ/SeaLantern/pull/20))
 
 ## Contributing
 
-Contributions are welcome! Before you start, please read the [Contributing Guidelines](CONTRIBUTING-en.md) to understand code standards and development workflows.
+Contributions are welcome! Before you start, please read the [Contributing Guidelines](docs/CONTRIBUTING-en.md) to understand code standards and development workflows.
 
 The UI is also fully customizable:
 
@@ -288,7 +249,7 @@ The UI is also fully customizable:
 ### How to Contribute
 
 1. Fork this repository
-2. Create a branch and implement your changes (following the [Contributing Guidelines](CONTRIBUTING-en.md)）
+2. Create a branch and implement your changes (following the [Contributing Guidelines](docs/CONTRIBUTING-en.md)）
 3. Submit a Pull Request
 4. Your name will be added to the contributor wall on the About page
 

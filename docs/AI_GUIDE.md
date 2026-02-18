@@ -7,7 +7,7 @@
 **项目名称**: 海晶灯 (Sea Lantern)
 **项目类型**: Minecraft 服务器管理工具
 **技术栈**: Tauri 2 + Rust + Vue 3 + TypeScript + Pinia
-**当前版本**: 0.5.0
+**当前版本**: 0.6.2
 **Gitee仓库**: https://gitee.com/fps_z/SeaLantern (master 分支)
 **Github仓库**: https://github.com/FPSZ/SeaLantern (main 分支)
 
@@ -24,8 +24,26 @@
 
 ### 版本号相关（修改版本时必须同步更新）
 
-- 版本号来源：`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`
-- 前端展示版本：`src/utils/version.ts` 通过 `@tauri-apps/api/app` 的 `getVersion()` 从后端读取
+**核心版本文件**（必须修改）：
+
+- `package.json` - 前端版本号，格式：`"version": "x.x.x"`
+- `src-tauri/Cargo.toml` - Rust 后端版本号，格式：`version = "x.x.x"`
+- `src-tauri/tauri.conf.json` - Tauri 配置版本号，格式：`"version": "x.x.x"`
+
+**Arch Linux 打包文件**（如果发布到 AUR 需要修改）：
+
+- `PKGBUILD` - Arch 打包脚本，格式：`pkgver=x.x.x`
+- `.SRCINFO` - AUR 元数据文件，格式：`pkgver = x.x.x`
+
+**自动生成文件**（运行命令后自动更新）：
+
+- `Cargo.lock` - 运行 `cargo update -p sea-lantern` 自动更新
+- `package-lock.json` - 运行 `npm install` 自动更新
+
+**版本号读取方式**：
+
+- 前端通过 `@tauri-apps/api/app` 的 `getVersion()` 从 Tauri 配置读取
+- 显示在关于页面（AboutView.vue）
 
 ### 配置文件
 
@@ -255,11 +273,53 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 
 ### 场景 3: 修改版本号
 
-**必须同步修改以下 3 个文件**：
+**必须同步修改的核心文件**（3 个）：
 
 1. `package.json` - `"version": "x.x.x"`
 2. `src-tauri/Cargo.toml` - `version = "x.x.x"`
 3. `src-tauri/tauri.conf.json` - `"version": "x.x.x"`
+
+**如果发布到 AUR，还需要修改**（2 个）：
+
+4. `PKGBUILD` - `pkgver=x.x.x`
+5. `.SRCINFO` - `pkgver = x.x.x`（注意有空格）
+
+**更新依赖锁定文件**：
+
+```bash
+# 更新 Cargo.lock
+cargo update -p sea-lantern
+
+# 更新 package-lock.json
+npm install
+```
+
+**完整版本更新流程**：
+
+```bash
+# 1. 手动修改上述 5 个文件的版本号
+
+# 2. 更新依赖锁定文件
+cd src-tauri
+cargo update -p sea-lantern
+cd ..
+npm install
+
+# 3. 提交更改
+git add .
+git commit -m "chore: bump version to x.x.x"
+
+# 4. 创建标签（用于 GitHub Release）
+git tag sea-lantern-vx.x.x
+git push origin main
+git push origin sea-lantern-vx.x.x
+```
+
+**注意事项**：
+
+- 版本号格式遵循语义化版本（Semantic Versioning）：`major.minor.patch`
+- 标签格式：`sea-lantern-vx.x.x`（与 GitHub Release 保持一致）
+- PKGBUILD 中的 `source` URL 也会引用版本号，确保 Release 已发布
 
 ### 场景 4: 添加 Tauri 插件权限
 
@@ -480,9 +540,23 @@ cd src-tauri && cargo test
 
 ### 2. 修改时需要同步的文件
 
-- 版本号：3 个文件（package.json, Cargo.toml, tauri.conf.json）
-- 添加命令：commands/_.rs + mod.rs + lib.rs + api/_.ts
-- 添加路由：router/index.ts + AppSidebar.vue
+**版本号更新**（5 个文件 + 2 个自动生成）：
+
+- 核心：`package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`
+- AUR：`PKGBUILD`, `.SRCINFO`
+- 自动：`Cargo.lock`（cargo update）, `package-lock.json`（npm install）
+
+**添加 Tauri 命令**（4 个文件）：
+
+- `src-tauri/src/commands/*.rs` - 定义命令函数
+- `src-tauri/src/commands/mod.rs` - 导出模块
+- `src-tauri/src/lib.rs` - 注册到 `generate_handler!`
+- `src/api/*.ts` - 前端 API 封装
+
+**添加新页面**（2 个文件）：
+
+- `src/router/index.ts` - 添加路由
+- `src/components/layout/AppSidebar.vue` - 添加导航项
 
 ### 3. 代码风格
 
@@ -490,6 +564,7 @@ cd src-tauri && cargo test
 - 后端：使用 4 空格缩进（Rust 标准）
 - 使用有意义的变量名和函数名
 - 添加必要的注释
+- 参考check.yml
 
 ### 4. 性能优化建议
 
@@ -518,5 +593,6 @@ cd src-tauri && cargo test
 
 ---
 
-**最后更新**: 2026-02-11
-**文档版本**: 1.0
+**最后更新**: 2026-02-17
+**文档版本**: 1.1
+**当前项目版本**: 0.6.2

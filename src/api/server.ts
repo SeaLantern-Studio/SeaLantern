@@ -18,6 +18,7 @@ export const serverApi = {
     port: number;
     javaPath: string;
     jarPath: string;
+    startupMode?: "jar" | "bat" | "sh";
   }): Promise<ServerInstance> {
     return tauriInvoke("create_server", {
       name: params.name,
@@ -28,12 +29,14 @@ export const serverApi = {
       port: params.port,
       javaPath: params.javaPath,
       jarPath: params.jarPath,
+      startupMode: params.startupMode ?? "jar",
     });
   },
 
   async importServer(params: {
     name: string;
     jarPath: string;
+    startupMode: "jar" | "bat" | "sh";
     javaPath: string;
     maxMemory: number;
     minMemory: number;
@@ -43,6 +46,7 @@ export const serverApi = {
     return tauriInvoke("import_server", {
       name: params.name,
       jarPath: params.jarPath,
+      startupMode: params.startupMode,
       javaPath: params.javaPath,
       maxMemory: params.maxMemory,
       minMemory: params.minMemory,
@@ -75,6 +79,10 @@ export const serverApi = {
 
   async stop(id: string): Promise<void> {
     return tauriInvoke("stop_server", { id });
+  },
+
+  async forceStopAll(): Promise<void> {
+    return tauriInvoke("force_stop_all_servers");
   },
 
   async sendCommand(id: string, command: string): Promise<void> {

@@ -1,4 +1,5 @@
 import { tauriInvoke } from "./tauri";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface UpdateInfo {
   has_update: boolean;
@@ -8,6 +9,18 @@ export interface UpdateInfo {
   release_notes?: string;
   published_at?: string;
   source?: string;
+  sha256?: string;
+}
+
+export interface DownloadProgress {
+  downloaded: number;
+  total: number;
+  percent: number;
+}
+
+export interface PendingUpdate {
+  file_path: string;
+  version: string;
 }
 
 export async function checkUpdate(): Promise<UpdateInfo | null> {
@@ -18,4 +31,32 @@ export async function checkUpdate(): Promise<UpdateInfo | null> {
     console.error("检查更新失败:", error);
     throw error;
   }
+}
+
+export async function downloadUpdate(url: string, expectedHash?: string): Promise<string> {
+  return tauriInvoke<string>("download_update", { url, expectedHash });
+}
+
+export async function installUpdate(filePath: string, version: string): Promise<void> {
+  return tauriInvoke<void>("install_update", { filePath, version });
+}
+
+export async function checkPendingUpdate(): Promise<PendingUpdate | null> {
+  return tauriInvoke<PendingUpdate | null>("check_pending_update");
+}
+
+export async function clearPendingUpdate(): Promise<void> {
+  return tauriInvoke<void>("clear_pending_update");
+}
+
+export async function restartAndInstall(): Promise<void> {
+  return tauriInvoke<void>("restart_and_install");
+}
+
+export function onDownloadProgress(
+  callback: (progress: DownloadProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<DownloadProgress>("update-download-progress", (event) => {
+    callback(event.payload);
+  });
 }

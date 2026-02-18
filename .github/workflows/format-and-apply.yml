@@ -1,0 +1,73 @@
+name: "PR 自动格式化并提交"
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  format-and-commit:
+    name: 主分支格式化并提交 (前后端并行)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 跳过工作流（如果由格式化提交触发）
+        run: |
+          echo "Checking last commit message for skip token"
+          MSG=$(git log -1 --pretty=%B)
+          echo "Last commit message: $MSG"
+          if echo "$MSG" | grep -q "\[skip ci\]\|\[skip actions\]"; then
+            echo "Skip token found in last commit message; exiting."
+            exit 0
+          fi
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: 安装 Rust 工具链 (包含 rustfmt)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: 安装前端依赖
+        run: npm install
+
+      - name: 并行运行前端 & 后端 格式化
+        run: |
+          set -euxo pipefail
+          # 启动前端格式化在后台
+          npm run fmt &
+          pid_frontend=$!
+          # 启动后端格式化在后台
+          cargo fmt --all &
+          pid_backend=$!
+          # 等待两者完成
+          wait $pid_frontend $pid_backend
+
+      - name: 检查并提交变更
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 确保工作区干净后检查改动并推送到 PR 的 base 分支（例如 main）
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "chore: apply formatting (auto) [skip ci]"
+            TARGET_BRANCH=main
+            git push origin HEAD:${TARGET_BRANCH} || (
+              echo "推送失败：可能受保护或无推送权限，请手动合并格式化改动。" && exit 0
+            )
+          else
+            echo "无格式化改动"
+          fi

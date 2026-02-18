@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { i18n } from "../../locales";
+
 interface Props {
   visible: boolean;
   title?: string;
@@ -24,7 +26,11 @@ const handleClose = () => emit("close");
       <div class="sl-modal glass-strong" :style="{ maxWidth: width }" @click.stop>
         <div class="sl-modal-header">
           <h3 v-if="title" class="sl-modal-title">{{ title }}</h3>
-          <button class="sl-modal-close" @click="handleClose" aria-label="关闭弹窗">
+          <button
+            class="sl-modal-close"
+            @click="handleClose"
+            :aria-label="i18n.t('common.close_modal')"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path d="M18 6 6 18 M6 6l12 12" stroke="currentColor" stroke-width="2" />
             </svg>
@@ -50,7 +56,7 @@ const handleClose = () => emit("close");
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  animation: overlay-fade 0.2s ease;
+  animation: overlay-fade var(--sl-transition-fast) ease;
 }
 
 .sl-modal {
@@ -59,7 +65,7 @@ const handleClose = () => emit("close");
   border-radius: var(--sl-radius-lg, 8px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   background: var(--sl-surface, #fff);
-  animation: modal-slide 0.25s ease;
+  animation: modal-slide var(--sl-transition-normal) ease;
 }
 
 .sl-modal-header {
@@ -144,6 +150,6 @@ const handleClose = () => emit("close");
 /* 毛玻璃效果可选，默认关闭以节省性能 */
 .glass-strong {
   backdrop-filter: blur(4px);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--sl-surface, rgba(255, 255, 255, 0.95));
 }
 </style>
