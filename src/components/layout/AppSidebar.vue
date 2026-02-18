@@ -115,13 +115,13 @@ function updateNavIndicator() {
       const navItemRect = activeNavItem.getBoundingClientRect();
       const navRect = navIndicator.value.parentElement.getBoundingClientRect();
       const top = navItemRect.top - navRect.top + (navItemRect.height - 16) / 2;
-      
+
       // 确保导航指示器可见
-      navIndicator.value.style.display = 'block';
-      
+      navIndicator.value.style.display = "block";
+
       // 强制触发重排，确保动画能够正确执行
       void navIndicator.value.offsetHeight; // 触发重排
-      
+
       // 使用 requestAnimationFrame 确保动画在正确的时机执行
       requestAnimationFrame(() => {
         navIndicator.value!.style.top = `${top}px`;

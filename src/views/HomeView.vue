@@ -1000,7 +1000,11 @@ function handleAnimationEnd(event: AnimationEvent) {
           >
             <p
               class="delete-confirm-message"
-              v-html="i18n.t('home.delete_confirm_message', { server: '<strong>' + server.name + '</strong>' })"
+              v-html="
+                i18n.t('home.delete_confirm_message', {
+                  server: '<strong>' + server.name + '</strong>',
+                })
+              "
             ></p>
             <div class="delete-input-group">
               <input
