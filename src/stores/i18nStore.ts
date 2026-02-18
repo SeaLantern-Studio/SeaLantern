@@ -1,9 +1,11 @@
-import { computed, onMounted } from "vue";
+import { computed, onMounted, reactive } from "vue";
 import { defineStore } from "pinia";
-import { i18n, type LocaleCode } from "../locales";
+import { i18n, type LocaleCode, setTranslations } from "../locales";
 import { settingsApi } from "../api/settings";
+import { fetchLocale, fetchByUrl } from "../api/remoteLocales";
+import { REMOTE_LOCALES_MAP } from "./i18nRemote";
 
-const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
+const LOCALE_LABEL_KEYS: Record<string, string> = {
   "zh-CN": "header.chinese",
   "en-US": "header.english",
   "zh-TW": "header.chinese_tw",
@@ -53,10 +55,21 @@ export const useI18nStore = defineStore("i18n", () => {
     })),
   );
 
+  // 下载进度：{ [locale]: { loaded, total } }
+  const downloadProgress = reactive<Record<string, { loaded: number; total: number | null }>>({});
+  // per-locale clear timers: 清除 100% 显示的定时器
+  const clearTimers: Record<string, number> = {};
+
+  function getLocaleProgress(code: LocaleCode) {
+    const p = downloadProgress[code];
+    if (!p) return 0;
+    if (!p.total) return p.loaded > 0 ? 50 : 0;
+    return Math.min(100, Math.round((p.loaded / p.total) * 100));
+  }
+
   async function setLocale(nextLocale: string) {
     if (i18n.isSupportedLocale(nextLocale)) {
       i18n.setLocale(nextLocale);
-      // 保存语言设置到持久化存储
       try {
         const settings = await settingsApi.get();
         settings.language = nextLocale;
@@ -67,13 +80,56 @@ export const useI18nStore = defineStore("i18n", () => {
     }
   }
 
+  async function downloadLocale(localeCode: string) {
+    if (!i18n.isSupportedLocale(localeCode)) return;
+    try {
+      const s = await settingsApi.get();
+      const base = (s as any).locales_base_url || (import.meta as any).env?.VITE_LOCALES_BASE || "";
+
+      const onProgress = (loaded: number, total: number | null) => {
+        downloadProgress[localeCode] = { loaded, total };
+        if (total && loaded >= total) {
+          if (clearTimers[localeCode]) {
+            clearTimeout(clearTimers[localeCode]);
+          }
+          clearTimers[localeCode] = window.setTimeout(() => {
+            try { delete downloadProgress[localeCode]; } catch (e) {}
+            delete clearTimers[localeCode];
+          }, 3000);
+        }
+      };
+      const mapped = (REMOTE_LOCALES_MAP as any)[localeCode];
+      let data: any = null;
+      if (mapped) {
+        data = await fetchByUrl(mapped, onProgress);
+      } else {
+        data = await fetchLocale(localeCode as LocaleCode, onProgress, base || undefined);
+      }
+      setTranslations(localeCode as any, data as any);
+      const p = downloadProgress[localeCode];
+      if (!p || (p.total && p.loaded >= (p.total ?? 0))) {
+        if (!p || p.total === null) {
+          downloadProgress[localeCode] = { loaded: 1, total: 1 };
+        }
+        if (clearTimers[localeCode]) {
+          clearTimeout(clearTimers[localeCode]);
+        }
+        clearTimers[localeCode] = window.setTimeout(() => {
+          try { delete downloadProgress[localeCode]; } catch (e) {}
+          delete clearTimers[localeCode];
+        }, 3000);
+      }
+    } catch (e) {
+      console.error("Failed to download locale:", localeCode, e);
+    }
+  }
+
   function toggleLocale() {
     const currentIndex = supportedLocales.indexOf(localeRef.value);
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % supportedLocales.length;
     setLocale(supportedLocales[nextIndex]);
   }
 
-  // 从持久化存储加载语言设置
   async function loadLanguageSetting() {
     try {
       const settings = await settingsApi.get();
@@ -85,7 +141,6 @@ export const useI18nStore = defineStore("i18n", () => {
     }
   }
 
-  // 组件挂载时加载语言设置
   onMounted(() => {
     loadLanguageSetting();
   });
@@ -101,5 +156,8 @@ export const useI18nStore = defineStore("i18n", () => {
     setLocale,
     toggleLocale,
     loadLanguageSetting,
+    downloadLocale,
+    getLocaleProgress,
+    downloadProgress,
   };
 });

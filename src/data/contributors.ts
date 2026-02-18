@@ -133,6 +133,12 @@ export const contributors: Contributor[] = [
     avatar: "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
     url: "https://github.com/xuezhaju",
   },
+  {
+    name: "福瑞控海天",
+    role: "海内存知己，天涯若比邻",
+    avatar: "https://api.rms.net.cn/head/LucyKitter",
+    url: "https://gitee.com/pnchsb_admin",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
