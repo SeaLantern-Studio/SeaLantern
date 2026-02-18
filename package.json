@@ -15,6 +15,7 @@
     "fmt:check": "oxfmt --check"
   },
   "dependencies": {
+    "@headlessui/vue": "^1.7.23",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-http": "^2.5.7",
@@ -22,6 +23,7 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.0",
     "@vueuse/core": "^14.2.0",
+    "lucide-vue-next": "^0.574.0",
     "pinia": "^3.0.4",
     "vue": "^3.5.13",
     "vue-router": "^4.6.4"

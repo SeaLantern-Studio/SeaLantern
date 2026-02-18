@@ -7,11 +7,11 @@ import { i18n } from "../../locales";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings } from "../../api/settings";
+import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
 const i18nStore = useI18nStore();
-const showLanguageMenu = ref(false);
 const showCloseModal = ref(false);
 const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
@@ -113,35 +113,9 @@ async function minimizeToTray() {
     await appWindow.minimize();
   }
 }
-
-function toggleLanguageMenu() {
-  showLanguageMenu.value = !showLanguageMenu.value;
-}
-
 function setLanguage(locale: string) {
   i18nStore.setLocale(locale);
-  showLanguageMenu.value = false;
 }
-
-// 处理点击外部关闭语言菜单
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as HTMLElement;
-  // 检查是否点击了语言选择器或语言菜单内部
-  const isLanguageSelector = target.closest(".language-selector");
-
-  // 如果没有点击语言选择器或语言菜单，则关闭菜单
-  if (!isLanguageSelector) {
-    showLanguageMenu.value = false;
-  }
-}
-
-onMounted(() => {
-  document.addEventListener("click", handleClickOutside);
-});
-
-onUnmounted(() => {
-  document.removeEventListener("click", handleClickOutside);
-});
 </script>
 
 <template>
@@ -153,19 +127,18 @@ onUnmounted(() => {
     <div class="header-center" data-tauri-drag-region></div>
 
     <div class="header-right">
-      <div class="language-selector" @click="toggleLanguageMenu">
-        <span class="language-text">{{ currentLanguageText }}</span>
-        <div class="language-menu" v-if="showLanguageMenu">
-          <div
-            v-for="option in languageOptions"
-            :key="option.code"
-            class="language-item"
-            @click.stop="setLanguage(option.code)"
-          >
-            {{ option.label }}
-          </div>
-        </div>
-      </div>
+      <Menu as="div" class="language-selector">
+        <MenuButton class="language-text">
+          {{ currentLanguageText }}
+        </MenuButton>
+        <MenuItems class="language-menu">
+          <MenuItem v-for="option in languageOptions" :key="option.code" as="div">
+            <div class="language-item" @click.stop="setLanguage(option.code)">
+              {{ option.label }}
+            </div>
+          </MenuItem>
+        </MenuItems>
+      </Menu>
 
       <div class="header-status">
         <span class="status-dot online"></span>
