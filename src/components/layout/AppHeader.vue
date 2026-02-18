@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from "vue";
+import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18nStore } from "../../stores/i18nStore";
@@ -9,10 +9,12 @@ import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings } from "../../api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 
+
 const route = useRoute();
 const appWindow = getCurrentWindow();
 const i18nStore = useI18nStore();
 const showCloseModal = ref(false);
+const perLocaleProgress = reactive<Record<string, { loaded: number; total: number | null }>>({});
 const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
@@ -33,7 +35,7 @@ const languageOptions = computed(() =>
 );
 
 const currentLanguageText = computed(() => {
-  const current = languageOptions.value.find((option) => option.code === i18nStore.currentLocale);
+  const current = languageOptions.value.find((option) => option.code === (i18nStore.currentLocale as any).value || i18nStore.currentLocale);
   return current?.label ?? i18n.t("header.english");
 });
 
@@ -116,6 +118,25 @@ async function minimizeToTray() {
 function setLanguage(locale: string) {
   i18nStore.setLocale(locale);
 }
+
+async function handleLanguageClick(locale: string) {
+  // For local languages we can just switch immediately
+  if (locale === "zh-CN" || locale === "en-US") {
+    setLanguage(locale);
+    return;
+  }
+
+  // trigger download and then switch (downloadLocale logs errors internally)
+  await i18nStore.downloadLocale(locale);
+  setLanguage(locale);
+}
+
+function computeOverallProgress() {
+  const locales = Object.keys(perLocaleProgress);
+  if (locales.length === 0) return 0;
+  const completed = locales.filter((k) => perLocaleProgress[k].total && perLocaleProgress[k].loaded >= (perLocaleProgress[k].total ?? 0)).length;
+  return Math.round((completed / locales.length) * 100);
+}
 </script>
 
 <template>
@@ -133,8 +154,14 @@ function setLanguage(locale: string) {
         </MenuButton>
         <MenuItems class="language-menu">
           <MenuItem v-for="option in languageOptions" :key="option.code" as="div">
-            <div class="language-item" @click.stop="setLanguage(option.code)">
-              {{ option.label }}
+            <div class="language-item">
+              <div class="language-item-main" @click.stop="() => handleLanguageClick(option.code)">
+                <span class="language-label">{{ option.label }}</span>
+                <span class="locale-progress" v-if="i18nStore.getLocaleProgress(option.code) > 0">{{ i18nStore.getLocaleProgress(option.code) }}%</span>
+                <span class="locale-progress-bar" v-if="i18nStore.getLocaleProgress(option.code) > 0 && i18nStore.getLocaleProgress(option.code) < 100">
+                  <span class="locale-progress-bar-inner" :style="{ width: i18nStore.getLocaleProgress(option.code) + '%' }"></span>
+                </span>
+              </div>
             </div>
           </MenuItem>
         </MenuItems>
@@ -298,6 +325,8 @@ function setLanguage(locale: string) {
   color: white;
 }
 
+/* locale download UI removed */
+
 .language-selector {
   position: relative;
   cursor: pointer;
@@ -337,6 +366,7 @@ function setLanguage(locale: string) {
   grid-template-columns: repeat(2, 1fr);
   gap: 2px;
   overflow-y: auto;
+  padding: 8px;
 }
 
 .language-item {
@@ -350,13 +380,36 @@ function setLanguage(locale: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
-  width: 100%;
+  width: auto;
   box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
 }
 
 .language-item:hover {
   background: var(--sl-primary-bg);
   color: var(--sl-primary);
+}
+
+.language-item { display:flex; align-items:center; justify-content:space-between; gap:8px }
+.language-item-main { flex:1 }
+.language-item-action { flex:0 0 auto }
+.locale-progress { font-size: 0.75rem; margin-left: 8px; color: var(--sl-text-tertiary) }
+.language-label { display:inline-block }
+.locale-progress-bar {
+  display: inline-block;
+  width: 72px;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+  overflow: hidden;
+}
+.locale-progress-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--sl-primary), var(--sl-success));
+  transition: width 0.2s linear;
 }
 
 .language-menu::-webkit-scrollbar {
