@@ -6,7 +6,6 @@ import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLSelect from "../components/common/SLSelect.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
 import { serverApi } from "../api/server";
 import { javaApi, type JavaInfo } from "../api/java";
 import { systemApi } from "../api/system";
@@ -226,15 +225,7 @@ const javaOptions = computed(() => {
 
 const startupModes: StartupMode[] = ["jar", "bat", "sh"];
 
-const startupFileLabel = computed(() => {
-  if (startupMode.value === "bat") {
-    return i18n.t("create.bat_file");
-  }
-  if (startupMode.value === "sh") {
-    return i18n.t("create.sh_file");
-  }
-  return i18n.t("create.jar_file");
-});
+
 </script>
 
 <template>

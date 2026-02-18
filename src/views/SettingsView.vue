@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, watch } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
 import SLModal from "../components/common/SLModal.vue";
 import SLSelect from "../components/common/SLSelect.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
 import JavaDownloader from "../components/JavaDownloader.vue";
 import {
   settingsApi,
@@ -15,8 +14,6 @@ import {
   getSystemFonts,
   type AppSettings,
 } from "../api/settings";
-import { systemApi } from "../api/system";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { i18n } from "../locales";
 
 const settings = ref<AppSettings | null>(null);
@@ -39,35 +36,7 @@ const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
 const uiFontSize = ref("14");
 
-const backgroundSizeOptions = computed(() => [
-  { label: i18n.t("common.background_size_cover"), value: "cover" },
-  { label: i18n.t("common.background_size_contain"), value: "contain" },
-  { label: i18n.t("common.background_size_fill"), value: "fill" },
-  { label: i18n.t("common.background_size_auto"), value: "auto" },
-]);
 
-const colorOptions = computed(() => [
-  { label: i18n.t("common.color_default"), value: "default" },
-  { label: "Midnight", value: "midnight" },
-  { label: "Sunset", value: "sunset" },
-  { label: "Ocean", value: "ocean" },
-  { label: "Rose", value: "rose" },
-  { label: "Zombie", value: "zombie" },
-  { label: i18n.t("common.color_custom"), value: "custom" },
-]);
-
-const editColorOptions = computed(() => [
-  { label: i18n.t("common.edit_color_light"), value: "light" },
-  { label: i18n.t("common.edit_color_dark"), value: "dark" },
-  { label: i18n.t("common.edit_color_light_acrylic"), value: "light_acrylic" },
-  { label: i18n.t("common.edit_color_dark_acrylic"), value: "dark_acrylic" },
-]);
-
-const themeOptions = computed(() => [
-  { label: i18n.t("common.theme_auto"), value: "auto" },
-  { label: i18n.t("common.theme_light"), value: "light" },
-  { label: i18n.t("common.theme_dark"), value: "dark" },
-]);
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("common.font_system_default"), value: "" },
@@ -77,24 +46,10 @@ const showImportModal = ref(false);
 const importJson = ref("");
 const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
-const colorSettingsExpanded = ref(false);
 const bgPreviewLoaded = ref(false);
 const bgPreviewLoading = ref(false);
 
-const backgroundPreviewUrl = computed(() => {
-  if (!settings.value?.background_image) return "";
-  if (!bgSettingsExpanded.value) return "";
-  return convertFileSrc(settings.value.background_image);
-});
 
-function getFileExtension(path: string): string {
-  return path.split(".").pop()?.toLowerCase() || "";
-}
-
-function isAnimatedImage(path: string): boolean {
-  const ext = getFileExtension(path);
-  return ext === "gif" || ext === "webp" || ext === "apng";
-}
 
 onMounted(async () => {
   await loadSettings();
@@ -177,12 +132,6 @@ function applyFontSize(size: number) {
   document.documentElement.style.fontSize = `${size}px`;
 }
 
-function handleFontSizeChange() {
-  markChanged();
-  const size = parseInt(uiFontSize.value) || 14;
-  applyFontSize(size);
-}
-
 function applyFontFamily(fontFamily: string) {
   if (fontFamily) {
     document.documentElement.style.setProperty("--sl-font-sans", fontFamily);
@@ -190,44 +139,6 @@ function applyFontFamily(fontFamily: string) {
   } else {
     document.documentElement.style.removeProperty("--sl-font-sans");
     document.documentElement.style.removeProperty("--sl-font-display");
-  }
-}
-
-function handleFontFamilyChange() {
-  markChanged();
-  if (settings.value) {
-    applyFontFamily(settings.value.font_family);
-  }
-}
-
-async function handleAcrylicChange(enabled: boolean) {
-  markChanged();
-  document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
-
-  if (!acrylicSupported.value) {
-    return;
-  }
-
-  try {
-    const theme = settings.value?.theme || "auto";
-    const isDark = getEffectiveTheme(theme) === "dark";
-    await applyAcrylic(enabled, isDark);
-  } catch (e) {
-    error.value = String(e);
-  }
-}
-
-async function handleThemeChange() {
-  markChanged();
-  if (!settings.value) return;
-
-  const effectiveTheme = applyTheme(settings.value.theme);
-
-  if (settings.value.acrylic_enabled && acrylicSupported.value) {
-    try {
-      const isDark = effectiveTheme === "dark";
-      await applyAcrylic(true, isDark);
-    } catch {}
   }
 }
 
@@ -345,26 +256,7 @@ async function handleImport() {
   }
 }
 
-async function pickBackgroundImage() {
-  try {
-    const result = await systemApi.pickImageFile();
-    console.log("Selected image:", result);
-    if (result && settings.value) {
-      settings.value.background_image = result;
-      markChanged();
-    }
-  } catch (e) {
-    console.error("Pick image error:", e);
-    error.value = String(e);
-  }
-}
 
-function clearBackgroundImage() {
-  if (settings.value) {
-    settings.value.background_image = "";
-    markChanged();
-  }
-}
 
 function handleDeveloperModeChange() {
   markChanged();

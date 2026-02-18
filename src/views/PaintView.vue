@@ -320,7 +320,6 @@ const loading = ref(true);
 const fontsLoading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
-const success = ref<string | null>(null);
 
 // 亚克力支持检测
 const acrylicSupported = ref(true);
@@ -363,60 +362,7 @@ const editColorOptions = computed(() => [
 
 const editColorPlan = ref<"light" | "dark" | "light_acrylic" | "dark_acrylic">("light");
 
-const colorSchemes: Record<
-  string,
-  {
-    bg: string;
-    bgSecondary: string;
-    bgTertiary: string;
-    primary: string;
-    secondary: string;
-    textPrimary: string;
-    textSecondary: string;
-    border: string;
-  }
-> = {
-  light: {
-    bg: "#f8fafc",
-    bgSecondary: "#f1f5f9",
-    bgTertiary: "#e2e8f0",
-    primary: "#0ea5e9",
-    secondary: "#06b6d4",
-    textPrimary: "#0f172a",
-    textSecondary: "#475569",
-    border: "#e2e8f0",
-  },
-  dark: {
-    bg: "#0f1117",
-    bgSecondary: "#1a1d28",
-    bgTertiary: "#242836",
-    primary: "#60a5fa",
-    secondary: "#22d3ee",
-    textPrimary: "#e2e8f0",
-    textSecondary: "#94a3b8",
-    border: "rgba(255, 255, 255, 0.1)",
-  },
-  light_acrylic: {
-    bg: "rgba(248, 250, 252, 0.7)",
-    bgSecondary: "rgba(241, 245, 249, 0.6)",
-    bgTertiary: "rgba(226, 232, 240, 0.5)",
-    primary: "#0ea5e9",
-    secondary: "#06b6d4",
-    textPrimary: "#0f172a",
-    textSecondary: "#475569",
-    border: "#e2e8f0",
-  },
-  dark_acrylic: {
-    bg: "rgba(15, 17, 23, 0.7)",
-    bgSecondary: "rgba(26, 29, 40, 0.6)",
-    bgTertiary: "rgba(36, 40, 54, 0.5)",
-    primary: "#60a5fa",
-    secondary: "#22d3ee",
-    textPrimary: "#e2e8f0",
-    textSecondary: "#94a3b8",
-    border: "rgba(255, 255, 255, 0.1)",
-  },
-};
+
 
 const themeOptions = [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
@@ -1600,14 +1546,7 @@ async function resetSettings() {
   }
 }
 
-async function exportSettings() {
-  try {
-    const json = await settingsApi.exportJson();
-    await navigator.clipboard.writeText(json);
-  } catch (e) {
-    error.value = String(e);
-  }
-}
+
 
 async function handleImport() {
   if (!importJson.value.trim()) {
@@ -2189,7 +2128,7 @@ function clearBackgroundImage() {
       :visible="showColorPickerDialog"
       :title="i18n.t('settings.color_picker')"
       @close="closeColorPicker"
-      :width="320"
+      width="320px"
     >
       <div class="color-picker-content">
         <!-- 颜色预览 -->
@@ -2286,7 +2225,8 @@ function clearBackgroundImage() {
               type="number"
               min="0"
               max="255"
-              v-model="rgb.r"
+              :modelValue="String(rgb.r)"
+              @update:modelValue="rgb.r = parseInt($event) || 0"
               @input="updateFromRGB"
               style="width: 100px"
             />
@@ -2297,7 +2237,8 @@ function clearBackgroundImage() {
               type="number"
               min="0"
               max="255"
-              v-model="rgb.g"
+              :modelValue="String(rgb.g)"
+              @update:modelValue="rgb.g = parseInt($event) || 0"
               @input="updateFromRGB"
               style="width: 100px"
             />
@@ -2308,7 +2249,8 @@ function clearBackgroundImage() {
               type="number"
               min="0"
               max="255"
-              v-model="rgb.b"
+              :modelValue="String(rgb.b)"
+              @update:modelValue="rgb.b = parseInt($event) || 0"
               @input="updateFromRGB"
               style="width: 100px"
             />
@@ -2320,7 +2262,8 @@ function clearBackgroundImage() {
               min="0"
               max="1"
               step="0.01"
-              v-model="rgb.a"
+              :modelValue="String(rgb.a)"
+              @update:modelValue="rgb.a = parseFloat($event) || 0"
               @input="updateFromRGB"
               style="width: 100px"
             />

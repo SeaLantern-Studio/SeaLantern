@@ -9,9 +9,7 @@ import { useServerStore } from "../stores/serverStore";
 import { i18n } from "../locales";
 
 // 导入拆分后的组件
-import ConfigToolbar from "../components/config/ConfigToolbar.vue";
 import ConfigCategories from "../components/config/ConfigCategories.vue";
-import ConfigEntry from "../components/config/ConfigEntry.vue";
 
 const route = useRoute();
 const store = useServerStore();
@@ -100,21 +98,7 @@ async function loadProperties() {
   }
 }
 
-async function saveProperties() {
-  if (!serverPath.value) return;
-  saving.value = true;
-  error.value = null;
-  successMsg.value = null;
-  try {
-    await configApi.writeServerProperties(serverPath.value, editValues.value);
-    successMsg.value = i18n.t("common.config_saved");
-    setTimeout(() => (successMsg.value = null), 3000);
-  } catch (e) {
-    error.value = String(e);
-  } finally {
-    saving.value = false;
-  }
-}
+
 
 function updateValue(key: string, value: string | boolean) {
   editValues.value[key] = String(value);
@@ -225,7 +209,7 @@ function handleSearchUpdate(value: string) {
             <template v-else-if="entry.key === 'gamemode'">
               <select
                 :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target.value)"
+                @change="updateValue(entry.key, $event.target?.value ?? '')"
                 class="select"
               >
                 <option value="survival">{{ i18n.t("config.gamemode.survival") }}</option>
@@ -237,7 +221,7 @@ function handleSearchUpdate(value: string) {
             <template v-else-if="entry.key === 'difficulty'">
               <select
                 :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target.value)"
+                @change="updateValue(entry.key, $event.target?.value ?? '')"
                 class="select"
               >
                 <option value="peaceful">{{ i18n.t("config.difficulty.peaceful") }}</option>
@@ -251,7 +235,7 @@ function handleSearchUpdate(value: string) {
                 :value="editValues[entry.key]"
                 :type="entry.value_type === 'number' ? 'number' : 'text'"
                 :placeholder="entry.default_value"
-                @input="updateValue(entry.key, $event.target.value)"
+                @input="updateValue(entry.key, $event.target?.value ?? '')"
                 class="input"
               />
             </template>
