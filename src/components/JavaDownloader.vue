@@ -12,10 +12,10 @@
       </div>
 
       <!-- Right Side: Interaction Area -->
-      <div class="flex items-center gap-3 flex-shrink-0">
+      <div class="flex items-center gap-3 flex-shrink-0 whitespace-nowrap">
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
-          <div class="w-36">
+          <div class="w-36 flex-shrink-0">
             <SLSelect
               v-model="selectedVersion"
               :options="versionOptions"
