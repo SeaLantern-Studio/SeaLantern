@@ -55,7 +55,6 @@ const colorOptions = computed(() => [
   { label: "Sunset", value: "sunset" },
   { label: "Ocean", value: "ocean" },
   { label: "Rose", value: "rose" },
-  { label: "Zombie", value: "zombie" },
   { label: i18n.t("common.color_custom"), value: "custom" },
 ]);
 
