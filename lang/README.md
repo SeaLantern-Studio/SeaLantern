@@ -116,19 +116,6 @@
     },
     "collapse_btn": "收起侧边栏"
   },
-  "header": {
-    "language": "语言",
-    "chinese": "简体中文",
-    "english": "English",
-    "chinese_tw": "繁體中文",
-    "japanese": "日本語",
-    "spanish": "Español",
-    "deutsch": "Deutsch",
-    "russian": "Русский",
-    "vietnamese": "Tiếng Việt",
-    "korean": "한국어",
-    "french": "Français"
-  },
   "home": {
     "title": "服务器管理",
     "no_servers": "暂无服务器",
