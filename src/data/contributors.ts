@@ -133,6 +133,12 @@ export const contributors: Contributor[] = [
     avatar: "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
     url: "https://github.com/xuezhaju",
   },
+  {
+    name: "Yang458",
+    role: "贡献者",
+    avatar: "https://api.rms.net.cn/head/Yang4893",
+    url: "https://github.com/minecraft-Yang458",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================
