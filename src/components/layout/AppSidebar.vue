@@ -211,17 +211,17 @@ function updateOptionsPosition() {
     const sidebarEl = document.querySelector(".sidebar") as HTMLElement | null;
     const sidebarRect = sidebarEl ? sidebarEl.getBoundingClientRect() : null;
 
-    // 默认宽度与样式
+    // 默认宽度与样式：当侧边栏存在且未收起时允许更宽一些
     const width = sidebarRect && !ui.sidebarCollapsed ? Math.max(200, btnRect.width) : 200;
 
     // 计算固定定位的 top/left（相对于视口）
     let top = Math.round(btnRect.bottom);
     let left = Math.round(btnRect.left);
 
-    // 如果侧边栏收起，将列表显示在侧边栏右侧
-    if (sidebarRect && ui.sidebarCollapsed) {
+    // 如果存在侧边栏，无论收起或展开，都将列表显示在侧边栏右侧，避免被侧栏容器裁剪
+    // 使用相同的垂直居中逻辑，确保展开与收起时起始位置一致
+    if (sidebarRect) {
       left = Math.round(sidebarRect.right + 8);
-      // 让列表垂直居中于按钮（或靠近按钮）
       top = Math.round(btnRect.top + (btnRect.height - 40) / 2);
     }
 
