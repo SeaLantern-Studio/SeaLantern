@@ -1,0 +1,638 @@
+# Language File Adding Guide
+
+This guide will help you add new language support to Sea Lantern.
+
+## How to add a new language
+
+### 1. Create a language file
+
+Create a new JSON file in `lang`,file name's format is `lang-code.json`,such as:
+
+- `zh-CN.json` (Chinese - Simplified)
+- `en-US.json` (English - United State)
+- `ja-JP.json` (Japanese - Japan)
+
+### 2. File's structure
+
+A new language file should include the structure below:
+
+```json
+{
+  "languageName": "Language Name",
+  "common": {
+    "app_name": "Sea Lantern",
+    "home": "Home",
+    "create_server": "Create Server",
+    "console": "Console",
+    "config_edit": "Config Edit",
+    "player_manage": "Player Manage",
+    "settings": "Settings",
+    "personalize": "Personalize",
+    "about": "About",
+    "loading": "Loading...",
+    "select_server": "Select Server",
+    "open_folder": "Open Folder",
+    "select": "Select",
+    "search": "Search...",
+    "search_options": "Search Options",
+    "no_match": "No matches",
+    "close_modal": "Close Modal",
+    "close_notification": "Close Notification",
+    "server_status_stopped": "Stopped",
+    "server_status_starting": "Starting",
+    "server_status_running": "Running",
+    "server_status_stopping": "Stopping",
+    "server_status_error": "Error",
+    "message_server_started": "Server started",
+    "message_server_stopped": "Server stopped",
+    "message_command_sent": "Command sent",
+    "message_whitelist_added": "Added to whitelist",
+    "message_whitelist_removed": "Removed from whitelist",
+    "message_player_banned": "Player banned",
+    "message_player_unbanned": "Player unbanned",
+    "message_op_added": "OP added",
+    "message_op_removed": "OP removed",
+    "message_player_kicked": "Player kicked",
+    "message_server_not_running": "Server not running",
+    "message_server_already_running": "Server already running",
+    "message_server_not_found": "Server not found",
+    "message_invalid_player_name": "Invalid player name",
+    "message_network_error": "Network error",
+    "message_unknown_error": "Unknown error",
+    "message_select_server": "Please select a server",
+    "message_server_required": "Server must be running for this action",
+    "message_enter_player_name": "Please enter player name",
+    "message_player_name_length": "Player name must be 3-16 characters",
+    "message_player_name_invalid": "Player name can only contain letters, numbers, and underscores",
+    "background_size_cover": "Cover",
+    "background_size_contain": "Contain",
+    "background_size_fill": "Fill",
+    "background_size_auto": "Auto",
+    "color_default": "Default",
+    "color_custom": "Custom",
+    "edit_color_light": "Light",
+    "edit_color_dark": "Dark",
+    "edit_color_light_acrylic": "Light Acrylic",
+    "edit_color_dark_acrylic": "Dark Acrylic",
+    "theme_auto": "Follow System",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "font_system_default": "System Default",
+    "paste_json": "Paste JSON here",
+    "command_day": "Day",
+    "command_night": "Night",
+    "command_clear": "Clear",
+    "command_rain": "Rain",
+    "command_save": "Save",
+    "command_list": "Player List",
+    "command_keep_inventory_on": "Keep Inventory On",
+    "command_keep_inventory_off": "Keep Inventory Off",
+    "command_mob_griefing_off": "Disable Mob Griefing",
+    "enter_command": "Enter command... (Tab to autocomplete)",
+    "select_java_path": "Please select Java path",
+    "enter_server_name": "Please enter server name",
+    "java_64bit": "64-bit",
+    "java_32bit": "32-bit",
+    "unknown": "Unknown",
+    "quote_text": "We built the skeleton; the soul, we leave to you.",
+    "click_to_refresh": "Click to refresh",
+    "edit_server_name": "Edit Server Name",
+    "config_all": "All",
+    "config_network": "Network",
+    "config_player": "Player",
+    "config_game": "Game",
+    "config_world": "World",
+    "config_performance": "Performance",
+    "config_display": "Display",
+    "config_other": "Other",
+    "config_saved": "Config saved",
+    "refresh": "Refresh",
+    "save": "Save"
+  },
+  "sidebar": {
+    "groups": {
+      "main": "Main",
+      "server": "Server",
+      "system": "System"
+    },
+    "collapse_btn": "Collapse Sidebar"
+  },
+  "header": {
+    "language": "Language",
+    "chinese": "简体中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "japanese": "日本語",
+    "spanish": "Español",
+    "deutsch": "Deutsch",
+    "russian": "Русский",
+    "vietnamese": "Tiếng Việt",
+    "korean": "한국어",
+    "french": "Français"
+  },
+  "home": {
+    "title": "Server Manager",
+    "no_servers": "No servers yet",
+    "create_first": "Create your first server",
+    "start": "Start",
+    "stop": "Stop",
+    "edit": "Edit",
+    "delete": "Delete",
+    "status": "Status",
+    "running": "Running",
+    "stopped": "Stopped",
+    "starting": "Starting",
+    "stopping": "Stopping",
+    "error": "Error",
+    "system_resources": "System Resources",
+    "detail_view": "Switch to detail view",
+    "gauge_view": "Switch to gauge view",
+    "recent_alerts": "Recent Alerts/Errors",
+    "delete_confirm_message": "Please enter server name '{{server}}' to confirm deletion",
+    "delete_input_placeholder": "Enter server name",
+    "delete_cancel": "Cancel",
+    "delete_confirm": "Confirm Delete",
+    "delete_error": "Incorrect server name, please re-enter",
+    "close_window_title": "Close Window",
+    "close_window_message": "Are you sure you want to close Sea Lantern?",
+    "remember_choice": "Remember my choice",
+    "close_action_minimize": "Minimize to Tray",
+    "close_action_close": "Exit"
+  },
+  "create": {
+    "title": "Create Server",
+    "startup_mode": "Startup Mode",
+    "jar_file": "Server JAR File",
+    "bat_file": "Server BAT File",
+    "sh_file": "Server SH File",
+    "select_startup_file": "Please select server {{mode}} file",
+    "browse": "Browse",
+    "scan": "Scan",
+    "java_version": "Java Version",
+    "select_java": "Select Java",
+    "server_name": "Server Name",
+    "server_path": "Server Path",
+    "create": "Create",
+    "select_and_create": "Select and Create",
+    "max_memory": "Max Memory (MB)",
+    "min_memory": "Min Memory (MB)",
+    "online_mode": "Online Mode",
+    "online_mode_on": "Enabled",
+    "online_mode_off": "Disabled",
+    "cancel": "Cancel",
+    "scanning": "Scanning all disks...",
+    "no_java": "No Java detected, please click the button below to scan",
+    "java_found": "Found {{count}} Java installations",
+    "rescan": "Rescan",
+    "default_port_placeholder": "Default 25565",
+    "java_env": "Java Environment",
+    "java_scan": "Scan for Java installations on all disks",
+    "java_manual": "Manually select Java path",
+    "java_path": "Java Path"
+  },
+  "console": {
+    "title": "Console",
+    "send_command": "Send Command",
+    "clear_log": "Clear Log",
+    "copy_log": "Copy Log",
+    "add_custom_command": "Add Custom Command",
+    "edit_custom_command": "Edit Custom Command",
+    "command_name": "Command Name",
+    "command_content": "Command Content",
+    "enter_command_name": "Enter command name",
+    "enter_command_content": "Enter command content",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "add": "Add",
+    "update": "Update",
+    "back_to_bottom": "Go to Bottom",
+    "waiting_for_output": "Waiting for output...",
+    "quick": "Quick:",
+    "custom": "Custom:",
+    "running": "Running",
+    "starting": "Starting",
+    "stopping": "Stopping",
+    "stopped": "Stopped"
+  },
+  "config": {
+    "title": "Config Edit",
+    "save": "Save",
+    "reload": "Reload",
+    "search": "Search config...",
+    "select_server": "Select server for config edit",
+    "no_server": "Please select a server for config edit",
+    "loading": "Loading config...",
+    "no_config": "Config file not found. Please start the server once to generate server.properties",
+    "saved": "Config saved",
+    "categories": {
+      "all": "All",
+      "network": "Network",
+      "player": "Player",
+      "game": "Game",
+      "world": "World",
+      "performance": "Performance",
+      "display": "Display",
+      "other": "Other"
+    },
+    "gamemode": {
+      "survival": "Survival",
+      "creative": "Creative",
+      "adventure": "Adventure",
+      "spectator": "Spectator"
+    },
+    "difficulty": {
+      "peaceful": "Peaceful",
+      "easy": "Easy",
+      "normal": "Normal",
+      "hard": "Hard"
+    },
+    "properties": {
+      "server-port": "Server Port",
+      "server-ip": "Server IP",
+      "max-players": "Max Players",
+      "online-mode": "Online Mode",
+      "white-list": "Enable Whitelist",
+      "enforce-whitelist": "Enforce Whitelist",
+      "gamemode": "Default Gamemode",
+      "difficulty": "Difficulty",
+      "hardcore": "Hardcore Mode",
+      "pvp": "Allow PVP",
+      "allow-flight": "Allow Flight",
+      "allow-nether": "Allow Nether",
+      "spawn-monsters": "Spawn Monsters",
+      "spawn-animals": "Spawn Animals",
+      "spawn-npcs": "Spawn NPCs",
+      "generate-structures": "Generate Structures",
+      "level-name": "World Name",
+      "level-seed": "World Seed",
+      "level-type": "World Type",
+      "view-distance": "View Distance",
+      "simulation-distance": "Simulation Distance",
+      "max-tick-time": "Max Tick Time",
+      "network-compression-threshold": "Network Compression Threshold",
+      "motd": "Server Description (MOTD)",
+      "enable-command-block": "Enable Command Block",
+      "enable-query": "Enable Query Protocol",
+      "enable-rcon": "Enable RCON Remote Control",
+      "enable-status": "Enable Server List Status",
+      "force-gamemode": "Force Gamemode",
+      "spawn-protection": "Spawn Protection Radius",
+      "sync-chunk-writes": "Sync Chunk Writes",
+      "resource-pack": "Resource Pack URL",
+      "resource-pack-id": "Resource Pack ID",
+      "resource-pack-prompt": "Resource Pack Prompt",
+      "resource-pack-sha1": "Resource Pack SHA1 Hash",
+      "text-filtering-config": "Text Filtering Config",
+      "text-filtering-version": "Text Filtering Version",
+      "broadcast-rcon-to-ops": "Broadcast RCON Commands to OPs",
+      "bug-report-link": "Bug Report Link",
+      "enable-jmx-monitoring": "Enable JMX Monitoring",
+      "enforce-secure-profile": "Enforce Secure Profile",
+      "entity-broadcast-range-percentage": "Entity Broadcast Range %",
+      "function-permission-level": "Function Permission Level",
+      "generator-settings": "World Generator Settings",
+      "hide-online-players": "Hide Online Player Count",
+      "initial-disabled-packs": "Initially Disabled Packs",
+      "accepts-transfers": "Accept Transfers",
+      "broadcast-console-to-ops": "Broadcast Console Commands to OPs",
+      "enable-code-of-conduct": "Enable Code of Conduct",
+      "initial-enabled-packs": "Initially Enabled Packs",
+      "management-server-allowed-origins": "Management Server Allowed Origins",
+      "management-server-enabled": "Enable Remote Management API",
+      "management-server-host": "Management Server Bind Host",
+      "management-server-port": "Management Server Bind Port",
+      "management-server-secret": "Management Service Access Secret",
+      "management-server-tls-enabled": "Enable TLS Encryption",
+      "management-server-tls-keystore": "TLS Keystore File Path",
+      "management-server-tls-keystore-password": "TLS Keystore Password",
+      "use-native-transport": "Use Linux Native Transport Optimization",
+      "log-ips": "Log Player IP Addresses",
+      "max-chained-neighbor-updates": "Max Chained Neighbor Updates",
+      "max-world-size": "Max World Border Radius",
+      "op-permission-level": "OP Permission Level",
+      "player-idle-timeout": "Player Idle Timeout (minutes)",
+      "prevent-proxy-connections": "Prevent Proxy Connections",
+      "rate-limit": "Max Requests per Player per Minute",
+      "rcon": {
+        "port": "RCON Port",
+        "password": "RCON Password"
+      },
+      "query": {
+        "port": "Query Protocol Port"
+      },
+      "require-resource-pack": "Require Resource Pack",
+      "pause-when-empty-seconds": "Pause When Empty (seconds)",
+      "region-file-compression": "Region File Compression Method",
+      "status-heartbeat-interval": "Status Heartbeat Interval (seconds)"
+    }
+  },
+  "players": {
+    "title": "Player Management",
+    "whitelist": "Whitelist",
+    "banned": "Banned",
+    "ops": "OPs",
+    "add": "Add",
+    "remove": "Remove",
+    "select_server": "Select Server",
+    "no_server": "Please select a server",
+    "server_not_running": "Player management requires server running",
+    "online_players": "Online Players",
+    "server_offline": "Server Offline",
+    "no_players": "No online players",
+    "kick": "Kick",
+    "empty_whitelist": "Whitelist is empty",
+    "empty_banned": "Banned list is empty",
+    "ban": "Banned",
+    "unban": "Unban",
+    "empty_ops": "OP list is empty",
+    "deop": "Deop",
+    "ban_player": "Ban Player",
+    "add_op": "Add OP",
+    "player_name": "Player Name",
+    "player_id": "Enter Player Game ID",
+    "ban_reason": "Ban Reason (Optional)",
+    "ban_reason_placeholder": "Enter reason",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "server_not_running_hint": "⚠ Server not running, cannot send commands",
+    "empty": "Empty",
+    "level": "Level"
+  },
+  "settings": {
+    "title": "Settings",
+    "auto_stop": "Auto-stop servers on close",
+    "auto_eula": "Auto-accept EULA",
+    "close_action": "Close Action",
+    "close_action_desc": "Choose action when close button is clicked",
+    "close_action_ask": "Ask",
+    "close_action_minimize": "Minimize to Tray",
+    "close_action_close": "Exit",
+    "default_memory": "Default Memory",
+    "default_port": "Default Port",
+    "jvm_args": "JVM Arguments",
+    "general": "General",
+    "general_desc": "Basic behavior settings",
+    "auto_stop_desc": "Automatically send stop command to running servers when Sea Lantern closes to prevent data loss",
+    "auto_eula_desc": "Automatically write eula=true before server starts, no need to modify manually",
+    "server_defaults": "Server Defaults",
+    "server_defaults_desc": "Default parameters used when creating new servers",
+    "max_memory_desc": "Recommended at least 1024MB. Large modpacks may need 4096MB or more",
+    "min_memory": "Min Memory (MB)",
+    "min_memory_desc": "Recommended 1/4 to 1/2 of max memory",
+    "default_java": "Default Java Version",
+    "default_java_desc": "Leave empty to auto-detect the most suitable Java each time",
+    "jvm_args_desc": "These arguments are added to all server launches. Suitable for GC optimization parameters",
+    "port_desc": "Minecraft default port is 25565. Multiple servers need different ports",
+    "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
+    "console": "Console",
+    "console_desc": "Console display related settings",
+    "console_font_size": "Console Font Size (px)",
+    "console_font_size_desc": "Console log text size, default 13",
+    "max_log_lines": "Max Log Lines",
+    "max_log_lines_desc": "Maximum log lines retained per server, older logs are automatically cleared beyond this limit. Default 5000",
+    "appearance": "Appearance",
+    "appearance_desc": "Customize application background and visual effects",
+    "theme": "Theme Mode",
+    "theme_desc": "Select application theme appearance. 'Follow System' will match system dark/light mode automatically",
+    "font_size": "Text Size",
+    "font_size_desc": "Adjust interface text size",
+    "font_family": "Font",
+    "font_family_desc": "Select font for interface. Some fonts need to be installed on system or loaded from network",
+    "acrylic": "Acrylic Effect (Glass)",
+    "acrylic_desc": "Enable Windows system-level acrylic glass effect, compatible with background images",
+    "acrylic_not_supported": "Acrylic effect not supported on current system",
+    "background": "Background Image",
+    "background_desc": "Upload image as application background. Supports PNG, JPG, WEBP, etc.",
+    "opacity": "Opacity",
+    "opacity_desc": "Adjust background image opacity (0.0 - 1.0), smaller value is more transparent",
+    "blur": "Blur (px)",
+    "blur_desc": "Add blur effect to background to make foreground content clearer",
+    "brightness": "Brightness",
+    "brightness_desc": "Adjust background image brightness (0.0 - 2.0), 1.0 is original brightness",
+    "background_size": "Image Fill Mode",
+    "background_size_desc": "Select how background image is displayed",
+    "background_size_options": {
+      "cover": "Cover",
+      "contain": "Contain",
+      "fill": "Fill",
+      "auto": "Auto"
+    },
+    "color_options": {
+      "default": "Default",
+      "midnight": "Midnight",
+      "forest": "Forest",
+      "sunset": "Sunset",
+      "ocean": "Ocean",
+      "rose": "Rose",
+      "custom": "Custom"
+    },
+    "edit_colorplan_options": {
+      "light": "Light",
+      "dark": "Dark",
+      "light_acrylic": "Light Acrylic",
+      "dark_acrylic": "Dark Acrylic"
+    },
+    "theme_options": {
+      "auto": "Follow System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "save": "Save",
+    "discard": "Discard Changes",
+    "unsaved_changes": "Unsaved changes",
+    "export": "Export",
+    "import": "Import",
+    "reset": "Reset to Default",
+    "import_settings": "Import Settings",
+    "import_desc": "Paste previously exported JSON data",
+    "import_placeholder": "{\"close_servers_on_exit\": true, ...}",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "confirm_import": "Import",
+    "reset_confirm": "Confirm Reset to Default",
+    "reset_desc": "Are you sure you want to reset all settings to defaults? This action cannot be undone.",
+    "confirm_reset": "Confirm Reset",
+    "loading": "Loading settings...",
+    "saved": "Settings saved",
+    "reset_success": "Reset to default settings",
+    "export_success": "Settings JSON copied to clipboard",
+    "import_success": "Settings imported",
+    "no_json": "Please paste JSON",
+    "import_title": "Import Settings",
+    "reset_title": "Confirm Reset to Default",
+    "browse_java": "Browse java.exe",
+    "browse_jar": "Browse .jar file",
+    "server_name_placeholder": "Enter name",
+    "color_theme": "Color Theme",
+    "color_theme_desc": "Customize application color theme",
+    "use_preset_colortheme": "Use Preset",
+    "use_preset_colortheme_desc": "Choose preset color theme or customize colors",
+    "color_editing": "Color Editing",
+    "color_editing_desc": "Set custom color values",
+    "current_edit_colorplan": "Current Edit Color Plan",
+    "current_edit_colorplan_desc": "Select the color plan to edit currently",
+    "color_plan": "Color Plan",
+    "color_plan_desc": "Select color plan to edit",
+    "primary_background_color": "Primary Background Color",
+    "secondary_background_color": "Secondary Background Color",
+    "tertiary_background_color": "Tertiary Background Color",
+    "primary_color": "Primary Accent Color",
+    "secondary_color": "Secondary Accent Color",
+    "text_primary_color": "Primary Text Color",
+    "text_secondary_color": "Secondary Text Color",
+    "primary_text_color": "Primary Text Color",
+    "secondary_text_color": "Secondary Text Color",
+    "border_color": "Border Color",
+    "color_value": "Color Value",
+    "search_font": "Search Font",
+    "loading_preview": "Loading preview...",
+    "animated_image": "Animated Image",
+    "remove": "Remove",
+    "pick_image": "Pick Image",
+    "replace_image": "Replace Image",
+    "personalize_page_import_export": "For import/export operations, please go to 'Settings' page",
+    "font_family_default": "System Default",
+    "color_picker": "Color Picker",
+    "input_color_placeholder": "Enter color value",
+    "color_hue": "Hue",
+    "color_saturation": "Saturation",
+    "color_lightness": "Lightness",
+    "color_alpha": "Alpha",
+    "developer_mode": "Developer Mode",
+    "developer_mode_desc": "Enable advanced features and debug options",
+    "developer_mode_toggle": "Enable Developer Mode",
+    "developer_mode_toggle_desc": "Enables debugging tools in developer mode when enabled"
+  },
+  "about": {
+    "title": "About",
+    "version": "Version",
+    "check_update": "Check for Updates",
+    "contributors": "Contributors",
+    "subtitle": "Minecraft Server Management Tool",
+    "tech_badge": "Tauri 2 + Vue 3",
+    "license_badge": "GPLv3",
+    "hero_desc": "A Minecraft server launcher built by the community.\nNot just open-source code, but even the soul is defined by you.",
+    "manifesto_title": "Why Sea Lantern?",
+    "manifesto_text1": "Sea Lantern is a light-emitting block in Minecraft – composed of countless fragments, yet it emits a soft, enduring glow.",
+    "manifesto_text2": "Just like this project, every contributor is a sea lantern shard.\nWhen we come together, we illuminate the entire community.",
+    "contributor_wall": "Contributor Wall",
+    "contributor_desc": "Everyone who makes this project better",
+    "join_text": "Your Name",
+    "join_desc": "Contribute and join us",
+    "project_info": "Project Info",
+    "build_year": "Build Year",
+    "frontend": "Frontend",
+    "backend": "Backend",
+    "license": "License",
+    "contribute_ways": "Ways to Contribute",
+    "way_code": "Code",
+    "way_code_desc": "Submit PRs, fix bugs, or add features",
+    "way_design": "Design",
+    "way_design_desc": "Design UI, icons, or themes",
+    "way_idea": "Ideas",
+    "way_idea_desc": "Share your ideas in Issues",
+    "way_doc": "Documentation",
+    "way_doc_desc": "Improve tutorials and guides",
+    "way_translate": "Translation",
+    "way_translate_desc": "Help translate into other languages",
+    "way_promote": "Promotion",
+    "way_promote_desc": "Share with more MC server hosts",
+    "gitee_repo": "Gitee Repo",
+    "bilibili": "Bilibili",
+    "footer_text1": "Sea Lantern is an open-source project licensed under GPLv3.",
+    "footer_text2": "Minecraft is a registered trademark of Mojang Studios. This project is not affiliated with Mojang.",
+    "footer_quote": "\"We built the skeleton; the soul, we leave to you.\"",
+    "update_checking": "Checking...",
+    "update_latest": "Already up to date",
+    "update_available": "New version found",
+    "update_error": "Update failed",
+    "update_title": "New Version Found",
+    "update_current": "Current Version",
+    "update_latest_version": "Latest Version",
+    "update_release_notes": "Release Notes",
+    "update_now": "Update Now",
+    "update_downloading": "Downloading...",
+    "update_installing": "Launching installer...",
+    "update_restart_install": "Restart and Install",
+    "update_ready": "Update Ready",
+    "update_download_complete": "Download complete, click to install",
+    "update_debug": "Debug",
+    "update_debug_placeholder": "Enter update package URL for testing",
+    "update_debug_download": "Download Test",
+    "update_running_warning_title": "Update Risk Warning",
+    "update_running_warning_desc": "Running servers detected.",
+    "update_running_warning_hint": "Clicking continue will force terminate all server processes, which may cause data loss.",
+    "update_running_servers": "Running Servers",
+    "update_cancel_update": "Cancel and close servers first",
+    "update_force_auto": "Continue Update",
+    "open_link_failed": "Unable to open link",
+    "update_check_failed": "Failed to check for updates",
+    "update_download_failed": "Download failed",
+    "github_repo": "GitHub Repo"
+  },
+  "tray": {
+    "minimize": "Minimize to Tray",
+    "show": "Show",
+    "quit": "Quit"
+  }
+```
+
+### 3. Key field descriptions
+
+- **languageName**: Language's display name,e.g. "English"、"简体中文"、"日本語"
+- **common**: Universal text,such as application name、button text,etc.
+- **sidebar**: Sidebar-related text.
+- **header**:Header-related text,including language name in language menu.
+- **home**: Home page text.
+- **create**: Create server page text.
+- **console**: Console page text.
+- **config**: Config edit page text.
+- **players**: Player management page text.
+- **settings**: Setting page text
+- **about**: About page text
+- **tray**: Tray menu text
+
+### 4. Saving file
+
+After saving thr file,Sea Lantern will automatically detect and load the new language file,no code changes required.
+
+### 5. Test
+
+Select the new language you added in Sea Lantern's language selection menu and check if the interface text displays correctly.
+
+## Language Code Standard
+
+Language codes should follow the ISO 639-1 standard, in the format `language-region` , for example:
+
+- `zh-CN` (Zhongwen - China)
+- `en-US` (English - United State)
+- `ja-JP` (Japanese - Japan)
+- `ko-KR` (Korean - Korea)
+- `fr-FR` (Franch - France)
+- `de-DE` (Deutsch - Deutschland)
+- `es-ES` (Español - España)
+- `ru-RU` (Russian - Russia)
+
+## Best Practices
+
+1. **Maintain Consistency**: Keep terminology consistent during translation.
+2. **Be Clear and Concise**: Use clear and concise translations.
+3. **Respect Cultural Differences**: Consider the cultural context of the target language.
+4. **Test**: After adding a new language, be sure to test text display on all pages.
+
+## Notes
+
+- Do not modify the filename format, as it may not load correctly.
+- Ensure the JSON file format is correct, otherwise it may cause the application to crash.
+- For placeholders (e.g.,  {{server}} ), keep them as-is, do not translate them.
+- If in doubt, refer to the translation style of existing language files.
+
+## Contributing translations
+
+If you wish to contribute translations to Sea Lantern, you can:
+
+1.Add a new language following this guide.
+2.Improve translations for existing languages.
+3.Submit a PR to the GitHub repository.
+
+Thank you for your contribution!
