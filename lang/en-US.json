@@ -1,4 +1,5 @@
 {
+  "languageName": "English",
   "common": {
     "app_name": "Sea Lantern",
     "home": "Home",
@@ -97,39 +98,7 @@
     },
     "collapse_btn": "Collapse Sidebar"
   },
-  "header": {
-    "language": "Language",
-    "chinese": "简体中文",
-    "english": "English",
-    "chinese_tw": "繁體中文",
-    "chinese_jb": "梗体中文",
-    "chinese_dongbei": "东北话",
-    "japanese": "日本語",
-    "upsidedown": "ƎƃuɐuɐW",
-    "chinese_meow": "喵语",
-    "spanish": "Español",
-    "deutsch": "Deutsch",
-    "pirate": "Pirate",
-    "chinese_tj": "天津话",
-    "cantonese": "粤语",
-    "russian": "Русский",
-    "chinese_cy": "川渝话",
-    "chinese_wu": "吴语",
-    "chinese_hokkien": "闽南语",
-    "chinese_hn": "河南话",
-    "chinese_jl": "胶辽官话",
-    "vietnamese": "Tiếng Việt",
-    "british": "British English",
-    "aussie": "Aussie English",
-    "kansaiben": "関西弁",
-    "hokkaidou": "北海道",
-    "korean": "한국어",
-    "north_korean": "조선말",
-    "french": "Français",
-    "french_ca": "Français (Canada)",
-    "spanish_ar": "Español (Argentina)",
-    "huoxing": "焱暒妏"
-  },
+
   "home": {
     "title": "Server Management",
     "no_servers": "No servers yet",
@@ -443,6 +412,9 @@
     "unsaved_changes": "There are unsaved changes",
     "export": "Export",
     "import": "Import",
+    "java_download": "Download Java",
+    "java_download_desc": "If Java is not installed or you need an updated version, you can download it here",
+    "java_download_btn": "Download Java 17 (LTS)",
     "reset": "Restore Defaults",
     "import_settings": "Import Settings",
     "import_desc": "Paste previously exported JSON data",
@@ -509,7 +481,9 @@
     "developer_mode": "Developer Mode",
     "developer_mode_desc": "Enable advanced features and debugging options",
     "developer_mode_toggle": "Toggle Developer Mode",
-    "developer_mode_toggle_desc": "Enable to use debug tools while in developer mode"
+    "developer_mode_toggle_desc": "Enable to use debug tools while in developer mode",
+    "senior_mode": "Senior Mode",
+    "senior_mode_desc": "Enable larger text and simplified interface for easier use"
   },
   "about": {
     "title": "About",

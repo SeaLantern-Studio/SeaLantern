@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Menu, Clock, Server, Pencil, Folder } from 'lucide-vue-next';
+import { Menu, Clock, Server, Pencil, Folder, Check, X } from 'lucide-vue-next';
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -147,12 +147,15 @@ async function replenishCache() {
   let attempts = 0;
   const maxAttempts = 10;
 
+  // eslint-disable-next-line no-await-in-loop
   while (quoteCache.value.length < 2 && attempts < maxAttempts) {
     try {
+      // eslint-disable-next-line no-await-in-loop
       const response = await fetch("https://v1.hitokoto.cn/?encode=json");
       if (!response.ok) {
         throw new Error("Failed to fetch hitokoto");
       }
+      // eslint-disable-next-line no-await-in-loop
       const data: HitokotoResponse = await response.json();
       const newQuote = {
         text: data.hitokoto,
@@ -271,10 +274,8 @@ onMounted(() => {
   const loadServers = async () => {
     try {
       await store.refreshList();
-      // 服务器列表加载完成后，异步加载每个服务器的状态
-      for (const s of store.servers) {
-        await store.refreshStatus(s.id);
-      }
+      // 服务器列表加载完成后，并行加载每个服务器的状态
+      await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
@@ -312,9 +313,7 @@ onMounted(() => {
 
   // Refresh server statuses
   refreshTimer = setInterval(async () => {
-    for (const s of store.servers) {
-      await store.refreshStatus(s.id);
-    }
+    await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
   }, 3000);
 
   // 添加全局点击事件监听器，点击空白区域收回删除确认输入框
@@ -819,39 +818,14 @@ function handleAnimationEnd(event: AnimationEvent) {
                       :disabled="!editName.trim() || editLoading"
                       :class="{ loading: editLoading }"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
+                      <Check :size="16" />
                     </button>
                     <button
                       class="inline-edit-btn cancel"
                       @click="cancelEdit"
                       :disabled="editLoading"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
+                      <X :size="16" />
                     </button>
                   </div>
                 </div>

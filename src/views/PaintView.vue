@@ -419,11 +419,11 @@ const colorSchemes: Record<
   },
 };
 
-const themeOptions = [
+const themeOptions = computed(() => [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
   { label: i18n.t("settings.theme_options.light"), value: "light" },
   { label: i18n.t("settings.theme_options.dark"), value: "dark" },
-];
+]);
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("settings.font_family_default"), value: "" },
@@ -1928,7 +1928,7 @@ function clearBackgroundImage() {
             />
           </div>
 
-          <div class="setting-row">
+          <div class="setting-row" v-if="!settings.senior_mode">
             <div class="setting-info">
               <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
               <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
