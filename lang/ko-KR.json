@@ -126,7 +126,11 @@
     "close_window_message": "SeaLantern을 종료하시겠습니까?",
     "remember_choice": "선택 기억하기",
     "close_action_minimize": "트레이로 최소화",
-    "close_action_close": "바로 종료"
+    "close_action_close": "바로 종료",
+    "cpu": "CPU",
+    "memory": "메모리",
+    "disk": "디스크",
+    "core": "코어"
   },
   "create": {
     "title": "서버 생성",

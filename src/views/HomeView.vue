@@ -577,9 +577,9 @@ function handleAnimationEnd(event: AnimationEvent) {
                 />
               </svg>
               <div class="gauge-text">
-                <span class="gauge-value">{{ cpuUsage }}%</span>
-                <span class="gauge-label">CPU</span>
-              </div>
+                  <span class="gauge-value">{{ cpuUsage }}%</span>
+                  <span class="gauge-label">{{ i18n.t('home.cpu') }}</span>
+                </div>
             </div>
             <div class="gauge-item">
               <svg class="gauge-svg" viewBox="0 0 36 36">
@@ -598,9 +598,9 @@ function handleAnimationEnd(event: AnimationEvent) {
                 />
               </svg>
               <div class="gauge-text">
-                <span class="gauge-value">{{ memUsage }}%</span>
-                <span class="gauge-label">内存</span>
-              </div>
+                  <span class="gauge-value">{{ memUsage }}%</span>
+                  <span class="gauge-label">{{ i18n.t('home.memory') }}</span>
+                </div>
             </div>
             <div class="gauge-item">
               <svg class="gauge-svg" viewBox="0 0 36 36">
@@ -619,25 +619,25 @@ function handleAnimationEnd(event: AnimationEvent) {
                 />
               </svg>
               <div class="gauge-text">
-                <span class="gauge-value">{{ diskUsage }}%</span>
-                <span class="gauge-label">磁盘</span>
-              </div>
+                  <span class="gauge-value">{{ diskUsage }}%</span>
+                  <span class="gauge-label">{{ i18n.t('home.disk') }}</span>
+                </div>
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
             <div class="gauge-detail-item">
-              <span class="detail-label">CPU</span
-              ><span class="detail-value">{{ systemInfo.cpu.count }} 核心</span>
+              <span class="detail-label">{{ i18n.t('home.cpu') }}</span
+              ><span class="detail-value">{{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span>
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">内存</span
+              <span class="detail-label">{{ i18n.t('home.memory') }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.memory.used) }} /
                 {{ formatBytes(systemInfo.memory.total) }}</span
               >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">磁盘</span
+              <span class="detail-label">{{ i18n.t('home.disk') }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.disk.used) }} /
                 {{ formatBytes(systemInfo.disk.total) }}</span
@@ -650,8 +650,8 @@ function handleAnimationEnd(event: AnimationEvent) {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >CPU<span v-if="systemInfo" class="stat-detail">
-                  · {{ systemInfo.cpu.count }} 核心</span
+                >{{ i18n.t('home.cpu') }}<span v-if="systemInfo" class="stat-detail">
+                  · {{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span
                 ></span
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
@@ -706,7 +706,7 @@ function handleAnimationEnd(event: AnimationEvent) {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >内存<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t('home.memory') }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.memory.used) }} /
                   {{ formatBytes(systemInfo.memory.total) }}</span
                 ></span
@@ -763,7 +763,7 @@ function handleAnimationEnd(event: AnimationEvent) {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >磁盘<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t('home.disk') }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.disk.used) }} /
                   {{ formatBytes(systemInfo.disk.total) }}</span
                 ></span

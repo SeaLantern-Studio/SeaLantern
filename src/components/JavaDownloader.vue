@@ -118,7 +118,8 @@ const unlistenProgress = ref<UnlistenFn | null>(null);
 const versionOptions = computed(() => [
   { label: 'Java 8 (LTS)', value: '8' },
   { label: 'Java 17 (LTS)', value: '17' },
-  { label: 'Java 21 (LTS)', value: '21' }
+  { label: 'Java 21 (LTS)', value: '21' },
+  { label: 'Java 25 (LTS)', value: '25' }
 ]);
 
 const resetState = () => {
