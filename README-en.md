@@ -21,7 +21,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 - Logs and load at the control panel in real time; send commands to the server directly
 - Edit server.properties graphically, without browsing directories
-- Manage whitelists, bans, OPs in switches
+- Manage whitelists, bans and OPs in switches
 - The server shuts down automatically when you close the app, so no saves are damaged.
 - Check for and download updates in one click
 
