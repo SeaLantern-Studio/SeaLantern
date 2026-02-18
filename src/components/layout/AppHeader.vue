@@ -64,11 +64,11 @@ const primaryLanguages = computed(() => {
 const otherLanguages = computed(() => {
   // 为了确保语言切换时重新计算，我们使用 i18nStore.currentLocale 作为依赖
   const currentLocale = i18nStore.currentLocale;
-  const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
+  const primaryCodes = new Set(["zh-CN", "zh-TW", "en-US", "ja-JP"]);
   const allLocales = i18n.getAvailableLocales();
   
   return allLocales
-    .filter((code) => !primaryCodes.includes(code))
+    .filter((code) => !primaryCodes.has(code))
     .map((code) => {
       // 尝试从语言文件中获取 languageName
       const translations = i18n.getTranslations();
