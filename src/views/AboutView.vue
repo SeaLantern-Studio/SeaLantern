@@ -1,6 +1,6 @@
 ﻿﻿﻿<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone } from "lucide-vue-next";
+import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone, Info, Copy } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -518,17 +518,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
     >
       <div class="aur-window-content">
         <div class="aur-window-icon">
-          <svg
-            width="64"
-            height="64"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#0099cc"
-            stroke-width="1.5"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 8v4M12 16h.01" />
-          </svg>
+          <Info :size="64" stroke="#0099cc" stroke-width="1.5" />
         </div>
 
         <div class="aur-window-message" v-if="aurUpdateInfo">
@@ -568,18 +558,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
                 @click="copyAurCommand(aurUpdateInfo.command)"
                 :title="i18n.t('about.aur_window_copy_tip')"
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path
-                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                  />
-                </svg>
+                <Copy :size="16" />
               </button>
             </div>
           </div>
@@ -597,18 +576,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
                 @click="copyAurCommand(aurUpdateInfo.helper + ' -Syu')"
                 :title="i18n.t('about.aur_window_copy_tip')"
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path
-                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                  />
-                </svg>
+                <Copy :size="16" />
               </button>
             </div>
             <p class="global-update-note">
