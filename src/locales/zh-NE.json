@@ -96,10 +96,11 @@
     "collapse_btn": "把边边收起来"
   },
   "header": {
-    "language": "语言",
-    "chinese": "简中",
-    "english": "EN",
-    "chinese_tw": "繁中",
+    "language": "说嘛话",
+    "chinese": "简体中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "chinese_jb": "梗体中文",
     "chinese_dongbei": "东北话",
     "japanese": "日本語",
     "upsidedown": "ƎƃuɐuɐW",
@@ -119,7 +120,13 @@
     "british": "British English",
     "aussie": "Aussie English",
     "kansaiben": "関西弁",
-    "hokkaidou": "北海道"
+    "hokkaidou": "北海道",
+    "korean": "한국어",
+    "north_korean": "조선말",
+    "french": "Français",
+    "french_ca": "Français (Canada)",
+    "spanish_ar": "Español (Argentina)",
+    "huoxing": "焱暒妏"
   },
   "home": {
     "title": "服务器管理",

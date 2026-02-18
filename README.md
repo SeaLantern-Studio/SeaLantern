@@ -237,6 +237,10 @@ sea-lantern/
 - 定时任务 - 自动重启、定时备份、定时执行命令
 - 资源管理 - 从 Modrinth / CurseForge 搜索安装插件和 Mod
 
+## 交流群
+
+QQ 交流群：**293748695**，欢迎加入讨论！
+
 ## 参与开发
 
 欢迎贡献代码！在开始之前，请阅读 [贡献指南](docs/CONTRIBUTING.md) 了解代码规范和开发流程。
@@ -289,7 +293,7 @@ GPLv3
 
 感谢所有为 Sea Lantern 做出贡献的人！
 
-[![Contributors](https://contrib.rocks/image?repo=FPSZ/SeaLantern)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
+[![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
 
 ## 致谢
 

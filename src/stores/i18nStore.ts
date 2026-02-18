@@ -28,6 +28,12 @@ const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
   "zh-WU": "header.chinese_wu",
   "ja-KS": "header.kansaiben",
   "ja-HK": "header.hokkaidou",
+  "ko-KR": "header.korean",
+  "ko-NK": "header.north_korean",
+  "fr-FA": "header.french",
+  "fr-CA": "header.french_ca",
+  "es-AR": "header.spanish_ar",
+  "zh-HX": "header.huoxing"
 };
 
 export const useI18nStore = defineStore("i18n", () => {
