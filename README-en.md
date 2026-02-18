@@ -295,7 +295,7 @@ GPLv3
 
 Thanks to everyone who contributed to Sea Lantern!
 
-[![Contributors](https://contrib.rocks/image?repo=FPSZ/SeaLantern)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
+[![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
 
 ## Acknowledgments
 
