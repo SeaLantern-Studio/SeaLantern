@@ -1,18 +1,13 @@
 import type { App } from "vue";
 
-// Re-export common components
 export * from "./common";
 
-// Re-export layout components
 export * from "./layout";
 
-// Re-export plugin components
 export * from "./plugin";
 
-// Re-export TabItem type from SLTabs
 export type { TabItem } from "./common/SLTabs.vue";
 
-// All common components for global registration
 import {
   SLBadge,
   SLButton,

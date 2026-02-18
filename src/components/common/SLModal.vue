@@ -23,48 +23,37 @@ const emit = defineEmits<{
 
 const handleClose = () => emit("close");
 
-// 模态框引用和焦点管理
 const modalRef = ref<HTMLElement | null>(null);
 let previousActiveElement: Element | null = null;
 
-// ESC 键关闭处理
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     handleClose();
   }
 }
 
-// 自动关闭定时器
 let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
-// 监听 visible 变化，设置自动关闭和焦点管理
 watch(() => props.visible, (newVisible) => {
-  // 清除之前的定时器
   if (autoCloseTimer) {
     clearTimeout(autoCloseTimer);
     autoCloseTimer = null;
   }
   
   if (newVisible) {
-    // 保存当前焦点元素
     previousActiveElement = document.activeElement;
-    // 聚焦到模态框
     nextTick(() => {
       modalRef.value?.focus();
     });
-    // 添加键盘事件监听
     document.addEventListener('keydown', handleKeydown);
     
-    // 如果设置了自动关闭时间
     if (props.autoClose > 0) {
       autoCloseTimer = setTimeout(() => {
         handleClose();
       }, props.autoClose);
     }
   } else {
-    // 移除键盘事件监听
     document.removeEventListener('keydown', handleKeydown);
-    // 恢复之前的焦点
     if (previousActiveElement instanceof HTMLElement) {
       previousActiveElement.focus();
     }
@@ -72,7 +61,6 @@ watch(() => props.visible, (newVisible) => {
   }
 }, { immediate: true });
 
-// 组件卸载时清理
 onUnmounted(() => {
   if (autoCloseTimer) {
     clearTimeout(autoCloseTimer);

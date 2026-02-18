@@ -70,7 +70,6 @@ const updateDropdownPosition = () => {
   const spaceAbove = rect.top;
   const gap = 4;
 
-  // 检测下方空间是否足够，不够则向上展开
   const openUpward = spaceBelow < dropdownMaxHeight + gap && spaceAbove > spaceBelow;
 
   if (openUpward) {

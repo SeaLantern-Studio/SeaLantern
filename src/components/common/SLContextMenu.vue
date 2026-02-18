@@ -4,10 +4,8 @@ import { useContextMenuStore, type ContextMenuItem } from "@/stores/contextMenuS
 
 const contextMenuStore = useContextMenuStore();
 
-// 菜单元素引用
 const menuRef = ref<HTMLElement | null>(null);
 
-// 计算菜单位置，确保不超出窗口边界
 const menuStyle = computed(() => {
   if (!contextMenuStore.visible) {
     return { display: "none" };
@@ -16,23 +14,19 @@ const menuStyle = computed(() => {
   let posX = contextMenuStore.x;
   let posY = contextMenuStore.y;
 
-  // 获取菜单尺寸（如果已渲染）
   if (menuRef.value) {
     const menuRect = menuRef.value.getBoundingClientRect();
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
 
-    // 边界检测：右边界
     if (posX + menuRect.width > windowWidth) {
       posX = windowWidth - menuRect.width - 8;
     }
 
-    // 边界检测：下边界
     if (posY + menuRect.height > windowHeight) {
       posY = windowHeight - menuRect.height - 8;
     }
 
-    // 确保不小于 0
     posX = Math.max(8, posX);
     posY = Math.max(8, posY);
   }
@@ -43,31 +37,26 @@ const menuStyle = computed(() => {
   };
 });
 
-// 处理菜单项点击
 function handleItemClick(item: ContextMenuItem) {
   contextMenuStore.handleItemClick(item);
 }
 
-// 处理点击外部关闭
 function handleClickOutside(event: MouseEvent) {
   if (menuRef.value && !menuRef.value.contains(event.target as Node)) {
     contextMenuStore.hideContextMenu();
   }
 }
 
-// 处理 Esc 键关闭
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === "Escape") {
     contextMenuStore.hideContextMenu();
   }
 }
 
-// 监听菜单显示状态，添加/移除事件监听
 watch(
   () => contextMenuStore.visible,
   (visible) => {
     if (visible) {
-      // 延迟添加点击监听，避免触发右键的点击事件立即关闭菜单
       setTimeout(() => {
         document.addEventListener("click", handleClickOutside);
         document.addEventListener("contextmenu", handleClickOutside);
@@ -81,7 +70,6 @@ watch(
   }
 );
 
-// 组件卸载时清理
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
   document.removeEventListener("contextmenu", handleClickOutside);

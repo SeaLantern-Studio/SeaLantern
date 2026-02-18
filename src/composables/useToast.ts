@@ -11,8 +11,6 @@ export interface ToastItem {
 
 let nextId = 0;
 
-// toasts 是全局单例状态，所有组件共享同一个数组。
-// 这是有意为之的设计决策，确保 toast 通知在整个应用中统一管理。
 const toasts = reactive<ToastItem[]>([]);
 
 const addToast = (type: ToastType, message: string, duration = 3000) => {
@@ -21,7 +19,6 @@ const addToast = (type: ToastType, message: string, duration = 3000) => {
 
   if (duration > 0) {
     setTimeout(() => {
-      // toast 可能已被手动移除，需要检查是否仍然存在
       const index = toasts.findIndex((t) => t.id === id);
       if (index > -1) {
         toasts.splice(index, 1);
