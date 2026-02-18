@@ -52,6 +52,16 @@ function closeAurWindow() {
   aurUpdateInfo.value = null;
 }
 
+// ===== 新增：复制 AUR 命令 =====
+async function copyAurCommand(command: string) {
+  try {
+    await navigator.clipboard.writeText(command);
+    showNotify("命令已复制到剪贴板", "success");
+  } catch (e) {
+    showNotify("复制失败", "error");
+  }
+}
+
 onMounted(async () => {
   version.value = await getAppVersion();
 
@@ -494,60 +504,84 @@ async function handlePrimaryUpdateAction() {
       </div>
     </div>
 
-    <!-- ===== 新增：AUR 更新提示窗口 ===== -->
-    <SLModal
-      v-if="showAurWindow"
-      :visible="showAurWindow"
-      :title="aurUpdateInfo?.hasUpdate ? 'AUR 更新可用' : 'AUR 版本信息'"
-      @close="closeAurWindow"
-    >
-      <div class="aur-window-content">
-        <div class="aur-window-icon">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#0099cc" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 8v4M12 16h.01" />
-          </svg>
+<!-- ===== 新增：AUR 更新提示窗口 ===== -->
+<SLModal
+  v-if="showAurWindow"
+  :visible="showAurWindow"
+  :title="aurUpdateInfo?.hasUpdate ? 'AUR 更新可用' : 'AUR 版本信息'"
+  @close="closeAurWindow"
+>
+  <div class="aur-window-content">
+    <div class="aur-window-icon">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#0099cc" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v4M12 16h.01" />
+      </svg>
+    </div>
+    
+    <div class="aur-window-message" v-if="aurUpdateInfo">
+      <p class="aur-title" v-if="aurUpdateInfo.hasUpdate">
+        AUR 上有新版本可用！
+      </p>
+      <p class="aur-title" v-else>
+        您使用的是 AUR 版本
+      </p>
+      
+      <div class="version-info">
+        <div class="version-row">
+          <span class="version-label">当前版本：</span>
+          <span class="version-value">{{ aurUpdateInfo.currentVersion }}</span>
         </div>
-        
-        <div class="aur-window-message" v-if="aurUpdateInfo">
-          <p class="aur-title" v-if="aurUpdateInfo.hasUpdate">
-            AUR 上有新版本可用！
-          </p>
-          <p class="aur-title" v-else>
-            您使用的是 AUR 版本
-          </p>
-          
-          <div class="version-info">
-            <div class="version-row">
-              <span class="version-label">当前版本：</span>
-              <span class="version-value">{{ aurUpdateInfo.currentVersion }}</span>
-            </div>
-            <div v-if="aurUpdateInfo.hasUpdate" class="version-row">
-              <span class="version-label">最新版本：</span>
-              <span class="version-value">{{ aurUpdateInfo.latestVersion }}</span>
-            </div>
-          </div>
-          
-          <div class="command-box">
-            <p class="command-label">更新命令：</p>
-            <div class="command-display">
-              <code>{{ aurUpdateInfo.command }}</code>
-            </div>
-          </div>
-          
-          <p class="aur-note">
-            请在终端中执行上述命令进行更新
-          </p>
-        </div>
-        
-        <div class="aur-window-actions">
-          <SLButton variant="primary" size="md" @click="closeAurWindow">
-            我知道了
-          </SLButton>
+        <div v-if="aurUpdateInfo.hasUpdate" class="version-row">
+          <span class="version-label">最新版本：</span>
+          <span class="version-value">{{ aurUpdateInfo.latestVersion }}</span>
         </div>
       </div>
-    </SLModal>
+      
+      <div class="command-box">
+        <p class="command-label">单独更新（推荐）：</p>
+        <div class="command-wrapper">
+          <div class="command-display">
+            <code>{{ aurUpdateInfo.command }}</code>
+          </div>
+          <button class="copy-button" @click="copyAurCommand(aurUpdateInfo.command)" title="复制命令">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
+      <!-- ===== 新增：全局更新提示 ===== -->
+      <div class="global-update-box">
+        <p class="global-update-label">或者全局更新：</p>
+        <div class="command-wrapper">
+          <div class="command-display global-command">
+            <code>{{ aurUpdateInfo.helper }} -Syu</code>
+          </div>
+          <button class="copy-button" @click="copyAurCommand(aurUpdateInfo.helper + ' -Syu')" title="复制命令">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          </button>
+        </div>
+        <p class="global-update-note">⚠️ 注意：这会更新系统中所有通过 AUR 安装的包</p>
+      </div>
+      
+      <p class="aur-note">
+        点击复制按钮，然后在终端中粘贴执行
+      </p>
+    </div>
+    
+    <div class="aur-window-actions">
+      <SLButton variant="primary" size="md" @click="closeAurWindow">
+        我知道了
+      </SLButton>
+    </div>
+  </div>
+</SLModal>
     <!-- 通知组件 -->
     <SLNotification
       :visible="showNotification"
@@ -969,6 +1003,56 @@ async function handlePrimaryUpdateAction() {
   gap: var(--sl-space-lg);
 }
 
+/* 命令包装器样式 */
+.command-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  width: 100%;
+}
+
+.command-display {
+  flex: 1;
+  background: var(--sl-bg-tertiary);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+}
+
+.command-display code {
+  font-family: var(--sl-font-mono);
+  font-size: 0.9375rem;
+  color: var(--sl-primary);
+  word-break: break-all;
+}
+
+/* 复制按钮样式 */
+.copy-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--sl-primary-bg);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-primary);
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+  flex-shrink: 0;
+}
+
+.copy-button:hover {
+  background: var(--sl-primary);
+  color: white;
+  border-color: var(--sl-primary);
+}
+
+.copy-button svg {
+  width: 18px;
+  height: 18px;
+}
+
 .aur-window-icon {
   margin-bottom: var(--sl-space-sm);
 }
@@ -1053,4 +1137,37 @@ async function handlePrimaryUpdateAction() {
   width: 100%;
   margin-top: var(--sl-space-sm);
 }
+
+/* 全局更新提示样式 */
+.global-update-box {
+  margin-top: var(--sl-space-md);
+  margin-bottom: var(--sl-space-lg);
+  padding-top: var(--sl-space-md);
+  border-top: 1px dashed var(--sl-border);
+}
+
+.global-update-label {
+  font-size: 0.875rem;
+  color: var(--sl-text-secondary);
+  margin-bottom: var(--sl-space-xs);
+  text-align: left;
+}
+
+.global-command {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-warning);
+}
+
+.global-command code {
+  color: var(--sl-warning);
+}
+
+.global-update-note {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  margin-top: var(--sl-space-xs);
+  font-style: italic;
+  text-align: left;
+}
+
 </style>
