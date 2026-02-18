@@ -98,8 +98,6 @@ async function loadProperties() {
   }
 }
 
-
-
 function updateValue(key: string, value: string | boolean) {
   editValues.value[key] = String(value);
 
@@ -209,7 +207,7 @@ function handleSearchUpdate(value: string) {
             <template v-else-if="entry.key === 'gamemode'">
               <select
                 :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target?.value ?? '')"
+                @change="(e) => updateValue(entry.key, (e.target as HTMLInputElement).value ?? '')"
                 class="select"
               >
                 <option value="survival">{{ i18n.t("config.gamemode.survival") }}</option>
@@ -221,7 +219,7 @@ function handleSearchUpdate(value: string) {
             <template v-else-if="entry.key === 'difficulty'">
               <select
                 :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target?.value ?? '')"
+                @change="(e) => updateValue(entry.key, (e.target as HTMLInputElement).value ?? '')"
                 class="select"
               >
                 <option value="peaceful">{{ i18n.t("config.difficulty.peaceful") }}</option>
@@ -235,7 +233,7 @@ function handleSearchUpdate(value: string) {
                 :value="editValues[entry.key]"
                 :type="entry.value_type === 'number' ? 'number' : 'text'"
                 :placeholder="entry.default_value"
-                @input="updateValue(entry.key, $event.target?.value ?? '')"
+                @input="(e) => updateValue(entry.key, (e.target as HTMLInputElement).value ?? '')"
                 class="input"
               />
             </template>

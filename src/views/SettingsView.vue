@@ -36,8 +36,6 @@ const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
 const uiFontSize = ref("14");
 
-
-
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("common.font_system_default"), value: "" },
 ]);
@@ -48,8 +46,6 @@ const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
 const bgPreviewLoaded = ref(false);
 const bgPreviewLoading = ref(false);
-
-
 
 onMounted(async () => {
   await loadSettings();
@@ -256,8 +252,6 @@ async function handleImport() {
   }
 }
 
-
-
 function handleDeveloperModeChange() {
   markChanged();
 }
@@ -366,7 +360,16 @@ function handleDeveloperModeChange() {
           </div>
 
           <div class="setting-row full-width">
-            <JavaDownloader @installed="(path) => { if(settings) { settings.default_java_path = path; markChanged(); } }" />
+            <JavaDownloader
+              @installed="
+                (path) => {
+                  if (settings) {
+                    settings.default_java_path = path;
+                    markChanged();
+                  }
+                }
+              "
+            />
           </div>
 
           <div class="setting-row full-width">

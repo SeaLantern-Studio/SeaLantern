@@ -224,8 +224,6 @@ const javaOptions = computed(() => {
 });
 
 const startupModes: StartupMode[] = ["jar", "bat", "sh"];
-
-
 </script>
 
 <template>

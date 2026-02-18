@@ -11,14 +11,14 @@ function getThemeCache(): { theme: string; fontSize: number } | null {
     if (cached) {
       return JSON.parse(cached);
     }
-  } catch (e) { }
+  } catch (e) {}
   return null;
 }
 
 function saveThemeCache(theme: string, fontSize: number): void {
   try {
     localStorage.setItem(THEME_CACHE_KEY, JSON.stringify({ theme, fontSize }));
-  } catch (e) { }
+  } catch (e) {}
 }
 
 export function getInitialTheme(): string {

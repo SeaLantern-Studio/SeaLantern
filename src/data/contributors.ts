@@ -130,7 +130,8 @@ export const contributors: Contributor[] = [
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar: "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
+    avatar:
+      "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
     url: "https://github.com/xuezhaju",
   },
   // ============================================

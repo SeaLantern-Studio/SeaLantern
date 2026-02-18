@@ -7,7 +7,7 @@ import { i18n } from "../../locales";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings } from "../../api/settings";
-import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
+import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();

@@ -362,8 +362,6 @@ const editColorOptions = computed(() => [
 
 const editColorPlan = ref<"light" | "dark" | "light_acrylic" | "dark_acrylic">("light");
 
-
-
 const themeOptions = [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
   { label: i18n.t("settings.theme_options.light"), value: "light" },
@@ -1429,14 +1427,14 @@ async function handleThemeChange() {
     };
 
     // 更新所有颜色方案的颜色值
-    if (presetThemes[preset]) {
+    if (preset in presetThemes) {
       Object.keys(colorTypes).forEach((colorType) => {
         colorPlans.forEach((plan) => {
-          const settingsKey = colorTypes[colorType][plan];
-          if (settingsKey && settings.value[settingsKey] !== undefined) {
-            const presetColors = presetThemes[preset][plan];
+          const settingsKey = (colorTypes as Record<string, Record<string, string>>)[colorType][plan];
+          if (settingsKey && settings.value && (settings.value as any)[settingsKey] !== undefined) {
+            const presetColors = (presetThemes as Record<string, Record<string, any>>)[preset]?.[plan];
             if (presetColors && presetColors[colorType]) {
-              settings.value[settingsKey] = presetColors[colorType];
+              (settings.value as any)[settingsKey] = presetColors[colorType as keyof typeof presetColors];
             }
           }
         });
@@ -1545,8 +1543,6 @@ async function resetSettings() {
     error.value = String(e);
   }
 }
-
-
 
 async function handleImport() {
   if (!importJson.value.trim()) {
@@ -1869,10 +1865,7 @@ function clearBackgroundImage() {
               <span class="setting-label">{{ i18n.t("settings.senior_mode") }}</span>
               <span class="setting-desc">{{ i18n.t("settings.senior_mode_desc") }}</span>
             </div>
-            <SLSwitch
-              v-model="settings.senior_mode"
-              @update:modelValue="handleSeniorModeChange"
-            />
+            <SLSwitch v-model="settings.senior_mode" @update:modelValue="handleSeniorModeChange" />
           </div>
 
           <div class="setting-row">

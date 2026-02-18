@@ -33,7 +33,7 @@ function isBooleanType(entry: ConfigEntry): boolean {
   <div class="config-entry">
     <div class="entry-header">
       <div class="entry-key">{{ entry.key }}</div>
-      <SLBadge variant="neutral" size="small" class="entry-category">{{ entry.category }}</SLBadge>
+      <SLBadge :text="entry.category" variant="neutral" size="small" class="entry-category" />
     </div>
     <div class="entry-description">{{ entry.description }}</div>
     <div class="entry-value">

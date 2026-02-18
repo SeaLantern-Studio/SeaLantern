@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Creepster&display=swap");
 
 :root {
   /* -- Primary Colors -- */
@@ -130,8 +130,8 @@
   --sl-shadow-lg: 0 0 30px rgba(139, 0, 0, 0.3) !important;
   --sl-shadow-xl: 0 0 50px rgba(139, 0, 0, 0.2) !important;
 
-  --sl-font-display: 'Creepster', cursive !important;
-  --sl-font-sans: 'Creepster', cursive !important;
+  --sl-font-display: "Creepster", cursive !important;
+  --sl-font-sans: "Creepster", cursive !important;
 }
 
 [data-zombie="true"] .sl-card,
@@ -143,7 +143,10 @@
 [data-zombie="true"] h1,
 [data-zombie="true"] h2,
 [data-zombie="true"] h3 {
-  text-shadow: 2px 0 #FF0033, -2px 0 #00FF41, 0 2px #8B0000;
+  text-shadow:
+    2px 0 #ff0033,
+    -2px 0 #00ff41,
+    0 2px #8b0000;
   letter-spacing: 1px;
 }
 

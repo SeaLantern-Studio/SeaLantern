@@ -33,7 +33,7 @@ const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
   "fr-FA": "header.french",
   "fr-CA": "header.french_ca",
   "es-AR": "header.spanish_ar",
-  "zh-HX": "header.huoxing"
+  "zh-HX": "header.huoxing",
 };
 
 export const useI18nStore = defineStore("i18n", () => {

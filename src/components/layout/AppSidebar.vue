@@ -9,9 +9,6 @@ import {
   ListboxButton,
   ListboxOptions,
   ListboxOption,
-  Disclosure,
-  DisclosureButton,
-  DisclosurePanel,
   Portal,
 } from "@headlessui/vue";
 import {
@@ -319,7 +316,12 @@ function isActive(path: string): boolean {
 
     <nav class="sidebar-nav">
       <!-- 服务器选择（Headless UI Listbox） -->
-      <Listbox v-if="serverOptions.length > 0" v-model="currentServerRef" class="server-selector" horizontal>
+      <Listbox
+        v-if="serverOptions.length > 0"
+        v-model="currentServerRef"
+        class="server-selector"
+        horizontal
+      >
         <div>
           <ListboxButton
             ref="listboxButton"
@@ -337,19 +339,18 @@ function isActive(path: string): boolean {
           <!-- 将 ListboxOptions 渲染到 body（Portal），并使用固定定位样式 -->
           <Portal>
             <transition name="bubble">
-              <ListboxOptions
-                class="server-select-bubble-content-portal"
-                :style="optionsStyle"
-              >
+              <ListboxOptions class="server-select-bubble-content-portal" :style="optionsStyle">
                 <div class="server-select-bubble-body">
                   <ListboxOption
                     v-for="option in serverOptions"
                     :key="option.value"
                     :value="option.value"
-                    v-slot="{ selected }"
                   >
                     <div
-                      :class="['server-select-option', { active: option.value === currentServerRef }]"
+                      :class="[
+                        'server-select-option',
+                        { active: option.value === currentServerRef },
+                      ]"
                     >
                       {{ option.label }}
                     </div>
@@ -539,7 +540,11 @@ function isActive(path: string): boolean {
     <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
 
     <div class="sidebar-footer">
-      <div class="nav-item" @click="navigateTo('/about')" :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''">
+      <div
+        class="nav-item"
+        @click="navigateTo('/about')"
+        :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
+      >
         <Info class="nav-icon" :size="20" :stroke-width="1.8" />
         <transition name="fade">
           <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
@@ -708,8 +713,6 @@ function isActive(path: string): boolean {
   color: var(--sl-primary);
 }
 
-
-
 .server-selector-icon {
   padding: 8px;
   border-radius: var(--sl-radius-md);
@@ -805,10 +808,6 @@ function isActive(path: string): boolean {
 .bubble-close:hover {
   color: var(--sl-text-primary);
 }
-
-
-
-
 
 .bubble-close {
   background: none;

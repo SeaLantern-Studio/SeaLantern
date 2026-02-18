@@ -7,8 +7,8 @@
     <div class="scanlines"></div>
     <div class="noise"></div>
     <div class="glitch-flash"></div>
-    
-    <svg style="display: none;">
+
+    <svg style="display: none">
       <filter id="zombie-noise">
         <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
         <feColorMatrix type="saturate" values="0" />
@@ -56,29 +56,41 @@
 }
 
 @keyframes scanline {
-  from { background-position: 0 0; }
-  to { background-position: 0 100%; }
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 100%;
+  }
 }
 
 @keyframes noise {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(1%, 1%); }
-  100% { transform: translate(-1%, -1%); }
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(1%, 1%);
+  }
+  100% {
+    transform: translate(-1%, -1%);
+  }
 }
 
 @keyframes glitch-flash {
-  0%, 94%, 100% { 
-    background: transparent; 
+  0%,
+  94%,
+  100% {
+    background: transparent;
     backdrop-filter: none;
     transform: none;
   }
-  95% { 
-    background: rgba(139, 0, 0, 0.1); 
+  95% {
+    background: rgba(139, 0, 0, 0.1);
     backdrop-filter: invert(1) hue-rotate(90deg);
     transform: translateX(5px) skewX(2deg);
   }
-  96% { 
-    background: rgba(200, 255, 176, 0.1); 
+  96% {
+    background: rgba(200, 255, 176, 0.1);
     backdrop-filter: contrast(2) brightness(1.5);
     transform: translateX(-5px) skewX(-2deg);
   }
