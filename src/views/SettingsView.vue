@@ -18,12 +18,15 @@ import {
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { i18n } from "../locales";
+import { useMessage } from "../composables/useMessage";
+import { useLoading } from "../composables/useAsync";
+
+const { error, showError, clearError } = useMessage();
+const { loading, start: startLoading, stop: stopLoading } = useLoading();
+const { loading: fontsLoading, start: startFontsLoading, stop: stopFontsLoading } = useLoading();
+const { loading: saving, start: startSaving, stop: stopSaving } = useLoading();
 
 const settings = ref<AppSettings | null>(null);
-const loading = ref(true);
-const fontsLoading = ref(false);
-const saving = ref(false);
-const error = ref<string | null>(null);
 
 // 亚克力支持检测
 const acrylicSupported = ref(true);
@@ -108,7 +111,7 @@ onMounted(async () => {
 });
 
 async function loadSystemFonts() {
-  fontsLoading.value = true;
+  startFontsLoading();
   try {
     const fonts = await getSystemFonts();
     fontFamilyOptions.value = [
@@ -117,8 +120,9 @@ async function loadSystemFonts() {
     ];
   } catch (e) {
     console.error("Failed to load system fonts:", e);
+    showError(String(e));
   } finally {
-    fontsLoading.value = false;
+    stopFontsLoading();
   }
 }
 
@@ -130,8 +134,8 @@ watch(bgSettingsExpanded, (expanded) => {
 });
 
 async function loadSettings() {
-  loading.value = true;
-  error.value = null;
+  startLoading();
+  clearError();
   try {
     const s = await settingsApi.get();
     settings.value = s;
@@ -145,14 +149,13 @@ async function loadSettings() {
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
     settings.value.color = s.color || "default";
-    // 应用已保存的设置
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   } finally {
-    loading.value = false;
+    stopLoading();
   }
 }
 
@@ -213,7 +216,7 @@ async function handleAcrylicChange(enabled: boolean) {
     const isDark = getEffectiveTheme(theme) === "dark";
     await applyAcrylic(enabled, isDark);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
@@ -246,8 +249,8 @@ async function saveSettings() {
   settings.value.color = settings.value.color || "default";
   settings.value.developer_mode = settings.value.developer_mode || false;
 
-  saving.value = true;
-  error.value = null;
+  startSaving();
+  clearError();
   try {
     await settingsApi.save(settings.value);
 
@@ -271,9 +274,9 @@ async function saveSettings() {
 
     window.dispatchEvent(new CustomEvent("settings-updated"));
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   } finally {
-    saving.value = false;
+    stopSaving();
   }
 }
 
@@ -305,7 +308,7 @@ async function resetSettings() {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
@@ -314,13 +317,13 @@ async function exportSettings() {
     const json = await settingsApi.exportJson();
     await navigator.clipboard.writeText(json);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
 async function handleImport() {
   if (!importJson.value.trim()) {
-    error.value = i18n.t("common.paste_json");
+    showError(i18n.t("common.paste_json"));
     return;
   }
   try {
@@ -341,7 +344,7 @@ async function handleImport() {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
@@ -355,7 +358,7 @@ async function pickBackgroundImage() {
     }
   } catch (e) {
     console.error("Pick image error:", e);
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
@@ -375,7 +378,7 @@ function handleDeveloperModeChange() {
   <div class="settings-view animate-fade-in-up">
     <div v-if="error" class="msg-banner error-banner">
       <span>{{ error }}</span>
-      <button @click="error = null">x</button>
+      <button @click="clearError()">x</button>
     </div>
 
     <div v-if="loading" class="loading-state">

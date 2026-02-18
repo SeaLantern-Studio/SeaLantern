@@ -544,5 +544,7 @@
     "minimize": "In Taskleiste minimieren",
     "show": "Anzeigen",
     "quit": "Beenden"
-  }
+  },
+
+  "delete_server": "Server löschen"
 }

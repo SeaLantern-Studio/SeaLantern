@@ -548,5 +548,7 @@
     "minimize": "トレイに格納",
     "show": "表示",
     "quit": "終了"
-  }
+  },
+
+  "delete_server": "サーバーを削除"
 }

@@ -3,6 +3,7 @@ export { default as SLButton } from "./SLButton.vue";
 export { default as SLCard } from "./SLCard.vue";
 export { default as SLCheckbox } from "./SLCheckbox.vue";
 export { default as SLCloseDialog } from "./SLCloseDialog.vue";
+export { default as SLConfirmDialog } from "./SLConfirmDialog.vue";
 export { default as SLContextMenu } from "./SLContextMenu.vue";
 export { default as SLFormField } from "./SLFormField.vue";
 export { default as SLInput } from "./SLInput.vue";

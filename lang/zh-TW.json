@@ -547,5 +547,7 @@
     "minimize": "最小化到系統匣",
     "show": "顯示",
     "quit": "退出"
-  }
+  },
+
+  "delete_server": "刪除伺服器"
 }

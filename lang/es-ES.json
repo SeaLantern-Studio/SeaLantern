@@ -529,5 +529,7 @@
     "minimize": "Minimizar a bandeja",
     "show": "Mostrar",
     "quit": "Salir"
-  }
+  },
+
+  "delete_server": "Eliminar servidor"
 }

@@ -79,6 +79,9 @@ sea-lantern/
 │   │   └── index.ts                  # Component export file
 │   │
 │   ├── composables/                   # Composition API functions
+│   │   ├── useAsync.ts               # Async operation handling
+│   │   ├── useMessage.ts             # Message handling
+│   │   ├── useTabIndicator.ts        # Tab indicator
 │   │   └── useToast.ts               # Toast component composition function
 │   │
 │   ├── data/                          # Static data
@@ -105,7 +108,8 @@ sea-lantern/
 │   │   ├── reset.css                  # Browser style reset
 │   │   ├── typography.css             # Typography styles
 │   │   ├── animations.css             # Animation keyframes
-│   │   └── glass.css                  # Glassmorphism effect styles
+│   │   ├── glass.css                  # Glassmorphism effect styles
+│   │   └── initial.css                # Initial styles
 │   │
 │   ├── types/                         # Type definitions
 │   │   ├── common.ts                  # Common type definitions
@@ -114,6 +118,7 @@ sea-lantern/
 │   ├── utils/                         # Utility functions
 │   │   ├── constants.ts               # Constant definitions
 │   │   ├── errorHandler.ts            # Error handling utility
+│   │   ├── format.ts                  # Formatting utility
 │   │   ├── logger.ts                  # Logging utility
 │   │   ├── serverStatus.ts            # Server status utility
 │   │   ├── tray.ts                    # System tray utility
@@ -193,8 +198,7 @@ sea-lantern/
 │   │   │   ├── mod.rs                 # Module export
 │   │   │   ├── server.rs              # Server instance, status data structures
 │   │   │   ├── config.rs              # Configuration entry data structures
-│   │   │   ├── settings.rs            # Application settings data structures
-│   │   │   └── dev_config.rs          # Developer configuration data structures
+│   │   │   └── settings.rs            # Application settings data structures
 │   │   │
 │   │   ├── utils/                     # Utility functions
 │   │   │   ├── mod.rs                 # Utility module
@@ -228,8 +232,6 @@ sea-lantern/
 │   ├── AI_GUIDE.md                    # AI Usage Guide
 │   ├── CONTRIBUTING.md                # Contribution Guide
 │   ├── CONTRIBUTING-en.md             # English Contribution Guide
-│   ├── i18n-help.md                   # Internationalization Help
-│   ├── i18n-list.md                   # Internationalization Language List
 │   ├── 新手使用教程.html              # Newbie Usage Tutorial
 │   ├── 项目结构.md                    # Project Structure (Chinese)
 │   └── Project Structure.md           # Project Structure (English)

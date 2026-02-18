@@ -544,5 +544,7 @@
     "minimize": "Thu vào khay",
     "show": "Hiện",
     "quit": "Thoát"
-  }
+  },
+
+  "delete_server": "Xóa máy chủ"
 }

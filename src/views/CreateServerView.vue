@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { RefreshCw } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -14,10 +14,15 @@ import { systemApi } from "../api/system";
 import { settingsApi } from "../api/settings";
 import { useServerStore } from "../stores/serverStore";
 import { i18n } from "../locales";
+import { useMessage } from "../composables/useMessage";
+import { useLoading } from "../composables/useAsync";
+import { useTabSwitch } from "../composables/useTabIndicator";
 
 const router = useRouter();
 const store = useServerStore();
-const startupModeIndicator = ref<HTMLElement | null>(null);
+const { error: errorMsg, showError, clearError } = useMessage();
+const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
+const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
 
 const serverName = ref("My Server");
 const maxMemory = ref("2048");
@@ -25,14 +30,13 @@ const minMemory = ref("512");
 const port = ref("25565");
 const jarPath = ref("");
 type StartupMode = "jar" | "bat" | "sh";
-const startupMode = ref<StartupMode>("jar");
+const { activeTab: startupMode, indicatorRef: startupModeIndicator, switchTab: switchStartupMode } = useTabSwitch<StartupMode>("jar");
 const selectedJava = ref("");
 const onlineMode = ref(true);
 
 const javaList = ref<JavaInfo[]>([]);
-const javaLoading = ref(false);
-const creating = ref(false);
-const errorMsg = ref<string | null>(null);
+
+const startupModes: StartupMode[] = ["jar", "bat", "sh"];
 
 onMounted(async () => {
   await loadDefaultSettings();
@@ -65,7 +69,7 @@ async function loadDefaultSettings() {
 }
 
 async function detectJava() {
-  javaLoading.value = true;
+  startJavaLoading();
   try {
     javaList.value = await javaApi.detect();
     if (javaList.value.length > 0) {
@@ -73,14 +77,14 @@ async function detectJava() {
       selectedJava.value = preferred ? preferred.path : javaList.value[0].path;
     }
 
-    // 保存到设置中
     const settings = await settingsApi.get();
     settings.cached_java_list = javaList.value;
     await settingsApi.save(settings);
   } catch (e) {
     console.error("Java detection failed:", e);
+    showError(String(e));
   } finally {
-    javaLoading.value = false;
+    stopJavaLoading();
   }
 }
 
@@ -99,38 +103,13 @@ async function pickJarFile() {
   }
 }
 
-function setStartupMode(mode: StartupMode) {
+function handleSetStartupMode(mode: StartupMode) {
   if (startupMode.value === mode) {
     return;
   }
-  startupMode.value = mode;
   jarPath.value = "";
-  updateStartupModeIndicator();
+  switchStartupMode(mode);
 }
-
-// 更新启动方式指示器位置
-function updateStartupModeIndicator() {
-  nextTick(() => {
-    if (!startupModeIndicator.value) return;
-
-    const activeTab = document.querySelector(".startup-mode-tab.active");
-    if (activeTab) {
-      const { offsetLeft, offsetWidth } = activeTab as HTMLElement;
-      startupModeIndicator.value.style.left = `${offsetLeft}px`;
-      startupModeIndicator.value.style.width = `${offsetWidth}px`;
-    }
-  });
-}
-
-// 监听启动方式变化，更新指示器位置
-watch(startupMode, () => {
-  updateStartupModeIndicator();
-});
-
-// 组件挂载后初始化指示器位置
-onMounted(() => {
-  updateStartupModeIndicator();
-});
 
 async function pickJavaFile() {
   try {
@@ -144,27 +123,25 @@ async function pickJavaFile() {
 }
 
 async function handleCreate() {
-  errorMsg.value = null;
+  clearError();
 
   if (!jarPath.value) {
     await pickJarFile();
   }
 
-  // 选择文件后检查其他条件
   if (!jarPath.value) {
-    // 用户取消了文件选择，不显示错误信息
     return;
   }
   if (!selectedJava.value) {
-    errorMsg.value = i18n.t("common.select_java_path");
+    showError(i18n.t("common.select_java_path"));
     return;
   }
   if (!serverName.value.trim()) {
-    errorMsg.value = i18n.t("common.enter_server_name");
+    showError(i18n.t("common.enter_server_name"));
     return;
   }
 
-  creating.value = true;
+  startCreating();
   try {
     await serverApi.importServer({
       name: serverName.value,
@@ -179,9 +156,9 @@ async function handleCreate() {
     await store.refreshList();
     router.push("/");
   } catch (e) {
-    errorMsg.value = String(e);
+    showError(String(e));
   } finally {
-    creating.value = false;
+    stopCreating();
   }
 }
 
@@ -225,8 +202,6 @@ const javaOptions = computed(() => {
   });
 });
 
-const startupModes: StartupMode[] = ["jar", "bat", "sh"];
-
 const startupFileLabel = computed(() => {
   if (startupMode.value === "bat") {
     return i18n.t("create.bat_file");
@@ -242,7 +217,7 @@ const startupFileLabel = computed(() => {
   <div class="create-view animate-fade-in-up">
     <div v-if="errorMsg" class="error-banner">
       <span>{{ errorMsg }}</span>
-      <button class="error-close" @click="errorMsg = null">x</button>
+      <button class="error-close" @click="clearError()">x</button>
     </div>
 
     <SLCard :title="i18n.t('create.java_env')" :subtitle="i18n.t('create.java_scan')">
@@ -307,7 +282,7 @@ const startupFileLabel = computed(() => {
                 type="button"
                 class="startup-mode-tab"
                 :class="{ active: startupMode === mode }"
-                @click="setStartupMode(mode)"
+                @click="handleSetStartupMode(mode)"
               >
                 {{ mode === "jar" ? "JAR" : mode }}
               </button>

@@ -107,6 +107,7 @@
     "stop": "停止",
     "edit": "编辑",
     "delete": "删除",
+    "delete_server": "删除服务器",
     "status": "状态",
     "running": "运行中",
     "stopped": "已停止",

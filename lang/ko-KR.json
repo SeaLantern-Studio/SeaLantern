@@ -549,5 +549,7 @@
     "minimize": "백그라운드로 최소화",
     "show": "표시",
     "quit": "종료"
-  }
+  },
+
+  "delete_server": "서버 삭제"
 }
