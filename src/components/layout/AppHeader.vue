@@ -7,6 +7,8 @@ import { i18n } from "../../locales";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings } from "../../api/settings";
+
+import { Minus, Square, X } from 'lucide-vue-next';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 
 
@@ -174,33 +176,13 @@ function computeOverallProgress() {
 
       <div class="window-controls">
         <button class="win-btn" @click="minimizeWindow" title="最小化">
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <rect x="1" y="5.5" width="10" height="1" fill="currentColor" />
-          </svg>
+          <Minus :size="12" />
         </button>
         <button class="win-btn" @click="toggleMaximize" title="最大化">
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <rect
-              x="1.5"
-              y="1.5"
-              width="9"
-              height="9"
-              rx="1"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1"
-            />
-          </svg>
+          <Square :size="12" />
         </button>
         <button class="win-btn win-btn-close" @click="closeWindow" title="关闭">
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <path
-              d="M2 2l8 8M10 2l-8 8"
-              stroke="currentColor"
-              stroke-width="1.2"
-              stroke-linecap="round"
-            />
-          </svg>
+          <X :size="12" />
         </button>
       </div>
     </div>
