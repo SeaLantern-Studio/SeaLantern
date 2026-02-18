@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Menu, Clock } from 'lucide-vue-next';
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -505,7 +506,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   }
 }
 </script>
-
 <template>
   <div class="home-view animate-fade-in-up">
     <!-- Error Banner -->
@@ -548,29 +548,8 @@ function handleAnimationEnd(event: AnimationEvent) {
                 statsViewMode === 'gauge' ? i18n.t('home.detail_view') : i18n.t('home.gauge_view')
               "
             >
-              <svg
-                v-if="statsViewMode === 'gauge'"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <svg
-                v-else
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </svg>
+              <Menu v-if="statsViewMode === 'gauge'" :size="14" />
+              <Clock v-else :size="14" />
             </button>
           </div>
         </template>
