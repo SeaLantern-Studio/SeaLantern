@@ -100,6 +100,17 @@ const handleInput = (e: Event) => {
   color: var(--sl-text-tertiary);
 }
 
+/* 禁用数字输入框的上下箭头 */
+.sl-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.sl-input[type="number"]::-webkit-outer-spin-button,
+.sl-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .sl-input-prefix,
 .sl-input-suffix {
   display: flex;

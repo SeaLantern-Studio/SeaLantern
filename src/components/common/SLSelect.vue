@@ -117,7 +117,7 @@ const selectOption = (option: Option) => {
 
 const handleKeydown = (e: KeyboardEvent) => {
   if (!isOpen.value) {
-    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       toggleDropdown();
     }
@@ -136,7 +136,26 @@ const handleKeydown = (e: KeyboardEvent) => {
     scrollToHighlighted();
   };
 
+  const handleHome = () => {
+    e.preventDefault();
+    highlightedIndex.value = 0;
+    scrollToHighlighted();
+  };
+
+  const handleEnd = () => {
+    e.preventDefault();
+    highlightedIndex.value = filteredOptions.value.length - 1;
+    scrollToHighlighted();
+  };
+
   const handleEnter = () => {
+    e.preventDefault();
+    if (highlightedIndex.value >= 0 && filteredOptions.value[highlightedIndex.value]) {
+      selectOption(filteredOptions.value[highlightedIndex.value]);
+    }
+  };
+
+  const handleSpace = () => {
     e.preventDefault();
     if (highlightedIndex.value >= 0 && filteredOptions.value[highlightedIndex.value]) {
       selectOption(filteredOptions.value[highlightedIndex.value]);
@@ -150,8 +169,17 @@ const handleKeydown = (e: KeyboardEvent) => {
     case "ArrowUp":
       handleArrowUp();
       break;
+    case "Home":
+      handleHome();
+      break;
+    case "End":
+      handleEnd();
+      break;
     case "Enter":
       handleEnter();
+      break;
+    case " ":
+      handleSpace();
       break;
     case "Escape":
       isOpen.value = false;
@@ -219,6 +247,8 @@ onUnmounted(() => {
       role="combobox"
       :aria-expanded="isOpen"
       :aria-disabled="disabled"
+      :aria-owns="isOpen ? 'sl-select-listbox' : undefined"
+      :aria-activedescendant="isOpen && highlightedIndex >= 0 ? `option-${filteredOptions[highlightedIndex].value}` : undefined"
     >
       <span v-if="loading" class="sl-select-loading" aria-live="polite">
         <Loader2 class="spinner" :size="16" aria-hidden="true" />
@@ -261,13 +291,14 @@ onUnmounted(() => {
             />
           </div>
 
-          <div class="sl-select-options" :style="{ maxHeight }" role="presentation">
-            <div v-if="filteredOptions.length === 0" class="sl-select-empty">
+          <div id="sl-select-listbox" class="sl-select-options" :style="{ maxHeight }" role="listbox" :aria-activedescendant="highlightedIndex >= 0 ? `option-${filteredOptions[highlightedIndex].value}` : undefined">
+            <div v-if="filteredOptions.length === 0" class="sl-select-empty" role="presentation">
               {{ i18n.t("common.no_match") }}
             </div>
             <div
               v-for="(option, index) in filteredOptions"
               :key="option.value"
+              :id="`option-${option.value}`"
               class="sl-select-option"
               :class="{
                 selected: option.value === modelValue,
@@ -278,6 +309,7 @@ onUnmounted(() => {
               @mouseenter="highlightedIndex = index"
               role="option"
               :aria-selected="option.value === modelValue"
+              tabindex="-1"
             >
               <span class="option-label-wrap">
                 <span class="option-label">{{ option.label }}</span>
@@ -397,20 +429,17 @@ onUnmounted(() => {
 <style>
 /* 下拉框样式 - 非 scoped，因为使用 Teleport 渲染到 body */
 .sl-select-dropdown {
-  background: #1e2130;
+  background: var(--sl-surface, #1e2130);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
   backdrop-filter: blur(20px);
   will-change: transform, opacity;
   color: var(--sl-text-primary);
 }
 
-:root[data-theme="light"] .sl-select-dropdown {
-  background: var(--sl-surface, #ffffff);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-}
+
 
 :root[data-acrylic="true"][data-theme="dark"] .sl-select-dropdown {
   background: rgba(30, 33, 48, 0.95);

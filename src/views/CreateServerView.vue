@@ -315,13 +315,39 @@ const startupFileLabel = computed(() => {
           </div>
         </div>
 
-        <SLInput :label="i18n.t('create.max_memory')" type="number" v-model="maxMemory" />
-        <SLInput :label="i18n.t('create.min_memory')" type="number" v-model="minMemory" />
+        <SLInput 
+          :label="i18n.t('create.max_memory')" 
+          type="text" 
+          v-model="maxMemory"
+          @input="(e) => {
+            const value = e.target.value;
+            if (value === '' || /^\d+$/.test(value)) {
+              maxMemory.value = value;
+            }
+          }"
+        />
+        <SLInput 
+          :label="i18n.t('create.min_memory')" 
+          type="text" 
+          v-model="minMemory"
+          @input="(e) => {
+            const value = e.target.value;
+            if (value === '' || /^\d+$/.test(value)) {
+              minMemory.value = value;
+            }
+          }"
+        />
         <SLInput
           :label="i18n.t('settings.default_port')"
-          type="number"
+          type="text"
           v-model="port"
           :placeholder="i18n.t('create.default_port_placeholder')"
+          @input="(e) => {
+            const value = e.target.value;
+            if (value === '' || /^\d+$/.test(value)) {
+              port.value = value;
+            }
+          }"
         />
         <div class="online-mode-cell">
           <span class="online-mode-label">{{ i18n.t("create.online_mode") }}</span>
