@@ -1,90 +1,56 @@
 import { ref, type Ref } from "vue";
-import zhCN from "./zh-CN.json";
-import enUS from "./en-US.json";
-import zhTW from "./zh-TW.json";
-import zhJB from "./zh-JB.json";
-import zhNE from "./zh-NE.json";
-import deDE from "./de-DE.json";
-import enAU from "./en-AU.json";
-import enGB from "./en-GB.json";
-import enPT from "./en-PT.json";
-import enUN from "./en-UD.json";
-import esES from "./es-ES.json";
-import jaJP from "./ja-JP.json";
-import ruRU from "./ru-RU.json";
-import viVN from "./vi-VN.json";
-import zhCT from "./zh-CT.json";
-import zhCY from "./zh-CY.json";
-import zhHN from "./zh-HN.json";
-import zhJL from "./zh-JL.json";
-import zhME from "./zh-ME.json";
-import zhMN from "./zh-MN.json";
-import zhTJ from "./zh-TJ.json";
-import zhWU from "./zh-WU.json";
-import jaKS from "./ja-KS.json";
-import jaHK from "./ja-HK.json";
+
+// 动态导入所有语言文件
+const languageFiles: Record<string, any> = import.meta.glob("../../lang/*.json", { eager: true });
+
+// 处理语言文件，提取语言代码和数据
+const processLanguageFiles = () => {
+  const translations: Record<string, LanguageFile> = {};
+  const supportedLocales: string[] = [];
+  
+  // 遍历所有导入的语言文件
+  for (const [path, module] of Object.entries(languageFiles)) {
+    // 从文件路径中提取语言代码，如 "../../lang/zh-CN.json" -> "zh-CN"
+    const match = path.match(/\.\.\/\.\.\/lang\/(.*)\.json$/);
+    if (match) {
+      const localeCode = match[1];
+      const data = (module as any).default;
+      
+      // 确保数据是有效的语言文件
+      if (data && typeof data === 'object') {
+        translations[localeCode] = data;
+        supportedLocales.push(localeCode);
+      }
+    }
+  }
+  
+  return { translations, supportedLocales };
+};
 
 type TranslationNode = {
   [key: string]: string | TranslationNode;
 };
 
-export const SUPPORTED_LOCALES = [
-  "zh-CN",
-  "en-US",
-  "zh-TW",
-  "zh-JB",
-  "zh-NE",
-  "de-DE",
-  "en-AU",
-  "en-GB",
-  "en-PT",
-  "en-UN",
-  "es-ES",
-  "ja-JP",
-  "ru-RU",
-  "vi-VN",
-  "zh-CT",
-  "zh-CY",
-  "zh-HN",
-  "zh-JL",
-  "zh-ME",
-  "zh-MN",
-  "zh-TJ",
-  "zh-WU",
-  "ja-KS",
-  "ja-HK",
-] as const;
-export type LocaleCode = (typeof SUPPORTED_LOCALES)[number];
-
-const translations: Record<LocaleCode, TranslationNode> = {
-  "zh-CN": zhCN,
-  "en-US": enUS,
-  "zh-TW": zhTW,
-  "zh-JB": zhJB,
-  "zh-NE": zhNE,
-  "de-DE": deDE,
-  "en-AU": enAU,
-  "en-GB": enGB,
-  "en-PT": enPT,
-  "en-UN": enUN,
-  "es-ES": esES,
-  "ja-JP": jaJP,
-  "ru-RU": ruRU,
-  "vi-VN": viVN,
-  "zh-CT": zhCT,
-  "zh-CY": zhCY,
-  "zh-HN": zhHN,
-  "zh-JL": zhJL,
-  "zh-ME": zhME,
-  "zh-MN": zhMN,
-  "zh-TJ": zhTJ,
-  "zh-WU": zhWU,
-  "ja-KS": jaKS,
-  "ja-HK": jaHK,
+// 语言文件类型，包含语言名称字段
+type LanguageFile = TranslationNode & {
+  languageName?: string;
 };
 
+// 处理语言文件
+const { translations, supportedLocales } = processLanguageFiles();
+
+// 导出支持的语言列表
+export const SUPPORTED_LOCALES = supportedLocales as const;
+export type LocaleCode = (typeof SUPPORTED_LOCALES)[number];
+
+export function setTranslations(locale: LocaleCode, data: LanguageFile) {
+  if (isSupportedLocale(locale)) {
+    translations[locale] = data;
+  }
+}
+
 function isSupportedLocale(locale: string): locale is LocaleCode {
-  return (SUPPORTED_LOCALES as readonly string[]).includes(locale);
+  return supportedLocales.includes(locale);
 }
 
 function resolveNestedValue(source: TranslationNode, keys: string[]): string | undefined {
@@ -141,7 +107,7 @@ class I18n {
   }
 
   getTranslations() {
-    return translations;
+    return translations as Record<string, LanguageFile>;
   }
 
   getLocaleRef() {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDown } from 'lucide-vue-next';
 import { ref, onMounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -418,11 +419,11 @@ const colorSchemes: Record<
   },
 };
 
-const themeOptions = [
+const themeOptions = computed(() => [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
   { label: i18n.t("settings.theme_options.light"), value: "light" },
   { label: i18n.t("settings.theme_options.dark"), value: "dark" },
-];
+]);
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("settings.font_family_default"), value: "" },
@@ -1719,16 +1720,7 @@ function clearBackgroundImage() {
                 <span class="setting-desc">{{ i18n.t("settings.color_editing_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: colorSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown :size="20" />
               </div>
             </div>
             <Transition name="collapse">
@@ -1936,7 +1928,7 @@ function clearBackgroundImage() {
             />
           </div>
 
-          <div class="setting-row">
+          <div class="setting-row" v-if="!settings.senior_mode">
             <div class="setting-info">
               <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
               <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
@@ -1999,16 +1991,7 @@ function clearBackgroundImage() {
                 <span class="setting-desc">{{ i18n.t("settings.background_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown :size="20" />
               </div>
             </div>
             <Transition name="collapse">

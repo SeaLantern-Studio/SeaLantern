@@ -134,6 +134,24 @@ export const contributors: Contributor[] = [
       "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
     url: "https://github.com/xuezhaju",
   },
+  {
+    name: "Yang458",
+    role: "贡献者",
+    avatar: "https://api.rms.net.cn/head/Yang4893",
+    url: "https://github.com/minecraft-Yang458",
+  },
+  {
+    name: "福瑞控海天",
+    role: "海内存知己，天涯若比邻",
+    avatar: "https://api.rms.net.cn/head/LucyKitter",
+    url: "https://gitee.com/pnchsb_admin",
+  },
+  {
+    name: "LING71671",
+    role: "各种奇思妙想，用户的真许愿树",
+    avatar: "https://api.rms.net.cn/head/LING71671",
+    url: "https://github.com/LING71671",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================

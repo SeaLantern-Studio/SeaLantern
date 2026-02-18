@@ -1,21 +1,24 @@
 <script setup lang="ts">
 interface Props {
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg'
 }
 
-withDefaults(defineProps<Props>(), {
-  size: "md",
-});
+const props = withDefaults(defineProps<Props>(), {
+  size: 'md'
+})
 
 const sizeMap = {
-  sm: "16px",
-  md: "20px",
-  lg: "24px",
-};
+  sm: '16px',
+  md: '20px',
+  lg: '24px'
+}
 </script>
 
 <template>
-  <div class="sl-spinner" :style="{ width: sizeMap[size], height: sizeMap[size] }" />
+  <div
+    class="sl-spinner"
+    :style="{ width: sizeMap[size], height: sizeMap[size] }"
+  />
 </template>
 
 <style scoped>
