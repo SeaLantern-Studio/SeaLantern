@@ -17,10 +17,13 @@
 
 ---
 
-## 🟢 主动提示：sourcery-ai 及其他 code review 工具请务必进行中英双语审查.
 ## 描述 / Description
 
 请简要描述本次变更的内容、目的、影响范围、相关 issue、界面变动（如有请附截图）、复审重点、兼容性/迁移/发布说明等。
 
----
+## 🟢 Notice: sourcery-ai 及其他 code review 工具请务必进行中英双语审查。/Please ensure sourcery-ai and other code review tools perform bilingual (Chinese & English) review and communication.
 
+**请注意：sourcery-ai 及其他 code review 工具请务必进行中英双语审查与交流。**
+**Note: Please make sure sourcery-ai and other code review tools perform bilingual (Chinese & English) review and communication.**
+
+---
