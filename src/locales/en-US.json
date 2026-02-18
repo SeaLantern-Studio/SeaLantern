@@ -549,7 +549,11 @@
     "open_link_failed": "Failed to open link",
     "update_check_failed": "Failed to check updates",
     "update_download_failed": "Download failed",
-    "github_repo": "GitHub Repository"
+    "github_repo": "GitHub Repository",
+    "aur_update_tip": "You installed SeaLantern via {helper}, please run in terminal: {helper} -Syu sealantern",
+    "aur_update_available": "AUR Update Available",
+    "aur_detected": "Detected AUR installation of SeaLantern, please use package manager to update:",
+    "install_source": "Installation Source"
   },
   "tray": {
     "minimize": "Minimize to Tray",

@@ -593,7 +593,11 @@
     "open_link_failed": "无法打开链接",
     "update_check_failed": "检查更新失败",
     "update_download_failed": "下载失败",
-    "github_repo": "GitHub 仓库"
+    "github_repo": "GitHub 仓库",
+    "aur_update_tip": "您通过 {helper} 安装了 SeaLantern，请打开终端执行：{helper} -Syu sealantern",
+    "aur_update_available": "AUR 更新可用",
+    "aur_detected": "检测到您通过 AUR 安装了 SeaLantern，请使用包管理器更新：",
+    "install_source": "安装来源"
   },
   "tray": {
     "minimize": "最小化到后台",

@@ -33,6 +33,12 @@ export const useUpdateStore = defineStore("update", () => {
   const isInstalling = computed(() => status.value === "installing");
   const isReadyToInstall = computed(() => status.value === "downloaded");
 
+  // ===== 新增：判断是否是 AUR 更新 =====
+  const isAurUpdate = computed(() => 
+    updateInfo.value?.source === 'arch-aur' || 
+    updateInfo.value?.source === 'arch-pacman'
+  );
+
   function reset() {
     status.value = "idle";
     updateInfo.value = null;
@@ -59,7 +65,13 @@ export const useUpdateStore = defineStore("update", () => {
         status.value = "available";
         downloadProgress.value = 0;
         downloadedFilePath.value = null;
-        isUpdateModalVisible.value = true;
+        
+        // ===== 修改：根据 source 决定是否显示模态框 =====
+        // 如果是 AUR 更新，不显示下载模态框（因为没有下载流程）
+        if (info.source !== 'arch-aur' && info.source !== 'arch-pacman') {
+          isUpdateModalVisible.value = true;
+        }
+        
         hasStartedUpdateFlow.value = false;
         return info;
       } else {
@@ -162,6 +174,8 @@ export const useUpdateStore = defineStore("update", () => {
     isDownloading,
     isInstalling,
     isReadyToInstall,
+    // ===== 新增导出 =====
+    isAurUpdate,
     reset,
     checkForUpdate,
     checkForUpdateOnStartup,

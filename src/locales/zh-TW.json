@@ -513,7 +513,11 @@
     "open_link_failed": "無法打開連結",
     "update_check_failed": "檢查更新失敗",
     "update_download_failed": "下載失敗",
-    "github_repo": "GitHub 倉庫"
+    "github_repo": "GitHub 倉庫",
+    "aur_update_tip": "您通過 {helper} 安裝了 SeaLantern，請打開終端執行：{helper} -Syu sealantern",
+    "aur_update_available": "AUR 更新可用",
+    "aur_detected": "檢測到您通過 AUR 安裝了 SeaLantern，請使用套件管理器更新：",
+    "install_source": "安裝來源"
   },
   "tray": {
     "minimize": "最小化到後台",
