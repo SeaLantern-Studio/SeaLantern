@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from "vue";
+import { RefreshCw } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -261,18 +262,7 @@ const startupFileLabel = computed(() => {
             {{ i18n.t("create.java_found", { count: javaList.length }) }}
           </div>
           <button class="rescan-btn" @click="detectJava" :disabled="javaLoading">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
-              />
-            </svg>
+            <RefreshCw :size="14" />
             {{ i18n.t("create.rescan") }}
           </button>
         </div>
