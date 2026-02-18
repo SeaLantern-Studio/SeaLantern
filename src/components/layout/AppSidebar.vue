@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onMounted } from "vue";
+import { computed, ref, nextTick, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
 import { useServerStore } from "../../stores/serverStore";
@@ -12,6 +12,7 @@ import {
   Disclosure,
   DisclosureButton,
   DisclosurePanel,
+  Portal,
 } from "@headlessui/vue";
 import {
   Home,
@@ -139,6 +140,8 @@ watch(
     // 延迟更新，确保动画完成后再计算位置
     setTimeout(() => {
       updateNavIndicator();
+      // 在侧边栏折叠/展开后同时更新弹出列表位置
+      updateOptionsPosition();
     }, 350); // 等待350ms，确保CSS过渡动画完全完成
   },
 );
@@ -150,6 +153,8 @@ watch(
     // 使用 nextTick 确保 DOM 已经更新
     nextTick(() => {
       updateNavIndicator();
+      // 路由变化时也更新弹出列表位置（若正在打开）
+      updateOptionsPosition();
     });
   },
 );
@@ -162,6 +167,8 @@ onMounted(async () => {
   // 等待服务器列表加载完成后再更新指示器位置
   nextTick(() => {
     updateNavIndicator();
+    // 初始化 ListboxOptions 的位置，确保弹出在合适的位置
+    updateOptionsPosition();
   });
 
   // 不再需要手动外部点击处理，Listbox 会负责焦点/键盘可访问性
@@ -179,6 +186,66 @@ function handleServerChange(value: string | number) {
     router.push(`/${currentPath}/${value}`);
   }
 }
+
+// 用于把 ListboxOptions 渲染到 body，并在侧边栏收起时调整到侧边栏右侧
+const listboxButton = ref<HTMLElement | null>(null);
+const optionsStyle = ref<Record<string, string | number>>({});
+
+function updateOptionsPosition() {
+  nextTick(() => {
+    // listboxButton 可能是 DOM 元素，也可能是组件实例（有 $el）
+    let btnEl: HTMLElement | null = null;
+    const raw = listboxButton.value as any;
+    if (!raw) return;
+    if (raw instanceof HTMLElement) {
+      btnEl = raw;
+    } else if (raw.$el && raw.$el instanceof HTMLElement) {
+      btnEl = raw.$el as HTMLElement;
+    } else if (raw.$el && raw.$el.$el && raw.$el.$el instanceof HTMLElement) {
+      // 处理嵌套组件暴露的情况
+      btnEl = raw.$el.$el as HTMLElement;
+    }
+    if (!btnEl) return;
+
+    const btnRect = btnEl.getBoundingClientRect();
+    const sidebarEl = document.querySelector(".sidebar") as HTMLElement | null;
+    const sidebarRect = sidebarEl ? sidebarEl.getBoundingClientRect() : null;
+
+    // 默认宽度与样式
+    const width = sidebarRect && !ui.sidebarCollapsed ? Math.max(200, btnRect.width) : 200;
+
+    // 计算固定定位的 top/left（相对于视口）
+    let top = Math.round(btnRect.bottom);
+    let left = Math.round(btnRect.left);
+
+    // 如果侧边栏收起，将列表显示在侧边栏右侧
+    if (sidebarRect && ui.sidebarCollapsed) {
+      left = Math.round(sidebarRect.right + 8);
+      // 让列表垂直居中于按钮（或靠近按钮）
+      top = Math.round(btnRect.top + (btnRect.height - 40) / 2);
+    }
+
+    optionsStyle.value = {
+      position: "fixed",
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${width}px`,
+    };
+  });
+}
+
+// 更新位置：窗口尺寸变动或滚动时
+function onWindowChange() {
+  updateOptionsPosition();
+}
+
+window.addEventListener("resize", onWindowChange);
+window.addEventListener("scroll", onWindowChange, true);
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", onWindowChange);
+  window.removeEventListener("scroll", onWindowChange, true);
+});
 
 // 服务器选项
 const serverOptions = computed(() => {
@@ -252,11 +319,14 @@ function isActive(path: string): boolean {
 
     <nav class="sidebar-nav">
       <!-- 服务器选择（Headless UI Listbox） -->
-      <Listbox v-if="serverOptions.length > 0" v-model="currentServerRef" class="server-selector">
+      <Listbox v-if="serverOptions.length > 0" v-model="currentServerRef" class="server-selector" horizontal>
         <div>
           <ListboxButton
+            ref="listboxButton"
             class="server-selector-button"
             :aria-label="i18n.t('common.select_server')"
+            @click="updateOptionsPosition"
+            @focus="updateOptionsPosition"
           >
             <Server :size="20" :stroke-width="1.8" class="server-icon" />
             <template v-if="!ui.sidebarCollapsed">
@@ -264,24 +334,30 @@ function isActive(path: string): boolean {
             </template>
           </ListboxButton>
 
-          <transition name="bubble">
-            <ListboxOptions class="server-select-bubble-content">
-              <div class="server-select-bubble-body">
-                <ListboxOption
-                  v-for="option in serverOptions"
-                  :key="option.value"
-                  :value="option.value"
-                  v-slot="{ selected }"
-                >
-                  <div
-                    :class="['server-select-option', { active: option.value === currentServerRef }]"
+          <!-- 将 ListboxOptions 渲染到 body（Portal），并使用固定定位样式 -->
+          <Portal>
+            <transition name="bubble">
+              <ListboxOptions
+                class="server-select-bubble-content-portal"
+                :style="optionsStyle"
+              >
+                <div class="server-select-bubble-body">
+                  <ListboxOption
+                    v-for="option in serverOptions"
+                    :key="option.value"
+                    :value="option.value"
+                    v-slot="{ selected }"
                   >
-                    {{ option.label }}
-                  </div>
-                </ListboxOption>
-              </div>
-            </ListboxOptions>
-          </transition>
+                    <div
+                      :class="['server-select-option', { active: option.value === currentServerRef }]"
+                    >
+                      {{ option.label }}
+                    </div>
+                  </ListboxOption>
+                </div>
+              </ListboxOptions>
+            </transition>
+          </Portal>
         </div>
       </Listbox>
 
@@ -659,6 +735,18 @@ function isActive(path: string): boolean {
   left: 0;
   margin-top: 8px;
   z-index: 9999;
+}
+
+/* Portal 渲染时使用固定定位（相对于视口） */
+.server-select-bubble-content-portal {
+  position: fixed;
+  pointer-events: auto;
+  z-index: 9999;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-sm);
+  box-shadow: var(--sl-shadow-lg);
 }
 
 /* 气泡动画 */
