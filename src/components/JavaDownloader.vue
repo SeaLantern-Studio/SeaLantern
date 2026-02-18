@@ -16,17 +16,17 @@
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
           <div class="w-36">
-            <SLSelect 
-              v-model="selectedVersion" 
-              :options="versionOptions" 
+            <SLSelect
+              v-model="selectedVersion"
+              :options="versionOptions"
               :disabled="loadingUrl"
               size="sm"
             />
           </div>
-          <SLButton 
-            variant="primary" 
+          <SLButton
+            variant="primary"
             size="sm"
-            :loading="loadingUrl" 
+            :loading="loadingUrl"
             @click="startDownload"
           >
             {{ i18n.t('settings.java_download_btn') }}
@@ -42,24 +42,21 @@
                  <span class="font-mono opacity-70">{{ isExtracting ? '' : `${progress.toFixed(0)}%` }}</span>
                </div>
                <div class="w-full h-1.5 bg-[var(--sl-border)] rounded-full overflow-hidden">
-                  <div 
+                  <div
                     class="h-full bg-[var(--sl-primary)] transition-all duration-300 ease-out"
                     :class="{ 'indeterminate-progress': isExtracting }"
                     :style="{ width: isExtracting ? '100%' : `${progress}%` }"
                   ></div>
                </div>
              </div>
-             <SLButton 
-               size="sm" 
-               variant="ghost" 
+             <SLButton
+               size="sm"
+               variant="ghost"
                class="!p-1.5 text-[var(--sl-text-tertiary)] hover:text-[var(--sl-error)]"
                title="Cancel"
                @click="cancelDownload"
              >
-               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                 <line x1="18" y1="6" x2="6" y2="18"></line>
-                 <line x1="6" y1="6" x2="18" y2="18"></line>
-               </svg>
+               <X :size="16" />
              </SLButton>
           </div>
         </template>
@@ -68,10 +65,8 @@
         <template v-else-if="successMessage">
           <div class="flex items-center gap-3 animate-fade-in">
              <div class="flex items-center gap-1.5 text-[var(--sl-success)] text-sm font-medium">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                </svg>
-                <span>{{ i18n.t('settings.java_install_success').replace(':', '') }}</span>
+               <CheckCircle :size="16" fill="currentColor" />
+               <span>{{ i18n.t('settings.java_install_success').replace(':', '') }}</span>
              </div>
              <SLButton size="sm" variant="ghost" @click="resetState">OK</SLButton>
           </div>
@@ -82,9 +77,7 @@
     <!-- Error Message (Full Width below) -->
     <div v-if="errorMessage" class="mt-2 p-3 bg-red-50 dark:bg-red-900/20 text-[var(--sl-error)] text-sm rounded border border-red-200 dark:border-red-800 flex items-center justify-between animate-fade-in">
       <div class="flex items-center gap-2">
-        <svg class="flex-shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-        </svg>
+        <Info :size="16" class="flex-shrink-0" fill="currentColor" />
         <span>{{ errorMessage }}</span>
       </div>
       <SLButton size="sm" variant="ghost" @click="resetState">
@@ -94,6 +87,7 @@
   </div>
 </template>
 
+
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue';
 import { i18n } from '../locales';
@@ -101,6 +95,7 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { javaApi } from '../api/java';
 import SLButton from './common/SLButton.vue';
 import SLSelect from './common/SLSelect.vue';
+import { X, CheckCircle, Info } from 'lucide-vue-next';
 
 const emit = defineEmits(['installed']);
 
@@ -134,14 +129,14 @@ const getDownloadUrl = async (version: string): Promise<string> => {
   const baseUrl = "https://api.adoptium.net/v3/binary/latest";
   const featureVersion = version;
   const releaseType = "ga";
-  
+
   // Detect OS and Arch
   let os = "windows";
   // Adoptium API uses 'mac' for macOS
   if (navigator.userAgent.indexOf("Mac") !== -1) os = "mac";
   if (navigator.userAgent.indexOf("Linux") !== -1) os = "linux";
 
-  let arch = "x64"; 
+  let arch = "x64";
   if (navigator.userAgent.indexOf("aarch64") !== -1 || navigator.userAgent.indexOf("arm64") !== -1) arch = "aarch64";
 
   return `${baseUrl}/${featureVersion}/${releaseType}/${os}/${arch}/jdk/hotspot/normal/eclipse`;
@@ -156,7 +151,7 @@ const cancelDownload = async () => {
     loadingUrl.value = false;
     progress.value = 0;
     statusMessage.value = '';
-    
+
     if (unlistenProgress.value) {
       unlistenProgress.value();
       unlistenProgress.value = null;
@@ -178,11 +173,11 @@ const startDownload = async () => {
     statusMessage.value = i18n.t('settings.java_installing');
 
     if (unlistenProgress.value) unlistenProgress.value();
-    
+
     unlistenProgress.value = await listen('java-install-progress', (event: any) => {
       const payload = event.payload as { state: string, progress: number, total: number, message: string };
       statusMessage.value = payload.message;
-      
+
       if (payload.state === 'extracting') {
         isExtracting.value = true;
         progress.value = 100; // Force full bar or let indeterminate animation take over
@@ -198,11 +193,11 @@ const startDownload = async () => {
     });
 
     const resultPath = await javaApi.installJava(url, `jdk-${selectedVersion.value}`);
-    
+
     installedPath.value = resultPath;
     successMessage.value = 'Success'; // Just a flag, text is in template
     emit('installed', resultPath);
-    
+
   } catch (e: any) {
     console.error(e);
     isDownloading.value = false;
