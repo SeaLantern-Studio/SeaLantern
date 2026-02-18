@@ -88,6 +88,7 @@ const handleInput = (e: Event) => {
   border: 0;
   outline: 0;
   min-width: 0;
+  color: var(--sl-text-primary);
 }
 
 .sl-input:disabled {
