@@ -1,4 +1,5 @@
 {
+  "languageName": "English",
   "common": {
     "app_name": "Sea Lantern",
     "home": "Home",
@@ -128,7 +129,9 @@
     "french": "Français",
     "french_ca": "Français (Canada)",
     "spanish_ar": "Español (Argentina)",
-    "huoxing": "焱暒妏"
+    "huoxing": "焱暒妏",
+    "more_languages": "More Languages",
+    "less_languages": "Less Languages"
   },
   "home": {
     "title": "Server Management",
@@ -499,7 +502,9 @@
     "developer_mode": "Developer Mode",
     "developer_mode_desc": "Enable advanced features and debugging options",
     "developer_mode_toggle": "Toggle Developer Mode",
-    "developer_mode_toggle_desc": "Enable to use debug tools while in developer mode"
+    "developer_mode_toggle_desc": "Enable to use debug tools while in developer mode",
+    "senior_mode": "Senior Mode",
+    "senior_mode_desc": "Enable larger text and simplified interface for easier use"
   },
   "about": {
     "title": "About",

@@ -1,4 +1,5 @@
 {
+  "languageName": "简体中文",
   "common": {
     "app_name": "Sea Lantern",
     "home": "首页",
@@ -128,7 +129,9 @@
     "french": "Français",
     "french_ca": "Français (Canada)",
     "spanish_ar": "Español (Argentina)",
-    "huoxing": "焱暒妏"
+    "huoxing": "焱暒妏",
+    "more_languages": "更多语言",
+    "less_languages": "收起语言"
   },
   "home": {
     "title": "服务器管理",
@@ -503,7 +506,9 @@
     "developer_mode": "开发者模式",
     "developer_mode_desc": "启动高级功能和调试选项",
     "developer_mode_toggle": "启动开发者模式",
-    "developer_mode_toggle_desc": "启用后将允许使用调试工具"
+    "developer_mode_toggle_desc": "启用后将允许使用调试工具",
+    "senior_mode": "长辈模式",
+    "senior_mode_desc": "启用更大的文字和简化的界面，以便更容易使用"
   },
   "about": {
     "title": "关于",
