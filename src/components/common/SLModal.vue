@@ -209,10 +209,10 @@ onUnmounted(() => {
 }
 
 .sl-modal-title {
-  color: var(--color-text-primary, #f1f5f9);
+  color: var(--sl-text-primary);
 }
 
 .sl-modal-body {
-  color: var(--color-text-secondary, #cbd5e1);
+  color: var(--sl-text-secondary);
 }
 </style>
