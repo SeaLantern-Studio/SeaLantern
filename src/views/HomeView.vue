@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Menu, Clock, Server, Pencil, Folder } from 'lucide-vue-next';
+import { Menu, Clock, Server, Pencil, Folder, Check, X } from 'lucide-vue-next';
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -819,39 +819,14 @@ function handleAnimationEnd(event: AnimationEvent) {
                       :disabled="!editName.trim() || editLoading"
                       :class="{ loading: editLoading }"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
+                      <Check :size="16" />
                     </button>
                     <button
                       class="inline-edit-btn cancel"
                       @click="cancelEdit"
                       :disabled="editLoading"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
+                      <X :size="16" />
                     </button>
                   </div>
                 </div>
