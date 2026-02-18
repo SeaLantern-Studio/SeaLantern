@@ -389,11 +389,10 @@
     },
     "color_options": {
       "default": "預設",
-      "midnight": "午夜",
-      "forest": "森林",
-      "sunset": "日落",
-      "ocean": "海洋",
-      "rose": "玫瑰",
+      "midnight": "Midnight",
+      "forest": "Forest",
+      "sunset": "Sunset",
+      "ocean": "Ocean",
       "custom": "自訂"
     },
     "edit_colorplan_options": {

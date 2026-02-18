@@ -272,48 +272,7 @@ const presetThemes = {
       border: "rgba(255, 255, 255, 0.1)",
     },
   },
-  zombie: {
-    light: {
-      bg: "#0A0A0A",
-      bgSecondary: "#111111",
-      bgTertiary: "#1A1A1A",
-      primary: "#C8FFB0",
-      secondary: "#8B0000",
-      textPrimary: "#C8FFB0",
-      textSecondary: "#6B8F5E",
-      border: "rgba(139, 0, 0, 0.5)",
-    },
-    dark: {
-      bg: "#0A0A0A",
-      bgSecondary: "#111111",
-      bgTertiary: "#1A1A1A",
-      primary: "#C8FFB0",
-      secondary: "#8B0000",
-      textPrimary: "#C8FFB0",
-      textSecondary: "#6B8F5E",
-      border: "rgba(139, 0, 0, 0.5)",
-    },
-    lightAcrylic: {
-      bg: "rgba(10, 10, 10, 0.8)",
-      bgSecondary: "rgba(17, 17, 17, 0.7)",
-      bgTertiary: "rgba(26, 26, 26, 0.6)",
-      primary: "#C8FFB0",
-      secondary: "#8B0000",
-      textPrimary: "#C8FFB0",
-      textSecondary: "#6B8F5E",
-      border: "rgba(139, 0, 0, 0.5)",
-    },
-    darkAcrylic: {
-      bg: "rgba(10, 10, 10, 0.8)",
-      bgSecondary: "rgba(17, 17, 17, 0.7)",
-      bgTertiary: "rgba(26, 26, 26, 0.6)",
-      primary: "#C8FFB0",
-      secondary: "#8B0000",
-      textPrimary: "#C8FFB0",
-      textSecondary: "#6B8F5E",
-      border: "rgba(139, 0, 0, 0.5)",
-    },
-  },
+
 };
 
 const settings = ref<AppSettings | null>(null);
@@ -351,7 +310,6 @@ const colorOptions = computed(() => [
   { label: i18n.t("settings.color_options.sunset"), value: "sunset" },
   { label: i18n.t("settings.color_options.ocean"), value: "ocean" },
   { label: i18n.t("settings.color_options.rose"), value: "rose" },
-  { label: i18n.t("settings.color_options.zombie"), value: "zombie" },
   { label: i18n.t("settings.color_options.custom"), value: "custom" },
 ]);
 

@@ -2,7 +2,6 @@
 import { onMounted, onUnmounted, computed, watch } from "vue";
 import AppSidebar from "./AppSidebar.vue";
 import AppHeader from "./AppHeader.vue";
-import ZombieOverlay from "../effects/ZombieOverlay.vue";
 import { useUiStore } from "../../stores/uiStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { applyAcrylic } from "../../api/settings";
@@ -117,12 +116,7 @@ async function applyAllSettings() {
 
   applyColors(settings);
 
-  // Apply zombie mode specific classes/attributes
-  if (settings.color === "zombie") {
-    document.documentElement.setAttribute("data-zombie", "true");
-  } else {
-    document.documentElement.removeAttribute("data-zombie");
-  }
+
 
   // 应用开发者模式限制
   applyDeveloperMode(settings.developer_mode || false);
@@ -414,48 +408,7 @@ const presetThemes = {
       border: "rgba(255, 255, 255, 0.1)",
     },
   },
-  zombie: {
-    light: {
-      bg: "#0A0A0A",
-      bgSecondary: "#111111",
-      bgTertiary: "#1A1A1A",
-      primary: "#C8FFB0",
-      secondary: "#8B0000",
-      textPrimary: "#C8FFB0",
-      textSecondary: "#6B8F5E",
-      border: "rgba(139, 0, 0, 0.5)",
-    },
-    dark: {
-      bg: "#0A0A0A",
-      bgSecondary: "#111111",
-      bgTertiary: "#1A1A1A",
-      primary: "#C8FFB0",
-      secondary: "#8B0000",
-      textPrimary: "#C8FFB0",
-      textSecondary: "#6B8F5E",
-      border: "rgba(139, 0, 0, 0.5)",
-    },
-    lightAcrylic: {
-      bg: "rgba(10, 10, 10, 0.8)",
-      bgSecondary: "rgba(17, 17, 17, 0.7)",
-      bgTertiary: "rgba(26, 26, 26, 0.6)",
-      primary: "#C8FFB0",
-      secondary: "#8B0000",
-      textPrimary: "#C8FFB0",
-      textSecondary: "#6B8F5E",
-      border: "rgba(139, 0, 0, 0.5)",
-    },
-    darkAcrylic: {
-      bg: "rgba(10, 10, 10, 0.8)",
-      bgSecondary: "rgba(17, 17, 17, 0.7)",
-      bgTertiary: "rgba(26, 26, 26, 0.6)",
-      primary: "#C8FFB0",
-      secondary: "#8B0000",
-      textPrimary: "#C8FFB0",
-      textSecondary: "#6B8F5E",
-      border: "rgba(139, 0, 0, 0.5)",
-    },
-  },
+
 };
 
 function getPresetColor(preset: string, plan: string, colorType: string): string {
@@ -708,7 +661,7 @@ function applyColors(settings: AppSettings) {
         </router-view>
       </main>
     </div>
-    <ZombieOverlay v-if="settingsStore.settings.color === 'zombie'" />
+
   </div>
 </template>
 
