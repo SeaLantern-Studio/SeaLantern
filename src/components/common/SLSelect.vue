@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from "@headlessui/vue";
 import { Check, ChevronDown, Loader2, Search } from "lucide-vue-next";
 import { i18n } from "../../locales";
 
@@ -19,6 +20,7 @@ interface Props {
   loading?: boolean;
   maxHeight?: string;
   previewFont?: boolean;
+  size?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,47 +30,48 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   maxHeight: "280px",
   previewFont: false,
+  size: undefined,
 });
 
-const emit = defineEmits<{
-  "update:modelValue": [value: string | number];
-}>();
+const emit = defineEmits(["update:modelValue"]);
 
-const isOpen = ref(false);
+const internalValue = computed({
+  get: () => props.modelValue,
+  set: (v: any) => emit("update:modelValue", v),
+});
+
 const searchQuery = ref("");
-const containerRef = ref<HTMLElement | null>(null);
-const dropdownRef = ref<HTMLElement | null>(null);
-const inputRef = ref<HTMLInputElement | null>(null);
-const highlightedIndex = ref(-1);
-
-const dropdownStyle = ref<Record<string, string>>({});
-
-const getFontStyle = (value: string | number) => {
-  if (!props.previewFont || !value) return {};
-  return { fontFamily: String(value) };
-};
-
-const selectedOption = computed(() => {
-  const currentValue = props.modelValue;
-  if (currentValue === undefined) return undefined;
-  return props.options.find((opt: Option) => opt.value === currentValue);
-});
 
 const filteredOptions = computed(() => {
   if (!props.searchable || !searchQuery.value.trim()) return props.options;
+  const q = searchQuery.value.toLowerCase();
+  return props.options.filter((o) => o.label.toLowerCase().includes(q) || (o.subLabel || "").toLowerCase().includes(q));
+});
 
-  const query = searchQuery.value.toLowerCase();
-  return props.options.filter((opt: Option) => opt.label.toLowerCase().includes(query));
+const selectedOption = computed(() => props.options.find((o) => o.value === props.modelValue));
+
+const buttonRef = ref<HTMLElement | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
+const optionsRef = ref<HTMLElement | null>(null);
+const dropdownStyle = ref<Record<string, string>>({});
+
+const sizeClass = computed(() => {
+  if (!props.size) return "";
+  return `sl-select--${String(props.size)}`;
 });
 
 const updateDropdownPosition = () => {
-  if (!containerRef.value) return;
-  const rect = containerRef.value.getBoundingClientRect();
+  if (!optionsRef.value) return;
+  const el = (buttonRef.value && typeof (buttonRef.value as any).getBoundingClientRect === "function")
+    ? buttonRef.value
+    : containerRef.value;
+  if (!el || typeof (el as any).getBoundingClientRect !== "function") return;
+  const rect = (el as HTMLElement).getBoundingClientRect();
   const viewportHeight = window.innerHeight;
-  const dropdownMaxHeight = parseInt(props.maxHeight) || 280;
+  const dropdownMaxHeight = parseInt(String(props.maxHeight)) || 280;
   const spaceBelow = viewportHeight - rect.bottom;
   const spaceAbove = rect.top;
-  const gap = 4;
+  const gap = 6;
 
   const openUpward = spaceBelow < dropdownMaxHeight + gap && spaceAbove > spaceBelow;
 
@@ -91,241 +94,137 @@ const updateDropdownPosition = () => {
       maxHeight: `${Math.min(spaceBelow - gap, dropdownMaxHeight)}px`,
     };
   }
-};
-
-const toggleDropdown = () => {
-  if (props.disabled) return;
-
-  isOpen.value = !isOpen.value;
-  if (isOpen.value) {
-    searchQuery.value = "";
-    highlightedIndex.value = -1;
-    nextTick(() => {
-      updateDropdownPosition();
-      if (props.searchable) {
-        inputRef.value?.focus();
-      }
-    });
+  try {
+    if (optionsRef.value) optionsRef.value.style.maxHeight = dropdownStyle.value.maxHeight || props.maxHeight || "280px";
+  } catch (e) {
+    // ignore
   }
 };
 
-const selectOption = (option: Option) => {
-  emit("update:modelValue", option.value);
-  isOpen.value = false;
-  searchQuery.value = "";
-};
+let highlightObserver: MutationObserver | null = null;
+let keydownListener: ((e: KeyboardEvent) => void) | null = null;
 
-const handleKeydown = (e: KeyboardEvent) => {
-  if (!isOpen.value) {
-    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      toggleDropdown();
-    }
-    return;
-  }
-
-  const handleArrowDown = () => {
-    e.preventDefault();
-    highlightedIndex.value = Math.min(highlightedIndex.value + 1, filteredOptions.value.length - 1);
-    scrollToHighlighted();
-  };
-
-  const handleArrowUp = () => {
-    e.preventDefault();
-    highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0);
-    scrollToHighlighted();
-  };
-
-  const handleHome = () => {
-    e.preventDefault();
-    highlightedIndex.value = 0;
-    scrollToHighlighted();
-  };
-
-  const handleEnd = () => {
-    e.preventDefault();
-    highlightedIndex.value = filteredOptions.value.length - 1;
-    scrollToHighlighted();
-  };
-
-  const handleEnter = () => {
-    e.preventDefault();
-    if (highlightedIndex.value >= 0 && filteredOptions.value[highlightedIndex.value]) {
-      selectOption(filteredOptions.value[highlightedIndex.value]);
-    }
-  };
-
-  const handleSpace = () => {
-    e.preventDefault();
-    if (highlightedIndex.value >= 0 && filteredOptions.value[highlightedIndex.value]) {
-      selectOption(filteredOptions.value[highlightedIndex.value]);
-    }
-  };
-
-  switch (e.key) {
-    case "ArrowDown":
-      handleArrowDown();
-      break;
-    case "ArrowUp":
-      handleArrowUp();
-      break;
-    case "Home":
-      handleHome();
-      break;
-    case "End":
-      handleEnd();
-      break;
-    case "Enter":
-      handleEnter();
-      break;
-    case " ":
-      handleSpace();
-      break;
-    case "Escape":
-      isOpen.value = false;
-      break;
-  }
+const resolveDom = (node: any): HTMLElement | null => {
+  if (!node) return null;
+  if (node instanceof HTMLElement) return node;
+  if (node.$el && node.$el instanceof HTMLElement) return node.$el as HTMLElement;
+  return null;
 };
 
 const scrollToHighlighted = () => {
-  requestAnimationFrame(() => {
-    const highlighted = dropdownRef.value?.querySelector(".highlighted");
-    highlighted?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  const opts = resolveDom(optionsRef.value) as HTMLElement | null;
+  if (!opts) return;
+  const highlighted = opts.querySelector('.sl-select-option.highlighted') as HTMLElement | null;
+  if (highlighted) highlighted.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+};
+
+watch(optionsRef, (el) => {
+  const optsEl = resolveDom(el);
+  if (!optsEl) return;
+  nextTick(() => updateDropdownPosition());
+  // retry a couple times to handle async render/transition timing
+  setTimeout(() => updateDropdownPosition(), 50);
+  requestAnimationFrame(() => updateDropdownPosition());
+
+  // disconnect previous observer/listener
+  if (highlightObserver) {
+    highlightObserver.disconnect();
+    highlightObserver = null;
+  }
+  if (keydownListener) {
+    document.removeEventListener('keydown', keydownListener);
+    keydownListener = null;
+  }
+
+  // observe class changes to detect highlighted item
+  highlightObserver = new MutationObserver(() => {
+    scrollToHighlighted();
   });
-};
+  highlightObserver.observe(optsEl, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
-const handleClickOutside = (e: MouseEvent) => {
-  const target = e.target as Node;
-  if (
-    containerRef.value &&
-    !containerRef.value.contains(target) &&
-    dropdownRef.value &&
-    !dropdownRef.value.contains(target)
-  ) {
-    isOpen.value = false;
-  }
-};
-
-const handleScroll = () => {
-  if (isOpen.value) {
-    updateDropdownPosition();
-  }
-};
-
-const stopWatch = watch(searchQuery, () => {
-  highlightedIndex.value = filteredOptions.value.length > 0 ? 0 : -1;
+  // ensure arrow key navigation scrolls
+  keydownListener = (e: KeyboardEvent) => {
+    const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown', 'PageUp'];
+    if (keys.includes(e.key)) {
+      // slightly defer to let Headless UI update active class
+      setTimeout(() => scrollToHighlighted(), 0);
+    }
+  };
+  document.addEventListener('keydown', keydownListener);
 });
 
+const onScrollOrResize = () => {
+  if (optionsRef.value) updateDropdownPosition();
+};
+
 onMounted(() => {
-  document.addEventListener("click", handleClickOutside);
-  window.addEventListener("scroll", handleScroll, true);
-  window.addEventListener("resize", handleScroll);
+  window.addEventListener("scroll", onScrollOrResize, true);
+  window.addEventListener("resize", onScrollOrResize);
 });
 
 onUnmounted(() => {
-  document.removeEventListener("click", handleClickOutside);
-  window.removeEventListener("scroll", handleScroll, true);
-  window.removeEventListener("resize", handleScroll);
-  stopWatch();
-
-  containerRef.value = null;
-  dropdownRef.value = null;
-  inputRef.value = null;
+  window.removeEventListener("scroll", onScrollOrResize, true);
+  window.removeEventListener("resize", onScrollOrResize);
 });
 </script>
 
 <template>
-  <div class="sl-select" ref="containerRef">
-    <label v-if="label" class="sl-select-label">{{ label }}</label>
+  <div class="sl-select" ref="containerRef" :class="sizeClass">
+    <label v-if="props.label" class="sl-select-label">{{ props.label }}</label>
 
-    <div
-      class="sl-select-trigger"
-      :class="{ open: isOpen, disabled }"
-      @click="toggleDropdown"
-      @keydown="handleKeydown"
-      tabindex="0"
-      role="combobox"
-      :aria-expanded="isOpen"
-      :aria-disabled="disabled"
-      :aria-owns="isOpen ? 'sl-select-listbox' : undefined"
-      :aria-activedescendant="isOpen && highlightedIndex >= 0 ? `option-${filteredOptions[highlightedIndex].value}` : undefined"
-    >
-      <span v-if="loading" class="sl-select-loading" aria-live="polite">
-        <Loader2 class="spinner" :size="16" aria-hidden="true" />
-        {{ i18n.t("common.loading") }}
-      </span>
-      <span
-        v-else-if="selectedOption"
-        class="sl-select-value"
-        :style="getFontStyle(selectedOption.value)"
-      >
-        {{ selectedOption.label }}
-      </span>
-      <span v-else class="sl-select-placeholder">{{ placeholder }}</span>
+    <Listbox v-model="internalValue" :disabled="props.disabled" v-slot="{ open }">
+      <div>
+        <ListboxButton as="div" ref="buttonRef" class="sl-select-trigger" :class="{ disabled: props.disabled, open }" @mousedown.prevent>
+          <span v-if="props.loading" class="sl-select-loading" aria-live="polite">
+            <Loader2 class="spinner" :size="16" aria-hidden="true" />
+            {{ i18n.t("common.loading") }}
+          </span>
+          <span v-else-if="selectedOption" class="sl-select-value" :style="props.previewFont ? { fontFamily: String(selectedOption.value) } : {}">
+            {{ selectedOption.label }}
+          </span>
+          <span v-else class="sl-select-placeholder">{{ props.placeholder }}</span>
 
-      <ChevronDown
-        class="sl-select-arrow"
-        :class="{ open: isOpen }"
-        :size="16"
-        aria-hidden="true"
-      />
-    </div>
+          <ChevronDown class="sl-select-arrow" :class="{ open }" :size="16" aria-hidden="true" />
+        </ListboxButton>
 
-    <Teleport to="body">
-      <Transition name="dropdown">
-        <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef" :style="dropdownStyle">
-          <div v-if="searchable" class="sl-select-search">
-            <Search
-              class="search-icon"
-              :size="16"
-              aria-hidden="true"
-            />
-            <input
-              ref="inputRef"
-              v-model="searchQuery"
-              type="text"
-              :placeholder="i18n.t('common.search')"
-              class="sl-select-input"
-              @keydown="handleKeydown"
-              :aria-label="i18n.t('common.search_options')"
-            />
-          </div>
+        <Teleport to="body">
+          <transition name="dropdown">
+            <ListboxOptions ref="optionsRef" class="sl-select-dropdown sl-select-options" :style="dropdownStyle" tabindex="-1">
+              <div v-if="props.searchable" class="sl-select-search">
+                <Search class="search-icon" :size="16" />
+                <input v-model="searchQuery" :placeholder="i18n.t('common.search')" class="sl-select-input" />
+              </div>
 
-          <div id="sl-select-listbox" class="sl-select-options" :style="{ maxHeight }" role="listbox" :aria-activedescendant="highlightedIndex >= 0 ? `option-${filteredOptions[highlightedIndex].value}` : undefined">
-            <div v-if="filteredOptions.length === 0" class="sl-select-empty" role="presentation">
-              {{ i18n.t("common.no_match") }}
-            </div>
-            <div
-              v-for="(option, index) in filteredOptions"
-              :key="option.value"
-              :id="`option-${option.value}`"
-              class="sl-select-option"
-              :class="{
-                selected: option.value === modelValue,
-                highlighted: index === highlightedIndex,
-              }"
-              :style="getFontStyle(option.value)"
-              @click="selectOption(option)"
-              @mouseenter="highlightedIndex = index"
-              role="option"
-              :aria-selected="option.value === modelValue"
-              tabindex="-1"
-            >
-              <span class="option-label-wrap">
-                <span class="option-label">{{ option.label }}</span>
-                <span v-if="option.subLabel" class="option-sublabel">{{ option.subLabel }}</span>
-              </span>
-              <Check
-                v-if="option.value === modelValue"
-                class="check-icon"
-                :size="16"
-                aria-hidden="true"
-              />
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+              <div v-if="props.loading" class="sl-select-loading">
+                <Loader2 class="sl-spin" :size="18" />
+                <span>{{ i18n.t('common.loading') }}</span>
+              </div>
+
+              <template v-else>
+                <ListboxOption
+                  v-for="opt in filteredOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                  v-slot="{ active, selected }"
+                >
+                  <div :class="['sl-select-option', { selected, highlighted: active }]" :style="props.previewFont ? { fontFamily: String(opt.value) } : {}">
+                    <span class="option-label-wrap">
+                      <span class="option-label">{{ opt.label }}</span>
+                      <span v-if="opt.subLabel" class="option-sublabel">{{ opt.subLabel }}</span>
+                    </span>
+                    <Check v-if="selected" class="check-icon" :size="16" aria-hidden="true" />
+                  </div>
+                </ListboxOption>
+
+                <div v-if="!filteredOptions.length && !props.loading" class="sl-select-empty">
+                  {{ i18n.t('common.no_match') }}
+                </div>
+              </template>
+            </ListboxOptions>
+          </Transition>
+        </Teleport>
+      </div>
+    </Listbox>
   </div>
 </template>
 
@@ -439,6 +338,14 @@ onUnmounted(() => {
   color: var(--sl-text-primary);
 }
 
+/* 移除默认 focus 边框，避免第一次打开时出现红色轮廓 */
+.sl-select-dropdown:focus,
+.sl-select-dropdown:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--sl-border);
+}
+
 
 
 :root[data-acrylic="true"][data-theme="dark"] .sl-select-dropdown {
@@ -476,7 +383,8 @@ onUnmounted(() => {
   color: var(--sl-text-tertiary);
 }
 
-.sl-select-dropdown .sl-select-options {
+.sl-select-dropdown .sl-select-options,
+.sl-select-options {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
