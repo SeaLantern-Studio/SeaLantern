@@ -1,6 +1,6 @@
 ﻿﻿﻿﻿<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, UploadCloud } from "lucide-vue-next";
+import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -293,7 +293,7 @@ async function handlePrimaryUpdateAction() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <UploadCloud :size="20" />
+                <Megaphone :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_promote") }}</span>
