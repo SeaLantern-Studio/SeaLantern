@@ -72,11 +72,36 @@ class I18n {
   private currentLocale: Ref<LocaleCode> = ref("zh-CN");
   private fallbackLocale: LocaleCode = "en-US";
 
-  setLocale(locale: string) {
+  setLocale(locale: string): LocaleCode | null {
     const resolved = this.resolveLocale(locale);
     if (resolved) {
       this.currentLocale.value = resolved;
     }
+
+    return resolved;
+  }
+
+  resolveLocale(locale: string): LocaleCode | null {
+    return resolveLocaleByPrefix(locale);
+  }
+
+  resolveBestLocale(candidates: readonly string[]): LocaleCode {
+    for (const candidate of candidates) {
+      const resolved = this.resolveLocale(candidate);
+      if (resolved) {
+        return resolved;
+      }
+    }
+
+    return this.fallbackLocale;
+  }
+
+  detectSystemLocale(): LocaleCode {
+    if (typeof navigator === "undefined") {
+      return this.fallbackLocale;
+    }
+
+    return this.resolveBestLocale(navigator.languages ?? [navigator.language]);
   }
 
   resolveLocale(locale: string): LocaleCode | null {

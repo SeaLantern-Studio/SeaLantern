@@ -1,4 +1,4 @@
-import { computed, onMounted } from "vue";
+import { computed } from "vue";
 import { defineStore } from "pinia";
 import { i18n, type LocaleCode } from "../locales";
 import { settingsApi } from "../api/settings";
@@ -30,16 +30,16 @@ export const useI18nStore = defineStore("i18n", () => {
   );
 
   async function setLocale(nextLocale: string) {
-    if (i18n.isSupportedLocale(nextLocale)) {
-      i18n.setLocale(nextLocale);
-      // 保存语言设置到持久化存储
-      try {
-        const settings = await settingsApi.get();
-        settings.language = nextLocale;
-        await settingsApi.save(settings);
-      } catch (error) {
-        console.error("Failed to save language setting:", error);
-      }
+    const resolvedLocale = i18n.setLocale(nextLocale);
+    if (!resolvedLocale) return;
+
+    // 保存语言设置到持久化存储
+    try {
+      const settings = await settingsApi.get();
+      settings.language = resolvedLocale;
+      await settingsApi.save(settings);
+    } catch (error) {
+      console.error("Failed to save language setting:", error);
     }
   }
 
@@ -70,10 +70,6 @@ export const useI18nStore = defineStore("i18n", () => {
     }
   }
 
-  // 组件挂载时加载语言设置
-  onMounted(() => {
-    loadLanguageSetting();
-  });
 
   return {
     locale,
