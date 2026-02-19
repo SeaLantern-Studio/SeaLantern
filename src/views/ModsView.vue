@@ -21,6 +21,10 @@ const mods = ref<ModInfo[]>([]);
 const installingId = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 
+function formatDownloads(value: number): string {
+  return new Intl.NumberFormat().format(value);
+}
+
 const loaderOptions = [
   { label: "Fabric", value: "fabric" },
   { label: "Forge", value: "forge" },
@@ -134,9 +138,14 @@ async function installMod(mod: ModInfo) {
       <div v-if="mods.length > 0" class="mods-list">
         <div v-for="mod in mods" :key="mod.id" class="mod-item">
           <div class="mod-meta">
+            <div class="mod-cover">
+              <img v-if="mod.icon_url" :src="mod.icon_url" :alt="mod.name" loading="lazy" />
+              <div v-else class="mod-cover-placeholder">M</div>
+            </div>
             <div class="mod-title-row">
               <h4>{{ mod.name }}</h4>
               <span class="mod-source">{{ mod.source }}</span>
+              <span class="mod-downloads">{{ i18n.t("mods.downloads") }} {{ formatDownloads(mod.downloads) }}</span>
             </div>
             <p>{{ mod.summary || i18n.t("mods.no_summary") }}</p>
           </div>
@@ -213,6 +222,30 @@ async function installMod(mod: ModInfo) {
   min-width: 0;
 }
 
+.mod-cover {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--sl-border);
+  margin-bottom: 8px;
+}
+
+.mod-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mod-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: var(--sl-text-secondary);
+}
+
 .mod-title-row {
   display: flex;
   align-items: center;
@@ -227,6 +260,11 @@ async function installMod(mod: ModInfo) {
   border: 1px solid var(--sl-border);
   border-radius: 999px;
   padding: 1px 8px;
+  font-size: 12px;
+  color: var(--sl-text-secondary);
+}
+
+.mod-downloads {
   font-size: 12px;
   color: var(--sl-text-secondary);
 }

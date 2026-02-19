@@ -9,6 +9,8 @@ export interface ModInfo {
   download_url: string;
   file_name: string;
   source: string;
+  icon_url?: string | null;
+  downloads: number;
 }
 
 export const modsApi = {

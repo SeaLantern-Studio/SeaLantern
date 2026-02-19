@@ -11,6 +11,8 @@ pub struct ModInfo {
     pub download_url: String,
     pub file_name: String,
     pub source: String, // "modrinth" or "curseforge"
+    pub icon_url: Option<String>,
+    pub downloads: u64,
 }
 
 pub struct ModManager {
@@ -60,6 +62,8 @@ impl ModManager {
                     download_url: version.url,
                     file_name: version.filename,
                     source: "modrinth".to_string(),
+                    icon_url: hit.icon_url,
+                    downloads: hit.downloads,
                 });
             }
         }
@@ -129,6 +133,8 @@ struct ModrinthHit {
     project_id: String,
     title: String,
     description: String,
+    icon_url: Option<String>,
+    downloads: u64,
 }
 
 #[derive(Deserialize)]

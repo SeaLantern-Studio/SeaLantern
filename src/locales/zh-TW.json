@@ -447,6 +447,7 @@
     "enter_keyword": "請輸入要搜尋的模組關鍵字",
     "no_summary": "暫無簡介",
     "empty_hint": "輸入關鍵字後點擊「搜尋模組」",
-    "install_success": "已安裝：{{name}}"
+    "install_success": "已安裝：{{name}}",
+    "downloads": "下載："
   }
 }

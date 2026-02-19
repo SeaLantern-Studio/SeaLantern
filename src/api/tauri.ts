@@ -105,6 +105,8 @@ async function mockInvoke<T>(command: string, args?: Record<string, unknown>): P
           download_url: "https://example.com/sodium.jar",
           file_name: "sodium-demo.jar",
           source: "modrinth",
+          icon_url: "https://cdn.modrinth.com/data/AANobbMI/icon.png",
+          downloads: 15400000,
         },
         {
           id: "demo-lithium",
@@ -113,6 +115,8 @@ async function mockInvoke<T>(command: string, args?: Record<string, unknown>): P
           download_url: "https://example.com/lithium.jar",
           file_name: "lithium-demo.jar",
           source: "modrinth",
+          icon_url: "https://cdn.modrinth.com/data/gvQqBUqZ/icon.png",
+          downloads: 9800000,
         },
       ].filter((item) => item.name.toLowerCase().includes(q.toLowerCase()) || q.length < 3) as T;
     }

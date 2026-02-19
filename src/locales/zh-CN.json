@@ -442,6 +442,7 @@
     "enter_keyword": "请输入要搜索的模组关键词",
     "no_summary": "暂无简介",
     "empty_hint": "输入关键词后点击“搜索模组”",
-    "install_success": "已安装：{{name}}"
+    "install_success": "已安装：{{name}}",
+    "downloads": "下载："
   }
 }
