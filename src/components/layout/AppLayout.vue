@@ -12,6 +12,7 @@ import {
   applyColors,
   applyDeveloperMode,
   applySeniorMode,
+  getEffectiveTheme,
 } from "../../utils/theme";
 
 const ui = useUiStore();
@@ -36,8 +37,7 @@ async function applyAcrylicEffect(enabled: boolean, theme: string): Promise<void
   }
 
   if (enabled) {
-    const isDark = theme === "dark" || (theme === "auto" && 
-      window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const isDark = getEffectiveTheme(theme) === "dark";
     try {
       await applyAcrylic(true, isDark);
     } catch (e) {
