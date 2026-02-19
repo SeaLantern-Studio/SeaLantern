@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Menu, Clock, Server, Pencil, Folder, Check, X } from 'lucide-vue-next';
+import type { EChartsOption } from "echarts";
+import { Menu, Clock, Server, Pencil, Folder, Check, X } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -40,16 +41,19 @@ const statsLoading = ref(true);
 // 获取当前主题标识（用于强制重新计算图表配置）
 const themeVersion = ref(0);
 
+// 模块级 MutationObserver 引用，避免污染全局命名空间
+let themeObserver: MutationObserver | null = null;
+
 // 获取 CSS 变量实际值的辅助函数，支持传入默认值
 const getCssVar = (varName: string, defaultValue: string): string => {
-  if (typeof window === 'undefined') return defaultValue;
+  if (typeof window === "undefined") return defaultValue;
   const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
   return value || defaultValue;
 };
 
 // 获取当前根字体大小（px）
 const getRootFontSize = (): number => {
-  if (typeof window === 'undefined') return 16;
+  if (typeof window === "undefined") return 16;
   const fontSize = getComputedStyle(document.documentElement).fontSize;
   const parsed = parseFloat(fontSize);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 16;
@@ -61,45 +65,45 @@ const parseFontSize = (varName: string, defaultPx: number): number => {
   // 移除单位并解析为数字
   const numMatch = value.match(/^[\d.]+/);
   if (!numMatch) return defaultPx;
-  
+
   const num = parseFloat(numMatch[0]);
   if (!Number.isFinite(num) || num <= 0) return defaultPx;
-  
+
   // 如果是 rem，使用实际的根字体大小进行换算
-  if (value.includes('rem')) {
+  if (value.includes("rem")) {
     return num * getRootFontSize();
   }
   return num;
 };
 
 // ECharts 公共基础配置
-const baseChartConfig = {
-  backgroundColor: 'transparent',
+const baseChartConfig: EChartsOption = {
+  backgroundColor: "transparent",
   animation: true,
   animationDuration: 300,
-  animationEasing: 'cubicOut',
+  animationEasing: "cubicOut",
 };
 
 // ECharts 配置生成函数
-const createGaugeOption = (value: number, colorVar: string, label: string) => {
-  const fontSize = parseFontSize('--sl-font-size-sm', 13);
-  const fontFamily = getCssVar('--sl-font-mono', 'monospace');
-  const color = getCssVar(colorVar, '#3b82f6');
-  const textColor = getCssVar('--sl-text-primary', '#1f2937');
-  const borderColor = getCssVar('--sl-border', '#e5e7eb');
-  
+const createGaugeOption = (value: number, colorVar: string, label: string): EChartsOption => {
+  const fontSize = parseFontSize("--sl-font-size-sm", 13);
+  const fontFamily = getCssVar("--sl-font-mono", "monospace");
+  const color = getCssVar(colorVar, "#3b82f6");
+  const textColor = getCssVar("--sl-text-primary", "#1f2937");
+  const borderColor = getCssVar("--sl-border", "#e5e7eb");
+
   return {
     ...baseChartConfig,
     series: [
       {
-        type: 'pie',
-        radius: ['65%', '80%'],
-        center: ['50%', '45%'],
+        type: "pie",
+        radius: ["65%", "80%"],
+        center: ["50%", "45%"],
         avoidLabelOverlap: false,
         silent: true,
         label: {
           show: true,
-          position: 'center',
+          position: "center",
           formatter: () => `${value}%`,
           fontSize: fontSize,
           fontWeight: 600,
@@ -120,7 +124,7 @@ const createGaugeOption = (value: number, colorVar: string, label: string) => {
           },
           {
             value: 100 - value,
-            name: '剩余',
+            name: "剩余",
             itemStyle: {
               color: borderColor,
             },
@@ -138,23 +142,17 @@ const createGaugeOption = (value: number, colorVar: string, label: string) => {
 };
 
 const cpuGaugeOption = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  themeVersion.value;
-  return createGaugeOption(cpuUsage.value, '--sl-primary', i18n.t('home.cpu'));
+  return createGaugeOption(cpuUsage.value, "--sl-primary", i18n.t("home.cpu"));
 });
 const memGaugeOption = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  themeVersion.value;
-  return createGaugeOption(memUsage.value, '--sl-success', i18n.t('home.memory'));
+  return createGaugeOption(memUsage.value, "--sl-success", i18n.t("home.memory"));
 });
 const diskGaugeOption = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  themeVersion.value;
-  return createGaugeOption(diskUsage.value, '--sl-warning', i18n.t('home.disk'));
+  return createGaugeOption(diskUsage.value, "--sl-warning", i18n.t("home.disk"));
 });
 
 // 折线图公共配置
-const baseLineConfig = {
+const baseLineConfig: EChartsOption = {
   ...baseChartConfig,
   grid: {
     left: 0,
@@ -164,12 +162,12 @@ const baseLineConfig = {
     show: false,
   },
   xAxis: {
-    type: 'category',
+    type: "category",
     show: false,
     boundaryGap: false,
   },
   yAxis: {
-    type: 'value',
+    type: "value",
     show: false,
     min: 0,
     max: 100,
@@ -177,9 +175,9 @@ const baseLineConfig = {
 };
 
 // 折线图配置生成函数
-const createLineOption = (data: number[], colorVar: string) => {
-  const color = getCssVar(colorVar, '#3b82f6');
-  
+const createLineOption = (data: number[], colorVar: string): EChartsOption => {
+  const color = getCssVar(colorVar, "#3b82f6");
+
   return {
     ...baseLineConfig,
     xAxis: {
@@ -188,10 +186,10 @@ const createLineOption = (data: number[], colorVar: string) => {
     },
     series: [
       {
-        type: 'line',
+        type: "line",
         data: data,
         smooth: false,
-        symbol: 'none',
+        symbol: "none",
         lineStyle: {
           width: 2,
           color: color,
@@ -205,8 +203,12 @@ const createLineOption = (data: number[], colorVar: string) => {
   };
 };
 
-const cpuLineOption = computed(() => createLineOption(cpuHistory.value, '--sl-primary'));
-const memLineOption = computed(() => createLineOption(memHistory.value, '--sl-success'));
+const cpuLineOption = computed(() => {
+  return createLineOption(cpuHistory.value, "--sl-primary");
+});
+const memLineOption = computed(() => {
+  return createLineOption(memHistory.value, "--sl-success");
+});
 
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -401,7 +403,7 @@ onMounted(() => {
   const loadServers = async () => {
     try {
       await store.refreshList();
-      await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
+      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
@@ -431,28 +433,27 @@ onMounted(() => {
   statsTimer = setInterval(fetchSystemInfo, 1000);
   quoteTimer = setInterval(updateQuote, 30000);
   refreshTimer = setInterval(async () => {
-    await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
+    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
   }, 3000);
 
   document.addEventListener("click", handleClickOutside);
 
   // 监听主题和无障碍模式变化
-  const observer = new MutationObserver((mutations) => {
+  themeObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
-      if (mutation.type === 'attributes' && 
-          (mutation.attributeName === 'data-theme' || mutation.attributeName === 'data-senior')) {
+      if (
+        mutation.type === "attributes" &&
+        (mutation.attributeName === "data-theme" || mutation.attributeName === "data-senior")
+      ) {
         themeVersion.value++;
       }
     });
   });
 
-  observer.observe(document.documentElement, {
+  themeObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['data-theme', 'data-senior']
+    attributeFilter: ["data-theme", "data-senior"],
   });
-
-  // 保存 observer 引用以便清理
-  (window as any).__themeObserver = observer;
 });
 
 onUnmounted(() => {
@@ -462,10 +463,9 @@ onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
 
   // 清理 MutationObserver
-  const observer = (window as any).__themeObserver;
-  if (observer) {
-    observer.disconnect();
-    delete (window as any).__themeObserver;
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
   }
 });
 
@@ -608,29 +608,46 @@ function cancelDelete() {
         <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
           <div class="gauge-grid">
             <div class="gauge-item">
-              <v-chart class="gauge-chart" :option="cpuGaugeOption" autoresize :update-options="{ notMerge: false }" />
+              <v-chart
+                class="gauge-chart"
+                :option="cpuGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
             <div class="gauge-item">
-              <v-chart class="gauge-chart" :option="memGaugeOption" autoresize :update-options="{ notMerge: false }" />
+              <v-chart
+                class="gauge-chart"
+                :option="memGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
             <div class="gauge-item">
-              <v-chart class="gauge-chart" :option="diskGaugeOption" autoresize :update-options="{ notMerge: false }" />
+              <v-chart
+                class="gauge-chart"
+                :option="diskGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.cpu') }}</span
-              ><span class="detail-value">{{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span>
+              <span class="detail-label">{{ i18n.t("home.cpu") }}</span
+              ><span class="detail-value"
+                >{{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
+              >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.memory') }}</span
+              <span class="detail-label">{{ i18n.t("home.memory") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.memory.used) }} /
                 {{ formatBytes(systemInfo.memory.total) }}</span
               >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.disk') }}</span
+              <span class="detail-label">{{ i18n.t("home.disk") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.disk.used) }} /
                 {{ formatBytes(systemInfo.disk.total) }}</span
@@ -642,8 +659,9 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.cpu') }}<span v-if="systemInfo" class="stat-detail">
-                  · {{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span
+                >{{ i18n.t("home.cpu")
+                }}<span v-if="systemInfo" class="stat-detail">
+                  · {{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
                 ></span
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
@@ -655,7 +673,8 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.memory') }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.memory")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.memory.used) }} /
                   {{ formatBytes(systemInfo.memory.total) }}</span
                 ></span
@@ -669,7 +688,8 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.disk') }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.disk")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.disk.used) }} /
                   {{ formatBytes(systemInfo.disk.total) }}</span
                 ></span
@@ -839,7 +859,11 @@ function cancelDelete() {
     <SLConfirmDialog
       :visible="showDeleteConfirm"
       :title="i18n.t('home.delete_server')"
-      :message="i18n.t('home.delete_confirm_message', { server: '<strong>' + deleteServerName + '</strong>' })"
+      :message="
+        i18n.t('home.delete_confirm_message', {
+          server: '<strong>' + deleteServerName + '</strong>',
+        })
+      "
       :confirmText="i18n.t('home.delete_confirm')"
       :cancelText="i18n.t('home.delete_cancel')"
       confirmVariant="danger"
