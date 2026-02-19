@@ -27,17 +27,18 @@ Import a server JAR file,choose a Java version,then click START!It's that simple
 - Whitelist,Ban,OP Manage easily.
 - It will shut server down when you close the software which won't let your saves be damaged.
 - Check update,update with one click
+- Built-in global language system (简体中文 / 繁體中文 / English / 日本語 / 한국어 / Español)
 
 ## Quick Start
 
 - If you are a user,download the software from RELEASE
 
-- If you are a developer,you need to download Node.js 20+ and Rust 1.70+.
+- If you are a developer, you need Node.js 20+, npm 10+, and Rust 1.70+.
 
 ```bash
 git clone https://github.com/fps_z/SeaLantern.git
 cd SeaLantern
-npm install
+npm ci
 npm run tauri dev
 ```
 
@@ -50,6 +51,25 @@ npm run tauri build
 The built things are in `src-tauri/target/release/bundle/`.
 
 ### Code Quality Check
+
+### Online Demo (Web)
+
+If you only want to try the UI online (without running Tauri locally):
+
+```bash
+npm ci
+npm run build
+```
+
+Deploy the `dist/` folder to Vercel / Netlify.
+
+> Note: the Web build is a demo mode and does not support desktop-only features (local file picker, launching servers, system tray, etc.).
+
+Run the core frontend quality pipeline (lint, typecheck, and build) in one command:
+
+```bash
+npm run check
+```
 
 Before you PR,we recommend you run commands below to check the code's quality：
 

@@ -1,0 +1,65 @@
+{
+  "common": {
+    "app_name": "Sea Lantern",
+    "home": "ホーム",
+    "create_server": "サーバー作成",
+    "console": "コンソール",
+    "config_edit": "設定編集",
+    "player_manage": "プレイヤー管理",
+    "settings": "設定",
+    "personalize": "外観",
+    "about": "このソフトについて",
+    "loading": "読み込み中...",
+    "select_server": "サーバーを選択",
+    "open_folder": "フォルダーを開く"
+  },
+  "sidebar": {
+    "groups": {
+      "main": "メイン",
+      "server": "サーバー",
+      "system": "システム"
+    },
+    "collapse_btn": "サイドバーを折りたたむ"
+  },
+  "header": {
+    "language": "言語",
+    "chinese": "简体中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "japanese": "日本語",
+    "korean": "한국어",
+    "spanish": "Español"
+  },
+  "home": {
+    "title": "サーバー管理",
+    "no_servers": "サーバーがありません",
+    "create_first": "最初のサーバーを作成してください",
+    "start": "開始",
+    "stop": "停止",
+    "edit": "編集",
+    "delete": "削除",
+    "status": "状態",
+    "running": "稼働中",
+    "stopped": "停止",
+    "starting": "起動中",
+    "stopping": "停止中",
+    "error": "エラー",
+    "system_resources": "システムリソース",
+    "detail_view": "詳細表示に切替",
+    "gauge_view": "ゲージ表示に切替",
+    "recent_alerts": "最近の警告 / エラー",
+    "delete_confirm_message": "削除を確認するためサーバー名 {{server}} を入力してください",
+    "delete_input_placeholder": "サーバー名を入力",
+    "delete_cancel": "キャンセル",
+    "delete_confirm": "削除を確認",
+    "delete_error": "サーバー名が正しくありません。再入力してください",
+    "close_action": "終了時の動作",
+    "close_action_desc": "閉じるボタンを押した時の動作を選択",
+    "close_action_ask": "毎回確認",
+    "close_action_minimize": "トレイに最小化",
+    "close_action_close": "直接終了",
+    "close_window_title": "ウィンドウを閉じる",
+    "close_window_message": "SeaLantern を閉じますか？",
+    "remember_choice": "この選択を記憶する"
+  }
+}

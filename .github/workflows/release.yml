@@ -41,6 +41,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
+          cache: "npm"
 
       - name: 安装 Rust 工具链
         uses: dtolnay/rust-toolchain@stable
@@ -54,7 +55,10 @@ jobs:
 
       - name: 安装前端依赖 (npm)
         # 默认用npm,最稳妥
-        run: npm install
+        run: npm ci
+
+      - name: 发布前检查
+        run: npm run check
 
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0
