@@ -11,7 +11,8 @@
     "about": "关于",
     "loading": "加载中...",
     "select_server": "选择服务器",
-    "open_folder": "打开文件夹"
+    "open_folder": "打开文件夹",
+    "mods": "模组下载"
   },
   "sidebar": {
     "groups": {
@@ -25,7 +26,10 @@
     "language": "语言",
     "chinese": "简体中文",
     "english": "English",
-    "chinese_tw": "繁體中文"
+    "chinese_tw": "繁體中文",
+    "japanese": "日本語",
+    "korean": "한국어",
+    "spanish": "Español"
   },
   "home": {
     "title": "服务器管理",
@@ -423,6 +427,29 @@
     "minimize": "最小化到后台",
     "show": "显示",
     "quit": "退出"
+  },
+  "mods": {
+    "title": "模组市场（一期）",
+    "subtitle": "基于 Modrinth 搜索并安装到当前服务器的 mods 目录",
+    "keyword": "关键词",
+    "keyword_placeholder": "例如：sodium",
+    "game_version": "游戏版本",
+    "loader": "加载器",
+    "search": "搜索模组",
+    "install": "安装",
+    "target_server": "目标服务器",
+    "select_server_first": "请先在侧边栏选择一个服务器",
+    "enter_keyword": "请输入要搜索的模组关键词",
+    "no_summary": "暂无简介",
+    "empty_hint": "输入关键词后点击“搜索模组”",
+    "install_success": "已安装：{{name}}",
+    "downloads": "下载：",
+    "prev_page": "上一页",
+    "next_page": "下一页",
+    "result_range": "显示 {{start}}-{{end}} / 共 {{total}} 条",
+    "install_with_dependencies_success": "已安装（含前置）：{{name}}",
+    "project_type": "类型",
+    "project_type_mod": "模组",
+    "project_type_plugin": "插件（Paper）"
   }
 }
-

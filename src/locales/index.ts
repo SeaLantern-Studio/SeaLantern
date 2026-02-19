@@ -1,23 +1,46 @@
 import zhCN from "./zh-CN.json";
 import enUS from "./en-US.json";
 import zhTW from "./zh-TW.json";
+import jaJP from "./ja-JP.json";
+import koKR from "./ko-KR.json";
+import esES from "./es-ES.json";
 import { ref, type Ref } from "vue";
 
 type TranslationNode = {
   [key: string]: string | TranslationNode;
 };
 
-export const SUPPORTED_LOCALES = ["zh-CN", "en-US", "zh-TW"] as const;
+export const SUPPORTED_LOCALES = ["zh-CN", "en-US", "zh-TW", "ja-JP", "ko-KR", "es-ES"] as const;
 export type LocaleCode = (typeof SUPPORTED_LOCALES)[number];
 
 const translations: Record<LocaleCode, TranslationNode> = {
   "zh-CN": zhCN,
   "en-US": enUS,
   "zh-TW": zhTW,
+  "ja-JP": jaJP,
+  "ko-KR": koKR,
+  "es-ES": esES,
 };
 
 function isSupportedLocale(locale: string): locale is LocaleCode {
   return (SUPPORTED_LOCALES as readonly string[]).includes(locale);
+}
+
+function normalizeLocale(input: string): string {
+  return input.replace("_", "-").trim();
+}
+
+function resolveLocaleByPrefix(locale: string): LocaleCode | null {
+  const normalized = normalizeLocale(locale);
+  if (isSupportedLocale(normalized)) {
+    return normalized;
+  }
+
+  const languagePart = normalized.split("-")[0]?.toLowerCase();
+  if (!languagePart) return null;
+
+  const matched = SUPPORTED_LOCALES.find((candidate) => candidate.toLowerCase().startsWith(`${languagePart}-`));
+  return matched ?? null;
 }
 
 function resolveNestedValue(source: TranslationNode, keys: string[]): string | undefined {
@@ -47,12 +70,38 @@ function interpolateVariables(template: string, options: Record<string, unknown>
 
 class I18n {
   private currentLocale: Ref<LocaleCode> = ref("zh-CN");
-  private fallbackLocale: LocaleCode = "zh-CN";
+  private fallbackLocale: LocaleCode = "en-US";
 
-  setLocale(locale: string) {
-    if (isSupportedLocale(locale)) {
-      this.currentLocale.value = locale;
+  setLocale(locale: string): LocaleCode | null {
+    const resolved = this.resolveLocale(locale);
+    if (resolved) {
+      this.currentLocale.value = resolved;
     }
+
+    return resolved;
+  }
+
+  resolveLocale(locale: string): LocaleCode | null {
+    return resolveLocaleByPrefix(locale);
+  }
+
+  resolveBestLocale(candidates: readonly string[]): LocaleCode {
+    for (const candidate of candidates) {
+      const resolved = this.resolveLocale(candidate);
+      if (resolved) {
+        return resolved;
+      }
+    }
+
+    return this.fallbackLocale;
+  }
+
+  detectSystemLocale(): LocaleCode {
+    if (typeof navigator === "undefined") {
+      return this.fallbackLocale;
+    }
+
+    return this.resolveBestLocale(navigator.languages ?? [navigator.language]);
   }
 
   getLocale(): LocaleCode {
@@ -86,7 +135,7 @@ class I18n {
   }
 
   isSupportedLocale(locale: string): boolean {
-    return isSupportedLocale(locale);
+    return this.resolveLocale(locale) !== null;
   }
 }
 

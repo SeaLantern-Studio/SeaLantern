@@ -138,14 +138,17 @@ fn search_mods(query: &str, version: &str, loader: &str) {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         let mod_manager = global::mod_manager();
-        match mod_manager.search_modrinth(query, version, loader).await {
-            Ok(mods) => {
-                if mods.is_empty() {
+        match mod_manager
+            .search_modrinth(query, version, loader, 1, 10)
+            .await
+        {
+            Ok(result) => {
+                if result.items.is_empty() {
                     println!("未找到匹配的模组。");
                 } else {
                     println!("{:<20} {:<15} {:<50}", "名称", "来源", "下载链接");
                     println!("{}", "-".repeat(85));
-                    for m in mods {
+                    for m in result.items {
                         println!("{:<20} {:<15} {:<50}", m.name, m.source, m.download_url);
                     }
                 }
