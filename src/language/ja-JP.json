@@ -1,5 +1,17 @@
 {
   "languageName": "日本語",
+  "header": {
+    "chinese": "簡体字中国語",
+    "english": "英語",
+    "chinese_tw": "繁体字中国語",
+    "deutsch": "ドイツ語",
+    "spanish": "スペイン語",
+    "japanese": "日本語",
+    "russian": "ロシア語",
+    "vietnamese": "ベトナム語",
+    "korean": "韓国語",
+    "french": "フランス語"
+  },
   "common": {
     "app_name": "シーランタン",
     "home": "ホーム",

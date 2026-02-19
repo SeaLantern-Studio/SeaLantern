@@ -1,5 +1,17 @@
 {
   "languageName": "Françaiss",
+  "header": {
+    "chinese": "Chinois simplifié",
+    "english": "Anglais",
+    "chinese_tw": "Chinois traditionnel",
+    "deutsch": "Allemand",
+    "spanish": "Espagnol",
+    "japanese": "Japonais",
+    "russian": "Russe",
+    "vietnamese": "Vietnamien",
+    "korean": "Coréen",
+    "french": "Français"
+  },
   "common": {
     "app_name": "Sea Lantern",
     "home": "Accueil",
