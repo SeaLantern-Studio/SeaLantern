@@ -25,11 +25,34 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
-      - name: Publish to AUR
-        uses: Jguer/aur-publish-action@v1
-        with:
-          pkgname: sealantern
-          pkgbuild: PKGBUILD
-          commit_username: "GitHub Actions"
-          commit_email: "actions@github.com"
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+      - name: Setup SSH and push to AUR
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          # 配置 SSH
+          mkdir -p ~/.ssh
+          echo "$AUR_SSH_KEY" > ~/.ssh/aur_key
+          chmod 600 ~/.ssh/aur_key
+
+          # 配置 SSH 连接 AUR
+          cat > ~/.ssh/config << EOF
+          Host aur.archlinux.org
+              IdentityFile ~/.ssh/aur_key
+              User aur
+              StrictHostKeyChecking no
+          EOF
+
+          # 克隆 AUR 仓库
+          git clone aur@aur.archlinux.org:sealantern.git aur-repo
+
+          # 复制 PKGBUILD
+          cp PKGBUILD aur-repo/
+          cp .SRCINFO aur-repo/ 2>/dev/null || true
+
+          # 提交推送
+          cd aur-repo
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to version ${{ steps.get_version.outputs.VERSION }}" || echo "No changes"
+          git push
