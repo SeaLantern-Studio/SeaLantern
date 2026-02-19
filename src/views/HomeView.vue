@@ -37,20 +37,48 @@ const memHistory = ref<number[]>([]);
 const statsViewMode = ref<"detail" | "gauge">("gauge");
 const statsLoading = ref(true);
 
-// 获取 CSS 变量实际值的辅助函数
-const getCssVar = (varName: string): string => {
-  if (typeof window === 'undefined') return '#3b82f6';
+// 获取 CSS 变量实际值的辅助函数，支持传入默认值
+const getCssVar = (varName: string, defaultValue: string): string => {
+  if (typeof window === 'undefined') return defaultValue;
   const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  return value || '#3b82f6';
+  return value || defaultValue;
+};
+
+// 解析 CSS 字体大小（支持 px 和 rem 单位）
+const parseFontSize = (varName: string, defaultPx: number): number => {
+  const value = getCssVar(varName, `${defaultPx}px`);
+  // 移除单位并解析为数字
+  const numMatch = value.match(/^[\d.]+/);
+  if (!numMatch) return defaultPx;
+  
+  const num = parseFloat(numMatch[0]);
+  if (!Number.isFinite(num) || num <= 0) return defaultPx;
+  
+  // 如果是 rem，假设根字体大小为 16px
+  if (value.includes('rem')) {
+    return num * 16;
+  }
+  return num;
+};
+
+// ECharts 公共基础配置
+const baseChartConfig = {
+  backgroundColor: 'transparent',
+  animation: true,
+  animationDuration: 300,
+  animationEasing: 'cubicOut',
 };
 
 // ECharts 配置生成函数
 const createGaugeOption = (value: number, colorVar: string, label: string) => {
-  const fontSize = parseInt(getCssVar('--sl-font-size-sm') || '13', 10);
-  const fontFamily = getCssVar('--sl-font-mono') || 'monospace';
+  const fontSize = parseFontSize('--sl-font-size-sm', 13);
+  const fontFamily = getCssVar('--sl-font-mono', 'monospace');
+  const color = getCssVar(colorVar, '#3b82f6');
+  const textColor = getCssVar('--sl-text-primary', '#1f2937');
+  const borderColor = getCssVar('--sl-border', '#e5e7eb');
   
   return {
-    backgroundColor: 'transparent',
+    ...baseChartConfig,
     series: [
       {
         type: 'pie',
@@ -65,7 +93,7 @@ const createGaugeOption = (value: number, colorVar: string, label: string) => {
           fontSize: fontSize,
           fontWeight: 600,
           fontFamily: fontFamily,
-          color: getCssVar('--sl-text-primary'),
+          color: textColor,
         },
         labelLine: {
           show: false,
@@ -75,7 +103,7 @@ const createGaugeOption = (value: number, colorVar: string, label: string) => {
             value: value,
             name: label,
             itemStyle: {
-              color: getCssVar(colorVar),
+              color: color,
               borderRadius: 3,
             },
           },
@@ -83,7 +111,7 @@ const createGaugeOption = (value: number, colorVar: string, label: string) => {
             value: 100 - value,
             name: '剩余',
             itemStyle: {
-              color: getCssVar('--sl-border'),
+              color: borderColor,
             },
             label: {
               show: false,
@@ -93,9 +121,6 @@ const createGaugeOption = (value: number, colorVar: string, label: string) => {
             },
           },
         ],
-        animation: true,
-        animationDuration: 300,
-        animationEasing: 'cubicOut',
       },
     ],
   };
@@ -105,9 +130,9 @@ const cpuGaugeOption = computed(() => createGaugeOption(cpuUsage.value, '--sl-pr
 const memGaugeOption = computed(() => createGaugeOption(memUsage.value, '--sl-success', i18n.t('home.memory')));
 const diskGaugeOption = computed(() => createGaugeOption(diskUsage.value, '--sl-warning', i18n.t('home.disk')));
 
-// 折线图配置生成函数
-const createLineOption = (data: number[], colorVar: string) => ({
-  backgroundColor: 'transparent',
+// 折线图公共配置
+const baseLineConfig = {
+  ...baseChartConfig,
   grid: {
     left: 0,
     right: 0,
@@ -119,7 +144,6 @@ const createLineOption = (data: number[], colorVar: string) => ({
     type: 'category',
     show: false,
     boundaryGap: false,
-    data: data.map((_, i) => i),
   },
   yAxis: {
     type: 'value',
@@ -127,23 +151,36 @@ const createLineOption = (data: number[], colorVar: string) => ({
     min: 0,
     max: 100,
   },
-  series: [
-    {
-      type: 'line',
-      data: data,
-      smooth: false,
-      symbol: 'none',
-      lineStyle: {
-        width: 2,
-        color: getCssVar(colorVar),
-      },
-      areaStyle: {
-        color: getCssVar(colorVar),
-        opacity: 0.15,
-      },
+};
+
+// 折线图配置生成函数
+const createLineOption = (data: number[], colorVar: string) => {
+  const color = getCssVar(colorVar, '#3b82f6');
+  
+  return {
+    ...baseLineConfig,
+    xAxis: {
+      ...baseLineConfig.xAxis,
+      data: data.map((_, i) => i),
     },
-  ],
-});
+    series: [
+      {
+        type: 'line',
+        data: data,
+        smooth: false,
+        symbol: 'none',
+        lineStyle: {
+          width: 2,
+          color: color,
+        },
+        areaStyle: {
+          color: color,
+          opacity: 0.15,
+        },
+      },
+    ],
+  };
+};
 
 const cpuLineOption = computed(() => createLineOption(cpuHistory.value, '--sl-primary'));
 const memLineOption = computed(() => createLineOption(memHistory.value, '--sl-success'));
@@ -916,18 +953,8 @@ function cancelDelete() {
 }
 
 .line-chart {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.line-chart > div {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.line-chart canvas {
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  height: 100%;
 }
 
 .section-header {
@@ -1359,18 +1386,8 @@ function cancelDelete() {
   flex-shrink: 0;
 }
 .gauge-chart {
-  width: 100% !important;
-  height: 100% !important;
-  min-width: 70px;
-  min-height: 70px;
-}
-.gauge-chart > div {
-  width: 100% !important;
-  height: 100% !important;
-}
-.gauge-chart canvas {
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  height: 100%;
 }
 
 .gauge-details {
