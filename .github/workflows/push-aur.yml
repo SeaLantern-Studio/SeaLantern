@@ -13,6 +13,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install makepkg dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y fakeroot build-essential
+          # 下载并安装 makepkg（pacman-pkg）
+          wget https://sources.archlinux.org/other/pacman/pacman-7.0.0.tar.xz
+          tar -xf pacman-7.0.0.tar.xz
+          cd pacman-7.0.0
+          ./configure --prefix=/usr
+          make
+          sudo make install
+          cd ..
+          rm -rf pacman-7.0.0*
+
       - name: Get release version
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
@@ -22,7 +36,7 @@ jobs:
           VERSION=${VERSION#v}
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
           sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
-          # 不需要 makepkg，让 action 自动生成 .SRCINFO
+          # 注意：不再使用 makepkg，因为 .SRCINFO 会在 Action 中自动生成
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
@@ -31,8 +45,13 @@ jobs:
         with:
           pkgname: sealantern
           pkgbuild: PKGBUILD
-          assets: sealantern.install sealantern.desktop
-          commit_username: "GitHub Actions"
-          commit_email: "actions@github.com"
+          assets: |
+            .SRCINFO
+            sealantern.install
+            sealantern.desktop
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to version ${{ steps.get_version.outputs.VERSION }}"
+          allow_empty_commits: false
+          ssh_keyscan_types: rsa,ecdsa,ed25519
