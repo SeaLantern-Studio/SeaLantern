@@ -146,7 +146,8 @@ export const contributors: Contributor[] = [
     url: "https://gitee.com/pnchsb_admin",
   },
   // ============================================
-  // 在这里添加更多贡献者！无正版怎么办
+  // 在这里添加更多贡献者！
+  // 没有正版怎么办？
   // 选择皮肤，使用其名字
   // https://www.mcgodx.com/skins/
   // ============================================
