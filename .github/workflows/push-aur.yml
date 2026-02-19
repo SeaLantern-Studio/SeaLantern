@@ -3,6 +3,17 @@ name: Publish to AUR
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 1.0.0)"
+        required: true
+        type: string
+      skip_test:
+        description: "Skip makepkg test"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   aur-publish:
@@ -16,9 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y base-devel fakeroot
-          # 安装必要工具
-          sudo apt-get install -y git
+          sudo apt-get install -y base-devel fakeroot git
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -28,14 +37,29 @@ jobs:
       - name: Add AUR to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
 
       - name: Get release version
         id: get_version
         run: |
-          # 移除版本号前的 'v' 如果存在
-          VERSION=${GITHUB_REF#refs/tags/}
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            # 从 release tag 获取版本
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "Source: release tag"
+          else
+            # 从手动输入获取版本
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Source: manual input"
+          fi
+
+          # 移除可能的 'v' 前缀
           VERSION=${VERSION#v}
+
+          if [[ -z "$VERSION" ]]; then
+            echo "Error: Version is empty!"
+            exit 1
+          fi
+
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
 
@@ -43,8 +67,13 @@ jobs:
         run: |
           if [ ! -f "PKGBUILD" ]; then
             echo "Error: PKGBUILD file not found!"
+            echo "Current directory contents:"
+            ls -la
             exit 1
           fi
+
+          echo "PKGBUILD found:"
+          head -20 PKGBUILD
 
       - name: Update PKGBUILD version
         run: |
@@ -54,38 +83,97 @@ jobs:
           cp PKGBUILD PKGBUILD.bak
 
           # 更新版本号
-          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
-          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          if grep -q "^pkgver=" PKGBUILD; then
+            sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          else
+            echo "Warning: pkgver not found in PKGBUILD, adding it"
+            echo "pkgver=${VERSION}" >> PKGBUILD
+          fi
+
+          # 重置发布号
+          if grep -q "^pkgrel=" PKGBUILD; then
+            sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          else
+            echo "pkgrel=1" >> PKGBUILD
+          fi
 
           # 如果存在 source 数组，更新下载链接中的版本号
-          sed -i "s/\${pkgver}/${VERSION}/g" PKGBUILD
+          if grep -q "^source=" PKGBUILD; then
+            sed -i "s/\${pkgver}/${VERSION}/g" PKGBUILD
+            # 也替换直接写死的版本号（常见格式）
+            sed -i "s/[0-9]\+\.[0-9]\+\.[0-9]\+/${VERSION}/g" PKGBUILD
+          fi
 
           echo "Updated PKGBUILD content:"
+          echo "-----------------------"
           cat PKGBUILD
+          echo "-----------------------"
 
       - name: Generate .SRCINFO
         run: |
-          # 使用 makepkg 生成 .SRCINFO
-          if ! command -v makepkg &> /dev/null; then
-            echo "makepkg not found, installing..."
+          # 尝试使用 makepkg 生成 .SRCINFO
+          if command -v makepkg &> /dev/null; then
+            echo "Using makepkg to generate .SRCINFO"
+            makepkg --printsrcinfo > .SRCINFO
+          else
+            echo "makepkg not found, trying to install..."
             sudo apt-get install -y pacman-package-manager
+
+            if command -v makepkg &> /dev/null; then
+              makepkg --printsrcinfo > .SRCINFO
+            else
+              echo "Warning: Could not install makepkg, creating basic .SRCINFO"
+              # 创建基本的 .SRCINFO（仅作备选）
+              VERSION="${{ steps.get_version.outputs.VERSION }}"
+              cat > .SRCINFO << EOF
+                pkgbase = sealantern
+                \tpkgdesc = $(grep "^pkgdesc=" PKGBUILD | cut -d= -f2- | xargs)
+                \tpkgver = ${VERSION}
+                \tpkgrel = 1
+                \turl = $(grep "^url=" PKGBUILD | cut -d= -f2- | xargs)
+                \tinstall = $(grep "^install=" PKGBUILD | cut -d= -f2- | xargs 2>/dev/null || echo "")
+                \tarch = $(grep "^arch=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+                \tlicense = $(grep "^license=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+                \tdepends = $(grep "^depends=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+                \tmakedepends = $(grep "^makedepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+                \tsource = $(grep "^source=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+                \tsha256sums = $(grep "^sha256sums=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+
+                pkgname = sealantern
+                EOF
+            fi
           fi
 
-          # 生成 .SRCINFO
-          makepkg --printsrcinfo > .SRCINFO
-
           echo "Generated .SRCINFO content:"
+          echo "------------------------"
           cat .SRCINFO
+          echo "------------------------"
 
       - name: Validate files
         run: |
           echo "Checking generated files:"
           ls -la PKGBUILD .SRCINFO
 
+          # 验证 PKGBUILD 是否包含必要字段
+          REQUIRED_FIELDS=("pkgname" "pkgver" "pkgrel" "pkgdesc" "arch")
+          for field in "${REQUIRED_FIELDS[@]}"; do
+            if ! grep -q "^${field}=" PKGBUILD; then
+              echo "Error: Required field '${field}' not found in PKGBUILD"
+              exit 1
+            fi
+          done
+
           # 验证 .SRCINFO 是否有效
           if [ ! -s ".SRCINFO" ]; then
             echo "Error: .SRCINFO is empty or not generated"
             exit 1
+          fi
+
+          # 验证 .SRCINFO 中的版本号
+          if ! grep -q "pkgver = ${{ steps.get_version.outputs.VERSION }}" .SRCINFO; then
+            echo "Warning: Version mismatch in .SRCINFO"
+            echo "Expected: ${{ steps.get_version.outputs.VERSION }}"
+            echo "Found: $(grep "pkgver =" .SRCINFO)"
           fi
 
       - name: Publish AUR package
@@ -95,20 +183,35 @@ jobs:
           pkgbuild: PKGBUILD
           assets: |
             .SRCINFO
+            *.install
+            *.patch
           commit_username: "${{ github.actor }}"
           commit_email: "${{ github.actor }}@users.noreply.github.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update to version ${{ steps.get_version.outputs.VERSION }}"
+          commit_message: "Update sealantern to v${{ steps.get_version.outputs.VERSION }}"
           allow_empty_commits: false
           force_push: false
           updpkgsums: true
-          test: true
+          test: ${{ github.event_name == 'release' || !github.event.inputs.skip_test }}
           ssh_keyscan_types: rsa,ecdsa,ed25519
+
+      - name: Send notification
+        if: success()
+        run: |
+          echo "✅ Successfully published sealantern v${{ steps.get_version.outputs.VERSION }} to AUR"
+          echo "Package URL: https://aur.archlinux.org/packages/sealantern"
+
+      - name: Send failure notification
+        if: failure()
+        run: |
+          echo "❌ Failed to publish sealantern v${{ steps.get_version.outputs.VERSION }} to AUR"
+          echo "Please check the workflow logs for details."
 
       - name: Cleanup
         if: always()
         run: |
           # 恢复原始 PKGBUILD（如果需要）
           if [ -f "PKGBUILD.bak" ]; then
+            echo "Restoring original PKGBUILD"
             mv PKGBUILD.bak PKGBUILD
           fi
