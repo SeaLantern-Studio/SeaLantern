@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted } from "vue";
 import AppLayout from "./components/layout/AppLayout.vue";
 import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
 import { useUpdateStore } from "./stores/updateStore";
 import { useSettingsStore } from "./stores/settingsStore";
+import { useI18nStore } from "./stores/i18nStore";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
 const updateStore = useUpdateStore();
 const settingsStore = useSettingsStore();
+const i18nStore = useI18nStore();
 
 function getEffectiveTheme(theme: string): "light" | "dark" {
   if (theme === "auto") {
@@ -36,6 +38,7 @@ function applyFontFamily(fontFamily: string) {
 
 onMounted(async () => {
   try {
+    await i18nStore.loadLanguageSetting();
     await settingsStore.loadSettings();
     const settings = settingsStore.settings;
     applyTheme(settings.theme || "auto");
