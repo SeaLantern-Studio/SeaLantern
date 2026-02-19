@@ -294,7 +294,7 @@ function blockDevTools(e: KeyboardEvent): void {
 
 /**
  * 应用模式设置
- * @param enabled - 是否启用开发者模式
+ * @param enabled - 是否启用眼瞎模式
  */
 export function applySeniorMode(enabled: boolean): void {
   if (enabled) {
