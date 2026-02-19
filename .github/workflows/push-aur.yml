@@ -59,41 +59,48 @@ jobs:
         run: |
           # 根据事件类型获取版本
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            # Release 事件 - 从 release tag 获取
-            VERSION="${{ github.event.release.tag_name }}"
-            echo "Source: release tag: $VERSION"
+          # Release 事件 - 从 release tag 获取
+          RAW_VERSION="${{ github.event.release.tag_name }}"
+          echo "Source: release tag: $RAW_VERSION"
           elif [[ "${{ github.event_name }}" == "push" ]]; then
-            # Push 事件（tag 推送）- 从 ref 获取
-            VERSION="${{ github.ref_name }}"
-            echo "Source: git tag: $VERSION"
+          # Push 事件（tag 推送）- 从 ref 获取
+          RAW_VERSION="${{ github.ref_name }}"
+          echo "Source: git tag: $RAW_VERSION"
           else
-            # 手动触发 - 从输入获取
-            VERSION="${{ github.event.inputs.version }}"
-            echo "Source: manual input: $VERSION"
+          # 手动触发 - 从输入获取
+          RAW_VERSION="${{ github.event.inputs.version }}"
+          echo "Source: manual input: $RAW_VERSION"
           fi
 
-          # 移除版本号前的 'v' 前缀（如果有）
-          VERSION="${VERSION#v}"
+          # 提取纯净版本号（支持 sea-lantern-v0.6.2 或 v0.6.2 格式）
+          if [[ $RAW_VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
+          # 使用正则提取数字版本号
+          VERSION=$(echo "$RAW_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "Extracted version from tag: $VERSION"
+          else
+          # 如果没有匹配到，尝试移除 'v' 前缀
+          VERSION="${RAW_VERSION#v}"
+          fi
 
           # 验证版本号不为空
           if [[ -z "$VERSION" ]]; then
-            echo "❌ Error: Version is empty!"
-            echo "Debug:"
-            echo "  event_name: ${{ github.event_name }}"
-            echo "  release.tag_name: ${{ github.event.release.tag_name }}"
-            echo "  github.ref_name: ${{ github.ref_name }}"
-            echo "  inputs.version: ${{ github.event.inputs.version }}"
-            exit 1
+          echo "❌ Error: Version is empty!"
+          echo "Debug:"
+          echo "  event_name: ${{ github.event_name }}"
+          echo "  raw_version: $RAW_VERSION"
+          exit 1
           fi
 
-          # 验证版本号格式（可选）
-          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "⚠️  Warning: Version format may be invalid: $VERSION"
+          # 验证版本号格式
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "❌ Error: Invalid version format: $VERSION"
+          echo "Version must be in format: x.y.z"
+          exit 1
           fi
 
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_ENV
-          echo "✅ Extracted version: $VERSION"
+          echo "✅ Final version: $VERSION"
 
       - name: Validate version
         run: |
