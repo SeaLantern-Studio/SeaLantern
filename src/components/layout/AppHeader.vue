@@ -3,7 +3,7 @@ import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18nStore } from "../../stores/i18nStore";
-import { i18n } from "../../locales";
+import { i18n } from "../../language";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";

@@ -372,15 +372,6 @@
       "fill": "Rellenar",
       "auto": "Automático"
     },
-    "color_options": {
-      "default": "Por defecto",
-      "midnight": "Medianoche",
-      "forest": "Bosque",
-      "sunset": "Atardecer",
-      "ocean": "Océano",
-      "rose": "Rosa",
-      "custom": "Personalizado"
-    },
     "edit_colorplan_options": {
       "light": "Claro",
       "dark": "Oscuro",
@@ -456,7 +447,10 @@
     "developer_mode": "Modo desarrollador",
     "developer_mode_desc": "Activar funciones avanzadas y depuración",
     "developer_mode_toggle": "Activar modo desarrollador",
-    "developer_mode_toggle_desc": "Al activarlo, se habilitan herramientas de depuración"
+    "developer_mode_toggle_desc": "Al activarlo, se habilitan herramientas de depuración",
+    "color_options": {
+      "custom": "Personalizado"
+    }
   },
   "about": {
     "title": "Acerca de",

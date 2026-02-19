@@ -3,7 +3,7 @@
  */
 
 import { SERVER_STATUS } from "./constants";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 
 export type StatusVariant = "success" | "warning" | "error" | "neutral";
 

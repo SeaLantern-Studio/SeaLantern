@@ -3,7 +3,7 @@ import { computed, ref, nextTick, watch, onMounted, onBeforeUnmount } from "vue"
 import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
 import { useServerStore } from "../../stores/serverStore";
-import { i18n } from "../../locales";
+import { i18n } from "../../language";
 import {
   Listbox,
   ListboxButton,

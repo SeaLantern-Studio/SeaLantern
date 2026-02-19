@@ -387,15 +387,6 @@
       "fill": "Kéo giãn",
       "auto": "Kích thước gốc"
     },
-    "color_options": {
-      "default": "Mặc định",
-      "midnight": "Nửa đêm",
-      "forest": "Rừng",
-      "sunset": "Hoàng hôn",
-      "ocean": "Đại dương",
-      "rose": "Hoa hồng",
-      "custom": "Tùy chỉnh"
-    },
     "edit_colorplan_options": {
       "light": "Sáng",
       "dark": "Tối",
@@ -471,7 +462,10 @@
     "developer_mode": "Chế độ nhà phát triển",
     "developer_mode_desc": "Bật tính năng nâng cao và tùy chọn gỡ lỗi",
     "developer_mode_toggle": "Bật chế độ nhà phát triển",
-    "developer_mode_toggle_desc": "Bật để sử dụng công cụ gỡ lỗi"
+    "developer_mode_toggle_desc": "Bật để sử dụng công cụ gỡ lỗi",
+    "color_options": {
+      "custom": "Tùy chỉnh"
+    }
   },
   "about": {
     "title": "Giới thiệu",

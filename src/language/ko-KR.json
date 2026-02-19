@@ -392,15 +392,6 @@
       "fill": "늘리기 (Fill)",
       "auto": "원본 크기 (Auto)"
     },
-    "color_options": {
-      "default": "기본",
-      "midnight": "자정",
-      "forest": "숲",
-      "sunset": "석양",
-      "ocean": "바다",
-      "rose": "장미",
-      "custom": "사용자 정의"
-    },
     "edit_colorplan_options": {
       "light": "라이트",
       "dark": "다크",
@@ -476,7 +467,10 @@
     "developer_mode": "개발자 모드",
     "developer_mode_desc": "고급 기능 및 디버그 옵션 활성화",
     "developer_mode_toggle": "개발자 모드 활성화",
-    "developer_mode_toggle_desc": "활성화 시 디버그 도구를 사용할 수 있습니다"
+    "developer_mode_toggle_desc": "활성화하면 개발자 모드에서 디버그 도구를 사용할 수 있습니다",
+    "color_options": {
+      "custom": "사용자 정의"
+    }
   },
   "about": {
     "title": "정보",

@@ -5,7 +5,7 @@ import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { settingsApi } from "../api/settings";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 import type { ServerCommand } from "../types/server";
 import { getStatusClass, getStatusText } from "../utils/serverStatus";
 import { useLoading } from "../composables/useAsync";
