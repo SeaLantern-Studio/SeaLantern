@@ -1,11 +1,12 @@
 <div align="center">
-<img src="https://gitee.com/fps_z/SeaLantern/raw/master/src/assets/logo.svg" alt="logo" width="200" height="200">
+  
+<img src="src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # 海晶灯（Sea Lantern）
 
 一个轻量化的 Minecraft 服务器管理工具，基于 Tauri 2 + Rust + Vue 3
 
-|[![github-stars](https://img.shields.io/github/stars/FPSZ/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/FPSZ/SeaLantern/stargazers)|[![github-forks](https://img.shields.io/github/forks/FPSZ/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/FPSZ/SeaLantern/network/members)|[![github-latest](https://img.shields.io/github/v/release/FPSZ/SeaLantern?style=flat&logo=github&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC)](https://github.com/FPSZ/SeaLantern/releases/latest)|
+|[![github-stars](https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/SeaLantern-Studio/SeaLantern/stargazers)|[![github-forks](https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/SeaLantern-Studio/SeaLantern/network/members)|[![github-latest](https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC)](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)|
 |:--|:--|:--|
 |[![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)|[![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)|[![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)|
 
@@ -27,14 +28,14 @@
 
 ## 快速开始
 
-下载 [release](https://github.com/FPSZ/SeaLantern/releases/latest) 版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
+下载 [release](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest) 版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
 
 ## 开发
 
 您将会需要 Node.js 20+ 和 Rust 1.70+。
 
 ```bash
-git clone https://github.com/FPSZ/SeaLantern.git
+git clone https://github.com/SeaLantern-Studio/SeaLantern.git
 cd SeaLantern
 npm install
 npm run tauri dev
@@ -150,7 +151,7 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 
 ### i18n 国际化支持指南
 
-Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文。如果你需要添加新的翻译或语言支持，请参考 [i18n 国际化指南](docs/i18n-help.md)。
+Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](src/language/README.md)
 
 ## License
 
@@ -158,13 +159,13 @@ Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英�
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=FPSZ/SeaLantern&type=Date)](https://star-history.com/#FPSZ/SeaLantern&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=Date)](https://star-history.com/#SeaLantern-Studio/SeaLantern&Date)
 
 ## 贡献者
 
 感谢所有为 Sea Lantern 做出贡献的人！
 
-[![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
+[![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/SeaLantern-Studio/SeaLantern/graphs/contributors)
 
 ## 致谢
 
