@@ -75,7 +75,7 @@ Thank you for your interest in Project Sea Lantern! This document will help you 
 
 ## Git Workflow
 
-### Branch Name Method
+### Branch Naming Convention
 
 - feature/feature-name - New features
 - fix/issue-description - Bug fixes
