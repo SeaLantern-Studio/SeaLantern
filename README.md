@@ -40,6 +40,8 @@ npm install
 npm run tauri dev
 ```
 
+部分 Linux 发行版，例如 Arch 直接使用 `npm run tauri dev` 可能不会编译成功，请检查您的依赖库是否完全，建议您在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
+
 构建发布版：
 
 ```bash
