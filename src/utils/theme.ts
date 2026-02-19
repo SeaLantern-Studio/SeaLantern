@@ -291,15 +291,3 @@ function blockDevTools(e: KeyboardEvent): void {
     e.preventDefault();
   }
 }
-
-/**
- * 应用模式设置
- * @param enabled - 是否启用眼瞎模式
- */
-export function applySeniorMode(enabled: boolean): void {
-  if (enabled) {
-    document.documentElement.setAttribute("data-senior", "true");
-  } else {
-    document.documentElement.removeAttribute("data-senior");
-  }
-}

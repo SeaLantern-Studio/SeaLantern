@@ -11,7 +11,6 @@ import {
   applyFontSize,
   applyColors,
   applyDeveloperMode,
-  applySeniorMode,
   getEffectiveTheme,
 } from "../../utils/theme";
 
@@ -84,7 +83,6 @@ async function applyAllSettings(): Promise<void> {
 
   applyColors(settings);
   applyDeveloperMode(settings.developer_mode || false);
-  applySeniorMode(settings.senior_mode || false);
 }
 
 onMounted(async () => {

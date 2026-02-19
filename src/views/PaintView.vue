@@ -1213,18 +1213,6 @@ async function handleThemeChange() {
   markChanged();
 }
 
-function handleSeniorModeChange() {
-  if (!settings.value) return;
-
-  if (settings.value.senior_mode) {
-    document.documentElement.setAttribute("data-senior", "true");
-  } else {
-    document.documentElement.removeAttribute("data-senior");
-  }
-
-  markChanged();
-}
-
 async function saveSettings() {
   if (!settings.value) return;
 
@@ -1619,17 +1607,6 @@ function clearBackgroundImage() {
           </div>
 
           <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.senior_mode") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.senior_mode_desc") }}</span>
-            </div>
-            <SLSwitch
-              v-model="settings.senior_mode"
-              @update:modelValue="handleSeniorModeChange"
-            />
-          </div>
-
-          <div class="setting-row" v-if="!settings.senior_mode">
             <div class="setting-info">
               <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
               <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>

@@ -484,8 +484,6 @@
     "developer_mode_desc": "启动高级功能和调试选项",
     "developer_mode_toggle": "启动开发者模式",
     "developer_mode_toggle_desc": "启用后将允许使用调试工具",
-    "senior_mode": "长辈模式",
-    "senior_mode_desc": "启用更大的文字和简化的界面，以便更容易使用",
     "color_options": {
       "custom": "自定义"
     }
