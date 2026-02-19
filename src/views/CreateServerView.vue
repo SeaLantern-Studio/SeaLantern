@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { RefreshCw } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -30,13 +30,19 @@ const minMemory = ref("512");
 const port = ref("25565");
 const jarPath = ref("");
 type StartupMode = "jar" | "bat" | "sh";
-const { activeTab: startupMode, indicatorRef: startupModeIndicator, switchTab: switchStartupMode } = useTabSwitch<StartupMode>("jar");
+const { activeTab: startupMode, indicatorRef: startupModeIndicator, switchTab: switchStartupMode, updateIndicator } = useTabSwitch<StartupMode>("jar");
 const selectedJava = ref("");
 const onlineMode = ref(true);
 
 const javaList = ref<JavaInfo[]>([]);
 
 const startupModes: StartupMode[] = ["jar", "bat", "sh"];
+
+// 监听语言变化，更新 Tab 指示器位置
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, () => {
+  updateIndicator();
+});
 
 onMounted(async () => {
   await loadDefaultSettings();

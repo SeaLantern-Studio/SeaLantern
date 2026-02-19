@@ -30,6 +30,12 @@ const onlinePlayers = ref<string[]>([]);
 const { loading, withLoading } = useLoading();
 const { error, success, showError, showSuccess, clear: clearMessage } = useMessage();
 
+// 监听语言变化，更新 Tab 指示器位置
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, () => {
+  updateTabIndicator();
+});
+
 const showAddModal = ref(false);
 const addPlayerName = ref("");
 const addBanReason = ref("");
