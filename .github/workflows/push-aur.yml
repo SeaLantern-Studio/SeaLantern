@@ -1,0 +1,35 @@
+name: Publish to AUR
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  aur-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Update PKGBUILD version
+        run: |
+          VERSION=${VERSION#v}
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Publish to AUR
+        uses: Jguer/aur-publish-action@v1
+        with:
+          pkgname: sealantern
+          pkgbuild: PKGBUILD
+          commit_username: "GitHub Actions"
+          commit_email: "actions@github.com"
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
