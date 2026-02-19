@@ -1,4 +1,4 @@
-import { computed, onMounted } from "vue";
+import { computed } from "vue";
 import { defineStore } from "pinia";
 import { i18n, type LocaleCode } from "../locales";
 import { settingsApi } from "../api/settings";
@@ -7,6 +7,9 @@ const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
   "zh-CN": "header.chinese",
   "zh-TW": "header.chinese_tw",
   "en-US": "header.english",
+  "ja-JP": "header.japanese",
+  "ko-KR": "header.korean",
+  "es-ES": "header.spanish",
 };
 
 export const useI18nStore = defineStore("i18n", () => {
@@ -27,16 +30,16 @@ export const useI18nStore = defineStore("i18n", () => {
   );
 
   async function setLocale(nextLocale: string) {
-    if (i18n.isSupportedLocale(nextLocale)) {
-      i18n.setLocale(nextLocale);
-      // 保存语言设置到持久化存储
-      try {
-        const settings = await settingsApi.get();
-        settings.language = nextLocale;
-        await settingsApi.save(settings);
-      } catch (error) {
-        console.error("Failed to save language setting:", error);
-      }
+    const resolvedLocale = i18n.setLocale(nextLocale);
+    if (!resolvedLocale) return;
+
+    // 保存语言设置到持久化存储
+    try {
+      const settings = await settingsApi.get();
+      settings.language = resolvedLocale;
+      await settingsApi.save(settings);
+    } catch (error) {
+      console.error("Failed to save language setting:", error);
     }
   }
 
@@ -52,16 +55,21 @@ export const useI18nStore = defineStore("i18n", () => {
       const settings = await settingsApi.get();
       if (settings.language && i18n.isSupportedLocale(settings.language)) {
         i18n.setLocale(settings.language);
+        return;
+      }
+
+      const detectedLocale = i18n.detectSystemLocale();
+      i18n.setLocale(detectedLocale);
+
+      if (settings.language !== detectedLocale) {
+        settings.language = detectedLocale;
+        await settingsApi.save(settings);
       }
     } catch (error) {
       console.error("Failed to load language setting:", error);
     }
   }
 
-  // 组件挂载时加载语言设置
-  onMounted(() => {
-    loadLanguageSetting();
-  });
 
   return {
     locale,
