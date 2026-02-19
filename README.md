@@ -149,8 +149,7 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 
 ### i18n 国际化支持指南
 
-Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文。
-<!-- 请参考 [i18n 国际化指南](docs/i18n-help.md)。 -->
+Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](src/language/README.md)
 
 ## License
 
