@@ -27,7 +27,7 @@ export const contributors: Contributor[] = [
   {
     name: "OMIILII",
     role: "精神支柱",
-    avatar: "https://api.rms.net.cn/head/Alex",
+    avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
   },
   {
     name: "烬白Jinby",
