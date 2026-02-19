@@ -49,6 +49,8 @@ encoding_rs = "0.8"
 zip = "0.6"
 tar = "0.4"
 flate2 = "1.0"
+serde_yaml = "0.9"
+trash = "5.1"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = ["Win32_System_Performance", "Win32_Foundation"] }

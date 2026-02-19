@@ -5,6 +5,7 @@ pub mod java_installer;
 pub mod join_manager;
 pub mod mod_manager;
 pub mod player_manager;
+pub mod plugin_manager;
 pub mod server_id_manager;
 pub mod server_manager;
 pub mod settings_manager;

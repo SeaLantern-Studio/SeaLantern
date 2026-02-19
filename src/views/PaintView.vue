@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown } from 'lucide-vue-next';
+import { ChevronDown } from "lucide-vue-next";
 import { ref, onMounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -17,7 +17,13 @@ import {
 } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { getAllThemes, getThemeById, getThemeOptions, mapLegacyPlanName, type ColorPlan } from "../themes";
+import {
+  getAllThemes,
+  getThemeById,
+  getThemeOptions,
+  mapLegacyPlanName,
+  type ColorPlan,
+} from "../themes";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
@@ -49,10 +55,7 @@ const backgroundSizeOptions = computed(() => [
 
 const colorOptions = computed(() => {
   const themes = getThemeOptions();
-  return [
-    ...themes,
-    { label: i18n.t("settings.color_options.custom"), value: "custom" },
-  ];
+  return [...themes, { label: i18n.t("settings.color_options.custom"), value: "custom" }];
 });
 
 const editColorOptions = computed(() => [
@@ -1129,8 +1132,13 @@ async function handleThemeChange() {
     const theme = getThemeById(settings.value.color);
     if (theme) {
       // 颜色方案映射
-      const colorPlans: Array<'light' | 'dark' | 'lightAcrylic' | 'darkAcrylic'> = ['light', 'dark', 'lightAcrylic', 'darkAcrylic'];
-      const legacyPlans = ['light', 'dark', 'light_acrylic', 'dark_acrylic'];
+      const colorPlans: Array<"light" | "dark" | "lightAcrylic" | "darkAcrylic"> = [
+        "light",
+        "dark",
+        "lightAcrylic",
+        "darkAcrylic",
+      ];
+      const legacyPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
 
       // 颜色类型映射
       const colorTypes = {
@@ -1623,10 +1631,7 @@ function clearBackgroundImage() {
               <span class="setting-label">{{ i18n.t("settings.senior_mode") }}</span>
               <span class="setting-desc">{{ i18n.t("settings.senior_mode_desc") }}</span>
             </div>
-            <SLSwitch
-              v-model="settings.senior_mode"
-              @update:modelValue="handleSeniorModeChange"
-            />
+            <SLSwitch v-model="settings.senior_mode" @update:modelValue="handleSeniorModeChange" />
           </div>
 
           <div class="setting-row" v-if="!settings.senior_mode">

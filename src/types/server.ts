@@ -4,12 +4,15 @@ export interface ServerCommand {
   command: string;
 }
 
+export type ServerType = "vanilla" | "spigot" | "paper" | "fabric" | "forge" | "neoforge";
+
 export interface ServerInstance {
   id: string;
   name: string;
   core_type: string;
   core_version: string;
   mc_version: string;
+  server_type: ServerType;
   path: string;
   jar_path: string;
   startup_mode: "jar" | "bat" | "sh";

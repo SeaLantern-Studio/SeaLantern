@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Menu, Clock, Server, Pencil, Folder, Check, X } from 'lucide-vue-next';
+import { Menu, Clock, Server, Pencil, Folder, Check, X } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -229,7 +229,7 @@ onMounted(() => {
   const loadServers = async () => {
     try {
       await store.refreshList();
-      await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
+      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
@@ -259,7 +259,7 @@ onMounted(() => {
   statsTimer = setInterval(fetchSystemInfo, 1000);
   quoteTimer = setInterval(updateQuote, 30000);
   refreshTimer = setInterval(async () => {
-    await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
+    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
   }, 3000);
 
   document.addEventListener("click", handleClickOutside);
@@ -427,9 +427,9 @@ function cancelDelete() {
                 />
               </svg>
               <div class="gauge-text">
-                  <span class="gauge-value">{{ cpuUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.cpu') }}</span>
-                </div>
+                <span class="gauge-value">{{ cpuUsage }}%</span>
+                <span class="gauge-label">{{ i18n.t("home.cpu") }}</span>
+              </div>
             </div>
             <div class="gauge-item">
               <svg class="gauge-svg" viewBox="0 0 36 36">
@@ -448,9 +448,9 @@ function cancelDelete() {
                 />
               </svg>
               <div class="gauge-text">
-                  <span class="gauge-value">{{ memUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.memory') }}</span>
-                </div>
+                <span class="gauge-value">{{ memUsage }}%</span>
+                <span class="gauge-label">{{ i18n.t("home.memory") }}</span>
+              </div>
             </div>
             <div class="gauge-item">
               <svg class="gauge-svg" viewBox="0 0 36 36">
@@ -469,25 +469,27 @@ function cancelDelete() {
                 />
               </svg>
               <div class="gauge-text">
-                  <span class="gauge-value">{{ diskUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.disk') }}</span>
-                </div>
+                <span class="gauge-value">{{ diskUsage }}%</span>
+                <span class="gauge-label">{{ i18n.t("home.disk") }}</span>
+              </div>
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.cpu') }}</span
-              ><span class="detail-value">{{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span>
+              <span class="detail-label">{{ i18n.t("home.cpu") }}</span
+              ><span class="detail-value"
+                >{{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
+              >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.memory') }}</span
+              <span class="detail-label">{{ i18n.t("home.memory") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.memory.used) }} /
                 {{ formatBytes(systemInfo.memory.total) }}</span
               >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.disk') }}</span
+              <span class="detail-label">{{ i18n.t("home.disk") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.disk.used) }} /
                 {{ formatBytes(systemInfo.disk.total) }}</span
@@ -499,8 +501,9 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.cpu') }}<span v-if="systemInfo" class="stat-detail">
-                  · {{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span
+                >{{ i18n.t("home.cpu")
+                }}<span v-if="systemInfo" class="stat-detail">
+                  · {{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
                 ></span
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
@@ -552,7 +555,8 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.memory') }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.memory")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.memory.used) }} /
                   {{ formatBytes(systemInfo.memory.total) }}</span
                 ></span
@@ -606,7 +610,8 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.disk') }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.disk")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.disk.used) }} /
                   {{ formatBytes(systemInfo.disk.total) }}</span
                 ></span
@@ -776,7 +781,11 @@ function cancelDelete() {
     <SLConfirmDialog
       :visible="showDeleteConfirm"
       :title="i18n.t('home.delete_server')"
-      :message="i18n.t('home.delete_confirm_message', { server: '<strong>' + deleteServerName + '</strong>' })"
+      :message="
+        i18n.t('home.delete_confirm_message', {
+          server: '<strong>' + deleteServerName + '</strong>',
+        })
+      "
       :confirmText="i18n.t('home.delete_confirm')"
       :cancelText="i18n.t('home.delete_cancel')"
       confirmVariant="danger"

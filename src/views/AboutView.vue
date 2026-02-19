@@ -1,6 +1,17 @@
-﻿﻿<script setup lang="ts">
+﻿﻿
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone, Info, Copy } from "lucide-vue-next";
+import {
+  Plus,
+  Code2,
+  PenTool,
+  HelpCircle,
+  BookText,
+  Globe,
+  Megaphone,
+  Info,
+  Copy,
+} from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -28,10 +39,7 @@ const notificationType = ref<"success" | "error" | "warning" | "info">("info");
 let unlistenProgress: UnlistenFn | null = null;
 let resetTimer: ReturnType<typeof setTimeout> | null = null;
 
-function showNotify(
-  msg: string,
-  type: "success" | "error" | "warning" | "info" = "info",
-) {
+function showNotify(msg: string, type: "success" | "error" | "warning" | "info" = "info") {
   notificationMessage.value = msg;
   notificationType.value = type;
   showNotification.value = true;
@@ -120,9 +128,7 @@ const buttonState = computed(() => {
   }
 });
 
-const progressPercent = computed(() =>
-  Math.round(updateStore.downloadProgress),
-);
+const progressPercent = computed(() => Math.round(updateStore.downloadProgress));
 
 async function openLink(url: string) {
   if (!url) return;
@@ -144,8 +150,7 @@ async function handleCheckUpdate() {
 
     // 如果是 AUR 更新，显示提示窗口
     if (info?.source === "arch-aur") {
-      const helper =
-        info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
+      const helper = info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
       const hasUpdate = info.has_update;
 
       aurUpdateInfo.value = {
@@ -159,10 +164,7 @@ async function handleCheckUpdate() {
       showAurWindow.value = true;
     }
   } catch (error) {
-    showNotify(
-      `${i18n.t("about.update_check_failed")}: ${String(error)}`,
-      "error",
-    );
+    showNotify(`${i18n.t("about.update_check_failed")}: ${String(error)}`, "error");
   }
 }
 
@@ -170,9 +172,7 @@ async function handlePrimaryUpdateAction() {
   // 如果是 AUR 更新，显示提示窗口
   if (isAurUpdate.value && updateStore.updateInfo) {
     const helper =
-      updateStore.updateInfo.release_notes?.match(
-        /yay|paru|pamac|trizen|pacaur/,
-      )?.[0] || "yay";
+      updateStore.updateInfo.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
 
     aurUpdateInfo.value = {
       hasUpdate: updateStore.updateInfo.has_update,
@@ -220,38 +220,20 @@ async function copyAurCommand(command: string) {
 }
 
 // ===== 判断是否是 AUR 更新 =====
-const isAurUpdate = computed(
-  () => updateStore.updateInfo?.source === "arch-aur",
-);
+const isAurUpdate = computed(() => updateStore.updateInfo?.source === "arch-aur");
 
 // ===== 获取 AUR 助手名称 =====
 const aurHelper = computed(() => {
-  return (
-    updateStore.updateInfo?.release_notes?.match(
-      /yay|paru|pamac|trizen|pacaur/,
-    )?.[0] || "yay"
-  );
+  return updateStore.updateInfo?.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
 });
 
 // ===== AUR 窗口响应式文本 =====
-const aurNewVersionText = computed(() =>
-  i18n.t("about.aur_window_new_version"),
-);
-const aurCurrentVersionText = computed(() =>
-  i18n.t("about.aur_window_current_version"),
-);
-const aurLatestVersionText = computed(() =>
-  i18n.t("about.aur_window_latest_version"),
-);
-const aurSingleUpdateText = computed(() =>
-  i18n.t("about.aur_window_single_update"),
-);
-const aurGlobalUpdateText = computed(() =>
-  i18n.t("about.aur_window_global_update"),
-);
-const aurGlobalNoteText = computed(() =>
-  i18n.t("about.aur_window_global_note"),
-);
+const aurNewVersionText = computed(() => i18n.t("about.aur_window_new_version"));
+const aurCurrentVersionText = computed(() => i18n.t("about.aur_window_current_version"));
+const aurLatestVersionText = computed(() => i18n.t("about.aur_window_latest_version"));
+const aurSingleUpdateText = computed(() => i18n.t("about.aur_window_single_update"));
+const aurGlobalUpdateText = computed(() => i18n.t("about.aur_window_global_update"));
+const aurGlobalNoteText = computed(() => i18n.t("about.aur_window_global_note"));
 const aurCopyTipText = computed(() => i18n.t("about.aur_window_copy_tip"));
 const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
 </script>
@@ -262,12 +244,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
       <!-- Hero Section -->
       <div class="hero-section">
         <div class="hero-logo">
-          <img
-            src="../assets/logo.svg"
-            :alt="i18n.t('common.app_name')"
-            width="72"
-            height="72"
-          />
+          <img src="../assets/logo.svg" :alt="i18n.t('common.app_name')" width="72" height="72" />
         </div>
         <h1 class="hero-title">{{ i18n.t("common.app_name") }}</h1>
         <p class="hero-subtitle">{{ i18n.t("about.subtitle") }}</p>
@@ -304,11 +281,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
         </div>
 
         <div class="contributor-grid">
-          <div
-            v-for="c in contributors"
-            :key="c.name"
-            class="contributor-card glass-card"
-          >
+          <div v-for="c in contributors" :key="c.name" class="contributor-card glass-card">
             <a
               v-if="c.url"
               :href="c.url"
@@ -318,12 +291,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
             >
               <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
             </a>
-            <img
-              v-else
-              :src="c.avatar"
-              :alt="c.name"
-              class="contributor-avatar"
-            />
+            <img v-else :src="c.avatar" :alt="c.name" class="contributor-avatar" />
 
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>
@@ -334,15 +302,11 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
           <!-- Join Card -->
           <div class="contributor-card glass-card join-card">
             <div class="join-icon">
-                <Plus :size="40" stroke-width="1.5" :color="'var(--sl-primary)'" />
+              <Plus :size="40" stroke-width="1.5" :color="'var(--sl-primary)'" />
             </div>
             <div class="contributor-info">
-              <span class="contributor-name join-text">{{
-                i18n.t("about.join_text")
-              }}</span>
-              <span class="contributor-role">{{
-                i18n.t("about.join_desc")
-              }}</span>
+              <span class="contributor-name join-text">{{ i18n.t("about.join_text") }}</span>
+              <span class="contributor-role">{{ i18n.t("about.join_desc") }}</span>
             </div>
           </div>
         </div>
@@ -404,9 +368,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_code") }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_code_desc")
-                }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_code_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
@@ -415,9 +377,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_design") }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_design_desc")
-                }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_design_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
@@ -426,14 +386,11 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_idea") }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_idea_desc")
-                }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_idea_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-
                 <BookText :size="20" />
               </div>
               <div class="way-info">
@@ -446,12 +403,8 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
                 <Globe :size="20" />
               </div>
               <div class="way-info">
-                <span class="way-title">{{
-                  i18n.t("about.way_translate")
-                }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_translate_desc")
-                }}</span>
+                <span class="way-title">{{ i18n.t("about.way_translate") }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_translate_desc") }}</span>
               </div>
             </div>
             <div class="way-item">
@@ -460,9 +413,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_promote") }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_promote_desc")
-                }}</span>
+                <span class="way-desc">{{ i18n.t("about.way_promote_desc") }}</span>
               </div>
             </div>
           </div>
@@ -481,11 +432,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
         <SLButton
           variant="secondary"
           size="lg"
-          @click="
-            openLink(
-              'https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0',
-            )
-          "
+          @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')"
         >
           {{ i18n.t("about.bilibili") }}
         </SLButton>
@@ -528,20 +475,12 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
 
           <div class="version-info">
             <div class="version-row">
-              <span class="version-label">{{
-                i18n.t("about.aur_window_current_version")
-              }}</span>
-              <span class="version-value">{{
-                aurUpdateInfo.currentVersion
-              }}</span>
+              <span class="version-label">{{ i18n.t("about.aur_window_current_version") }}</span>
+              <span class="version-value">{{ aurUpdateInfo.currentVersion }}</span>
             </div>
             <div class="version-row">
-              <span class="version-label">{{
-                i18n.t("about.aur_window_latest_version")
-              }}</span>
-              <span class="version-value">{{
-                aurUpdateInfo.latestVersion
-              }}</span>
+              <span class="version-label">{{ i18n.t("about.aur_window_latest_version") }}</span>
+              <span class="version-value">{{ aurUpdateInfo.latestVersion }}</span>
             </div>
           </div>
 

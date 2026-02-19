@@ -11,6 +11,7 @@ pub fn create_server(
     name: String,
     core_type: String,
     mc_version: String,
+    server_type: String,
     max_memory: u32,
     min_memory: u32,
     port: u16,
@@ -22,6 +23,7 @@ pub fn create_server(
         name,
         core_type,
         mc_version,
+        server_type,
         max_memory,
         min_memory,
         port,
@@ -39,20 +41,24 @@ pub fn import_server(
     jar_path: String,
     startup_mode: String,
     java_path: String,
+    server_type: String,
     max_memory: u32,
     min_memory: u32,
     port: u16,
     online_mode: bool,
+    use_existing_dir: bool,
 ) -> Result<ServerInstance, String> {
     let req = ImportServerRequest {
         name,
         jar_path,
         startup_mode,
         java_path,
+        server_type,
         max_memory,
         min_memory,
         port,
         online_mode,
+        use_existing_dir,
     };
     manager().import_server(req)
 }

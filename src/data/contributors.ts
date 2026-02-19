@@ -152,6 +152,12 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/LING71671",
     url: "https://github.com/LING71671",
   },
+    {
+    name: "NyaCl",
+    role: "awa",
+    avatar: "https://api.rms.net.cn/head/XueChen_NyaCl",
+    //url: "https://github.com/LING71671",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // ============================================

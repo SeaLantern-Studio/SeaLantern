@@ -97,6 +97,8 @@ function handleScroll() {
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
+  position: relative;
+  z-index: 1;
 }
 .log-line {
   white-space: pre-wrap;
@@ -170,6 +172,6 @@ function handleScroll() {
   font-size: 0.75rem;
   cursor: pointer;
   box-shadow: var(--sl-shadow-md);
-  z-index: 10;
+  z-index: 100;
 }
 </style>

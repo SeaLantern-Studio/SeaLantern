@@ -4,6 +4,21 @@ fn default_startup_mode() -> String {
     "jar".to_string()
 }
 
+fn default_server_type() -> String {
+    "vanilla".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub enum ServerType {
+    Vanilla,
+    Spigot,
+    Paper,
+    Fabric,
+    Forge,
+    NeoForge,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerStatus {
     Stopped,
@@ -27,6 +42,8 @@ pub struct ServerInstance {
     pub core_type: String,
     pub core_version: String,
     pub mc_version: String,
+    #[serde(default = "default_server_type")]
+    pub server_type: String,
     pub path: String,
     pub jar_path: String,
     #[serde(default = "default_startup_mode")]
@@ -54,6 +71,8 @@ pub struct CreateServerRequest {
     pub name: String,
     pub core_type: String,
     pub mc_version: String,
+    #[serde(default = "default_server_type")]
+    pub server_type: String,
     pub max_memory: u32,
     pub min_memory: u32,
     pub port: u16,
@@ -68,12 +87,16 @@ pub struct ImportServerRequest {
     pub name: String,
     pub jar_path: String,
     pub java_path: String,
+    #[serde(default = "default_server_type")]
+    pub server_type: String,
     #[serde(default = "default_startup_mode")]
     pub startup_mode: String,
     pub max_memory: u32,
     pub min_memory: u32,
     pub port: u16,
     pub online_mode: bool,
+    #[serde(default)]
+    pub use_existing_dir: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
