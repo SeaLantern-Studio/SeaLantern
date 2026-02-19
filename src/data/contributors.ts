@@ -100,7 +100,7 @@ export const contributors: Contributor[] = [
   {
     name: "猫不笨qwq",
     role: "找到软件图形化错误",
-    avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
+    avatar: "https://api.rms.net.cn/head/maobuben_qwq",
     url: "https://github.com/maobuben",
   },
   {
