@@ -261,5 +261,12 @@ jobs:
         run: |
           if [ -f "PKGBUILD.bak" ]; then
             echo "Restoring original PKGBUILD"
-            mv PKGBUILD.bak PKGBUILD
+            # 使用 sudo 确保有权限
+            sudo rm -f PKGBUILD
+            sudo mv PKGBUILD.bak PKGBUILD
+            # 修复权限
+            sudo chown $USER:$USER PKGBUILD
+            echo "✅ PKGBUILD restored"
+          else
+            echo "No backup file found, skipping cleanup"
           fi
