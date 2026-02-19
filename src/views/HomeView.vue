@@ -36,6 +36,118 @@ const cpuHistory = ref<number[]>([]);
 const memHistory = ref<number[]>([]);
 const statsViewMode = ref<"detail" | "gauge">("gauge");
 const statsLoading = ref(true);
+
+// 获取 CSS 变量实际值的辅助函数
+const getCssVar = (varName: string): string => {
+  if (typeof window === 'undefined') return '#3b82f6';
+  const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return value || '#3b82f6';
+};
+
+// ECharts 配置生成函数
+const createGaugeOption = (value: number, colorVar: string, label: string) => {
+  const fontSize = parseInt(getCssVar('--sl-font-size-sm') || '13', 10);
+  const fontFamily = getCssVar('--sl-font-mono') || 'monospace';
+  
+  return {
+    backgroundColor: 'transparent',
+    series: [
+      {
+        type: 'pie',
+        radius: ['65%', '80%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: false,
+        silent: true,
+        label: {
+          show: true,
+          position: 'center',
+          formatter: () => `${value}%`,
+          fontSize: fontSize,
+          fontWeight: 600,
+          fontFamily: fontFamily,
+          color: getCssVar('--sl-text-primary'),
+        },
+        labelLine: {
+          show: false,
+        },
+        data: [
+          {
+            value: value,
+            name: label,
+            itemStyle: {
+              color: getCssVar(colorVar),
+              borderRadius: 3,
+            },
+          },
+          {
+            value: 100 - value,
+            name: '剩余',
+            itemStyle: {
+              color: getCssVar('--sl-border'),
+            },
+            label: {
+              show: false,
+            },
+            emphasis: {
+              disabled: true,
+            },
+          },
+        ],
+        animation: true,
+        animationDuration: 300,
+        animationEasing: 'cubicOut',
+      },
+    ],
+  };
+};
+
+const cpuGaugeOption = computed(() => createGaugeOption(cpuUsage.value, '--sl-primary', i18n.t('home.cpu')));
+const memGaugeOption = computed(() => createGaugeOption(memUsage.value, '--sl-success', i18n.t('home.memory')));
+const diskGaugeOption = computed(() => createGaugeOption(diskUsage.value, '--sl-warning', i18n.t('home.disk')));
+
+// 折线图配置生成函数
+const createLineOption = (data: number[], colorVar: string) => ({
+  backgroundColor: 'transparent',
+  grid: {
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    show: false,
+  },
+  xAxis: {
+    type: 'category',
+    show: false,
+    boundaryGap: false,
+    data: data.map((_, i) => i),
+  },
+  yAxis: {
+    type: 'value',
+    show: false,
+    min: 0,
+    max: 100,
+  },
+  series: [
+    {
+      type: 'line',
+      data: data,
+      smooth: false,
+      symbol: 'none',
+      lineStyle: {
+        width: 2,
+        color: getCssVar(colorVar),
+      },
+      areaStyle: {
+        color: getCssVar(colorVar),
+        opacity: 0.15,
+      },
+    },
+  ],
+});
+
+const cpuLineOption = computed(() => createLineOption(cpuHistory.value, '--sl-primary'));
+const memLineOption = computed(() => createLineOption(memHistory.value, '--sl-success'));
+
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -411,67 +523,13 @@ function cancelDelete() {
         <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
           <div class="gauge-grid">
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-cpu"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${cpuUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                  <span class="gauge-value">{{ cpuUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.cpu') }}</span>
-                </div>
+              <v-chart class="gauge-chart" :option="cpuGaugeOption" autoresize :update-options="{ notMerge: false }" />
             </div>
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-mem"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${memUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                  <span class="gauge-value">{{ memUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.memory') }}</span>
-                </div>
+              <v-chart class="gauge-chart" :option="memGaugeOption" autoresize :update-options="{ notMerge: false }" />
             </div>
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-disk"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${diskUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                  <span class="gauge-value">{{ diskUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.disk') }}</span>
-                </div>
+              <v-chart class="gauge-chart" :option="diskGaugeOption" autoresize :update-options="{ notMerge: false }" />
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
@@ -505,48 +563,8 @@ function cancelDelete() {
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
             </div>
-            <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
-                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8" />
-                  <line x1="0" y1="16" x2="300" y2="16" />
-                  <line x1="0" y1="24" x2="300" y2="24" />
-                  <line x1="0" y1="32" x2="300" y2="32" />
-                </g>
-                <polygon
-                  :points="
-                    '0,40 ' +
-                    cpuHistory
-                      .map(
-                        (v, i) =>
-                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ') +
-                    ' 300,40'
-                  "
-                  fill="var(--sl-primary)"
-                  fill-opacity="0.15"
-                />
-                <polyline
-                  :points="
-                    cpuHistory
-                      .map(
-                        (v, i) =>
-                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ')
-                  "
-                  fill="none"
-                  stroke="var(--sl-primary)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+            <div class="mini-chart">
+              <v-chart class="line-chart" :option="cpuLineOption" autoresize />
             </div>
           </div>
           <div class="stat-item">
@@ -559,48 +577,8 @@ function cancelDelete() {
               >
               <span class="stat-value">{{ memUsage }}%</span>
             </div>
-            <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
-                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8" />
-                  <line x1="0" y1="16" x2="300" y2="16" />
-                  <line x1="0" y1="24" x2="300" y2="24" />
-                  <line x1="0" y1="32" x2="300" y2="32" />
-                </g>
-                <polygon
-                  :points="
-                    '0,40 ' +
-                    memHistory
-                      .map(
-                        (v, i) =>
-                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ') +
-                    ' 300,40'
-                  "
-                  fill="var(--sl-success)"
-                  fill-opacity="0.15"
-                />
-                <polyline
-                  :points="
-                    memHistory
-                      .map(
-                        (v, i) =>
-                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ')
-                  "
-                  fill="none"
-                  stroke="var(--sl-success)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+            <div class="mini-chart">
+              <v-chart class="line-chart" :option="memLineOption" autoresize />
             </div>
           </div>
           <div class="stat-item">
@@ -932,18 +910,24 @@ function cancelDelete() {
 .mini-chart {
   width: 100%;
   height: 30px;
-}
-
-.mini-chart.taskmgr-style {
   background: var(--sl-bg-secondary);
   border-radius: 4px;
   overflow: hidden;
-  width: 100%;
 }
 
-.mini-chart.taskmgr-style .chart-svg {
-  width: 100%;
-  height: 100%;
+.line-chart {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.line-chart > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.line-chart canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .section-header {
@@ -1363,51 +1347,30 @@ function cancelDelete() {
   gap: var(--sl-space-xs);
   padding: 0;
   margin-bottom: 4px;
+  min-height: 70px;
 }
 .gauge-item {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
-.gauge-svg {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
+.gauge-chart {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 70px;
+  min-height: 70px;
 }
-.gauge-bg {
-  stroke: var(--sl-border);
+.gauge-chart > div {
+  width: 100% !important;
+  height: 100% !important;
 }
-.gauge-fill {
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.3s;
-}
-.gauge-cpu {
-  stroke: var(--sl-primary);
-}
-.gauge-mem {
-  stroke: var(--sl-success);
-}
-.gauge-disk {
-  stroke: #f59e0b;
-}
-.gauge-text {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.2;
-}
-.gauge-value {
-  font-size: 0.75rem;
-  font-weight: 600;
-  font-family: var(--sl-font-mono);
-}
-.gauge-label {
-  font-size: 0.5625rem;
-  color: var(--sl-text-tertiary);
+.gauge-chart canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .gauge-details {
