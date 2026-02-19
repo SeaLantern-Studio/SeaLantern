@@ -51,16 +51,16 @@ npm run tauri build
 The built things are in `src-tauri/target/release/bundle/`.
 
 
-### Windows build blocked by policy (wry os error 4551)
+### Windows build blocked by policy (Rust build-script os error 4551)
 
 If you see this error while running `npm run tauri dev` / `cargo build` on Windows:
 
 ```
-error: failed to run custom build command for `wry ...`
+error: failed to run custom build command for `<crate> ...` (for example `wry` / `num-traits`)
 Caused by: 应用程序控制策略已阻止此文件。 (os error 4551)
 ```
 
-This usually means Windows App Control / enterprise policy blocked the generated Rust build script in `target/`.
+This usually means Windows App Control / enterprise policy blocked a generated Rust build script in `target/` (so it can happen on different crates, not only `wry`).
 
 Recommended steps:
 

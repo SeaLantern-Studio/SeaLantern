@@ -49,16 +49,16 @@ npm run tauri build
 产物在 `src-tauri/target/release/bundle/` 里。
 
 
-### Windows 构建被策略拦截（wry os error 4551）
+### Windows 构建被策略拦截（Rust build-script os error 4551）
 
 如果你在 Windows 执行 `npm run tauri dev` / `cargo build` 时看到：
 
 ```
-error: failed to run custom build command for `wry ...`
+error: failed to run custom build command for `<crate> ...`（例如 `wry` / `num-traits`）
 Caused by: 应用程序控制策略已阻止此文件。 (os error 4551)
 ```
 
-通常是 Windows App Control / 企业安全策略拦截了 Rust 在 `target/` 里生成的构建脚本。
+通常是 Windows App Control / 企业安全策略拦截了 Rust 在 `target/` 里生成的构建脚本（所以不只会发生在 `wry`，也可能发生在 `num-traits` 等其它 crate）。
 
 建议处理步骤：
 
