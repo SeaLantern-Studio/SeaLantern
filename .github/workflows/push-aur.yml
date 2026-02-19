@@ -35,6 +35,7 @@ jobs:
           pacman-key --populate archlinux
 
           # 系统更新并安装必要工具
+
           pacman -Syu --noconfirm base-devel git sudo openssh dpkg
 
           # 创建 builder 用户

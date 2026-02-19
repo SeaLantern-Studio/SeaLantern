@@ -1,38 +1,39 @@
 <div align="center">
 <img src="https://gitee.com/fps_z/SeaLantern/raw/master/src/assets/logo.svg" alt="logo" width="200" height="200">
 
-# Sea Lantern(海晶灯)
+# Sea Lantern (海晶灯)
 
-Minecraft Server Manager · Tauri 2 + Rust + Vue 3
+A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
-[![star](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)[![fork](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)
-[![GitHub Repo stars](https://img.shields.io/github/stars/FPSZ/SeaLantern?style=flat&logo=github&label=stars)](https://github.com/FPSZ/SeaLantern)[![GitHub forks](https://img.shields.io/github/forks/FPSZ/SeaLantern?style=flat&logo=github&label=forks)](https://github.com/FPSZ/SeaLantern/network/members)
-[![最新版本](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=latest_version&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)[![GitHub release](https://img.shields.io/github/v/release/FPSZ/SeaLantern?style=flat&logo=github&label=latest)](https://github.com/FPSZ/SeaLantern/releases)
-====
+|[![github-stars](https://img.shields.io/github/stars/FPSZ/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/FPSZ/SeaLantern/stargazers)|[![github-forks](https://img.shields.io/github/forks/FPSZ/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/FPSZ/SeaLantern/network/members)|[![github-latest](https://img.shields.io/github/v/release/FPSZ/SeaLantern?style=flat&logo=github&label=Latest%20version)](https://github.com/FPSZ/SeaLantern/releases/latest)|
+|:--|:--|:--|
+|[![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)|[![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)|[![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=Latest%20version&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)|
+
+<kbd>[简体中文](README.md)</kbd> <kbd>English</kbd>
+
+---
 
 </div>
-
-> 您正在浏览英文版的readme，点击[此处](README.md)前往简体中文版
-
-> You are browsing the English version of the readme. Click [here](README.md) to go to the Simplified Chinese version
 
 ![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
 
 ## What can it do?
 
-Import a server JAR file,choose a Java version,then click START!It's that simple.
-
-- See the load at control panel in real-time,enter the command directly.
-- server.properties GUI Editor,without change it manually.
-- Whitelist,Ban,OP Manage easily.
-- It will shut server down when you close the software which won't let your saves be damaged.
-- Check update,update with one click
+- Logs and load at the control panel in real time; send commands to the server directly
+- Edit server.properties graphically, without browsing directories
+- Manage whitelists, bans and OPs in switches
+- The server shuts down automatically when you close the app, so no saves are damaged.
+- Check for and download updates in one click
 
 ## Quick Start
 
-- If you are a user,download the software from RELEASE
+Download the software from [Releases](https://github.com/FPSZ/SeaLantern);
 
-- If you are a developer,you need to download Node.js 20+ and Rust 1.70+.
+Import a server .jar, choose a Java version, then click Start. It's that simple.
+
+## Development
+
+You'll need Node.js 20+ and Rust 1.70+.
 
 ```bash
 git clone https://github.com/fps_z/SeaLantern.git
@@ -41,117 +42,118 @@ npm install
 npm run tauri dev
 ```
 
-Build release：
+Build release:
 
 ```bash
 npm run tauri build
 ```
 
-The built things are in `src-tauri/target/release/bundle/`.
+Built binaries are in `src-tauri/target/release/bundle/`.
 
 ### Code Quality Check
 
-Before you PR,we recommend you run commands below to check the code's quality：
+Before your PR, we encourage you to run the commands below to check the code's quality:
 
-Frontend Check：
+- For frontend
 
-```bash
-# Code Quality Check
-npm run lint
+> ```bash
+> # Code Quality Check
+> npm run lint
+> 
+> # Fix fixable problems
+> npm run lint:fix
+> 
+> # Format code
+> npm run fmt
+> 
+> # Check format
+> npm run fmt:check
+> ```
 
-# Fix the fixable problem automatically
-npm run lint:fix
+- For backend
 
-# Initialize code
-npm run fmt
+> ```bash
+> # Check format
+> cargo fmt --all -- --check
+> 
+> # Run Clippy check
+> cargo clippy --workspace -- -D warnings
+> 
+> # Format code
+> cargo fmt --all
+> ```
 
-# check format(No file changing)
-npm run fmt:check
-```
+CI automated checks are set up to ensure that all submitted code meets the standards.
 
-Backend Check：
-
-```bash
-# Check Code Format
-cargo fmt --all -- --check
-
-# Run Clippy check
-cargo clippy --workspace -- -D warnings
-
-# Format code automatically
-cargo fmt --all
-```
-
-The project is set up with CI automated checks to ensure that all submitted code meets the standards.
-
-## Tech stack
+### Tech stack
 
 - **Frontend**: Vue 3 + TypeScript + Vite + Pinia
 - **Backend**: Rust + Tauri 2
-- **Style**: Only CSS
-- **Communicate**: Tauri invoke(Call Rust functions from the frontend and directly use the return value)
+- **Style**: CSS
+- **Communicate**: Tauri invoke (The frontend calls Rust functions and receives the results)
 
-No Electron,No Node Backend,No Webpack.Quick launch,small size,save RAM.
+No Electron, no Node backend, no Webpack. Launch fast, size small, RAM saved.
 
-## Project Structure
- - See [Project Structure](docs\Project Structure.md)
+### Project Structure
+
+See [Project Structure](docs/Project%20Structure.md).
+
 ## Planned Features
 
 Placeholders have been reserved for these features with existing code
 skeletons—waiting for your contributions:
 
-- Download Center - Download server cores, plugins, and mods
-- Backup Management - Incremental backup and restoration of world save files
+- Download Center - Download server cores, plugins and mods
+- Backup Management - Incremental backup and restore of save files
 - Intranet Penetration - FRP integration
-- Scheduled Tasks - Automatic restarts, scheduled backups, and scheduled command execution
-- Resource Management - Search and install plugins/mods from Modrinth / CurseForge
-- Dark Theme - CSS variables are already configured; just add a dark mode value set
+- Scheduled Tasks - Automatic restarts, scheduled backups, and scheduled commands
+- Resource Management - Search and install plugins/mods from Modrinth & CurseForge
 
 ## Contributing
 
 Contributions are welcome! Before you start, please read the [Contributing Guidelines](docs/CONTRIBUTING-en.md) to understand code standards and development workflows.
 
-The UI is also fully customizable:
+GUI modifications are also OK!
 
-- Colors are managed via CSS variables
-- Components are modular—replace any part you dislike
-  Want to create a theme skin? Go for it.
-  Want to completely redesign the layout? That's fine too.
+Colors are managed via CSS variables —
+components are modular —
+change any part you don't like.
+
+Want to create a theme/skin? Go for it;
+want to completely redesign the layout? That's fine!
 
 ### How to Contribute
 
-1. Fork this repository
-2. Create a branch and implement your changes (following the [Contributing Guidelines](docs/CONTRIBUTING-en.md)）
+1. Fork the repository
+2. Create a branch and implement your changes
 3. Submit a Pull Request
-4. Your name will be added to the contributor wall on the About page
+4. Your name will be added to the contributor wall
 
-Coding skills aren't required to contribute:just sugget what new features you want,or share UI mockups/sketches,All contributions are valued.
+You don't need coding skills to contribute. Just suggest new features you want or share a UI sketch — they all count as contributions!
 
 ### Add a new function
 
-If you are going to add a「Save Management」：
+If you are going to add a "Save Management":
 
-**Backend**：
+#### Backend
 
-1. Create `backup_manager.rs` under `src-tauri/src/services/`,code the logic.
-2. Create `backup.rs` under `src-tauri/src/commands/`,code the Tauri command
-3. Add `pub mod backup` into `commands/mod.rs`
-4. Regist the command in `lib.rs`'s `generate_handler!` macro.
+1. Create `backup_manager.rs` under `src-tauri/src/services/`, code the logic
+2. Create `backup.rs` under `src-tauri/src/commands/`, code with Tauri
+3. Add `pub mod backup` in `commands/mod.rs`
+4. Register the command in the `generate_handler!` macro under `lib.rs`
 
-**Fronted**：
+#### Frontend
 
-1. Create `backup.ts` under `src/api/`,Encapsulate invoke calls
-2. Create `BackupView.vue` under `src/views/`,draw the page
-3. Add routes in src/router/index.ts
-4. Add an item to the navItems array in AppSidebar.vue
+1. Create `backup.ts` under `src/api/`, encapsulate invokes
+2. Create `BackupView.vue` under `src/views/`, make the page
+3. Add routes in `src/router/index.ts`
+4. Add an item to the `navItems` array in `AppSidebar.vue`
 
-Frontend/Backend each 3 files,Change one line each for the router and the sidebar。
+The frontend and backend each have 3 files, plus one line each for the router and the sidebar.
 
 ## License
 
-GPLv3
-
-## Thank
+[GNU General Public License v3.0](LICENSE)
 
 ## Star History
 
@@ -165,8 +167,9 @@ Thanks to everyone who contributed to Sea Lantern!
 
 ## Acknowledgments
 
-Sea Lantern is an OPEN SOURCE project,Complies with the GPLv3 license.
+Sea Lantern is an open source project under the GPLv3 license.
 
-Minecraft is Mojang Studios's trademark.Not associated with Mojang.
+Minecraft is a trademark of Mojang AB.
+This project is not approved or associated with Mojang or Microsoft.
 
-"We built the framework, but the soul,is up to you."
+"We've built the framework — the soul is up to you."
