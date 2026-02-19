@@ -42,7 +42,7 @@ npm install
 npm run tauri dev
 ```
 
-On some Linux distributions, such as Arch, running `npm run tauri dev` directly may not compile successfully. Please check if your dependency libraries are complete. It is recommended to use your package manager to install `Tauri` dependencies beforehand when running the above command to avoid missing dependency issues. [Click here to go to "Tauri | Prerequisites"](https://tauri.app/zh-cn/start/prerequisites/#linux)
+On some Linux distributions, such as Arch, running `npm run tauri dev` directly may not compile successfully. Please check if your dependency libraries are complete. It is recommended to use your package manager to install `Tauri` dependencies beforehand when running the above command to avoid missing dependency issues. [Click here to go to "Tauri | Prerequisites"](https://tauri.app/start/prerequisites/#linux)
 
 Build release:
 
