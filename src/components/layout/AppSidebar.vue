@@ -57,6 +57,14 @@ const navItems: NavItem[] = [
     group: "server",
   },
   {
+    name: "mods",
+    path: "/mods",
+    icon: "puzzle",
+    labelKey: "common.mods",
+    label: i18n.t("common.mods"),
+    group: "server",
+  },
+  {
     name: "settings",
     path: "/settings",
     icon: "sliders",
@@ -162,7 +170,8 @@ function handleServerChange(value: string | number) {
   if (
     route.path.startsWith("/console") ||
     route.path.startsWith("/config") ||
-    route.path.startsWith("/players")
+    route.path.startsWith("/players") ||
+    route.path.startsWith("/mods")
   ) {
     const currentPath = route.path.split("/")[1];
     router.push(`/${currentPath}/${value}`);
