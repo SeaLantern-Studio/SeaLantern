@@ -22,20 +22,17 @@ jobs:
           VERSION=${VERSION#v}
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
           sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
-          # 重新生成 .SRCINFO
-          makepkg --printsrcinfo > .SRCINFO
+          # 不需要 makepkg，让 action 自动生成 .SRCINFO
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
       - name: Publish AUR package
-        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1 # 使用最新稳定版本
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
         with:
           pkgname: sealantern
           pkgbuild: PKGBUILD
-          assets: .SRCINFO
+          assets: sealantern.install sealantern.desktop
           commit_username: "GitHub Actions"
           commit_email: "actions@github.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to version ${{ steps.get_version.outputs.VERSION }}"
-          allow_empty_commits: false
-          force_push: false
