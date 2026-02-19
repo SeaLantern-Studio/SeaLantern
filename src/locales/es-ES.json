@@ -1,0 +1,65 @@
+{
+  "common": {
+    "app_name": "Sea Lantern",
+    "home": "Inicio",
+    "create_server": "Crear servidor",
+    "console": "Consola",
+    "config_edit": "Editar configuración",
+    "player_manage": "Gestión de jugadores",
+    "settings": "Configuración",
+    "personalize": "Personalizar",
+    "about": "Acerca de",
+    "loading": "Cargando...",
+    "select_server": "Seleccionar servidor",
+    "open_folder": "Abrir carpeta"
+  },
+  "sidebar": {
+    "groups": {
+      "main": "Principal",
+      "server": "Servidor",
+      "system": "Sistema"
+    },
+    "collapse_btn": "Contraer barra lateral"
+  },
+  "header": {
+    "language": "Idioma",
+    "chinese": "简体中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "japanese": "日本語",
+    "korean": "한국어",
+    "spanish": "Español"
+  },
+  "home": {
+    "title": "Gestión del servidor",
+    "no_servers": "No hay servidores",
+    "create_first": "Crea tu primer servidor",
+    "start": "Iniciar",
+    "stop": "Detener",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "status": "Estado",
+    "running": "En ejecución",
+    "stopped": "Detenido",
+    "starting": "Iniciando",
+    "stopping": "Deteniendo",
+    "error": "Error",
+    "system_resources": "Recursos del sistema",
+    "detail_view": "Cambiar a vista detallada",
+    "gauge_view": "Cambiar a vista de medidor",
+    "recent_alerts": "Advertencias / errores recientes",
+    "delete_confirm_message": "Escribe el nombre del servidor {{server}} para confirmar la eliminación",
+    "delete_input_placeholder": "Escribe el nombre del servidor",
+    "delete_cancel": "Cancelar",
+    "delete_confirm": "Confirmar eliminación",
+    "delete_error": "El nombre del servidor no es correcto, vuelve a intentarlo",
+    "close_action": "Comportamiento al cerrar",
+    "close_action_desc": "Selecciona el comportamiento predeterminado al pulsar cerrar",
+    "close_action_ask": "Preguntar",
+    "close_action_minimize": "Minimizar a la bandeja",
+    "close_action_close": "Cerrar directamente",
+    "close_window_title": "Cerrar ventana",
+    "close_window_message": "¿Seguro que quieres cerrar SeaLantern?",
+    "remember_choice": "Recordar mi elección"
+  }
+}

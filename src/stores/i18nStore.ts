@@ -1,4 +1,4 @@
-import { computed, onMounted } from "vue";
+import { computed } from "vue";
 import { defineStore } from "pinia";
 import { i18n, type LocaleCode } from "../locales";
 import { settingsApi } from "../api/settings";
@@ -7,6 +7,9 @@ const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
   "zh-CN": "header.chinese",
   "zh-TW": "header.chinese_tw",
   "en-US": "header.english",
+  "ja-JP": "header.japanese",
+  "ko-KR": "header.korean",
+  "es-ES": "header.spanish",
 };
 
 export const useI18nStore = defineStore("i18n", () => {
@@ -27,16 +30,18 @@ export const useI18nStore = defineStore("i18n", () => {
   );
 
   async function setLocale(nextLocale: string) {
-    if (i18n.isSupportedLocale(nextLocale)) {
-      i18n.setLocale(nextLocale);
-      // 保存语言设置到持久化存储
-      try {
-        const settings = await settingsApi.get();
-        settings.language = nextLocale;
+    const resolvedLocale = i18n.setLocale(nextLocale);
+    if (!resolvedLocale) return;
+
+    // 保存语言设置到持久化存储
+    try {
+      const settings = await settingsApi.get();
+      if (settings.language !== resolvedLocale) {
+        settings.language = resolvedLocale;
         await settingsApi.save(settings);
-      } catch (error) {
-        console.error("Failed to save language setting:", error);
       }
+    } catch (error) {
+      console.error("Failed to save language setting:", error);
     }
   }
 
@@ -50,18 +55,27 @@ export const useI18nStore = defineStore("i18n", () => {
   async function loadLanguageSetting() {
     try {
       const settings = await settingsApi.get();
-      if (settings.language && i18n.isSupportedLocale(settings.language)) {
-        i18n.setLocale(settings.language);
+
+      const resolvedSavedLocale = settings.language ? i18n.setLocale(settings.language) : null;
+      if (resolvedSavedLocale) {
+        if (settings.language !== resolvedSavedLocale) {
+          settings.language = resolvedSavedLocale;
+          await settingsApi.save(settings);
+        }
+        return;
+      }
+
+      const detectedLocale = i18n.detectSystemLocale();
+      i18n.setLocale(detectedLocale);
+
+      if (settings.language !== detectedLocale) {
+        settings.language = detectedLocale;
+        await settingsApi.save(settings);
       }
     } catch (error) {
       console.error("Failed to load language setting:", error);
     }
   }
-
-  // 组件挂载时加载语言设置
-  onMounted(() => {
-    loadLanguageSetting();
-  });
 
   return {
     locale,
