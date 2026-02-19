@@ -142,12 +142,15 @@ const createGaugeOption = (value: number, colorVar: string, label: string): ECha
 };
 
 const cpuGaugeOption = computed(() => {
+  const _ = themeVersion.value;
   return createGaugeOption(cpuUsage.value, "--sl-primary", i18n.t("home.cpu"));
 });
 const memGaugeOption = computed(() => {
+  const _ = themeVersion.value;
   return createGaugeOption(memUsage.value, "--sl-success", i18n.t("home.memory"));
 });
 const diskGaugeOption = computed(() => {
+  const _ = themeVersion.value;
   return createGaugeOption(diskUsage.value, "--sl-warning", i18n.t("home.disk"));
 });
 
@@ -204,9 +207,11 @@ const createLineOption = (data: number[], colorVar: string): EChartsOption => {
 };
 
 const cpuLineOption = computed(() => {
+  const _ = themeVersion.value;
   return createLineOption(cpuHistory.value, "--sl-primary");
 });
 const memLineOption = computed(() => {
+  const _ = themeVersion.value;
   return createLineOption(memHistory.value, "--sl-success");
 });
 
