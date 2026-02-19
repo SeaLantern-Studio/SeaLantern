@@ -1,4 +1,26 @@
 {
+  "common": {
+    "app_name": "Sea Lantern",
+    "home": "홈",
+    "create_server": "서버 생성",
+    "console": "콘솔",
+    "config_edit": "설정 편집",
+    "player_manage": "플레이어 관리",
+    "settings": "설정",
+    "personalize": "개인화",
+    "about": "정보",
+    "loading": "로딩 중...",
+    "select_server": "서버 선택",
+    "open_folder": "폴더 열기"
+  },
+  "sidebar": {
+    "groups": {
+      "main": "메인",
+      "server": "서버",
+      "system": "시스템"
+    },
+    "collapse_btn": "사이드바 접기"
+  },
   "header": {
     "language": "언어",
     "chinese": "简体中文",
@@ -7,5 +29,37 @@
     "japanese": "日本語",
     "korean": "한국어",
     "spanish": "Español"
+  },
+  "home": {
+    "title": "서버 관리",
+    "no_servers": "서버가 없습니다",
+    "create_first": "첫 번째 서버를 생성하세요",
+    "start": "시작",
+    "stop": "중지",
+    "edit": "편집",
+    "delete": "삭제",
+    "status": "상태",
+    "running": "실행 중",
+    "stopped": "중지됨",
+    "starting": "시작 중",
+    "stopping": "종료 중",
+    "error": "오류",
+    "system_resources": "시스템 리소스",
+    "detail_view": "상세 보기로 전환",
+    "gauge_view": "게이지 보기로 전환",
+    "recent_alerts": "최근 경고 / 오류",
+    "delete_confirm_message": "삭제를 확인하려면 서버 이름 {{server}} 을(를) 입력하세요",
+    "delete_input_placeholder": "서버 이름 입력",
+    "delete_cancel": "취소",
+    "delete_confirm": "삭제 확인",
+    "delete_error": "서버 이름 입력이 올바르지 않습니다. 다시 입력하세요",
+    "close_action": "닫기 동작",
+    "close_action_desc": "닫기 버튼 클릭 시 기본 동작을 선택하세요",
+    "close_action_ask": "매번 묻기",
+    "close_action_minimize": "트레이로 최소화",
+    "close_action_close": "즉시 종료",
+    "close_window_title": "창 닫기",
+    "close_window_message": "SeaLantern을 종료하시겠습니까?",
+    "remember_choice": "이 선택 기억하기"
   }
 }
