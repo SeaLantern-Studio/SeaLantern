@@ -16,35 +16,35 @@ depends=(
     'pango'
     'atk'
     'libgl'
-    
+
     # WebKit 相关依赖
     'webkit2gtk'                    # 包含 javascriptcoregtk [citation:1]
     'libsoup'
-    
+
     # 系统图标主题
     'hicolor-icon-theme'
     'adwaita-icon-theme'
-    
+
     # 桌面文件相关
     'desktop-file-utils'
     'shared-mime-info'
-    
+
     # 安全相关
     'libxss'                        # X11 Screen Saver extension library [citation:2]
     'nss'
     'nspr'
-    
+
     # 系统托盘支持
     'libayatana-appindicator'
     'libappindicator-gtk3'
-    
+
     # 网络相关
     'curl'
     'wget'
     'openssl'
     'ca-certificates'
     'gnutls'
-    
+
     # 图形相关
     'libx11'
     'libxcb'
@@ -58,23 +58,23 @@ depends=(
     'libxrender'
     'libxtst'
     'libxss'                         # 对应 libxscrnsaver [citation:2]
-    
+
     # 字体支持
     'fontconfig'
     'freetype2'
-    
+
     # 音频支持
     'alsa-lib'
     'libpulse'                       # pulseaudio 的客户端库 [citation:3]
-    
+
     # 数据库支持
     'sqlite3'
-    
+
     # 压缩支持
     'zlib'
     'bzip2'
     'xz'
-    
+
     # 其他常用库
     'expat'
     'libffi'
