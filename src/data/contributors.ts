@@ -145,12 +145,6 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/LucyKitter",
     url: "https://gitee.com/pnchsb_admin",
   },
-  {
-    name: "LING71671",
-    role: "各种奇思妙想，用户的真许愿树",
-    avatar: "https://api.rms.net.cn/head/LING71671",
-    url: "https://github.com/LING71671",
-  },
   // ============================================
   // 在这里添加更多贡献者！无正版怎么办
   // 选择皮肤，使用其名字
