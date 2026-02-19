@@ -3,8 +3,8 @@ name: Publish to AUR
 on:
   push:
     tags:
-      - "v*" # 匹配 v0.7.3, v1.0.0 等
-      - "sea-lantern-v*" # 匹配 sea-lantern-v0.7.3
+      - "v*"
+      - "sea-lantern-v*"
   release:
     types: [published]
   workflow_dispatch:
@@ -21,17 +21,30 @@ on:
 
 jobs:
   aur-publish:
+    # 使用 Arch Linux 容器直接运行，避免嵌套 Docker
     runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --user root
+
     steps:
+      - name: Install dependencies in container
+        run: |
+          # 初始化 pacman 密钥环
+          pacman-key --init
+          pacman-key --populate archlinux
+
+          # 系统更新并安装必要工具
+          pacman -Syu --noconfirm base-devel git sudo openssh
+
+          # 创建 builder 用户
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential fakeroot git curl wget
 
       - name: Debug GitHub context
         run: |
@@ -49,42 +62,32 @@ jobs:
         run: |
           # 根据事件类型获取版本
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            # Release 事件 - 从 release tag 获取
             RAW_VERSION="${{ github.event.release.tag_name }}"
             echo "Source: release tag: $RAW_VERSION"
           elif [[ "${{ github.event_name }}" == "push" ]]; then
-            # Push 事件（tag 推送）- 从 ref 获取
             RAW_VERSION="${{ github.ref_name }}"
             echo "Source: git tag: $RAW_VERSION"
           else
-            # 手动触发 - 从输入获取
             RAW_VERSION="${{ github.event.inputs.version }}"
             echo "Source: manual input: $RAW_VERSION"
           fi
 
-          # 提取纯净版本号（支持 sea-lantern-v0.6.2 或 v0.6.2 格式）
+          # 提取纯净版本号
           if [[ $RAW_VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            # 使用正则提取数字版本号
             VERSION=$(echo "$RAW_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
             echo "Extracted version from tag: $VERSION"
           else
-            # 如果没有匹配到，尝试移除 'v' 前缀
             VERSION="${RAW_VERSION#v}"
           fi
 
-          # 验证版本号不为空
+          # 验证版本号
           if [[ -z "$VERSION" ]]; then
             echo "❌ Error: Version is empty!"
-            echo "Debug:"
-            echo "  event_name: ${{ github.event_name }}"
-            echo "  raw_version: $RAW_VERSION"
             exit 1
           fi
 
-          # 验证版本号格式
           if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ Error: Invalid version format: $VERSION"
-            echo "Version must be in format: x.y.z"
             exit 1
           fi
 
@@ -92,47 +95,18 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_ENV
           echo "✅ Final version: $VERSION"
 
-      - name: Validate version
-        run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
-          echo "Validating version: $VERSION"
-
-          # 检查 PKGBUILD 中的版本号格式
-          if grep -q "^pkgver=" PKGBUILD; then
-            CURRENT_PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
-            echo "Current PKGBUILD version: $CURRENT_PKGVER"
-          fi
-
-      - name: Debug version info
-        run: |
-          echo "Debug information:"
-          echo "Event name: ${{ github.event_name }}"
-          echo "Version from inputs: ${{ github.event.inputs.version }}"
-          echo "Version from get_version output: ${{ steps.get_version.outputs.VERSION }}"
-          echo "Version from env: ${{ env.version }}"
-          echo "GITHUB_REF: ${{ github.ref }}"
-          echo "GITHUB_REF_NAME: ${{ github.ref_name }}"
-
       - name: Validate PKGBUILD exists
         run: |
           if [ ! -f "PKGBUILD" ]; then
             echo "Error: PKGBUILD file not found!"
-            echo "Current directory contents:"
             ls -la
             exit 1
           fi
-          echo "✅ PKGBUILD found:"
-          head -5 PKGBUILD
+          echo "✅ PKGBUILD found"
 
       - name: Update PKGBUILD version
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
-
-          if [[ -z "$VERSION" ]]; then
-            echo "Error: VERSION is empty"
-            exit 1
-          fi
-
           echo "Updating PKGBUILD to version: $VERSION"
 
           # 备份原始 PKGBUILD
@@ -144,30 +118,16 @@ jobs:
 
           echo "✅ Updated PKGBUILD"
           echo "New version: $(grep ^pkgver= PKGBUILD)"
-          echo "New release: $(grep ^pkgrel= PKGBUILD)"
 
-      - name: Generate .SRCINFO using makepkg
+      - name: Generate .SRCINFO
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
-          echo "Generating .SRCINFO for version: $VERSION using makepkg"
+          echo "Generating .SRCINFO for version: $VERSION"
 
-          # 使用 Docker 创建普通用户并运行 makepkg
-          docker run --rm -v $PWD:/workspace -w /workspace archlinux:latest bash -c "
-          # 更新包数据库并安装必要工具
-          pacman -Sy --noconfirm base-devel sudo && \
-
-          # 创建 builder 用户
-          useradd -m builder && \
-          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers && \
-
-          # 确保工作目录权限正确
-          chown -R builder:builder /workspace && \
-
-          # 以 builder 用户运行 makepkg
+          # 使用 builder 用户运行 makepkg
+          chown -R builder:builder .
           sudo -u builder makepkg --printsrcinfo > .SRCINFO
-          "
 
-          # 检查是否成功生成
           if [ ! -f ".SRCINFO" ]; then
             echo "❌ Failed to generate .SRCINFO"
             exit 1
@@ -180,45 +140,38 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
 
-          echo "Validating files for version: $VERSION"
-
           # 验证 PKGBUILD
-          if [ ! -f "PKGBUILD" ]; then
-            echo "❌ PKGBUILD not found!"
-            exit 1
-          fi
-
           PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
           if [[ "$PKGVER" != "$VERSION" ]]; then
             echo "❌ PKGBUILD version mismatch!"
-            echo "  Expected: $VERSION"
-            echo "  Found: $PKGVER"
             exit 1
           fi
           echo "✅ PKGBUILD version matches: $PKGVER"
 
           # 验证 .SRCINFO
-          if [ ! -f ".SRCINFO" ]; then
-            echo "❌ .SRCINFO not found!"
-            exit 1
-          fi
-
           SRCINFO_VER=$(grep "^[[:space:]]*pkgver =" .SRCINFO | head -1 | awk '{print $3}')
           if [[ "$SRCINFO_VER" != "$VERSION" ]]; then
             echo "❌ .SRCINFO version mismatch!"
-            echo "  Expected: $VERSION"
-            echo "  Found: $SRCINFO_VER"
             exit 1
           fi
           echo "✅ .SRCINFO version matches: $SRCINFO_VER"
 
-          # 显示文件内容以便调试
-          echo ""
-          echo "PKGBUILD content (first 10 lines):"
-          head -10 PKGBUILD
-          echo ""
-          echo ".SRCINFO content:"
-          cat .SRCINFO
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+
+          # 配置 SSH
+          cat > ~/.ssh/config << EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            User aur
+            StrictHostKeyChecking accept-new
+          EOF
+
+          # 添加 known hosts
+          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
 
       - name: Publish AUR package
         uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
@@ -253,7 +206,6 @@ jobs:
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           echo "======================================"
           echo "❌ Failed to publish sealantern v${VERSION} to AUR"
-          echo "Please check the workflow logs for details."
           echo "======================================"
 
       - name: Cleanup
@@ -261,11 +213,8 @@ jobs:
         run: |
           if [ -f "PKGBUILD.bak" ]; then
             echo "Restoring original PKGBUILD"
-            # 使用 sudo 确保有权限
-            sudo rm -f PKGBUILD
-            sudo mv PKGBUILD.bak PKGBUILD
-            # 修复权限
-            sudo chown $USER:$USER PKGBUILD
+            rm -f PKGBUILD
+            mv PKGBUILD.bak PKGBUILD
             echo "✅ PKGBUILD restored"
           else
             echo "No backup file found, skipping cleanup"
