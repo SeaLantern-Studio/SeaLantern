@@ -5,44 +5,21 @@ import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
 import { useUpdateStore } from "./stores/updateStore";
 import { useSettingsStore } from "./stores/settingsStore";
+import { applyTheme, applyFontSize, applyFontFamily } from "./utils/theme";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
 const updateStore = useUpdateStore();
 const settingsStore = useSettingsStore();
 
-function getEffectiveTheme(theme: string): "light" | "dark" {
-  if (theme === "auto") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  return theme as "light" | "dark";
-}
-
-function applyTheme(theme: string) {
-  const effectiveTheme = getEffectiveTheme(theme);
-  document.documentElement.setAttribute("data-theme", effectiveTheme);
-  return effectiveTheme;
-}
-
-function applyFontFamily(fontFamily: string) {
-  if (fontFamily) {
-    document.documentElement.style.setProperty("--sl-font-sans", fontFamily);
-    document.documentElement.style.setProperty("--sl-font-display", fontFamily);
-  } else {
-    document.documentElement.style.removeProperty("--sl-font-sans");
-    document.documentElement.style.removeProperty("--sl-font-display");
-  }
-}
-
 onMounted(async () => {
   try {
     await settingsStore.loadSettings();
     const settings = settingsStore.settings;
     applyTheme(settings.theme || "auto");
-    document.documentElement.style.fontSize = (settings.font_size || 14) + "px";
+    applyFontSize(settings.font_size || 14);
     applyFontFamily(settings.font_family || "");
 
-    // 初始化托盘功能（只在首次挂载时创建）
     try {
       const { setupTray } = await import("./utils/tray");
       if (typeof setupTray === "function") {

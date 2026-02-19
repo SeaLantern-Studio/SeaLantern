@@ -24,7 +24,7 @@ import {
   Palette,
   Info,
   Server,
-  ChevronRight,
+  ChevronLeft,
 } from "lucide-vue-next";
 
 const router = useRouter();
@@ -555,7 +555,7 @@ function isActive(path: string): boolean {
         </transition>
       </div>
       <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
-        <ChevronRight
+        <ChevronLeft
           class="nav-icon"
           :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : '' }"
           :size="20"
