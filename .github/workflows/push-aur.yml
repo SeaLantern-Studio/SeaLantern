@@ -33,16 +33,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential fakeroot git curl wget
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-
-      - name: Add AUR to known hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
-
       - name: Debug GitHub context
         run: |
           echo "GitHub Context Debug:"
@@ -59,43 +49,43 @@ jobs:
         run: |
           # 根据事件类型获取版本
           if [[ "${{ github.event_name }}" == "release" ]]; then
-          # Release 事件 - 从 release tag 获取
-          RAW_VERSION="${{ github.event.release.tag_name }}"
-          echo "Source: release tag: $RAW_VERSION"
+            # Release 事件 - 从 release tag 获取
+            RAW_VERSION="${{ github.event.release.tag_name }}"
+            echo "Source: release tag: $RAW_VERSION"
           elif [[ "${{ github.event_name }}" == "push" ]]; then
-          # Push 事件（tag 推送）- 从 ref 获取
-          RAW_VERSION="${{ github.ref_name }}"
-          echo "Source: git tag: $RAW_VERSION"
+            # Push 事件（tag 推送）- 从 ref 获取
+            RAW_VERSION="${{ github.ref_name }}"
+            echo "Source: git tag: $RAW_VERSION"
           else
-          # 手动触发 - 从输入获取
-          RAW_VERSION="${{ github.event.inputs.version }}"
-          echo "Source: manual input: $RAW_VERSION"
+            # 手动触发 - 从输入获取
+            RAW_VERSION="${{ github.event.inputs.version }}"
+            echo "Source: manual input: $RAW_VERSION"
           fi
 
           # 提取纯净版本号（支持 sea-lantern-v0.6.2 或 v0.6.2 格式）
           if [[ $RAW_VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
-          # 使用正则提取数字版本号
-          VERSION=$(echo "$RAW_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "Extracted version from tag: $VERSION"
+            # 使用正则提取数字版本号
+            VERSION=$(echo "$RAW_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+            echo "Extracted version from tag: $VERSION"
           else
-          # 如果没有匹配到，尝试移除 'v' 前缀
-          VERSION="${RAW_VERSION#v}"
+            # 如果没有匹配到，尝试移除 'v' 前缀
+            VERSION="${RAW_VERSION#v}"
           fi
 
           # 验证版本号不为空
           if [[ -z "$VERSION" ]]; then
-          echo "❌ Error: Version is empty!"
-          echo "Debug:"
-          echo "  event_name: ${{ github.event_name }}"
-          echo "  raw_version: $RAW_VERSION"
-          exit 1
+            echo "❌ Error: Version is empty!"
+            echo "Debug:"
+            echo "  event_name: ${{ github.event_name }}"
+            echo "  raw_version: $RAW_VERSION"
+            exit 1
           fi
 
           # 验证版本号格式
           if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "❌ Error: Invalid version format: $VERSION"
-          echo "Version must be in format: x.y.z"
-          exit 1
+            echo "❌ Error: Invalid version format: $VERSION"
+            echo "Version must be in format: x.y.z"
+            exit 1
           fi
 
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
@@ -156,103 +146,16 @@ jobs:
           echo "New version: $(grep ^pkgver= PKGBUILD)"
           echo "New release: $(grep ^pkgrel= PKGBUILD)"
 
-      - name: Generate .SRCINFO
+      - name: Generate .SRCINFO using makepkg
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
+          echo "Generating .SRCINFO for version: $VERSION using makepkg"
 
-          echo "Generating .SRCINFO for version: $VERSION"
-
-          # 创建 .SRCINFO 文件
-          {
-            echo "pkgbase = sealantern"
-
-            # 获取 pkgdesc
-            PKGDESC=$(grep "^pkgdesc=" PKGBUILD | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//" | xargs)
-            if [[ -n "$PKGDESC" ]]; then
-              echo "	pkgdesc = $PKGDESC"
-            fi
-
-            echo "	pkgver = $VERSION"
-            echo "	pkgrel = 1"
-
-            # 获取 url
-            URL=$(grep "^url=" PKGBUILD | cut -d= -f2- | xargs)
-            if [[ -n "$URL" ]]; then
-              echo "	url = $URL"
-            fi
-
-            # 检查并添加 install 文件
-            if grep -q "^install=" PKGBUILD; then
-              INSTALL=$(grep "^install=" PKGBUILD | cut -d= -f2- | xargs)
-              echo "	install = $INSTALL"
-            elif [ -f "sealantern.install" ]; then
-              echo "	install = sealantern.install"
-            fi
-
-            # 获取 arch
-            ARCH=$(grep "^arch=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | grep -v '^$')
-            if [[ -n "$ARCH" ]]; then
-              echo "$ARCH" | while read arch; do
-                echo "	arch = $arch"
-              done
-            fi
-
-            # 获取 license
-            LICENSE=$(grep "^license=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | grep -v '^$')
-            if [[ -n "$LICENSE" ]]; then
-              echo "$LICENSE" | while read license; do
-                echo "	license = $license"
-              done
-            fi
-
-            # 添加 depends
-            if grep -q "^depends=" PKGBUILD; then
-              grep "^depends=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | while read dep; do
-                if [[ -n "$dep" && "$dep" != "(" && "$dep" != ")" ]]; then
-                  echo "	depends = $dep"
-                fi
-              done
-            fi
-
-            # 添加 makedepends
-            if grep -q "^makedepends=" PKGBUILD; then
-              grep "^makedepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | while read dep; do
-                if [[ -n "$dep" && "$dep" != "(" && "$dep" != ")" ]]; then
-                  echo "	makedepends = $dep"
-                fi
-              done
-            fi
-
-            # 添加 optdepends
-            if grep -q "^optdepends=" PKGBUILD; then
-              grep "^optdepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | while read line; do
-                if [[ -n "$line" ]]; then
-                  echo "	optdepends = $line"
-                fi
-              done
-            fi
-
-            # 添加 source
-            if grep -q "^source=" PKGBUILD; then
-              grep "^source=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | while read src; do
-                if [[ -n "$src" && "$src" != "(" && "$src" != ")" ]]; then
-                  echo "	source = $src"
-                fi
-              done
-            fi
-
-            # 添加 sha256sums
-            if grep -q "^sha256sums=" PKGBUILD; then
-              grep "^sha256sums=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | while read sum; do
-                if [[ -n "$sum" && "$sum" != "(" && "$sum" != ")" ]]; then
-                  echo "	sha256sums = $sum"
-                fi
-              done
-            fi
-
-            echo ""
-            echo "pkgname = sealantern"
-          } > .SRCINFO
+          # 使用 Docker 运行 makepkg 生成 .SRCINFO
+          docker run --rm -v $PWD:/workspace -w /workspace archlinux:latest bash -c "
+            pacman -Sy --noconfirm base-devel && \
+            makepkg --printsrcinfo > .SRCINFO
+          "
 
           echo "✅ Generated .SRCINFO:"
           cat .SRCINFO
@@ -293,13 +196,6 @@ jobs:
           fi
           echo "✅ .SRCINFO version matches: $SRCINFO_VER"
 
-          # 检查必需字段
-          for field in "pkgdesc" "url" "license" "arch"; do
-            if ! grep -q "^[[:space:]]*$field =" .SRCINFO; then
-              echo "⚠️  Warning: $field not found in .SRCINFO"
-            fi
-          done
-
           # 显示文件内容以便调试
           echo ""
           echo "PKGBUILD content (first 10 lines):"
@@ -323,7 +219,7 @@ jobs:
           allow_empty_commits: false
           force_push: false
           updpkgsums: false
-          test: false
+          test: ${{ !github.event.inputs.skip_test }}
           ssh_keyscan_types: rsa,ecdsa,ed25519
 
       - name: Send success notification
