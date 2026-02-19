@@ -92,6 +92,32 @@ async function mockInvoke<T>(command: string, args?: Record<string, unknown>): P
       return { status: "Stopped", pid: null, uptime: null } as T;
     case "get_server_logs":
       return [] as T;
+    case "search_mods": {
+      const q = String(args?.query ?? "").trim();
+      if (!q) {
+        return [] as T;
+      }
+      return [
+        {
+          id: "demo-sodium",
+          name: "Sodium (Demo)",
+          summary: "Rendering optimization mod (web demo mock result)",
+          download_url: "https://example.com/sodium.jar",
+          file_name: "sodium-demo.jar",
+          source: "modrinth",
+        },
+        {
+          id: "demo-lithium",
+          name: "Lithium (Demo)",
+          summary: "General-purpose optimization mod (web demo mock result)",
+          download_url: "https://example.com/lithium.jar",
+          file_name: "lithium-demo.jar",
+          source: "modrinth",
+        },
+      ].filter((item) => item.name.toLowerCase().includes(q.toLowerCase()) || q.length < 3) as T;
+    }
+    case "install_mod":
+      return undefined as T;
     case "check_update":
       return { has_update: false, latest_version: "", current_version: "web-demo" } as T;
     case "check_pending_update":
