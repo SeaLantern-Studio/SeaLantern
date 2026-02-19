@@ -148,7 +148,7 @@ export const contributors: Contributor[] = [
   {
     name: "yanuofox",
     role: "可以rua的吉祥物",
-    avatar: "https://api.rms.net.cn/head/https://github.com/yanuofox",
+    avatar: "https://api.rms.net.cn/head/yanuofox",
     url: "https://github.com/foxcyber907",
   },
   // ============================================
