@@ -387,15 +387,6 @@
       "fill": "拉伸 (Fill)",
       "auto": "原始大小 (Auto)"
     },
-    "color_options": {
-      "default": "預設",
-      "midnight": "午夜",
-      "forest": "森林",
-      "sunset": "日落",
-      "ocean": "海洋",
-      "rose": "玫瑰",
-      "custom": "自訂"
-    },
     "edit_colorplan_options": {
       "light": "淺色",
       "dark": "深色",
@@ -474,7 +465,10 @@
     "developer_mode": "開發者模式",
     "developer_mode_desc": "啟動進階功能和除錯選項",
     "developer_mode_toggle": "啟動開發者模式",
-    "developer_mode_toggle_desc": "啟用後將允許使用除錯工具"
+    "developer_mode_toggle_desc": "啟用後將允許使用除錯工具",
+    "color_options": {
+      "custom": "自訂"
+    }
   },
   "about": {
     "title": "關於",

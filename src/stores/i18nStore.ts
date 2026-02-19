@@ -1,6 +1,6 @@
 import { computed, onMounted } from "vue";
 import { defineStore } from "pinia";
-import { i18n, type LocaleCode, setTranslations } from "../locales";
+import { i18n, type LocaleCode, setTranslations } from "../language";
 import { settingsApi } from "../api/settings";
 import { fetchLocale } from "../api/remoteLocales";
 

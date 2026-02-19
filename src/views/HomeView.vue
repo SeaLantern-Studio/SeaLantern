@@ -11,7 +11,7 @@ import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 import { useMessage } from "../composables/useMessage";
 import { useAsyncByKey } from "../composables/useAsync";
 import { formatBytes, formatServerPath } from "../utils/format";

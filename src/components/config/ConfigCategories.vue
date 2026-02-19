@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
-import { i18n } from "../../locales";
+import { i18n } from "../../language";
 import SLInput from "../common/SLInput.vue";
 
 interface Props {

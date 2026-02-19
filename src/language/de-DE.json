@@ -387,15 +387,6 @@
       "fill": "Füllen",
       "auto": "Auto"
     },
-    "color_options": {
-      "default": "Standard",
-      "midnight": "Mitternacht",
-      "forest": "Wald",
-      "sunset": "Sonnenuntergang",
-      "ocean": "Ozean",
-      "rose": "Rose",
-      "custom": "Benutzerdefiniert"
-    },
     "edit_colorplan_options": {
       "light": "Hell",
       "dark": "Dunkel",
@@ -471,7 +462,10 @@
     "developer_mode": "Entwicklermodus",
     "developer_mode_desc": "Erweiterte Funktionen und Debugging-Optionen aktivieren",
     "developer_mode_toggle": "Entwicklermodus aktivieren",
-    "developer_mode_toggle_desc": "Ermöglicht die Verwendung von Debug-Tools"
+    "developer_mode_toggle_desc": "Ermöglicht die Verwendung von Debug-Tools",
+    "color_options": {
+      "custom": "Benutzerdefiniert"
+    }
   },
   "about": {
     "title": "Über",
