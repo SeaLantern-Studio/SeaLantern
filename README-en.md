@@ -27,6 +27,7 @@ Import a server JAR file,choose a Java version,then click START!It's that simple
 - Whitelist,Ban,OP Manage easily.
 - It will shut server down when you close the software which won't let your saves be damaged.
 - Check update,update with one click
+- Built-in global language system (简体中文 / 繁體中文 / English / 日本語 / 한국어 / Español)
 
 ## Quick Start
 
@@ -51,7 +52,7 @@ The built things are in `src-tauri/target/release/bundle/`.
 
 ### Code Quality Check
 
-Run the full frontend quality pipeline (format, lint, typecheck, and build) in one command:
+Run the core frontend quality pipeline (lint, typecheck, and build) in one command:
 
 ```bash
 npm run check

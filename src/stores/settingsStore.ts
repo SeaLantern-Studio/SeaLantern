@@ -59,6 +59,8 @@ const defaultSettings: AppSettings = {
   font_family: "",
   color: "default",
   language: "zh-CN",
+  developer_mode: false,
+  close_action: "ask",
 };
 
 export const useSettingsStore = defineStore("settings", () => {

@@ -7,6 +7,9 @@ const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
   "zh-CN": "header.chinese",
   "zh-TW": "header.chinese_tw",
   "en-US": "header.english",
+  "ja-JP": "header.japanese",
+  "ko-KR": "header.korean",
+  "es-ES": "header.spanish",
 };
 
 export const useI18nStore = defineStore("i18n", () => {
@@ -52,6 +55,15 @@ export const useI18nStore = defineStore("i18n", () => {
       const settings = await settingsApi.get();
       if (settings.language && i18n.isSupportedLocale(settings.language)) {
         i18n.setLocale(settings.language);
+        return;
+      }
+
+      const detectedLocale = i18n.detectSystemLocale();
+      i18n.setLocale(detectedLocale);
+
+      if (settings.language !== detectedLocale) {
+        settings.language = detectedLocale;
+        await settingsApi.save(settings);
       }
     } catch (error) {
       console.error("Failed to load language setting:", error);

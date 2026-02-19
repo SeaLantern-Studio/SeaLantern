@@ -25,7 +25,10 @@
     "language": "語言",
     "chinese": "简体中文",
     "english": "English",
-    "chinese_tw": "繁體中文"
+    "chinese_tw": "繁體中文",
+    "japanese": "日本語",
+    "korean": "한국어",
+    "spanish": "Español"
   },
   "home": {
     "title": "伺服器管理",
