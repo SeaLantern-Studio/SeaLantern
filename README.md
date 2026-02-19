@@ -1,5 +1,7 @@
 <div align="center">
+  
 <img src="src/assets/logo.svg" alt="logo" width="200" height="200">
+
 # 海晶灯（Sea Lantern）
 
 一个轻量化的 Minecraft 服务器管理工具，基于 Tauri 2 + Rust + Vue 3
