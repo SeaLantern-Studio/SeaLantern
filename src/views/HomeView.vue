@@ -37,11 +37,22 @@ const memHistory = ref<number[]>([]);
 const statsViewMode = ref<"detail" | "gauge">("gauge");
 const statsLoading = ref(true);
 
+// 获取当前主题标识（用于强制重新计算图表配置）
+const themeVersion = ref(0);
+
 // 获取 CSS 变量实际值的辅助函数，支持传入默认值
 const getCssVar = (varName: string, defaultValue: string): string => {
   if (typeof window === 'undefined') return defaultValue;
   const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
   return value || defaultValue;
+};
+
+// 获取当前根字体大小（px）
+const getRootFontSize = (): number => {
+  if (typeof window === 'undefined') return 16;
+  const fontSize = getComputedStyle(document.documentElement).fontSize;
+  const parsed = parseFloat(fontSize);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 16;
 };
 
 // 解析 CSS 字体大小（支持 px 和 rem 单位）
@@ -54,9 +65,9 @@ const parseFontSize = (varName: string, defaultPx: number): number => {
   const num = parseFloat(numMatch[0]);
   if (!Number.isFinite(num) || num <= 0) return defaultPx;
   
-  // 如果是 rem，假设根字体大小为 16px
+  // 如果是 rem，使用实际的根字体大小进行换算
   if (value.includes('rem')) {
-    return num * 16;
+    return num * getRootFontSize();
   }
   return num;
 };
@@ -126,9 +137,21 @@ const createGaugeOption = (value: number, colorVar: string, label: string) => {
   };
 };
 
-const cpuGaugeOption = computed(() => createGaugeOption(cpuUsage.value, '--sl-primary', i18n.t('home.cpu')));
-const memGaugeOption = computed(() => createGaugeOption(memUsage.value, '--sl-success', i18n.t('home.memory')));
-const diskGaugeOption = computed(() => createGaugeOption(diskUsage.value, '--sl-warning', i18n.t('home.disk')));
+const cpuGaugeOption = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  themeVersion.value;
+  return createGaugeOption(cpuUsage.value, '--sl-primary', i18n.t('home.cpu'));
+});
+const memGaugeOption = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  themeVersion.value;
+  return createGaugeOption(memUsage.value, '--sl-success', i18n.t('home.memory'));
+});
+const diskGaugeOption = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  themeVersion.value;
+  return createGaugeOption(diskUsage.value, '--sl-warning', i18n.t('home.disk'));
+});
 
 // 折线图公共配置
 const baseLineConfig = {
@@ -412,6 +435,24 @@ onMounted(() => {
   }, 3000);
 
   document.addEventListener("click", handleClickOutside);
+
+  // 监听主题和无障碍模式变化
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && 
+          (mutation.attributeName === 'data-theme' || mutation.attributeName === 'data-senior')) {
+        themeVersion.value++;
+      }
+    });
+  });
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme', 'data-senior']
+  });
+
+  // 保存 observer 引用以便清理
+  (window as any).__themeObserver = observer;
 });
 
 onUnmounted(() => {
@@ -419,6 +460,13 @@ onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer);
   if (quoteTimer) clearInterval(quoteTimer);
   document.removeEventListener("click", handleClickOutside);
+
+  // 清理 MutationObserver
+  const observer = (window as any).__themeObserver;
+  if (observer) {
+    observer.disconnect();
+    delete (window as any).__themeObserver;
+  }
 });
 
 function handleClickOutside(event: MouseEvent) {
