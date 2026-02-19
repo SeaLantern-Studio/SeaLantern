@@ -25,17 +25,18 @@
 - 白名单、封禁、OP 一键管理
 - 关软件的时候自动帮你停服务器，不会丢存档
 - 检查更新，一键下载新版本
+- 内置全球语言系统（简体中文 / 繁體中文 / English / 日本語 / 한국어 / Español）
 
 ## 快速开始
 
 - 如果你是使用者，在右侧下载Release版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
 
-- 如果你是开发者，需要 Node.js 20+ 和 Rust 1.70+。
+- 如果你是开发者，需要 Node.js 20+、npm 10+ 和 Rust 1.70+。
 
 ```bash
 git clone https://github.com/FPSZ/SeaLantern.git
 cd SeaLantern
-npm install
+npm ci
 npm run tauri dev
 ```
 
@@ -48,6 +49,25 @@ npm run tauri build
 产物在 `src-tauri/target/release/bundle/` 里。
 
 ### 代码质量检查
+
+### 在线演示（Web 版）
+
+如果你只想在线体验界面，不想本地安装 Tauri：
+
+```bash
+npm ci
+npm run build
+```
+
+将 `dist/` 部署到 Vercel / Netlify 即可。
+
+> 注意：Web 版为演示模式，不支持本地文件选择、启动服务器、系统托盘等桌面能力。
+
+一键执行前端核心检查（Lint、类型与构建）：
+
+```bash
+npm run check
+```
 
 提交代码前，建议运行以下命令检查代码质量：
 
