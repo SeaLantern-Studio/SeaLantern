@@ -27,7 +27,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 ## Quick Start
 
-Download the software from [Releases](https://github.com/SeaLantern-Studio/SeaLantern);
+Download the software from [Releases](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest);
 
 Import a server .jar, choose a Java version, then click Start. It's that simple.
 
