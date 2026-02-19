@@ -106,7 +106,7 @@ export const contributors: Contributor[] = [
   {
     name: "橙子冰棒",
     role: "修复Java查找算法",
-    avatar: "https://blog.orllow.cn/images/author.webp",
+    avatar: "https://api.rms.net.cn/head/TNTNTBTT",
     url: "https://github.com/Orange-Icepop",
   },
   {
@@ -124,14 +124,13 @@ export const contributors: Contributor[] = [
   {
     name: "I账户已注销I",
     role: "提出了个性化页面，提供了颜色编辑和颜色选择器",
-    avatar: "https://zhuxiaojt.github.io/favicon.ico",
+    avatar: "https://api.rms.net.cn/head/echo500",
     url: "https://github.com/zhuxiaojt",
   },
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar:
-      "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
+    avatar:"https://api.rms.net.cn/head/MC_KKY",
     url: "https://github.com/xuezhaju",
   },
   {
@@ -153,7 +152,9 @@ export const contributors: Contributor[] = [
     url: "https://github.com/LING71671",
   },
   // ============================================
-  // 在这里添加更多贡献者！
+  // 在这里添加更多贡献者！无正版怎么办
+  // 选择皮肤，使用其名字
+  // https://www.mcgodx.com/skins/
   // ============================================
   // {
   //   name: "你的名字",
