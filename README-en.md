@@ -52,6 +52,19 @@ The built things are in `src-tauri/target/release/bundle/`.
 
 ### Code Quality Check
 
+### Online Demo (Web)
+
+If you only want to try the UI online (without running Tauri locally):
+
+```bash
+npm ci
+npm run build
+```
+
+Deploy the `dist/` folder to Vercel / Netlify.
+
+> Note: the Web build is a demo mode and does not support desktop-only features (local file picker, launching servers, system tray, etc.).
+
 Run the core frontend quality pipeline (lint, typecheck, and build) in one command:
 
 ```bash

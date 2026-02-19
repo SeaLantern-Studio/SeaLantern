@@ -50,6 +50,19 @@ npm run tauri build
 
 ### 代码质量检查
 
+### 在线演示（Web 版）
+
+如果你只想在线体验界面，不想本地安装 Tauri：
+
+```bash
+npm ci
+npm run build
+```
+
+将 `dist/` 部署到 Vercel / Netlify 即可。
+
+> 注意：Web 版为演示模式，不支持本地文件选择、启动服务器、系统托盘等桌面能力。
+
 一键执行前端核心检查（Lint、类型与构建）：
 
 ```bash

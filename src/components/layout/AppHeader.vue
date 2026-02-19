@@ -7,9 +7,10 @@ import { i18n } from "../../locales";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings } from "../../api/settings";
+import { isWebDemoMode } from "../../api/tauri";
 
 const route = useRoute();
-const appWindow = getCurrentWindow();
+const appWindow = !isWebDemoMode ? getCurrentWindow() : null;
 const i18nStore = useI18nStore();
 const showLanguageMenu = ref(false);
 const showCloseModal = ref(false);
@@ -60,10 +61,12 @@ async function loadSettings() {
 }
 
 async function minimizeWindow() {
+  if (!appWindow) return;
   await appWindow.minimize();
 }
 
 async function toggleMaximize() {
+  if (!appWindow) return;
   await appWindow.toggleMaximize();
 }
 
@@ -72,7 +75,7 @@ async function closeWindow() {
     showCloseModal.value = true;
   } else if (closeAction.value === "minimize") {
     await minimizeToTray();
-  } else {
+  } else if (appWindow) {
     await appWindow.close();
   }
 }
@@ -92,7 +95,7 @@ async function handleCloseOption(option: string) {
   
   if (option === "minimize") {
     await minimizeToTray();
-  } else {
+  } else if (appWindow) {
     await appWindow.close();
   }
   showCloseModal.value = false;
@@ -110,7 +113,9 @@ async function minimizeToTray() {
     }
   } catch (e) {
     console.warn("Failed to hide window for tray minimize:", e);
-    await appWindow.minimize();
+    if (appWindow) {
+      await appWindow.minimize();
+    }
   }
 }
 
@@ -173,12 +178,12 @@ onUnmounted(() => {
       </div>
 
       <div class="window-controls">
-        <button class="win-btn" @click="minimizeWindow" title="最小化">
+        <button class="win-btn" :disabled="!appWindow" @click="minimizeWindow" title="最小化">
           <svg width="12" height="12" viewBox="0 0 12 12">
             <rect x="1" y="5.5" width="10" height="1" fill="currentColor" />
           </svg>
         </button>
-        <button class="win-btn" @click="toggleMaximize" title="最大化">
+        <button class="win-btn" :disabled="!appWindow" @click="toggleMaximize" title="最大化">
           <svg width="12" height="12" viewBox="0 0 12 12">
             <rect
               x="1.5"
@@ -192,7 +197,7 @@ onUnmounted(() => {
             />
           </svg>
         </button>
-        <button class="win-btn win-btn-close" @click="closeWindow" title="关闭">
+        <button class="win-btn win-btn-close" :disabled="!appWindow" @click="closeWindow" title="关闭">
           <svg width="12" height="12" viewBox="0 0 12 12">
             <path
               d="M2 2l8 8M10 2l-8 8"
