@@ -39,27 +39,63 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
 
+      - name: Debug GitHub context
+        run: |
+          echo "GitHub Context Debug:"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Ref type: ${{ github.ref_type }}"
+          echo "Ref name: ${{ github.ref_name }}"
+          echo "Release tag: ${{ github.event.release.tag_name }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Actor: ${{ github.actor }}"
+
       - name: Get release version
         id: get_version
         run: |
+          # 根据事件类型获取版本
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-            echo "Source: release tag"
+            # Release 事件 - 从 release tag 获取
+            VERSION="${{ github.event.release.tag_name }}"
+            echo "Source: release tag: $VERSION"
           else
+            # 手动触发 - 从输入获取
             VERSION="${{ github.event.inputs.version }}"
-            echo "Source: manual input"
+            echo "Source: manual input: $VERSION"
           fi
 
-          VERSION=${VERSION#v}
+          # 移除版本号前的 'v' 前缀（如果有）
+          VERSION="${VERSION#v}"
 
+          # 验证版本号不为空
           if [[ -z "$VERSION" ]]; then
-            echo "Error: Version is empty!"
+            echo "❌ Error: Version is empty!"
+            echo "Debug:"
+            echo "  event_name: ${{ github.event_name }}"
+            echo "  release.tag_name: ${{ github.event.release.tag_name }}"
+            echo "  inputs.version: ${{ github.event.inputs.version }}"
             exit 1
+          fi
+
+          # 验证版本号格式（可选）
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "⚠️  Warning: Version format may be invalid: $VERSION"
           fi
 
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_ENV
           echo "✅ Extracted version: $VERSION"
+
+      - name: Validate version
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          echo "Validating version: $VERSION"
+
+          # 检查 PKGBUILD 中的版本号格式
+          if grep -q "^pkgver=" PKGBUILD; then
+            CURRENT_PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
+            echo "Current PKGBUILD version: $CURRENT_PKGVER"
+          fi
 
       - name: Debug version info
         run: |
@@ -68,11 +104,14 @@ jobs:
           echo "Version from inputs: ${{ github.event.inputs.version }}"
           echo "Version from get_version output: ${{ steps.get_version.outputs.VERSION }}"
           echo "Version from env: ${{ env.version }}"
+          echo "GITHUB_REF: ${{ github.ref }}"
+          echo "GITHUB_REF_NAME: ${{ github.ref_name }}"
 
       - name: Validate PKGBUILD exists
         run: |
           if [ ! -f "PKGBUILD" ]; then
             echo "Error: PKGBUILD file not found!"
+            echo "Current directory contents:"
             ls -la
             exit 1
           fi
@@ -97,8 +136,12 @@ jobs:
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
           sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
 
+          # 如果存在 source 数组，可能需要更新下载链接
+          # sed -i "s|/v[0-9.]*/|/v${VERSION}/|g" PKGBUILD
+
           echo "✅ Updated PKGBUILD"
           echo "New version: $(grep ^pkgver= PKGBUILD)"
+          echo "New release: $(grep ^pkgrel= PKGBUILD)"
 
       - name: Generate .SRCINFO
         run: |
@@ -111,29 +154,47 @@ jobs:
             echo "pkgbase = sealantern"
 
             # 获取 pkgdesc
-            PKGDESC=$(grep "^pkgdesc=" PKGBUILD | cut -d= -f2- | xargs)
-            echo "	pkgdesc = $PKGDESC"
+            PKGDESC=$(grep "^pkgdesc=" PKGBUILD | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//" | xargs)
+            if [[ -n "$PKGDESC" ]]; then
+              echo "	pkgdesc = $PKGDESC"
+            fi
 
             echo "	pkgver = $VERSION"
             echo "	pkgrel = 1"
 
             # 获取 url
             URL=$(grep "^url=" PKGBUILD | cut -d= -f2- | xargs)
-            echo "	url = $URL"
+            if [[ -n "$URL" ]]; then
+              echo "	url = $URL"
+            fi
 
-            echo "	install = sealantern.install"
+            # 检查并添加 install 文件
+            if grep -q "^install=" PKGBUILD; then
+              INSTALL=$(grep "^install=" PKGBUILD | cut -d= -f2- | xargs)
+              echo "	install = $INSTALL"
+            elif [ -f "sealantern.install" ]; then
+              echo "	install = sealantern.install"
+            fi
 
             # 获取 arch
-            ARCH=$(grep "^arch=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
-            echo "	arch = $ARCH"
+            ARCH=$(grep "^arch=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | grep -v '^$')
+            if [[ -n "$ARCH" ]]; then
+              echo "$ARCH" | while read arch; do
+                echo "	arch = $arch"
+              done
+            fi
 
             # 获取 license
-            LICENSE=$(grep "^license=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
-            echo "	license = $LICENSE"
+            LICENSE=$(grep "^license=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | grep -v '^$')
+            if [[ -n "$LICENSE" ]]; then
+              echo "$LICENSE" | while read license; do
+                echo "	license = $license"
+              done
+            fi
 
             # 添加 depends
             if grep -q "^depends=" PKGBUILD; then
-              grep "^depends=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read dep; do
+              grep "^depends=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | while read dep; do
                 if [[ -n "$dep" && "$dep" != "(" && "$dep" != ")" ]]; then
                   echo "	depends = $dep"
                 fi
@@ -142,9 +203,36 @@ jobs:
 
             # 添加 makedepends
             if grep -q "^makedepends=" PKGBUILD; then
-              grep "^makedepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read dep; do
+              grep "^makedepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | while read dep; do
                 if [[ -n "$dep" && "$dep" != "(" && "$dep" != ")" ]]; then
                   echo "	makedepends = $dep"
+                fi
+              done
+            fi
+
+            # 添加 optdepends
+            if grep -q "^optdepends=" PKGBUILD; then
+              grep "^optdepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | while read line; do
+                if [[ -n "$line" ]]; then
+                  echo "	optdepends = $line"
+                fi
+              done
+            fi
+
+            # 添加 source
+            if grep -q "^source=" PKGBUILD; then
+              grep "^source=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | while read src; do
+                if [[ -n "$src" && "$src" != "(" && "$src" != ")" ]]; then
+                  echo "	source = $src"
+                fi
+              done
+            fi
+
+            # 添加 sha256sums
+            if grep -q "^sha256sums=" PKGBUILD; then
+              grep "^sha256sums=" PKGBUILD | cut -d= -f2- | tr -d '()' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr ' ' '\n' | while read sum; do
+                if [[ -n "$sum" && "$sum" != "(" && "$sum" != ")" ]]; then
+                  echo "	sha256sums = $sum"
                 fi
               done
             fi
@@ -163,6 +251,11 @@ jobs:
           echo "Validating files for version: $VERSION"
 
           # 验证 PKGBUILD
+          if [ ! -f "PKGBUILD" ]; then
+            echo "❌ PKGBUILD not found!"
+            exit 1
+          fi
+
           PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
           if [[ "$PKGVER" != "$VERSION" ]]; then
             echo "❌ PKGBUILD version mismatch!"
@@ -187,11 +280,20 @@ jobs:
           fi
           echo "✅ .SRCINFO version matches: $SRCINFO_VER"
 
+          # 检查必需字段
+          for field in "pkgdesc" "url" "license" "arch"; do
+            if ! grep -q "^[[:space:]]*$field =" .SRCINFO; then
+              echo "⚠️  Warning: $field not found in .SRCINFO"
+            fi
+          done
+
           # 显示文件内容以便调试
-          echo "PKGBUILD content:"
+          echo ""
+          echo "PKGBUILD content (first 10 lines):"
           head -10 PKGBUILD
+          echo ""
           echo ".SRCINFO content:"
-          head -10 .SRCINFO
+          cat .SRCINFO
 
       - name: Publish AUR package
         uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
@@ -208,7 +310,7 @@ jobs:
           allow_empty_commits: false
           force_push: false
           updpkgsums: false
-          test: ${{ github.event_name == 'release' || !github.event.inputs.skip_test }}
+          test: false # 设置为 false 避免在 Ubuntu 上运行 makepkg
           ssh_keyscan_types: rsa,ecdsa,ed25519
 
       - name: Send success notification

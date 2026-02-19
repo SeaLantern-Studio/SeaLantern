@@ -32,14 +32,8 @@
 ### 🔐 需要设置的 Secrets
 在 GitHub 仓库设置中添加：
 - `AUR_SSH_PRIVATE_KEY` - AUR 的 SSH 私钥
+- 将公钥添加到 AUR 账户的 SSH keys 中（发送给AUR仓库维护者***xuezhaju***[见github]）
 
-### 📝 示例
-```bash
-# 发布新版本
-git tag v0.7.3
-git push origin v0.7.3
-# 或手动在 GitHub Actions 中触发
-```
 
 ### ✅ 测试情况
 - [x] 版本号正确更新
