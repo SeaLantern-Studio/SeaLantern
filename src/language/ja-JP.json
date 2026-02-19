@@ -1,5 +1,17 @@
 {
   "languageName": "日本語",
+  "header": {
+    "chinese": "簡体字中国語",
+    "english": "英語",
+    "chinese_tw": "繁体字中国語",
+    "deutsch": "ドイツ語",
+    "spanish": "スペイン語",
+    "japanese": "日本語",
+    "russian": "ロシア語",
+    "vietnamese": "ベトナム語",
+    "korean": "韓国語",
+    "french": "フランス語"
+  },
   "common": {
     "app_name": "シーランタン",
     "home": "ホーム",
@@ -159,6 +171,9 @@
     "java_env": "Java環境",
     "java_scan": "システム内のすべてのディスクからJavaを検索",
     "java_manual": "手動でJavaのパスを選択",
+    "import_mode": "インポートモード",
+    "use_existing_dir": "既存ディレクトリを使用",
+    "create_new_dir": "新規ディレクトリを作成",
     "java_path": "Javaのパス"
   },
   "console": {
@@ -189,6 +204,7 @@
     "title": "設定編集",
     "save": "保存",
     "reload": "再読み込み",
+    "delete": "削除",
     "search": "設定項目を検索...",
     "select_server": "設定を編集するサーバーを選択",
     "no_server": "サーバーを選択してください",
@@ -295,7 +311,14 @@
       "resource-pack-sha1": "リソースパックSHA-1",
       "text-filtering-config": "テキストフィルタリング設定",
       "text-filtering-version": "テキストフィルタリングバージョン"
-    }
+    },
+    "plugins": "プラグイン",
+    "loading_plugins": "プラグインを読み込み中...",
+    "no_plugins": "プラグインがありません",
+    "author": "作者",
+    "disable": "無効化",
+    "enable": "有効化",
+    "server_properties": "サーバープロパティ"
   },
   "players": {
     "title": "プレイヤー管理",

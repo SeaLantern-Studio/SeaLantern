@@ -1,5 +1,17 @@
 {
   "languageName": "简体中文",
+  "header": {
+    "chinese": "简体中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "deutsch": "Deutsch",
+    "spanish": "Español",
+    "japanese": "日本語",
+    "russian": "Русский",
+    "vietnamese": "Tiếng Việt",
+    "korean": "한국어",
+    "french": "Français"
+  },
   "common": {
     "app_name": "Sea Lantern",
     "home": "首页",
@@ -162,6 +174,9 @@
     "java_env": "Java 环境",
     "java_scan": "扫描系统中所有磁盘的 Java 安装",
     "java_manual": "手动选择 Java 路径",
+    "import_mode": "导入模式",
+    "use_existing_dir": "使用现有目录",
+    "create_new_dir": "创建新目录",
     "java_path": "Java 路径"
   },
   "console": {
@@ -193,6 +208,7 @@
     "title": "配置编辑",
     "save": "保存",
     "reload": "重载",
+    "delete": "删除",
     "search": "搜索配置项...",
     "select_server": "选择要编辑配置的服务器",
     "no_server": "请选择一个服务器来编辑配置",
@@ -300,7 +316,14 @@
       "pause-when-empty-seconds": "当服务器空闲时自动暂停的秒数，0为禁用",
       "region-file-compression": "区域文件压缩方式",
       "status-heartbeat-interval": "服务器状态心跳间隔（秒）"
-    }
+    },
+    "plugins": "插件",
+    "loading_plugins": "加载插件中...",
+    "no_plugins": "暂无插件",
+    "author": "作者",
+    "disable": "禁用",
+    "enable": "启用",
+    "server_properties": "服务器属性"
   },
   "players": {
     "title": "玩家管理",
@@ -472,8 +495,6 @@
     "developer_mode_desc": "启动高级功能和调试选项",
     "developer_mode_toggle": "启动开发者模式",
     "developer_mode_toggle_desc": "启用后将允许使用调试工具",
-    "senior_mode": "长辈模式",
-    "senior_mode_desc": "启用更大的文字和简化的界面，以便更容易使用",
     "color_options": {
       "custom": "自定义"
     }

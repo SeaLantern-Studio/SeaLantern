@@ -155,10 +155,6 @@ pub struct AppSettings {
     // 关闭行为: "ask", "minimize", "close"，默认 "ask"
     #[serde(default = "default_close_action")]
     pub close_action: String,
-
-    // 长辈模式
-    #[serde(default = "default_false")]
-    pub senior_mode: bool,
 }
 
 fn default_true() -> bool {
@@ -292,7 +288,6 @@ impl Default for AppSettings {
             language: "zh-CN".to_string(),
             developer_mode: false,
             close_action: "ask".to_string(),
-            senior_mode: false,
         }
     }
 }

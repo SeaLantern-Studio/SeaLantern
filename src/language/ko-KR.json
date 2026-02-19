@@ -1,5 +1,17 @@
 {
   "languageName": "한국어",
+  "header": {
+    "chinese": "간체 중국어",
+    "english": "영어",
+    "chinese_tw": "번체 중국어",
+    "deutsch": "독일어",
+    "spanish": "스페인어",
+    "japanese": "일본어",
+    "russian": "러시아어",
+    "vietnamese": "베트남어",
+    "korean": "한국어",
+    "french": "프랑스어"
+  },
   "common": {
     "app_name": "Sea Lantern",
     "home": "홈",
@@ -161,6 +173,9 @@
     "java_env": "Java 환경",
     "java_scan": "시스템의 모든 디스크에서 Java 설치 스캔",
     "java_manual": "Java 경로 수동 선택",
+    "import_mode": "가져오기 모드",
+    "use_existing_dir": "기존 디렉토리 사용",
+    "create_new_dir": "새 디렉토리 생성",
     "java_path": "Java 경로"
   },
   "console": {
@@ -192,6 +207,7 @@
     "title": "설정 편집",
     "save": "저장",
     "reload": "다시 불러오기",
+    "delete": "삭제",
     "search": "설정 항목 검색...",
     "select_server": "설정을 편집할 서버 선택",
     "no_server": "설정을 편집할 서버를 선택해주세요",
@@ -299,7 +315,14 @@
       "pause-when-empty-seconds": "서버 유휴 시 자동 일시정지 시간(초), 0은 비활성화",
       "region-file-compression": "지역 파일 압축 방식",
       "status-heartbeat-interval": "서버 상태 하트비트 간격(초)"
-    }
+    },
+    "plugins": "플러그인",
+    "loading_plugins": "플러그인 로딩 중...",
+    "no_plugins": "플러그인 없음",
+    "author": "작성자",
+    "disable": "비활성화",
+    "enable": "활성화",
+    "server_properties": "서버 속성"
   },
   "players": {
     "title": "플레이어 관리",

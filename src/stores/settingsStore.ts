@@ -61,7 +61,6 @@ const defaultSettings: AppSettings = {
   language: "zh-CN",
   developer_mode: false,
   close_action: "ask",
-  senior_mode: false,
 };
 
 export const useSettingsStore = defineStore("settings", () => {

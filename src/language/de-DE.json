@@ -1,5 +1,17 @@
 {
   "languageName": "Deutsch",
+  "header": {
+    "chinese": "Vereinfachtes Chinesisch",
+    "english": "Englisch",
+    "chinese_tw": "Traditionelles Chinesisch",
+    "deutsch": "Deutsch",
+    "spanish": "Spanisch",
+    "japanese": "Japanisch",
+    "russian": "Russisch",
+    "vietnamese": "Vietnamesisch",
+    "korean": "Koreanisch",
+    "french": "Französisch"
+  },
   "common": {
     "app_name": "Sea Lantern",
     "home": "Startseite",
@@ -159,6 +171,9 @@
     "java_env": "Java-Umgebung",
     "java_scan": "Alle Laufwerke nach Java-Installationen durchsuchen",
     "java_manual": "Java-Pfad manuell auswählen",
+    "import_mode": "Importmodus",
+    "use_existing_dir": "Vorhandenes Verzeichnis verwenden",
+    "create_new_dir": "Neues Verzeichnis erstellen",
     "java_path": "Java-Pfad"
   },
   "console": {
@@ -189,6 +204,7 @@
     "title": "Konfiguration bearbeiten",
     "save": "Speichern",
     "reload": "Neu laden",
+    "delete": "Löschen",
     "search": "Konfigurationselemente suchen...",
     "select_server": "Server zum Bearbeiten der Konfiguration auswählen",
     "no_server": "Bitte wähle einen Server zum Bearbeiten der Konfiguration aus",
@@ -294,7 +310,14 @@
       "pause-when-empty-seconds": "Pause bei Leerstand (Sekunden)",
       "region-file-compression": "Regionsdatei-Komprimierungsmethode",
       "status-heartbeat-interval": "Status-Heartbeat-Intervall (Sek.)"
-    }
+    },
+    "plugins": "Plugins",
+    "loading_plugins": "Plugins werden geladen...",
+    "no_plugins": "Keine Plugins",
+    "author": "Autor",
+    "disable": "Deaktivieren",
+    "enable": "Aktivieren",
+    "server_properties": "Server-Eigenschaften"
   },
   "players": {
     "title": "Spielerverwaltung",

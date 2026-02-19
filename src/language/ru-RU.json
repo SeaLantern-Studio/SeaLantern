@@ -1,5 +1,17 @@
 {
   "languageName": "Русский",
+  "header": {
+    "chinese": "Упрощённый китайский",
+    "english": "Английский",
+    "chinese_tw": "Традиционный китайский",
+    "deutsch": "Немецкий",
+    "spanish": "Испанский",
+    "japanese": "Японский",
+    "russian": "Русский",
+    "vietnamese": "Вьетнамский",
+    "korean": "Корейский",
+    "french": "Французский"
+  },
   "common": {
     "app_name": "Sea Lantern",
     "home": "Главная",
@@ -159,6 +171,9 @@
     "java_env": "Окружение Java",
     "java_scan": "Сканировать все диски на наличие Java",
     "java_manual": "Указать путь вручную",
+    "import_mode": "Режим импорта",
+    "use_existing_dir": "Использовать существующую папку",
+    "create_new_dir": "Создать новую папку",
     "java_path": "Путь к Java"
   },
   "console": {
@@ -189,6 +204,7 @@
     "title": "Редактор настроек",
     "save": "Сохранить",
     "reload": "Перезагрузить",
+    "delete": "Удалить",
     "search": "Поиск параметров...",
     "select_server": "Выберите сервер для редактирования",
     "no_server": "Пожалуйста, выберите сервер",
@@ -294,7 +310,14 @@
       "pause-when-empty-seconds": "Пауза при пустоте (секунды)",
       "region-file-compression": "Метод сжатия файлов регионов",
       "status-heartbeat-interval": "Интервал пульса статуса (сек)"
-    }
+    },
+    "plugins": "Плагины",
+    "loading_plugins": "Загрузка плагинов...",
+    "no_plugins": "Плагины отсутствуют",
+    "author": "Автор",
+    "disable": "Отключить",
+    "enable": "Включить",
+    "server_properties": "Свойства сервера"
   },
   "players": {
     "title": "Управление игроками",

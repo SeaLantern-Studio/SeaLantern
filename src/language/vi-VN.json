@@ -1,5 +1,17 @@
 {
   "languageName": "Tiếng Việt",
+  "header": {
+    "chinese": "Tiếng Trung giản thể",
+    "english": "Tiếng Anh",
+    "chinese_tw": "Tiếng Trung phồn thể",
+    "deutsch": "Tiếng Đức",
+    "spanish": "Tiếng Tây Ban Nha",
+    "japanese": "Tiếng Nhật",
+    "russian": "Tiếng Nga",
+    "vietnamese": "Tiếng Việt",
+    "korean": "Tiếng Hàn",
+    "french": "Tiếng Pháp"
+  },
   "common": {
     "app_name": "Sea Lantern",
     "home": "Trang chủ",
@@ -159,6 +171,9 @@
     "java_env": "Môi trường Java",
     "java_scan": "Quét tất cả ổ đĩa trong hệ thống để tìm Java",
     "java_manual": "Chọn đường dẫn Java thủ công",
+    "import_mode": "Chế độ nhập",
+    "use_existing_dir": "Sử dụng thư mục hiện có",
+    "create_new_dir": "Tạo thư mục mới",
     "java_path": "Đường dẫn Java"
   },
   "console": {
@@ -189,6 +204,7 @@
     "title": "Chỉnh sửa cấu hình",
     "save": "Lưu",
     "reload": "Tải lại",
+    "delete": "Xóa",
     "search": "Tìm kiếm cấu hình...",
     "select_server": "Chọn máy chủ để chỉnh sửa cấu hình",
     "no_server": "Vui lòng chọn máy chủ",
@@ -294,7 +310,14 @@
       "pause-when-empty-seconds": "Tạm dừng khi không người (giây)",
       "region-file-compression": "Phương pháp nén tệp vùng",
       "status-heartbeat-interval": "Khoảng cách nhịp tim trạng thái (giây)"
-    }
+    },
+    "plugins": "Plugin",
+    "loading_plugins": "Đang tải plugin...",
+    "no_plugins": "Không có plugin",
+    "author": "Tác giả",
+    "disable": "Vô hiệu hóa",
+    "enable": "Kích hoạt",
+    "server_properties": "Thuộc tính máy chủ"
   },
   "players": {
     "title": "Quản lý người chơi",
