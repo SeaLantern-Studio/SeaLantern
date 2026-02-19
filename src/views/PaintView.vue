@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDown } from 'lucide-vue-next';
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
@@ -862,6 +862,17 @@ onMounted(async () => {
   }
   // 应用初始颜色
   applyColors();
+
+  // 监听设置更新事件
+  window.addEventListener("settings-updated", loadSettings);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("settings-updated", loadSettings);
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
 });
 
 async function loadSystemFonts() {
@@ -914,7 +925,19 @@ async function loadSettings() {
 }
 
 function markChanged() {
-  saveSettings();
+  debouncedSave();
+}
+
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSave() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+  saveTimeout = setTimeout(() => {
+    saveSettings();
+    saveTimeout = null;
+  }, 500);
 }
 
 function getEffectiveTheme(theme: string): "light" | "dark" {
@@ -1210,18 +1233,6 @@ async function handleThemeChange() {
   applyColors();
 
   // 在颜色值更新后再保存
-  markChanged();
-}
-
-function handleSeniorModeChange() {
-  if (!settings.value) return;
-
-  if (settings.value.senior_mode) {
-    document.documentElement.setAttribute("data-senior", "true");
-  } else {
-    document.documentElement.removeAttribute("data-senior");
-  }
-
   markChanged();
 }
 
@@ -1619,17 +1630,6 @@ function clearBackgroundImage() {
           </div>
 
           <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.senior_mode") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.senior_mode_desc") }}</span>
-            </div>
-            <SLSwitch
-              v-model="settings.senior_mode"
-              @update:modelValue="handleSeniorModeChange"
-            />
-          </div>
-
-          <div class="setting-row" v-if="!settings.senior_mode">
             <div class="setting-info">
               <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
               <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>

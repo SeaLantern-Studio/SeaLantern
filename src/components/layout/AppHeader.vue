@@ -81,14 +81,11 @@ const otherLanguages = computed(() => {
       } else {
         const labelKey = {
           "de-DE": "header.deutsch",
-          "en-AU": "header.aussie",
           "es-ES": "header.spanish",
           "ru-RU": "header.russian",
           "vi-VN": "header.vietnamese",
           "ko-KR": "header.korean",
-          "fr-FA": "header.french",
-          "fr-CA": "header.french_ca",
-          "es-AR": "header.spanish_ar"
+          "fr-FA": "header.french"
         }[code];
         label = i18n.t(labelKey || code);
       }
@@ -123,15 +120,12 @@ const currentLanguageText = computed(() => {
     "en-US": "header.english",
     "zh-TW": "header.chinese_tw",
     "de-DE": "header.deutsch",
-    "en-AU": "header.aussie",
     "es-ES": "header.spanish",
     "ja-JP": "header.japanese",
     "ru-RU": "header.russian",
     "vi-VN": "header.vietnamese",
     "ko-KR": "header.korean",
-    "fr-FA": "header.french",
-    "fr-CA": "header.french_ca",
-    "es-AR": "header.spanish_ar"
+    "fr-FA": "header.french"
   }[currentLocale];
   return labelKey ? i18n.t(labelKey) : i18n.t("header.english");
 });

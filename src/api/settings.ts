@@ -27,7 +27,6 @@ export interface AppSettings {
   developer_mode: boolean;
   close_action: string; // ask, minimize, close
   bg_color?: string;
-  senior_mode: boolean;
   bg_secondary_color?: string;
   bg_tertiary_color?: string;
   primary_color?: string;
