@@ -11,7 +11,8 @@
     "about": "About",
     "loading": "Loading...",
     "select_server": "Select server",
-    "open_folder": "Open Folder"
+    "open_folder": "Open Folder",
+    "mods": "Mods"
   },
   "sidebar": {
     "groups": {
@@ -25,7 +26,10 @@
     "language": "Language",
     "chinese": "简体中文",
     "english": "English",
-    "chinese_tw": "繁體中文"
+    "chinese_tw": "繁體中文",
+    "japanese": "日本語",
+    "korean": "한국어",
+    "spanish": "Español"
   },
   "home": {
     "title": "Server Management",
@@ -428,5 +432,22 @@
     "minimize": "Minimize to Tray",
     "show": "Show",
     "quit": "Quit"
+  },
+  "mods": {
+    "title": "Mod Search & Install (Phase 1)",
+    "subtitle": "Search on Modrinth and install into current server mods folder",
+    "keyword": "Keyword",
+    "keyword_placeholder": "e.g. sodium",
+    "game_version": "Game Version",
+    "loader": "Loader",
+    "search": "Search Mods",
+    "install": "Install",
+    "target_server": "Target Server",
+    "select_server_first": "Please select a server in sidebar first",
+    "enter_keyword": "Please enter a keyword to search",
+    "no_summary": "No summary",
+    "empty_hint": "Enter keyword and click \"Search Mods\"",
+    "install_success": "Installed: {{name}}",
+    "downloads": "Downloads:"
   }
 }

@@ -27,17 +27,18 @@ Import a server JAR file,choose a Java version,then click START!It's that simple
 - Whitelist,Ban,OP Manage easily.
 - It will shut server down when you close the software which won't let your saves be damaged.
 - Check update,update with one click
+- Built-in global language system (简体中文 / 繁體中文 / English / 日本語 / 한국어 / Español)
 
 ## Quick Start
 
 - If you are a user,download the software from RELEASE
 
-- If you are a developer,you need to download Node.js 20+ and Rust 1.70+.
+- If you are a developer, you need Node.js 20+, npm 10+, and Rust 1.70+.
 
 ```bash
 git clone https://github.com/fps_z/SeaLantern.git
 cd SeaLantern
-npm install
+npm ci
 npm run tauri dev
 ```
 
@@ -49,7 +50,58 @@ npm run tauri build
 
 The built things are in `src-tauri/target/release/bundle/`.
 
+
+### Windows build blocked by policy (wry os error 4551)
+
+If you see this error while running `npm run tauri dev` / `cargo build` on Windows:
+
+```
+error: failed to run custom build command for `wry ...`
+Caused by: 应用程序控制策略已阻止此文件。 (os error 4551)
+```
+
+This usually means Windows App Control / enterprise policy blocked the generated Rust build script in `target/`.
+
+Recommended steps:
+
+1. Open the project in a user directory that is not policy-restricted (for example `%USERPROFILE%\source\SeaLantern`).
+2. Clear previous build artifacts and rebuild:
+   ```powershell
+   cargo clean
+   npm ci
+   npm run tauri dev
+   ```
+3. If your device is managed by your organization, ask your admin to allow Rust/Cargo build artifacts (or whitelist your repo path and Cargo target directory).
+
+If you only want to preview the UI without desktop runtime, use Web demo mode:
+
+```bash
+npm ci
+npm run build
+```
+
+Then deploy the `dist/` folder.
+
 ### Code Quality Check
+
+### Online Demo (Web)
+
+If you only want to try the UI online (without running Tauri locally):
+
+```bash
+npm ci
+npm run build
+```
+
+Deploy the `dist/` folder to Vercel / Netlify.
+
+> Note: the Web build is a demo mode and does not support desktop-only features (local file picker, launching servers, system tray, etc.).
+
+Run the core frontend quality pipeline (lint, type check, and build) in one command:
+
+```bash
+npm run check
+```
 
 Before you PR,we recommend you run commands below to check the code's quality：
 
