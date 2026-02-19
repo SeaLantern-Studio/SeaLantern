@@ -118,8 +118,8 @@ function toggleLanguageMenu() {
   showLanguageMenu.value = !showLanguageMenu.value;
 }
 
-function setLanguage(locale: string) {
-  i18nStore.setLocale(locale);
+async function setLanguage(locale: string) {
+  await i18nStore.setLocale(locale);
   showLanguageMenu.value = false;
 }
 

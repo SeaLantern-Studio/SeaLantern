@@ -104,29 +104,6 @@ class I18n {
     return this.resolveBestLocale(navigator.languages ?? [navigator.language]);
   }
 
-  resolveLocale(locale: string): LocaleCode | null {
-    return resolveLocaleByPrefix(locale);
-  }
-
-  resolveBestLocale(candidates: readonly string[]): LocaleCode {
-    for (const candidate of candidates) {
-      const resolved = this.resolveLocale(candidate);
-      if (resolved) {
-        return resolved;
-      }
-    }
-
-    return this.fallbackLocale;
-  }
-
-  detectSystemLocale(): LocaleCode {
-    if (typeof navigator === "undefined") {
-      return this.fallbackLocale;
-    }
-
-    return this.resolveBestLocale(navigator.languages ?? [navigator.language]);
-  }
-
   getLocale(): LocaleCode {
     return this.currentLocale.value;
   }

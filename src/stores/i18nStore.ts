@@ -36,8 +36,10 @@ export const useI18nStore = defineStore("i18n", () => {
     // 保存语言设置到持久化存储
     try {
       const settings = await settingsApi.get();
-      settings.language = resolvedLocale;
-      await settingsApi.save(settings);
+      if (settings.language !== resolvedLocale) {
+        settings.language = resolvedLocale;
+        await settingsApi.save(settings);
+      }
     } catch (error) {
       console.error("Failed to save language setting:", error);
     }
@@ -53,8 +55,13 @@ export const useI18nStore = defineStore("i18n", () => {
   async function loadLanguageSetting() {
     try {
       const settings = await settingsApi.get();
-      if (settings.language && i18n.isSupportedLocale(settings.language)) {
-        i18n.setLocale(settings.language);
+
+      const resolvedSavedLocale = settings.language ? i18n.setLocale(settings.language) : null;
+      if (resolvedSavedLocale) {
+        if (settings.language !== resolvedSavedLocale) {
+          settings.language = resolvedSavedLocale;
+          await settingsApi.save(settings);
+        }
         return;
       }
 
@@ -69,7 +76,6 @@ export const useI18nStore = defineStore("i18n", () => {
       console.error("Failed to load language setting:", error);
     }
   }
-
 
   return {
     locale,
