@@ -693,12 +693,12 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t("home.disk")
-                }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.disk") }}
+                <span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.disk.used) }} /
-                  {{ formatBytes(systemInfo.disk.total) }}</span
-                ></span
-              >
+                  {{ formatBytes(systemInfo.disk.total) }}
+                </span>
+              </span>
               <span class="stat-value">{{ diskUsage }}%</span>
             </div>
             <SLProgress :value="diskUsage" variant="warning" :showPercent="false" />
