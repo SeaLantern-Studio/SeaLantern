@@ -20,7 +20,8 @@ const store = useServerStore();
 const consoleStore = useConsoleStore();
 
 const activeTab = ref<"online" | "whitelist" | "banned" | "ops">("online");
-const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } = useTabIndicator(activeTab);
+const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } =
+  useTabIndicator(activeTab);
 
 const whitelist = ref<PlayerEntry[]>([]);
 const bannedPlayers = ref<BanEntry[]>([]);

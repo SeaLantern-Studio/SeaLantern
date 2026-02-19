@@ -38,20 +38,24 @@ export const serverApi = {
     jarPath: string;
     startupMode: "jar" | "bat" | "sh";
     javaPath: string;
+    serverType: "vanilla" | "spigot" | "paper" | "fabric" | "forge" | "neoforge";
     maxMemory: number;
     minMemory: number;
     port: number;
     onlineMode: boolean;
+    useExistingDir?: boolean;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_server", {
       name: params.name,
       jarPath: params.jarPath,
       startupMode: params.startupMode,
       javaPath: params.javaPath,
+      serverType: params.serverType,
       maxMemory: params.maxMemory,
       minMemory: params.minMemory,
       port: params.port,
       onlineMode: params.onlineMode,
+      useExistingDir: params.useExistingDir ?? false,
     });
   },
 

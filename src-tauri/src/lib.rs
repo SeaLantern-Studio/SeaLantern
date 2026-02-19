@@ -8,6 +8,7 @@ use commands::java as java_commands;
 use commands::join as join_commands;
 use commands::mods as mods_commands;
 use commands::player as player_commands;
+use commands::plugin as plugin_commands;
 use commands::server as server_commands;
 use commands::server_id as server_id_commands;
 use commands::settings as settings_commands;
@@ -97,6 +98,7 @@ pub fn run() {
             system_commands::pick_folder,
             system_commands::pick_image_file,
             system_commands::open_folder,
+            system_commands::open_file,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -126,6 +128,10 @@ pub fn run() {
             update_commands::download_update_from_debug_url,
             mods_commands::search_mods,
             mods_commands::install_mod,
+            plugin_commands::get_plugins,
+            plugin_commands::toggle_plugin,
+            plugin_commands::delete_plugin,
+            plugin_commands::install_plugin,
             join_commands::resolve_join_server_id,
             join_commands::join_server_by_id,
             server_id_commands::create_server_id,

@@ -52,10 +52,7 @@ const backgroundSizeOptions = computed(() => [
 
 const colorOptions = computed(() => {
   const themes = getThemeOptions();
-  return [
-    ...themes,
-    { label: i18n.t("common.color_custom"), value: "custom" },
-  ];
+  return [...themes, { label: i18n.t("common.color_custom"), value: "custom" }];
 });
 
 const editColorOptions = computed(() => [
@@ -499,7 +496,16 @@ function handleDeveloperModeChange() {
           </div>
 
           <div class="setting-row full-width">
-            <JavaDownloader @installed="(path) => { if(settings) { settings.default_java_path = path; markChanged(); } }" />
+            <JavaDownloader
+              @installed="
+                (path) => {
+                  if (settings) {
+                    settings.default_java_path = path;
+                    markChanged();
+                  }
+                }
+              "
+            />
           </div>
 
           <div class="setting-row full-width">

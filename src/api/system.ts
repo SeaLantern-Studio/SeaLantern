@@ -94,4 +94,8 @@ export const systemApi = {
   async openFolder(path: string): Promise<void> {
     return tauriInvoke("open_folder", { path });
   },
+
+  async openFile(path: string): Promise<void> {
+    return tauriInvoke("open_file", { path });
+  },
 };

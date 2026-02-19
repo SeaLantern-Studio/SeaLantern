@@ -17,7 +17,13 @@ import {
 } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { getAllThemes, getThemeById, getThemeOptions, mapLegacyPlanName, type ColorPlan } from "../themes";
+import {
+  getAllThemes,
+  getThemeById,
+  getThemeOptions,
+  mapLegacyPlanName,
+  type ColorPlan,
+} from "../themes";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
@@ -49,10 +55,7 @@ const backgroundSizeOptions = computed(() => [
 
 const colorOptions = computed(() => {
   const themes = getThemeOptions();
-  return [
-    ...themes,
-    { label: i18n.t("settings.color_options.custom"), value: "custom" },
-  ];
+  return [...themes, { label: i18n.t("settings.color_options.custom"), value: "custom" }];
 });
 
 const editColorOptions = computed(() => [
@@ -1152,8 +1155,13 @@ async function handleThemeChange() {
     const theme = getThemeById(settings.value.color);
     if (theme) {
       // 颜色方案映射
-      const colorPlans: Array<'light' | 'dark' | 'lightAcrylic' | 'darkAcrylic'> = ['light', 'dark', 'lightAcrylic', 'darkAcrylic'];
-      const legacyPlans = ['light', 'dark', 'light_acrylic', 'dark_acrylic'];
+      const colorPlans: Array<"light" | "dark" | "lightAcrylic" | "darkAcrylic"> = [
+        "light",
+        "dark",
+        "lightAcrylic",
+        "darkAcrylic",
+      ];
+      const legacyPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
 
       // 颜色类型映射
       const colorTypes = {

@@ -33,6 +33,7 @@ type StartupMode = "jar" | "bat" | "sh";
 const { activeTab: startupMode, indicatorRef: startupModeIndicator, switchTab: switchStartupMode, updateIndicator } = useTabSwitch<StartupMode>("jar");
 const selectedJava = ref("");
 const onlineMode = ref(true);
+const useExistingDir = ref(false);
 
 const javaList = ref<JavaInfo[]>([]);
 
@@ -154,10 +155,12 @@ async function handleCreate() {
       jarPath: jarPath.value,
       startupMode: startupMode.value,
       javaPath: selectedJava.value,
+      serverType: "vanilla",
       maxMemory: parseInt(maxMemory.value) || 2048,
       minMemory: parseInt(minMemory.value) || 512,
       port: parseInt(port.value) || 25565,
       onlineMode: onlineMode.value,
+      useExistingDir: useExistingDir.value,
     });
     await store.refreshList();
     router.push("/");
@@ -296,39 +299,45 @@ const startupFileLabel = computed(() => {
           </div>
         </div>
 
-        <SLInput 
-          :label="i18n.t('create.max_memory')" 
-          type="text" 
+        <SLInput
+          :label="i18n.t('create.max_memory')"
+          type="text"
           v-model="maxMemory"
-          @input="(e) => {
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              maxMemory.value = value;
+          @input="
+            (e: any) => {
+              const value = e.target.value;
+              if (value === '' || /^\d+$/.test(value)) {
+                maxMemory.value = value;
+              }
             }
-          }"
+          "
         />
-        <SLInput 
-          :label="i18n.t('create.min_memory')" 
-          type="text" 
+        <SLInput
+          :label="i18n.t('create.min_memory')"
+          type="text"
           v-model="minMemory"
-          @input="(e) => {
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              minMemory.value = value;
+          @input="
+            (e: any) => {
+              const value = e.target.value;
+              if (value === '' || /^\d+$/.test(value)) {
+                minMemory.value = value;
+              }
             }
-          }"
+          "
         />
         <SLInput
           :label="i18n.t('settings.default_port')"
           type="text"
           v-model="port"
           :placeholder="i18n.t('create.default_port_placeholder')"
-          @input="(e) => {
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              port.value = value;
+          @input="
+            (e: any) => {
+              const value = e.target.value;
+              if (value === '' || /^\d+$/.test(value)) {
+                port.value = value;
+              }
             }
-          }"
+          "
         />
         <div class="online-mode-cell">
           <span class="online-mode-label">{{ i18n.t("create.online_mode") }}</span>
@@ -337,6 +346,15 @@ const startupFileLabel = computed(() => {
               onlineMode ? i18n.t("create.online_mode_on") : i18n.t("create.online_mode_off")
             }}</span>
             <SLSwitch v-model="onlineMode" />
+          </div>
+        </div>
+        <div class="import-mode-cell">
+          <span class="import-mode-label">{{ i18n.t("create.import_mode") }}</span>
+          <div class="import-mode-box">
+            <span class="import-mode-text">{{
+              useExistingDir ? i18n.t("create.use_existing_dir") : i18n.t("create.create_new_dir")
+            }}</span>
+            <SLSwitch v-model="useExistingDir" />
           </div>
         </div>
       </div>
@@ -448,6 +466,53 @@ const startupFileLabel = computed(() => {
 }
 .server-name-row {
   grid-column: 1 / -1;
+}
+.server-type-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+}
+.server-type-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+}
+.server-type-control {
+  display: flex;
+  align-items: center;
+}
+.server-type-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  padding: 3px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.server-type-tab {
+  flex: 1;
+  padding: 6px 14px;
+  border-radius: var(--sl-radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+  transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+}
+.server-type-tab:hover {
+  color: var(--sl-text-primary);
+}
+.server-type-tab.active {
+  color: var(--sl-primary);
 }
 .startup-mode-row {
   grid-column: 1 / -1;
@@ -561,6 +626,32 @@ const startupFileLabel = computed(() => {
   box-sizing: border-box;
 }
 .online-mode-text {
+  font-size: 0.875rem;
+  color: var(--sl-text-tertiary);
+}
+.import-mode-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+}
+.import-mode-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+}
+.import-mode-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-md);
+  padding: 6px 12px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  height: 36px;
+  box-sizing: border-box;
+}
+.import-mode-text {
   font-size: 0.875rem;
   color: var(--sl-text-tertiary);
 }

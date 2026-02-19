@@ -305,3 +305,47 @@ pub fn open_folder(path: String) -> Result<(), String> {
         }
     }
 }
+
+#[tauri::command]
+pub fn open_file(path: String) -> Result<(), String> {
+    use std::process::Command;
+
+    #[cfg(target_os = "windows")]
+    {
+        let status = Command::new("cmd")
+            .args(["/c", "start", "", &path])
+            .status()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to open file".to_string())
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let status = Command::new("open")
+            .arg(&path)
+            .status()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to open file".to_string())
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let status = Command::new("xdg-open")
+            .arg(&path)
+            .status()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to open file".to_string())
+        }
+    }
+}

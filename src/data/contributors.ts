@@ -151,6 +151,12 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/yanuofox",
     url: "https://github.com/foxcyber907",
   },
+    {
+    name: "NyaCl",
+    role: "awa",
+    avatar: "https://api.rms.net.cn/head/XueChen_NyaCl",
+    //url: "https://github.com/LING71671",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // 没有正版怎么办？
