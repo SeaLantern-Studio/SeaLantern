@@ -62,6 +62,10 @@ jobs:
             # Release 事件 - 从 release tag 获取
             VERSION="${{ github.event.release.tag_name }}"
             echo "Source: release tag: $VERSION"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # Push 事件（tag 推送）- 从 ref 获取
+            VERSION="${{ github.ref_name }}"
+            echo "Source: git tag: $VERSION"
           else
             # 手动触发 - 从输入获取
             VERSION="${{ github.event.inputs.version }}"
@@ -77,6 +81,7 @@ jobs:
             echo "Debug:"
             echo "  event_name: ${{ github.event_name }}"
             echo "  release.tag_name: ${{ github.event.release.tag_name }}"
+            echo "  github.ref_name: ${{ github.ref_name }}"
             echo "  inputs.version: ${{ github.event.inputs.version }}"
             exit 1
           fi
@@ -139,9 +144,6 @@ jobs:
           # 更新版本号
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
           sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
-
-          # 如果存在 source 数组，可能需要更新下载链接
-          # sed -i "s|/v[0-9.]*/|/v${VERSION}/|g" PKGBUILD
 
           echo "✅ Updated PKGBUILD"
           echo "New version: $(grep ^pkgver= PKGBUILD)"
@@ -314,7 +316,7 @@ jobs:
           allow_empty_commits: false
           force_push: false
           updpkgsums: false
-          test: false # 设置为 false 避免在 Ubuntu 上运行 makepkg
+          test: false
           ssh_keyscan_types: rsa,ecdsa,ed25519
 
       - name: Send success notification
