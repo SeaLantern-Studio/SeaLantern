@@ -47,13 +47,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
+          cache: "npm"
 
       - name: 安装前端依赖
-        run: npm install
+        run: npm ci
 
-      - name: 运行格式化并检查前端 Lint
+      - name: 运行前端全量检查
         run: |
-          npm run fmt && npm run lint
+          npm run check
 
       - name: 检查前端构建
         run: npm run build
