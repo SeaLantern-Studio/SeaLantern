@@ -18,8 +18,6 @@ on:
 jobs:
   aur-publish:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -65,20 +63,21 @@ jobs:
             exit 1
           fi
 
-          # 设置输出变量
+          # 设置输出变量 - 使用多种方式确保版本号传递
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_ENV
+          echo "PKGVER=$VERSION" >> $GITHUB_ENV
 
           echo "✅ Extracted version: $VERSION"
-          echo "Version output set to: $VERSION"
 
       - name: Debug version info
         run: |
           echo "Debug information:"
           echo "Event name: ${{ github.event_name }}"
-          echo "Version from get_version: ${{ steps.get_version.outputs.VERSION }}"
-          echo "Version from env: ${{ env.VERSION }}"
-          echo "Manual input: ${{ github.event.inputs.version }}"
+          echo "Version from inputs: ${{ github.event.inputs.version }}"
+          echo "Version from get_version output: ${{ steps.get_version.outputs.VERSION }}"
+          echo "Version from env.VERSION: ${{ env.VERSION }}"
+          echo "Version from env.PKGVER: ${{ env.PKGVER }}"
           echo "GITHUB_REF: $GITHUB_REF"
 
       - name: Validate PKGBUILD exists
@@ -95,10 +94,18 @@ jobs:
 
       - name: Update PKGBUILD version
         run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          # 直接从环境变量获取版本号
+          VERSION="${{ env.VERSION }}"
+
+          if [[ -z "$VERSION" ]]; then
+            # 如果环境变量为空，尝试从 steps.get_version 获取
+            VERSION="${{ steps.get_version.outputs.VERSION }}"
+          fi
 
           if [[ -z "$VERSION" ]]; then
             echo "Error: VERSION is empty in Update PKGBUILD version step"
+            echo "Available environment variables:"
+            env | grep -E 'VERSION|PKGVER' || true
             exit 1
           fi
 
@@ -107,10 +114,14 @@ jobs:
           # 备份原始 PKGBUILD
           cp PKGBUILD PKGBUILD.bak
 
-          # 更新版本号 - 使用更可靠的方法
+          # 显示当前 PKGBUILD 中的版本
+          CURRENT_VER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
+          echo "Current version in PKGBUILD: $CURRENT_VER"
+
+          # 更新版本号
           if grep -q "^pkgver=" PKGBUILD; then
             sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
-            echo "✅ Updated pkgver to ${VERSION}"
+            echo "✅ Updated pkgver from $CURRENT_VER to ${VERSION}"
           else
             echo "⚠️ Warning: pkgver not found in PKGBUILD, adding it"
             echo "pkgver=${VERSION}" >> PKGBUILD
@@ -127,103 +138,131 @@ jobs:
           # 如果存在 source 数组，更新下载链接中的版本号
           if grep -q "^source=" PKGBUILD; then
             sed -i "s/\${pkgver}/${VERSION}/g" PKGBUILD
-            # 也替换直接写死的版本号（常见格式如 0.1.15 -> 0.1.16）
-            OLD_VERSION=$(grep "^pkgver=" PKGBUILD.bak | cut -d= -f2 | xargs || echo "")
-            if [[ -n "$OLD_VERSION" && "$OLD_VERSION" != "$VERSION" ]]; then
-              echo "Replacing old version $OLD_VERSION with $VERSION in source URLs"
-              sed -i "s/${OLD_VERSION}/${VERSION}/g" PKGBUILD
+            # 也替换直接写死的版本号
+            if [[ -n "$CURRENT_VER" && "$CURRENT_VER" != "$VERSION" ]]; then
+              echo "Replacing old version $CURRENT_VER with $VERSION in source URLs"
+              sed -i "s/${CURRENT_VER}/${VERSION}/g" PKGBUILD
             fi
             echo "✅ Updated source URLs"
           fi
 
-          echo "✅ Updated PKGBUILD content:"
-          echo "-----------------------"
-          grep -E "^(pkgver|pkgrel|source)=" PKGBUILD || cat PKGBUILD
-          echo "-----------------------"
+          # 验证更新
+          NEW_VER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
+          echo "New version in PKGBUILD: $NEW_VER"
 
       - name: Generate .SRCINFO
         run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          # 获取版本号
+          VERSION="${{ env.VERSION }}"
+          if [[ -z "$VERSION" ]]; then
+            VERSION="${{ steps.get_version.outputs.VERSION }}"
+          fi
 
           if [[ -z "$VERSION" ]]; then
             echo "Error: VERSION is empty in Generate .SRCINFO step"
             exit 1
           fi
 
-          # 定义创建基本 .SRCINFO 的函数
-          create_basic_srcinfo() {
-            local VERSION=$1
-            cat > .SRCINFO << EOF
+          echo "Generating .SRCINFO for version: $VERSION"
+
+          # 创建 .SRCINFO
+          cat > .SRCINFO << EOF
             pkgbase = sealantern
-            \tpkgdesc = $(grep "^pkgdesc=" PKGBUILD | cut -d= -f2- | xargs 2>/dev/null || echo "SeaLantern package")
+            \tpkgdesc = $(grep "^pkgdesc=" PKGBUILD | cut -d= -f2- | xargs)
             \tpkgver = ${VERSION}
             \tpkgrel = 1
-            \turl = $(grep "^url=" PKGBUILD | cut -d= -f2- | xargs 2>/dev/null || echo "")
-            \tinstall = $(grep "^install=" PKGBUILD | cut -d= -f2- | xargs 2>/dev/null || echo "")
-            \tarch = $(grep "^arch=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs 2>/dev/null || echo "any")
-            \tlicense = $(grep "^license=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs 2>/dev/null || echo "unknown")
-            \tdepends = $(grep "^depends=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs 2>/dev/null || echo "")
-            \tmakedepends = $(grep "^makedepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs 2>/dev/null || echo "")
-            \tsource = $(grep "^source=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs 2>/dev/null || echo "")
-            \tsha256sums = $(grep "^sha256sums=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs 2>/dev/null || echo "SKIP")
-
-            pkgname = sealantern
+            \turl = $(grep "^url=" PKGBUILD | cut -d= -f2- | xargs)
+            \tinstall = sealantern.install
+            \tarch = $(grep "^arch=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+            \tlicense = $(grep "^license=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
             EOF
-          }
 
-          # 尝试使用 makepkg 生成 .SRCINFO
-          if command -v makepkg &> /dev/null; then
-            echo "Using makepkg to generate .SRCINFO"
-            makepkg --printsrcinfo > .SRCINFO
-            if [ $? -eq 0 ]; then
-              echo "✅ makepkg generated .SRCINFO successfully"
-            else
-              echo "⚠️ makepkg failed, creating basic .SRCINFO"
-              create_basic_srcinfo "$VERSION"
-            fi
-          else
-            echo "makepkg not found, creating basic .SRCINFO"
-            create_basic_srcinfo "$VERSION"
+          # 添加 depends（如果有）
+          if grep -q "^depends=" PKGBUILD; then
+            grep "^depends=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read dep; do
+              if [[ -n "$dep" ]]; then
+                echo "\tdepends = $dep" >> .SRCINFO
+              fi
+            done
           fi
 
-          echo "✅ Generated .SRCINFO content:"
+          # 添加 makedepends（如果有）
+          if grep -q "^makedepends=" PKGBUILD; then
+            grep "^makedepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read dep; do
+              if [[ -n "$dep" ]]; then
+                echo "\tmakedepends = $dep" >> .SRCINFO
+              fi
+            done
+          fi
+
+          # 添加 source（如果有）
+          if grep -q "^source=" PKGBUILD; then
+            grep "^source=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read src; do
+              if [[ -n "$src" ]]; then
+                echo "\tsource = $src" >> .SRCINFO
+              fi
+            done
+          else
+            echo "\tsource = PKGBUILD" >> .SRCINFO
+          fi
+
+          # 添加 sha256sums（如果有）
+          if grep -q "^sha256sums=" PKGBUILD; then
+            grep "^sha256sums=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read sum; do
+              if [[ -n "$sum" ]]; then
+                echo "\tsha256sums = $sum" >> .SRCINFO
+              fi
+            done
+          else
+            echo "\tsha256sums = SKIP" >> .SRCINFO
+          fi
+
+          echo "" >> .SRCINFO
+          echo "pkgname = sealantern" >> .SRCINFO
+
+          echo "✅ Generated .SRCINFO:"
           echo "------------------------"
           cat .SRCINFO
           echo "------------------------"
 
       - name: Validate files
         run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          VERSION="${{ env.VERSION }}"
+          if [[ -z "$VERSION" ]]; then
+            VERSION="${{ steps.get_version.outputs.VERSION }}"
+          fi
 
-          echo "Checking generated files:"
-          ls -la PKGBUILD .SRCINFO
+          echo "Validating files for version: $VERSION"
 
-          # 验证 PKGBUILD 中的版本号
+          # 验证 PKGBUILD
+          if [ ! -f "PKGBUILD" ]; then
+            echo "❌ PKGBUILD not found!"
+            exit 1
+          fi
+
           PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
-          echo "PKGBUILD pkgver: $PKGVER"
-          echo "Expected version: $VERSION"
-
           if [[ "$PKGVER" != "$VERSION" ]]; then
-            echo "⚠️ Warning: PKGBUILD version mismatch!"
+            echo "❌ PKGBUILD version mismatch!"
             echo "  Expected: $VERSION"
             echo "  Found: $PKGVER"
-          else
-            echo "✅ PKGBUILD version matches"
+            exit 1
+          fi
+          echo "✅ PKGBUILD version matches: $PKGVER"
+
+          # 验证 .SRCINFO
+          if [ ! -f ".SRCINFO" ]; then
+            echo "❌ .SRCINFO not found!"
+            exit 1
           fi
 
-          # 验证 .SRCINFO 中的版本号
-          if [ -f ".SRCINFO" ]; then
-            SRCINFO_VER=$(grep "^[[:space:]]*pkgver =" .SRCINFO | head -1 | awk '{print $3}')
-            echo ".SRCINFO pkgver: $SRCINFO_VER"
-
-            if [[ "$SRCINFO_VER" != "$VERSION" ]]; then
-              echo "⚠️ Warning: .SRCINFO version mismatch!"
-              echo "  Expected: $VERSION"
-              echo "  Found: $SRCINFO_VER"
-            else
-              echo "✅ .SRCINFO version matches"
-            fi
+          SRCINFO_VER=$(grep "^[[:space:]]*pkgver =" .SRCINFO | head -1 | awk '{print $3}')
+          if [[ "$SRCINFO_VER" != "$VERSION" ]]; then
+            echo "❌ .SRCINFO version mismatch!"
+            echo "  Expected: $VERSION"
+            echo "  Found: $SRCINFO_VER"
+            exit 1
           fi
+          echo "✅ .SRCINFO version matches: $SRCINFO_VER"
 
       - name: Publish AUR package
         uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
@@ -232,10 +271,11 @@ jobs:
           pkgbuild: PKGBUILD
           assets: |
             .SRCINFO
+            sealantern.install
           commit_username: "${{ github.actor }}"
           commit_email: "${{ github.actor }}@users.noreply.github.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update sealantern to v${{ steps.get_version.outputs.VERSION }}"
+          commit_message: "Update sealantern to v${{ env.VERSION }}"
           allow_empty_commits: false
           force_push: false
           updpkgsums: true
@@ -245,7 +285,7 @@ jobs:
       - name: Send success notification
         if: success()
         run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          VERSION="${{ env.VERSION }}"
           echo "======================================"
           echo "✅ Successfully published sealantern v${VERSION} to AUR"
           echo "📦 Package URL: https://aur.archlinux.org/packages/sealantern"
@@ -254,33 +294,15 @@ jobs:
       - name: Send failure notification
         if: failure()
         run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          VERSION="${{ env.VERSION }}"
           echo "======================================"
           echo "❌ Failed to publish sealantern v${VERSION} to AUR"
           echo "Please check the workflow logs for details."
           echo "======================================"
 
-          # 输出调试信息
-          echo "Debug information:"
-          echo "Event name: ${{ github.event_name }}"
-          echo "Version from inputs: ${{ github.event.inputs.version }}"
-          echo "Version from get_version: ${{ steps.get_version.outputs.VERSION }}"
-
-          # 检查文件
-          echo "Files in workspace:"
-          ls -la
-
-          if [ -f "PKGBUILD" ]; then
-            echo "PKGBUILD exists, content:"
-            head -20 PKGBUILD
-          else
-            echo "PKGBUILD not found!"
-          fi
-
       - name: Cleanup
         if: always()
         run: |
-          # 恢复原始 PKGBUILD（如果需要）
           if [ -f "PKGBUILD.bak" ]; then
             echo "Restoring original PKGBUILD"
             mv PKGBUILD.bak PKGBUILD
