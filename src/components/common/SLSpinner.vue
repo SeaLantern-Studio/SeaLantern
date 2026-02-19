@@ -3,7 +3,7 @@ interface Props {
   size?: "sm" | "md" | "lg";
 }
 
-const props = withDefaults(defineProps<Props>(), {
+const { size } = withDefaults(defineProps<Props>(), {
   size: "md",
 });
 
