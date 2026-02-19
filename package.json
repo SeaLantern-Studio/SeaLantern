@@ -1,18 +1,25 @@
 {
   "name": "sea-lantern",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "vue-tsc --noEmit",
     "build:check": "vue-tsc --noEmit && vite build",
+    "check": "npm run lint && npm run build:check",
+    "check:strict": "npm run fmt:check && npm run check",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

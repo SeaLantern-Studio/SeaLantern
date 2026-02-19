@@ -1225,13 +1225,14 @@ function rgbaFromHex(hex: string, alpha: number): string {
 }
 
 async function handleThemeChange() {
-  if (!settings.value) return;
+  const currentSettings = settings.value;
+  if (!currentSettings) return;
 
-  const effectiveTheme = applyTheme(settings.value.theme);
+  const effectiveTheme = applyTheme(currentSettings.theme);
 
   // 如果选择了预设主题，更新颜色值
-  if (settings.value.color !== "custom") {
-    const preset = settings.value.color;
+  if (currentSettings.color !== "custom") {
+    const preset = currentSettings.color;
 
     // 颜色方案映射
     const colorPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
@@ -1289,22 +1290,21 @@ async function handleThemeChange() {
     };
 
     // 更新所有颜色方案的颜色值
-    if (presetThemes[preset]) {
-      Object.keys(colorTypes).forEach(colorType => {
-        colorPlans.forEach(plan => {
-          const settingsKey = colorTypes[colorType][plan];
-          if (settingsKey && settings.value[settingsKey] !== undefined) {
-            const presetColors = presetThemes[preset][plan];
-            if (presetColors && presetColors[colorType]) {
-              settings.value[settingsKey] = presetColors[colorType];
-            }
+    const presetColorsByPlan = (presetThemes as Record<string, Record<string, Record<string, string>>>)[preset];
+    if (presetColorsByPlan) {
+      Object.keys(colorTypes).forEach((colorType) => {
+        colorPlans.forEach((plan) => {
+          const settingsKey = colorTypes[colorType as keyof typeof colorTypes][plan as keyof (typeof colorTypes)[keyof typeof colorTypes]];
+          const presetColor = presetColorsByPlan[plan]?.[colorType];
+          if (settingsKey && presetColor) {
+            (currentSettings as Record<string, unknown>)[settingsKey] = presetColor;
           }
         });
       });
     }
   }
 
-  if (settings.value.acrylic_enabled && acrylicSupported.value) {
+  if (currentSettings.acrylic_enabled && acrylicSupported.value) {
     try {
       const isDark = effectiveTheme === "dark";
       await applyAcrylic(true, isDark);
@@ -1895,7 +1895,7 @@ function clearBackgroundImage() {
       :visible="showColorPickerDialog"
       :title="i18n.t('settings.color_picker')"
       @close="closeColorPicker"
-      :width="320"
+      :width="'320px'"
     >
       <div class="color-picker-content">
         <!-- 颜色预览 -->
@@ -1952,19 +1952,19 @@ function clearBackgroundImage() {
         <div class="rgb-inputs">
           <div class="rgb-input-item">
             <label>R</label>
-            <SLInput type="number" min="0" max="255" v-model="rgb.r" @input="updateFromRGB" style="width: 100px;" />
+            <SLInput type="number" min="0" max="255" :model-value="String(rgb.r)" @update:model-value="(value) => { rgb.r = Number(value) || 0; updateFromRGB(); }" style="width: 100px;" />
           </div>
           <div class="rgb-input-item">
             <label>G</label>
-            <SLInput type="number" min="0" max="255" v-model="rgb.g" @input="updateFromRGB" style="width: 100px;" />
+            <SLInput type="number" min="0" max="255" :model-value="String(rgb.g)" @update:model-value="(value) => { rgb.g = Number(value) || 0; updateFromRGB(); }" style="width: 100px;" />
           </div>
           <div class="rgb-input-item">
             <label>B</label>
-            <SLInput type="number" min="0" max="255" v-model="rgb.b" @input="updateFromRGB" style="width: 100px;" />
+            <SLInput type="number" min="0" max="255" :model-value="String(rgb.b)" @update:model-value="(value) => { rgb.b = Number(value) || 0; updateFromRGB(); }" style="width: 100px;" />
           </div>
           <div class="rgb-input-item">
             <label>A</label>
-            <SLInput type="number" min="0" max="1" step="0.01" v-model="rgb.a" @input="updateFromRGB" style="width: 100px;" />
+            <SLInput type="number" min="0" max="1" step="0.01" :model-value="String(rgb.a)" @update:model-value="(value) => { rgb.a = Number(value) || 0; updateFromRGB(); }" style="width: 100px;" />
           </div>
         </div>
       </div>
