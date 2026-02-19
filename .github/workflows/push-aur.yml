@@ -27,10 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          # Ubuntu 上正确的包名
           sudo apt-get install -y build-essential fakeroot git curl wget
-          # 安装 Arch Linux 相关工具
-          sudo apt-get install -y pacman-package-manager
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -46,30 +43,22 @@ jobs:
         id: get_version
         run: |
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            # 从 release tag 获取版本
             VERSION=${GITHUB_REF#refs/tags/}
             echo "Source: release tag"
           else
-            # 从手动输入获取版本
             VERSION="${{ github.event.inputs.version }}"
             echo "Source: manual input"
           fi
 
-          # 移除可能的 'v' 前缀
           VERSION=${VERSION#v}
 
           if [[ -z "$VERSION" ]]; then
             echo "Error: Version is empty!"
-            echo "GitHub event name: ${{ github.event_name }}"
-            echo "Manual input version: ${{ github.event.inputs.version }}"
-            echo "GITHUB_REF: $GITHUB_REF"
             exit 1
           fi
 
-          # 设置输出变量
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_ENV
-
           echo "✅ Extracted version: $VERSION"
 
       - name: Debug version info
@@ -78,17 +67,15 @@ jobs:
           echo "Event name: ${{ github.event_name }}"
           echo "Version from inputs: ${{ github.event.inputs.version }}"
           echo "Version from get_version output: ${{ steps.get_version.outputs.VERSION }}"
-          echo "Version from env: ${{ env.VERSION }}"
+          echo "Version from env: ${{ env.version }}"
 
       - name: Validate PKGBUILD exists
         run: |
           if [ ! -f "PKGBUILD" ]; then
             echo "Error: PKGBUILD file not found!"
-            echo "Current directory contents:"
             ls -la
             exit 1
           fi
-
           echo "✅ PKGBUILD found:"
           head -5 PKGBUILD
 
@@ -117,38 +104,54 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
 
-          # 直接从 PKGBUILD 生成 .SRCINFO
-          cat > .SRCINFO << EOF
-            pkgbase = sealantern
-            \tpkgdesc = $(grep "^pkgdesc=" PKGBUILD | cut -d= -f2- | xargs)
-            \tpkgver = ${VERSION}
-            \tpkgrel = 1
-            \turl = $(grep "^url=" PKGBUILD | cut -d= -f2- | xargs)
-            \tinstall = sealantern.install
-            \tarch = $(grep "^arch=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
-            \tlicense = $(grep "^license=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
-            EOF
+          echo "Generating .SRCINFO for version: $VERSION"
 
-          # 添加 depends
-          if grep -q "^depends=" PKGBUILD; then
-            grep "^depends=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read dep; do
-              if [[ -n "$dep" && "$dep" != "(" && "$dep" != ")" ]]; then
-                echo "\tdepends = $dep" >> .SRCINFO
-              fi
-            done
-          fi
+          # 创建 .SRCINFO 文件
+          {
+            echo "pkgbase = sealantern"
 
-          # 添加 makedepends
-          if grep -q "^makedepends=" PKGBUILD; then
-            grep "^makedepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read dep; do
-              if [[ -n "$dep" && "$dep" != "(" && "$dep" != ")" ]]; then
-                echo "\tmakedepends = $dep" >> .SRCINFO
-              fi
-            done
-          fi
+            # 获取 pkgdesc
+            PKGDESC=$(grep "^pkgdesc=" PKGBUILD | cut -d= -f2- | xargs)
+            echo "	pkgdesc = $PKGDESC"
 
-          echo "" >> .SRCINFO
-          echo "pkgname = sealantern" >> .SRCINFO
+            echo "	pkgver = $VERSION"
+            echo "	pkgrel = 1"
+
+            # 获取 url
+            URL=$(grep "^url=" PKGBUILD | cut -d= -f2- | xargs)
+            echo "	url = $URL"
+
+            echo "	install = sealantern.install"
+
+            # 获取 arch
+            ARCH=$(grep "^arch=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+            echo "	arch = $ARCH"
+
+            # 获取 license
+            LICENSE=$(grep "^license=" PKGBUILD | cut -d= -f2- | tr -d '()' | xargs)
+            echo "	license = $LICENSE"
+
+            # 添加 depends
+            if grep -q "^depends=" PKGBUILD; then
+              grep "^depends=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read dep; do
+                if [[ -n "$dep" && "$dep" != "(" && "$dep" != ")" ]]; then
+                  echo "	depends = $dep"
+                fi
+              done
+            fi
+
+            # 添加 makedepends
+            if grep -q "^makedepends=" PKGBUILD; then
+              grep "^makedepends=" PKGBUILD | cut -d= -f2- | tr -d '()' | tr ' ' '\n' | while read dep; do
+                if [[ -n "$dep" && "$dep" != "(" && "$dep" != ")" ]]; then
+                  echo "	makedepends = $dep"
+                fi
+              done
+            fi
+
+            echo ""
+            echo "pkgname = sealantern"
+          } > .SRCINFO
 
           echo "✅ Generated .SRCINFO:"
           cat .SRCINFO
@@ -183,6 +186,12 @@ jobs:
             exit 1
           fi
           echo "✅ .SRCINFO version matches: $SRCINFO_VER"
+
+          # 显示文件内容以便调试
+          echo "PKGBUILD content:"
+          head -10 PKGBUILD
+          echo ".SRCINFO content:"
+          head -10 .SRCINFO
 
       - name: Publish AUR package
         uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
