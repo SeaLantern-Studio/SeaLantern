@@ -17,6 +17,7 @@ import { useMessage } from "../composables/useMessage";
 import { useAsyncByKey } from "../composables/useAsync";
 import { formatBytes, formatServerPath } from "../utils/format";
 import { getStatusVariant, getStatusText } from "../utils/serverStatus";
+import ts from "typescript";
 
 const router = useRouter();
 const store = useServerStore();
@@ -142,14 +143,17 @@ const createGaugeOption = (value: number, colorVar: string, label: string): ECha
 };
 
 const cpuGaugeOption = computed(() => {
+  //@ts-ignore
   const _ = themeVersion.value;
   return createGaugeOption(cpuUsage.value, "--sl-primary", i18n.t("home.cpu"));
 });
 const memGaugeOption = computed(() => {
+  //@ts-ignore
   const _ = themeVersion.value;
   return createGaugeOption(memUsage.value, "--sl-success", i18n.t("home.memory"));
 });
 const diskGaugeOption = computed(() => {
+  //@ts-ignore
   const _ = themeVersion.value;
   return createGaugeOption(diskUsage.value, "--sl-warning", i18n.t("home.disk"));
 });
