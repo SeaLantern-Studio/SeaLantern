@@ -73,6 +73,8 @@ sea-lantern/
 │   │
 │   ├── language/                      # Internationalization
 │   │   ├── index.ts                  # i18n setup
+│   │   ├── README.md                 # Documentation (CN)
+│   │   ├── README-en.md              # Documentation (EN)
 │   │   └── locales/                  # Translation files
 │   │       ├── zh-CN.json            # Simplified Chinese
 │   │       └── en-US.json            # English
@@ -136,8 +138,8 @@ sea-lantern/
 │   └── tauri.conf.json                # Tauri configuration
 │
 ├── docs/                              # Documentation
-│   ├── STRUCTURE.md                   # This file
-│   ├── STRUCTURE-en.md                # English version
+│   ├── STRUCTURE.md                   # Chinese version
+│   ├── STRUCTURE-en.md                # This file (English version)
 │   ├── CONTRIBUTING.md                # Contributing guide (CN)
 │   └── CONTRIBUTING-en.md             # Contributing guide (EN)
 │

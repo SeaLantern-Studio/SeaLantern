@@ -233,7 +233,12 @@ sea-lantern/
 │   ├── CONTRIBUTING.md                # 贡献指南
 │   ├── CONTRIBUTING-en.md             # 英文贡献指南
 │   ├── 新手使用教程.html              # 新手使用教程
-│   └── 项目结构.md                    # 项目结构文档
+│   ├── STRUCTURE.md                   # 本文档
+│   ├── STRUCTURE-en.md                # 英文版本
+│   ├── AI_GUIDE.md                    # AI 使用指南
+│   ├── CONTRIBUTING.md                # 贡献指南
+│   ├── CONTRIBUTING-en.md             # 英文贡献指南
+│   └── 新手使用教程.html              # 新手使用教程
 │
 ├── .SRCINFO                           # 包信息
 ├── .editorconfig                      # 编辑器配置
