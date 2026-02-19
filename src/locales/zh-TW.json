@@ -448,6 +448,9 @@
     "no_summary": "暫無簡介",
     "empty_hint": "輸入關鍵字後點擊「搜尋模組」",
     "install_success": "已安裝：{{name}}",
-    "downloads": "下載："
+    "downloads": "下載：",
+    "prev_page": "上一頁",
+    "next_page": "下一頁",
+    "result_range": "顯示 {{start}}-{{end}} / 共 {{total}} 筆"
   }
 }

@@ -93,11 +93,12 @@ async function mockInvoke<T>(command: string, args?: Record<string, unknown>): P
     case "get_server_logs":
       return [] as T;
     case "search_mods": {
-      const q = String(args?.query ?? "").trim();
-      if (!q) {
-        return [] as T;
-      }
-      return [
+      const q = String(args?.query ?? "").trim().toLowerCase();
+      const page = Number(args?.page ?? 1);
+      const pageSize = Number(args?.pageSize ?? 10);
+      const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+      const safePageSize = Number.isFinite(pageSize) ? Math.min(50, Math.max(1, pageSize)) : 10;
+      const all = [
         {
           id: "demo-sodium",
           name: "Sodium (Demo)",
@@ -118,7 +119,40 @@ async function mockInvoke<T>(command: string, args?: Record<string, unknown>): P
           icon_url: "https://cdn.modrinth.com/data/gvQqBUqZ/icon.png",
           downloads: 9800000,
         },
-      ].filter((item) => item.name.toLowerCase().includes(q.toLowerCase()) || q.length < 3) as T;
+        {
+          id: "demo-iris",
+          name: "Iris Shaders (Demo)",
+          summary: "Shaders support for Fabric/Quilt.",
+          download_url: "https://example.com/iris.jar",
+          file_name: "iris-demo.jar",
+          source: "modrinth",
+          icon_url: "https://cdn.modrinth.com/data/YL57xq9U/icon.png",
+          downloads: 22300000,
+        },
+        {
+          id: "demo-ferrite",
+          name: "FerriteCore (Demo)",
+          summary: "Memory usage optimizations.",
+          download_url: "https://example.com/ferritecore.jar",
+          file_name: "ferritecore-demo.jar",
+          source: "modrinth",
+          downloads: 7700000,
+        },
+      ];
+
+      const filtered = !q
+        ? all
+        : all.filter((item) => item.name.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q));
+      const total = filtered.length;
+      const offset = (safePage - 1) * safePageSize;
+      const items = filtered.slice(offset, offset + safePageSize);
+
+      return {
+        items,
+        total,
+        offset,
+        limit: safePageSize,
+      } as T;
     }
     case "install_mod":
       return undefined as T;

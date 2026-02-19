@@ -20,16 +20,29 @@ const error = ref<string | null>(null);
 const mods = ref<ModInfo[]>([]);
 const installingId = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
+const currentPage = ref(1);
+const pageSize = ref("10");
+const total = ref(0);
 
 function formatDownloads(value: number): string {
   return new Intl.NumberFormat().format(value);
 }
+
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / Number(pageSize.value))));
+const pageStart = computed(() => (total.value === 0 ? 0 : (currentPage.value - 1) * Number(pageSize.value) + 1));
+const pageEnd = computed(() => Math.min(currentPage.value * Number(pageSize.value), total.value));
 
 const loaderOptions = [
   { label: "Fabric", value: "fabric" },
   { label: "Forge", value: "forge" },
   { label: "Quilt", value: "quilt" },
   { label: "NeoForge", value: "neoforge" },
+];
+
+const pageSizeOptions = [
+  { label: "10", value: "10" },
+  { label: "20", value: "20" },
+  { label: "30", value: "30" },
 ];
 
 const selectedServerId = computed(() => {
@@ -60,7 +73,15 @@ onMounted(async () => {
   await serverStore.refreshList();
 });
 
-async function searchMods() {
+
+watch(pageSize, async () => {
+  if (!query.value.trim()) {
+    return;
+  }
+  await searchMods(1);
+});
+
+async function searchMods(page = 1) {
   if (!query.value.trim()) {
     error.value = i18n.t("mods.enter_keyword");
     return;
@@ -71,16 +92,29 @@ async function searchMods() {
   successMessage.value = null;
 
   try {
-    mods.value = await modsApi.searchMods({
+    const result = await modsApi.searchMods({
       query: query.value.trim(),
       gameVersion: gameVersion.value.trim(),
       loader: loader.value,
+      page,
+      pageSize: Number(pageSize.value),
     });
+
+    mods.value = result.items;
+    total.value = result.total;
+    currentPage.value = page;
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {
     loading.value = false;
   }
+}
+
+async function goToPage(page: number) {
+  if (page < 1 || page > totalPages.value || page === currentPage.value || loading.value) {
+    return;
+  }
+  await searchMods(page);
 }
 
 async function installMod(mod: ModInfo) {
@@ -124,7 +158,7 @@ async function installMod(mod: ModInfo) {
       </div>
 
       <div class="search-actions">
-        <SLButton variant="primary" :loading="loading" @click="searchMods">{{ i18n.t("mods.search") }}</SLButton>
+        <SLButton variant="primary" :loading="loading" @click="searchMods(1)">{{ i18n.t("mods.search") }}</SLButton>
       </div>
 
       <p v-if="selectedServer" class="selected-server text-caption">
@@ -157,6 +191,25 @@ async function installMod(mod: ModInfo) {
           >
             {{ i18n.t("mods.install") }}
           </SLButton>
+        </div>
+      </div>
+
+      <div v-if="total > 0" class="pagination-row text-caption">
+        <span>{{ i18n.t("mods.result_range", { start: pageStart, end: pageEnd, total }) }}</span>
+        <div class="pagination-controls">
+          <SLButton variant="ghost" :disabled="currentPage <= 1 || loading" @click="goToPage(currentPage - 1)">
+            {{ i18n.t("mods.prev_page") }}
+          </SLButton>
+          <span>{{ currentPage }} / {{ totalPages }}</span>
+          <SLButton
+           
+            variant="ghost"
+            :disabled="currentPage >= totalPages || loading"
+            @click="goToPage(currentPage + 1)"
+          >
+            {{ i18n.t("mods.next_page") }}
+          </SLButton>
+          <SLSelect v-model="pageSize" :options="pageSizeOptions" maxHeight="180px" />
         </div>
       </div>
 
@@ -272,6 +325,21 @@ async function installMod(mod: ModInfo) {
 .mod-meta p {
   margin: 6px 0 0;
   color: var(--sl-text-secondary);
+}
+
+.pagination-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pagination-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .empty {

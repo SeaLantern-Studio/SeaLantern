@@ -443,6 +443,9 @@
     "no_summary": "暂无简介",
     "empty_hint": "输入关键词后点击“搜索模组”",
     "install_success": "已安装：{{name}}",
-    "downloads": "下载："
+    "downloads": "下载：",
+    "prev_page": "上一页",
+    "next_page": "下一页",
+    "result_range": "显示 {{start}}-{{end}} / 共 {{total}} 条"
   }
 }

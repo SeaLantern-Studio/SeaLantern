@@ -13,16 +13,27 @@ export interface ModInfo {
   downloads: number;
 }
 
+export interface SearchModsResult {
+  items: ModInfo[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 export const modsApi = {
   async searchMods(params: {
     query: string;
     gameVersion: string;
     loader: ModLoader;
-  }): Promise<ModInfo[]> {
+    page: number;
+    pageSize: number;
+  }): Promise<SearchModsResult> {
     return tauriInvoke("search_mods", {
       query: params.query,
       gameVersion: params.gameVersion,
       loader: params.loader,
+      page: params.page,
+      pageSize: params.pageSize,
     });
   },
 
