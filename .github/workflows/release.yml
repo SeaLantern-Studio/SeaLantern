@@ -40,7 +40,7 @@ jobs:
       - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: "20"
           cache: "npm"
 
       - name: 安装 Rust 工具链
@@ -57,8 +57,10 @@ jobs:
         # 默认用npm,最稳妥
         run: npm ci
 
-      - name: 发布前检查
-        run: npm run check
+      - name: 发布前检查（Lint + 类型检查）
+        run: |
+          npm run lint --if-present
+          npm run typecheck --if-present
 
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0

@@ -48,6 +48,38 @@ npm run tauri build
 
 产物在 `src-tauri/target/release/bundle/` 里。
 
+
+### Windows 构建被策略拦截（wry os error 4551）
+
+如果你在 Windows 执行 `npm run tauri dev` / `cargo build` 时看到：
+
+```
+error: failed to run custom build command for `wry ...`
+Caused by: 应用程序控制策略已阻止此文件。 (os error 4551)
+```
+
+通常是 Windows App Control / 企业安全策略拦截了 Rust 在 `target/` 里生成的构建脚本。
+
+建议处理步骤：
+
+1. 将项目放到普通用户目录（避免受策略限制路径），如 `%USERPROFILE%\source\SeaLantern`。
+2. 清理后重建：
+   ```powershell
+   cargo clean
+   npm ci
+   npm run tauri dev
+   ```
+3. 若设备受企业管控，请联系管理员放行 Rust/Cargo 构建产物（或白名单仓库目录与 Cargo target 目录）。
+
+如果你只想先看界面，不跑桌面端，可使用 Web Demo：
+
+```bash
+npm ci
+npm run build
+```
+
+然后部署 `dist/` 目录即可。
+
 ### 代码质量检查
 
 ### 在线演示（Web 版）

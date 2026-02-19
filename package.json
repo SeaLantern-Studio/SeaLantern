@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "vue-tsc --noEmit",
-    "build:check": "vue-tsc --noEmit && vite build",
+    "build:check": "npm run typecheck && vite build",
     "check": "npm run lint && npm run build:check",
     "check:strict": "npm run fmt:check && npm run check",
     "preview": "vite preview",

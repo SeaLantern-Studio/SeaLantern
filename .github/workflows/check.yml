@@ -46,15 +46,11 @@ jobs:
       - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: "20"
           cache: "npm"
 
       - name: 安装前端依赖
         run: npm ci
 
       - name: 运行前端全量检查
-        run: |
-          npm run check
-
-      - name: 检查前端构建
-        run: npm run build
+        run: npm run check
