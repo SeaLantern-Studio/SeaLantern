@@ -1,5 +1,5 @@
 use crate::services::global;
-use crate::services::mod_manager::ModInfo;
+use crate::services::mod_manager::SearchModsResult;
 use std::path::PathBuf;
 use tauri::command;
 
@@ -8,10 +8,18 @@ pub async fn search_mods(
     query: String,
     game_version: String,
     loader: String,
-) -> Result<Vec<ModInfo>, String> {
+    page: Option<u32>,
+    page_size: Option<u32>,
+) -> Result<SearchModsResult, String> {
     let mod_manager = global::mod_manager();
     mod_manager
-        .search_modrinth(&query, &game_version, &loader)
+        .search_modrinth(
+            &query,
+            &game_version,
+            &loader,
+            page.unwrap_or(1),
+            page_size.unwrap_or(10),
+        )
         .await
 }
 

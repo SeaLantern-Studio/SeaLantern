@@ -11,6 +11,17 @@ pub struct ModInfo {
     pub download_url: String,
     pub file_name: String,
     pub source: String, // "modrinth" or "curseforge"
+    pub icon_url: Option<String>,
+    pub downloads: u64,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchModsResult {
+    pub items: Vec<ModInfo>,
+    pub total: u64,
+    pub offset: u32,
+    pub limit: u32,
 }
 
 pub struct ModManager {
@@ -32,10 +43,14 @@ impl ModManager {
         query: &str,
         game_version: &str,
         loader: &str,
-    ) -> Result<Vec<ModInfo>, String> {
+        page: u32,
+        page_size: u32,
+    ) -> Result<SearchModsResult, String> {
+        let limit = page_size.clamp(1, 50);
+        let offset = page.saturating_sub(1).saturating_mul(limit);
         let url = format!(
-            "https://api.modrinth.com/v2/search?query={}&facets=[[\"versions:{}\"],[\"categories:{}\"],[\"project_type:mod\"]]",
-            query, game_version, loader.to_lowercase()
+            "https://api.modrinth.com/v2/search?query={}&limit={}&offset={}&facets=[[\"versions:{}\"],[\"categories:{}\"],[\"project_type:mod\"]]",
+            query, limit, offset, game_version, loader.to_lowercase()
         );
 
         let resp = self
@@ -60,10 +75,17 @@ impl ModManager {
                     download_url: version.url,
                     file_name: version.filename,
                     source: "modrinth".to_string(),
+                    icon_url: hit.icon_url,
+                    downloads: hit.downloads,
                 });
             }
         }
-        Ok(results)
+        Ok(SearchModsResult {
+            items: results,
+            total: data.total_hits,
+            offset,
+            limit,
+        })
     }
 
     async fn get_latest_modrinth_version(
@@ -122,6 +144,7 @@ impl ModManager {
 #[derive(Deserialize)]
 struct ModrinthSearchResponse {
     hits: Vec<ModrinthHit>,
+    total_hits: u64,
 }
 
 #[derive(Deserialize)]
@@ -129,6 +152,8 @@ struct ModrinthHit {
     project_id: String,
     title: String,
     description: String,
+    icon_url: Option<String>,
+    downloads: u64,
 }
 
 #[derive(Deserialize)]
