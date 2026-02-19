@@ -7,7 +7,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 |[![github-stars](https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/SeaLantern-Studio/SeaLantern/stargazers)|[![github-forks](https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/SeaLantern-Studio/SeaLantern/network/members)|[![github-latest](https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Latest version)](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)|
 |:--|:--|:--|
-|[![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)|[![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)|[![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=Latest version&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)|
+|[![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)|[![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)|[![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=Latest%20version&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases/latest)|
 
 
 <kbd>[简体中文](README.md)</kbd> <kbd>English</kbd>
@@ -88,7 +88,7 @@ Before your PR, we encourage you to run the commands below to check the code's q
 
 CI automated checks are set up to ensure that all submitted code meets the standards.
 
-### Tech stack
+## Tech Stack
 
 - **Frontend**: Vue 3 + TypeScript + Vite + Pinia
 - **Backend**: Rust + Tauri 2
@@ -99,7 +99,7 @@ No Electron, no Node backend, no Webpack. Launch fast, size small, RAM saved.
 
 ### Project Structure
 
-See [Project Structure](docs/项目结构.md).
+See [Project Structure](docs/STRUCTURE-en.md).
 
 ## Planned Features
 
@@ -136,7 +136,7 @@ You don't need coding skills to contribute. Just suggest new features you want o
 
 ### Add a new function
 
-If you are going to add a "Save Management":
+If you are going to add a "Backup Management":
 
 #### Backend
 
