@@ -71,7 +71,7 @@ sea-lantern/
 │   │   ├── useAsync.ts               # Async operation composable
 │   │   └── useTheme.ts               # Theme management composable
 │   │
-│   ├── language/                      # Internationalization
+│   ├── src/language/                  # Internationalization (source code)
 │   │   ├── index.ts                  # i18n setup
 │   │   ├── README.md                 # Documentation (CN)
 │   │   ├── README-en.md              # Documentation (EN)

@@ -87,8 +87,21 @@ sea-lantern/
 │   ├── data/                          # 静态数据
 │   │   └── contributors.ts           # 贡献者信息列表
 │   │
-│   ├── locales/                       # 国际化资源
-│   │   └── index.ts                   # 语言文件入口
+│   ├── language/                      # 国际化资源
+│   │   ├── index.ts                   # i18n 核心模块
+│   │   ├── README.md                  # 本文档
+│   │   ├── README-en.md               # 英文版本
+│   │   └── locales/                   # 翻译文件目录
+│   │       ├── zh-CN.json             # 简体中文
+│   │       ├── zh-TW.json             # 繁体中文
+│   │       ├── en-US.json             # 英语
+│   │       ├── ja-JP.json             # 日语
+│   │       ├── ko-KR.json             # 韩语
+│   │       ├── de-DE.json             # 德语
+│   │       ├── es-ES.json             # 西班牙语
+│   │       ├── fr-FA.json             # 波斯语
+│   │       ├── ru-RU.json             # 俄语
+│   │       └── vi-VN.json             # 越南语
 │   │
 │   ├── router/                        # 路由配置
 │   │   └── index.ts                   # 路由表定义
