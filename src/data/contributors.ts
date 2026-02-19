@@ -145,6 +145,12 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/LucyKitter",
     url: "https://gitee.com/pnchsb_admin",
   },
+  {
+    name: "yanuofox",
+    role: "可以rua的吉祥物",
+    avatar: "https://api.rms.net.cn/head/https://github.com/yanuofox",
+    url: "https://github.com/foxcyber907",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // 没有正版怎么办？
