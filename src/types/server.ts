@@ -1,3 +1,8 @@
+import type { ServerStatus } from "./common";
+
+/**
+ * 服务器实例类型
+ */
 export interface ServerInstance {
   id: string;
   name: string;
@@ -16,8 +21,9 @@ export interface ServerInstance {
   last_started_at: number | null;
 }
 
-export type ServerStatus = "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
-
+/**
+ * 服务器命令类型
+ */
 export interface ServerCommand {
   id: string;
   name: string;
