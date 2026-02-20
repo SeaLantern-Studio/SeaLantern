@@ -199,7 +199,7 @@ jobs:
           VERSION="${{ steps.check_release.outputs.VERSION }}"
           
           echo "Uploading to ${{ env.PPA_NAME }}..."
-          dput ${{ env.PPA_NAME }} sealantern_${VERSION}_source.changes
+          dput --no-check-signature ${{ env.PPA_NAME }} sealantern_${VERSION}_source.changes
           
           echo "✅ Successfully uploaded sealantern ${VERSION} to PPA"
 
