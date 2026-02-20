@@ -207,18 +207,12 @@ jobs:
           
           cd "${SOURCE_DIR}"
           
-          # Build source package WITHOUT signing first
+          # Build source package WITH signing using debuild
           export DEBEMAIL="2914651630@qq.com"
           export DEBFULLNAME="Brian Ikun"
           
-          debuild -us -uc -S -sa
-          
-          # Files are generated in parent directory (./ppa-source/)
-          # Sign the dsc and changes files
-          cd ..
-          
-          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_FINGERPRINT" --detach-sign --armor "sea-lantern-ppa-updater_${PACKAGE_VERSION}.dsc"
-          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_FINGERPRINT" --clearsign --armor "sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes"
+          # Use debuild with debsign to properly sign
+          debuild -p"gpg --batch --yes --pinentry-mode loopback --passphrase '${{ secrets.PPA_GPG_PASSPHRASE }}'" -k"$GPG_FINGERPRINT" -S -sa
 
       - name: Upload to PPA
         run: |
