@@ -1,3 +1,5 @@
+
+
 :root {
   /* -- Primary Colors -- */
   --sl-primary: #0ea5e9;
@@ -62,8 +64,8 @@
   --sl-transition-slow: 0.4s ease;
 
   /* -- Layout -- */
-  --sl-sidebar-width: 240px;
-  --sl-sidebar-collapsed-width: 64px;
+  --sl-sidebar-width: 220px;
+  --sl-sidebar-collapsed-width: 60px;
   --sl-header-height: 48px;
 }
 

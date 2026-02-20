@@ -3,10 +3,11 @@ import { ref, computed, watch, onMounted, onUnmounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "../components/common/SLSpinner.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
+import SLSelect from "../components/common/SLSelect.vue";
 import { configApi } from "../api/config";
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 
 // 导入拆分后的组件
 import ConfigToolbar from "../components/config/ConfigToolbar.vue";
@@ -39,6 +40,20 @@ const categories = computed(() => {
   const cats = new Set(entries.value.map((e) => e.category));
   return ["all", ...Array.from(cats)];
 });
+
+const gamemodeOptions = ref([
+  { label: i18n.t("config.gamemode.survival"), value: "survival" },
+  { label: i18n.t("config.gamemode.creative"), value: "creative" },
+  { label: i18n.t("config.gamemode.adventure"), value: "adventure" },
+  { label: i18n.t("config.gamemode.spectator"), value: "spectator" },
+]);
+
+const difficultyOptions = ref([
+  { label: i18n.t("config.difficulty.peaceful"), value: "peaceful" },
+  { label: i18n.t("config.difficulty.easy"), value: "easy" },
+  { label: i18n.t("config.difficulty.normal"), value: "normal" },
+  { label: i18n.t("config.difficulty.hard"), value: "hard" },
+]);
 
 const filteredEntries = computed(() => {
   return entries.value.filter((e: ConfigEntryType) => {
@@ -107,8 +122,9 @@ async function saveProperties() {
   successMsg.value = null;
   try {
     await configApi.writeServerProperties(serverPath.value, editValues.value);
-    successMsg.value = i18n.t("common.config_saved");
-    setTimeout(() => (successMsg.value = null), 3000);
+    // 禁用保存成功消息
+    // successMsg.value = i18n.t("common.config_saved");
+    // setTimeout(() => (successMsg.value = null), 3000);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -139,8 +155,9 @@ function autoSaveProperties() {
   configApi
     .writeServerProperties(serverPath.value, editValues.value)
     .then(() => {
-      successMsg.value = i18n.t("config.saved");
-      setTimeout(() => (successMsg.value = null), 3000);
+      // 禁用自动保存成功消息
+      // successMsg.value = i18n.t("config.saved");
+      // setTimeout(() => (successMsg.value = null), 3000);
       return Promise.resolve();
     })
     .catch((e) => {
@@ -223,36 +240,34 @@ function handleSearchUpdate(value: string) {
               />
             </template>
             <template v-else-if="entry.key === 'gamemode'">
-              <select
-                :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target.value)"
-                class="select"
-              >
-                <option value="survival">{{ i18n.t("config.gamemode.survival") }}</option>
-                <option value="creative">{{ i18n.t("config.gamemode.creative") }}</option>
-                <option value="adventure">{{ i18n.t("config.gamemode.adventure") }}</option>
-                <option value="spectator">{{ i18n.t("config.gamemode.spectator") }}</option>
-              </select>
+              <SLSelect
+                :modelValue="editValues[entry.key]"
+                :options="gamemodeOptions"
+                @update:modelValue="updateValue(entry.key, $event)"
+                style="width: 200px"
+              />
             </template>
             <template v-else-if="entry.key === 'difficulty'">
-              <select
-                :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target.value)"
-                class="select"
-              >
-                <option value="peaceful">{{ i18n.t("config.difficulty.peaceful") }}</option>
-                <option value="easy">{{ i18n.t("config.difficulty.easy") }}</option>
-                <option value="normal">{{ i18n.t("config.difficulty.normal") }}</option>
-                <option value="hard">{{ i18n.t("config.difficulty.hard") }}</option>
-              </select>
+              <SLSelect
+                :modelValue="editValues[entry.key]"
+                :options="difficultyOptions"
+                @update:modelValue="updateValue(entry.key, $event)"
+                style="width: 200px"
+              />
             </template>
             <template v-else>
               <input
                 :value="editValues[entry.key]"
-                :type="entry.value_type === 'number' ? 'number' : 'text'"
+                type="text"
                 :placeholder="entry.default_value"
-                @input="updateValue(entry.key, $event.target.value)"
-                class="input"
+                @input="(e) => {
+                  const value = e.target.value;
+                  // 只允许输入数字
+                  if (value === '' || /^\d+$/.test(value)) {
+                    updateValue(entry.key, value);
+                  }
+                }"
+                class="input integer-input"
               />
             </template>
           </div>
@@ -362,7 +377,6 @@ function handleSearchUpdate(value: string) {
   min-width: 200px;
 }
 
-.select,
 .input {
   width: 200px;
   padding: 6px 10px;
@@ -371,10 +385,20 @@ function handleSearchUpdate(value: string) {
   background: var(--sl-bg-secondary);
   color: var(--sl-text-primary);
 }
-.select:focus,
 .input:focus {
   outline: none;
   border-color: var(--sl-primary);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* 确保整数输入框是纯输入样式 */
+.integer-input {
+  -moz-appearance: textfield;
+}
+
+.integer-input::-webkit-outer-spin-button,
+.integer-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 </style>

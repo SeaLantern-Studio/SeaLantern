@@ -34,6 +34,109 @@ struct RepoConfig {
 
 static INSTALL_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
+// ========== Arch Linux 相关函数 ==========
+#[cfg(target_os = "linux")]
+fn is_arch_linux() -> bool {
+    if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
+        content.contains("ID=arch")
+            || content.contains("ID_LIKE=arch")
+            || content.contains("ID=archlinux")
+    } else {
+        false
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn get_aur_helper() -> Option<String> {
+    let helpers = ["yay", "paru", "pamac", "trizen", "pacaur"];
+
+    for helper in helpers {
+        let output = std::process::Command::new("which")
+            .arg(helper)
+            .output()
+            .ok()?;
+
+        if output.status.success() {
+            return Some(helper.to_string());
+        }
+    }
+
+    None
+}
+
+#[cfg(target_os = "linux")]
+async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, String> {
+    let client = reqwest::Client::new();
+    let url = "https://aur.archlinux.org/rpc/v5/info/sealantern";
+
+    let response = client
+        .get(url)
+        .header("User-Agent", "SeaLantern")
+        .send()
+        .await
+        .map_err(|e| format!("AUR查询失败: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("AUR API返回错误: {}", response.status()));
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("解析AUR响应失败: {}", e))?;
+
+    let resultcount = json["resultcount"].as_u64().unwrap_or(0);
+    if resultcount == 0 {
+        return Err("AUR中未找到sealantern包".to_string());
+    }
+
+    let aur_version = json["results"][0]["Version"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+
+    // 比较版本（忽略pkgrel部分）
+    let aur_clean = aur_version.split('-').next().unwrap_or(&aur_version);
+    let current_clean = current_version.split('-').next().unwrap_or(current_version);
+
+    let has_update = compare_versions(current_clean, aur_clean);
+
+    let aur_helper = get_aur_helper().unwrap_or_else(|| "yay".to_string());
+    let update_command = format!("{} -S sealantern", aur_helper);
+
+    // 构建 release_notes 文本
+    let release_notes = if has_update {
+        format!(
+            "AUR 有可用更新\n\n\
+             当前版本: {}\n\
+             最新版本: {}\n\n\
+             使用以下命令更新:\n\
+             {}\n\n\
+             或使用其他 AUR 助手",
+            current_version, aur_version, update_command
+        )
+    } else {
+        format!("已是最新版本 (Arch Linux)\n当前版本: {}", current_version)
+    };
+
+    println!("=== AUR 检查结果 ===");
+    println!("has_update: {}", has_update);
+    println!("source: arch-aur");
+    println!("latest_version: {}", aur_version);
+
+    Ok(UpdateInfo {
+        has_update,
+        latest_version: aur_version.clone(),
+        current_version: current_version.to_string(),
+        download_url: Some("https://aur.archlinux.org/packages/sealantern".to_string()),
+        release_notes: Some(release_notes),
+        published_at: None,
+        source: Some("arch-aur".to_string()),
+        sha256: None,
+    })
+}
+// ========== Arch Linux 函数结束 ==========
+
 impl RepoConfig {
     fn api_url(&self) -> String {
         format!("{}/{}/{}/releases/latest", self.api_base, self.owner, self.repo)
@@ -67,6 +170,29 @@ struct ReleaseAsset {
 pub async fn check_update() -> Result<UpdateInfo, String> {
     let current_version = env!("CARGO_PKG_VERSION");
 
+    println!("=== 检查更新 ===");
+    println!("当前版本: {}", current_version);
+    println!("目标操作系统: {}", std::env::consts::OS);
+
+    // Arch Linux特殊处理 - 只要是在 Arch 上，就使用 AUR 更新检查
+    #[cfg(target_os = "linux")]
+    {
+        println!("Linux 条件编译通过");
+        let is_arch = is_arch_linux();
+        println!("is_arch_linux() 返回: {}", is_arch);
+
+        if is_arch {
+            println!("检测到 Arch Linux，使用 AUR 更新检查");
+            return check_aur_update(current_version).await;
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        println!("不是 Linux 系统，使用 GitHub 更新检查");
+    }
+
+    println!("使用 GitHub 更新检查");
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         .build()
@@ -691,6 +817,22 @@ pub async fn install_update(file_path: String, version: String) -> Result<(), St
         let path = PathBuf::from(&file_path);
         if !path.exists() {
             return Err(format!("Update file not found: {}", file_path));
+        }
+
+        // Arch Linux 特殊处理 - 只要是在 Arch 上，就不执行安装程序
+        #[cfg(target_os = "linux")]
+        {
+            if is_arch_linux() {
+                let helper = get_aur_helper().unwrap_or_else(|| "yay".to_string());
+                return Err(format!(
+                    "您使用的是 Arch Linux\n\
+                     请使用包管理器更新 SeaLantern：\n\
+                     {} -S sealantern\n\
+                     \n\
+                     或使用其他 AUR 助手",
+                    helper
+                ));
+            }
         }
 
         let pending_file = get_pending_update_file();

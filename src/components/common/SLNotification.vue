@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed, onMounted } from "vue";
-import { i18n } from "../../locales";
+import { AlertTriangle, Check, Info, X, XCircle } from "lucide-vue-next";
+import { i18n } from "../../language";
 
 type NotificationType = "success" | "error" | "warning" | "info";
 type Position =
@@ -175,66 +176,10 @@ onUnmounted(() => {
 
         <div class="sl-notify__content">
           <div class="sl-notify__icon">
-            <svg
-              v-if="type === 'success'"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <svg
-              v-else-if="type === 'error'"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-            <svg
-              v-else-if="type === 'warning'"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
-              ></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            <svg
-              v-else
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
+            <Check v-if="type === 'success'" :size="24" />
+            <XCircle v-else-if="type === 'error'" :size="24" />
+            <AlertTriangle v-else-if="type === 'warning'" :size="24" />
+            <Info v-else :size="24" />
           </div>
           <div class="sl-notify__text">
             <div v-if="title" class="sl-notify__title">{{ title }}</div>
@@ -245,36 +190,13 @@ onUnmounted(() => {
             @click.stop="handleClose"
             :aria-label="i18n.t('common.close_notification')"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <X :size="18" />
           </button>
         </div>
 
         <Transition name="fade">
           <div v-if="showCopied" class="sl-notify__overlay">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="3"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+            <Check :size="20" :stroke-width="3" />
             <span>已复制</span>
           </div>
         </Transition>
@@ -295,7 +217,7 @@ onUnmounted(() => {
   width: 360px;
   max-width: 90vw;
   color: #fff;
-  border-radius: var(--sl-radius-lg);
+  border-radius: 12px;
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   overflow: hidden;
@@ -390,7 +312,7 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.15);
   border: none;
   color: #fff;
-  border-radius: var(--sl-radius-sm);
+  border-radius: 6px;
   padding: 4px;
   cursor: pointer;
   transition: all 0.2s;

@@ -5,10 +5,11 @@ import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { settingsApi } from "../api/settings";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 import type { ServerCommand } from "../types/server";
+import { getStatusClass, getStatusText } from "../utils/serverStatus";
+import { useLoading } from "../composables/useAsync";
 
-// 导入拆分后的组件
 import ConsoleToolbar from "../components/console/ConsoleToolbar.vue";
 import ConsoleCommands from "../components/console/ConsoleCommands.vue";
 import ConsoleOutput from "../components/console/ConsoleOutput.vue";
@@ -21,20 +22,18 @@ const consoleStore = useConsoleStore();
 
 const userScrolledUp = ref(false);
 const consoleFontSize = ref(13);
-const startLoading = ref(false);
-const stopLoading = ref(false);
-const isPolling = ref(false); // 添加轮询锁
+const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
+const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
+const { loading: commandLoading, start: startCommandLoading, stop: stopCommandLoading } = useLoading();
+const isPolling = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-// 自定义指令相关
 const showCommandModal = ref(false);
 const editingCommand = ref<ServerCommand | null>(null);
 const commandName = ref("");
 const commandText = ref("");
 const commandModalTitle = ref("");
-const commandLoading = ref(false);
 
-// 优先使用serverStore.currentServerId，确保与侧栏同步
 const serverId = computed(() => {
   return (
     serverStore.currentServerId || consoleStore.activeServerId || (route.params.id as string) || ""
@@ -166,35 +165,34 @@ function doScroll() {
 async function handleStart() {
   const sid = serverId.value;
   if (!sid) return;
-  startLoading.value = true;
+  startStartLoading();
   try {
     await serverApi.start(sid);
     await serverStore.refreshStatus(sid);
   } catch (e) {
     consoleStore.appendLocal(sid, "[ERROR] " + String(e));
   } finally {
-    startLoading.value = false;
+    stopStartLoading();
   }
 }
 
 async function handleStop() {
   const sid = serverId.value;
   if (!sid) return;
-  stopLoading.value = true;
+  startStopLoading();
   try {
     await serverApi.stop(sid);
     await serverStore.refreshStatus(sid);
   } catch (e) {
     consoleStore.appendLocal(sid, "[ERROR] " + String(e));
   } finally {
-    stopLoading.value = false;
+    stopStopLoading();
   }
 }
 
 async function exportLogs() {
   const logs = currentLogs.value;
   if (logs.length === 0) return;
-  // Copy to clipboard as fallback
   const text = logs.join("\n");
   try {
     await navigator.clipboard.writeText(text);
@@ -207,42 +205,21 @@ async function exportLogs() {
   }
 }
 
-function getStatusClass(): string {
-  const s = serverStore.statuses[serverId.value]?.status;
-  return s === "Running"
-    ? "running"
-    : s === "Starting"
-      ? "starting"
-      : s === "Stopping"
-        ? "stopping"
-        : "stopped";
+function getServerStatusClass(): string {
+  return getStatusClass(serverStore.statuses[serverId.value]?.status);
 }
 
-function getStatusText(): string {
-  const s = serverStore.statuses[serverId.value]?.status;
-  return s === "Running"
-    ? i18n.t("console.running")
-    : s === "Starting"
-      ? i18n.t("console.starting")
-      : s === "Stopping"
-        ? i18n.t("console.stopping")
-        : i18n.t("console.stopped");
+function getServerStatusText(): string {
+  return getStatusText(serverStore.statuses[serverId.value]?.status);
 }
 
 function handleClearLogs() {
   const sid = serverId.value;
-  console.log("[清屏] serverId:", sid);
-  console.log("[清屏] 当前日志数量:", currentLogs.value.length);
-  if (!sid) {
-    console.log("[清屏] serverId 为空，取消操作");
-    return;
-  }
+  if (!sid) return;
   consoleStore.clearLogs(sid);
-  console.log("[清屏] 清空后日志数量:", currentLogs.value.length);
   userScrolledUp.value = false;
 }
 
-// 自定义指令相关方法
 function openAddCommandModal() {
   editingCommand.value = null;
   commandName.value = "";
@@ -263,10 +240,9 @@ async function saveCommand() {
   const sid = serverId.value;
   if (!sid || !commandName.value.trim() || !commandText.value.trim()) return;
 
-  commandLoading.value = true;
+  startCommandLoading();
   try {
     if (editingCommand.value) {
-      // 更新现有指令
       await serverApi.updateServerCommand(
         sid,
         editingCommand.value.id,
@@ -274,17 +250,15 @@ async function saveCommand() {
         commandText.value.trim(),
       );
     } else {
-      // 添加新指令
       await serverApi.addServerCommand(sid, commandName.value.trim(), commandText.value.trim());
     }
-    // 刷新服务器列表以获取更新的指令
     await serverStore.refreshList();
     showCommandModal.value = false;
   } catch (e) {
     console.error("保存指令失败:", e);
     consoleStore.appendLocal(sid, "[ERROR] 保存自定义指令失败: " + String(e));
   } finally {
-    commandLoading.value = false;
+    stopCommandLoading();
   }
 }
 
@@ -311,8 +285,8 @@ async function deleteCommand(cmd: ServerCommand) {
     <ConsoleToolbar
       :serverId="serverId"
       :serverName="serverName"
-      :statusClass="getStatusClass()"
-      :statusText="getStatusText()"
+      :statusClass="getServerStatusClass()"
+      :statusText="getServerStatusText()"
       :isRunning="isRunning"
       :isStopped="isStopped"
       :isStopping="isStopping"

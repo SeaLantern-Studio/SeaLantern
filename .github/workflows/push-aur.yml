@@ -1,0 +1,222 @@
+name: Publish to AUR
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "sea-lantern-v*"
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 1.0.0)"
+        required: true
+        type: string
+      skip_test:
+        description: "Skip makepkg test"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  aur-publish:
+    # 使用 Arch Linux 容器直接运行，避免嵌套 Docker
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --user root
+
+    steps:
+      - name: Install dependencies in container
+        run: |
+          # 初始化 pacman 密钥环
+          pacman-key --init
+          pacman-key --populate archlinux
+
+          # 系统更新并安装必要工具
+
+          pacman -Syu --noconfirm base-devel git sudo openssh dpkg
+
+          # 创建 builder 用户
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Debug GitHub context
+        run: |
+          echo "GitHub Context Debug:"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Ref type: ${{ github.ref_type }}"
+          echo "Ref name: ${{ github.ref_name }}"
+          echo "Release tag: ${{ github.event.release.tag_name }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Actor: ${{ github.actor }}"
+
+      - name: Get release version
+        id: get_version
+        run: |
+          # 根据事件类型获取版本
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            RAW_VERSION="${{ github.event.release.tag_name }}"
+            echo "Source: release tag: $RAW_VERSION"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            RAW_VERSION="${{ github.ref_name }}"
+            echo "Source: git tag: $RAW_VERSION"
+          else
+            RAW_VERSION="${{ github.event.inputs.version }}"
+            echo "Source: manual input: $RAW_VERSION"
+          fi
+
+          # 提取纯净版本号
+          if [[ $RAW_VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION=$(echo "$RAW_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+            echo "Extracted version from tag: $VERSION"
+          else
+            VERSION="${RAW_VERSION#v}"
+          fi
+
+          # 验证版本号
+          if [[ -z "$VERSION" ]]; then
+            echo "❌ Error: Version is empty!"
+            exit 1
+          fi
+
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Error: Invalid version format: $VERSION"
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_ENV
+          echo "✅ Final version: $VERSION"
+
+      - name: Validate PKGBUILD exists
+        run: |
+          if [ ! -f "PKGBUILD" ]; then
+            echo "Error: PKGBUILD file not found!"
+            ls -la
+            exit 1
+          fi
+          echo "✅ PKGBUILD found"
+
+      - name: Update PKGBUILD version
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          echo "Updating PKGBUILD to version: $VERSION"
+
+          # 备份原始 PKGBUILD
+          cp PKGBUILD PKGBUILD.bak
+
+          # 更新版本号
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+
+          echo "✅ Updated PKGBUILD"
+          echo "New version: $(grep ^pkgver= PKGBUILD)"
+
+      - name: Generate .SRCINFO
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          echo "Generating .SRCINFO for version: $VERSION"
+
+          # 使用 builder 用户运行 makepkg
+          chown -R builder:builder .
+          sudo -u builder makepkg --printsrcinfo > .SRCINFO
+
+          if [ ! -f ".SRCINFO" ]; then
+            echo "❌ Failed to generate .SRCINFO"
+            exit 1
+          fi
+
+          echo "✅ Generated .SRCINFO:"
+          cat .SRCINFO
+
+      - name: Validate files
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+          # 验证 PKGBUILD
+          PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
+          if [[ "$PKGVER" != "$VERSION" ]]; then
+            echo "❌ PKGBUILD version mismatch!"
+            exit 1
+          fi
+          echo "✅ PKGBUILD version matches: $PKGVER"
+
+          # 验证 .SRCINFO
+          SRCINFO_VER=$(grep "^[[:space:]]*pkgver =" .SRCINFO | head -1 | awk '{print $3}')
+          if [[ "$SRCINFO_VER" != "$VERSION" ]]; then
+            echo "❌ .SRCINFO version mismatch!"
+            exit 1
+          fi
+          echo "✅ .SRCINFO version matches: $SRCINFO_VER"
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+
+          # 配置 SSH
+          cat > ~/.ssh/config << EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            User aur
+            StrictHostKeyChecking accept-new
+          EOF
+
+          # 添加 known hosts
+          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
+
+      - name: Publish AUR package
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        with:
+          pkgname: sealantern
+          pkgbuild: PKGBUILD
+          assets: |
+            .SRCINFO
+            sealantern.install
+          commit_username: "${{ github.actor }}"
+          commit_email: "${{ github.actor }}@users.noreply.github.com"
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update sealantern to v${{ steps.get_version.outputs.VERSION }}"
+          allow_empty_commits: false
+          force_push: false
+          updpkgsums: false
+          test: ${{ !github.event.inputs.skip_test }}
+          ssh_keyscan_types: rsa,ecdsa,ed25519
+
+      - name: Send success notification
+        if: success()
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          echo "======================================"
+          echo "✅ Successfully published sealantern v${VERSION} to AUR"
+          echo "📦 Package URL: https://aur.archlinux.org/packages/sealantern"
+          echo "======================================"
+
+      - name: Send failure notification
+        if: failure()
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          echo "======================================"
+          echo "❌ Failed to publish sealantern v${VERSION} to AUR"
+          echo "======================================"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f "PKGBUILD.bak" ]; then
+            echo "Restoring original PKGBUILD"
+            rm -f PKGBUILD
+            mv PKGBUILD.bak PKGBUILD
+            echo "✅ PKGBUILD restored"
+          else
+            echo "No backup file found, skipping cleanup"
+          fi

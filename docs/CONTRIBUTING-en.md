@@ -64,9 +64,18 @@ Thank you for your interest in Project Sea Lantern! This document will help you 
    - Avoid hardcoded color values
    - Use scoped styles
 
+### UI Components & Icons
+
+- **Prefer Headless UI (Vue v1) and a tree-shakable icon library (e.g. Lucide)**:
+  - Headless UI (https://headlessui.com/v1/vue) provides unstyled, accessible interaction primitives (`Listbox`, `Disclosure`, `Dialog`, etc.). Prefer reusing these for popovers, dropdowns and other interactive patterns to avoid hand-rolling DOM, keyboard and ARIA logic.
+  - Use icon libraries that support on-demand imports (e.g. Lucide: https://lucide.dev/icons/ or specific icon like https://lucide.dev/icons/paint-roller?search=Palette) instead of inlining raw `<svg>` paths across the codebase. This reduces bundle size and duplication.
+  - Recommended practice: replace custom dropdowns with Headless UI `Listbox` / `Disclosure`, and replace hardcoded icons with Lucide components (e.g. `Palette`, `PaintRoller`).
+
+  This reduces redundant DOM, centralizes accessibility behavior, and keeps styling and behavior separated for easier maintenance.
+
 ## Git Workflow
 
-### 分支命名
+### Branch Naming Convention
 
 - feature/feature-name - New features
 - fix/issue-description - Bug fixes

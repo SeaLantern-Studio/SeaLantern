@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Loader2 } from "lucide-vue-next";
+
 interface Props {
   variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
   size?: "sm" | "md" | "lg";
@@ -25,25 +27,11 @@ withDefaults(defineProps<Props>(), {
     :disabled="disabled || loading"
     :aria-busy="loading"
   >
-    <svg
+    <Loader2
       v-if="loading"
       class="sl-button-spinner"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="10"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-dasharray="15.7 15.7"
-        stroke-linecap="round"
-      />
-    </svg>
+      :size="16"
+    />
     <slot />
   </button>
 </template>

@@ -1,6 +1,6 @@
-﻿﻿﻿﻿
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone, Info, Copy } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -8,9 +8,11 @@ import SLNotification from "../components/common/SLNotification.vue";
 import { contributors as contributorsList } from "../data/contributors";
 import { useUpdateStore } from "../stores/updateStore";
 import { getAppVersion, BUILD_YEAR } from "../utils/version";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 import { onDownloadProgress } from "../api/update";
 import type { UnlistenFn } from "@tauri-apps/api/event";
+// ===== 新增：导入 SLModal 组件 =====
+import SLModal from "../components/common/SLModal.vue";
 
 const version = ref(i18n.t("common.loading"));
 const buildDate = BUILD_YEAR;
@@ -26,7 +28,10 @@ const notificationType = ref<"success" | "error" | "warning" | "info">("info");
 let unlistenProgress: UnlistenFn | null = null;
 let resetTimer: ReturnType<typeof setTimeout> | null = null;
 
-function showNotify(msg: string, type: "success" | "error" | "warning" | "info" = "info") {
+function showNotify(
+  msg: string,
+  type: "success" | "error" | "warning" | "info" = "info",
+) {
   notificationMessage.value = msg;
   notificationType.value = type;
   showNotification.value = true;
@@ -55,6 +60,14 @@ onUnmounted(() => {
 });
 
 const buttonState = computed(() => {
+  // 如果是 AUR 更新，显示特殊按钮文字
+  if (isAurUpdate.value) {
+    return {
+      text: i18n.t("about.aur_update_available"),
+      variant: "primary" as const,
+      disabled: false,
+    };
+  }
   switch (updateStore.status) {
     case "checking":
       return {
@@ -63,7 +76,11 @@ const buttonState = computed(() => {
         disabled: true,
       };
     case "latest":
-      return { text: i18n.t("about.update_latest"), variant: "success" as const, disabled: true };
+      return {
+        text: i18n.t("about.update_latest"),
+        variant: "success" as const,
+        disabled: true,
+      };
     case "available":
       return {
         text: i18n.t("about.update_available"),
@@ -83,15 +100,29 @@ const buttonState = computed(() => {
         disabled: false,
       };
     case "downloaded":
-      return { text: i18n.t("about.update_ready"), variant: "success" as const, disabled: false };
+      return {
+        text: i18n.t("about.update_ready"),
+        variant: "success" as const,
+        disabled: false,
+      };
     case "error":
-      return { text: i18n.t("about.update_error"), variant: "danger" as const, disabled: false };
+      return {
+        text: i18n.t("about.update_error"),
+        variant: "danger" as const,
+        disabled: false,
+      };
     default:
-      return { text: i18n.t("about.check_update"), variant: "secondary" as const, disabled: false };
+      return {
+        text: i18n.t("about.check_update"),
+        variant: "secondary" as const,
+        disabled: false,
+      };
   }
 });
 
-const progressPercent = computed(() => Math.round(updateStore.downloadProgress));
+const progressPercent = computed(() =>
+  Math.round(updateStore.downloadProgress),
+);
 
 async function openLink(url: string) {
   if (!url) return;
@@ -109,19 +140,120 @@ async function handleCheckUpdate() {
   }
 
   try {
-    await updateStore.checkForUpdate();
+    const info = await updateStore.checkForUpdate();
+
+    // 如果是 AUR 更新，显示提示窗口
+    if (info?.source === "arch-aur") {
+      const helper =
+        info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
+      const hasUpdate = info.has_update;
+
+      aurUpdateInfo.value = {
+        hasUpdate,
+        currentVersion: info.current_version,
+        latestVersion: info.latest_version,
+        helper: helper,
+        command: `${helper} -S sealantern`,
+      };
+
+      showAurWindow.value = true;
+    }
   } catch (error) {
-    showNotify(`${i18n.t("about.update_check_failed")}: ${String(error)}`, "error");
+    showNotify(
+      `${i18n.t("about.update_check_failed")}: ${String(error)}`,
+      "error",
+    );
   }
 }
 
 async function handlePrimaryUpdateAction() {
+  // 如果是 AUR 更新，显示提示窗口
+  if (isAurUpdate.value && updateStore.updateInfo) {
+    const helper =
+      updateStore.updateInfo.release_notes?.match(
+        /yay|paru|pamac|trizen|pacaur/,
+      )?.[0] || "yay";
+
+    aurUpdateInfo.value = {
+      hasUpdate: updateStore.updateInfo.has_update,
+      currentVersion: updateStore.updateInfo.current_version,
+      latestVersion: updateStore.updateInfo.latest_version,
+      helper: helper,
+      command: `${helper} -S sealantern`,
+    };
+
+    showAurWindow.value = true;
+    return;
+  }
+
   if (updateStore.hasStartedUpdateFlow && updateStore.isUpdateAvailable) {
     updateStore.showUpdateModal();
     return;
   }
   await handleCheckUpdate();
 }
+
+// ===== AUR 更新提示窗口 =====
+const showAurWindow = ref(false);
+const aurUpdateInfo = ref<{
+  hasUpdate: boolean;
+  currentVersion: string;
+  latestVersion: string;
+  helper: string;
+  command: string;
+} | null>(null);
+
+// ===== 关闭 AUR 提示窗口 =====
+function closeAurWindow() {
+  showAurWindow.value = false;
+  aurUpdateInfo.value = null;
+}
+
+// ===== 复制 AUR 命令 =====
+async function copyAurCommand(command: string) {
+  try {
+    await navigator.clipboard.writeText(command);
+    showNotify(i18n.t("about.aur_window_copy_success"), "success");
+  } catch (e) {
+    showNotify(i18n.t("about.aur_window_copy_failed"), "error");
+  }
+}
+
+// ===== 判断是否是 AUR 更新 =====
+const isAurUpdate = computed(
+  () => updateStore.updateInfo?.source === "arch-aur",
+);
+
+// ===== 获取 AUR 助手名称 =====
+const aurHelper = computed(() => {
+  return (
+    updateStore.updateInfo?.release_notes?.match(
+      /yay|paru|pamac|trizen|pacaur/,
+    )?.[0] || "yay"
+  );
+});
+
+// ===== AUR 窗口响应式文本 =====
+const aurNewVersionText = computed(() =>
+  i18n.t("about.aur_window_new_version"),
+);
+const aurCurrentVersionText = computed(() =>
+  i18n.t("about.aur_window_current_version"),
+);
+const aurLatestVersionText = computed(() =>
+  i18n.t("about.aur_window_latest_version"),
+);
+const aurSingleUpdateText = computed(() =>
+  i18n.t("about.aur_window_single_update"),
+);
+const aurGlobalUpdateText = computed(() =>
+  i18n.t("about.aur_window_global_update"),
+);
+const aurGlobalNoteText = computed(() =>
+  i18n.t("about.aur_window_global_note"),
+);
+const aurCopyTipText = computed(() => i18n.t("about.aur_window_copy_tip"));
+const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
 </script>
 
 <template>
@@ -130,7 +262,12 @@ async function handlePrimaryUpdateAction() {
       <!-- Hero Section -->
       <div class="hero-section">
         <div class="hero-logo">
-          <img src="../assets/logo.svg" :alt="i18n.t('common.app_name')" width="72" height="72" />
+          <img
+            src="../assets/logo.svg"
+            :alt="i18n.t('common.app_name')"
+            width="72"
+            height="72"
+          />
         </div>
         <h1 class="hero-title">{{ i18n.t("common.app_name") }}</h1>
         <p class="hero-subtitle">{{ i18n.t("about.subtitle") }}</p>
@@ -138,6 +275,8 @@ async function handlePrimaryUpdateAction() {
           <span class="version-badge">v{{ version }}</span>
           <span class="tech-badge">{{ i18n.t("about.tech_badge") }}</span>
           <span class="license-badge">{{ i18n.t("about.license_badge") }}</span>
+          <!-- AUR 徽章 -->
+          <span v-if="isAurUpdate" class="aur-badge">AUR</span>
         </div>
         <p class="hero-desc">
           {{ i18n.t("about.hero_desc") }}
@@ -165,7 +304,11 @@ async function handlePrimaryUpdateAction() {
         </div>
 
         <div class="contributor-grid">
-          <div v-for="c in contributors" :key="c.name" class="contributor-card glass-card">
+          <div
+            v-for="c in contributors"
+            :key="c.name"
+            class="contributor-card glass-card"
+          >
             <a
               v-if="c.url"
               :href="c.url"
@@ -175,7 +318,12 @@ async function handlePrimaryUpdateAction() {
             >
               <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
             </a>
-            <img v-else :src="c.avatar" :alt="c.name" class="contributor-avatar" />
+            <img
+              v-else
+              :src="c.avatar"
+              :alt="c.name"
+              class="contributor-avatar"
+            />
 
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>
@@ -186,21 +334,15 @@ async function handlePrimaryUpdateAction() {
           <!-- Join Card -->
           <div class="contributor-card glass-card join-card">
             <div class="join-icon">
-              <svg
-                width="40"
-                height="40"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--sl-primary)"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              >
-                <path d="M12 4v16m8-8H4" />
-              </svg>
+                <Plus :size="40" stroke-width="1.5" :color="'var(--sl-primary)'" />
             </div>
             <div class="contributor-info">
-              <span class="contributor-name join-text">{{ i18n.t("about.join_text") }}</span>
-              <span class="contributor-role">{{ i18n.t("about.join_desc") }}</span>
+              <span class="contributor-name join-text">{{
+                i18n.t("about.join_text")
+              }}</span>
+              <span class="contributor-role">{{
+                i18n.t("about.join_desc")
+              }}</span>
             </div>
           </div>
         </div>
@@ -258,82 +400,41 @@ async function handlePrimaryUpdateAction() {
           <div class="contribute-ways">
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="16 18 22 12 16 6"></polyline>
-                  <polyline points="8 6 2 12 8 18"></polyline>
-                </svg>
+                <Code2 :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_code") }}</span>
-                <span class="way-desc">{{ i18n.t("about.way_code_desc") }}</span>
+                <span class="way-desc">{{
+                  i18n.t("about.way_code_desc")
+                }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M12 19l7 2-7-18-7 18 7-2zm0 0v-8"></path>
-                </svg>
+                <PenTool :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_design") }}</span>
-                <span class="way-desc">{{ i18n.t("about.way_design_desc") }}</span>
+                <span class="way-desc">{{
+                  i18n.t("about.way_design_desc")
+                }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
+                <HelpCircle :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_idea") }}</span>
-                <span class="way-desc">{{ i18n.t("about.way_idea_desc") }}</span>
+                <span class="way-desc">{{
+                  i18n.t("about.way_idea_desc")
+                }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                </svg>
+
+                <BookText :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_doc") }}</span>
@@ -342,48 +443,26 @@ async function handlePrimaryUpdateAction() {
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path
-                    d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-                  ></path>
-                </svg>
+                <Globe :size="20" />
               </div>
               <div class="way-info">
-                <span class="way-title">{{ i18n.t("about.way_translate") }}</span>
-                <span class="way-desc">{{ i18n.t("about.way_translate_desc") }}</span>
+                <span class="way-title">{{
+                  i18n.t("about.way_translate")
+                }}</span>
+                <span class="way-desc">{{
+                  i18n.t("about.way_translate_desc")
+                }}</span>
               </div>
             </div>
             <div class="way-item">
               <div class="way-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-                  <polyline points="16 6 12 2 8 6"></polyline>
-                  <line x1="12" y1="2" x2="12" y2="15"></line>
-                </svg>
+                <Megaphone :size="20" />
               </div>
               <div class="way-info">
                 <span class="way-title">{{ i18n.t("about.way_promote") }}</span>
-                <span class="way-desc">{{ i18n.t("about.way_promote_desc") }}</span>
+                <span class="way-desc">{{
+                  i18n.t("about.way_promote_desc")
+                }}</span>
               </div>
             </div>
           </div>
@@ -402,7 +481,11 @@ async function handlePrimaryUpdateAction() {
         <SLButton
           variant="secondary"
           size="lg"
-          @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')"
+          @click="
+            openLink(
+              'https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0',
+            )
+          "
         >
           {{ i18n.t("about.bilibili") }}
         </SLButton>
@@ -422,7 +505,99 @@ async function handlePrimaryUpdateAction() {
       </div>
     </div>
 
-    <!-- 閫氱煡缁勪欢 -->
+    <!-- ===== AUR 更新提示窗口 ===== -->
+    <SLModal
+      v-if="showAurWindow && aurUpdateInfo?.hasUpdate"
+      :visible="showAurWindow"
+      :title="
+        aurUpdateInfo?.hasUpdate
+          ? i18n.t('about.aur_window_title_update')
+          : i18n.t('about.aur_window_title_info')
+      "
+      @close="closeAurWindow"
+    >
+      <div class="aur-window-content">
+        <div class="aur-window-icon">
+          <Info :size="64" stroke="#0099cc" stroke-width="1.5" />
+        </div>
+
+        <div class="aur-window-message" v-if="aurUpdateInfo">
+          <p class="aur-title">
+            {{ aurNewVersionText }}
+          </p>
+
+          <div class="version-info">
+            <div class="version-row">
+              <span class="version-label">{{
+                i18n.t("about.aur_window_current_version")
+              }}</span>
+              <span class="version-value">{{
+                aurUpdateInfo.currentVersion
+              }}</span>
+            </div>
+            <div class="version-row">
+              <span class="version-label">{{
+                i18n.t("about.aur_window_latest_version")
+              }}</span>
+              <span class="version-value">{{
+                aurUpdateInfo.latestVersion
+              }}</span>
+            </div>
+          </div>
+
+          <div class="command-box">
+            <p class="command-label">
+              {{ i18n.t("about.aur_window_single_update") }}
+            </p>
+            <div class="command-wrapper">
+              <div class="command-display">
+                <code>{{ aurUpdateInfo.command }}</code>
+              </div>
+              <button
+                class="copy-button"
+                @click="copyAurCommand(aurUpdateInfo.command)"
+                :title="i18n.t('about.aur_window_copy_tip')"
+              >
+                <Copy :size="16" />
+              </button>
+            </div>
+          </div>
+
+          <div class="global-update-box">
+            <p class="global-update-label">
+              {{ i18n.t("about.aur_window_global_update") }}
+            </p>
+            <div class="command-wrapper">
+              <div class="command-display global-command">
+                <code>{{ aurUpdateInfo.helper }} -Syu</code>
+              </div>
+              <button
+                class="copy-button"
+                @click="copyAurCommand(aurUpdateInfo.helper + ' -Syu')"
+                :title="i18n.t('about.aur_window_copy_tip')"
+              >
+                <Copy :size="16" />
+              </button>
+            </div>
+            <p class="global-update-note">
+              {{ i18n.t("about.aur_window_global_note") }}
+            </p>
+          </div>
+
+          <p class="aur-note">
+            {{ i18n.t("about.aur_window_copy_tip") }}
+          </p>
+        </div>
+
+        <div class="aur-window-actions">
+          <SLButton variant="primary" size="md" @click="closeAurWindow">
+            {{ i18n.t("about.aur_window_button") }}
+          </SLButton>
+        </div>
+      </div>
+    </SLModal>
+
+    <!-- 通知组件 -->
     <SLNotification
       :visible="showNotification"
       :message="notificationMessage"
@@ -579,7 +754,6 @@ async function handlePrimaryUpdateAction() {
 .contributor-avatar {
   width: 48px;
   height: 48px;
-  border-radius: var(--sl-radius-md);
   flex-shrink: 0;
   image-rendering: pixelated;
 }
@@ -825,5 +999,177 @@ async function handlePrimaryUpdateAction() {
 
 .contributor-link:hover .contributor-avatar {
   box-shadow: var(--sl-shadow-lg);
+}
+
+/* AUR 徽章样式 */
+.aur-badge {
+  background: rgba(0, 153, 204, 0.1);
+  color: #0099cc;
+  padding: 4px 14px;
+  border-radius: var(--sl-radius-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* AUR 窗口样式 */
+.aur-window-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sl-space-xl);
+  gap: var(--sl-space-lg);
+}
+
+/* 命令包装器样式 */
+.command-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  width: 100%;
+}
+
+.command-display {
+  flex: 1;
+  background: var(--sl-bg-tertiary);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+}
+
+.command-display code {
+  font-family: var(--sl-font-mono);
+  font-size: 0.9375rem;
+  color: var(--sl-primary);
+  word-break: break-all;
+}
+
+/* 复制按钮样式 */
+.copy-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--sl-primary-bg);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-primary);
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+  flex-shrink: 0;
+}
+
+.copy-button:hover {
+  background: var(--sl-primary);
+  color: white;
+  border-color: var(--sl-primary);
+}
+
+.copy-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.aur-window-icon {
+  margin-bottom: var(--sl-space-sm);
+}
+
+.aur-window-message {
+  text-align: center;
+  width: 100%;
+}
+
+.aur-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+  margin-bottom: var(--sl-space-lg);
+}
+
+.version-info {
+  background: var(--sl-bg-secondary);
+  border-radius: var(--sl-radius-lg);
+  padding: var(--sl-space-md);
+  margin-bottom: var(--sl-space-lg);
+}
+
+.version-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sl-space-xs) 0;
+}
+
+.version-row:first-child {
+  border-bottom: 1px solid var(--sl-border-light);
+  margin-bottom: var(--sl-space-xs);
+}
+
+.version-label {
+  font-size: 0.9375rem;
+  color: var(--sl-text-tertiary);
+}
+
+.version-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--sl-primary);
+  font-family: var(--sl-font-mono);
+}
+
+.command-box {
+  margin-bottom: var(--sl-space-lg);
+}
+
+.command-label {
+  font-size: 0.9375rem;
+  color: var(--sl-text-secondary);
+  margin-bottom: var(--sl-space-sm);
+  text-align: left;
+}
+
+.aur-note {
+  font-size: 0.875rem;
+  color: var(--sl-text-tertiary);
+  font-style: italic;
+}
+
+.aur-window-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--sl-space-sm);
+}
+
+/* 全局更新提示样式 */
+.global-update-box {
+  margin-top: var(--sl-space-md);
+  margin-bottom: var(--sl-space-lg);
+  padding-top: var(--sl-space-md);
+  border-top: 1px dashed var(--sl-border);
+}
+
+.global-update-label {
+  font-size: 0.875rem;
+  color: var(--sl-text-secondary);
+  margin-bottom: var(--sl-space-xs);
+  text-align: left;
+}
+
+.global-command {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-warning);
+}
+
+.global-command code {
+  color: var(--sl-warning);
+}
+
+.global-update-note {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  margin-top: var(--sl-space-xs);
+  font-style: italic;
+  text-align: left;
 }
 </style>

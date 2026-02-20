@@ -1,17 +1,37 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onMounted } from "vue";
+import { computed, ref, nextTick, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
 import { useServerStore } from "../../stores/serverStore";
-import { i18n } from "../../locales";
-import SLSelect from "../../components/common/SLSelect.vue";
+import { i18n } from "../../language";
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOptions,
+  ListboxOption,
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+  Portal,
+} from "@headlessui/vue";
+import {
+  Home,
+  Plus,
+  Terminal,
+  Settings,
+  Users,
+  Sliders,
+  Palette,
+  Info,
+  Server,
+  ChevronLeft,
+} from "lucide-vue-next";
 
 const router = useRouter();
 const route = useRoute();
 const ui = useUiStore();
 const serverStore = useServerStore();
 const navIndicator = ref<HTMLElement | null>(null);
-const showServerBubble = ref(false);
 
 interface NavItem {
   name: string;
@@ -50,7 +70,7 @@ const navItems: NavItem[] = [
   {
     name: "config",
     path: "/config",
-    icon: "settings",
+    icon: "sliders",
     labelKey: "common.config_edit",
     label: i18n.t("common.config_edit"),
     group: "server",
@@ -64,14 +84,6 @@ const navItems: NavItem[] = [
     group: "server",
   },
   {
-    name: "settings",
-    path: "/settings",
-    icon: "sliders",
-    labelKey: "common.settings",
-    label: i18n.t("common.settings"),
-    group: "system",
-  },
-  {
     name: "paint",
     path: "/paint",
     icon: "paint",
@@ -80,11 +92,11 @@ const navItems: NavItem[] = [
     group: "system",
   },
   {
-    name: "about",
-    path: "/about",
-    icon: "info",
-    labelKey: "common.about",
-    label: i18n.t("common.about"),
+    name: "settings",
+    path: "/settings",
+    icon: "settings",
+    labelKey: "common.settings",
+    label: i18n.t("common.settings"),
     group: "system",
   },
 ];
@@ -93,16 +105,7 @@ function navigateTo(path: string) {
   router.push(path);
 }
 
-// 切换服务器选择气泡的显示/隐藏
-function toggleServerBubble() {
-  showServerBubble.value = !showServerBubble.value;
-}
-
-// 选择服务器并关闭气泡
-function selectServer(serverId: string) {
-  handleServerChange(serverId);
-  showServerBubble.value = false;
-}
+// 服务器选择由 Headless UI 的 Listbox 管理
 
 // 更新导航指示器位置
 function updateNavIndicator() {
@@ -137,6 +140,8 @@ watch(
     // 延迟更新，确保动画完成后再计算位置
     setTimeout(() => {
       updateNavIndicator();
+      // 在侧边栏折叠/展开后同时更新弹出列表位置
+      updateOptionsPosition();
     }, 350); // 等待350ms，确保CSS过渡动画完全完成
   },
 );
@@ -148,6 +153,8 @@ watch(
     // 使用 nextTick 确保 DOM 已经更新
     nextTick(() => {
       updateNavIndicator();
+      // 路由变化时也更新弹出列表位置（若正在打开）
+      updateOptionsPosition();
     });
   },
 );
@@ -160,41 +167,12 @@ onMounted(async () => {
   // 等待服务器列表加载完成后再更新指示器位置
   nextTick(() => {
     updateNavIndicator();
+    // 初始化 ListboxOptions 的位置，确保弹出在合适的位置
+    updateOptionsPosition();
   });
 
-  // 添加全局点击事件监听器，点击外部关闭气泡
-  document.addEventListener("click", handleClickOutside);
+  // 不再需要手动外部点击处理，Listbox 会负责焦点/键盘可访问性
 });
-
-// 点击外部关闭服务器选择气泡
-function handleClickOutside(event: MouseEvent) {
-  if (showServerBubble.value) {
-    const bubble = document.querySelector(".server-select-bubble");
-    const trigger = document.querySelector(".server-selector-icon");
-
-    if (bubble && trigger) {
-      const bubbleRect = bubble.getBoundingClientRect();
-      const triggerRect = trigger.getBoundingClientRect();
-
-      // 检查点击是否在气泡或触发按钮之外
-      const clickedInsideBubble =
-        event.clientX >= bubbleRect.left &&
-        event.clientX <= bubbleRect.right &&
-        event.clientY >= bubbleRect.top &&
-        event.clientY <= bubbleRect.bottom;
-
-      const clickedInsideTrigger =
-        event.clientX >= triggerRect.left &&
-        event.clientX <= triggerRect.right &&
-        event.clientY >= triggerRect.top &&
-        event.clientY <= triggerRect.bottom;
-
-      if (!clickedInsideBubble && !clickedInsideTrigger) {
-        showServerBubble.value = false;
-      }
-    }
-  }
-}
 
 function handleServerChange(value: string | number) {
   serverStore.setCurrentServer(String(value));
@@ -209,18 +187,94 @@ function handleServerChange(value: string | number) {
   }
 }
 
+// 用于把 ListboxOptions 渲染到 body，并在侧边栏收起时调整到侧边栏右侧
+const listboxButton = ref<HTMLElement | null>(null);
+const optionsStyle = ref<Record<string, string | number>>({});
+
+function updateOptionsPosition() {
+  nextTick(() => {
+    // listboxButton 可能是 DOM 元素，也可能是组件实例（有 $el）
+    let btnEl: HTMLElement | null = null;
+    const raw = listboxButton.value as any;
+    if (!raw) return;
+    if (raw instanceof HTMLElement) {
+      btnEl = raw;
+    } else if (raw.$el && raw.$el instanceof HTMLElement) {
+      btnEl = raw.$el as HTMLElement;
+    } else if (raw.$el && raw.$el.$el && raw.$el.$el instanceof HTMLElement) {
+      // 处理嵌套组件暴露的情况
+      btnEl = raw.$el.$el as HTMLElement;
+    }
+    if (!btnEl) return;
+
+    const btnRect = btnEl.getBoundingClientRect();
+    const sidebarEl = document.querySelector(".sidebar") as HTMLElement | null;
+    const sidebarRect = sidebarEl ? sidebarEl.getBoundingClientRect() : null;
+
+    // 默认宽度与样式：当侧边栏存在且未收起时允许更宽一些
+    const width = sidebarRect && !ui.sidebarCollapsed ? Math.max(200, btnRect.width) : 200;
+
+    // 计算固定定位的 top/left（相对于视口）
+    let top = Math.round(btnRect.bottom);
+    let left = Math.round(btnRect.left);
+
+    // 如果存在侧边栏，无论收起或展开，都将列表显示在侧边栏右侧，避免被侧栏容器裁剪
+    // 使用相同的垂直居中逻辑，确保展开与收起时起始位置一致
+    if (sidebarRect) {
+      left = Math.round(sidebarRect.right + 8);
+      top = Math.round(btnRect.top + (btnRect.height - 40) / 2);
+    }
+
+    optionsStyle.value = {
+      position: "fixed",
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${width}px`,
+    };
+  });
+}
+
+// 更新位置：窗口尺寸变动或滚动时
+function onWindowChange() {
+  updateOptionsPosition();
+}
+
+window.addEventListener("resize", onWindowChange);
+window.addEventListener("scroll", onWindowChange, true);
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", onWindowChange);
+  window.removeEventListener("scroll", onWindowChange, true);
+});
+
 // 服务器选项
 const serverOptions = computed(() => {
   return serverStore.servers.map((s) => ({
-    label: s.name + " (" + s.id.substring(0, 8) + ")",
+    label: s.name,
     value: s.id,
   }));
 });
 
-// 当前选中的服务器
-const currentServerId = computed(() => {
-  return serverStore.currentServerId ?? undefined;
-});
+// 使用本地 ref 作为 Listbox 的 v-model，保持和 store 同步
+const currentServerRef = ref<string | undefined>(serverStore.currentServerId ?? undefined);
+
+// 当 store 改变时同步到本地 ref
+watch(
+  () => serverStore.currentServerId,
+  (v) => {
+    currentServerRef.value = v ?? undefined;
+  },
+);
+
+// 当本地 ref 改变时触发处理逻辑（会更新 store）
+watch(
+  () => currentServerRef.value,
+  (v, old) => {
+    if (v != null && v !== old) {
+      handleServerChange(v);
+    }
+  },
+);
 
 // 监听服务器列表变化，更新指示器位置
 watch(
@@ -230,34 +284,26 @@ watch(
   },
 );
 
-// 监听当前服务器变化，更新指示器位置
+// 监听当前服务器变化（本地 ref），更新指示器位置
 watch(
-  () => currentServerId.value,
+  () => currentServerRef.value,
   () => {
     updateNavIndicator();
   },
 );
+
+// 便捷计算当前服务器标签
+const getCurrentServerLabel = computed(() => {
+  const cur = serverOptions.value.find((o) => o.value === currentServerRef.value);
+  return cur ? cur.label : i18n.t("common.select_server");
+});
 
 function isActive(path: string): boolean {
   if (path === "/") return route.path === "/";
   return route.path.startsWith(path);
 }
 
-const iconMap: Record<string, string> = {
-  home: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1H5z",
-  plus: "M12 4v16m8-8H4",
-  terminal: "M4 17l6-6-6-6m8 14h8",
-  settings:
-    "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4",
-  users:
-    "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
-  sliders:
-    "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4",
-  paint:
-    "M18 4h-3.5l-1-1h-5l-1 1H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M8 14a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm4 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm4 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
-  info: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-  chevron: "M15 19l-7-7 7-7",
-};
+// 图标已按需导入，模板中直接使用组件标签替代映射表
 </script>
 
 <template>
@@ -272,39 +318,48 @@ const iconMap: Record<string, string> = {
     </div>
 
     <nav class="sidebar-nav">
-      <!-- 服务器选择 -->
-      <div v-if="serverOptions.length > 0" class="server-selector">
-        <template v-if="!ui.sidebarCollapsed">
-          <SLSelect
-            :options="serverOptions"
-            :modelValue="currentServerId"
-            @update:modelValue="handleServerChange"
-            :placeholder="i18n.t('common.select_server')"
-            size="sm"
-          />
-        </template>
-        <template v-else>
-          <div class="server-selector-icon" @click="toggleServerBubble">
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <!-- 服务器图标 -->
-              <rect x="8" y="4" width="8" height="12" rx="1" />
-              <rect x="8" y="18" width="8" height="2" rx="1" />
-              <line x1="12" y1="16" x2="12" y2="18" />
-              <line x1="10" y1="8" x2="14" y2="8" />
-              <line x1="10" y1="12" x2="14" y2="12" />
-            </svg>
-          </div>
-        </template>
-      </div>
+      <!-- 服务器选择（Headless UI Listbox） -->
+      <Listbox v-if="serverOptions.length > 0" v-model="currentServerRef" class="server-selector" horizontal>
+        <div>
+          <ListboxButton
+            ref="listboxButton"
+            class="server-selector-button"
+            :aria-label="i18n.t('common.select_server')"
+            @click="updateOptionsPosition"
+            @focus="updateOptionsPosition"
+          >
+            <Server :size="20" :stroke-width="1.8" class="server-icon" />
+            <template v-if="!ui.sidebarCollapsed">
+              <div class="server-select-box">{{ getCurrentServerLabel }}</div>
+            </template>
+          </ListboxButton>
+
+          <!-- 将 ListboxOptions 渲染到 body（Portal），并使用固定定位样式 -->
+          <Portal>
+            <transition name="bubble">
+              <ListboxOptions
+                class="server-select-bubble-content-portal"
+                :style="optionsStyle"
+              >
+                <div class="server-select-bubble-body">
+                  <ListboxOption
+                    v-for="option in serverOptions"
+                    :key="option.value"
+                    :value="option.value"
+                    v-slot="{ selected }"
+                  >
+                    <div
+                      :class="['server-select-option', { active: option.value === currentServerRef }]"
+                    >
+                      {{ option.label }}
+                    </div>
+                  </ListboxOption>
+                </div>
+              </ListboxOptions>
+            </transition>
+          </Portal>
+        </div>
+      </Listbox>
 
       <!-- 导航激活指示器 -->
       <div class="nav-active-indicator" ref="navIndicator"></div>
@@ -312,132 +367,191 @@ const iconMap: Record<string, string> = {
       <!-- 主菜单组 -->
       <div class="nav-group">
         <div v-if="serverOptions.length > 0" class="nav-group-label"></div>
-        <div
-          v-for="item in navItems.filter((i) => i.group === 'main')"
-          :key="item.name"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
-          @click="navigateTo(item.path)"
-          :title="ui.sidebarCollapsed ? item.label : ''"
-        >
-          <svg
-            class="nav-icon"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <div>
+          <div
+            v-for="item in navItems.filter((i) => i.group === 'main')"
+            :key="item.name"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+            @click="navigateTo(item.path)"
+            :title="ui.sidebarCollapsed ? item.label : ''"
           >
-            <path :d="iconMap[item.icon] || iconMap.info" />
-          </svg>
-          <transition name="fade">
-            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
-          </transition>
+            <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
+            <Plus
+              v-else-if="item.icon === 'plus'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Terminal
+              v-else-if="item.icon === 'terminal'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Settings
+              v-else-if="item.icon === 'settings'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Users
+              v-else-if="item.icon === 'users'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Sliders
+              v-else-if="item.icon === 'sliders'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Palette
+              v-else-if="item.icon === 'paint'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
+            <transition name="fade">
+              <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+            </transition>
+          </div>
         </div>
       </div>
 
       <!-- 服务器菜单组 -->
       <div v-if="serverOptions.length > 0" class="nav-group">
         <div class="nav-group-label"></div>
-        <div
-          v-for="item in navItems.filter((i) => i.group === 'server')"
-          :key="item.name"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
-          @click="navigateTo(item.path)"
-          :title="ui.sidebarCollapsed ? item.label : ''"
-        >
-          <svg
-            class="nav-icon"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <div>
+          <div
+            v-for="item in navItems.filter((i) => i.group === 'server')"
+            :key="item.name"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+            @click="navigateTo(item.path)"
+            :title="ui.sidebarCollapsed ? item.label : ''"
           >
-            <path :d="iconMap[item.icon] || iconMap.info" />
-          </svg>
-          <transition name="fade">
-            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
-          </transition>
+            <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
+            <Plus
+              v-else-if="item.icon === 'plus'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Terminal
+              v-else-if="item.icon === 'terminal'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Settings
+              v-else-if="item.icon === 'settings'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Users
+              v-else-if="item.icon === 'users'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Sliders
+              v-else-if="item.icon === 'sliders'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Palette
+              v-else-if="item.icon === 'paint'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
+            <transition name="fade">
+              <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+            </transition>
+          </div>
         </div>
       </div>
 
       <!-- 系统菜单组 -->
       <div class="nav-group">
         <div class="nav-group-label"></div>
-        <div
-          v-for="item in navItems.filter((i) => i.group === 'system')"
-          :key="item.name"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
-          @click="navigateTo(item.path)"
-          :title="ui.sidebarCollapsed ? item.label : ''"
-        >
-          <svg
-            class="nav-icon"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <div>
+          <div
+            v-for="item in navItems.filter((i) => i.group === 'system')"
+            :key="item.name"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+            @click="navigateTo(item.path)"
+            :title="ui.sidebarCollapsed ? item.label : ''"
           >
-            <path :d="iconMap[item.icon] || iconMap.info" />
-          </svg>
-          <transition name="fade">
-            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
-          </transition>
+            <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
+            <Plus
+              v-else-if="item.icon === 'plus'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Terminal
+              v-else-if="item.icon === 'terminal'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Settings
+              v-else-if="item.icon === 'settings'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Users
+              v-else-if="item.icon === 'users'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Sliders
+              v-else-if="item.icon === 'sliders'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Palette
+              v-else-if="item.icon === 'paint'"
+              class="nav-icon"
+              :size="20"
+              :stroke-width="1.8"
+            />
+            <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
+            <transition name="fade">
+              <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+            </transition>
+          </div>
         </div>
       </div>
     </nav>
 
-    <!-- 弹出的服务器选择气泡 -->
-    <Transition name="bubble">
-      <div v-if="showServerBubble && ui.sidebarCollapsed" class="server-select-bubble" @click.stop>
-        <div class="server-select-bubble-content">
-          <div class="server-select-bubble-header">
-            <h3>选择服务器</h3>
-          </div>
-          <div class="server-select-bubble-body">
-            <div
-              v-for="option in serverOptions"
-              :key="option.value"
-              class="server-select-option"
-              :class="{ active: option.value === currentServerId }"
-              @click="selectServer(option.value)"
-            >
-              {{ option.label }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
 
     <div class="sidebar-footer">
+      <div class="nav-item" @click="navigateTo('/about')" :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''">
+        <Info class="nav-icon" :size="20" :stroke-width="1.8" />
+        <transition name="fade">
+          <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
+        </transition>
+      </div>
       <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
-        <svg
+        <ChevronLeft
           class="nav-icon"
           :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : '' }"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path :d="iconMap.chevron" />
-        </svg>
+          :size="20"
+          :stroke-width="1.8"
+        />
         <transition name="fade">
           <span v-if="!ui.sidebarCollapsed" class="nav-label">{{
             i18n.t("sidebar.collapse_btn")
@@ -459,7 +573,7 @@ const iconMap: Record<string, string> = {
   flex-direction: column;
   z-index: 100;
   border-right: 1px solid var(--sl-border-light);
-  transition: width var(--sl-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: width;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -523,6 +637,7 @@ const iconMap: Record<string, string> = {
   margin-bottom: var(--sl-space-sm);
   display: flex;
   justify-content: center;
+  position: relative;
 }
 
 .server-selector-label {
@@ -536,13 +651,64 @@ const iconMap: Record<string, string> = {
   margin-bottom: var(--sl-space-xs);
 }
 
-.server-selector :deep(.sl-select) {
+.server-selector-button {
   width: 100%;
+  padding: 8px 8px;
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background-color: var(--sl-surface);
+  transition: all var(--sl-transition-fast);
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sl-space-sm);
+  min-height: 40px;
+  white-space: nowrap;
+  margin-top: 5px;
 }
 
-.server-selector :deep(.sl-select__input) {
-  font-size: 0.8125rem;
+.server-select-box {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--sl-text-secondary);
+  transition: color var(--sl-transition-fast);
 }
+
+.sidebar.collapsed .server-selector-button {
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sl-space-xs);
+  border: none;
+  background-color: transparent;
+  min-height: 40px;
+  gap: 0;
+}
+
+.server-icon {
+  color: var(--sl-text-secondary);
+  transition: color var(--sl-transition-fast);
+}
+
+.server-selector-button:hover {
+  background-color: var(--sl-primary-bg);
+  color: var(--sl-primary);
+}
+
+.server-selector-button:hover .server-icon {
+  color: var(--sl-primary);
+}
+
+.server-selector-button:hover .server-select-box {
+  color: var(--sl-primary);
+}
+
+
 
 .server-selector-icon {
   padding: 8px;
@@ -562,16 +728,25 @@ const iconMap: Record<string, string> = {
 }
 
 /* 弹出的服务器选择气泡 */
-.server-select-bubble {
-  position: fixed;
-  left: var(--sl-sidebar-collapsed-width, 60px);
-  top: 60px;
-  z-index: 9999;
-  pointer-events: none;
-}
-
 .server-select-bubble-content {
   pointer-events: auto;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  z-index: 9999;
+}
+
+/* Portal 渲染时使用固定定位（相对于视口） */
+.server-select-bubble-content-portal {
+  position: fixed;
+  pointer-events: auto;
+  z-index: 9999;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-sm);
+  box-shadow: var(--sl-shadow-lg);
 }
 
 /* 气泡动画 */
@@ -582,28 +757,27 @@ const iconMap: Record<string, string> = {
 
 .bubble-enter-from {
   opacity: 0;
-  transform: translateX(-10px) scale(0.95);
+  transform: translateY(-10px) scale(0.95);
 }
 
 .bubble-leave-to {
   opacity: 0;
-  transform: translateX(-10px) scale(0.9);
+  transform: translateY(-10px) scale(0.9);
 }
 
 .bubble-enter-to,
 .bubble-leave-from {
   opacity: 1;
-  transform: translateX(0) scale(1);
+  transform: translateY(0) scale(1);
 }
 
 .server-select-bubble-content {
   background: var(--sl-surface);
   border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-lg);
-  padding: var(--sl-space-lg);
-  width: 300px;
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-sm);
+  width: 200px;
   box-shadow: var(--sl-shadow-lg);
-  position: relative;
 }
 
 .server-select-bubble-header h3 {
@@ -632,18 +806,9 @@ const iconMap: Record<string, string> = {
   color: var(--sl-text-primary);
 }
 
-.server-select-bubble-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sl-space-md);
-}
 
-.server-select-bubble-header h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-}
+
+
 
 .bubble-close {
   background: none;
@@ -664,7 +829,7 @@ const iconMap: Record<string, string> = {
 }
 
 .server-select-option {
-  padding: 10px 14px;
+  padding: 10px;
   border-radius: var(--sl-radius-md);
   cursor: pointer;
   color: var(--sl-text-secondary);
@@ -731,6 +896,8 @@ const iconMap: Record<string, string> = {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 20px;
+  height: 20px;
 }
 
 .nav-label {

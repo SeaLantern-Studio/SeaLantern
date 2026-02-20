@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue";
+import { ChevronDown } from 'lucide-vue-next';
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
 import SLModal from "../components/common/SLModal.vue";
 import SLSelect from "../components/common/SLSelect.vue";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 import {
   settingsApi,
   checkAcrylicSupport,
@@ -16,262 +17,7 @@ import {
 } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-
-// 预设主题颜色定义
-const presetThemes = {
-  default: {
-    light: {
-      bg: "#f8fafc",
-      bgSecondary: "#f1f5f9",
-      bgTertiary: "#e2e8f0",
-      primary: "#0ea5e9",
-      secondary: "#06b6d4",
-      textPrimary: "#0f172a",
-      textSecondary: "#475569",
-      border: "#e2e8f0",
-    },
-    dark: {
-      bg: "#0f1117",
-      bgSecondary: "#1a1d28",
-      bgTertiary: "#242836",
-      primary: "#60a5fa",
-      secondary: "#22d3ee",
-      textPrimary: "#e2e8f0",
-      textSecondary: "#94a3b8",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-    light_acrylic: {
-      bg: "rgba(248, 250, 252, 0.7)",
-      bgSecondary: "rgba(241, 245, 249, 0.6)",
-      bgTertiary: "rgba(226, 232, 240, 0.5)",
-      primary: "#0ea5e9",
-      secondary: "#06b6d4",
-      textPrimary: "#0f172a",
-      textSecondary: "#475569",
-      border: "#e2e8f0",
-    },
-    dark_acrylic: {
-      bg: "rgba(15, 17, 23, 0.7)",
-      bgSecondary: "rgba(26, 29, 40, 0.6)",
-      bgTertiary: "rgba(36, 40, 54, 0.5)",
-      primary: "#60a5fa",
-      secondary: "#22d3ee",
-      textPrimary: "#e2e8f0",
-      textSecondary: "#94a3b8",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-  },
-  midnight: {
-    light: {
-      bg: "#f0f4f8",
-      bgSecondary: "#e2e8f0",
-      bgTertiary: "#cbd5e1",
-      primary: "#3b82f6",
-      secondary: "#6366f1",
-      textPrimary: "#0f172a",
-      textSecondary: "#475569",
-      border: "#e2e8f0",
-    },
-    dark: {
-      bg: "#0f172a",
-      bgSecondary: "#1e293b",
-      bgTertiary: "#334155",
-      primary: "#60a5fa",
-      secondary: "#818cf8",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-    light_acrylic: {
-      bg: "rgba(240, 244, 248, 0.7)",
-      bgSecondary: "rgba(226, 232, 240, 0.6)",
-      bgTertiary: "rgba(203, 213, 225, 0.5)",
-      primary: "#3b82f6",
-      secondary: "#6366f1",
-      textPrimary: "#0f172a",
-      textSecondary: "#475569",
-      border: "#e2e8f0",
-    },
-    dark_acrylic: {
-      bg: "rgba(15, 23, 42, 0.7)",
-      bgSecondary: "rgba(30, 41, 59, 0.6)",
-      bgTertiary: "rgba(51, 65, 85, 0.5)",
-      primary: "#60a5fa",
-      secondary: "#818cf8",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-  },
-  forest: {
-    light: {
-      bg: "#f0fdf4",
-      bgSecondary: "#dcfce7",
-      bgTertiary: "#bbf7d0",
-      primary: "#10b981",
-      secondary: "#059669",
-      textPrimary: "#064e3b",
-      textSecondary: "#15803d",
-      border: "#dcfce7",
-    },
-    dark: {
-      bg: "#064e3b",
-      bgSecondary: "#065f46",
-      bgTertiary: "#047857",
-      primary: "#34d399",
-      secondary: "#10b981",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-    light_acrylic: {
-      bg: "rgba(240, 253, 244, 0.7)",
-      bgSecondary: "rgba(220, 252, 231, 0.6)",
-      bgTertiary: "rgba(187, 247, 208, 0.5)",
-      primary: "#10b981",
-      secondary: "#059669",
-      textPrimary: "#064e3b",
-      textSecondary: "#15803d",
-      border: "#dcfce7",
-    },
-    dark_acrylic: {
-      bg: "rgba(6, 78, 59, 0.7)",
-      bgSecondary: "rgba(6, 95, 70, 0.6)",
-      bgTertiary: "rgba(4, 120, 87, 0.5)",
-      primary: "#34d399",
-      secondary: "#10b981",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-  },
-  sunset: {
-    light: {
-      bg: "#fffbeb",
-      bgSecondary: "#fef3c7",
-      bgTertiary: "#fde68a",
-      primary: "#f97316",
-      secondary: "#ea580c",
-      textPrimary: "#7c2d12",
-      textSecondary: "#9a3412",
-      border: "#fef3c7",
-    },
-    dark: {
-      bg: "#7c2d12",
-      bgSecondary: "#9a3412",
-      bgTertiary: "#b45309",
-      primary: "#fb923c",
-      secondary: "#fdba74",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-    light_acrylic: {
-      bg: "rgba(255, 251, 235, 0.7)",
-      bgSecondary: "rgba(254, 243, 199, 0.6)",
-      bgTertiary: "rgba(253, 230, 138, 0.5)",
-      primary: "#f97316",
-      secondary: "#ea580c",
-      textPrimary: "#7c2d12",
-      textSecondary: "#9a3412",
-      border: "#fef3c7",
-    },
-    dark_acrylic: {
-      bg: "rgba(124, 45, 18, 0.7)",
-      bgSecondary: "rgba(154, 52, 18, 0.6)",
-      bgTertiary: "rgba(180, 83, 9, 0.5)",
-      primary: "#fb923c",
-      secondary: "#fdba74",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-  },
-  ocean: {
-    light: {
-      bg: "#f0fdfa",
-      bgSecondary: "#ccfbf1",
-      bgTertiary: "#99f6e4",
-      primary: "#06b6d4",
-      secondary: "#0891b2",
-      textPrimary: "#0e7490",
-      textSecondary: "#155e75",
-      border: "#ccfbf1",
-    },
-    dark: {
-      bg: "#0e7490",
-      bgSecondary: "#0c4a6e",
-      bgTertiary: "#0891b2",
-      primary: "#22d3ee",
-      secondary: "#67e8f9",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-    light_acrylic: {
-      bg: "rgba(240, 253, 250, 0.7)",
-      bgSecondary: "rgba(204, 251, 241, 0.6)",
-      bgTertiary: "rgba(153, 246, 228, 0.5)",
-      primary: "#06b6d4",
-      secondary: "#0891b2",
-      textPrimary: "#0e7490",
-      textSecondary: "#155e75",
-      border: "#ccfbf1",
-    },
-    dark_acrylic: {
-      bg: "rgba(14, 116, 144, 0.7)",
-      bgSecondary: "rgba(12, 74, 110, 0.6)",
-      bgTertiary: "rgba(8, 145, 178, 0.5)",
-      primary: "#22d3ee",
-      secondary: "#67e8f9",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-  },
-  rose: {
-    light: {
-      bg: "#fdf2f8",
-      bgSecondary: "#fce7f3",
-      bgTertiary: "#fbcfe8",
-      primary: "#ec4899",
-      secondary: "#db2777",
-      textPrimary: "#831843",
-      textSecondary: "#9f1239",
-      border: "#fce7f3",
-    },
-    dark: {
-      bg: "#831843",
-      bgSecondary: "#9f1239",
-      bgTertiary: "#be123c",
-      primary: "#f472b6",
-      secondary: "#f9a8d4",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-    light_acrylic: {
-      bg: "rgba(253, 242, 248, 0.7)",
-      bgSecondary: "rgba(252, 231, 243, 0.6)",
-      bgTertiary: "rgba(251, 207, 232, 0.5)",
-      primary: "#ec4899",
-      secondary: "#db2777",
-      textPrimary: "#831843",
-      textSecondary: "#9f1239",
-      border: "#fce7f3",
-    },
-    dark_acrylic: {
-      bg: "rgba(131, 24, 67, 0.7)",
-      bgSecondary: "rgba(159, 18, 57, 0.6)",
-      bgTertiary: "rgba(190, 18, 60, 0.5)",
-      primary: "#f472b6",
-      secondary: "#f9a8d4",
-      textPrimary: "#f1f5f9",
-      textSecondary: "#cbd5e1",
-      border: "rgba(255, 255, 255, 0.1)",
-    },
-  },
-};
+import { getAllThemes, getThemeById, getThemeOptions, mapLegacyPlanName, type ColorPlan } from "../themes";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
@@ -301,15 +47,13 @@ const backgroundSizeOptions = computed(() => [
   { label: i18n.t("settings.background_size_options.auto"), value: "auto" },
 ]);
 
-const colorOptions = computed(() => [
-  { label: i18n.t("settings.color_options.default"), value: "default" },
-  { label: i18n.t("settings.color_options.midnight"), value: "midnight" },
-  { label: i18n.t("settings.color_options.forest"), value: "forest" },
-  { label: i18n.t("settings.color_options.sunset"), value: "sunset" },
-  { label: i18n.t("settings.color_options.ocean"), value: "ocean" },
-  { label: i18n.t("settings.color_options.rose"), value: "rose" },
-  { label: i18n.t("settings.color_options.custom"), value: "custom" },
-]);
+const colorOptions = computed(() => {
+  const themes = getThemeOptions();
+  return [
+    ...themes,
+    { label: i18n.t("settings.color_options.custom"), value: "custom" },
+  ];
+});
 
 const editColorOptions = computed(() => [
   { label: i18n.t("settings.edit_colorplan_options.light"), value: "light" },
@@ -375,11 +119,11 @@ const colorSchemes: Record<
   },
 };
 
-const themeOptions = [
+const themeOptions = computed(() => [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
   { label: i18n.t("settings.theme_options.light"), value: "light" },
   { label: i18n.t("settings.theme_options.dark"), value: "dark" },
-];
+]);
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("settings.font_family_default"), value: "" },
@@ -1118,6 +862,17 @@ onMounted(async () => {
   }
   // 应用初始颜色
   applyColors();
+
+  // 监听设置更新事件
+  window.addEventListener("settings-updated", loadSettings);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("settings-updated", loadSettings);
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
 });
 
 async function loadSystemFonts() {
@@ -1170,7 +925,19 @@ async function loadSettings() {
 }
 
 function markChanged() {
-  saveSettings();
+  debouncedSave();
+}
+
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSave() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+  saveTimeout = setTimeout(() => {
+    saveSettings();
+    saveTimeout = null;
+  }, 500);
 }
 
 function getEffectiveTheme(theme: string): "light" | "dark" {
@@ -1382,72 +1149,73 @@ async function handleThemeChange() {
 
   // 如果选择了预设主题，更新颜色值
   if (settings.value.color !== "custom") {
-    const preset = settings.value.color;
+    const theme = getThemeById(settings.value.color);
+    if (theme) {
+      // 颜色方案映射
+      const colorPlans: Array<'light' | 'dark' | 'lightAcrylic' | 'darkAcrylic'> = ['light', 'dark', 'lightAcrylic', 'darkAcrylic'];
+      const legacyPlans = ['light', 'dark', 'light_acrylic', 'dark_acrylic'];
 
-    // 颜色方案映射
-    const colorPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
+      // 颜色类型映射
+      const colorTypes = {
+        bg: {
+          light: "bg_color",
+          dark: "bg_dark",
+          light_acrylic: "bg_acrylic",
+          dark_acrylic: "bg_dark_acrylic",
+        },
+        bgSecondary: {
+          light: "bg_secondary_color",
+          dark: "bg_secondary_dark",
+          light_acrylic: "bg_secondary_acrylic",
+          dark_acrylic: "bg_secondary_dark_acrylic",
+        },
+        bgTertiary: {
+          light: "bg_tertiary_color",
+          dark: "bg_tertiary_dark",
+          light_acrylic: "bg_tertiary_acrylic",
+          dark_acrylic: "bg_tertiary_dark_acrylic",
+        },
+        primary: {
+          light: "primary_color",
+          dark: "primary_dark",
+          light_acrylic: "primary_acrylic",
+          dark_acrylic: "primary_dark_acrylic",
+        },
+        secondary: {
+          light: "secondary_color",
+          dark: "secondary_dark",
+          light_acrylic: "secondary_acrylic",
+          dark_acrylic: "secondary_dark_acrylic",
+        },
+        textPrimary: {
+          light: "text_primary_color",
+          dark: "text_primary_dark",
+          light_acrylic: "text_primary_acrylic",
+          dark_acrylic: "text_primary_dark_acrylic",
+        },
+        textSecondary: {
+          light: "text_secondary_color",
+          dark: "text_secondary_dark",
+          light_acrylic: "text_secondary_acrylic",
+          dark_acrylic: "text_secondary_dark_acrylic",
+        },
+        border: {
+          light: "border_color",
+          dark: "border_dark",
+          light_acrylic: "border_acrylic",
+          dark_acrylic: "border_dark_acrylic",
+        },
+      };
 
-    // 颜色类型映射
-    const colorTypes = {
-      bg: {
-        light: "bg_color",
-        dark: "bg_dark",
-        light_acrylic: "bg_acrylic",
-        dark_acrylic: "bg_dark_acrylic",
-      },
-      bgSecondary: {
-        light: "bg_secondary_color",
-        dark: "bg_secondary_dark",
-        light_acrylic: "bg_secondary_acrylic",
-        dark_acrylic: "bg_secondary_dark_acrylic",
-      },
-      bgTertiary: {
-        light: "bg_tertiary_color",
-        dark: "bg_tertiary_dark",
-        light_acrylic: "bg_tertiary_acrylic",
-        dark_acrylic: "bg_tertiary_dark_acrylic",
-      },
-      primary: {
-        light: "primary_color",
-        dark: "primary_dark",
-        light_acrylic: "primary_acrylic",
-        dark_acrylic: "primary_dark_acrylic",
-      },
-      secondary: {
-        light: "secondary_color",
-        dark: "secondary_dark",
-        light_acrylic: "secondary_acrylic",
-        dark_acrylic: "secondary_dark_acrylic",
-      },
-      textPrimary: {
-        light: "text_primary_color",
-        dark: "text_primary_dark",
-        light_acrylic: "text_primary_acrylic",
-        dark_acrylic: "text_primary_dark_acrylic",
-      },
-      textSecondary: {
-        light: "text_secondary_color",
-        dark: "text_secondary_dark",
-        light_acrylic: "text_secondary_acrylic",
-        dark_acrylic: "text_secondary_dark_acrylic",
-      },
-      border: {
-        light: "border_color",
-        dark: "border_dark",
-        light_acrylic: "border_acrylic",
-        dark_acrylic: "border_dark_acrylic",
-      },
-    };
-
-    // 更新所有颜色方案的颜色值
-    if (presetThemes[preset]) {
+      // 更新所有颜色方案的颜色值
       Object.keys(colorTypes).forEach((colorType) => {
-        colorPlans.forEach((plan) => {
-          const settingsKey = colorTypes[colorType][plan];
+        colorPlans.forEach((plan, index) => {
+          const legacyPlan = legacyPlans[index];
+          const settingsKey = colorTypes[colorType][legacyPlan];
           if (settingsKey && settings.value[settingsKey] !== undefined) {
-            const presetColors = presetThemes[preset][plan];
-            if (presetColors && presetColors[colorType]) {
-              settings.value[settingsKey] = presetColors[colorType];
+            const themeColors = theme[plan];
+            if (themeColors && themeColors[colorType]) {
+              settings.value[settingsKey] = themeColors[colorType];
             }
           }
         });
@@ -1664,16 +1432,7 @@ function clearBackgroundImage() {
                 <span class="setting-desc">{{ i18n.t("settings.color_editing_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: colorSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown :size="20" />
               </div>
             </div>
             <Transition name="collapse">
@@ -1933,16 +1692,7 @@ function clearBackgroundImage() {
                 <span class="setting-desc">{{ i18n.t("settings.background_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown :size="20" />
               </div>
             </div>
             <Transition name="collapse">

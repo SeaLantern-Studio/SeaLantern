@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { i18n } from "../../locales";
+import { computed } from "vue";
+import { i18n } from "../../language";
 import type { ServerCommand } from "../../types/server";
 
 interface Props {
@@ -15,7 +16,8 @@ const emit = defineEmits<{
   (e: "openEditCommandModal", cmd: ServerCommand): void;
 }>();
 
-const quickCommands = [
+// 使用计算属性，确保语言切换时自动更新
+const quickCommands = computed(() => [
   { label: i18n.t("common.command_day"), cmd: "time set day" },
   { label: i18n.t("common.command_night"), cmd: "time set night" },
   { label: i18n.t("common.command_clear"), cmd: "weather clear" },
@@ -26,7 +28,7 @@ const quickCommands = [
   { label: i18n.t("common.command_keep_inventory_on"), cmd: "gamerule keepInventory true" },
   { label: i18n.t("common.command_keep_inventory_off"), cmd: "gamerule keepInventory false" },
   { label: i18n.t("common.command_mob_griefing_off"), cmd: "gamerule mobGriefing false" },
-];
+]);
 </script>
 
 <template>

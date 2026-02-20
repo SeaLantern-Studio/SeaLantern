@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
-import { i18n } from "../../locales";
+import { i18n } from "../../language";
 import SLInput from "../common/SLInput.vue";
 
 interface Props {
@@ -59,6 +59,12 @@ watch(
   },
   { deep: true },
 );
+
+// 监听语言变化，更新指示器位置
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, () => {
+  updateTabIndicator();
+});
 
 // 组件挂载后初始化指示器位置
 onMounted(() => {

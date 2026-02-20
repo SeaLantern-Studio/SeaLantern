@@ -10,23 +10,31 @@ import { useConsoleStore } from "../stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
 import { TIME, MESSAGES } from "../utils/constants";
 import { validatePlayerName, handleError } from "../utils/errorHandler";
-import { i18n } from "../locales";
+import { i18n } from "../language";
+import { useMessage } from "../composables/useMessage";
+import { useLoading } from "../composables/useAsync";
+import { useTabIndicator } from "../composables/useTabIndicator";
 
 const route = useRoute();
 const store = useServerStore();
 const consoleStore = useConsoleStore();
 
 const activeTab = ref<"online" | "whitelist" | "banned" | "ops">("online");
-const tabIndicator = ref<HTMLElement | null>(null);
+const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } = useTabIndicator(activeTab);
 
 const whitelist = ref<PlayerEntry[]>([]);
 const bannedPlayers = ref<BanEntry[]>([]);
 const ops = ref<OpEntry[]>([]);
 const onlinePlayers = ref<string[]>([]);
 
-const loading = ref(false);
-const error = ref<string | null>(null);
-const success = ref<string | null>(null);
+const { loading, withLoading } = useLoading();
+const { error, success, showError, showSuccess, clear: clearMessage } = useMessage();
+
+// 监听语言变化，更新 Tab 指示器位置
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, () => {
+  updateTabIndicator();
+});
 
 const showAddModal = ref(false);
 const addPlayerName = ref("");
@@ -90,17 +98,11 @@ watch(
 
 async function loadAll() {
   if (!serverPath.value) return;
-  loading.value = true;
-  error.value = null;
-  try {
+  await withLoading(async () => {
     whitelist.value = await playerApi.getWhitelist(serverPath.value);
     bannedPlayers.value = await playerApi.getBannedPlayers(serverPath.value);
     ops.value = await playerApi.getOps(serverPath.value);
-  } catch (e) {
-    error.value = String(e);
-  } finally {
-    loading.value = false;
-  }
+  });
 }
 
 function parseOnlinePlayers() {
@@ -143,44 +145,41 @@ function openAddModal() {
 }
 
 async function handleAdd() {
-  // 验证玩家名
   const validation = validatePlayerName(addPlayerName.value);
   if (!validation.valid) {
-    error.value = validation.error || MESSAGES.ERROR.INVALID_PLAYER_NAME;
+    showError(validation.error || MESSAGES.ERROR.INVALID_PLAYER_NAME);
     return;
   }
 
   if (!isRunning.value) {
-    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
 
   addLoading.value = true;
-  error.value = null;
   try {
     const sid = store.currentServerId;
     if (!sid) return;
     switch (activeTab.value) {
       case "whitelist":
         await playerApi.addToWhitelist(sid, addPlayerName.value);
-        success.value = MESSAGES.SUCCESS.WHITELIST_ADDED;
+        showSuccess(MESSAGES.SUCCESS.WHITELIST_ADDED);
         break;
       case "banned":
         await playerApi.banPlayer(sid, addPlayerName.value, addBanReason.value);
-        success.value = MESSAGES.SUCCESS.PLAYER_BANNED;
+        showSuccess(MESSAGES.SUCCESS.PLAYER_BANNED);
         break;
       case "ops":
         await playerApi.addOp(sid, addPlayerName.value);
-        success.value = MESSAGES.SUCCESS.OP_ADDED;
+        showSuccess(MESSAGES.SUCCESS.OP_ADDED);
         break;
     }
     showAddModal.value = false;
     setTimeout(() => {
-      success.value = null;
       loadAll();
     }, TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    error.value = handleError(e, "AddPlayer");
+    showError(handleError(e, "AddPlayer"));
   } finally {
     addLoading.value = false;
   }
@@ -190,18 +189,15 @@ async function handleRemoveWhitelist(name: string) {
   const sid = store.currentServerId;
   if (!sid) return;
   if (!isRunning.value) {
-    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
   try {
     await playerApi.removeFromWhitelist(sid, name);
-    success.value = MESSAGES.SUCCESS.WHITELIST_REMOVED;
-    setTimeout(() => {
-      success.value = null;
-      loadAll();
-    }, TIME.SUCCESS_MESSAGE_DURATION);
+    showSuccess(MESSAGES.SUCCESS.WHITELIST_REMOVED);
+    setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    error.value = handleError(e, "RemoveWhitelist");
+    showError(handleError(e, "RemoveWhitelist"));
   }
 }
 
@@ -209,18 +205,15 @@ async function handleUnban(name: string) {
   const sid = store.currentServerId;
   if (!sid) return;
   if (!isRunning.value) {
-    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
   try {
     await playerApi.unbanPlayer(sid, name);
-    success.value = MESSAGES.SUCCESS.PLAYER_UNBANNED;
-    setTimeout(() => {
-      success.value = null;
-      loadAll();
-    }, TIME.SUCCESS_MESSAGE_DURATION);
+    showSuccess(MESSAGES.SUCCESS.PLAYER_UNBANNED);
+    setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    error.value = handleError(e, "UnbanPlayer");
+    showError(handleError(e, "UnbanPlayer"));
   }
 }
 
@@ -228,18 +221,15 @@ async function handleRemoveOp(name: string) {
   const sid = store.currentServerId;
   if (!sid) return;
   if (!isRunning.value) {
-    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
   try {
     await playerApi.removeOp(sid, name);
-    success.value = MESSAGES.SUCCESS.OP_REMOVED;
-    setTimeout(() => {
-      success.value = null;
-      loadAll();
-    }, TIME.SUCCESS_MESSAGE_DURATION);
+    showSuccess(MESSAGES.SUCCESS.OP_REMOVED);
+    setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    error.value = handleError(e, "RemoveOp");
+    showError(handleError(e, "RemoveOp"));
   }
 }
 
@@ -247,18 +237,15 @@ async function handleKick(name: string) {
   const sid = store.currentServerId;
   if (!sid) return;
   if (!isRunning.value) {
-    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
   try {
     await playerApi.kickPlayer(sid, name);
-    success.value = `${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`;
-    setTimeout(() => {
-      success.value = null;
-      parseOnlinePlayers();
-    }, TIME.SUCCESS_MESSAGE_DURATION);
+    showSuccess(`${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`);
+    setTimeout(() => parseOnlinePlayers(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    error.value = handleError(e, "KickPlayer");
+    showError(handleError(e, "KickPlayer"));
   }
 }
 
@@ -275,36 +262,10 @@ function getAddLabel(): string {
   }
 }
 
-// 选择标签并更新指示器位置
 function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
   activeTab.value = tab;
   updateTabIndicator();
 }
-
-// 更新标签指示器位置
-function updateTabIndicator() {
-  setTimeout(() => {
-    if (!tabIndicator.value) return;
-
-    const activeTabBtn = document.querySelector(".tab-btn.active");
-    if (activeTabBtn) {
-      const { offsetLeft, offsetWidth } = activeTabBtn as HTMLElement;
-      tabIndicator.value.style.left = `${offsetLeft}px`;
-      tabIndicator.value.style.width = `${offsetWidth}px`;
-    }
-  }, 100); // 添加延迟，确保DOM已完全渲染
-}
-
-// 监听标签变化，更新指示器位置
-watch(activeTab, () => {
-  updateTabIndicator();
-});
-
-// 组件挂载后初始化指示器位置
-onMounted(() => {
-  // 原有代码...
-  updateTabIndicator();
-});
 </script>
 
 <template>
@@ -328,7 +289,7 @@ onMounted(() => {
     <template v-else>
       <div v-if="error" class="msg-banner error-banner">
         <span>{{ error }}</span>
-        <button @click="error = null">x</button>
+        <button @click="clearMessage('error')">x</button>
       </div>
       <div v-if="success" class="msg-banner success-banner">
         <span>{{ success }}</span>
@@ -377,7 +338,6 @@ onMounted(() => {
         <span>{{ i18n.t("config.loading") }}</span>
       </div>
 
-      <!-- Online Tab -->
       <div v-else-if="activeTab === 'online'" class="player-list">
         <div v-if="!isRunning" class="empty-list">
           <p class="text-caption">{{ i18n.t("players.server_offline") }}</p>
@@ -401,7 +361,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Whitelist Tab -->
       <div v-else-if="activeTab === 'whitelist'" class="player-list">
         <div v-if="whitelist.length === 0" class="empty-list">
           <p class="text-caption">{{ i18n.t("players.empty_whitelist") }}</p>
@@ -426,7 +385,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Banned Tab -->
       <div v-else-if="activeTab === 'banned'" class="player-list">
         <div v-if="bannedPlayers.length === 0" class="empty-list">
           <p class="text-caption">{{ i18n.t("players.empty_banned") }}</p>
@@ -454,7 +412,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- OPs Tab -->
       <div v-else-if="activeTab === 'ops'" class="player-list">
         <div v-if="ops.length === 0" class="empty-list">
           <p class="text-caption">{{ i18n.t("players.empty_ops") }}</p>

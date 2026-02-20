@@ -1,33 +1,20 @@
 import { computed, onMounted } from "vue";
 import { defineStore } from "pinia";
-import { i18n, type LocaleCode } from "../locales";
+import { i18n, type LocaleCode, setTranslations } from "../language";
 import { settingsApi } from "../api/settings";
+import { fetchLocale } from "../api/remoteLocales";
 
-const LOCALE_LABEL_KEYS: Record<LocaleCode, string> = {
+const LOCALE_LABEL_KEYS: Record<string, string> = {
   "zh-CN": "header.chinese",
   "en-US": "header.english",
   "zh-TW": "header.chinese_tw",
-  "zh-JB": "header.chinese_jb",
-  "zh-NE": "header.chinese_dongbei",
   "de-DE": "header.deutsch",
-  "en-AU": "header.aussie",
-  "en-GB": "header.british",
-  "en-PT": "header.pirate",
-  "en-UN": "header.upsidedown",
   "es-ES": "header.spanish",
   "ja-JP": "header.japanese",
   "ru-RU": "header.russian",
   "vi-VN": "header.vietnamese",
-  "zh-CT": "header.cantonese",
-  "zh-CY": "header.chinese_cy",
-  "zh-HN": "header.chinese_hn",
-  "zh-JL": "header.chinese_jl",
-  "zh-ME": "header.chinese_meow",
-  "zh-MN": "header.chinese_hokkien",
-  "zh-TJ": "header.chinese_tj",
-  "zh-WU": "header.chinese_wu",
-  "ja-KS": "header.kansaiben",
-  "ja-HK": "header.hokkaidou",
+  "ko-KR": "header.korean",
+  "fr-FA": "header.french"
 };
 
 export const useI18nStore = defineStore("i18n", () => {
@@ -47,10 +34,11 @@ export const useI18nStore = defineStore("i18n", () => {
     })),
   );
 
+
+
   async function setLocale(nextLocale: string) {
     if (i18n.isSupportedLocale(nextLocale)) {
       i18n.setLocale(nextLocale);
-      // 保存语言设置到持久化存储
       try {
         const settings = await settingsApi.get();
         settings.language = nextLocale;
@@ -61,13 +49,24 @@ export const useI18nStore = defineStore("i18n", () => {
     }
   }
 
+  async function downloadLocale(localeCode: string) {
+    if (!i18n.isSupportedLocale(localeCode)) return;
+    try {
+      // 直接从本地加载语言文件
+      let data: any = null;
+      data = await fetchLocale(localeCode as LocaleCode);
+      setTranslations(localeCode as any, data as any);
+    } catch (e) {
+      console.error("Failed to load locale:", localeCode, e);
+    }
+  }
+
   function toggleLocale() {
     const currentIndex = supportedLocales.indexOf(localeRef.value);
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % supportedLocales.length;
     setLocale(supportedLocales[nextIndex]);
   }
 
-  // 从持久化存储加载语言设置
   async function loadLanguageSetting() {
     try {
       const settings = await settingsApi.get();
@@ -79,7 +78,6 @@ export const useI18nStore = defineStore("i18n", () => {
     }
   }
 
-  // 组件挂载时加载语言设置
   onMounted(() => {
     loadLanguageSetting();
   });
@@ -95,5 +93,6 @@ export const useI18nStore = defineStore("i18n", () => {
     setLocale,
     toggleLocale,
     loadLanguageSetting,
+    downloadLocale,
   };
 });

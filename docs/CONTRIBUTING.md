@@ -65,6 +65,15 @@
    - 避免硬编码颜色值
    - 使用 scoped 样式
 
+### UI 组件与图标
+
+- **优先使用 Headless UI（Vue v1）与按需导入的图标库（如 Lucide）**：
+  - Headless UI（https://headlessui.com/v1/vue）提供无样式、可访问性的交互组件（如 `Listbox`、`Disclosure`、`Dialog`），推荐在需要复杂交互（弹出、折叠、可访问键盘支持）时优先复用它们，以减少手写 DOM 与键盘/ARIA 处理。
+  - 图标使用可按需导入的组件库（如 Lucide：https://lucide.dev/icons/ 或示例图标 https://lucide.dev/icons/paint-roller?search=Palette），不要在项目中大量硬编码 `<svg>` 路径或重复 DOM。按需导入能保持包体积小并提高可维护性。
+  - 推荐实践：使用 Headless UI 的 `Listbox` 替换自定义下拉/选择器；使用 Lucide 的图标组件（如 `Palette` / `Paint-roller`）替换硬编码图标。
+
+  这样可减少冗余 DOM、统一可访问性处理，并把样式与行为分离，便于维护。
+
 ## Git 工作流
 
 ### 分支命名

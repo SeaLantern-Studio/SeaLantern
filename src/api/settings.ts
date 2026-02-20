@@ -23,6 +23,7 @@ export interface AppSettings {
   font_family: string;
   color: string;
   language: string;
+  locales_base_url?: string;
   developer_mode: boolean;
   close_action: string; // ask, minimize, close
   bg_color?: string;
