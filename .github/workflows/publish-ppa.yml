@@ -185,6 +185,12 @@ jobs:
           echo "default-key $GPG_FINGERPRINT" >> "$GNUPGHOME/gpg.conf"
           echo "pinentry-mode loopback" >> "$GNUPGHOME/gpg.conf"
           
+          # Trust the key ultimately (fix signature verification issues)
+          echo -e "5\ny\n" | gpg --homedir "$GNUPGHOME" --batch --command-fd 0 --edit-key "$GPG_FINGERPRINT" trust
+          
+          # Verify key is trusted
+          gpg --homedir "$GNUPGHOME" --list-keys "$GPG_FINGERPRINT"
+          
           # Build and sign in one step
           cd sealantern-${VERSION}
           echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | debuild -S -k"$GPG_FINGERPRINT" -p"gpg --homedir $GNUPGHOME --batch --yes --pinentry-mode loopback --passphrase-fd 0"
