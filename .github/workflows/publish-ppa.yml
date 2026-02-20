@@ -53,7 +53,7 @@ jobs:
         if: steps.check_release.outputs.FOUND == 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gnupg dput dh-make devscripts dpkg-dev wget
+          sudo apt-get install -y build-essential debhelper gnupg dput dh-make devscripts dpkg-dev wget fakeroot
 
       - name: Setup GPG
         if: steps.check_release.outputs.FOUND == 'true'
