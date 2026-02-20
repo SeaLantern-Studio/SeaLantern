@@ -1,0 +1,188 @@
+name: Sync and Publish to PPA
+
+on:
+  # 每6小时检查一次上游是否有新 release
+  schedule:
+    - cron: '0 */6 * * *'
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 0.6.5)'
+        required: false
+
+env:
+  UPSTREAM_REPO: SeaLantern-Studio/SeaLantern
+  PPA_NAME: ppa:brianeee7878/sealantern
+
+jobs:
+  check-and-publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check latest upstream release
+        id: check_release
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            # 手动指定版本
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="sea-lantern-v${VERSION}"
+            echo "Using manually specified version: $VERSION"
+          else
+            # 自动检测最新 release
+            RELEASE_INFO=$(curl -s https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/releases/latest)
+            TAG_NAME=$(echo "$RELEASE_INFO" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4)
+            VERSION=$(echo "$TAG_NAME" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+            echo "Latest upstream release: $TAG_NAME (version: $VERSION)"
+          fi
+          
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          
+          # 检查 deb 包是否存在
+          DEB_URL="https://github.com/${{ env.UPSTREAM_REPO }}/releases/download/${TAG_NAME}/Sea.Lantern_${VERSION}_amd64.deb"
+          echo "DEB_URL=$DEB_URL" >> $GITHUB_OUTPUT
+          
+          # 测试下载链接
+          if curl --head --silent --fail "$DEB_URL" > /dev/null; then
+            echo "✅ Deb package found at: $DEB_URL"
+            echo "FOUND=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Deb package not found at: $DEB_URL"
+            echo "FOUND=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies
+        if: steps.check_release.outputs.FOUND == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg dput dh-make devscripts dpkg-dev wget
+
+      - name: Setup GPG
+        if: steps.check_release.outputs.FOUND == 'true'
+        run: |
+          echo "${{ secrets.PPA_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+          echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
+          echo "✅ GPG key imported: $GPG_KEY_ID"
+
+      - name: Download deb package
+        if: steps.check_release.outputs.FOUND == 'true'
+        run: |
+          VERSION="${{ steps.check_release.outputs.VERSION }}"
+          DEB_URL="${{ steps.check_release.outputs.DEB_URL }}"
+          
+          echo "Downloading from: $DEB_URL"
+          wget -O "Sea.Lantern_${VERSION}_amd64.deb" "$DEB_URL"
+          
+          if [ -f "Sea.Lantern_${VERSION}_amd64.deb" ]; then
+            echo "✅ Downloaded successfully"
+            ls -lh "Sea.Lantern_${VERSION}_amd64.deb"
+          else
+            echo "❌ Download failed"
+            exit 1
+          fi
+
+      - name: Create source package
+        if: steps.check_release.outputs.FOUND == 'true'
+        run: |
+          VERSION="${{ steps.check_release.outputs.VERSION }}"
+          
+          mkdir -p sealantern-${VERSION}
+          cd sealantern-${VERSION}
+          
+          cp ../Sea.Lantern_${VERSION}_amd64.deb .
+          dpkg-deb -x Sea.Lantern_${VERSION}_amd64.deb extracted
+          
+          mkdir -p debian/source
+          
+          # 创建 debian/control
+          cat > debian/control << EOF
+          Source: sealantern
+          Section: utils
+          Priority: optional
+          Maintainer: Brian Ikun <2914651630@qq.com>
+          Build-Depends: debhelper-compat (= 12)
+          Standards-Version: 4.4.1
+          Homepage: https://github.com/SeaLantern-Studio/SeaLantern
+          
+          Package: sealantern
+          Architecture: amd64
+          Depends: ${shlibs:Depends}, ${misc:Depends},
+                   libwebkit2gtk-4.1-0, libgtk-3-0, libappindicator3-1,
+                   libssl3, ca-certificates
+          Description: Minecraft server management tool
+           Sea Lantern is a lightweight Minecraft server management tool
+           based on Tauri 2 + Rust + Vue 3.
+           .
+           This package is published from upstream releases to Ubuntu PPA.
+          EOF
+          
+          # 创建 debian/changelog
+          cat > debian/changelog << EOF
+          sealantern (${VERSION}) jammy; urgency=medium
+          
+            * New upstream release ${VERSION}
+            * Auto-synced from ${{ env.UPSTREAM_REPO }}
+          
+           -- Brian Ikun <2914651630@qq.com>  $(date -R)
+          EOF
+          
+          # 创建 debian/rules
+          cat > debian/rules << 'RULES'
+          #!/usr/bin/make -f
+          
+          %:
+          	dh $@
+          
+          override_dh_auto_build:
+          	# Binary already built by upstream
+          
+          override_dh_auto_install:
+          	dpkg-deb -x Sea.Lantern_*_amd64.deb debian/sealantern
+          RULES
+          chmod +x debian/rules
+          
+          echo "12" > debian/compat
+          echo "3.0 (native)" > debian/source/format
+          
+          # 创建 debian/copyright
+          cat > debian/copyright << EOF
+          Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+          Upstream-Name: sealantern
+          Source: https://github.com/SeaLantern-Studio/SeaLantern
+          
+          Files: *
+          Copyright: 2024-2025 SeaLantern Studio
+          License: GPL-3.0+
+           This program is free software: you can redistribute it and/or modify
+           it under the terms of the GNU General Public License as published by
+           the Free Software Foundation, either version 3 of the License, or
+           (at your option) any later version.
+          EOF
+          
+          cd ..
+          
+          # 构建源代码包
+          debuild -S -k${GPG_KEY_ID}
+          
+          echo "✅ Source package created"
+          ls -lh ../sealantern_${VERSION}*
+
+      - name: Upload to PPA
+        if: steps.check_release.outputs.FOUND == 'true'
+        run: |
+          VERSION="${{ steps.check_release.outputs.VERSION }}"
+          
+          echo "Uploading to ${{ env.PPA_NAME }}..."
+          dput ${{ env.PPA_NAME }} ../sealantern_${VERSION}_source.changes
+          
+          echo "✅ Successfully uploaded sealantern ${VERSION} to PPA"
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ steps.check_release.outputs.FOUND }}" == "false" ]; then
+            echo "⚠️ No deb package found for the specified version"
+            exit 0
+          fi
