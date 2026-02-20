@@ -163,14 +163,14 @@ jobs:
           
           cd ..
           
-          # Build source package (unsigned first, then sign manually)
+          # Build source package (unsigned first, then sign with debsign)
           cd sealantern-${VERSION}
           debuild -S -us -uc
           cd ..
           
-          # Sign the .changes and .dsc files manually
-          gpg --yes --armor --detach-sign --output sealantern_${VERSION}_source.changes.gpg sealantern_${VERSION}_source.changes
-          gpg --yes --armor --detach-sign --output sealantern_${VERSION}.dsc.gpg sealantern_${VERSION}.dsc
+          # Sign the package using debsign with GPG
+          export DEBSIGN_PROGRAM="gpg --batch --yes --pinentry-mode loopback"
+          debsign --re-sign -k${GPG_KEY_ID} sealantern_${VERSION}_source.changes
           
           echo "✅ Source package created"
           ls -lh sealantern_${VERSION}*
