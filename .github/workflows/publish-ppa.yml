@@ -59,12 +59,12 @@ jobs:
         if: steps.check_release.outputs.FOUND == 'true'
         run: |
           # Configure GPG for non-interactive mode
-          export GPG_TTY=$(tty)
           mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
           echo "use-agent" >> ~/.gnupg/gpg.conf
           echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
           echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          gpg-connect-agent reloadagent /bye
+          gpg-connect-agent reloadagent /bye 2>/dev/null || true
           
           # Import private key
           echo "${{ secrets.PPA_GPG_PRIVATE_KEY }}" | gpg --batch --yes --import
@@ -73,10 +73,10 @@ jobs:
           GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
           echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
           
-          # Trust the key ultimately
-          echo -e "5\ny\n" | gpg --command-fd 0 --edit-key $GPG_KEY_ID trust
+          # Trust the key ultimately (non-interactive)
+          echo -e "5\ny\n" | gpg --batch --command-fd 0 --edit-key $GPG_KEY_ID trust 2>/dev/null || true
           
-          echo "✅ GPG key imported and trusted: $GPG_KEY_ID"
+          echo "✅ GPG key imported: $GPG_KEY_ID"
 
       - name: Download deb package
         if: steps.check_release.outputs.FOUND == 'true'
