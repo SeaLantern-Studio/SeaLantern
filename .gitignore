@@ -21,8 +21,6 @@ changelog/
 plugins/
 plugin-market/
 src-tauri/src/plugins/
-src-tauri/src/commands/plugin.rs
-src-tauri/src/models/plugin.rs
 src/api/plugin.ts
 src/components/plugin/
 src/stores/pluginStore.ts
