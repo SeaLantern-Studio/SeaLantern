@@ -868,6 +868,18 @@ impl ServerManager {
         }
     }
 
+    pub fn update_server_name(&self, id: &str, new_name: &str) -> Result<(), String> {
+        let mut servers = self.servers.lock().unwrap();
+        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
+            server.name = new_name.to_string();
+            drop(servers);
+            self.save();
+            Ok(())
+        } else {
+            Err("未找到服务器".to_string())
+        }
+    }
+
     pub fn stop_all_servers(&self) {
         let ids: Vec<String> = self.processes.lock().unwrap().keys().cloned().collect();
         for id in ids {

@@ -46,14 +46,14 @@ export const configApi = {
   /**
    * 读取通用配置文件
    */
-  async readConfig(path: string): Promise<Record<string, string>> {
-    return tauriInvoke("read_config", { path });
+  async readConfig(serverPath: string, path: string): Promise<Record<string, string>> {
+    return tauriInvoke("read_config", { serverPath, path });
   },
 
   /**
    * 写入通用配置文件
    */
-  async writeConfig(path: string, values: Record<string, string>): Promise<void> {
-    return tauriInvoke("write_config", { path, values });
+  async writeConfig(serverPath: string, path: string, values: Record<string, string>): Promise<void> {
+    return tauriInvoke("write_config", { serverPath, path, values });
   },
 };

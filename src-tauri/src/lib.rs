@@ -80,6 +80,7 @@ pub fn run() {
             server_commands::get_server_status,
             server_commands::delete_server,
             server_commands::get_server_logs,
+            server_commands::update_server_name,
             java_commands::detect_java,
             java_commands::validate_java_path,
             java_commands::install_java,
