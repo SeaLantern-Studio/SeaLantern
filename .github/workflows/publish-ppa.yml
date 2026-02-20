@@ -183,12 +183,18 @@ jobs:
           
           cd ..
           
-          # Build unsigned source package
+          # Build unsigned source package first
           cd sealantern-${VERSION}
           
-          # Build without signing (Launchpad will sign)
+          # Build without signing
           debuild -S -us -uc
           cd ..
+          
+          # Sign the .dsc file manually
+          gpg --homedir "$GNUPGHOME" --batch --yes --pinentry-mode loopback --armor --detach-sign --local-user "$GPG_FINGERPRINT" sealantern_${VERSION}.dsc
+          
+          # Sign the .changes file manually
+          gpg --homedir "$GNUPGHOME" --batch --yes --pinentry-mode loopback --armor --detach-sign --local-user "$GPG_FINGERPRINT" sealantern_${VERSION}_source.changes
           
           echo "✅ Source package created and signed"
           ls -lh sealantern_${VERSION}*
