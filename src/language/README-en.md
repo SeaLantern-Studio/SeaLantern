@@ -25,16 +25,16 @@ language/
 ### Using Translations
 
 ```typescript
-import { i18n } from '@/language';
+import { i18n } from "@/language";
 
 // Get translated text
-const text = i18n.t('common.home');
+const text = i18n.t("common.home");
 
 // Translation with variables
-const message = i18n.t('home.delete_confirm_message', { server: 'MyServer' });
+const message = i18n.t("home.delete_confirm_message", { server: "MyServer" });
 
 // Switch language
-i18n.setLocale('en-US');
+i18n.setLocale("en-US");
 
 // Get current language
 const locale = i18n.getLocale();
@@ -43,7 +43,7 @@ const locale = i18n.getLocale();
 ### Using in Vue Components
 
 ```typescript
-import { i18n } from '@/language';
+import { i18n } from "@/language";
 
 // Reactively get current language
 const currentLocale = i18n.getLocaleRef();
@@ -82,16 +82,16 @@ The language system uses Vite's `import.meta.glob` to automatically scan and loa
 
 Follows ISO 639-1 standard, format is `language-region`:
 
-| Code | Language |
-|------|----------|
-| zh-CN | Simplified Chinese |
+| Code  | Language            |
+| ----- | ------------------- |
+| zh-CN | Simplified Chinese  |
 | zh-TW | Traditional Chinese |
-| en-US | English |
-| ja-JP | Japanese |
-| ko-KR | Korean |
-| de-DE | German |
-| es-ES | Spanish |
-| ru-RU | Russian |
+| en-US | English             |
+| ja-JP | Japanese            |
+| ko-KR | Korean              |
+| de-DE | German              |
+| es-ES | Spanish             |
+| ru-RU | Russian             |
 
 ## File Structure
 
@@ -103,37 +103,37 @@ type TranslationNode = {
 };
 
 type LanguageFile = TranslationNode & {
-  languageName?: string;  // Language display name
+  languageName?: string; // Language display name
 };
 ```
 
 ### Main Modules
 
-| Module | Description |
-|--------|-------------|
-| `common` | Common texts (buttons, status, etc.) |
-| `sidebar` | Sidebar |
-| `home` | Home page |
-| `create` | Create server |
-| `console` | Console |
-| `config` | Config editor |
-| `players` | Player management |
-| `settings` | Settings |
-| `about` | About page |
-| `tray` | System tray |
+| Module     | Description                          |
+| ---------- | ------------------------------------ |
+| `common`   | Common texts (buttons, status, etc.) |
+| `sidebar`  | Sidebar                              |
+| `home`     | Home page                            |
+| `create`   | Create server                        |
+| `console`  | Console                              |
+| `config`   | Config editor                        |
+| `players`  | Player management                    |
+| `settings` | Settings                             |
+| `about`    | About page                           |
+| `tray`     | System tray                          |
 
 ## API Reference
 
 ### i18n Instance
 
-| Method | Description |
-|--------|-------------|
-| `t(key, options?)` | Get translated text, supports variable interpolation |
-| `setLocale(locale)` | Set current language |
-| `getLocale()` | Get current language code |
-| `getLocaleRef()` | Get reactive language reference |
-| `getAvailableLocales()` | Get list of all supported languages |
-| `isSupportedLocale(locale)` | Check if language is supported |
+| Method                      | Description                                          |
+| --------------------------- | ---------------------------------------------------- |
+| `t(key, options?)`          | Get translated text, supports variable interpolation |
+| `setLocale(locale)`         | Set current language                                 |
+| `getLocale()`               | Get current language code                            |
+| `getLocaleRef()`            | Get reactive language reference                      |
+| `getAvailableLocales()`     | Get list of all supported languages                  |
+| `isSupportedLocale(locale)` | Check if language is supported                       |
 
 ### Variable Interpolation
 
@@ -147,8 +147,8 @@ Supports two placeholder formats:
 ```
 
 ```typescript
-i18n.t('welcome', { name: 'Player' });  // "Welcome, Player!"
-i18n.t('count', { count: 5 });          // "Total 5 servers"
+i18n.t("welcome", { name: "Player" }); // "Welcome, Player!"
+i18n.t("count", { count: 5 }); // "Total 5 servers"
 ```
 
 ## Best Practices

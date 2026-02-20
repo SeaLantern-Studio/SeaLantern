@@ -60,11 +60,7 @@ impl AsyncLoader {
     #[allow(dead_code)]
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel(100);
-        Self {
-            tx,
-            rx,
-            tasks: Vec::new(),
-        }
+        Self { tx, rx, tasks: Vec::new() }
     }
 
     /// 添加一个异步任务
@@ -88,9 +84,9 @@ impl AsyncLoader {
     /// 检查是否所有任务都已完成
     #[allow(dead_code)]
     pub fn is_all_completed(&self) -> bool {
-        self.tasks.iter().all(|t| {
-            matches!(t.status, LoadTaskStatus::Completed | LoadTaskStatus::Failed(_))
-        })
+        self.tasks
+            .iter()
+            .all(|t| matches!(t.status, LoadTaskStatus::Completed | LoadTaskStatus::Failed(_)))
     }
 
     /// 获取总体进度 (0.0 - 1.0)
@@ -109,9 +105,11 @@ impl AsyncLoader {
     where
         F: FnOnce(&mut LoadTask),
     {
-        if let Some(task) = self.tasks.iter_mut().find(|t| {
-            std::mem::discriminant(&t.task_type) == std::mem::discriminant(&task_type)
-        }) {
+        if let Some(task) = self
+            .tasks
+            .iter_mut()
+            .find(|t| std::mem::discriminant(&t.task_type) == std::mem::discriminant(&task_type))
+        {
             updater(task);
         }
     }
@@ -144,9 +142,7 @@ pub fn spawn_load_task<F>(
     task_fn: F,
 ) -> JoinHandle<()>
 where
-    F: FnOnce(mpsc::Sender<LoadTask>) -> Pin<Box<dyn Future<Output = ()> + Send>>
-        + Send
-        + 'static,
+    F: FnOnce(mpsc::Sender<LoadTask>) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + 'static,
 {
     tokio::spawn(async move {
         // 发送任务开始状态
@@ -206,24 +202,24 @@ mod tests {
     #[tokio::test]
     async fn test_async_loader() {
         let mut loader = AsyncLoader::new();
-        
+
         loader.add_task(LoadTask::new(LoadTaskType::PluginScan));
         loader.add_task(LoadTask::new(LoadTaskType::ConfigLoad));
-        
+
         assert_eq!(loader.get_tasks().len(), 2);
         assert!(!loader.is_all_completed());
-        
+
         // 模拟更新任务状态
         loader.update_task(LoadTaskType::PluginScan, |t| {
             t.status = LoadTaskStatus::Completed;
             t.progress = 1.0;
         });
-        
+
         loader.update_task(LoadTaskType::ConfigLoad, |t| {
             t.status = LoadTaskStatus::Completed;
             t.progress = 1.0;
         });
-        
+
         assert!(loader.is_all_completed());
         assert_eq!(loader.get_total_progress(), 1.0);
     }
@@ -231,9 +227,9 @@ mod tests {
     #[tokio::test]
     async fn test_report_progress() {
         let (tx, mut rx) = mpsc::channel(10);
-        
+
         report_progress(&tx, LoadTaskType::PluginScan, 0.5, "扫描中...").await;
-        
+
         if let Some(task) = rx.recv().await {
             assert!(matches!(task.status, LoadTaskStatus::Running));
             assert_eq!(task.progress, 0.5);

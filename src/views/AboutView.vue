@@ -1,6 +1,29 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone, Info, Copy, Link, Check, ArrowRight, AlertCircle, ExternalLink, RefreshCw, XCircle, Code, Feather, Lightbulb, BookOpen, Rocket, SquarePen } from "lucide-vue-next";
+import {
+  Plus,
+  Code2,
+  PenTool,
+  HelpCircle,
+  BookText,
+  Globe,
+  Megaphone,
+  Info,
+  Copy,
+  Link,
+  Check,
+  ArrowRight,
+  AlertCircle,
+  ExternalLink,
+  RefreshCw,
+  XCircle,
+  Code,
+  Feather,
+  Lightbulb,
+  BookOpen,
+  Rocket,
+  SquarePen,
+} from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -102,9 +125,7 @@ async function handlePrimaryUpdateAction() {
   // 如果是 AUR 更新，显示提示窗口
   if (isAurUpdate.value && updateInfo.value) {
     const helper =
-      updateInfo.value.release_notes?.match(
-        /yay|paru|pamac|trizen|pacaur/,
-      )?.[0] || "yay";
+      updateInfo.value.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
 
     aurInfo.value = {
       currentVersion: updateInfo.value.current_version,
