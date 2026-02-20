@@ -2,8 +2,6 @@ name: Build and Upload to PPA
 
 on:
   push:
-    branches:
-      - ppa-deploy
     tags:
       - 'sea-lantern-v*'
   workflow_dispatch:
@@ -11,6 +9,7 @@ on:
       version:
         description: 'Version to build (e.g., 0.6.5)'
         required: true
+        default: '0.6.5'
 
 jobs:
   build-ppa-packages:
@@ -27,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg wget devscripts dput
+          sudo apt-get install -y dpkg wget devscripts dput gnupg
 
       - name: Get version
         id: version
@@ -132,7 +131,16 @@ jobs:
           
           echo "✅ ${DISTRO} package created: ${PACKAGE_DIR}.deb"
 
-      - name: Create source package for PPA
+      - name: Setup GPG
+        run: |
+          echo "${{ secrets.PPA_GPG_PRIVATE_KEY }}" | gpg --batch --import --pinentry-mode loopback --passphrase "${{ secrets.PPA_GPG_PASSPHRASE }}"
+          GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+          echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
+          echo "GPG_TTY=" >> $GITHUB_ENV
+          export GNUPGHOME=~/.gnupg
+          chmod 700 ~/.gnupg
+
+      - name: Create and sign source package for PPA
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
@@ -197,19 +205,26 @@ jobs:
           echo "3.0 (native)" > "${SOURCE_DIR}/debian/source/format"
           
           cd "${SOURCE_DIR}"
-          debuild -us -uc -S -b
+          
+          # Build source package with GPG signing
+          export DEBEMAIL="2914651630@qq.com"
+          export DEBFULLNAME="Brian Ikun"
+          export DEBSIGN_KEYID="${GPG_KEY_ID}"
+          
+          debuild -p"gpg --batch --yes --pinentry-mode loopback --passphrase '${{ secrets.PPA_GPG_PASSPHRASE }}'" -k"${GPG_KEY_ID}" -S -sa
 
-      - name: Upload to PPA (only on tag)
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload to PPA
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
           PACKAGE_VERSION="${VERSION}~${DISTRO}1"
           
-          # Upload to PPA using dput
-          dput ppa:brianeee7878/sealantern ../sealantern-ppa-updater_${PACKAGE_VERSION}_source.changes || true
+          cd ..
           
-          echo "✅ Attempted to upload ${DISTRO} package to PPA"
+          echo "Uploading ${DISTRO} package to PPA..."
+          dput ppa:brianeee7878/sealantern sealantern-ppa-updater_${PACKAGE_VERSION}_source.changes
+          
+          echo "✅ Successfully uploaded ${DISTRO} package to PPA"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
