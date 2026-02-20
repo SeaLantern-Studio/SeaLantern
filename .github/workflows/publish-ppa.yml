@@ -15,10 +15,16 @@ on:
 env:
   UPSTREAM_REPO: SeaLantern-Studio/SeaLantern
   PPA_NAME: ppa:brianeee7878/sealantern
+  # 支持的 Ubuntu 版本
+  UBUNTU_VERSIONS: "jammy,noble,mantic"
 
 jobs:
   check-and-publish:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro: ['jammy', 'noble', 'mantic']
+      fail-fast: false
     
     steps:
       - name: Check latest upstream release
@@ -137,10 +143,11 @@ jobs:
           
           # Create debian/changelog
           cat > debian/changelog << CHANGELOG
-          sealantern (${VERSION}) noble; urgency=medium
+          sealantern (${VERSION}) ${{ matrix.distro }}; urgency=medium
           
             * New upstream release ${VERSION}
             * Auto-synced from ${{ env.UPSTREAM_REPO }}
+            * Built for ${{ matrix.distro }}
           
            -- Brian Ikun <2914651630@qq.com>  $(date -R)
           CHANGELOG
