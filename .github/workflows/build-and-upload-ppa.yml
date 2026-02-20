@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - ppa-deploy
+    tags:
+      - 'sea-lantern-v*'
   workflow_dispatch:
     inputs:
       version:
@@ -25,13 +27,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg wget
+          sudo apt-get install -y dpkg wget devscripts dput
 
       - name: Get version
         id: version
         run: |
           if [ "${{ github.event.inputs.version }}" != "" ]; then
             VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           else
             VERSION=$(node -p "require('./package.json').version")
           fi
@@ -128,8 +132,91 @@ jobs:
           
           echo "✅ ${DISTRO} package created: ${PACKAGE_DIR}.deb"
 
+      - name: Create source package for PPA
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          DISTRO="${{ matrix.distro }}"
+          PACKAGE_VERSION="${VERSION}~${DISTRO}1"
+          
+          # Create source package directory
+          SOURCE_DIR="./ppa-source/sealantern-ppa-updater_${PACKAGE_VERSION}"
+          rm -rf ./ppa-source
+          mkdir -p "${SOURCE_DIR}"
+          
+          # Copy the binary deb
+          cp "./ppa-build/sea-lantern-ppa-updater_${PACKAGE_VERSION}.deb" "${SOURCE_DIR}/"
+          
+          # Create debian directory
+          mkdir -p "${SOURCE_DIR}/debian/source"
+          
+          cat > "${SOURCE_DIR}/debian/control" << EOF
+          Source: sea-lantern-ppa-updater
+          Section: utils
+          Priority: optional
+          Maintainer: Brian Ikun <2914651630@qq.com>
+          Build-Depends: debhelper-compat (= 12)
+          Standards-Version: 4.4.1
+          Homepage: https://github.com/SeaLantern-Studio/SeaLantern
+          
+          Package: sea-lantern-ppa-updater
+          Architecture: amd64
+          Depends: \${shlibs:Depends}, \${misc:Depends},
+                   dpkg, binutils, libwebkit2gtk-4.1-0, libgtk-3-0, libappindicator3-1, libssl3, ca-certificates
+          Description: Sea Lantern PPA Installer
+           This package downloads and installs Sea Lantern from official GitHub Releases.
+           It's designed for PPA distribution to provide easy installation of Sea Lantern.
+           .
+           Sea Lantern is a lightweight Minecraft server management tool
+           based on Tauri 2 + Rust + Vue 3.
+          EOF
+          
+          cat > "${SOURCE_DIR}/debian/changelog" << EOF
+          sealantern-ppa-updater (${PACKAGE_VERSION}) ${DISTRO}; urgency=medium
+          
+            * New upstream release ${VERSION}
+            * Auto-synced from SeaLantern-Studio/SeaLantern
+            * Built for ${DISTRO}
+          
+           -- Brian Ikun <2914651630@qq.com>  $(date -R)
+          EOF
+          
+          cat > "${SOURCE_DIR}/debian/rules" << 'RULES'
+          #!/usr/bin/make -f
+          %:
+          	dh $@
+          
+          override_dh_auto_build:
+          	# Binary already built
+          
+          override_dh_auto_install:
+          	dpkg -x sea-lantern-ppa-updater_*.deb debian/sealantern-ppa-updater
+          RULES
+          chmod +x "${SOURCE_DIR}/debian/rules"
+          
+          echo "12" > "${SOURCE_DIR}/debian/compat"
+          echo "3.0 (native)" > "${SOURCE_DIR}/debian/source/format"
+          
+          cd "${SOURCE_DIR}"
+          debuild -us -uc -S -b
+
+      - name: Upload to PPA (only on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          DISTRO="${{ matrix.distro }}"
+          PACKAGE_VERSION="${VERSION}~${DISTRO}1"
+          
+          # Upload to PPA using dput
+          dput ppa:brianeee7878/sealantern ../sealantern-ppa-updater_${PACKAGE_VERSION}_source.changes || true
+          
+          echo "✅ Attempted to upload ${DISTRO} package to PPA"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: sea-lantern-ppa-updater-${{ matrix.distro }}
-          path: ppa-build/sea-lantern-ppa-updater_*.deb
+          path: |
+            ppa-build/sea-lantern-ppa-updater_*.deb
+            ppa-source/*.dsc
+            ppa-source/*.tar.xz
+            ppa-source/*.changes
