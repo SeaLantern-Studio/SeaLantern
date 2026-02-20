@@ -1,0 +1,140 @@
+name: Build and Upload to PPA
+
+on:
+  push:
+    branches:
+      - ppa-deploy
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 0.6.5)'
+        required: true
+
+jobs:
+  build-ppa-package:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg wget
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Download Sea Lantern deb
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          wget -O "Sea.Lantern_${VERSION}_amd64.deb" \
+            "https://github.com/SeaLantern-Studio/SeaLantern/releases/download/sea-lantern-v${VERSION}/Sea.Lantern_${VERSION}_amd64.deb"
+
+      - name: Build PPA package
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          
+          BUILD_DIR="./ppa-build"
+          PACKAGE_DIR="${BUILD_DIR}/sea-lantern-ppa-updater_${VERSION}"
+          
+          rm -rf "$BUILD_DIR"
+          mkdir -p "$PACKAGE_DIR/DEBIAN"
+          mkdir -p "$PACKAGE_DIR/opt/sealantern"
+          
+          cp "Sea.Lantern_${VERSION}_amd64.deb" "$PACKAGE_DIR/opt/sealantern/"
+          
+          TOTAL_SIZE=$(du -sk "$PACKAGE_DIR" | cut -f1)
+          
+          cat > "${PACKAGE_DIR}/DEBIAN/control" << CONTROL
+          Package: sea-lantern-ppa-updater
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Depends: dpkg, binutils, libwebkit2gtk-4.1-0, libgtk-3-0, libappindicator3-1, libssl3, ca-certificates
+          Installed-Size: ${TOTAL_SIZE}
+          Maintainer: Brian Ikun <2914651630@qq.com>
+          Homepage: https://github.com/SeaLantern-Studio/SeaLantern
+          Description: Sea Lantern PPA Installer
+           This package downloads and installs Sea Lantern from official GitHub Releases.
+           It's designed for PPA distribution to provide easy installation of Sea Lantern.
+           .
+           Sea Lantern is a lightweight Minecraft server management tool
+           based on Tauri 2 + Rust + Vue 3.
+          CONTROL
+          
+          cat > "${PACKAGE_DIR}/DEBIAN/postinst" << 'POSTINST'
+          #!/bin/bash
+          
+          PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}')
+          if [ -z "$PACKAGE_VERSION" ]; then
+              PACKAGE_VERSION="${VERSION}"
+          fi
+          
+          EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
+          
+          echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
+          
+          if [ -f "$EMBEDDED_DEB" ]; then
+              dpkg -i "$EMBEDDED_DEB" || true
+              
+              if ! dpkg -s sea-lantern >/dev/null 2>&1; then
+                  echo "正在安装依赖..."
+                  apt-get install -f -y
+              fi
+              
+              if dpkg -s sea-lantern >/dev/null 2>&1; then
+                  echo "✅ Sea Lantern 安装完成！"
+                  echo "运行命令: sea-lantern"
+                  rm -f "$EMBEDDED_DEB"
+              else
+                  echo "❌ 安装失败，请手动检查"
+                  exit 1
+              fi
+          else
+              echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
+              exit 1
+          fi
+          POSTINST
+          
+          chmod +x "${PACKAGE_DIR}/DEBIAN/postinst"
+          
+          cat > "${PACKAGE_DIR}/DEBIAN/prerm" << 'PRERM'
+          #!/bin/bash
+          if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+              echo "正在卸载 Sea Lantern..."
+              dpkg -l | grep -q sea-lantern && dpkg -r sea-lantern || true
+          fi
+          PRERM
+          
+          chmod +x "${PACKAGE_DIR}/DEBIAN/prerm"
+          
+          dpkg-deb --build "$PACKAGE_DIR"
+          
+          echo "✅ PPA package created: ${PACKAGE_DIR}.deb"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sea-lantern-ppa-updater
+          path: ppa-build/sea-lantern-ppa-updater_*.deb
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ppa-build/sea-lantern-ppa-updater_*.deb
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
