@@ -156,6 +156,9 @@ export const contributors: Contributor[] = [
   // 没有正版怎么办？
   // 选择皮肤，使用其名字
   // https://www.mcgodx.com/skins/
+  // 没有正版怎么办？
+  // 选择皮肤，使用其名字
+  // https://www.mcgodx.com/skins/
   // ============================================
   // {
   //   name: "你的名字",

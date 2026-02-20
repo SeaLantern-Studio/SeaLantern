@@ -87,8 +87,21 @@ sea-lantern/
 │   ├── data/                          # 静态数据
 │   │   └── contributors.ts           # 贡献者信息列表
 │   │
-│   ├── locales/                       # 国际化资源
-│   │   └── index.ts                   # 语言文件入口
+│   ├── language/                      # 国际化资源
+│   │   ├── index.ts                   # i18n 核心模块
+│   │   ├── README.md                  # 本文档
+│   │   ├── README-en.md               # 英文版本
+│   │   └── locales/                   # 翻译文件目录
+│   │       ├── zh-CN.json             # 简体中文
+│   │       ├── zh-TW.json             # 繁体中文
+│   │       ├── en-US.json             # 英语
+│   │       ├── ja-JP.json             # 日语
+│   │       ├── ko-KR.json             # 韩语
+│   │       ├── de-DE.json             # 德语
+│   │       ├── es-ES.json             # 西班牙语
+│   │       ├── fr-FA.json             # 波斯语
+│   │       ├── ru-RU.json             # 俄语
+│   │       └── vi-VN.json             # 越南语
 │   │
 │   ├── router/                        # 路由配置
 │   │   └── index.ts                   # 路由表定义
@@ -214,26 +227,18 @@ sea-lantern/
 │   ├── build.rs                       # 构建脚本
 │   └── tauri.conf.json                # Tauri 配置（窗口大小、标题、版本等）
 │
-├── lang/                              # 语言文件
-│   ├── README.md                      # 语言文件说明
-│   ├── README-en.md                   # 英文语言文件说明
-│   ├── de-DE.json                     # 德语翻译
-│   ├── en-US.json                     # 英语翻译
-│   ├── es-ES.json                     # 西班牙语翻译
-│   ├── fr-FA.json                     # 法语翻译
-│   ├── ja-JP.json                     # 日语翻译
-│   ├── ko-KR.json                     # 韩语翻译
-│   ├── ru-RU.json                     # 俄语翻译
-│   ├── vi-VN.json                     # 越南语翻译
-│   ├── zh-CN.json                     # 简体中文翻译
-│   └── zh-TW.json                     # 繁体中文翻译
 │
 ├── docs/                              # 文档
 │   ├── AI_GUIDE.md                    # AI 使用指南
 │   ├── CONTRIBUTING.md                # 贡献指南
 │   ├── CONTRIBUTING-en.md             # 英文贡献指南
 │   ├── 新手使用教程.html              # 新手使用教程
-│   └── 项目结构.md                    # 项目结构文档
+│   ├── STRUCTURE.md                   # 本文档
+│   ├── STRUCTURE-en.md                # 英文版本
+│   ├── AI_GUIDE.md                    # AI 使用指南
+│   ├── CONTRIBUTING.md                # 贡献指南
+│   ├── CONTRIBUTING-en.md             # 英文贡献指南
+│   └── 新手使用教程.html              # 新手使用教程
 │
 ├── .SRCINFO                           # 包信息
 ├── .editorconfig                      # 编辑器配置
@@ -261,33 +266,40 @@ sea-lantern/
 ## 核心功能模块
 
 ### 1. 服务器管理
+
 - 创建、导入、启动、停止、删除服务器
 - 支持不同类型的服务器启动方式（jar、bat、sh）
 - 支持整合包导入
 
 ### 2. 控制台管理
+
 - 实时查看服务器日志
 - 直接向服务器发送命令
 - 支持自定义命令
 
 ### 3. 配置管理
+
 - 图形化编辑 server.properties
 - 支持多种配置项类型
 
 ### 4. 玩家管理
+
 - 白名单管理
 - 封禁管理
 - OP 管理
 
 ### 5. 系统监控
+
 - CPU、内存、磁盘使用情况
 - 实时系统资源监控
 
 ### 6. 国际化
+
 - 支持多语言
 - 内置多种语言包
 
 ### 7. 更新管理
+
 - 检查更新
 - 一键下载新版本
 
@@ -304,24 +316,28 @@ sea-lantern/
 ## 开发指南
 
 ### 前端开发
+
 - 使用 Vue 3 Composition API
 - 使用 TypeScript 确保类型安全
 - 使用 Pinia 进行状态管理
 - 使用 Vite 进行构建
 
 ### 后端开发
+
 - 使用 Rust 语言
 - 使用 Tauri 2 作为桌面应用框架
 - 使用 serde 进行序列化/反序列化
 - 使用 tokio 进行异步处理
 
 ### 代码规范
+
 - 前端：使用 ESLint 和 Prettier 确保代码质量
 - 后端：使用 rustfmt 和 clippy 确保代码质量
 
 ## 构建与部署
 
 ### 开发环境
+
 ```bash
 # 安装依赖
 npm install
@@ -331,6 +347,7 @@ npm run tauri dev
 ```
 
 ### 生产构建
+
 ```bash
 # 构建发布版
 npm run tauri build
