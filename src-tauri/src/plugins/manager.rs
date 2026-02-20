@@ -161,6 +161,14 @@ impl PluginManager {
         let plugin_dir = PathBuf::from(&plugin_info.path);
         let plugin_data_dir = self.data_dir.join(plugin_id);
 
+        if !plugin_info.manifest.include.is_empty() {
+            Self::copy_included_resources(
+                &plugin_dir,
+                &plugin_data_dir,
+                &plugin_info.manifest.include,
+            )?;
+        }
+
         let permissions = plugin_info.manifest.permissions.clone();
 
         let runtime = PluginRuntime::new(
@@ -381,6 +389,54 @@ impl PluginManager {
             }
             Err(e) => eprintln!("[WARN] Failed to serialize enabled plugins: {}", e),
         }
+    }
+
+    fn copy_included_resources(
+        plugin_dir: &Path,
+        data_dir: &Path,
+        includes: &[String],
+    ) -> Result<(), String> {
+        fs::create_dir_all(data_dir).map_err(|e| format!("Failed to create data dir: {}", e))?;
+
+        for pattern in includes {
+            let clean = pattern.trim_end_matches('/');
+            let src = plugin_dir.join(clean);
+            if !src.exists() {
+                eprintln!("[插件] include 资源不存在，跳过: {}", src.display());
+                continue;
+            }
+            let dest = data_dir.join(clean);
+            if src.is_dir() {
+                Self::copy_dir_recursive(&src, &dest)?;
+            } else {
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent)
+                        .map_err(|e| format!("Failed to create parent dir: {}", e))?;
+                }
+                fs::copy(&src, &dest)
+                    .map_err(|e| format!("Failed to copy {}: {}", src.display(), e))?;
+            }
+        }
+        Ok(())
+    }
+
+    fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
+        fs::create_dir_all(dest)
+            .map_err(|e| format!("Failed to create dir {}: {}", dest.display(), e))?;
+        let entries = fs::read_dir(src)
+            .map_err(|e| format!("Failed to read dir {}: {}", src.display(), e))?;
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let src_path = entry.path();
+            let dest_path = dest.join(entry.file_name());
+            if src_path.is_dir() {
+                Self::copy_dir_recursive(&src_path, &dest_path)?;
+            } else {
+                fs::copy(&src_path, &dest_path)
+                    .map_err(|e| format!("Failed to copy {}: {}", src_path.display(), e))?;
+            }
+        }
+        Ok(())
     }
 
     fn load_enabled_plugin_ids(&self) -> Vec<String> {
@@ -616,7 +672,7 @@ impl PluginManager {
                 .map_err(|e| format!("Failed to remove existing plugin directory: {}", e))?;
         }
 
-        self.copy_dir_recursive(source_dir, &target_dir)?;
+        Self::copy_dir_recursive(source_dir, &target_dir)?;
 
         let loaded_manifest = PluginLoader::load_manifest(&target_dir)?;
         PluginLoader::validate_manifest(&loaded_manifest)?;
@@ -633,34 +689,6 @@ impl PluginManager {
         self.plugins.insert(plugin_id, plugin_info.clone());
 
         Ok(plugin_info)
-    }
-
-    fn copy_dir_recursive(&self, src: &Path, dst: &Path) -> Result<(), String> {
-        fs::create_dir_all(dst)
-            .map_err(|e| format!("Failed to create directory {}: {}", dst.display(), e))?;
-
-        for entry in fs::read_dir(src)
-            .map_err(|e| format!("Failed to read directory {}: {}", src.display(), e))?
-        {
-            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
-            let src_path = entry.path();
-            let dst_path = dst.join(entry.file_name());
-
-            if src_path.is_dir() {
-                self.copy_dir_recursive(&src_path, &dst_path)?;
-            } else {
-                fs::copy(&src_path, &dst_path).map_err(|e| {
-                    format!(
-                        "Failed to copy file {} to {}: {}",
-                        src_path.display(),
-                        dst_path.display(),
-                        e
-                    )
-                })?;
-            }
-        }
-
-        Ok(())
     }
 
     fn install_plugin_from_zip(&mut self, zip_path: &Path) -> Result<PluginInfo, String> {

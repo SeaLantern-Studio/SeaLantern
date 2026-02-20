@@ -198,6 +198,100 @@ impl PluginRuntime {
             .set("exists", exists_fn)
             .map_err(|e| format!("Failed to set server.exists: {}", e))?;
 
+        let perms = permissions.clone();
+        let logs_table = self
+            .lua
+            .create_table()
+            .map_err(|e| format!("Failed to create server.logs table: {}", e))?;
+
+        let get_logs_fn = self
+            .lua
+            .create_function(move |lua, (server_id, count): (String, Option<usize>)| {
+                if !perms.iter().any(|p| p == "server") {
+                    return Err(mlua::Error::runtime(
+                        "Permission denied: 'server' permission required",
+                    ));
+                }
+
+                let servers = server_manager().get_server_list();
+                if !servers.iter().any(|s| s.id == server_id) {
+                    return Err(mlua::Error::runtime(format!("服务器不存在: {}", server_id)));
+                }
+
+                let count = count.unwrap_or(100).min(1000);
+                let all_logs = server_manager().get_logs(&server_id, 0);
+
+                let start = if all_logs.len() > count {
+                    all_logs.len() - count
+                } else {
+                    0
+                };
+                let logs = &all_logs[start..];
+
+                let result = lua.create_table()?;
+                for (i, line) in logs.iter().enumerate() {
+                    result.set(i + 1, line.clone())?;
+                }
+                Ok(result)
+            })
+            .map_err(|e| format!("Failed to create server.logs.get: {}", e))?;
+        logs_table
+            .set("get", get_logs_fn)
+            .map_err(|e| format!("Failed to set server.logs.get: {}", e))?;
+
+        let perms = permissions.clone();
+        let get_all_logs_fn = self
+            .lua
+            .create_function(move |lua, count: Option<usize>| {
+                if !perms.iter().any(|p| p == "server") {
+                    return Err(mlua::Error::runtime(
+                        "Permission denied: 'server' permission required",
+                    ));
+                }
+
+                let count = count.unwrap_or(100).min(1000);
+
+                let running_ids = server_manager().get_running_server_ids();
+                let logs_map = server_manager().get_all_logs();
+
+                let result = lua.create_table()?;
+                let mut i = 1;
+                for (server_id, logs) in logs_map {
+                    if !running_ids.contains(&server_id) {
+                        continue;
+                    }
+
+                    let start = if logs.len() > count {
+                        logs.len() - count
+                    } else {
+                        0
+                    };
+                    let slice = &logs[start..];
+
+                    let entry = lua.create_table()?;
+                    entry.set("server_id", server_id)?;
+
+                    let lines_table = lua.create_table()?;
+                    for (j, line) in slice.iter().enumerate() {
+                        lines_table.set(j + 1, line.clone())?;
+                    }
+                    entry.set("logs", lines_table)?;
+
+                    result.set(i, entry)?;
+                    i += 1;
+                }
+
+                Ok(result)
+            })
+            .map_err(|e| format!("Failed to create server.logs.getAll: {}", e))?;
+        logs_table
+            .set("getAll", get_all_logs_fn)
+            .map_err(|e| format!("Failed to set server.logs.getAll: {}", e))?;
+
+        server_table
+            .set("logs", logs_table)
+            .map_err(|e| format!("Failed to set server.logs: {}", e))?;
+
         sl.set("server", server_table)
             .map_err(|e| format!("Failed to set sl.server: {}", e))?;
 

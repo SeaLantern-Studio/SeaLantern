@@ -1,7 +1,9 @@
 use crate::models::plugin::{
     BatchInstallError, BatchInstallResult, PluginInfo, PluginInstallResult, PluginUpdateInfo,
 };
-use crate::plugins::api::{BufferedComponentEvent, BufferedContextMenuEvent, BufferedSidebarEvent, BufferedUiEvent};
+use crate::plugins::api::{
+    BufferedComponentEvent, BufferedContextMenuEvent, BufferedSidebarEvent, BufferedUiEvent,
+};
 use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex};
 use url::Url;

@@ -84,6 +84,8 @@ export interface PluginManifest {
 
   capabilities?: string[];
 
+  include?: string[];
+
   theme_var_map?: Record<string, string>;
 
   presets?: Record<string, Record<string, string>>;
@@ -186,7 +188,8 @@ export type PluginUiAction =
   | "element_blur"
   | "element_on_change"
   | "inject_css"
-  | "remove_css";
+  | "remove_css"
+  | "toast";
 
 export interface PluginPermissionLog {
   plugin_id: string;
@@ -194,6 +197,12 @@ export interface PluginPermissionLog {
   action: string;
   detail: string;
   timestamp: number;
+}
+
+export interface PluginLogEvent {
+  plugin_id: string;
+  level: string;
+  message: string;
 }
 
 export type PermissionDangerLevel = "normal" | "dangerous" | "critical";
@@ -276,6 +285,27 @@ export const PERMISSION_METADATA: Record<string, PermissionMetadata> = {
     description: "plugins.permission.ui_desc",
     danger_level: "normal",
     icon: "Palette",
+  },
+  "ui.component.read": {
+    id: "ui.component.read",
+    name: "plugins.permission.ui_component_read",
+    description: "plugins.permission.ui_component_read_desc",
+    danger_level: "normal",
+    icon: "FileText",
+  },
+  "ui.component.write": {
+    id: "ui.component.write",
+    name: "plugins.permission.ui_component_write",
+    description: "plugins.permission.ui_component_write_desc",
+    danger_level: "dangerous",
+    icon: "FileText",
+  },
+  "ui.component.proxy": {
+    id: "ui.component.proxy",
+    name: "plugins.permission.ui_component_proxy",
+    description: "plugins.permission.ui_component_proxy_desc",
+    danger_level: "dangerous",
+    icon: "AlertTriangle",
   },
   "ui.component.create": {
     id: "ui.component.create",

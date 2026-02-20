@@ -850,6 +850,16 @@ impl ServerManager {
         }
     }
 
+    pub fn get_all_logs(&self) -> Vec<(String, Vec<String>)> {
+        let logs = self.logs.lock().unwrap();
+        logs.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    }
+
+    pub fn get_running_server_ids(&self) -> Vec<String> {
+        let procs = self.processes.lock().unwrap();
+        procs.keys().cloned().collect()
+    }
+
     fn append_log(&self, id: &str, msg: &str) {
         if let Ok(mut logs) = self.logs.lock() {
             if let Some(v) = logs.get_mut(id) {

@@ -45,13 +45,16 @@ function handleItemClick(item: ContextMenuItem) {
 <template>
   <Teleport to="body">
     <Transition name="context-menu-fade">
-      <div v-if="contextMenuStore.visible" class="sl-context-menu-backdrop" @click="contextMenuStore.hideContextMenu()" @contextmenu.prevent.stop="contextMenuStore.hideContextMenu()">
+      <div v-if="contextMenuStore.visible" class="sl-context-menu-backdrop" @click="contextMenuStore.hideContextMenu()" @contextmenu.prevent="contextMenuStore.hideContextMenu()">
         <div
           ref="menuRef"
           class="sl-context-menu"
           :style="menuStyle"
           @click.stop
         >
+          <div v-if="contextMenuStore.targetData" class="sl-context-menu-header">
+            {{ contextMenuStore.targetData }}
+          </div>
           <div
             v-for="item in contextMenuStore.items"
             :key="`${item.pluginId}-${item.id}`"
@@ -126,6 +129,18 @@ function handleItemClick(item: ContextMenuItem) {
   white-space: nowrap;
 }
 
+.sl-context-menu-header {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
 .sl-context-menu-empty {
   padding: 8px 12px;
   color: rgba(255, 255, 255, 0.5);
@@ -162,6 +177,11 @@ function handleItemClick(item: ContextMenuItem) {
 
 [data-theme="light"] .sl-context-menu-item:active {
   background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .sl-context-menu-header {
+  color: rgba(0, 0, 0, 0.4);
+  border-bottom-color: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .sl-context-menu-empty {

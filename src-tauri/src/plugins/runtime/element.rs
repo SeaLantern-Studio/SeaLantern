@@ -1,9 +1,13 @@
 use super::PluginRuntime;
 use mlua::Table;
+use std::time::{Duration, Instant};
+
+const ELEMENT_GET_TIMEOUT_MS: u64 = 500;
+const POLL_INTERVAL_MS: u64 = 10;
 
 impl PluginRuntime {
     pub(super) fn setup_element_namespace(&self, sl: &Table) -> Result<(), String> {
-        use crate::plugins::api::{emit_permission_log, emit_ui_event};
+        use crate::plugins::api::{element_response_create, emit_permission_log, emit_ui_event};
 
         let element_table = self
             .lua
@@ -15,17 +19,37 @@ impl PluginRuntime {
         let pid = plugin_id.clone();
         let get_text_fn = self
             .lua
-            .create_function(move |_, selector: mlua::String| {
+            .create_function(move |lua, selector: mlua::String| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.get_text", &selector);
-                let data = serde_json::json!({}).to_string();
+
+                let (req_id, rx) = element_response_create();
+                let data = serde_json::json!({ "request_id": req_id }).to_string();
                 match emit_ui_event(&pid, "element_get_text", &selector, &data) {
-                    Ok(()) => Ok(true),
-                    Err(e) => {
-                        eprintln!("[Element] get_text error: {}", e);
-                        Ok(false)
+                    Ok(()) => {
+                        let start = Instant::now();
+                        let timeout = Duration::from_millis(ELEMENT_GET_TIMEOUT_MS);
+                        
+                        loop {
+                            match rx.try_recv() {
+                                Ok(val) => {
+                                    return Ok(mlua::Value::String(
+                                        lua.create_string(&val).map_err(mlua::Error::external)?,
+                                    ));
+                                }
+                                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                    if start.elapsed() > timeout {
+                                        return Ok(mlua::Value::Nil);
+                                    }
+                                    std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+                                }
+                                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                    return Ok(mlua::Value::Nil);
+                                }
+                            }
+                        }
                     }
+                    Err(_) => Ok(mlua::Value::Nil),
                 }
             })
             .map_err(|e| format!("Failed to create element.get_text: {}", e))?;
@@ -36,17 +60,37 @@ impl PluginRuntime {
         let pid = plugin_id.clone();
         let get_value_fn = self
             .lua
-            .create_function(move |_, selector: mlua::String| {
+            .create_function(move |lua, selector: mlua::String| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.get_value", &selector);
-                let data = serde_json::json!({}).to_string();
+
+                let (req_id, rx) = element_response_create();
+                let data = serde_json::json!({ "request_id": req_id }).to_string();
                 match emit_ui_event(&pid, "element_get_value", &selector, &data) {
-                    Ok(()) => Ok(true),
-                    Err(e) => {
-                        eprintln!("[Element] get_value error: {}", e);
-                        Ok(false)
+                    Ok(()) => {
+                        let start = Instant::now();
+                        let timeout = Duration::from_millis(ELEMENT_GET_TIMEOUT_MS);
+
+                        loop {
+                            match rx.try_recv() {
+                                Ok(val) => {
+                                    return Ok(mlua::Value::String(
+                                        lua.create_string(&val).map_err(mlua::Error::external)?,
+                                    ));
+                                }
+                                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                    if start.elapsed() > timeout {
+                                        return Ok(mlua::Value::Nil);
+                                    }
+                                    std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+                                }
+                                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                    return Ok(mlua::Value::Nil);
+                                }
+                            }
+                        }
                     }
+                    Err(_) => Ok(mlua::Value::Nil),
                 }
             })
             .map_err(|e| format!("Failed to create element.get_value: {}", e))?;
@@ -57,23 +101,43 @@ impl PluginRuntime {
         let pid = plugin_id.clone();
         let get_attribute_fn = self
             .lua
-            .create_function(move |_, (selector, attr): (mlua::String, mlua::String)| {
+            .create_function(move |lua, (selector, attr): (mlua::String, mlua::String)| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
                 let attr = String::from_utf8_lossy(&attr.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(
                     &pid,
                     "api_call",
                     "sl.element.get_attribute",
                     &format!("{} {}", selector, attr),
                 );
-                let data = serde_json::json!({ "attr": attr }).to_string();
+
+                let (req_id, rx) = element_response_create();
+                let data = serde_json::json!({ "attr": attr, "request_id": req_id }).to_string();
                 match emit_ui_event(&pid, "element_get_attribute", &selector, &data) {
-                    Ok(()) => Ok(true),
-                    Err(e) => {
-                        eprintln!("[Element] get_attribute error: {}", e);
-                        Ok(false)
+                    Ok(()) => {
+                        let start = Instant::now();
+                        let timeout = Duration::from_millis(ELEMENT_GET_TIMEOUT_MS);
+
+                        loop {
+                            match rx.try_recv() {
+                                Ok(val) => {
+                                    return Ok(mlua::Value::String(
+                                        lua.create_string(&val).map_err(mlua::Error::external)?,
+                                    ));
+                                }
+                                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                    if start.elapsed() > timeout {
+                                        return Ok(mlua::Value::Nil);
+                                    }
+                                    std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+                                }
+                                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                    return Ok(mlua::Value::Nil);
+                                }
+                            }
+                        }
                     }
+                    Err(_) => Ok(mlua::Value::Nil),
                 }
             })
             .map_err(|e| format!("Failed to create element.get_attribute: {}", e))?;
@@ -84,18 +148,38 @@ impl PluginRuntime {
         let pid = plugin_id.clone();
         let get_attributes_fn = self
             .lua
-            .create_function(move |_, selector: mlua::String| {
+            .create_function(move |lua, selector: mlua::String| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-
                 let _ =
                     emit_permission_log(&pid, "api_call", "sl.element.get_attributes", &selector);
-                let data = serde_json::json!({}).to_string();
+
+                let (req_id, rx) = element_response_create();
+                let data = serde_json::json!({ "request_id": req_id }).to_string();
                 match emit_ui_event(&pid, "element_get_attributes", &selector, &data) {
-                    Ok(()) => Ok(mlua::Value::Nil),
-                    Err(e) => {
-                        eprintln!("[Element] get_attributes error: {}", e);
-                        Ok(mlua::Value::Nil)
+                    Ok(()) => {
+                        let start = Instant::now();
+                        let timeout = Duration::from_millis(ELEMENT_GET_TIMEOUT_MS);
+
+                        loop {
+                            match rx.try_recv() {
+                                Ok(val) => {
+                                    return Ok(mlua::Value::String(
+                                        lua.create_string(&val).map_err(mlua::Error::external)?,
+                                    ));
+                                }
+                                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                    if start.elapsed() > timeout {
+                                        return Ok(mlua::Value::Nil);
+                                    }
+                                    std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+                                }
+                                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                    return Ok(mlua::Value::Nil);
+                                }
+                            }
+                        }
                     }
+                    Err(_) => Ok(mlua::Value::Nil),
                 }
             })
             .map_err(|e| format!("Failed to create element.get_attributes: {}", e))?;
@@ -108,7 +192,6 @@ impl PluginRuntime {
             .lua
             .create_function(move |_, selector: mlua::String| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.click", &selector);
                 let data = serde_json::json!({}).to_string();
                 match emit_ui_event(&pid, "element_click", &selector, &data) {
@@ -130,7 +213,6 @@ impl PluginRuntime {
             .create_function(move |_, (selector, value): (mlua::String, mlua::String)| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
                 let value = String::from_utf8_lossy(&value.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(
                     &pid,
                     "api_call",
@@ -156,7 +238,6 @@ impl PluginRuntime {
             .lua
             .create_function(move |_, (selector, checked): (mlua::String, bool)| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(
                     &pid,
                     "api_call",
@@ -183,7 +264,6 @@ impl PluginRuntime {
             .create_function(move |_, (selector, value): (mlua::String, mlua::String)| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
                 let value = String::from_utf8_lossy(&value.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(
                     &pid,
                     "api_call",
@@ -209,7 +289,6 @@ impl PluginRuntime {
             .lua
             .create_function(move |_, selector: mlua::String| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.focus", &selector);
                 let data = serde_json::json!({}).to_string();
                 match emit_ui_event(&pid, "element_focus", &selector, &data) {
@@ -230,7 +309,6 @@ impl PluginRuntime {
             .lua
             .create_function(move |_, selector: mlua::String| {
                 let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.blur", &selector);
                 let data = serde_json::json!({}).to_string();
                 match emit_ui_event(&pid, "element_blur", &selector, &data) {
@@ -252,7 +330,6 @@ impl PluginRuntime {
             .lua
             .create_function(move |_, (selector, callback): (mlua::String, mlua::Function)| {
                 let selector_str = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-
                 let _ =
                     emit_permission_log(&pid, "api_call", "sl.element.on_change", &selector_str);
 

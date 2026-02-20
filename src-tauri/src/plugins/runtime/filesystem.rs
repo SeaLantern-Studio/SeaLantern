@@ -13,13 +13,13 @@ impl PluginRuntime {
             .create_table()
             .map_err(|e| format!("Failed to create fs table: {}", e))?;
 
-        let plugin_dir = self.plugin_dir.clone();
+        let data_dir = self.data_dir.clone();
         let plugin_id = self.plugin_id.clone();
         let permissions = self.permissions.clone();
 
         const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 
-        let dir = plugin_dir.clone();
+        let dir = data_dir.clone();
         let pid = plugin_id.clone();
         let perms = permissions.clone();
         let read_fn = self
@@ -48,7 +48,7 @@ impl PluginRuntime {
             .set("read", read_fn)
             .map_err(|e| format!("Failed to set fs.read: {}", e))?;
 
-        let dir = plugin_dir.clone();
+        let dir = data_dir.clone();
         let pid = plugin_id.clone();
         let perms = permissions.clone();
         let read_binary_fn = self
@@ -78,7 +78,7 @@ impl PluginRuntime {
             .set("read_binary", read_binary_fn)
             .map_err(|e| format!("Failed to set fs.read_binary: {}", e))?;
 
-        let dir = plugin_dir.clone();
+        let dir = data_dir.clone();
         let pid = plugin_id.clone();
         let perms = permissions.clone();
         let write_fn = self
@@ -109,7 +109,7 @@ impl PluginRuntime {
             .set("write", write_fn)
             .map_err(|e| format!("Failed to set fs.write: {}", e))?;
 
-        let dir = plugin_dir.clone();
+        let dir = data_dir.clone();
         let pid = plugin_id.clone();
         let perms = permissions.clone();
         let exists_fn = self
@@ -130,7 +130,7 @@ impl PluginRuntime {
             .set("exists", exists_fn)
             .map_err(|e| format!("Failed to set fs.exists: {}", e))?;
 
-        let dir = plugin_dir.clone();
+        let dir = data_dir.clone();
         let pid = plugin_id.clone();
         let perms = permissions.clone();
         let list_fn = self
@@ -164,7 +164,7 @@ impl PluginRuntime {
             .set("list", list_fn)
             .map_err(|e| format!("Failed to set fs.list: {}", e))?;
 
-        let dir = plugin_dir.clone();
+        let dir = data_dir.clone();
         let pid = plugin_id.clone();
         let perms = permissions.clone();
         let mkdir_fn = self
@@ -186,7 +186,7 @@ impl PluginRuntime {
             .set("mkdir", mkdir_fn)
             .map_err(|e| format!("Failed to set fs.mkdir: {}", e))?;
 
-        let dir = plugin_dir.clone();
+        let dir = data_dir.clone();
         let pid = plugin_id.clone();
         let perms = permissions.clone();
         let remove_fn = self
@@ -213,7 +213,7 @@ impl PluginRuntime {
             .set("remove", remove_fn)
             .map_err(|e| format!("Failed to set fs.remove: {}", e))?;
 
-        let dir = plugin_dir.clone();
+        let dir = data_dir.clone();
         let pid = plugin_id.clone();
         let perms = permissions.clone();
         let info_fn = self

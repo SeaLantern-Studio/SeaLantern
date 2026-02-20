@@ -7,9 +7,11 @@ import {
   removePluginTranslations,
 } from "../language";
 import { useComponentRegistry } from "../composables/useComponentRegistry";
+import { useToast } from "../composables/useToast";
 import DOMPurify from "dompurify";
 import * as pluginApi from "../api/plugin";
 import type { BufferedComponentEvent } from "../api/plugin";
+import { setThemeProviderOverrides } from "../utils/theme";
 import type {
   PluginInfo,
   PluginNavItem,
@@ -22,6 +24,7 @@ import type {
   SidebarMode,
   PluginUiAction,
   PluginPermissionLog,
+  PluginLogEvent,
 } from "../types/plugin";
 
 interface PluginUiEvent {
@@ -56,6 +59,23 @@ function sanitizeHtml(html: string): string {
     FORBID_ATTR: ["style"],
     ALLOW_DATA_ATTR: false,
   });
+}
+
+function executePluginScripts(container: HTMLElement, rawHtml: string) {
+  const scriptRegex = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = scriptRegex.exec(rawHtml)) !== null) {
+    const scriptContent = match[1].trim();
+    if (scriptContent) {
+      try {
+        const scriptEl = document.createElement("script");
+        scriptEl.textContent = scriptContent;
+        container.appendChild(scriptEl);
+      } catch (e) {
+        console.error("[PluginUI] Script execution error:", e);
+      }
+    }
+  }
 }
 
 export const PLUGIN_THEME_CUSTOM_STYLE_ID = "plugin-theme-custom";
@@ -93,6 +113,8 @@ export const usePluginStore = defineStore("plugin", () => {
   const sidebarItems = ref<SidebarItem[]>([]);
 
   const permissionLogs = ref<Record<string, PluginPermissionLog[]>>({});
+
+  const pluginLogs = ref<Record<string, PluginLogEvent[]>>({});
 
   const eventListenerRegistry = new Map<
     string,
@@ -133,6 +155,12 @@ export const usePluginStore = defineStore("plugin", () => {
     error.value = null;
     try {
       plugins.value = await pluginApi.listPlugins();
+      setThemeProviderOverrides(
+        plugins.value
+          .filter((p) => p.state === "enabled")
+          .filter((p) => p.manifest.capabilities?.includes("theme-provider"))
+          .map((p) => p.manifest.id),
+      );
       await loadPluginIcons();
       await injectAllPluginCss();
 
@@ -151,6 +179,12 @@ export const usePluginStore = defineStore("plugin", () => {
     error.value = null;
     try {
       plugins.value = await pluginApi.scanPlugins();
+      setThemeProviderOverrides(
+        plugins.value
+          .filter((p) => p.state === "enabled")
+          .filter((p) => p.manifest.capabilities?.includes("theme-provider"))
+          .map((p) => p.manifest.id),
+      );
       await loadPluginIcons();
       await injectAllPluginCss();
 
@@ -172,6 +206,13 @@ export const usePluginStore = defineStore("plugin", () => {
       try {
         await pluginApi.enablePlugin(pluginId);
 
+        setThemeProviderOverrides(
+          plugins.value
+            .filter((p) => p.manifest.id === pluginId || p.state === "enabled")
+            .filter((p) => p.manifest.capabilities?.includes("theme-provider"))
+            .map((p) => p.manifest.id),
+        );
+
         await injectPluginCss(pluginId);
 
         const pluginIndex = plugins.value.findIndex(
@@ -180,6 +221,13 @@ export const usePluginStore = defineStore("plugin", () => {
         if (pluginIndex !== -1) {
           plugins.value[pluginIndex].state = "enabled";
         }
+
+        setThemeProviderOverrides(
+          plugins.value
+            .filter((p) => p.state === "enabled")
+            .filter((p) => p.manifest.capabilities?.includes("theme-provider"))
+            .map((p) => p.manifest.id),
+        );
         await loadNavItems();
 
         const currentPath = window.location.hash.replace(/^#/, "") || "/";
@@ -199,11 +247,28 @@ export const usePluginStore = defineStore("plugin", () => {
           removePluginCss(pluginId);
         }
 
+        setThemeProviderOverrides(
+          plugins.value
+            .filter((p) => p.state === "enabled")
+            .filter((p) => p.manifest.capabilities?.includes("theme-provider"))
+            .map((p) => p.manifest.id),
+        );
+
         return { success: false, error: errorMsg };
       }
     } else {
       try {
         const disabledPlugins = await pluginApi.disablePlugin(pluginId);
+
+        setThemeProviderOverrides(
+          plugins.value
+            .filter((p) => p.manifest.id !== pluginId)
+            .filter((p) => !disabledPlugins.includes(p.manifest.id))
+            .filter((p) => p.state === "enabled")
+            .filter((p) => p.manifest.capabilities?.includes("theme-provider"))
+            .map((p) => p.manifest.id),
+        );
+
         removePluginCss(pluginId);
         removePluginUiElements(pluginId);
         cleanupPluginEventListeners(pluginId);
@@ -216,6 +281,13 @@ export const usePluginStore = defineStore("plugin", () => {
         if (pluginIndex !== -1) {
           plugins.value[pluginIndex].state = "disabled";
         }
+
+        setThemeProviderOverrides(
+          plugins.value
+            .filter((p) => p.state === "enabled")
+            .filter((p) => p.manifest.capabilities?.includes("theme-provider"))
+            .map((p) => p.manifest.id),
+        );
 
         for (const disabledId of disabledPlugins) {
           const idx = plugins.value.findIndex(
@@ -429,6 +501,13 @@ export const usePluginStore = defineStore("plugin", () => {
   ): Promise<void> {
     try {
       await pluginApi.setPluginSettings(pluginId, settings);
+
+      if (hasCapability(pluginId, "theme-provider")) {
+        await applyThemeProviderSettings(pluginId);
+      }
+      if (hasCapability(pluginId, "theme-widgets-provider")) {
+        await applyThemeWidgetsProviderSettings(pluginId);
+      }
     } catch (e) {
       console.error(`Failed to set settings for ${pluginId}:`, e);
       throw e;
@@ -478,6 +557,13 @@ export const usePluginStore = defineStore("plugin", () => {
 
       removeThemeSettings();
       removeThemeWidgetsSettings();
+
+      setThemeProviderOverrides(
+        plugins.value
+          .filter((p) => p.state === "enabled")
+          .filter((p) => p.manifest.capabilities?.includes("theme-provider"))
+          .map((p) => p.manifest.id),
+      );
 
       document.querySelectorAll("style[data-plugin-id]").forEach((el) => {
         const id = (el as HTMLElement).id || "";
@@ -551,30 +637,31 @@ export const usePluginStore = defineStore("plugin", () => {
       text_primary: "--text-primary",
       text_secondary: "--text-secondary",
       border_color: "--border-color",
-      glass_blur: "--glass-blur",
-      border_radius: "--radius-lg",
+      glass_blur: "--sl-glass-blur",
+      border_radius: "--sl-radius-lg",
     };
 
     let customCss = ":root {\n";
     let hasCustom = false;
     for (const [key, cssVar] of Object.entries(varMap)) {
-      if (settings[key] && settings[key] !== defaults[key]) {
-        customCss += `  ${cssVar}: ${settings[key]};\n`;
-        const noPrefixVar = noPrefixVarMap[key];
-        if (noPrefixVar) {
-          customCss += `  ${noPrefixVar}: ${settings[key]};\n`;
-        }
-        hasCustom = true;
+      const value = settings[key] ?? defaults[key];
+      if (value === undefined) continue;
 
-        if (key === "border_radius") {
-          const radiusValue = parseFloat(settings[key]);
-          if (!isNaN(radiusValue)) {
-            customCss += `  --sl-radius-md: ${radiusValue * 0.625}px;\n`;
-            customCss += `  --sl-radius-sm: ${radiusValue * 0.375}px;\n`;
-            customCss += `  --sl-radius-xl: ${radiusValue * 1.5}px;\n`;
-            customCss += `  --radius-md: ${radiusValue * 0.625}px;\n`;
-            customCss += `  --radius-sm: ${radiusValue * 0.375}px;\n`;
-          }
+      customCss += `  ${cssVar}: ${value};\n`;
+      const noPrefixVar = noPrefixVarMap[key];
+      if (noPrefixVar) {
+        customCss += `  ${noPrefixVar}: ${value};\n`;
+      }
+      hasCustom = true;
+
+      if (key === "border_radius") {
+        const radiusValue = parseFloat(String(value));
+        if (!isNaN(radiusValue)) {
+          customCss += `  --sl-radius-md: ${radiusValue * 0.625}px;\n`;
+          customCss += `  --sl-radius-sm: ${radiusValue * 0.375}px;\n`;
+          customCss += `  --sl-radius-xl: ${radiusValue * 1.5}px;\n`;
+          customCss += `  --radius-md: ${radiusValue * 0.625}px;\n`;
+          customCss += `  --radius-sm: ${radiusValue * 0.375}px;\n`;
         }
       }
     }
@@ -616,6 +703,33 @@ export const usePluginStore = defineStore("plugin", () => {
 
       const defaults = getPluginDefaults(pluginId);
       injectThemeStyle(settings, varMap, defaults);
+
+      const root = document.documentElement;
+      const varsToClear = [
+        "--sl-bg",
+        "--sl-bg-secondary",
+        "--sl-bg-tertiary",
+        "--sl-primary",
+        "--sl-primary-light",
+        "--sl-primary-dark",
+        "--sl-primary-bg",
+        "--sl-accent",
+        "--sl-accent-light",
+        "--sl-text-primary",
+        "--sl-text-secondary",
+        "--sl-text-tertiary",
+        "--sl-border",
+        "--sl-border-light",
+        "--sl-surface",
+        "--sl-surface-hover",
+        "--sl-shadow-sm",
+        "--sl-shadow-md",
+        "--sl-shadow-lg",
+        "--sl-shadow-xl",
+      ];
+      for (const v of varsToClear) {
+        root.style.removeProperty(v);
+      }
     } catch (e) {
       console.error("Failed to apply theme provider settings:", e);
     }
@@ -740,7 +854,7 @@ export const usePluginStore = defineStore("plugin", () => {
     return container;
   }
 
-  function handlePluginUiEvent(event: PluginUiEvent) {
+  async function handlePluginUiEvent(event: PluginUiEvent) {
     const { plugin_id, action, element_id, html } = event;
 
     const target = element_id;
@@ -764,6 +878,7 @@ export const usePluginStore = defineStore("plugin", () => {
         wrapper.style.pointerEvents = "auto";
         wrapper.innerHTML = sanitizeHtml(html);
         container.appendChild(wrapper);
+        executePluginScripts(wrapper, html);
         break;
       }
 
@@ -779,6 +894,7 @@ export const usePluginStore = defineStore("plugin", () => {
         const element = document.getElementById(fullElementId);
         if (element) {
           element.innerHTML = sanitizeHtml(html);
+          executePluginScripts(element, html);
         } else {
           handlePluginUiEvent({ ...event, action: "inject" });
         }
@@ -931,63 +1047,84 @@ export const usePluginStore = defineStore("plugin", () => {
 
       case "element_get_text": {
         if (!target) break;
-        const el = document.querySelector(target);
-        const text = el ? (el as HTMLElement).innerText || "" : "";
-        emit("plugin-element-result", {
-          plugin_id,
-          action: "get_text",
-          data: text,
-        });
+        try {
+          const parsed = JSON.parse(html || "{}");
+          const requestId = parsed.request_id;
+          const el = document.querySelector(target);
+          const text = el ? (el as HTMLElement).innerText || "" : "";
+          console.log(`[PluginUI] element_get_text: selector=${target}, found=${!!el}, text="${text}", req_id=${requestId}`);
+          emit("plugin-element-response", {
+            plugin_id,
+            request_id: requestId,
+            data: text,
+          });
+        } catch (e) {
+          console.error("[PluginUI] element_get_text error:", e);
+        }
         break;
       }
 
       case "element_get_value": {
         if (!target) break;
-        const el = document.querySelector(target) as
-          | HTMLInputElement
-          | HTMLSelectElement
-          | HTMLTextAreaElement
-          | null;
-        const value = el ? el.value || "" : "";
-        emit("plugin-element-result", {
-          plugin_id,
-          action: "get_value",
-          data: value,
-        });
+        try {
+          const parsed = JSON.parse(html || "{}");
+          const requestId = parsed.request_id;
+          const el = document.querySelector(target) as
+            | HTMLInputElement
+            | HTMLSelectElement
+            | HTMLTextAreaElement
+            | null;
+          const value = el ? el.value || "" : "";
+          emit("plugin-element-response", {
+            plugin_id,
+            request_id: requestId,
+            data: value,
+          });
+        } catch (e) {
+          console.error("[PluginUI] element_get_value error:", e);
+        }
         break;
       }
 
       case "element_get_attribute": {
         if (!target) break;
-        const el = document.querySelector(target);
         try {
-          const { attribute } = JSON.parse(html || "{}");
-          const val = el ? el.getAttribute(attribute) || "" : "";
-          emit("plugin-element-result", {
+          const parsed = JSON.parse(html || "{}");
+          const requestId = parsed.request_id;
+          const attr = parsed.attr;
+          const el = document.querySelector(target);
+          const val = el ? el.getAttribute(attr) || "" : "";
+          emit("plugin-element-response", {
             plugin_id,
-            action: "get_attribute",
+            request_id: requestId,
             data: val,
           });
         } catch (e) {
-          console.error("[PluginUI] Invalid JSON:", e);
+          console.error("[PluginUI] element_get_attribute error:", e);
         }
         break;
       }
 
       case "element_get_attributes": {
         if (!target) break;
-        const el = document.querySelector(target);
-        const attrs: Record<string, string> = {};
-        if (el) {
-          Array.from(el.attributes).forEach((attr) => {
-            attrs[attr.name] = attr.value;
+        try {
+          const parsed = JSON.parse(html || "{}");
+          const requestId = parsed.request_id;
+          const el = document.querySelector(target);
+          const attrs: Record<string, string> = {};
+          if (el) {
+            Array.from(el.attributes).forEach((a) => {
+              attrs[a.name] = a.value;
+            });
+          }
+          emit("plugin-element-response", {
+            plugin_id,
+            request_id: requestId,
+            data: JSON.stringify(attrs),
           });
+        } catch (e) {
+          console.error("[PluginUI] element_get_attributes error:", e);
         }
-        emit("plugin-element-result", {
-          plugin_id,
-          action: "get_attributes",
-          data: JSON.stringify(attrs),
-        });
         break;
       }
 
@@ -1119,6 +1256,19 @@ export const usePluginStore = defineStore("plugin", () => {
         }
         break;
       }
+
+      case "toast": {
+        try {
+          const { type, message, duration } = JSON.parse(html || "{}");
+          const validTypes = ["success", "error", "warning", "info"] as const;
+          const toastType = validTypes.includes(type) ? type : "info";
+          const toast = useToast();
+          (toast[toastType as "success" | "error" | "warning" | "info"] as (msg: string, dur?: number) => void)(message || "", duration);
+        } catch (e) {
+          console.error("[PluginUI] toast error:", e);
+        }
+        break;
+      }
     }
   }
 
@@ -1179,6 +1329,7 @@ export const usePluginStore = defineStore("plugin", () => {
       uiEventUnlisten = await listen<PluginUiEvent>(
         "plugin-ui-event",
         (event) => {
+          console.log(`[PluginUI] Received: ${event.payload.action} for ${event.payload.element_id}`);
           handlePluginUiEvent(event.payload);
         },
       );
@@ -1262,6 +1413,21 @@ export const usePluginStore = defineStore("plugin", () => {
     };
   }
 
+  function addPluginLog(log: PluginLogEvent) {
+    const logs = pluginLogs.value[log.plugin_id] || [];
+    const newLogs = [...logs, log];
+
+    if (newLogs.length > 500) newLogs.splice(0, newLogs.length - 500);
+    pluginLogs.value = {
+      ...pluginLogs.value,
+      [log.plugin_id]: newLogs,
+    };
+  }
+
+  function getPluginLogs(pluginId: string): PluginLogEvent[] {
+    return pluginLogs.value[pluginId] || [];
+  }
+
   function getPermissionLogs(pluginId: string): PluginPermissionLog[] {
     return permissionLogs.value[pluginId] || [];
   }
@@ -1318,6 +1484,30 @@ export const usePluginStore = defineStore("plugin", () => {
     if (permissionLogUnlisten) {
       permissionLogUnlisten();
       permissionLogUnlisten = null;
+    }
+  }
+
+  let pluginLogUnlisten: UnlistenFn | null = null;
+
+  async function initPluginLogListener() {
+    if (pluginLogUnlisten) {
+      return;
+    }
+
+    try {
+      pluginLogUnlisten = await listen<PluginLogEvent>("plugin-log-event", (event) => {
+        const log = event.payload;
+        addPluginLog(log);
+      });
+    } catch (e) {
+      console.error("[PluginLog] Failed to initialize event listener:", e);
+    }
+  }
+
+  function cleanupPluginLogListener() {
+    if (pluginLogUnlisten) {
+      pluginLogUnlisten();
+      pluginLogUnlisten = null;
     }
   }
 
@@ -1631,12 +1821,6 @@ export const usePluginStore = defineStore("plugin", () => {
     }
   }
 
-  initUiEventListener();
-  initSidebarEventListener();
-  initPermissionLogListener();
-  initComponentEventListener();
-  initI18nEventListener();
-
   return {
     plugins,
     navItems,
@@ -1647,6 +1831,7 @@ export const usePluginStore = defineStore("plugin", () => {
     pendingDependencies,
     sidebarItems,
     permissionLogs,
+    pluginLogs,
     loadPlugins,
     refreshPlugins,
     togglePlugin,
@@ -1680,6 +1865,10 @@ export const usePluginStore = defineStore("plugin", () => {
     clearPermissionLogs,
     initPermissionLogListener,
     cleanupPermissionLogListener,
+
+    initPluginLogListener,
+    cleanupPluginLogListener,
+    getPluginLogs,
 
     getHighRiskPermissions,
 

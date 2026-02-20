@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import AppLayout from "./components/layout/AppLayout.vue";
 import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
@@ -18,22 +18,41 @@ const settingsStore = useSettingsStore();
 const pluginStore = usePluginStore();
 const contextMenuStore = useContextMenuStore();
 
-function handleGlobalContextMenu(event: MouseEvent) {
-  if (contextMenuStore.visible) {
-    event.preventDefault();
-    event.stopPropagation();
+async function handleGlobalContextMenu(event: MouseEvent) {
+  event.preventDefault();
+
+  const wasVisible = contextMenuStore.visible;
+  if (wasVisible) {
     contextMenuStore.hideContextMenu();
+    await nextTick();
   }
 
   const allElements = document.elementsFromPoint(event.clientX, event.clientY) as HTMLElement[];
+  const filteredElements = allElements.filter(el => !el.closest('.sl-context-menu-backdrop'));
+
   let ctx = "global";
   let targetData = "";
 
-  for (const el of allElements) {
+  for (const el of filteredElements) {
     if (el.dataset?.contextMenu) {
       ctx = el.dataset.contextMenu;
       targetData = el.dataset.contextMenuTarget ?? "";
       break;
+    }
+  }
+
+  if (!targetData) {
+    const target = filteredElements[0];
+    if (target) {
+      const tag = target.tagName.toLowerCase();
+      const text = target.textContent?.trim() || "";
+      if (text.length > 100) {
+        targetData = `${tag}(${text.substring(0, 100)}...)`;
+      } else if (text) {
+        targetData = `${tag}(${text})`;
+      } else {
+        targetData = tag;
+      }
     }
   }
 
@@ -43,13 +62,21 @@ function handleGlobalContextMenu(event: MouseEvent) {
 
   if (!contextMenuStore.hasMenuItems(ctx)) return;
 
-  event.preventDefault();
   contextMenuStore.showContextMenu(ctx, event.clientX, event.clientY, targetData);
 }
 
 onMounted(async () => {
   contextMenuStore.initContextMenuListener();
   document.addEventListener("contextmenu", handleGlobalContextMenu);
+
+  await pluginStore.initUiEventListener();
+  await pluginStore.initSidebarEventListener();
+  await pluginStore.initPermissionLogListener();
+  await pluginStore.initPluginLogListener();
+  await pluginStore.initComponentEventListener();
+  await pluginStore.initI18nEventListener();
+
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   try {
     await settingsStore.loadSettings();
@@ -83,6 +110,13 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener("contextmenu", handleGlobalContextMenu);
   contextMenuStore.cleanupContextMenuListener();
+
+  pluginStore.cleanupUiEventListener();
+  pluginStore.cleanupSidebarEventListener();
+  pluginStore.cleanupPermissionLogListener();
+  pluginStore.cleanupPluginLogListener();
+  pluginStore.cleanupComponentEventListener();
+  pluginStore.cleanupI18nEventListener();
 });
 
 function handleSplashReady() {

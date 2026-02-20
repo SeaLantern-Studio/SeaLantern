@@ -44,7 +44,7 @@ const iconComponents: Record<ToastType, typeof Check> = {
   </Teleport>
 </template>
 
-<style scoped>
+<style>
 .sl-toast-container {
   position: fixed;
   top: 16px;

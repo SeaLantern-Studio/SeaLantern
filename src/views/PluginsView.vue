@@ -430,7 +430,9 @@ function getDependencyTooltip(plugin: PluginInfo): string {
 
 function showMissingDependenciesModal(plugin: PluginInfo) {
   installedPluginName.value = plugin.manifest.name;
-  missingDependencies.value = getMissingRequiredDependencies(plugin);
+  const required = getMissingRequiredDependencies(plugin);
+  const optional = getMissingOptionalDependencies(plugin);
+  missingDependencies.value = [...required, ...optional];
   showDependencyModal.value = true;
 }
 
@@ -1247,8 +1249,8 @@ function goToMarket() {
           <li v-for="dep in missingDependencies" :key="dep.id" class="dependency-item">
             <span class="dependency-name">{{ getDepDisplayName(dep.id) }}</span>
             <span v-if="dep.version_requirement" class="dependency-version">{{ dep.version_requirement }}</span>
-            <span :class="['dependency-badge', getDepStatus(dep.id)]">
-              {{ getDepStatusLabel(dep.id) }}
+            <span :class="['dependency-badge', dep.required ? 'required' : 'optional']">
+              {{ dep.required ? i18n.t("plugins.dep_required") : i18n.t("plugins.dep_optional") }}
             </span>
           </li>
         </ul>
@@ -2446,6 +2448,16 @@ function goToMarket() {
   color: #4ade80;
 }
 
+.dependency-badge.required {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.dependency-badge.optional {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
 .dependency-hint {
   margin: 0;
   color: var(--sl-text-tertiary, #64748b);
@@ -2566,7 +2578,7 @@ function goToMarket() {
 }
 
 .dep-type-tag--optional {
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
 }
 </style>

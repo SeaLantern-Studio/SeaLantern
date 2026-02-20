@@ -6,6 +6,16 @@
 import type { AppSettings } from "../api/settings";
 import { getThemeColors, mapLegacyPlanName } from "../themes";
 
+let _themeProviderOverrides: string[] = [];
+
+export function setThemeProviderOverrides(overrides: string[]): void {
+  _themeProviderOverrides = Array.isArray(overrides) ? overrides : [];
+}
+
+export function isThemeProviderActive(): boolean {
+  return _themeProviderOverrides.length > 0;
+}
+
 /**
  * 获取实际生效的主题（light 或 dark）
  * @param theme - 主题设置值，可以是 "light"、"dark" 或 "auto"
@@ -171,6 +181,10 @@ export function getColorValue(
  */
 export function applyColors(settings: AppSettings): void {
   if (!settings) return;
+
+  if (_themeProviderOverrides.length > 0) {
+    return;
+  }
 
   const effectiveTheme = getEffectiveTheme(settings.theme);
   const isDark = effectiveTheme === "dark";

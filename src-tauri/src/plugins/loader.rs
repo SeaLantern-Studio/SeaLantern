@@ -207,6 +207,7 @@ mod tests {
             settings: None,
             sidebar: None,
             locales: None,
+            include: vec![],
         };
         assert!(PluginLoader::validate_manifest(&manifest).is_ok());
     }
@@ -238,6 +239,7 @@ mod tests {
             settings: None,
             sidebar: None,
             locales: None,
+            include: vec![],
         };
         let err = PluginLoader::validate_manifest(&manifest).unwrap_err();
         assert!(err.contains("id"));

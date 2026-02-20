@@ -39,6 +39,8 @@ pub struct PluginRuntime {
     pub(super) storage_lock: Arc<Mutex<()>>,
 
     pub(super) process_registry: ProcessRegistry,
+    
+    element_callbacks: Arc<Mutex<std::collections::HashMap<u64, mlua::RegistryKey>>>,
 }
 
 impl PluginRuntime {
@@ -71,6 +73,7 @@ impl PluginRuntime {
             api_registry,
             storage_lock: Arc::new(Mutex::new(())),
             process_registry: new_process_registry(),
+            element_callbacks: Arc::new(Mutex::new(std::collections::HashMap::new())),
         };
 
         runtime.setup_sandbox(plugin_id, plugin_dir)?;
@@ -363,7 +366,7 @@ impl PluginRuntime {
         target_data: JsonValue,
         x: f64,
         y: f64,
-    ) -> Result<(), String> {
+    ) -> Result<Vec<JsonValue>, String> {
         let registry_key = format!("_context_menu_show_callback_{}", self.plugin_id);
 
         let callback: Function = self
@@ -374,11 +377,28 @@ impl PluginRuntime {
         let target_lua = lua_value_from_json(&self.lua, &target_data, 0)
             .map_err(|e| format!("转换 target_data 失败: {}", e))?;
 
-        callback
-            .call::<()>((context.to_string(), target_lua, x, y))
+        let result: Value = callback
+            .call((context.to_string(), target_lua, x, y))
             .map_err(|e| format!("调用右键菜单显示回调失败: {}", e))?;
 
-        Ok(())
+        let mut dynamic_items = Vec::new();
+        if let Value::Table(tbl) = result {
+            for pair in tbl.sequence_values::<Value>() {
+                if let Ok(item_val) = pair {
+                    if let Ok(json_item) = json_value_from_lua(&item_val, 0) {
+                        if let JsonValue::Object(mut obj) = json_item {
+                            obj.insert(
+                                "pluginId".to_string(),
+                                JsonValue::String(self.plugin_id.clone()),
+                            );
+                            dynamic_items.push(JsonValue::Object(obj));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(dynamic_items)
     }
 
     pub fn call_context_menu_callback(

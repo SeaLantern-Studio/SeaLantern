@@ -108,13 +108,6 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
     posY: number,
     data: string
   ) {
-    invoke("context_menu_show_notify", {
-      context: ctx,
-      targetData: data || null,
-      x: posX,
-      y: posY,
-    }).catch((e) => console.error("[ContextMenu] Failed to notify show:", e));
-
     const allItems: ContextMenuItem[] = [];
 
     const contextMap = registeredMenus.get(ctx);
@@ -143,6 +136,13 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
     x.value = posX;
     y.value = posY;
     visible.value = true;
+
+    invoke("context_menu_show_notify", {
+      context: ctx,
+      targetData: data || null,
+      x: posX,
+      y: posY,
+    }).catch((e) => console.error("[ContextMenu] Failed to notify show:", e));
   }
 
   function hideContextMenu() {

@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager,
+    Emitter, Listener, Manager,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -398,6 +398,22 @@ pub fn run() {
                     }
                     Ok(())
                 }));
+            }
+
+            {
+                let app_handle = app.handle().clone();
+                app_handle.listen("plugin-element-response", |event| {
+                    eprintln!("[Element] Received response event");
+                    if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload())
+                    {
+                        if let (Some(request_id), Some(data)) = (
+                            payload.get("request_id").and_then(|v| v.as_u64()),
+                            payload.get("data").and_then(|v| v.as_str()),
+                        ) {
+                            plugins::api::element_response_resolve(request_id, data.to_string());
+                        }
+                    }
+                });
             }
 
             app.manage(manager);

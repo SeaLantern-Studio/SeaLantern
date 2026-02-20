@@ -408,6 +408,9 @@ pub struct PluginManifest {
 
     #[serde(default)]
     pub locales: Option<std::collections::HashMap<String, PluginLocaleEntry>>,
+
+    #[serde(default)]
+    pub include: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

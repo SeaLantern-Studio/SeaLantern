@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { usePluginStore } from "../../stores/pluginStore";
+import { i18n } from "../../language";
+import { getPermissionMetadata } from "../../types/plugin";
 import { Lock, X } from "lucide-vue-next";
 
 interface Props {
@@ -13,20 +15,14 @@ const pluginStore = usePluginStore();
 
 const isOpen = ref(false);
 
-const permissionLabels: Record<string, string> = {
-  ui: "界面控制",
-  element: "元素交互",
-  console: "控制台命令",
-  server: "服务器管理",
-  fs: "文件系统",
-  storage: "数据存储",
-  api: "跨插件调用",
-  log: "日志记录",
-  network: "网络请求",
-};
-
 function getPermissionLabel(permission: string): string {
-  return permissionLabels[permission] || permission;
+  const meta = getPermissionMetadata(permission);
+  return i18n.te(meta.name) ? i18n.t(meta.name) : meta.id;
+}
+
+function getPermissionDesc(permission: string): string {
+  const meta = getPermissionMetadata(permission);
+  return i18n.te(meta.description) ? i18n.t(meta.description) : "";
 }
 
 const logs = computed(() => {
@@ -54,7 +50,7 @@ const apiStats = computed(() => {
 
 function formatTime(timestamp: number): string {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString("zh-CN", {
+  return date.toLocaleTimeString(i18n.getLocale(), {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -104,15 +100,15 @@ onUnmounted(() => {
       class="permission-btn"
       :class="{ 'permission-btn--active': isOpen }"
       @click.stop="togglePanel"
-      :title="'查看权限信息'"
+      :title="i18n.t('plugins.permission.panel_btn_title')"
     >
       <Lock :size="14" :stroke-width="2" />
-      <span class="permission-btn-text">权限</span>
+      <span class="permission-btn-text">{{ i18n.t('plugins.permission.panel_btn_text') }}</span>
     </button>
 
     <div v-if="isOpen" ref="panelRef" class="permission-panel glass">
       <div class="panel-header">
-        <span class="panel-title">权限信息</span>
+        <span class="panel-title">{{ i18n.t('plugins.permission.panel_title') }}</span>
         <button class="panel-close" @click="closePanel">
           <X :size="14" :stroke-width="2" />
         </button>
@@ -120,23 +116,25 @@ onUnmounted(() => {
 
       <div class="panel-content">
         <div class="panel-section">
-          <div class="section-title">声明的权限</div>
+          <div class="section-title">{{ i18n.t('plugins.permission.panel_declared') }}</div>
           <div class="permission-tags">
             <span
               v-for="perm in permissions"
               :key="perm"
               class="permission-tag"
+              :title="getPermissionDesc(perm)"
             >
               {{ getPermissionLabel(perm) }}
+              <span v-if="getPermissionDesc(perm)" class="permission-tag-tooltip">{{ getPermissionDesc(perm) }}</span>
             </span>
             <span v-if="permissions.length === 0" class="empty-hint">
-              无声明权限
+              {{ i18n.t('plugins.permission.panel_no_permissions') }}
             </span>
           </div>
         </div>
 
         <div class="panel-section">
-          <div class="section-title">命令执行记录</div>
+          <div class="section-title">{{ i18n.t('plugins.permission.panel_command_log') }}</div>
           <div class="command-list">
             <div
               v-for="(log, index) in commandLogs"
@@ -149,13 +147,13 @@ onUnmounted(() => {
               <span class="command-time">{{ formatTime(log.timestamp) }}</span>
             </div>
             <div v-if="commandLogs.length === 0" class="empty-hint">
-              暂无命令记录
+              {{ i18n.t('plugins.permission.panel_no_commands') }}
             </div>
           </div>
         </div>
 
         <div class="panel-section">
-          <div class="section-title">API 调用统计</div>
+          <div class="section-title">{{ i18n.t('plugins.permission.panel_api_stats') }}</div>
           <div class="api-stats">
             <div
               v-for="stat in apiStats"
@@ -163,10 +161,10 @@ onUnmounted(() => {
               class="api-stat-item"
             >
               <span class="api-name">{{ stat.name }}</span>
-              <span class="api-count">{{ stat.count }} 次</span>
+              <span class="api-count">{{ i18n.t('plugins.permission.panel_call_count', { count: stat.count }) }}</span>
             </div>
             <div v-if="apiStats.length === 0" class="empty-hint">
-              暂无 API 调用
+              {{ i18n.t('plugins.permission.panel_no_api_calls') }}
             </div>
           </div>
         </div>
@@ -296,6 +294,7 @@ onUnmounted(() => {
 }
 
 .permission-tag {
+  position: relative;
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
@@ -304,6 +303,33 @@ onUnmounted(() => {
   color: var(--sl-primary);
   font-size: 12px;
   font-weight: 500;
+  cursor: default;
+}
+
+.permission-tag-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--sl-bg-tertiary);
+  border: 1px solid var(--sl-border);
+  color: var(--sl-text-secondary);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  width: max-content;
+  max-width: 220px;
+  white-space: normal;
+  word-break: break-all;
+  z-index: 1001;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.permission-tag:hover .permission-tag-tooltip {
+  display: block;
 }
 
 .command-list {
