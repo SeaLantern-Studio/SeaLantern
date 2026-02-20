@@ -143,7 +143,7 @@ jobs:
           
           # Create debian/changelog with distro suffix to avoid conflicts
           cat > debian/changelog << CHANGELOG
-          sealantern (${VERSION}~${{ matrix.distro }}1) ${{ matrix.distro }}; urgency=medium
+          sealantern (${VERSION}+${{ matrix.distro }}1) ${{ matrix.distro }}; urgency=medium
           
             * New upstream release ${VERSION}
             * Auto-synced from ${{ env.UPSTREAM_REPO }}
@@ -206,9 +206,9 @@ jobs:
           DISTRO="${{ matrix.distro }}"
           
           echo "Uploading to ${{ env.PPA_NAME }} for $DISTRO..."
-          dput ${{ env.PPA_NAME }} sealantern_${VERSION}~${DISTRO}1_source.changes
+          dput ${{ env.PPA_NAME }} sealantern_${VERSION}+${DISTRO}1_source.changes
           
-          echo "✅ Successfully uploaded sealantern ${VERSION}~${DISTRO}1 to PPA for $DISTRO"
+          echo "✅ Successfully uploaded sealantern ${VERSION}+${DISTRO}1 to PPA for $DISTRO"
 
       - name: Report status
         if: always()
