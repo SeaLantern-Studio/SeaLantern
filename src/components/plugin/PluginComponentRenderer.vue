@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { usePluginStore } from "../../stores/pluginStore";
 import SLCard from "../common/SLCard.vue";
 import SLButton from "../common/SLButton.vue";
@@ -101,11 +101,20 @@ function getComponentProps(component: RenderedComponent) {
   return props;
 }
 
+let intervalId: ReturnType<typeof setInterval> | null = null;
+
 onMounted(() => {
   processAllPendingComponents();
-  window.setInterval(() => {
+  intervalId = setInterval(() => {
     processAllPendingComponents();
   }, 300);
+});
+
+onUnmounted(() => {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
 });
 </script>
 
