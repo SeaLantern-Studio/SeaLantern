@@ -1,5 +1,5 @@
 use mlua::{Lua, Result as LuaResult, Value};
-use serde_json::{Value as JsonValue};
+use serde_json::Value as JsonValue;
 use std::path::{Path, PathBuf};
 
 pub(crate) const MAX_RECURSION_DEPTH: usize = 64;

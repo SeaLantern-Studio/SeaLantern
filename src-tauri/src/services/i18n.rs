@@ -184,12 +184,8 @@ impl I18nService {
         entries: HashMap<String, String>,
     ) {
         let mut plugin_trans = self.plugin_translations.write().unwrap();
-        let plugin_map = plugin_trans
-            .entry(plugin_id.to_string())
-            .or_default();
-        let locale_map = plugin_map
-            .entry(locale.to_string())
-            .or_default();
+        let plugin_map = plugin_trans.entry(plugin_id.to_string()).or_default();
+        let locale_map = plugin_map.entry(locale.to_string()).or_default();
         locale_map.extend(entries);
     }
 

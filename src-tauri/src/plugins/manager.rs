@@ -539,10 +539,7 @@ impl PluginManager {
     pub fn install_plugin(&mut self, path: &Path) -> Result<PluginInstallResult, String> {
         let plugin_info = if path.extension().is_some_and(|ext| ext == "zip") {
             self.install_plugin_from_zip(path)?
-        } else if path
-            .file_name()
-            .is_some_and(|name| name == "manifest.json")
-        {
+        } else if path.file_name().is_some_and(|name| name == "manifest.json") {
             let plugin_dir = path.parent().ok_or("Invalid manifest path")?;
             self.install_plugin_from_dir(plugin_dir)?
         } else if path.is_dir() {

@@ -385,10 +385,7 @@ impl PluginRuntime {
         if let Value::Table(tbl) = result {
             for item_val in tbl.sequence_values::<Value>().flatten() {
                 if let Ok(JsonValue::Object(mut obj)) = json_value_from_lua(&item_val, 0) {
-                    obj.insert(
-                        "pluginId".to_string(),
-                        JsonValue::String(self.plugin_id.clone()),
-                    );
+                    obj.insert("pluginId".to_string(), JsonValue::String(self.plugin_id.clone()));
                     dynamic_items.push(JsonValue::Object(obj));
                 }
             }

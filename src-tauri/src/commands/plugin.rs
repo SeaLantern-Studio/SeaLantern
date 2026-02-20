@@ -87,8 +87,8 @@ pub fn install_plugin(
     let file_path = std::path::PathBuf::from(path);
     let is_zip = file_path.extension().and_then(|e| e.to_str()) == Some("zip");
     let is_manifest = file_path
-            .file_name()
-            .is_some_and(|name| name == "manifest.json");
+        .file_name()
+        .is_some_and(|name| name == "manifest.json");
     let is_dir = file_path.is_dir();
 
     if !is_zip && !is_manifest && !is_dir {
@@ -502,8 +502,10 @@ fn resolve_github_download_url(
 
     if download_type == "release" {
         let api_url = match version.as_deref() {
-            None | Some("latest") => format!("https://api.github.com/repos/{}/releases/latest", github),
-            Some(tag) => format!("https://api.github.com/repos/{}/releases/tags/{}", github, tag)
+            None | Some("latest") => {
+                format!("https://api.github.com/repos/{}/releases/latest", github)
+            }
+            Some(tag) => format!("https://api.github.com/repos/{}/releases/tags/{}", github, tag),
         };
 
         let response = client
