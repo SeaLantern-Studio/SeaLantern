@@ -129,7 +129,6 @@ jobs:
           printf '%s\n' '#!/usr/bin/make -f' '' '%:' '	dh $@' '' 'override_dh_auto_build:' '	# Binary already built by upstream' '' 'override_dh_auto_install:' '	dpkg-deb -x Sea.Lantern_*_amd64.deb debian/sealantern' > debian/rules
           chmod +x debian/rules
           
-          echo "12" > debian/compat
           echo "3.0 (native)" > debian/source/format
           
           # Create debian/copyright
