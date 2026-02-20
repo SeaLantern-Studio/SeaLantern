@@ -24,7 +24,11 @@ const userScrolledUp = ref(false);
 const consoleFontSize = ref(13);
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
-const { loading: commandLoading, start: startCommandLoading, stop: stopCommandLoading } = useLoading();
+const {
+  loading: commandLoading,
+  start: startCommandLoading,
+  stop: stopCommandLoading,
+} = useLoading();
 const isPolling = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 

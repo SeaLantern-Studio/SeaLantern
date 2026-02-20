@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onUnmounted, watch } from "vue";
 import { useContextMenuStore, type ContextMenuItem } from "@/stores/contextMenuStore";
 
 const contextMenuStore = useContextMenuStore();
@@ -67,7 +67,7 @@ watch(
       document.removeEventListener("contextmenu", handleClickOutside);
       document.removeEventListener("keydown", handleKeydown);
     }
-  }
+  },
 );
 
 onUnmounted(() => {
@@ -80,12 +80,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <Transition name="context-menu-fade">
-      <div
-        v-if="contextMenuStore.visible"
-        ref="menuRef"
-        class="sl-context-menu"
-        :style="menuStyle"
-      >
+      <div v-if="contextMenuStore.visible" ref="menuRef" class="sl-context-menu" :style="menuStyle">
         <div
           v-for="item in contextMenuStore.items"
           :key="`${item.pluginId}-${item.id}`"
@@ -163,7 +158,9 @@ onUnmounted(() => {
 /* 淡入淡出动画 */
 .context-menu-fade-enter-active,
 .context-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .context-menu-fade-enter-from,

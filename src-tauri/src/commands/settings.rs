@@ -2,8 +2,6 @@ use crate::models::settings::AppSettings;
 use crate::services::global;
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
-#[cfg(target_os = "windows")]
-use window_vibrancy;
 
 #[tauri::command]
 pub fn get_settings() -> AppSettings {
@@ -35,11 +33,12 @@ pub fn import_settings(json: String) -> Result<AppSettings, String> {
 
 #[tauri::command]
 pub fn check_acrylic_support() -> Result<bool, String> {
-    #[cfg(target_os = "windows")]
+    // Windows 和 macOS 都支持毛玻璃/亚克力效果
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     {
         Ok(true)
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         Ok(false)
     }
@@ -49,6 +48,7 @@ pub fn check_acrylic_support() -> Result<bool, String> {
 pub fn apply_acrylic(window: tauri::Window, enabled: bool, dark_mode: bool) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
+        use window_vibrancy;
         if enabled {
             // 根据主题选择不同的亚克力颜色
             // 格式: (R, G, B, A) - A 是透明度 (0-255)
@@ -66,7 +66,31 @@ pub fn apply_acrylic(window: tauri::Window, enabled: bool, dark_mode: bool) -> R
                 .map_err(|e| format!("Failed to clear acrylic: {}", e))?;
         }
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = dark_mode; // macOS 不使用此参数
+        use window_vibrancy::NSVisualEffectMaterial;
+        if enabled {
+            // macOS 使用 vibrancy 效果，Sidebar 材质适合侧边栏风格的应用
+            window_vibrancy::apply_vibrancy(
+                &window,
+                NSVisualEffectMaterial::Sidebar,
+                None,
+                Some(10.0),
+            )
+            .map_err(|e| format!("Failed to apply vibrancy: {}", e))?;
+        } else {
+            // macOS 清除 vibrancy 效果 - 使用 WindowBackground 作为默认
+            window_vibrancy::apply_vibrancy(
+                &window,
+                NSVisualEffectMaterial::WindowBackground,
+                None,
+                Some(10.0),
+            )
+            .map_err(|e| format!("Failed to clear vibrancy: {}", e))?;
+        }
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = (window, enabled, dark_mode);
     }

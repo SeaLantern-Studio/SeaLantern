@@ -4,10 +4,6 @@ export * from "./common";
 
 export * from "./layout";
 
-export * from "./plugin";
-
-export type { TabItem } from "./common/SLTabs.vue";
-
 import {
   SLBadge,
   SLButton,

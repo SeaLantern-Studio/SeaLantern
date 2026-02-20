@@ -31,6 +31,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             let _ = app
                 .get_webview_window("main")
@@ -137,18 +138,63 @@ pub fn run() {
             server_id_commands::delete_server_id,
             server_id_commands::search_server_ids,
         ])
-        .on_window_event(|_window, event| {
-            if let tauri::WindowEvent::CloseRequested { api: _, .. } = event {
-                // 允许默认关闭行为，由前端处理确认逻辑
-                // 直接关闭应用
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let settings = services::global::settings_manager().get();
+
+                #[cfg(target_os = "macos")]
+                {
+                    // macOS: 默认隐藏到后台，除非用户明确设置为关闭
+                    if settings.close_action != "close" {
+                        // 阻止默认关闭行为
+                        api.prevent_close();
+                        // 隐藏窗口到后台
+                        let _ = window.hide();
+                        return;
+                    }
+                }
+
+                // Windows/Linux 或 macOS 设置为关闭时：执行关闭逻辑
                 if settings.close_servers_on_exit {
                     services::global::server_manager().stop_all_servers();
                 }
-                // 不阻止默认关闭，让前端的确认对话框处理
             }
         })
-        .setup(|_app| Ok(()))
+        .setup(|app| {
+            // 平台特定的窗口样式设置
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "macos")]
+                {
+                    use window_vibrancy::NSVisualEffectMaterial;
+                    // macOS: 应用毛玻璃效果，显式设置 10px 圆角半径
+                    match window_vibrancy::apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::HudWindow, // HudWindow 材质更适合圆角效果
+                        None,
+                        Some(10.0), // 显式设置圆角半径
+                    ) {
+                        Ok(_) => {
+                            println!("macOS vibrancy applied successfully");
+                            // 延迟执行，确保页面加载完成后再设置属性
+                            let window_clone = window.clone();
+                            std::thread::spawn(move || {
+                                std::thread::sleep(std::time::Duration::from_millis(100));
+                                let _ = window_clone.eval(
+                                    "document.documentElement.setAttribute('data-vibrancy', 'true')",
+                                );
+                            });
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to apply macOS vibrancy: {}", e);
+                        }
+                    }
+                }
+
+                // Windows: 亚克力效果由前端 settings 控制，在 AppLayout.vue 中处理
+                // Windows 11 默认对无边框窗口应用圆角，无需额外设置
+            }
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running Sea Lantern");
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { watch, onUnmounted, ref, nextTick } from 'vue';
-import { X } from 'lucide-vue-next';
+import { watch, onUnmounted, ref, nextTick } from "vue";
+import { X } from "lucide-vue-next";
 import { i18n } from "../../language";
 
 interface Props {
@@ -27,45 +27,49 @@ const modalRef = ref<HTMLElement | null>(null);
 let previousActiveElement: Element | null = null;
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') {
+  if (e.key === "Escape") {
     handleClose();
   }
 }
 
 let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
-watch(() => props.visible, (newVisible) => {
-  if (autoCloseTimer) {
-    clearTimeout(autoCloseTimer);
-    autoCloseTimer = null;
-  }
-  
-  if (newVisible) {
-    previousActiveElement = document.activeElement;
-    nextTick(() => {
-      modalRef.value?.focus();
-    });
-    document.addEventListener('keydown', handleKeydown);
-    
-    if (props.autoClose > 0) {
-      autoCloseTimer = setTimeout(() => {
-        handleClose();
-      }, props.autoClose);
+watch(
+  () => props.visible,
+  (newVisible) => {
+    if (autoCloseTimer) {
+      clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
     }
-  } else {
-    document.removeEventListener('keydown', handleKeydown);
-    if (previousActiveElement instanceof HTMLElement) {
-      previousActiveElement.focus();
+
+    if (newVisible) {
+      previousActiveElement = document.activeElement;
+      nextTick(() => {
+        modalRef.value?.focus();
+      });
+      document.addEventListener("keydown", handleKeydown);
+
+      if (props.autoClose > 0) {
+        autoCloseTimer = setTimeout(() => {
+          handleClose();
+        }, props.autoClose);
+      }
+    } else {
+      document.removeEventListener("keydown", handleKeydown);
+      if (previousActiveElement instanceof HTMLElement) {
+        previousActiveElement.focus();
+      }
+      previousActiveElement = null;
     }
-    previousActiveElement = null;
-  }
-}, { immediate: true });
+  },
+  { immediate: true },
+);
 
 onUnmounted(() => {
   if (autoCloseTimer) {
     clearTimeout(autoCloseTimer);
   }
-  document.removeEventListener('keydown', handleKeydown);
+  document.removeEventListener("keydown", handleKeydown);
 });
 </script>
 
@@ -205,7 +209,9 @@ onUnmounted(() => {
   backdrop-filter: blur(4px);
   background: var(--sl-surface, rgba(255, 255, 255, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
 .sl-modal-title {

@@ -60,14 +60,14 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
 
       contextMap.set(plugin_id, menuItems);
       console.log(
-        `[ContextMenu] Registered ${menuItems.length} items for context "${ctx}" from plugin "${plugin_id}"`
+        `[ContextMenu] Registered ${menuItems.length} items for context "${ctx}" from plugin "${plugin_id}"`,
       );
     } else if (action === "unregister") {
       const contextMap = registeredMenus.get(ctx);
       if (contextMap) {
         contextMap.delete(plugin_id);
         console.log(
-          `[ContextMenu] Unregistered items for context "${ctx}" from plugin "${plugin_id}"`
+          `[ContextMenu] Unregistered items for context "${ctx}" from plugin "${plugin_id}"`,
         );
         if (contextMap.size === 0) {
           registeredMenus.delete(ctx);
@@ -82,12 +82,9 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
     }
 
     try {
-      contextMenuEventUnlisten = await listen<ContextMenuEvent>(
-        "plugin-context-menu",
-        (event) => {
-          handleContextMenuEvent(event.payload);
-        }
-      );
+      contextMenuEventUnlisten = await listen<ContextMenuEvent>("plugin-context-menu", (event) => {
+        handleContextMenuEvent(event.payload);
+      });
       console.log("[ContextMenu] Event listener initialized");
     } catch (e) {
       console.error("[ContextMenu] Failed to initialize event listener:", e);
@@ -101,12 +98,7 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
     }
   }
 
-  function showContextMenu(
-    ctx: string,
-    posX: number,
-    posY: number,
-    data: string
-  ) {
+  function showContextMenu(ctx: string, posX: number, posY: number, data: string) {
     const allItems: ContextMenuItem[] = [];
 
     const contextMap = registeredMenus.get(ctx);
@@ -153,7 +145,7 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
         targetData: targetData.value,
       });
       console.log(
-        `[ContextMenu] Callback sent: plugin=${item.pluginId}, context=${context.value}, item=${item.id}`
+        `[ContextMenu] Callback sent: plugin=${item.pluginId}, context=${context.value}, item=${item.id}`,
       );
     } catch (e) {
       console.error("[ContextMenu] Failed to send callback:", e);
@@ -166,9 +158,7 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
     registeredMenus.forEach((contextMap, ctx) => {
       if (contextMap.has(pluginId)) {
         contextMap.delete(pluginId);
-        console.log(
-          `[ContextMenu] Cleaned up menus for plugin "${pluginId}" in context "${ctx}"`
-        );
+        console.log(`[ContextMenu] Cleaned up menus for plugin "${pluginId}" in context "${ctx}"`);
         if (contextMap.size === 0) {
           registeredMenus.delete(ctx);
         }

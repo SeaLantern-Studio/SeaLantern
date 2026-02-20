@@ -115,9 +115,9 @@ export function getStatusColor(status: string | undefined): string {
 }
 
 /**
- * 服务器状态信息接口
+ * 服务器状态展示信息接口（用于 UI 展示）
  */
-export interface ServerStatusInfo {
+export interface ServerStatusDisplay {
   status: string;
   variant: StatusVariant;
   text: string;
@@ -130,7 +130,7 @@ export interface ServerStatusInfo {
 /**
  * 获取完整的服务器状态信息
  */
-export function getServerStatusInfo(status: string | undefined): ServerStatusInfo {
+export function getServerStatusInfo(status: string | undefined): ServerStatusDisplay {
   return {
     status: status || SERVER_STATUS.STOPPED,
     variant: getStatusVariant(status),

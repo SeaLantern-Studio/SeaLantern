@@ -25,4 +25,3 @@ export const javaApi = {
     return tauriInvoke("cancel_java_install");
   },
 };
-

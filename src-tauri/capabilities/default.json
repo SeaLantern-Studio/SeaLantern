@@ -28,7 +28,8 @@
     "http:default",
     "http:allow-fetch",
     "process:default",
-    "window-state:default"
+    "window-state:default",
+    "os:default"
   ],
   "remote": {
     "urls": ["https://gitee.com/api/**"]

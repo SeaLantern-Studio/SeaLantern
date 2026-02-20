@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, watch } from "vue";
+import { onMounted, onUnmounted, computed, watch, ref } from "vue";
 import AppSidebar from "./AppSidebar.vue";
 import AppHeader from "./AppHeader.vue";
 import { useUiStore } from "../../stores/uiStore";
@@ -13,9 +13,11 @@ import {
   applyDeveloperMode,
   getEffectiveTheme,
 } from "../../utils/theme";
+import { isMacOS } from "../../utils/platform";
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();
+const isMac = ref(false);
 
 const backgroundImage = computed(() => settingsStore.backgroundImage);
 const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
@@ -86,6 +88,7 @@ async function applyAllSettings(): Promise<void> {
 }
 
 onMounted(async () => {
+  isMac.value = await isMacOS();
   await applyAllSettings();
 
   window.addEventListener("settings-updated", handleSettingsUpdated);
@@ -131,20 +134,25 @@ const backgroundStyle = computed(() => {
 </script>
 
 <template>
-  <div class="app-layout">
-    <div class="app-background" :style="backgroundStyle"></div>
-    <AppSidebar />
-    <div class="app-main" :class="{ 'sidebar-collapsed': ui.sidebarCollapsed }">
-      <AppHeader />
-      <main class="app-content">
-        <router-view v-slot="{ Component }">
-          <transition name="page-fade" mode="out-in">
-            <keep-alive :max="5">
-              <component :is="Component" />
-            </keep-alive>
-          </transition>
-        </router-view>
-      </main>
+  <div class="app-layout" :class="{ 'app-layout-macos': isMac }">
+    <!-- macOS 专用标题栏区域（红绿灯按钮所在区域），使用与侧边栏相同的 glass-strong 样式 -->
+    <div v-if="isMac" class="macos-titlebar glass-strong" data-tauri-drag-region></div>
+
+    <div class="app-content-wrapper">
+      <div class="app-background" :style="backgroundStyle"></div>
+      <AppSidebar :is-macos="isMac" />
+      <div class="app-main" :class="{ 'sidebar-collapsed': ui.sidebarCollapsed }">
+        <AppHeader />
+        <main class="app-content">
+          <router-view v-slot="{ Component }">
+            <transition name="page-fade" mode="out-in">
+              <keep-alive :max="5">
+                <component :is="Component" />
+              </keep-alive>
+            </transition>
+          </router-view>
+        </main>
+      </div>
     </div>
   </div>
 </template>
@@ -153,10 +161,35 @@ const backgroundStyle = computed(() => {
 .app-layout {
   position: relative;
   display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
   background-color: var(--sl-bg);
   overflow: hidden;
+}
+
+/* macOS vibrancy 模式下使用透明背景以显示圆角和毛玻璃效果 */
+:global([data-vibrancy="true"]) .app-layout {
+  background-color: transparent;
+}
+
+/* macOS 专用标题栏区域 - 使用 glass-strong 类继承侧边栏样式 */
+.macos-titlebar {
+  height: 28px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+  border-bottom: none;
+  border-top: none;
+  border-left: none;
+  border-right: 1px solid var(--sl-border-light);
+}
+
+/* 内容包装器 */
+.app-content-wrapper {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 .app-background {
@@ -183,6 +216,15 @@ const backgroundStyle = computed(() => {
 
 .app-main.sidebar-collapsed {
   margin-left: var(--sl-sidebar-collapsed-width);
+}
+
+/* macOS 下侧边栏不是 fixed，所以 app-main 不需要 margin-left */
+.app-layout-macos .app-main {
+  margin-left: 0;
+}
+
+.app-layout-macos .app-main.sidebar-collapsed {
+  margin-left: 0;
 }
 
 .app-content {

@@ -105,7 +105,9 @@ onUnmounted(() => {
           </div>
 
           <div class="confirm-body">
-            <p v-if="message" class="confirm-message" v-html="message"></p>
+            <p v-if="message || $slots.message" class="confirm-message">
+              <slot name="message">{{ message }}</slot>
+            </p>
 
             <div v-if="requireInput" class="confirm-input-group">
               <SLInput

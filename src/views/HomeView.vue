@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Menu, Clock, Server, Pencil, Folder, Check, X } from 'lucide-vue-next';
+import { Menu, Clock, Server, Pencil, Folder, Check, X } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -96,17 +96,13 @@ function typeWriterOut(callback?: () => void) {
 }
 
 async function fetchHitokoto(): Promise<{ text: string; author: string }> {
-  console.log("获取一言，当前缓存数量:", quoteCache.value.length);
   if (quoteCache.value.length > 0) {
     const quote = quoteCache.value.shift();
-    console.log("从缓存中获取一言:", quote);
-    console.log("缓存剩余数量:", quoteCache.value.length);
     replenishCache();
     return quote!;
   }
 
   try {
-    console.log("缓存为空，从API获取一言");
     const response = await fetch("https://v1.hitokoto.cn/?encode=json");
     if (!response.ok) {
       throw new Error("Failed to fetch hitokoto");
@@ -116,14 +112,11 @@ async function fetchHitokoto(): Promise<{ text: string; author: string }> {
       text: data.hitokoto,
       author: data.from_who || data.from || i18n.t("common.unknown"),
     };
-    console.log("从API获取一言成功:", quote);
     replenishCache();
     return quote;
   } catch (error) {
     console.error("Error fetching hitokoto:", error);
-    const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
-    console.log("使用默认一言:", defaultQuote);
-    return defaultQuote;
+    return { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
   }
 }
 
@@ -132,7 +125,6 @@ function isQuoteInCache(quote: { text: string; author: string }): boolean {
 }
 
 async function replenishCache() {
-  console.log("开始补充缓存，当前缓存数量:", quoteCache.value.length);
   let attempts = 0;
   const maxAttempts = 10;
 
@@ -153,10 +145,7 @@ async function replenishCache() {
 
       if (!isQuoteInCache(newQuote)) {
         quoteCache.value.push(newQuote);
-        console.log("补充缓存成功，当前缓存数量:", quoteCache.value.length);
-        console.log("新缓存的一言:", newQuote);
       } else {
-        console.log("一言已在缓存中，跳过:", newQuote.text.substring(0, 20) + "...");
         attempts++;
       }
     } catch (error) {
@@ -164,25 +153,16 @@ async function replenishCache() {
       break;
     }
   }
-
-  if (attempts >= maxAttempts) {
-    console.log("达到最大尝试次数，停止补充缓存");
-  }
 }
 
 async function updateQuote() {
-  console.log("触发更新一言");
   if (isTyping.value) {
-    console.log("正在打字中，取消更新");
     return;
   }
   typeWriterOut(async () => {
     try {
-      console.log("开始获取新一言");
       const newQuote = await fetchHitokoto();
-      console.log("获取新一言成功:", newQuote);
       currentQuote.value = newQuote;
-      console.log("开始打字显示新一言");
       typeWriter(newQuote.text);
     } catch (error) {
       console.error("Error updating quote:", error);
@@ -229,7 +209,7 @@ onMounted(() => {
   const loadServers = async () => {
     try {
       await store.refreshList();
-      await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
+      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
@@ -259,7 +239,7 @@ onMounted(() => {
   statsTimer = setInterval(fetchSystemInfo, 1000);
   quoteTimer = setInterval(updateQuote, 30000);
   refreshTimer = setInterval(async () => {
-    await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
+    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
   }, 3000);
 
   document.addEventListener("click", handleClickOutside);
@@ -427,9 +407,9 @@ function cancelDelete() {
                 />
               </svg>
               <div class="gauge-text">
-                  <span class="gauge-value">{{ cpuUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.cpu') }}</span>
-                </div>
+                <span class="gauge-value">{{ cpuUsage }}%</span>
+                <span class="gauge-label">{{ i18n.t("home.cpu") }}</span>
+              </div>
             </div>
             <div class="gauge-item">
               <svg class="gauge-svg" viewBox="0 0 36 36">
@@ -448,9 +428,9 @@ function cancelDelete() {
                 />
               </svg>
               <div class="gauge-text">
-                  <span class="gauge-value">{{ memUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.memory') }}</span>
-                </div>
+                <span class="gauge-value">{{ memUsage }}%</span>
+                <span class="gauge-label">{{ i18n.t("home.memory") }}</span>
+              </div>
             </div>
             <div class="gauge-item">
               <svg class="gauge-svg" viewBox="0 0 36 36">
@@ -469,25 +449,27 @@ function cancelDelete() {
                 />
               </svg>
               <div class="gauge-text">
-                  <span class="gauge-value">{{ diskUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.disk') }}</span>
-                </div>
+                <span class="gauge-value">{{ diskUsage }}%</span>
+                <span class="gauge-label">{{ i18n.t("home.disk") }}</span>
+              </div>
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.cpu') }}</span
-              ><span class="detail-value">{{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span>
+              <span class="detail-label">{{ i18n.t("home.cpu") }}</span
+              ><span class="detail-value"
+                >{{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
+              >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.memory') }}</span
+              <span class="detail-label">{{ i18n.t("home.memory") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.memory.used) }} /
                 {{ formatBytes(systemInfo.memory.total) }}</span
               >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.disk') }}</span
+              <span class="detail-label">{{ i18n.t("home.disk") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.disk.used) }} /
                 {{ formatBytes(systemInfo.disk.total) }}</span
@@ -499,8 +481,9 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.cpu') }}<span v-if="systemInfo" class="stat-detail">
-                  · {{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span
+                >{{ i18n.t("home.cpu")
+                }}<span v-if="systemInfo" class="stat-detail">
+                  · {{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
                 ></span
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
@@ -552,7 +535,8 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.memory') }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.memory")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.memory.used) }} /
                   {{ formatBytes(systemInfo.memory.total) }}</span
                 ></span
@@ -606,7 +590,8 @@ function cancelDelete() {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.disk') }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.disk")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.disk.used) }} /
                   {{ formatBytes(systemInfo.disk.total) }}</span
                 ></span
@@ -776,7 +761,6 @@ function cancelDelete() {
     <SLConfirmDialog
       :visible="showDeleteConfirm"
       :title="i18n.t('home.delete_server')"
-      :message="i18n.t('home.delete_confirm_message', { server: '<strong>' + deleteServerName + '</strong>' })"
       :confirmText="i18n.t('home.delete_confirm')"
       :cancelText="i18n.t('home.delete_cancel')"
       confirmVariant="danger"
@@ -787,7 +771,11 @@ function cancelDelete() {
       @cancel="cancelDelete"
       @close="closeDeleteConfirm"
       dangerous
-    />
+    >
+      <template #message>
+        {{ i18n.t("home.delete_confirm_message", { server: deleteServerName }) }}
+      </template>
+    </SLConfirmDialog>
   </div>
 </template>
 
