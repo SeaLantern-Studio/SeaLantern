@@ -27,7 +27,7 @@ export const contributors: Contributor[] = [
   {
     name: "OMIILII",
     role: "精神支柱",
-    avatar: "https://api.rms.net.cn/head/Alex",
+    avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
   },
   {
     name: "烬白Jinby",
@@ -100,13 +100,13 @@ export const contributors: Contributor[] = [
   {
     name: "猫不笨qwq",
     role: "找到软件图形化错误",
-    avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
+    avatar: "https://api.rms.net.cn/head/maobuben_qwq",
     url: "https://github.com/maobuben",
   },
   {
     name: "橙子冰棒",
     role: "修复Java查找算法",
-    avatar: "https://blog.orllow.cn/images/author.webp",
+    avatar: "https://api.rms.net.cn/head/TNTNTBTT",
     url: "https://github.com/Orange-Icepop",
   },
   {
@@ -124,18 +124,38 @@ export const contributors: Contributor[] = [
   {
     name: "I账户已注销I",
     role: "提出了个性化页面，提供了颜色编辑和颜色选择器",
-    avatar: "https://zhuxiaojt.github.io/favicon.ico",
+    avatar: "https://api.rms.net.cn/head/echo500",
     url: "https://github.com/zhuxiaojt",
   },
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar:
-      "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
+    avatar:"https://api.rms.net.cn/head/MC_KKY",
     url: "https://github.com/xuezhaju",
+  },
+  {
+    name: "Yang458",
+    role: "贡献者",
+    avatar: "https://api.rms.net.cn/head/Yang4893",
+    url: "https://github.com/minecraft-Yang458",
+  },
+  {
+    name: "福瑞控海天",
+    role: "海内存知己，天涯若比邻",
+    avatar: "https://api.rms.net.cn/head/LucyKitter",
+    url: "https://gitee.com/pnchsb_admin",
+  },
+  {
+    name: "yanuofox",
+    role: "可以rua的吉祥物",
+    avatar: "https://api.rms.net.cn/head/yanuofox",
+    url: "https://github.com/foxcyber907",
   },
   // ============================================
   // 在这里添加更多贡献者！
+  // 没有正版怎么办？
+  // 选择皮肤，使用其名字
+  // https://www.mcgodx.com/skins/
   // ============================================
   // {
   //   name: "你的名字",
