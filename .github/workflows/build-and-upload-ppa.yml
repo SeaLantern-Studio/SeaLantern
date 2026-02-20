@@ -226,6 +226,8 @@ jobs:
           DISTRO="${{ matrix.distro }}"
           PACKAGE_VERSION="${VERSION}~${DISTRO}1"
           
+          cd ppa-source
+          
           echo "Uploading ${DISTRO} package to PPA..."
           dput ppa:brianeee7878/sealantern "sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes" || true
           
