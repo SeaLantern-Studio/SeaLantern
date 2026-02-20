@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        distro: ['focal', 'jammy', 'noble', 'oracular']
+        distro: ['focal', 'jammy', 'noble']
       fail-fast: false
     
     steps:
@@ -147,7 +147,6 @@ jobs:
           
             * New upstream release ${VERSION}
             * Auto-synced from ${{ env.UPSTREAM_REPO }}
-            * Built for ${{ matrix.distro }}
           
            -- Brian Ikun <2914651630@qq.com>  $(date -R)
           CHANGELOG
