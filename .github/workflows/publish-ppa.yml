@@ -191,7 +191,7 @@ jobs:
           cd ..
           
           # Sign the packages using debsign with GPG
-          export DEBSIGN_PROGRAM="gpg --homedir $GNUPGHOME --batch --yes --pinentry-mode loopback --passphrase-fd 0"
+          export DEBSIGN_PROGRAM="gpg --homedir $GNUPGHOME --batch --yes --pinentry-mode loopback --passphrase-fd 0 --command-fd 0 --status-fd 2"
           echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | debsign -k"$GPG_FINGERPRINT" sealantern_${VERSION}_source.changes
           
           echo "✅ Source package created and signed"
