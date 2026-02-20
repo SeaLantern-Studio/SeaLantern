@@ -183,10 +183,14 @@ jobs:
           
           cd ..
           
-          # Build source package with GPG signing using loopback pinentry
+          # Build source package with GPG signing
           cd sealantern-${VERSION}
-          GPG_TTY= gpg --homedir "$GNUPGHOME" --batch --yes --pinentry-mode loopback --list-keys "$GPG_FINGERPRINT" > /dev/null
-          debuild -S -k"$GPG_FINGERPRINT" -p"gpg --homedir $GNUPGHOME --batch --yes --pinentry-mode loopback"
+          
+          # Export GPG command for debuild
+          export DEBSIGN_PROGRAM="gpg --homedir $GNUPGHOME --batch --yes --passphrase '' --pinentry-mode loopback"
+          
+          # Build with signing
+          debuild -S -k"$GPG_FINGERPRINT" --no-tgz-check
           cd ..
           
           echo "✅ Source package created and signed"
