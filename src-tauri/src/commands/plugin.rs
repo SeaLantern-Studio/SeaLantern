@@ -18,11 +18,7 @@ pub fn get_plugins(server_id: String) -> Result<Vec<PluginInfo>, String> {
 }
 
 #[tauri::command]
-pub fn toggle_plugin(
-    server_id: String,
-    file_name: String,
-    enabled: bool,
-) -> Result<(), String> {
+pub fn toggle_plugin(server_id: String, file_name: String, enabled: bool) -> Result<(), String> {
     let server_manager = global::server_manager();
     let servers = server_manager.servers.lock().unwrap();
     let server = servers
