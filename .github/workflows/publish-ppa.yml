@@ -190,11 +190,11 @@ jobs:
           debuild -S -us -uc
           cd ..
           
-          # Sign the .dsc file manually with empty passphrase
-          echo "" | gpg --homedir "$GNUPGHOME" --batch --yes --pinentry-mode loopback --passphrase-fd 0 --armor --detach-sign --local-user "$GPG_FINGERPRINT" sealantern_${VERSION}.dsc
+          # Sign the .dsc file manually with passphrase
+          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --homedir "$GNUPGHOME" --batch --yes --pinentry-mode loopback --passphrase-fd 0 --armor --detach-sign --local-user "$GPG_FINGERPRINT" sealantern_${VERSION}.dsc
           
-          # Sign the .changes file manually with empty passphrase
-          echo "" | gpg --homedir "$GNUPGHOME" --batch --yes --pinentry-mode loopback --passphrase-fd 0 --armor --detach-sign --local-user "$GPG_FINGERPRINT" sealantern_${VERSION}_source.changes
+          # Sign the .changes file manually with passphrase
+          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --homedir "$GNUPGHOME" --batch --yes --pinentry-mode loopback --passphrase-fd 0 --armor --detach-sign --local-user "$GPG_FINGERPRINT" sealantern_${VERSION}_source.changes
           
           echo "✅ Source package created and signed"
           ls -lh sealantern_${VERSION}*
