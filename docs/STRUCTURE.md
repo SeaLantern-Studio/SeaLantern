@@ -87,8 +87,21 @@ sea-lantern/
 │   ├── data/                          # 静态数据
 │   │   └── contributors.ts           # 贡献者信息列表
 │   │
-│   ├── locales/                       # 国际化资源
-│   │   └── index.ts                   # 语言文件入口
+│   ├── language/                      # 国际化资源
+│   │   ├── index.ts                   # i18n 核心模块
+│   │   ├── README.md                  # 本文档
+│   │   ├── README-en.md               # 英文版本
+│   │   └── locales/                   # 翻译文件目录
+│   │       ├── zh-CN.json             # 简体中文
+│   │       ├── zh-TW.json             # 繁体中文
+│   │       ├── en-US.json             # 英语
+│   │       ├── ja-JP.json             # 日语
+│   │       ├── ko-KR.json             # 韩语
+│   │       ├── de-DE.json             # 德语
+│   │       ├── es-ES.json             # 西班牙语
+│   │       ├── fr-FA.json             # 波斯语
+│   │       ├── ru-RU.json             # 俄语
+│   │       └── vi-VN.json             # 越南语
 │   │
 │   ├── router/                        # 路由配置
 │   │   └── index.ts                   # 路由表定义
@@ -214,26 +227,18 @@ sea-lantern/
 │   ├── build.rs                       # 构建脚本
 │   └── tauri.conf.json                # Tauri 配置（窗口大小、标题、版本等）
 │
-├── lang/                              # 语言文件
-│   ├── README.md                      # 语言文件说明
-│   ├── README-en.md                   # 英文语言文件说明
-│   ├── de-DE.json                     # 德语翻译
-│   ├── en-US.json                     # 英语翻译
-│   ├── es-ES.json                     # 西班牙语翻译
-│   ├── fr-FA.json                     # 法语翻译
-│   ├── ja-JP.json                     # 日语翻译
-│   ├── ko-KR.json                     # 韩语翻译
-│   ├── ru-RU.json                     # 俄语翻译
-│   ├── vi-VN.json                     # 越南语翻译
-│   ├── zh-CN.json                     # 简体中文翻译
-│   └── zh-TW.json                     # 繁体中文翻译
 │
 ├── docs/                              # 文档
 │   ├── AI_GUIDE.md                    # AI 使用指南
 │   ├── CONTRIBUTING.md                # 贡献指南
 │   ├── CONTRIBUTING-en.md             # 英文贡献指南
 │   ├── 新手使用教程.html              # 新手使用教程
-│   └── 项目结构.md                    # 项目结构文档
+│   ├── STRUCTURE.md                   # 本文档
+│   ├── STRUCTURE-en.md                # 英文版本
+│   ├── AI_GUIDE.md                    # AI 使用指南
+│   ├── CONTRIBUTING.md                # 贡献指南
+│   ├── CONTRIBUTING-en.md             # 英文贡献指南
+│   └── 新手使用教程.html              # 新手使用教程
 │
 ├── .SRCINFO                           # 包信息
 ├── .editorconfig                      # 编辑器配置

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Sea Lantern",
-  "version": "0.6.2",
+  "version": "0.6.5",
   "identifier": "com.fpsz.sea-lantern",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -29,7 +29,9 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": [
+          "**"
+        ]
       }
     }
   },
@@ -48,7 +50,9 @@
         "language": "zh-CN"
       },
       "nsis": {
-        "languages": ["SimpChinese"]
+        "languages": [
+          "SimpChinese"
+        ]
       }
     },
     "linux": {

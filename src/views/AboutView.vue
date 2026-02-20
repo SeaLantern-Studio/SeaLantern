@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone, Info, Copy, Link, Check, ArrowRight, AlertCircle, ExternalLink, RefreshCw, XCircle, Code, Feather, Lightbulb, BookOpen, Rocket, SquarePen } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -114,6 +115,51 @@ function getSocialTitle(platform: string): string {
   };
   return titles[platform] || platform;
 }
+    const info = await updateStore.checkForUpdate();
+
+    // 如果是 AUR 更新，显示提示窗口
+    if (info?.source === "arch-aur") {
+      const helper =
+        info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
+      const hasUpdate = info.has_update;
+
+      aurUpdateInfo.value = {
+        hasUpdate,
+        currentVersion: info.current_version,
+        latestVersion: info.latest_version,
+        helper: helper,
+        command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
+      };
+
+      showAurWindow.value = true;
+    }
+  } catch (error) {
+    showNotify(
+      `${i18n.t("about.update_check_failed")}: ${String(error)}`,
+      "error",
+    );
+  }
+}
+
+async function handlePrimaryUpdateAction() {
+  // 如果是 AUR 更新，显示提示窗口
+  if (isAurUpdate.value && updateStore.updateInfo) {
+    const helper =
+      updateStore.updateInfo.release_notes?.match(
+        /yay|paru|pamac|trizen|pacaur/,
+      )?.[0] || "yay";
+
+    aurUpdateInfo.value = {
+      hasUpdate: updateStore.updateInfo.has_update,
+      currentVersion: updateStore.updateInfo.current_version,
+      latestVersion: updateStore.updateInfo.latest_version,
+      helper: helper,
+      command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
+    };
+
+    showAurWindow.value = true;
+    return;
+  }
 
 function getCustomLinks(links: SocialLinks): [string, string][] {
   const predefined = ["gitee", "github", "bilibili", "qq"];
