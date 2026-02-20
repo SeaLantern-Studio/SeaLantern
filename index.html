@@ -12,6 +12,11 @@
       html[data-theme="dark"] {
         background-color: #0f1117;
       }
+      /* macOS vibrancy 模式下使用透明背景以显示圆角 */
+      html[data-vibrancy="true"],
+      html[data-vibrancy="true"][data-theme="dark"] {
+        background-color: transparent;
+      }
       body {
         margin: 0;
         padding: 0;

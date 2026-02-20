@@ -22,6 +22,11 @@ body {
   user-select: none;
 }
 
+/* macOS vibrancy 模式下使用透明背景 */
+[data-vibrancy="true"] body {
+  background-color: transparent;
+}
+
 a {
   color: inherit;
   text-decoration: none;

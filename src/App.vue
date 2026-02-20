@@ -5,16 +5,19 @@ import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
 import { useUpdateStore } from "./stores/updateStore";
 import { useSettingsStore } from "./stores/settingsStore";
+import { useI18nStore } from "./stores/i18nStore";
 import { applyTheme, applyFontSize, applyFontFamily } from "./utils/theme";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
 const updateStore = useUpdateStore();
 const settingsStore = useSettingsStore();
+const i18nStore = useI18nStore();
 
 onMounted(async () => {
   try {
     await settingsStore.loadSettings();
+    await i18nStore.loadLanguageSetting();
     const settings = settingsStore.settings;
     applyTheme(settings.theme || "auto");
     applyFontSize(settings.font_size || 14);
@@ -78,6 +81,11 @@ function handleUpdateModalClose() {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+}
+
+/* macOS vibrancy 模式下使用透明背景 */
+[data-vibrancy="true"] #app {
+  background-color: transparent;
 }
 
 .splash-fade-leave-active {

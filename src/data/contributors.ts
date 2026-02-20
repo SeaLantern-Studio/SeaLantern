@@ -130,7 +130,7 @@ export const contributors: Contributor[] = [
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar:"https://api.rms.net.cn/head/MC_KKY",
+    avatar: "https://api.rms.net.cn/head/MC_KKY",
     url: "https://github.com/xuezhaju",
   },
   {
@@ -150,6 +150,12 @@ export const contributors: Contributor[] = [
     role: "可以rua的吉祥物",
     avatar: "https://api.rms.net.cn/head/yanuofox",
     url: "https://github.com/foxcyber907",
+  },
+  {
+    name: "TRIP(TRIPFZ)",
+    role: "UI 与代码优化",
+    avatar: "https://api.rms.net.cn/head/TRIPFZ",
+    url: "https://github.com/appergb",
   },
   // ============================================
   // 在这里添加更多贡献者！

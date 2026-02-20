@@ -22,7 +22,7 @@
   "settings": {
     "import/resolver": {
       "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx", ".vue", ".css"]
+        "extensions": [".js", ".ts", ".vue", ".css"]
       },
       "typescript": {
         "alwaysTryTypes": true,
@@ -30,25 +30,11 @@
       },
       "alias": {
         "map": [["@", "./src"]],
-        "extensions": [".js", ".jsx", ".ts", ".tsx", ".vue"]
+        "extensions": [".js", ".ts", ".vue"]
       }
     },
     "import/parsers": {
-      "@typescript-eslint/parser": [".ts", ".tsx", ".vue"]
-    },
-    "jsx-a11y": {
-      "polymorphicPropName": null,
-      "components": {},
-      "attributes": {}
-    },
-    "next": {
-      "rootDir": []
-    },
-    "react": {
-      "formComponents": [],
-      "linkComponents": [],
-      "version": null,
-      "componentWrapperFunctions": []
+      "@typescript-eslint/parser": [".ts", ".vue"]
     },
     "jsdoc": {
       "ignorePrivate": false,
@@ -70,11 +56,5 @@
     "node": true,
     "es2022": true
   },
-  "overrides": [
-    {
-      "files": ["**/*.ts", "**/*.tsx", "**/*.vue"]
-    }
-  ],
-  "globals": {},
   "ignorePatterns": ["dist", "node_modules", "src-tauri/**"]
 }

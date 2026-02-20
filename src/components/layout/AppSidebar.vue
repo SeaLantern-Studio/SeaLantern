@@ -27,6 +27,10 @@ import {
   ChevronLeft,
 } from "lucide-vue-next";
 
+defineProps<{
+  isMacos?: boolean;
+}>();
+
 const router = useRouter();
 const route = useRoute();
 const ui = useUiStore();
@@ -171,7 +175,15 @@ onMounted(async () => {
     updateOptionsPosition();
   });
 
-  // 不再需要手动外部点击处理，Listbox 会负责焦点/键盘可访问性
+  // 添加窗口事件监听器
+  window.addEventListener("resize", onWindowChange);
+  window.addEventListener("scroll", onWindowChange, true);
+});
+
+onBeforeUnmount(() => {
+  // 清理窗口事件监听器
+  window.removeEventListener("resize", onWindowChange);
+  window.removeEventListener("scroll", onWindowChange, true);
 });
 
 function handleServerChange(value: string | number) {
@@ -239,14 +251,6 @@ function onWindowChange() {
   updateOptionsPosition();
 }
 
-window.addEventListener("resize", onWindowChange);
-window.addEventListener("scroll", onWindowChange, true);
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", onWindowChange);
-  window.removeEventListener("scroll", onWindowChange, true);
-});
-
 // 服务器选项
 const serverOptions = computed(() => {
   return serverStore.servers.map((s) => ({
@@ -307,7 +311,10 @@ function isActive(path: string): boolean {
 </script>
 
 <template>
-  <aside class="sidebar glass-strong" :class="{ collapsed: ui.sidebarCollapsed }">
+  <aside
+    class="sidebar glass-strong"
+    :class="{ collapsed: ui.sidebarCollapsed, 'sidebar-macos': isMacos }"
+  >
     <div class="sidebar-logo" @click="navigateTo('/')">
       <div class="logo-icon">
         <img src="../../assets/logo.svg" :alt="i18n.t('common.app_name')" width="28" height="28" />
@@ -319,7 +326,12 @@ function isActive(path: string): boolean {
 
     <nav class="sidebar-nav">
       <!-- 服务器选择（Headless UI Listbox） -->
-      <Listbox v-if="serverOptions.length > 0" v-model="currentServerRef" class="server-selector" horizontal>
+      <Listbox
+        v-if="serverOptions.length > 0"
+        v-model="currentServerRef"
+        class="server-selector"
+        horizontal
+      >
         <div>
           <ListboxButton
             ref="listboxButton"
@@ -337,10 +349,7 @@ function isActive(path: string): boolean {
           <!-- 将 ListboxOptions 渲染到 body（Portal），并使用固定定位样式 -->
           <Portal>
             <transition name="bubble">
-              <ListboxOptions
-                class="server-select-bubble-content-portal"
-                :style="optionsStyle"
-              >
+              <ListboxOptions class="server-select-bubble-content-portal" :style="optionsStyle">
                 <div class="server-select-bubble-body">
                   <ListboxOption
                     v-for="option in serverOptions"
@@ -349,7 +358,10 @@ function isActive(path: string): boolean {
                     v-slot="{ selected }"
                   >
                     <div
-                      :class="['server-select-option', { active: option.value === currentServerRef }]"
+                      :class="[
+                        'server-select-option',
+                        { active: option.value === currentServerRef },
+                      ]"
                     >
                       {{ option.label }}
                     </div>
@@ -539,7 +551,11 @@ function isActive(path: string): boolean {
     <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
 
     <div class="sidebar-footer">
-      <div class="nav-item" @click="navigateTo('/about')" :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''">
+      <div
+        class="nav-item"
+        @click="navigateTo('/about')"
+        :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
+      >
         <Info class="nav-icon" :size="20" :stroke-width="1.8" />
         <transition name="fade">
           <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
@@ -581,6 +597,14 @@ function isActive(path: string): boolean {
 
 .sidebar.collapsed {
   width: var(--sl-sidebar-collapsed-width);
+}
+
+/* macOS 下侧边栏不使用 fixed 定位，而是跟随内容流 */
+.sidebar.sidebar-macos {
+  position: relative;
+  top: auto;
+  left: auto;
+  height: 100%;
 }
 
 .sidebar-logo {
@@ -708,8 +732,6 @@ function isActive(path: string): boolean {
   color: var(--sl-primary);
 }
 
-
-
 .server-selector-icon {
   padding: 8px;
   border-radius: var(--sl-radius-md);
@@ -805,10 +827,6 @@ function isActive(path: string): boolean {
 .bubble-close:hover {
   color: var(--sl-text-primary);
 }
-
-
-
-
 
 .bubble-close {
   background: none;

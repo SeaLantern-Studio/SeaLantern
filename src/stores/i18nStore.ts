@@ -1,4 +1,4 @@
-import { computed, onMounted } from "vue";
+import { computed } from "vue";
 import { defineStore } from "pinia";
 import { i18n, type LocaleCode, setTranslations } from "../language";
 import { settingsApi } from "../api/settings";
@@ -14,7 +14,7 @@ const LOCALE_LABEL_KEYS: Record<string, string> = {
   "ru-RU": "header.russian",
   "vi-VN": "header.vietnamese",
   "ko-KR": "header.korean",
-  "fr-FA": "header.french"
+  "fr-FR": "header.french",
 };
 
 export const useI18nStore = defineStore("i18n", () => {
@@ -34,8 +34,6 @@ export const useI18nStore = defineStore("i18n", () => {
     })),
   );
 
-
-
   async function setLocale(nextLocale: string) {
     if (i18n.isSupportedLocale(nextLocale)) {
       i18n.setLocale(nextLocale);
@@ -52,9 +50,7 @@ export const useI18nStore = defineStore("i18n", () => {
   async function downloadLocale(localeCode: string) {
     if (!i18n.isSupportedLocale(localeCode)) return;
     try {
-      // 直接从本地加载语言文件
-      let data: any = null;
-      data = await fetchLocale(localeCode as LocaleCode);
+      const data = await fetchLocale(localeCode as LocaleCode);
       setTranslations(localeCode as any, data as any);
     } catch (e) {
       console.error("Failed to load locale:", localeCode, e);
@@ -77,10 +73,6 @@ export const useI18nStore = defineStore("i18n", () => {
       console.error("Failed to load language setting:", error);
     }
   }
-
-  onMounted(() => {
-    loadLanguageSetting();
-  });
 
   return {
     locale,

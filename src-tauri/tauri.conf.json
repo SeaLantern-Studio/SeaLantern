@@ -10,6 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
@@ -21,12 +22,12 @@
         "center": true,
         "decorations": false,
         "resizable": true,
-        "transparent": false,
+        "transparent": true,
         "visible": false
       }
     ],
     "security": {
-      "csp": null,
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://api.rms.net.cn https://gitee.com data:; connect-src 'self' ipc: https://gitee.com https://api.github.com",
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]

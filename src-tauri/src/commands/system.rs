@@ -165,7 +165,6 @@ pub async fn pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, Stri
 
     app.dialog()
         .file()
-        .set_title("Select server JAR file")
         .add_filter("JAR Files", &["jar"])
         .add_filter("All Files", &["*"])
         .pick_file(move |path| {
@@ -187,19 +186,13 @@ pub async fn pick_startup_file(
     let mut dialog = app.dialog().file();
     match mode.as_str() {
         "bat" => {
-            dialog = dialog
-                .set_title("Select server BAT file")
-                .add_filter("BAT Files", &["bat"]);
+            dialog = dialog.add_filter("BAT Files", &["bat"]);
         }
         "sh" => {
-            dialog = dialog
-                .set_title("Select server SH file")
-                .add_filter("Shell Scripts", &["sh"]);
+            dialog = dialog.add_filter("Shell Scripts", &["sh"]);
         }
         _ => {
-            dialog = dialog
-                .set_title("Select server JAR file")
-                .add_filter("JAR Files", &["jar"]);
+            dialog = dialog.add_filter("JAR Files", &["jar"]);
         }
     }
 
@@ -219,7 +212,6 @@ pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 
     app.dialog()
         .file()
-        .set_title("Select Java executable")
         .add_filter("Executable", &["exe", ""])
         .add_filter("All Files", &["*"])
         .pick_file(move |path| {
@@ -234,13 +226,10 @@ pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
 
-    app.dialog()
-        .file()
-        .set_title("Select modpack folder")
-        .pick_folder(move |path| {
-            let result = path.map(|p| p.to_string());
-            let _ = tx.send(result);
-        });
+    app.dialog().file().pick_folder(move |path| {
+        let result = path.map(|p| p.to_string());
+        let _ = tx.send(result);
+    });
 
     rx.recv().map_err(|e| format!("Dialog error: {}", e))
 }
@@ -251,7 +240,6 @@ pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, St
 
     app.dialog()
         .file()
-        .set_title("Select background image")
         .add_filter("Image Files", &["png", "jpg", "jpeg", "webp", "gif", "bmp"])
         .add_filter("All Files", &["*"])
         .pick_file(move |path| {

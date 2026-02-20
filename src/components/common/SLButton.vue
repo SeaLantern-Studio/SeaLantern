@@ -27,11 +27,7 @@ withDefaults(defineProps<Props>(), {
     :disabled="disabled || loading"
     :aria-busy="loading"
   >
-    <Loader2
-      v-if="loading"
-      class="sl-button-spinner"
-      :size="16"
-    />
+    <Loader2 v-if="loading" class="sl-button-spinner" :size="16" />
     <slot />
   </button>
 </template>

@@ -97,11 +97,7 @@ export function rgbaFromHex(hex: string, alpha: number): string {
  * @param theme - 主题方案名称
  * @returns 颜色值字符串
  */
-export function getColorValue(
-  settings: AppSettings,
-  colorType: string,
-  theme: string,
-): string {
+export function getColorValue(settings: AppSettings, colorType: string, theme: string): string {
   if (!settings) return "";
 
   const plan = mapLegacyPlanName(theme);

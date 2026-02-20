@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Minus } from 'lucide-vue-next';
+import { Check, Minus } from "lucide-vue-next";
 
 interface Props {
   modelValue?: boolean;

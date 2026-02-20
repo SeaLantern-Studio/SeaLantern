@@ -25,16 +25,16 @@ language/
 ### 使用翻译
 
 ```typescript
-import { i18n } from '@/language';
+import { i18n } from "@/language";
 
 // 获取翻译文本
-const text = i18n.t('common.home');
+const text = i18n.t("common.home");
 
 // 带变量的翻译
-const message = i18n.t('home.delete_confirm_message', { server: 'MyServer' });
+const message = i18n.t("home.delete_confirm_message", { server: "MyServer" });
 
 // 切换语言
-i18n.setLocale('en-US');
+i18n.setLocale("en-US");
 
 // 获取当前语言
 const locale = i18n.getLocale();
@@ -43,7 +43,7 @@ const locale = i18n.getLocale();
 ### 在 Vue 组件中使用
 
 ```typescript
-import { i18n } from '@/language';
+import { i18n } from "@/language";
 
 // 响应式获取当前语言
 const currentLocale = i18n.getLocaleRef();
@@ -82,16 +82,16 @@ const t = (key: string) => i18n.t(key);
 
 遵循 ISO 639-1 标准，格式为 `语言-地区`：
 
-| 代码 | 语言 |
-|------|------|
+| 代码  | 语言     |
+| ----- | -------- |
 | zh-CN | 简体中文 |
 | zh-TW | 繁体中文 |
-| en-US | 英语 |
-| ja-JP | 日语 |
-| ko-KR | 韩语 |
-| de-DE | 德语 |
+| en-US | 英语     |
+| ja-JP | 日语     |
+| ko-KR | 韩语     |
+| de-DE | 德语     |
 | es-ES | 西班牙语 |
-| ru-RU | 俄语 |
+| ru-RU | 俄语     |
 
 ## 文件结构
 
@@ -103,37 +103,37 @@ type TranslationNode = {
 };
 
 type LanguageFile = TranslationNode & {
-  languageName?: string;  // 语言显示名称
+  languageName?: string; // 语言显示名称
 };
 ```
 
 ### 主要模块
 
-| 模块 | 说明 |
-|------|------|
-| `common` | 通用文本（按钮、状态等） |
-| `sidebar` | 侧边栏 |
-| `home` | 首页 |
-| `create` | 创建服务器 |
-| `console` | 控制台 |
-| `config` | 配置编辑 |
-| `players` | 玩家管理 |
-| `settings` | 设置 |
-| `about` | 关于页面 |
-| `tray` | 系统托盘 |
+| 模块       | 说明                     |
+| ---------- | ------------------------ |
+| `common`   | 通用文本（按钮、状态等） |
+| `sidebar`  | 侧边栏                   |
+| `home`     | 首页                     |
+| `create`   | 创建服务器               |
+| `console`  | 控制台                   |
+| `config`   | 配置编辑                 |
+| `players`  | 玩家管理                 |
+| `settings` | 设置                     |
+| `about`    | 关于页面                 |
+| `tray`     | 系统托盘                 |
 
 ## API 参考
 
 ### i18n 实例
 
-| 方法 | 说明 |
-|------|------|
-| `t(key, options?)` | 获取翻译文本，支持变量插值 |
-| `setLocale(locale)` | 设置当前语言 |
-| `getLocale()` | 获取当前语言代码 |
-| `getLocaleRef()` | 获取响应式语言引用 |
-| `getAvailableLocales()` | 获取所有支持的语言列表 |
-| `isSupportedLocale(locale)` | 检查语言是否支持 |
+| 方法                        | 说明                       |
+| --------------------------- | -------------------------- |
+| `t(key, options?)`          | 获取翻译文本，支持变量插值 |
+| `setLocale(locale)`         | 设置当前语言               |
+| `getLocale()`               | 获取当前语言代码           |
+| `getLocaleRef()`            | 获取响应式语言引用         |
+| `getAvailableLocales()`     | 获取所有支持的语言列表     |
+| `isSupportedLocale(locale)` | 检查语言是否支持           |
 
 ### 变量插值
 
@@ -147,8 +147,8 @@ type LanguageFile = TranslationNode & {
 ```
 
 ```typescript
-i18n.t('welcome', { name: 'Player' });  // "欢迎, Player!"
-i18n.t('count', { count: 5 });          // "共 5 个服务器"
+i18n.t("welcome", { name: "Player" }); // "欢迎, Player!"
+i18n.t("count", { count: 5 }); // "共 5 个服务器"
 ```
 
 ## 最佳实践
