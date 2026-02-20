@@ -6,9 +6,9 @@
 
 一个轻量化的 Minecraft 服务器管理工具，基于 Tauri 2 + Rust + Vue 3
 
-|[![github-stars](https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/SeaLantern-Studio/SeaLantern/stargazers)|[![github-forks](https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/SeaLantern-Studio/SeaLantern/network/members)|[![github-latest](https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC)](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)|
-|:--|:--|:--|
-|[![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)|[![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)|[![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)|
+| [![github-stars](https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/SeaLantern-Studio/SeaLantern/stargazers) | [![github-forks](https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/SeaLantern-Studio/SeaLantern/network/members) | [![github-latest](https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=最新版本)](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)                                                                                   |
+| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)                                                      | [![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)                                                              | [![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=最新版本&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases/latest) |
 
 <kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
 
@@ -60,13 +60,13 @@ npm run tauri build
 > ```bash
 > # 代码质量检查
 > npm run lint
-> 
+>
 > # 自动修复可修复问题
 > npm run lint:fix
-> 
+>
 > # 格式化代码
 > npm run fmt
-> 
+>
 > # 检查代码格式
 > npm run fmt:check
 > ```
@@ -76,10 +76,10 @@ npm run tauri build
 > ```bash
 > # 检查代码格式
 > cargo fmt --all -- --check
-> 
+>
 > # 运行 Clippy 检查
 > cargo clippy --workspace -- -D warnings
-> 
+>
 > # 格式化代码
 > cargo fmt --all
 > ```
@@ -97,7 +97,7 @@ npm run tauri build
 
 ### 项目结构
 
-详见 [项目结构](docs/项目结构.md)。
+详见 [项目结构](docs/STRUCTURE.md)。
 
 ## 待开发功能
 
