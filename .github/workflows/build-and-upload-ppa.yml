@@ -143,8 +143,8 @@ jobs:
           DISTRO="${{ matrix.distro }}"
           PACKAGE_VERSION="${VERSION}~${DISTRO}1"
           
-          # Create source package directory
-          SOURCE_DIR="./ppa-source/sealantern-ppa-updater_${PACKAGE_VERSION}"
+          # Create source package directory - must match package name
+          SOURCE_DIR="./ppa-source/sea-lantern-ppa-updater_${PACKAGE_VERSION}"
           rm -rf ./ppa-source
           mkdir -p "${SOURCE_DIR}"
           
@@ -176,7 +176,7 @@ jobs:
           EOF
           
           cat > "${SOURCE_DIR}/debian/changelog" << EOF
-          sealantern-ppa-updater (${PACKAGE_VERSION}) ${DISTRO}; urgency=medium
+          sea-lantern-ppa-updater (${PACKAGE_VERSION}) ${DISTRO}; urgency=medium
           
             * New upstream release ${VERSION}
             * Auto-synced from SeaLantern-Studio/SeaLantern
@@ -194,7 +194,7 @@ jobs:
           	# Binary already built
           
           override_dh_auto_install:
-          	dpkg -x sea-lantern-ppa-updater_*.deb debian/sealantern-ppa-updater
+          	dpkg -x sea-lantern-ppa-updater_*.deb debian/sea-lantern-ppa-updater
           RULES
           chmod +x "${SOURCE_DIR}/debian/rules"
           
@@ -219,7 +219,7 @@ jobs:
           cd ..
           
           echo "Uploading ${DISTRO} package to PPA..."
-          dput ppa:brianeee7878/sealantern sealantern-ppa-updater_${PACKAGE_VERSION}_source.changes || true
+          dput ppa:brianeee7878/sealantern sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes || true
           
           echo "✅ Attempted to upload ${DISTRO} package to PPA"
 
