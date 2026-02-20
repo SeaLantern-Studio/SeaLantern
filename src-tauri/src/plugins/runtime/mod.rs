@@ -39,7 +39,7 @@ pub struct PluginRuntime {
     pub(super) storage_lock: Arc<Mutex<()>>,
 
     pub(super) process_registry: ProcessRegistry,
-    
+
     element_callbacks: Arc<Mutex<std::collections::HashMap<u64, mlua::RegistryKey>>>,
 }
 

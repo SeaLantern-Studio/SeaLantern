@@ -29,7 +29,7 @@ impl PluginRuntime {
                     Ok(()) => {
                         let start = Instant::now();
                         let timeout = Duration::from_millis(ELEMENT_GET_TIMEOUT_MS);
-                        
+
                         loop {
                             match rx.try_recv() {
                                 Ok(val) => {
