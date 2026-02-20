@@ -183,14 +183,11 @@ jobs:
           
           cd ..
           
-          # Build source package with GPG signing
+          # Build unsigned source package
           cd sealantern-${VERSION}
           
-          # Export GPG command for debuild
-          export DEBSIGN_PROGRAM="gpg --homedir $GNUPGHOME --batch --yes --passphrase '' --pinentry-mode loopback"
-          
-          # Build with signing
-          debuild -S -k"$GPG_FINGERPRINT"
+          # Build without signing (Launchpad will sign)
+          debuild -S -us -uc
           cd ..
           
           echo "✅ Source package created and signed"
