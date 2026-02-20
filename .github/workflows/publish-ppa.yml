@@ -141,12 +141,13 @@ jobs:
            This package is published from upstream releases to Ubuntu PPA.
           CONTROL
           
-          # Create debian/changelog
+          # Create debian/changelog with distro suffix to avoid conflicts
           cat > debian/changelog << CHANGELOG
-          sealantern (${VERSION}) ${{ matrix.distro }}; urgency=medium
+          sealantern (${VERSION}~${{ matrix.distro }}1) ${{ matrix.distro }}; urgency=medium
           
             * New upstream release ${VERSION}
             * Auto-synced from ${{ env.UPSTREAM_REPO }}
+            * Built for ${{ matrix.distro }}
           
            -- Brian Ikun <2914651630@qq.com>  $(date -R)
           CHANGELOG
