@@ -133,7 +133,9 @@ jobs:
         run: |
           echo "${{ secrets.PPA_GPG_PRIVATE_KEY }}" | gpg --batch --import --pinentry-mode loopback --passphrase "${{ secrets.PPA_GPG_PASSPHRASE }}"
           GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+          GPG_FINGERPRINT=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | awk '{print $3}')
           echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
+          echo "GPG_FINGERPRINT=$GPG_FINGERPRINT" >> $GITHUB_ENV
           export GNUPGHOME=~/.gnupg
           chmod 700 ~/.gnupg
 
@@ -203,20 +205,23 @@ jobs:
           
           cd "${SOURCE_DIR}"
           
-          # Build source package with GPG signing
+          # Build source package WITHOUT signing first
           export DEBEMAIL="2914651630@qq.com"
           export DEBFULLNAME="Brian Ikun"
-          export DEBSIGN_KEYID="${GPG_KEY_ID}"
           
-          debuild -p"gpg --batch --yes --pinentry-mode loopback --passphrase '${{ secrets.PPA_GPG_PASSPHRASE }}'" -k"${GPG_KEY_ID}" -S -sa
+          debuild -us -uc -S -sa
+          
+          cd ..
+          
+          # Now manually sign the dsc and changes files
+          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_FINGERPRINT" --detach-sign --armor "sea-lantern-ppa-updater_${PACKAGE_VERSION}.dsc"
+          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_FINGERPRINT" --clearsign --armor "sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes"
 
       - name: Upload to PPA
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
           PACKAGE_VERSION="${VERSION}~${DISTRO}1"
-          
-          cd ..
           
           echo "Uploading ${DISTRO} package to PPA..."
           dput ppa:brianeee7878/sealantern sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes || true
