@@ -198,7 +198,7 @@ jobs:
           RULES
           chmod +x "${SOURCE_DIR}/debian/rules"
           
-          echo "12" > "${SOURCE_DIR}/debian/compat"
+          # Only use debhelper-compat, do NOT create debian/compat file
           echo "3.0 (native)" > "${SOURCE_DIR}/debian/source/format"
           
           cd "${SOURCE_DIR}"
