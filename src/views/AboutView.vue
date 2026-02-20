@@ -153,7 +153,7 @@ async function handleCheckUpdate() {
         currentVersion: info.current_version,
         latestVersion: info.latest_version,
         helper: helper,
-        command: `${helper} -Rns sealantern; ${helper} -S sealantern`,
+        command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
       };
 
       showAurWindow.value = true;
@@ -179,7 +179,7 @@ async function handlePrimaryUpdateAction() {
       currentVersion: updateStore.updateInfo.current_version,
       latestVersion: updateStore.updateInfo.latest_version,
       helper: helper,
-      command: `${helper} -Rns sealantern; ${helper} -S sealantern`,
+      command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
     };
 
     showAurWindow.value = true;
