@@ -49,9 +49,9 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
+          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ matrix.distro }}1"
           
-          PACKAGE_VERSION="${VERSION}~${DISTRO}1"
-          PACKAGE_DIR="./ppa-build/sea-lantern-ppa-updater_${PACKAGE_VERSION}"
+          PACKAGE_DIR="./ppa-build/sea-lantern-ppa-updater_${Package_VERSION}"
           
           rm -rf "./ppa-build"
           mkdir -p "$PACKAGE_DIR/DEBIAN"
@@ -63,7 +63,7 @@ jobs:
           
           cat > "${PACKAGE_DIR}/DEBIAN/control" << CONTROL
           Package: sea-lantern-ppa-updater
-          Version: ${PACKAGE_VERSION}
+          Version: ${Package_VERSION}
           Section: utils
           Priority: optional
           Architecture: amd64
@@ -141,19 +141,19 @@ jobs:
           export GNUPGHOME=~/.gnupg
           chmod 700 ~/.gnupg
 
-      - name: Create and sign source package for PPA
+      - name: Create source package for PPA
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
-          PACKAGE_VERSION="${VERSION}~${DISTRO}1"
+          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ matrix.distro }}1"
           
           # Create source package directory - must match package name
-          SOURCE_DIR="./ppa-source/sea-lantern-ppa-updater_${PACKAGE_VERSION}"
+          SOURCE_DIR="./ppa-source/sea-lantern-ppa-updater_${Package_VERSION}"
           rm -rf ./ppa-source
           mkdir -p "${SOURCE_DIR}"
           
           # Copy the binary deb
-          cp "./ppa-build/sea-lantern-ppa-updater_${PACKAGE_VERSION}.deb" "${SOURCE_DIR}/"
+          cp "./ppa-build/sea-lantern-ppa-updater_${Package_VERSION}.deb" "${SOURCE_DIR}/"
           
           # Create debian directory
           mkdir -p "${SOURCE_DIR}/debian/source"
@@ -180,7 +180,7 @@ jobs:
           EOF
           
           cat > "${SOURCE_DIR}/debian/changelog" << EOF
-          sea-lantern-ppa-updater (${PACKAGE_VERSION}) ${DISTRO}; urgency=medium
+          sea-lantern-ppa-updater (${Package_VERSION}) ${DISTRO}; urgency=medium
           
             * New upstream release ${VERSION}
             * Auto-synced from SeaLantern-Studio/SeaLantern
@@ -207,25 +207,29 @@ jobs:
           
           cd "${SOURCE_DIR}"
           
-          # Build source package WITH signing using debuild
+          # Build source package WITHOUT signing using dpkg-buildpackage
           export DEBEMAIL="2914651630@qq.com"
           export DEBFULLNAME="Brian Ikun"
           
-          # Use debuild with debsign to properly sign
-          debuild -p"gpg --batch --yes --pinentry-mode loopback --passphrase '${{ secrets.PPA_GPG_PASSPHRASE }}'" -k"$GPG_FINGERPRINT" -S -sa
+          dpkg-buildpackage -us -uc -S -sa
+          
+          # Now sign the files manually using debsign with -p flag
+          cd ..
+          
+          debsign -p"gpg --batch --yes --pinentry-mode loopback --passphrase '${{ secrets.PPA_GPG_PASSPHRASE }}'" -k"$GPG_FINGERPRINT" "sea-lantern-ppa-updater_${Package_VERSION}_source.changes"
 
       - name: Upload to PPA
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
-          PACKAGE_VERSION="${VERSION}~${DISTRO}1"
+          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ matrix.distro }}1"
           
           cd ppa-source
           
           echo "Uploading ${DISTRO} package to PPA..."
-          dput ppa:brianeee7878/sealantern "sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes" || true
+          dput ppa:brianeee7878/sealantern "sea-lantern-ppa-updater_${Package_VERSION}_source.changes"
           
-          echo "✅ Attempted to upload ${DISTRO} package to PPA"
+          echo "✅ Successfully uploaded ${DISTRO} package to PPA"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
