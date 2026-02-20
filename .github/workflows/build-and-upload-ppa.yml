@@ -11,8 +11,12 @@ on:
         required: true
 
 jobs:
-  build-ppa-package:
+  build-ppa-packages:
     runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        distro: [noble, jammy, focal]
     
     steps:
       - name: Checkout code
@@ -32,7 +36,7 @@ jobs:
             VERSION=$(node -p "require('./package.json').version")
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
+          echo "Building version: $VERSION for ${{ matrix.distro }}"
 
       - name: Download Sea Lantern deb
         run: |
@@ -40,14 +44,15 @@ jobs:
           wget -O "Sea.Lantern_${VERSION}_amd64.deb" \
             "https://github.com/SeaLantern-Studio/SeaLantern/releases/download/sea-lantern-v${VERSION}/Sea.Lantern_${VERSION}_amd64.deb"
 
-      - name: Build PPA package
+      - name: Build PPA package for ${{ matrix.distro }}
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
+          DISTRO="${{ matrix.distro }}"
           
-          BUILD_DIR="./ppa-build"
-          PACKAGE_DIR="${BUILD_DIR}/sea-lantern-ppa-updater_${VERSION}"
+          PACKAGE_VERSION="${VERSION}~${DISTRO}1"
+          PACKAGE_DIR="./ppa-build/sea-lantern-ppa-updater_${PACKAGE_VERSION}"
           
-          rm -rf "$BUILD_DIR"
+          rm -rf "./ppa-build"
           mkdir -p "$PACKAGE_DIR/DEBIAN"
           mkdir -p "$PACKAGE_DIR/opt/sealantern"
           
@@ -57,7 +62,7 @@ jobs:
           
           cat > "${PACKAGE_DIR}/DEBIAN/control" << CONTROL
           Package: sea-lantern-ppa-updater
-          Version: ${VERSION}
+          Version: ${PACKAGE_VERSION}
           Section: utils
           Priority: optional
           Architecture: amd64
@@ -76,9 +81,9 @@ jobs:
           cat > "${PACKAGE_DIR}/DEBIAN/postinst" << 'POSTINST'
           #!/bin/bash
           
-          PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}')
+          PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
           if [ -z "$PACKAGE_VERSION" ]; then
-              PACKAGE_VERSION="${VERSION}"
+              PACKAGE_VERSION="0.6.5"
           fi
           
           EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
@@ -121,20 +126,10 @@ jobs:
           
           dpkg-deb --build "$PACKAGE_DIR"
           
-          echo "✅ PPA package created: ${PACKAGE_DIR}.deb"
+          echo "✅ ${DISTRO} package created: ${PACKAGE_DIR}.deb"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sea-lantern-ppa-updater
+          name: sea-lantern-ppa-updater-${{ matrix.distro }}
           path: ppa-build/sea-lantern-ppa-updater_*.deb
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ppa-build/sea-lantern-ppa-updater_*.deb
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
