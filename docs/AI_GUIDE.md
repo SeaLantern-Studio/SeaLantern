@@ -25,19 +25,23 @@
 ### 版本号相关（修改版本时必须同步更新）
 
 **核心版本文件**（必须修改）：
+
 - `package.json` - 前端版本号，格式：`"version": "x.x.x"`
 - `src-tauri/Cargo.toml` - Rust 后端版本号，格式：`version = "x.x.x"`
 - `src-tauri/tauri.conf.json` - Tauri 配置版本号，格式：`"version": "x.x.x"`
 
 **Arch Linux 打包文件**（如果发布到 AUR 需要修改）：
+
 - `PKGBUILD` - Arch 打包脚本，格式：`pkgver=x.x.x`
 - `.SRCINFO` - AUR 元数据文件，格式：`pkgver = x.x.x`
 
 **自动生成文件**（运行命令后自动更新）：
+
 - `Cargo.lock` - 运行 `cargo update -p sea-lantern` 自动更新
 - `package-lock.json` - 运行 `npm install` 自动更新
 
 **版本号读取方式**：
+
 - 前端通过 `@tauri-apps/api/app` 的 `getVersion()` 从 Tauri 配置读取
 - 显示在关于页面（AboutView.vue）
 
@@ -312,6 +316,7 @@ git push origin sea-lantern-vx.x.x
 ```
 
 **注意事项**：
+
 - 版本号格式遵循语义化版本（Semantic Versioning）：`major.minor.patch`
 - 标签格式：`sea-lantern-vx.x.x`（与 GitHub Release 保持一致）
 - PKGBUILD 中的 `source` URL 也会引用版本号，确保 Release 已发布
@@ -536,17 +541,20 @@ cd src-tauri && cargo test
 ### 2. 修改时需要同步的文件
 
 **版本号更新**（5 个文件 + 2 个自动生成）：
+
 - 核心：`package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`
 - AUR：`PKGBUILD`, `.SRCINFO`
 - 自动：`Cargo.lock`（cargo update）, `package-lock.json`（npm install）
 
 **添加 Tauri 命令**（4 个文件）：
+
 - `src-tauri/src/commands/*.rs` - 定义命令函数
 - `src-tauri/src/commands/mod.rs` - 导出模块
 - `src-tauri/src/lib.rs` - 注册到 `generate_handler!`
 - `src/api/*.ts` - 前端 API 封装
 
 **添加新页面**（2 个文件）：
+
 - `src/router/index.ts` - 添加路由
 - `src/components/layout/AppSidebar.vue` - 添加导航项
 

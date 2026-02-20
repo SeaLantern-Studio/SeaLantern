@@ -1,4 +1,4 @@
-﻿﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone, Info, Copy } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
