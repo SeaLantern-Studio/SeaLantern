@@ -141,13 +141,12 @@ jobs:
            This package is published from upstream releases to Ubuntu PPA.
           CONTROL
           
-          # Create debian/changelog with distro suffix to avoid conflicts
+          # Create debian/changelog
           cat > debian/changelog << CHANGELOG
-          sealantern (${VERSION}+${{ matrix.distro }}1) ${{ matrix.distro }}; urgency=medium
+          sealantern (${VERSION}) ${{ matrix.distro }}; urgency=medium
           
             * New upstream release ${VERSION}
             * Auto-synced from ${{ env.UPSTREAM_REPO }}
-            * Built for ${{ matrix.distro }}
           
            -- Brian Ikun <2914651630@qq.com>  $(date -R)
           CHANGELOG
@@ -203,12 +202,11 @@ jobs:
         if: steps.check_release.outputs.FOUND == 'true'
         run: |
           VERSION="${{ steps.check_release.outputs.VERSION }}"
-          DISTRO="${{ matrix.distro }}"
           
-          echo "Uploading to ${{ env.PPA_NAME }} for $DISTRO..."
-          dput ${{ env.PPA_NAME }} sealantern_${VERSION}+${DISTRO}1_source.changes
+          echo "Uploading to ${{ env.PPA_NAME }}..."
+          dput ${{ env.PPA_NAME }} sealantern_${VERSION}_source.changes
           
-          echo "✅ Successfully uploaded sealantern ${VERSION}+${DISTRO}1 to PPA for $DISTRO"
+          echo "✅ Successfully uploaded sealantern ${VERSION} to PPA"
 
       - name: Report status
         if: always()
