@@ -1,5 +1,5 @@
 <div align="center">
-<img src="https://gitee.com/fps_z/SeaLantern/raw/master/src/assets/logo.svg" alt="logo" width="200" height="200">
+<img src="src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # Sea Lantern (海晶灯)
 

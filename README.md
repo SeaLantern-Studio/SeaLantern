@@ -1,5 +1,4 @@
 <div align="center">
-  
 <img src="src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # 海晶灯（Sea Lantern）
