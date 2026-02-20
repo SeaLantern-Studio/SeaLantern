@@ -171,6 +171,9 @@
     "java_env": "Entorno Java",
     "java_scan": "Escanear todos los discos en busca de Java",
     "java_manual": "Seleccionar ruta manualmente",
+    "import_mode": "Modo de importación",
+    "use_existing_dir": "Usar directorio existente",
+    "create_new_dir": "Crear nuevo directorio",
     "java_path": "Ruta de Java"
   },
   "console": {
@@ -201,6 +204,7 @@
     "title": "Editar configuración",
     "save": "Guardar",
     "reload": "Recargar",
+    "delete": "Eliminar",
     "search": "Buscar configuración...",
     "select_server": "Selecciona el servidor para editar",
     "no_server": "Selecciona un servidor",
@@ -291,7 +295,14 @@
       "pause-when-empty-seconds": "Pausa cuando vacío (segundos)",
       "region-file-compression": "Método de compresión de archivos de región",
       "status-heartbeat-interval": "Intervalo de latido de estado (segundos)"
-    }
+    },
+    "plugins": "Plugins",
+    "loading_plugins": "Cargando plugins...",
+    "no_plugins": "No hay plugins",
+    "author": "Autor",
+    "disable": "Desactivar",
+    "enable": "Activar",
+    "server_properties": "Propiedades del servidor"
   },
   "players": {
     "title": "Gestionar jugadores",

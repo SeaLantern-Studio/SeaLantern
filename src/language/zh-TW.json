@@ -171,6 +171,9 @@
     "java_env": "Java 環境",
     "java_scan": "掃描系統中所有磁碟的 Java 安裝",
     "java_manual": "手動選擇 Java 路徑",
+    "import_mode": "匯入模式",
+    "use_existing_dir": "使用現有目錄",
+    "create_new_dir": "建立新目錄",
     "java_path": "Java 路徑"
   },
   "console": {
@@ -201,6 +204,7 @@
     "title": "設定編輯",
     "save": "儲存",
     "reload": "重新載入",
+    "delete": "刪除",
     "search": "搜尋設定項目...",
     "select_server": "選擇要編輯設定的伺服器",
     "no_server": "請選擇一個伺服器來編輯設定",
@@ -306,7 +310,14 @@
       "pause-when-empty-seconds": "無人時自動暫停秒數",
       "region-file-compression": "區域檔案壓縮方式",
       "status-heartbeat-interval": "狀態心跳間隔（秒）"
-    }
+    },
+    "plugins": "插件",
+    "loading_plugins": "載入插件中...",
+    "no_plugins": "暫無插件",
+    "author": "作者",
+    "disable": "停用",
+    "enable": "啟用",
+    "server_properties": "伺服器屬性"
   },
   "players": {
     "title": "玩家管理",

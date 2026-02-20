@@ -173,6 +173,9 @@
     "java_env": "Java Environment",
     "java_scan": "Scan all disks for Java installations",
     "java_manual": "Manually select Java path",
+    "import_mode": "Import Mode",
+    "use_existing_dir": "Use existing directory",
+    "create_new_dir": "Create new directory",
     "java_path": "Java Path"
   },
   "console": {
@@ -203,6 +206,7 @@
     "title": "Config Edit",
     "save": "Save",
     "reload": "Reload",
+    "delete": "Delete",
     "search": "Search config items...",
     "select_server": "Select server to edit config",
     "no_server": "Please select a server to edit config",
@@ -309,7 +313,14 @@
       "bug-report-link": "Bug Report Link",
       "broadcast-rcon-to-ops": "Broadcast RCON Commands to Ops",
       "broadcast-console-to-ops": "Broadcast Console Commands to Ops"
-    }
+    },
+    "plugins": "Plugins",
+    "loading_plugins": "Loading plugins...",
+    "no_plugins": "No plugins",
+    "author": "Author",
+    "disable": "Disable",
+    "enable": "Enable",
+    "server_properties": "Server Properties"
   },
   "players": {
     "title": "Player Manage",

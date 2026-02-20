@@ -7,7 +7,7 @@ import SLSelect from "../components/common/SLSelect.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import { configApi } from "../api/config";
-import { pluginApi, type PluginInfo, type PluginConfigFile } from "../api/plugin";
+import { pluginApi, type PluginInfo, type PluginConfigFile } from "../api/mcs_plugins";
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
 import { i18n } from "../language";
