@@ -145,8 +145,23 @@ jobs:
            -- Brian Ikun <2914651630@qq.com>  $(date -R)
           CHANGELOG
           
-          # Create debian/rules with actual tabs using printf
-          printf '%s\n' '#!/usr/bin/make -f' '' '%:' '\tdh $@' '' 'override_dh_auto_build:' '\t# Binary already built by upstream' '' 'override_dh_auto_install:' '\tdpkg-deb -x Sea.Lantern_*_amd64.deb debian/sealantern' > debian/rules
+          # Create debian/rules with actual tabs
+          cat > debian/rules << 'RULES'
+          #!/usr/bin/make -f
+          
+          %:
+          RULES
+          echo -e '\tdh $@' >> debian/rules
+          cat >> debian/rules << 'RULES2'
+          
+          override_dh_auto_build:
+          RULES2
+          echo -e '\t# Binary already built by upstream' >> debian/rules
+          cat >> debian/rules << 'RULES3'
+          
+          override_dh_auto_install:
+          RULES3
+          echo -e '\tdpkg-deb -x Sea.Lantern_*_amd64.deb debian/sealantern' >> debian/rules
           chmod +x debian/rules
           
           echo "3.0 (native)" > debian/source/format
