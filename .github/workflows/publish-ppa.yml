@@ -203,11 +203,12 @@ jobs:
         if: steps.check_release.outputs.FOUND == 'true'
         run: |
           VERSION="${{ steps.check_release.outputs.VERSION }}"
+          DISTRO="${{ matrix.distro }}"
           
-          echo "Uploading to ${{ env.PPA_NAME }}..."
-          dput ${{ env.PPA_NAME }} sealantern_${VERSION}_source.changes
+          echo "Uploading to ${{ env.PPA_NAME }} for $DISTRO..."
+          dput ${{ env.PPA_NAME }} sealantern_${VERSION}~${DISTRO}1_source.changes
           
-          echo "✅ Successfully uploaded sealantern ${VERSION} to PPA"
+          echo "✅ Successfully uploaded sealantern ${VERSION}~${DISTRO}1 to PPA for $DISTRO"
 
       - name: Report status
         if: always()
