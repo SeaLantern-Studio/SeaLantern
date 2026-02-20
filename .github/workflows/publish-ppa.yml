@@ -58,10 +58,25 @@ jobs:
       - name: Setup GPG
         if: steps.check_release.outputs.FOUND == 'true'
         run: |
-          echo "${{ secrets.PPA_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          # Configure GPG for non-interactive mode
+          export GPG_TTY=$(tty)
+          mkdir -p ~/.gnupg
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpg-connect-agent reloadagent /bye
+          
+          # Import private key
+          echo "${{ secrets.PPA_GPG_PRIVATE_KEY }}" | gpg --batch --yes --import
+          
+          # Get key ID
           GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
           echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
-          echo "✅ GPG key imported: $GPG_KEY_ID"
+          
+          # Trust the key ultimately
+          echo -e "5\ny\n" | gpg --command-fd 0 --edit-key $GPG_KEY_ID trust
+          
+          echo "✅ GPG key imported and trusted: $GPG_KEY_ID"
 
       - name: Download deb package
         if: steps.check_release.outputs.FOUND == 'true'
@@ -148,10 +163,14 @@ jobs:
           
           cd ..
           
-          # Build source package
+          # Build source package (unsigned first, then sign manually)
           cd sealantern-${VERSION}
-          debuild -S -k${GPG_KEY_ID}
+          debuild -S -us -uc
           cd ..
+          
+          # Sign the .changes and .dsc files manually
+          gpg --yes --armor --detach-sign --output sealantern_${VERSION}_source.changes.gpg sealantern_${VERSION}_source.changes
+          gpg --yes --armor --detach-sign --output sealantern_${VERSION}.dsc.gpg sealantern_${VERSION}.dsc
           
           echo "✅ Source package created"
           ls -lh sealantern_${VERSION}*
