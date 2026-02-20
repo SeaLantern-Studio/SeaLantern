@@ -1,6 +1,10 @@
 name: Sync and Publish to PPA
 
 on:
+  # 推送到 ppa-deploy 分支时触发
+  push:
+    branches:
+      - ppa-deploy
   # 每6小时检查一次上游是否有新 release
   schedule:
     - cron: '0 */6 * * *'
