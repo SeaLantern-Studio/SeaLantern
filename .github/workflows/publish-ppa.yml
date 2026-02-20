@@ -58,25 +58,28 @@ jobs:
       - name: Setup GPG
         if: steps.check_release.outputs.FOUND == 'true'
         run: |
-          # Configure GPG for non-interactive mode
-          mkdir -p ~/.gnupg
-          chmod 700 ~/.gnupg
-          echo "use-agent" >> ~/.gnupg/gpg.conf
-          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          gpg-connect-agent reloadagent /bye 2>/dev/null || true
+          # Setup GPG home with proper permissions
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -p "$GNUPGHOME"
+          chmod 700 "$GNUPGHOME"
           
-          # Import private key
-          echo "${{ secrets.PPA_GPG_PRIVATE_KEY }}" | gpg --batch --yes --import
+          # Create GPG agent config for loopback pinentry
+          cat > "$GNUPGHOME/gpg-agent.conf" << 'AGENTCONF'
+          allow-loopback-pinentry
+          AGENTCONF
           
-          # Get key ID
-          GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-          echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
+          # Restart agent
+          gpg-connect-agent --homedir "$GNUPGHOME" killagent /bye 2>/dev/null || true
           
-          # Trust the key ultimately (non-interactive)
-          echo -e "5\ny\n" | gpg --batch --command-fd 0 --edit-key $GPG_KEY_ID trust 2>/dev/null || true
+          # Import key
+          echo "${{ secrets.PPA_GPG_PRIVATE_KEY }}" | gpg --homedir "$GNUPGHOME" --batch --yes --import
           
-          echo "✅ GPG key imported: $GPG_KEY_ID"
+          # Get key fingerprint (use fingerprint instead of long key ID)
+          GPG_FINGERPRINT=$(gpg --homedir "$GNUPGHOME" --list-secret-keys --with-colons | grep fpr | head -1 | cut -d: -f10)
+          echo "GPG_FINGERPRINT=$GPG_FINGERPRINT" >> $GITHUB_ENV
+          echo "GNUPGHOME=$GNUPGHOME" >> $GITHUB_ENV
+          
+          echo "✅ GPG key imported: $GPG_FINGERPRINT"
 
       - name: Download deb package
         if: steps.check_release.outputs.FOUND == 'true'
@@ -99,6 +102,8 @@ jobs:
         if: steps.check_release.outputs.FOUND == 'true'
         run: |
           VERSION="${{ steps.check_release.outputs.VERSION }}"
+          GNUPGHOME="${{ env.GNUPGHOME }}"
+          GPG_FINGERPRINT="${{ env.GPG_FINGERPRINT }}"
           
           mkdir -p sealantern-${VERSION}
           cd sealantern-${VERSION}
@@ -140,8 +145,8 @@ jobs:
            -- Brian Ikun <2914651630@qq.com>  $(date -R)
           CHANGELOG
           
-          # Create debian/rules with actual tabs
-          printf '%s\n' '#!/usr/bin/make -f' '' '%:' '	dh $@' '' 'override_dh_auto_build:' '	# Binary already built by upstream' '' 'override_dh_auto_install:' '	dpkg-deb -x Sea.Lantern_*_amd64.deb debian/sealantern' > debian/rules
+          # Create debian/rules with actual tabs using printf
+          printf '%s\n' '#!/usr/bin/make -f' '' '%:' '\tdh $@' '' 'override_dh_auto_build:' '\t# Binary already built by upstream' '' 'override_dh_auto_install:' '\tdpkg-deb -x Sea.Lantern_*_amd64.deb debian/sealantern' > debian/rules
           chmod +x debian/rules
           
           echo "3.0 (native)" > debian/source/format
@@ -163,16 +168,13 @@ jobs:
           
           cd ..
           
-          # Build source package (unsigned first, then sign with debsign)
+          # Build source package with GPG signing using loopback pinentry
           cd sealantern-${VERSION}
-          debuild -S -us -uc
+          GPG_TTY= gpg --homedir "$GNUPGHOME" --batch --yes --pinentry-mode loopback --list-keys "$GPG_FINGERPRINT" > /dev/null
+          debuild -S -k"$GPG_FINGERPRINT" -p"gpg --homedir $GNUPGHOME --batch --yes --pinentry-mode loopback"
           cd ..
           
-          # Sign the package using debsign with GPG
-          export DEBSIGN_PROGRAM="gpg --batch --yes --pinentry-mode loopback"
-          debsign --re-sign -k${GPG_KEY_ID} sealantern_${VERSION}_source.changes
-          
-          echo "✅ Source package created"
+          echo "✅ Source package created and signed"
           ls -lh sealantern_${VERSION}*
 
       - name: Upload to PPA
