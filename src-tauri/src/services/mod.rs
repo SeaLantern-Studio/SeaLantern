@@ -1,3 +1,4 @@
+pub mod async_loader;
 pub mod config_parser;
 pub mod global;
 pub mod i18n;
