@@ -173,17 +173,15 @@ jobs:
           
           cd ..
           
-          # Build unsigned source package first
-          cd sealantern-${VERSION}
-          
-          # Build without signing
-          debuild -S -us -uc
-          cd ..
-          
-          # Sign the packages using debsign with GPG
+          # Configure GPG for batch mode
           export GNUPGHOME="$GNUPGHOME"
-          export DEBSIGN_PROGRAM="gpg --homedir $GNUPGHOME --batch --yes --pinentry-mode loopback --passphrase-fd 0 --command-fd 0 --status-fd 2"
-          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | debsign -k"$GPG_FINGERPRINT" sealantern_${VERSION}_source.changes
+          echo "default-key $GPG_FINGERPRINT" >> "$GNUPGHOME/gpg.conf"
+          echo "pinentry-mode loopback" >> "$GNUPGHOME/gpg.conf"
+          
+          # Build and sign in one step
+          cd sealantern-${VERSION}
+          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | debuild -S -k"$GPG_FINGERPRINT" -p"gpg --homedir $GNUPGHOME --batch --yes --pinentry-mode loopback --passphrase-fd 0"
+          cd ..
           
           echo "✅ Source package created and signed"
           ls -lh sealantern_${VERSION}*
