@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        distro: ['jammy', 'noble', 'mantic']
+        distro: ['jammy', 'noble']
       fail-fast: false
     
     steps:
