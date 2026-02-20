@@ -1,5 +1,17 @@
 {
   "languageName": "English",
+  "header": {
+    "chinese": "Simplified Chinese",
+    "english": "English",
+    "chinese_tw": "Traditional Chinese",
+    "deutsch": "German",
+    "spanish": "Spanish",
+    "japanese": "Japanese",
+    "russian": "Russian",
+    "vietnamese": "Vietnamese",
+    "korean": "Korean",
+    "french": "French"
+  },
   "common": {
     "app_name": "Sea Lantern",
     "home": "Home",
@@ -374,8 +386,6 @@
     "acrylic": "Acrylic Effect (Glass)",
     "acrylic_desc": "Enable Windows system-level acrylic glass effect, compatible with background images",
     "acrylic_not_supported": "Acrylic effect not supported on current system",
-    "senior_mode": "Senior Mode",
-    "senior_mode_desc": "Increase font sizes, spacing, and contrast globally to improve readability for elderly users.",
     "background": "Background Image",
     "background_desc": "Upload an image as software background, supports PNG, JPG, WEBP and other formats",
     "opacity": "Opacity",
@@ -478,8 +488,6 @@
     "developer_mode_desc": "Enable advanced features and debugging options",
     "developer_mode_toggle": "Toggle Developer Mode",
     "developer_mode_toggle_desc": "Enable to use debug tools while in developer mode",
-    "senior_mode": "Senior Mode",
-    "senior_mode_desc": "Enable larger text and simplified interface for easier use",
     "color_options": {
       "custom": "Custom"
     }

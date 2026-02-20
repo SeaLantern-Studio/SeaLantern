@@ -60,6 +60,12 @@ watch(
   { deep: true },
 );
 
+// 监听语言变化，更新指示器位置
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, () => {
+  updateTabIndicator();
+});
+
 // 组件挂载后初始化指示器位置
 onMounted(() => {
   updateTabIndicator();

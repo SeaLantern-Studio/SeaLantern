@@ -1,5 +1,17 @@
 {
   "languageName": "Tiếng Việt",
+  "header": {
+    "chinese": "Tiếng Trung giản thể",
+    "english": "Tiếng Anh",
+    "chinese_tw": "Tiếng Trung phồn thể",
+    "deutsch": "Tiếng Đức",
+    "spanish": "Tiếng Tây Ban Nha",
+    "japanese": "Tiếng Nhật",
+    "russian": "Tiếng Nga",
+    "vietnamese": "Tiếng Việt",
+    "korean": "Tiếng Hàn",
+    "french": "Tiếng Pháp"
+  },
   "common": {
     "app_name": "Sea Lantern",
     "home": "Trang chủ",

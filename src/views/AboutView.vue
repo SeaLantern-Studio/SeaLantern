@@ -754,7 +754,6 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
 .contributor-avatar {
   width: 48px;
   height: 48px;
-  border-radius: var(--sl-radius-md);
   flex-shrink: 0;
   image-rendering: pixelated;
 }
