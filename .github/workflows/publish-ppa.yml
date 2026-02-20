@@ -124,13 +124,13 @@ jobs:
           
           # 创建 debian/changelog
           cat > debian/changelog << EOF
-          sealantern (${VERSION}) jammy; urgency=medium
-          
-            * New upstream release ${VERSION}
-            * Auto-synced from ${{ env.UPSTREAM_REPO }}
-          
-           -- Brian Ikun <2914651630@qq.com>  $(date -R)
-          EOF
+sealantern (${VERSION}) jammy; urgency=medium
+
+  * New upstream release ${VERSION}
+  * Auto-synced from ${{ env.UPSTREAM_REPO }}
+
+ -- Brian Ikun <2914651630@qq.com>  $(date -R)
+EOF
           
           # 创建 debian/rules
           cat > debian/rules << 'RULES'
@@ -167,11 +167,13 @@ jobs:
           
           cd ..
           
-          # 构建源代码包
+          # 构建源代码包（在包含 debian 目录的目录中执行）
+          cd sealantern-${VERSION}
           debuild -S -k${GPG_KEY_ID}
+          cd ..
           
           echo "✅ Source package created"
-          ls -lh ../sealantern_${VERSION}*
+          ls -lh sealantern_${VERSION}*
 
       - name: Upload to PPA
         if: steps.check_release.outputs.FOUND == 'true'
@@ -179,7 +181,7 @@ jobs:
           VERSION="${{ steps.check_release.outputs.VERSION }}"
           
           echo "Uploading to ${{ env.PPA_NAME }}..."
-          dput ${{ env.PPA_NAME }} ../sealantern_${VERSION}_source.changes
+          dput ${{ env.PPA_NAME }} sealantern_${VERSION}_source.changes
           
           echo "✅ Successfully uploaded sealantern ${VERSION} to PPA"
 
