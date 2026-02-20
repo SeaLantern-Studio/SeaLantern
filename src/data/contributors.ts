@@ -151,24 +151,6 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/yanuofox",
     url: "https://github.com/foxcyber907",
   },
-  {
-    name: "Yang458",
-    role: "贡献者",
-    avatar: "https://api.rms.net.cn/head/Yang4893",
-    url: "https://github.com/minecraft-Yang458",
-  },
-  {
-    name: "福瑞控海天",
-    role: "海内存知己，天涯若比邻",
-    avatar: "https://api.rms.net.cn/head/LucyKitter",
-    url: "https://gitee.com/pnchsb_admin",
-  },
-  {
-    name: "yanuofox",
-    role: "可以rua的吉祥物",
-    avatar: "https://api.rms.net.cn/head/yanuofox",
-    url: "https://github.com/foxcyber907",
-  },
   // ============================================
   // 在这里添加更多贡献者！
   // 没有正版怎么办？
