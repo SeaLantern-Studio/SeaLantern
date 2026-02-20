@@ -211,10 +211,10 @@ onUnmounted(() => {
   width: 320px;
   max-height: 400px;
   border-radius: 12px;
-  background: rgba(30, 30, 40, 0.95);
+  background: var(--sl-surface);
   backdrop-filter: blur(12px);
   border: 1px solid var(--sl-border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--sl-shadow-lg);
   z-index: 1000;
   overflow: hidden;
   display: flex;

@@ -153,13 +153,13 @@ pub fn run() {
                 let settings = services::global::settings_manager().get();
 
                 match settings.close_action.as_str() {
-                    "tray" => {
-                        // 最小化
+                    "minimize" => {
+                        // 最小化到托盘
                         api.prevent_close();
                         let _ = window.hide();
                     }
-                    "exit" => {
-                        // 退出
+                    "close" => {
+                        // 直接关闭
                         if settings.close_servers_on_exit {
                             services::global::server_manager().stop_all_servers();
                         }
@@ -175,12 +175,11 @@ pub fn run() {
                         }
                     }
                     _ => {
-                        // 显示对话框
+                        // 显示对话框（ask 或其他值）
                         api.prevent_close();
                         let _ = window.emit("close-requested", ());
                     }
                 }
-                // 不阻止默认关闭，让前端的确认对话框处理
             }
         })
         .setup(|app| {

@@ -2016,14 +2016,12 @@ function goToMarket() {
   width: 90%;
   max-width: 480px;
   max-height: 80vh;
-  background: rgba(26, 29, 40, 0.95);
+  background: var(--sl-surface);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-xl);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2099,22 +2097,22 @@ function goToMarket() {
   padding: 10px 14px;
   font-size: 14px;
   color: var(--sl-text-primary);
-  background: rgba(15, 17, 23, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border);
   border-radius: 10px;
   outline: none;
   transition: all 0.2s ease;
 }
 
 .setting-input:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(15, 17, 23, 0.8);
+  border-color: var(--sl-border-light);
+  background: var(--sl-bg-tertiary);
 }
 
 .setting-input:focus {
   border-color: var(--sl-primary);
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
-  background: rgba(15, 17, 23, 0.9);
+  background: var(--sl-bg);
 }
 
 .setting-color-field {
@@ -2149,8 +2147,8 @@ function goToMarket() {
   padding-right: 36px;
   font-size: 14px;
   color: var(--sl-text-primary);
-  background: rgba(15, 17, 23, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border);
   border-radius: 10px;
   outline: none;
   cursor: pointer;
@@ -2165,18 +2163,18 @@ function goToMarket() {
 }
 
 .setting-select:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  background-color: rgba(15, 17, 23, 0.8);
+  border-color: var(--sl-border-light);
+  background-color: var(--sl-bg-tertiary);
 }
 
 .setting-select:focus {
   border-color: var(--sl-primary);
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
-  background-color: rgba(15, 17, 23, 0.9);
+  background-color: var(--sl-bg);
 }
 
 .setting-select option {
-  background: #1a1d28;
+  background: var(--sl-bg-secondary);
   color: var(--sl-text-primary);
   padding: 8px;
 }
@@ -2275,14 +2273,14 @@ function goToMarket() {
   position: absolute;
   right: 0;
   top: 100%;
-  background: rgba(30, 30, 40, 0.95);
+  background: var(--sl-surface);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--sl-border);
   border-radius: 8px;
   padding: 4px;
   min-width: 140px;
   z-index: 100;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--sl-shadow-lg);
 }
 
 .plugin-menu-dropdown button {

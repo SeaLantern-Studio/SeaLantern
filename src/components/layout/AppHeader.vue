@@ -183,7 +183,9 @@ async function handleCloseOption(option: string) {
   if (option === "minimize") {
     await minimizeToTray();
   } else {
-    await appWindow.close();
+    // 使用 exit() 强制退出应用，绕过 CloseRequested 事件
+    const { exit } = await import("@tauri-apps/plugin-process");
+    await exit(0);
   }
   showCloseModal.value = false;
   rememberChoice.value = false;
