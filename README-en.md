@@ -1,13 +1,13 @@
 <div align="center">
-<img src="https://gitee.com/fps_z/SeaLantern/raw/master/src/assets/logo.svg" alt="logo" width="200" height="200">
+	<img src="src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # Sea Lantern (海晶灯)
 
 A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
-|[![github-stars](https://img.shields.io/github/stars/FPSZ/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/FPSZ/SeaLantern/stargazers)|[![github-forks](https://img.shields.io/github/forks/FPSZ/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/FPSZ/SeaLantern/network/members)|[![github-latest](https://img.shields.io/github/v/release/FPSZ/SeaLantern?style=flat&logo=github&label=Latest%20version)](https://github.com/FPSZ/SeaLantern/releases/latest)|
-|:--|:--|:--|
-|[![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)|[![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)|[![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=Latest%20version&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases)|
+| [![github-stars](https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/SeaLantern-Studio/SeaLantern/stargazers) | [![github-forks](https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/SeaLantern-Studio/SeaLantern/network/members) | [![github-latest](https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Latest%20version)](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)                                                                                    |
+| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)                                                      | [![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)                                                              | [![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=Latest%20version&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases/latest) |
 
 <kbd>[简体中文](README.md)</kbd> <kbd>English</kbd>
 
@@ -27,7 +27,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 ## Quick Start
 
-Download the software from [Releases](https://github.com/FPSZ/SeaLantern);
+Download the software from [Releases](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest);
 
 Import a server .jar, choose a Java version, then click Start. It's that simple.
 
@@ -36,7 +36,7 @@ Import a server .jar, choose a Java version, then click Start. It's that simple.
 You'll need Node.js 20+ and Rust 1.70+.
 
 ```bash
-git clone https://github.com/fps_z/SeaLantern.git
+git clone https://github.com/SeaLantern-Studio/SeaLantern.git
 cd SeaLantern
 npm install
 npm run tauri dev
@@ -61,13 +61,13 @@ Before your PR, we encourage you to run the commands below to check the code's q
 > ```bash
 > # Code Quality Check
 > npm run lint
-> 
+>
 > # Fix fixable problems
 > npm run lint:fix
-> 
+>
 > # Format code
 > npm run fmt
-> 
+>
 > # Check format
 > npm run fmt:check
 > ```
@@ -77,17 +77,17 @@ Before your PR, we encourage you to run the commands below to check the code's q
 > ```bash
 > # Check format
 > cargo fmt --all -- --check
-> 
+>
 > # Run Clippy check
 > cargo clippy --workspace -- -D warnings
-> 
+>
 > # Format code
 > cargo fmt --all
 > ```
 
 CI automated checks are set up to ensure that all submitted code meets the standards.
 
-### Tech stack
+## Tech Stack
 
 - **Frontend**: Vue 3 + TypeScript + Vite + Pinia
 - **Backend**: Rust + Tauri 2
@@ -98,7 +98,7 @@ No Electron, no Node backend, no Webpack. Launch fast, size small, RAM saved.
 
 ### Project Structure
 
-See [Project Structure](docs/Project%20Structure.md).
+See [Project Structure](docs/STRUCTURE-en.md).
 
 ## Planned Features
 
@@ -135,7 +135,7 @@ You don't need coding skills to contribute. Just suggest new features you want o
 
 ### Add a new function
 
-If you are going to add a "Save Management":
+If you are going to add a "Backup Management":
 
 #### Backend
 
@@ -153,19 +153,23 @@ If you are going to add a "Save Management":
 
 The frontend and backend each have 3 files, plus one line each for the router and the sidebar.
 
+### i18n — Internationalization Guide
+
+Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [src/language/README-en.md](src/language/README-en.md)
+
 ## License
 
 [GNU General Public License v3.0](LICENSE)
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=FPSZ/SeaLantern&type=Date)](https://star-history.com/#FPSZ/SeaLantern&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=Date)](https://star-history.com/#SeaLantern-Studio/SeaLantern&Date)
 
 ## Contributors
 
 Thanks to everyone who contributed to Sea Lantern!
 
-[![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/FPSZ/SeaLantern/graphs/contributors)
+[![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/SeaLantern-Studio/SeaLantern/graphs/contributors)
 
 ## Acknowledgments
 
