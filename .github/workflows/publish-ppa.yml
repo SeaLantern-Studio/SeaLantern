@@ -137,7 +137,7 @@ jobs:
           
           # Create debian/changelog
           cat > debian/changelog << CHANGELOG
-          sealantern (${VERSION}) jammy; urgency=medium
+          sealantern (${VERSION}) noble; urgency=medium
           
             * New upstream release ${VERSION}
             * Auto-synced from ${{ env.UPSTREAM_REPO }}
