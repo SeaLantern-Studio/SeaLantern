@@ -213,15 +213,12 @@ jobs:
           
           debuild -us -uc -S -sa
           
-          # Sign the dsc and changes files in the parent directory
+          # Files are generated in parent directory (./ppa-source/)
+          # Sign the dsc and changes files
           cd ..
           
-          # Use absolute paths to sign
-          DSC_FILE="./ppa-source/sea-lantern-ppa-updater_${PACKAGE_VERSION}.dsc"
-          CHANGES_FILE="./ppa-source/sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes"
-          
-          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_FINGERPRINT" --detach-sign --armor "$DSC_FILE"
-          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_FINGERPRINT" --clearsign --armor "$CHANGES_FILE"
+          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_FINGERPRINT" --detach-sign --armor "sea-lantern-ppa-updater_${PACKAGE_VERSION}.dsc"
+          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_FINGERPRINT" --clearsign --armor "sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes"
 
       - name: Upload to PPA
         run: |
@@ -230,7 +227,7 @@ jobs:
           PACKAGE_VERSION="${VERSION}~${DISTRO}1"
           
           echo "Uploading ${DISTRO} package to PPA..."
-          dput ppa:brianeee7878/sealantern ppa-source/sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes || true
+          dput ppa:brianeee7878/sealantern "sea-lantern-ppa-updater_${PACKAGE_VERSION}_source.changes" || true
           
           echo "✅ Attempted to upload ${DISTRO} package to PPA"
 
