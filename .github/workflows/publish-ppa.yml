@@ -190,7 +190,7 @@ jobs:
           export DEBSIGN_PROGRAM="gpg --homedir $GNUPGHOME --batch --yes --passphrase '' --pinentry-mode loopback"
           
           # Build with signing
-          debuild -S -k"$GPG_FINGERPRINT" --no-tgz-check
+          debuild -S -k"$GPG_FINGERPRINT"
           cd ..
           
           echo "✅ Source package created and signed"
