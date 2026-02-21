@@ -417,7 +417,7 @@
     "import": "匯入",
     "java_download": "下載 Java",
     "java_download_desc": "如果系統中沒有 Java 或需要更新版本，可以從這裡下載",
-    "java_download_btn": "下載 Java 17 (LTS)",
+    "java_download_btn": "下載 Java {{version}} (LTS)",
     "reset": "恢復預設",
     "import_settings": "匯入設定",
     "import_desc": "貼上之前匯出的 JSON 資料",
