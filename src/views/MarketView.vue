@@ -42,11 +42,6 @@ watch(localeRef, () => {
   updateTagIndicator();
 });
 
-// 监听标签列表变化，更新指示器位置
-watch(allTags, () => {
-  updateTagIndicator();
-}, { deep: true });
-
 const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
 
 function saveMarketUrl() {
@@ -91,6 +86,10 @@ const allTags = computed(() => {
   marketPlugins.value.forEach((p) => p.categories?.forEach((t) => tags.add(t)));
   return Array.from(tags);
 });
+
+watch(allTags, () => {
+  updateTagIndicator();
+}, { deep: true });
 
 function resolveI18n(val: Record<string, string> | string | undefined): string {
   if (!val) return "";
