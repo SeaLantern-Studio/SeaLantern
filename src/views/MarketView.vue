@@ -424,7 +424,7 @@ onMounted(() => {
 <style scoped>
 .market-view {
   padding: 24px;
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
   font-family: var(--sl-font-sans);
   min-height: 100%;
@@ -440,7 +440,7 @@ onMounted(() => {
   background: var(--sl-bg-secondary);
   color: var(--sl-text-primary);
   font-size: 13px;
-  width: 160px;
+  width: 180px;
   transition: all var(--sl-transition-fast);
 }
 
@@ -496,7 +496,7 @@ onMounted(() => {
 .market-tags {
   display: flex;
   align-items: center;
-  gap: var(--sl-space-md);
+  gap: var(--sl-space-xs);
   padding: var(--sl-space-xs);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
@@ -614,7 +614,7 @@ onMounted(() => {
 .market-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 @media (max-width: 768px) {
