@@ -52,8 +52,10 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
-      - name: 安装前端依赖 (npm)
-        run: npm install
+      - name: 安装前端依赖 (pnpm)
+        run: |
+          npm i -g pnpm
+          pnpm install --frozen-lockfile
 
       # 保存当前工作目录
       - name: 保存工作目录路径
