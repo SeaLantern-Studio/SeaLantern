@@ -9,7 +9,11 @@ import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings, type SettingsGroup } from "../../api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
-import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "../../stores/settingsStore";
+import {
+  dispatchSettingsUpdate,
+  SETTINGS_UPDATE_EVENT,
+  type SettingsUpdateEvent,
+} from "../../stores/settingsStore";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
@@ -262,15 +266,8 @@ function computeOverallProgress() {
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
-          <MenuItem
-            v-for="option in primaryLanguages"
-            :key="option.code"
-            v-slot="{ close }"
-          >
-            <div
-              class="language-item"
-              @click="() => handleLanguageClick(option.code, close)"
-            >
+          <MenuItem v-for="option in primaryLanguages" :key="option.code" v-slot="{ close }">
+            <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
               <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
               </div>
@@ -279,10 +276,7 @@ function computeOverallProgress() {
 
           <!-- 更多语言选项 -->
           <div class="language-item-full-width">
-            <div
-              class="language-item language-item-arrow"
-              @click="toggleMoreLanguages"
-            >
+            <div class="language-item language-item-arrow" @click="toggleMoreLanguages">
               <div class="language-item-main">
                 <ChevronDown v-if="!showMoreLanguages" :size="16" class="arrow-icon" />
                 <ChevronUp v-else :size="16" class="arrow-icon" />
@@ -292,15 +286,8 @@ function computeOverallProgress() {
 
           <!-- 其他语言（仅在展开时显示） -->
           <template v-if="showMoreLanguages">
-            <MenuItem
-              v-for="option in otherLanguages"
-              :key="option.code"
-              v-slot="{ close }"
-            >
-              <div
-                class="language-item"
-                @click="() => handleLanguageClick(option.code, close)"
-              >
+            <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
+              <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
                 <div class="language-item-main">
                   <span class="language-label">{{ option.label }}</span>
                 </div>

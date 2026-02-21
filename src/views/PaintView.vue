@@ -18,7 +18,11 @@ import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getThemeOptions } from "../themes";
 import { usePluginStore } from "../stores/pluginStore";
-import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "../stores/settingsStore";
+import {
+  dispatchSettingsUpdate,
+  SETTINGS_UPDATE_EVENT,
+  type SettingsUpdateEvent,
+} from "../stores/settingsStore";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);

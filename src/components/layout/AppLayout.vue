@@ -3,7 +3,11 @@ import { onMounted, onUnmounted, computed, watch } from "vue";
 import AppSidebar from "./AppSidebar.vue";
 import AppHeader from "./AppHeader.vue";
 import { useUiStore } from "../../stores/uiStore";
-import { useSettingsStore, SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "../../stores/settingsStore";
+import {
+  useSettingsStore,
+  SETTINGS_UPDATE_EVENT,
+  type SettingsUpdateEvent,
+} from "../../stores/settingsStore";
 import { applyAcrylic, type SettingsGroup } from "../../api/settings";
 import {
   applyTheme,
