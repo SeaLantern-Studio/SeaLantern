@@ -1,6 +1,13 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { settingsApi, checkAcrylicSupport, applyAcrylic, type AppSettings } from "../api/settings";
+import {
+  settingsApi,
+  checkAcrylicSupport,
+  applyAcrylic,
+  type AppSettings,
+  type PartialSettings,
+  type SettingsGroup,
+} from "../api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 const THEME_CACHE_KEY = "sl_theme_cache";
@@ -63,6 +70,21 @@ const defaultSettings: AppSettings = {
   close_action: "ask",
 };
 
+export interface SettingsUpdateEvent {
+  changedGroups: SettingsGroup[];
+  settings: AppSettings;
+}
+
+export const SETTINGS_UPDATE_EVENT = "settings-updated-v2";
+
+export function dispatchSettingsUpdate(changedGroups: SettingsGroup[], settings: AppSettings): void {
+  window.dispatchEvent(
+    new CustomEvent<SettingsUpdateEvent>(SETTINGS_UPDATE_EVENT, {
+      detail: { changedGroups, settings },
+    }),
+  );
+}
+
 export const useSettingsStore = defineStore("settings", () => {
   const settings = ref<AppSettings>(defaultSettings);
   const isLoaded = ref(false);
@@ -114,6 +136,22 @@ export const useSettingsStore = defineStore("settings", () => {
     saveThemeCache(newSettings.theme || "auto", newSettings.font_size || 14);
   }
 
+  async function saveSettingsWithDiff(newSettings: AppSettings): Promise<SettingsGroup[]> {
+    const result = await settingsApi.saveWithDiff(newSettings);
+    settings.value = result.settings;
+    saveThemeCache(result.settings.theme || "auto", result.settings.font_size || 14);
+    return result.changed_groups;
+  }
+
+  async function updatePartial(partial: PartialSettings): Promise<SettingsGroup[]> {
+    const result = await settingsApi.updatePartial(partial);
+    settings.value = result.settings;
+    if (partial.theme || partial.font_size) {
+      saveThemeCache(result.settings.theme || "auto", result.settings.font_size || 14);
+    }
+    return result.changed_groups;
+  }
+
   async function resetSettings(): Promise<void> {
     const defaultSettingsResult = await settingsApi.reset();
     settings.value = defaultSettingsResult;
@@ -162,6 +200,8 @@ export const useSettingsStore = defineStore("settings", () => {
     backgroundSize,
     loadSettings,
     saveSettings,
+    saveSettingsWithDiff,
+    updatePartial,
     resetSettings,
     updateSettings,
     applyAcrylicEffect,
