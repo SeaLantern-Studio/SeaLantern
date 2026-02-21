@@ -140,7 +140,9 @@
     "cpu": "CPU",
     "memory": "内存",
     "disk": "磁盘",
-    "core": "核心"
+    "core": "核心",
+    "port": "端口",
+    "remaining": "剩余"
   },
   "create": {
     "title": "创建服务器",
@@ -196,7 +198,9 @@
     "running": "运行中",
     "starting": "启动中",
     "stopping": "停止中",
-    "stopped": "已停止"
+    "stopped": "已停止",
+    "no_server": "暂无服务器",
+    "create_server_first": "请先创建并选择一个服务器"
   },
   "config": {
     "title": "配置编辑",
@@ -208,6 +212,23 @@
     "loading": "加载配置中...",
     "no_config": "没有找到配置文件，请先启动一次服务器以生成 server.properties",
     "saved": "配置已保存",
+    "server_properties": "服务器属性",
+    "server_plugins": "服务器插件",
+    "loading_plugins": "加载插件中...",
+    "no_plugins": "没有找到插件",
+    "author": "作者",
+    "enable": "启用",
+    "disable": "禁用",
+    "delete": "删除",
+    "refresh_list": "刷新列表",
+    "reload_plugins": "重载插件",
+    "empty_config_folder": "配置文件夹为空",
+    "no_config_files": "无配置",
+    "config_files_count": "个配置",
+    "config_files": "配置文件",
+    "open": "打开",
+    "confirm_delete_plugin": "确定要删除插件 {name} 吗？",
+    "not_jar_file": "{file} 不是 jar 文件，无法启用/禁用",
     "categories": {
       "all": "全部",
       "network": "网络",
@@ -317,10 +338,11 @@
     "banned": "封禁",
     "ops": "OP",
     "add": "添加",
+    "add_whitelist": "添加白名单",
     "remove": "移除",
     "select_server": "选择服务器",
     "no_server": "请选择一个服务器",
-    "server_not_running": "玩家管理需要服务器运行中才能操作",
+    "server_not_run": "玩家管理需要服务器运行中才能操作",
     "online_players": "在线玩家",
     "server_offline": "服务器未运行",
     "no_players": "当前没有玩家在线",
@@ -341,7 +363,9 @@
     "confirm": "确认",
     "server_not_running_hint": "⚠ 服务器未运行，无法发送命令",
     "empty": "无",
-    "level": "等级"
+    "level": "等级",
+    "reason": "原因",
+    "status_online": "在线"
   },
   "settings": {
     "title": "应用设置",
@@ -540,7 +564,12 @@
     "aur_window_copy_tip": "点击复制按钮，然后在终端中粘贴执行",
     "aur_window_copy_success": "命令已复制到剪贴板",
     "aur_window_copy_failed": "复制失败",
-    "aur_window_button": "我知道了"
+    "aur_window_button": "我知道了",
+    "qq_click_copy": "QQ (点击复制)",
+    "copied": "已复制!",
+    "personal_page": "个人主页",
+    "load_more": "加载更多",
+    "go_download": "前往下载页面"
   },
   "tray": {
     "minimize": "最小化到后台",
@@ -561,6 +590,18 @@
     "loading_plugins": "正在加载插件列表...",
     "no_plugins": "暂无插件",
     "no_plugins_desc": "还没有安装任何插件。将插件文件放入插件目录后点击刷新。",
+    "preset_theme": "预设主题",
+    "settings": "设置",
+    "related_plugins": "关联插件",
+    "related_plugins_desc": "以下插件依赖 {{name}}",
+    "reset_default": "重置为默认",
+    "saving": "保存中...",
+    "auto_saved": "已自动保存",
+    "not_found": "未找到插件",
+    "back": "返回",
+    "plugin_settings": "插件设置",
+    "depends_on": "此插件依赖 {{name}}",
+    "save_settings": "保存设置",
     "status": {
       "enabled": "已启用",
       "disabled": "已禁用",

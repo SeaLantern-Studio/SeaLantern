@@ -123,7 +123,7 @@ const createGaugeOption = (rawValue: number, colorVar: string, label: string): E
           },
           {
             value: 100 - value,
-            name: "剩余",
+            name: i18n.t("home.remaining"),
             itemStyle: {
               color: borderColor,
             },
@@ -691,7 +691,7 @@ function handleAnimationEnd(event: AnimationEvent) {
             >—— {{ currentQuote.author }}</span
           >
           <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
-          <span v-if="!displayText && !isTyping" class="quote-loading">加载中...</span>
+          <span v-if="!displayText && !isTyping" class="quote-loading">{{ i18n.t("common.loading") }}</span>
         </div>
       </SLCard>
 
@@ -881,7 +881,7 @@ function handleAnimationEnd(event: AnimationEvent) {
             </div>
             <div class="server-meta">
               <span>{{ server.core_type }}</span>
-              <span>端口 {{ server.port }}</span>
+              <span>{{ i18n.t("home.port") }} {{ server.port }}</span>
               <span>{{ server.max_memory }}MB</span>
             </div>
           </div>
