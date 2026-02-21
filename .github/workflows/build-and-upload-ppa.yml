@@ -82,9 +82,7 @@ jobs:
           cat > "${PACKAGE_DIR}/DEBIAN/postinst" << 'POSTINST'
           #!/bin/bash
           
-          # 创建安装脚本
-          cat > /tmp/install-sealantern.sh << 'INSTALLSCRIPT'
-          #!/bin/bash
+          # 获取嵌入的 deb 版本
           PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
           if [ -z "$PACKAGE_VERSION" ]; then
               PACKAGE_VERSION="0.6.5"
@@ -95,23 +93,21 @@ jobs:
           echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
           
           if [ -f "$EMBEDDED_DEB" ]; then
-              # 解压嵌入的 deb 到临时目录
-              TEMP_DIR=$(mktemp -d)
-              dpkg-deb -x "$EMBEDDED_DEB" "$TEMP_DIR"
+              # 直接解压 deb 文件到系统根目录
+              dpkg-deb -x "$EMBEDDED_DEB" /
               
-              # 复制文件到系统
-              cp -r "$TEMP_DIR"/* /
-              
-              # 注册包信息
-              dpkg-deb -e "$EMBEDDED_DEB" "$TEMP_DIR/DEBIAN"
-              
-              # 创建 postinst 脚本标记为已配置
-              if [ -f "$TEMP_DIR/DEBIAN/postinst" ]; then
-                  # 如果有 postinst，设置包为已配置状态
-                  dpkg --set-selections <<< "sealantern install"
+              # 尝试获取包信息并注册
+              CONTROL=$(dpkg-deb -e "$EMBEDDED_DEB" /tmp/sealantern-control 2>/dev/null && cat /tmp/sealantern-control/control)
+              if [ -n "$CONTROL" ]; then
+                  # 创建简单的包注册文件
+                  mkdir -p /var/lib/dpkg/info
+                  echo "$CONTROL" > /var/lib/dpkg/info/sealantern.control
+                  echo "Package: sealantern" > /var/lib/dpkg/status.d/sealantern
+                  echo "Status: install ok installed" >> /var/lib/dpkg/status.d/sealantern
+                  echo "$CONTROL" | grep -v "^Package:" >> /var/lib/dpkg/status.d/sealantern
               fi
               
-              rm -rf "$TEMP_DIR"
+              rm -rf /tmp/sealantern-control
               rm -f "$EMBEDDED_DEB"
               
               echo "✅ Sea Lantern 安装成功！"
@@ -119,17 +115,6 @@ jobs:
           else
               echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
           fi
-          
-          rm -f /tmp/install-sealantern.sh
-          INSTALLSCRIPT
-          
-          chmod +x /tmp/install-sealantern.sh
-          
-          # 在后台延迟执行
-          at now + 1 minutes -f /tmp/install-sealantern.sh 2>/dev/null || (
-              # 如果 at 不可用，使用 nohup 在后台执行
-              nohup bash /tmp/install-sealantern.sh >/dev/null 2>&1 &
-          )
           POSTINST
           
           chmod +x "${PACKAGE_DIR}/DEBIAN/postinst"
