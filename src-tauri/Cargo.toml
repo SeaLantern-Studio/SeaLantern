@@ -36,6 +36,7 @@ reqwest = { version = "0.12", features = ["json", "blocking", "stream"] }
 opener = "0.7"
 tauri-plugin-updater = "2.10.0"
 tauri-plugin-process = "2.3.1"
+tauri-plugin-os = "2"
 tauri-plugin-http = "2.5.7"
 tauri-plugin-window-state = "2"
 window-vibrancy = "0.5"
