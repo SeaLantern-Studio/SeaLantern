@@ -144,7 +144,9 @@
     "cpu": "CPU",
     "memory": "Memory",
     "disk": "Disk",
-    "core": "Core"
+    "core": "Core",
+    "port": "Port",
+    "remaining": "Remaining"
   },
   "create": {
     "title": "Create Server",
@@ -199,7 +201,9 @@
     "running": "Running",
     "starting": "Starting",
     "stopping": "Stopping",
-    "stopped": "Stopped"
+    "stopped": "Stopped",
+    "no_server": "No servers",
+    "create_server_first": "Please create and select a server first"
   },
   "config": {
     "title": "Config Edit",
@@ -319,10 +323,11 @@
     "banned": "Banned",
     "ops": "Ops",
     "add": "Add",
+    "add_whitelist": "Add to Whitelist",
     "remove": "Remove",
     "select_server": "Select server",
     "no_server": "Please select a server",
-    "server_not_running": "Player management requires server to be running",
+    "server_not_run": "Player management requires server to be running",
     "online_players": "Online Players",
     "server_offline": "Server not running",
     "no_players": "No players online",
@@ -343,7 +348,9 @@
     "confirm": "Confirm",
     "server_not_running_hint": "⚠ Server not running, cannot send commands",
     "empty": "Empty",
-    "level": "Level"
+    "level": "Level",
+    "reason": "Reason",
+    "status_online": "Online"
   },
   "settings": {
     "title": "Settings",
@@ -577,7 +584,12 @@
     "aur_window_copy_tip": "Click copy button, then paste in terminal",
     "aur_window_copy_success": "Command copied to clipboard",
     "aur_window_copy_failed": "Copy failed",
-    "aur_window_button": "Got it"
+    "aur_window_button": "Got it",
+    "qq_click_copy": "QQ (Click to copy)",
+    "copied": "Copied!",
+    "personal_page": "Personal Page",
+    "load_more": "Load More",
+    "go_download": "Go to Download Page"
   },
   "tray": {
     "minimize": "Minimize to Tray",
@@ -598,6 +610,18 @@
     "loading_plugins": "Loading plugins...",
     "no_plugins": "No Plugins Yet",
     "no_plugins_desc": "No plugins installed. Put plugin files in the plugin directory and click refresh.",
+    "preset_theme": "Preset Themes",
+    "settings": "Settings",
+    "related_plugins": "Related Plugins",
+    "related_plugins_desc": "The following plugins depend on {{name}}",
+    "reset_default": "Reset to Default",
+    "saving": "Saving...",
+    "auto_saved": "Auto-saved",
+    "not_found": "Plugin not found",
+    "back": "Back",
+    "plugin_settings": "Plugin Settings",
+    "depends_on": "This plugin depends on {{name}}",
+    "save_settings": "Save Settings",
     "status": {
       "enabled": "Enabled",
       "disabled": "Disabled",

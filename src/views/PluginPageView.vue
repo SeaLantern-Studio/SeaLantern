@@ -166,18 +166,18 @@ watch(
     <div class="page-header">
       <button class="back-btn" @click="goBack">
         <ArrowLeft :size="20" />
-        <span>返回</span>
+        <span>{{ i18n.t('plugins.back') }}</span>
       </button>
       <h1 class="page-title" v-if="plugin">{{ plugin.manifest.name }}</h1>
     </div>
 
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <span>加载中...</span>
+      <span>{{ i18n.t('common.loading') }}</span>
     </div>
 
     <div v-else-if="!plugin" class="empty-state">
-      <p>未找到插件</p>
+      <p>{{ i18n.t('plugins.not_found') }}</p>
     </div>
 
     <div v-else class="plugin-content">
@@ -205,7 +205,7 @@ watch(
       </SLCard>
 
       <SLCard v-if="isThemeProvider && pluginPresets" class="presets-card">
-        <h3 class="section-title">预设主题</h3>
+        <h3 class="section-title">{{ i18n.t('plugins.preset_theme') }}</h3>
         <div class="presets-grid">
           <button
             v-for="(presetData, presetKey) in pluginPresets"
@@ -220,7 +220,7 @@ watch(
 
       <template v-if="plugin.manifest.settings?.length">
         <SLCard class="settings-card">
-          <h3 class="section-title">插件设置</h3>
+          <h3 class="section-title">{{ i18n.t('plugins.plugin_settings') }}</h3>
           <div class="settings-form">
             <div v-for="field in plugin.manifest.settings" :key="field.key" class="form-field">
               <label class="field-label">
@@ -259,9 +259,9 @@ watch(
         >
           <h3 class="section-title">
             <Link class="dependent-icon" :size="16" />
-            {{ depPlugin.manifest.name }} 设置
+            {{ depPlugin.manifest.name }} {{ i18n.t('plugins.settings') }}
           </h3>
-          <p class="dependent-desc">此插件依赖 {{ plugin?.manifest.name }}</p>
+          <p class="dependent-desc">{{ i18n.t('plugins.depends_on', { name: plugin?.manifest.name }) }}</p>
           <div class="settings-form">
             <div v-for="field in depPlugin.manifest.settings" :key="field.key" class="form-field">
               <label class="field-label">
@@ -307,8 +307,8 @@ watch(
       </template>
 
       <div class="action-buttons">
-        <SLButton variant="secondary" @click="resetToDefault">重置为默认</SLButton>
-        <SLButton variant="primary" :loading="saving" @click="saveSettings">保存设置</SLButton>
+        <SLButton variant="secondary" @click="resetToDefault">{{ i18n.t('plugins.reset_default') }}</SLButton>
+        <SLButton variant="primary" :loading="saving" @click="saveSettings">{{ i18n.t('plugins.save_settings') }}</SLButton>
       </div>
     </div>
   </div>

@@ -116,7 +116,7 @@ function getSocialTitle(platform: string): string {
     gitee: "Gitee",
     github: "GitHub",
     bilibili: "Bilibili",
-    qq: "QQ (点击复制)",
+    qq: i18n.t("about.qq_click_copy"),
   };
   return titles[platform] || platform;
 }
@@ -194,29 +194,26 @@ async function handleManualDownload() {
         <img src="../assets/logo.svg" alt="Sea Lantern" width="72" height="72" />
       </div>
       <h1 class="hero-title">Sea Lantern</h1>
-      <p class="hero-subtitle">Minecraft 服务器管理工具</p>
+      <p class="hero-subtitle">{{ i18n.t('about.subtitle') }}</p>
       <div class="hero-badges">
         <span class="version-badge">v{{ version }}</span>
-        <span class="tech-badge">Tauri 2 + Vue 3</span>
-        <span class="license-badge">GPLv3</span>
+        <span class="tech-badge">{{ i18n.t('about.tech_badge') }}</span>
+        <span class="license-badge">{{ i18n.t('about.license_badge') }}</span>
       </div>
       <p class="hero-desc">
-        一个由社区共同打造的 Minecraft 开服器。<br />
-        不仅代码开源，连灵魂都由你们定义。
+        {{ i18n.t('about.hero_desc') }}
       </p>
     </div>
 
     <!-- Manifesto -->
     <SLCard>
       <div class="manifesto">
-        <h3 class="manifesto-title">为什么叫 Sea Lantern？</h3>
+        <h3 class="manifesto-title">{{ i18n.t('about.manifesto_title') }}</h3>
         <p class="manifesto-text">
-          海晶灯（Sea Lantern）是 Minecraft
-          中一种发光方块——它由无数碎片组合而成，却能发出柔和而持久的光。
+          {{ i18n.t('about.manifesto_text1') }}
         </p>
         <p class="manifesto-text">
-          就像这个项目一样，每一位贡献者都是一片海晶碎片。<br />
-          当我们聚在一起，就能照亮整个社区。
+          {{ i18n.t('about.manifesto_text2') }}
         </p>
       </div>
     </SLCard>
@@ -227,8 +224,8 @@ async function handleManualDownload() {
     <!-- Contributor Wall -->
     <div class="contributor-section">
       <div class="section-header">
-        <h2 class="section-title">贡献者墙</h2>
-        <p class="section-desc">每一个让这个项目变得更好的人</p>
+        <h2 class="section-title">{{ i18n.t('about.contributor_wall') }}</h2>
+        <p class="section-desc">{{ i18n.t('about.contributor_desc') }}</p>
       </div>
 
       <div class="contributor-grid">
@@ -248,7 +245,7 @@ async function handleManualDownload() {
                   target="_blank"
                   rel="noopener noreferrer"
                   class="social-icon"
-                  title="个人主页"
+                  :title="i18n.t('about.personal_page')"
                 >
                   <Link :size="16" />
                 </a>
@@ -293,7 +290,7 @@ async function handleManualDownload() {
                   @click="openSocialLink('qq', c.url.qq)"
                   class="social-icon"
                   :class="{ copied: copiedQQ === c.url.qq }"
-                  :title="copiedQQ === c.url.qq ? '已复制!' : 'QQ (点击复制)'"
+                  :title="copiedQQ === c.url.qq ? i18n.t('about.copied') : i18n.t('about.qq_click_copy')"
                 >
                   <Check v-if="copiedQQ === c.url.qq" :size="16" />
                   <BrandIcon v-else name="qq" :size="16" />
@@ -322,8 +319,8 @@ async function handleManualDownload() {
           </div>
           <div class="contributor-right">
             <div class="contributor-info">
-              <span class="contributor-name join-text">你的名字</span>
-              <span class="contributor-role">参与贡献，加入我们</span>
+              <span class="contributor-name join-text">{{ i18n.t('about.join_text') }}</span>
+              <span class="contributor-role">{{ i18n.t('about.join_desc') }}</span>
             </div>
           </div>
         </div>
@@ -331,33 +328,33 @@ async function handleManualDownload() {
 
       <div v-if="hasMore" class="load-more-section">
         <SLButton variant="ghost" @click="loadMore">
-          加载更多 ({{ contributors.length - displayedContributors.length }} 位)
+          {{ i18n.t('about.load_more') }} ({{ contributors.length - displayedContributors.length }})
         </SLButton>
       </div>
     </div>
 
     <!-- Project Info -->
     <div class="info-grid">
-      <SLCard title="项目信息">
+      <SLCard :title="i18n.t('about.project_info')">
         <div class="info-list">
           <div class="info-item">
-            <span class="info-label">版本</span>
+            <span class="info-label">{{ i18n.t('about.version') }}</span>
             <span class="info-value">{{ version }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">构建年份</span>
+            <span class="info-label">{{ i18n.t('about.build_year') }}</span>
             <span class="info-value">{{ buildDate }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">前端</span>
+            <span class="info-label">{{ i18n.t('about.frontend') }}</span>
             <span class="info-value">Vue 3 + TypeScript + Vite</span>
           </div>
           <div class="info-item">
-            <span class="info-label">后端</span>
+            <span class="info-label">{{ i18n.t('about.backend') }}</span>
             <span class="info-value">Rust + Tauri 2</span>
           </div>
           <div class="info-item">
-            <span class="info-label">许可证</span>
+            <span class="info-label">{{ i18n.t('about.license') }}</span>
             <span class="info-value">GNU GPLv3</span>
           </div>
         </div>
@@ -370,7 +367,7 @@ async function handleManualDownload() {
             :disabled="isCheckingUpdate"
             style="width: 100%"
           >
-            {{ isCheckingUpdate ? "检查中..." : "检查更新" }}
+            {{ isCheckingUpdate ? i18n.t('about.update_checking') : i18n.t('about.check_update') }}
           </SLButton>
 
           <div v-if="updateInfo" class="update-info">
@@ -380,12 +377,12 @@ async function handleManualDownload() {
                   <RefreshCw :size="16" :stroke-width="2" />
                 </div>
                 <div>
-                  <div class="update-title">发现新版本 v{{ updateInfo.latest_version }}</div>
-                  <div class="update-desc">当前版本: v{{ updateInfo.current_version }}</div>
+                  <div class="update-title">{{ i18n.t('about.update_available') }} v{{ updateInfo.latest_version }}</div>
+                  <div class="update-desc">{{ i18n.t('about.update_current') }}: v{{ updateInfo.current_version }}</div>
                 </div>
               </div>
               <div v-if="updateInfo.release_notes" class="release-notes">
-                <div class="notes-title">更新内容:</div>
+                <div class="notes-title">{{ i18n.t('about.update_release_notes') }}:</div>
                 <div class="notes-content">{{ updateInfo.release_notes }}</div>
               </div>
               <div class="update-buttons">
@@ -395,7 +392,7 @@ async function handleManualDownload() {
                   @click="handleManualDownload"
                   style="width: 100%"
                 >
-                  前往下载页面
+                  {{ i18n.t('about.go_download') }}
                 </SLButton>
               </div>
             </div>
@@ -403,7 +400,7 @@ async function handleManualDownload() {
               <div class="update-icon">
                 <Check :size="16" :stroke-width="2.5" />
               </div>
-              <span>已是最新版本</span>
+              <span>{{ i18n.t('about.update_latest') }}</span>
             </div>
           </div>
 
@@ -416,15 +413,15 @@ async function handleManualDownload() {
         </div>
       </SLCard>
 
-      <SLCard title="参与方式">
+      <SLCard :title="i18n.t('about.contribute_ways')">
         <div class="contribute-ways">
           <div class="way-item">
             <div class="way-icon">
               <Code :size="20" :stroke-width="2" />
             </div>
             <div class="way-info">
-              <span class="way-title">写代码</span>
-              <span class="way-desc">提交 PR，修 Bug 或加新功能</span>
+              <span class="way-title">{{ i18n.t('about.way_code') }}</span>
+              <span class="way-desc">{{ i18n.t('about.way_code_desc') }}</span>
             </div>
           </div>
           <div class="way-item">
@@ -432,8 +429,8 @@ async function handleManualDownload() {
               <Feather :size="20" :stroke-width="2" />
             </div>
             <div class="way-info">
-              <span class="way-title">做设计</span>
-              <span class="way-desc">设计 UI、图标、主题皮肤</span>
+              <span class="way-title">{{ i18n.t('about.way_design') }}</span>
+              <span class="way-desc">{{ i18n.t('about.way_design_desc') }}</span>
             </div>
           </div>
           <div class="way-item">
@@ -441,8 +438,8 @@ async function handleManualDownload() {
               <Lightbulb :size="20" :stroke-width="2" />
             </div>
             <div class="way-info">
-              <span class="way-title">提建议</span>
-              <span class="way-desc">在 Issues 里提出你的想法</span>
+              <span class="way-title">{{ i18n.t('about.way_idea') }}</span>
+              <span class="way-desc">{{ i18n.t('about.way_idea_desc') }}</span>
             </div>
           </div>
           <div class="way-item">
@@ -450,8 +447,8 @@ async function handleManualDownload() {
               <BookOpen :size="20" :stroke-width="2" />
             </div>
             <div class="way-info">
-              <span class="way-title">写文档</span>
-              <span class="way-desc">完善教程和使用说明</span>
+              <span class="way-title">{{ i18n.t('about.way_doc') }}</span>
+              <span class="way-desc">{{ i18n.t('about.way_doc_desc') }}</span>
             </div>
           </div>
           <div class="way-item">
@@ -459,8 +456,8 @@ async function handleManualDownload() {
               <Globe :size="20" :stroke-width="2" />
             </div>
             <div class="way-info">
-              <span class="way-title">翻译</span>
-              <span class="way-desc">帮助翻译成其他语言</span>
+              <span class="way-title">{{ i18n.t('about.way_translate') }}</span>
+              <span class="way-desc">{{ i18n.t('about.way_translate_desc') }}</span>
             </div>
           </div>
           <div class="way-item">
@@ -468,8 +465,8 @@ async function handleManualDownload() {
               <Rocket :size="20" :stroke-width="2" />
             </div>
             <div class="way-info">
-              <span class="way-title">推广</span>
-              <span class="way-desc">分享给更多 MC 服主</span>
+              <span class="way-title">{{ i18n.t('about.way_promote') }}</span>
+              <span class="way-desc">{{ i18n.t('about.way_promote_desc') }}</span>
             </div>
           </div>
         </div>
@@ -479,25 +476,25 @@ async function handleManualDownload() {
     <!-- Links -->
     <div class="links-section">
       <SLButton variant="primary" size="lg" @click="openLink('https://gitee.com/fps_z/SeaLantern')">
-        Gitee 仓库
+        {{ i18n.t('about.gitee_repo') }}
       </SLButton>
       <SLButton variant="primary" size="lg" @click="openLink('https://github.com/FPSZ/SeaLantern')">
-        Github 仓库
+        {{ i18n.t('about.github_repo') }}
       </SLButton>
       <SLButton
         variant="secondary"
         size="lg"
         @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')"
       >
-        B站主页
+        {{ i18n.t('about.bilibili') }}
       </SLButton>
     </div>
 
     <!-- Footer -->
     <div class="about-footer">
-      <p class="footer-text">Sea Lantern 是一个开源项目，遵循 GPLv3 协议。</p>
-      <p class="footer-text">Minecraft 是 Mojang Studios 的注册商标。本项目与 Mojang 无关。</p>
-      <p class="footer-quote">"我们搭建了骨架，而灵魂，交给你们。"</p>
+      <p class="footer-text">{{ i18n.t('about.footer_text1') }}</p>
+      <p class="footer-text">{{ i18n.t('about.footer_text2') }}</p>
+      <p class="footer-quote">{{ i18n.t('about.footer_quote') }}</p>
     </div>
   </div>
 </template>

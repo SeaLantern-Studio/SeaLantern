@@ -247,13 +247,13 @@ async function handleKick(name: string) {
 function getAddLabel(): string {
   switch (activeTab.value) {
     case "whitelist":
-      return "添加白名单";
+      return i18n.t("players.add_whitelist");
     case "banned":
-      return "封禁玩家";
+      return i18n.t("players.ban_player");
     case "ops":
-      return "添加管理员";
+      return i18n.t("players.add_op");
     default:
-      return "添加";
+      return i18n.t("players.add");
   }
 }
 
@@ -268,25 +268,25 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
     <div class="player-header">
       <div class="server-picker">
         <SLSelect
-          label="选择服务器"
+          :label="i18n.t('players.select_server')"
           :options="serverOptions"
           v-model="selectedServerId"
-          placeholder="选择服务器"
+          :placeholder="i18n.t('players.select_server')"
         />
       </div>
       <div v-if="selectedServerId" class="server-status">
         <SLBadge
-          :text="isRunning ? '运行中' : '已停止'"
+          :text="isRunning ? i18n.t('common.server_status_running') : i18n.t('common.server_status_stopped')"
           :variant="isRunning ? 'success' : 'neutral'"
         />
         <span v-if="!isRunning" class="status-hint text-caption"
-          >玩家管理需要服务器运行中才能操作</span
+          >{{ i18n.t('players.server_not_run') }}</span
         >
       </div>
     </div>
 
     <div v-if="!selectedServerId" class="empty-state">
-      <p class="text-body">请选择一个服务器</p>
+      <p class="text-body">{{ i18n.t('players.no_server') }}</p>
     </div>
 
     <template v-else>
@@ -304,24 +304,24 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           :class="{ active: activeTab === 'online' }"
           @click="activeTab = 'online'"
         >
-          在线玩家 <span class="tab-count">{{ onlinePlayers.length }}</span>
+          {{ i18n.t('players.online_players') }} <span class="tab-count">{{ onlinePlayers.length }}</span>
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'whitelist' }"
           @click="activeTab = 'whitelist'"
         >
-          白名单 <span class="tab-count">{{ whitelist.length }}</span>
+          {{ i18n.t('players.whitelist') }} <span class="tab-count">{{ whitelist.length }}</span>
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'banned' }"
           @click="activeTab = 'banned'"
         >
-          封禁列表 <span class="tab-count">{{ bannedPlayers.length }}</span>
+          {{ i18n.t('players.banned') }} <span class="tab-count">{{ bannedPlayers.length }}</span>
         </button>
         <button class="tab-btn" :class="{ active: activeTab === 'ops' }" @click="activeTab = 'ops'">
-          管理员 <span class="tab-count">{{ ops.length }}</span>
+          {{ i18n.t('players.ops') }} <span class="tab-count">{{ ops.length }}</span>
         </button>
       </div>
 
@@ -329,18 +329,18 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
         <SLButton variant="primary" size="sm" :disabled="!isRunning" @click="openAddModal">{{
           getAddLabel()
         }}</SLButton>
-        <SLButton variant="ghost" size="sm" @click="loadAll">刷新</SLButton>
+        <SLButton variant="ghost" size="sm" @click="loadAll">{{ i18n.t('common.refresh') }}</SLButton>
       </div>
 
       <div v-if="loading" class="loading-state">
         <SLSpinner />
-        <span>加载中...</span>
+        <span>{{ i18n.t('common.loading') }}</span>
       </div>
 
       <div v-else-if="activeTab === 'online'" class="player-list">
-        <div v-if="!isRunning" class="empty-list"><p class="text-caption">服务器未运行</p></div>
+        <div v-if="!isRunning" class="empty-list"><p class="text-caption">{{ i18n.t('players.server_offline') }}</p></div>
         <div v-else-if="onlinePlayers.length === 0" class="empty-list">
-          <p class="text-caption">当前没有玩家在线</p>
+          <p class="text-caption">{{ i18n.t('players.no_players') }}</p>
         </div>
         <div v-for="name in onlinePlayers" :key="name" class="player-item glass-card">
           <div class="player-avatar">
@@ -353,17 +353,17 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           </div>
           <div class="player-info">
             <span class="player-name">{{ name }}</span>
-            <SLBadge text="在线" variant="success" />
+            <SLBadge :text="i18n.t('players.status_online')" variant="success" />
           </div>
           <div class="player-actions">
-            <SLButton variant="ghost" size="sm" @click="handleKick(name)">踢出</SLButton>
+            <SLButton variant="ghost" size="sm" @click="handleKick(name)">{{ i18n.t('players.kick') }}</SLButton>
           </div>
         </div>
       </div>
 
       <div v-else-if="activeTab === 'whitelist'" class="player-list">
         <div v-if="whitelist.length === 0" class="empty-list">
-          <p class="text-caption">白名单为空</p>
+          <p class="text-caption">{{ i18n.t('players.empty_whitelist') }}</p>
         </div>
         <div v-for="p in whitelist" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
@@ -383,7 +383,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
               size="sm"
               :disabled="!isRunning"
               @click="handleRemoveWhitelist(p.name)"
-              >移除</SLButton
+              >{{ i18n.t('players.remove') }}</SLButton
             >
           </div>
         </div>
@@ -391,7 +391,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 
       <div v-else-if="activeTab === 'banned'" class="player-list">
         <div v-if="bannedPlayers.length === 0" class="empty-list">
-          <p class="text-caption">封禁列表为空</p>
+          <p class="text-caption">{{ i18n.t('players.empty_banned') }}</p>
         </div>
         <div v-for="p in bannedPlayers" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
@@ -403,12 +403,12 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
-            <span class="text-caption">原因: {{ p.reason || "无" }}</span>
+            <span class="text-caption">{{ i18n.t('players.reason') }}: {{ p.reason || i18n.t('players.empty') }}</span>
           </div>
-          <SLBadge text="封禁" variant="error" />
+          <SLBadge :text="i18n.t('players.ban')" variant="error" />
           <div class="player-actions">
             <SLButton variant="ghost" size="sm" :disabled="!isRunning" @click="handleUnban(p.name)"
-              >解封</SLButton
+              >{{ i18n.t('players.unban') }}</SLButton
             >
           </div>
         </div>
@@ -416,7 +416,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 
       <div v-else-if="activeTab === 'ops'" class="player-list">
         <div v-if="ops.length === 0" class="empty-list">
-          <p class="text-caption">管理员列表为空</p>
+          <p class="text-caption">{{ i18n.t('players.empty_ops') }}</p>
         </div>
         <div v-for="p in ops" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
@@ -428,7 +428,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
-            <span class="text-caption">等级: {{ p.level }}</span>
+            <span class="text-caption">{{ i18n.t('players.level') }}: {{ p.level }}</span>
           </div>
           <SLBadge text="OP" variant="warning" />
           <div class="player-actions">
@@ -437,7 +437,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
               size="sm"
               :disabled="!isRunning"
               @click="handleRemoveOp(p.name)"
-              >取消OP</SLButton
+              >{{ i18n.t('players.deop') }}</SLButton
             >
           </div>
         </div>
@@ -446,24 +446,24 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 
     <SLModal :visible="showAddModal" :title="getAddLabel()" @close="showAddModal = false">
       <div class="modal-form">
-        <SLInput label="玩家名称" placeholder="输入玩家游戏ID" v-model="addPlayerName" />
+        <SLInput :label="i18n.t('players.player_name')" :placeholder="i18n.t('players.player_id')" v-model="addPlayerName" />
         <SLInput
           v-if="activeTab === 'banned'"
-          label="封禁原因（可选）"
-          placeholder="输入原因"
+          :label="i18n.t('players.ban_reason')"
+          :placeholder="i18n.t('players.ban_reason_placeholder')"
           v-model="addBanReason"
         />
         <p v-if="!isRunning" class="text-error" style="font-size: 0.8125rem">
           <AlertTriangle
             :size="14"
             style="display: inline; vertical-align: middle; margin-right: 4px"
-          />服务器未运行，无法发送命令
+          />{{ i18n.t('players.server_not_running_hint') }}
         </p>
       </div>
       <template #footer>
-        <SLButton variant="secondary" @click="showAddModal = false">取消</SLButton>
+        <SLButton variant="secondary" @click="showAddModal = false">{{ i18n.t('players.cancel') }}</SLButton>
         <SLButton variant="primary" :loading="addLoading" :disabled="!isRunning" @click="handleAdd"
-          >确认</SLButton
+          >{{ i18n.t('players.confirm') }}</SLButton
         >
       </template>
     </SLModal>
