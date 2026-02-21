@@ -7,6 +7,7 @@ import SLButton from "../components/common/SLButton.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLProgress from "../components/common/SLProgress.vue";
 import { useServerStore } from "../stores/serverStore";
+import { systemApi } from "../api/system";
 import { i18n } from "../language";
 
 // 导入拆分后的模块
@@ -69,6 +70,18 @@ import {
 
 const router = useRouter();
 const store = useServerStore();
+
+/**
+ * 处理服务器路径点击事件
+ * @param path 服务器路径
+ */
+async function handlePathClick(path: string) {
+  try {
+    await systemApi.openFolder(path);
+  } catch (e) {
+    console.error("打开文件夹失败:", e);
+  }
+}
 
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -351,7 +364,7 @@ onUnmounted(() => {
           />
         </div>
 
-        <div class="server-card-path text-mono text-caption" :title="server.jar_path">
+        <div class="server-card-path text-mono text-caption" :title="server.path" @click="handlePathClick(server.path)">
           <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
           <FolderOpen class="folder-icon" :size="16" />
         </div>
