@@ -34,10 +34,7 @@ impl SettingsManager {
         let changed_groups = old_settings.get_changed_groups(&new_settings);
         *self.settings.lock().unwrap() = new_settings.clone();
         save_settings(&self.data_dir, &new_settings)?;
-        Ok(UpdateResult {
-            settings: new_settings,
-            changed_groups,
-        })
+        Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
     pub fn update_partial(&self, partial: PartialSettings) -> Result<UpdateResult, String> {
@@ -47,10 +44,7 @@ impl SettingsManager {
         let changed_groups = old_settings.get_changed_groups(&new_settings);
         *self.settings.lock().unwrap() = new_settings.clone();
         save_settings(&self.data_dir, &new_settings)?;
-        Ok(UpdateResult {
-            settings: new_settings,
-            changed_groups,
-        })
+        Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
     pub fn reset(&self) -> Result<AppSettings, String> {
