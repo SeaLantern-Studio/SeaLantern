@@ -106,15 +106,23 @@ jobs:
             exit 1
           fi
 
-      - name: 上传 Ubuntu 构建产物
+      - name: 上传 Ubuntu 构建产物 (.deb)
         if: matrix.platform == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
         with:
-          name: ubuntu-build
+          name: ubuntu-build-deb
           path: |
             ${{ steps.workspace.outputs.path }}/target/release/bundle/deb/*.deb
-            ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
+
+      - name: 上传 Ubuntu 构建产物 (AppImage)
+        if: matrix.platform == 'ubuntu-24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-build-appimage
+          path: |
+            ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: warn
 
     # Arch Linux 打包任务 - 修复 sudo 权限问题
   # Arch Linux 打包任务 - 修复本地文件使用
