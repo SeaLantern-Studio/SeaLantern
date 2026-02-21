@@ -236,3 +236,13 @@ pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, St
 
     rx.await.map_err(|e| format!("Dialog error: {}", e))
 }
+
+#[tauri::command]
+pub fn open_folder(path: String) -> Result<(), String> {
+    opener::open(path).map_err(|e| format!("Failed to open folder: {}", e))
+}
+
+#[tauri::command]
+pub fn open_file(path: String) -> Result<(), String> {
+    opener::open(path).map_err(|e| format!("Failed to open file: {}", e))
+}
