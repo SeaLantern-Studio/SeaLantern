@@ -1,6 +1,6 @@
 pub mod config;
 pub mod mcs_plugin;
+pub mod mcs_plugin;
 pub mod plugin;
 pub mod server;
 pub mod settings;
-pub mod mcs_plugin;
