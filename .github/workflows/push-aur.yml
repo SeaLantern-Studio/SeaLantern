@@ -17,11 +17,11 @@ on:
   workflow_dispatch:
     inputs:
       version: # 手动输入版本号
-        description: "Version to publish (e.g., 1.0.0)"
+        description: "推送的版本号(e.g., 1.0.0)"
         required: true # 版本号是必填项
         type: string
       skip_test: # 是否跳过测试
-        description: "Skip makepkg test"
+        description: "跳过测试步骤"
         required: false # 非必填
         default: false # 默认不跳过测试
         type: boolean
@@ -67,14 +67,14 @@ jobs:
       # 第三步：调试 GitHub 上下文信息
       - name: Debug GitHub context
         run: |
-          echo "GitHub Context Debug:"
-          echo "Event name: ${{ github.event_name }}"                    # 事件类型
-          echo "Ref: ${{ github.ref }}"                                   # Git 引用
-          echo "Ref type: ${{ github.ref_type }}"                         # 引用类型（branch/tag）
-          echo "Ref name: ${{ github.ref_name }}"                         # 引用名称
-          echo "Release tag: ${{ github.event.release.tag_name }}"       # Release 标签
-          echo "Repository: ${{ github.repository }}"                     # 仓库名称
-          echo "Actor: ${{ github.actor }}"                               # 触发者
+          echo "GitHub输出日志:"
+          echo "事件名称: ${{ github.event_name }}"                    # 事件类型
+          echo "git引用: ${{ github.ref }}"                                   # Git 引用
+          echo "引用类型: ${{ github.ref_type }}"                         # 引用类型（branch/tag）
+          echo "引用名称: ${{ github.ref_name }}"                         # 引用名称
+          echo "Release标签: ${{ github.event.release.tag_name }}"       # Release 标签
+          echo "仓库名称: ${{ github.repository }}"                     # 仓库名称
+          echo "触发者: ${{ github.actor }}"                               # 触发者
 
       # 第四步：获取版本号
       - name: Get release version
@@ -126,7 +126,7 @@ jobs:
       - name: Validate PKGBUILD exists
         run: |
           if [ ! -f "PKGBUILD" ]; then
-            echo "Error: PKGBUILD file not found!"
+            echo "Error: PKGBUILD文件没有找到!"
             ls -la  # 列出当前目录内容以便调试
             exit 1
           fi
@@ -159,11 +159,11 @@ jobs:
           sudo -u builder makepkg --printsrcinfo > .SRCINFO  # 生成 SRCINFO
 
           if [ ! -f ".SRCINFO" ]; then
-            echo "❌ Failed to generate .SRCINFO"
+            echo "❌ generate .SRCINFO失败"
             exit 1
           fi
 
-          echo "✅ Generated .SRCINFO:"
+          echo "✅ Generated .SRCINFO成功:"
           cat .SRCINFO  # 显示生成的内容用于调试
 
       # 第八步：验证生成的文件
@@ -174,18 +174,18 @@ jobs:
           # 验证 PKGBUILD 中的版本号
           PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
           if [[ "$PKGVER" != "$VERSION" ]]; then
-            echo "❌ PKGBUILD version mismatch!"
+            echo "❌ PKGBUILD文件版本号错误!"
             exit 1
           fi
-          echo "✅ PKGBUILD version matches: $PKGVER"
+          echo "✅ PKGBUILD版本号是: $PKGVER"
 
           # 验证 .SRCINFO 中的版本号
           SRCINFO_VER=$(grep "^[[:space:]]*pkgver =" .SRCINFO | head -1 | awk '{print $3}')
           if [[ "$SRCINFO_VER" != "$VERSION" ]]; then
-            echo "❌ .SRCINFO version mismatch!"
+            echo "❌ .SRCINFO版本号错误!"
             exit 1
           fi
-          echo "✅ .SRCINFO version matches: $SRCINFO_VER"
+          echo "✅ .SRCINFO版本号为: $SRCINFO_VER"
 
       # 第九步：配置 SSH（用于连接 AUR）
       - name: Setup SSH
@@ -219,7 +219,7 @@ jobs:
           commit_username: "${{ github.actor }}" # 提交用户名
           commit_email: "${{ github.actor }}@users.noreply.github.com" # 提交邮箱
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }} # SSH 私钥
-          commit_message: "Update sealantern to v${{ steps.get_version.outputs.VERSION }}" # 提交信息
+          commit_message: "已更新sealantern版本至v${{ steps.get_version.outputs.VERSION }}" # 提交信息
           allow_empty_commits: false # 不允许空提交
           force_push: false # 不使用强制推送
           updpkgsums: false # 不更新 checksum
@@ -232,7 +232,7 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           echo "======================================"
-          echo "✅ Successfully published sealantern v${VERSION} to AUR"
+          echo "✅ 已成功推送sealantern v${VERSION}到AUR"
           echo "📦 Package URL: https://aur.archlinux.org/packages/sealantern"
           echo "======================================"
 
@@ -242,7 +242,7 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           echo "======================================"
-          echo "❌ Failed to publish sealantern v${VERSION} to AUR"
+          echo "❌ 推送sealantern v${VERSION}到AUR失败"
           echo "======================================"
 
       # 第十三步：清理工作
