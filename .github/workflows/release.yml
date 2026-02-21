@@ -70,15 +70,28 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-      # Ubuntu 构建产物上传
+      # 修复：使用 find 命令检查 deb 文件
       - name: 检查 deb 文件并上传 Ubuntu 构建产物
         if: matrix.platform == 'ubuntu-24.04'
         run: |
-          if compgen -G "src-tauri/target/release/bundle/deb/*.deb"; then
-            echo "✅ deb 文件存在"
-            ls -la src-tauri/target/release/bundle/deb/
+          echo "检查 deb 文件..."
+          if [ -d "src-tauri/target/release/bundle/deb" ]; then
+            echo "deb 目录内容:"
+            ls -la "src-tauri/target/release/bundle/deb/" || true
+
+            # 使用 find 查找 .deb 文件
+            DEB_COUNT=$(find "src-tauri/target/release/bundle/deb" -name "*.deb" -type f | wc -l)
+            if [ "$DEB_COUNT" -gt 0 ]; then
+              echo "✅ 找到 $DEB_COUNT 个 deb 文件"
+              find "src-tauri/target/release/bundle/deb" -name "*.deb" -type f -exec ls -la {} \;
+            else
+              echo "❌ 未找到 deb 文件"
+              exit 1
+            fi
           else
-            echo "❌ deb 文件未生成"
+            echo "❌ deb 目录不存在"
+            echo "检查完整路径:"
+            ls -la src-tauri/target/release/bundle/ || true
             exit 1
           fi
 
@@ -127,12 +140,13 @@ jobs:
           if [ -d "./downloads" ]; then
             echo "downloads 目录内容:"
             ls -la ./downloads
-            DEB_FILE=$(find ./downloads -name "*.deb" -type f | head -1)
+            # 使用 find 命令，正确处理带空格的文件名
+            DEB_FILE=$(find ./downloads -name "*.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
           fi
 
           if [ -z "$DEB_FILE" ]; then
             echo "在根目录查找 deb 文件..."
-            DEB_FILE=$(find . -name "*.deb" -type f | head -1)
+            DEB_FILE=$(find . -name "*.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
           fi
 
           if [ -z "$DEB_FILE" ]; then
@@ -141,6 +155,7 @@ jobs:
           fi
 
           echo "✅ 找到 deb 包: $DEB_FILE"
+          # 复制文件时使用引号处理空格
           cp "$DEB_FILE" ./sealantern.deb
           echo "DEB_FILE=$DEB_FILE" >> $GITHUB_OUTPUT
 
