@@ -213,10 +213,10 @@ jobs:
           
           dpkg-buildpackage -us -uc -S -sa
           
-          # Now sign the files manually using debsign with -p flag
+          # Now sign the files manually using debsign with passphrase via stdin
           cd ..
           
-          debsign -p"gpg --batch --yes --pinentry-mode loopback --passphrase '${{ secrets.PPA_GPG_PASSPHRASE }}'" -k"$GPG_FINGERPRINT" "sea-lantern-ppa-updater_${Package_VERSION}_source.changes"
+          echo "${{ secrets.PPA_GPG_PASSPHRASE }}" | debsign -k"$GPG_FINGERPRINT" -p"gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0" "sea-lantern-ppa-updater_${Package_VERSION}_source.changes"
 
       - name: Upload to PPA
         run: |
