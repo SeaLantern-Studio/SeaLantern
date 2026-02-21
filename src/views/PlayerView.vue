@@ -299,6 +299,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
       </div>
 
       <div class="tab-bar">
+        <div class="tab-indicator" ref="tabIndicator"></div>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'online' }"
@@ -523,28 +524,56 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 }
 .tab-bar {
   display: flex;
-  gap: 2px;
-  background: var(--sl-bg-secondary);
+  gap: var(--sl-space-xs);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
-  padding: 3px;
+  padding: var(--sl-space-xs);
   width: fit-content;
+  margin: var(--sl-space-md) 0;
+  position: relative;
+  overflow: hidden;
 }
+
+.tab-indicator {
+  position: absolute;
+  top: var(--sl-space-xs);
+  bottom: var(--sl-space-xs);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  transition: all 0.3s ease;
+  box-shadow: var(--sl-shadow-sm);
+  z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
+}
+
 .tab-btn {
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  padding: 8px 18px;
+  padding: 6px 14px;
   border-radius: var(--sl-radius-sm);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--sl-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
   transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
+  white-space: nowrap;
 }
+
+.tab-btn:hover {
+  color: var(--sl-text-primary);
+}
+
 .tab-btn.active {
-  background: var(--sl-surface);
   color: var(--sl-primary);
-  box-shadow: var(--sl-shadow-sm);
 }
+
 .tab-count {
   min-width: 20px;
   height: 20px;
@@ -557,6 +586,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
   align-items: center;
   justify-content: center;
 }
+
 .tab-btn.active .tab-count {
   background: var(--sl-primary-bg);
   color: var(--sl-primary);
