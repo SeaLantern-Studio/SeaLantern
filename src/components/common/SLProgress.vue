@@ -1,21 +1,31 @@
 <script setup lang="ts">
-// 显式导入 Vue Composition API
-import { computed } from "vue";
+import { ref, computed } from "vue";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
 
-// 组件属性接口
 interface Props {
   value: number;
   max?: number;
   label?: string;
   showPercent?: boolean;
   variant?: "primary" | "success" | "warning" | "error";
+  componentId?: string;
 }
 
-// 属性定义，提供默认值
 const props = withDefaults(defineProps<Props>(), {
   max: 100,
   showPercent: true,
   variant: "primary",
+});
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-progress-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLProgress",
+  get: (prop) => (prop === "value" ? props.value : undefined),
+  set: () => {},
+  call: () => undefined,
+  on: () => () => {},
+  el: () => elRef.value,
 });
 
 // 计算属性 - 缓存计算结果，避免重复计算
@@ -35,7 +45,7 @@ const barClass = computed(() => `sl-progress-bar--${props.variant}`);
 </script>
 
 <template>
-  <div class="sl-progress">
+  <div ref="elRef" class="sl-progress">
     <!-- 头部：标签和百分比 -->
     <div v-if="hasHeader" class="sl-progress-header">
       <span v-if="label" class="sl-progress-label">{{ label }}</span>

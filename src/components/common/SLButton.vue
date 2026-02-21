@@ -1,21 +1,40 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { Loader2 } from "lucide-vue-next";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
+
 interface Props {
   variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
   loading?: boolean;
+  componentId?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   variant: "primary",
   size: "md",
   disabled: false,
   loading: false,
 });
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-button-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLButton",
+  get: (prop) => (prop === "disabled" ? props.disabled : undefined),
+  set: () => {},
+  call: (method) => {
+    if (method === "click") elRef.value?.click();
+  },
+  on: () => () => {},
+  el: () => elRef.value,
+});
 </script>
 
 <template>
   <button
+    ref="elRef"
     class="sl-button"
     :class="[
       `sl-button--${variant}`,
@@ -25,25 +44,7 @@ withDefaults(defineProps<Props>(), {
     :disabled="disabled || loading"
     :aria-busy="loading"
   >
-    <svg
-      v-if="loading"
-      class="sl-button-spinner"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="10"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-dasharray="15.7 15.7"
-        stroke-linecap="round"
-      />
-    </svg>
+    <Loader2 v-if="loading" class="sl-button-spinner" :size="16" />
     <slot />
   </button>
 </template>

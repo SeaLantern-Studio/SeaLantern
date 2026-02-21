@@ -1,41 +1,22 @@
 import { computed, onMounted, reactive } from "vue";
 import { defineStore } from "pinia";
-import { i18n, type LocaleCode, setTranslations } from "../locales";
+import { i18n, type LocaleCode, setTranslations } from "../language";
 import { settingsApi } from "../api/settings";
 import { fetchLocale, fetchByUrl } from "../api/remoteLocales";
 import { REMOTE_LOCALES_MAP } from "./i18nRemote";
+import { onLocaleChanged } from "../api/plugin";
 
 const LOCALE_LABEL_KEYS: Record<string, string> = {
   "zh-CN": "header.chinese",
   "en-US": "header.english",
   "zh-TW": "header.chinese_tw",
-  "zh-JB": "header.chinese_jb",
-  "zh-NE": "header.chinese_dongbei",
   "de-DE": "header.deutsch",
-  "en-AU": "header.aussie",
-  "en-GB": "header.british",
-  "en-PT": "header.pirate",
-  "en-UN": "header.upsidedown",
   "es-ES": "header.spanish",
   "ja-JP": "header.japanese",
   "ru-RU": "header.russian",
   "vi-VN": "header.vietnamese",
-  "zh-CT": "header.cantonese",
-  "zh-CY": "header.chinese_cy",
-  "zh-HN": "header.chinese_hn",
-  "zh-JL": "header.chinese_jl",
-  "zh-ME": "header.chinese_meow",
-  "zh-MN": "header.chinese_hokkien",
-  "zh-TJ": "header.chinese_tj",
-  "zh-WU": "header.chinese_wu",
-  "ja-KS": "header.kansaiben",
-  "ja-HK": "header.hokkaidou",
   "ko-KR": "header.korean",
-  "ko-NK": "header.north_korean",
   "fr-FA": "header.french",
-  "fr-CA": "header.french_ca",
-  "es-AR": "header.spanish_ar",
-  "zh-HX": "header.huoxing"
 };
 
 export const useI18nStore = defineStore("i18n", () => {
@@ -55,18 +36,6 @@ export const useI18nStore = defineStore("i18n", () => {
     })),
   );
 
-  // 下载进度：{ [locale]: { loaded, total } }
-  const downloadProgress = reactive<Record<string, { loaded: number; total: number | null }>>({});
-  // per-locale clear timers: 清除 100% 显示的定时器
-  const clearTimers: Record<string, number> = {};
-
-  function getLocaleProgress(code: LocaleCode) {
-    const p = downloadProgress[code];
-    if (!p) return 0;
-    if (!p.total) return p.loaded > 0 ? 50 : 0;
-    return Math.min(100, Math.round((p.loaded / p.total) * 100));
-  }
-
   async function setLocale(nextLocale: string) {
     if (i18n.isSupportedLocale(nextLocale)) {
       i18n.setLocale(nextLocale);
@@ -77,50 +46,23 @@ export const useI18nStore = defineStore("i18n", () => {
       } catch (error) {
         console.error("Failed to save language setting:", error);
       }
+      try {
+        await onLocaleChanged(nextLocale);
+      } catch (error) {
+        console.error("Failed to notify backend about locale change:", error);
+      }
     }
   }
 
   async function downloadLocale(localeCode: string) {
     if (!i18n.isSupportedLocale(localeCode)) return;
     try {
-      const s = await settingsApi.get();
-      const base = (s as any).locales_base_url || (import.meta as any).env?.VITE_LOCALES_BASE || "";
-
-      const onProgress = (loaded: number, total: number | null) => {
-        downloadProgress[localeCode] = { loaded, total };
-        if (total && loaded >= total) {
-          if (clearTimers[localeCode]) {
-            clearTimeout(clearTimers[localeCode]);
-          }
-          clearTimers[localeCode] = window.setTimeout(() => {
-            try { delete downloadProgress[localeCode]; } catch (e) {}
-            delete clearTimers[localeCode];
-          }, 3000);
-        }
-      };
-      const mapped = (REMOTE_LOCALES_MAP as any)[localeCode];
+      // 直接从本地加载语言文件
       let data: any = null;
-      if (mapped) {
-        data = await fetchByUrl(mapped, onProgress);
-      } else {
-        data = await fetchLocale(localeCode as LocaleCode, onProgress, base || undefined);
-      }
+      data = await fetchLocale(localeCode as LocaleCode);
       setTranslations(localeCode as any, data as any);
-      const p = downloadProgress[localeCode];
-      if (!p || (p.total && p.loaded >= (p.total ?? 0))) {
-        if (!p || p.total === null) {
-          downloadProgress[localeCode] = { loaded: 1, total: 1 };
-        }
-        if (clearTimers[localeCode]) {
-          clearTimeout(clearTimers[localeCode]);
-        }
-        clearTimers[localeCode] = window.setTimeout(() => {
-          try { delete downloadProgress[localeCode]; } catch (e) {}
-          delete clearTimers[localeCode];
-        }, 3000);
-      }
     } catch (e) {
-      console.error("Failed to download locale:", localeCode, e);
+      console.error("Failed to load locale:", localeCode, e);
     }
   }
 
@@ -141,9 +83,7 @@ export const useI18nStore = defineStore("i18n", () => {
     }
   }
 
-  onMounted(() => {
-    loadLanguageSetting();
-  });
+  loadLanguageSetting();
 
   return {
     locale,
@@ -157,7 +97,5 @@ export const useI18nStore = defineStore("i18n", () => {
     toggleLocale,
     loadLanguageSetting,
     downloadLocale,
-    getLocaleProgress,
-    downloadProgress,
   };
 });

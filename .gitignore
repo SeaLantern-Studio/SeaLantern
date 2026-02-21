@@ -16,3 +16,6 @@ changelogs/
 .claude/
 .trae/
 changelog/
+.review/
+plugin-market/
+plugins-demo/

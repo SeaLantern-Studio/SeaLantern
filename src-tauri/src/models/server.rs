@@ -4,20 +4,13 @@ fn default_startup_mode() -> String {
     "jar".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ServerStatus {
     Stopped,
     Starting,
     Running,
     Stopping,
     Error,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServerCommand {
-    pub id: String,
-    pub name: String,
-    pub command: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +31,6 @@ pub struct ServerInstance {
     pub port: u16,
     pub created_at: u64,
     pub last_started_at: Option<u64>,
-    pub commands: Vec<ServerCommand>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

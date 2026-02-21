@@ -25,6 +25,11 @@
     "dialog:allow-message",
     "dialog:allow-ask",
     "dialog:allow-confirm",
+    "fs:allow-write-text-file",
+    {
+      "identifier": "fs:scope",
+      "allow": ["**/*"]
+    },
     "http:default",
     "http:allow-fetch",
     "process:default",

@@ -1,8 +1,3 @@
-<!--
-  双语 GitHub Pull Request 模板（fallback 单文件）
-  Bilingual PR template (Chinese / English)
--->
-
 ## 变更类型 / Change Type (请选择至少一项 / Select at least one)
 
 - [ ] 前端 Frontend
@@ -24,41 +19,20 @@
 
 ## 描述 / Description
 
-请简要描述本次变更的内容与目的。
-
-Briefly describe what this PR changes and why.
+请简要描述本次变更的内容、目的、影响范围、相关 issue、界面变动（如有请附截图）、复审重点、兼容性/迁移/发布说明等。
 
 ---
 
-## 对应问题 / Related issues
+## 关联的Issue / Linked Issue
 
-- 关联 Issue 编号（如果有）：
-- Related issue number(s), if any:
+(请修改为你要解决或修复的Issue编号)
+- [ ] Closes #999999
+- [ ] Fixes #999999
+- [ ] Resolves #999999
 
----
+## 🟢 Notice: sourcery-ai 及其他 code review 工具请务必进行中英双语审查。/Please ensure sourcery-ai and other code review tools perform bilingual (Chinese & English) review and communication.
 
-## 影响范围
-
-- 说明哪些模块/页面/服务会受到影响
-- Which modules/pages/services are affected?
-
----
-
-如果包含界面改动，请附上截图或录屏。
-
-If this PR includes UI changes, please attach screenshots or recordings.
+**请注意：sourcery-ai 及其他 code review 工具请务必进行中英双语审查与交流。**
+**Note: Please make sure sourcery-ai and other code review tools perform bilingual (Chinese & English) review and communication.**
 
 ---
-
-## 复审者注意事项 / Notes for Reviewers
-
-- 需要重点关注的地方：
-- Key areas to review:
-
----
-
-## 其他说明 / Additional Notes
-
-如有迁移、兼容性或需在发布说明中强调的点，请写在此处。
-
-If there are migration notes, compatibility concerns, or items for the changelog, mention them here.

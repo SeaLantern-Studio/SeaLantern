@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue";
+import { ChevronDown } from "lucide-vue-next";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
 import SLModal from "../components/common/SLModal.vue";
 import SLSelect from "../components/common/SLSelect.vue";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 import {
   settingsApi,
   checkAcrylicSupport,
@@ -16,8 +17,15 @@ import {
 } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import {
+  getAllThemes,
+  getThemeById,
+  getThemeOptions,
+  mapLegacyPlanName,
+  type ColorPlan,
+} from "../themes";
+import { usePluginStore } from "../stores/pluginStore";
 
-// 预设主题颜色定义
 const presetThemes = {
   default: {
     light: {
@@ -325,6 +333,18 @@ const success = ref<string | null>(null);
 // 亚克力支持检测
 const acrylicSupported = ref(true);
 
+const pluginStore = usePluginStore();
+
+const themeProxyPlugin = computed(() => {
+  return pluginStore.plugins.find(
+    (p) => p.state === "enabled" && pluginStore.hasCapability(p.manifest.id, "theme-provider"),
+  );
+});
+
+const isThemeProxied = computed(() => !!themeProxyPlugin.value);
+
+const themeProxyPluginName = computed(() => themeProxyPlugin.value?.manifest.name || "");
+
 // String versions for number inputs (avoids v-model type mismatch)
 const maxMem = ref("2048");
 const minMem = ref("512");
@@ -343,16 +363,10 @@ const backgroundSizeOptions = computed(() => [
   { label: i18n.t("settings.background_size_options.auto"), value: "auto" },
 ]);
 
-const colorOptions = computed(() => [
-  { label: i18n.t("settings.color_options.default"), value: "default" },
-  { label: i18n.t("settings.color_options.midnight"), value: "midnight" },
-  { label: i18n.t("settings.color_options.forest"), value: "forest" },
-  { label: i18n.t("settings.color_options.sunset"), value: "sunset" },
-  { label: i18n.t("settings.color_options.ocean"), value: "ocean" },
-  { label: i18n.t("settings.color_options.rose"), value: "rose" },
-  { label: i18n.t("settings.color_options.zombie"), value: "zombie" },
-  { label: i18n.t("settings.color_options.custom"), value: "custom" },
-]);
+const colorOptions = computed(() => {
+  const themes = getThemeOptions();
+  return [...themes, { label: i18n.t("settings.color_options.custom"), value: "custom" }];
+});
 
 const editColorOptions = computed(() => [
   { label: i18n.t("settings.edit_colorplan_options.light"), value: "light" },
@@ -418,11 +432,11 @@ const colorSchemes: Record<
   },
 };
 
-const themeOptions = [
+const themeOptions = computed(() => [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
   { label: i18n.t("settings.theme_options.light"), value: "light" },
   { label: i18n.t("settings.theme_options.dark"), value: "dark" },
-];
+]);
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("settings.font_family_default"), value: "" },
@@ -1161,6 +1175,17 @@ onMounted(async () => {
   }
   // 应用初始颜色
   applyColors();
+
+  // 监听设置更新事件
+  window.addEventListener("settings-updated", loadSettings);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("settings-updated", loadSettings);
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
 });
 
 async function loadSystemFonts() {
@@ -1213,7 +1238,19 @@ async function loadSettings() {
 }
 
 function markChanged() {
-  saveSettings();
+  debouncedSave();
+}
+
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSave() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+  saveTimeout = setTimeout(() => {
+    saveSettings();
+    saveTimeout = null;
+  }, 500);
 }
 
 function getEffectiveTheme(theme: string): "light" | "dark" {
@@ -1425,72 +1462,78 @@ async function handleThemeChange() {
 
   // 如果选择了预设主题，更新颜色值
   if (settings.value.color !== "custom") {
-    const preset = settings.value.color;
+    const theme = getThemeById(settings.value.color);
+    if (theme) {
+      // 颜色方案映射
+      const colorPlans: Array<"light" | "dark" | "lightAcrylic" | "darkAcrylic"> = [
+        "light",
+        "dark",
+        "lightAcrylic",
+        "darkAcrylic",
+      ];
+      const legacyPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
 
-    // 颜色方案映射
-    const colorPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
+      // 颜色类型映射
+      const colorTypes = {
+        bg: {
+          light: "bg_color",
+          dark: "bg_dark",
+          light_acrylic: "bg_acrylic",
+          dark_acrylic: "bg_dark_acrylic",
+        },
+        bgSecondary: {
+          light: "bg_secondary_color",
+          dark: "bg_secondary_dark",
+          light_acrylic: "bg_secondary_acrylic",
+          dark_acrylic: "bg_secondary_dark_acrylic",
+        },
+        bgTertiary: {
+          light: "bg_tertiary_color",
+          dark: "bg_tertiary_dark",
+          light_acrylic: "bg_tertiary_acrylic",
+          dark_acrylic: "bg_tertiary_dark_acrylic",
+        },
+        primary: {
+          light: "primary_color",
+          dark: "primary_dark",
+          light_acrylic: "primary_acrylic",
+          dark_acrylic: "primary_dark_acrylic",
+        },
+        secondary: {
+          light: "secondary_color",
+          dark: "secondary_dark",
+          light_acrylic: "secondary_acrylic",
+          dark_acrylic: "secondary_dark_acrylic",
+        },
+        textPrimary: {
+          light: "text_primary_color",
+          dark: "text_primary_dark",
+          light_acrylic: "text_primary_acrylic",
+          dark_acrylic: "text_primary_dark_acrylic",
+        },
+        textSecondary: {
+          light: "text_secondary_color",
+          dark: "text_secondary_dark",
+          light_acrylic: "text_secondary_acrylic",
+          dark_acrylic: "text_secondary_dark_acrylic",
+        },
+        border: {
+          light: "border_color",
+          dark: "border_dark",
+          light_acrylic: "border_acrylic",
+          dark_acrylic: "border_dark_acrylic",
+        },
+      };
 
-    // 颜色类型映射
-    const colorTypes = {
-      bg: {
-        light: "bg_color",
-        dark: "bg_dark",
-        light_acrylic: "bg_acrylic",
-        dark_acrylic: "bg_dark_acrylic",
-      },
-      bgSecondary: {
-        light: "bg_secondary_color",
-        dark: "bg_secondary_dark",
-        light_acrylic: "bg_secondary_acrylic",
-        dark_acrylic: "bg_secondary_dark_acrylic",
-      },
-      bgTertiary: {
-        light: "bg_tertiary_color",
-        dark: "bg_tertiary_dark",
-        light_acrylic: "bg_tertiary_acrylic",
-        dark_acrylic: "bg_tertiary_dark_acrylic",
-      },
-      primary: {
-        light: "primary_color",
-        dark: "primary_dark",
-        light_acrylic: "primary_acrylic",
-        dark_acrylic: "primary_dark_acrylic",
-      },
-      secondary: {
-        light: "secondary_color",
-        dark: "secondary_dark",
-        light_acrylic: "secondary_acrylic",
-        dark_acrylic: "secondary_dark_acrylic",
-      },
-      textPrimary: {
-        light: "text_primary_color",
-        dark: "text_primary_dark",
-        light_acrylic: "text_primary_acrylic",
-        dark_acrylic: "text_primary_dark_acrylic",
-      },
-      textSecondary: {
-        light: "text_secondary_color",
-        dark: "text_secondary_dark",
-        light_acrylic: "text_secondary_acrylic",
-        dark_acrylic: "text_secondary_dark_acrylic",
-      },
-      border: {
-        light: "border_color",
-        dark: "border_dark",
-        light_acrylic: "border_acrylic",
-        dark_acrylic: "border_dark_acrylic",
-      },
-    };
-
-    // 更新所有颜色方案的颜色值
-    if (presetThemes[preset]) {
+      // 更新所有颜色方案的颜色值
       Object.keys(colorTypes).forEach((colorType) => {
-        colorPlans.forEach((plan) => {
-          const settingsKey = colorTypes[colorType][plan];
+        colorPlans.forEach((plan, index) => {
+          const legacyPlan = legacyPlans[index];
+          const settingsKey = colorTypes[colorType][legacyPlan];
           if (settingsKey && settings.value[settingsKey] !== undefined) {
-            const presetColors = presetThemes[preset][plan];
-            if (presetColors && presetColors[colorType]) {
-              settings.value[settingsKey] = presetColors[colorType];
+            const themeColors = theme[plan];
+            if (themeColors && themeColors[colorType]) {
+              settings.value[settingsKey] = themeColors[colorType];
             }
           }
         });
@@ -1508,18 +1551,6 @@ async function handleThemeChange() {
   applyColors();
 
   // 在颜色值更新后再保存
-  markChanged();
-}
-
-function handleSeniorModeChange() {
-  if (!settings.value) return;
-
-  if (settings.value.senior_mode) {
-    document.documentElement.setAttribute("data-senior", "true");
-  } else {
-    document.documentElement.removeAttribute("data-senior");
-  }
-
   markChanged();
 }
 
@@ -1702,7 +1733,15 @@ function clearBackgroundImage() {
             </p>
           </div>
           <div class="input-lg">
+            <!-- 当被插件代理时显示提示 -->
+            <div v-if="isThemeProxied" class="theme-proxied-notice">
+              <span class="proxied-text">{{
+                i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
+              }}</span>
+            </div>
+            <!-- 正常显示选择器 -->
             <SLSelect
+              v-else
               v-model="settings.color"
               :options="colorOptions"
               @update:modelValue="handleThemeChange"
@@ -1712,23 +1751,14 @@ function clearBackgroundImage() {
 
         <!-- 颜色编辑折叠区域 -->
         <Transition name="color-section">
-          <div class="collapsible-section" v-if="settings.color === 'custom'">
+          <div class="collapsible-section" v-if="!isThemeProxied">
             <div class="collapsible-header" @click="colorSettingsExpanded = !colorSettingsExpanded">
               <div class="setting-info">
                 <span class="setting-label">{{ i18n.t("settings.color_editing") }}</span>
                 <span class="setting-desc">{{ i18n.t("settings.color_editing_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: colorSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown :size="20" />
               </div>
             </div>
             <Transition name="collapse">
@@ -1917,23 +1947,19 @@ function clearBackgroundImage() {
               <span class="setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
             </div>
             <div class="input-lg">
+              <!-- 当被插件代理时显示提示 -->
+              <div v-if="isThemeProxied" class="theme-proxied-notice">
+                <span class="proxied-text">{{
+                  i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
+                }}</span>
+              </div>
               <SLSelect
+                v-else
                 v-model="settings.theme"
                 :options="themeOptions"
                 @update:modelValue="handleThemeChange"
               />
             </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-label">{{ i18n.t("settings.senior_mode") }}</span>
-              <span class="setting-desc">{{ i18n.t("settings.senior_mode_desc") }}</span>
-            </div>
-            <SLSwitch
-              v-model="settings.senior_mode"
-              @update:modelValue="handleSeniorModeChange"
-            />
           </div>
 
           <div class="setting-row">
@@ -1999,16 +2025,7 @@ function clearBackgroundImage() {
                 <span class="setting-desc">{{ i18n.t("settings.background_desc") }}</span>
               </div>
               <div class="collapsible-toggle" :class="{ expanded: bgSettingsExpanded }">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown :size="20" />
               </div>
             </div>
             <Transition name="collapse">
@@ -2189,7 +2206,7 @@ function clearBackgroundImage() {
       :visible="showColorPickerDialog"
       :title="i18n.t('settings.color_picker')"
       @close="closeColorPicker"
-      :width="320"
+      width="320px"
     >
       <div class="color-picker-content">
         <!-- 颜色预览 -->
@@ -2347,6 +2364,23 @@ function clearBackgroundImage() {
   max-width: 860px;
   margin: 0 auto;
   padding-bottom: var(--sl-space-2xl);
+}
+
+/* 主题代理提示样式 */
+.theme-proxied-notice {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-primary);
+  font-size: 0.875rem;
+  min-width: 200px;
+}
+
+.proxied-text {
+  white-space: nowrap;
 }
 
 .msg-banner {

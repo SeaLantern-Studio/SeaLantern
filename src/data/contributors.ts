@@ -5,11 +5,17 @@
  * 无论是代码、设计、建议、文档还是推广，你的名字都值得被记住。
  */
 
+export type SocialPlatform = "gitee" | "github" | "bilibili" | "qq";
+
+export interface SocialLinks {
+  [key: string]: string | undefined;
+}
+
 export interface Contributor {
   name: string; // 名字或昵称
   role: string; // 角色描述
   avatar: string; // 头像 URL
-  url?: string; // 可选：个人主页链接
+  url?: string | SocialLinks; // 可选：个人主页链接或其他链接
 }
 
 export const contributors: Contributor[] = [
@@ -17,7 +23,10 @@ export const contributors: Contributor[] = [
     name: "FPS_Z",
     role: "创始人 / 主要开发者",
     avatar: "https://api.rms.net.cn/head/FPS_Z",
-    url: "https://github.com/FPSZ",
+    url: {
+      gitee: "https://gitee.com/fps_z",
+      github: "https://github.com/FPSZ",
+    },
   },
   {
     name: "鸽德迪",
@@ -27,7 +36,7 @@ export const contributors: Contributor[] = [
   {
     name: "OMIILII",
     role: "精神支柱",
-    avatar: "https://api.rms.net.cn/head/Alex",
+    avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
   },
   {
     name: "烬白Jinby",
@@ -48,19 +57,30 @@ export const contributors: Contributor[] = [
     name: "Little_100",
     role: "打杂",
     avatar: "https://api.rms.net.cn/head/Little100",
-    url: "https://gitee.com/little_100",
+    url: {
+      gitee: "https://gitee.com/little_100",
+      github: "https://github.com/Little100",
+      bilibili: "https://space.bilibili.com/1492647738",
+      qq: "2662308929",
+    },
   },
   {
     name: "MinecraftYJQ",
     role: "小修小改罢",
     avatar: "https://api.rms.net.cn/head/MinecraftYJQ_",
-    url: "https://gitee.com/minecraftyjq",
+    url: {
+      gitee: "https://gitee.com/minecraftyjq",
+      github: "https://github.com/MinecraftYJQ",
+    },
   },
   {
     name: "HKYZYH",
     role: "修复Wayland协议下白屏问题",
     avatar: "https://api.rms.net.cn/head/HKYZYH",
-    url: "https://gitee.com/HKYZYHgezi",
+    url: {
+      gitee: "https://gitee.com/HKYZYHgezi",
+      github: "https://github.com/HKYZYH",
+    },
   },
   {
     name: "清初Lucky",
@@ -71,81 +91,163 @@ export const contributors: Contributor[] = [
     name: "CmzYa",
     role: "不明所以的commit带来了巨量的体验优化",
     avatar: "https://api.rms.net.cn/head/CmzYa",
-    url: "https://github.com/CmzYa",
+    url: {
+      github: "https://github.com/CmzYa",
+    },
   },
   {
     name: "LingyeNB",
     role: "+3",
     avatar: "https://api.rms.net.cn/head/LingyeNB",
-    url: "https://github.com/LingyeNBird",
+    url: {
+      github: "https://github.com/LingyeNBird",
+    },
   },
   {
     name: "皓天是条龙",
     role: "增加了一点新功能",
     avatar: "https://api.rms.net.cn/head/zhu_hao_tian",
-    url: "https://github.com/zhu1h1t1",
+    url: {
+      github: "https://github.com/zhu1h1t1",
+    },
   },
   {
     name: "ieshishinjin",
     role: "新增了功能，并吃了明太鱼干",
     avatar: "https://api.rms.net.cn/head/ieshishinjin",
-    url: "https://github.com/ieshishinjin",
+    url: {
+      github: "https://github.com/ieshishinjin",
+    },
   },
   {
     name: "欧耶熊猫人",
     role: "Github文档转英文",
     avatar: "https://api.rms.net.cn/head/Pandaman_AF",
-    url: "https://github.com/PandamanAF",
+    url: {
+      github: "https://github.com/PandamanAF",
+    },
   },
   {
     name: "猫不笨qwq",
     role: "找到软件图形化错误",
     avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
-    url: "https://github.com/maobuben",
+    url: {
+      github: "https://github.com/maobuben",
+    },
   },
   {
     name: "橙子冰棒",
     role: "修复Java查找算法",
     avatar: "https://blog.orllow.cn/images/author.webp",
-    url: "https://github.com/Orange-Icepop",
+    url: {
+      github: "https://github.com/Orange-Icepop",
+    },
   },
   {
     name: "xingwangzhe",
     role: "贡献者",
     avatar: "https://api.rms.net.cn/head/xingwangzhe_",
-    url: "https://github.com/xingwangzhe",
+    url: {
+      github: "https://github.com/xingwangzhe",
+    },
   },
   {
     name: "TNTXZ",
     role: "诶嘿~",
     avatar: "https://api.rms.net.cn/head/_TNTXZ_",
-    url: "https://github.com/TNTXZ",
+    url: {
+      github: "https://github.com/TNTXZ",
+    },
   },
   {
     name: "I账户已注销I",
     role: "提出了个性化页面，提供了颜色编辑和颜色选择器",
     avatar: "https://zhuxiaojt.github.io/favicon.ico",
-    url: "https://github.com/zhuxiaojt",
+    url: {
+      github: "https://github.com/zhuxiaojt",
+    },
   },
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar: "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
-    url: "https://github.com/xuezhaju",
+    avatar:
+      "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
+    url: {
+      github: "https://github.com/xuezhaju",
+    },
+  },
+  {
+    name: "NanaLoveyuki",
+    role: "欧内该,只要我能帮忙我什么都会做的",
+    avatar: "https://api.rms.net.cn/head/NanaLoveyuki",
+    url: {
+      github: "https://github.com/NanaLoveyuki",
+    },
+  },
+  {
+    name: "Yang458",
+    role: "贡献者",
+    avatar: "https://api.rms.net.cn/head/Yang4893",
+    url: "https://github.com/minecraft-Yang458",
   },
   {
     name: "福瑞控海天",
     role: "海内存知己，天涯若比邻",
     avatar: "https://api.rms.net.cn/head/LucyKitter",
-    url: "https://gitee.com/pnchsb_admin",
+    url: {
+      gitee: "https://gitee.com/pnchsb_admin",
+    },
+  },
+  {
+    name: "yanuofox",
+    role: "可以rua的吉祥物",
+    avatar: "https://api.rms.net.cn/head/yanuofox",
+    url: {
+      github: "https://github.com/foxcyber907",
+    },
+  },
+  {
+    name: "Yashiro Nene°",
+    role: "幸运☆星",
+    avatar: "https://api.rms.net.cn/head/QiuHuang2007",
+    url: "https://m.bilibili.com/space/327701",
+  },
+  {
+    name: "NyaCl",
+    role: "awa",
+    avatar: "https://api.rms.net.cn/head/XueChen_NyaCl",
+    url: "",
+  },
+  {
+   name:"龙腾_H",
+   role:"贡献者 美术这块 河南卷死我了",
+   avatar:"https://api.rms.net.cn/head/Longteng_H",
+   url:"https://github.com/longteng-H",
+  },
+  {
+    name: "KercyDing",
+    role: "代码审查与CI",
+    avatar: "https://api.rms.net.cn/head/KercyDing",
+    url: "https://github.com/KercyDing",
   },
   // ============================================
   // 在这里添加更多贡献者！
+  // 没有正版怎么办？
+  // 选择皮肤，使用其名字
+  // https://www.mcgodx.com/skins/
+  // 没有正版怎么办？
+  // 选择皮肤，使用其名字
+  // https://www.mcgodx.com/skins/
   // ============================================
   // {
   //   name: "你的名字",
   //   role: "贡献者",
   //   avatar: "https://api.rms.net.cn/head/YourName",
-  //   url: "https://github.com/your-username",
+  //   url: {
+  //     gitee: "https://gitee.com/your-username",
+  //     github: "https://github.com/your-username",
+  //     bilibili: "https://space.bilibili.com/your-bilibili-id",
+  //     qq: "your-qq-number",
+  //   },
   // },
 ];

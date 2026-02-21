@@ -9,18 +9,16 @@ export interface UpdateInfo {
   release_notes?: string;
   published_at?: string;
   source?: string;
-  sha256?: string;
+}
+
+export interface PendingUpdate {
+  version: string;
+  date: string;
 }
 
 export interface DownloadProgress {
   downloaded: number;
   total: number;
-  percent: number;
-}
-
-export interface PendingUpdate {
-  file_path: string;
-  version: string;
 }
 
 export async function checkUpdate(): Promise<UpdateInfo | null> {

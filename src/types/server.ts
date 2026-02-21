@@ -1,9 +1,8 @@
-export interface ServerCommand {
-  id: string;
-  name: string;
-  command: string;
-}
+import type { ServerStatus } from "./common";
 
+/**
+ * 服务器实例类型
+ */
 export interface ServerInstance {
   id: string;
   name: string;
@@ -20,7 +19,13 @@ export interface ServerInstance {
   port: number;
   created_at: number;
   last_started_at: number | null;
-  commands: ServerCommand[];
 }
 
-export type ServerStatus = "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
+/**
+ * 服务器命令类型
+ */
+export interface ServerCommand {
+  id: string;
+  name: string;
+  command: string;
+}

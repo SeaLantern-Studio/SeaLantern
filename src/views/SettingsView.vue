@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLInput from "../components/common/SLInput.vue";
@@ -17,13 +17,17 @@ import {
 } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { i18n } from "../locales";
+import { i18n } from "../language";
+import { useMessage } from "../composables/useMessage";
+import { useLoading } from "../composables/useAsync";
+import { getThemeOptions } from "../themes";
+
+const { error, showError, clearError } = useMessage();
+const { loading, start: startLoading, stop: stopLoading } = useLoading();
+const { loading: fontsLoading, start: startFontsLoading, stop: stopFontsLoading } = useLoading();
+const { loading: saving, start: startSaving, stop: stopSaving } = useLoading();
 
 const settings = ref<AppSettings | null>(null);
-const loading = ref(true);
-const fontsLoading = ref(false);
-const saving = ref(false);
-const error = ref<string | null>(null);
 
 // 亚克力支持检测
 const acrylicSupported = ref(true);
@@ -46,15 +50,10 @@ const backgroundSizeOptions = computed(() => [
   { label: i18n.t("common.background_size_auto"), value: "auto" },
 ]);
 
-const colorOptions = computed(() => [
-  { label: i18n.t("common.color_default"), value: "default" },
-  { label: "Midnight", value: "midnight" },
-  { label: "Sunset", value: "sunset" },
-  { label: "Ocean", value: "ocean" },
-  { label: "Rose", value: "rose" },
-  { label: "Zombie", value: "zombie" },
-  { label: i18n.t("common.color_custom"), value: "custom" },
-]);
+const colorOptions = computed(() => {
+  const themes = getThemeOptions();
+  return [...themes, { label: i18n.t("common.color_custom"), value: "custom" }];
+});
 
 const editColorOptions = computed(() => [
   { label: i18n.t("common.edit_color_light"), value: "light" },
@@ -105,10 +104,21 @@ onMounted(async () => {
   } catch {
     acrylicSupported.value = false;
   }
+
+  // 监听设置更新事件
+  window.addEventListener("settings-updated", loadSettings);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("settings-updated", loadSettings);
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
 });
 
 async function loadSystemFonts() {
-  fontsLoading.value = true;
+  startFontsLoading();
   try {
     const fonts = await getSystemFonts();
     fontFamilyOptions.value = [
@@ -117,8 +127,9 @@ async function loadSystemFonts() {
     ];
   } catch (e) {
     console.error("Failed to load system fonts:", e);
+    showError(String(e));
   } finally {
-    fontsLoading.value = false;
+    stopFontsLoading();
   }
 }
 
@@ -130,8 +141,8 @@ watch(bgSettingsExpanded, (expanded) => {
 });
 
 async function loadSettings() {
-  loading.value = true;
-  error.value = null;
+  startLoading();
+  clearError();
   try {
     const s = await settingsApi.get();
     settings.value = s;
@@ -145,19 +156,30 @@ async function loadSettings() {
     bgBrightness.value = String(s.background_brightness);
     uiFontSize.value = String(s.font_size);
     settings.value.color = s.color || "default";
-    // 应用已保存的设置
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   } finally {
-    loading.value = false;
+    stopLoading();
   }
 }
 
 function markChanged() {
-  saveSettings();
+  debouncedSave();
+}
+
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSave() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+  saveTimeout = setTimeout(() => {
+    saveSettings();
+    saveTimeout = null;
+  }, 500);
 }
 
 function getEffectiveTheme(theme: string): "light" | "dark" {
@@ -213,7 +235,7 @@ async function handleAcrylicChange(enabled: boolean) {
     const isDark = getEffectiveTheme(theme) === "dark";
     await applyAcrylic(enabled, isDark);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
@@ -246,8 +268,8 @@ async function saveSettings() {
   settings.value.color = settings.value.color || "default";
   settings.value.developer_mode = settings.value.developer_mode || false;
 
-  saving.value = true;
-  error.value = null;
+  startSaving();
+  clearError();
   try {
     await settingsApi.save(settings.value);
 
@@ -271,9 +293,9 @@ async function saveSettings() {
 
     window.dispatchEvent(new CustomEvent("settings-updated"));
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   } finally {
-    saving.value = false;
+    stopSaving();
   }
 }
 
@@ -305,7 +327,7 @@ async function resetSettings() {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
@@ -314,13 +336,13 @@ async function exportSettings() {
     const json = await settingsApi.exportJson();
     await navigator.clipboard.writeText(json);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
 async function handleImport() {
   if (!importJson.value.trim()) {
-    error.value = i18n.t("common.paste_json");
+    showError(i18n.t("common.paste_json"));
     return;
   }
   try {
@@ -341,7 +363,7 @@ async function handleImport() {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
@@ -355,7 +377,7 @@ async function pickBackgroundImage() {
     }
   } catch (e) {
     console.error("Pick image error:", e);
-    error.value = String(e);
+    showError(String(e));
   }
 }
 
@@ -375,7 +397,7 @@ function handleDeveloperModeChange() {
   <div class="settings-view animate-fade-in-up">
     <div v-if="error" class="msg-banner error-banner">
       <span>{{ error }}</span>
-      <button @click="error = null">x</button>
+      <button @click="clearError()">x</button>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -474,7 +496,16 @@ function handleDeveloperModeChange() {
           </div>
 
           <div class="setting-row full-width">
-            <JavaDownloader @installed="(path) => { if(settings) { settings.default_java_path = path; markChanged(); } }" />
+            <JavaDownloader
+              @installed="
+                (path) => {
+                  if (settings) {
+                    settings.default_java_path = path;
+                    markChanged();
+                  }
+                }
+              "
+            />
           </div>
 
           <div class="setting-row full-width">
@@ -613,8 +644,8 @@ function handleDeveloperModeChange() {
   font-size: 0.875rem;
 }
 .error-banner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--sl-error-bg);
+  border: 1px solid var(--sl-error);
   color: var(--sl-error);
 }
 .msg-banner button {
@@ -778,7 +809,7 @@ function handleDeveloperModeChange() {
   right: var(--sl-space-sm);
   padding: 2px 8px;
   background: rgba(0, 0, 0, 0.7);
-  color: white;
+  color: var(--sl-text-inverse);
   font-size: 0.75rem;
   font-weight: 500;
   border-radius: var(--sl-radius-sm);
@@ -799,7 +830,7 @@ function handleDeveloperModeChange() {
 
 .bg-preview-path {
   font-size: 0.8125rem;
-  color: white;
+  color: var(--sl-text-inverse);
   font-family: var(--sl-font-mono);
   overflow: hidden;
   text-overflow: ellipsis;

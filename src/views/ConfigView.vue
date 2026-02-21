@@ -3,10 +3,12 @@ import { ref, computed, watch, onMounted, onUnmounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "../components/common/SLSpinner.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
+import SLInput from "../components/common/SLInput.vue";
+import SLSelect from "../components/common/SLSelect.vue";
 import { configApi } from "../api/config";
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
-import { i18n } from "../locales";
+import { i18n } from "../language";
 
 // 导入拆分后的组件
 import ConfigToolbar from "../components/config/ConfigToolbar.vue";
@@ -30,7 +32,7 @@ const serverPath = computed(() => {
 });
 
 // 自动保存相关
-const autoSaveDebounceTimer = ref<number | null>(null);
+const autoSaveDebounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const AUTO_SAVE_DELAY = 1000; // 1秒防抖延迟
 
 const currentServerId = computed(() => store.currentServerId);
@@ -46,7 +48,7 @@ const filteredEntries = computed(() => {
     const matchSearch =
       !searchQuery.value ||
       e.key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      e.description.toLowerCase().includes(searchQuery.value.toLowerCase());
+      (e.description ?? "").toLowerCase().includes(searchQuery.value.toLowerCase());
     return matchCat && matchSearch;
   });
 });
@@ -161,6 +163,20 @@ function handleCategoryChange(category: string) {
 function handleSearchUpdate(value: string) {
   searchQuery.value = value;
 }
+
+const gamemodeOptions = computed(() => [
+  { label: i18n.t("config.gamemode.survival"), value: "survival" },
+  { label: i18n.t("config.gamemode.creative"), value: "creative" },
+  { label: i18n.t("config.gamemode.adventure"), value: "adventure" },
+  { label: i18n.t("config.gamemode.spectator"), value: "spectator" },
+]);
+
+const difficultyOptions = computed(() => [
+  { label: i18n.t("config.difficulty.peaceful"), value: "peaceful" },
+  { label: i18n.t("config.difficulty.easy"), value: "easy" },
+  { label: i18n.t("config.difficulty.normal"), value: "normal" },
+  { label: i18n.t("config.difficulty.hard"), value: "hard" },
+]);
 </script>
 
 <template>
@@ -223,36 +239,25 @@ function handleSearchUpdate(value: string) {
               />
             </template>
             <template v-else-if="entry.key === 'gamemode'">
-              <select
-                :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target.value)"
-                class="select"
-              >
-                <option value="survival">{{ i18n.t("config.gamemode.survival") }}</option>
-                <option value="creative">{{ i18n.t("config.gamemode.creative") }}</option>
-                <option value="adventure">{{ i18n.t("config.gamemode.adventure") }}</option>
-                <option value="spectator">{{ i18n.t("config.gamemode.spectator") }}</option>
-              </select>
+              <SLSelect
+                :modelValue="editValues[entry.key]"
+                :options="gamemodeOptions"
+                @update:modelValue="updateValue(entry.key, $event)"
+              />
             </template>
             <template v-else-if="entry.key === 'difficulty'">
-              <select
-                :value="editValues[entry.key]"
-                @change="updateValue(entry.key, $event.target.value)"
-                class="select"
-              >
-                <option value="peaceful">{{ i18n.t("config.difficulty.peaceful") }}</option>
-                <option value="easy">{{ i18n.t("config.difficulty.easy") }}</option>
-                <option value="normal">{{ i18n.t("config.difficulty.normal") }}</option>
-                <option value="hard">{{ i18n.t("config.difficulty.hard") }}</option>
-              </select>
+              <SLSelect
+                :modelValue="editValues[entry.key]"
+                :options="difficultyOptions"
+                @update:modelValue="updateValue(entry.key, $event)"
+              />
             </template>
             <template v-else>
-              <input
-                :value="editValues[entry.key]"
+              <SLInput
+                :modelValue="editValues[entry.key]"
                 :type="entry.value_type === 'number' ? 'number' : 'text'"
                 :placeholder="entry.default_value"
-                @input="updateValue(entry.key, $event.target.value)"
-                class="input"
+                @update:modelValue="updateValue(entry.key, $event)"
               />
             </template>
           </div>
@@ -360,21 +365,5 @@ function handleSearchUpdate(value: string) {
 .entry-control {
   flex-shrink: 0;
   min-width: 200px;
-}
-
-.select,
-.input {
-  width: 200px;
-  padding: 6px 10px;
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-  background: var(--sl-bg-secondary);
-  color: var(--sl-text-primary);
-}
-.select:focus,
-.input:focus {
-  outline: none;
-  border-color: var(--sl-primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 </style>

@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
+
 interface Props {
   modelValue?: boolean;
   label?: string;
   disabled?: boolean;
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -19,16 +23,37 @@ const handleClick = () => {
     emit("update:modelValue", !props.modelValue);
   }
 };
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-switch-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLSwitch",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", !!value);
+  },
+  call: () => undefined,
+  on: (event, cb) => {
+    if (event === "change") {
+    }
+    return () => {};
+  },
+  el: () => elRef.value,
+});
 </script>
 
 <template>
-  <label class="sl-switch-wrapper" :class="{ disabled: props.disabled }">
+  <label ref="elRef" class="sl-switch-wrapper" :class="{ disabled: props.disabled }">
     <div
       class="sl-switch"
       :class="{ active: props.modelValue }"
-      @click="handleClick"
-      :aria-checked="props.modelValue"
+      :tabindex="props.disabled ? -1 : 0"
       role="switch"
+      :aria-checked="props.modelValue"
+      :aria-disabled="props.disabled"
+      @click="handleClick"
+      @keydown.enter.prevent="handleClick"
+      @keydown.space.prevent="handleClick"
     >
       <div class="sl-switch-thumb" />
     </div>
@@ -68,7 +93,7 @@ const handleClick = () => {
   height: var(--switch-height);
   background: var(--sl-border, #e5e7eb);
   border-radius: var(--sl-radius-full, 9999px);
-  transition: background 0.3s ease;
+  transition: background var(--sl-transition-fast, 150ms) ease;
   flex-shrink: 0;
 }
 
@@ -85,7 +110,7 @@ const handleClick = () => {
   background: var(--sl-surface, white);
   border-radius: 50%;
   box-shadow: var(--sl-shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--sl-transition-fast, 150ms) ease;
   will-change: transform;
 }
 

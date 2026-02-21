@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
+
 interface Props {
   modelValue?: string;
   placeholder?: string;
@@ -6,9 +9,10 @@ interface Props {
   type?: string;
   disabled?: boolean;
   maxlength?: number;
+  componentId?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   modelValue: "",
   placeholder: "",
   type: "text",
@@ -22,10 +26,23 @@ const emit = defineEmits<{
 const handleInput = (e: Event) => {
   emit("update:modelValue", (e.target as HTMLInputElement).value);
 };
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-input-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLInput",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", String(value ?? ""));
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => elRef.value,
+});
 </script>
 
 <template>
-  <div class="sl-input-wrapper">
+  <div ref="elRef" class="sl-input-wrapper">
     <label v-if="label" class="sl-input-label">{{ label }}</label>
     <div class="sl-input-container">
       <div v-if="$slots.prefix" class="sl-input-prefix">
@@ -57,7 +74,7 @@ const handleInput = (e: Event) => {
 .sl-input-label {
   font-size: 13px;
   font-weight: 500;
-  color: #666;
+  color: var(--sl-text-secondary);
 }
 
 .sl-input-container {
@@ -65,7 +82,7 @@ const handleInput = (e: Event) => {
   align-items: center;
   background: var(--sl-surface, #fff);
   border: 1px solid var(--sl-border, #ddd);
-  border-radius: var(--sl-radius-sm);
+  border-radius: 6px;
   transition:
     border-color var(--sl-transition-fast),
     box-shadow var(--sl-transition-fast);
@@ -76,8 +93,8 @@ const handleInput = (e: Event) => {
 }
 
 .sl-input-container:focus-within {
-  border-color: #007aff;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 3px var(--sl-primary-bg);
 }
 
 .sl-input {
@@ -88,6 +105,7 @@ const handleInput = (e: Event) => {
   border: 0;
   outline: 0;
   min-width: 0;
+  color: var(--sl-text-primary);
 }
 
 .sl-input:disabled {
@@ -96,7 +114,18 @@ const handleInput = (e: Event) => {
 }
 
 .sl-input::placeholder {
-  color: #999;
+  color: var(--sl-text-tertiary);
+}
+
+/* 禁用数字输入框的上下箭头 */
+.sl-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.sl-input[type="number"]::-webkit-outer-spin-button,
+.sl-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .sl-input-prefix,
@@ -104,6 +133,6 @@ const handleInput = (e: Event) => {
   display: flex;
   align-items: center;
   padding: 0 8px;
-  color: #999;
+  color: var(--sl-text-tertiary);
 }
 </style>

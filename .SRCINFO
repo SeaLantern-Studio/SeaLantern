@@ -1,6 +1,6 @@
 pkgbase = sealantern
 	pkgdesc = A lightweight Minecraft server management tool based on Tauri 2 + Rust + Vue 3 一个轻量化的 Minecraft 服务器管理工具 ，基于 Tauri 2 + Rust + Vue 3
-	pkgver = 0.6.2
+	pkgver = 0.6.5
 	pkgrel = 1
 	url = https://github.com/FPSZ/SeaLantern
 	install = sealantern.install

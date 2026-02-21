@@ -1,7 +1,7 @@
 # Maintainer: xuezhajv <liaozecheng123@163.com>  qq群：293748695
 # Contributor: github.com/FPSZ <
 pkgname=sealantern
-pkgver=0.6.2
+pkgver=0.6.5
 pkgrel=1
 pkgdesc="A lightweight Minecraft server management tool based on Tauri 2 + Rust + Vue 3        一个轻量化的 Minecraft 服务器管理工具 ，基于 Tauri 2 + Rust + Vue 3"
 arch=('x86_64')
@@ -16,35 +16,35 @@ depends=(
     'pango'
     'atk'
     'libgl'
-    
+
     # WebKit 相关依赖
     'webkit2gtk'                    # 包含 javascriptcoregtk [citation:1]
     'libsoup'
-    
+
     # 系统图标主题
     'hicolor-icon-theme'
     'adwaita-icon-theme'
-    
+
     # 桌面文件相关
     'desktop-file-utils'
     'shared-mime-info'
-    
+
     # 安全相关
     'libxss'                        # X11 Screen Saver extension library [citation:2]
     'nss'
     'nspr'
-    
+
     # 系统托盘支持
     'libayatana-appindicator'
     'libappindicator-gtk3'
-    
+
     # 网络相关
     'curl'
     'wget'
     'openssl'
     'ca-certificates'
     'gnutls'
-    
+
     # 图形相关
     'libx11'
     'libxcb'
@@ -58,23 +58,23 @@ depends=(
     'libxrender'
     'libxtst'
     'libxss'                         # 对应 libxscrnsaver [citation:2]
-    
+
     # 字体支持
     'fontconfig'
     'freetype2'
-    
+
     # 音频支持
     'alsa-lib'
     'libpulse'                       # pulseaudio 的客户端库 [citation:3]
-    
+
     # 数据库支持
     'sqlite3'
-    
+
     # 压缩支持
     'zlib'
     'bzip2'
     'xz'
-    
+
     # 其他常用库
     'expat'
     'libffi'
@@ -124,8 +124,26 @@ package() {
 
     echo "正在提取 Sea.Lantern_${pkgver}_amd64.deb ..."
 
-    # 使用 dpkg-deb 提取
-    dpkg-deb -x "Sea.Lantern_${pkgver}_amd64.deb" "${pkgdir}"
+    # 使用 bsdtar 提取 deb 包（deb 实际上是 ar 压缩包）
+    # 首先提取整个 deb 包到临时目录
+    bsdtar -xf "Sea.Lantern_${pkgver}_amd64.deb" -C "${srcdir}"
+
+    # deb 包包含三个文件：debian-binary, control.tar.xz, data.tar.xz
+    # 我们需要提取 data.tar.xz 中的内容
+    if [[ -f "${srcdir}/data.tar.xz" ]]; then
+        bsdtar -xf "${srcdir}/data.tar.xz" -C "${pkgdir}"
+    elif [[ -f "${srcdir}/data.tar.gz" ]]; then
+        bsdtar -xf "${srcdir}/data.tar.gz" -C "${pkgdir}"
+    elif [[ -f "${srcdir}/data.tar.zst" ]]; then
+        bsdtar -xf "${srcdir}/data.tar.zst" -C "${pkgdir}"
+    else
+        echo "错误：找不到 data.tar 文件"
+        ls -la "${srcdir}"
+        exit 1
+    fi
+
+    # 清理临时文件（可选）
+    rm -f "${srcdir}/debian-binary" "${srcdir}/control.tar."* "${srcdir}/data.tar."* 2>/dev/null || true
 
     # 确保二进制文件在正确的位置
     if [[ -f "${pkgdir}/usr/local/bin/sealantern" ]]; then

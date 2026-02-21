@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::process::{Child, Command, Stdio};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
@@ -37,8 +38,10 @@ pub struct ServerManager {
     pub servers: Mutex<Vec<ServerInstance>>,
     pub processes: Mutex<HashMap<String, Child>>,
     pub stopping_servers: Mutex<HashSet<String>>,
+    pub starting_servers: Mutex<HashSet<String>>,
     pub logs: Mutex<HashMap<String, Vec<String>>>,
     pub data_dir: Mutex<String>,
+    pub log_thread_stops: Mutex<HashMap<String, Arc<AtomicBool>>>,
 }
 
 impl ServerManager {
@@ -53,8 +56,10 @@ impl ServerManager {
             servers: Mutex::new(servers),
             processes: Mutex::new(HashMap::new()),
             stopping_servers: Mutex::new(HashSet::new()),
+            starting_servers: Mutex::new(HashSet::new()),
             logs: Mutex::new(logs_map),
             data_dir: Mutex::new(data_dir),
+            log_thread_stops: Mutex::new(HashMap::new()),
         }
     }
 
@@ -74,6 +79,31 @@ impl ServerManager {
     fn clear_stopping(&self, id: &str) {
         if let Ok(mut stopping) = self.stopping_servers.lock() {
             stopping.remove(id);
+        }
+        // 通知对应的日志轮询线程退出
+        if let Ok(stops) = self.log_thread_stops.lock() {
+            if let Some(flag) = stops.get(id) {
+                flag.store(true, Ordering::Relaxed);
+            }
+        }
+    }
+
+    fn is_starting(&self, id: &str) -> bool {
+        self.starting_servers
+            .lock()
+            .map(|s| s.contains(id))
+            .unwrap_or(false)
+    }
+
+    fn mark_starting(&self, id: &str) {
+        if let Ok(mut s) = self.starting_servers.lock() {
+            s.insert(id.to_string());
+        }
+    }
+
+    pub fn clear_starting(&self, id: &str) {
+        if let Ok(mut s) = self.starting_servers.lock() {
+            s.remove(id);
         }
     }
 
@@ -175,7 +205,6 @@ impl ServerManager {
             port: req.port,
             created_at: now,
             last_started_at: None,
-            commands: Vec::new(),
         };
         self.servers.lock().unwrap().push(server.clone());
         self.logs.lock().unwrap().insert(id, Vec::new());
@@ -264,7 +293,6 @@ impl ServerManager {
             port: req.port,
             created_at: now,
             last_started_at: None,
-            commands: Vec::new(),
         };
 
         self.servers.lock().unwrap().push(server.clone());
@@ -331,7 +359,6 @@ impl ServerManager {
             port: req.port,
             created_at: now,
             last_started_at: None,
-            commands: Vec::new(),
         };
 
         println!(
@@ -383,15 +410,81 @@ impl ServerManager {
         }
 
         //预处理脚本
-        match self.load_preload_script(id, &server) {
-            Ok(msg) => {
-                self.append_log(id, &format!("[preload] 预加载脚本执行完毕：{}", msg));
-                println!("预处理脚本执行完毕：{}", msg);
+        #[cfg(target_os = "windows")]
+        {
+            let preload_script = std::path::Path::new(&server.path).join("preload.bat");
+            if preload_script.exists() {
+                println!("发现预加载脚本: {:?}", preload_script);
+                self.append_log(id, "[preload] 开始执行预加载脚本...");
+
+                let mut cmd = std::process::Command::new("cmd");
+                cmd.args(["/c", preload_script.to_str().unwrap_or("preload.bat")])
+                    .current_dir(&server.path);
+
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                cmd.creation_flags(CREATE_NO_WINDOW);
+
+                match cmd.output() {
+                    Ok(result) => {
+                        if result.status.success() {
+                            println!("preload.bat 执行成功");
+                            if !result.stdout.is_empty() {
+                                let output = String::from_utf8_lossy(&result.stdout);
+                                for line in output.lines() {
+                                    self.append_log(id, &format!("[preload] {}", line));
+                                }
+                            }
+                            self.append_log(id, "[preload] 预加载脚本执行成功");
+                        } else {
+                            let error = String::from_utf8_lossy(&result.stderr);
+                            println!("preload.bat 执行失败: {}", error);
+                            self.append_log(id, &format!("[preload] 执行失败: {}", error));
+                        }
+                    }
+                    Err(e) => {
+                        let error_msg = format!("执行 preload.bat 失败: {}", e);
+                        println!("{}", error_msg);
+                        self.append_log(id, &format!("[preload] {}", error_msg));
+                    }
+                }
             }
-            Err(e) => {
-                // 记录错误到日志，继续启动服务器
-                self.append_log(id, &format!("[preload] 预处理脚本执行失败: {}", e));
-                println!("预处理脚本执行失败: {}，但将继续启动服务器", e);
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let preload_script = std::path::Path::new(&server.path).join("preload.sh");
+            if preload_script.exists() {
+                println!("发现预加载脚本: {:?}", preload_script);
+                self.append_log(id, "[preload] 开始执行预加载脚本...");
+
+                match std::process::Command::new("sh")
+                    .arg(&preload_script)
+                    .current_dir(&server.path)
+                    .output()
+                {
+                    Ok(result) => {
+                        if result.status.success() {
+                            println!("preload.sh 执行成功");
+                            if !result.stdout.is_empty() {
+                                let output = String::from_utf8_lossy(&result.stdout);
+                                for line in output.lines() {
+                                    self.append_log(id, &format!("[preload] {}", line));
+                                }
+                            }
+                            self.append_log(id, "[preload] 预加载脚本执行成功");
+                        } else {
+                            let error = String::from_utf8_lossy(&result.stderr);
+                            println!("preload.sh 执行失败: {}", error);
+                            self.append_log(id, &format!("[preload] 执行失败: {}", error));
+                        }
+                    }
+                    Err(e) => {
+                        let error_msg = format!("执行 preload.sh 失败: {}", e);
+                        println!("{}", error_msg);
+                        self.append_log(id, &format!("[preload] {}", error_msg));
+                    }
+                }
             }
         }
 
@@ -436,9 +529,9 @@ impl ServerManager {
                     let launch_command = format!(
                         "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & call \"{}\" nogui",
                         code_page,
-                        java_home_dir_str.replace('"', "\"\""),
-                        java_bin_dir_str.replace('"', "\"\""),
-                        startup_filename.replace('"', "\"\"")
+                        escape_cmd_arg(&java_home_dir_str),
+                        escape_cmd_arg(&java_bin_dir_str),
+                        escape_cmd_arg(&startup_filename)
                     );
                     bat_cmd.arg("/d");
                     bat_cmd.arg("/c");
@@ -511,6 +604,7 @@ impl ServerManager {
         println!("Java进程已启动，PID: {:?}", child.id());
 
         self.processes.lock().unwrap().insert(id.to_string(), child);
+        self.mark_starting(id);
 
         {
             let mut servers = self.servers.lock().unwrap();
@@ -527,14 +621,18 @@ impl ServerManager {
         self.append_log(id, "[Sea Lantern] 服务器启动中...");
 
         // 启动日志读取线程
-        let logs_ref = &self.logs as *const Mutex<HashMap<String, Vec<String>>>;
-        let procs_ref = &self.processes as *const Mutex<HashMap<String, Child>>;
+        let stop_flag = Arc::new(AtomicBool::new(false));
+        {
+            let mut stops = self.log_thread_stops.lock().unwrap();
+            if let Some(old) = stops.insert(id.to_string(), Arc::clone(&stop_flag)) {
+                old.store(true, Ordering::Relaxed);
+            }
+        }
+
         let max_lines = settings.max_log_lines as usize;
         let lid = id.to_string();
-        let ptr = logs_ref as usize;
-        let p_ptr = procs_ref as usize;
-        let ml = max_lines;
         let log_path = log_file.clone();
+        let stop = Arc::clone(&stop_flag);
 
         std::thread::spawn(move || {
             use std::io::Seek;
@@ -542,20 +640,11 @@ impl ServerManager {
             let mut last_size = 0u64;
 
             loop {
-                // Check if process still exists in manager
-                let should_exit = unsafe {
-                    let m = &*(p_ptr as *const Mutex<HashMap<String, Child>>);
-                    if let Ok(procs) = m.lock() {
-                        !procs.contains_key(&lid)
-                    } else {
-                        false
-                    }
-                };
-                if should_exit {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
+                if stop.load(Ordering::Relaxed) {
                     break;
                 }
-
-                std::thread::sleep(std::time::Duration::from_millis(500));
 
                 if let Ok(mut file) = std::fs::File::open(&log_path) {
                     if let Ok(metadata) = file.metadata() {
@@ -563,23 +652,28 @@ impl ServerManager {
 
                         if len > last_size {
                             if file.seek(std::io::SeekFrom::Start(pos)).is_ok() {
-                                let m = unsafe {
-                                    &*(ptr as *const Mutex<HashMap<String, Vec<String>>>)
-                                };
+                                let manager = super::global::server_manager();
                                 let mut buffer = Vec::new();
 
                                 if file.read_to_end(&mut buffer).is_ok() {
                                     let content = decode_console_bytes(&buffer);
                                     for line in content.lines() {
                                         if !line.trim().is_empty() {
-                                            if let Ok(mut l) = m.lock() {
+                                            if let Ok(mut l) = manager.logs.lock() {
                                                 if let Some(v) = l.get_mut(&lid) {
                                                     v.push(line.to_string());
-                                                    if v.len() > ml {
-                                                        let d = v.len() - ml;
+                                                    if v.len() > max_lines {
+                                                        let d = v.len() - max_lines;
                                                         v.drain(0..d);
                                                     }
                                                 }
+                                            }
+                                            if line.contains("Done (")
+                                                && line.contains(")! For help")
+                                            {
+                                                manager.clear_starting(&lid);
+                                                let _ =
+                                                    crate::plugins::api::emit_server_ready(&lid);
                                             }
                                         }
                                     }
@@ -664,85 +758,6 @@ impl ServerManager {
         Ok(())
     }
 
-    //预处理脚本函数实现
-    pub fn load_preload_script(&self, id: &str, server: &ServerInstance) -> Result<String, String> {
-        // Windows实现
-        #[cfg(target_os = "windows")]
-        {
-            let preload_script = std::path::Path::new(&server.path).join("preload.bat");
-            if preload_script.exists() {
-                println!("发现预加载脚本: {:?}", preload_script);
-                self.append_log(id, "[preload] 开始执行预加载脚本...");
-
-                // Windows 下执行 bat 文件，使用 CREATE_NO_WINDOW 避免弹窗
-                let mut cmd = Command::new("cmd");
-                cmd.args(["/c", preload_script.to_str().unwrap_or("preload.bat")])
-                    .current_dir(&server.path);
-
-                // 隐藏命令行窗口
-                use std::os::windows::process::CommandExt;
-                const CREATE_NO_WINDOW: u32 = 0x08000000;
-                cmd.creation_flags(CREATE_NO_WINDOW);
-
-                match cmd.output() {
-                    Ok(result) => {
-                        if result.status.success() {
-                            if !result.stdout.is_empty() {
-                                let output = String::from_utf8_lossy(&result.stdout);
-                                for line in output.lines() {
-                                    self.append_log(id, &format!("[preload] {}", line));
-                                }
-                            }
-                            Ok("执行成功".to_string())
-                        } else {
-                            let error = String::from_utf8_lossy(&result.stderr);
-                            Err(format!("preload.bat 执行失败: {}", error))
-                        }
-                    }
-                    Err(e) => Err(e.to_string()),
-                }
-            } else {
-                Ok("未找到脚本".to_string())
-            }
-        }
-
-        // 非 Windows 实现
-        #[cfg(not(target_os = "windows"))]
-        {
-            let preload_script = std::path::Path::new(&server.path).join("preload.sh");
-            if preload_script.exists() {
-                println!("发现预加载脚本: {:?}", preload_script);
-                self.append_log(id, "[preload] 开始执行预加载脚本...");
-
-                // 非 Windows 系统下，作为 shell 脚本执行
-                match Command::new("sh")
-                    .arg(&preload_script)
-                    .current_dir(&server.path)
-                    .output()
-                {
-                    Ok(result) => {
-                        if result.status.success() {
-                            println!("preload.sh 执行成功");
-                            if !result.stdout.is_empty() {
-                                let output = String::from_utf8_lossy(&result.stdout);
-                                for line in output.lines() {
-                                    self.append_log(id, &format!("[preload] {}", line));
-                                }
-                            }
-                            Ok("执行成功".to_string())
-                        } else {
-                            let error = String::from_utf8_lossy(&result.stderr);
-                            Err(format!("preload.sh 执行失败: {}", error))
-                        }
-                    }
-                    Err(e) => Err(e.to_string()),
-                }
-            } else {
-                Ok("未找到脚本".to_string())
-            }
-        }
-    }
-
     pub fn send_command(&self, id: &str, command: &str) -> Result<(), String> {
         let mut procs = self.processes.lock().unwrap();
         let child = procs
@@ -765,11 +780,13 @@ impl ServerManager {
             match child.try_wait() {
                 Ok(Some(_)) => {
                     procs.remove(id);
+                    self.clear_starting(id);
                     false
                 }
                 Ok(None) => true,
                 Err(_) => {
                     procs.remove(id);
+                    self.clear_starting(id);
                     false
                 }
             }
@@ -780,6 +797,8 @@ impl ServerManager {
             id: id.to_string(),
             status: if self.is_stopping(id) {
                 ServerStatus::Stopping
+            } else if is_running && self.is_starting(id) {
+                ServerStatus::Starting
             } else if is_running {
                 ServerStatus::Running
             } else {
@@ -799,6 +818,19 @@ impl ServerManager {
                 let _ = self.stop_server(id);
             }
         }
+
+        // 获取服务器目录路径，删除磁盘上的文件
+        let server_path = {
+            let servers = self.servers.lock().unwrap();
+            servers.iter().find(|s| s.id == id).map(|s| s.path.clone())
+        };
+        if let Some(path) = server_path {
+            let dir = std::path::Path::new(&path);
+            if dir.exists() {
+                std::fs::remove_dir_all(dir).map_err(|e| format!("删除服务器目录失败: {}", e))?;
+            }
+        }
+
         self.servers.lock().unwrap().retain(|s| s.id != id);
         self.logs.lock().unwrap().remove(id);
         self.save();
@@ -818,11 +850,33 @@ impl ServerManager {
         }
     }
 
+    pub fn get_all_logs(&self) -> Vec<(String, Vec<String>)> {
+        let logs = self.logs.lock().unwrap();
+        logs.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    }
+
+    pub fn get_running_server_ids(&self) -> Vec<String> {
+        let procs = self.processes.lock().unwrap();
+        procs.keys().cloned().collect()
+    }
+
     fn append_log(&self, id: &str, msg: &str) {
         if let Ok(mut logs) = self.logs.lock() {
             if let Some(v) = logs.get_mut(id) {
                 v.push(msg.to_string());
             }
+        }
+    }
+
+    pub fn update_server_name(&self, id: &str, new_name: &str) -> Result<(), String> {
+        let mut servers = self.servers.lock().unwrap();
+        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
+            server.name = new_name.to_string();
+            drop(servers);
+            self.save();
+            Ok(())
+        } else {
+            Err("未找到服务器".to_string())
         }
     }
 
@@ -832,92 +886,26 @@ impl ServerManager {
             let _ = self.stop_server(&id);
         }
     }
+}
 
-    pub fn force_stop_all_servers(&self) {
-        let ids: Vec<String> = self.processes.lock().unwrap().keys().cloned().collect();
-        let mut procs = self.processes.lock().unwrap();
-        for id in ids {
-            if let Some(mut child) = procs.remove(&id) {
-                let _ = child.kill();
-                let _ = child.wait();
-                self.append_log(&id, "[Sea Lantern] 已强制终止服务器进程");
-            }
+#[cfg(target_os = "windows")]
+fn escape_cmd_arg(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 8);
+    for c in s.chars() {
+        match c {
+            '^' => out.push_str("^^"),
+            '&' => out.push_str("^&"),
+            '|' => out.push_str("^|"),
+            '<' => out.push_str("^<"),
+            '>' => out.push_str("^>"),
+            '(' => out.push_str("^("),
+            ')' => out.push_str("^)"),
+            '%' => out.push_str("%%"),
+            '"' => out.push_str("\"\""),
+            other => out.push(other),
         }
     }
-
-    pub fn add_server_command(
-        &self,
-        server_id: &str,
-        name: &str,
-        command: &str,
-    ) -> Result<(), String> {
-        let mut servers = self.servers.lock().unwrap();
-        if let Some(server) = servers.iter_mut().find(|s| s.id == server_id) {
-            let command_id = uuid::Uuid::new_v4().to_string();
-            server.commands.push(ServerCommand {
-                id: command_id,
-                name: name.to_string(),
-                command: command.to_string(),
-            });
-            drop(servers);
-            self.save();
-            Ok(())
-        } else {
-            Err("未找到服务器".to_string())
-        }
-    }
-
-    pub fn update_server_command(
-        &self,
-        server_id: &str,
-        command_id: &str,
-        name: &str,
-        command: &str,
-    ) -> Result<(), String> {
-        let mut servers = self.servers.lock().unwrap();
-        if let Some(server) = servers.iter_mut().find(|s| s.id == server_id) {
-            if let Some(cmd) = server.commands.iter_mut().find(|c| c.id == command_id) {
-                cmd.name = name.to_string();
-                cmd.command = command.to_string();
-                drop(servers);
-                self.save();
-                Ok(())
-            } else {
-                Err("未找到自定义指令".to_string())
-            }
-        } else {
-            Err("未找到服务器".to_string())
-        }
-    }
-
-    pub fn delete_server_command(&self, server_id: &str, command_id: &str) -> Result<(), String> {
-        let mut servers = self.servers.lock().unwrap();
-        if let Some(server) = servers.iter_mut().find(|s| s.id == server_id) {
-            let initial_len = server.commands.len();
-            server.commands.retain(|c| c.id != command_id);
-            if initial_len != server.commands.len() {
-                drop(servers);
-                self.save();
-                Ok(())
-            } else {
-                Err("未找到自定义指令".to_string())
-            }
-        } else {
-            Err("未找到服务器".to_string())
-        }
-    }
-
-    pub fn update_server_name(&self, id: &str, name: &str) -> Result<(), String> {
-        let mut servers = self.servers.lock().unwrap();
-        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
-            server.name = name.to_string();
-            drop(servers);
-            self.save();
-            Ok(())
-        } else {
-            Err("未找到服务器".to_string())
-        }
-    }
+    out
 }
 
 fn get_data_dir() -> String {

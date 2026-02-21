@@ -4,11 +4,13 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct ServerAddress {
     pub host: String,
     pub port: u16,
 }
 
+#[allow(dead_code)]
 pub struct JoinManager {
     // 模拟一个远程 ID 映射，实际应用中可以对接一个简单的 KV 存储或 API
     // 这里先实现本地映射逻辑
@@ -16,11 +18,13 @@ pub struct JoinManager {
 }
 
 impl JoinManager {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         JoinManager { id_map: Mutex::new(HashMap::new()) }
     }
 
     /// 通过 ID 获取服务器地址
+    #[allow(dead_code)]
     pub async fn resolve_id(&self, id: &str) -> Result<ServerAddress, String> {
         // 1. 检查本地已有的服务器 ID
         let server_manager = global::server_manager();

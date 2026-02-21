@@ -81,10 +81,6 @@ export const serverApi = {
     return tauriInvoke("stop_server", { id });
   },
 
-  async forceStopAll(): Promise<void> {
-    return tauriInvoke("force_stop_all_servers");
-  },
-
   async sendCommand(id: string, command: string): Promise<void> {
     return tauriInvoke("send_command", { id, command });
   },
@@ -103,23 +99,6 @@ export const serverApi = {
 
   async getLogs(id: string, since: number): Promise<string[]> {
     return tauriInvoke("get_server_logs", { id, since });
-  },
-
-  async addServerCommand(id: string, name: string, command: string): Promise<void> {
-    return tauriInvoke("add_server_command", { id, name, command });
-  },
-
-  async updateServerCommand(
-    id: string,
-    commandId: string,
-    name: string,
-    command: string,
-  ): Promise<void> {
-    return tauriInvoke("update_server_command", { id, commandId, name, command });
-  },
-
-  async deleteServerCommand(id: string, commandId: string): Promise<void> {
-    return tauriInvoke("delete_server_command", { id, commandId });
   },
 
   async updateServerName(id: string, name: string): Promise<void> {

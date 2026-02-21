@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { EChartsOption } from "echarts";
+import { Menu, Clock, Server, Pencil, Folder, FolderOpen, Check, X, Gauge } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -9,7 +11,8 @@ import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
-import { i18n } from "../locales";
+import { i18n } from "../language";
+import type { ServerInstance } from "../types/server";
 
 const router = useRouter();
 const store = useServerStore();
@@ -18,12 +21,10 @@ const consoleStore = useConsoleStore();
 const actionLoading = ref<Record<string, boolean>>({});
 const actionError = ref<string | null>(null);
 
-// 编辑服务器名称相关
 const editingServerId = ref<string | null>(null);
 const editName = ref("");
 const editLoading = ref(false);
 
-// 系统信息
 const systemInfo = ref<SystemInfo | null>(null);
 const cpuUsage = ref(0);
 const memUsage = ref(0);
@@ -31,11 +32,194 @@ const diskUsage = ref(0);
 const cpuHistory = ref<number[]>([]);
 const memHistory = ref<number[]>([]);
 const statsViewMode = ref<"detail" | "gauge">("gauge");
-const statsLoading = ref(true); // 视图模式
+const statsLoading = ref(true);
+
+// 获取当前主题标识（用于强制重新计算图表配置）
+const themeVersion = ref(0);
+
+// 模块级 MutationObserver 引用，避免污染全局命名空间
+let themeObserver: MutationObserver | null = null;
+
+// 获取 CSS 变量实际值的辅助函数，支持传入默认值
+const getCssVar = (varName: string, defaultValue: string): string => {
+  if (typeof window === "undefined") return defaultValue;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return value || defaultValue;
+};
+
+// 获取当前根字体大小（px）
+const getRootFontSize = (): number => {
+  if (typeof window === "undefined") return 16;
+  const fontSize = getComputedStyle(document.documentElement).fontSize;
+  const parsed = parseFloat(fontSize);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 16;
+};
+
+// 解析 CSS 字体大小（支持 px 和 rem 单位）
+const parseFontSize = (varName: string, defaultPx: number): number => {
+  const value = getCssVar(varName, `${defaultPx}px`);
+  // 移除单位并解析为数字
+  const numMatch = value.match(/^[\d.]+/);
+  if (!numMatch) return defaultPx;
+
+  const num = parseFloat(numMatch[0]);
+  if (!Number.isFinite(num) || num <= 0) return defaultPx;
+
+  // 如果是 rem，使用实际的根字体大小进行换算
+  if (value.includes("rem")) {
+    return num * getRootFontSize();
+  }
+  return num;
+};
+
+// ECharts 公共基础配置
+const baseChartConfig: EChartsOption = {
+  backgroundColor: "transparent",
+  animation: true,
+  animationDuration: 300,
+  animationEasing: "cubicOut",
+};
+
+// ECharts 配置生成函数
+const createGaugeOption = (rawValue: number, colorVar: string, label: string): EChartsOption => {
+  const value = Number.isFinite(rawValue)
+    ? Math.min(100, Math.max(0, rawValue))
+    : 0;
+  const fontSize = parseFontSize("--sl-font-size-sm", 13);
+  const fontFamily = getCssVar("--sl-font-mono", "monospace");
+  const color = getCssVar(colorVar, "#3b82f6");
+  const textColor = getCssVar("--sl-text-primary", "#1f2937");
+  const borderColor = getCssVar("--sl-border", "#e5e7eb");
+
+  return {
+    ...baseChartConfig,
+    series: [
+      {
+        type: "pie",
+        radius: ["65%", "80%"],
+        center: ["50%", "45%"],
+        avoidLabelOverlap: false,
+        silent: true,
+        label: {
+          show: true,
+          position: "center",
+          formatter: () => `${value}%`,
+          fontSize: fontSize,
+          fontWeight: 600,
+          fontFamily: fontFamily,
+          color: textColor,
+        },
+        labelLine: {
+          show: false,
+        },
+        data: [
+          {
+            value: value,
+            name: label,
+            itemStyle: {
+              color: color,
+              borderRadius: 3,
+            },
+          },
+          {
+            value: 100 - value,
+            name: "剩余",
+            itemStyle: {
+              color: borderColor,
+            },
+            label: {
+              show: false,
+            },
+            emphasis: {
+              disabled: true,
+            },
+          },
+        ],
+      },
+    ],
+  };
+};
+
+const cpuGaugeOption = computed(() => {
+  //@ts-ignore
+  const _ = themeVersion.value;
+  return createGaugeOption(cpuUsage.value, "--sl-primary", i18n.t("home.cpu"));
+});
+const memGaugeOption = computed(() => {
+  //@ts-ignore
+  const _ = themeVersion.value;
+  return createGaugeOption(memUsage.value, "--sl-success", i18n.t("home.memory"));
+});
+const diskGaugeOption = computed(() => {
+  //@ts-ignore
+  const _ = themeVersion.value;
+  return createGaugeOption(diskUsage.value, "--sl-warning", i18n.t("home.disk"));
+});
+
+// 折线图公共配置
+const baseLineConfig: EChartsOption = {
+  ...baseChartConfig,
+  grid: {
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    show: false,
+  },
+  xAxis: {
+    type: "category",
+    show: false,
+    boundaryGap: false,
+  },
+  yAxis: {
+    type: "value",
+    show: false,
+    min: 0,
+    max: 100,
+  },
+};
+
+// 折线图配置生成函数
+const createLineOption = (data: number[], colorVar: string): EChartsOption => {
+  const color = getCssVar(colorVar, "#3b82f6");
+
+  return {
+    ...baseLineConfig,
+    xAxis: {
+      ...baseLineConfig.xAxis,
+      data: data.map((_, i) => i),
+    },
+    series: [
+      {
+        type: "line",
+        data: data,
+        smooth: false,
+        symbol: "none",
+        lineStyle: {
+          width: 2,
+          color: color,
+        },
+        areaStyle: {
+          color: color,
+          opacity: 0.15,
+        },
+      },
+    ],
+  };
+};
+
+const cpuLineOption = computed(() => {
+  const _ = themeVersion.value;
+  return createLineOption(cpuHistory.value, "--sl-primary");
+});
+const memLineOption = computed(() => {
+  const _ = themeVersion.value;
+  return createLineOption(memHistory.value, "--sl-success");
+});
+
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-// 一言 API 相关
 interface HitokotoResponse {
   id: number;
   hitokoto: string;
@@ -92,23 +276,14 @@ function typeWriterOut(callback?: () => void) {
   }, 30);
 }
 
-/**
- * 从一言 API 获取名言
- */
 async function fetchHitokoto(): Promise<{ text: string; author: string }> {
-  console.log("获取一言，当前缓存数量:", quoteCache.value.length);
-  // 优先从缓存中获取
   if (quoteCache.value.length > 0) {
     const quote = quoteCache.value.shift();
-    console.log("从缓存中获取一言:", quote);
-    console.log("缓存剩余数量:", quoteCache.value.length);
-    // 异步补充缓存
     replenishCache();
     return quote!;
   }
 
   try {
-    console.log("缓存为空，从API获取一言");
     const response = await fetch("https://v1.hitokoto.cn/?encode=json");
     if (!response.ok) {
       throw new Error("Failed to fetch hitokoto");
@@ -118,31 +293,20 @@ async function fetchHitokoto(): Promise<{ text: string; author: string }> {
       text: data.hitokoto,
       author: data.from_who || data.from || i18n.t("common.unknown"),
     };
-    console.log("从API获取一言成功:", quote);
-    // 补充缓存
     replenishCache();
     return quote;
   } catch (error) {
     console.error("Error fetching hitokoto:", error);
-    // 失败时返回默认名言
     const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
-    console.log("使用默认一言:", defaultQuote);
     return defaultQuote;
   }
 }
 
-/**
- * 检查一言是否已在缓存中
- */
 function isQuoteInCache(quote: { text: string; author: string }): boolean {
   return quoteCache.value.some((cachedQuote) => cachedQuote.text === quote.text);
 }
 
-/**
- * 补充一言缓存，确保缓存中有至少2个一言，且不重复
- */
 async function replenishCache() {
-  console.log("开始补充缓存，当前缓存数量:", quoteCache.value.length);
   let attempts = 0;
   const maxAttempts = 10;
 
@@ -158,13 +322,9 @@ async function replenishCache() {
         author: data.from_who || data.from || i18n.t("common.unknown"),
       };
 
-      // 检查是否已在缓存中
       if (!isQuoteInCache(newQuote)) {
         quoteCache.value.push(newQuote);
-        console.log("补充缓存成功，当前缓存数量:", quoteCache.value.length);
-        console.log("新缓存的一言:", newQuote);
       } else {
-        console.log("一言已在缓存中，跳过:", newQuote.text.substring(0, 20) + "...");
         attempts++;
       }
     } catch (error) {
@@ -172,30 +332,16 @@ async function replenishCache() {
       break;
     }
   }
-
-  if (attempts >= maxAttempts) {
-    console.log("达到最大尝试次数，停止补充缓存");
-  }
 }
 
-/**
- * 更新名言
- */
 async function updateQuote() {
-  console.log("触发更新一言");
   if (isTyping.value) {
-    console.log("正在打字中，取消更新");
     return;
   }
-  // 先打字消失
   typeWriterOut(async () => {
     try {
-      console.log("开始获取新一言");
       const newQuote = await fetchHitokoto();
-      console.log("获取新一言成功:", newQuote);
       currentQuote.value = newQuote;
-      // 再打字出现
-      console.log("开始打字显示新一言");
       typeWriter(newQuote.text);
     } catch (error) {
       console.error("Error updating quote:", error);
@@ -203,10 +349,8 @@ async function updateQuote() {
   });
 }
 
-// 初始化打字机效果
 async function initQuote() {
   try {
-    // 确保缓存中有足够的一言
     await replenishCache();
     const initialQuote = await fetchHitokoto();
     currentQuote.value = initialQuote;
@@ -216,12 +360,10 @@ async function initQuote() {
   }
 }
 
-// 初始化获取名言
 initQuote();
 
 let quoteTimer: ReturnType<typeof setInterval> | null = null;
 
-// 格式化字节
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -230,13 +372,11 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-// 格式化服务器路径，只显示 servers 目录及其后面的内容
 function formatServerPath(path: string): string {
   const serversIndex = path.indexOf("servers/");
   if (serversIndex !== -1) {
     return path.substring(serversIndex);
   }
-  // 尝试使用反斜杠查找
   const serversIndexBackslash = path.indexOf("servers\\");
   if (serversIndexBackslash !== -1) {
     return path.substring(serversIndexBackslash);
@@ -244,7 +384,6 @@ function formatServerPath(path: string): string {
   return path;
 }
 
-// Recent warning/error logs across all servers
 const recentAlerts = computed(() => {
   const alerts: { server: string; line: string }[] = [];
   for (const [sid, logs] of Object.entries(consoleStore.logs)) {
@@ -270,10 +409,7 @@ onMounted(() => {
   const loadServers = async () => {
     try {
       await store.refreshList();
-      // 服务器列表加载完成后，异步加载每个服务器的状态
-      for (const s of store.servers) {
-        await store.refreshStatus(s.id);
-      }
+      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
@@ -304,28 +440,50 @@ onMounted(() => {
   fetchSystemInfo();
 
   // 设置定时任务
-  statsTimer = setInterval(fetchSystemInfo, 1000);
+  statsTimer = setInterval(fetchSystemInfo, 3000);
 
   // 名言每30秒更新一次
   quoteTimer = setInterval(updateQuote, 30000);
 
   // Refresh server statuses
   refreshTimer = setInterval(async () => {
-    for (const s of store.servers) {
-      await store.refreshStatus(s.id);
-    }
+    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
   }, 3000);
 
   // 添加全局点击事件监听器，点击空白区域收回删除确认输入框
   document.addEventListener("click", handleClickOutside);
+
+  // 监听主题和无障碍模式变化
+  themeObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (
+        mutation.type === "attributes" &&
+        (mutation.attributeName === "data-theme" || mutation.attributeName === "data-senior")
+      ) {
+        themeVersion.value++;
+      }
+    });
+  });
+
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme", "data-senior"],
+  });
 });
 
 onUnmounted(() => {
+  if (typeTimer) clearInterval(typeTimer);
   if (statsTimer) clearInterval(statsTimer);
   if (refreshTimer) clearInterval(refreshTimer);
   if (quoteTimer) clearInterval(quoteTimer);
   // 移除全局点击事件监听器
   document.removeEventListener("click", handleClickOutside);
+
+  // 清理 MutationObserver
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
+  }
 });
 
 // 处理点击空白区域的逻辑
@@ -399,7 +557,7 @@ async function handleStop(id: string) {
 }
 
 // 开始就地编辑服务器名称
-function startEditServerName(server: any) {
+function startEditServerName(server: ServerInstance) {
   editingServerId.value = server.id;
   editName.value = server.name;
 }
@@ -436,7 +594,7 @@ const deleteError = ref<string | null>(null);
 const isClosing = ref(false);
 
 // 显示/收回删除确认输入框
-function showDeleteConfirmInput(server: any) {
+function showDeleteConfirmInput(server: ServerInstance) {
   // 如果当前服务器的删除确认输入框已显示，则收回
   if (deletingServerId.value === server.id) {
     cancelDelete();
@@ -548,29 +706,8 @@ function handleAnimationEnd(event: AnimationEvent) {
                 statsViewMode === 'gauge' ? i18n.t('home.detail_view') : i18n.t('home.gauge_view')
               "
             >
-              <svg
-                v-if="statsViewMode === 'gauge'"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <svg
-                v-else
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </svg>
+              <Menu v-if="statsViewMode === 'gauge'" :size="14" />
+              <Gauge v-else :size="14" />
             </button>
           </div>
         </template>
@@ -583,83 +720,46 @@ function handleAnimationEnd(event: AnimationEvent) {
         <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
           <div class="gauge-grid">
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-cpu"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${cpuUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                <span class="gauge-value">{{ cpuUsage }}%</span>
-                <span class="gauge-label">CPU</span>
-              </div>
+              <v-chart
+                class="gauge-chart"
+                :option="cpuGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-mem"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${memUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                <span class="gauge-value">{{ memUsage }}%</span>
-                <span class="gauge-label">内存</span>
-              </div>
+              <v-chart
+                class="gauge-chart"
+                :option="memGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-disk"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${diskUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                <span class="gauge-value">{{ diskUsage }}%</span>
-                <span class="gauge-label">磁盘</span>
-              </div>
+              <v-chart
+                class="gauge-chart"
+                :option="diskGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
             <div class="gauge-detail-item">
-              <span class="detail-label">CPU</span
-              ><span class="detail-value">{{ systemInfo.cpu.count }} 核心</span>
+              <span class="detail-label">{{ i18n.t("home.cpu") }}</span
+              ><span class="detail-value"
+                >{{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
+              >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">内存</span
+              <span class="detail-label">{{ i18n.t("home.memory") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.memory.used) }} /
                 {{ formatBytes(systemInfo.memory.total) }}</span
               >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">磁盘</span
+              <span class="detail-label">{{ i18n.t("home.disk") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.disk.used) }} /
                 {{ formatBytes(systemInfo.disk.total) }}</span
@@ -672,124 +772,41 @@ function handleAnimationEnd(event: AnimationEvent) {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >CPU<span v-if="systemInfo" class="stat-detail">
-                  · {{ systemInfo.cpu.count }} 核心</span
+                >{{ i18n.t("home.cpu")
+                }}<span v-if="systemInfo" class="stat-detail">
+                  · {{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
                 ></span
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
             </div>
-            <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
-                <!-- 网格线 -->
-                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8" />
-                  <line x1="0" y1="16" x2="300" y2="16" />
-                  <line x1="0" y1="24" x2="300" y2="24" />
-                  <line x1="0" y1="32" x2="300" y2="32" />
-                </g>
-                <!-- 填充区域 -->
-                <polygon
-                  :points="
-                    '0,40 ' +
-                    cpuHistory
-                      .map(
-                        (v, i) =>
-                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ') +
-                    ' 300,40'
-                  "
-                  fill="var(--sl-primary)"
-                  fill-opacity="0.15"
-                />
-                <!-- 曲线 -->
-                <polyline
-                  :points="
-                    cpuHistory
-                      .map(
-                        (v, i) =>
-                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ')
-                  "
-                  fill="none"
-                  stroke="var(--sl-primary)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+            <div class="mini-chart">
+              <v-chart class="line-chart" :option="cpuLineOption" autoresize />
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >内存<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.memory")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.memory.used) }} /
                   {{ formatBytes(systemInfo.memory.total) }}</span
                 ></span
               >
               <span class="stat-value">{{ memUsage }}%</span>
             </div>
-            <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
-                <!-- 网格线 -->
-                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8" />
-                  <line x1="0" y1="16" x2="300" y2="16" />
-                  <line x1="0" y1="24" x2="300" y2="24" />
-                  <line x1="0" y1="32" x2="300" y2="32" />
-                </g>
-                <!-- 填充区域 -->
-                <polygon
-                  :points="
-                    '0,40 ' +
-                    memHistory
-                      .map(
-                        (v, i) =>
-                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ') +
-                    ' 300,40'
-                  "
-                  fill="var(--sl-success)"
-                  fill-opacity="0.15"
-                />
-                <!-- 曲线 -->
-                <polyline
-                  :points="
-                    memHistory
-                      .map(
-                        (v, i) =>
-                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ')
-                  "
-                  fill="none"
-                  stroke="var(--sl-success)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+            <div class="mini-chart">
+              <v-chart class="line-chart" :option="memLineOption" autoresize />
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >磁盘<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.disk") }}
+                <span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.disk.used) }} /
-                  {{ formatBytes(systemInfo.disk.total) }}</span
-                ></span
-              >
+                  {{ formatBytes(systemInfo.disk.total) }}
+                </span>
+              </span>
               <span class="stat-value">{{ diskUsage }}%</span>
             </div>
             <SLProgress :value="diskUsage" variant="warning" :showPercent="false" />
@@ -798,7 +815,6 @@ function handleAnimationEnd(event: AnimationEvent) {
       </SLCard>
     </div>
 
-    <!-- Server List -->
     <div class="section-header">
       <h3 class="section-title">
         {{ i18n.t("home.title") }}
@@ -812,17 +828,7 @@ function handleAnimationEnd(event: AnimationEvent) {
     </div>
 
     <div v-else-if="store.servers.length === 0" class="empty-state">
-      <svg
-        width="64"
-        height="64"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="var(--sl-text-tertiary)"
-        stroke-width="1"
-        stroke-linecap="round"
-      >
-        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
+      <Server :size="64" :stroke-width="1" class="empty-icon" />
       <p class="text-body">{{ i18n.t("home.no_servers") }}</p>
       <p class="text-caption">{{ i18n.t("home.create_first") }}</p>
     </div>
@@ -850,39 +856,14 @@ function handleAnimationEnd(event: AnimationEvent) {
                       :disabled="!editName.trim() || editLoading"
                       :class="{ loading: editLoading }"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
+                      <Check :size="16" />
                     </button>
                     <button
                       class="inline-edit-btn cancel"
                       @click="cancelEdit"
                       :disabled="editLoading"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
+                      <X :size="16" />
                     </button>
                   </div>
                 </div>
@@ -894,19 +875,7 @@ function handleAnimationEnd(event: AnimationEvent) {
                   @click="startEditServerName(server)"
                   :title="i18n.t('common.edit_server_name')"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                  </svg>
+                  <Pencil :size="16" />
                 </button>
               </template>
             </div>
@@ -929,21 +898,7 @@ function handleAnimationEnd(event: AnimationEvent) {
           @click="systemApi.openFolder(server.path)"
         >
           <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
-          <svg
-            class="folder-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-            />
-          </svg>
+          <FolderOpen class="folder-icon" :size="16" />
         </div>
 
         <div class="server-card-actions">
@@ -992,7 +947,6 @@ function handleAnimationEnd(event: AnimationEvent) {
           <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
             {{ i18n.t("home.delete") }}
           </SLButton>
-          <!-- 删除确认输入框 -->
           <div
             v-if="deletingServerId === server.id"
             :class="['delete-confirm-input', { closing: isClosing }]"
@@ -1000,7 +954,11 @@ function handleAnimationEnd(event: AnimationEvent) {
           >
             <p
               class="delete-confirm-message"
-              v-html="i18n.t('home.delete_confirm_message', { server: '<strong>' + server.name + '</strong>' })"
+              v-html="
+                i18n.t('home.delete_confirm_message', {
+                  server: '<strong>' + server.name + '</strong>',
+                })
+              "
             ></p>
             <div class="delete-input-group">
               <input
@@ -1027,7 +985,6 @@ function handleAnimationEnd(event: AnimationEvent) {
       </div>
     </div>
 
-    <!-- Recent Alerts -->
     <div v-if="recentAlerts.length > 0" class="alerts-section">
       <h3 class="section-title">{{ i18n.t("home.recent_alerts") }}</h3>
       <div class="alerts-list">
@@ -1045,6 +1002,26 @@ function handleAnimationEnd(event: AnimationEvent) {
         </div>
       </div>
     </div>
+
+    <SLConfirmDialog
+      :visible="showDeleteConfirm"
+      :title="i18n.t('home.delete_server')"
+      :message="
+        i18n.t('home.delete_confirm_message', {
+          server: '<strong>' + deleteServerName + '</strong>',
+        })
+      "
+      :confirmText="i18n.t('home.delete_confirm')"
+      :cancelText="i18n.t('home.delete_cancel')"
+      confirmVariant="danger"
+      :requireInput="true"
+      :inputPlaceholder="i18n.t('home.delete_input_placeholder')"
+      :expectedInput="deleteServerName"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+      @close="closeDeleteConfirm"
+      dangerous
+    />
   </div>
 </template>
 
@@ -1189,16 +1166,12 @@ function handleAnimationEnd(event: AnimationEvent) {
 .mini-chart {
   width: 100%;
   height: 30px;
-}
-
-.mini-chart.taskmgr-style {
   background: var(--sl-bg-secondary);
   border-radius: 4px;
   overflow: hidden;
-  width: 100%;
 }
 
-.mini-chart.taskmgr-style .chart-svg {
+.line-chart {
   width: 100%;
   height: 100%;
 }
@@ -1376,7 +1349,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   border-color: var(--sl-primary-light);
 }
 
-/* 就地编辑样式 */
 .inline-edit {
   display: flex;
   align-items: center;
@@ -1537,7 +1509,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   }
 }
 
-/* 删除确认输入框样式 */
 .delete-confirm-input {
   width: 100%;
   margin-top: var(--sl-space-sm);
@@ -1636,7 +1607,6 @@ function handleAnimationEnd(event: AnimationEvent) {
   margin-top: var(--sl-space-sm);
 }
 
-/* Alerts */
 .alerts-section {
   margin-top: var(--sl-space-sm);
 }
@@ -1721,51 +1691,20 @@ function handleAnimationEnd(event: AnimationEvent) {
   gap: var(--sl-space-xs);
   padding: 0;
   margin-bottom: 4px;
+  min-height: 70px;
 }
 .gauge-item {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
-.gauge-svg {
+.gauge-chart {
   width: 100%;
   height: 100%;
-  transform: rotate(-90deg);
-}
-.gauge-bg {
-  stroke: var(--sl-border);
-}
-.gauge-fill {
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.3s;
-}
-.gauge-cpu {
-  stroke: var(--sl-primary);
-}
-.gauge-mem {
-  stroke: var(--sl-success);
-}
-.gauge-disk {
-  stroke: #f59e0b;
-}
-.gauge-text {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.2;
-}
-.gauge-value {
-  font-size: 0.75rem;
-  font-weight: 600;
-  font-family: var(--sl-font-mono);
-}
-.gauge-label {
-  font-size: 0.5625rem;
-  color: var(--sl-text-tertiary);
 }
 
 .gauge-details {

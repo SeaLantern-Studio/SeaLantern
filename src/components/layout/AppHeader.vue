@@ -2,13 +2,13 @@
 import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, Square, X, ChevronDown, ChevronUp } from "lucide-vue-next";
 import { useI18nStore } from "../../stores/i18nStore";
-import { i18n } from "../../locales";
+import { i18n } from "../../language";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings } from "../../api/settings";
-import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
-
+import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
@@ -27,16 +27,104 @@ const pageTitle = computed(() => {
   return i18n.t("common.app_name");
 });
 
-const languageOptions = computed(() =>
-  i18nStore.localeOptions.map((option) => ({
-    code: option.code,
-    label: i18n.t(option.labelKey),
-  })),
-);
+const primaryLanguages = computed(() => {
+  // 为了确保语言切换时重新计算，我们使用 i18nStore.currentLocale 作为依赖
+  const currentLocale = i18nStore.currentLocale;
+  const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
+
+  return primaryCodes.map((code) => {
+    // 尝试从语言文件中获取 languageName
+    const translations = i18n.getTranslations();
+    const languageName = translations[code as keyof typeof translations]?.languageName;
+
+    // 如果有 languageName，直接使用；否则使用原来的标签键
+    let label = "";
+    if (languageName) {
+      label = languageName;
+    } else {
+      const labelKey = {
+        "zh-CN": "header.chinese",
+        "en-US": "header.english",
+        "zh-TW": "header.chinese_tw",
+        "ja-JP": "header.japanese",
+      }[code];
+      label = i18n.t(labelKey || "header.english");
+    }
+
+    return {
+      code,
+      label,
+    };
+  });
+});
+
+const otherLanguages = computed(() => {
+  // 为了确保语言切换时重新计算，我们使用 i18nStore.currentLocale 作为依赖
+  const currentLocale = i18nStore.currentLocale;
+  const primaryCodes = new Set(["zh-CN", "zh-TW", "en-US", "ja-JP"]);
+  const allLocales = i18n.getAvailableLocales();
+
+  return allLocales
+    .filter((code) => !primaryCodes.has(code))
+    .map((code) => {
+      // 尝试从语言文件中获取 languageName
+      const translations = i18n.getTranslations();
+      const languageName = translations[code as keyof typeof translations]?.languageName;
+
+      // 如果有 languageName，直接使用；否则使用原来的标签键
+      let label = "";
+      if (languageName) {
+        label = languageName;
+      } else {
+        const labelKey = {
+          "de-DE": "header.deutsch",
+          "es-ES": "header.spanish",
+          "ru-RU": "header.russian",
+          "vi-VN": "header.vietnamese",
+          "ko-KR": "header.korean",
+          "fr-FA": "header.french",
+        }[code];
+        label = i18n.t(labelKey || code);
+      }
+
+      return {
+        code,
+        label,
+      };
+    });
+});
+
+const showMoreLanguages = ref(false);
+
+function toggleMoreLanguages() {
+  showMoreLanguages.value = !showMoreLanguages.value;
+}
 
 const currentLanguageText = computed(() => {
-  const current = languageOptions.value.find((option) => option.code === (i18nStore.currentLocale as any).value || i18nStore.currentLocale);
-  return current?.label ?? i18n.t("header.english");
+  const currentLocale = i18nStore.currentLocale;
+
+  // 尝试从语言文件中获取 languageName
+  const translations = i18n.getTranslations();
+  const languageName = translations[currentLocale as keyof typeof translations]?.languageName;
+
+  if (languageName) {
+    return languageName;
+  }
+
+  // 如果没有 languageName，使用原来的逻辑
+  const labelKey = {
+    "zh-CN": "header.chinese",
+    "en-US": "header.english",
+    "zh-TW": "header.chinese_tw",
+    "de-DE": "header.deutsch",
+    "es-ES": "header.spanish",
+    "ja-JP": "header.japanese",
+    "ru-RU": "header.russian",
+    "vi-VN": "header.vietnamese",
+    "ko-KR": "header.korean",
+    "fr-FA": "header.french",
+  }[currentLocale];
+  return labelKey ? i18n.t(labelKey) : i18n.t("header.english");
 });
 
 onMounted(async () => {
@@ -95,7 +183,9 @@ async function handleCloseOption(option: string) {
   if (option === "minimize") {
     await minimizeToTray();
   } else {
-    await appWindow.close();
+    // 使用 exit() 强制退出应用，绕过 CloseRequested 事件
+    const { exit } = await import("@tauri-apps/plugin-process");
+    await exit(0);
   }
   showCloseModal.value = false;
   rememberChoice.value = false;
@@ -134,7 +224,11 @@ async function handleLanguageClick(locale: string) {
 function computeOverallProgress() {
   const locales = Object.keys(perLocaleProgress);
   if (locales.length === 0) return 0;
-  const completed = locales.filter((k) => perLocaleProgress[k].total && perLocaleProgress[k].loaded >= (perLocaleProgress[k].total ?? 0)).length;
+  const completed = locales.filter(
+    (k) =>
+      perLocaleProgress[k].total &&
+      perLocaleProgress[k].loaded >= (perLocaleProgress[k].total ?? 0),
+  ).length;
   return Math.round((completed / locales.length) * 100);
 }
 </script>
@@ -153,17 +247,67 @@ function computeOverallProgress() {
           {{ currentLanguageText }}
         </MenuButton>
         <MenuItems class="language-menu">
-          <MenuItem v-for="option in languageOptions" :key="option.code" as="div">
+          <!-- 主要语言 -->
+          <MenuItem
+            v-for="option in primaryLanguages"
+            :key="option.code"
+            as="div"
+            @click="
+              (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleLanguageClick(option.code);
+              }
+            "
+          >
             <div class="language-item">
-              <div class="language-item-main" @click.stop="() => handleLanguageClick(option.code)">
+              <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
-                <span class="locale-progress" v-if="i18nStore.getLocaleProgress(option.code) > 0">{{ i18nStore.getLocaleProgress(option.code) }}%</span>
-                <span class="locale-progress-bar" v-if="i18nStore.getLocaleProgress(option.code) > 0 && i18nStore.getLocaleProgress(option.code) < 100">
-                  <span class="locale-progress-bar-inner" :style="{ width: i18nStore.getLocaleProgress(option.code) + '%' }"></span>
-                </span>
               </div>
             </div>
           </MenuItem>
+
+          <!-- 更多语言选项 -->
+          <MenuItem
+            as="div"
+            @click="
+              (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMoreLanguages();
+              }
+            "
+            class="language-item-full-width"
+          >
+            <div class="language-item language-item-arrow">
+              <div class="language-item-main">
+                <ChevronDown v-if="!showMoreLanguages" :size="16" class="arrow-icon" />
+                <ChevronUp v-else :size="16" class="arrow-icon" />
+              </div>
+            </div>
+          </MenuItem>
+
+          <!-- 其他语言（仅在展开时显示） -->
+          <template v-if="showMoreLanguages">
+            <MenuItem
+              v-for="option in otherLanguages"
+              :key="option.code"
+              as="div"
+              @click="
+                (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleLanguageClick(option.code);
+                }
+              "
+            >
+              <div class="language-item">
+                <div class="language-item-main">
+                  <span class="language-label">{{ option.label }}</span>
+                </div>
+              </div>
+            </MenuItem>
+          </template>
         </MenuItems>
       </Menu>
 
@@ -174,33 +318,13 @@ function computeOverallProgress() {
 
       <div class="window-controls">
         <button class="win-btn" @click="minimizeWindow" title="最小化">
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <rect x="1" y="5.5" width="10" height="1" fill="currentColor" />
-          </svg>
+          <Minus :size="12" />
         </button>
         <button class="win-btn" @click="toggleMaximize" title="最大化">
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <rect
-              x="1.5"
-              y="1.5"
-              width="9"
-              height="9"
-              rx="1"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1"
-            />
-          </svg>
+          <Square :size="12" />
         </button>
         <button class="win-btn win-btn-close" @click="closeWindow" title="关闭">
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <path
-              d="M2 2l8 8M10 2l-8 8"
-              stroke="currentColor"
-              stroke-width="1.2"
-              stroke-linecap="round"
-            />
-          </svg>
+          <X :size="12" />
         </button>
       </div>
     </div>
@@ -322,7 +446,7 @@ function computeOverallProgress() {
 
 .win-btn-close:hover {
   background: var(--sl-error);
-  color: white;
+  color: var(--sl-text-inverse);
 }
 
 /* locale download UI removed */
@@ -391,25 +515,20 @@ function computeOverallProgress() {
   color: var(--sl-primary);
 }
 
-.language-item { display:flex; align-items:center; justify-content:space-between; gap:8px }
-.language-item-main { flex:1 }
-.language-item-action { flex:0 0 auto }
-.locale-progress { font-size: 0.75rem; margin-left: 8px; color: var(--sl-text-tertiary) }
-.language-label { display:inline-block }
-.locale-progress-bar {
-  display: inline-block;
-  width: 72px;
-  height: 6px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 6px;
-  margin-left: 8px;
-  vertical-align: middle;
-  overflow: hidden;
+.language-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
-.locale-progress-bar-inner {
-  height: 100%;
-  background: linear-gradient(90deg, var(--sl-primary), var(--sl-success));
-  transition: width 0.2s linear;
+.language-item-main {
+  flex: 1;
+}
+.language-item-action {
+  flex: 0 0 auto;
+}
+.language-label {
+  display: inline-block;
 }
 
 .language-menu::-webkit-scrollbar {
@@ -427,6 +546,21 @@ function computeOverallProgress() {
 
 .language-menu::-webkit-scrollbar-thumb:hover {
   background: var(--sl-text-tertiary);
+}
+
+/* 让更多语言选项占据两列宽度 */
+.language-item-full-width {
+  grid-column: span 2;
+}
+
+/* 箭头图标居中 */
+.language-item-arrow {
+  justify-content: center;
+}
+
+.arrow-icon {
+  color: var(--sl-text-secondary);
+  transition: transform var(--sl-transition-fast);
 }
 
 .click-outside {

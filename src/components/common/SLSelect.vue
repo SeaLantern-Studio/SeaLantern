@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
-import { i18n } from "../../locales";
+import { Check, ChevronDown, Loader2, Search } from "lucide-vue-next";
+import { i18n } from "../../language";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
 
 interface Option {
   label: string;
@@ -18,6 +20,7 @@ interface Props {
   loading?: boolean;
   maxHeight?: string;
   previewFont?: boolean;
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -27,6 +30,18 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   maxHeight: "280px",
   previewFont: false,
+});
+
+const _selectId = props.componentId ?? `sl-select-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(_selectId, {
+  type: "SLSelect",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", value as string | number);
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => containerRef.value,
 });
 
 const emit = defineEmits<{
@@ -63,13 +78,33 @@ const filteredOptions = computed(() => {
 const updateDropdownPosition = () => {
   if (!containerRef.value) return;
   const rect = containerRef.value.getBoundingClientRect();
-  dropdownStyle.value = {
-    position: "fixed",
-    top: `${rect.bottom + 4}px`,
-    left: `${rect.left}px`,
-    width: `${rect.width}px`,
-    zIndex: "99999",
-  };
+  const viewportHeight = window.innerHeight;
+  const dropdownMaxHeight = parseInt(props.maxHeight) || 280;
+  const spaceBelow = viewportHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  const gap = 4;
+
+  const openUpward = spaceBelow < dropdownMaxHeight + gap && spaceAbove > spaceBelow;
+
+  if (openUpward) {
+    dropdownStyle.value = {
+      position: "fixed",
+      bottom: `${viewportHeight - rect.top + gap}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      zIndex: "99999",
+      maxHeight: `${Math.min(spaceAbove - gap, dropdownMaxHeight)}px`,
+    };
+  } else {
+    dropdownStyle.value = {
+      position: "fixed",
+      top: `${rect.bottom + gap}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      zIndex: "99999",
+      maxHeight: `${Math.min(spaceBelow - gap, dropdownMaxHeight)}px`,
+    };
+  }
 };
 
 const toggleDropdown = () => {
@@ -96,7 +131,7 @@ const selectOption = (option: Option) => {
 
 const handleKeydown = (e: KeyboardEvent) => {
   if (!isOpen.value) {
-    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       toggleDropdown();
     }
@@ -115,7 +150,26 @@ const handleKeydown = (e: KeyboardEvent) => {
     scrollToHighlighted();
   };
 
+  const handleHome = () => {
+    e.preventDefault();
+    highlightedIndex.value = 0;
+    scrollToHighlighted();
+  };
+
+  const handleEnd = () => {
+    e.preventDefault();
+    highlightedIndex.value = filteredOptions.value.length - 1;
+    scrollToHighlighted();
+  };
+
   const handleEnter = () => {
+    e.preventDefault();
+    if (highlightedIndex.value >= 0 && filteredOptions.value[highlightedIndex.value]) {
+      selectOption(filteredOptions.value[highlightedIndex.value]);
+    }
+  };
+
+  const handleSpace = () => {
     e.preventDefault();
     if (highlightedIndex.value >= 0 && filteredOptions.value[highlightedIndex.value]) {
       selectOption(filteredOptions.value[highlightedIndex.value]);
@@ -129,8 +183,17 @@ const handleKeydown = (e: KeyboardEvent) => {
     case "ArrowUp":
       handleArrowUp();
       break;
+    case "Home":
+      handleHome();
+      break;
+    case "End":
+      handleEnd();
+      break;
     case "Enter":
       handleEnter();
+      break;
+    case " ":
+      handleSpace();
       break;
     case "Escape":
       isOpen.value = false;
@@ -198,11 +261,15 @@ onUnmounted(() => {
       role="combobox"
       :aria-expanded="isOpen"
       :aria-disabled="disabled"
+      :aria-owns="isOpen ? 'sl-select-listbox' : undefined"
+      :aria-activedescendant="
+        isOpen && highlightedIndex >= 0
+          ? `option-${filteredOptions[highlightedIndex].value}`
+          : undefined
+      "
     >
       <span v-if="loading" class="sl-select-loading" aria-live="polite">
-        <svg class="spinner" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" />
-        </svg>
+        <Loader2 class="spinner" :size="16" aria-hidden="true" />
         {{ i18n.t("common.loading") }}
       </span>
       <span
@@ -214,39 +281,19 @@ onUnmounted(() => {
       </span>
       <span v-else class="sl-select-placeholder">{{ placeholder }}</span>
 
-      <svg
+      <ChevronDown
         class="sl-select-arrow"
         :class="{ open: isOpen }"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
+        :size="16"
         aria-hidden="true"
-      >
-        <path d="M6 9l6 6 6-6" />
-      </svg>
+      />
     </div>
 
     <Teleport to="body">
       <Transition name="dropdown">
         <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef" :style="dropdownStyle">
           <div v-if="searchable" class="sl-select-search">
-            <svg
-              class="search-icon"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
+            <Search class="search-icon" :size="16" aria-hidden="true" />
             <input
               ref="inputRef"
               v-model="searchQuery"
@@ -258,13 +305,24 @@ onUnmounted(() => {
             />
           </div>
 
-          <div class="sl-select-options" :style="{ maxHeight }" role="presentation">
-            <div v-if="filteredOptions.length === 0" class="sl-select-empty">
+          <div
+            id="sl-select-listbox"
+            class="sl-select-options"
+            :style="{ maxHeight }"
+            role="listbox"
+            :aria-activedescendant="
+              highlightedIndex >= 0
+                ? `option-${filteredOptions[highlightedIndex].value}`
+                : undefined
+            "
+          >
+            <div v-if="filteredOptions.length === 0" class="sl-select-empty" role="presentation">
               {{ i18n.t("common.no_match") }}
             </div>
             <div
               v-for="(option, index) in filteredOptions"
               :key="option.value"
+              :id="`option-${option.value}`"
               class="sl-select-option"
               :class="{
                 selected: option.value === modelValue,
@@ -275,24 +333,18 @@ onUnmounted(() => {
               @mouseenter="highlightedIndex = index"
               role="option"
               :aria-selected="option.value === modelValue"
+              tabindex="-1"
             >
               <span class="option-label-wrap">
                 <span class="option-label">{{ option.label }}</span>
                 <span v-if="option.subLabel" class="option-sublabel">{{ option.subLabel }}</span>
               </span>
-              <svg
+              <Check
                 v-if="option.value === modelValue"
                 class="check-icon"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
+                :size="16"
                 aria-hidden="true"
-              >
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
+              />
             </div>
           </div>
         </div>
@@ -401,17 +453,14 @@ onUnmounted(() => {
 <style>
 /* 下拉框样式 - 非 scoped，因为使用 Teleport 渲染到 body */
 .sl-select-dropdown {
-  background: #1e2130;
+  background: var(--sl-surface, #1e2130);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
   backdrop-filter: blur(20px);
   will-change: transform, opacity;
-}
-
-:root[data-theme="light"] .sl-select-dropdown {
-  background: var(--sl-surface, #ffffff);
+  color: var(--sl-text-primary);
 }
 
 :root[data-acrylic="true"][data-theme="dark"] .sl-select-dropdown {
@@ -465,7 +514,7 @@ onUnmounted(() => {
 
 .sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb {
   background: var(--sl-border);
-  border-radius: var(--sl-radius-sm);
+  border-radius: 3px;
 }
 
 .sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb:hover {

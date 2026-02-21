@@ -1,59 +1,105 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { onPageChanged } from "../api/plugin";
 
 const routes = [
   {
     path: "/",
     name: "home",
     component: () => import("../views/HomeView.vue"),
-    meta: { titleKey: "common.home", icon: "home" },
+    meta: { title: "首页", icon: "home" },
   },
   {
     path: "/create",
     name: "create-server",
     component: () => import("../views/CreateServerView.vue"),
-    meta: { titleKey: "common.create_server", icon: "plus" },
+    meta: { title: "创建服务器", icon: "plus" },
   },
   {
     path: "/console/:id?",
     name: "console",
     component: () => import("../views/ConsoleView.vue"),
-    meta: { titleKey: "common.console", icon: "terminal" },
+    meta: { title: "控制台", icon: "terminal" },
   },
   {
     path: "/config/:id?",
     name: "config",
     component: () => import("../views/ConfigView.vue"),
-    meta: { titleKey: "common.config_edit", icon: "settings" },
+    meta: { title: "配置编辑", icon: "settings" },
   },
   {
     path: "/players/:id?",
     name: "players",
     component: () => import("../views/PlayerView.vue"),
-    meta: { titleKey: "common.player_manage", icon: "users" },
+    meta: { title: "玩家管理", icon: "users" },
+  },
+  {
+    path: "/plugins",
+    name: "plugins",
+    component: () => import("../views/PluginsView.vue"),
+    meta: { title: "插件", icon: "puzzle" },
+  },
+  {
+    path: "/market",
+    name: "market",
+    component: () => import("../views/MarketView.vue"),
+    meta: { title: "插件市场", icon: "store" },
   },
   {
     path: "/settings",
     name: "settings",
     component: () => import("../views/SettingsView.vue"),
-    meta: { titleKey: "common.settings", icon: "sliders" },
+    meta: { title: "设置", icon: "sliders" },
   },
   {
     path: "/paint",
     name: "paint",
     component: () => import("../views/PaintView.vue"),
-    meta: { titleKey: "common.personalize", icon: "paint" },
+    meta: { title: "个性化", icon: "palette" },
   },
   {
     path: "/about",
     name: "about",
     component: () => import("../views/AboutView.vue"),
-    meta: { titleKey: "common.about", icon: "info" },
+    meta: { title: "关于", icon: "info" },
+  },
+  {
+    path: "/plugin/:pluginId",
+    name: "plugin-page",
+    component: () => import("../views/PluginPageView.vue"),
+    props: true,
+    meta: { title: "插件设置", icon: "puzzle" },
+  },
+  {
+    path: "/plugin-category/:pluginId",
+    name: "plugin-category",
+    component: () => import("../views/PluginCategoryView.vue"),
+    props: true,
+    meta: { title: "插件分类", icon: "folder" },
   },
 ];
-
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+let pageChangedTimers: number[] = [];
+
+router.afterEach((to) => {
+  for (const t of pageChangedTimers) {
+    clearTimeout(t);
+  }
+  pageChangedTimers = [];
+
+  pageChangedTimers.push(
+    window.setTimeout(() => {
+      onPageChanged(to.path).catch(() => {});
+    }, 250),
+  );
+  pageChangedTimers.push(
+    window.setTimeout(() => {
+      onPageChanged(to.path).catch(() => {});
+    }, 900),
+  );
 });
 
 export default router;
