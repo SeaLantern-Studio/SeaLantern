@@ -116,8 +116,6 @@ jobs:
             ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
-    # Arch Linux 打包任务 - 修复 sudo 权限问题
-  # Arch Linux 打包任务 - 修复本地文件使用
   # Arch Linux 打包任务 - 修复文件名不匹配问题
   build-arch-package:
     needs: publish-tauri
