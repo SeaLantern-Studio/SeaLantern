@@ -104,7 +104,7 @@ jobs:
             echo "尝试查找所有可能的路径:"
             find "$WORKSPACE" -path "*/bundle/deb/*.deb" -type f 2>/dev/null || echo "未找到"
             exit 1
- fi
+            fi
 
       - name: 上传 Ubuntu 构建产物
         if: matrix.platform == 'ubuntu-24.04'
