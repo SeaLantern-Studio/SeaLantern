@@ -29,7 +29,7 @@
             :loading="loadingUrl"
             @click="startDownload"
           >
-            {{ i18n.t('settings.java_download_btn') }}
+            {{ downloadButtonText }}
           </SLButton>
         </template>
 
@@ -111,11 +111,15 @@ const installedPath = ref('');
 const unlistenProgress = ref<UnlistenFn | null>(null);
 
 const versionOptions = computed(() => [
-  { label: 'Java 8 (LTS)', value: '8' },
-  { label: 'Java 17 (LTS)', value: '17' },
-  { label: 'Java 21 (LTS)', value: '21' },
-  { label: 'Java 25 (LTS)', value: '25' }
+  { label: 'Java 8 (LTS)', value: String('8') },
+  { label: 'Java 17 (LTS)', value: String('17') },
+  { label: 'Java 21 (LTS)', value: String('21') },
+  { label: 'Java 25 (LTS)', value: String('25') }
 ]);
+
+const downloadButtonText = computed(() => {
+  return i18n.t('settings.java_download_btn', { version: selectedVersion.value });
+});
 
 const resetState = () => {
   errorMessage.value = '';
@@ -125,10 +129,10 @@ const resetState = () => {
   progress.value = 0;
 };
 
-const getDownloadUrl = async (version: string): Promise<string> => {
+const getDownloadUrl = (version: string | number): string => {
   // Construct URL for Adoptium API
   const baseUrl = "https://api.adoptium.net/v3/binary/latest";
-  const featureVersion = version;
+  const featureVersion = String(version);
   const releaseType = "ga";
 
   // Detect OS and Arch
@@ -163,11 +167,14 @@ const cancelDownload = async () => {
 };
 
 const startDownload = async () => {
+  const versionStr = String(selectedVersion.value);
+
   resetState();
   loadingUrl.value = true;
 
   try {
-    const url = await getDownloadUrl(selectedVersion.value);
+    const url = getDownloadUrl(versionStr);
+    const versionName = `jdk-${versionStr}`;
     loadingUrl.value = false;
     isDownloading.value = true;
     progress.value = 0;
@@ -193,7 +200,7 @@ const startDownload = async () => {
       }
     });
 
-    const resultPath = await javaApi.installJava(url, `jdk-${selectedVersion.value}`);
+    const resultPath = await javaApi.installJava(url, versionName);
 
     installedPath.value = resultPath;
     successMessage.value = 'Success'; // Just a flag, text is in template

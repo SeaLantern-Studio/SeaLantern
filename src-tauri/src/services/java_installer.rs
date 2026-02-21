@@ -60,9 +60,18 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
         },
     );
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .no_gzip()
+        .no_deflate()
+        .no_brotli()
+        .build()
+        .map_err(|e| format!("创建客户端失败: {}", e))?;
+
     let res = client
         .get(&url)
+        .header("Cache-Control", "no-cache, no-store, must-revalidate")
+        .header("Pragma", "no-cache")
+        .header("Expires", "0")
         .send()
         .await
         .map_err(|e| format!("下载请求失败: {}", e))?;
