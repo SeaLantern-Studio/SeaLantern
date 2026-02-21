@@ -108,6 +108,8 @@ pub fn run() {
             player_commands::export_logs,
             settings_commands::get_settings,
             settings_commands::save_settings,
+            settings_commands::save_settings_with_diff,
+            settings_commands::update_settings_partial,
             settings_commands::reset_settings,
             settings_commands::export_settings,
             settings_commands::import_settings,

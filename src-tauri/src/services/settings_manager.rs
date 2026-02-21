@@ -1,4 +1,4 @@
-use crate::models::settings::AppSettings;
+use crate::models::settings::{AppSettings, PartialSettings, SettingsGroup};
 use std::sync::Mutex;
 
 const SETTINGS_FILE: &str = "sea_lantern_settings.json";
@@ -6,6 +6,11 @@ const SETTINGS_FILE: &str = "sea_lantern_settings.json";
 pub struct SettingsManager {
     pub settings: Mutex<AppSettings>,
     pub data_dir: String,
+}
+
+pub struct UpdateResult {
+    pub settings: AppSettings,
+    pub changed_groups: Vec<SettingsGroup>,
 }
 
 impl SettingsManager {
@@ -22,6 +27,24 @@ impl SettingsManager {
     pub fn update(&self, new_settings: AppSettings) -> Result<(), String> {
         *self.settings.lock().unwrap() = new_settings.clone();
         save_settings(&self.data_dir, &new_settings)
+    }
+
+    pub fn update_with_diff(&self, new_settings: AppSettings) -> Result<UpdateResult, String> {
+        let old_settings = self.settings.lock().unwrap().clone();
+        let changed_groups = old_settings.get_changed_groups(&new_settings);
+        *self.settings.lock().unwrap() = new_settings.clone();
+        save_settings(&self.data_dir, &new_settings)?;
+        Ok(UpdateResult { settings: new_settings, changed_groups })
+    }
+
+    pub fn update_partial(&self, partial: PartialSettings) -> Result<UpdateResult, String> {
+        let old_settings = self.settings.lock().unwrap().clone();
+        let mut new_settings = old_settings.clone();
+        new_settings.merge_from(&partial);
+        let changed_groups = old_settings.get_changed_groups(&new_settings);
+        *self.settings.lock().unwrap() = new_settings.clone();
+        save_settings(&self.data_dir, &new_settings)?;
+        Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
     pub fn reset(&self) -> Result<AppSettings, String> {
