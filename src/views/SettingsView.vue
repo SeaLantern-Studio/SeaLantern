@@ -52,24 +52,6 @@ const backgroundSizeOptions = computed(() => [
   { label: i18n.t("common.background_size_auto"), value: "auto" },
 ]);
 
-const colorOptions = computed(() => {
-  const themes = getThemeOptions();
-  return [...themes, { label: i18n.t("common.color_custom"), value: "custom" }];
-});
-
-const editColorOptions = computed(() => [
-  { label: i18n.t("common.edit_color_light"), value: "light" },
-  { label: i18n.t("common.edit_color_dark"), value: "dark" },
-  { label: i18n.t("common.edit_color_light_acrylic"), value: "light_acrylic" },
-  { label: i18n.t("common.edit_color_dark_acrylic"), value: "dark_acrylic" },
-]);
-
-const themeOptions = computed(() => [
-  { label: i18n.t("common.theme_auto"), value: "auto" },
-  { label: i18n.t("common.theme_light"), value: "light" },
-  { label: i18n.t("common.theme_dark"), value: "dark" },
-]);
-
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("common.font_system_default"), value: "" },
 ]);
@@ -78,24 +60,8 @@ const showImportModal = ref(false);
 const importJson = ref("");
 const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
-const colorSettingsExpanded = ref(false);
 const bgPreviewLoaded = ref(false);
 const bgPreviewLoading = ref(false);
-
-const backgroundPreviewUrl = computed(() => {
-  if (!settings.value?.background_image) return "";
-  if (!bgSettingsExpanded.value) return "";
-  return convertFileSrc(settings.value.background_image);
-});
-
-function getFileExtension(path: string): string {
-  return path.split(".").pop()?.toLowerCase() || "";
-}
-
-function isAnimatedImage(path: string): boolean {
-  const ext = getFileExtension(path);
-  return ext === "gif" || ext === "webp" || ext === "apng";
-}
 
 onMounted(async () => {
   await loadSettings();
