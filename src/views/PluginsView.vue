@@ -768,7 +768,7 @@ function openRepository(url: string) {
 
 function goToMarket() {
   showDependencyModal.value = false;
-  router.push("/market");
+  router.push("/plugins?tab=market");
 }
 </script>
 
@@ -1371,6 +1371,7 @@ function goToMarket() {
   max-width: 900px;
   margin: 0 auto;
   font-family: var(--sl-font-sans);
+  min-height: 100%;
 }
 
 .page-header {

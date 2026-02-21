@@ -412,6 +412,7 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   font-family: var(--sl-font-sans);
+  min-height: 100%;
 }
 
 .market-header {

@@ -701,15 +701,30 @@ async function handleManualDownload() {
 
 .join-card {
   border: 2px dashed var(--sl-border);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   cursor: default;
 }
 
 .join-card:hover {
   border-color: var(--sl-primary-light);
   background: var(--sl-primary-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transform: none;
   box-shadow: none;
+}
+
+/* 暗色模式适配 */
+[data-theme="dark"] .join-card {
+  background: rgba(15, 17, 23, 0.7);
+}
+
+[data-theme="dark"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .join-icon {

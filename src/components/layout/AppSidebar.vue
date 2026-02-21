@@ -145,14 +145,6 @@ const staticNavItems: NavItem[] = [
     label: i18n.t("common.plugins") || "插件",
     group: "system",
   },
-  {
-    name: "market",
-    path: "/market",
-    icon: "store",
-    labelKey: "common.market",
-    label: i18n.t("common.market") || "插件市场",
-    group: "system",
-  },
 ];
 
 const pluginNavItems = computed<NavItem[]>(() => {
