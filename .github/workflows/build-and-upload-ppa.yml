@@ -246,9 +246,90 @@ jobs:
           	# Binary already built
           
           override_dh_auto_install:
-          	dpkg -x sea-lantern-ppa-updater_*.deb debian/sea-lantern-ppa-updater
+          	mkdir -p debian/sea-lantern-ppa-updater/opt/sealantern
+          	cp opt/sealantern/Sea.Lantern_*.deb debian/sea-lantern-ppa-updater/opt/sealantern/
           RULES
           chmod +x "${SOURCE_DIR}/debian/rules"
+          
+          # Create postinst script
+          cat > "${SOURCE_DIR}/debian/postinst" << 'POSTINST'
+          #!/bin/bash
+          set -e
+          
+          PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
+          if [ -z "$PACKAGE_VERSION" ]; then
+              PACKAGE_VERSION="0.6.5"
+          fi
+          
+          EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
+          
+          echo "Sea Lantern PPA updater package installed."
+          echo "Please run the following command to install Sea Lantern:"
+          echo "  sudo /opt/sealantern/install.sh"
+          
+          # Create installation script
+          cat > /opt/sealantern/install.sh << 'INSTALLSCRIPT'
+          #!/bin/bash
+          PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
+          if [ -z "$PACKAGE_VERSION" ]; then
+              PACKAGE_VERSION="0.6.5"
+          fi
+          
+          EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
+          
+          echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
+          
+          if [ -f "$EMBEDDED_DEB" ]; then
+              # 只解压文件，不进行任何 dpkg 操作
+              ar p "$EMBEDDED_DEB" data.tar.zst 2>/dev/null | tar --zstd -x -C / 2>/dev/null || \
+              ar p "$EMBEDDED_DEB" data.tar.xz 2>/dev/null | tar -xJ -C / 2>/dev/null || \
+              ar p "$EMBEDDED_DEB" data.tar.gz 2>/dev/null | tar -xz -C / 2>/dev/null
+              
+              rm -f "$EMBEDDED_DEB"
+              rm -f /opt/sealantern/install.sh
+              
+              echo "✅ Sea Lantern 文件已解压！"
+              echo "运行命令: sea-lantern"
+              
+              # 更新桌面数据库
+              if command -v update-desktop-database >/dev/null 2>&1; then
+                  update-desktop-database /usr/share/applications 2>/dev/null || true
+              fi
+              if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+                  gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+              fi
+          else
+              echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
+              exit 1
+          fi
+          INSTALLSCRIPT
+          
+          chmod +x /opt/sealantern/install.sh
+          POSTINST
+          chmod +x "${SOURCE_DIR}/debian/postinst"
+          
+          # Create prerm script
+          cat > "${SOURCE_DIR}/debian/prerm" << 'PRERM'
+          #!/bin/bash
+          set -e
+          
+          if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+              echo "正在卸载 Sea Lantern..."
+              
+              # 删除 Sea Lantern 的文件
+              rm -f /usr/bin/sea-lantern
+              rm -f /usr/share/applications/Sea\ Lantern.desktop
+              rm -rf /usr/share/icons/hicolor/*/apps/sea-lantern.png
+              rm -rf /usr/share/icons/hicolor/*/apps/Sea\ Lantern.png
+              rm -rf /var/lib/sealantern
+              
+              # 删除临时文件
+              rm -f /opt/sealantern/install.sh
+              
+              echo "✅ Sea Lantern 文件已删除"
+          fi
+          PRERM
+          chmod +x "${SOURCE_DIR}/debian/prerm"
           
           # Only use debhelper-compat, do NOT create debian/compat file
           echo "3.0 (native)" > "${SOURCE_DIR}/debian/source/format"
