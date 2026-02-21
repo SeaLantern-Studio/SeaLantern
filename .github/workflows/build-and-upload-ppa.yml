@@ -144,6 +144,8 @@ jobs:
           dpkg-deb --build "$PACKAGE_DIR"
           
           echo "✅ ${DISTRO} package created: ${PACKAGE_DIR}.deb"
+          echo "Package_VERSION was: ${Package_VERSION}"
+          ls -la ./ppa-build/
 
       - name: Setup GPG
         run: |
