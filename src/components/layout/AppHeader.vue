@@ -301,13 +301,13 @@ function computeOverallProgress() {
       </div>
 
       <div class="window-controls">
-        <button class="win-btn" @click="minimizeWindow" title="最小化">
+        <button class="win-btn" @click="minimizeWindow" :title="i18n.t('common.minimize')">
           <Minus :size="12" />
         </button>
-        <button class="win-btn" @click="toggleMaximize" title="最大化">
+        <button class="win-btn" @click="toggleMaximize" :title="i18n.t('common.maximize')">
           <Square :size="12" />
         </button>
-        <button class="win-btn win-btn-close" @click="closeWindow" title="关闭">
+        <button class="win-btn win-btn-close" @click="closeWindow" :title="i18n.t('common.close')">
           <X :size="12" />
         </button>
       </div>

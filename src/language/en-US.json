@@ -102,7 +102,14 @@
     "refresh": "Refresh",
     "save": "Save",
     "plugins": "Plugins",
-    "market": "Plugin Market"
+    "market": "Plugin Market",
+    "progress": "Progress",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "close": "Close",
+    "confirm_action": "Confirm Action",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   },
   "sidebar": {
     "groups": {

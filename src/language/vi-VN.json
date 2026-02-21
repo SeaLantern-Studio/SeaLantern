@@ -98,7 +98,18 @@
     "config_performance": "Hiệu suất",
     "config_display": "Hiển thị",
     "config_other": "Khác",
-    "config_saved": "Đã lưu cấu hình"
+    "config_saved": "Đã lưu cấu hình",
+    "refresh": "Làm mới",
+    "save": "Lưu",
+    "plugins": "Plugins",
+    "market": "Thị trường plugins",
+    "progress": "Tiến độ",
+    "minimize": "Thu nhỏ",
+    "maximize": "Phóng to",
+    "close": "Đóng",
+    "confirm_action": "Xác nhận hành động",
+    "confirm": "Xác nhận",
+    "cancel": "Hủy"
   },
   "sidebar": {
     "groups": {

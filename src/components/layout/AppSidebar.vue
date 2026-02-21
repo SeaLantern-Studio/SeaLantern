@@ -132,8 +132,8 @@ const staticNavItems: NavItem[] = [
     name: "plugins",
     path: "/plugins",
     icon: "puzzle",
-    labelKey: "",
-    label: "插件",
+    labelKey: "common.plugins",
+    label: i18n.t("common.plugins"),
     group: "system",
   },
 
@@ -544,7 +544,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
           </div>
           <div v-else-if="group.group === 'plugins-default'" class="nav-group-label">
             <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed">插件管理</span>
+              <span v-if="!ui.sidebarCollapsed">{{ i18n.t('common.plugins') }}</span>
             </transition>
           </div>
           <div v-else-if="group.group !== 'main'" class="nav-group-label"></div>
