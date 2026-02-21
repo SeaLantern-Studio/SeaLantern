@@ -81,7 +81,10 @@ const baseChartConfig: EChartsOption = {
 };
 
 // ECharts 配置生成函数
-const createGaugeOption = (value: number, colorVar: string, label: string): EChartsOption => {
+const createGaugeOption = (rawValue: number, colorVar: string, label: string): EChartsOption => {
+  const value = Number.isFinite(rawValue)
+    ? Math.min(100, Math.max(0, rawValue))
+    : 0;
   const fontSize = parseFontSize("--sl-font-size-sm", 13);
   const fontFamily = getCssVar("--sl-font-mono", "monospace");
   const color = getCssVar(colorVar, "#3b82f6");
