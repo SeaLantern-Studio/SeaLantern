@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import AppLayout from "./components/layout/AppLayout.vue";
 import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
@@ -50,6 +51,11 @@ onUnmounted(async () => {
 function handleSplashReady() {
   if (isInitializing.value) return;
   showSplash.value = false;
+
+  // 显示窗口（tauri.conf.json 中 visible: false，需要手动显示）
+  const appWindow = getCurrentWindow();
+  appWindow.show();
+
   updateStore.checkForUpdateOnStartup();
 }
 

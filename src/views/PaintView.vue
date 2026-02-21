@@ -862,13 +862,9 @@ onMounted(async () => {
   }
   // 应用初始颜色
   applyColors();
-
-  // 监听设置更新事件
-  window.addEventListener("settings-updated", loadSettings);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("settings-updated", loadSettings);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
     saveTimeout = null;
