@@ -478,7 +478,7 @@ async function handleManualDownload() {
       <SLButton variant="primary" size="lg" @click="openLink('https://gitee.com/fps_z/SeaLantern')">
         {{ i18n.t('about.gitee_repo') }}
       </SLButton>
-      <SLButton variant="primary" size="lg" @click="openLink('https://github.com/FPSZ/SeaLantern')">
+      <SLButton variant="primary" size="lg" @click="openLink('https://github.com/SeaLantern-Studio/SeaLantern')">
         {{ i18n.t('about.github_repo') }}
       </SLButton>
       <SLButton
