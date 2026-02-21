@@ -116,7 +116,7 @@ jobs:
             ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
-  # Arch Linux 打包任务
+    # Arch Linux 打包任务 - 修复 sudo 权限问题
   build-arch-package:
     needs: publish-tauri
     runs-on: ubuntu-latest
@@ -151,7 +151,6 @@ jobs:
           if [ -d "./downloads" ]; then
             echo "downloads 目录内容:"
             ls -la ./downloads
-            # 使用 find 命令，正确处理带空格的文件名
             DEB_FILE=$(find ./downloads -name "*.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
           fi
 
@@ -166,7 +165,6 @@ jobs:
           fi
 
           echo "✅ 找到 deb 包: $DEB_FILE"
-          # 复制文件时使用引号处理空格
           cp "$DEB_FILE" ./sealantern.deb
           echo "DEB_FILE=$DEB_FILE" >> $GITHUB_OUTPUT
 
@@ -177,10 +175,9 @@ jobs:
             archlinux:latest \
             sleep infinity
 
-          # 创建 builder 用户
+          # 创建 builder 用户（但不需要配置 sudo，因为我们会直接切换用户）
           docker exec arch-builder bash -c "
-            useradd -m builder && \
-            echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+            useradd -m builder
           "
 
           # 根据您的 PKGBUILD 安装所有 depends 和 makedepends
@@ -261,10 +258,9 @@ jobs:
           docker cp PKGBUILD arch-builder:/workspace/
           [ -f "sealantern.install" ] && docker cp sealantern.install arch-builder:/workspace/
 
-          # 在容器中执行打包
+          # 在容器中执行打包 - 修复：移除 sudo，直接使用 builder 用户运行
           docker exec arch-builder bash -c "
             cd /workspace && \
-            chown -R builder:builder . && \
 
             # 更新版本号
             sed -i 's/^pkgver=.*/pkgver=$VERSION/' PKGBUILD && \
@@ -275,8 +271,11 @@ jobs:
             cat PKGBUILD
             echo '===================='
 
-            # 以 builder 用户运行 makepkg
-            sudo -u builder makepkg -f --noconfirm
+            # 更改文件所有权给 builder 用户
+            chown -R builder:builder /workspace
+
+            # 以 builder 用户运行 makepkg（使用 su 替代 sudo）
+            su - builder -c 'cd /workspace && makepkg -f --noconfirm'
           "
 
       - name: 从容器中获取构建产物
