@@ -19,7 +19,10 @@ const perLocaleProgress = reactive<Record<string, { loaded: number; total: numbe
 const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
-const showWindowControls = ref(false); // 只在非 macOS 平台显示窗口控制按钮
+
+// 使用 navigator.userAgent 做初始猜测，避免 Windows/Linux 用户在异步检测完成前看不到控制按钮
+const isMacOSInitialGuess = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+const showWindowControls = ref(!isMacOSInitialGuess); // 只在非 macOS 平台显示窗口控制按钮
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -133,8 +136,14 @@ onMounted(async () => {
   await loadSettings();
 
   // 检测平台，只在非 macOS 平台显示窗口控制按钮
-  const currentPlatform = await platform();
-  showWindowControls.value = currentPlatform !== "macos";
+  // 使用 try/catch 处理插件可能的失败情况
+  try {
+    const currentPlatform = await platform();
+    showWindowControls.value = currentPlatform !== "macos";
+  } catch (e) {
+    // 如果平台检测失败，保持基于 userAgent 的初始猜测值
+    console.warn("Failed to detect platform, using userAgent fallback:", e);
+  }
 
   // 监听设置更新事件
   window.addEventListener("settings-updated", loadSettings);
