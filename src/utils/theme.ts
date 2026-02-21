@@ -111,63 +111,10 @@ export function getColorValue(settings: AppSettings, colorType: string, theme: s
   if (!settings) return "";
 
   const plan = mapLegacyPlanName(theme);
-
-  if (settings.color !== "custom") {
-    const themeColors = getThemeColors(settings.color, plan);
-    if (themeColors) {
-      return themeColors[colorType as keyof typeof themeColors] || "";
-    }
-    return "";
-  }
-
-  const customColor: Record<string, Record<string, string | undefined>> = {
-    light: {
-      bg: settings.bg_color,
-      bgSecondary: settings.bg_secondary_color,
-      bgTertiary: settings.bg_tertiary_color,
-      primary: settings.primary_color,
-      secondary: settings.secondary_color,
-      textPrimary: settings.text_primary_color,
-      textSecondary: settings.text_secondary_color,
-      border: settings.border_color,
-    },
-    dark: {
-      bg: settings.bg_dark,
-      bgSecondary: settings.bg_secondary_dark,
-      bgTertiary: settings.bg_tertiary_dark,
-      primary: settings.primary_dark,
-      secondary: settings.secondary_dark,
-      textPrimary: settings.text_primary_dark,
-      textSecondary: settings.text_secondary_dark,
-      border: settings.border_dark,
-    },
-    light_acrylic: {
-      bg: settings.bg_acrylic,
-      bgSecondary: settings.bg_secondary_acrylic,
-      bgTertiary: settings.bg_tertiary_acrylic,
-      primary: settings.primary_acrylic,
-      secondary: settings.secondary_acrylic,
-      textPrimary: settings.text_primary_acrylic,
-      textSecondary: settings.text_secondary_acrylic,
-      border: settings.border_acrylic,
-    },
-    dark_acrylic: {
-      bg: settings.bg_dark_acrylic,
-      bgSecondary: settings.bg_secondary_dark_acrylic,
-      bgTertiary: settings.bg_tertiary_dark_acrylic,
-      primary: settings.primary_dark_acrylic,
-      secondary: settings.secondary_dark_acrylic,
-      textPrimary: settings.text_primary_dark_acrylic,
-      textSecondary: settings.text_secondary_dark_acrylic,
-      border: settings.border_dark_acrylic,
-    },
-  };
-
-  const themeColors = customColor[theme];
+  const themeColors = getThemeColors(settings.color, plan);
   if (themeColors) {
-    return themeColors[colorType] || "";
+    return themeColors[colorType as keyof typeof themeColors] || "";
   }
-
   return "";
 }
 

@@ -1,3 +1,8 @@
+## 提交前须知
+- [ ] 是否阅读 提交前测试必读！！！.md 并按照要求进行测试
+
+---
+
 ## 变更类型 / Change Type (请选择至少一项 / Select at least one)
 
 - [ ] 前端 Frontend

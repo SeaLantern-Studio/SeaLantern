@@ -19,6 +19,11 @@ const pluginStore = usePluginStore();
 const contextMenuStore = useContextMenuStore();
 
 async function handleGlobalContextMenu(event: MouseEvent) {
+  // 当开发者模式启用时，允许默认的右键菜单行为以打开开发者工具
+  if (settingsStore.settings.developer_mode) {
+    return;
+  }
+
   event.preventDefault();
 
   const wasVisible = contextMenuStore.visible;

@@ -39,13 +39,15 @@ jobs:
           components: rustfmt
 
       - name: 安装前端依赖
-        run: npm install
+        run: |
+          npm i -g pnpm
+          pnpm install --frozen-lockfile
 
       - name: 并行运行前端 & 后端 格式化
         run: |
           set -euxo pipefail
           # 启动前端格式化在后台
-          npm run fmt &
+          pnpm run fmt &
           pid_frontend=$!
           # 启动后端格式化在后台
           cargo fmt --all &

@@ -82,18 +82,18 @@ const allCommands = [
   "version",
 ];
 
-const quickCommands = [
-  { label: "白天", cmd: "time set day" },
-  { label: "夜晚", cmd: "time set night" },
-  { label: "晴天", cmd: "weather clear" },
-  { label: "下雨", cmd: "weather rain" },
-  { label: "保存", cmd: "save-all" },
-  { label: "玩家列表", cmd: "list" },
+const quickCommands = computed(() => [
+  { label: i18n.t("common.command_day"), cmd: "time set day" },
+  { label: i18n.t("common.command_night"), cmd: "time set night" },
+  { label: i18n.t("common.command_clear"), cmd: "weather clear" },
+  { label: i18n.t("common.command_rain"), cmd: "weather rain" },
+  { label: i18n.t("common.command_save"), cmd: "save-all" },
+  { label: i18n.t("common.command_list"), cmd: "list" },
   { label: "TPS", cmd: "tps" },
-  { label: "保留物品 开", cmd: "gamerule keepInventory true" },
-  { label: "保留物品 关", cmd: "gamerule keepInventory false" },
-  { label: "怪物破坏 关", cmd: "gamerule mobGriefing false" },
-];
+  { label: i18n.t("common.command_keep_inventory_on"), cmd: "gamerule keepInventory true" },
+  { label: i18n.t("common.command_keep_inventory_off"), cmd: "gamerule keepInventory false" },
+  { label: i18n.t("common.command_mob_griefing_off"), cmd: "gamerule mobGriefing false" },
+]);
 
 const filteredSuggestions = computed(() => {
   const input = commandInput.value.trim().toLowerCase();
@@ -379,11 +379,11 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
           <SLSelect
             :options="serverOptions"
             :modelValue="serverId"
-            placeholder="选择服务器"
+            :placeholder="i18n.t('common.select_server')"
             @update:modelValue="switchServer"
           />
         </div>
-        <div v-else class="server-name-display">暂无服务器</div>
+        <div v-else class="server-name-display">{{ i18n.t('console.no_server') }}</div>
         <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
           <span class="status-dot"></span>
           <span class="status-label">{{ getStatusText() }}</span>
@@ -396,7 +396,7 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
           :loading="startLoading"
           :disabled="isRunning || isStopping || startLoading"
           @click="handleStart"
-          >启动</SLButton
+          >{{ i18n.t('home.start') }}</SLButton
         >
         <SLButton
           variant="danger"
@@ -404,20 +404,20 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
           :loading="stopLoading"
           :disabled="isStopped || isStopping || stopLoading"
           @click="handleStop"
-          >停止</SLButton
+          >{{ i18n.t('home.stop') }}</SLButton
         >
-        <SLButton variant="secondary" size="sm" @click="exportLogs">复制日志</SLButton>
-        <SLButton variant="ghost" size="sm" @click="handleClearLogs">清屏</SLButton>
+        <SLButton variant="secondary" size="sm" @click="exportLogs">{{ i18n.t('console.copy_log') }}</SLButton>
+        <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{ i18n.t('console.clear_log') }}</SLButton>
       </div>
     </div>
 
     <div v-if="!serverId" class="no-server">
-      <p class="text-body">请先创建并选择一个服务器</p>
+      <p class="text-body">{{ i18n.t('console.create_server_first') }}</p>
     </div>
 
     <template v-else>
       <div class="quick-commands">
-        <span class="quick-label">快捷:</span>
+        <span class="quick-label">{{ i18n.t('console.quick') }}</span>
         <div class="quick-groups">
           <div
             v-for="cmd in quickCommands"

@@ -106,24 +106,26 @@ jobs:
         with:
           node-version: "lts/*"
 
-      - name: 缓存 npm 依赖
+      - name: 缓存 pnpm 依赖
         if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/cache@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-
+            ${{ runner.os }}-pnpm-
 
       - name: 安装前端依赖
         if: ${{ needs.changes.outputs.frontend == 'true' }}
-        run: npm ci
+        run: |
+          npm i -g pnpm
+          pnpm install --frozen-lockfile
 
       - name: 运行格式化并检查前端 Lint
         if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
-          npm run fmt && npm run lint
+          pnpm run fmt && pnpm run lint
 
       - name: 检查前端构建
         if: ${{ needs.changes.outputs.frontend == 'true' }}
-        run: npm run build
+        run: pnpm run build

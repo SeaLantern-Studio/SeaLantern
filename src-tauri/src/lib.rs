@@ -108,6 +108,8 @@ pub fn run() {
             player_commands::export_logs,
             settings_commands::get_settings,
             settings_commands::save_settings,
+            settings_commands::save_settings_with_diff,
+            settings_commands::update_settings_partial,
             settings_commands::reset_settings,
             settings_commands::export_settings,
             settings_commands::import_settings,
@@ -185,10 +187,8 @@ pub fn run() {
         })
         .setup(|app| {
             // 初始化插件管理
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+            // 插件目录与其他模块共用同一套数据目录选择规则
+            let app_data_dir = crate::utils::path::get_app_data_dir();
             let plugins_dir = app_data_dir.join("plugins");
             let data_dir = app_data_dir.join("plugin_data");
 

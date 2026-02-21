@@ -909,18 +909,8 @@ fn escape_cmd_arg(s: &str) -> String {
 }
 
 fn get_data_dir() -> String {
-    // 使用软件根目录（可执行文件所在目录）
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            let data_dir = exe_dir.to_path_buf();
-            println!("数据目录: {}", data_dir.display());
-            return data_dir.to_string_lossy().to_string();
-        }
-    }
-
-    // 如果获取失败，使用当前工作目录
-    println!("警告: 无法获取可执行文件目录，使用当前目录");
-    ".".to_string()
+    // 使用统一的应用数据目录，确保 MSI 安装时数据存储在 %AppData%
+    crate::utils::path::get_or_create_app_data_dir()
 }
 
 fn normalize_startup_mode(mode: &str) -> &str {
