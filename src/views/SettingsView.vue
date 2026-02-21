@@ -106,11 +106,11 @@ onMounted(async () => {
     acrylicSupported.value = false;
   }
 
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent);
+  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
-  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent);
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
     saveTimeout = null;

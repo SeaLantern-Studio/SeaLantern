@@ -33,38 +33,6 @@ export interface AppSettings {
   locales_base_url?: string;
   developer_mode: boolean;
   close_action: string;
-  bg_color?: string;
-  bg_secondary_color?: string;
-  bg_tertiary_color?: string;
-  primary_color?: string;
-  secondary_color?: string;
-  bg_dark?: string;
-  bg_secondary_dark?: string;
-  bg_tertiary_dark?: string;
-  primary_dark?: string;
-  secondary_dark?: string;
-  bg_acrylic?: string;
-  bg_secondary_acrylic?: string;
-  bg_tertiary_acrylic?: string;
-  primary_acrylic?: string;
-  secondary_acrylic?: string;
-  bg_dark_acrylic?: string;
-  bg_secondary_dark_acrylic?: string;
-  bg_tertiary_dark_acrylic?: string;
-  primary_dark_acrylic?: string;
-  secondary_dark_acrylic?: string;
-  text_primary_color?: string;
-  text_secondary_color?: string;
-  border_color?: string;
-  text_primary_dark?: string;
-  text_secondary_dark?: string;
-  border_dark?: string;
-  text_primary_acrylic?: string;
-  text_secondary_acrylic?: string;
-  border_acrylic?: string;
-  text_primary_dark_acrylic?: string;
-  text_secondary_dark_acrylic?: string;
-  border_dark_acrylic?: string;
 }
 
 export interface PartialSettings {
