@@ -491,12 +491,12 @@ function handleClickOutside(event: MouseEvent) {
   if (!deletingServerId.value) return;
 
   const target = event.target as HTMLElement;
-  // 检查是否点击了删除确认输入框或删除按钮
-  const isDeleteConfirmInput = target.closest(".delete-confirm-input");
+  // 检查是否点击了删除确认区域或删除按钮
+  const isDeleteConfirmArea = target.closest(".delete-confirm-area");
   const isDeleteButton = target.closest(".server-card-actions")?.querySelector("button");
 
   // 如果没有点击这些元素，则收回输入框
-  if (!isDeleteConfirmInput && !isDeleteButton) {
+  if (!isDeleteConfirmArea && !isDeleteButton) {
     cancelDelete();
   }
 }
@@ -947,39 +947,40 @@ function handleAnimationEnd(event: AnimationEvent) {
           <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
             {{ i18n.t("home.delete") }}
           </SLButton>
-          <div
-            v-if="deletingServerId === server.id"
-            :class="['delete-confirm-input', { closing: isClosing }]"
-            @animationend="handleAnimationEnd"
-          >
-            <p
-              class="delete-confirm-message"
-              v-html="
-                i18n.t('home.delete_confirm_message', {
-                  server: '<strong>' + server.name + '</strong>',
-                })
-              "
-            ></p>
-            <div class="delete-input-group">
-              <input
-                type="text"
-                v-model="inputServerName"
-                class="delete-input"
-                :placeholder="i18n.t('home.delete_input_placeholder')"
-                @keyup.enter="confirmDelete"
-                @keyup.esc="cancelDelete"
-                ref="deleteInput"
-              />
-              <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
-            </div>
-            <div class="delete-actions">
-              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
-                i18n.t("home.delete_cancel")
-              }}</SLButton>
-              <SLButton variant="danger" size="sm" @click="confirmDelete">{{
-                i18n.t("home.delete_confirm")
-              }}</SLButton>
-            </div>
+        </div>
+
+        <div
+          v-if="deletingServerId === server.id"
+          :class="['delete-confirm-area', { closing: isClosing }]"
+          @animationend="handleAnimationEnd"
+        >
+          <p
+            class="delete-confirm-message"
+            v-html="
+              i18n.t('home.delete_confirm_message', {
+                server: '<strong>' + server.name + '</strong>',
+              })
+            "
+          ></p>
+          <div class="delete-input-group">
+            <input
+              type="text"
+              v-model="inputServerName"
+              class="delete-input"
+              :placeholder="i18n.t('home.delete_input_placeholder')"
+              @keyup.enter="confirmDelete"
+              @keyup.esc="cancelDelete"
+              ref="deleteInput"
+            />
+            <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
+          </div>
+          <div class="delete-actions">
+            <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
+              i18n.t("home.delete_cancel")
+            }}</SLButton>
+            <SLButton variant="danger" size="sm" @click="confirmDelete">{{
+              i18n.t("home.delete_confirm")
+            }}</SLButton>
           </div>
         </div>
       </div>
@@ -1509,61 +1510,44 @@ function handleAnimationEnd(event: AnimationEvent) {
   }
 }
 
-.delete-confirm-input {
-  width: 100%;
-  margin-top: var(--sl-space-sm);
-  padding: var(--sl-space-sm);
-  background: var(--sl-bg-secondary);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-radius: var(--sl-radius-md);
-  overflow: hidden;
-  animation: deleteInputExpand 0.3s ease forwards;
+.delete-confirm-area {
+  margin-top: var(--sl-space-md);
+  padding-top: var(--sl-space-md);
+  border-top: 1px solid var(--sl-border);
+  animation: slideDown 0.3s ease forwards;
 }
 
-.delete-confirm-input.closing {
-  animation: deleteInputCollapse 0.3s ease forwards;
+.delete-confirm-area.closing {
+  animation: slideUp 0.2s ease forwards;
 }
 
-@keyframes deleteInputExpand {
-  0% {
+@keyframes slideDown {
+  from {
     opacity: 0;
-    transform: translateY(-10px) scaleY(0.2);
     max-height: 0;
-    padding: 0 var(--sl-space-sm);
+    padding-top: 0;
+    margin-top: 0;
   }
-  60% {
+  to {
     opacity: 1;
-    transform: translateY(0) scaleY(1);
     max-height: 200px;
-    padding: var(--sl-space-sm);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-    max-height: 200px;
-    padding: var(--sl-space-sm);
+    padding-top: var(--sl-space-md);
+    margin-top: var(--sl-space-md);
   }
 }
 
-@keyframes deleteInputCollapse {
-  0% {
+@keyframes slideUp {
+  from {
     opacity: 1;
-    transform: translateY(0) scaleY(1);
     max-height: 200px;
-    padding: var(--sl-space-sm);
+    padding-top: var(--sl-space-md);
+    margin-top: var(--sl-space-md);
   }
-  40% {
+  to {
     opacity: 0;
-    transform: translateY(-5px) scaleY(1);
-    max-height: 200px;
-    padding: var(--sl-space-sm);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-10px) scaleY(0.2);
     max-height: 0;
-    padding: 0 var(--sl-space-sm);
+    padding-top: 0;
+    margin-top: 0;
   }
 }
 
@@ -1582,7 +1566,7 @@ function handleAnimationEnd(event: AnimationEvent) {
   padding: var(--sl-space-sm) var(--sl-space-md);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-sm);
-  background: var(--sl-bg-secondary);
+  background: var(--sl-bg-primary);
   color: var(--sl-text-primary);
   font-size: 0.875rem;
   outline: none;
