@@ -54,7 +54,17 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
+          BUILD_SUFFIX="${{ steps.version.outputs.BUILD_SUFFIX }}"
+          
+          echo "=== DEBUG INFO ==="
+          echo "VERSION: $VERSION"
+          echo "DISTRO: $DISTRO"
+          echo "BUILD_SUFFIX: $BUILD_SUFFIX"
+          
           Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ steps.version.outputs.BUILD_SUFFIX }}~${{ matrix.distro }}1"
+          
+          echo "Package_VERSION: $Package_VERSION"
+          echo "================="
           
           PACKAGE_DIR="./ppa-build/sea-lantern-ppa-updater_${Package_VERSION}"
           
