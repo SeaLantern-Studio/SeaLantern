@@ -1188,39 +1188,8 @@ export const usePluginStore = defineStore("plugin", () => {
   let sidebarEventUnlisten: UnlistenFn | null = null;
 
   async function initSidebarEventListener() {
-    if (sidebarEventUnlisten) {
-      return;
-    }
-
-    try {
-      sidebarEventUnlisten = await listen<PluginSidebarEvent>("plugin-sidebar-event", (event) => {
-        const { plugin_id, action, label, icon, mode } = event.payload;
-
-        if (action === "register") {
-          const sidebarMode: SidebarMode = mode || "self";
-
-          const filtered = sidebarItems.value.filter((item) => item.pluginId !== plugin_id);
-          filtered.push({
-            pluginId: plugin_id,
-            label,
-            icon: icon || undefined,
-            mode: sidebarMode,
-            showDependents: true,
-            priority: 100,
-          });
-
-          filtered.sort((a, b) => a.priority - b.priority);
-          sidebarItems.value = filtered;
-        } else if (action === "unregister") {
-          sidebarItems.value = sidebarItems.value.filter((item) => item.pluginId !== plugin_id);
-        }
-
-        console.log(`[PluginSidebar] ${action} sidebar item for plugin: ${plugin_id}`);
-      });
-      console.log("[PluginSidebar] Event listener initialized");
-    } catch (e) {
-      console.error("[PluginSidebar] Failed to initialize event listener:", e);
-    }
+    // 已禁用插件动态注册侧栏按钮功能
+    console.log("[PluginSidebar] Event listener disabled");
   }
 
   function cleanupSidebarEventListener() {
