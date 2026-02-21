@@ -1,4 +1,4 @@
-use crate::models::settings::AppSettings;
+use crate::models::settings::{AppSettings, PartialSettings, SettingsGroup};
 use std::sync::Mutex;
 
 const SETTINGS_FILE: &str = "sea_lantern_settings.json";
@@ -6,6 +6,11 @@ const SETTINGS_FILE: &str = "sea_lantern_settings.json";
 pub struct SettingsManager {
     pub settings: Mutex<AppSettings>,
     pub data_dir: String,
+}
+
+pub struct UpdateResult {
+    pub settings: AppSettings,
+    pub changed_groups: Vec<SettingsGroup>,
 }
 
 impl SettingsManager {
@@ -24,6 +29,24 @@ impl SettingsManager {
         save_settings(&self.data_dir, &new_settings)
     }
 
+    pub fn update_with_diff(&self, new_settings: AppSettings) -> Result<UpdateResult, String> {
+        let old_settings = self.settings.lock().unwrap().clone();
+        let changed_groups = old_settings.get_changed_groups(&new_settings);
+        *self.settings.lock().unwrap() = new_settings.clone();
+        save_settings(&self.data_dir, &new_settings)?;
+        Ok(UpdateResult { settings: new_settings, changed_groups })
+    }
+
+    pub fn update_partial(&self, partial: PartialSettings) -> Result<UpdateResult, String> {
+        let old_settings = self.settings.lock().unwrap().clone();
+        let mut new_settings = old_settings.clone();
+        new_settings.merge_from(&partial);
+        let changed_groups = old_settings.get_changed_groups(&new_settings);
+        *self.settings.lock().unwrap() = new_settings.clone();
+        save_settings(&self.data_dir, &new_settings)?;
+        Ok(UpdateResult { settings: new_settings, changed_groups })
+    }
+
     pub fn reset(&self) -> Result<AppSettings, String> {
         let default = AppSettings::default();
         *self.settings.lock().unwrap() = default.clone();
@@ -33,19 +56,8 @@ impl SettingsManager {
 }
 
 fn get_data_dir() -> String {
-    // Use a consistent data directory regardless of dev/prod mode
-    // Try to use the user's home directory first
-    if let Some(home_dir) = dirs_next::home_dir() {
-        let data_dir = home_dir.join(".sea-lantern");
-        // Create directory if it doesn't exist
-        if let Err(e) = std::fs::create_dir_all(&data_dir) {
-            eprintln!("Warning: Failed to create data directory: {}", e);
-        }
-        return data_dir.to_string_lossy().to_string();
-    }
-
-    // Fallback to current directory
-    ".".to_string()
+    // 使用统一的应用数据目录，确保 MSI 安装时数据存储在 %AppData%
+    crate::utils::path::get_or_create_app_data_dir()
 }
 
 fn load_settings(data_dir: &str) -> AppSettings {

@@ -7,8 +7,9 @@ import { useI18nStore } from "../../stores/i18nStore";
 import { i18n } from "../../language";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
-import { settingsApi, type AppSettings } from "../../api/settings";
+import { settingsApi, type AppSettings, type SettingsGroup } from "../../api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
+import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "../../stores/settingsStore";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
@@ -130,14 +131,18 @@ const currentLanguageText = computed(() => {
 onMounted(async () => {
   await loadSettings();
 
-  // 监听设置更新事件
-  window.addEventListener("settings-updated", loadSettings);
+  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
-  // 移除设置更新事件监听
-  window.removeEventListener("settings-updated", loadSettings);
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
+
+function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
+  const { settings: newSettings } = e.detail;
+  settings.value = newSettings;
+  closeAction.value = newSettings.close_action || "ask";
+}
 
 async function loadSettings() {
   try {
@@ -172,9 +177,8 @@ async function handleCloseOption(option: string) {
     settings.value.close_action = option === "minimize" ? "minimize" : "close";
     closeAction.value = settings.value.close_action;
     try {
-      await settingsApi.save(settings.value);
-      // 触发设置更新事件，以便设置界面能够及时更新
-      window.dispatchEvent(new CustomEvent("settings-updated"));
+      const result = await settingsApi.saveWithDiff(settings.value);
+      dispatchSettingsUpdate(result.changed_groups, result.settings);
     } catch (e) {
       console.error("Failed to save settings:", e);
     }
@@ -183,7 +187,6 @@ async function handleCloseOption(option: string) {
   if (option === "minimize") {
     await minimizeToTray();
   } else {
-    // 使用 exit() 强制退出应用，绕过 CloseRequested 事件
     const { exit } = await import("@tauri-apps/plugin-process");
     await exit(0);
   }
@@ -209,16 +212,27 @@ function setLanguage(locale: string) {
   i18nStore.setLocale(locale);
 }
 
-async function handleLanguageClick(locale: string) {
-  // For local languages we can just switch immediately
-  if (locale === "zh-CN" || locale === "en-US") {
-    setLanguage(locale);
-    return;
-  }
+const isChangingLanguage = ref(false);
 
-  // trigger download and then switch (downloadLocale logs errors internally)
-  await i18nStore.downloadLocale(locale);
-  setLanguage(locale);
+async function handleLanguageClick(locale: string, close?: () => void) {
+  if (isChangingLanguage.value) return;
+
+  isChangingLanguage.value = true;
+  try {
+    // For local languages we can just switch immediately
+    if (locale === "zh-CN" || locale === "en-US") {
+      setLanguage(locale);
+      close?.();
+      return;
+    }
+
+    // trigger download and then switch (downloadLocale logs errors internally)
+    await i18nStore.downloadLocale(locale);
+    setLanguage(locale);
+    close?.();
+  } finally {
+    isChangingLanguage.value = false;
+  }
 }
 
 function computeOverallProgress() {
@@ -243,24 +257,20 @@ function computeOverallProgress() {
 
     <div class="header-right">
       <Menu as="div" class="language-selector">
-        <MenuButton class="language-text">
-          {{ currentLanguageText }}
+        <MenuButton class="language-button">
+          <span class="language-text">{{ currentLanguageText }}</span>
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
           <MenuItem
             v-for="option in primaryLanguages"
             :key="option.code"
-            as="div"
-            @click="
-              (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleLanguageClick(option.code);
-              }
-            "
+            v-slot="{ close }"
           >
-            <div class="language-item">
+            <div
+              class="language-item"
+              @click="() => handleLanguageClick(option.code, close)"
+            >
               <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
               </div>
@@ -268,40 +278,29 @@ function computeOverallProgress() {
           </MenuItem>
 
           <!-- 更多语言选项 -->
-          <MenuItem
-            as="div"
-            @click="
-              (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleMoreLanguages();
-              }
-            "
-            class="language-item-full-width"
-          >
-            <div class="language-item language-item-arrow">
+          <div class="language-item-full-width">
+            <div
+              class="language-item language-item-arrow"
+              @click="toggleMoreLanguages"
+            >
               <div class="language-item-main">
                 <ChevronDown v-if="!showMoreLanguages" :size="16" class="arrow-icon" />
                 <ChevronUp v-else :size="16" class="arrow-icon" />
               </div>
             </div>
-          </MenuItem>
+          </div>
 
           <!-- 其他语言（仅在展开时显示） -->
           <template v-if="showMoreLanguages">
             <MenuItem
               v-for="option in otherLanguages"
               :key="option.code"
-              as="div"
-              @click="
-                (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleLanguageClick(option.code);
-                }
-              "
+              v-slot="{ close }"
             >
-              <div class="language-item">
+              <div
+                class="language-item"
+                @click="() => handleLanguageClick(option.code, close)"
+              >
                 <div class="language-item-main">
                   <span class="language-label">{{ option.label }}</span>
                 </div>
@@ -453,6 +452,9 @@ function computeOverallProgress() {
 
 .language-selector {
   position: relative;
+}
+
+.language-button {
   cursor: pointer;
   padding: 6px 12px;
   border-radius: var(--sl-radius-md);
@@ -460,9 +462,10 @@ function computeOverallProgress() {
   display: flex;
   align-items: center;
   gap: 4px;
+  width: 100%;
 }
 
-.language-selector:hover {
+.language-button:hover {
   background: var(--sl-bg-tertiary);
 }
 

@@ -1,6 +1,16 @@
 use crate::services::java_detector::JavaInfo;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SettingsGroup {
+    General,
+    ServerDefaults,
+    Console,
+    Appearance,
+    Window,
+    Developer,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     #[serde(default = "default_true")]
@@ -153,6 +163,211 @@ fn default_language() -> String {
 
 fn default_close_action() -> String {
     "ask".to_string()
+}
+
+impl AppSettings {
+    pub fn get_changed_groups(&self, other: &AppSettings) -> Vec<SettingsGroup> {
+        let mut changed = Vec::new();
+
+        if self.close_servers_on_exit != other.close_servers_on_exit
+            || self.auto_accept_eula != other.auto_accept_eula
+            || self.close_action != other.close_action
+        {
+            changed.push(SettingsGroup::General);
+        }
+
+        if self.default_max_memory != other.default_max_memory
+            || self.default_min_memory != other.default_min_memory
+            || self.default_port != other.default_port
+            || self.default_java_path != other.default_java_path
+            || self.default_jvm_args != other.default_jvm_args
+            || self.cached_java_list != other.cached_java_list
+        {
+            changed.push(SettingsGroup::ServerDefaults);
+        }
+
+        if self.console_font_size != other.console_font_size
+            || self.max_log_lines != other.max_log_lines
+        {
+            changed.push(SettingsGroup::Console);
+        }
+
+        if self.background_image != other.background_image
+            || self.background_opacity != other.background_opacity
+            || self.background_blur != other.background_blur
+            || self.background_brightness != other.background_brightness
+            || self.background_size != other.background_size
+            || self.acrylic_enabled != other.acrylic_enabled
+            || self.theme != other.theme
+            || self.color != other.color
+            || self.font_size != other.font_size
+            || self.font_family != other.font_family
+        {
+            changed.push(SettingsGroup::Appearance);
+        }
+
+        if self.window_width != other.window_width
+            || self.window_height != other.window_height
+            || self.window_x != other.window_x
+            || self.window_y != other.window_y
+            || self.window_maximized != other.window_maximized
+        {
+            changed.push(SettingsGroup::Window);
+        }
+
+        if self.developer_mode != other.developer_mode {
+            changed.push(SettingsGroup::Developer);
+        }
+
+        changed
+    }
+
+    pub fn merge_from(&mut self, partial: &PartialSettings) {
+        if let Some(v) = partial.close_servers_on_exit {
+            self.close_servers_on_exit = v;
+        }
+        if let Some(v) = partial.auto_accept_eula {
+            self.auto_accept_eula = v;
+        }
+        if let Some(v) = partial.default_max_memory {
+            self.default_max_memory = v;
+        }
+        if let Some(v) = partial.default_min_memory {
+            self.default_min_memory = v;
+        }
+        if let Some(v) = partial.default_port {
+            self.default_port = v;
+        }
+        if let Some(ref v) = partial.default_java_path {
+            self.default_java_path = v.clone();
+        }
+        if let Some(ref v) = partial.default_jvm_args {
+            self.default_jvm_args = v.clone();
+        }
+        if let Some(v) = partial.console_font_size {
+            self.console_font_size = v;
+        }
+        if let Some(v) = partial.max_log_lines {
+            self.max_log_lines = v;
+        }
+        if let Some(ref v) = partial.cached_java_list {
+            self.cached_java_list = v.clone();
+        }
+        if let Some(ref v) = partial.background_image {
+            self.background_image = v.clone();
+        }
+        if let Some(v) = partial.background_opacity {
+            self.background_opacity = v;
+        }
+        if let Some(v) = partial.background_blur {
+            self.background_blur = v;
+        }
+        if let Some(v) = partial.background_brightness {
+            self.background_brightness = v;
+        }
+        if let Some(ref v) = partial.background_size {
+            self.background_size = v.clone();
+        }
+        if let Some(v) = partial.window_width {
+            self.window_width = v;
+        }
+        if let Some(v) = partial.window_height {
+            self.window_height = v;
+        }
+        if let Some(ref v) = partial.window_x {
+            self.window_x = *v;
+        }
+        if let Some(ref v) = partial.window_y {
+            self.window_y = *v;
+        }
+        if let Some(v) = partial.window_maximized {
+            self.window_maximized = v;
+        }
+        if let Some(v) = partial.acrylic_enabled {
+            self.acrylic_enabled = v;
+        }
+        if let Some(ref v) = partial.theme {
+            self.theme = v.clone();
+        }
+        if let Some(ref v) = partial.color {
+            self.color = v.clone();
+        }
+        if let Some(v) = partial.font_size {
+            self.font_size = v;
+        }
+        if let Some(ref v) = partial.font_family {
+            self.font_family = v.clone();
+        }
+        if let Some(ref v) = partial.language {
+            self.language = v.clone();
+        }
+        if let Some(v) = partial.developer_mode {
+            self.developer_mode = v;
+        }
+        if let Some(ref v) = partial.close_action {
+            self.close_action = v.clone();
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PartialSettings {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub close_servers_on_exit: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_accept_eula: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_max_memory: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_min_memory: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_java_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_jvm_args: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub console_font_size: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_log_lines: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cached_java_list: Option<Vec<JavaInfo>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_image: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_opacity: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_blur: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_brightness: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_size: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_width: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_height: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_x: Option<Option<i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_y: Option<Option<i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_maximized: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub acrylic_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub developer_mode: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub close_action: Option<String>,
 }
 
 impl Default for AppSettings {

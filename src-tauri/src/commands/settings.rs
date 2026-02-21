@@ -1,4 +1,4 @@
-use crate::models::settings::AppSettings;
+use crate::models::settings::{AppSettings, PartialSettings};
 use crate::services::global;
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
@@ -6,6 +6,12 @@ use std::collections::HashSet;
 use window_vibrancy;
 #[cfg(target_os = "macos")]
 use window_vibrancy::NSVisualEffectMaterial;
+
+#[derive(serde::Serialize)]
+pub struct UpdateSettingsResult {
+    pub settings: AppSettings,
+    pub changed_groups: Vec<String>,
+}
 
 #[tauri::command]
 pub fn get_settings() -> AppSettings {
@@ -15,6 +21,32 @@ pub fn get_settings() -> AppSettings {
 #[tauri::command]
 pub fn save_settings(settings: AppSettings) -> Result<(), String> {
     global::settings_manager().update(settings)
+}
+
+#[tauri::command]
+pub fn save_settings_with_diff(settings: AppSettings) -> Result<UpdateSettingsResult, String> {
+    let result = global::settings_manager().update_with_diff(settings)?;
+    Ok(UpdateSettingsResult {
+        settings: result.settings,
+        changed_groups: result
+            .changed_groups
+            .into_iter()
+            .map(|g| format!("{:?}", g))
+            .collect(),
+    })
+}
+
+#[tauri::command]
+pub fn update_settings_partial(partial: PartialSettings) -> Result<UpdateSettingsResult, String> {
+    let result = global::settings_manager().update_partial(partial)?;
+    Ok(UpdateSettingsResult {
+        settings: result.settings,
+        changed_groups: result
+            .changed_groups
+            .into_iter()
+            .map(|g| format!("{:?}", g))
+            .collect(),
+    })
 }
 
 #[tauri::command]

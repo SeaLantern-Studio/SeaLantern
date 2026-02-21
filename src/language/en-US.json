@@ -422,7 +422,7 @@
     "import": "Import",
     "java_download": "Download Java",
     "java_download_desc": "If Java is not installed or you need an updated version, you can download it here",
-    "java_download_btn": "Download Java 17 (LTS)",
+    "java_download_btn": "Download Java {{version}} (LTS)",
     "reset": "Restore Defaults",
     "import_settings": "Import Settings",
     "import_desc": "Paste previously exported JSON data",

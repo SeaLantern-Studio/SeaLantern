@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 #[cfg(not(target_os = "windows"))]
 use tar::Archive;
-use tauri::{Emitter, Manager, Window};
+use tauri::{Emitter, Window};
 #[cfg(target_os = "windows")]
 use zip::ZipArchive;
 
@@ -25,15 +25,11 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
     window: Window<R>,
     cancel_flag: Arc<AtomicBool>,
 ) -> Result<String, String> {
-    let app_handle = window.app_handle();
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("无法获取应用数据目录: {}", e))?;
+    let app_dir = crate::utils::path::get_app_data_dir();
 
     let runtimes_dir = app_dir.join("runtimes");
     if !runtimes_dir.exists() {
-        fs::create_dir_all(&runtimes_dir).map_err(|e| format!("无法创建运行时目录: {}", e))?;
+        fs::create_dir_all(&runtimes_dir).map_err(|e| format!("无法创建运行时目录：{}", e))?;
     }
 
     let target_dir = runtimes_dir.join(&version_name);
@@ -65,7 +61,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
         .get(&url)
         .send()
         .await
-        .map_err(|e| format!("下载请求失败: {}", e))?;
+        .map_err(|e| format!("下载请求失败：{}", e))?;
 
     let total_size = res.content_length().unwrap_or(0);
     // Use bytes_stream to process chunks
@@ -79,7 +75,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
         if cancel_flag.load(Ordering::Relaxed) {
             return Err("用户取消下载".to_string());
         }
-        let chunk = chunk.map_err(|e| format!("下载流错误: {}", e))?;
+        let chunk = chunk.map_err(|e| format!("下载流错误：{}", e))?;
         data.extend_from_slice(&chunk);
         downloaded += chunk.len() as u64;
 
@@ -91,7 +87,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
                     progress: downloaded,
                     total: total_size,
                     message: format!(
-                        "正在下载: {}/{}",
+                        "正在下载：{}/{}",
                         bytes_to_mb(downloaded),
                         bytes_to_mb(total_size)
                     ),
@@ -107,7 +103,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
             state: "downloading".to_string(),
             progress: downloaded,
             total: total_size,
-            message: "下载完成, 准备解压...".to_string(),
+            message: "下载完成，准备解压...".to_string(),
         },
     );
 
@@ -128,9 +124,9 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
 
     let temp_dir = runtimes_dir.join(format!("temp_{}", version_name));
     if temp_dir.exists() {
-        fs::remove_dir_all(&temp_dir).map_err(|e| format!("无法清理临时目录: {}", e))?;
+        fs::remove_dir_all(&temp_dir).map_err(|e| format!("无法清理临时目录：{}", e))?;
     }
-    fs::create_dir_all(&temp_dir).map_err(|e| format!("无法创建临时目录: {}", e))?;
+    fs::create_dir_all(&temp_dir).map_err(|e| format!("无法创建临时目录：{}", e))?;
 
     // Check file signature (Magic Numbers)
     #[cfg(target_os = "windows")]
@@ -173,7 +169,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
 
     // Ensure target dir is clean
     if target_dir.exists() {
-        fs::remove_dir_all(&target_dir).map_err(|e| format!("清理旧文件失败: {}", e))?;
+        fs::remove_dir_all(&target_dir).map_err(|e| format!("清理旧文件失败：{}", e))?;
     }
 
     // Rename/Move
@@ -181,7 +177,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
         // Fallback: Copy if rename fails (e.g. crossfs, though unlikely here)
         // For now, return error as simple rename should work in AppData
         let _ = fs::remove_dir_all(&temp_dir);
-        return Err(format!("移动文件失败: {}", e));
+        return Err(format!("移动文件失败：{}", e));
     }
 
     if install_source != temp_dir {
@@ -196,7 +192,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
     };
 
     if !java_bin.exists() {
-        return Err(format!("安装失败: 未找到可执行文件 {:?}", java_bin));
+        return Err(format!("安装失败：未找到可执行文件 {:?}", java_bin));
     }
 
     #[cfg(not(target_os = "windows"))]
@@ -225,7 +221,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
 #[cfg(target_os = "windows")]
 fn extract_zip(data: &[u8], target_dir: &Path, cancel_flag: &AtomicBool) -> Result<(), String> {
     let cursor = Cursor::new(data);
-    let mut archive = ZipArchive::new(cursor).map_err(|e| format!("ZIP 解析失败: {}", e))?;
+    let mut archive = ZipArchive::new(cursor).map_err(|e| format!("ZIP 解析失败：{}", e))?;
 
     for i in 0..archive.len() {
         if cancel_flag.load(Ordering::Relaxed) {
@@ -233,20 +229,20 @@ fn extract_zip(data: &[u8], target_dir: &Path, cancel_flag: &AtomicBool) -> Resu
         }
         let mut file = archive
             .by_index(i)
-            .map_err(|e| format!("读取文件失败: {}", e))?;
+            .map_err(|e| format!("读取文件失败：{}", e))?;
         let outpath = target_dir.join(file.mangled_name());
 
         if file.name().ends_with('/') {
-            fs::create_dir_all(&outpath).map_err(|e| format!("创建目录失败: {}", e))?;
+            fs::create_dir_all(&outpath).map_err(|e| format!("创建目录失败：{}", e))?;
         } else {
             if let Some(p) = outpath.parent() {
                 if !p.exists() {
-                    fs::create_dir_all(p).map_err(|e| format!("创建父目录失败: {}", e))?;
+                    fs::create_dir_all(p).map_err(|e| format!("创建父目录失败：{}", e))?;
                 }
             }
             let mut outfile =
-                fs::File::create(&outpath).map_err(|e| format!("创建文件失败: {}", e))?;
-            std::io::copy(&mut file, &mut outfile).map_err(|e| format!("写入文件失败: {}", e))?;
+                fs::File::create(&outpath).map_err(|e| format!("创建文件失败：{}", e))?;
+            std::io::copy(&mut file, &mut outfile).map_err(|e| format!("写入文件失败：{}", e))?;
         }
     }
     Ok(())
@@ -266,7 +262,7 @@ fn extract_tar_gz(data: &[u8], target_dir: &Path, cancel_flag: &AtomicBool) -> R
     }
     archive
         .unpack(target_dir)
-        .map_err(|e| format!("解压失败: {}", e))?;
+        .map_err(|e| format!("解压失败：{}", e))?;
     Ok(())
 }
 
