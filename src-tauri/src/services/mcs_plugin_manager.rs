@@ -230,7 +230,6 @@ impl m_PluginManager {
     fn m_scan_plugin_config_files(&self, plugin_dir: &Path) -> Vec<m_PluginConfigFile> {
         let mut config_files = Vec::new();
 
-        
         if !plugin_dir.exists() {
             return config_files;
         }
