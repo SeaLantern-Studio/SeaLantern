@@ -82,48 +82,54 @@ jobs:
           cat > "${PACKAGE_DIR}/DEBIAN/postinst" << 'POSTINST'
           #!/bin/bash
           
-          # 延迟安装，避免与当前安装过程冲突
-          (
-              sleep 2
+          # 创建安装脚本
+          cat > /tmp/install-sealantern.sh << 'INSTALLSCRIPT'
+          #!/bin/bash
+          PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
+          if [ -z "$PACKAGE_VERSION" ]; then
+              PACKAGE_VERSION="0.6.5"
+          fi
+          
+          EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
+          
+          echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
+          
+          if [ -f "$EMBEDDED_DEB" ]; then
+              # 解压嵌入的 deb 到临时目录
+              TEMP_DIR=$(mktemp -d)
+              dpkg-deb -x "$EMBEDDED_DEB" "$TEMP_DIR"
               
-              PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
-              if [ -z "$PACKAGE_VERSION" ]; then
-                  PACKAGE_VERSION="0.6.5"
+              # 复制文件到系统
+              cp -r "$TEMP_DIR"/* /
+              
+              # 注册包信息
+              dpkg-deb -e "$EMBEDDED_DEB" "$TEMP_DIR/DEBIAN"
+              
+              # 创建 postinst 脚本标记为已配置
+              if [ -f "$TEMP_DIR/DEBIAN/postinst" ]; then
+                  # 如果有 postinst，设置包为已配置状态
+                  dpkg --set-selections <<< "sealantern install"
               fi
               
-              EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
+              rm -rf "$TEMP_DIR"
+              rm -f "$EMBEDDED_DEB"
               
-              echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
-              
-              if [ -f "$EMBEDDED_DEB" ]; then
-                  # 直接安装嵌入的 deb
-                  if dpkg -i "$EMBEDDED_DEB" 2>/dev/null; then
-                      echo "✅ Sea Lantern 安装成功！"
-                      echo "运行命令: sea-lantern"
-                      rm -f "$EMBEDDED_DEB"
-                      exit 0
-                  else
-                      # 如果有依赖问题，配置未完成的包
-                      dpkg --configure -a 2>/dev/null || true
-                      sleep 1
-                      dpkg -i "$EMBEDDED_DEB" 2>/dev/null || true
-                      
-                      if dpkg -s sealantern >/dev/null 2>&1; then
-                          echo "✅ Sea Lantern 安装成功！"
-                          echo "运行命令: sea-lantern"
-                          rm -f "$EMBEDDED_DEB"
-                          exit 0
-                      else
-                          echo "❌ 安装失败，请手动检查"
-                          echo "可以尝试手动运行: sudo dpkg -i $EMBEDDED_DEB"
-                          exit 1
-                      fi
-                  fi
-              else
-                  echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
-                  exit 1
-              fi
-          ) &
+              echo "✅ Sea Lantern 安装成功！"
+              echo "运行命令: sea-lantern"
+          else
+              echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
+          fi
+          
+          rm -f /tmp/install-sealantern.sh
+          INSTALLSCRIPT
+          
+          chmod +x /tmp/install-sealantern.sh
+          
+          # 在后台延迟执行
+          at now + 1 minutes -f /tmp/install-sealantern.sh 2>/dev/null || (
+              # 如果 at 不可用，使用 nohup 在后台执行
+              nohup bash /tmp/install-sealantern.sh >/dev/null 2>&1 &
+          )
           POSTINST
           
           chmod +x "${PACKAGE_DIR}/DEBIAN/postinst"
