@@ -229,7 +229,7 @@ impl m_PluginManager {
 
     fn m_scan_plugin_config_files(&self, plugin_dir: &Path) -> Vec<m_PluginConfigFile> {
         let mut config_files = Vec::new();
-        
+
         if !plugin_dir.exists() {
             return config_files;
         }
@@ -237,11 +237,19 @@ impl m_PluginManager {
         if let Ok(entries) = fs::read_dir(plugin_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                
+
                 if path.is_file() {
-                    let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                    let file_type = path.extension().unwrap_or_default().to_string_lossy().to_string();
-                    
+                    let file_name = path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
+                    let file_type = path
+                        .extension()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
+
                     if ["yml", "yaml", "json", "properties"].contains(&file_type.as_str()) {
                         if let Ok(content) = fs::read_to_string(&path) {
                             config_files.push(m_PluginConfigFile {
