@@ -3,6 +3,7 @@ import { computed, ref, nextTick, watch, onMounted, onBeforeUnmount } from "vue"
 import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
 import { useServerStore } from "../../stores/serverStore";
+import { usePluginStore } from "../../stores/pluginStore";
 import { i18n } from "../../language";
 import {
   Listbox,
@@ -25,12 +26,42 @@ import {
   Info,
   Server,
   ChevronLeft,
+  ChevronRight,
+  Puzzle,
+  Store,
+  LayoutDashboard,
+  BarChart2,
+  Sparkles,
+  type LucideIcon,
 } from "lucide-vue-next";
+
+const iconMap: Record<string, LucideIcon> = {
+  home: Home,
+  plus: Plus,
+  terminal: Terminal,
+  settings: Settings,
+  users: Users,
+  sliders: Sliders,
+  palette: Palette,
+  paint: Palette,
+  info: Info,
+  server: Server,
+  puzzle: Puzzle,
+  store: Store,
+  "layout-dashboard": LayoutDashboard,
+  chart: BarChart2,
+  sparkles: Sparkles,
+};
+
+function getNavIcon(name: string): LucideIcon {
+  return iconMap[name] ?? Info;
+}
 
 const router = useRouter();
 const route = useRoute();
 const ui = useUiStore();
 const serverStore = useServerStore();
+const pluginStore = usePluginStore();
 const navIndicator = ref<HTMLElement | null>(null);
 
 interface NavItem {
@@ -40,9 +71,15 @@ interface NavItem {
   labelKey: string;
   label: string;
   group: string;
+  isPlugin?: boolean;
+  pluginId?: string;
+  pluginIcon?: string;
+  pluginName?: string;
+  after?: string;
+  children?: NavItem[];
 }
 
-const navItems: NavItem[] = [
+const staticNavItems: NavItem[] = [
   {
     name: "home",
     path: "/",
@@ -99,7 +136,91 @@ const navItems: NavItem[] = [
     label: i18n.t("common.settings"),
     group: "system",
   },
+
+  {
+    name: "plugins",
+    path: "/plugins",
+    icon: "puzzle",
+    labelKey: "common.plugins",
+    label: i18n.t("common.plugins") || "插件",
+    group: "system",
+  },
+  {
+    name: "market",
+    path: "/market",
+    icon: "store",
+    labelKey: "common.market",
+    label: i18n.t("common.market") || "插件市场",
+    group: "system",
+  },
 ];
+
+const pluginNavItems = computed<NavItem[]>(() => {
+  return pluginStore.navItems.map((item) => ({
+    name: `plugin-${item.plugin_id}`,
+    path: `/plugin/${item.plugin_id}`,
+    icon: item.icon || "puzzle",
+    labelKey: "",
+    label: item.label,
+    group: "plugins",
+    isPlugin: true,
+    pluginId: item.plugin_id,
+  }));
+});
+
+function sidebarItemToNavItem(item: import("../../types/plugin").SidebarItem): NavItem {
+  const path =
+    item.mode === "category" ? `/plugin-category/${item.pluginId}` : `/plugin/${item.pluginId}`;
+  const pluginManifest = pluginStore.plugins.find((p) => p.manifest.id === item.pluginId)?.manifest;
+  return {
+    name: `sidebar-${item.pluginId}`,
+    path,
+    icon: item.icon || "puzzle",
+    labelKey: "",
+    label: item.label,
+    group: item.isDefault ? "plugins-default" : "plugins-custom",
+    isPlugin: true,
+    pluginId: item.pluginId,
+    pluginIcon: pluginStore.icons[item.pluginId] || undefined,
+    pluginName: pluginManifest?.name,
+    after: item.after,
+    children: item.children?.map(sidebarItemToNavItem),
+  };
+}
+
+const navItems = computed<NavItem[]>(() => {
+  const result: NavItem[] = [...staticNavItems];
+
+  const positioned = pluginStore.sidebarItems
+    .filter((i) => !i.isDefault && i.after)
+    .map(sidebarItemToNavItem);
+
+  for (const item of positioned) {
+    const idx = result.findIndex((r) => r.name === item.after);
+    if (idx !== -1) {
+      result.splice(idx + 1, 0, item);
+    } else {
+      result.push(item);
+    }
+  }
+
+  const unpositioned = pluginStore.sidebarItems
+    .filter((i) => !i.isDefault && !i.after)
+    .map(sidebarItemToNavItem);
+  result.push(...unpositioned);
+
+  const defaultItems = pluginStore.sidebarItems
+    .filter((i) => i.isDefault)
+    .map(sidebarItemToNavItem);
+  result.push(...defaultItems);
+
+  const handledPluginIds = new Set(pluginStore.sidebarItems.map((i) => i.pluginId));
+  result.push(
+    ...pluginNavItems.value.filter((i) => !i.pluginId || !handledPluginIds.has(i.pluginId)),
+  );
+
+  return result;
+});
 
 function navigateTo(path: string) {
   router.push(path);
@@ -303,6 +424,31 @@ function isActive(path: string): boolean {
   return route.path.startsWith(path);
 }
 
+interface NavGroup {
+  group: string;
+  items: NavItem[];
+}
+
+const orderedNavGroups = computed<NavGroup[]>(() => {
+  const groups: NavGroup[] = [];
+  let currentGroup: NavGroup | null = null;
+
+  for (const item of navItems.value) {
+    if (item.group === "plugins-custom") {
+      groups.push({ group: "plugins-custom", items: [item] });
+      currentGroup = null;
+      continue;
+    }
+    if (!currentGroup || currentGroup.group !== item.group) {
+      currentGroup = { group: item.group, items: [] };
+      groups.push(currentGroup);
+    }
+    currentGroup.items.push(item);
+  }
+
+  return groups;
+});
+
 // 图标已按需导入，模板中直接使用组件标签替代映射表
 </script>
 
@@ -310,7 +456,23 @@ function isActive(path: string): boolean {
   <aside class="sidebar glass-strong" :class="{ collapsed: ui.sidebarCollapsed }">
     <div class="sidebar-logo" @click="navigateTo('/')">
       <div class="logo-icon">
-        <img src="../../assets/logo.svg" :alt="i18n.t('common.app_name')" width="28" height="28" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 512 512"
+          width="28"
+          height="28"
+          :aria-label="i18n.t('common.app_name')"
+          role="img"
+        >
+          <defs>
+            <linearGradient id="sl-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color: #60a5fa" />
+              <stop offset="100%" style="stop-color: #818cf8" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="512" height="512" rx="128" fill="url(#sl-logo-grad)" />
+          <rect x="176" y="176" width="160" height="160" rx="48" fill="white" fill-opacity="0.85" />
+        </svg>
       </div>
       <transition name="fade">
         <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t("common.app_name") }}</span>
@@ -319,7 +481,12 @@ function isActive(path: string): boolean {
 
     <nav class="sidebar-nav">
       <!-- 服务器选择（Headless UI Listbox） -->
-      <Listbox v-if="serverOptions.length > 0" v-model="currentServerRef" class="server-selector" horizontal>
+      <Listbox
+        v-if="serverOptions.length > 0"
+        v-model="currentServerRef"
+        class="server-selector"
+        horizontal
+      >
         <div>
           <ListboxButton
             ref="listboxButton"
@@ -337,10 +504,7 @@ function isActive(path: string): boolean {
           <!-- 将 ListboxOptions 渲染到 body（Portal），并使用固定定位样式 -->
           <Portal>
             <transition name="bubble">
-              <ListboxOptions
-                class="server-select-bubble-content-portal"
-                :style="optionsStyle"
-              >
+              <ListboxOptions class="server-select-bubble-content-portal" :style="optionsStyle">
                 <div class="server-select-bubble-body">
                   <ListboxOption
                     v-for="option in serverOptions"
@@ -349,7 +513,10 @@ function isActive(path: string): boolean {
                     v-slot="{ selected }"
                   >
                     <div
-                      :class="['server-select-option', { active: option.value === currentServerRef }]"
+                      :class="[
+                        'server-select-option',
+                        { active: option.value === currentServerRef },
+                      ]"
                     >
                       {{ option.label }}
                     </div>
@@ -364,182 +531,96 @@ function isActive(path: string): boolean {
       <!-- 导航激活指示器 -->
       <div class="nav-active-indicator" ref="navIndicator"></div>
 
-      <!-- 主菜单组 -->
-      <div class="nav-group">
-        <div v-if="serverOptions.length > 0" class="nav-group-label"></div>
-        <div>
-          <div
-            v-for="item in navItems.filter((i) => i.group === 'main')"
-            :key="item.name"
-            class="nav-item"
-            :class="{ active: isActive(item.path) }"
-            @click="navigateTo(item.path)"
-            :title="ui.sidebarCollapsed ? item.label : ''"
-          >
-            <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Plus
-              v-else-if="item.icon === 'plus'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Terminal
-              v-else-if="item.icon === 'terminal'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Settings
-              v-else-if="item.icon === 'settings'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Users
-              v-else-if="item.icon === 'users'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Sliders
-              v-else-if="item.icon === 'sliders'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Palette
-              v-else-if="item.icon === 'paint'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
+      <!-- 按顺序渲染 -->
+      <template v-for="(group, gi) in orderedNavGroups" :key="gi">
+        <div v-if="group.group !== 'server' || serverOptions.length > 0" class="nav-group">
+          <div v-if="group.group === 'plugins-custom'" class="nav-group-label">
             <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+              <span v-if="!ui.sidebarCollapsed">{{
+                group.items[0]?.pluginName || group.items[0]?.label
+              }}</span>
             </transition>
           </div>
-        </div>
-      </div>
+          <div v-else-if="group.group === 'plugins-default'" class="nav-group-label">
+            <transition name="fade">
+              <span v-if="!ui.sidebarCollapsed">{{ i18n.t("common.plugins") }}</span>
+            </transition>
+          </div>
+          <div v-else-if="group.group !== 'main'" class="nav-group-label"></div>
 
-      <!-- 服务器菜单组 -->
-      <div v-if="serverOptions.length > 0" class="nav-group">
-        <div class="nav-group-label"></div>
-        <div>
-          <div
-            v-for="item in navItems.filter((i) => i.group === 'server')"
-            :key="item.name"
-            class="nav-item"
-            :class="{ active: isActive(item.path) }"
-            @click="navigateTo(item.path)"
-            :title="ui.sidebarCollapsed ? item.label : ''"
-          >
-            <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Plus
-              v-else-if="item.icon === 'plus'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Terminal
-              v-else-if="item.icon === 'terminal'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Settings
-              v-else-if="item.icon === 'settings'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Users
-              v-else-if="item.icon === 'users'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Sliders
-              v-else-if="item.icon === 'sliders'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Palette
-              v-else-if="item.icon === 'paint'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
-            <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
-            </transition>
+          <div>
+            <div v-for="item in group.items" :key="item.name">
+              <div
+                class="nav-item"
+                :class="{ active: isActive(item.path) }"
+                @click="navigateTo(item.path)"
+                :title="ui.sidebarCollapsed ? item.label : ''"
+              >
+                <img
+                  v-if="item.pluginIcon"
+                  :src="item.pluginIcon"
+                  class="nav-icon nav-plugin-icon"
+                  :alt="item.label"
+                  width="20"
+                  height="20"
+                />
+                <component
+                  v-else
+                  :is="getNavIcon(item.icon)"
+                  class="nav-icon"
+                  :size="20"
+                  :stroke-width="1.8"
+                />
+                <transition name="fade">
+                  <span v-if="!ui.sidebarCollapsed" class="nav-label">
+                    {{ item.labelKey ? i18n.t(item.labelKey) : item.label }}
+                  </span>
+                </transition>
+              </div>
+              <!-- 子项 -->
+              <div v-if="item.children?.length" class="nav-children">
+                <div
+                  v-for="child in item.children"
+                  :key="child.name"
+                  class="nav-item nav-child-item"
+                  :class="{ active: isActive(child.path) }"
+                  @click="navigateTo(child.path)"
+                  :title="ui.sidebarCollapsed ? child.label : ''"
+                >
+                  <img
+                    v-if="child.pluginIcon"
+                    :src="child.pluginIcon"
+                    class="nav-icon nav-plugin-icon"
+                    :alt="child.label"
+                    width="16"
+                    height="16"
+                  />
+                  <component
+                    v-else
+                    :is="getNavIcon(child.icon || 'puzzle')"
+                    class="nav-icon"
+                    :size="16"
+                    :stroke-width="1.8"
+                  />
+                  <transition name="fade">
+                    <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ child.label }}</span>
+                  </transition>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- 系统菜单组 -->
-      <div class="nav-group">
-        <div class="nav-group-label"></div>
-        <div>
-          <div
-            v-for="item in navItems.filter((i) => i.group === 'system')"
-            :key="item.name"
-            class="nav-item"
-            :class="{ active: isActive(item.path) }"
-            @click="navigateTo(item.path)"
-            :title="ui.sidebarCollapsed ? item.label : ''"
-          >
-            <Home v-if="item.icon === 'home'" class="nav-icon" :size="20" :stroke-width="1.8" />
-            <Plus
-              v-else-if="item.icon === 'plus'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Terminal
-              v-else-if="item.icon === 'terminal'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Settings
-              v-else-if="item.icon === 'settings'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Users
-              v-else-if="item.icon === 'users'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Sliders
-              v-else-if="item.icon === 'sliders'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Palette
-              v-else-if="item.icon === 'paint'"
-              class="nav-icon"
-              :size="20"
-              :stroke-width="1.8"
-            />
-            <Info v-else class="nav-icon" :size="20" :stroke-width="1.8" />
-            <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t(item.labelKey) }}</span>
-            </transition>
-          </div>
-        </div>
-      </div>
+      </template>
     </nav>
 
     <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
 
     <div class="sidebar-footer">
-      <div class="nav-item" @click="navigateTo('/about')" :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''">
+      <div
+        class="nav-item"
+        @click="navigateTo('/about')"
+        :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
+      >
         <Info class="nav-icon" :size="20" :stroke-width="1.8" />
         <transition name="fade">
           <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
@@ -708,8 +789,6 @@ function isActive(path: string): boolean {
   color: var(--sl-primary);
 }
 
-
-
 .server-selector-icon {
   padding: 8px;
   border-radius: var(--sl-radius-md);
@@ -806,10 +885,6 @@ function isActive(path: string): boolean {
   color: var(--sl-text-primary);
 }
 
-
-
-
-
 .bubble-close {
   background: none;
   border: none;
@@ -898,6 +973,28 @@ function isActive(path: string): boolean {
   justify-content: center;
   width: 20px;
   height: 20px;
+}
+
+.nav-plugin-icon {
+  border-radius: 4px;
+  object-fit: cover;
+  display: block;
+}
+
+.nav-children {
+  margin-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding-left: 4px;
+}
+
+.nav-child-item {
+  padding-left: 12px !important;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.nav-child-item:hover {
+  opacity: 1;
 }
 
 .nav-label {

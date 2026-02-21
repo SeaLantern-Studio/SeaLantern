@@ -12,6 +12,7 @@ import {
   applyColors,
   applyDeveloperMode,
   getEffectiveTheme,
+  isThemeProviderActive,
 } from "../../utils/theme";
 
 const ui = useUiStore();
@@ -61,7 +62,9 @@ function handleSystemThemeChange(): void {
     if (settings.acrylic_enabled && settingsStore.acrylicSupported) {
       applyAcrylicEffect(true, "auto");
     }
-    applyColors(settings);
+    if (!isThemeProviderActive()) {
+      applyColors(settings);
+    }
   }
 }
 
@@ -81,7 +84,9 @@ async function applyAllSettings(): Promise<void> {
     document.documentElement.setAttribute("data-acrylic", "false");
   }
 
-  applyColors(settings);
+  if (!isThemeProviderActive()) {
+    applyColors(settings);
+  }
   applyDeveloperMode(settings.developer_mode || false);
 }
 

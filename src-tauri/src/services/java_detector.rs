@@ -66,7 +66,7 @@ fn get_candidate_paths() -> Vec<String> {
     {
         let mut scan_roots = Vec::new();
 
-        for drive_letter in b'C'..=b'E' {
+        for drive_letter in b'C'..=b'Z' {
             let drive = format!("{}:\\", drive_letter as char);
             if Path::new(&drive).exists() {
                 scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Java"));
@@ -174,11 +174,22 @@ fn check_java(path: &str) -> Option<JavaInfo> {
     };
 
     let resolved = if path == "java" {
-        let candidate = resolve_path_from_env(path)?;
-        // 对 candidate 进行符号链接解析
-        canonicalize_path(&candidate).unwrap_or(candidate)
+        resolve_path_from_env(path)?
     } else {
-        canonicalize_path(path)?
+        let p = fs::canonicalize(path).ok()?;
+        #[cfg(target_os = "windows")]
+        {
+            let path_str = p.to_string_lossy();
+            if let Some(stripped) = path_str.strip_prefix(r"\\?\") {
+                stripped.to_string()
+            } else {
+                path_str.into_owned()
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            p.to_string_lossy().into_owned()
+        }
     };
 
     Some(JavaInfo {
@@ -272,22 +283,4 @@ fn command_output(program: &str, args: &[&str]) -> Option<std::process::Output> 
     }
 
     command.output().ok()
-}
-
-fn canonicalize_path(path: &str) -> Option<String> {
-    fs::canonicalize(path).ok().map(|p| {
-        #[cfg(target_os = "windows")]
-        {
-            let path_str = p.to_string_lossy();
-            if let Some(stripped) = path_str.strip_prefix(r"\\?\") {
-                stripped.to_string()
-            } else {
-                path_str.into_owned()
-            }
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            p.to_string_lossy().into_owned()
-        }
-    })
 }

@@ -16,20 +16,6 @@ changelogs/
 .claude/
 .trae/
 changelog/
-
-# 临时不上传
-plugins/
-plugin-market/
-src-tauri/src/plugins/
-src-tauri/src/commands/plugin.rs
-src-tauri/src/models/plugin.rs
-src/api/plugin.ts
-src/components/plugin/
-src/stores/pluginStore.ts
-src/types/plugin.ts
-src/views/MarketView.vue
-src/views/PluginCategoryView.vue
-src/views/PluginPageView.vue
-src/views/PluginsView.vue
-plans/
 .review/
+plugin-market/
+plugins-demo/

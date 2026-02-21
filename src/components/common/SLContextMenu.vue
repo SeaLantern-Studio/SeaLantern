@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed } from "vue";
 import { useContextMenuStore, type ContextMenuItem } from "@/stores/contextMenuStore";
 
 const contextMenuStore = useContextMenuStore();
@@ -40,41 +40,6 @@ const menuStyle = computed(() => {
 function handleItemClick(item: ContextMenuItem) {
   contextMenuStore.handleItemClick(item);
 }
-
-function handleClickOutside(event: MouseEvent) {
-  if (menuRef.value && !menuRef.value.contains(event.target as Node)) {
-    contextMenuStore.hideContextMenu();
-  }
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === "Escape") {
-    contextMenuStore.hideContextMenu();
-  }
-}
-
-watch(
-  () => contextMenuStore.visible,
-  (visible) => {
-    if (visible) {
-      setTimeout(() => {
-        document.addEventListener("click", handleClickOutside);
-        document.addEventListener("contextmenu", handleClickOutside);
-      }, 0);
-      document.addEventListener("keydown", handleKeydown);
-    } else {
-      document.removeEventListener("click", handleClickOutside);
-      document.removeEventListener("contextmenu", handleClickOutside);
-      document.removeEventListener("keydown", handleKeydown);
-    }
-  }
-);
-
-onUnmounted(() => {
-  document.removeEventListener("click", handleClickOutside);
-  document.removeEventListener("contextmenu", handleClickOutside);
-  document.removeEventListener("keydown", handleKeydown);
-});
 </script>
 
 <template>
@@ -82,21 +47,26 @@ onUnmounted(() => {
     <Transition name="context-menu-fade">
       <div
         v-if="contextMenuStore.visible"
-        ref="menuRef"
-        class="sl-context-menu"
-        :style="menuStyle"
+        class="sl-context-menu-backdrop"
+        @click="contextMenuStore.hideContextMenu()"
+        @contextmenu.prevent="contextMenuStore.hideContextMenu()"
       >
-        <div
-          v-for="item in contextMenuStore.items"
-          :key="`${item.pluginId}-${item.id}`"
-          class="sl-context-menu-item"
-          @click="handleItemClick(item)"
-        >
-          <span v-if="item.icon" class="sl-context-menu-icon">{{ item.icon }}</span>
-          <span class="sl-context-menu-label">{{ item.label }}</span>
-        </div>
-        <div v-if="contextMenuStore.items.length === 0" class="sl-context-menu-empty">
-          No menu items
+        <div ref="menuRef" class="sl-context-menu" :style="menuStyle" @click.stop>
+          <div v-if="contextMenuStore.targetData" class="sl-context-menu-header">
+            {{ contextMenuStore.targetData }}
+          </div>
+          <div
+            v-for="item in contextMenuStore.items"
+            :key="`${item.pluginId}-${item.id}`"
+            class="sl-context-menu-item"
+            @click="handleItemClick(item)"
+          >
+            <span v-if="item.icon" class="sl-context-menu-icon">{{ item.icon }}</span>
+            <span class="sl-context-menu-label">{{ item.label }}</span>
+          </div>
+          <div v-if="contextMenuStore.items.length === 0" class="sl-context-menu-empty">
+            No menu items
+          </div>
         </div>
       </div>
     </Transition>
@@ -104,6 +74,12 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.sl-context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+}
+
 .sl-context-menu {
   position: fixed;
   background: rgba(30, 30, 46, 0.95);
@@ -115,7 +91,7 @@ onUnmounted(() => {
   min-width: 160px;
   max-width: 280px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  z-index: 9999;
+  z-index: 100001;
   user-select: none;
 }
 
@@ -153,6 +129,18 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.sl-context-menu-header {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
 .sl-context-menu-empty {
   padding: 8px 12px;
   color: rgba(255, 255, 255, 0.5);
@@ -163,7 +151,9 @@ onUnmounted(() => {
 /* 淡入淡出动画 */
 .context-menu-fade-enter-active,
 .context-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .context-menu-fade-enter-from,
@@ -189,6 +179,11 @@ onUnmounted(() => {
 
 [data-theme="light"] .sl-context-menu-item:active {
   background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .sl-context-menu-header {
+  color: rgba(0, 0, 0, 0.4);
+  border-bottom-color: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .sl-context-menu-empty {

@@ -1,25 +1,27 @@
 mod commands;
 mod models;
+mod plugins;
 mod services;
 mod utils;
 
 use commands::config as config_commands;
 use commands::java as java_commands;
-use commands::join as join_commands;
-use commands::mods as mods_commands;
 use commands::player as player_commands;
+use commands::plugin as plugin_commands;
 use commands::server as server_commands;
-use commands::server_id as server_id_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
 use commands::update as update_commands;
-use tauri::{tray::MouseButton, tray::MouseButtonState, tray::TrayIconEvent, Manager};
+use plugins::manager::PluginManager;
+use std::sync::{Arc, Mutex};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Emitter, Listener, Manager,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Handle CLI mode
-    utils::cli::handle_cli();
-
     // Fix white screen issue on Wayland desktop environments (tested on Arch Linux + KDE Plasma)
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
@@ -29,6 +31,7 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
@@ -72,15 +75,11 @@ pub fn run() {
             server_commands::import_modpack,
             server_commands::start_server,
             server_commands::stop_server,
-            server_commands::force_stop_all_servers,
             server_commands::send_command,
             server_commands::get_server_list,
             server_commands::get_server_status,
             server_commands::delete_server,
             server_commands::get_server_logs,
-            server_commands::add_server_command,
-            server_commands::update_server_command,
-            server_commands::delete_server_command,
             server_commands::update_server_name,
             java_commands::detect_java,
             java_commands::validate_java_path,
@@ -96,7 +95,6 @@ pub fn run() {
             system_commands::pick_java_file,
             system_commands::pick_folder,
             system_commands::pick_image_file,
-            system_commands::open_folder,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -118,37 +116,364 @@ pub fn run() {
             settings_commands::get_system_fonts,
             update_commands::check_update,
             update_commands::open_download_url,
-            update_commands::download_update,
-            update_commands::install_update,
-            update_commands::check_pending_update,
-            update_commands::clear_pending_update,
-            update_commands::restart_and_install,
-            update_commands::download_update_from_debug_url,
-            mods_commands::search_mods,
-            mods_commands::install_mod,
-            join_commands::resolve_join_server_id,
-            join_commands::join_server_by_id,
-            server_id_commands::create_server_id,
-            server_id_commands::resolve_server_id,
-            server_id_commands::get_server_id,
-            server_id_commands::list_server_ids,
-            server_id_commands::update_server_id,
-            server_id_commands::deactivate_server_id,
-            server_id_commands::delete_server_id,
-            server_id_commands::search_server_ids,
+            plugin_commands::list_plugins,
+            plugin_commands::scan_plugins,
+            plugin_commands::enable_plugin,
+            plugin_commands::disable_plugin,
+            plugin_commands::get_plugin_nav_items,
+            plugin_commands::install_plugin,
+            plugin_commands::get_plugin_icon,
+            plugin_commands::get_plugin_settings,
+            plugin_commands::set_plugin_settings,
+            plugin_commands::get_plugin_css,
+            plugin_commands::get_all_plugin_css,
+            plugin_commands::delete_plugin,
+            plugin_commands::delete_plugins,
+            plugin_commands::check_plugin_update,
+            plugin_commands::check_all_plugin_updates,
+            plugin_commands::fetch_market_plugins,
+            plugin_commands::fetch_market_categories,
+            plugin_commands::fetch_market_plugin_detail,
+            plugin_commands::install_from_market,
+            plugin_commands::install_plugins_batch,
+            plugin_commands::context_menu_callback,
+            plugin_commands::context_menu_show_notify,
+            plugin_commands::context_menu_hide_notify,
+            plugin_commands::on_locale_changed,
+            plugin_commands::component_mirror_register,
+            plugin_commands::component_mirror_unregister,
+            plugin_commands::component_mirror_clear,
+            plugin_commands::on_page_changed,
+            plugin_commands::get_plugin_component_snapshot,
+            plugin_commands::get_plugin_ui_snapshot,
+            plugin_commands::get_plugin_sidebar_snapshot,
+            plugin_commands::get_plugin_context_menu_snapshot,
         ])
-        .on_window_event(|_window, event| {
-            if let tauri::WindowEvent::CloseRequested { api: _, .. } = event {
-                // 允许默认关闭行为，由前端处理确认逻辑
-                // 直接关闭应用
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let settings = services::global::settings_manager().get();
-                if settings.close_servers_on_exit {
-                    services::global::server_manager().stop_all_servers();
+
+                match settings.close_action.as_str() {
+                    "minimize" => {
+                        // 最小化到托盘
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                    "close" => {
+                        // 直接关闭
+                        if settings.close_servers_on_exit {
+                            services::global::server_manager().stop_all_servers();
+                        }
+                        // 关闭时禁用插件
+                        if let Some(manager) =
+                            window.app_handle().try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>()
+                        {
+                            if let Ok(mut m) = manager.lock() {
+                                m.disable_all_plugins();
+                            }
+                        }
+                    }
+                    _ => {
+                        // 显示对话框（ask 或其他值）
+                        api.prevent_close();
+                        let _ = window.emit("close-requested", ());
+                    }
                 }
-                // 不阻止默认关闭，让前端的确认对话框处理
             }
         })
-        .setup(|_app| Ok(()))
+        .setup(|app| {
+            // 初始化插件管理
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+            let plugins_dir = app_data_dir.join("plugins");
+            let data_dir = app_data_dir.join("plugin_data");
+
+            let mut plugin_manager = PluginManager::new(plugins_dir, data_dir);
+
+            if let Err(e) = plugin_manager.scan_plugins() {
+                eprintln!("Failed to scan plugins: {}", e);
+            }
+
+            // 自动启用上启用的插件
+            plugin_manager.auto_enable_plugins();
+
+            let shared_runtimes = plugin_manager.get_shared_runtimes();
+            let shared_runtimes_for_server_ready = Arc::clone(&shared_runtimes);
+            let api_registry = plugin_manager.get_api_registry();
+
+            let manager = Arc::new(Mutex::new(plugin_manager));
+
+            plugins::api::set_api_call_handler(Arc::new(move |_source, target, api_name, args| {
+                use crate::plugins::api::ApiRegistryOps;
+
+                // 检查api是否存在
+                let lua_fn_name = api_registry
+                    .get_api_fn_name(target, api_name)
+                    .ok_or_else(|| format!("插件 '{}' 没有注册 API '{}'", target, api_name))?;
+
+                // 获取目标插件的runtime
+                let runtimes = shared_runtimes.read().unwrap_or_else(|e| e.into_inner());
+                let runtime = runtimes
+                    .get(target)
+                    .ok_or_else(|| format!("插件 '{}' 的运行时不存在", target))?;
+                runtime.call_registered_api(&lua_fn_name, args)
+            }));
+
+            let app_handle = app.handle().clone();
+            plugins::api::set_ui_event_handler(Arc::new(
+                move |plugin_id, action, element_id, html| {
+                    use serde::Serialize;
+
+                    #[derive(Serialize, Clone)]
+                    struct PluginUiEvent {
+                        plugin_id: String,
+                        action: String,
+                        element_id: String,
+                        html: String,
+                    }
+
+                    let event = PluginUiEvent {
+                        plugin_id: plugin_id.to_string(),
+                        action: action.to_string(),
+                        element_id: element_id.to_string(),
+                        html: html.to_string(),
+                    };
+
+                    app_handle
+                        .emit("plugin-ui-event", event)
+                        .map_err(|e| format!("Failed to emit UI event: {}", e))
+                },
+            ));
+
+            let app_handle = app.handle().clone();
+            plugins::api::set_log_event_handler(Arc::new(move |plugin_id, level, message| {
+                use serde::Serialize;
+
+                #[derive(Serialize, Clone)]
+                struct PluginLogEvent {
+                    plugin_id: String,
+                    level: String,
+                    message: String,
+                }
+
+                let event = PluginLogEvent {
+                    plugin_id: plugin_id.to_string(),
+                    level: level.to_string(),
+                    message: message.to_string(),
+                };
+
+                app_handle
+                    .emit("plugin-log-event", event)
+                    .map_err(|e| format!("Failed to emit log event: {}", e))
+            }));
+
+            let app_handle = app.handle().clone();
+            plugins::api::set_context_menu_handler(Arc::new(
+                move |plugin_id, action, context, items_json| {
+                    use serde::Serialize;
+
+                    #[derive(Serialize, Clone)]
+                    struct PluginContextMenuEvent {
+                        plugin_id: String,
+                        action: String,
+                        context: String,
+                        items: String,
+                    }
+
+                    let event = PluginContextMenuEvent {
+                        plugin_id: plugin_id.to_string(),
+                        action: action.to_string(),
+                        context: context.to_string(),
+                        items: items_json.to_string(),
+                    };
+
+                    app_handle
+                        .emit("plugin-context-menu-event", event)
+                        .map_err(|e| format!("Failed to emit context menu event: {}", e))
+                },
+            ));
+
+            let app_handle = app.handle().clone();
+            plugins::api::set_sidebar_event_handler(Arc::new(
+                move |plugin_id, action, label, icon| {
+                    use serde::Serialize;
+
+                    #[derive(Serialize, Clone)]
+                    struct PluginSidebarEvent {
+                        plugin_id: String,
+                        action: String,
+                        label: String,
+                        icon: String,
+                    }
+
+                    let event = PluginSidebarEvent {
+                        plugin_id: plugin_id.to_string(),
+                        action: action.to_string(),
+                        label: label.to_string(),
+                        icon: icon.to_string(),
+                    };
+
+                    app_handle
+                        .emit("plugin-sidebar-event", event)
+                        .map_err(|e| format!("Failed to emit sidebar event: {}", e))
+                },
+            ));
+
+            let app_handle = app.handle().clone();
+            plugins::api::set_permission_log_handler(Arc::new(
+                move |plugin_id, log_type, action, detail, timestamp| {
+                    use serde::Serialize;
+
+                    #[derive(Serialize, Clone)]
+                    struct PluginPermissionLog {
+                        plugin_id: String,
+                        log_type: String,
+                        action: String,
+                        detail: String,
+                        timestamp: u64,
+                    }
+
+                    let event = PluginPermissionLog {
+                        plugin_id: plugin_id.to_string(),
+                        log_type: log_type.to_string(),
+                        action: action.to_string(),
+                        detail: detail.to_string(),
+                        timestamp,
+                    };
+
+                    app_handle
+                        .emit("plugin-permission-log", event)
+                        .map_err(|e| format!("Failed to emit permission log: {}", e))
+                },
+            ));
+
+            let app_handle = app.handle().clone();
+            plugins::api::set_component_event_handler(Arc::new(move |_plugin_id, payload_json| {
+                let val: serde_json::Value =
+                    serde_json::from_str(payload_json).unwrap_or(serde_json::Value::Null);
+                app_handle
+                    .emit("plugin:ui:component", val)
+                    .map_err(|e| format!("Failed to emit component event: {}", e))
+            }));
+
+            let app_handle = app.handle().clone();
+            plugins::api::set_i18n_event_handler(Arc::new(
+                move |plugin_id, action, locale, payload| {
+                    use serde::Serialize;
+
+                    #[derive(Serialize, Clone)]
+                    struct PluginI18nEvent {
+                        plugin_id: String,
+                        action: String,
+                        locale: String,
+                        payload: String,
+                    }
+
+                    let event = PluginI18nEvent {
+                        plugin_id: plugin_id.to_string(),
+                        action: action.to_string(),
+                        locale: locale.to_string(),
+                        payload: payload.to_string(),
+                    };
+
+                    app_handle
+                        .emit("plugin-i18n-event", event)
+                        .map_err(|e| format!("Failed to emit i18n event: {}", e))
+                },
+            ));
+
+            {
+                plugins::api::set_server_ready_handler(Arc::new(move |server_id| {
+                    let shared_runtimes = &shared_runtimes_for_server_ready;
+                    let runtimes = shared_runtimes.read().unwrap_or_else(|e| e.into_inner());
+                    for (plugin_id, runtime) in runtimes.iter() {
+                        if let Err(e) = runtime.call_lifecycle_with_arg("onServerReady", server_id)
+                        {
+                            eprintln!("[WARN] plugin '{}' onServerReady failed: {}", plugin_id, e);
+                        }
+                    }
+                    Ok(())
+                }));
+            }
+
+            {
+                let app_handle = app.handle().clone();
+                app_handle.listen("plugin-element-response", |event| {
+                    eprintln!("[Element] Received response event");
+                    if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload())
+                    {
+                        if let (Some(request_id), Some(data)) = (
+                            payload.get("request_id").and_then(|v| v.as_u64()),
+                            payload.get("data").and_then(|v| v.as_str()),
+                        ) {
+                            plugins::api::element_response_resolve(request_id, data.to_string());
+                        }
+                    }
+                });
+            }
+
+            app.manage(manager);
+
+            let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+
+            let icon_bytes = include_bytes!("../icons/icon.png");
+            let img = image::load_from_memory(icon_bytes)
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?
+                .into_rgba8();
+            let (width, height) = img.dimensions();
+            let icon = tauri::image::Image::new_owned(img.into_raw(), width, height);
+
+            let _tray =
+                TrayIconBuilder::new()
+                    .icon(icon)
+                    .menu(&menu)
+                    .tooltip("Sea Lantern")
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            let settings = services::global::settings_manager().get();
+                            if settings.close_servers_on_exit {
+                                services::global::server_manager().stop_all_servers();
+                            }
+                            if let Some(manager) = app.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>() {
+                                if let Ok(mut m) = manager.lock() {
+                                    m.disable_all_plugins();
+                                }
+                            }
+                            app.exit(0);
+                        }
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            if let Some(window) = tray.app_handle().get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    })
+                    .build(app)?;
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running Sea Lantern");
 }

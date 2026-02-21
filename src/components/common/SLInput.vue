@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
+
 interface Props {
   modelValue?: string;
   placeholder?: string;
@@ -6,9 +9,10 @@ interface Props {
   type?: string;
   disabled?: boolean;
   maxlength?: number;
+  componentId?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   modelValue: "",
   placeholder: "",
   type: "text",
@@ -22,10 +26,23 @@ const emit = defineEmits<{
 const handleInput = (e: Event) => {
   emit("update:modelValue", (e.target as HTMLInputElement).value);
 };
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-input-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLInput",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", String(value ?? ""));
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => elRef.value,
+});
 </script>
 
 <template>
-  <div class="sl-input-wrapper">
+  <div ref="elRef" class="sl-input-wrapper">
     <label v-if="label" class="sl-input-label">{{ label }}</label>
     <div class="sl-input-container">
       <div v-if="$slots.prefix" class="sl-input-prefix">

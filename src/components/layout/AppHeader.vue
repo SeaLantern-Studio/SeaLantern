@@ -2,16 +2,13 @@
 import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, Square, X, ChevronDown, ChevronUp } from "lucide-vue-next";
 import { useI18nStore } from "../../stores/i18nStore";
 import { i18n } from "../../language";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
-import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { settingsApi, type AppSettings } from "../../api/settings";
-
-import { Minus, Square, X } from 'lucide-vue-next';
-import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
-
+import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
@@ -34,12 +31,12 @@ const primaryLanguages = computed(() => {
   // 为了确保语言切换时重新计算，我们使用 i18nStore.currentLocale 作为依赖
   const currentLocale = i18nStore.currentLocale;
   const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
-  
+
   return primaryCodes.map((code) => {
     // 尝试从语言文件中获取 languageName
     const translations = i18n.getTranslations();
     const languageName = translations[code as keyof typeof translations]?.languageName;
-    
+
     // 如果有 languageName，直接使用；否则使用原来的标签键
     let label = "";
     if (languageName) {
@@ -49,14 +46,14 @@ const primaryLanguages = computed(() => {
         "zh-CN": "header.chinese",
         "en-US": "header.english",
         "zh-TW": "header.chinese_tw",
-        "ja-JP": "header.japanese"
+        "ja-JP": "header.japanese",
       }[code];
       label = i18n.t(labelKey || "header.english");
     }
-    
+
     return {
       code,
-      label
+      label,
     };
   });
 });
@@ -66,14 +63,14 @@ const otherLanguages = computed(() => {
   const currentLocale = i18nStore.currentLocale;
   const primaryCodes = new Set(["zh-CN", "zh-TW", "en-US", "ja-JP"]);
   const allLocales = i18n.getAvailableLocales();
-  
+
   return allLocales
     .filter((code) => !primaryCodes.has(code))
     .map((code) => {
       // 尝试从语言文件中获取 languageName
       const translations = i18n.getTranslations();
       const languageName = translations[code as keyof typeof translations]?.languageName;
-      
+
       // 如果有 languageName，直接使用；否则使用原来的标签键
       let label = "";
       if (languageName) {
@@ -85,14 +82,14 @@ const otherLanguages = computed(() => {
           "ru-RU": "header.russian",
           "vi-VN": "header.vietnamese",
           "ko-KR": "header.korean",
-          "fr-FA": "header.french"
+          "fr-FA": "header.french",
         }[code];
         label = i18n.t(labelKey || code);
       }
-      
+
       return {
         code,
-        label
+        label,
       };
     });
 });
@@ -105,15 +102,15 @@ function toggleMoreLanguages() {
 
 const currentLanguageText = computed(() => {
   const currentLocale = i18nStore.currentLocale;
-  
+
   // 尝试从语言文件中获取 languageName
   const translations = i18n.getTranslations();
   const languageName = translations[currentLocale as keyof typeof translations]?.languageName;
-  
+
   if (languageName) {
     return languageName;
   }
-  
+
   // 如果没有 languageName，使用原来的逻辑
   const labelKey = {
     "zh-CN": "header.chinese",
@@ -125,7 +122,7 @@ const currentLanguageText = computed(() => {
     "ru-RU": "header.russian",
     "vi-VN": "header.vietnamese",
     "ko-KR": "header.korean",
-    "fr-FA": "header.french"
+    "fr-FA": "header.french",
   }[currentLocale];
   return labelKey ? i18n.t(labelKey) : i18n.t("header.english");
 });
@@ -186,7 +183,9 @@ async function handleCloseOption(option: string) {
   if (option === "minimize") {
     await minimizeToTray();
   } else {
-    await appWindow.close();
+    // 使用 exit() 强制退出应用，绕过 CloseRequested 事件
+    const { exit } = await import("@tauri-apps/plugin-process");
+    await exit(0);
   }
   showCloseModal.value = false;
   rememberChoice.value = false;
@@ -225,7 +224,11 @@ async function handleLanguageClick(locale: string) {
 function computeOverallProgress() {
   const locales = Object.keys(perLocaleProgress);
   if (locales.length === 0) return 0;
-  const completed = locales.filter((k) => perLocaleProgress[k].total && perLocaleProgress[k].loaded >= (perLocaleProgress[k].total ?? 0)).length;
+  const completed = locales.filter(
+    (k) =>
+      perLocaleProgress[k].total &&
+      perLocaleProgress[k].loaded >= (perLocaleProgress[k].total ?? 0),
+  ).length;
   return Math.round((completed / locales.length) * 100);
 }
 </script>
@@ -245,24 +248,37 @@ function computeOverallProgress() {
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
-          <MenuItem v-for="option in primaryLanguages" :key="option.code" as="div" @click="(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleLanguageClick(option.code);
-          }">
+          <MenuItem
+            v-for="option in primaryLanguages"
+            :key="option.code"
+            as="div"
+            @click="
+              (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleLanguageClick(option.code);
+              }
+            "
+          >
             <div class="language-item">
               <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
               </div>
             </div>
           </MenuItem>
-          
+
           <!-- 更多语言选项 -->
-          <MenuItem as="div" @click="(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleMoreLanguages();
-          }" class="language-item-full-width">
+          <MenuItem
+            as="div"
+            @click="
+              (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMoreLanguages();
+              }
+            "
+            class="language-item-full-width"
+          >
             <div class="language-item language-item-arrow">
               <div class="language-item-main">
                 <ChevronDown v-if="!showMoreLanguages" :size="16" class="arrow-icon" />
@@ -270,14 +286,21 @@ function computeOverallProgress() {
               </div>
             </div>
           </MenuItem>
-          
+
           <!-- 其他语言（仅在展开时显示） -->
           <template v-if="showMoreLanguages">
-            <MenuItem v-for="option in otherLanguages" :key="option.code" as="div" @click="(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleLanguageClick(option.code);
-            }">
+            <MenuItem
+              v-for="option in otherLanguages"
+              :key="option.code"
+              as="div"
+              @click="
+                (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleLanguageClick(option.code);
+                }
+              "
+            >
               <div class="language-item">
                 <div class="language-item-main">
                   <span class="language-label">{{ option.label }}</span>
@@ -423,7 +446,7 @@ function computeOverallProgress() {
 
 .win-btn-close:hover {
   background: var(--sl-error);
-  color: white;
+  color: var(--sl-text-inverse);
 }
 
 /* locale download UI removed */
@@ -492,10 +515,21 @@ function computeOverallProgress() {
   color: var(--sl-primary);
 }
 
-.language-item { display:flex; align-items:center; justify-content:space-between; gap:8px }
-.language-item-main { flex:1 }
-.language-item-action { flex:0 0 auto }
-.language-label { display:inline-block }
+.language-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.language-item-main {
+  flex: 1;
+}
+.language-item-action {
+  flex: 0 0 auto;
+}
+.language-label {
+  display: inline-block;
+}
 
 .language-menu::-webkit-scrollbar {
   width: 4px;
