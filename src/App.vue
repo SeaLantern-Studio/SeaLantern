@@ -12,6 +12,7 @@ const showSplash = ref(true);
 const isInitializing = ref(true);
 const updateStore = useUpdateStore();
 const settingsStore = useSettingsStore();
+const appWindow = getCurrentWindow();
 
 onMounted(async () => {
   try {
@@ -51,11 +52,7 @@ onUnmounted(async () => {
 function handleSplashReady() {
   if (isInitializing.value) return;
   showSplash.value = false;
-
-  // 显示窗口（tauri.conf.json 中 visible: false，需要手动显示）
-  const appWindow = getCurrentWindow();
   appWindow.show();
-
   updateStore.checkForUpdateOnStartup();
 }
 
