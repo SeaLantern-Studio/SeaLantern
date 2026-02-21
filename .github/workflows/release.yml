@@ -70,7 +70,18 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-      # 新增：上传 Ubuntu 构建产物
+      # Ubuntu 构建产物上传
+      - name: 检查 deb 文件并上传 Ubuntu 构建产物
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          if compgen -G "src-tauri/target/release/bundle/deb/*.deb"; then
+            echo "✅ deb 文件存在"
+            ls -la src-tauri/target/release/bundle/deb/
+          else
+            echo "❌ deb 文件未生成"
+            exit 1
+          fi
+
       - name: 上传 Ubuntu 构建产物
         if: matrix.platform == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
@@ -79,9 +90,9 @@ jobs:
           path: |
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage
-          if-no-files-found: warn
+          if-no-files-found: error
 
-  # Arch Linux 打包任务 - 根据您的 PKGBUILD 优化
+  # Arch Linux 打包任务
   build-arch-package:
     needs: publish-tauri
     runs-on: ubuntu-latest
@@ -110,16 +121,25 @@ jobs:
       - name: 查找 deb 包
         id: find_deb
         run: |
+          echo "当前目录内容:"
+          ls -la
+
           if [ -d "./downloads" ]; then
+            echo "downloads 目录内容:"
+            ls -la ./downloads
             DEB_FILE=$(find ./downloads -name "*.deb" -type f | head -1)
           fi
+
           if [ -z "$DEB_FILE" ]; then
+            echo "在根目录查找 deb 文件..."
             DEB_FILE=$(find . -name "*.deb" -type f | head -1)
           fi
+
           if [ -z "$DEB_FILE" ]; then
             echo "❌ 未找到 deb 包文件"
             exit 1
           fi
+
           echo "✅ 找到 deb 包: $DEB_FILE"
           cp "$DEB_FILE" ./sealantern.deb
           echo "DEB_FILE=$DEB_FILE" >> $GITHUB_OUTPUT
@@ -131,11 +151,16 @@ jobs:
             archlinux:latest \
             sleep infinity
 
+          # 创建 builder 用户
+          docker exec arch-builder bash -c "
+            useradd -m builder && \
+            echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+          "
+
           # 根据您的 PKGBUILD 安装所有 depends 和 makedepends
           docker exec arch-builder bash -c "
             pacman -Syu --noconfirm && \
             pacman -S --noconfirm \
-              # 基础开发工具 (makedepends)
               base-devel \
               binutils \
               file \
@@ -144,8 +169,6 @@ jobs:
               sed \
               gawk \
               dpkg \
-              \
-              # GTK 相关基础依赖
               cairo \
               gdk-pixbuf2 \
               glib2 \
@@ -153,36 +176,22 @@ jobs:
               pango \
               atk \
               libgl \
-              \
-              # WebKit 相关依赖
               webkit2gtk \
               libsoup \
-              \
-              # 系统图标主题
               hicolor-icon-theme \
               adwaita-icon-theme \
-              \
-              # 桌面文件相关
               desktop-file-utils \
               shared-mime-info \
-              \
-              # 安全相关
               libxss \
               nss \
               nspr \
-              \
-              # 系统托盘支持
               libayatana-appindicator \
               libappindicator-gtk3 \
-              \
-              # 网络相关
               curl \
               wget \
               openssl \
               ca-certificates \
               gnutls \
-              \
-              # 图形相关
               libx11 \
               libxcb \
               libxcomposite \
@@ -194,24 +203,14 @@ jobs:
               libxrandr \
               libxrender \
               libxtst \
-              \
-              # 字体支持
               fontconfig \
               freetype2 \
-              \
-              # 音频支持
               alsa-lib \
               libpulse \
-              \
-              # 数据库支持
               sqlite3 \
-              \
-              # 压缩支持
               zlib \
               bzip2 \
               xz \
-              \
-              # 其他常用库
               expat \
               libffi \
               pcre \
@@ -227,32 +226,35 @@ jobs:
           "
           echo "✅ Arch Linux 容器依赖安装完成"
 
-      - name: 使用您的 PKGBUILD 构建 Arch 包
+      - name: 使用 PKGBUILD 构建 Arch 包
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
 
-          # 将您的 PKGBUILD 和 sealantern.install 文件复制到容器
+          # 将文件复制到容器
           docker cp sealantern.deb arch-builder:/workspace/
           docker cp PKGBUILD arch-builder:/workspace/
-          # 如果存在 sealantern.install 文件，也复制过去
           [ -f "sealantern.install" ] && docker cp sealantern.install arch-builder:/workspace/
 
-          # 在容器中执行打包，使用您的原始 PKGBUILD
+          # 在容器中执行打包
           docker exec arch-builder bash -c "
             cd /workspace && \
             chown -R builder:builder . && \
 
-            # 更新 PKGBUILD 中的版本号（确保与当前版本一致）
+            # 更新版本号
             sed -i 's/^pkgver=.*/pkgver=$VERSION/' PKGBUILD && \
             sed -i 's/^pkgrel=.*/pkgrel=1/' PKGBUILD && \
 
-            # 以 builder 用户运行 makepkg 生成最终包
+            # 显示 PKGBUILD 内容用于调试
+            echo '=== PKGBUILD 内容 ==='
+            cat PKGBUILD
+            echo '===================='
+
+            # 以 builder 用户运行 makepkg
             sudo -u builder makepkg -f --noconfirm
           "
 
       - name: 从容器中获取构建产物
         run: |
-          # 复制生成的包文件（可能是 .pkg.tar.zst 或 .pkg.tar.xz）
           docker cp arch-builder:/workspace/*.pkg.tar.* . || true
 
           if ls *.pkg.tar.* 1> /dev/null 2>&1; then
