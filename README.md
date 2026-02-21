@@ -30,6 +30,18 @@
 
 下载 [release](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest) 版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
 
+### Ubuntu PPA 安装
+
+Ubuntu 用户可以通过 PPA 快速安装：
+
+```bash
+sudo add-apt-repository ppa:brianeee7878/sealantern
+sudo apt update
+sudo apt install sea-lantern-ppa-updater
+```
+
+支持 Ubuntu 20.04 LTS、22.04 LTS 和 24.04 LTS。
+
 ## 开发
 
 您将会需要 Node.js 20+ 和 Rust 1.70+。
