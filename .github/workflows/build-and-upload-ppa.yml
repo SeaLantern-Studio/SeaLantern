@@ -37,7 +37,13 @@ jobs:
             VERSION=$(node -p "require('./package.json').version")
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION for ${{ matrix.distro }}"
+          
+          # 添加构建号（使用 Git commit short SHA + 时间戳）避免版本冲突
+          BUILD_NUM="${{ github.sha }}"
+          BUILD_SUFFIX="${BUILD_NUM:0:7}"
+          
+          echo "BUILD_SUFFIX=$BUILD_SUFFIX" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION for ${{ matrix.distro }} with build suffix: $BUILD_SUFFIX"
 
       - name: Download Sea Lantern deb
         run: |
@@ -49,7 +55,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
-          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ matrix.distro }}1"
+          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ steps.version.outputs.BUILD_SUFFIX }}~${{ matrix.distro }}1"
           
           PACKAGE_DIR="./ppa-build/sea-lantern-ppa-updater_${Package_VERSION}"
           
