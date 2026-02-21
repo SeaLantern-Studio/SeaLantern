@@ -94,3 +94,28 @@
 [data-theme="dark"][data-acrylic="true"] .glass-card {
   background: rgba(26, 29, 40, 0.5);
 }
+
+/* 亚克力关闭时，使用不透明背景 */
+[data-acrylic="false"] .glass {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-acrylic="false"] .glass-subtle {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-acrylic="false"] .glass-strong {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-acrylic="false"] .glass-card {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}

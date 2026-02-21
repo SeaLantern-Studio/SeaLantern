@@ -727,6 +727,29 @@ async function handleManualDownload() {
   -webkit-backdrop-filter: blur(12px);
 }
 
+/* 毛玻璃设置调控 */
+[data-acrylic="true"] .join-card {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+[data-acrylic="true"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"][data-acrylic="true"] .join-card {
+  background: rgba(15, 17, 23, 0.35);
+}
+
+[data-theme="dark"][data-acrylic="true"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .join-icon {
   width: 48px;
   height: 48px;

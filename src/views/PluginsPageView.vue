@@ -19,7 +19,7 @@ watch(localeRef, () => {
 });
 
 const tabs = computed(() => [
-  { key: "plugins" as const, label: i18n.t("common.plugins") || "插件" },
+  { key: "plugins" as const, label: "插件管理" },
   { key: "market" as const, label: i18n.t("common.market") || "插件市场" },
 ]);
 
@@ -51,13 +51,14 @@ watch(
 </script>
 
 <template>
-  <div class="plugins-page">
-    <div class="tab-bar">
+  <div class="plugins-page animate-fade-in-up">
+    <div class="tab-switcher">
       <div class="tab-indicator" ref="tabIndicator"></div>
       <button
         v-for="tab in tabs"
         :key="tab.key"
-        :class="['tab-btn', { active: activeTab === tab.key }]"
+        class="tab-button"
+        :class="{ active: activeTab === tab.key }"
         @click="switchTab(tab.key)"
       >
         {{ tab.label }}
@@ -75,12 +76,11 @@ watch(
 .plugins-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  padding: var(--sl-space-md);
   gap: var(--sl-space-md);
+  height: 100%;
 }
 
-.tab-bar {
+.tab-switcher {
   display: flex;
   gap: var(--sl-space-xs);
   background: var(--sl-surface);
@@ -88,6 +88,7 @@ watch(
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-xs);
   width: fit-content;
+  margin-top: 8px;
   position: relative;
   overflow: hidden;
 }
@@ -105,11 +106,8 @@ watch(
   opacity: 0.9;
 }
 
-.tab-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-sm);
-  padding: 8px 18px;
+.tab-button {
+  padding: 8px 16px;
   border-radius: var(--sl-radius-sm);
   font-size: 0.875rem;
   font-weight: 500;
@@ -120,14 +118,13 @@ watch(
   transition: all var(--sl-transition-fast);
   position: relative;
   z-index: 2;
-  white-space: nowrap;
 }
 
-.tab-btn:hover {
+.tab-button:hover {
   color: var(--sl-text-primary);
 }
 
-.tab-btn.active {
+.tab-button.active {
   color: var(--sl-primary);
 }
 
