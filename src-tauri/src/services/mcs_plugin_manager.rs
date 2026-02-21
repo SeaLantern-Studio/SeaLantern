@@ -262,25 +262,6 @@ impl m_PluginManager {
                     }
                 } else if path.is_dir() {
                     config_files.extend(self.m_scan_plugin_config_files(&path));
-            for entry in entries.flatten() {
-                let path = entry.path();
-                
-                if path.is_file() {
-                    let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                    let file_type = path.extension().unwrap_or_default().to_string_lossy().to_string();
-                    
-                    if ["yml", "yaml", "json", "properties"].contains(&file_type.as_str()) {
-                        if let Ok(content) = fs::read_to_string(&path) {
-                            config_files.push(m_PluginConfigFile {
-                                file_name,
-                                content,
-                                file_type,
-                                file_path: path.to_string_lossy().to_string(),
-                            });
-                        }
-                    }
-                } else if path.is_dir() {
-                    config_files.extend(self.m_scan_plugin_config_files(&path));
                 }
             }
         }
