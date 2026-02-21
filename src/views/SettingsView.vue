@@ -14,6 +14,7 @@ import {
   applyAcrylic,
   getSystemFonts,
   type AppSettings,
+  type SettingsGroup,
 } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -21,6 +22,7 @@ import { i18n } from "../language";
 import { useMessage } from "../composables/useMessage";
 import { useLoading } from "../composables/useAsync";
 import { getThemeOptions } from "../themes";
+import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "../stores/settingsStore";
 
 const { error, showError, clearError } = useMessage();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
@@ -98,24 +100,40 @@ function isAnimatedImage(path: string): boolean {
 onMounted(async () => {
   await loadSettings();
   await loadSystemFonts();
-  // 检测亚克力支持
   try {
     acrylicSupported.value = await checkAcrylicSupport();
   } catch {
     acrylicSupported.value = false;
   }
 
-  // 监听设置更新事件
-  window.addEventListener("settings-updated", loadSettings);
+  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("settings-updated", loadSettings);
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
 });
+
+function handleSettingsUpdateEvent(e: CustomEvent<{ changedGroups: SettingsGroup[]; settings: AppSettings }>) {
+  const newSettings = e.detail.settings;
+  settings.value = newSettings;
+  syncLocalValues(newSettings);
+}
+
+function syncLocalValues(s: AppSettings) {
+  maxMem.value = String(s.default_max_memory);
+  minMem.value = String(s.default_min_memory);
+  port.value = String(s.default_port);
+  fontSize.value = String(s.console_font_size);
+  logLines.value = String(s.max_log_lines);
+  bgOpacity.value = String(s.background_opacity);
+  bgBlur.value = String(s.background_blur);
+  bgBrightness.value = String(s.background_brightness);
+  uiFontSize.value = String(s.font_size);
+}
 
 async function loadSystemFonts() {
   startFontsLoading();
@@ -271,7 +289,7 @@ async function saveSettings() {
   startSaving();
   clearError();
   try {
-    await settingsApi.save(settings.value);
+    const result = await settingsApi.saveWithDiff(settings.value);
 
     localStorage.setItem(
       "sl_theme_cache",
@@ -281,17 +299,20 @@ async function saveSettings() {
       }),
     );
 
-    applyTheme(settings.value.theme);
-    applyFontSize(settings.value.font_size);
+    if (result.changed_groups.includes("Appearance")) {
+      applyTheme(settings.value.theme);
+      applyFontSize(settings.value.font_size);
+      applyFontFamily(settings.value.font_family);
 
-    if (acrylicSupported.value) {
-      try {
-        const isDark = getEffectiveTheme(settings.value.theme) === "dark";
-        await applyAcrylic(settings.value.acrylic_enabled, isDark);
-      } catch {}
+      if (acrylicSupported.value) {
+        try {
+          const isDark = getEffectiveTheme(settings.value.theme) === "dark";
+          await applyAcrylic(settings.value.acrylic_enabled, isDark);
+        } catch {}
+      }
     }
 
-    window.dispatchEvent(new CustomEvent("settings-updated"));
+    dispatchSettingsUpdate(result.changed_groups, result.settings);
   } catch (e) {
     showError(String(e));
   } finally {

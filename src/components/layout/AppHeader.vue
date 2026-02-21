@@ -7,8 +7,9 @@ import { useI18nStore } from "../../stores/i18nStore";
 import { i18n } from "../../language";
 import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
-import { settingsApi, type AppSettings } from "../../api/settings";
+import { settingsApi, type AppSettings, type SettingsGroup } from "../../api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
+import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "../../stores/settingsStore";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
@@ -130,14 +131,18 @@ const currentLanguageText = computed(() => {
 onMounted(async () => {
   await loadSettings();
 
-  // 监听设置更新事件
-  window.addEventListener("settings-updated", loadSettings);
+  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
-  // 移除设置更新事件监听
-  window.removeEventListener("settings-updated", loadSettings);
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
+
+function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
+  const { settings: newSettings } = e.detail;
+  settings.value = newSettings;
+  closeAction.value = newSettings.close_action || "ask";
+}
 
 async function loadSettings() {
   try {
@@ -172,9 +177,8 @@ async function handleCloseOption(option: string) {
     settings.value.close_action = option === "minimize" ? "minimize" : "close";
     closeAction.value = settings.value.close_action;
     try {
-      await settingsApi.save(settings.value);
-      // 触发设置更新事件，以便设置界面能够及时更新
-      window.dispatchEvent(new CustomEvent("settings-updated"));
+      const result = await settingsApi.saveWithDiff(settings.value);
+      dispatchSettingsUpdate(result.changed_groups, result.settings);
     } catch (e) {
       console.error("Failed to save settings:", e);
     }
@@ -183,7 +187,6 @@ async function handleCloseOption(option: string) {
   if (option === "minimize") {
     await minimizeToTray();
   } else {
-    // 使用 exit() 强制退出应用，绕过 CloseRequested 事件
     const { exit } = await import("@tauri-apps/plugin-process");
     await exit(0);
   }
