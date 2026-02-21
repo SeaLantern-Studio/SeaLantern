@@ -203,6 +203,10 @@ jobs:
           # Copy the binary deb
           cp "./ppa-build/sea-lantern-ppa-updater_${Package_VERSION}.deb" "${SOURCE_DIR}/"
           
+          # Copy the embedded deb to opt/sealantern/
+          mkdir -p "${SOURCE_DIR}/opt/sealantern"
+          cp "Sea.Lantern_${VERSION}_amd64.deb" "${SOURCE_DIR}/opt/sealantern/"
+          
           # Create debian directory
           mkdir -p "${SOURCE_DIR}/debian/source"
           
