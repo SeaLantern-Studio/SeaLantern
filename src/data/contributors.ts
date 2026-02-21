@@ -151,6 +151,30 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/yanuofox",
     url: "https://github.com/foxcyber907",
   },
+  {
+    name: "Yashiro Nene°",
+    role: "幸运☆星",
+    avatar: "https://api.rms.net.cn/head/QiuHuang2007",
+    url: "https://m.bilibili.com/space/327701",
+  },
+  {
+    name: "NyaCl",
+    role: "awa",
+    avatar: "https://api.rms.net.cn/head/XueChen_NyaCl",
+    url: "",
+  },
+  {
+   name:"龙腾_H",
+   role:"贡献者 美术这块 河南卷死我了",
+   avatar:"https://api.rms.net.cn/head/Longteng_H",
+   url:"https://github.com/longteng-H",
+  },
+  {
+    name: "KercyDing",
+    role: "代码审查与CI",
+    avatar: "https://api.rms.net.cn/head/KercyDing",
+    url: "https://github.com/KercyDing",
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // 没有正版怎么办？
