@@ -26,17 +26,24 @@ export const contributors: Contributor[] = [
     url: {
       gitee: "https://gitee.com/fps_z",
       github: "https://github.com/FPSZ",
+      qq: "3223659402",
     },
   },
   {
     name: "鸽德迪",
     role: "自定义背景图方案",
     avatar: "https://api.rms.net.cn/head/Alex",
+    url: {
+      bilibili: "https://space.bilibili.com/1842931240",
+    },
   },
   {
     name: "OMIILII",
     role: "精神支柱",
     avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
+    url: {
+      bilibili: "https://space.bilibili.com/3537119062526951",
+    },
   },
   {
     name: "烬白Jinby",
@@ -80,12 +87,17 @@ export const contributors: Contributor[] = [
     url: {
       gitee: "https://gitee.com/HKYZYHgezi",
       github: "https://github.com/HKYZYH",
+      qq: "3988528390",
     },
   },
   {
     name: "清初Lucky",
     role: "喵喵喵~",
     avatar: "https://api.rms.net.cn/head/qingchu2010",
+    url: {
+      github: "https://github.com/qingchu2010",
+      qq: "1435192774",
+    }
   },
   {
     name: "CmzYa",
@@ -93,6 +105,7 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/CmzYa",
     url: {
       github: "https://github.com/CmzYa",
+      qq: "2933859893",
     },
   },
   {
@@ -109,6 +122,7 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/zhu_hao_tian",
     url: {
       github: "https://github.com/zhu1h1t1",
+      qq: "1285395558"
     },
   },
   {
@@ -116,6 +130,7 @@ export const contributors: Contributor[] = [
     role: "新增了功能，并吃了明太鱼干",
     avatar: "https://api.rms.net.cn/head/ieshishinjin",
     url: {
+      gitee: "https://gitee.com/ieshishinjin",
       github: "https://github.com/ieshishinjin",
     },
   },
@@ -141,6 +156,7 @@ export const contributors: Contributor[] = [
     avatar: "https://blog.orllow.cn/images/author.webp",
     url: {
       github: "https://github.com/Orange-Icepop",
+      qq: "1462663130",
     },
   },
   {
@@ -148,7 +164,9 @@ export const contributors: Contributor[] = [
     role: "贡献者",
     avatar: "https://api.rms.net.cn/head/xingwangzhe_",
     url: {
+      gitee: "https://gitee.com/xingwangzhe",
       github: "https://github.com/xingwangzhe",
+      qq: "2098422920",
     },
   },
   {
@@ -157,6 +175,7 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/_TNTXZ_",
     url: {
       github: "https://github.com/TNTXZ",
+      qq: "35266332",
     },
   },
   {
@@ -164,7 +183,10 @@ export const contributors: Contributor[] = [
     role: "提出了个性化页面，提供了颜色编辑和颜色选择器",
     avatar: "https://zhuxiaojt.github.io/favicon.ico",
     url: {
+      gitee: "https://gitee.com/zhuxiaojt",
       github: "https://github.com/zhuxiaojt",
+      bilibili: "https://space.bilibili.com/3546960722135638",
+      qq: "1426627889",
     },
   },
   {
@@ -174,6 +196,8 @@ export const contributors: Contributor[] = [
       "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
     url: {
       github: "https://github.com/xuezhaju",
+      bilibili: "https://space.bilibili.com/3493127857900357",
+      qq: "3883453752",
     },
   },
   {
@@ -182,13 +206,16 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/NanaLoveyuki",
     url: {
       github: "https://github.com/NanaLoveyuki",
+      qq: "3541766758",
     },
   },
   {
     name: "Yang458",
     role: "贡献者",
     avatar: "https://api.rms.net.cn/head/Yang4893",
-    url: "https://github.com/minecraft-Yang458",
+    url: {
+      github: "https://github.com/minecraft-Yang458",
+    },
   },
   {
     name: "福瑞控海天",
@@ -210,31 +237,40 @@ export const contributors: Contributor[] = [
     name: "Yashiro Nene°",
     role: "幸运☆星",
     avatar: "https://api.rms.net.cn/head/QiuHuang2007",
-    url: "https://m.bilibili.com/space/327701",
+    url: {
+      bilibili: "https://m.bilibili.com/space/327701",
+      qq: "1055792059",
+    },
   },
   {
     name: "NyaCl",
     role: "awa",
     avatar: "https://api.rms.net.cn/head/XueChen_NyaCl",
-    url: "",
+    url: {
+      qq: "1390270710",
+    },
   },
   {
-   name:"龙腾_H",
-   role:"贡献者 美术这块 河南卷死我了",
-   avatar:"https://api.rms.net.cn/head/Longteng_H",
-   url:"https://github.com/longteng-H",
+    name:"龙腾_H",
+    role:"贡献者 美术这块 河南卷死我了",
+    avatar:"https://api.rms.net.cn/head/Longteng_H",
+    url:{
+      github: "https://github.com/longteng-H",
+      qq: "2270703518",
+    },
   },
   {
     name: "KercyDing",
     role: "代码审查与CI",
     avatar: "https://api.rms.net.cn/head/KercyDing",
-    url: "https://github.com/KercyDing",
+    url: {
+      gitee: "https://gitee.com/KercyDing",
+      github: "https://github.com/KercyDing",
+      qq: "3280985937",
+    },
   },
   // ============================================
   // 在这里添加更多贡献者！
-  // 没有正版怎么办？
-  // 选择皮肤，使用其名字
-  // https://www.mcgodx.com/skins/
   // 没有正版怎么办？
   // 选择皮肤，使用其名字
   // https://www.mcgodx.com/skins/
