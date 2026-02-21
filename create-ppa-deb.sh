@@ -41,24 +41,11 @@ Description: Sea Lantern PPA Installer
  based on Tauri 2 + Rust + Vue 3.
 EOF
 
-# 创建 postinst 脚本
+# 创建 postinst 脚本 - 直接安装 Sea Lantern
 cat > "${PACKAGE_DIR}/DEBIAN/postinst" << 'POSTINST'
 #!/bin/bash
+set -e
 
-# 获取嵌入的 deb 版本
-PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
-if [ -z "$PACKAGE_VERSION" ]; then
-    PACKAGE_VERSION="0.6.5"
-fi
-
-EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
-
-echo "Sea Lantern ${PACKAGE_VERSION} 将在下次启动时自动安装"
-echo "或者手动运行: sudo /opt/sealantern/install.sh"
-
-# 创建安装脚本
-cat > /opt/sealantern/install.sh << 'INSTALLSCRIPT'
-#!/bin/bash
 PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
 if [ -z "$PACKAGE_VERSION" ]; then
     PACKAGE_VERSION="0.6.5"
@@ -69,27 +56,26 @@ EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
 echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
 
 if [ -f "$EMBEDDED_DEB" ]; then
-    # 只解压文件，不进行任何 dpkg 操作
+    # 解压文件到根目录，不使用 dpkg 安装
     ar p "$EMBEDDED_DEB" data.tar.zst 2>/dev/null | tar --zstd -x -C / 2>/dev/null || \
     ar p "$EMBEDDED_DEB" data.tar.xz 2>/dev/null | tar -xJ -C / 2>/dev/null || \
     ar p "$EMBEDDED_DEB" data.tar.gz 2>/dev/null | tar -xz -C / 2>/dev/null
     
-    # 更新桌面数据库，使菜单项显示
-    which update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications 2>/dev/null || true
-    which gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
-    
     rm -f "$EMBEDDED_DEB"
-    rm -f /opt/sealantern/install.sh
     
-    echo "✅ Sea Lantern 安装完成！"
+    echo "✅ Sea Lantern 已安装！"
     echo "运行命令: sea-lantern"
-    echo "菜单项已添加到应用程序列表"
+    
+    # 更新桌面数据库
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database /usr/share/applications 2>/dev/null || true
+    fi
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+    fi
 else
     echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
 fi
-INSTALLSCRIPT
-
-chmod +x /opt/sealantern/install.sh
 POSTINST
 
 chmod +x "${PACKAGE_DIR}/DEBIAN/postinst"
