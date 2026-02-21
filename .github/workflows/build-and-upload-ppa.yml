@@ -121,27 +121,26 @@ jobs:
           echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
           
           if [ -f "$EMBEDDED_DEB" ]; then
-              # 只解压文件，不进行任何 dpkg 操作
+              # 解压文件到根目录，不使用 dpkg 安装
               ar p "$EMBEDDED_DEB" data.tar.zst 2>/dev/null | tar --zstd -x -C / 2>/dev/null || \
               ar p "$EMBEDDED_DEB" data.tar.xz 2>/dev/null | tar -xJ -C / 2>/dev/null || \
               ar p "$EMBEDDED_DEB" data.tar.gz 2>/dev/null | tar -xz -C / 2>/dev/null
               
-              # 更新桌面数据库，使菜单项显示
-              which update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications 2>/dev/null || true
-              which gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
-              
               rm -f "$EMBEDDED_DEB"
-              rm -f /opt/sealantern/install.sh
               
-              echo "✅ Sea Lantern 安装完成！"
+              echo "✅ Sea Lantern 已安装！"
               echo "运行命令: sea-lantern"
-              echo "菜单项已添加到应用程序列表"
+              
+              # 更新桌面数据库
+              if command -v update-desktop-database >/dev/null 2>&1; then
+                  update-desktop-database /usr/share/applications 2>/dev/null || true
+              fi
+              if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+                  gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+              fi
           else
               echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
           fi
-          INSTALLSCRIPT
-          
-          chmod +x /opt/sealantern/install.sh
           POSTINST
           
           chmod +x "${PACKAGE_DIR}/DEBIAN/postinst"
