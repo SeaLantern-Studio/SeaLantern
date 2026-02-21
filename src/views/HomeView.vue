@@ -13,7 +13,6 @@ import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
 import { i18n } from "../language";
 import type { ServerInstance } from "../types/server";
-import ts from "typescript";
 
 const router = useRouter();
 const store = useServerStore();
