@@ -100,6 +100,15 @@ if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
     # 删除配置目录
     rm -rf ~/.config/sea-lantern 2>/dev/null || true
     
+    # 更新桌面数据库
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database /usr/share/applications 2>/dev/null || true
+    fi
+    # 更新图标缓存
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+    fi
+    
     echo "✅ Sea Lantern 文件已清理"
 fi
 PRERM
