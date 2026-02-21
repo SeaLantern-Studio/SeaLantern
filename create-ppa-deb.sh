@@ -45,7 +45,21 @@ EOF
 cat > "${PACKAGE_DIR}/DEBIAN/postinst" << 'POSTINST'
 #!/bin/bash
 
-PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}')
+# 获取嵌入的 deb 版本
+PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
+if [ -z "$PACKAGE_VERSION" ]; then
+    PACKAGE_VERSION="0.6.5"
+fi
+
+EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
+
+echo "Sea Lantern ${PACKAGE_VERSION} 将在下次启动时自动安装"
+echo "或者手动运行: sudo /opt/sealantern/install.sh"
+
+# 创建安装脚本
+cat > /opt/sealantern/install.sh << 'INSTALLSCRIPT'
+#!/bin/bash
+PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
 if [ -z "$PACKAGE_VERSION" ]; then
     PACKAGE_VERSION="0.6.5"
 fi
@@ -55,26 +69,22 @@ EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
 echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
 
 if [ -f "$EMBEDDED_DEB" ]; then
-    dpkg -i "$EMBEDDED_DEB" || true
+    # 只解压文件，不进行任何 dpkg 操作
+    ar p "$EMBEDDED_DEB" data.tar.zst 2>/dev/null | tar --zstd -x -C / 2>/dev/null || \
+    ar p "$EMBEDDED_DEB" data.tar.xz 2>/dev/null | tar -xJ -C / 2>/dev/null || \
+    ar p "$EMBEDDED_DEB" data.tar.gz 2>/dev/null | tar -xz -C / 2>/dev/null
     
-    # 安装依赖
-    if ! dpkg -s sea-lantern >/dev/null 2>&1; then
-        echo "正在安装依赖..."
-        apt-get install -f -y
-    fi
+    rm -f "$EMBEDDED_DEB"
+    rm -f /opt/sealantern/install.sh
     
-    if dpkg -s sea-lantern >/dev/null 2>&1; then
-        echo "✅ Sea Lantern 安装完成！"
-        echo "运行命令: sea-lantern"
-        rm -f "$EMBEDDED_DEB"
-    else
-        echo "❌ 安装失败，请手动检查"
-        exit 1
-    fi
+    echo "✅ Sea Lantern 文件已解压！"
+    echo "运行命令: sea-lantern"
 else
     echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
-    exit 1
 fi
+INSTALLSCRIPT
+
+chmod +x /opt/sealantern/install.sh
 POSTINST
 
 chmod +x "${PACKAGE_DIR}/DEBIAN/postinst"
@@ -84,7 +94,7 @@ cat > "${PACKAGE_DIR}/DEBIAN/prerm" << 'PRERM'
 #!/bin/bash
 if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
     echo "正在卸载 Sea Lantern..."
-    dpkg -l | grep -q sea-lantern && dpkg -r sea-lantern || true
+    dpkg -l | grep -q sealantern && dpkg -r sealantern || true
 fi
 PRERM
 
