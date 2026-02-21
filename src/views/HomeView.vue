@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { EChartsOption } from "echarts";
-import { Menu, Clock, Server, Pencil, Folder, Check, X } from "lucide-vue-next";
+import { Menu, Clock, Server, Pencil, Folder, FolderOpen, Check, X, Gauge } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -703,7 +703,7 @@ function handleAnimationEnd(event: AnimationEvent) {
                 statsViewMode === 'gauge' ? i18n.t('home.detail_view') : i18n.t('home.gauge_view')
               "
             >
-              <BarChart3 v-if="statsViewMode === 'gauge'" :size="14" />
+              <Menu v-if="statsViewMode === 'gauge'" :size="14" />
               <Gauge v-else :size="14" />
             </button>
           </div>
