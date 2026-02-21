@@ -2387,6 +2387,7 @@ function clearBackgroundImage() {
 .collapsible-content {
   padding: 0 var(--sl-space-md) var(--sl-space-md);
   background: var(--sl-surface);
+  contain: layout style;
 }
 
 .collapse-enter-active,

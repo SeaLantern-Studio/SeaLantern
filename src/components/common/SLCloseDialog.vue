@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { ArrowDownToLine, X } from 'lucide-vue-next';
-import SLModal from './SLModal.vue';
+import { ref, watch } from "vue";
+import { ArrowDownToLine, X } from "lucide-vue-next";
+import SLModal from "./SLModal.vue";
 
 interface Props {
   visible: boolean;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
   close: [];
@@ -15,6 +15,16 @@ const emit = defineEmits<{
 }>();
 
 const rememberChoice = ref(false);
+
+// 当对话框关闭时重置复选框状态
+watch(
+  () => props.visible,
+  (newVisible) => {
+    if (!newVisible) {
+      rememberChoice.value = false;
+    }
+  }
+);
 
 function handleExit() {
   emit('confirm', 'exit', rememberChoice.value);

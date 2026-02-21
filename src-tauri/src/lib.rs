@@ -13,7 +13,7 @@ use commands::server_id as server_id_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
 use commands::update as update_commands;
-use tauri::{tray::MouseButton, tray::MouseButtonState, tray::TrayIconEvent, Manager};
+use tauri::{tray::MouseButton, tray::MouseButtonState, tray::TrayIconEvent, Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -137,18 +137,76 @@ pub fn run() {
             server_id_commands::delete_server_id,
             server_id_commands::search_server_ids,
         ])
-        .on_window_event(|_window, event| {
-            if let tauri::WindowEvent::CloseRequested { api: _, .. } = event {
-                // 允许默认关闭行为，由前端处理确认逻辑
-                // 直接关闭应用
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let settings = services::global::settings_manager().get();
-                if settings.close_servers_on_exit {
-                    services::global::server_manager().stop_all_servers();
+
+                match settings.close_action.as_str() {
+                    "ask" => {
+                        // 阻止关闭，通知前端显示确认弹窗
+                        api.prevent_close();
+                        let _ = window.emit("show-close-dialog", ());
+                    }
+                    "minimize" => {
+                        // 最小化到托盘
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                    _ => {
+                        // "close" - 直接关闭，先停止服务器
+                        if settings.close_servers_on_exit {
+                            services::global::server_manager().stop_all_servers();
+                        }
+                    }
                 }
-                // 不阻止默认关闭，让前端的确认对话框处理
             }
         })
-        .setup(|_app| Ok(()))
-        .run(tauri::generate_context!())
-        .expect("error while running Sea Lantern");
+        .setup(|app| {
+            // 平台特定的窗口样式设置
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "macos")]
+                {
+                    use window_vibrancy::NSVisualEffectMaterial;
+                    // macOS: 应用毛玻璃效果，显式设置 10px 圆角半径
+                    match window_vibrancy::apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::HudWindow,
+                        None,
+                        Some(10.0),
+                    ) {
+                        Ok(_) => {
+                            println!("macOS vibrancy applied successfully");
+                            let window_clone = window.clone();
+                            std::thread::spawn(move || {
+                                std::thread::sleep(std::time::Duration::from_millis(100));
+                                let _ = window_clone.eval(
+                                    "document.documentElement.setAttribute('data-vibrancy', 'true')",
+                                );
+                            });
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to apply macOS vibrancy: {}", e);
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("error while building Sea Lantern")
+        .run(|app_handle, event| {
+            // 处理 macOS Dock 图标点击事件
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows,
+                ..
+            } = event
+            {
+                if !has_visible_windows {
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+        });
 }
