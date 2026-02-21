@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onMounted, onBeforeUnmount } from "vue";
+import { computed, ref, nextTick, watch, onMounted, onUnmounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "../../stores/uiStore";
 import { useServerStore } from "../../stores/serverStore";
@@ -413,6 +413,15 @@ watch(
   },
 );
 
+// 监听窗口尺寸变化，更新选项位置
+onMounted(() => {
+  window.addEventListener("resize", updateNavIndicator);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", updateNavIndicator);
+});
+
 // 便捷计算当前服务器标签
 const getCurrentServerLabel = computed(() => {
   const cur = serverOptions.value.find((o) => o.value === currentServerRef.value);
@@ -479,6 +488,9 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
       </transition>
     </div>
 
+    <!-- 导航激活指示器 -->
+    <div class="nav-active-indicator" ref="navIndicator"></div>
+
     <nav class="sidebar-nav">
       <!-- 服务器选择（Headless UI Listbox） -->
       <Listbox
@@ -527,9 +539,6 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
           </Portal>
         </div>
       </Listbox>
-
-      <!-- 导航激活指示器 -->
-      <div class="nav-active-indicator" ref="navIndicator"></div>
 
       <!-- 按顺序渲染 -->
       <template v-for="(group, gi) in orderedNavGroups" :key="gi">
@@ -618,6 +627,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
     <div class="sidebar-footer">
       <div
         class="nav-item"
+        :class="{ active: isActive('/about') }"
         @click="navigateTo('/about')"
         :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
       >

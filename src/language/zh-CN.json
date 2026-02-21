@@ -425,7 +425,7 @@
     "import": "导入",
     "java_download": "下载 Java",
     "java_download_desc": "如果系统中没有 Java 或需要更新版本，可以从这里下载",
-    "java_download_btn": "下载 Java 17 (LTS)",
+    "java_download_btn": "下载 Java {{version}} (LTS)",
     "reset": "恢复默认",
     "import_settings": "导入设置",
     "import_desc": "粘贴之前导出的 JSON 数据",

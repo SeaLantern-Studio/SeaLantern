@@ -33,19 +33,8 @@ impl SettingsManager {
 }
 
 fn get_data_dir() -> String {
-    // Use a consistent data directory regardless of dev/prod mode
-    // Try to use the user's home directory first
-    if let Some(home_dir) = dirs_next::home_dir() {
-        let data_dir = home_dir.join(".sea-lantern");
-        // Create directory if it doesn't exist
-        if let Err(e) = std::fs::create_dir_all(&data_dir) {
-            eprintln!("Warning: Failed to create data directory: {}", e);
-        }
-        return data_dir.to_string_lossy().to_string();
-    }
-
-    // Fallback to current directory
-    ".".to_string()
+    // 使用统一的应用数据目录，确保 MSI 安装时数据存储在 %AppData%
+    crate::utils::path::get_or_create_app_data_dir()
 }
 
 fn load_settings(data_dir: &str) -> AppSettings {

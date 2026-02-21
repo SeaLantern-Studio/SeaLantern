@@ -3,9 +3,18 @@ import App from "./App.vue";
 import router from "./router";
 import pinia from "./stores";
 import "./style.css";
-// `setupTray` 在浏览器环境中会引用 Tauri API，改为运行时按需导入
+import VueECharts from "vue-echarts";
+import { use } from 'echarts/core'
+import { PieChart, LineChart } from 'echarts/charts'
+import { GridComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+
+// 注册 ECharts 必要的组件
+use([GridComponent, PieChart, LineChart, CanvasRenderer]);
 
 const app = createApp(App);
+// 全局注册 vue-echarts
+app.component("v-chart", VueECharts);
 
 if (import.meta.env.DEV) {
   app.config.errorHandler = (err, instance, info) => {

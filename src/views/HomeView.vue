@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { EChartsOption } from "echarts";
+import { Menu, Clock, Server, Pencil, Folder, FolderOpen, Check, X, Gauge } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
@@ -11,18 +13,6 @@ import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
 import { i18n } from "../language";
 import type { ServerInstance } from "../types/server";
-import {
-  Gauge,
-  BarChart3,
-  Server,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  FolderOpen,
-  Copy,
-  Check,
-  X,
-} from "lucide-vue-next";
 
 const router = useRouter();
 const store = useServerStore();
@@ -43,6 +33,190 @@ const cpuHistory = ref<number[]>([]);
 const memHistory = ref<number[]>([]);
 const statsViewMode = ref<"detail" | "gauge">("gauge");
 const statsLoading = ref(true);
+
+// 获取当前主题标识（用于强制重新计算图表配置）
+const themeVersion = ref(0);
+
+// 模块级 MutationObserver 引用，避免污染全局命名空间
+let themeObserver: MutationObserver | null = null;
+
+// 获取 CSS 变量实际值的辅助函数，支持传入默认值
+const getCssVar = (varName: string, defaultValue: string): string => {
+  if (typeof window === "undefined") return defaultValue;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return value || defaultValue;
+};
+
+// 获取当前根字体大小（px）
+const getRootFontSize = (): number => {
+  if (typeof window === "undefined") return 16;
+  const fontSize = getComputedStyle(document.documentElement).fontSize;
+  const parsed = parseFloat(fontSize);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 16;
+};
+
+// 解析 CSS 字体大小（支持 px 和 rem 单位）
+const parseFontSize = (varName: string, defaultPx: number): number => {
+  const value = getCssVar(varName, `${defaultPx}px`);
+  // 移除单位并解析为数字
+  const numMatch = value.match(/^[\d.]+/);
+  if (!numMatch) return defaultPx;
+
+  const num = parseFloat(numMatch[0]);
+  if (!Number.isFinite(num) || num <= 0) return defaultPx;
+
+  // 如果是 rem，使用实际的根字体大小进行换算
+  if (value.includes("rem")) {
+    return num * getRootFontSize();
+  }
+  return num;
+};
+
+// ECharts 公共基础配置
+const baseChartConfig: EChartsOption = {
+  backgroundColor: "transparent",
+  animation: true,
+  animationDuration: 300,
+  animationEasing: "cubicOut",
+};
+
+// ECharts 配置生成函数
+const createGaugeOption = (rawValue: number, colorVar: string, label: string): EChartsOption => {
+  const value = Number.isFinite(rawValue)
+    ? Math.min(100, Math.max(0, rawValue))
+    : 0;
+  const fontSize = parseFontSize("--sl-font-size-sm", 13);
+  const fontFamily = getCssVar("--sl-font-mono", "monospace");
+  const color = getCssVar(colorVar, "#3b82f6");
+  const textColor = getCssVar("--sl-text-primary", "#1f2937");
+  const borderColor = getCssVar("--sl-border", "#e5e7eb");
+
+  return {
+    ...baseChartConfig,
+    series: [
+      {
+        type: "pie",
+        radius: ["65%", "80%"],
+        center: ["50%", "45%"],
+        avoidLabelOverlap: false,
+        silent: true,
+        label: {
+          show: true,
+          position: "center",
+          formatter: () => `${value}%`,
+          fontSize: fontSize,
+          fontWeight: 600,
+          fontFamily: fontFamily,
+          color: textColor,
+        },
+        labelLine: {
+          show: false,
+        },
+        data: [
+          {
+            value: value,
+            name: label,
+            itemStyle: {
+              color: color,
+              borderRadius: 3,
+            },
+          },
+          {
+            value: 100 - value,
+            name: "剩余",
+            itemStyle: {
+              color: borderColor,
+            },
+            label: {
+              show: false,
+            },
+            emphasis: {
+              disabled: true,
+            },
+          },
+        ],
+      },
+    ],
+  };
+};
+
+const cpuGaugeOption = computed(() => {
+  //@ts-ignore
+  const _ = themeVersion.value;
+  return createGaugeOption(cpuUsage.value, "--sl-primary", i18n.t("home.cpu"));
+});
+const memGaugeOption = computed(() => {
+  //@ts-ignore
+  const _ = themeVersion.value;
+  return createGaugeOption(memUsage.value, "--sl-success", i18n.t("home.memory"));
+});
+const diskGaugeOption = computed(() => {
+  //@ts-ignore
+  const _ = themeVersion.value;
+  return createGaugeOption(diskUsage.value, "--sl-warning", i18n.t("home.disk"));
+});
+
+// 折线图公共配置
+const baseLineConfig: EChartsOption = {
+  ...baseChartConfig,
+  grid: {
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    show: false,
+  },
+  xAxis: {
+    type: "category",
+    show: false,
+    boundaryGap: false,
+  },
+  yAxis: {
+    type: "value",
+    show: false,
+    min: 0,
+    max: 100,
+  },
+};
+
+// 折线图配置生成函数
+const createLineOption = (data: number[], colorVar: string): EChartsOption => {
+  const color = getCssVar(colorVar, "#3b82f6");
+
+  return {
+    ...baseLineConfig,
+    xAxis: {
+      ...baseLineConfig.xAxis,
+      data: data.map((_, i) => i),
+    },
+    series: [
+      {
+        type: "line",
+        data: data,
+        smooth: false,
+        symbol: "none",
+        lineStyle: {
+          width: 2,
+          color: color,
+        },
+        areaStyle: {
+          color: color,
+          opacity: 0.15,
+        },
+      },
+    ],
+  };
+};
+
+const cpuLineOption = computed(() => {
+  const _ = themeVersion.value;
+  return createLineOption(cpuHistory.value, "--sl-primary");
+});
+const memLineOption = computed(() => {
+  const _ = themeVersion.value;
+  return createLineOption(memHistory.value, "--sl-success");
+});
+
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -235,10 +409,7 @@ onMounted(() => {
   const loadServers = async () => {
     try {
       await store.refreshList();
-      // 服务器列表加载完成后，异步加载每个服务器的状态
-      for (const s of store.servers) {
-        await store.refreshStatus(s.id);
-      }
+      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
@@ -276,13 +447,28 @@ onMounted(() => {
 
   // Refresh server statuses
   refreshTimer = setInterval(async () => {
-    for (const s of store.servers) {
-      await store.refreshStatus(s.id);
-    }
+    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
   }, 3000);
 
   // 添加全局点击事件监听器，点击空白区域收回删除确认输入框
   document.addEventListener("click", handleClickOutside);
+
+  // 监听主题和无障碍模式变化
+  themeObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (
+        mutation.type === "attributes" &&
+        (mutation.attributeName === "data-theme" || mutation.attributeName === "data-senior")
+      ) {
+        themeVersion.value++;
+      }
+    });
+  });
+
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme", "data-senior"],
+  });
 });
 
 onUnmounted(() => {
@@ -292,6 +478,12 @@ onUnmounted(() => {
   if (quoteTimer) clearInterval(quoteTimer);
   // 移除全局点击事件监听器
   document.removeEventListener("click", handleClickOutside);
+
+  // 清理 MutationObserver
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
+  }
 });
 
 // 处理点击空白区域的逻辑
@@ -514,7 +706,7 @@ function handleAnimationEnd(event: AnimationEvent) {
                 statsViewMode === 'gauge' ? i18n.t('home.detail_view') : i18n.t('home.gauge_view')
               "
             >
-              <BarChart3 v-if="statsViewMode === 'gauge'" :size="14" />
+              <Menu v-if="statsViewMode === 'gauge'" :size="14" />
               <Gauge v-else :size="14" />
             </button>
           </div>
@@ -528,83 +720,46 @@ function handleAnimationEnd(event: AnimationEvent) {
         <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
           <div class="gauge-grid">
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-cpu"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${cpuUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                <span class="gauge-value">{{ cpuUsage }}%</span>
-                <span class="gauge-label">CPU</span>
-              </div>
+              <v-chart
+                class="gauge-chart"
+                :option="cpuGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-mem"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${memUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                <span class="gauge-value">{{ memUsage }}%</span>
-                <span class="gauge-label">内存</span>
-              </div>
+              <v-chart
+                class="gauge-chart"
+                :option="memGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-disk"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${diskUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                <span class="gauge-value">{{ diskUsage }}%</span>
-                <span class="gauge-label">磁盘</span>
-              </div>
+              <v-chart
+                class="gauge-chart"
+                :option="diskGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
             <div class="gauge-detail-item">
-              <span class="detail-label">CPU</span
-              ><span class="detail-value">{{ systemInfo.cpu.count }} 核心</span>
+              <span class="detail-label">{{ i18n.t("home.cpu") }}</span
+              ><span class="detail-value"
+                >{{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
+              >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">内存</span
+              <span class="detail-label">{{ i18n.t("home.memory") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.memory.used) }} /
                 {{ formatBytes(systemInfo.memory.total) }}</span
               >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">磁盘</span
+              <span class="detail-label">{{ i18n.t("home.disk") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.disk.used) }} /
                 {{ formatBytes(systemInfo.disk.total) }}</span
@@ -617,122 +772,41 @@ function handleAnimationEnd(event: AnimationEvent) {
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >CPU<span v-if="systemInfo" class="stat-detail">
-                  · {{ systemInfo.cpu.count }} 核心</span
+                >{{ i18n.t("home.cpu")
+                }}<span v-if="systemInfo" class="stat-detail">
+                  · {{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
                 ></span
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
             </div>
-            <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
-                <!-- 网格线 -->
-                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8" />
-                  <line x1="0" y1="16" x2="300" y2="16" />
-                  <line x1="0" y1="24" x2="300" y2="24" />
-                  <line x1="0" y1="32" x2="300" y2="32" />
-                </g>
-                <!-- 填充区域 -->
-                <polygon
-                  :points="
-                    '0,40 ' +
-                    cpuHistory
-                      .map(
-                        (v, i) =>
-                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ') +
-                    ' 300,40'
-                  "
-                  fill="var(--sl-primary)"
-                  fill-opacity="0.15"
-                />
-                <!-- 曲线 -->
-                <polyline
-                  :points="
-                    cpuHistory
-                      .map(
-                        (v, i) =>
-                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ')
-                  "
-                  fill="none"
-                  stroke="var(--sl-primary)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+            <div class="mini-chart">
+              <v-chart class="line-chart" :option="cpuLineOption" autoresize />
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >内存<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.memory")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.memory.used) }} /
                   {{ formatBytes(systemInfo.memory.total) }}</span
                 ></span
               >
               <span class="stat-value">{{ memUsage }}%</span>
             </div>
-            <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
-                <!-- 网格线 -->
-                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8" />
-                  <line x1="0" y1="16" x2="300" y2="16" />
-                  <line x1="0" y1="24" x2="300" y2="24" />
-                  <line x1="0" y1="32" x2="300" y2="32" />
-                </g>
-                <polygon
-                  :points="
-                    '0,40 ' +
-                    memHistory
-                      .map(
-                        (v, i) =>
-                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ') +
-                    ' 300,40'
-                  "
-                  fill="var(--sl-success)"
-                  fill-opacity="0.15"
-                />
-                <polyline
-                  :points="
-                    memHistory
-                      .map(
-                        (v, i) =>
-                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ')
-                  "
-                  fill="none"
-                  stroke="var(--sl-success)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+            <div class="mini-chart">
+              <v-chart class="line-chart" :option="memLineOption" autoresize />
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >磁盘<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.disk") }}
+                <span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.disk.used) }} /
-                  {{ formatBytes(systemInfo.disk.total) }}</span
-                ></span
-              >
+                  {{ formatBytes(systemInfo.disk.total) }}
+                </span>
+              </span>
               <span class="stat-value">{{ diskUsage }}%</span>
             </div>
             <SLProgress :value="diskUsage" variant="warning" :showPercent="false" />
@@ -928,6 +1002,26 @@ function handleAnimationEnd(event: AnimationEvent) {
         </div>
       </div>
     </div>
+
+    <SLConfirmDialog
+      :visible="showDeleteConfirm"
+      :title="i18n.t('home.delete_server')"
+      :message="
+        i18n.t('home.delete_confirm_message', {
+          server: '<strong>' + deleteServerName + '</strong>',
+        })
+      "
+      :confirmText="i18n.t('home.delete_confirm')"
+      :cancelText="i18n.t('home.delete_cancel')"
+      confirmVariant="danger"
+      :requireInput="true"
+      :inputPlaceholder="i18n.t('home.delete_input_placeholder')"
+      :expectedInput="deleteServerName"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+      @close="closeDeleteConfirm"
+      dangerous
+    />
   </div>
 </template>
 
@@ -1072,16 +1166,12 @@ function handleAnimationEnd(event: AnimationEvent) {
 .mini-chart {
   width: 100%;
   height: 30px;
-}
-
-.mini-chart.taskmgr-style {
   background: var(--sl-bg-secondary);
   border-radius: 4px;
   overflow: hidden;
-  width: 100%;
 }
 
-.mini-chart.taskmgr-style .chart-svg {
+.line-chart {
   width: 100%;
   height: 100%;
 }
@@ -1601,51 +1691,20 @@ function handleAnimationEnd(event: AnimationEvent) {
   gap: var(--sl-space-xs);
   padding: 0;
   margin-bottom: 4px;
+  min-height: 70px;
 }
 .gauge-item {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
-.gauge-svg {
+.gauge-chart {
   width: 100%;
   height: 100%;
-  transform: rotate(-90deg);
-}
-.gauge-bg {
-  stroke: var(--sl-border);
-}
-.gauge-fill {
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.3s;
-}
-.gauge-cpu {
-  stroke: var(--sl-primary);
-}
-.gauge-mem {
-  stroke: var(--sl-success);
-}
-.gauge-disk {
-  stroke: #f59e0b;
-}
-.gauge-text {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.2;
-}
-.gauge-value {
-  font-size: 0.75rem;
-  font-weight: 600;
-  font-family: var(--sl-font-mono);
-}
-.gauge-label {
-  font-size: 0.5625rem;
-  color: var(--sl-text-tertiary);
 }
 
 .gauge-details {
