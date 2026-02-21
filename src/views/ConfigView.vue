@@ -3,17 +3,30 @@ import { ref, computed, watch, onMounted, onUnmounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "../components/common/SLSpinner.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
-import SLInput from "../components/common/SLInput.vue";
 import SLSelect from "../components/common/SLSelect.vue";
+import SLButton from "../components/common/SLButton.vue";
+import SLInput from "../components/common/SLInput.vue";
 import { configApi } from "../api/config";
+import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "../api/mcs_plugins";
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
 import { i18n } from "../language";
+import {
+  Power,
+  Trash2,
+  RefreshCw,
+  Settings,
+  FileText,
+  RotateCcw,
+  FolderOpen,
+  Edit,
+} from "lucide-vue-next";
 
-// 导入拆分后的组件
 import ConfigToolbar from "../components/config/ConfigToolbar.vue";
 import ConfigCategories from "../components/config/ConfigCategories.vue";
 import ConfigEntry from "../components/config/ConfigEntry.vue";
+import { systemApi } from "../api/system";
+import "../styles/plugin-list.css";
 
 const route = useRoute();
 const store = useServerStore();
@@ -31,9 +44,16 @@ const serverPath = computed(() => {
   return server?.path || "";
 });
 
-// 自动保存相关
-const autoSaveDebounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
-const AUTO_SAVE_DELAY = 1000; // 1秒防抖延迟
+const plugins = ref<m_PluginInfo[]>([]);
+const pluginsLoading = ref(false);
+const selectedPlugin = ref<m_PluginInfo | null>(null);
+const activeTab = ref<"properties" | "plugins">("properties");
+const isLoading = ref(false);
+const loadingDebounceTimer = ref<number | null>(null);
+const LOADING_DEBOUNCE_DELAY = 300;
+
+const autoSaveDebounceTimer = ref<number | null>(null);
+const AUTO_SAVE_DELAY = 1000;
 
 const currentServerId = computed(() => store.currentServerId);
 
@@ -42,13 +62,27 @@ const categories = computed(() => {
   return ["all", ...Array.from(cats)];
 });
 
+const gamemodeOptions = ref([
+  { label: i18n.t("config.gamemode.survival"), value: "survival" },
+  { label: i18n.t("config.gamemode.creative"), value: "creative" },
+  { label: i18n.t("config.gamemode.adventure"), value: "adventure" },
+  { label: i18n.t("config.gamemode.spectator"), value: "spectator" },
+]);
+
+const difficultyOptions = ref([
+  { label: i18n.t("config.difficulty.peaceful"), value: "peaceful" },
+  { label: i18n.t("config.difficulty.easy"), value: "easy" },
+  { label: i18n.t("config.difficulty.normal"), value: "normal" },
+  { label: i18n.t("config.difficulty.hard"), value: "hard" },
+]);
+
 const filteredEntries = computed(() => {
   return entries.value.filter((e: ConfigEntryType) => {
     const matchCat = activeCategory.value === "all" || e.category === activeCategory.value;
     const matchSearch =
       !searchQuery.value ||
       e.key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      (e.description ?? "").toLowerCase().includes(searchQuery.value.toLowerCase());
+      e.description.toLowerCase().includes(searchQuery.value.toLowerCase());
     return matchCat && matchSearch;
   });
 });
@@ -65,15 +99,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  // 清理防抖计时器
   if (autoSaveDebounceTimer.value) {
     clearTimeout(autoSaveDebounceTimer.value);
   }
-});
-
-onActivated(async () => {
-  // 当组件被激活时自动刷新配置
-  await loadProperties();
 });
 
 watch(
@@ -87,7 +115,12 @@ watch(
 
 async function loadProperties() {
   if (!serverPath.value) return;
-  loading.value = true;
+
+  if (loadingDebounceTimer.value) {
+    clearTimeout(loadingDebounceTimer.value);
+  }
+
+  isLoading.value = true;
   error.value = null;
   try {
     const result = await configApi.readServerProperties(serverPath.value);
@@ -98,7 +131,7 @@ async function loadProperties() {
     entries.value = [];
     editValues.value = {};
   } finally {
-    loading.value = false;
+    isLoading.value = false;
   }
 }
 
@@ -109,8 +142,6 @@ async function saveProperties() {
   successMsg.value = null;
   try {
     await configApi.writeServerProperties(serverPath.value, editValues.value);
-    successMsg.value = i18n.t("common.config_saved");
-    setTimeout(() => (successMsg.value = null), 3000);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -121,7 +152,6 @@ async function saveProperties() {
 function updateValue(key: string, value: string | boolean) {
   editValues.value[key] = String(value);
 
-  // 启动自动保存防抖
   if (autoSaveDebounceTimer.value) {
     clearTimeout(autoSaveDebounceTimer.value);
   }
@@ -141,8 +171,6 @@ function autoSaveProperties() {
   configApi
     .writeServerProperties(serverPath.value, editValues.value)
     .then(() => {
-      successMsg.value = i18n.t("config.saved");
-      setTimeout(() => (successMsg.value = null), 3000);
       return Promise.resolve();
     })
     .catch((e) => {
@@ -156,7 +184,6 @@ function autoSaveProperties() {
 
 function handleCategoryChange(category: string) {
   activeCategory.value = category;
-  // 滚动到顶部
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -164,27 +191,143 @@ function handleSearchUpdate(value: string) {
   searchQuery.value = value;
 }
 
-const gamemodeOptions = computed(() => [
-  { label: i18n.t("config.gamemode.survival"), value: "survival" },
-  { label: i18n.t("config.gamemode.creative"), value: "creative" },
-  { label: i18n.t("config.gamemode.adventure"), value: "adventure" },
-  { label: i18n.t("config.gamemode.spectator"), value: "spectator" },
-]);
+async function loadPlugins() {
+  if (!store.currentServerId) return;
 
-const difficultyOptions = computed(() => [
-  { label: i18n.t("config.difficulty.peaceful"), value: "peaceful" },
-  { label: i18n.t("config.difficulty.easy"), value: "easy" },
-  { label: i18n.t("config.difficulty.normal"), value: "normal" },
-  { label: i18n.t("config.difficulty.hard"), value: "hard" },
-]);
+  if (loadingDebounceTimer.value) {
+    clearTimeout(loadingDebounceTimer.value);
+  }
+
+  pluginsLoading.value = true;
+  error.value = null;
+  try {
+    plugins.value = await m_pluginApi.m_getPlugins(store.currentServerId);
+  } catch (e) {
+    error.value = String(e);
+    plugins.value = [];
+  } finally {
+    pluginsLoading.value = false;
+  }
+}
+
+async function togglePlugin(plugin: m_PluginInfo) {
+  if (!store.currentServerId) return;
+
+  if (!plugin.file_name.endsWith(".jar") && !plugin.file_name.endsWith(".jar.disabled")) {
+    alert(`"${plugin.file_name}" 不是 jar 文件，无法启用/禁用`);
+    return;
+  }
+
+  try {
+    await m_pluginApi.m_togglePlugin(store.currentServerId, plugin.file_name, !plugin.enabled);
+    plugin.enabled = !plugin.enabled;
+  } catch (e) {
+    error.value = String(e);
+  }
+}
+
+async function deletePlugin(plugin: m_PluginInfo) {
+  if (!store.currentServerId) return;
+  if (!confirm(`确定要删除插件 "${plugin.name}" 吗？`)) return;
+  try {
+    await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
+    plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
+    if (selectedPlugin.value?.file_name === plugin.file_name) {
+      selectedPlugin.value = null;
+    }
+  } catch (e) {
+    error.value = String(e);
+  }
+}
+
+async function reloadPlugins() {
+  if (!store.currentServerId) return;
+  try {
+    await m_pluginApi.m_reloadPlugins(store.currentServerId);
+    await loadPlugins();
+  } catch (e) {
+    error.value = String(e);
+  }
+}
+
+function handlePluginClick(plugin: m_PluginInfo) {
+  if (selectedPlugin.value?.file_name === plugin.file_name) {
+    selectedPlugin.value = null;
+  } else {
+    selectedPlugin.value = plugin;
+  }
+}
+
+async function openPluginFolder(plugin: m_PluginInfo) {
+  if (!store.currentServerId) return;
+  const server = store.servers.find((s) => s.id === store.currentServerId);
+  if (!server) return;
+
+  const basePath = server.path.replace(/[/\\]$/, "");
+  const pluginConfigPath = `${basePath}${basePath.includes("\\") ? "\\" : "/"}plugins${basePath.includes("\\") ? "\\" : "/"}${plugin.m_id}`;
+
+  try {
+    await systemApi.openFolder(pluginConfigPath);
+  } catch (e) {
+    error.value = String(e);
+  }
+}
+
+async function openConfigFile(config: m_PluginConfigFile) {
+  try {
+    await systemApi.openFile(config.file_path);
+  } catch (e) {
+    error.value = String(e);
+  }
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+const currentServer = computed(() => store.servers.find((s) => s.id === store.currentServerId));
+
+watch(
+  () => store.currentServerId,
+  async () => {
+    if (store.currentServerId) {
+      await loadProperties();
+      await loadPlugins();
+    }
+  },
+);
+
+onActivated(async () => {
+  await loadProperties();
+  await loadPlugins();
+});
 </script>
 
 <template>
   <div class="config-view animate-fade-in-up">
-    <!-- 服务器配置编辑 -->
     <div class="config-header">
       <div class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
+      </div>
+      <div class="tab-switcher">
+        <button
+          type="button"
+          class="tab-button"
+          :class="{ active: activeTab === 'properties' }"
+          @click="activeTab = 'properties'"
+        >
+          {{ i18n.t("config.server_properties") }}
+        </button>
+        <button
+          type="button"
+          class="tab-button"
+          :class="{ active: activeTab === 'plugins' }"
+          @click="activeTab = 'plugins'"
+        >
+          {{ i18n.t("config.server_plugins") }}
+        </button>
       </div>
     </div>
 
@@ -201,71 +344,203 @@ const difficultyOptions = computed(() => [
         <span>{{ i18n.t("config.saved") }}</span>
       </div>
 
-      <!-- 分类选择和搜索 -->
-      <ConfigCategories
-        :categories="categories"
-        :activeCategory="activeCategory"
-        :searchQuery="searchQuery"
-        @updateCategory="handleCategoryChange"
-        @updateSearch="handleSearchUpdate"
-      />
+      <template v-if="activeTab === 'properties'">
+        <ConfigCategories
+          :categories="categories"
+          :activeCategory="activeCategory"
+          :searchQuery="searchQuery"
+          @updateCategory="handleCategoryChange"
+          @updateSearch="handleSearchUpdate"
+        />
 
-      <div v-if="loading" class="loading-state">
-        <SLSpinner size="lg" />
-        <span>{{ i18n.t("config.loading") }}</span>
-      </div>
+        <div v-if="loading" class="loading-state">
+          <SLSpinner size="lg" />
+          <span>{{ i18n.t("config.loading") }}</span>
+        </div>
 
-      <div v-else class="config-entries">
-        <div v-for="entry in filteredEntries" :key="entry.key" class="config-entry glass-card">
-          <div class="entry-header">
-            <div class="entry-key-row">
-              <span class="entry-key text-mono">{{ entry.key }}</span>
+        <div v-else class="config-entries">
+          <div v-for="entry in filteredEntries" :key="entry.key" class="config-entry glass-card">
+            <div class="entry-header">
+              <div class="entry-key-row">
+                <span class="entry-key text-mono">{{ entry.key }}</span>
+              </div>
+              <p v-if="i18n.t(`config.properties.${entry.key}`)" class="entry-desc text-caption">
+                {{ i18n.t(`config.properties.${entry.key}`) }}
+              </p>
             </div>
-            <p v-if="i18n.t(`config.properties.${entry.key}`)" class="entry-desc text-caption">
-              {{ i18n.t(`config.properties.${entry.key}`) }}
-            </p>
+            <div class="entry-control">
+              <template
+                v-if="
+                  entry.value_type === 'boolean' ||
+                  editValues[entry.key] === 'true' ||
+                  editValues[entry.key] === 'false'
+                "
+              >
+                <SLSwitch
+                  :modelValue="editValues[entry.key] === 'true'"
+                  @update:modelValue="updateValue(entry.key, $event)"
+                />
+              </template>
+              <template v-else-if="entry.key === 'gamemode'">
+                <SLSelect
+                  :modelValue="editValues[entry.key]"
+                  :options="gamemodeOptions"
+                  @update:modelValue="updateValue(entry.key, $event)"
+                  style="width: 200px"
+                />
+              </template>
+              <template v-else-if="entry.key === 'difficulty'">
+                <SLSelect
+                  :modelValue="editValues[entry.key]"
+                  :options="difficultyOptions"
+                  @update:modelValue="updateValue(entry.key, $event)"
+                  style="width: 200px"
+                />
+              </template>
+              <template v-else>
+                <input
+                  :value="editValues[entry.key]"
+                  type="text"
+                  :placeholder="entry.default_value"
+                  @input="
+                    (e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^\d+$/.test(value)) {
+                        updateValue(entry.key, value);
+                      }
+                    }
+                  "
+                  class="input integer-input"
+                />
+              </template>
+            </div>
           </div>
-          <div class="entry-control">
-            <template
-              v-if="
-                entry.value_type === 'boolean' ||
-                editValues[entry.key] === 'true' ||
-                editValues[entry.key] === 'false'
-              "
+          <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
+            <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
+          </div>
+        </div>
+      </template>
+
+      <template v-if="activeTab === 'plugins'">
+        <div class="plugins-header">
+          <h3>{{ i18n.t("config.plugins") }}</h3>
+          <div class="plugins-header-actions">
+            <SLButton @click="loadPlugins" :loading="pluginsLoading" variant="secondary" size="sm">
+              <RotateCcw :size="16" />
+              刷新列表
+            </SLButton>
+            <SLButton
+              @click="reloadPlugins"
+              :loading="pluginsLoading"
+              variant="danger"
+              size="sm"
+              class="reload-btn"
+              title="重载插件可能导致服务器异常，部分插件可能不支持"
             >
-              <SLSwitch
-                :modelValue="editValues[entry.key] === 'true'"
-                @update:modelValue="updateValue(entry.key, $event)"
-              />
-            </template>
-            <template v-else-if="entry.key === 'gamemode'">
-              <SLSelect
-                :modelValue="editValues[entry.key]"
-                :options="gamemodeOptions"
-                @update:modelValue="updateValue(entry.key, $event)"
-              />
-            </template>
-            <template v-else-if="entry.key === 'difficulty'">
-              <SLSelect
-                :modelValue="editValues[entry.key]"
-                :options="difficultyOptions"
-                @update:modelValue="updateValue(entry.key, $event)"
-              />
-            </template>
-            <template v-else>
-              <SLInput
-                :modelValue="editValues[entry.key]"
-                :type="entry.value_type === 'number' ? 'number' : 'text'"
-                :placeholder="entry.default_value"
-                @update:modelValue="updateValue(entry.key, $event)"
-              />
-            </template>
+              <RefreshCw :size="14" />
+              重载插件
+            </SLButton>
           </div>
         </div>
-        <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
-          <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
+
+        <div v-if="pluginsLoading" class="loading-state">
+          <SLSpinner size="lg" />
+          <span>{{ i18n.t("config.loading_plugins") }}</span>
         </div>
-      </div>
+
+        <div v-else class="plugins-container">
+          <div v-if="plugins.length === 0" class="empty-state">
+            <p class="text-caption">{{ i18n.t("config.no_plugins") }}</p>
+          </div>
+
+          <div v-else class="plugin-list-view">
+            <div
+              v-for="plugin in plugins"
+              :key="plugin.file_name"
+              class="plugin-list-item"
+              :class="{
+                disabled: !plugin.enabled,
+                expanded: selectedPlugin?.file_name === plugin.file_name,
+              }"
+              @click="handlePluginClick(plugin)"
+            >
+              <div class="plugin-list-icon">
+                {{ plugin.name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="plugin-list-info">
+                <div class="plugin-list-header">
+                  <h4>{{ plugin.name }}</h4>
+                  <span class="plugin-list-version">{{ plugin.version }}</span>
+                  <div v-if="plugin.has_config_folder" class="config-badge">
+                    <Settings :size="14" />
+                    {{ plugin.config_files.length }} 个配置
+                  </div>
+                  <div v-else class="no-config-badge">
+                    <FileText :size="14" />
+                    无配置
+                  </div>
+                </div>
+                <div
+                  v-if="selectedPlugin?.file_name === plugin.file_name"
+                  class="plugin-list-details"
+                >
+                  <p>{{ i18n.t("config.author") }}: {{ plugin.author }}</p>
+                  <p v-if="plugin.description">{{ plugin.description }}</p>
+                  <p>{{ formatFileSize(plugin.file_size) }}</p>
+
+                  <div v-if="plugin.has_config_folder" class="plugin-config-section">
+                    <div class="plugin-config-section-header">
+                      <h5>配置文件</h5>
+                      <SLButton
+                        size="sm"
+                        variant="secondary"
+                        @click.stop="openPluginFolder(plugin)"
+                      >
+                        <FolderOpen :size="14" />
+                        打开配置文件夹
+                      </SLButton>
+                    </div>
+                    <div v-if="plugin.config_files.length > 0" class="plugin-config-files-list">
+                      <div
+                        v-for="config in plugin.config_files"
+                        :key="config.file_name"
+                        class="plugin-config-file-item"
+                        @click.stop="openConfigFile(config)"
+                      >
+                        <div class="plugin-config-file-name">{{ config.file_name }}</div>
+                        <div class="plugin-config-file-type">{{ config.file_type }}</div>
+                        <div class="plugin-config-file-actions">
+                          <SLButton size="sm" variant="secondary">
+                            <Edit :size="14" />
+                            打开
+                          </SLButton>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="empty-state">
+                      <p class="text-caption">配置文件夹为空</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="plugin-list-actions">
+                <SLButton
+                  @click.stop="togglePlugin(plugin)"
+                  :variant="plugin.enabled ? 'danger' : 'success'"
+                  size="sm"
+                >
+                  <Power :size="16" />
+                  {{ plugin.enabled ? i18n.t("config.disable") : i18n.t("config.enable") }}
+                </SLButton>
+                <SLButton @click.stop="deletePlugin(plugin)" variant="danger" size="sm">
+                  <Trash2 :size="16" />
+                  {{ i18n.t("config.delete") }}
+                </SLButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </template>
   </div>
 </template>
@@ -365,5 +640,113 @@ const difficultyOptions = computed(() => [
 .entry-control {
   flex-shrink: 0;
   min-width: 200px;
+}
+
+.input {
+  width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.integer-input {
+  -moz-appearance: textfield;
+}
+
+.integer-input::-webkit-outer-spin-button,
+.integer-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tab-switcher {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tab-button {
+  padding: 8px 16px;
+  border-radius: var(--sl-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+}
+
+.tab-button:hover {
+  color: var(--sl-text-primary);
+  border-color: var(--sl-border);
+}
+
+.tab-button.active {
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  border-color: var(--sl-primary);
+}
+
+.plugins-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.plugins-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.plugins-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.reload-btn {
+  font-size: 0.8125rem;
+  padding: 6px 12px;
+}
+
+.reload-btn:hover {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+.plugins-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 </style>
