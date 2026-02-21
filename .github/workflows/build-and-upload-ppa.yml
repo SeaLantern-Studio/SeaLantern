@@ -350,6 +350,10 @@ jobs:
           
           cd ppa-source
           
+          echo "Current directory: $(pwd)"
+          echo "Listing files:"
+          ls -la
+          
           echo "Uploading ${DISTRO} package to PPA..."
           dput ppa:brianeee7878/sealantern "sea-lantern-ppa-updater_${Package_VERSION}_source.changes"
           
