@@ -82,29 +82,34 @@ jobs:
           cat > "${PACKAGE_DIR}/DEBIAN/postinst" << 'POSTINST'
           #!/bin/bash
           
-          # 获取嵌入的 deb 版本
-          PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
-          if [ -z "$PACKAGE_VERSION" ]; then
-              PACKAGE_VERSION="0.6.5"
-          fi
-          
-          EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
-          
-          echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
-          
-          if [ -f "$EMBEDDED_DEB" ]; then
-              # 只解压文件，不进行任何 dpkg 操作
-              ar p "$EMBEDDED_DEB" data.tar.zst | tar --zstd -x -C / 2>/dev/null || \
-              ar p "$EMBEDDED_DEB" data.tar.xz | tar -xJ -C / 2>/dev/null || \
-              ar p "$EMBEDDED_DEB" data.tar.gz | tar -xz -C / 2>/dev/null
+          # 延迟执行，等待 dpkg 释放锁
+          (
+              sleep 10
               
-              rm -f "$EMBEDDED_DEB"
+              # 获取嵌入的 deb 版本
+              PACKAGE_VERSION=$(dpkg -s sea-lantern-ppa-updater 2>/dev/null | grep Version | awk '{print $2}' | sed 's/~.*$//')
+              if [ -z "$PACKAGE_VERSION" ]; then
+                  PACKAGE_VERSION="0.6.5"
+              fi
               
-              echo "✅ Sea Lantern 文件已解压！"
-              echo "运行命令: sea-lantern"
-          else
-              echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
-          fi
+              EMBEDDED_DEB="/opt/sealantern/Sea.Lantern_${PACKAGE_VERSION}_amd64.deb"
+              
+              echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
+              
+              if [ -f "$EMBEDDED_DEB" ]; then
+                  # 只解压文件，不进行任何 dpkg 操作
+                  ar p "$EMBEDDED_DEB" data.tar.zst 2>/dev/null | tar --zstd -x -C / 2>/dev/null || \
+                  ar p "$EMBEDDED_DEB" data.tar.xz 2>/dev/null | tar -xJ -C / 2>/dev/null || \
+                  ar p "$EMBEDDED_DEB" data.tar.gz 2>/dev/null | tar -xz -C / 2>/dev/null
+                  
+                  rm -f "$EMBEDDED_DEB"
+                  
+                  echo "✅ Sea Lantern 文件已解压！"
+                  echo "运行命令: sea-lantern"
+              else
+                  echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
+              fi
+          ) > /tmp/sealantern-install.log 2>&1 &
           POSTINST
           
           chmod +x "${PACKAGE_DIR}/DEBIAN/postinst"
