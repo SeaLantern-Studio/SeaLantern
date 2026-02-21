@@ -82,7 +82,7 @@ const filteredEntries = computed(() => {
     const matchSearch =
       !searchQuery.value ||
       e.key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      e.description.toLowerCase().includes(searchQuery.value.toLowerCase());
+      (e.description ?? "").toLowerCase().includes(searchQuery.value.toLowerCase());
     return matchCat && matchSearch;
   });
 });
@@ -142,6 +142,8 @@ async function saveProperties() {
   successMsg.value = null;
   try {
     await configApi.writeServerProperties(serverPath.value, editValues.value);
+    successMsg.value = i18n.t("config.saved");
+    setTimeout(() => (successMsg.value = null), 3000);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -152,6 +154,7 @@ async function saveProperties() {
 function updateValue(key: string, value: string | boolean) {
   editValues.value[key] = String(value);
 
+  // 启动自动保存防抖
   if (autoSaveDebounceTimer.value) {
     clearTimeout(autoSaveDebounceTimer.value);
   }
@@ -171,6 +174,8 @@ function autoSaveProperties() {
   configApi
     .writeServerProperties(serverPath.value, editValues.value)
     .then(() => {
+      successMsg.value = i18n.t("config.saved");
+      setTimeout(() => (successMsg.value = null), 3000);
       return Promise.resolve();
     })
     .catch((e) => {
@@ -214,7 +219,7 @@ async function togglePlugin(plugin: m_PluginInfo) {
   if (!store.currentServerId) return;
 
   if (!plugin.file_name.endsWith(".jar") && !plugin.file_name.endsWith(".jar.disabled")) {
-    alert(`"${plugin.file_name}" 不是 jar 文件，无法启用/禁用`);
+    alert(i18n.t("config.not_jar_file", { file: plugin.file_name }));
     return;
   }
 
@@ -228,7 +233,7 @@ async function togglePlugin(plugin: m_PluginInfo) {
 
 async function deletePlugin(plugin: m_PluginInfo) {
   if (!store.currentServerId) return;
-  if (!confirm(`确定要删除插件 "${plugin.name}" 吗？`)) return;
+  if (!confirm(i18n.t("config.confirm_delete_plugin", { name: plugin.name }))) return;
   try {
     await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
     plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
@@ -423,11 +428,11 @@ onActivated(async () => {
 
       <template v-if="activeTab === 'plugins'">
         <div class="plugins-header">
-          <h3>{{ i18n.t("config.plugins") }}</h3>
+          <h3>{{ i18n.t("config.server_plugins") }}</h3>
           <div class="plugins-header-actions">
             <SLButton @click="loadPlugins" :loading="pluginsLoading" variant="secondary" size="sm">
               <RotateCcw :size="16" />
-              刷新列表
+              {{ i18n.t("config.refresh_list") }}
             </SLButton>
             <SLButton
               @click="reloadPlugins"
@@ -438,7 +443,7 @@ onActivated(async () => {
               title="重载插件可能导致服务器异常，部分插件可能不支持"
             >
               <RefreshCw :size="14" />
-              重载插件
+              {{ i18n.t("config.reload_plugins") }}
             </SLButton>
           </div>
         </div>
@@ -473,11 +478,11 @@ onActivated(async () => {
                   <span class="plugin-list-version">{{ plugin.version }}</span>
                   <div v-if="plugin.has_config_folder" class="config-badge">
                     <Settings :size="14" />
-                    {{ plugin.config_files.length }} 个配置
+                    {{ plugin.config_files.length }} {{ i18n.t("config.config_files_count") }}
                   </div>
                   <div v-else class="no-config-badge">
                     <FileText :size="14" />
-                    无配置
+                    {{ i18n.t("config.no_config_files") }}
                   </div>
                 </div>
                 <div
@@ -490,14 +495,14 @@ onActivated(async () => {
 
                   <div v-if="plugin.has_config_folder" class="plugin-config-section">
                     <div class="plugin-config-section-header">
-                      <h5>配置文件</h5>
+                      <h5>{{ i18n.t("config.config_files") }}</h5>
                       <SLButton
                         size="sm"
                         variant="secondary"
                         @click.stop="openPluginFolder(plugin)"
                       >
                         <FolderOpen :size="14" />
-                        打开配置文件夹
+                        {{ i18n.t("common.open_folder") }}
                       </SLButton>
                     </div>
                     <div v-if="plugin.config_files.length > 0" class="plugin-config-files-list">
@@ -512,13 +517,13 @@ onActivated(async () => {
                         <div class="plugin-config-file-actions">
                           <SLButton size="sm" variant="secondary">
                             <Edit :size="14" />
-                            打开
+                            {{ i18n.t("config.open") }}
                           </SLButton>
                         </div>
                       </div>
                     </div>
                     <div v-else class="empty-state">
-                      <p class="text-caption">配置文件夹为空</p>
+                      <p class="text-caption">{{ i18n.t("config.empty_config_folder") }}</p>
                     </div>
                   </div>
                 </div>
