@@ -267,6 +267,9 @@ jobs:
             sed -i 's|^source=.*|source=(\"sealantern.deb\")|' PKGBUILD && \
             sed -i 's|^sha256sums=.*|sha256sums=(\"SKIP\")|' PKGBUILD && \
 
+            # 同时修改 package() 函数中的文件名，使其匹配我们复制进去的文件
+            sed -i 's|Sea\.Lantern_\${pkgver}_amd64\.deb|sealantern.deb|g' PKGBUILD && \
+
             # 更新版本号
             sed -i 's/^pkgver=.*/pkgver=$VERSION/' PKGBUILD && \
             sed -i 's/^pkgrel=.*/pkgrel=1/' PKGBUILD && \
