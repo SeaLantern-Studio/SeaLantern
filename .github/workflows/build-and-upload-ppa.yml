@@ -173,7 +173,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
-          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ matrix.distro }}1"
+          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ steps.version.outputs.BUILD_SUFFIX }}~${{ matrix.distro }}1"
           
           # Create source package directory - must match package name
           SOURCE_DIR="./ppa-source/sea-lantern-ppa-updater_${Package_VERSION}"
@@ -250,7 +250,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           DISTRO="${{ matrix.distro }}"
-          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ matrix.distro }}1"
+          Package_VERSION="${{ steps.version.outputs.VERSION }}~${{ steps.version.outputs.BUILD_SUFFIX }}~${{ matrix.distro }}1"
           
           cd ppa-source
           
