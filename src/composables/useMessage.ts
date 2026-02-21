@@ -188,6 +188,18 @@ export function useMessage(defaultDuration: number = TIME.ERROR_MESSAGE_DURATION
  * 全局消息列表（用于 Toast 样式的消息）
  */
 const messages = ref<MessageItem[]>([]);
+const messageTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+/**
+ * 清理指定消息的定时器
+ */
+function clearMessageTimer(id: number) {
+  const timer = messageTimers.get(id);
+  if (timer) {
+    clearTimeout(timer);
+    messageTimers.delete(id);
+  }
+}
 
 /**
  * 添加消息到全局列表
@@ -197,12 +209,11 @@ function addMessage(type: MessageType, message: string, duration: number = 3000)
   messages.value.push({ id, type, message });
 
   if (duration > 0) {
-    setTimeout(() => {
-      const index = messages.value.findIndex((m) => m.id === id);
-      if (index > -1) {
-        messages.value.splice(index, 1);
-      }
+    const timer = setTimeout(() => {
+      removeMessage(id);
+      messageTimers.delete(id);
     }, duration);
+    messageTimers.set(id, timer);
   }
 
   return id;
@@ -212,6 +223,7 @@ function addMessage(type: MessageType, message: string, duration: number = 3000)
  * 从全局列表移除消息
  */
 function removeMessage(id: number): void {
+  clearMessageTimer(id);
   const index = messages.value.findIndex((m) => m.id === id);
   if (index > -1) {
     messages.value.splice(index, 1);

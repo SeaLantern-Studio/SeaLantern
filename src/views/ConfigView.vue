@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "../components/common/SLSpinner.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
+import SLInput from "../components/common/SLInput.vue";
 import SLSelect from "../components/common/SLSelect.vue";
 import { configApi } from "../api/config";
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
@@ -31,7 +32,7 @@ const serverPath = computed(() => {
 });
 
 // 自动保存相关
-const autoSaveDebounceTimer = ref<number | null>(null);
+const autoSaveDebounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const AUTO_SAVE_DELAY = 1000; // 1秒防抖延迟
 
 const currentServerId = computed(() => store.currentServerId);
@@ -41,27 +42,13 @@ const categories = computed(() => {
   return ["all", ...Array.from(cats)];
 });
 
-const gamemodeOptions = ref([
-  { label: i18n.t("config.gamemode.survival"), value: "survival" },
-  { label: i18n.t("config.gamemode.creative"), value: "creative" },
-  { label: i18n.t("config.gamemode.adventure"), value: "adventure" },
-  { label: i18n.t("config.gamemode.spectator"), value: "spectator" },
-]);
-
-const difficultyOptions = ref([
-  { label: i18n.t("config.difficulty.peaceful"), value: "peaceful" },
-  { label: i18n.t("config.difficulty.easy"), value: "easy" },
-  { label: i18n.t("config.difficulty.normal"), value: "normal" },
-  { label: i18n.t("config.difficulty.hard"), value: "hard" },
-]);
-
 const filteredEntries = computed(() => {
   return entries.value.filter((e: ConfigEntryType) => {
     const matchCat = activeCategory.value === "all" || e.category === activeCategory.value;
     const matchSearch =
       !searchQuery.value ||
       e.key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      e.description.toLowerCase().includes(searchQuery.value.toLowerCase());
+      (e.description ?? "").toLowerCase().includes(searchQuery.value.toLowerCase());
     return matchCat && matchSearch;
   });
 });
@@ -122,9 +109,8 @@ async function saveProperties() {
   successMsg.value = null;
   try {
     await configApi.writeServerProperties(serverPath.value, editValues.value);
-    // 禁用保存成功消息
-    // successMsg.value = i18n.t("common.config_saved");
-    // setTimeout(() => (successMsg.value = null), 3000);
+    successMsg.value = i18n.t("common.config_saved");
+    setTimeout(() => (successMsg.value = null), 3000);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -155,9 +141,8 @@ function autoSaveProperties() {
   configApi
     .writeServerProperties(serverPath.value, editValues.value)
     .then(() => {
-      // 禁用自动保存成功消息
-      // successMsg.value = i18n.t("config.saved");
-      // setTimeout(() => (successMsg.value = null), 3000);
+      successMsg.value = i18n.t("config.saved");
+      setTimeout(() => (successMsg.value = null), 3000);
       return Promise.resolve();
     })
     .catch((e) => {
@@ -178,6 +163,20 @@ function handleCategoryChange(category: string) {
 function handleSearchUpdate(value: string) {
   searchQuery.value = value;
 }
+
+const gamemodeOptions = computed(() => [
+  { label: i18n.t("config.gamemode.survival"), value: "survival" },
+  { label: i18n.t("config.gamemode.creative"), value: "creative" },
+  { label: i18n.t("config.gamemode.adventure"), value: "adventure" },
+  { label: i18n.t("config.gamemode.spectator"), value: "spectator" },
+]);
+
+const difficultyOptions = computed(() => [
+  { label: i18n.t("config.difficulty.peaceful"), value: "peaceful" },
+  { label: i18n.t("config.difficulty.easy"), value: "easy" },
+  { label: i18n.t("config.difficulty.normal"), value: "normal" },
+  { label: i18n.t("config.difficulty.hard"), value: "hard" },
+]);
 </script>
 
 <template>
@@ -244,7 +243,6 @@ function handleSearchUpdate(value: string) {
                 :modelValue="editValues[entry.key]"
                 :options="gamemodeOptions"
                 @update:modelValue="updateValue(entry.key, $event)"
-                style="width: 200px"
               />
             </template>
             <template v-else-if="entry.key === 'difficulty'">
@@ -252,22 +250,14 @@ function handleSearchUpdate(value: string) {
                 :modelValue="editValues[entry.key]"
                 :options="difficultyOptions"
                 @update:modelValue="updateValue(entry.key, $event)"
-                style="width: 200px"
               />
             </template>
             <template v-else>
-              <input
-                :value="editValues[entry.key]"
-                type="text"
+              <SLInput
+                :modelValue="editValues[entry.key]"
+                :type="entry.value_type === 'number' ? 'number' : 'text'"
                 :placeholder="entry.default_value"
-                @input="(e) => {
-                  const value = e.target.value;
-                  // 只允许输入数字
-                  if (value === '' || /^\d+$/.test(value)) {
-                    updateValue(entry.key, value);
-                  }
-                }"
-                class="input integer-input"
+                @update:modelValue="updateValue(entry.key, $event)"
               />
             </template>
           </div>
@@ -375,30 +365,5 @@ function handleSearchUpdate(value: string) {
 .entry-control {
   flex-shrink: 0;
   min-width: 200px;
-}
-
-.input {
-  width: 200px;
-  padding: 6px 10px;
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-  background: var(--sl-bg-secondary);
-  color: var(--sl-text-primary);
-}
-.input:focus {
-  outline: none;
-  border-color: var(--sl-primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-/* 确保整数输入框是纯输入样式 */
-.integer-input {
-  -moz-appearance: textfield;
-}
-
-.integer-input::-webkit-outer-spin-button,
-.integer-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
 }
 </style>

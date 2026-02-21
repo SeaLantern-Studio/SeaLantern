@@ -52,10 +52,7 @@ const backgroundSizeOptions = computed(() => [
 
 const colorOptions = computed(() => {
   const themes = getThemeOptions();
-  return [
-    ...themes,
-    { label: i18n.t("common.color_custom"), value: "custom" },
-  ];
+  return [...themes, { label: i18n.t("common.color_custom"), value: "custom" }];
 });
 
 const editColorOptions = computed(() => [
@@ -499,7 +496,16 @@ function handleDeveloperModeChange() {
           </div>
 
           <div class="setting-row full-width">
-            <JavaDownloader @installed="(path) => { if(settings) { settings.default_java_path = path; markChanged(); } }" />
+            <JavaDownloader
+              @installed="
+                (path) => {
+                  if (settings) {
+                    settings.default_java_path = path;
+                    markChanged();
+                  }
+                }
+              "
+            />
           </div>
 
           <div class="setting-row full-width">
@@ -638,8 +644,8 @@ function handleDeveloperModeChange() {
   font-size: 0.875rem;
 }
 .error-banner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--sl-error-bg);
+  border: 1px solid var(--sl-error);
   color: var(--sl-error);
 }
 .msg-banner button {
@@ -803,7 +809,7 @@ function handleDeveloperModeChange() {
   right: var(--sl-space-sm);
   padding: 2px 8px;
   background: rgba(0, 0, 0, 0.7);
-  color: white;
+  color: var(--sl-text-inverse);
   font-size: 0.75rem;
   font-weight: 500;
   border-radius: var(--sl-radius-sm);
@@ -824,7 +830,7 @@ function handleDeveloperModeChange() {
 
 .bg-preview-path {
   font-size: 0.8125rem;
-  color: white;
+  color: var(--sl-text-inverse);
   font-family: var(--sl-font-mono);
   overflow: hidden;
   text-overflow: ellipsis;

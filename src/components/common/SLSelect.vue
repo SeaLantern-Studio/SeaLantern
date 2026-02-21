@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { Check, ChevronDown, Loader2, Search } from "lucide-vue-next";
 import { i18n } from "../../language";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
 
 interface Option {
   label: string;
@@ -19,6 +20,7 @@ interface Props {
   loading?: boolean;
   maxHeight?: string;
   previewFont?: boolean;
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,6 +30,18 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   maxHeight: "280px",
   previewFont: false,
+});
+
+const _selectId = props.componentId ?? `sl-select-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(_selectId, {
+  type: "SLSelect",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", value as string | number);
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => containerRef.value,
 });
 
 const emit = defineEmits<{
@@ -248,7 +262,11 @@ onUnmounted(() => {
       :aria-expanded="isOpen"
       :aria-disabled="disabled"
       :aria-owns="isOpen ? 'sl-select-listbox' : undefined"
-      :aria-activedescendant="isOpen && highlightedIndex >= 0 ? `option-${filteredOptions[highlightedIndex].value}` : undefined"
+      :aria-activedescendant="
+        isOpen && highlightedIndex >= 0
+          ? `option-${filteredOptions[highlightedIndex].value}`
+          : undefined
+      "
     >
       <span v-if="loading" class="sl-select-loading" aria-live="polite">
         <Loader2 class="spinner" :size="16" aria-hidden="true" />
@@ -275,11 +293,7 @@ onUnmounted(() => {
       <Transition name="dropdown">
         <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef" :style="dropdownStyle">
           <div v-if="searchable" class="sl-select-search">
-            <Search
-              class="search-icon"
-              :size="16"
-              aria-hidden="true"
-            />
+            <Search class="search-icon" :size="16" aria-hidden="true" />
             <input
               ref="inputRef"
               v-model="searchQuery"
@@ -291,7 +305,17 @@ onUnmounted(() => {
             />
           </div>
 
-          <div id="sl-select-listbox" class="sl-select-options" :style="{ maxHeight }" role="listbox" :aria-activedescendant="highlightedIndex >= 0 ? `option-${filteredOptions[highlightedIndex].value}` : undefined">
+          <div
+            id="sl-select-listbox"
+            class="sl-select-options"
+            :style="{ maxHeight }"
+            role="listbox"
+            :aria-activedescendant="
+              highlightedIndex >= 0
+                ? `option-${filteredOptions[highlightedIndex].value}`
+                : undefined
+            "
+          >
             <div v-if="filteredOptions.length === 0" class="sl-select-empty" role="presentation">
               {{ i18n.t("common.no_match") }}
             </div>
@@ -438,8 +462,6 @@ onUnmounted(() => {
   will-change: transform, opacity;
   color: var(--sl-text-primary);
 }
-
-
 
 :root[data-acrylic="true"][data-theme="dark"] .sl-select-dropdown {
   background: rgba(30, 33, 48, 0.95);

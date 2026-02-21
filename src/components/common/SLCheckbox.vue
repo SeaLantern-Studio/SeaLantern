@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { Check, Minus } from 'lucide-vue-next';
+import { ref } from "vue";
+import { Check, Minus } from "lucide-vue-next";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
 
 interface Props {
   modelValue?: boolean;
   disabled?: boolean;
   label?: string;
   indeterminate?: boolean;
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -23,10 +26,23 @@ const handleChange = () => {
     emit("update:modelValue", !props.modelValue);
   }
 };
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-checkbox-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLCheckbox",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", !!value);
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => elRef.value,
+});
 </script>
 
 <template>
-  <label class="sl-checkbox" :class="{ 'sl-checkbox--disabled': disabled }">
+  <label ref="elRef" class="sl-checkbox" :class="{ 'sl-checkbox--disabled': disabled }">
     <div
       class="sl-checkbox__box"
       :class="{

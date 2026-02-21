@@ -148,7 +148,11 @@ export function truncate(str: string, maxLength: number, suffix: string = "...")
  * @returns 格式化后的玩家名
  */
 export function formatPlayerName(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9_]/g, "").substring(0, 16);
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .substring(0, 16);
 }
 
 /**

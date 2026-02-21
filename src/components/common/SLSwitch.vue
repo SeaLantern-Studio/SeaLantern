@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
+
 interface Props {
   modelValue?: boolean;
   label?: string;
   disabled?: boolean;
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -19,10 +23,27 @@ const handleClick = () => {
     emit("update:modelValue", !props.modelValue);
   }
 };
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-switch-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLSwitch",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", !!value);
+  },
+  call: () => undefined,
+  on: (event, cb) => {
+    if (event === "change") {
+    }
+    return () => {};
+  },
+  el: () => elRef.value,
+});
 </script>
 
 <template>
-  <label class="sl-switch-wrapper" :class="{ disabled: props.disabled }">
+  <label ref="elRef" class="sl-switch-wrapper" :class="{ disabled: props.disabled }">
     <div
       class="sl-switch"
       :class="{ active: props.modelValue }"

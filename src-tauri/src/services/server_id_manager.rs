@@ -1,12 +1,13 @@
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// Server ID entry with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct ServerIdEntry {
     /// Unique server ID (e.g., "manus-survival-01")
     pub id: String,
@@ -30,6 +31,7 @@ pub struct ServerIdEntry {
 
 /// Request to create a new server ID
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct CreateServerIdRequest {
     pub id: Option<String>, // If None, auto-generate
     pub name: String,
@@ -41,6 +43,7 @@ pub struct CreateServerIdRequest {
 
 /// Response for server ID operations
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 pub struct ServerIdResponse {
     pub id: String,
     pub name: String,
@@ -51,12 +54,14 @@ pub struct ServerIdResponse {
 }
 
 /// Server ID Manager - handles generation, storage, and lookup
+#[allow(dead_code)]
 pub struct ServerIdManager {
     // In-memory storage (in production, use database)
     entries: Arc<RwLock<HashMap<String, ServerIdEntry>>>,
 }
 
 impl ServerIdManager {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             entries: Arc::new(RwLock::new(HashMap::new())),
@@ -64,11 +69,13 @@ impl ServerIdManager {
     }
 
     /// Generate a random server ID if not provided
+    #[allow(dead_code)]
     fn generate_id() -> String {
         format!("srv-{}", Uuid::new_v4().to_string()[..8].to_lowercase())
     }
 
     /// Generate a human-readable ID from server name
+    #[allow(dead_code)]
     fn generate_id_from_name(name: &str) -> String {
         let sanitized = name
             .to_lowercase()
@@ -85,6 +92,7 @@ impl ServerIdManager {
     }
 
     /// Create a new server ID
+    #[allow(dead_code)]
     pub async fn create_id(&self, req: CreateServerIdRequest) -> Result<ServerIdEntry, String> {
         let id = if let Some(custom_id) = req.id {
             // Validate custom ID format
@@ -112,7 +120,10 @@ impl ServerIdManager {
         }
         drop(entries);
 
-        let now = Utc::now().timestamp() as u64;
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         let entry = ServerIdEntry {
             id: id.clone(),
             name: req.name,
@@ -132,6 +143,7 @@ impl ServerIdManager {
     }
 
     /// Resolve a server ID to its address
+    #[allow(dead_code)]
     pub async fn resolve_id(&self, id: &str) -> Result<(String, u16), String> {
         let mut entries = self.entries.write().await;
 
@@ -141,7 +153,12 @@ impl ServerIdManager {
                     return Err(format!("Server ID '{}' is inactive", id));
                 }
                 // Update last accessed time
-                entry.last_accessed_at = Some(Utc::now().timestamp() as u64);
+                entry.last_accessed_at = Some(
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                );
                 Ok((entry.address.clone(), entry.port))
             }
             None => Err(format!("Server ID '{}' not found", id)),
@@ -149,6 +166,7 @@ impl ServerIdManager {
     }
 
     /// Get server ID details
+    #[allow(dead_code)]
     pub async fn get_id(&self, id: &str) -> Result<ServerIdEntry, String> {
         let entries = self.entries.read().await;
         entries
@@ -158,12 +176,14 @@ impl ServerIdManager {
     }
 
     /// List all active server IDs
+    #[allow(dead_code)]
     pub async fn list_ids(&self) -> Vec<ServerIdEntry> {
         let entries = self.entries.read().await;
         entries.values().filter(|e| e.is_active).cloned().collect()
     }
 
     /// Update a server ID
+    #[allow(dead_code)]
     pub async fn update_id(
         &self,
         id: &str,
@@ -191,6 +211,7 @@ impl ServerIdManager {
     }
 
     /// Deactivate a server ID
+    #[allow(dead_code)]
     pub async fn deactivate_id(&self, id: &str) -> Result<(), String> {
         let mut entries = self.entries.write().await;
 
@@ -204,6 +225,7 @@ impl ServerIdManager {
     }
 
     /// Delete a server ID
+    #[allow(dead_code)]
     pub async fn delete_id(&self, id: &str) -> Result<(), String> {
         let mut entries = self.entries.write().await;
 
@@ -215,6 +237,7 @@ impl ServerIdManager {
     }
 
     /// Search server IDs by name or tags
+    #[allow(dead_code)]
     pub async fn search_ids(&self, query: &str) -> Vec<ServerIdEntry> {
         let entries = self.entries.read().await;
         let query_lower = query.to_lowercase();

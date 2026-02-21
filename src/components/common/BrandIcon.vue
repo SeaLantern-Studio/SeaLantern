@@ -1,6 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import * as icons from 'simple-icons';
+import { computed } from "vue";
+import type { SimpleIcon } from "simple-icons";
+import {
+  siGithub,
+  siGitee,
+  siQq,
+  siWechat,
+  siSteam,
+  siBilibili,
+  siX,
+  siYoutube,
+  siTwitch,
+  siDiscord,
+  siTelegram,
+  siReddit,
+  siSpotify,
+} from "simple-icons";
 
 interface Props {
   name: string;
@@ -11,32 +26,37 @@ const props = withDefaults(defineProps<Props>(), {
   size: 24,
 });
 
-const iconNameMap: Record<string, string> = {
-  qq: 'siQq',
-  wechat: 'siWechat',
-  weixin: 'siWechat',
+const iconMap: Record<string, SimpleIcon> = {
+  github: siGithub,
+  gitee: siGitee,
+  qq: siQq,
+  wechat: siWechat,
+  weixin: siWechat,
+  steam: siSteam,
+  bilibili: siBilibili,
+  x: siX,
+  youtube: siYoutube,
+  twitch: siTwitch,
+  discord: siDiscord,
+  telegram: siTelegram,
+  reddit: siReddit,
+  spotify: siSpotify,
 };
 
-const darkIcons = new Set(['github', 'gitee']);
+const darkIcons = new Set(["github", "gitee"]);
 
 const icon = computed(() => {
   const lowerName = props.name.toLowerCase();
-  
-  if (iconNameMap[lowerName]) {
-    return (icons as any)[iconNameMap[lowerName]];
-  }
-  
-  const iconName = 'si' + props.name.charAt(0).toUpperCase() + props.name.slice(1).toLowerCase();
-  return (icons as any)[iconName];
+  return iconMap[lowerName] ?? null;
 });
 
 const pathData = computed(() => icon.value?.path);
 const color = computed(() => {
   const lowerName = props.name.toLowerCase();
   if (darkIcons.has(lowerName)) {
-    return 'currentColor';
+    return "currentColor";
   }
-  return icon.value?.hex ? `#${icon.value.hex}` : 'currentColor';
+  return icon.value?.hex ? `#${icon.value.hex}` : "currentColor";
 });
 </script>
 

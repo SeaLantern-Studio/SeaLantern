@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct ModInfo {
     pub id: String,
     pub name: String,
@@ -13,34 +14,38 @@ pub struct ModInfo {
     pub source: String, // "modrinth" or "curseforge"
 }
 
+#[allow(dead_code)]
 pub struct ModManager {
     client: Client,
 }
 
 impl ModManager {
-    pub fn new() -> Self {
-        ModManager {
+    #[allow(dead_code)]
+    pub fn new() -> Result<Self, String> {
+        Ok(ModManager {
             client: Client::builder()
                 .user_agent("SeaLantern/0.5.0 (contact@manus.im)")
                 .build()
-                .unwrap(),
-        }
+                .map_err(|e| format!("Failed to create HTTP client: {}", e))?,
+        })
     }
 
+    #[allow(dead_code)]
     pub async fn search_modrinth(
         &self,
         query: &str,
         game_version: &str,
         loader: &str,
     ) -> Result<Vec<ModInfo>, String> {
-        let url = format!(
-            "https://api.modrinth.com/v2/search?query={}&facets=[[\"versions:{}\"],[\"categories:{}\"],[\"project_type:mod\"]]",
-            query, game_version, loader.to_lowercase()
+        let facets = format!(
+            "[[\"versions:{}\"],[\"categories:{}\"],[\"project_type:mod\"]]",
+            game_version,
+            loader.to_lowercase()
         );
-
         let resp = self
             .client
-            .get(&url)
+            .get("https://api.modrinth.com/v2/search")
+            .query(&[("query", query), ("facets", facets.as_str())])
             .send()
             .await
             .map_err(|e| e.to_string())?;
@@ -66,6 +71,7 @@ impl ModManager {
         Ok(results)
     }
 
+    #[allow(dead_code)]
     async fn get_latest_modrinth_version(
         &self,
         project_id: &str,
@@ -101,6 +107,7 @@ impl ModManager {
         Err("No compatible version found".to_string())
     }
 
+    #[allow(dead_code)]
     pub async fn download_mod(&self, download_url: &str, target_path: &Path) -> Result<(), String> {
         let resp = self
             .client

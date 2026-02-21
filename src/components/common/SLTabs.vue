@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
+
 export interface TabItem {
   key: string;
   label: string;
@@ -9,6 +12,7 @@ export interface TabItem {
 interface Props {
   modelValue?: string;
   tabs: TabItem[];
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -24,10 +28,23 @@ const handleTabClick = (tab: TabItem) => {
     emit("update:modelValue", tab.key);
   }
 };
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-tabs-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLTabs",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", String(value));
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => elRef.value,
+});
 </script>
 
 <template>
-  <div class="sl-tabs">
+  <div ref="elRef" class="sl-tabs">
     <div class="sl-tabs__nav" role="tablist">
       <button
         v-for="tab in tabs"

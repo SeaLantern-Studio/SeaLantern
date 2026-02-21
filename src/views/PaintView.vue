@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown } from 'lucide-vue-next';
+import { ChevronDown } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -17,7 +17,311 @@ import {
 } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { getAllThemes, getThemeById, getThemeOptions, mapLegacyPlanName, type ColorPlan } from "../themes";
+import {
+  getAllThemes,
+  getThemeById,
+  getThemeOptions,
+  mapLegacyPlanName,
+  type ColorPlan,
+} from "../themes";
+import { usePluginStore } from "../stores/pluginStore";
+
+const presetThemes = {
+  default: {
+    light: {
+      bg: "#f8fafc",
+      bgSecondary: "#f1f5f9",
+      bgTertiary: "#e2e8f0",
+      primary: "#0ea5e9",
+      secondary: "#06b6d4",
+      textPrimary: "#0f172a",
+      textSecondary: "#475569",
+      border: "#e2e8f0",
+    },
+    dark: {
+      bg: "#0f1117",
+      bgSecondary: "#1a1d28",
+      bgTertiary: "#242836",
+      primary: "#60a5fa",
+      secondary: "#22d3ee",
+      textPrimary: "#e2e8f0",
+      textSecondary: "#94a3b8",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(248, 250, 252, 0.7)",
+      bgSecondary: "rgba(241, 245, 249, 0.6)",
+      bgTertiary: "rgba(226, 232, 240, 0.5)",
+      primary: "#0ea5e9",
+      secondary: "#06b6d4",
+      textPrimary: "#0f172a",
+      textSecondary: "#475569",
+      border: "#e2e8f0",
+    },
+    dark_acrylic: {
+      bg: "rgba(15, 17, 23, 0.7)",
+      bgSecondary: "rgba(26, 29, 40, 0.6)",
+      bgTertiary: "rgba(36, 40, 54, 0.5)",
+      primary: "#60a5fa",
+      secondary: "#22d3ee",
+      textPrimary: "#e2e8f0",
+      textSecondary: "#94a3b8",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  midnight: {
+    light: {
+      bg: "#f0f4f8",
+      bgSecondary: "#e2e8f0",
+      bgTertiary: "#cbd5e1",
+      primary: "#3b82f6",
+      secondary: "#6366f1",
+      textPrimary: "#0f172a",
+      textSecondary: "#475569",
+      border: "#e2e8f0",
+    },
+    dark: {
+      bg: "#0f172a",
+      bgSecondary: "#1e293b",
+      bgTertiary: "#334155",
+      primary: "#60a5fa",
+      secondary: "#818cf8",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(240, 244, 248, 0.7)",
+      bgSecondary: "rgba(226, 232, 240, 0.6)",
+      bgTertiary: "rgba(203, 213, 225, 0.5)",
+      primary: "#3b82f6",
+      secondary: "#6366f1",
+      textPrimary: "#0f172a",
+      textSecondary: "#475569",
+      border: "#e2e8f0",
+    },
+    dark_acrylic: {
+      bg: "rgba(15, 23, 42, 0.7)",
+      bgSecondary: "rgba(30, 41, 59, 0.6)",
+      bgTertiary: "rgba(51, 65, 85, 0.5)",
+      primary: "#60a5fa",
+      secondary: "#818cf8",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  forest: {
+    light: {
+      bg: "#f0fdf4",
+      bgSecondary: "#dcfce7",
+      bgTertiary: "#bbf7d0",
+      primary: "#10b981",
+      secondary: "#059669",
+      textPrimary: "#064e3b",
+      textSecondary: "#15803d",
+      border: "#dcfce7",
+    },
+    dark: {
+      bg: "#064e3b",
+      bgSecondary: "#065f46",
+      bgTertiary: "#047857",
+      primary: "#34d399",
+      secondary: "#10b981",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(240, 253, 244, 0.7)",
+      bgSecondary: "rgba(220, 252, 231, 0.6)",
+      bgTertiary: "rgba(187, 247, 208, 0.5)",
+      primary: "#10b981",
+      secondary: "#059669",
+      textPrimary: "#064e3b",
+      textSecondary: "#15803d",
+      border: "#dcfce7",
+    },
+    dark_acrylic: {
+      bg: "rgba(6, 78, 59, 0.7)",
+      bgSecondary: "rgba(6, 95, 70, 0.6)",
+      bgTertiary: "rgba(4, 120, 87, 0.5)",
+      primary: "#34d399",
+      secondary: "#10b981",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  sunset: {
+    light: {
+      bg: "#fffbeb",
+      bgSecondary: "#fef3c7",
+      bgTertiary: "#fde68a",
+      primary: "#f97316",
+      secondary: "#ea580c",
+      textPrimary: "#7c2d12",
+      textSecondary: "#9a3412",
+      border: "#fef3c7",
+    },
+    dark: {
+      bg: "#7c2d12",
+      bgSecondary: "#9a3412",
+      bgTertiary: "#b45309",
+      primary: "#fb923c",
+      secondary: "#fdba74",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(255, 251, 235, 0.7)",
+      bgSecondary: "rgba(254, 243, 199, 0.6)",
+      bgTertiary: "rgba(253, 230, 138, 0.5)",
+      primary: "#f97316",
+      secondary: "#ea580c",
+      textPrimary: "#7c2d12",
+      textSecondary: "#9a3412",
+      border: "#fef3c7",
+    },
+    dark_acrylic: {
+      bg: "rgba(124, 45, 18, 0.7)",
+      bgSecondary: "rgba(154, 52, 18, 0.6)",
+      bgTertiary: "rgba(180, 83, 9, 0.5)",
+      primary: "#fb923c",
+      secondary: "#fdba74",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  ocean: {
+    light: {
+      bg: "#f0fdfa",
+      bgSecondary: "#ccfbf1",
+      bgTertiary: "#99f6e4",
+      primary: "#06b6d4",
+      secondary: "#0891b2",
+      textPrimary: "#0e7490",
+      textSecondary: "#155e75",
+      border: "#ccfbf1",
+    },
+    dark: {
+      bg: "#0e7490",
+      bgSecondary: "#0c4a6e",
+      bgTertiary: "#0891b2",
+      primary: "#22d3ee",
+      secondary: "#67e8f9",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(240, 253, 250, 0.7)",
+      bgSecondary: "rgba(204, 251, 241, 0.6)",
+      bgTertiary: "rgba(153, 246, 228, 0.5)",
+      primary: "#06b6d4",
+      secondary: "#0891b2",
+      textPrimary: "#0e7490",
+      textSecondary: "#155e75",
+      border: "#ccfbf1",
+    },
+    dark_acrylic: {
+      bg: "rgba(14, 116, 144, 0.7)",
+      bgSecondary: "rgba(12, 74, 110, 0.6)",
+      bgTertiary: "rgba(8, 145, 178, 0.5)",
+      primary: "#22d3ee",
+      secondary: "#67e8f9",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  rose: {
+    light: {
+      bg: "#fdf2f8",
+      bgSecondary: "#fce7f3",
+      bgTertiary: "#fbcfe8",
+      primary: "#ec4899",
+      secondary: "#db2777",
+      textPrimary: "#831843",
+      textSecondary: "#9f1239",
+      border: "#fce7f3",
+    },
+    dark: {
+      bg: "#831843",
+      bgSecondary: "#9f1239",
+      bgTertiary: "#be123c",
+      primary: "#f472b6",
+      secondary: "#f9a8d4",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+    light_acrylic: {
+      bg: "rgba(253, 242, 248, 0.7)",
+      bgSecondary: "rgba(252, 231, 243, 0.6)",
+      bgTertiary: "rgba(251, 207, 232, 0.5)",
+      primary: "#ec4899",
+      secondary: "#db2777",
+      textPrimary: "#831843",
+      textSecondary: "#9f1239",
+      border: "#fce7f3",
+    },
+    dark_acrylic: {
+      bg: "rgba(131, 24, 67, 0.7)",
+      bgSecondary: "rgba(159, 18, 57, 0.6)",
+      bgTertiary: "rgba(190, 18, 60, 0.5)",
+      primary: "#f472b6",
+      secondary: "#f9a8d4",
+      textPrimary: "#f1f5f9",
+      textSecondary: "#cbd5e1",
+      border: "rgba(255, 255, 255, 0.1)",
+    },
+  },
+  zombie: {
+    light: {
+      bg: "#0A0A0A",
+      bgSecondary: "#111111",
+      bgTertiary: "#1A1A1A",
+      primary: "#C8FFB0",
+      secondary: "#8B0000",
+      textPrimary: "#C8FFB0",
+      textSecondary: "#6B8F5E",
+      border: "rgba(139, 0, 0, 0.5)",
+    },
+    dark: {
+      bg: "#0A0A0A",
+      bgSecondary: "#111111",
+      bgTertiary: "#1A1A1A",
+      primary: "#C8FFB0",
+      secondary: "#8B0000",
+      textPrimary: "#C8FFB0",
+      textSecondary: "#6B8F5E",
+      border: "rgba(139, 0, 0, 0.5)",
+    },
+    lightAcrylic: {
+      bg: "rgba(10, 10, 10, 0.8)",
+      bgSecondary: "rgba(17, 17, 17, 0.7)",
+      bgTertiary: "rgba(26, 26, 26, 0.6)",
+      primary: "#C8FFB0",
+      secondary: "#8B0000",
+      textPrimary: "#C8FFB0",
+      textSecondary: "#6B8F5E",
+      border: "rgba(139, 0, 0, 0.5)",
+    },
+    darkAcrylic: {
+      bg: "rgba(10, 10, 10, 0.8)",
+      bgSecondary: "rgba(17, 17, 17, 0.7)",
+      bgTertiary: "rgba(26, 26, 26, 0.6)",
+      primary: "#C8FFB0",
+      secondary: "#8B0000",
+      textPrimary: "#C8FFB0",
+      textSecondary: "#6B8F5E",
+      border: "rgba(139, 0, 0, 0.5)",
+    },
+  },
+};
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
@@ -28,6 +332,18 @@ const success = ref<string | null>(null);
 
 // 亚克力支持检测
 const acrylicSupported = ref(true);
+
+const pluginStore = usePluginStore();
+
+const themeProxyPlugin = computed(() => {
+  return pluginStore.plugins.find(
+    (p) => p.state === "enabled" && pluginStore.hasCapability(p.manifest.id, "theme-provider"),
+  );
+});
+
+const isThemeProxied = computed(() => !!themeProxyPlugin.value);
+
+const themeProxyPluginName = computed(() => themeProxyPlugin.value?.manifest.name || "");
 
 // String versions for number inputs (avoids v-model type mismatch)
 const maxMem = ref("2048");
@@ -49,10 +365,7 @@ const backgroundSizeOptions = computed(() => [
 
 const colorOptions = computed(() => {
   const themes = getThemeOptions();
-  return [
-    ...themes,
-    { label: i18n.t("settings.color_options.custom"), value: "custom" },
-  ];
+  return [...themes, { label: i18n.t("settings.color_options.custom"), value: "custom" }];
 });
 
 const editColorOptions = computed(() => [
@@ -1152,8 +1465,13 @@ async function handleThemeChange() {
     const theme = getThemeById(settings.value.color);
     if (theme) {
       // 颜色方案映射
-      const colorPlans: Array<'light' | 'dark' | 'lightAcrylic' | 'darkAcrylic'> = ['light', 'dark', 'lightAcrylic', 'darkAcrylic'];
-      const legacyPlans = ['light', 'dark', 'light_acrylic', 'dark_acrylic'];
+      const colorPlans: Array<"light" | "dark" | "lightAcrylic" | "darkAcrylic"> = [
+        "light",
+        "dark",
+        "lightAcrylic",
+        "darkAcrylic",
+      ];
+      const legacyPlans = ["light", "dark", "light_acrylic", "dark_acrylic"];
 
       // 颜色类型映射
       const colorTypes = {
@@ -1415,7 +1733,15 @@ function clearBackgroundImage() {
             </p>
           </div>
           <div class="input-lg">
+            <!-- 当被插件代理时显示提示 -->
+            <div v-if="isThemeProxied" class="theme-proxied-notice">
+              <span class="proxied-text">{{
+                i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
+              }}</span>
+            </div>
+            <!-- 正常显示选择器 -->
             <SLSelect
+              v-else
               v-model="settings.color"
               :options="colorOptions"
               @update:modelValue="handleThemeChange"
@@ -1425,7 +1751,7 @@ function clearBackgroundImage() {
 
         <!-- 颜色编辑折叠区域 -->
         <Transition name="color-section">
-          <div class="collapsible-section" v-if="settings.color === 'custom'">
+          <div class="collapsible-section" v-if="!isThemeProxied">
             <div class="collapsible-header" @click="colorSettingsExpanded = !colorSettingsExpanded">
               <div class="setting-info">
                 <span class="setting-label">{{ i18n.t("settings.color_editing") }}</span>
@@ -1621,7 +1947,14 @@ function clearBackgroundImage() {
               <span class="setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
             </div>
             <div class="input-lg">
+              <!-- 当被插件代理时显示提示 -->
+              <div v-if="isThemeProxied" class="theme-proxied-notice">
+                <span class="proxied-text">{{
+                  i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
+                }}</span>
+              </div>
               <SLSelect
+                v-else
                 v-model="settings.theme"
                 :options="themeOptions"
                 @update:modelValue="handleThemeChange"
@@ -1873,7 +2206,7 @@ function clearBackgroundImage() {
       :visible="showColorPickerDialog"
       :title="i18n.t('settings.color_picker')"
       @close="closeColorPicker"
-      :width="320"
+      width="320px"
     >
       <div class="color-picker-content">
         <!-- 颜色预览 -->
@@ -2031,6 +2364,23 @@ function clearBackgroundImage() {
   max-width: 860px;
   margin: 0 auto;
   padding-bottom: var(--sl-space-2xl);
+}
+
+/* 主题代理提示样式 */
+.theme-proxied-notice {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-primary);
+  font-size: 0.875rem;
+  min-width: 200px;
+}
+
+.proxied-text {
+  white-space: nowrap;
 }
 
 .msg-banner {

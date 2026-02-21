@@ -31,11 +31,7 @@ const iconComponents: Record<ToastType, typeof Check> = {
             aria-hidden="true"
           />
           <span class="sl-toast__message">{{ toast.message }}</span>
-          <button
-            class="sl-toast__close"
-            @click="removeToast(toast.id)"
-            aria-label="close"
-          >
+          <button class="sl-toast__close" @click="removeToast(toast.id)" aria-label="close">
             <X :size="14" aria-hidden="true" />
           </button>
         </div>
@@ -44,7 +40,7 @@ const iconComponents: Record<ToastType, typeof Check> = {
   </Teleport>
 </template>
 
-<style scoped>
+<style>
 .sl-toast-container {
   position: fixed;
   top: 16px;

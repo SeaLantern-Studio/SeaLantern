@@ -7,24 +7,32 @@ import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLProgress from "../components/common/SLProgress.vue";
-import SLConfirmDialog from "../components/common/SLConfirmDialog.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
 import { systemApi, type SystemInfo } from "../api/system";
 import { i18n } from "../language";
-import { useMessage } from "../composables/useMessage";
-import { useAsyncByKey } from "../composables/useAsync";
-import { formatBytes, formatServerPath } from "../utils/format";
-import { getStatusVariant, getStatusText } from "../utils/serverStatus";
+import type { ServerInstance } from "../types/server";
+import {
+  Gauge,
+  BarChart3,
+  Server,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  FolderOpen,
+  Copy,
+  Check,
+  X,
+} from "lucide-vue-next";
 import ts from "typescript";
 
 const router = useRouter();
 const store = useServerStore();
 const consoleStore = useConsoleStore();
 
-const { error: actionError, showError, clear: clearError } = useMessage();
-const { loading: actionLoading, execute: executeAction } = useAsyncByKey<string>();
+const actionLoading = ref<Record<string, boolean>>({});
+const actionError = ref<string | null>(null);
 
 const editingServerId = ref<string | null>(null);
 const editName = ref("");
@@ -279,17 +287,13 @@ function typeWriterOut(callback?: () => void) {
 }
 
 async function fetchHitokoto(): Promise<{ text: string; author: string }> {
-  console.log("获取一言，当前缓存数量:", quoteCache.value.length);
   if (quoteCache.value.length > 0) {
     const quote = quoteCache.value.shift();
-    console.log("从缓存中获取一言:", quote);
-    console.log("缓存剩余数量:", quoteCache.value.length);
     replenishCache();
     return quote!;
   }
 
   try {
-    console.log("缓存为空，从API获取一言");
     const response = await fetch("https://v1.hitokoto.cn/?encode=json");
     if (!response.ok) {
       throw new Error("Failed to fetch hitokoto");
@@ -299,13 +303,11 @@ async function fetchHitokoto(): Promise<{ text: string; author: string }> {
       text: data.hitokoto,
       author: data.from_who || data.from || i18n.t("common.unknown"),
     };
-    console.log("从API获取一言成功:", quote);
     replenishCache();
     return quote;
   } catch (error) {
     console.error("Error fetching hitokoto:", error);
     const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
-    console.log("使用默认一言:", defaultQuote);
     return defaultQuote;
   }
 }
@@ -315,19 +317,15 @@ function isQuoteInCache(quote: { text: string; author: string }): boolean {
 }
 
 async function replenishCache() {
-  console.log("开始补充缓存，当前缓存数量:", quoteCache.value.length);
   let attempts = 0;
   const maxAttempts = 10;
 
-  // eslint-disable-next-line no-await-in-loop
   while (quoteCache.value.length < 2 && attempts < maxAttempts) {
     try {
-      // eslint-disable-next-line no-await-in-loop
       const response = await fetch("https://v1.hitokoto.cn/?encode=json");
       if (!response.ok) {
         throw new Error("Failed to fetch hitokoto");
       }
-      // eslint-disable-next-line no-await-in-loop
       const data: HitokotoResponse = await response.json();
       const newQuote = {
         text: data.hitokoto,
@@ -336,10 +334,7 @@ async function replenishCache() {
 
       if (!isQuoteInCache(newQuote)) {
         quoteCache.value.push(newQuote);
-        console.log("补充缓存成功，当前缓存数量:", quoteCache.value.length);
-        console.log("新缓存的一言:", newQuote);
       } else {
-        console.log("一言已在缓存中，跳过:", newQuote.text.substring(0, 20) + "...");
         attempts++;
       }
     } catch (error) {
@@ -347,25 +342,16 @@ async function replenishCache() {
       break;
     }
   }
-
-  if (attempts >= maxAttempts) {
-    console.log("达到最大尝试次数，停止补充缓存");
-  }
 }
 
 async function updateQuote() {
-  console.log("触发更新一言");
   if (isTyping.value) {
-    console.log("正在打字中，取消更新");
     return;
   }
   typeWriterOut(async () => {
     try {
-      console.log("开始获取新一言");
       const newQuote = await fetchHitokoto();
-      console.log("获取新一言成功:", newQuote);
       currentQuote.value = newQuote;
-      console.log("开始打字显示新一言");
       typeWriter(newQuote.text);
     } catch (error) {
       console.error("Error updating quote:", error);
@@ -388,6 +374,26 @@ initQuote();
 
 let quoteTimer: ReturnType<typeof setInterval> | null = null;
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function formatServerPath(path: string): string {
+  const serversIndex = path.indexOf("servers/");
+  if (serversIndex !== -1) {
+    return path.substring(serversIndex);
+  }
+  const serversIndexBackslash = path.indexOf("servers\\");
+  if (serversIndexBackslash !== -1) {
+    return path.substring(serversIndexBackslash);
+  }
+  return path;
+}
+
 const recentAlerts = computed(() => {
   const alerts: { server: string; line: string }[] = [];
   for (const [sid, logs] of Object.entries(consoleStore.logs)) {
@@ -409,6 +415,7 @@ const recentAlerts = computed(() => {
 });
 
 onMounted(() => {
+  // 异步加载服务器列表，不阻塞页面渲染
   const loadServers = async () => {
     try {
       await store.refreshList();
@@ -418,10 +425,12 @@ onMounted(() => {
     }
   };
 
+  // 获取真实系统信息（异步，不阻塞页面渲染）
   const fetchSystemInfo = async () => {
     try {
       const info = await systemApi.getSystemInfo();
       systemInfo.value = info;
+      // clamp CPU usage to 0-100 (sysinfo can sometimes return >100%)
       cpuUsage.value = Math.min(100, Math.max(0, Math.round(info.cpu.usage)));
       memUsage.value = Math.min(100, Math.max(0, Math.round(info.memory.usage)));
       diskUsage.value = Math.min(100, Math.max(0, Math.round(info.disk.usage)));
@@ -436,15 +445,22 @@ onMounted(() => {
     }
   };
 
+  // 启动异步加载
   loadServers();
   fetchSystemInfo();
 
-  statsTimer = setInterval(fetchSystemInfo, 1000);
+  // 设置定时任务
+  statsTimer = setInterval(fetchSystemInfo, 3000);
+
+  // 名言每30秒更新一次
   quoteTimer = setInterval(updateQuote, 30000);
+
+  // Refresh server statuses
   refreshTimer = setInterval(async () => {
     await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
   }, 3000);
 
+  // 添加全局点击事件监听器，点击空白区域收回删除确认输入框
   document.addEventListener("click", handleClickOutside);
 
   // 监听主题和无障碍模式变化
@@ -466,9 +482,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (typeTimer) clearInterval(typeTimer);
   if (statsTimer) clearInterval(statsTimer);
   if (refreshTimer) clearInterval(refreshTimer);
   if (quoteTimer) clearInterval(quoteTimer);
+  // 移除全局点击事件监听器
   document.removeEventListener("click", handleClickOutside);
 
   // 清理 MutationObserver
@@ -478,100 +496,193 @@ onUnmounted(() => {
   }
 });
 
+// 处理点击空白区域的逻辑
 function handleClickOutside(event: MouseEvent) {
   if (!deletingServerId.value) return;
 
   const target = event.target as HTMLElement;
+  // 检查是否点击了删除确认输入框或删除按钮
   const isDeleteConfirmInput = target.closest(".delete-confirm-input");
   const isDeleteButton = target.closest(".server-card-actions")?.querySelector("button");
 
+  // 如果没有点击这些元素，则收回输入框
   if (!isDeleteConfirmInput && !isDeleteButton) {
     cancelDelete();
   }
 }
 
+function getStatusVariant(status: string | undefined) {
+  switch (status) {
+    case "Running":
+      return "success" as const;
+    case "Starting":
+    case "Stopping":
+      return "warning" as const;
+    case "Error":
+      return "error" as const;
+    default:
+      return "neutral" as const;
+  }
+}
+
+function getStatusText(status: string | undefined): string {
+  switch (status) {
+    case "Running":
+      return i18n.t("home.running");
+    case "Starting":
+      return i18n.t("home.starting");
+    case "Stopping":
+      return i18n.t("home.stopping");
+    case "Error":
+      return i18n.t("home.error");
+    default:
+      return i18n.t("home.stopped");
+  }
+}
+
 async function handleStart(id: string) {
-  await executeAction(id, async () => {
+  actionLoading.value[id] = true;
+  actionError.value = null;
+  try {
     await serverApi.start(id);
     await store.refreshStatus(id);
-  });
+  } catch (e) {
+    actionError.value = String(e);
+  } finally {
+    actionLoading.value[id] = false;
+  }
 }
 
 async function handleStop(id: string) {
-  await executeAction(id, async () => {
+  actionLoading.value[id] = true;
+  actionError.value = null;
+  try {
     await serverApi.stop(id);
     await store.refreshStatus(id);
-  });
+  } catch (e) {
+    actionError.value = String(e);
+  } finally {
+    actionLoading.value[id] = false;
+  }
 }
 
-function startEditServerName(server: any) {
+// 开始就地编辑服务器名称
+function startEditServerName(server: ServerInstance) {
   editingServerId.value = server.id;
   editName.value = server.name;
 }
 
+// 保存服务器名称更改
 async function saveServerName(serverId: string) {
   if (!serverId || !editName.value.trim()) return;
 
   editLoading.value = true;
+  actionError.value = null;
 
   try {
     await serverApi.updateServerName(serverId, editName.value.trim());
     await store.refreshList();
     editingServerId.value = null;
   } catch (e) {
-    showError(String(e));
+    actionError.value = String(e);
   } finally {
     editLoading.value = false;
   }
 }
 
+// 取消编辑服务器名称
 function cancelEdit() {
   editingServerId.value = null;
   editName.value = "";
 }
 
+// 服务器删除确认相关
 const deletingServerId = ref<string | null>(null);
 const deleteServerName = ref("");
 const inputServerName = ref("");
-const showDeleteConfirm = ref(false);
+const deleteError = ref<string | null>(null);
+const isClosing = ref(false);
 
-function showDeleteConfirmInput(server: any) {
-  deletingServerId.value = server.id;
-  deleteServerName.value = server.name;
-  inputServerName.value = "";
-  showDeleteConfirm.value = true;
+// 显示/收回删除确认输入框
+function showDeleteConfirmInput(server: ServerInstance) {
+  // 如果当前服务器的删除确认输入框已显示，则收回
+  if (deletingServerId.value === server.id) {
+    cancelDelete();
+  } else {
+    // 否则显示删除确认输入框
+    deletingServerId.value = server.id;
+    deleteServerName.value = server.name;
+    inputServerName.value = "";
+    deleteError.value = null;
+  }
 }
 
+// 验证并执行删除
 async function confirmDelete() {
   if (!deletingServerId.value) return;
+
+  if (inputServerName.value.trim() !== deleteServerName.value.trim()) {
+    deleteError.value = i18n.t("home.delete_error");
+    return;
+  }
 
   try {
     await serverApi.deleteServer(deletingServerId.value);
     await store.refreshList();
-    closeDeleteConfirm();
+    // 添加关闭动画类
+    isClosing.value = true;
+
+    // 动画结束后重置状态
+    setTimeout(() => {
+      deletingServerId.value = null;
+      deleteServerName.value = "";
+      inputServerName.value = "";
+      deleteError.value = null;
+      isClosing.value = false;
+    }, 300);
   } catch (e) {
-    showError(String(e));
+    actionError.value = String(e);
   }
 }
 
-function closeDeleteConfirm() {
-  showDeleteConfirm.value = false;
-  deletingServerId.value = null;
-  deleteServerName.value = "";
-  inputServerName.value = "";
+// 取消删除
+function cancelDelete() {
+  if (!deletingServerId.value) return;
+
+  // 添加关闭动画类
+  isClosing.value = true;
+
+  // 动画结束后重置状态
+  setTimeout(() => {
+    deletingServerId.value = null;
+    deleteServerName.value = "";
+    inputServerName.value = "";
+    deleteError.value = null;
+    isClosing.value = false;
+  }, 300);
 }
 
-function cancelDelete() {
-  closeDeleteConfirm();
+// 处理动画结束事件
+function handleAnimationEnd(event: AnimationEvent) {
+  if (event.animationName === "deleteInputCollapse") {
+    deletingServerId.value = null;
+    deleteServerName.value = "";
+    inputServerName.value = "";
+    deleteError.value = null;
+    isClosing.value = false;
+  }
 }
 </script>
+
 <template>
   <div class="home-view animate-fade-in-up">
+    <!-- Error Banner -->
     <div v-if="actionError" class="error-banner">
       <span>{{ actionError }}</span>
-      <button class="error-close" @click="clearError('error')">x</button>
+      <button class="error-close" @click="actionError = null">x</button>
     </div>
 
+    <!-- Top Row: Quick Actions + System Stats -->
     <div class="top-row">
       <SLCard
         :title="i18n.t('home.title')"
@@ -605,15 +716,17 @@ function cancelDelete() {
                 statsViewMode === 'gauge' ? i18n.t('home.detail_view') : i18n.t('home.gauge_view')
               "
             >
-              <Menu v-if="statsViewMode === 'gauge'" :size="14" />
-              <Clock v-else :size="14" />
+              <BarChart3 v-if="statsViewMode === 'gauge'" :size="14" />
+              <Gauge v-else :size="14" />
             </button>
           </div>
         </template>
+        <!-- 加载状态 -->
         <div v-if="statsLoading" class="stats-loading">
           <div class="spinner"></div>
           <span>{{ i18n.t("common.loading") }}</span>
         </div>
+        <!-- 仪表盘视图 -->
         <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
           <div class="gauge-grid">
             <div class="gauge-item">
@@ -664,6 +777,7 @@ function cancelDelete() {
             </div>
           </div>
         </div>
+        <!-- 详细视图 -->
         <div v-else class="stats-grid">
           <div class="stat-item">
             <div class="stat-header">
@@ -724,7 +838,7 @@ function cancelDelete() {
     </div>
 
     <div v-else-if="store.servers.length === 0" class="empty-state">
-      <Server :size="64" :color="'var(--sl-text-tertiary)'" stroke-width="1" />
+      <Server :size="64" :stroke-width="1" class="empty-icon" />
       <p class="text-body">{{ i18n.t("home.no_servers") }}</p>
       <p class="text-caption">{{ i18n.t("home.create_first") }}</p>
     </div>
@@ -794,7 +908,7 @@ function cancelDelete() {
           @click="systemApi.openFolder(server.path)"
         >
           <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
-          <Folder class="folder-icon" :size="16" />
+          <FolderOpen class="folder-icon" :size="16" />
         </div>
 
         <div class="server-card-actions">
@@ -843,6 +957,40 @@ function cancelDelete() {
           <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
             {{ i18n.t("home.delete") }}
           </SLButton>
+          <div
+            v-if="deletingServerId === server.id"
+            :class="['delete-confirm-input', { closing: isClosing }]"
+            @animationend="handleAnimationEnd"
+          >
+            <p
+              class="delete-confirm-message"
+              v-html="
+                i18n.t('home.delete_confirm_message', {
+                  server: '<strong>' + server.name + '</strong>',
+                })
+              "
+            ></p>
+            <div class="delete-input-group">
+              <input
+                type="text"
+                v-model="inputServerName"
+                class="delete-input"
+                :placeholder="i18n.t('home.delete_input_placeholder')"
+                @keyup.enter="confirmDelete"
+                @keyup.esc="cancelDelete"
+                ref="deleteInput"
+              />
+              <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
+            </div>
+            <div class="delete-actions">
+              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
+                i18n.t("home.delete_cancel")
+              }}</SLButton>
+              <SLButton variant="danger" size="sm" @click="confirmDelete">{{
+                i18n.t("home.delete_confirm")
+              }}</SLButton>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1369,6 +1517,104 @@ function cancelDelete() {
     flex: 1;
     min-width: unset;
   }
+}
+
+.delete-confirm-input {
+  width: 100%;
+  margin-top: var(--sl-space-sm);
+  padding: var(--sl-space-sm);
+  background: var(--sl-bg-secondary);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-radius: var(--sl-radius-md);
+  overflow: hidden;
+  animation: deleteInputExpand 0.3s ease forwards;
+}
+
+.delete-confirm-input.closing {
+  animation: deleteInputCollapse 0.3s ease forwards;
+}
+
+@keyframes deleteInputExpand {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scaleY(0.2);
+    max-height: 0;
+    padding: 0 var(--sl-space-sm);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    max-height: 200px;
+    padding: var(--sl-space-sm);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    max-height: 200px;
+    padding: var(--sl-space-sm);
+  }
+}
+
+@keyframes deleteInputCollapse {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    max-height: 200px;
+    padding: var(--sl-space-sm);
+  }
+  40% {
+    opacity: 0;
+    transform: translateY(-5px) scaleY(1);
+    max-height: 200px;
+    padding: var(--sl-space-sm);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scaleY(0.2);
+    max-height: 0;
+    padding: 0 var(--sl-space-sm);
+  }
+}
+
+.delete-confirm-message {
+  font-size: 0.875rem;
+  margin-bottom: var(--sl-space-sm);
+  line-height: 1.4;
+}
+
+.delete-input-group {
+  margin-bottom: var(--sl-space-sm);
+}
+
+.delete-input {
+  width: 100%;
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.delete-input:focus {
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 2px var(--sl-primary-bg);
+}
+
+.delete-error {
+  margin-top: var(--sl-space-xs);
+  font-size: 0.75rem;
+  color: var(--sl-error);
+}
+
+.delete-actions {
+  display: flex;
+  gap: var(--sl-space-xs);
+  justify-content: flex-end;
+  margin-top: var(--sl-space-sm);
 }
 
 .alerts-section {
