@@ -154,6 +154,11 @@ pub fn run() {
                 let settings = services::global::settings_manager().get();
 
                 match settings.close_action.as_str() {
+                    "ask" => {
+                        // 阻止关闭，通知前端显示确认弹窗
+                        api.prevent_close();
+                        let _ = window.emit("show-close-dialog", ());
+                    }
                     "minimize" => {
                         // 最小化到托盘
                         api.prevent_close();
@@ -176,9 +181,9 @@ pub fn run() {
                         }
                     }
                     _ => {
-                        // 显示对话框（ask 或其他值）
+                        // 其他未知值，默认显示对话框
                         api.prevent_close();
-                        let _ = window.emit("close-requested", ());
+                        let _ = window.emit("show-close-dialog", ());
                     }
                 }
             }
@@ -472,8 +477,51 @@ pub fn run() {
                     })
                     .build(app)?;
 
+            // macOS: 应用毛玻璃效果
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "macos")]
+                {
+                    use window_vibrancy::NSVisualEffectMaterial;
+                    match window_vibrancy::apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::HudWindow,
+                        None,
+                        Some(10.0),
+                    ) {
+                        Ok(_) => {
+                            println!("macOS vibrancy applied successfully");
+                            let window_clone = window.clone();
+                            std::thread::spawn(move || {
+                                std::thread::sleep(std::time::Duration::from_millis(100));
+                                let _ = window_clone.eval(
+                                    "document.documentElement.setAttribute('data-vibrancy', 'true')",
+                                );
+                            });
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to apply macOS vibrancy: {}", e);
+                        }
+                    }
+                }
+            }
+
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Sea Lantern");
+        .build(tauri::generate_context!())
+        .expect("error while building Sea Lantern")
+        .run(|app_handle, event| {
+            // 处理 macOS Dock 图标点击事件
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows,
+                ..
+            } = event
+            {
+                if !has_visible_windows {
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+        });
 }

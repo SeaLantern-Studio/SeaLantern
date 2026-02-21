@@ -1176,17 +1176,25 @@ onMounted(async () => {
   // 应用初始颜色
   applyColors();
 
-  // 监听设置更新事件
-  window.addEventListener("settings-updated", loadSettings);
+  // 监听设置更新事件，忽略自身发起的事件
+  window.addEventListener("settings-updated", handleSettingsUpdated);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("settings-updated", loadSettings);
+  window.removeEventListener("settings-updated", handleSettingsUpdated);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
 });
+
+function handleSettingsUpdated() {
+  if (isSelfTriggered) {
+    isSelfTriggered = false;
+    return;
+  }
+  loadSettings();
+}
 
 async function loadSystemFonts() {
   fontsLoading.value = true;
@@ -1242,6 +1250,7 @@ function markChanged() {
 }
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+let isSelfTriggered = false;
 
 function debouncedSave() {
   if (saveTimeout) {
@@ -1591,6 +1600,7 @@ async function saveSettings() {
       } catch {}
     }
 
+    isSelfTriggered = true;
     window.dispatchEvent(new CustomEvent("settings-updated"));
   } catch (e) {
     error.value = String(e);
@@ -2727,6 +2737,7 @@ function clearBackgroundImage() {
 .collapsible-content {
   padding: 0 var(--sl-space-md) var(--sl-space-md);
   background: var(--sl-surface);
+  contain: layout style;
 }
 
 .collapse-enter-active,

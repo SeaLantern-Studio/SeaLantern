@@ -25,6 +25,7 @@ const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
 const backgroundSize = computed(() => settingsStore.backgroundSize);
 
 let systemThemeQuery: MediaQueryList | null = null;
+let applySettingsTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * 应用亚克力效果
@@ -104,6 +105,9 @@ onUnmounted(() => {
   if (systemThemeQuery) {
     systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
   }
+  if (applySettingsTimeout) {
+    clearTimeout(applySettingsTimeout);
+  }
 });
 
 /**
@@ -114,10 +118,23 @@ async function handleSettingsUpdated(): Promise<void> {
   await applyAllSettings();
 }
 
+/**
+ * 防抖应用设置，避免频繁 DOM 操作导致滚动跳转
+ */
+function debouncedApplySettings(): void {
+  if (applySettingsTimeout) {
+    clearTimeout(applySettingsTimeout);
+  }
+  applySettingsTimeout = setTimeout(async () => {
+    await applyAllSettings();
+    applySettingsTimeout = null;
+  }, 100);
+}
+
 watch(
   () => settingsStore.settings,
-  async () => {
-    await applyAllSettings();
+  () => {
+    debouncedApplySettings();
   },
   { deep: true },
 );
