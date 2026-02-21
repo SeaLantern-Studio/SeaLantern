@@ -126,11 +126,16 @@ jobs:
               ar p "$EMBEDDED_DEB" data.tar.xz 2>/dev/null | tar -xJ -C / 2>/dev/null || \
               ar p "$EMBEDDED_DEB" data.tar.gz 2>/dev/null | tar -xz -C / 2>/dev/null
               
+              # 更新桌面数据库，使菜单项显示
+              which update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications 2>/dev/null || true
+              which gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+              
               rm -f "$EMBEDDED_DEB"
               rm -f /opt/sealantern/install.sh
               
-              echo "✅ Sea Lantern 文件已解压！"
+              echo "✅ Sea Lantern 安装完成！"
               echo "运行命令: sea-lantern"
+              echo "菜单项已添加到应用程序列表"
           else
               echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
           fi
@@ -145,7 +150,22 @@ jobs:
           #!/bin/bash
           if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
               echo "正在卸载 Sea Lantern..."
-              dpkg -l | grep -q sealantern && dpkg -r sealantern || true
+              
+              # 停止运行中的进程
+              killall sea-lantern 2>/dev/null || true
+              
+              # 删除 sealantern 的所有文件
+              rm -f /usr/bin/sea-lantern
+              rm -rf /usr/share/icons/hicolor/*/apps/sea-lantern.png
+              rm -f /usr/share/applications/Sea\ Lantern.desktop
+              
+              # 删除临时文件
+              rm -f /tmp/sealantern-install.log
+              
+              # 删除配置目录
+              rm -rf ~/.config/sea-lantern 2>/dev/null || true
+              
+              echo "✅ Sea Lantern 文件已清理"
           fi
           PRERM
           
