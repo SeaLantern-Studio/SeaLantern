@@ -252,10 +252,8 @@ function computeOverallProgress() {
 </script>
 
 <template>
-  <header class="app-header glass-subtle">
-    <div class="header-left">
-      <h2 class="page-title">{{ pageTitle }}</h2>
-    </div>
+  <header class="app-header glass-strong">
+
 
     <div class="header-center" data-tauri-drag-region></div>
 
@@ -353,6 +351,15 @@ function computeOverallProgress() {
   z-index: 100;
 }
 
+/* 在亚克力状态下调整边框透明度 */
+[data-acrylic="true"] .app-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"][data-acrylic="true"] .app-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
 .header-left,
 .header-right {
   -webkit-app-region: no-drag;
@@ -381,7 +388,7 @@ function computeOverallProgress() {
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  padding: 4px 12px;
+  padding: 4px 8px;
   background: var(--sl-bg-secondary);
   border-radius: var(--sl-radius-full);
 }

@@ -6,7 +6,7 @@
 }
 
 .glass-subtle {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--sl-surface);
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -41,7 +41,7 @@
 }
 
 [data-theme="dark"] .glass-subtle {
-  background: rgba(15, 17, 23, 0.5);
+  background: var(--sl-surface);
   border-color: rgba(255, 255, 255, 0.05);
 }
 
@@ -62,7 +62,7 @@
 }
 
 [data-acrylic="true"] .glass-subtle {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--sl-surface);
   backdrop-filter: blur(4px) saturate(120%);
   -webkit-backdrop-filter: blur(4px) saturate(120%);
 }
@@ -84,7 +84,7 @@
 }
 
 [data-theme="dark"][data-acrylic="true"] .glass-subtle {
-  background: rgba(15, 17, 23, 0.3);
+  background: var(--sl-surface);
 }
 
 [data-theme="dark"][data-acrylic="true"] .glass-strong {

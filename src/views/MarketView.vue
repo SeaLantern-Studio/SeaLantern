@@ -12,6 +12,7 @@ import {
 import type { MarketPluginInfo } from "../api/plugin";
 import { i18n } from "../language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
+import SLCard from "../components/common/SLCard.vue";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
@@ -40,6 +41,11 @@ const localeRef = i18n.getLocaleRef();
 watch(localeRef, () => {
   updateTagIndicator();
 });
+
+// 监听标签列表变化，更新指示器位置
+watch(allTags, () => {
+  updateTagIndicator();
+}, { deep: true });
 
 const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
 
@@ -240,7 +246,7 @@ onMounted(() => {
         <button
           class="tag-btn"
           :class="{ active: selectedTag === null }"
-          @click="selectedTag = null; updateTagIndicator()"
+          @click="selectedTag = null"
         >
           全部
         </button>
@@ -249,7 +255,7 @@ onMounted(() => {
           :key="tag"
           class="tag-btn"
           :class="{ active: selectedTag === tag }"
-          @click="selectedTag = selectedTag === tag ? null : tag; updateTagIndicator()"
+          @click="selectedTag = selectedTag === tag ? null : tag"
         >
           {{ getCategoryLabel(tag) }}
         </button>
@@ -295,7 +301,7 @@ onMounted(() => {
     </div>
 
     <div v-else class="market-grid">
-      <div
+      <SLCard
         v-for="plugin in filteredPlugins"
         :key="plugin.id"
         class="market-card"
@@ -345,7 +351,7 @@ onMounted(() => {
             </button>
           </div>
         </div>
-      </div>
+      </SLCard>
     </div>
 
     <Teleport to="body">
@@ -423,14 +429,11 @@ onMounted(() => {
 
 <style scoped>
 .market-view {
-  padding: 24px;
-  max-width: 900px;
-  margin: 0 auto;
-  font-family: var(--sl-font-sans);
-  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
+  min-height: 100%;
+  flex: 1;
 }
 
 .market-search {
@@ -613,8 +616,14 @@ onMounted(() => {
 
 .market-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sl-space-md);
+}
+
+@media (max-width: 1200px) {
+  .market-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
@@ -624,16 +633,12 @@ onMounted(() => {
 }
 
 .market-card {
-  padding: var(--sl-space-md);
-  border-radius: var(--sl-radius-md);
   cursor: pointer;
   transition: all var(--sl-transition-fast);
   display: flex;
   gap: var(--sl-space-lg);
   box-sizing: border-box;
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
-  box-shadow: var(--sl-shadow-sm);
+  height: 100%;
 }
 
 .market-card:hover {

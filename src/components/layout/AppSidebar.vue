@@ -129,20 +129,20 @@ const staticNavItems: NavItem[] = [
     group: "system",
   },
   {
+    name: "plugins",
+    path: "/plugins",
+    icon: "puzzle",
+    labelKey: "",
+    label: "插件",
+    group: "system",
+  },
+
+  {
     name: "settings",
     path: "/settings",
     icon: "settings",
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
-    group: "system",
-  },
-
-  {
-    name: "plugins",
-    path: "/plugins",
-    icon: "puzzle",
-    labelKey: "",
-    label: "插件管理",
     group: "system",
   },
 ];
@@ -660,6 +660,15 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
   will-change: width;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* 在亚克力状态下调整边框透明度 */
+[data-acrylic="true"] .sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"][data-acrylic="true"] .sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .sidebar.collapsed {

@@ -1363,11 +1363,11 @@ function goToMarket() {
 
 <style scoped>
 .plugins-view {
-  padding: 24px;
-  max-width: 900px;
-  margin: 0 auto;
-  font-family: var(--sl-font-sans);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
   min-height: 100%;
+  flex: 1;
 }
 
 .plugins-toolbar {
@@ -1627,8 +1627,14 @@ function goToMarket() {
 
 .plugin-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sl-space-md);
+}
+
+@media (max-width: 1200px) {
+  .plugin-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 700px) {
