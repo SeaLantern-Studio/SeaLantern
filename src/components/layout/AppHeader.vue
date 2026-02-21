@@ -211,7 +211,7 @@ function setLanguage(locale: string) {
 
 const isChangingLanguage = ref(false);
 
-async function handleLanguageClick(locale: string) {
+async function handleLanguageClick(locale: string, close?: () => void) {
   if (isChangingLanguage.value) return;
 
   isChangingLanguage.value = true;
@@ -219,12 +219,14 @@ async function handleLanguageClick(locale: string) {
     // For local languages we can just switch immediately
     if (locale === "zh-CN" || locale === "en-US") {
       setLanguage(locale);
+      close?.();
       return;
     }
 
     // trigger download and then switch (downloadLocale logs errors internally)
     await i18nStore.downloadLocale(locale);
     setLanguage(locale);
+    close?.();
   } finally {
     isChangingLanguage.value = false;
   }
@@ -264,12 +266,7 @@ function computeOverallProgress() {
           >
             <div
               class="language-item"
-              @click="
-                () => {
-                  handleLanguageClick(option.code);
-                  close();
-                }
-              "
+              @click="() => handleLanguageClick(option.code, close)"
             >
               <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
@@ -278,22 +275,17 @@ function computeOverallProgress() {
           </MenuItem>
 
           <!-- 更多语言选项 -->
-          <MenuItem v-slot="{ close }" class="language-item-full-width">
+          <div class="language-item-full-width">
             <div
               class="language-item language-item-arrow"
-              @click="
-                () => {
-                  toggleMoreLanguages();
-                  close();
-                }
-              "
+              @click="toggleMoreLanguages"
             >
               <div class="language-item-main">
                 <ChevronDown v-if="!showMoreLanguages" :size="16" class="arrow-icon" />
                 <ChevronUp v-else :size="16" class="arrow-icon" />
               </div>
             </div>
-          </MenuItem>
+          </div>
 
           <!-- 其他语言（仅在展开时显示） -->
           <template v-if="showMoreLanguages">
@@ -304,12 +296,7 @@ function computeOverallProgress() {
             >
               <div
                 class="language-item"
-                @click="
-                  () => {
-                    handleLanguageClick(option.code);
-                    close();
-                  }
-                "
+                @click="() => handleLanguageClick(option.code, close)"
               >
                 <div class="language-item-main">
                   <span class="language-label">{{ option.label }}</span>
