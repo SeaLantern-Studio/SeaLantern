@@ -1,110 +1,138 @@
+# 工作流名称：发布到 AUR
 name: Publish to AUR
 
+# 触发条件配置
 on:
+  # 当有标签推送到仓库时触发
   push:
     tags:
-      - "v*"
-      - "sea-lantern-v*"
+      - "v*" # 匹配以 v 开头的标签，如 v1.0.0
+      - "sea-lantern-v*" # 匹配以 sea-lantern-v 开头的标签，如 sea-lantern-v0.6.5
+
+  # 当有 Release 发布时触发
   release:
-    types: [published]
+    types: [published] # 仅在 Release 被发布时触发
+
+  # 支持手动触发工作流
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version to publish (e.g., 1.0.0)"
-        required: true
+      version: # 手动输入版本号
+        description: "推送的版本号(e.g., 1.0.0)"
+        required: true # 版本号是必填项
         type: string
-      skip_test:
-        description: "Skip makepkg test"
-        required: false
-        default: false
+      skip_test: # 是否跳过测试
+        description: "跳过测试步骤"
+        required: false # 非必填
+        default: false # 默认不跳过测试
         type: boolean
 
+# 定义工作任务
 jobs:
-  aur-publish:
+  aur-publish: # 任务名称
     # 使用 Arch Linux 容器直接运行，避免嵌套 Docker
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
-      options: --user root
+    runs-on: ubuntu-latest # 运行在 Ubuntu 最新版上
+    container: # 在容器中运行
+      image: archlinux:latest # 使用 Arch Linux 最新版镜像
+      options: --user root # 以 root 用户运行
 
+    # 任务步骤列表
     steps:
+      # 第一步：在容器中安装依赖
       - name: Install dependencies in container
         run: |
-          # 初始化 pacman 密钥环
+          # 初始化 pacman 密钥环（Arch Linux 的包管理器）
           pacman-key --init
           pacman-key --populate archlinux
 
           # 系统更新并安装必要工具
-
+          # --noconfirm 表示自动确认所有提示
+          # base-devel: 基础开发工具包
+          # git: 版本控制工具
+          # sudo: 权限提升工具
+          # openssh: SSH 客户端，用于连接 AUR
+          # dpkg: Debian 包工具，用于处理 deb 包
           pacman -Syu --noconfirm base-devel git sudo openssh dpkg
 
-          # 创建 builder 用户
+          # 创建 builder 用户（用于运行 makepkg）
           useradd -m builder
+          # 允许 builder 用户无密码执行 sudo
           echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
+      # 第二步：检出仓库代码
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # 使用官方 checkout action
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # 获取完整历史，包括所有标签
 
+      # 第三步：调试 GitHub 上下文信息
       - name: Debug GitHub context
         run: |
-          echo "GitHub Context Debug:"
-          echo "Event name: ${{ github.event_name }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Ref type: ${{ github.ref_type }}"
-          echo "Ref name: ${{ github.ref_name }}"
-          echo "Release tag: ${{ github.event.release.tag_name }}"
-          echo "Repository: ${{ github.repository }}"
-          echo "Actor: ${{ github.actor }}"
+          echo "GitHub输出日志:"
+          echo "事件名称: ${{ github.event_name }}"                    # 事件类型
+          echo "git引用: ${{ github.ref }}"                                   # Git 引用
+          echo "引用类型: ${{ github.ref_type }}"                         # 引用类型（branch/tag）
+          echo "引用名称: ${{ github.ref_name }}"                         # 引用名称
+          echo "Release标签: ${{ github.event.release.tag_name }}"       # Release 标签
+          echo "仓库名称: ${{ github.repository }}"                     # 仓库名称
+          echo "触发者: ${{ github.actor }}"                               # 触发者
 
+      # 第四步：获取版本号
       - name: Get release version
-        id: get_version
+        id: get_version # 设置步骤 ID，后续可以通过 steps.get_version.outputs 引用
         run: |
           # 根据事件类型获取版本
           if [[ "${{ github.event_name }}" == "release" ]]; then
+            # Release 事件：从 release tag 获取
             RAW_VERSION="${{ github.event.release.tag_name }}"
             echo "Source: release tag: $RAW_VERSION"
           elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # Push 事件：从 Git 引用名获取
             RAW_VERSION="${{ github.ref_name }}"
             echo "Source: git tag: $RAW_VERSION"
           else
+            # 手动触发：从输入参数获取
             RAW_VERSION="${{ github.event.inputs.version }}"
             echo "Source: manual input: $RAW_VERSION"
           fi
 
-          # 提取纯净版本号
+          # 提取纯净版本号（去掉 v 前缀等）
           if [[ $RAW_VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            # 如果包含版本号模式，提取纯数字版本
             VERSION=$(echo "$RAW_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
             echo "Extracted version from tag: $VERSION"
           else
+            # 否则直接去掉 v 前缀
             VERSION="${RAW_VERSION#v}"
           fi
 
-          # 验证版本号
+          # 验证版本号不为空
           if [[ -z "$VERSION" ]]; then
             echo "❌ Error: Version is empty!"
             exit 1
           fi
 
+          # 验证版本号格式（必须是 x.y.z 格式）
           if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ Error: Invalid version format: $VERSION"
             exit 1
           fi
 
+          # 将版本号保存到输出和环境变量
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_ENV
           echo "✅ Final version: $VERSION"
 
+      # 第五步：验证 PKGBUILD 文件存在
       - name: Validate PKGBUILD exists
         run: |
           if [ ! -f "PKGBUILD" ]; then
-            echo "Error: PKGBUILD file not found!"
-            ls -la
+            echo "Error: PKGBUILD文件没有找到!"
+            ls -la  # 列出当前目录内容以便调试
             exit 1
           fi
           echo "✅ PKGBUILD found"
 
+      # 第六步：更新 PKGBUILD 中的版本号
       - name: Update PKGBUILD version
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
@@ -114,103 +142,112 @@ jobs:
           cp PKGBUILD PKGBUILD.bak
 
           # 更新版本号
-          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
-          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD  # 替换 pkgver 行
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD           # 重置 pkgrel 为 1
 
           echo "✅ Updated PKGBUILD"
           echo "New version: $(grep ^pkgver= PKGBUILD)"
 
+      # 第七步：生成 .SRCINFO 文件
       - name: Generate .SRCINFO
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           echo "Generating .SRCINFO for version: $VERSION"
 
-          # 使用 builder 用户运行 makepkg
-          chown -R builder:builder .
-          sudo -u builder makepkg --printsrcinfo > .SRCINFO
+          # 使用 builder 用户运行 makepkg 生成 .SRCINFO
+          chown -R builder:builder .  # 更改文件所有权给 builder
+          sudo -u builder makepkg --printsrcinfo > .SRCINFO  # 生成 SRCINFO
 
           if [ ! -f ".SRCINFO" ]; then
-            echo "❌ Failed to generate .SRCINFO"
+            echo "❌ generate .SRCINFO失败"
             exit 1
           fi
 
-          echo "✅ Generated .SRCINFO:"
-          cat .SRCINFO
+          echo "✅ Generated .SRCINFO成功:"
+          cat .SRCINFO  # 显示生成的内容用于调试
 
+      # 第八步：验证生成的文件
       - name: Validate files
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
 
-          # 验证 PKGBUILD
+          # 验证 PKGBUILD 中的版本号
           PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d= -f2 | xargs)
           if [[ "$PKGVER" != "$VERSION" ]]; then
-            echo "❌ PKGBUILD version mismatch!"
+            echo "❌ PKGBUILD文件版本号错误!"
             exit 1
           fi
-          echo "✅ PKGBUILD version matches: $PKGVER"
+          echo "✅ PKGBUILD版本号是: $PKGVER"
 
-          # 验证 .SRCINFO
+          # 验证 .SRCINFO 中的版本号
           SRCINFO_VER=$(grep "^[[:space:]]*pkgver =" .SRCINFO | head -1 | awk '{print $3}')
           if [[ "$SRCINFO_VER" != "$VERSION" ]]; then
-            echo "❌ .SRCINFO version mismatch!"
+            echo "❌ .SRCINFO版本号错误!"
             exit 1
           fi
-          echo "✅ .SRCINFO version matches: $SRCINFO_VER"
+          echo "✅ .SRCINFO版本号为: $SRCINFO_VER"
 
+      # 第九步：配置 SSH（用于连接 AUR）
       - name: Setup SSH
         run: |
+          # 创建 .ssh 目录
           mkdir -p ~/.ssh
+          # 将 SSH 私钥写入文件
           echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
+          chmod 600 ~/.ssh/aur  # 设置正确的权限
 
-          # 配置 SSH
+          # 配置 SSH 客户端
           cat > ~/.ssh/config << EOF
           Host aur.archlinux.org
-            IdentityFile ~/.ssh/aur
-            User aur
-            StrictHostKeyChecking accept-new
+            IdentityFile ~/.ssh/aur      # 使用的私钥文件
+            User aur                      # AUR 用户名
+            StrictHostKeyChecking accept-new  # 自动接受新的主机密钥
           EOF
 
-          # 添加 known hosts
+          # 添加 AUR 到 known_hosts
           ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
 
+      # 第十步：发布到 AUR
       - name: Publish AUR package
-        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1 # 使用第三方 action
         with:
-          pkgname: sealantern
-          pkgbuild: PKGBUILD
-          assets: |
+          pkgname: sealantern # AUR 包名
+          pkgbuild: PKGBUILD # PKGBUILD 文件路径
+          assets: | # 额外需要上传的文件
             .SRCINFO
             sealantern.install
-          commit_username: "${{ github.actor }}"
-          commit_email: "${{ github.actor }}@users.noreply.github.com"
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update sealantern to v${{ steps.get_version.outputs.VERSION }}"
-          allow_empty_commits: false
-          force_push: false
-          updpkgsums: false
-          test: ${{ !github.event.inputs.skip_test }}
-          ssh_keyscan_types: rsa,ecdsa,ed25519
+          commit_username: "${{ github.actor }}" # 提交用户名
+          commit_email: "${{ github.actor }}@users.noreply.github.com" # 提交邮箱
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }} # SSH 私钥
+          commit_message: "已更新sealantern版本至v${{ steps.get_version.outputs.VERSION }}" # 提交信息
+          allow_empty_commits: false # 不允许空提交
+          force_push: false # 不使用强制推送
+          updpkgsums: false # 不更新 checksum
+          test: ${{ !github.event.inputs.skip_test }} # 是否运行测试
+          ssh_keyscan_types: rsa,ecdsa,ed25519 # SSH 密钥类型
 
+      # 第十一步：成功通知
       - name: Send success notification
-        if: success()
+        if: success() # 仅当之前所有步骤都成功时执行
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           echo "======================================"
-          echo "✅ Successfully published sealantern v${VERSION} to AUR"
+          echo "✅ 已成功推送sealantern v${VERSION}到AUR"
           echo "📦 Package URL: https://aur.archlinux.org/packages/sealantern"
           echo "======================================"
 
+      # 第十二步：失败通知
       - name: Send failure notification
-        if: failure()
+        if: failure() # 仅当有步骤失败时执行
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           echo "======================================"
-          echo "❌ Failed to publish sealantern v${VERSION} to AUR"
+          echo "❌ 推送sealantern v${VERSION}到AUR失败"
           echo "======================================"
 
+      # 第十三步：清理工作
       - name: Cleanup
-        if: always()
+        if: always() # 无论成功失败都执行
         run: |
           if [ -f "PKGBUILD.bak" ]; then
             echo "Restoring original PKGBUILD"
