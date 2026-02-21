@@ -262,33 +262,40 @@ sea-lantern/
 ## Core Function Modules
 
 ### 1. Server Management
+
 - Create, import, start, stop, delete servers
 - Support different server startup methods (jar, bat, sh)
 - Support modpack import
 
 ### 2. Console Management
+
 - Real-time server log viewing
 - Direct command sending to server
 - Support custom commands
 
 ### 3. Configuration Management
+
 - Graphical editing of server.properties
 - Support for multiple configuration item types
 
 ### 4. Player Management
+
 - Whitelist management
 - Ban management
 - OP management
 
 ### 5. System Monitoring
+
 - CPU, memory, disk usage
 - Real-time system resource monitoring
 
 ### 6. Internationalization
+
 - Support for multiple languages
 - Built-in multiple language packs
 
 ### 7. Update Management
+
 - Check for updates
 - One-click download of new versions
 
@@ -305,24 +312,28 @@ sea-lantern/
 ## Development Guide
 
 ### Frontend Development
+
 - Use Vue 3 Composition API
 - Use TypeScript to ensure type safety
 - Use Pinia for state management
 - Use Vite for building
 
 ### Backend Development
+
 - Use Rust language
 - Use Tauri 2 as desktop application framework
 - Use serde for serialization/deserialization
 - Use tokio for asynchronous processing
 
 ### Code Standards
+
 - Frontend: Use ESLint and Prettier to ensure code quality
 - Backend: Use rustfmt and clippy to ensure code quality
 
 ## Build and Deployment
 
 ### Development Environment
+
 ```bash
 # Install dependencies
 npm install
@@ -332,6 +343,7 @@ npm run tauri dev
 ```
 
 ### Production Build
+
 ```bash
 # Build release version
 npm run tauri build

@@ -14,7 +14,7 @@ const LOCALE_LABEL_KEYS: Record<string, string> = {
   "ru-RU": "header.russian",
   "vi-VN": "header.vietnamese",
   "ko-KR": "header.korean",
-  "fr-FA": "header.french"
+  "fr-FA": "header.french",
 };
 
 export const useI18nStore = defineStore("i18n", () => {
@@ -33,8 +33,6 @@ export const useI18nStore = defineStore("i18n", () => {
       labelKey: LOCALE_LABEL_KEYS[code],
     })),
   );
-
-
 
   async function setLocale(nextLocale: string) {
     if (i18n.isSupportedLocale(nextLocale)) {

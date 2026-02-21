@@ -260,13 +260,15 @@ function handleSearchUpdate(value: string) {
                 :value="editValues[entry.key]"
                 type="text"
                 :placeholder="entry.default_value"
-                @input="(e) => {
-                  const value = e.target.value;
-                  // 只允许输入数字
-                  if (value === '' || /^\d+$/.test(value)) {
-                    updateValue(entry.key, value);
+                @input="
+                  (e) => {
+                    const value = e.target.value;
+                    // 只允许输入数字
+                    if (value === '' || /^\d+$/.test(value)) {
+                      updateValue(entry.key, value);
+                    }
                   }
-                }"
+                "
                 class="input integer-input"
               />
             </template>

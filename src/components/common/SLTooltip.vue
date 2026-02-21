@@ -38,13 +38,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    class="sl-tooltip-trigger"
-    @mouseenter="show"
-    @mouseleave="hide"
-    @focus="show"
-    @blur="hide"
-  >
+  <div class="sl-tooltip-trigger" @mouseenter="show" @mouseleave="hide" @focus="show" @blur="hide">
     <slot />
     <Transition name="sl-tooltip">
       <div

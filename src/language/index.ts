@@ -7,7 +7,7 @@ const languageFiles: Record<string, any> = import.meta.glob("./*.json", { eager:
 const processLanguageFiles = () => {
   const translations: Record<string, LanguageFile> = {};
   const supportedLocales: string[] = [];
-  
+
   // 遍历所有导入的语言文件
   for (const [path, module] of Object.entries(languageFiles)) {
     // 从文件路径中提取语言代码，如 "./zh-CN.json" -> "zh-CN"
@@ -15,15 +15,15 @@ const processLanguageFiles = () => {
     if (match) {
       const localeCode = match[1];
       const data = (module as any).default;
-      
+
       // 确保数据是有效的语言文件
-      if (data && typeof data === 'object') {
+      if (data && typeof data === "object") {
         translations[localeCode] = data;
         supportedLocales.push(localeCode);
       }
     }
   }
-  
+
   return { translations, supportedLocales };
 };
 
