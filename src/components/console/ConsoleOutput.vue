@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, computed } from "vue";
 import { i18n } from "../../language";
 
 interface Props {
   logs: string[];
   consoleFontSize: number;
   userScrolledUp: boolean;
+}
+
+interface ParsedLog {
+  isParsed: boolean;
+  time?: string;
+  source?: string;
+  level?: string;
+  message?: string;
+  raw: string;
 }
 
 const props = defineProps<Props>();
@@ -16,6 +25,19 @@ const emit = defineEmits<{
 }>();
 
 const logContainer = ref<HTMLElement | null>(null);
+
+function parseLogLine(line: string): ParsedLog {
+  const match = line.match(
+    /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/,
+  );
+  if (match) {
+    const [, time, source, level, message] = match;
+    return { isParsed: true, time, source, level, message, raw: line };
+  }
+  return { isParsed: false, raw: line };
+}
+
+const parsedLogs = computed(() => props.logs.map((line) => parseLogLine(line)));
 
 watch(
   () => props.logs.length,
@@ -57,16 +79,12 @@ function handleScroll() {
       }"
     >
       <!-- 解析日志行，提取时间和等级 -->
-      <template
-        v-if="
-          line.match(/^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/)
-        "
-      >
-        <span class="log-time">[{{ RegExp.$1 }}]</span>
-        <span class="log-level" :class="'level-' + RegExp.$3.toLowerCase()"
-          >[{{ RegExp.$2 }}/{{ RegExp.$3 }}]</span
+      <template v-if="parsedLogs[i].isParsed">
+        <span class="log-time">[{{ parsedLogs[i].time }}]</span>
+        <span class="log-level" :class="'level-' + parsedLogs[i].level?.toLowerCase()"
+          >[{{ parsedLogs[i].source }}/{{ parsedLogs[i].level }}]</span
         >
-        <span class="log-content">{{ RegExp.$4 }}</span>
+        <span class="log-content">{{ parsedLogs[i].message }}</span>
       </template>
       <!-- 对于不符合标准格式的日志行，直接显示 -->
       <template v-else>

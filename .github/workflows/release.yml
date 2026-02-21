@@ -53,8 +53,12 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: 安装前端依赖 (npm)
-        # 默认用npm,最稳妥
         run: npm install
+
+      # 保存当前工作目录
+      - name: 保存工作目录路径
+        id: workspace
+        run: echo "path=$(pwd)" >> $GITHUB_OUTPUT
 
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0
@@ -70,3 +74,258 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      # 修复：使用正确的路径查找 deb 文件
+      - name: 检查 deb 文件并上传 Ubuntu 构建产物
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          WORKSPACE="${{ steps.workspace.outputs.path }}"
+          echo "工作目录: $WORKSPACE"
+
+          # Tauri 的构建输出在项目根目录的 target 下，而不是 src-tauri/target
+          DEB_PATH="$WORKSPACE/target/release/bundle/deb"
+          echo "检查路径: $DEB_PATH"
+
+          if [ -d "$DEB_PATH" ]; then
+            echo "deb 目录内容:"
+            ls -la "$DEB_PATH" || true
+
+            # 查找 .deb 文件
+            DEB_COUNT=$(find "$DEB_PATH" -name "*.deb" -type f | wc -l)
+            if [ "$DEB_COUNT" -gt 0 ]; then
+              echo "✅ 找到 $DEB_COUNT 个 deb 文件"
+              find "$DEB_PATH" -name "*.deb" -type f -exec ls -la {} \;
+            else
+              echo "❌ 未找到 deb 文件"
+              exit 1
+            fi
+          else
+            echo "❌ deb 目录不存在"
+            echo "尝试查找所有可能的路径:"
+            find "$WORKSPACE" -path "*/bundle/deb/*.deb" -type f 2>/dev/null || echo "未找到"
+            exit 1
+          fi
+
+      - name: 上传 Ubuntu 构建产物 (.deb)
+        if: matrix.platform == 'ubuntu-24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-build-deb
+          path: |
+            ${{ steps.workspace.outputs.path }}/target/release/bundle/deb/*.deb
+          if-no-files-found: error
+
+      - name: 上传 Ubuntu 构建产物 (AppImage)
+        if: matrix.platform == 'ubuntu-24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-build-appimage
+          path: |
+            ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: warn
+
+    # Arch Linux 打包任务 - 修复 sudo 权限问题
+  # Arch Linux 打包任务 - 修复本地文件使用
+  build-arch-package:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 获取版本号
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "✅ 版本号: $VERSION"
+
+      - name: 下载 Ubuntu 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: ubuntu-build
+          path: ./downloads
+        continue-on-error: true
+
+      - name: 查找 deb 包
+        id: find_deb
+        run: |
+          echo "当前目录内容:"
+          ls -la
+
+          if [ -d "./downloads" ]; then
+            echo "downloads 目录内容:"
+            ls -la ./downloads
+            DEB_FILE=$(find ./downloads -name "*.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
+          fi
+
+          if [ -z "$DEB_FILE" ]; then
+            echo "在根目录查找 deb 文件..."
+            DEB_FILE=$(find . -name "*.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
+          fi
+
+          if [ -z "$DEB_FILE" ]; then
+            echo "❌ 未找到 deb 包文件"
+            exit 1
+          fi
+
+          echo "✅ 找到 deb 包: $DEB_FILE"
+          cp "$DEB_FILE" ./sealantern.deb
+          echo "DEB_FILE=$DEB_FILE" >> $GITHUB_OUTPUT
+
+      - name: 设置 Arch Linux 容器并安装完整依赖
+        run: |
+          docker run --name arch-builder -d \
+            -v $PWD:/workspace \
+            archlinux:latest \
+            sleep infinity
+
+          # 创建 builder 用户
+          docker exec arch-builder bash -c "
+            useradd -m builder
+          "
+
+          # 根据您的 PKGBUILD 安装所有 depends 和 makedepends
+          docker exec arch-builder bash -c "
+            pacman -Syu --noconfirm && \
+            pacman -S --noconfirm \
+              base-devel \
+              binutils \
+              file \
+              findutils \
+              grep \
+              sed \
+              gawk \
+              dpkg \
+              cairo \
+              gdk-pixbuf2 \
+              glib2 \
+              gtk3 \
+              pango \
+              atk \
+              libgl \
+              webkit2gtk \
+              libsoup \
+              hicolor-icon-theme \
+              adwaita-icon-theme \
+              desktop-file-utils \
+              shared-mime-info \
+              libxss \
+              nss \
+              nspr \
+              libayatana-appindicator \
+              libappindicator-gtk3 \
+              curl \
+              wget \
+              openssl \
+              ca-certificates \
+              gnutls \
+              libx11 \
+              libxcb \
+              libxcomposite \
+              libxcursor \
+              libxdamage \
+              libxext \
+              libxfixes \
+              libxi \
+              libxrandr \
+              libxrender \
+              libxtst \
+              fontconfig \
+              freetype2 \
+              alsa-lib \
+              libpulse \
+              sqlite3 \
+              zlib \
+              bzip2 \
+              xz \
+              expat \
+              libffi \
+              pcre \
+              pcre2 \
+              libgcrypt \
+              libgpg-error \
+              libdatrie \
+              libthai \
+              libice \
+              libsm \
+              util-linux
+          "
+          echo "✅ Arch Linux 容器依赖安装完成"
+
+      - name: 使用 PKGBUILD 构建 Arch 包
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+          # 将文件复制到容器
+          docker cp sealantern.deb arch-builder:/workspace/
+          docker cp PKGBUILD arch-builder:/workspace/
+          [ -f "sealantern.install" ] && docker cp sealantern.install arch-builder:/workspace/
+
+          # 在容器中执行打包 - 使用本地 deb 文件
+          docker exec arch-builder bash -c "
+            cd /workspace && \
+
+            # 修改 PKGBUILD，使用本地文件而不是 URL
+            sed -i 's|^source=.*|source=(\"sealantern.deb\")|' PKGBUILD && \
+            sed -i 's|^sha256sums=.*|sha256sums=(\"SKIP\")|' PKGBUILD && \
+
+            # 同时修改 package() 函数中的文件名，使其匹配我们复制进去的文件
+            sed -i 's|Sea\.Lantern_\${pkgver}_amd64\.deb|sealantern.deb|g' PKGBUILD && \
+
+            # 更新版本号
+            sed -i 's/^pkgver=.*/pkgver=$VERSION/' PKGBUILD && \
+            sed -i 's/^pkgrel=.*/pkgrel=1/' PKGBUILD && \
+
+            # 显示 PKGBUILD 内容用于调试
+            echo '=== 修改后的 PKGBUILD 内容 ==='
+            cat PKGBUILD
+            echo '============================='
+
+            # 更改文件所有权给 builder 用户
+            chown -R builder:builder /workspace
+
+            # 以 builder 用户运行 makepkg
+            su - builder -c 'cd /workspace && makepkg -f --noconfirm'
+          "
+
+      - name: 从容器中获取构建产物
+        run: |
+          docker cp arch-builder:/workspace/*.pkg.tar.* . || true
+
+          if ls *.pkg.tar.* 1> /dev/null 2>&1; then
+            echo "✅ Arch 包生成成功"
+            ls -la *.pkg.tar.*
+          else
+            echo "❌ Arch 包生成失败"
+            exit 1
+          fi
+
+      - name: 停止并删除容器
+        if: always()
+        run: |
+          docker stop arch-builder || true
+          docker rm arch-builder || true
+
+      - name: 上传 Arch 包到 Release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: sea-lantern-v${{ steps.get_version.outputs.VERSION }}
+          files: |
+            *.pkg.tar.*
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 上传 Arch 包作为构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: |
+            *.pkg.tar.*

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import DOMPurify from "dompurify";
+import { useRegisterComponent } from "../../composables/useRegisterComponent";
+
 const PADDING_MAP = {
   none: "0",
   sm: "var(--sl-space-sm, 0.5rem)",
@@ -13,6 +17,7 @@ interface Props {
   subtitle?: string;
   hoverable?: boolean;
   padding?: PaddingType;
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -21,10 +26,37 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const paddingValue = PADDING_MAP[props.padding as PaddingType];
+
+const elRef = ref<HTMLElement | null>(null);
+const pluginFooterHtml = ref<string | null>(null);
+
+const id = props.componentId ?? `sl-card-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLCard",
+  get: (prop) => {
+    if (prop === "pluginFooter") return pluginFooterHtml.value;
+    if (prop === "title") return props.title;
+    return undefined;
+  },
+  set: (prop, value) => {
+    if (prop === "pluginFooter") {
+      pluginFooterHtml.value = value
+        ? DOMPurify.sanitize(value, {
+            FORBID_TAGS: ["script", "iframe", "style", "link"],
+            FORBID_ATTR: ["style"],
+          })
+        : null;
+    }
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => elRef.value,
+});
 </script>
 
 <template>
   <div
+    ref="elRef"
     class="sl-card"
     :class="{ 'sl-card--hoverable': hoverable }"
     :style="{ padding: paddingValue }"
@@ -45,6 +77,12 @@ const paddingValue = PADDING_MAP[props.padding as PaddingType];
     <div v-if="$slots.footer" class="sl-card-footer">
       <slot name="footer" />
     </div>
+
+    <div
+      v-if="pluginFooterHtml"
+      class="sl-card-footer sl-card-plugin-footer"
+      v-html="pluginFooterHtml"
+    />
   </div>
 </template>
 

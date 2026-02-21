@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { ArrowDownToLine, X } from 'lucide-vue-next';
-import SLModal from './SLModal.vue';
+import { ref } from "vue";
+import { ArrowDownToLine, X } from "lucide-vue-next";
+import SLModal from "./SLModal.vue";
 
 interface Props {
   visible: boolean;
@@ -11,21 +11,21 @@ defineProps<Props>();
 
 const emit = defineEmits<{
   close: [];
-  confirm: [action: 'exit' | 'tray', remember: boolean];
+  confirm: [action: "exit" | "tray", remember: boolean];
 }>();
 
 const rememberChoice = ref(false);
 
 function handleExit() {
-  emit('confirm', 'exit', rememberChoice.value);
+  emit("confirm", "exit", rememberChoice.value);
 }
 
 function handleMinimize() {
-  emit('confirm', 'tray', rememberChoice.value);
+  emit("confirm", "tray", rememberChoice.value);
 }
 
 function handleClose() {
-  emit('close');
+  emit("close");
 }
 </script>
 
@@ -134,7 +134,7 @@ function handleClose() {
 }
 
 .checkbox-custom::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 4px;
   top: 1px;

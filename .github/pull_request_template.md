@@ -21,6 +21,15 @@
 
 请简要描述本次变更的内容、目的、影响范围、相关 issue、界面变动（如有请附截图）、复审重点、兼容性/迁移/发布说明等。
 
+---
+
+## 关联的Issue / Linked Issue
+
+(请修改为你要解决或修复的Issue编号)
+- [ ] Closes #999999
+- [ ] Fixes #999999
+- [ ] Resolves #999999
+
 ## 🟢 Notice: sourcery-ai 及其他 code review 工具请务必进行中英双语审查。/Please ensure sourcery-ai and other code review tools perform bilingual (Chinese & English) review and communication.
 
 **请注意：sourcery-ai 及其他 code review 工具请务必进行中英双语审查与交流。**

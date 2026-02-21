@@ -1,4 +1,4 @@
-import type { ThemeDefinition, ThemeRegistry, ThemeColors, ColorPlan } from './types';
+import type { ThemeDefinition, ThemeRegistry, ThemeColors, ColorPlan } from "./types";
 
 let themes: ThemeRegistry = {};
 
@@ -7,23 +7,23 @@ let initialized = false;
 async function initializeThemes(): Promise<void> {
   if (initialized) return;
 
-  const themeModules = import.meta.glob('./*.ts', { eager: true });
+  const themeModules = import.meta.glob("./*.ts", { eager: true });
 
   for (const [path, module] of Object.entries(themeModules)) {
-    const fileName = path.replace('./', '').replace('.ts', '');
-    if (fileName === 'types' || fileName === 'index') {
+    const fileName = path.replace("./", "").replace(".ts", "");
+    if (fileName === "types" || fileName === "index") {
       continue;
     }
 
     const mod = module as Record<string, unknown>;
-    
+
     let theme: ThemeDefinition | null = null;
-    
+
     if (mod.default && isThemeDefinition(mod.default)) {
       theme = mod.default as ThemeDefinition;
     } else {
       for (const key of Object.keys(mod)) {
-        if (key.endsWith('Theme') && isThemeDefinition(mod[key])) {
+        if (key.endsWith("Theme") && isThemeDefinition(mod[key])) {
           theme = mod[key] as ThemeDefinition;
           break;
         }
@@ -39,15 +39,15 @@ async function initializeThemes(): Promise<void> {
 }
 
 function isThemeDefinition(obj: unknown): obj is ThemeDefinition {
-  if (!obj || typeof obj !== 'object') return false;
+  if (!obj || typeof obj !== "object") return false;
   const t = obj as Record<string, unknown>;
   return (
-    typeof t.id === 'string' &&
-    typeof t.name === 'string' &&
-    typeof t.light === 'object' &&
-    typeof t.dark === 'object' &&
-    typeof t.lightAcrylic === 'object' &&
-    typeof t.darkAcrylic === 'object'
+    typeof t.id === "string" &&
+    typeof t.name === "string" &&
+    typeof t.light === "object" &&
+    typeof t.dark === "object" &&
+    typeof t.lightAcrylic === "object" &&
+    typeof t.darkAcrylic === "object"
   );
 }
 
@@ -108,7 +108,7 @@ export function getThemeColors(themeId: string, plan: ColorPlan): ThemeColors | 
 export function getThemeColorValue(
   themeId: string,
   plan: ColorPlan,
-  colorType: keyof ThemeColors
+  colorType: keyof ThemeColors,
 ): string | undefined {
   const colors = getThemeColors(themeId, plan);
   return colors?.[colorType];
@@ -116,14 +116,14 @@ export function getThemeColorValue(
 
 export function mapLegacyPlanName(plan: string): ColorPlan {
   const mapping: Record<string, ColorPlan> = {
-    light: 'light',
-    dark: 'dark',
-    light_acrylic: 'lightAcrylic',
-    dark_acrylic: 'darkAcrylic',
-    lightAcrylic: 'lightAcrylic',
-    darkAcrylic: 'darkAcrylic',
+    light: "light",
+    dark: "dark",
+    light_acrylic: "lightAcrylic",
+    dark_acrylic: "darkAcrylic",
+    lightAcrylic: "lightAcrylic",
+    darkAcrylic: "darkAcrylic",
   };
-  return mapping[plan] || 'light';
+  return mapping[plan] || "light";
 }
 
 export type { ThemeDefinition, ThemeColors, ColorPlan, ThemeRegistry };

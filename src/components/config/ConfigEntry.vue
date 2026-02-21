@@ -38,12 +38,12 @@ function isBooleanType(entry: ConfigEntry): boolean {
     <div class="entry-description">{{ entry.description }}</div>
     <div class="entry-value">
       <template v-if="isBooleanType(entry)">
-        <SLSwitch v-model="value" @update:modelValue="handleSwitchChange" />
+        <SLSwitch :modelValue="value === 'true'" @update:modelValue="handleSwitchChange" />
       </template>
       <template v-else>
         <SLInput
-          v-model="value"
-          @input="(e) => handleValueChange(e.target.value)"
+          :modelValue="value"
+          @update:modelValue="handleValueChange"
           :placeholder="entry.default"
           style="width: 300px"
         />

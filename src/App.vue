@@ -1,18 +1,83 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import AppLayout from "./components/layout/AppLayout.vue";
 import SplashScreen from "./components/splash/SplashScreen.vue";
 import UpdateModal from "./components/common/UpdateModal.vue";
+import SLContextMenu from "./components/common/SLContextMenu.vue";
+import { PluginComponentRenderer } from "./components/plugin";
 import { useUpdateStore } from "./stores/updateStore";
 import { useSettingsStore } from "./stores/settingsStore";
+import { usePluginStore } from "./stores/pluginStore";
+import { useContextMenuStore } from "./stores/contextMenuStore";
 import { applyTheme, applyFontSize, applyFontFamily } from "./utils/theme";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
 const updateStore = useUpdateStore();
 const settingsStore = useSettingsStore();
+const pluginStore = usePluginStore();
+const contextMenuStore = useContextMenuStore();
+
+async function handleGlobalContextMenu(event: MouseEvent) {
+  event.preventDefault();
+
+  const wasVisible = contextMenuStore.visible;
+  if (wasVisible) {
+    contextMenuStore.hideContextMenu();
+    await nextTick();
+  }
+
+  const allElements = document.elementsFromPoint(event.clientX, event.clientY) as HTMLElement[];
+  const filteredElements = allElements.filter((el) => !el.closest(".sl-context-menu-backdrop"));
+
+  let ctx = "global";
+  let targetData = "";
+
+  for (const el of filteredElements) {
+    if (el.dataset?.contextMenu) {
+      ctx = el.dataset.contextMenu;
+      targetData = el.dataset.contextMenuTarget ?? "";
+      break;
+    }
+  }
+
+  if (!targetData) {
+    const target = filteredElements[0];
+    if (target) {
+      const tag = target.tagName.toLowerCase();
+      const text = target.textContent?.trim() || "";
+      if (text.length > 100) {
+        targetData = `${tag}(${text.substring(0, 100)}...)`;
+      } else if (text) {
+        targetData = `${tag}(${text})`;
+      } else {
+        targetData = tag;
+      }
+    }
+  }
+
+  if (ctx !== "global" && !contextMenuStore.hasMenuItems(ctx)) {
+    ctx = "global";
+  }
+
+  if (!contextMenuStore.hasMenuItems(ctx)) return;
+
+  contextMenuStore.showContextMenu(ctx, event.clientX, event.clientY, targetData);
+}
 
 onMounted(async () => {
+  contextMenuStore.initContextMenuListener();
+  document.addEventListener("contextmenu", handleGlobalContextMenu);
+
+  await pluginStore.initUiEventListener();
+  await pluginStore.initSidebarEventListener();
+  await pluginStore.initPermissionLogListener();
+  await pluginStore.initPluginLogListener();
+  await pluginStore.initComponentEventListener();
+  await pluginStore.initI18nEventListener();
+
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
   try {
     await settingsStore.loadSettings();
     const settings = settingsStore.settings;
@@ -20,14 +85,13 @@ onMounted(async () => {
     applyFontSize(settings.font_size || 14);
     applyFontFamily(settings.font_family || "");
 
+    // 托盘图标已在 Rust 后端创建，前端不需要再创建
+    // 相关代码在 src-tauri/src/lib.rs 的 .setup() 中
+
     try {
-      const { setupTray } = await import("./utils/tray");
-      if (typeof setupTray === "function") {
-        await setupTray();
-        console.log("Tray setup completed");
-      }
-    } catch (trayErr) {
-      console.warn("Failed to set up tray, tray functionality will be unavailable:", trayErr);
+      await pluginStore.loadPlugins();
+    } catch (pluginErr) {
+      console.warn("Failed to load plugins during startup:", pluginErr);
     }
   } catch (e) {
     console.error("Failed to load settings during startup:", e);
@@ -36,15 +100,16 @@ onMounted(async () => {
   }
 });
 
-onUnmounted(async () => {
-  // 注意：通常不需要清理托盘，因为应用关闭时会自动清理
-  // 但如果需要手动清理，可以取消注释以下代码
-  // try {
-  //   const { cleanupTray } = await import("./utils/tray");
-  //   await cleanupTray();
-  // } catch (e) {
-  //   console.warn("Failed to cleanup tray:", e);
-  // }
+onUnmounted(() => {
+  document.removeEventListener("contextmenu", handleGlobalContextMenu);
+  contextMenuStore.cleanupContextMenuListener();
+
+  pluginStore.cleanupUiEventListener();
+  pluginStore.cleanupSidebarEventListener();
+  pluginStore.cleanupPermissionLogListener();
+  pluginStore.cleanupPluginLogListener();
+  pluginStore.cleanupComponentEventListener();
+  pluginStore.cleanupI18nEventListener();
 });
 
 function handleSplashReady() {
@@ -70,7 +135,10 @@ function handleUpdateModalClose() {
       v-if="updateStore.isUpdateModalVisible && updateStore.isUpdateAvailable"
       @close="handleUpdateModalClose"
     />
+
+    <PluginComponentRenderer />
   </template>
+  <SLContextMenu />
 </template>
 
 <style>
