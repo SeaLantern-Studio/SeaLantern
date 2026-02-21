@@ -472,6 +472,28 @@ pub fn run() {
                     })
                     .build(app)?;
 
+            // macOS: 根据用户设置决定是否应用毛玻璃效果
+            #[cfg(target_os = "macos")]
+            if let Some(window) = app.get_webview_window("main") {
+                let settings = services::global::settings_manager().get();
+                if settings.acrylic_enabled {
+                    use window_vibrancy::NSVisualEffectMaterial;
+                    match window_vibrancy::apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::HudWindow,
+                        None,
+                        Some(10.0),
+                    ) {
+                        Ok(_) => {
+                            println!("macOS vibrancy applied successfully");
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to apply macOS vibrancy: {}", e);
+                        }
+                    }
+                }
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())
