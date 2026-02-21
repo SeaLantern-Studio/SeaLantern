@@ -55,6 +55,11 @@ jobs:
       - name: 安装前端依赖 (npm)
         run: npm install
 
+      # 保存当前工作目录
+      - name: 保存工作目录路径
+        id: workspace
+        run: echo "path=$(pwd)" >> $GITHUB_OUTPUT
+
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0
         env:
@@ -70,30 +75,36 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-      # 修复：使用 find 命令检查 deb 文件
+      # 使用保存的路径查找 deb 文件
       - name: 检查 deb 文件并上传 Ubuntu 构建产物
         if: matrix.platform == 'ubuntu-24.04'
         run: |
-          echo "检查 deb 文件..."
-          if [ -d "src-tauri/target/release/bundle/deb" ]; then
-            echo "deb 目录内容:"
-            ls -la "src-tauri/target/release/bundle/deb/" || true
+          WORKSPACE="${{ steps.workspace.outputs.path }}"
+          echo "工作目录: $WORKSPACE"
 
-            # 使用 find 查找 .deb 文件
-            DEB_COUNT=$(find "src-tauri/target/release/bundle/deb" -name "*.deb" -type f | wc -l)
+          # 使用绝对路径查找
+          DEB_PATH="$WORKSPACE/src-tauri/target/release/bundle/deb"
+          echo "检查路径: $DEB_PATH"
+
+          if [ -d "$DEB_PATH" ]; then
+            echo "deb 目录内容:"
+            ls -la "$DEB_PATH" || true
+
+            # 查找 .deb 文件
+            DEB_COUNT=$(find "$DEB_PATH" -name "*.deb" -type f | wc -l)
             if [ "$DEB_COUNT" -gt 0 ]; then
               echo "✅ 找到 $DEB_COUNT 个 deb 文件"
-              find "src-tauri/target/release/bundle/deb" -name "*.deb" -type f -exec ls -la {} \;
+              find "$DEB_PATH" -name "*.deb" -type f -exec ls -la {} \;
             else
               echo "❌ 未找到 deb 文件"
               exit 1
             fi
           else
             echo "❌ deb 目录不存在"
-            echo "检查完整路径:"
-            ls -la src-tauri/target/release/bundle/ || true
+            echo "尝试查找所有可能的路径:"
+            find "$WORKSPACE" -path "*/bundle/deb/*.deb" -type f 2>/dev/null || echo "未找到"
             exit 1
-          fi
+ fi
 
       - name: 上传 Ubuntu 构建产物
         if: matrix.platform == 'ubuntu-24.04'
@@ -101,8 +112,8 @@ jobs:
         with:
           name: ubuntu-build
           path: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
+            ${{ steps.workspace.outputs.path }}/src-tauri/target/release/bundle/deb/*.deb
+            ${{ steps.workspace.outputs.path }}/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
   # Arch Linux 打包任务
