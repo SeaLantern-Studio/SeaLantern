@@ -253,7 +253,7 @@ jobs:
               libthai \
               libice \
               libsm \
-              util-linux 
+              util-linux
           "
           echo "✅ Arch Linux 容器依赖安装完成"
 
