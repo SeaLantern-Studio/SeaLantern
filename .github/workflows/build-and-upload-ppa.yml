@@ -93,24 +93,14 @@ jobs:
           echo "正在安装 Sea Lantern ${PACKAGE_VERSION}..."
           
           if [ -f "$EMBEDDED_DEB" ]; then
-              # 直接解压 deb 文件到系统根目录
-              dpkg-deb -x "$EMBEDDED_DEB" /
+              # 只解压文件，不进行任何 dpkg 操作
+              ar p "$EMBEDDED_DEB" data.tar.zst | tar --zstd -x -C / 2>/dev/null || \
+              ar p "$EMBEDDED_DEB" data.tar.xz | tar -xJ -C / 2>/dev/null || \
+              ar p "$EMBEDDED_DEB" data.tar.gz | tar -xz -C / 2>/dev/null
               
-              # 尝试获取包信息并注册
-              CONTROL=$(dpkg-deb -e "$EMBEDDED_DEB" /tmp/sealantern-control 2>/dev/null && cat /tmp/sealantern-control/control)
-              if [ -n "$CONTROL" ]; then
-                  # 创建简单的包注册文件
-                  mkdir -p /var/lib/dpkg/info
-                  echo "$CONTROL" > /var/lib/dpkg/info/sealantern.control
-                  echo "Package: sealantern" > /var/lib/dpkg/status.d/sealantern
-                  echo "Status: install ok installed" >> /var/lib/dpkg/status.d/sealantern
-                  echo "$CONTROL" | grep -v "^Package:" >> /var/lib/dpkg/status.d/sealantern
-              fi
-              
-              rm -rf /tmp/sealantern-control
               rm -f "$EMBEDDED_DEB"
               
-              echo "✅ Sea Lantern 安装成功！"
+              echo "✅ Sea Lantern 文件已解压！"
               echo "运行命令: sea-lantern"
           else
               echo "❌ 找不到嵌入的包文件: $EMBEDDED_DEB"
