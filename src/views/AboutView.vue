@@ -140,7 +140,7 @@ async function handlePrimaryUpdateAction() {
 }
 
 function getCustomLinks(links: SocialLinks): [string, string][] {
-  const predefined = ["gitee", "github", "bilibili", "qq"];
+  const predefined = ["gitee", "github", "bilibili", "qq", "tiktok"];
   return Object.entries(links).filter(([key, value]) => !predefined.includes(key) && value) as [
     string,
     string,
@@ -283,6 +283,17 @@ async function handleManualDownload() {
                   title="Bilibili"
                 >
                   <BrandIcon name="bilibili" :size="16" />
+                </a>
+
+                <a
+                  v-if="c.url.tiktok"
+                  :href="c.url.tiktok"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-icon"
+                  title="TikTok"
+                >
+                  <BrandIcon name="tiktok" :size="16" />
                 </a>
 
                 <button
@@ -663,13 +674,11 @@ async function handleManualDownload() {
 
 .contributor-info {
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: var(--sl-space-xs);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .contributor-name {
@@ -684,7 +693,10 @@ async function handleManualDownload() {
   color: var(--sl-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
 }
 
 .join-card {

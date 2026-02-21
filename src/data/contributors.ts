@@ -78,6 +78,9 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/CmzYa",
     url: {
       github: "https://github.com/CmzYa",
+      bilibili: "https://space.bilibili.com/1299848968",
+      qq: "2933859893",
+      tiktok: "https://www.douyin.com/user/MS4wLjABAAAAnaa9DsrNixJyNCFPwtFSTNNI4wrE0ME9nwbiqCrppSIruK_9g-9QRKWbQFPzaPPw",
     },
   },
   {
@@ -115,7 +118,7 @@ export const contributors: Contributor[] = [
   {
     name: "猫不笨qwq",
     role: "找到软件图形化错误",
-    avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
+    avatar: "https://api.rms.net.cn/head/maobuben_qwq",
     url: {
       github: "https://github.com/maobuben",
     },
