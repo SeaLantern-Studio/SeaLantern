@@ -4,6 +4,8 @@ use font_kit::source::SystemSource;
 use std::collections::HashSet;
 #[cfg(target_os = "windows")]
 use window_vibrancy;
+#[cfg(target_os = "macos")]
+use window_vibrancy::NSVisualEffectMaterial;
 
 #[tauri::command]
 pub fn get_settings() -> AppSettings {
@@ -35,11 +37,11 @@ pub fn import_settings(json: String) -> Result<AppSettings, String> {
 
 #[tauri::command]
 pub fn check_acrylic_support() -> Result<bool, String> {
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     {
         Ok(true)
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         Ok(false)
     }
@@ -66,7 +68,29 @@ pub fn apply_acrylic(window: tauri::Window, enabled: bool, dark_mode: bool) -> R
                 .map_err(|e| format!("Failed to clear acrylic: {}", e))?;
         }
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = dark_mode; // macOS vibrancy 自动适应系统主题
+        if enabled {
+            window_vibrancy::apply_vibrancy(
+                &window,
+                NSVisualEffectMaterial::HudWindow,
+                None,
+                Some(10.0),
+            )
+            .map_err(|e| format!("Failed to apply vibrancy: {}", e))?;
+        } else {
+            // macOS: 通过应用透明材质来"关闭"效果
+            window_vibrancy::apply_vibrancy(
+                &window,
+                NSVisualEffectMaterial::WindowBackground,
+                None,
+                Some(10.0),
+            )
+            .map_err(|e| format!("Failed to clear vibrancy: {}", e))?;
+        }
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = (window, enabled, dark_mode);
     }

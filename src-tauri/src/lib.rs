@@ -34,6 +34,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             let _ = app
                 .get_webview_window("main")
@@ -477,29 +478,32 @@ pub fn run() {
                     })
                     .build(app)?;
 
-            // macOS: 应用毛玻璃效果
+            // macOS: 根据用户设置决定是否应用毛玻璃效果
             if let Some(window) = app.get_webview_window("main") {
                 #[cfg(target_os = "macos")]
                 {
-                    use window_vibrancy::NSVisualEffectMaterial;
-                    match window_vibrancy::apply_vibrancy(
-                        &window,
-                        NSVisualEffectMaterial::HudWindow,
-                        None,
-                        Some(10.0),
-                    ) {
-                        Ok(_) => {
-                            println!("macOS vibrancy applied successfully");
-                            let window_clone = window.clone();
-                            std::thread::spawn(move || {
-                                std::thread::sleep(std::time::Duration::from_millis(100));
-                                let _ = window_clone.eval(
-                                    "document.documentElement.setAttribute('data-vibrancy', 'true')",
-                                );
-                            });
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to apply macOS vibrancy: {}", e);
+                    let settings = services::global::settings_manager().get();
+                    if settings.acrylic_enabled {
+                        use window_vibrancy::NSVisualEffectMaterial;
+                        match window_vibrancy::apply_vibrancy(
+                            &window,
+                            NSVisualEffectMaterial::HudWindow,
+                            None,
+                            Some(10.0),
+                        ) {
+                            Ok(_) => {
+                                println!("macOS vibrancy applied successfully");
+                                let window_clone = window.clone();
+                                std::thread::spawn(move || {
+                                    std::thread::sleep(std::time::Duration::from_millis(100));
+                                    let _ = window_clone.eval(
+                                        "document.documentElement.setAttribute('data-vibrancy', 'true')",
+                                    );
+                                });
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to apply macOS vibrancy: {}", e);
+                            }
                         }
                     }
                 }

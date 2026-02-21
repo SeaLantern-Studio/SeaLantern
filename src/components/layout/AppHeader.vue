@@ -9,6 +9,7 @@ import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings } from "../../api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
+import { isMacOS } from "../../utils/platform";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
@@ -18,6 +19,7 @@ const perLocaleProgress = reactive<Record<string, { loaded: number; total: numbe
 const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
+const isMac = ref(false);
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -129,6 +131,7 @@ const currentLanguageText = computed(() => {
 
 onMounted(async () => {
   await loadSettings();
+  isMac.value = await isMacOS();
 
   // 监听设置更新事件
   window.addEventListener("settings-updated", loadSettings);
@@ -235,6 +238,19 @@ function computeOverallProgress() {
 
 <template>
   <header class="app-header glass-subtle">
+    <!-- macOS 红绿灯按钮（左侧） -->
+    <div v-if="isMac" class="macos-traffic-lights">
+      <button class="traffic-light traffic-light-close" @click="closeWindow" title="关闭">
+        <span class="traffic-light-icon">×</span>
+      </button>
+      <button class="traffic-light traffic-light-minimize" @click="minimizeWindow" title="最小化">
+        <span class="traffic-light-icon">−</span>
+      </button>
+      <button class="traffic-light traffic-light-maximize" @click="toggleMaximize" title="最大化">
+        <span class="traffic-light-icon">+</span>
+      </button>
+    </div>
+
     <div class="header-left">
       <h2 class="page-title">{{ pageTitle }}</h2>
     </div>
@@ -316,7 +332,8 @@ function computeOverallProgress() {
         <span class="status-text">{{ i18n.t("common.app_name") }}</span>
       </div>
 
-      <div class="window-controls">
+      <!-- Windows/Linux 窗口控制按钮（右侧） -->
+      <div v-if="!isMac" class="window-controls">
         <button class="win-btn" @click="minimizeWindow" title="最小化">
           <Minus :size="12" />
         </button>
@@ -365,6 +382,69 @@ function computeOverallProgress() {
   user-select: none;
   position: relative;
   z-index: 100;
+}
+
+/* macOS 红绿灯按钮样式 */
+.macos-traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: var(--sl-space-md);
+  -webkit-app-region: no-drag;
+}
+
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+
+.traffic-light-icon {
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0;
+  color: rgba(0, 0, 0, 0.5);
+  transition: opacity 0.15s ease;
+}
+
+.macos-traffic-lights:hover .traffic-light-icon {
+  opacity: 1;
+}
+
+.traffic-light-close {
+  background: #ff5f57;
+}
+
+.traffic-light-close:hover {
+  background: #ff3b30;
+}
+
+.traffic-light-minimize {
+  background: #febc2e;
+}
+
+.traffic-light-minimize:hover {
+  background: #f5a623;
+}
+
+.traffic-light-maximize {
+  background: #28c840;
+}
+
+.traffic-light-maximize:hover {
+  background: #1db954;
+}
+
+.traffic-light:active {
+  transform: scale(0.9);
 }
 
 .header-left,
