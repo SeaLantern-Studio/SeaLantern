@@ -111,10 +111,10 @@ const installedPath = ref('');
 const unlistenProgress = ref<UnlistenFn | null>(null);
 
 const versionOptions = computed(() => [
-  { label: 'Java 8 (LTS)', value: String('8') },
-  { label: 'Java 17 (LTS)', value: String('17') },
-  { label: 'Java 21 (LTS)', value: String('21') },
-  { label: 'Java 25 (LTS)', value: String('25') }
+  { label: 'Java 8 (LTS)', value: '8' },
+  { label: 'Java 17 (LTS)', value: '17' },
+  { label: 'Java 21 (LTS)', value: '21' },
+  { label: 'Java 25 (LTS)', value: '25' }
 ]);
 
 const downloadButtonText = computed(() => {
@@ -129,10 +129,9 @@ const resetState = () => {
   progress.value = 0;
 };
 
-const getDownloadUrl = (version: string | number): string => {
+const getDownloadUrl = (version: string): string => {
   // Construct URL for Adoptium API
   const baseUrl = "https://api.adoptium.net/v3/binary/latest";
-  const featureVersion = String(version);
   const releaseType = "ga";
 
   // Detect OS and Arch
@@ -144,7 +143,7 @@ const getDownloadUrl = (version: string | number): string => {
   let arch = "x64";
   if (navigator.userAgent.indexOf("aarch64") !== -1 || navigator.userAgent.indexOf("arm64") !== -1) arch = "aarch64";
 
-  return `${baseUrl}/${featureVersion}/${releaseType}/${os}/${arch}/jdk/hotspot/normal/eclipse`;
+  return `${baseUrl}/${version}/${releaseType}/${os}/${arch}/jdk/hotspot/normal/eclipse`;
 };
 
 const cancelDownload = async () => {
@@ -167,14 +166,12 @@ const cancelDownload = async () => {
 };
 
 const startDownload = async () => {
-  const versionStr = String(selectedVersion.value);
-
   resetState();
   loadingUrl.value = true;
 
   try {
-    const url = getDownloadUrl(versionStr);
-    const versionName = `jdk-${versionStr}`;
+    const url = getDownloadUrl(selectedVersion.value);
+    const versionName = `jdk-${selectedVersion.value}`;
     loadingUrl.value = false;
     isDownloading.value = true;
     progress.value = 0;
