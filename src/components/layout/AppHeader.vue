@@ -212,16 +212,27 @@ function setLanguage(locale: string) {
   i18nStore.setLocale(locale);
 }
 
-async function handleLanguageClick(locale: string) {
-  // For local languages we can just switch immediately
-  if (locale === "zh-CN" || locale === "en-US") {
-    setLanguage(locale);
-    return;
-  }
+const isChangingLanguage = ref(false);
 
-  // trigger download and then switch (downloadLocale logs errors internally)
-  await i18nStore.downloadLocale(locale);
-  setLanguage(locale);
+async function handleLanguageClick(locale: string, close?: () => void) {
+  if (isChangingLanguage.value) return;
+
+  isChangingLanguage.value = true;
+  try {
+    // For local languages we can just switch immediately
+    if (locale === "zh-CN" || locale === "en-US") {
+      setLanguage(locale);
+      close?.();
+      return;
+    }
+
+    // trigger download and then switch (downloadLocale logs errors internally)
+    await i18nStore.downloadLocale(locale);
+    setLanguage(locale);
+    close?.();
+  } finally {
+    isChangingLanguage.value = false;
+  }
 }
 
 function computeOverallProgress() {
@@ -246,24 +257,20 @@ function computeOverallProgress() {
 
     <div class="header-right">
       <Menu as="div" class="language-selector">
-        <MenuButton class="language-text">
-          {{ currentLanguageText }}
+        <MenuButton class="language-button">
+          <span class="language-text">{{ currentLanguageText }}</span>
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
           <MenuItem
             v-for="option in primaryLanguages"
             :key="option.code"
-            as="div"
-            @click="
-              (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleLanguageClick(option.code);
-              }
-            "
+            v-slot="{ close }"
           >
-            <div class="language-item">
+            <div
+              class="language-item"
+              @click="() => handleLanguageClick(option.code, close)"
+            >
               <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
               </div>
@@ -271,40 +278,29 @@ function computeOverallProgress() {
           </MenuItem>
 
           <!-- 更多语言选项 -->
-          <MenuItem
-            as="div"
-            @click="
-              (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleMoreLanguages();
-              }
-            "
-            class="language-item-full-width"
-          >
-            <div class="language-item language-item-arrow">
+          <div class="language-item-full-width">
+            <div
+              class="language-item language-item-arrow"
+              @click="toggleMoreLanguages"
+            >
               <div class="language-item-main">
                 <ChevronDown v-if="!showMoreLanguages" :size="16" class="arrow-icon" />
                 <ChevronUp v-else :size="16" class="arrow-icon" />
               </div>
             </div>
-          </MenuItem>
+          </div>
 
           <!-- 其他语言（仅在展开时显示） -->
           <template v-if="showMoreLanguages">
             <MenuItem
               v-for="option in otherLanguages"
               :key="option.code"
-              as="div"
-              @click="
-                (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleLanguageClick(option.code);
-                }
-              "
+              v-slot="{ close }"
             >
-              <div class="language-item">
+              <div
+                class="language-item"
+                @click="() => handleLanguageClick(option.code, close)"
+              >
                 <div class="language-item-main">
                   <span class="language-label">{{ option.label }}</span>
                 </div>
@@ -456,6 +452,9 @@ function computeOverallProgress() {
 
 .language-selector {
   position: relative;
+}
+
+.language-button {
   cursor: pointer;
   padding: 6px 12px;
   border-radius: var(--sl-radius-md);
@@ -463,9 +462,10 @@ function computeOverallProgress() {
   display: flex;
   align-items: center;
   gap: 4px;
+  width: 100%;
 }
 
-.language-selector:hover {
+.language-button:hover {
   background: var(--sl-bg-tertiary);
 }
 
