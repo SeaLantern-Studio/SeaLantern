@@ -38,9 +38,8 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           
-          # 添加构建号（使用 Git commit short SHA + 时间戳）避免版本冲突
-          BUILD_NUM="${{ github.sha }}"
-          BUILD_SUFFIX="${BUILD_NUM:0:7}"
+          # 添加构建号（使用 GitHub run ID）避免版本冲突
+          BUILD_SUFFIX="${{ github.run_number }}"
           
           echo "BUILD_SUFFIX=$BUILD_SUFFIX" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION for ${{ matrix.distro }} with build suffix: $BUILD_SUFFIX"
