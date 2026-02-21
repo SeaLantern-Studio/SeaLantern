@@ -271,4 +271,96 @@ cargo fmt --all
 
 ---
 
+## PPA 测试流程（ppa-deploy 分支）
+
+### 概述
+
+`ppa-deploy` 分支专门用于构建和发布 Sea Lantern 到 Ubuntu PPA。PPA 地址：`ppa:brianeee7878/sealantern`
+
+### 工作流程
+
+1. **构建流程** (`.github/workflows/build-and-upload-ppa.yml`)
+   - 从 GitHub Releases 下载 Sea Lantern deb 包
+   - 创建嵌套的 PPA 安装包 (`sea-lantern-ppa-updater`)
+   - 构建源代码包并签名
+   - 上传到 Launchpad PPA
+
+2. **测试流程** (`.github/workflows/ppa-test.yml`)
+   - 定期测试 PPA 包安装
+   - 验证菜单项和命令是否正确配置
+   - 监控 PPA 构建状态
+
+### 本地测试
+
+```bash
+# 运行本地安装测试
+./test-ppa-install.sh
+
+# 手动构建 PPA 包（单版本）
+./create-ppa-deb.sh
+
+# 手动构建 PPA 包（多版本）
+./create-ppa-deb-multi.sh
+```
+
+### gh CLI 自动测试命令
+
+```bash
+# 手动触发 PPA 测试工作流
+gh workflow run ppa-test.yml -f version=0.6.5 -f distro=noble
+
+# 查看工作流运行状态
+gh run list --workflow=ppa-test.yml
+
+# 查看最近运行的日志
+gh run view $(gh run list --workflow=ppa-test.yml -L 1 --json databaseId -q '.[0].databaseId') --log
+
+# 触发 PPA 构建和上传
+gh workflow run build-and-upload-ppa.yml -f version=0.6.5
+```
+
+### Launchpad API 查询
+
+```bash
+# 获取 PPA 基本信息
+curl -s "https://api.launchpad.net/1.0/~brianeee7878/+archive/ubuntu/sealantern"
+
+# 获取已发布的源码包
+curl -s "https://api.launchpad.net/1.0/~brianeee7878/+archive/ubuntu/sealantern?ws.op=getPublishedSources"
+
+# 获取构建记录
+curl -s "https://api.launchpad.net/1.0/~brianeee7878/+archive/ubuntu/sealantern?ws.op=getBuildRecords"
+
+# 获取已发布的二进制包
+curl -s "https://api.launchpad.net/1.0/~brianeee7878/+archive/ubuntu/sealantern?ws.op=getPublishedBinaries"
+```
+
+### 已知问题和解决方案
+
+1. **postinst 脚本版本号获取问题**
+   - 问题：`dpkg -s` 在 postinst 执行时可能无法正确获取版本
+   - 解决：使用 `dpkg-query -W -f='${Version}'` 替代
+
+2. **桌面文件 Exec 路径**
+   - 原始 deb 包中的 Exec 为 `sea-lantern`（相对路径）
+   - 实际安装后命令位于 `/usr/bin/sea-lantern`
+   - 已在系统中创建符号链接
+
+3. **图标文件位置**
+   - 图标安装到 `/usr/share/icons/hicolor/*/apps/sealantern.png`
+   - 需要运行 `gtk-update-icon-cache` 更新图标缓存
+
+### 测试检查清单
+
+- [ ] deb 包可以正常安装
+- [ ] postinst 脚本正确执行
+- [ ] `/usr/bin/sea-lantern` 命令可用
+- [ ] 桌面文件 `/usr/share/applications/Sea Lantern.desktop` 存在
+- [ ] 图标文件已安装
+- [ ] 嵌入的 deb 包已被清理
+- [ ] 卸载时文件被正确删除
+
+---
+
 *本文档由 AI 代理自动生成，用于提供项目上下文信息。*
+*最后更新：2026-02-21*

@@ -33,3 +33,6 @@ src/views/PluginPageView.vue
 src/views/PluginsView.vue
 plans/
 .review/
+
+.iflow/
+gha-creds-*.json

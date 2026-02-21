@@ -1,0 +1,186 @@
+name: '🚀 iFlow CLI Issue Killer'
+
+on:
+  issue_comment:
+    types:
+      - 'created'
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'issue number to implement'
+        required: true
+        type: 'number'
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.event.issue.number }}'
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: 'bash'
+
+permissions:
+  contents: 'write'
+  issues: 'write'
+  pull-requests: 'write'
+
+jobs:
+  implement-issue:
+    if: |-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'issue_comment' &&
+        contains(github.event.comment.body, '@iflow-cli /issue-killer') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      )
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get Issue Details
+        id: get_issue
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = process.env.INPUT_ISSUE_NUMBER || context.issue.number;
+            core.setOutput('issue_number', issue_number);
+
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt(issue_number)
+            });
+
+            core.setOutput('issue_title', issue.data.title);
+            core.setOutput('issue_body', issue.data.body);
+
+            // Parse implementation request from comment or use issue body
+            let implementation_request = issue.data.body;
+            if (context.eventName === 'issue_comment') {
+              implementation_request = context.payload.comment.body.replace('@iflow-cli /issue-killer', '').trim();
+              if (implementation_request === '') {
+                implementation_request = issue.data.body;
+              }
+            }
+
+            core.setOutput('implementation_request', implementation_request);
+
+      - name: 'Run iFlow CLI Implementation'
+        uses: iflow-ai/iflow-cli-action@v2.0.0
+        id: 'iflow_cli_implementation'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+          ISSUE_TITLE: '${{ steps.get_issue.outputs.issue_title }}'
+          ISSUE_BODY: '${{ steps.get_issue.outputs.issue_body }}'
+          ISSUE_NUMBER: '${{ steps.get_issue.outputs.issue_number }}'
+          REPOSITORY: '${{ github.repository }}'
+        with:
+          api_key: ${{ secrets.IFLOW_API_KEY }}
+          timeout: "1800"
+          debug: "true"
+          settings_json: |
+            {
+                "selectedAuthType": "iflow",
+                "apiKey": "${{ secrets.IFLOW_API_KEY }}",
+                "baseUrl": "https://apis.iflow.cn/v1",
+                "modelName": "qwen3-coder-plus",
+                "searchApiKey": "${{ secrets.IFLOW_API_KEY }}",
+                "mcpServers": {
+                  "github": {
+                  "command": "github-mcp-server",
+                  "args": [
+                    "stdio"
+                  ],
+                  "includeTools": [
+                    "create_pull_request",
+                    "list_pull_requests",
+                    "add_issue_comment"
+                  ],
+                    "env": {
+                      "GITHUB_PERSONAL_ACCESS_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                    }
+                  }
+                }
+            }
+          prompt: |
+            ## Role
+
+            You are an implementation assistant. Your task is to implement a feature
+            based on the GitHub issue provided. Follow these steps:
+
+            1. **FIRST**: Create a start comment on the issue using the GitHub MCP tool
+            2. Analyze the issue title and body provided in the environment
+               variables: "${ISSUE_TITLE}" and "${ISSUE_BODY}".
+            3. If the comment that triggered this action contains additional
+               implementation instructions, use those as well.
+            4. Implement the requested feature by creating or modifying files as
+               needed.
+            5. Ensure all changes are complete and correct according to the issue
+               requirements.
+            6. Do not add comments or modify the issue content beyond the required start and completion comments.
+            7. Focus only on implementing the current issue.
+
+            ## Creating Start Comment
+
+            Before starting the implementation, create a start comment on the issue using the GitHub MCP tool:
+            1. Use the add_issue_comment to add a comment to issue #${ISSUE_NUMBER}
+            2. The start comment should include:
+               - 🚀 Notification that the implementation task has started
+               - 🤖 Mention that iFlow CLI Issue Killer is processing the issue
+               - 📋 Current status: analyzing and implementing the feature
+               - 📝 **Execution Plan**: Brief outline of the planned implementation steps based on the issue requirements
+               - ⏱️ Expected time: usually takes a few minutes to ten minutes
+               - 🔍 **View execution logs**: [GitHub Actions Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+               - 🤖 Note that this is an automated comment and there will be a completion notification
+            3. For the execution plan, analyze the issue requirements and provide a clear, numbered list of implementation steps, such as:
+               - Files to be created or modified
+               - Key functionality to be implemented
+               - Tests to be added or updated
+               - Dependencies or configurations to be changed
+
+            ## Guidelines
+
+            - Make all necessary code changes to implement the feature
+            - Ensure new code follows existing project conventions
+            - Add or modify tests if applicable
+            - Reference all shell variables as "${VAR}" (with quotes and braces)
+
+            ## Creating Pull Request
+
+            Once you have implemented the feature, create a pull request using the GitHub MCP tool:
+            1. Use the create_pull_request to create a Pull Request.
+            2. The PR should be created from a new branch with a descriptive name (e.g., feature/issue-${ISSUE_NUMBER}, fix/issue-${ISSUE_NUMBER}, or a descriptive name based on the feature)
+            3. The PR title should be descriptive and reference the issue number
+            4. The PR body should explain what was implemented and reference the issue
+            5. Remember the branch name you create, as it will be needed for the completion comment if PR creation fails
+
+            ## Creating Completion Comment
+
+            After successfully implementing the feature and creating the PR, add a completion comment to the issue using the GitHub MCP tool:
+            1. Use the add_issue_comment to add a comment to issue #${ISSUE_NUMBER}
+            2. The comment should include:
+               - ✅ Confirmation that the issue has been implemented
+               - 🎉 Brief summary of what was accomplished
+               - 📋 List of key changes made
+               - 🔗 Link to the created Pull Request (if successful)
+               - 📝 If PR creation failed, provide a manual PR creation link using the actual branch name you created, like: https://github.com/${{ github.repository }}/compare/main...[YOUR_BRANCH_NAME]
+               - 🤖 Note that this is an automated implementation
+            3. Use a friendly tone and include appropriate emojis for better user experience
+
+      - name: 'Post Implementation Failure Comment'
+        if: |-
+          ${{ failure() && steps.iflow_cli_implementation.outcome == 'failure' }}
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          script: |-
+            github.rest.issues.createComment({
+              owner: '${{ github.repository }}'.split('/')[0],
+              repo: '${{ github.repository }}'.split('/')[1],
+              issue_number: '${{ steps.get_issue.outputs.issue_number }}',
+              body: 'There is a problem with the iFlow CLI issue implementation. Please check the [action logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
+            })
