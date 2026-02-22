@@ -5,7 +5,7 @@ import type {
   PluginInstallResult,
   BatchInstallResult,
   PluginUpdateInfo,
-} from "../types/plugin";
+} from "@type/plugin";
 
 // 插件市场的信息
 export interface MarketPluginInfo {
