@@ -4,7 +4,7 @@ import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X, ChevronDown, ChevronUp, Copy } from "lucide-vue-next";
 import { useI18nStore } from "@stores/i18nStore";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";

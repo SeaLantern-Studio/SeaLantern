@@ -1,11 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
-import {
-  registerPluginLocale,
-  addPluginTranslations,
-  removePluginTranslations,
-} from "@language/index";
+import { registerPluginLocale, addPluginTranslations, removePluginTranslations } from "@language";
 import { useComponentRegistry } from "@composables/useComponentRegistry";
 import { useToast } from "@composables/useToast";
 import DOMPurify from "dompurify";
