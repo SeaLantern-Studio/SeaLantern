@@ -10,7 +10,7 @@ import {
   installFromMarket,
 } from "@api/plugin";
 import type { MarketPluginInfo } from "@api/plugin";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
 

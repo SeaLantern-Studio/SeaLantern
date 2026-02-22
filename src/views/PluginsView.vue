@@ -10,7 +10,7 @@ import SLModal from "@components/common/SLModal.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import type { PluginState, PluginInfo, MissingDependency, BatchInstallResult } from "@type/plugin";
 import {
   hasDangerousPermissions,

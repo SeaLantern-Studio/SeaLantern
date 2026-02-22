@@ -13,7 +13,7 @@ import { javaApi, type JavaInfo } from "@api/java";
 import { systemApi } from "@api/system";
 import { settingsApi } from "@api/settings";
 import { useServerStore } from "@stores/serverStore";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { useTabSwitch } from "@composables/useTabIndicator";

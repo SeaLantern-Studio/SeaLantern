@@ -4,7 +4,7 @@ import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { usePluginStore } from "@stores/pluginStore";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import type { PluginInfo } from "@type/plugin";
 import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
 import { ArrowLeft, Puzzle, Link } from "lucide-vue-next";

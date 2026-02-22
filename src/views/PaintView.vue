@@ -6,7 +6,7 @@ import SLButton from "@components/common/SLButton.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLSelect from "@components/common/SLSelect.vue";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import {
   settingsApi,
   checkAcrylicSupport,
@@ -16,7 +16,7 @@ import {
 } from "@api/settings";
 import { systemApi } from "@api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { getThemeOptions } from "@themes/index";
+import { getThemeOptions } from "@themes";
 import { usePluginStore } from "@stores/pluginStore";
 import {
   dispatchSettingsUpdate,

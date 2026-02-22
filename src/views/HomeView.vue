@@ -8,7 +8,7 @@ import SLBadge from "@components/common/SLBadge.vue";
 import SLProgress from "@components/common/SLProgress.vue";
 import { useServerStore } from "@stores/serverStore";
 import { systemApi } from "@api/system";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 
 // 导入拆分后的模块
 import {

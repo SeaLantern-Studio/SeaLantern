@@ -8,7 +8,7 @@ import { useServerStore } from "@stores/serverStore";
 import { useConsoleStore } from "@stores/consoleStore";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
 
 const serverStore = useServerStore();

@@ -10,7 +10,7 @@ import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { usePluginStore } from "@stores/pluginStore";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import type { PluginInfo, PluginSettingField } from "@types/plugin";
 import { getLocalizedPluginName, getLocalizedPluginDescription } from "@types/plugin";
 import { Palette, Puzzle } from "lucide-vue-next";

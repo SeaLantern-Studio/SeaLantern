@@ -18,10 +18,10 @@ import {
 } from "@api/settings";
 import { systemApi } from "@api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
-import { getThemeOptions } from "@themes/index";
+import { getThemeOptions } from "@themes";
 import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "@stores/settingsStore";
 
 const { error, showError, clearError } = useMessage();
