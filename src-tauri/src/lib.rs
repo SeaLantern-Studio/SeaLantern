@@ -36,10 +36,14 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
-            let _ = app
-                .get_webview_window("main")
-                .expect("no main window")
-                .set_focus();
+            if let Some(window) = app.get_webview_window("main") {
+                // 先显示窗口（处理隐藏状态）
+                let _ = window.show();
+                // 恢复窗口（处理最小化状态）
+                let _ = window.unminimize();
+                // 设置焦点
+                let _ = window.set_focus();
+            }
             print!("Received second instance with args: {:?}, cwd: {:?}", args, cwd);
         }))
         .on_tray_icon_event(|app, event| {
@@ -444,7 +448,11 @@ pub fn run() {
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "show" => {
                             if let Some(window) = app.get_webview_window("main") {
+                                // 先显示窗口（处理隐藏状态）
                                 let _ = window.show();
+                                // 恢复窗口（处理最小化状态）
+                                let _ = window.unminimize();
+                                // 设置焦点
                                 let _ = window.set_focus();
                             }
                         }
@@ -472,7 +480,11 @@ pub fn run() {
                         } = event
                         {
                             if let Some(window) = tray.app_handle().get_webview_window("main") {
+                                // 先显示窗口（处理隐藏状态）
                                 let _ = window.show();
+                                // 恢复窗口（处理最小化状态）
+                                let _ = window.unminimize();
+                                // 设置焦点
                                 let _ = window.set_focus();
                             }
                         }
