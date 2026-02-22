@@ -42,6 +42,10 @@ jobs:
         with:
           node-version: "lts/*"
 
+      - name: Enable Corepack
+        run: |
+          corepack enable
+
       - name: 安装 Rust 工具链
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -54,7 +58,8 @@ jobs:
 
       - name: 安装前端依赖 (pnpm)
         run: |
-          npm i -g pnpm
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
           pnpm install --frozen-lockfile
 
       # 保存当前工作目录
