@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { i18n } from "../../language";
-import SLButton from "../common/SLButton.vue";
-import SLInput from "../common/SLInput.vue";
-import SLSpinner from "../common/SLSpinner.vue";
+import { i18n } from "@language";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSpinner from "@components/common/SLSpinner.vue";
 
 interface Props {
   serverPath: string;

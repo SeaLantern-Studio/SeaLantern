@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed, onMounted } from "vue";
 import { AlertTriangle, Check, Info, X, XCircle } from "lucide-vue-next";
-import { i18n } from "../../language";
+import { i18n } from "@language";
 
 type NotificationType = "success" | "error" | "warning" | "info";
 type Position =

@@ -61,33 +61,8 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
         })
         .collect();
 
-    // 针对不同平台计算磁盘空间
-    let (total_disk_space, total_disk_available): (u64, u64) = {
-        #[cfg(any(target_os = "macos", target_os = "linux"))]
-        {
-            // 在 macOS 和 Linux 上，只计算根目录 (/) 的磁盘空间
-            if let Some(root_disk) = disks
-                .iter()
-                .find(|d| d.mount_point().to_string_lossy() == "/")
-            {
-                (root_disk.total_space(), root_disk.available_space())
-            } else {
-                // 如果找不到根目录，回退到计算所有磁盘
-                (
-                    disks.iter().map(|d| d.total_space()).sum(),
-                    disks.iter().map(|d| d.available_space()).sum(),
-                )
-            }
-        }
-        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-        {
-            // 在其他平台，继续计算所有磁盘空间
-            (
-                disks.iter().map(|d| d.total_space()).sum(),
-                disks.iter().map(|d| d.available_space()).sum(),
-            )
-        }
-    };
+    let total_disk_space: u64 = disks.iter().map(|d| d.total_space()).sum();
+    let total_disk_available: u64 = disks.iter().map(|d| d.available_space()).sum();
     let total_disk_used = total_disk_space.saturating_sub(total_disk_available);
     let total_disk_usage = if total_disk_space > 0 {
         (total_disk_used as f64 / total_disk_space as f64 * 100.0) as f32
@@ -215,7 +190,7 @@ pub async fn pick_startup_file(
 
 #[tauri::command]
 pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = tokio::sync::oneshot::channel();
 
     app.dialog()
         .file()
@@ -227,12 +202,12 @@ pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, Str
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.await.map_err(|e| format!("Dialog error: {}", e))
 }
 
 #[tauri::command]
 pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = tokio::sync::oneshot::channel();
 
     app.dialog()
         .file()
@@ -242,12 +217,12 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.await.map_err(|e| format!("Dialog error: {}", e))
 }
 
 #[tauri::command]
 pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = tokio::sync::oneshot::channel();
 
     app.dialog()
         .file()
@@ -259,49 +234,76 @@ pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, St
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.await.map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
+pub fn open_file(path: String) -> Result<(), String> {
+    let path = std::path::Path::new(&path);
+    if !path.exists() {
+        return Err(format!("文件不存在: {}", path.display()));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        Command::new("explorer.exe")
+            .arg("/select,")
+            .arg(path)
+            .spawn()
+            .map_err(|e| format!("无法打开文件: {}", e))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        Command::new("open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| format!("无法打开文件: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        Command::new("xdg-open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| format!("无法打开文件: {}", e))?;
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
 pub fn open_folder(path: String) -> Result<(), String> {
-    use std::process::Command;
+    let path = std::path::Path::new(&path);
+    if !path.exists() {
+        return Err(format!("文件夹不存在: {}", path.display()));
+    }
 
     #[cfg(target_os = "windows")]
     {
-        let status = Command::new("explorer")
+        use std::process::Command;
+        Command::new("explorer.exe")
             .arg(path)
-            .status()
-            .map_err(|e| format!("Failed to open folder: {}", e))?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err("Failed to open folder".to_string())
-        }
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
     }
-
     #[cfg(target_os = "macos")]
     {
-        let status = Command::new("open")
+        use std::process::Command;
+        Command::new("open")
             .arg(path)
-            .status()
-            .map_err(|e| format!("Failed to open folder: {}", e))?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err("Failed to open folder".to_string())
-        }
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
     }
-
     #[cfg(target_os = "linux")]
     {
-        let status = Command::new("xdg-open")
+        use std::process::Command;
+        Command::new("xdg-open")
             .arg(path)
-            .status()
-            .map_err(|e| format!("Failed to open folder: {}", e))?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err("Failed to open folder".to_string())
-        }
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
     }
+
+    Ok(())
 }

@@ -1,371 +1,148 @@
 <script setup lang="ts">
-import { Menu, Clock, Server, Pencil, Folder, Check, X } from 'lucide-vue-next';
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { Menu, Server, Pencil, FolderOpen, Check, X, Gauge } from "lucide-vue-next";
+import { onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLBadge from "../components/common/SLBadge.vue";
-import SLProgress from "../components/common/SLProgress.vue";
-import SLConfirmDialog from "../components/common/SLConfirmDialog.vue";
-import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { serverApi } from "../api/server";
-import { systemApi, type SystemInfo } from "../api/system";
-import { i18n } from "../language";
-import { useMessage } from "../composables/useMessage";
-import { useAsyncByKey } from "../composables/useAsync";
-import { formatBytes, formatServerPath } from "../utils/format";
-import { getStatusVariant, getStatusText } from "../utils/serverStatus";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLBadge from "@components/common/SLBadge.vue";
+import SLProgress from "@components/common/SLProgress.vue";
+import { useServerStore } from "@stores/serverStore";
+import { systemApi } from "@api/system";
+import { i18n } from "@language";
+
+// 导入拆分后的模块
+import {
+  currentQuote,
+  displayText,
+  isTyping,
+  initQuote,
+  updateQuote,
+  startQuoteTimer,
+  cleanupQuoteResources,
+} from "@utils/quoteUtils";
+
+import {
+  systemInfo,
+  cpuUsage,
+  memUsage,
+  diskUsage,
+  statsViewMode,
+  statsLoading,
+  cpuGaugeOption,
+  memGaugeOption,
+  diskGaugeOption,
+  cpuLineOption,
+  memLineOption,
+  fetchSystemInfo,
+  startThemeObserver,
+  cleanupStatsResources,
+} from "@utils/statsUtils";
+
+import {
+  actionLoading,
+  actionError,
+  editingServerId,
+  editName,
+  editLoading,
+  deletingServerId,
+  deleteServerName,
+  inputServerName,
+  deleteError,
+  isClosing,
+  showDeleteConfirm,
+  recentAlerts,
+  formatBytes,
+  formatServerPath,
+  getStatusVariant,
+  getStatusText,
+  handleStart,
+  handleStop,
+  startEditServerName,
+  saveServerName,
+  cancelEdit,
+  showDeleteConfirmInput,
+  confirmDelete,
+  cancelDelete,
+  handleAnimationEnd,
+  handleClickOutside,
+  closeDeleteConfirm,
+} from "@utils/serverUtils";
 
 const router = useRouter();
 const store = useServerStore();
-const consoleStore = useConsoleStore();
 
-const { error: actionError, showError, clear: clearError } = useMessage();
-const { loading: actionLoading, execute: executeAction } = useAsyncByKey<string>();
+/**
+ * 处理服务器路径点击事件
+ * @param path 服务器路径
+ */
+async function handlePathClick(path: string) {
+  try {
+    await systemApi.openFolder(path);
+  } catch (e) {
+    console.error("打开文件夹失败:", e);
+  }
+}
 
-const editingServerId = ref<string | null>(null);
-const editName = ref("");
-const editLoading = ref(false);
-
-const systemInfo = ref<SystemInfo | null>(null);
-const cpuUsage = ref(0);
-const memUsage = ref(0);
-const diskUsage = ref(0);
-const cpuHistory = ref<number[]>([]);
-const memHistory = ref<number[]>([]);
-const statsViewMode = ref<"detail" | "gauge">("gauge");
-const statsLoading = ref(true);
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-interface HitokotoResponse {
-  id: number;
-  hitokoto: string;
-  type: string;
-  from: string;
-  from_who: string | null;
-  creator: string;
-  creator_uid: number;
-  review_status: number;
-  uuid: string;
-  created_at: string;
-}
-
-const currentQuote = ref<{ text: string; author: string }>({ text: "", author: "" });
-const displayText = ref("");
-const isTyping = ref(false);
-const quoteCache = ref<Array<{ text: string; author: string }>>([]);
-let typeTimer: ReturnType<typeof setInterval> | null = null;
-
-function typeWriter(text: string, callback?: () => void) {
-  if (typeTimer) clearInterval(typeTimer);
-  displayText.value = "";
-  isTyping.value = true;
-  let index = 0;
-  typeTimer = setInterval(() => {
-    if (index < text.length) {
-      displayText.value += text[index];
-      index++;
-    } else {
-      if (typeTimer) clearInterval(typeTimer);
-      isTyping.value = false;
-      if (callback) callback();
-    }
-  }, 50);
-}
-
-function typeWriterOut(callback?: () => void) {
-  if (typeTimer) clearInterval(typeTimer);
-  if (!displayText.value) {
-    if (callback) callback();
-    return;
-  }
-  isTyping.value = true;
-  let chars = displayText.value.split("");
-  typeTimer = setInterval(() => {
-    if (chars.length > 0) {
-      chars.pop();
-      displayText.value = chars.join("");
-    } else {
-      if (typeTimer) clearInterval(typeTimer);
-      isTyping.value = false;
-      if (callback) callback();
-    }
-  }, 30);
-}
-
-async function fetchHitokoto(): Promise<{ text: string; author: string }> {
-  console.log("获取一言，当前缓存数量:", quoteCache.value.length);
-  if (quoteCache.value.length > 0) {
-    const quote = quoteCache.value.shift();
-    console.log("从缓存中获取一言:", quote);
-    console.log("缓存剩余数量:", quoteCache.value.length);
-    replenishCache();
-    return quote!;
-  }
-
-  try {
-    console.log("缓存为空，从API获取一言");
-    const response = await fetch("https://v1.hitokoto.cn/?encode=json");
-    if (!response.ok) {
-      throw new Error("Failed to fetch hitokoto");
-    }
-    const data: HitokotoResponse = await response.json();
-    const quote = {
-      text: data.hitokoto,
-      author: data.from_who || data.from || i18n.t("common.unknown"),
-    };
-    console.log("从API获取一言成功:", quote);
-    replenishCache();
-    return quote;
-  } catch (error) {
-    console.error("Error fetching hitokoto:", error);
-    const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
-    console.log("使用默认一言:", defaultQuote);
-    return defaultQuote;
-  }
-}
-
-function isQuoteInCache(quote: { text: string; author: string }): boolean {
-  return quoteCache.value.some((cachedQuote) => cachedQuote.text === quote.text);
-}
-
-async function replenishCache() {
-  console.log("开始补充缓存，当前缓存数量:", quoteCache.value.length);
-  let attempts = 0;
-  const maxAttempts = 10;
-
-  // eslint-disable-next-line no-await-in-loop
-  while (quoteCache.value.length < 2 && attempts < maxAttempts) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const response = await fetch("https://v1.hitokoto.cn/?encode=json");
-      if (!response.ok) {
-        throw new Error("Failed to fetch hitokoto");
-      }
-      // eslint-disable-next-line no-await-in-loop
-      const data: HitokotoResponse = await response.json();
-      const newQuote = {
-        text: data.hitokoto,
-        author: data.from_who || data.from || i18n.t("common.unknown"),
-      };
-
-      if (!isQuoteInCache(newQuote)) {
-        quoteCache.value.push(newQuote);
-        console.log("补充缓存成功，当前缓存数量:", quoteCache.value.length);
-        console.log("新缓存的一言:", newQuote);
-      } else {
-        console.log("一言已在缓存中，跳过:", newQuote.text.substring(0, 20) + "...");
-        attempts++;
-      }
-    } catch (error) {
-      console.error("Error replenishing quote cache:", error);
-      break;
-    }
-  }
-
-  if (attempts >= maxAttempts) {
-    console.log("达到最大尝试次数，停止补充缓存");
-  }
-}
-
-async function updateQuote() {
-  console.log("触发更新一言");
-  if (isTyping.value) {
-    console.log("正在打字中，取消更新");
-    return;
-  }
-  typeWriterOut(async () => {
-    try {
-      console.log("开始获取新一言");
-      const newQuote = await fetchHitokoto();
-      console.log("获取新一言成功:", newQuote);
-      currentQuote.value = newQuote;
-      console.log("开始打字显示新一言");
-      typeWriter(newQuote.text);
-    } catch (error) {
-      console.error("Error updating quote:", error);
-    }
-  });
-}
-
-async function initQuote() {
-  try {
-    await replenishCache();
-    const initialQuote = await fetchHitokoto();
-    currentQuote.value = initialQuote;
-    typeWriter(initialQuote.text);
-  } catch (error) {
-    console.error("Error initializing quote:", error);
-  }
-}
-
-initQuote();
-
-let quoteTimer: ReturnType<typeof setInterval> | null = null;
-
-const recentAlerts = computed(() => {
-  const alerts: { server: string; line: string }[] = [];
-  for (const [sid, logs] of Object.entries(consoleStore.logs)) {
-    const serverName = store.servers.find((s) => s.id === sid)?.name || sid.substring(0, 8);
-    const filtered = logs
-      .filter(
-        (l) =>
-          l.includes("[ERROR]") ||
-          l.includes("[WARN]") ||
-          l.includes("FATAL") ||
-          l.includes("[STDERR]"),
-      )
-      .slice(-5);
-    for (const line of filtered) {
-      alerts.push({ server: serverName, line });
-    }
-  }
-  return alerts.slice(-10);
-});
-
 onMounted(() => {
+  // 初始化名言
+  initQuote();
+
+  // 异步加载服务器列表，不阻塞页面渲染
   const loadServers = async () => {
     try {
       await store.refreshList();
-      await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
+      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
   };
 
-  const fetchSystemInfo = async () => {
-    try {
-      const info = await systemApi.getSystemInfo();
-      systemInfo.value = info;
-      cpuUsage.value = Math.min(100, Math.max(0, Math.round(info.cpu.usage)));
-      memUsage.value = Math.min(100, Math.max(0, Math.round(info.memory.usage)));
-      diskUsage.value = Math.min(100, Math.max(0, Math.round(info.disk.usage)));
-      cpuHistory.value.push(cpuUsage.value);
-      memHistory.value.push(memUsage.value);
-      if (cpuHistory.value.length > 30) cpuHistory.value.shift();
-      if (memHistory.value.length > 30) memHistory.value.shift();
-      statsLoading.value = false;
-    } catch (e) {
-      console.error("Failed to fetch system info:", e);
-      statsLoading.value = false;
-    }
-  };
-
+  // 启动异步加载
   loadServers();
   fetchSystemInfo();
 
-  statsTimer = setInterval(fetchSystemInfo, 1000);
-  quoteTimer = setInterval(updateQuote, 30000);
+  // 设置定时任务
+  statsTimer = setInterval(fetchSystemInfo, 3000);
+
+  // 名言每30秒更新一次
+  startQuoteTimer();
+
+  // Refresh server statuses
   refreshTimer = setInterval(async () => {
-    await Promise.all(store.servers.map(s => store.refreshStatus(s.id)));
+    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
   }, 3000);
 
+  // 添加全局点击事件监听器，点击空白区域收回删除确认输入框
   document.addEventListener("click", handleClickOutside);
+
+  // 监听主题和无障碍模式变化
+  startThemeObserver();
 });
 
 onUnmounted(() => {
   if (statsTimer) clearInterval(statsTimer);
   if (refreshTimer) clearInterval(refreshTimer);
-  if (quoteTimer) clearInterval(quoteTimer);
+  // 清理引用相关资源
+  cleanupQuoteResources();
+  // 清理系统状态相关资源
+  cleanupStatsResources();
+  // 移除全局点击事件监听器
   document.removeEventListener("click", handleClickOutside);
 });
-
-function handleClickOutside(event: MouseEvent) {
-  if (!deletingServerId.value) return;
-
-  const target = event.target as HTMLElement;
-  const isDeleteConfirmInput = target.closest(".delete-confirm-input");
-  const isDeleteButton = target.closest(".server-card-actions")?.querySelector("button");
-
-  if (!isDeleteConfirmInput && !isDeleteButton) {
-    cancelDelete();
-  }
-}
-
-async function handleStart(id: string) {
-  await executeAction(id, async () => {
-    await serverApi.start(id);
-    await store.refreshStatus(id);
-  });
-}
-
-async function handleStop(id: string) {
-  await executeAction(id, async () => {
-    await serverApi.stop(id);
-    await store.refreshStatus(id);
-  });
-}
-
-function startEditServerName(server: any) {
-  editingServerId.value = server.id;
-  editName.value = server.name;
-}
-
-async function saveServerName(serverId: string) {
-  if (!serverId || !editName.value.trim()) return;
-
-  editLoading.value = true;
-
-  try {
-    await serverApi.updateServerName(serverId, editName.value.trim());
-    await store.refreshList();
-    editingServerId.value = null;
-  } catch (e) {
-    showError(String(e));
-  } finally {
-    editLoading.value = false;
-  }
-}
-
-function cancelEdit() {
-  editingServerId.value = null;
-  editName.value = "";
-}
-
-const deletingServerId = ref<string | null>(null);
-const deleteServerName = ref("");
-const inputServerName = ref("");
-const showDeleteConfirm = ref(false);
-
-function showDeleteConfirmInput(server: any) {
-  deletingServerId.value = server.id;
-  deleteServerName.value = server.name;
-  inputServerName.value = "";
-  showDeleteConfirm.value = true;
-}
-
-async function confirmDelete() {
-  if (!deletingServerId.value) return;
-
-  try {
-    await serverApi.deleteServer(deletingServerId.value);
-    await store.refreshList();
-    closeDeleteConfirm();
-  } catch (e) {
-    showError(String(e));
-  }
-}
-
-function closeDeleteConfirm() {
-  showDeleteConfirm.value = false;
-  deletingServerId.value = null;
-  deleteServerName.value = "";
-  inputServerName.value = "";
-}
-
-function cancelDelete() {
-  closeDeleteConfirm();
-}
 </script>
+
 <template>
   <div class="home-view animate-fade-in-up">
+    <!-- Error Banner -->
     <div v-if="actionError" class="error-banner">
       <span>{{ actionError }}</span>
-      <button class="error-close" @click="clearError('error')">x</button>
+      <button class="error-close" @click="actionError = null">x</button>
     </div>
 
+    <!-- Top Row: Quick Actions + System Stats -->
     <div class="top-row">
       <SLCard
         :title="i18n.t('home.title')"
@@ -384,7 +161,9 @@ function cancelDelete() {
             >—— {{ currentQuote.author }}</span
           >
           <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
-          <span v-if="!displayText && !isTyping" class="quote-loading">加载中...</span>
+          <span v-if="!displayText && !isTyping" class="quote-loading">{{
+            i18n.t("common.loading")
+          }}</span>
         </div>
       </SLCard>
 
@@ -400,94 +179,59 @@ function cancelDelete() {
               "
             >
               <Menu v-if="statsViewMode === 'gauge'" :size="14" />
-              <Clock v-else :size="14" />
+              <Gauge v-else :size="14" />
             </button>
           </div>
         </template>
+        <!-- 加载状态 -->
         <div v-if="statsLoading" class="stats-loading">
           <div class="spinner"></div>
           <span>{{ i18n.t("common.loading") }}</span>
         </div>
+        <!-- 仪表盘视图 -->
         <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
           <div class="gauge-grid">
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-cpu"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${cpuUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                  <span class="gauge-value">{{ cpuUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.cpu') }}</span>
-                </div>
+              <v-chart
+                class="gauge-chart"
+                :option="cpuGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-mem"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${memUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                  <span class="gauge-value">{{ memUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.memory') }}</span>
-                </div>
+              <v-chart
+                class="gauge-chart"
+                :option="memGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
             <div class="gauge-item">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path
-                  class="gauge-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                />
-                <path
-                  class="gauge-fill gauge-disk"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3"
-                  :stroke-dasharray="`${diskUsage}, 100`"
-                />
-              </svg>
-              <div class="gauge-text">
-                  <span class="gauge-value">{{ diskUsage }}%</span>
-                  <span class="gauge-label">{{ i18n.t('home.disk') }}</span>
-                </div>
+              <v-chart
+                class="gauge-chart"
+                :option="diskGaugeOption"
+                autoresize
+                :update-options="{ notMerge: false }"
+              />
             </div>
           </div>
           <div v-if="systemInfo" class="gauge-details">
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.cpu') }}</span
-              ><span class="detail-value">{{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span>
+              <span class="detail-label">{{ i18n.t("home.cpu") }}</span
+              ><span class="detail-value"
+                >{{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
+              >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.memory') }}</span
+              <span class="detail-label">{{ i18n.t("home.memory") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.memory.used) }} /
                 {{ formatBytes(systemInfo.memory.total) }}</span
               >
             </div>
             <div class="gauge-detail-item">
-              <span class="detail-label">{{ i18n.t('home.disk') }}</span
+              <span class="detail-label">{{ i18n.t("home.disk") }}</span
               ><span class="detail-value"
                 >{{ formatBytes(systemInfo.disk.used) }} /
                 {{ formatBytes(systemInfo.disk.total) }}</span
@@ -495,122 +239,46 @@ function cancelDelete() {
             </div>
           </div>
         </div>
+        <!-- 详细视图 -->
         <div v-else class="stats-grid">
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.cpu') }}<span v-if="systemInfo" class="stat-detail">
-                  · {{ systemInfo.cpu.count }} {{ i18n.t('home.core') }}</span
+                >{{ i18n.t("home.cpu")
+                }}<span v-if="systemInfo" class="stat-detail">
+                  · {{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
                 ></span
               >
               <span class="stat-value">{{ cpuUsage }}%</span>
             </div>
-            <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
-                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8" />
-                  <line x1="0" y1="16" x2="300" y2="16" />
-                  <line x1="0" y1="24" x2="300" y2="24" />
-                  <line x1="0" y1="32" x2="300" y2="32" />
-                </g>
-                <polygon
-                  :points="
-                    '0,40 ' +
-                    cpuHistory
-                      .map(
-                        (v, i) =>
-                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ') +
-                    ' 300,40'
-                  "
-                  fill="var(--sl-primary)"
-                  fill-opacity="0.15"
-                />
-                <polyline
-                  :points="
-                    cpuHistory
-                      .map(
-                        (v, i) =>
-                          (cpuHistory.length > 1 ? (i / (cpuHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ')
-                  "
-                  fill="none"
-                  stroke="var(--sl-primary)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+            <div class="mini-chart">
+              <v-chart class="line-chart" :option="cpuLineOption" autoresize />
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.memory') }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.memory")
+                }}<span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.memory.used) }} /
                   {{ formatBytes(systemInfo.memory.total) }}</span
                 ></span
               >
               <span class="stat-value">{{ memUsage }}%</span>
             </div>
-            <div class="mini-chart taskmgr-style">
-              <svg viewBox="0 0 300 40" class="chart-svg" preserveAspectRatio="none">
-                <g class="grid-lines" stroke="var(--sl-border)" stroke-width="0.5">
-                  <line x1="0" y1="8" x2="300" y2="8" />
-                  <line x1="0" y1="16" x2="300" y2="16" />
-                  <line x1="0" y1="24" x2="300" y2="24" />
-                  <line x1="0" y1="32" x2="300" y2="32" />
-                </g>
-                <polygon
-                  :points="
-                    '0,40 ' +
-                    memHistory
-                      .map(
-                        (v, i) =>
-                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ') +
-                    ' 300,40'
-                  "
-                  fill="var(--sl-success)"
-                  fill-opacity="0.15"
-                />
-                <polyline
-                  :points="
-                    memHistory
-                      .map(
-                        (v, i) =>
-                          (memHistory.length > 1 ? (i / (memHistory.length - 1)) * 300 : 0) +
-                          ',' +
-                          (40 - v * 0.4),
-                      )
-                      .join(' ')
-                  "
-                  fill="none"
-                  stroke="var(--sl-success)"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+            <div class="mini-chart">
+              <v-chart class="line-chart" :option="memLineOption" autoresize />
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-header">
               <span class="stat-label"
-                >{{ i18n.t('home.disk') }}<span v-if="systemInfo" class="stat-detail">
+                >{{ i18n.t("home.disk") }}
+                <span v-if="systemInfo" class="stat-detail">
                   · {{ formatBytes(systemInfo.disk.used) }} /
-                  {{ formatBytes(systemInfo.disk.total) }}</span
-                ></span
-              >
+                  {{ formatBytes(systemInfo.disk.total) }}
+                </span>
+              </span>
               <span class="stat-value">{{ diskUsage }}%</span>
             </div>
             <SLProgress :value="diskUsage" variant="warning" :showPercent="false" />
@@ -632,7 +300,7 @@ function cancelDelete() {
     </div>
 
     <div v-else-if="store.servers.length === 0" class="empty-state">
-      <Server :size="64" :color="'var(--sl-text-tertiary)'" stroke-width="1" />
+      <Server :size="64" :stroke-width="1" class="empty-icon" />
       <p class="text-body">{{ i18n.t("home.no_servers") }}</p>
       <p class="text-caption">{{ i18n.t("home.create_first") }}</p>
     </div>
@@ -685,7 +353,7 @@ function cancelDelete() {
             </div>
             <div class="server-meta">
               <span>{{ server.core_type }}</span>
-              <span>端口 {{ server.port }}</span>
+              <span>{{ i18n.t("home.port") }} {{ server.port }}</span>
               <span>{{ server.max_memory }}MB</span>
             </div>
           </div>
@@ -698,11 +366,11 @@ function cancelDelete() {
 
         <div
           class="server-card-path text-mono text-caption"
-          :title="server.jar_path"
-          @click="systemApi.openFolder(server.path)"
+          :title="server.path"
+          @click="handlePathClick(server.path)"
         >
           <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
-          <Folder class="folder-icon" :size="16" />
+          <FolderOpen class="folder-icon" :size="16" />
         </div>
 
         <div class="server-card-actions">
@@ -752,6 +420,41 @@ function cancelDelete() {
             {{ i18n.t("home.delete") }}
           </SLButton>
         </div>
+
+        <div
+          v-if="deletingServerId === server.id"
+          :class="['delete-confirm-area', { closing: isClosing }]"
+          @animationend="handleAnimationEnd"
+        >
+          <p
+            class="delete-confirm-message"
+            v-html="
+              i18n.t('home.delete_confirm_message', {
+                server: '<strong>' + server.name + '</strong>',
+              })
+            "
+          ></p>
+          <div class="delete-input-group">
+            <input
+              type="text"
+              v-model="inputServerName"
+              class="delete-input"
+              :placeholder="i18n.t('home.delete_input_placeholder')"
+              @keyup.enter="confirmDelete"
+              @keyup.esc="cancelDelete"
+              ref="deleteInput"
+            />
+            <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
+          </div>
+          <div class="delete-actions">
+            <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
+              i18n.t("home.delete_cancel")
+            }}</SLButton>
+            <SLButton variant="danger" size="sm" @click="confirmDelete">{{
+              i18n.t("home.delete_confirm")
+            }}</SLButton>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -776,7 +479,11 @@ function cancelDelete() {
     <SLConfirmDialog
       :visible="showDeleteConfirm"
       :title="i18n.t('home.delete_server')"
-      :message="i18n.t('home.delete_confirm_message', { server: '<strong>' + deleteServerName + '</strong>' })"
+      :message="
+        i18n.t('home.delete_confirm_message', {
+          server: '<strong>' + deleteServerName + '</strong>',
+        })
+      "
       :confirmText="i18n.t('home.delete_confirm')"
       :cancelText="i18n.t('home.delete_cancel')"
       confirmVariant="danger"
@@ -932,16 +639,12 @@ function cancelDelete() {
 .mini-chart {
   width: 100%;
   height: 30px;
-}
-
-.mini-chart.taskmgr-style {
   background: var(--sl-bg-secondary);
   border-radius: 4px;
   overflow: hidden;
-  width: 100%;
 }
 
-.mini-chart.taskmgr-style .chart-svg {
+.line-chart {
   width: 100%;
   height: 100%;
 }
@@ -1225,9 +928,7 @@ function cancelDelete() {
 
 .server-card-path:hover {
   background: var(--sl-bg-secondary);
-  border-top-color: var(--sl-primary-light);
-  border-right-color: var(--sl-primary-light);
-  border-bottom-color: var(--sl-primary-light);
+  border-color: var(--sl-primary-light);
   color: var(--sl-text-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -1277,6 +978,101 @@ function cancelDelete() {
     flex: 1;
     min-width: unset;
   }
+}
+
+.delete-confirm-area {
+  margin-top: var(--sl-space-md);
+  padding-top: var(--sl-space-md);
+  border-top: 1px solid var(--sl-border);
+  animation: slideDown 0.3s ease forwards;
+}
+
+.delete-confirm-area.closing {
+  animation: slideUp 0.2s ease forwards;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+    padding-top: var(--sl-space-md);
+    margin-top: var(--sl-space-md);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    max-height: 200px;
+    padding-top: var(--sl-space-md);
+    margin-top: var(--sl-space-md);
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+}
+
+.delete-confirm-message {
+  font-size: 0.875rem;
+  margin-bottom: var(--sl-space-sm);
+  line-height: 1.4;
+}
+
+.delete-input-group {
+  margin-bottom: var(--sl-space-sm);
+}
+
+.delete-input {
+  width: 100%;
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-bg-tertiary);
+  color: var(--sl-text-secondary);
+  font-size: 0.75rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.delete-input:focus {
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 2px var(--sl-primary-bg);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+}
+
+.delete-input:hover {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-primary-light);
+  color: var(--sl-text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.delete-input:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.delete-error {
+  margin-top: var(--sl-space-xs);
+  font-size: 0.75rem;
+  color: var(--sl-error);
+}
+
+.delete-actions {
+  display: flex;
+  gap: var(--sl-space-xs);
+  justify-content: flex-end;
+  margin-top: var(--sl-space-sm);
 }
 
 .alerts-section {
@@ -1363,51 +1159,20 @@ function cancelDelete() {
   gap: var(--sl-space-xs);
   padding: 0;
   margin-bottom: 4px;
+  min-height: 70px;
 }
 .gauge-item {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
-.gauge-svg {
+.gauge-chart {
   width: 100%;
   height: 100%;
-  transform: rotate(-90deg);
-}
-.gauge-bg {
-  stroke: var(--sl-border);
-}
-.gauge-fill {
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.3s;
-}
-.gauge-cpu {
-  stroke: var(--sl-primary);
-}
-.gauge-mem {
-  stroke: var(--sl-success);
-}
-.gauge-disk {
-  stroke: #f59e0b;
-}
-.gauge-text {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.2;
-}
-.gauge-value {
-  font-size: 0.75rem;
-  font-weight: 600;
-  font-family: var(--sl-font-mono);
-}
-.gauge-label {
-  font-size: 0.5625rem;
-  color: var(--sl-text-tertiary);
 }
 
 .gauge-details {

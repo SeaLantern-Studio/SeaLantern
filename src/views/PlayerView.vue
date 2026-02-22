@@ -1,26 +1,27 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
-import { useRoute } from "vue-router";
-import SLButton from "../components/common/SLButton.vue";
-import SLInput from "../components/common/SLInput.vue";
-import SLBadge from "../components/common/SLBadge.vue";
-import SLModal from "../components/common/SLModal.vue";
-import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
-import { TIME, MESSAGES } from "../utils/constants";
-import { validatePlayerName, handleError } from "../utils/errorHandler";
-import { i18n } from "../language";
-import { useMessage } from "../composables/useMessage";
-import { useLoading } from "../composables/useAsync";
-import { useTabIndicator } from "../composables/useTabIndicator";
+import { AlertTriangle } from "lucide-vue-next";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLBadge from "@components/common/SLBadge.vue";
+import SLModal from "@components/common/SLModal.vue";
+import SLSpinner from "@components/common/SLSpinner.vue";
+import { useServerStore } from "@stores/serverStore";
+import { useConsoleStore } from "@stores/consoleStore";
+import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
+import { TIME, MESSAGES } from "@utils/constants";
+import { validatePlayerName, handleError } from "@utils/errorHandler";
+import { i18n } from "@language";
+import { useMessage } from "@composables/useMessage";
+import { useLoading } from "@composables/useAsync";
+import { useTabIndicator } from "@composables/useTabIndicator";
 
-const route = useRoute();
 const store = useServerStore();
 const consoleStore = useConsoleStore();
 
 const activeTab = ref<"online" | "whitelist" | "banned" | "ops">("online");
-const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } = useTabIndicator(activeTab);
+const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } =
+  useTabIndicator(activeTab);
 
 const whitelist = ref<PlayerEntry[]>([]);
 const bannedPlayers = ref<BanEntry[]>([]);
@@ -43,31 +44,29 @@ const addLoading = ref(false);
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
+const selectedServerId = computed(() => store.currentServerId || "");
+
 const serverPath = computed(() => {
-  const server = store.servers.find((s) => s.id === store.currentServerId);
+  const server = store.servers.find((s) => s.id === selectedServerId.value);
   return server?.path || "";
 });
 
 const isRunning = computed(() => {
-  const id = store.currentServerId;
-  return id ? store.statuses[id]?.status === "Running" : false;
+  return store.statuses[selectedServerId.value]?.status === "Running";
 });
-
-const currentServerId = computed(() => store.currentServerId);
 
 onMounted(async () => {
   await store.refreshList();
-  const routeId = route.params.id as string;
-  if (routeId) store.setCurrentServer(routeId);
-  else if (!store.currentServerId && store.servers.length > 0)
+  // 如果没有当前服务器但有服务器列表，选择第一个
+  if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
-
-  startRefresh();
+  }
   if (store.currentServerId) {
     await store.refreshStatus(store.currentServerId);
     await loadAll();
     parseOnlinePlayers();
   }
+  startRefresh();
 });
 
 onUnmounted(() => {
@@ -77,8 +76,8 @@ onUnmounted(() => {
 function startRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(async () => {
-    if (store.currentServerId) {
-      await store.refreshStatus(store.currentServerId);
+    if (selectedServerId.value) {
+      await store.refreshStatus(selectedServerId.value);
       await loadAll();
       parseOnlinePlayers();
     }
@@ -106,36 +105,42 @@ async function loadAll() {
 }
 
 function parseOnlinePlayers() {
-  const sid = store.currentServerId;
-  if (!sid) return;
+  const sid = selectedServerId.value;
   const logs = consoleStore.logs[sid] || [];
-  const players = new Set<string>();
+  const players: string[] = [];
 
-  for (const line of logs) {
-    const joinMatch = line.match(/\]: (\w+) joined the game/);
-    const leftMatch = line.match(/\]: (\w+) left the game/);
-    const lostConnectionMatch = line.match(/\]: (\w+)(?: \([^)]+\))? lost connection:/);
-    const disconnectingMatch = line.match(/\]: Disconnecting (\w+)(?: \([^)]+\))?:/);
-
-    if (joinMatch) {
-      const name = joinMatch[1];
-      players.add(name);
-    }
-    if (leftMatch) {
-      const name = leftMatch[1];
-      players.delete(name);
-    }
-    if (lostConnectionMatch) {
-      const name = lostConnectionMatch[1];
-      players.delete(name);
-    }
-    if (disconnectingMatch) {
-      const name = disconnectingMatch[1];
-      players.delete(name);
+  // 找到最后一次服务器启动的位置，从该点开始解析
+  let startIndex = 0;
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const line = logs[i];
+    if (/Done \([\d.]+s\)! For help/.test(line) || /Starting minecraft server/i.test(line)) {
+      startIndex = i;
+      break;
     }
   }
 
-  onlinePlayers.value = Array.from(players);
+  for (let i = startIndex; i < logs.length; i++) {
+    const line = logs[i];
+    const joinMatch = line.match(/\]: (\w+) joined the game/);
+    const loginMatch = line.match(/\]: UUID of player (\w+) is/);
+    const leftMatch = line.match(/\]: (\w+) left the game/);
+
+    if (joinMatch) {
+      const name = joinMatch[1];
+      if (!players.includes(name)) players.push(name);
+    }
+    if (loginMatch) {
+      const name = loginMatch[1];
+      if (!players.includes(name)) players.push(name);
+    }
+    if (leftMatch) {
+      const name = leftMatch[1];
+      const idx = players.indexOf(name);
+      if (idx > -1) players.splice(idx, 1);
+    }
+  }
+
+  onlinePlayers.value = players;
 }
 
 function openAddModal() {
@@ -158,8 +163,7 @@ async function handleAdd() {
 
   addLoading.value = true;
   try {
-    const sid = store.currentServerId;
-    if (!sid) return;
+    const sid = selectedServerId.value;
     switch (activeTab.value) {
       case "whitelist":
         await playerApi.addToWhitelist(sid, addPlayerName.value);
@@ -186,14 +190,12 @@ async function handleAdd() {
 }
 
 async function handleRemoveWhitelist(name: string) {
-  const sid = store.currentServerId;
-  if (!sid) return;
   if (!isRunning.value) {
     showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
   try {
-    await playerApi.removeFromWhitelist(sid, name);
+    await playerApi.removeFromWhitelist(selectedServerId.value, name);
     showSuccess(MESSAGES.SUCCESS.WHITELIST_REMOVED);
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
@@ -202,14 +204,12 @@ async function handleRemoveWhitelist(name: string) {
 }
 
 async function handleUnban(name: string) {
-  const sid = store.currentServerId;
-  if (!sid) return;
   if (!isRunning.value) {
     showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
   try {
-    await playerApi.unbanPlayer(sid, name);
+    await playerApi.unbanPlayer(selectedServerId.value, name);
     showSuccess(MESSAGES.SUCCESS.PLAYER_UNBANNED);
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
@@ -218,14 +218,12 @@ async function handleUnban(name: string) {
 }
 
 async function handleRemoveOp(name: string) {
-  const sid = store.currentServerId;
-  if (!sid) return;
   if (!isRunning.value) {
     showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
   try {
-    await playerApi.removeOp(sid, name);
+    await playerApi.removeOp(selectedServerId.value, name);
     showSuccess(MESSAGES.SUCCESS.OP_REMOVED);
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
@@ -234,14 +232,12 @@ async function handleRemoveOp(name: string) {
 }
 
 async function handleKick(name: string) {
-  const sid = store.currentServerId;
-  if (!sid) return;
   if (!isRunning.value) {
     showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
     return;
   }
   try {
-    await playerApi.kickPlayer(sid, name);
+    await playerApi.kickPlayer(selectedServerId.value, name);
     showSuccess(`${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`);
     setTimeout(() => parseOnlinePlayers(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
@@ -252,7 +248,7 @@ async function handleKick(name: string) {
 function getAddLabel(): string {
   switch (activeTab.value) {
     case "whitelist":
-      return i18n.t("players.add");
+      return i18n.t("players.add_whitelist");
     case "banned":
       return i18n.t("players.ban_player");
     case "ops":
@@ -261,28 +257,11 @@ function getAddLabel(): string {
       return i18n.t("players.add");
   }
 }
-
-function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
-  activeTab.value = tab;
-  updateTabIndicator();
-}
 </script>
 
 <template>
   <div class="player-view animate-fade-in-up">
-    <div class="player-header">
-      <div v-if="currentServerId" class="server-status">
-        <SLBadge
-          :text="isRunning ? i18n.t('home.running') : i18n.t('home.stopped')"
-          :variant="isRunning ? 'success' : 'neutral'"
-        />
-        <span v-if="!isRunning" class="status-hint text-caption">{{
-          i18n.t("players.server_not_running")
-        }}</span>
-      </div>
-    </div>
-
-    <div v-if="!currentServerId" class="empty-state">
+    <div v-if="!selectedServerId" class="empty-state">
       <p class="text-body">{{ i18n.t("players.no_server") }}</p>
     </div>
 
@@ -300,7 +279,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'online' }"
-          @click="selectTab('online')"
+          @click="activeTab = 'online'"
         >
           {{ i18n.t("players.online_players") }}
           <span class="tab-count">{{ onlinePlayers.length }}</span>
@@ -308,18 +287,18 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'whitelist' }"
-          @click="selectTab('whitelist')"
+          @click="activeTab = 'whitelist'"
         >
           {{ i18n.t("players.whitelist") }} <span class="tab-count">{{ whitelist.length }}</span>
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'banned' }"
-          @click="selectTab('banned')"
+          @click="activeTab = 'banned'"
         >
           {{ i18n.t("players.banned") }} <span class="tab-count">{{ bannedPlayers.length }}</span>
         </button>
-        <button class="tab-btn" :class="{ active: activeTab === 'ops' }" @click="selectTab('ops')">
+        <button class="tab-btn" :class="{ active: activeTab === 'ops' }" @click="activeTab = 'ops'">
           {{ i18n.t("players.ops") }} <span class="tab-count">{{ ops.length }}</span>
         </button>
       </div>
@@ -329,13 +308,13 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           getAddLabel()
         }}</SLButton>
         <SLButton variant="ghost" size="sm" @click="loadAll">{{
-          i18n.t("config.reload")
+          i18n.t("common.refresh")
         }}</SLButton>
       </div>
 
       <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <span>{{ i18n.t("config.loading") }}</span>
+        <SLSpinner />
+        <span>{{ i18n.t("common.loading") }}</span>
       </div>
 
       <div v-else-if="activeTab === 'online'" class="player-list">
@@ -347,11 +326,16 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
         </div>
         <div v-for="name in onlinePlayers" :key="name" class="player-item glass-card">
           <div class="player-avatar">
-            <img :src="'https://api.rms.net.cn/head/' + name" :alt="name" class="avatar-img" />
+            <img
+              :src="'https://api.rms.net.cn/head/' + name"
+              :alt="name"
+              class="avatar-img"
+              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+            />
           </div>
           <div class="player-info">
             <span class="player-name">{{ name }}</span>
-            <SLBadge :text="i18n.t('home.running')" variant="success" />
+            <SLBadge :text="i18n.t('players.status_online')" variant="success" />
           </div>
           <div class="player-actions">
             <SLButton variant="ghost" size="sm" @click="handleKick(name)">{{
@@ -367,7 +351,11 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
         </div>
         <div v-for="p in whitelist" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img :src="'https://api.rms.net.cn/head/' + p.name" class="avatar-img" />
+            <img
+              :src="'https://api.rms.net.cn/head/' + p.name"
+              class="avatar-img"
+              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+            />
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
@@ -391,12 +379,16 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
         </div>
         <div v-for="p in bannedPlayers" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img :src="'https://api.rms.net.cn/head/' + p.name" class="avatar-img" />
+            <img
+              :src="'https://api.rms.net.cn/head/' + p.name"
+              class="avatar-img"
+              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+            />
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
             <span class="text-caption"
-              >{{ i18n.t("players.ban_reason") }}: {{ p.reason || i18n.t("players.empty") }}</span
+              >{{ i18n.t("players.reason") }}: {{ p.reason || i18n.t("players.empty") }}</span
             >
           </div>
           <SLBadge :text="i18n.t('players.ban')" variant="error" />
@@ -418,13 +410,17 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
         </div>
         <div v-for="p in ops" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img :src="'https://api.rms.net.cn/head/' + p.name" class="avatar-img" />
+            <img
+              :src="'https://api.rms.net.cn/head/' + p.name"
+              class="avatar-img"
+              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+            />
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
             <span class="text-caption">{{ i18n.t("players.level") }}: {{ p.level }}</span>
           </div>
-          <SLBadge :text="i18n.t('players.ops')" variant="warning" />
+          <SLBadge text="OP" variant="warning" />
           <div class="player-actions">
             <SLButton
               variant="ghost"
@@ -452,7 +448,10 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           v-model="addBanReason"
         />
         <p v-if="!isRunning" class="text-error" style="font-size: 0.8125rem">
-          {{ i18n.t("players.server_not_running_hint") }}
+          <AlertTriangle
+            :size="14"
+            style="display: inline; vertical-align: middle; margin-right: 4px"
+          />{{ i18n.t("players.server_not_running_hint") }}
         </p>
       </div>
       <template #footer>
@@ -476,23 +475,6 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
-}
-.player-header {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--sl-space-lg);
-}
-.server-picker {
-  min-width: 300px;
-}
-.server-status {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-sm);
-  padding-bottom: 4px;
-}
-.status-hint {
-  color: var(--sl-warning);
 }
 .empty-state {
   display: flex;
@@ -524,18 +506,21 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 }
 .tab-bar {
   display: flex;
-  gap: 2px;
-  background: var(--sl-bg-secondary);
+  gap: var(--sl-space-xs);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
-  padding: 3px;
+  padding: var(--sl-space-xs);
   width: fit-content;
+  margin: var(--sl-space-md) 0;
   position: relative;
   overflow: hidden;
 }
+
 .tab-indicator {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
+  top: var(--sl-space-xs);
+  bottom: var(--sl-space-xs);
   background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-sm);
   transition: all 0.3s ease;
@@ -544,22 +529,33 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
   border: 1px solid var(--sl-primary);
   opacity: 0.9;
 }
+
 .tab-btn {
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  padding: 8px 18px;
+  padding: 6px 14px;
   border-radius: var(--sl-radius-sm);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--sl-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
   transition: all var(--sl-transition-fast);
   position: relative;
   z-index: 2;
+  white-space: nowrap;
 }
+
+.tab-btn:hover {
+  color: var(--sl-text-primary);
+}
+
 .tab-btn.active {
   color: var(--sl-primary);
 }
+
 .tab-count {
   min-width: 20px;
   height: 20px;
@@ -572,6 +568,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
   align-items: center;
   justify-content: center;
 }
+
 .tab-btn.active .tab-count {
   background: var(--sl-primary-bg);
   color: var(--sl-primary);

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { i18n } from "../../language";
-import SLInput from "../common/SLInput.vue";
-import SLSwitch from "../common/SLSwitch.vue";
-import SLBadge from "../common/SLBadge.vue";
-import type { ConfigEntry } from "../../api/config";
+import { i18n } from "@language";
+import SLInput from "@components/common/SLInput.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLBadge from "@components/common/SLBadge.vue";
+import type { ConfigEntry } from "@api/config";
 
 interface Props {
   entry: ConfigEntry;
@@ -38,12 +38,12 @@ function isBooleanType(entry: ConfigEntry): boolean {
     <div class="entry-description">{{ entry.description }}</div>
     <div class="entry-value">
       <template v-if="isBooleanType(entry)">
-        <SLSwitch v-model="value" @update:modelValue="handleSwitchChange" />
+        <SLSwitch :modelValue="value === 'true'" @update:modelValue="handleSwitchChange" />
       </template>
       <template v-else>
         <SLInput
-          v-model="value"
-          @input="(e) => handleValueChange(e.target.value)"
+          :modelValue="value"
+          @update:modelValue="handleValueChange"
           :placeholder="entry.default"
           style="width: 300px"
         />

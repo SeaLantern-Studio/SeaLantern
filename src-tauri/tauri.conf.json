@@ -4,9 +4,9 @@
   "version": "0.6.5",
   "identifier": "com.fpsz.sea-lantern",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "pnpm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -16,22 +16,20 @@
         "title": "Sea Lantern",
         "width": 1200,
         "height": 720,
-        "minWidth": 960,
-        "minHeight": 600,
+        "minWidth": 1000,
+        "minHeight": 625,
         "center": true,
         "decorations": false,
         "resizable": true,
-        "transparent": false,
-        "visible": false
+        "transparent": true,
+        "visible": true
       }
     ],
     "security": {
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "**"
-        ]
+        "scope": ["**"]
       }
     }
   },
@@ -50,9 +48,7 @@
         "language": "zh-CN"
       },
       "nsis": {
-        "languages": [
-          "SimpChinese"
-        ]
+        "languages": ["SimpChinese"]
       }
     },
     "linux": {

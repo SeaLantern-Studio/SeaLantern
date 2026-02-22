@@ -88,12 +88,6 @@ pub fn stop_server(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn force_stop_all_servers() -> Result<(), String> {
-    manager().force_stop_all_servers();
-    Ok(())
-}
-
-#[tauri::command]
 pub fn send_command(id: String, command: String) -> Result<(), String> {
     manager().send_command(&id, &command)
 }
@@ -116,26 +110,6 @@ pub fn delete_server(id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn get_server_logs(id: String, since: usize) -> Vec<String> {
     manager().get_logs(&id, since)
-}
-
-#[tauri::command]
-pub fn add_server_command(id: String, name: String, command: String) -> Result<(), String> {
-    manager().add_server_command(&id, &name, &command)
-}
-
-#[tauri::command]
-pub fn update_server_command(
-    id: String,
-    command_id: String,
-    name: String,
-    command: String,
-) -> Result<(), String> {
-    manager().update_server_command(&id, &command_id, &name, &command)
-}
-
-#[tauri::command]
-pub fn delete_server_command(id: String, command_id: String) -> Result<(), String> {
-    manager().delete_server_command(&id, &command_id)
 }
 
 #[tauri::command]

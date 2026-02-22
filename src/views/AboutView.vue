@@ -1,183 +1,138 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { Plus, Code2, PenTool, HelpCircle, BookText, Globe, Megaphone, Info, Copy } from "lucide-vue-next";
+import { AvatarImage, AvatarRoot, AvatarFallback } from "reka-ui";
+import {
+  Plus,
+  Code2,
+  PenTool,
+  HelpCircle,
+  BookText,
+  Globe,
+  Megaphone,
+  Info,
+  Copy,
+  Link,
+  Check,
+  ArrowRight,
+  AlertCircle,
+  ExternalLink,
+  RefreshCw,
+  XCircle,
+  Code,
+  Feather,
+  Lightbulb,
+  BookOpen,
+  Rocket,
+  SquarePen,
+} from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLNotification from "../components/common/SLNotification.vue";
-import { contributors as contributorsList } from "../data/contributors";
-import { useUpdateStore } from "../stores/updateStore";
-import { getAppVersion, BUILD_YEAR } from "../utils/version";
-import { i18n } from "../language";
-import { onDownloadProgress } from "../api/update";
-import type { UnlistenFn } from "@tauri-apps/api/event";
-// ===== 新增：导入 SLModal 组件 =====
-import SLModal from "../components/common/SLModal.vue";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import BrandIcon from "@components/common/BrandIcon.vue";
+import {
+  contributors as contributorsList,
+  type SocialLinks,
+  type Contributor,
+} from "@data/contributors";
+import { checkUpdate, type UpdateInfo } from "@api/update";
+import { getAppVersion, BUILD_YEAR } from "@utils/version";
+import { i18n } from "@language";
+import logo from "@assets/logo.svg";
+import tauriIcon64 from "@src-tauri/icons/64x64.png";
 
-const version = ref(i18n.t("common.loading"));
+const version = ref("Loading...");
 const buildDate = BUILD_YEAR;
 
 const contributors = ref(contributorsList);
 
-const updateStore = useUpdateStore();
+const PAGE_SIZE = 9;
+const currentPage = ref(1);
 
-const showNotification = ref(false);
-const notificationMessage = ref("");
-const notificationType = ref<"success" | "error" | "warning" | "info">("info");
+const displayedContributors = computed(() => {
+  return contributors.value.slice(0, currentPage.value * PAGE_SIZE);
+});
 
-let unlistenProgress: UnlistenFn | null = null;
-let resetTimer: ReturnType<typeof setTimeout> | null = null;
+const hasMore = computed(() => {
+  return displayedContributors.value.length < contributors.value.length;
+});
 
-function showNotify(
-  msg: string,
-  type: "success" | "error" | "warning" | "info" = "info",
-) {
-  notificationMessage.value = msg;
-  notificationType.value = type;
-  showNotification.value = true;
+function loadMore() {
+  currentPage.value++;
 }
 
-function closeNotification() {
-  showNotification.value = false;
-}
+const isCheckingUpdate = ref(false);
+const updateInfo = ref<UpdateInfo | null>(null);
+const updateError = ref<string | null>(null);
+
+const showAurWindow = ref(false);
+const aurInfo = ref<{
+  currentVersion: string;
+  latestVersion: string;
+  helper: string;
+  command: string;
+} | null>(null);
+
+const isAurUpdate = computed(() => updateInfo.value?.source === "arch-aur");
+
+const copiedQQ = ref<string | null>(null);
 
 onMounted(async () => {
   version.value = await getAppVersion();
-
-  unlistenProgress = await onDownloadProgress((progress) => {
-    updateStore.setDownloading(progress.percent);
-  });
 });
 
-onUnmounted(() => {
-  if (resetTimer) {
-    clearTimeout(resetTimer);
-    resetTimer = null;
-  }
-  if (unlistenProgress) {
-    unlistenProgress();
-  }
-});
-
-const buttonState = computed(() => {
-  // 如果是 AUR 更新，显示特殊按钮文字
-  if (isAurUpdate.value) {
-    return {
-      text: i18n.t("about.aur_update_available"),
-      variant: "primary" as const,
-      disabled: false,
-    };
-  }
-  switch (updateStore.status) {
-    case "checking":
-      return {
-        text: i18n.t("about.update_checking"),
-        variant: "secondary" as const,
-        disabled: true,
-      };
-    case "latest":
-      return {
-        text: i18n.t("about.update_latest"),
-        variant: "success" as const,
-        disabled: true,
-      };
-    case "available":
-      return {
-        text: i18n.t("about.update_available"),
-        variant: "primary" as const,
-        disabled: false,
-      };
-    case "downloading":
-      return {
-        text: `${i18n.t("about.update_downloading")} ${progressPercent.value}%`,
-        variant: "secondary" as const,
-        disabled: false,
-      };
-    case "installing":
-      return {
-        text: i18n.t("about.update_installing"),
-        variant: "secondary" as const,
-        disabled: false,
-      };
-    case "downloaded":
-      return {
-        text: i18n.t("about.update_ready"),
-        variant: "success" as const,
-        disabled: false,
-      };
-    case "error":
-      return {
-        text: i18n.t("about.update_error"),
-        variant: "danger" as const,
-        disabled: false,
-      };
-    default:
-      return {
-        text: i18n.t("about.check_update"),
-        variant: "secondary" as const,
-        disabled: false,
-      };
-  }
-});
-
-const progressPercent = computed(() =>
-  Math.round(updateStore.downloadProgress),
-);
+function isSocialLinks(url: string | SocialLinks | undefined): url is SocialLinks {
+  return typeof url === "object" && url !== null;
+}
 
 async function openLink(url: string) {
   if (!url) return;
   try {
     await openUrl(url);
   } catch (e) {
-    alert(`${i18n.t("about.open_link_failed")}: ${String(e)}`);
+    console.error("[AboutView] 打开URL失败:", e);
+    console.error("[AboutView] 无法打开链接:", e);
   }
 }
 
-async function handleCheckUpdate() {
-  if (resetTimer) {
-    clearTimeout(resetTimer);
-    resetTimer = null;
+async function openSocialLink(platform: string, value: string) {
+  if (platform === "qq") {
+    await copyQQ(value);
+  } else {
+    await openLink(value);
   }
+}
 
+async function copyQQ(qq: string) {
   try {
-    const info = await updateStore.checkForUpdate();
-
-    // 如果是 AUR 更新，显示提示窗口
-    if (info?.source === "arch-aur") {
-      const helper =
-        info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
-      const hasUpdate = info.has_update;
-
-      aurUpdateInfo.value = {
-        hasUpdate,
-        currentVersion: info.current_version,
-        latestVersion: info.latest_version,
-        helper: helper,
-        command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
-      };
-
-      showAurWindow.value = true;
-    }
-  } catch (error) {
-    showNotify(
-      `${i18n.t("about.update_check_failed")}: ${String(error)}`,
-      "error",
-    );
+    await navigator.clipboard.writeText(qq);
+    copiedQQ.value = qq;
+    setTimeout(() => {
+      copiedQQ.value = null;
+    }, 2000);
+  } catch (e) {
+    console.error("[AboutView] 复制QQ失败:", e);
   }
+}
+
+function getSocialTitle(platform: string): string {
+  const titles: Record<string, string> = {
+    gitee: "Gitee",
+    github: "GitHub",
+    bilibili: "Bilibili",
+    qq: i18n.t("about.qq_click_copy"),
+  };
+  return titles[platform] || platform;
 }
 
 async function handlePrimaryUpdateAction() {
   // 如果是 AUR 更新，显示提示窗口
-  if (isAurUpdate.value && updateStore.updateInfo) {
+  if (isAurUpdate.value && updateInfo.value) {
     const helper =
-      updateStore.updateInfo.release_notes?.match(
-        /yay|paru|pamac|trizen|pacaur/,
-      )?.[0] || "yay";
+      updateInfo.value.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
 
-    aurUpdateInfo.value = {
-      hasUpdate: updateStore.updateInfo.has_update,
-      currentVersion: updateStore.updateInfo.current_version,
-      latestVersion: updateStore.updateInfo.latest_version,
+    aurInfo.value = {
+      currentVersion: updateInfo.value.current_version,
+      latestVersion: updateInfo.value.latest_version,
       helper: helper,
       command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
     };
@@ -185,426 +140,391 @@ async function handlePrimaryUpdateAction() {
     showAurWindow.value = true;
     return;
   }
-
-  if (updateStore.hasStartedUpdateFlow && updateStore.isUpdateAvailable) {
-    updateStore.showUpdateModal();
-    return;
-  }
-  await handleCheckUpdate();
 }
 
-// ===== AUR 更新提示窗口 =====
-const showAurWindow = ref(false);
-const aurUpdateInfo = ref<{
-  hasUpdate: boolean;
-  currentVersion: string;
-  latestVersion: string;
-  helper: string;
-  command: string;
-} | null>(null);
-
-// ===== 关闭 AUR 提示窗口 =====
-function closeAurWindow() {
-  showAurWindow.value = false;
-  aurUpdateInfo.value = null;
+function getCustomLinks(links: SocialLinks): [string, string][] {
+  const predefined = ["gitee", "github", "bilibili", "qq", "tiktok"];
+  return Object.entries(links).filter(([key, value]) => !predefined.includes(key) && value) as [
+    string,
+    string,
+  ][];
 }
 
-// ===== 复制 AUR 命令 =====
-async function copyAurCommand(command: string) {
+async function handleCheckUpdate() {
+  isCheckingUpdate.value = true;
+  updateError.value = null;
+  updateInfo.value = null;
+
   try {
-    await navigator.clipboard.writeText(command);
-    showNotify(i18n.t("about.aur_window_copy_success"), "success");
-  } catch (e) {
-    showNotify(i18n.t("about.aur_window_copy_failed"), "error");
+    const info = await checkUpdate();
+
+    if (info) {
+      updateInfo.value = info;
+    } else {
+      // 没有更新
+      updateInfo.value = {
+        has_update: false,
+        latest_version: version.value,
+        current_version: version.value,
+      };
+    }
+  } catch (error) {
+    console.error("[AboutView] 检查更新失败:", error);
+    updateError.value = error as string;
+  } finally {
+    isCheckingUpdate.value = false;
   }
 }
 
-// ===== 判断是否是 AUR 更新 =====
-const isAurUpdate = computed(
-  () => updateStore.updateInfo?.source === "arch-aur",
-);
-
-// ===== 获取 AUR 助手名称 =====
-const aurHelper = computed(() => {
-  return (
-    updateStore.updateInfo?.release_notes?.match(
-      /yay|paru|pamac|trizen|pacaur/,
-    )?.[0] || "yay"
-  );
-});
-
-// ===== AUR 窗口响应式文本 =====
-const aurNewVersionText = computed(() =>
-  i18n.t("about.aur_window_new_version"),
-);
-const aurCurrentVersionText = computed(() =>
-  i18n.t("about.aur_window_current_version"),
-);
-const aurLatestVersionText = computed(() =>
-  i18n.t("about.aur_window_latest_version"),
-);
-const aurSingleUpdateText = computed(() =>
-  i18n.t("about.aur_window_single_update"),
-);
-const aurGlobalUpdateText = computed(() =>
-  i18n.t("about.aur_window_global_update"),
-);
-const aurGlobalNoteText = computed(() =>
-  i18n.t("about.aur_window_global_note"),
-);
-const aurCopyTipText = computed(() => i18n.t("about.aur_window_copy_tip"));
-const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
+// 手动下载
+async function handleManualDownload() {
+  if (updateInfo.value?.download_url) {
+    try {
+      await openUrl(updateInfo.value.download_url);
+    } catch (error) {
+      console.error("[AboutView] 打开链接失败:", error);
+      alert(`打开链接失败: ${error}`);
+    }
+  }
+}
 </script>
 
 <template>
-  <div>
-    <div class="about-view">
-      <!-- Hero Section -->
-      <div class="hero-section">
-        <div class="hero-logo">
-          <img
-            src="../assets/logo.svg"
-            :alt="i18n.t('common.app_name')"
-            width="72"
-            height="72"
-          />
-        </div>
-        <h1 class="hero-title">{{ i18n.t("common.app_name") }}</h1>
-        <p class="hero-subtitle">{{ i18n.t("about.subtitle") }}</p>
-        <div class="hero-badges">
-          <span class="version-badge">v{{ version }}</span>
-          <span class="tech-badge">{{ i18n.t("about.tech_badge") }}</span>
-          <span class="license-badge">{{ i18n.t("about.license_badge") }}</span>
-          <!-- AUR 徽章 -->
-          <span v-if="isAurUpdate" class="aur-badge">AUR</span>
-        </div>
-        <p class="hero-desc">
-          {{ i18n.t("about.hero_desc") }}
+  <div class="about-view animate-fade-in-up">
+    <!-- Hero Section -->
+    <div class="hero-section">
+      <div class="hero-logo">
+        <img :src="logo" alt="Sea Lantern" width="72" height="72" />
+      </div>
+      <h1 class="hero-title">Sea Lantern</h1>
+      <p class="hero-subtitle">{{ i18n.t("about.subtitle") }}</p>
+      <div class="hero-badges">
+        <span class="version-badge">v{{ version }}</span>
+        <span class="tech-badge">{{ i18n.t("about.tech_badge") }}</span>
+        <span class="license-badge">{{ i18n.t("about.license_badge") }}</span>
+      </div>
+      <p class="hero-desc">
+        {{ i18n.t("about.hero_desc") }}
+      </p>
+    </div>
+
+    <!-- Manifesto -->
+    <SLCard>
+      <div class="manifesto">
+        <h3 class="manifesto-title">{{ i18n.t("about.manifesto_title") }}</h3>
+        <p class="manifesto-text">
+          {{ i18n.t("about.manifesto_text1") }}
+        </p>
+        <p class="manifesto-text">
+          {{ i18n.t("about.manifesto_text2") }}
         </p>
       </div>
+    </SLCard>
 
-      <!-- Manifesto -->
-      <SLCard>
-        <div class="manifesto">
-          <h3 class="manifesto-title">{{ i18n.t("about.manifesto_title") }}</h3>
-          <p class="manifesto-text">
-            {{ i18n.t("about.manifesto_text1") }}
-          </p>
-          <p class="manifesto-text">
-            {{ i18n.t("about.manifesto_text2") }}
-          </p>
-        </div>
-      </SLCard>
+    <!-- 此处缺一段代码 -->
+    <!-- 点击加入开发 -->
 
-      <!-- Contributor Wall -->
-      <div class="contributor-section">
-        <div class="section-header">
-          <h2 class="section-title">{{ i18n.t("about.contributor_wall") }}</h2>
-          <p class="section-desc">{{ i18n.t("about.contributor_desc") }}</p>
-        </div>
+    <!-- Contributor Wall -->
+    <div class="contributor-section">
+      <div class="section-header">
+        <h2 class="section-title">{{ i18n.t("about.contributor_wall") }}</h2>
+        <p class="section-desc">{{ i18n.t("about.contributor_desc") }}</p>
+      </div>
 
-        <div class="contributor-grid">
-          <div
-            v-for="c in contributors"
-            :key="c.name"
-            class="contributor-card glass-card"
-          >
-            <a
-              v-if="c.url"
-              :href="c.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="contributor-link"
-            >
-              <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
-            </a>
-            <img
-              v-else
-              :src="c.avatar"
-              :alt="c.name"
-              class="contributor-avatar"
-            />
+      <div class="contributor-grid">
+        <div v-for="c in displayedContributors" :key="c.name" class="contributor-card glass-card">
+          <AvatarRoot class="contributor-avatar" :alt="c.name">
+            <AvatarImage :src="c.avatar" :alt="c.name" />
+            <AvatarFallback>
+              <img :src="tauriIcon64" />
+            </AvatarFallback>
+          </AvatarRoot>
 
-            <div class="contributor-info">
+          <div class="contributor-right">
+            <div class="contributor-info" :title="c.name + ' - ' + c.role">
               <span class="contributor-name">{{ c.name }}</span>
               <span class="contributor-role">{{ c.role }}</span>
             </div>
-          </div>
 
-          <!-- Join Card -->
-          <div class="contributor-card glass-card join-card">
-            <div class="join-icon">
-                <Plus :size="40" stroke-width="1.5" :color="'var(--sl-primary)'" />
+            <div v-if="c.url" class="contributor-social">
+              <template v-if="!isSocialLinks(c.url)">
+                <a
+                  :href="c.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-icon"
+                  :title="i18n.t('about.personal_page')"
+                >
+                  <Link :size="16" />
+                </a>
+              </template>
+
+              <template v-else>
+                <a
+                  v-if="c.url.gitee"
+                  :href="c.url.gitee"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-icon"
+                  title="Gitee"
+                >
+                  <BrandIcon name="gitee" :size="16" />
+                </a>
+
+                <a
+                  v-if="c.url.github"
+                  :href="c.url.github"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-icon"
+                  title="GitHub"
+                >
+                  <BrandIcon name="github" :size="16" />
+                </a>
+
+                <a
+                  v-if="c.url.bilibili"
+                  :href="c.url.bilibili"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-icon"
+                  title="Bilibili"
+                >
+                  <BrandIcon name="bilibili" :size="16" />
+                </a>
+
+                <a
+                  v-if="c.url.tiktok"
+                  :href="c.url.tiktok"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-icon"
+                  title="TikTok"
+                >
+                  <BrandIcon name="tiktok" :size="16" />
+                </a>
+
+                <button
+                  v-if="c.url.qq"
+                  @click="openSocialLink('qq', c.url.qq)"
+                  class="social-icon"
+                  :class="{ copied: copiedQQ === c.url.qq }"
+                  :title="
+                    copiedQQ === c.url.qq ? i18n.t('about.copied') : i18n.t('about.qq_click_copy')
+                  "
+                >
+                  <Check v-if="copiedQQ === c.url.qq" :size="16" />
+                  <BrandIcon v-else name="qq" :size="16" />
+                </button>
+
+                <a
+                  v-for="[key, value] in getCustomLinks(c.url)"
+                  :key="key"
+                  :href="value"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-icon"
+                  :title="key"
+                >
+                  <ExternalLink :size="16" />
+                </a>
+              </template>
             </div>
+          </div>
+        </div>
+
+        <!-- Join Card -->
+        <div class="contributor-card glass-card join-card">
+          <div class="join-icon">
+            <Plus :size="40" :stroke-width="1.5" />
+          </div>
+          <div class="contributor-right">
             <div class="contributor-info">
-              <span class="contributor-name join-text">{{
-                i18n.t("about.join_text")
-              }}</span>
-              <span class="contributor-role">{{
-                i18n.t("about.join_desc")
-              }}</span>
+              <span class="contributor-name join-text">{{ i18n.t("about.join_text") }}</span>
+              <span class="contributor-role">{{ i18n.t("about.join_desc") }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Project Info -->
-      <div class="info-grid">
-        <SLCard :title="i18n.t('about.project_info')">
-          <div class="info-list">
-            <div class="info-item">
-              <span class="info-label">{{ i18n.t("about.version") }}</span>
-              <span class="info-value">{{ version }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">{{ i18n.t("about.build_year") }}</span>
-              <span class="info-value">{{ buildDate }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">{{ i18n.t("about.frontend") }}</span>
-              <span class="info-value">Vue 3 + TypeScript + Vite</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">{{ i18n.t("about.backend") }}</span>
-              <span class="info-value">Rust + Tauri 2</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">{{ i18n.t("about.license") }}</span>
-              <span class="info-value">GNU GPLv3</span>
-            </div>
-          </div>
-
-          <!-- Update action button -->
-          <div class="update-section">
-            <SLButton
-              class="update-action-btn"
-              :variant="buttonState.variant"
-              size="sm"
-              @click="handlePrimaryUpdateAction"
-              :disabled="buttonState.disabled"
-              style="width: 100%"
-            >
-              <span class="update-btn-content">
-                <span
-                  v-if="updateStore.status === 'downloading'"
-                  class="update-btn-progress"
-                  :style="{ width: `${progressPercent}%` }"
-                />
-                <span class="update-btn-label">{{ buttonState.text }}</span>
-              </span>
-            </SLButton>
-          </div>
-        </SLCard>
-
-        <SLCard :title="i18n.t('about.contribute_ways')">
-          <div class="contribute-ways">
-            <div class="way-item">
-              <div class="way-icon">
-                <Code2 :size="20" />
-              </div>
-              <div class="way-info">
-                <span class="way-title">{{ i18n.t("about.way_code") }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_code_desc")
-                }}</span>
-              </div>
-            </div>
-            <div class="way-item">
-              <div class="way-icon">
-                <PenTool :size="20" />
-              </div>
-              <div class="way-info">
-                <span class="way-title">{{ i18n.t("about.way_design") }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_design_desc")
-                }}</span>
-              </div>
-            </div>
-            <div class="way-item">
-              <div class="way-icon">
-                <HelpCircle :size="20" />
-              </div>
-              <div class="way-info">
-                <span class="way-title">{{ i18n.t("about.way_idea") }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_idea_desc")
-                }}</span>
-              </div>
-            </div>
-            <div class="way-item">
-              <div class="way-icon">
-
-                <BookText :size="20" />
-              </div>
-              <div class="way-info">
-                <span class="way-title">{{ i18n.t("about.way_doc") }}</span>
-                <span class="way-desc">{{ i18n.t("about.way_doc_desc") }}</span>
-              </div>
-            </div>
-            <div class="way-item">
-              <div class="way-icon">
-                <Globe :size="20" />
-              </div>
-              <div class="way-info">
-                <span class="way-title">{{
-                  i18n.t("about.way_translate")
-                }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_translate_desc")
-                }}</span>
-              </div>
-            </div>
-            <div class="way-item">
-              <div class="way-icon">
-                <Megaphone :size="20" />
-              </div>
-              <div class="way-info">
-                <span class="way-title">{{ i18n.t("about.way_promote") }}</span>
-                <span class="way-desc">{{
-                  i18n.t("about.way_promote_desc")
-                }}</span>
-              </div>
-            </div>
-          </div>
-        </SLCard>
-      </div>
-
-      <!-- Links -->
-      <div class="links-section">
-        <SLButton
-          variant="primary"
-          size="lg"
-          @click="openLink('https://github.com/FPSZ/SeaLantern')"
-        >
-          {{ i18n.t("about.github_repo") }}
+      <div v-if="hasMore" class="load-more-section">
+        <SLButton variant="ghost" @click="loadMore">
+          {{ i18n.t("about.load_more") }} ({{ contributors.length - displayedContributors.length }})
         </SLButton>
-        <SLButton
-          variant="secondary"
-          size="lg"
-          @click="
-            openLink(
-              'https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0',
-            )
-          "
-        >
-          {{ i18n.t("about.bilibili") }}
-        </SLButton>
-      </div>
-
-      <!-- Footer -->
-      <div class="about-footer">
-        <p class="footer-text">
-          {{ i18n.t("about.footer_text1") }}
-        </p>
-        <p class="footer-text">
-          {{ i18n.t("about.footer_text2") }}
-        </p>
-        <p class="footer-quote">
-          {{ i18n.t("about.footer_quote") }}
-        </p>
       </div>
     </div>
 
-    <!-- ===== AUR 更新提示窗口 ===== -->
-    <SLModal
-      v-if="showAurWindow && aurUpdateInfo?.hasUpdate"
-      :visible="showAurWindow"
-      :title="
-        aurUpdateInfo?.hasUpdate
-          ? i18n.t('about.aur_window_title_update')
-          : i18n.t('about.aur_window_title_info')
-      "
-      @close="closeAurWindow"
-    >
-      <div class="aur-window-content">
-        <div class="aur-window-icon">
-          <Info :size="64" stroke="#0099cc" stroke-width="1.5" />
+    <!-- Project Info -->
+    <div class="info-grid">
+      <SLCard :title="i18n.t('about.project_info')">
+        <div class="info-list">
+          <div class="info-item">
+            <span class="info-label">{{ i18n.t("about.version") }}</span>
+            <span class="info-value">{{ version }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">{{ i18n.t("about.build_year") }}</span>
+            <span class="info-value">{{ buildDate }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">{{ i18n.t("about.frontend") }}</span>
+            <span class="info-value">Vue 3 + TypeScript + Vite</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">{{ i18n.t("about.backend") }}</span>
+            <span class="info-value">Rust + Tauri 2</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">{{ i18n.t("about.license") }}</span>
+            <span class="info-value">GNU GPLv3</span>
+          </div>
         </div>
 
-        <div class="aur-window-message" v-if="aurUpdateInfo">
-          <p class="aur-title">
-            {{ aurNewVersionText }}
-          </p>
-
-          <div class="version-info">
-            <div class="version-row">
-              <span class="version-label">{{
-                i18n.t("about.aur_window_current_version")
-              }}</span>
-              <span class="version-value">{{
-                aurUpdateInfo.currentVersion
-              }}</span>
-            </div>
-            <div class="version-row">
-              <span class="version-label">{{
-                i18n.t("about.aur_window_latest_version")
-              }}</span>
-              <span class="version-value">{{
-                aurUpdateInfo.latestVersion
-              }}</span>
-            </div>
-          </div>
-
-          <div class="command-box">
-            <p class="command-label">
-              {{ i18n.t("about.aur_window_single_update") }}
-            </p>
-            <div class="command-wrapper">
-              <div class="command-display">
-                <code>{{ aurUpdateInfo.command }}</code>
-              </div>
-              <button
-                class="copy-button"
-                @click="copyAurCommand(aurUpdateInfo.command)"
-                :title="i18n.t('about.aur_window_copy_tip')"
-              >
-                <Copy :size="16" />
-              </button>
-            </div>
-          </div>
-
-          <div class="global-update-box">
-            <p class="global-update-label">
-              {{ i18n.t("about.aur_window_global_update") }}
-            </p>
-            <div class="command-wrapper">
-              <div class="command-display global-command">
-                <code>{{ aurUpdateInfo.helper }} -Syu</code>
-              </div>
-              <button
-                class="copy-button"
-                @click="copyAurCommand(aurUpdateInfo.helper + ' -Syu')"
-                :title="i18n.t('about.aur_window_copy_tip')"
-              >
-                <Copy :size="16" />
-              </button>
-            </div>
-            <p class="global-update-note">
-              {{ i18n.t("about.aur_window_global_note") }}
-            </p>
-          </div>
-
-          <p class="aur-note">
-            {{ i18n.t("about.aur_window_copy_tip") }}
-          </p>
-        </div>
-
-        <div class="aur-window-actions">
-          <SLButton variant="primary" size="md" @click="closeAurWindow">
-            {{ i18n.t("about.aur_window_button") }}
+        <div class="update-section">
+          <SLButton
+            variant="secondary"
+            size="sm"
+            @click="handleCheckUpdate"
+            :disabled="isCheckingUpdate"
+            style="width: 100%"
+          >
+            {{ isCheckingUpdate ? i18n.t("about.update_checking") : i18n.t("about.check_update") }}
           </SLButton>
-        </div>
-      </div>
-    </SLModal>
 
-    <!-- 通知组件 -->
-    <SLNotification
-      :visible="showNotification"
-      :message="notificationMessage"
-      :type="notificationType"
-      :duration="3000"
-      @close="closeNotification"
-    />
+          <div v-if="updateInfo" class="update-info">
+            <div v-if="updateInfo.has_update" class="update-available">
+              <div class="update-message">
+                <div class="update-icon">
+                  <RefreshCw :size="16" :stroke-width="2" />
+                </div>
+                <div>
+                  <div class="update-title">
+                    {{ i18n.t("about.update_available") }} v{{ updateInfo.latest_version }}
+                  </div>
+                  <div class="update-desc">
+                    {{ i18n.t("about.update_current") }}: v{{ updateInfo.current_version }}
+                  </div>
+                </div>
+              </div>
+              <div v-if="updateInfo.release_notes" class="release-notes">
+                <div class="notes-title">{{ i18n.t("about.update_release_notes") }}:</div>
+                <div class="notes-content">{{ updateInfo.release_notes }}</div>
+              </div>
+              <div class="update-buttons">
+                <SLButton
+                  variant="primary"
+                  size="sm"
+                  @click="handleManualDownload"
+                  style="width: 100%"
+                >
+                  {{ i18n.t("about.go_download") }}
+                </SLButton>
+              </div>
+            </div>
+            <div v-else class="update-latest">
+              <div class="update-icon">
+                <Check :size="16" :stroke-width="2.5" />
+              </div>
+              <span>{{ i18n.t("about.update_latest") }}</span>
+            </div>
+          </div>
+
+          <div v-if="updateError" class="update-error">
+            <div class="error-icon">
+              <XCircle :size="14" :stroke-width="2.5" />
+            </div>
+            <span>{{ updateError }}</span>
+          </div>
+        </div>
+      </SLCard>
+
+      <SLCard :title="i18n.t('about.contribute_ways')">
+        <div class="contribute-ways">
+          <div class="way-item">
+            <div class="way-icon">
+              <Code :size="20" :stroke-width="2" />
+            </div>
+            <div class="way-info">
+              <span class="way-title">{{ i18n.t("about.way_code") }}</span>
+              <span class="way-desc">{{ i18n.t("about.way_code_desc") }}</span>
+            </div>
+          </div>
+          <div class="way-item">
+            <div class="way-icon">
+              <Feather :size="20" :stroke-width="2" />
+            </div>
+            <div class="way-info">
+              <span class="way-title">{{ i18n.t("about.way_design") }}</span>
+              <span class="way-desc">{{ i18n.t("about.way_design_desc") }}</span>
+            </div>
+          </div>
+          <div class="way-item">
+            <div class="way-icon">
+              <Lightbulb :size="20" :stroke-width="2" />
+            </div>
+            <div class="way-info">
+              <span class="way-title">{{ i18n.t("about.way_idea") }}</span>
+              <span class="way-desc">{{ i18n.t("about.way_idea_desc") }}</span>
+            </div>
+          </div>
+          <div class="way-item">
+            <div class="way-icon">
+              <BookOpen :size="20" :stroke-width="2" />
+            </div>
+            <div class="way-info">
+              <span class="way-title">{{ i18n.t("about.way_doc") }}</span>
+              <span class="way-desc">{{ i18n.t("about.way_doc_desc") }}</span>
+            </div>
+          </div>
+          <div class="way-item">
+            <div class="way-icon">
+              <Globe :size="20" :stroke-width="2" />
+            </div>
+            <div class="way-info">
+              <span class="way-title">{{ i18n.t("about.way_translate") }}</span>
+              <span class="way-desc">{{ i18n.t("about.way_translate_desc") }}</span>
+            </div>
+          </div>
+          <div class="way-item">
+            <div class="way-icon">
+              <Rocket :size="20" :stroke-width="2" />
+            </div>
+            <div class="way-info">
+              <span class="way-title">{{ i18n.t("about.way_promote") }}</span>
+              <span class="way-desc">{{ i18n.t("about.way_promote_desc") }}</span>
+            </div>
+          </div>
+        </div>
+      </SLCard>
+    </div>
+
+    <!-- Links -->
+    <div class="links-section">
+      <SLButton variant="primary" size="lg" @click="openLink('https://gitee.com/fps_z/SeaLantern')">
+        {{ i18n.t("about.gitee_repo") }}
+      </SLButton>
+      <SLButton
+        variant="primary"
+        size="lg"
+        @click="openLink('https://github.com/SeaLantern-Studio/SeaLantern')"
+      >
+        {{ i18n.t("about.github_repo") }}
+      </SLButton>
+      <SLButton
+        variant="secondary"
+        size="lg"
+        @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')"
+      >
+        {{ i18n.t("about.bilibili") }}
+      </SLButton>
+    </div>
+
+    <!-- Footer -->
+    <div class="about-footer">
+      <p class="footer-text">{{ i18n.t("about.footer_text1") }}</p>
+      <p class="footer-text">{{ i18n.t("about.footer_text2") }}</p>
+      <p class="footer-quote">{{ i18n.t("about.footer_quote") }}</p>
+    </div>
   </div>
 </template>
 
@@ -615,6 +535,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
   gap: var(--sl-space-xl);
   max-width: 900px;
   margin: 0 auto;
+  padding-bottom: var(--sl-space-2xl);
 }
 
 /* Hero */
@@ -676,6 +597,10 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
 .license-badge {
   background: rgba(168, 85, 247, 0.1);
   color: #a855f7;
+}
+
+[data-theme="dark"] .license-badge {
+  color: #c084fc;
 }
 
 .hero-desc {
@@ -754,6 +679,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
 .contributor-avatar {
   width: 48px;
   height: 48px;
+  border-radius: var(--sl-radius-md);
   flex-shrink: 0;
   image-rendering: pixelated;
 }
@@ -761,32 +687,79 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
 .contributor-info {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .contributor-name {
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--sl-text-primary);
+  flex-shrink: 0;
 }
 
 .contributor-role {
   font-size: 0.75rem;
   color: var(--sl-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
 }
 
 .join-card {
   border: 2px dashed var(--sl-border);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   cursor: default;
 }
 
 .join-card:hover {
   border-color: var(--sl-primary-light);
   background: var(--sl-primary-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transform: none;
   box-shadow: none;
+}
+
+/* 暗色模式适配 */
+[data-theme="dark"] .join-card {
+  background: rgba(15, 17, 23, 0.7);
+}
+
+[data-theme="dark"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* 毛玻璃设置调控 */
+[data-acrylic="true"] .join-card {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+[data-acrylic="true"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"][data-acrylic="true"] .join-card {
+  background: rgba(15, 17, 23, 0.35);
+}
+
+[data-theme="dark"][data-acrylic="true"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .join-icon {
@@ -909,7 +882,7 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
 /* Footer */
 .about-footer {
   text-align: center;
-  padding-top: var(--sl-space-xl);
+  padding: var(--sl-space-xl) 0;
   border-top: 1px solid var(--sl-border-light);
 }
 
@@ -934,43 +907,115 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
   border-top: 1px solid var(--sl-border-light);
 }
 
-.update-section .sl-button {
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-  width: 100%;
-  height: 32px;
+.update-info {
+  margin-top: var(--sl-space-sm);
+  padding: var(--sl-space-sm);
+  border-radius: var(--sl-radius-md);
+  font-size: 0.875rem;
 }
 
-.update-btn-content {
-  position: static;
-  width: 100%;
-  height: 100%;
+.update-available {
+  background: var(--sl-primary-bg);
+  border: 1px solid var(--sl-primary-light);
+  padding: var(--sl-space-sm);
+  border-radius: var(--sl-radius-md);
+}
+
+.update-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sl-space-sm);
+}
+
+.update-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--sl-primary);
+  color: white;
+  border-radius: var(--sl-radius-sm);
 }
 
-.update-btn-progress {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.2);
-  transition: width 0.2s ease;
-  border-radius: inherit;
-  z-index: 0;
+.update-latest .update-icon {
+  background: var(--sl-success);
 }
 
-.update-btn-label {
-  position: relative;
-  z-index: 1;
-  white-space: nowrap;
+.update-title {
+  font-weight: 600;
+  color: var(--sl-primary);
+  margin-bottom: 2px;
 }
 
-:deep(.update-action-btn) {
-  position: relative;
-  overflow: hidden;
+.update-desc {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+}
+
+.release-notes {
+  margin-top: var(--sl-space-sm);
+  padding-top: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+}
+
+.notes-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sl-text-secondary);
+  margin-bottom: 4px;
+}
+
+.notes-content {
+  font-size: 0.8125rem;
+  color: var(--sl-text-secondary);
+  line-height: 1.6;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.update-buttons {
+  display: flex;
+  gap: var(--sl-space-sm);
+  margin-top: var(--sl-space-sm);
+}
+
+.update-latest {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: var(--sl-space-sm);
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-success);
+  font-weight: 500;
+}
+
+.update-error {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: var(--sl-space-sm);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-danger);
+  font-size: 0.8125rem;
+}
+
+.error-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sl-danger);
+  color: white;
+  border-radius: 50%;
 }
 
 @media (max-width: 768px) {
@@ -1001,175 +1046,54 @@ const aurButtonText = computed(() => i18n.t("about.aur_window_button"));
   box-shadow: var(--sl-shadow-lg);
 }
 
-/* AUR 徽章样式 */
-.aur-badge {
-  background: rgba(0, 153, 204, 0.1);
-  color: #0099cc;
-  padding: 4px 14px;
-  border-radius: var(--sl-radius-full);
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-/* AUR 窗口样式 */
-.aur-window-content {
+.contributor-right {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: var(--sl-space-xl);
-  gap: var(--sl-space-lg);
-}
-
-/* 命令包装器样式 */
-.command-wrapper {
-  display: flex;
-  align-items: center;
   gap: var(--sl-space-xs);
-  width: 100%;
-}
-
-.command-display {
   flex: 1;
-  background: var(--sl-bg-tertiary);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-sm) var(--sl-space-md);
+  min-width: 0;
 }
 
-.command-display code {
-  font-family: var(--sl-font-mono);
-  font-size: 0.9375rem;
-  color: var(--sl-primary);
-  word-break: break-all;
-}
-
-/* 复制按钮样式 */
-.copy-button {
+.contributor-social {
   display: flex;
+  gap: var(--sl-space-xs);
+  flex-wrap: wrap;
+}
+
+.social-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: var(--sl-primary-bg);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  color: var(--sl-primary);
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border-radius: var(--sl-radius-sm);
+  color: var(--sl-text-secondary);
+  background: transparent;
+  border: none;
   cursor: pointer;
   transition: all var(--sl-transition-fast);
-  flex-shrink: 0;
 }
 
-.copy-button:hover {
-  background: var(--sl-primary);
-  color: white;
-  border-color: var(--sl-primary);
-}
-
-.copy-button svg {
-  width: 18px;
-  height: 18px;
-}
-
-.aur-window-icon {
-  margin-bottom: var(--sl-space-sm);
-}
-
-.aur-window-message {
-  text-align: center;
-  width: 100%;
-}
-
-.aur-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin-bottom: var(--sl-space-lg);
-}
-
-.version-info {
-  background: var(--sl-bg-secondary);
-  border-radius: var(--sl-radius-lg);
-  padding: var(--sl-space-md);
-  margin-bottom: var(--sl-space-lg);
-}
-
-.version-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--sl-space-xs) 0;
-}
-
-.version-row:first-child {
-  border-bottom: 1px solid var(--sl-border-light);
-  margin-bottom: var(--sl-space-xs);
-}
-
-.version-label {
-  font-size: 0.9375rem;
-  color: var(--sl-text-tertiary);
-}
-
-.version-value {
-  font-size: 1rem;
-  font-weight: 600;
+.social-icon:hover {
   color: var(--sl-primary);
-  font-family: var(--sl-font-mono);
+  background: var(--sl-primary-bg);
+  transform: scale(1.1);
 }
 
-.command-box {
-  margin-bottom: var(--sl-space-lg);
+.social-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
-.command-label {
-  font-size: 0.9375rem;
-  color: var(--sl-text-secondary);
-  margin-bottom: var(--sl-space-sm);
-  text-align: left;
+.social-icon.copied {
+  color: var(--sl-success);
+  background: rgba(34, 197, 94, 0.1);
 }
 
-.aur-note {
-  font-size: 0.875rem;
-  color: var(--sl-text-tertiary);
-  font-style: italic;
-}
-
-.aur-window-actions {
+.load-more-section {
   display: flex;
   justify-content: center;
-  width: 100%;
-  margin-top: var(--sl-space-sm);
-}
-
-/* 全局更新提示样式 */
-.global-update-box {
-  margin-top: var(--sl-space-md);
-  margin-bottom: var(--sl-space-lg);
-  padding-top: var(--sl-space-md);
-  border-top: 1px dashed var(--sl-border);
-}
-
-.global-update-label {
-  font-size: 0.875rem;
-  color: var(--sl-text-secondary);
-  margin-bottom: var(--sl-space-xs);
-  text-align: left;
-}
-
-.global-command {
-  background: var(--sl-bg-secondary);
-  border-color: var(--sl-warning);
-}
-
-.global-command code {
-  color: var(--sl-warning);
-}
-
-.global-update-note {
-  font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
-  margin-top: var(--sl-space-xs);
-  font-style: italic;
-  text-align: left;
+  margin-top: var(--sl-space-lg);
 }
 </style>

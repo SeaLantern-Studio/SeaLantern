@@ -2,21 +2,21 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { RefreshCw } from "lucide-vue-next";
 import { useRouter } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLInput from "../components/common/SLInput.vue";
-import SLSelect from "../components/common/SLSelect.vue";
-import SLSwitch from "../components/common/SLSwitch.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
-import { serverApi } from "../api/server";
-import { javaApi, type JavaInfo } from "../api/java";
-import { systemApi } from "../api/system";
-import { settingsApi } from "../api/settings";
-import { useServerStore } from "../stores/serverStore";
-import { i18n } from "../language";
-import { useMessage } from "../composables/useMessage";
-import { useLoading } from "../composables/useAsync";
-import { useTabSwitch } from "../composables/useTabIndicator";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLSpinner from "@components/common/SLSpinner.vue";
+import { serverApi } from "@api/server";
+import { javaApi, type JavaInfo } from "@api/java";
+import { systemApi } from "@api/system";
+import { settingsApi } from "@api/settings";
+import { useServerStore } from "@stores/serverStore";
+import { i18n } from "@language";
+import { useMessage } from "@composables/useMessage";
+import { useLoading } from "@composables/useAsync";
+import { useTabSwitch } from "@composables/useTabIndicator";
 
 const router = useRouter();
 const store = useServerStore();
@@ -30,7 +30,12 @@ const minMemory = ref("512");
 const port = ref("25565");
 const jarPath = ref("");
 type StartupMode = "jar" | "bat" | "sh";
-const { activeTab: startupMode, indicatorRef: startupModeIndicator, switchTab: switchStartupMode, updateIndicator } = useTabSwitch<StartupMode>("jar");
+const {
+  activeTab: startupMode,
+  indicatorRef: startupModeIndicator,
+  switchTab: switchStartupMode,
+  updateIndicator,
+} = useTabSwitch<StartupMode>("jar");
 const selectedJava = ref("");
 const onlineMode = ref(true);
 
@@ -296,39 +301,45 @@ const startupFileLabel = computed(() => {
           </div>
         </div>
 
-        <SLInput 
-          :label="i18n.t('create.max_memory')" 
-          type="text" 
+        <SLInput
+          :label="i18n.t('create.max_memory')"
+          type="text"
           v-model="maxMemory"
-          @input="(e) => {
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              maxMemory.value = value;
+          @input="
+            (e) => {
+              const value = e.target.value;
+              if (value === '' || /^\d+$/.test(value)) {
+                maxMemory.value = value;
+              }
             }
-          }"
+          "
         />
-        <SLInput 
-          :label="i18n.t('create.min_memory')" 
-          type="text" 
+        <SLInput
+          :label="i18n.t('create.min_memory')"
+          type="text"
           v-model="minMemory"
-          @input="(e) => {
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              minMemory.value = value;
+          @input="
+            (e) => {
+              const value = e.target.value;
+              if (value === '' || /^\d+$/.test(value)) {
+                minMemory.value = value;
+              }
             }
-          }"
+          "
         />
         <SLInput
           :label="i18n.t('settings.default_port')"
           type="text"
           v-model="port"
           :placeholder="i18n.t('create.default_port_placeholder')"
-          @input="(e) => {
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              port.value = value;
+          @input="
+            (e) => {
+              const value = e.target.value;
+              if (value === '' || /^\d+$/.test(value)) {
+                port.value = value;
+              }
             }
-          }"
+          "
         />
         <div class="online-mode-cell">
           <span class="online-mode-label">{{ i18n.t("create.online_mode") }}</span>

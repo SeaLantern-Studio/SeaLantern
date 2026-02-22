@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed, watch } from "vue";
-import AppSidebar from "./AppSidebar.vue";
-import AppHeader from "./AppHeader.vue";
-import { useUiStore } from "../../stores/uiStore";
-import { useSettingsStore } from "../../stores/settingsStore";
-import { applyAcrylic } from "../../api/settings";
+import AppSidebar from "@components/layout/AppSidebar.vue";
+import AppHeader from "@components/layout/AppHeader.vue";
+import { useUiStore } from "@stores/uiStore";
+import {
+  useSettingsStore,
+  SETTINGS_UPDATE_EVENT,
+  type SettingsUpdateEvent,
+} from "@stores/settingsStore";
+import { applyAcrylic, type SettingsGroup } from "@api/settings";
 import {
   applyTheme,
   applyFontFamily,
@@ -12,7 +16,8 @@ import {
   applyColors,
   applyDeveloperMode,
   getEffectiveTheme,
-} from "../../utils/theme";
+  isThemeProviderActive,
+} from "@utils/theme";
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();
@@ -25,9 +30,6 @@ const backgroundSize = computed(() => settingsStore.backgroundSize);
 
 let systemThemeQuery: MediaQueryList | null = null;
 
-/**
- * 应用亚克力效果
- */
 async function applyAcrylicEffect(enabled: boolean, theme: string): Promise<void> {
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
 
@@ -51,9 +53,6 @@ async function applyAcrylicEffect(enabled: boolean, theme: string): Promise<void
   }
 }
 
-/**
- * 处理系统主题变化
- */
 function handleSystemThemeChange(): void {
   const settings = settingsStore.settings;
   if (settings.theme === "auto") {
@@ -61,14 +60,13 @@ function handleSystemThemeChange(): void {
     if (settings.acrylic_enabled && settingsStore.acrylicSupported) {
       applyAcrylicEffect(true, "auto");
     }
-    applyColors(settings);
+    if (!isThemeProviderActive()) {
+      applyColors(settings);
+    }
   }
 }
 
-/**
- * 应用所有设置
- */
-async function applyAllSettings(): Promise<void> {
+async function applyAppearanceSettings(): Promise<void> {
   const settings = settingsStore.settings;
 
   applyTheme(settings.theme || "auto");
@@ -81,41 +79,47 @@ async function applyAllSettings(): Promise<void> {
     document.documentElement.setAttribute("data-acrylic", "false");
   }
 
-  applyColors(settings);
-  applyDeveloperMode(settings.developer_mode || false);
+  if (!isThemeProviderActive()) {
+    applyColors(settings);
+  }
+}
+
+function applyDeveloperSettings(): void {
+  applyDeveloperMode(settingsStore.settings.developer_mode || false);
+}
+
+async function applyAllSettings(): Promise<void> {
+  await applyAppearanceSettings();
+  applyDeveloperSettings();
+}
+
+function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>): void {
+  const { changedGroups, settings } = e.detail;
+  settingsStore.settings = settings;
+
+  if (changedGroups.includes("Appearance")) {
+    applyAppearanceSettings();
+  }
+  if (changedGroups.includes("Developer")) {
+    applyDeveloperSettings();
+  }
 }
 
 onMounted(async () => {
   await applyAllSettings();
 
-  window.addEventListener("settings-updated", handleSettingsUpdated);
+  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 
   systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
   systemThemeQuery.addEventListener("change", handleSystemThemeChange);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("settings-updated", handleSettingsUpdated);
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (systemThemeQuery) {
     systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
   }
 });
-
-/**
- * 处理设置更新事件
- */
-async function handleSettingsUpdated(): Promise<void> {
-  await settingsStore.loadSettings();
-  await applyAllSettings();
-}
-
-watch(
-  () => settingsStore.settings,
-  async () => {
-    await applyAllSettings();
-  },
-  { deep: true },
-);
 
 const backgroundStyle = computed(() => {
   if (!backgroundImage.value) return {};

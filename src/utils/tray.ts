@@ -1,6 +1,6 @@
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Menu } from "@tauri-apps/api/menu";
-import { i18n } from "../language";
+import { i18n } from "@language";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { defaultWindowIcon } from "@tauri-apps/api/app";
 import { exit } from "@tauri-apps/plugin-process";
@@ -57,7 +57,7 @@ export async function setupTray() {
           action: async () => {
             try {
               // 调用后端停止所有服务器
-              const { tauriInvoke } = await import("../api/tauri");
+              const { tauriInvoke } = await import("@api/tauri");
               await tauriInvoke("force_stop_all_servers");
             } catch (e) {
               console.warn("Failed to stop servers before quit:", e);

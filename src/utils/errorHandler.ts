@@ -2,7 +2,7 @@
  * 统一错误处理工具
  */
 
-import { MESSAGES } from "./constants";
+import { MESSAGES } from "@utils/constants";
 
 /**
  * 错误类型

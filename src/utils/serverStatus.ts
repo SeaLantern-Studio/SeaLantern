@@ -2,8 +2,8 @@
  * 服务器状态工具函数
  */
 
-import { SERVER_STATUS } from "./constants";
-import { i18n } from "../language";
+import { SERVER_STATUS } from "@utils/constants";
+import { i18n } from "@language";
 
 export type StatusVariant = "success" | "warning" | "error" | "neutral";
 

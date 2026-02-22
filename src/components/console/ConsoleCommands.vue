@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { i18n } from "../../language";
-import type { ServerCommand } from "../../types/server";
+import { Settings } from "lucide-vue-next";
+import { i18n } from "@language";
+import type { ServerCommand } from "@type/server";
 
 interface Props {
   serverId: string;
@@ -61,7 +62,9 @@ const quickCommands = computed(() => [
           :title="cmd.command"
         >
           <span class="custom-btn-name">{{ cmd.name }}</span>
-          <span class="custom-btn-edit" @click.stop="emit('openEditCommandModal', cmd)"> ⚙️ </span>
+          <span class="custom-btn-edit" @click.stop="emit('openEditCommandModal', cmd)"
+            ><Settings :size="14"
+          /></span>
         </div>
         <div
           class="custom-btn add-btn"
