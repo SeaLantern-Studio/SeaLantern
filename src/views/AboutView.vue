@@ -36,7 +36,7 @@ import {
 } from "@data/contributors";
 import { checkUpdate, type UpdateInfo } from "@api/update";
 import { getAppVersion, BUILD_YEAR } from "@utils/version";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 
 const version = ref("Loading...");
 const buildDate = BUILD_YEAR;

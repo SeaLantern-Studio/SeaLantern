@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Settings } from "lucide-vue-next";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import type { ServerCommand } from "@type/server";
 
 interface Props {

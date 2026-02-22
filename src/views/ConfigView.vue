@@ -10,7 +10,7 @@ import { configApi } from "@api/config";
 import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "@api/mcs_plugins";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { useServerStore } from "@stores/serverStore";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { useTabIndicator } from "@composables/useTabIndicator";
 import {
   Power,

@@ -11,8 +11,8 @@ import SLTextarea from "@components/common/SLTextarea.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import type { PluginInfo, PluginSettingField } from "@types/plugin";
-import { getLocalizedPluginName, getLocalizedPluginDescription } from "@types/plugin";
+import type { PluginInfo, PluginSettingField } from "@type/plugin";
+import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
 import { Palette, Puzzle } from "lucide-vue-next";
 
 const props = defineProps<{

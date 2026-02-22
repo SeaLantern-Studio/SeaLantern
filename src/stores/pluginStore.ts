@@ -25,7 +25,7 @@ import type {
   PluginUiAction,
   PluginPermissionLog,
   PluginLogEvent,
-} from "@types/plugin";
+} from "@type/plugin";
 
 interface PluginUiEvent {
   plugin_id: string;

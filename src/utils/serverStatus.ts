@@ -3,7 +3,7 @@
  */
 
 import { SERVER_STATUS } from "@utils/constants";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 
 export type StatusVariant = "success" | "warning" | "error" | "neutral";
 

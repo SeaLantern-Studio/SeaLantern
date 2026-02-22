@@ -2,7 +2,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from "vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 
 interface Props {
   visible: boolean;

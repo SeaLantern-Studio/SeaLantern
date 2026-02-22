@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { getPermissionMetadata } from "@type/plugin";
 import { Lock, X } from "lucide-vue-next";
 

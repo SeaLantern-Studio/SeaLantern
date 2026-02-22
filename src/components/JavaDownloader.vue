@@ -89,7 +89,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from "vue";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { javaApi } from "@api/java";
 import SLButton from "@components/common/SLButton.vue";

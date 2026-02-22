@@ -2,7 +2,7 @@
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLModal from "@components/common/SLModal.vue";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import type { ServerCommand } from "@type/server";
 
 interface Props {

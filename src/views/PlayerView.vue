@@ -11,7 +11,7 @@ import { useConsoleStore } from "@stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
 import { TIME, MESSAGES } from "@utils/constants";
 import { validatePlayerName, handleError } from "@utils/errorHandler";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { useTabIndicator } from "@composables/useTabIndicator";

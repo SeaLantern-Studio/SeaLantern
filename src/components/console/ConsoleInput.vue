@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from "vue";
 import SLButton from "@components/common/SLButton.vue";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 
 interface Props {
   consoleFontSize: number;

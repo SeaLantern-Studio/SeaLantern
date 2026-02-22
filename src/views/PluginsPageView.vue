@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { useTabIndicator } from "@composables/useTabIndicator";
 import PluginsView from "@views/PluginsView.vue";
 import MarketView from "@views/MarketView.vue";

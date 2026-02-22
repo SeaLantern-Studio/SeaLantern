@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
-import { i18n } from "@language/index";
+import { i18n } from "@language";
 import { type PermissionMetadata, groupPermissionsByDangerLevel } from "@type/plugin";
 import {
   AlertTriangle,
