@@ -234,7 +234,7 @@ async function handleManualDownload() {
           <AvatarRoot class="contributor-avatar" :alt="c.name">
             <AvatarImage :src="c.avatar" :alt="c.name" />
             <AvatarFallback>
-              <img src="/64x64.png" />
+              <img src="../../src-tauri/icons/64x64.png" />
             </AvatarFallback>
           </AvatarRoot>
 
