@@ -57,6 +57,14 @@ const highlightedIndex = ref(-1);
 
 const dropdownStyle = ref<Record<string, string>>({});
 
+const optionsMaxHeight = computed(() => {
+    let maxHeight = parseInt(props.maxHeight) || 280;
+    if (props.searchable) {
+        maxHeight = Math.max(50, maxHeight - 50);
+    }
+    return `${maxHeight}px`;
+});
+
 const getFontStyle = (value: string | number) => {
   if (!props.previewFont || !value) return {};
   return { fontFamily: String(value) };
@@ -308,7 +316,7 @@ onUnmounted(() => {
           <div
             id="sl-select-listbox"
             class="sl-select-options"
-            :style="{ maxHeight }"
+            :style="{ maxHeight: optionsMaxHeight }"
             role="listbox"
             :aria-activedescendant="
               highlightedIndex >= 0
