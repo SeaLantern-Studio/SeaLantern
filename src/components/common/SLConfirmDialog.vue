@@ -2,6 +2,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from "vue";
 import SLButton from "./SLButton.vue";
 import SLInput from "./SLInput.vue";
+import { i18n } from "../../language";
 
 interface Props {
   visible: boolean;
@@ -18,10 +19,10 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: "确认操作",
+  title: () => i18n.t("common.confirm_action"),
   message: "",
-  confirmText: "确认",
-  cancelText: "取消",
+  confirmText: () => i18n.t("common.confirm"),
+  cancelText: () => i18n.t("common.cancel"),
   confirmVariant: "primary",
   requireInput: false,
   inputPlaceholder: "",

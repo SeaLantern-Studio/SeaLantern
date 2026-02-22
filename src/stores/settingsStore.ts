@@ -77,7 +77,10 @@ export interface SettingsUpdateEvent {
 
 export const SETTINGS_UPDATE_EVENT = "settings-updated-v2";
 
-export function dispatchSettingsUpdate(changedGroups: SettingsGroup[], settings: AppSettings): void {
+export function dispatchSettingsUpdate(
+  changedGroups: SettingsGroup[],
+  settings: AppSettings,
+): void {
   window.dispatchEvent(
     new CustomEvent<SettingsUpdateEvent>(SETTINGS_UPDATE_EVENT, {
       detail: { changedGroups, settings },

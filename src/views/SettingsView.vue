@@ -83,7 +83,9 @@ onUnmounted(() => {
   }
 });
 
-function handleSettingsUpdateEvent(e: CustomEvent<{ changedGroups: SettingsGroup[]; settings: AppSettings }>) {
+function handleSettingsUpdateEvent(
+  e: CustomEvent<{ changedGroups: SettingsGroup[]; settings: AppSettings }>,
+) {
   const newSettings = e.detail.settings;
   settings.value = newSettings;
   syncLocalValues(newSettings);

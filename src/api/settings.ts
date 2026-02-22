@@ -1,7 +1,13 @@
 import { tauriInvoke } from "./tauri";
 import type { JavaInfo } from "./java";
 
-export type SettingsGroup = "General" | "ServerDefaults" | "Console" | "Appearance" | "Window" | "Developer";
+export type SettingsGroup =
+  | "General"
+  | "ServerDefaults"
+  | "Console"
+  | "Appearance"
+  | "Window"
+  | "Developer";
 
 export interface AppSettings {
   close_servers_on_exit: boolean;

@@ -100,7 +100,16 @@
     "config_other": "Autre",
     "config_saved": "Configuration enregistrée",
     "refresh": "Actualiser",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "plugins": "Plugins",
+    "market": "Marché de plugins",
+    "progress": "Progression",
+    "minimize": "Réduire",
+    "maximize": "Agrandir",
+    "close": "Fermer",
+    "confirm_action": "Confirmer l'action",
+    "confirm": "Confirmer",
+    "cancel": "Annuler"
   },
   "sidebar": {
     "groups": {

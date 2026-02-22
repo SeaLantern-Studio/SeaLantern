@@ -98,7 +98,18 @@
     "config_performance": "Производительность",
     "config_display": "Отображение",
     "config_other": "Другое",
-    "config_saved": "Конфигурация сохранена"
+    "config_saved": "Конфигурация сохранена",
+    "refresh": "Обновить",
+    "save": "Сохранить",
+    "plugins": "Плагины",
+    "market": "Маркет плагинов",
+    "progress": "Прогресс",
+    "minimize": "Минимизировать",
+    "maximize": "Максимизировать",
+    "close": "Закрыть",
+    "confirm_action": "Подтвердить действие",
+    "confirm": "Подтвердить",
+    "cancel": "Отмена"
   },
   "sidebar": {
     "groups": {

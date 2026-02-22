@@ -141,7 +141,7 @@ async function handlePrimaryUpdateAction() {
 }
 
 function getCustomLinks(links: SocialLinks): [string, string][] {
-  const predefined = ["gitee", "github", "bilibili", "qq"];
+  const predefined = ["gitee", "github", "bilibili", "qq", "tiktok"];
   return Object.entries(links).filter(([key, value]) => !predefined.includes(key) && value) as [
     string,
     string,
@@ -289,6 +289,17 @@ async function handleManualDownload() {
                   title="Bilibili"
                 >
                   <BrandIcon name="bilibili" :size="16" />
+                </a>
+
+                <a
+                  v-if="c.url.tiktok"
+                  :href="c.url.tiktok"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-icon"
+                  title="TikTok"
+                >
+                  <BrandIcon name="tiktok" :size="16" />
                 </a>
 
                 <button
@@ -673,13 +684,11 @@ async function handleManualDownload() {
 
 .contributor-info {
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: var(--sl-space-xs);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .contributor-name {
@@ -694,20 +703,61 @@ async function handleManualDownload() {
   color: var(--sl-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
 }
 
 .join-card {
   border: 2px dashed var(--sl-border);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   cursor: default;
 }
 
 .join-card:hover {
   border-color: var(--sl-primary-light);
   background: var(--sl-primary-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transform: none;
   box-shadow: none;
+}
+
+/* 暗色模式适配 */
+[data-theme="dark"] .join-card {
+  background: rgba(15, 17, 23, 0.7);
+}
+
+[data-theme="dark"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* 毛玻璃设置调控 */
+[data-acrylic="true"] .join-card {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+[data-acrylic="true"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"][data-acrylic="true"] .join-card {
+  background: rgba(15, 17, 23, 0.35);
+}
+
+[data-theme="dark"][data-acrylic="true"] .join-card:hover {
+  background: var(--sl-primary-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .join-icon {

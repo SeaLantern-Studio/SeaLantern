@@ -35,14 +35,12 @@ const routes = [
   {
     path: "/plugins",
     name: "plugins",
-    component: () => import("../views/PluginsView.vue"),
+    component: () => import("../views/PluginsPageView.vue"),
     meta: { title: "插件", icon: "puzzle" },
   },
   {
     path: "/market",
-    name: "market",
-    component: () => import("../views/MarketView.vue"),
-    meta: { title: "插件市场", icon: "store" },
+    redirect: "/plugins?tab=market",
   },
   {
     path: "/settings",
