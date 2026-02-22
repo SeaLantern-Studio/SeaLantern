@@ -6,6 +6,7 @@ mod utils;
 
 use commands::config as config_commands;
 use commands::java as java_commands;
+use commands::mcs_plugin as mcs_plugin_commands;
 use commands::player as player_commands;
 use commands::plugin as plugin_commands;
 use commands::server as server_commands;
@@ -152,6 +153,10 @@ pub fn run() {
             plugin_commands::get_plugin_ui_snapshot,
             plugin_commands::get_plugin_sidebar_snapshot,
             plugin_commands::get_plugin_context_menu_snapshot,
+            mcs_plugin_commands::m_get_plugins,
+            mcs_plugin_commands::m_toggle_plugin,
+            mcs_plugin_commands::m_delete_plugin,
+            mcs_plugin_commands::m_install_plugin,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
