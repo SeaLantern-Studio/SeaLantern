@@ -24,11 +24,18 @@ use tauri::{
 pub fn run() {
     // Docker 无头模式检测
     if std::path::Path::new("/.dockerenv").exists() {
-        eprintln!("SeaLantern: Running in Docker, headless mode enabled");
-        // 保持进程运行但不启动 GUI
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(3600));
-        }
+        eprintln!("SeaLantern: Running in Docker, headless mode with HTTP server enabled");
+        // 在 Docker 中启动 HTTP 服务器
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            // 尝试从环境变量获取静态文件目录，默认为 /app/dist
+            let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "/app/dist".to_string());
+            let static_dir_opt = std::path::Path::new(&static_dir)
+                .exists()
+                .then_some(static_dir);
+            
+            services::http_server::run_http_server("0.0.0.0:3000", static_dir_opt).await;
+        });
         return;
     }
 

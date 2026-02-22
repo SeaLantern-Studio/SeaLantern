@@ -10,3 +10,4 @@ pub mod player_manager;
 pub mod server_id_manager;
 pub mod server_manager;
 pub mod settings_manager;
+pub mod http_server;
