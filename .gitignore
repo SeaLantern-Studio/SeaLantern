@@ -17,5 +17,7 @@ changelogs/
 .trae/
 changelog/
 .review/
+.iflow/
+gha-creds-*.json
 plugin-market/
 plugins-demo/
