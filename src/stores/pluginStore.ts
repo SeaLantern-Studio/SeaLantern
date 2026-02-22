@@ -1,13 +1,17 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
-import { registerPluginLocale, addPluginTranslations, removePluginTranslations } from "../language";
-import { useComponentRegistry } from "../composables/useComponentRegistry";
-import { useToast } from "../composables/useToast";
+import {
+  registerPluginLocale,
+  addPluginTranslations,
+  removePluginTranslations,
+} from "@language/index";
+import { useComponentRegistry } from "@composables/useComponentRegistry";
+import { useToast } from "@composables/useToast";
 import DOMPurify from "dompurify";
-import * as pluginApi from "../api/plugin";
-import type { BufferedComponentEvent } from "../api/plugin";
-import { setThemeProviderOverrides } from "../utils/theme";
+import * as pluginApi from "@api/plugin";
+import type { BufferedComponentEvent } from "@api/plugin";
+import { setThemeProviderOverrides } from "@utils/theme";
 import type {
   PluginInfo,
   PluginNavItem,
@@ -21,7 +25,7 @@ import type {
   PluginUiAction,
   PluginPermissionLog,
   PluginLogEvent,
-} from "../types/plugin";
+} from "@types/plugin";
 
 interface PluginUiEvent {
   plugin_id: string;
