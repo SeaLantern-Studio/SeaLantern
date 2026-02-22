@@ -23,12 +23,7 @@
               size="sm"
             />
           </div>
-          <SLButton
-            variant="primary"
-            size="sm"
-            :loading="loadingUrl"
-            @click="startDownload"
-          >
+          <SLButton variant="primary" size="sm" :loading="loadingUrl" @click="startDownload">
             {{ downloadButtonText }}
           </SLButton>
         </template>
@@ -115,14 +110,14 @@ const installedPath = ref("");
 const unlistenProgress = ref<UnlistenFn | null>(null);
 
 const versionOptions = computed(() => [
-  { label: 'Java 8 (LTS)', value: '8' },
-  { label: 'Java 17 (LTS)', value: '17' },
-  { label: 'Java 21 (LTS)', value: '21' },
-  { label: 'Java 25 (LTS)', value: '25' }
+  { label: "Java 8 (LTS)", value: "8" },
+  { label: "Java 17 (LTS)", value: "17" },
+  { label: "Java 21 (LTS)", value: "21" },
+  { label: "Java 25 (LTS)", value: "25" },
 ]);
 
 const downloadButtonText = computed(() => {
-  return i18n.t('settings.java_download_btn', { version: selectedVersion.value });
+  return i18n.t("settings.java_download_btn", { version: selectedVersion.value });
 });
 
 const resetState = () => {

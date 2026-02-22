@@ -100,7 +100,16 @@
     "config_other": "기타",
     "config_saved": "설정이 저장되었습니다",
     "refresh": "새로고침",
-    "save": "저장"
+    "save": "저장",
+    "plugins": "플러그인",
+    "market": "플러그인 마켓",
+    "progress": "진행률",
+    "minimize": "최소화",
+    "maximize": "최대화",
+    "close": "닫기",
+    "confirm_action": "작업 확인",
+    "confirm": "확인",
+    "cancel": "취소"
   },
   "sidebar": {
     "groups": {

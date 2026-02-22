@@ -98,7 +98,18 @@
     "config_performance": "Leistung",
     "config_display": "Anzeige",
     "config_other": "Sonstiges",
-    "config_saved": "Konfiguration gespeichert"
+    "config_saved": "Konfiguration gespeichert",
+    "refresh": "Aktualisieren",
+    "save": "Speichern",
+    "plugins": "Plugins",
+    "market": "Plugin-Markt",
+    "progress": "Fortschritt",
+    "minimize": "Minimieren",
+    "maximize": "Maximieren",
+    "close": "Schließen",
+    "confirm_action": "Aktion bestätigen",
+    "confirm": "Bestätigen",
+    "cancel": "Abbrechen"
   },
   "sidebar": {
     "groups": {

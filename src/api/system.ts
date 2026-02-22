@@ -91,11 +91,11 @@ export const systemApi = {
     return tauriInvoke("pick_image_file");
   },
 
-  async openFolder(path: string): Promise<void> {
-    return tauriInvoke("open_folder", { path });
-  },
-
   async openFile(path: string): Promise<void> {
     return tauriInvoke("open_file", { path });
+  },
+
+  async openFolder(path: string): Promise<void> {
+    return tauriInvoke("open_folder", { path });
   },
 };

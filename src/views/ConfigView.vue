@@ -11,6 +11,7 @@ import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "../api/
 import type { ConfigEntry as ConfigEntryType } from "../api/config";
 import { useServerStore } from "../stores/serverStore";
 import { i18n } from "../language";
+import { useTabIndicator } from "../composables/useTabIndicator";
 import {
   Power,
   Trash2,
@@ -48,6 +49,8 @@ const plugins = ref<m_PluginInfo[]>([]);
 const pluginsLoading = ref(false);
 const selectedPlugin = ref<m_PluginInfo | null>(null);
 const activeTab = ref<"properties" | "plugins">("properties");
+const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } =
+  useTabIndicator(activeTab);
 const isLoading = ref(false);
 const loadingDebounceTimer = ref<number | null>(null);
 const LOADING_DEBOUNCE_DELAY = 300;
@@ -96,6 +99,12 @@ onMounted(async () => {
     store.setCurrentServer(store.servers[0].id);
   }
   await loadProperties();
+});
+
+// 监听语言变化，更新 Tab 指示器位置
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, () => {
+  updateTabIndicator();
 });
 
 onUnmounted(() => {
@@ -317,10 +326,11 @@ onActivated(async () => {
       <div class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
       </div>
-      <div class="tab-switcher">
+      <div class="tab-bar">
+        <div class="tab-indicator" ref="tabIndicator"></div>
         <button
           type="button"
-          class="tab-button"
+          class="tab-btn"
           :class="{ active: activeTab === 'properties' }"
           @click="activeTab = 'properties'"
         >
@@ -328,7 +338,7 @@ onActivated(async () => {
         </button>
         <button
           type="button"
-          class="tab-button"
+          class="tab-btn"
           :class="{ active: activeTab === 'plugins' }"
           @click="activeTab = 'plugins'"
         >
@@ -672,33 +682,52 @@ onActivated(async () => {
   margin: 0;
 }
 
-.tab-switcher {
+.tab-bar {
   display: flex;
-  gap: 8px;
+  gap: var(--sl-space-xs);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-xs);
+  width: fit-content;
   margin-top: 8px;
+  position: relative;
+  overflow: hidden;
 }
 
-.tab-button {
+.tab-indicator {
+  position: absolute;
+  top: var(--sl-space-xs);
+  bottom: var(--sl-space-xs);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  transition: all 0.3s ease;
+  box-shadow: var(--sl-shadow-sm);
+  z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
+}
+
+.tab-btn {
   padding: 8px 16px;
   border-radius: var(--sl-radius-sm);
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--sl-text-secondary);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border);
+  background: transparent;
+  border: none;
   cursor: pointer;
   transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
 }
 
-.tab-button:hover {
+.tab-btn:hover {
   color: var(--sl-text-primary);
-  border-color: var(--sl-border);
 }
 
-.tab-button.active {
+.tab-btn.active {
   color: var(--sl-primary);
-  background: var(--sl-primary-bg);
-  border-color: var(--sl-primary);
 }
 
 .plugins-header {

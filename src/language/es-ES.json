@@ -98,7 +98,18 @@
     "config_performance": "Rendimiento",
     "config_display": "Pantalla",
     "config_other": "Otros",
-    "config_saved": "Configuración guardada"
+    "config_saved": "Configuración guardada",
+    "refresh": "Actualizar",
+    "save": "Guardar",
+    "plugins": "Plugins",
+    "market": "Mercado de plugins",
+    "progress": "Progreso",
+    "minimize": "Minimizar",
+    "maximize": "Maximizar",
+    "close": "Cerrar",
+    "confirm_action": "Confirmar acción",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar"
   },
   "sidebar": {
     "groups": {

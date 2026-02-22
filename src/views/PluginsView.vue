@@ -768,18 +768,14 @@ function openRepository(url: string) {
 
 function goToMarket() {
   showDependencyModal.value = false;
-  router.push("/market");
+  router.push("/plugins?tab=market");
 }
 </script>
 
 <template>
   <div class="plugins-view">
-    <div class="page-header">
-      <div class="header-left">
-        <h1 class="page-title">{{ i18n.t("plugins.title") }}</h1>
-        <span class="plugin-count" v-if="!pluginStore.loading && pluginStore.plugins.length > 0">
-          {{ i18n.t("plugins.plugin_count", { count: pluginStore.plugins.length }) }}
-        </span>
+    <div class="plugins-toolbar">
+      <div class="toolbar-left">
         <input
           v-model="searchQuery"
           type="text"
@@ -787,7 +783,7 @@ function goToMarket() {
           :placeholder="i18n.t('plugins.search_placeholder')"
         />
       </div>
-      <div class="header-right">
+      <div class="toolbar-right">
         <SLButton :variant="batchMode ? 'primary' : 'secondary'" size="sm" @click="toggleBatchMode">
           {{ i18n.t("plugins.batch_mode") }}
         </SLButton>
@@ -811,7 +807,7 @@ function goToMarket() {
     </div>
 
     <div
-      class="upload-zone glass"
+      class="upload-zone"
       :class="{ 'is-dragging': isDragging, 'is-installing': isInstalling }"
     >
       <div v-if="isInstalling" class="upload-loading">
@@ -832,19 +828,19 @@ function goToMarket() {
       </div>
     </div>
 
-    <div v-if="pluginStore.error" class="error-banner glass">
+    <div v-if="pluginStore.error" class="error-banner">
       <span class="error-icon">!</span>
       <span class="error-text">{{ pluginStore.error }}</span>
     </div>
 
-    <div v-if="pluginStore.loading && pluginStore.plugins.length === 0" class="loading-state glass">
+    <div v-if="pluginStore.loading && pluginStore.plugins.length === 0" class="loading-state">
       <div class="loading-spinner"></div>
       <span class="loading-text">{{ i18n.t("plugins.loading_plugins") }}</span>
     </div>
 
     <div
       v-else-if="!pluginStore.loading && pluginStore.plugins.length === 0"
-      class="empty-state glass"
+      class="empty-state"
     >
       <div class="empty-icon">
         <Layers :size="48" :stroke-width="1.5" />
@@ -854,7 +850,7 @@ function goToMarket() {
     </div>
 
     <div v-else>
-      <div v-if="batchMode" class="batch-action-bar glass">
+      <div v-if="batchMode" class="batch-action-bar">
         <div class="batch-action-left">
           <span class="selected-count">{{
             i18n.t("plugins.selected_count", { count: selectedPlugins.size })
@@ -1367,51 +1363,50 @@ function goToMarket() {
 
 <style scoped>
 .plugins-view {
-  padding: 24px;
-  max-width: 900px;
-  margin: 0 auto;
-  font-family: var(--sl-font-sans);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+  min-height: 100%;
+  flex: 1;
 }
 
-.page-header {
+.plugins-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  gap: var(--sl-space-md);
+  padding: var(--sl-space-xs);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  margin-bottom: var(--sl-space-md);
 }
 
-.header-left {
+.toolbar-left {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  gap: var(--sl-space-sm);
 }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin: 0;
-}
-
-.plugin-count {
-  font-size: 14px;
-  color: var(--sl-text-tertiary);
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
 }
 
 .plugin-search {
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: var(--sl-radius-sm);
   border: 1px solid var(--sl-border);
   background: var(--sl-bg-secondary);
   color: var(--sl-text-primary);
   font-size: 13px;
   width: 180px;
-  outline: none;
-  transition: border-color 0.15s;
+  transition: all var(--sl-transition-fast);
 }
 
 .plugin-search:focus {
+  outline: none;
   border-color: var(--sl-primary);
 }
 
@@ -1425,6 +1420,8 @@ function goToMarket() {
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  background: var(--sl-bg-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .upload-zone:hover {
@@ -1570,8 +1567,10 @@ function goToMarket() {
   align-items: center;
   justify-content: center;
   padding: 64px 24px;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-md);
   text-align: center;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
 }
 
 .loading-spinner {
@@ -1601,8 +1600,10 @@ function goToMarket() {
   align-items: center;
   justify-content: center;
   padding: 64px 24px;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-md);
   text-align: center;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
 }
 
 .empty-icon {
@@ -1626,8 +1627,14 @@ function goToMarket() {
 
 .plugin-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sl-space-md);
+}
+
+@media (max-width: 1200px) {
+  .plugin-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 700px) {
@@ -1660,6 +1667,8 @@ function goToMarket() {
   margin-bottom: 12px;
   border-radius: 8px;
   border: 1px solid var(--sl-border);
+  background: var(--sl-bg-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .batch-action-left {

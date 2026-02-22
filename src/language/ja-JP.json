@@ -98,7 +98,18 @@
     "config_performance": "パフォーマンス",
     "config_display": "表示",
     "config_other": "その他",
-    "config_saved": "設定を保存しました"
+    "config_saved": "設定が保存されました",
+    "refresh": "更新",
+    "save": "保存",
+    "plugins": "プラグイン",
+    "market": "プラグイン市場",
+    "progress": "進捗",
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "close": "閉じる",
+    "confirm_action": "アクションを確認",
+    "confirm": "確認",
+    "cancel": "キャンセル"
   },
   "sidebar": {
     "groups": {

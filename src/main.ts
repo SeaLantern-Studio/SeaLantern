@@ -4,10 +4,10 @@ import router from "./router";
 import pinia from "./stores";
 import "./style.css";
 import VueECharts from "vue-echarts";
-import { use } from 'echarts/core'
-import { PieChart, LineChart } from 'echarts/charts'
-import { GridComponent } from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
+import { use } from "echarts/core";
+import { PieChart, LineChart } from "echarts/charts";
+import { GridComponent } from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
 
 // 注册 ECharts 必要的组件
 use([GridComponent, PieChart, LineChart, CanvasRenderer]);

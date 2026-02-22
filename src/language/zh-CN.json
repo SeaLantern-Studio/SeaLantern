@@ -97,7 +97,14 @@
     "refresh": "刷新",
     "save": "保存",
     "plugins": "插件",
-    "market": "插件市场"
+    "market": "插件市场",
+    "progress": "进度",
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "close": "关闭",
+    "confirm_action": "确认操作",
+    "confirm": "确认",
+    "cancel": "取消"
   },
   "sidebar": {
     "groups": {

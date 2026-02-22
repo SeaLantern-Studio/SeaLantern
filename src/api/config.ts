@@ -53,7 +53,11 @@ export const configApi = {
   /**
    * 写入通用配置文件
    */
-  async writeConfig(serverPath: string, path: string, values: Record<string, string>): Promise<void> {
+  async writeConfig(
+    serverPath: string,
+    path: string,
+    values: Record<string, string>,
+  ): Promise<void> {
     return tauriInvoke("write_config", { serverPath, path, values });
   },
 };

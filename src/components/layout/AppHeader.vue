@@ -9,7 +9,11 @@ import SLModal from "../common/SLModal.vue";
 import SLButton from "../common/SLButton.vue";
 import { settingsApi, type AppSettings, type SettingsGroup } from "../../api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
-import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "../../stores/settingsStore";
+import {
+  dispatchSettingsUpdate,
+  SETTINGS_UPDATE_EVENT,
+  type SettingsUpdateEvent,
+} from "../../stores/settingsStore";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
@@ -248,10 +252,8 @@ function computeOverallProgress() {
 </script>
 
 <template>
-  <header class="app-header glass-subtle">
-    <div class="header-left">
-      <h2 class="page-title">{{ pageTitle }}</h2>
-    </div>
+  <header class="app-header glass-strong">
+
 
     <div class="header-center" data-tauri-drag-region></div>
 
@@ -262,15 +264,8 @@ function computeOverallProgress() {
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
-          <MenuItem
-            v-for="option in primaryLanguages"
-            :key="option.code"
-            v-slot="{ close }"
-          >
-            <div
-              class="language-item"
-              @click="() => handleLanguageClick(option.code, close)"
-            >
+          <MenuItem v-for="option in primaryLanguages" :key="option.code" v-slot="{ close }">
+            <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
               <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
               </div>
@@ -279,10 +274,7 @@ function computeOverallProgress() {
 
           <!-- 更多语言选项 -->
           <div class="language-item-full-width">
-            <div
-              class="language-item language-item-arrow"
-              @click="toggleMoreLanguages"
-            >
+            <div class="language-item language-item-arrow" @click="toggleMoreLanguages">
               <div class="language-item-main">
                 <ChevronDown v-if="!showMoreLanguages" :size="16" class="arrow-icon" />
                 <ChevronUp v-else :size="16" class="arrow-icon" />
@@ -292,15 +284,8 @@ function computeOverallProgress() {
 
           <!-- 其他语言（仅在展开时显示） -->
           <template v-if="showMoreLanguages">
-            <MenuItem
-              v-for="option in otherLanguages"
-              :key="option.code"
-              v-slot="{ close }"
-            >
-              <div
-                class="language-item"
-                @click="() => handleLanguageClick(option.code, close)"
-              >
+            <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
+              <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
                 <div class="language-item-main">
                   <span class="language-label">{{ option.label }}</span>
                 </div>
@@ -316,13 +301,13 @@ function computeOverallProgress() {
       </div>
 
       <div class="window-controls">
-        <button class="win-btn" @click="minimizeWindow" title="最小化">
+        <button class="win-btn" @click="minimizeWindow" :title="i18n.t('common.minimize')">
           <Minus :size="12" />
         </button>
-        <button class="win-btn" @click="toggleMaximize" title="最大化">
+        <button class="win-btn" @click="toggleMaximize" :title="i18n.t('common.maximize')">
           <Square :size="12" />
         </button>
-        <button class="win-btn win-btn-close" @click="closeWindow" title="关闭">
+        <button class="win-btn win-btn-close" @click="closeWindow" :title="i18n.t('common.close')">
           <X :size="12" />
         </button>
       </div>
@@ -366,6 +351,15 @@ function computeOverallProgress() {
   z-index: 100;
 }
 
+/* 在亚克力状态下调整边框透明度 */
+[data-acrylic="true"] .app-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"][data-acrylic="true"] .app-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
 .header-left,
 .header-right {
   -webkit-app-region: no-drag;
@@ -394,7 +388,7 @@ function computeOverallProgress() {
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  padding: 4px 12px;
+  padding: 4px 8px;
   background: var(--sl-bg-secondary);
   border-radius: var(--sl-radius-full);
 }
