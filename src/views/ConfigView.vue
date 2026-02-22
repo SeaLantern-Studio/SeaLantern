@@ -278,7 +278,8 @@ async function openPluginFolder(plugin: m_PluginInfo) {
   if (!server) return;
 
   const basePath = server.path.replace(/[/\\]$/, "");
-  const pluginConfigPath = `${basePath}${basePath.includes("\\") ? "\\" : "/"}plugins${basePath.includes("\\") ? "\\" : "/"}${plugin.m_id}`;
+  // 使用插件名称作为配置文件夹名，而不是 m_id
+  const pluginConfigPath = `${basePath}${basePath.includes("\\") ? "\\" : "/"}plugins${basePath.includes("\\") ? "\\" : "/"}${plugin.name}`;
 
   try {
     await systemApi.openFolder(pluginConfigPath);

@@ -1,5 +1,6 @@
 pub mod config;
 pub mod java;
+pub mod mcs_plugin;
 pub mod player;
 pub mod plugin;
 pub mod server;
