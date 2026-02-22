@@ -1,16 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { RefreshCw, Check, XCircle, Copy, Terminal } from "lucide-vue-next";
-import {
-  DialogRoot,
-  DialogTrigger,
-  DialogPortal,
-  DialogOverlay,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-} from "reka-ui";
+import { RefreshCw, Check, XCircle } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { checkUpdate, type UpdateInfo } from "@api/update";
@@ -28,16 +18,6 @@ const isCheckingUpdate = ref(false);
 const updateInfo = ref<UpdateInfo | null>(null);
 const updateError = ref<string | null>(null);
 
-const aurDialogOpen = ref(false);
-const aurInfo = ref<{
-  currentVersion: string;
-  latestVersion: string;
-  helper: string;
-  command: string;
-} | null>(null);
-
-const isAurUpdate = ref(false);
-
 async function handleCheckUpdate() {
   isCheckingUpdate.value = true;
   updateError.value = null;
@@ -48,25 +28,12 @@ async function handleCheckUpdate() {
 
     if (info) {
       updateInfo.value = info;
-      isAurUpdate.value = info.source === "arch-aur";
-
-      if (isAurUpdate.value) {
-        const helper =
-          info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
-        aurInfo.value = {
-          currentVersion: info.current_version,
-          latestVersion: info.latest_version,
-          helper: helper,
-          command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
-        };
-      }
     } else {
       updateInfo.value = {
         has_update: false,
         latest_version: props.version,
         current_version: props.version,
       };
-      isAurUpdate.value = false;
     }
   } catch (error) {
     console.error("[ProjectInfo] 检查更新失败:", error);
@@ -83,16 +50,6 @@ async function handleManualDownload() {
     } catch (error) {
       console.error("[ProjectInfo] 打开链接失败:", error);
       alert(`打开链接失败: ${error}`);
-    }
-  }
-}
-
-async function copyCommand() {
-  if (aurInfo.value?.command) {
-    try {
-      await navigator.clipboard.writeText(aurInfo.value.command);
-    } catch (e) {
-      console.error("[ProjectInfo] 复制命令失败:", e);
     }
   }
 }
@@ -154,72 +111,14 @@ async function copyCommand() {
             <div class="notes-content">{{ updateInfo.release_notes }}</div>
           </div>
           <div class="update-buttons">
-            <DialogRoot v-model:open="aurDialogOpen">
-              <DialogTrigger as-child>
-                <SLButton
-                  v-if="isAurUpdate"
-                  variant="primary"
-                  size="sm"
-                  style="width: 100%"
-                >
-                  {{ i18n.t("about.go_download") }} (AUR)
-                </SLButton>
-                <SLButton
-                  v-else
-                  variant="primary"
-                  size="sm"
-                  @click="handleManualDownload"
-                  style="width: 100%"
-                >
-                  {{ i18n.t("about.go_download") }}
-                </SLButton>
-              </DialogTrigger>
-              <DialogPortal>
-                <DialogOverlay class="dialog-overlay" />
-                <DialogContent class="dialog-content">
-                  <DialogTitle class="dialog-title">
-                    {{ i18n.t("about.aur_window_title_update") }}
-                  </DialogTitle>
-                  <DialogDescription class="dialog-description">
-                    <p class="aur-desc">{{ i18n.t("about.aur_window_new_version") }}</p>
-                    <p class="aur-desc">{{ i18n.t("about.aur_window_aur_version") }}</p>
-                    <div class="aur-info">
-                      <div class="aur-row">
-                        <span class="aur-label">{{ i18n.t("about.aur_window_current_version") }}</span>
-                        <span class="aur-value">{{ aurInfo?.currentVersion }}</span>
-                      </div>
-                      <div class="aur-row">
-                        <span class="aur-label">{{ i18n.t("about.aur_window_latest_version") }}</span>
-                        <span class="aur-value">{{ aurInfo?.latestVersion }}</span>
-                      </div>
-                      <div class="aur-row">
-                        <span class="aur-label">Helper:</span>
-                        <span class="aur-value">{{ aurInfo?.helper }}</span>
-                      </div>
-                    </div>
-                    <div class="command-box">
-                      <div class="command-header">
-                        <Terminal :size="14" />
-                        <span>{{ i18n.t("about.aur_window_single_update") }}</span>
-                      </div>
-                      <code class="command-text">{{ aurInfo?.command }}</code>
-                    </div>
-                    <p class="aur-tip">{{ i18n.t("about.aur_window_copy_tip") }}</p>
-                  </DialogDescription>
-                  <div class="dialog-actions">
-                    <SLButton variant="secondary" size="sm" @click="copyCommand">
-                      <Copy :size="14" style="margin-right: 6px" />
-                      {{ i18n.t("about.aur_window_copy_success") }}
-                    </SLButton>
-                    <DialogClose as-child>
-                      <SLButton variant="ghost" size="sm">
-                        {{ i18n.t("about.aur_window_button") }}
-                      </SLButton>
-                    </DialogClose>
-                  </div>
-                </DialogContent>
-              </DialogPortal>
-            </DialogRoot>
+            <SLButton
+              variant="primary"
+              size="sm"
+              @click="handleManualDownload"
+              style="width: 100%"
+            >
+              {{ i18n.t("about.go_download") }}
+            </SLButton>
           </div>
         </div>
         <div v-else class="update-latest">
@@ -386,127 +285,5 @@ async function copyCommand() {
   background: var(--sl-danger);
   color: white;
   border-radius: 50%;
-}
-
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 50;
-  animation: overlay-show 0.15s ease;
-}
-
-.dialog-content {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90vw;
-  max-width: 420px;
-  max-height: 85vh;
-  background: var(--sl-bg-primary);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-lg);
-  padding: var(--sl-space-lg);
-  box-shadow: var(--sl-shadow-xl);
-  z-index: 51;
-  animation: content-show 0.2s ease;
-  overflow-y: auto;
-}
-
-.dialog-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin-bottom: var(--sl-space-sm);
-}
-
-.dialog-description {
-  margin-bottom: var(--sl-space-md);
-}
-
-.aur-desc {
-  font-size: 0.875rem;
-  color: var(--sl-text-primary);
-  margin-bottom: var(--sl-space-xs);
-}
-
-.aur-tip {
-  font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
-  margin-top: var(--sl-space-sm);
-}
-
-.aur-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-xs);
-  margin-bottom: var(--sl-space-md);
-  padding: var(--sl-space-sm);
-  background: var(--sl-bg-secondary);
-  border-radius: var(--sl-radius-md);
-}
-
-.aur-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-}
-
-.aur-label {
-  color: var(--sl-text-tertiary);
-}
-
-.aur-value {
-  color: var(--sl-text-primary);
-  font-family: var(--sl-font-mono);
-}
-
-.command-box {
-  background: var(--sl-bg-tertiary);
-  border-radius: var(--sl-radius-md);
-  overflow: hidden;
-}
-
-.command-header {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-xs);
-  padding: var(--sl-space-xs) var(--sl-space-sm);
-  background: var(--sl-bg-secondary);
-  font-size: 0.75rem;
-  color: var(--sl-text-secondary);
-}
-
-.command-text {
-  display: block;
-  padding: var(--sl-space-sm);
-  font-family: var(--sl-font-mono);
-  font-size: 0.8125rem;
-  color: var(--sl-text-primary);
-  word-break: break-all;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--sl-space-sm);
-}
-
-@keyframes overlay-show {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes content-show {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -48%) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
 }
 </style>
