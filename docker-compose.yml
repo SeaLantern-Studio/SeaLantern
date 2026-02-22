@@ -1,0 +1,26 @@
+services:
+  sealantern:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      # 持久化数据目录
+      - sealantern_data:/app/data
+      # 可选：挂载 Minecraft 服务器目录
+      # - ./servers:/app/servers
+    environment:
+      - RUST_LOG=info
+      - STATIC_DIR=/app/dist
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  sealantern_data:
+    driver: local
