@@ -1,0 +1,92 @@
+# ============================================
+# SeaLantern Dockerfile - 多阶段构建
+# ============================================
+
+# ---------- 阶段 1: 构建前端 ----------
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+
+# 复制 package 文件
+COPY package.json package-lock.json ./
+
+# 安装依赖
+RUN npm ci --frozen-lockfile
+
+# 复制前端源代码
+COPY . .
+
+# 构建前端 (vite)
+RUN npm run build
+
+# ---------- 阶段 2: 编译 Rust 后端 ----------
+FROM rust:1.80-slim AS backend-builder
+
+WORKDIR /app
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    libwebkit2gtk-4.1-dev \
+    build-essential \
+    curl \
+    wget \
+    libssl-dev \
+    libgtk-3-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev \
+    libxdo-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制 Cargo 文件
+COPY Cargo.toml Cargo.lock ./
+COPY src-tauri/Cargo.toml src-tauri/Cargo.lock ./src-tauri/
+
+# 预下载依赖（利用 Docker 缓存）
+RUN cd src-tauri && cargo fetch
+
+# 复制源代码
+COPY . .
+
+# 构建 Release 版本 (库和二进制)
+WORKDIR /app/src-tauri
+RUN cargo build --release --lib --bins
+
+# ---------- 阶段 3: 精简运行镜像 ----------
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+# 安装运行时依赖
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    libgtk-3-0 \
+    libwebkit2gtk-4.1-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m -u 1000 sealantern
+
+# 从后端构建器复制编译好的二进制程序
+COPY --from=backend-builder /app/src-tauri/target/release/docker-entry /app/docker-entry
+
+# 从前端构建器复制构建好的静态文件
+COPY --from=frontend-builder /app/dist /app/dist
+
+# 设置环境变量
+ENV STATIC_DIR=/app/dist
+ENV RUST_LOG=info
+
+# 创建数据目录
+RUN mkdir -p /app/data && chown -R sealantern:sealantern /app
+
+# 切换到非 root 用户
+USER sealantern
+
+# 暴露 HTTP 服务器端口
+EXPOSE 3000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# 启动命令
+ENTRYPOINT ["/app/docker-entry"]
