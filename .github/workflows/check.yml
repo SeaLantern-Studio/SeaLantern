@@ -106,6 +106,15 @@ jobs:
         with:
           node-version: "lts/*"
 
+      - name: Enable Corepack
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        run: |
+          corepack enable
+      - name: Pin PNPM version with Corepack
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        run: |
+          corepack prepare pnpm@9.15.9 --activate
+
       - name: 缓存 pnpm 依赖
         if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/cache@v4
@@ -118,7 +127,7 @@ jobs:
       - name: 安装前端依赖
         if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
-          npm i -g pnpm
+          corepack enable
           pnpm install --frozen-lockfile
 
       - name: 运行格式化并检查前端 Lint
