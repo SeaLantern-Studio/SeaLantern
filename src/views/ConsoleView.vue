@@ -1,29 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
-import { useRoute } from "vue-router";
 import SLButton from "../components/common/SLButton.vue";
-import SLSelect from "../components/common/SLSelect.vue";
 import ConsoleInput from "../components/console/ConsoleInput.vue";
 import CommandModal from "../components/console/CommandModal.vue";
 import ConsoleOutput from "../components/console/ConsoleOutput.vue";
 import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { serverApi } from "../api/server";
-import { playerApi } from "../api/player";
 import { settingsApi } from "../api/settings";
 import { i18n } from "../language";
 import { useLoading } from "../composables/useAsync";
-import { getStatusClass, getStatusText } from "../utils/serverStatus";
 
-const route = useRoute();
 const serverStore = useServerStore();
 const consoleStore = useConsoleStore();
 
 const commandInput = ref("");
 const logContainer = ref<HTMLElement | null>(null);
 const userScrolledUp = ref(false);
-const showSuggestions = ref(false);
-const suggestionIndex = ref(0);
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref(-1);
 const consoleFontSize = ref(13);
@@ -39,49 +32,6 @@ const commandName = ref("");
 const commandText = ref("");
 const commandLoading = ref(false);
 
-const allCommands = [
-  "help",
-  "list",
-  "stop",
-  "say",
-  "time set day",
-  "time set night",
-  "time set noon",
-  "weather clear",
-  "weather rain",
-  "weather thunder",
-  "gamemode survival",
-  "gamemode creative",
-  "gamemode adventure",
-  "gamemode spectator",
-  "difficulty peaceful",
-  "difficulty easy",
-  "difficulty normal",
-  "difficulty hard",
-  "give",
-  "tp",
-  "teleport",
-  "kill",
-  "kick",
-  "ban",
-  "pardon",
-  "op",
-  "deop",
-  "whitelist add",
-  "whitelist remove",
-  "whitelist list",
-  "gamerule keepInventory true",
-  "gamerule keepInventory false",
-  "gamerule doDaylightCycle true",
-  "gamerule doDaylightCycle false",
-  "gamerule mobGriefing true",
-  "gamerule mobGriefing false",
-  "save-all",
-  "tps",
-  "plugins",
-  "version",
-];
-
 const quickCommands = computed(() => [
   { label: i18n.t("common.command_day"), cmd: "time set day" },
   { label: i18n.t("common.command_night"), cmd: "time set night" },
@@ -95,27 +45,9 @@ const quickCommands = computed(() => [
   { label: i18n.t("common.command_mob_griefing_off"), cmd: "gamerule mobGriefing false" },
 ]);
 
-const filteredSuggestions = computed(() => {
-  const input = commandInput.value.trim().toLowerCase();
-  if (!input) return [];
-  return allCommands
-    .filter((c) => c.toLowerCase().startsWith(input) && c.toLowerCase() !== input)
-    .slice(0, 8);
-});
-
-const serverId = computed(
-  () =>
-    consoleStore.activeServerId || serverStore.currentServerId || (route.params.id as string) || "",
-);
+const serverId = computed(() => serverStore.currentServerId || "");
 
 const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
-
-const serverOptions = computed(() =>
-  serverStore.servers.map((s) => ({
-    label: s.name + " (" + s.id.substring(0, 8) + ")",
-    value: s.id,
-  })),
-);
 
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
@@ -130,13 +62,6 @@ watch(
   },
 );
 
-function switchServer(id: string | number) {
-  consoleStore.setActiveServer(String(id));
-  serverStore.setCurrentServer(String(id));
-  userScrolledUp.value = false;
-  nextTick(() => doScroll());
-}
-
 onMounted(async () => {
   // Load console font size from settings
   try {
@@ -148,8 +73,6 @@ onMounted(async () => {
 
   await serverStore.refreshList();
   if (serverId.value) {
-    consoleStore.setActiveServer(serverId.value);
-    serverStore.setCurrentServer(serverId.value);
     await serverStore.refreshStatus(serverId.value);
   }
   startPolling();
@@ -213,72 +136,10 @@ async function sendCommand(cmd?: string) {
   doScroll();
 }
 
-function handleKeydown(e: KeyboardEvent) {
-  if (e.key === "Enter") {
-    if (showSuggestions.value && filteredSuggestions.value.length > 0) {
-      commandInput.value = filteredSuggestions.value[suggestionIndex.value];
-      showSuggestions.value = false;
-    } else {
-      sendCommand();
-    }
-    return;
-  }
-  if (e.key === "Tab") {
-    e.preventDefault();
-    if (filteredSuggestions.value.length > 0) {
-      commandInput.value = filteredSuggestions.value[suggestionIndex.value];
-      showSuggestions.value = false;
-    }
-    return;
-  }
-  if (e.key === "ArrowUp") {
-    e.preventDefault();
-    if (showSuggestions.value && suggestionIndex.value > 0) suggestionIndex.value--;
-    else if (
-      commandHistory.value.length > 0 &&
-      historyIndex.value < commandHistory.value.length - 1
-    ) {
-      historyIndex.value++;
-      commandInput.value =
-        commandHistory.value[commandHistory.value.length - 1 - historyIndex.value];
-    }
-    return;
-  }
-  if (e.key === "ArrowDown") {
-    e.preventDefault();
-    if (showSuggestions.value && suggestionIndex.value < filteredSuggestions.value.length - 1)
-      suggestionIndex.value++;
-    else if (historyIndex.value > 0) {
-      historyIndex.value--;
-      commandInput.value =
-        commandHistory.value[commandHistory.value.length - 1 - historyIndex.value];
-    } else {
-      historyIndex.value = -1;
-      commandInput.value = "";
-    }
-    return;
-  }
-  if (e.key === "Escape") {
-    showSuggestions.value = false;
-    return;
-  }
-  nextTick(() => {
-    showSuggestions.value =
-      commandInput.value.trim().length > 0 && filteredSuggestions.value.length > 0;
-    suggestionIndex.value = 0;
-  });
-}
-
 function doScroll() {
   nextTick(() => {
     if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight;
   });
-}
-
-function handleScroll() {
-  if (!logContainer.value) return;
-  const el = logContainer.value;
-  userScrolledUp.value = el.scrollHeight - el.scrollTop - el.clientHeight > 40;
 }
 
 async function handleStart() {
@@ -375,13 +236,8 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
   <div class="console-view animate-fade-in-up">
     <div class="console-toolbar">
       <div class="toolbar-left">
-        <div v-if="serverOptions.length > 0" class="server-selector">
-          <SLSelect
-            :options="serverOptions"
-            :modelValue="serverId"
-            :placeholder="i18n.t('common.select_server')"
-            @update:modelValue="switchServer"
-          />
+        <div v-if="serverId" class="server-name-display">
+          {{ serverStore.servers.find(s => s.id === serverId)?.name || i18n.t("console.no_server") }}
         </div>
         <div v-else class="server-name-display">{{ i18n.t("console.no_server") }}</div>
         <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
@@ -494,9 +350,6 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
 .toolbar-right {
   display: flex;
   gap: var(--sl-space-xs);
-}
-.server-selector {
-  min-width: 240px;
 }
 .server-name-display {
   font-weight: 600;
