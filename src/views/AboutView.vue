@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { AvatarImage, AvatarRoot, AvatarFallback } from "reka-ui";
 import {
   Plus,
   Code2,
@@ -230,7 +231,12 @@ async function handleManualDownload() {
 
       <div class="contributor-grid">
         <div v-for="c in displayedContributors" :key="c.name" class="contributor-card glass-card">
-          <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
+          <AvatarRoot class="contributor-avatar" :alt="c.name">
+            <AvatarImage :src="c.avatar" :alt="c.name" />
+            <AvatarFallback>
+              <img src="../../src-tauri/icons/64x64.png" />
+            </AvatarFallback>
+          </AvatarRoot>
 
           <div class="contributor-right">
             <div class="contributor-info" :title="c.name + ' - ' + c.role">
@@ -495,7 +501,11 @@ async function handleManualDownload() {
       <SLButton variant="primary" size="lg" @click="openLink('https://gitee.com/fps_z/SeaLantern')">
         {{ i18n.t("about.gitee_repo") }}
       </SLButton>
-      <SLButton variant="primary" size="lg" @click="openLink('https://github.com/FPSZ/SeaLantern')">
+      <SLButton
+        variant="primary"
+        size="lg"
+        @click="openLink('https://github.com/SeaLantern-Studio/SeaLantern')"
+      >
         {{ i18n.t("about.github_repo") }}
       </SLButton>
       <SLButton
