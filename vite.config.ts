@@ -3,17 +3,28 @@ import vue from "@vitejs/plugin-vue";
 import path from "path";
 
 const host = process.env.TAURI_DEV_HOST;
+const rootDir = process.cwd();
 
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [vue()],
-
-  // 路径别名
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(rootDir, "src"),
+      "@api": path.resolve(rootDir, "src/api"),
+      "@assets": path.resolve(rootDir, "src/assets"),
+      "@components": path.resolve(rootDir, "src/components"),
+      "@composables": path.resolve(rootDir, "src/composables"),
+      "@data": path.resolve(rootDir, "src/data"),
+      "@language": path.resolve(rootDir, "src/language"),
+      "@router": path.resolve(rootDir, "src/router"),
+      "@stores": path.resolve(rootDir, "src/stores"),
+      "@styles": path.resolve(rootDir, "src/styles"),
+      "@themes": path.resolve(rootDir, "src/themes"),
+      "@types": path.resolve(rootDir, "src/types"),
+      "@utils": path.resolve(rootDir, "src/utils"),
+      "@views": path.resolve(rootDir, "src/views"),
     },
   },
-
   build: {
     target: "esnext",
     minify: "terser",
@@ -33,7 +44,6 @@ export default defineConfig(async () => ({
     },
     chunkSizeWarningLimit: 1000,
   },
-
   clearScreen: false,
   server: {
     port: 5173,
@@ -50,4 +60,4 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
-}));
+});
