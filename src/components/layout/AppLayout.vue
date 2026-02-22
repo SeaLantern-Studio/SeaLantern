@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed, watch } from "vue";
-import AppSidebar from "./AppSidebar.vue";
-import AppHeader from "./AppHeader.vue";
-import { useUiStore } from "../../stores/uiStore";
+import AppSidebar from "@components/layout/AppSidebar.vue";
+import AppHeader from "@components/layout/AppHeader.vue";
+import { useUiStore } from "@stores/uiStore";
 import {
   useSettingsStore,
   SETTINGS_UPDATE_EVENT,
   type SettingsUpdateEvent,
-} from "../../stores/settingsStore";
-import { applyAcrylic, type SettingsGroup } from "../../api/settings";
+} from "@stores/settingsStore";
+import { applyAcrylic, type SettingsGroup } from "@api/settings";
 import {
   applyTheme,
   applyFontFamily,
@@ -17,7 +17,7 @@ import {
   applyDeveloperMode,
   getEffectiveTheme,
   isThemeProviderActive,
-} from "../../utils/theme";
+} from "@utils/theme";
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();

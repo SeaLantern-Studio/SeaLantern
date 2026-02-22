@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, onMounted, onUnmounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useUiStore } from "../../stores/uiStore";
-import { useServerStore } from "../../stores/serverStore";
-import { usePluginStore } from "../../stores/pluginStore";
-import { i18n } from "../../language";
+import { useUiStore } from "@stores/uiStore";
+import { useServerStore } from "@stores/serverStore";
+import { usePluginStore } from "@stores/pluginStore";
+import { i18n } from "@language/index";
 import {
   Listbox,
   ListboxButton,
