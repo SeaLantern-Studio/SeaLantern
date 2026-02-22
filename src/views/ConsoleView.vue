@@ -31,6 +31,7 @@ const editingCommand = ref<import("../types/server").ServerCommand | null>(null)
 const commandName = ref("");
 const commandText = ref("");
 const commandLoading = ref(false);
+const showSuggestions = ref(false);
 
 const quickCommands = computed(() => [
   { label: i18n.t("common.command_day"), cmd: "time set day" },
