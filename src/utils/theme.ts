@@ -4,7 +4,7 @@
  */
 
 import type { AppSettings } from "@api/settings";
-import { getThemeColors, mapLegacyPlanName } from "@themes/index";
+import { getThemeColors, mapLegacyPlanName } from "@themes";
 
 let _themeProviderOverrides: string[] = [];
 
