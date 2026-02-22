@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, ChevronDown, ChevronUp } from "lucide-vue-next";
+import { Minus, Square, X, ChevronDown, ChevronUp, Copy } from "lucide-vue-next";
 import { useI18nStore } from "../../stores/i18nStore";
 import { i18n } from "../../language";
 import SLModal from "../common/SLModal.vue";
@@ -23,6 +23,7 @@ const perLocaleProgress = reactive<Record<string, { loaded: number; total: numbe
 const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
+const isMaximized = ref(false);
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -100,6 +101,7 @@ const otherLanguages = computed(() => {
 });
 
 const showMoreLanguages = ref(false);
+let unlistenResize: (() => void) | null = null;
 
 function toggleMoreLanguages() {
   showMoreLanguages.value = !showMoreLanguages.value;
@@ -135,11 +137,22 @@ const currentLanguageText = computed(() => {
 onMounted(async () => {
   await loadSettings();
 
+  // 初始化最大化状态
+  isMaximized.value = await appWindow.isMaximized();
+
+  // 监听窗口大小变化
+  unlistenResize = await appWindow.onResized(async () => {
+    isMaximized.value = await appWindow.isMaximized();
+  });
+
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
+  if (unlistenResize) {
+    unlistenResize();
+  }
 });
 
 function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
@@ -304,8 +317,9 @@ function computeOverallProgress() {
         <button class="win-btn" @click="minimizeWindow" :title="i18n.t('common.minimize')">
           <Minus :size="12" />
         </button>
-        <button class="win-btn" @click="toggleMaximize" :title="i18n.t('common.maximize')">
-          <Square :size="12" />
+        <button class="win-btn" @click="toggleMaximize" :title="isMaximized ? i18n.t('common.restore') : i18n.t('common.maximize')">
+          <Copy v-if="isMaximized" :size="12" />
+          <Square v-else :size="12" />
         </button>
         <button class="win-btn win-btn-close" @click="closeWindow" :title="i18n.t('common.close')">
           <X :size="12" />
