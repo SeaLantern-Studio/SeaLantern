@@ -1,6 +1,7 @@
 {
   "name": "sea-lantern",
   "version": "0.6.5",
+  "packageManager": "pnpm@9.15.9",
   "private": true,
   "type": "module",
   "scripts": {

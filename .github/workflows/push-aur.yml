@@ -52,6 +52,8 @@ jobs:
           # openssh: SSH 客户端，用于连接 AUR
           # dpkg: Debian 包工具，用于处理 deb 包
           pacman -Syu --noconfirm base-devel git sudo openssh dpkg
+          pacman -S --noconfirm nodejs npm
+          npm i -g pnpm@9.15.9
 
           # 创建 builder 用户（用于运行 makepkg）
           useradd -m builder
