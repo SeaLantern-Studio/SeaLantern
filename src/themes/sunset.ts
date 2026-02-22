@@ -1,4 +1,4 @@
-import type { ThemeDefinition } from "../types";
+import type { ThemeDefinition } from "@type/theme";
 
 export const sunsetTheme: ThemeDefinition = {
   id: "sunset",

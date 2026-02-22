@@ -1,4 +1,4 @@
-import type { ThemeDefinition, ThemeRegistry, ThemeColors, ColorPlan } from "./types";
+import type { ThemeDefinition, ThemeRegistry, ThemeColors, ColorPlan } from "@type/theme";
 
 let themes: ThemeRegistry = {};
 
@@ -126,4 +126,4 @@ export function mapLegacyPlanName(plan: string): ColorPlan {
   return mapping[plan] || "light";
 }
 
-export type { ThemeDefinition, ThemeColors, ColorPlan, ThemeRegistry };
+export type { ThemeDefinition, ThemeColors, ColorPlan, ThemeRegistry } from "@type/theme";
