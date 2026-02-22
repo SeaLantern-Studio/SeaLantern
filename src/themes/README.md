@@ -69,7 +69,7 @@ registerTheme({
  * @author Your Name
  * @version 1.0.0
  */
-import type { ThemeDefinition } from "./types";
+import type { ThemeDefinition } from "@type/theme";
 
 const forestTheme: ThemeDefinition = {
   id: "forest",
