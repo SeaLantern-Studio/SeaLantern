@@ -771,7 +771,23 @@ impl ServerManager {
     }
 
     pub fn get_server_list(&self) -> Vec<ServerInstance> {
-        self.servers.lock().unwrap().clone()
+        let mut servers = self.servers.lock().unwrap().clone();
+        
+        // 读取每个服务器的 server.properties 文件，更新端口信息
+        for server in &mut servers {
+            let server_properties_path = std::path::Path::new(&server.path).join("server.properties");
+            if server_properties_path.exists() {
+                if let Ok(props) = crate::services::config_parser::read_properties(server_properties_path.to_str().unwrap_or_default()) {
+                    if let Some(port_str) = props.get("server-port") {
+                        if let Ok(port) = port_str.parse::<u16>() {
+                            server.port = port;
+                        }
+                    }
+                }
+            }
+        }
+        
+        servers
     }
 
     pub fn get_server_status(&self, id: &str) -> ServerStatusInfo {
