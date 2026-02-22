@@ -26,17 +26,17 @@ import {
   SquarePen,
 } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import BrandIcon from "../components/common/BrandIcon.vue";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import BrandIcon from "@components/common/BrandIcon.vue";
 import {
   contributors as contributorsList,
   type SocialLinks,
   type Contributor,
-} from "../data/contributors";
-import { checkUpdate, type UpdateInfo } from "../api/update";
-import { getAppVersion, BUILD_YEAR } from "../utils/version";
-import { i18n } from "../language";
+} from "@data/contributors";
+import { checkUpdate, type UpdateInfo } from "@api/update";
+import { getAppVersion, BUILD_YEAR } from "@utils/version";
+import { i18n } from "@language/index";
 
 const version = ref("Loading...");
 const buildDate = BUILD_YEAR;
