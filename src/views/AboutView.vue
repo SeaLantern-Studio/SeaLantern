@@ -37,6 +37,7 @@ import {
 import { checkUpdate, type UpdateInfo } from "@api/update";
 import { getAppVersion, BUILD_YEAR } from "@utils/version";
 import { i18n } from "@language";
+import logo from "@assets/logo.svg";
 
 const version = ref("Loading...");
 const buildDate = BUILD_YEAR;
@@ -192,7 +193,7 @@ async function handleManualDownload() {
     <!-- Hero Section -->
     <div class="hero-section">
       <div class="hero-logo">
-        <img src="../assets/logo.svg" alt="Sea Lantern" width="72" height="72" />
+        <img :src="logo" alt="Sea Lantern" width="72" height="72" />
       </div>
       <h1 class="hero-title">Sea Lantern</h1>
       <p class="hero-subtitle">{{ i18n.t("about.subtitle") }}</p>
