@@ -127,3 +127,17 @@ export function mapLegacyPlanName(plan: string): ColorPlan {
 }
 
 export type { ThemeDefinition, ThemeColors, ColorPlan, ThemeRegistry } from "@type/theme";
+
+const themesAPI = {
+  getAllThemes,
+  getThemeOptions,
+  getThemeById,
+  registerTheme,
+  unregisterTheme,
+  resetThemes,
+  getThemeColors,
+  getThemeColorValue,
+  mapLegacyPlanName,
+};
+
+export default themesAPI;

@@ -174,4 +174,15 @@ class I18n {
 }
 
 export const i18n = new I18n();
-export default i18n;
+
+const languageAPI = {
+  i18n,
+  SUPPORTED_LOCALES,
+  setTranslations,
+  registerPluginLocale,
+  addPluginTranslations,
+  removePluginTranslations,
+  getPluginLocaleDisplayName,
+};
+
+export default languageAPI;
