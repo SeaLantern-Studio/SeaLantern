@@ -234,6 +234,15 @@ export const contributors: Contributor[] = [
     role: "修复文档bug",
     avatar: "https://api.rms.net.cn/head/Alex",
   },
+  {
+    name: "黎明lime",
+    role: "修修补补",
+    avatar: "https://api.rms.net.cn/head/lmyyds",
+    url: {
+      github: "https://github.com/lmyyds1",
+      bilibili: "https://space.bilibili.com/514672422",
+    },
+  },
   // ============================================
   // 在这里添加更多贡献者！
   // 没有正版怎么办？
@@ -251,6 +260,7 @@ export const contributors: Contributor[] = [
   //     gitee: "https://gitee.com/your-username",
   //     github: "https://github.com/your-username",
   //     bilibili: "https://space.bilibili.com/your-bilibili-id",
+  //     tiktok: "https://www.douyin.com/user/",
   //     qq: "your-qq-number",
   //   },
   // },
