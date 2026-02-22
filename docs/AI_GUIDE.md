@@ -417,7 +417,7 @@ setInterval(async () => {
 **示例**：访问 serverStore
 
 ```typescript
-import { useServerStore } from "@/stores/serverStore";
+import { useServerStore } from "@stores/serverStore";
 
 const serverStore = useServerStore();
 const servers = serverStore.servers;
