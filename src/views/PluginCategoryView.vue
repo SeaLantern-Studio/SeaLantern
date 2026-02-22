@@ -222,7 +222,7 @@ watch(
   <div class="category-view">
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
-      <span>{{ i18n.t('common.loading') }}</span>
+      <span>{{ i18n.t("common.loading") }}</span>
     </div>
 
     <template v-else-if="plugin">
@@ -244,7 +244,7 @@ watch(
       </header>
 
       <SLCard v-if="isThemeProvider && pluginPresets" class="settings-card">
-        <h3 class="section-title">{{ i18n.t('plugins.preset_theme') }}</h3>
+        <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
         <div class="presets-grid">
           <button
             v-for="(presetData, presetKey) in pluginPresets"
@@ -269,7 +269,7 @@ watch(
       </SLCard>
 
       <SLCard v-if="plugin.manifest.settings?.length" class="settings-card main-settings">
-        <h3 class="section-title">{{ plugin.manifest.name }} {{ i18n.t('plugins.settings') }}</h3>
+        <h3 class="section-title">{{ plugin.manifest.name }} {{ i18n.t("plugins.settings") }}</h3>
         <div class="settings-form">
           <SLFormField
             v-for="field in plugin.manifest.settings"
@@ -328,8 +328,8 @@ watch(
 
       <template v-if="showDependents && dependentPlugins.length > 0">
         <div class="dependent-section-header">
-          <h2>{{ i18n.t('plugins.related_plugins') }}</h2>
-          <p>{{ i18n.t('plugins.related_plugins_desc', { name: plugin.manifest.name }) }}</p>
+          <h2>{{ i18n.t("plugins.related_plugins") }}</h2>
+          <p>{{ i18n.t("plugins.related_plugins_desc", { name: plugin.manifest.name }) }}</p>
         </div>
 
         <SLCard
@@ -422,13 +422,17 @@ watch(
       </template>
 
       <div class="action-buttons">
-        <SLButton variant="secondary" @click="resetToDefault">{{ i18n.t('plugins.reset_default') }}</SLButton>
-        <span class="auto-save-hint">{{ saving ? i18n.t('plugins.saving') : i18n.t('plugins.auto_saved') }}</span>
+        <SLButton variant="secondary" @click="resetToDefault">{{
+          i18n.t("plugins.reset_default")
+        }}</SLButton>
+        <span class="auto-save-hint">{{
+          saving ? i18n.t("plugins.saving") : i18n.t("plugins.auto_saved")
+        }}</span>
       </div>
     </template>
 
     <div v-else class="not-found">
-      <p>{{ i18n.t('plugins.not_found') }}</p>
+      <p>{{ i18n.t("plugins.not_found") }}</p>
     </div>
   </div>
 </template>

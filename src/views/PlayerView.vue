@@ -276,17 +276,21 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
       </div>
       <div v-if="selectedServerId" class="server-status">
         <SLBadge
-          :text="isRunning ? i18n.t('common.server_status_running') : i18n.t('common.server_status_stopped')"
+          :text="
+            isRunning
+              ? i18n.t('common.server_status_running')
+              : i18n.t('common.server_status_stopped')
+          "
           :variant="isRunning ? 'success' : 'neutral'"
         />
-        <span v-if="!isRunning" class="status-hint text-caption"
-          >{{ i18n.t('players.server_not_run') }}</span
-        >
+        <span v-if="!isRunning" class="status-hint text-caption">{{
+          i18n.t("players.server_not_run")
+        }}</span>
       </div>
     </div>
 
     <div v-if="!selectedServerId" class="empty-state">
-      <p class="text-body">{{ i18n.t('players.no_server') }}</p>
+      <p class="text-body">{{ i18n.t("players.no_server") }}</p>
     </div>
 
     <template v-else>
@@ -299,29 +303,31 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
       </div>
 
       <div class="tab-bar">
+        <div class="tab-indicator" ref="tabIndicator"></div>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'online' }"
           @click="activeTab = 'online'"
         >
-          {{ i18n.t('players.online_players') }} <span class="tab-count">{{ onlinePlayers.length }}</span>
+          {{ i18n.t("players.online_players") }}
+          <span class="tab-count">{{ onlinePlayers.length }}</span>
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'whitelist' }"
           @click="activeTab = 'whitelist'"
         >
-          {{ i18n.t('players.whitelist') }} <span class="tab-count">{{ whitelist.length }}</span>
+          {{ i18n.t("players.whitelist") }} <span class="tab-count">{{ whitelist.length }}</span>
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'banned' }"
           @click="activeTab = 'banned'"
         >
-          {{ i18n.t('players.banned') }} <span class="tab-count">{{ bannedPlayers.length }}</span>
+          {{ i18n.t("players.banned") }} <span class="tab-count">{{ bannedPlayers.length }}</span>
         </button>
         <button class="tab-btn" :class="{ active: activeTab === 'ops' }" @click="activeTab = 'ops'">
-          {{ i18n.t('players.ops') }} <span class="tab-count">{{ ops.length }}</span>
+          {{ i18n.t("players.ops") }} <span class="tab-count">{{ ops.length }}</span>
         </button>
       </div>
 
@@ -329,18 +335,22 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
         <SLButton variant="primary" size="sm" :disabled="!isRunning" @click="openAddModal">{{
           getAddLabel()
         }}</SLButton>
-        <SLButton variant="ghost" size="sm" @click="loadAll">{{ i18n.t('common.refresh') }}</SLButton>
+        <SLButton variant="ghost" size="sm" @click="loadAll">{{
+          i18n.t("common.refresh")
+        }}</SLButton>
       </div>
 
       <div v-if="loading" class="loading-state">
         <SLSpinner />
-        <span>{{ i18n.t('common.loading') }}</span>
+        <span>{{ i18n.t("common.loading") }}</span>
       </div>
 
       <div v-else-if="activeTab === 'online'" class="player-list">
-        <div v-if="!isRunning" class="empty-list"><p class="text-caption">{{ i18n.t('players.server_offline') }}</p></div>
+        <div v-if="!isRunning" class="empty-list">
+          <p class="text-caption">{{ i18n.t("players.server_offline") }}</p>
+        </div>
         <div v-else-if="onlinePlayers.length === 0" class="empty-list">
-          <p class="text-caption">{{ i18n.t('players.no_players') }}</p>
+          <p class="text-caption">{{ i18n.t("players.no_players") }}</p>
         </div>
         <div v-for="name in onlinePlayers" :key="name" class="player-item glass-card">
           <div class="player-avatar">
@@ -356,14 +366,16 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
             <SLBadge :text="i18n.t('players.status_online')" variant="success" />
           </div>
           <div class="player-actions">
-            <SLButton variant="ghost" size="sm" @click="handleKick(name)">{{ i18n.t('players.kick') }}</SLButton>
+            <SLButton variant="ghost" size="sm" @click="handleKick(name)">{{
+              i18n.t("players.kick")
+            }}</SLButton>
           </div>
         </div>
       </div>
 
       <div v-else-if="activeTab === 'whitelist'" class="player-list">
         <div v-if="whitelist.length === 0" class="empty-list">
-          <p class="text-caption">{{ i18n.t('players.empty_whitelist') }}</p>
+          <p class="text-caption">{{ i18n.t("players.empty_whitelist") }}</p>
         </div>
         <div v-for="p in whitelist" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
@@ -383,7 +395,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
               size="sm"
               :disabled="!isRunning"
               @click="handleRemoveWhitelist(p.name)"
-              >{{ i18n.t('players.remove') }}</SLButton
+              >{{ i18n.t("players.remove") }}</SLButton
             >
           </div>
         </div>
@@ -391,7 +403,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 
       <div v-else-if="activeTab === 'banned'" class="player-list">
         <div v-if="bannedPlayers.length === 0" class="empty-list">
-          <p class="text-caption">{{ i18n.t('players.empty_banned') }}</p>
+          <p class="text-caption">{{ i18n.t("players.empty_banned") }}</p>
         </div>
         <div v-for="p in bannedPlayers" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
@@ -403,12 +415,18 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
-            <span class="text-caption">{{ i18n.t('players.reason') }}: {{ p.reason || i18n.t('players.empty') }}</span>
+            <span class="text-caption"
+              >{{ i18n.t("players.reason") }}: {{ p.reason || i18n.t("players.empty") }}</span
+            >
           </div>
           <SLBadge :text="i18n.t('players.ban')" variant="error" />
           <div class="player-actions">
-            <SLButton variant="ghost" size="sm" :disabled="!isRunning" @click="handleUnban(p.name)"
-              >{{ i18n.t('players.unban') }}</SLButton
+            <SLButton
+              variant="ghost"
+              size="sm"
+              :disabled="!isRunning"
+              @click="handleUnban(p.name)"
+              >{{ i18n.t("players.unban") }}</SLButton
             >
           </div>
         </div>
@@ -416,7 +434,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 
       <div v-else-if="activeTab === 'ops'" class="player-list">
         <div v-if="ops.length === 0" class="empty-list">
-          <p class="text-caption">{{ i18n.t('players.empty_ops') }}</p>
+          <p class="text-caption">{{ i18n.t("players.empty_ops") }}</p>
         </div>
         <div v-for="p in ops" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
@@ -428,7 +446,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
-            <span class="text-caption">{{ i18n.t('players.level') }}: {{ p.level }}</span>
+            <span class="text-caption">{{ i18n.t("players.level") }}: {{ p.level }}</span>
           </div>
           <SLBadge text="OP" variant="warning" />
           <div class="player-actions">
@@ -437,7 +455,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
               size="sm"
               :disabled="!isRunning"
               @click="handleRemoveOp(p.name)"
-              >{{ i18n.t('players.deop') }}</SLButton
+              >{{ i18n.t("players.deop") }}</SLButton
             >
           </div>
         </div>
@@ -446,7 +464,11 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 
     <SLModal :visible="showAddModal" :title="getAddLabel()" @close="showAddModal = false">
       <div class="modal-form">
-        <SLInput :label="i18n.t('players.player_name')" :placeholder="i18n.t('players.player_id')" v-model="addPlayerName" />
+        <SLInput
+          :label="i18n.t('players.player_name')"
+          :placeholder="i18n.t('players.player_id')"
+          v-model="addPlayerName"
+        />
         <SLInput
           v-if="activeTab === 'banned'"
           :label="i18n.t('players.ban_reason')"
@@ -457,13 +479,19 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
           <AlertTriangle
             :size="14"
             style="display: inline; vertical-align: middle; margin-right: 4px"
-          />{{ i18n.t('players.server_not_running_hint') }}
+          />{{ i18n.t("players.server_not_running_hint") }}
         </p>
       </div>
       <template #footer>
-        <SLButton variant="secondary" @click="showAddModal = false">{{ i18n.t('players.cancel') }}</SLButton>
-        <SLButton variant="primary" :loading="addLoading" :disabled="!isRunning" @click="handleAdd"
-          >{{ i18n.t('players.confirm') }}</SLButton
+        <SLButton variant="secondary" @click="showAddModal = false">{{
+          i18n.t("players.cancel")
+        }}</SLButton>
+        <SLButton
+          variant="primary"
+          :loading="addLoading"
+          :disabled="!isRunning"
+          @click="handleAdd"
+          >{{ i18n.t("players.confirm") }}</SLButton
         >
       </template>
     </SLModal>
@@ -523,28 +551,56 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
 }
 .tab-bar {
   display: flex;
-  gap: 2px;
-  background: var(--sl-bg-secondary);
+  gap: var(--sl-space-xs);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
-  padding: 3px;
+  padding: var(--sl-space-xs);
   width: fit-content;
+  margin: var(--sl-space-md) 0;
+  position: relative;
+  overflow: hidden;
 }
+
+.tab-indicator {
+  position: absolute;
+  top: var(--sl-space-xs);
+  bottom: var(--sl-space-xs);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  transition: all 0.3s ease;
+  box-shadow: var(--sl-shadow-sm);
+  z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
+}
+
 .tab-btn {
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  padding: 8px 18px;
+  padding: 6px 14px;
   border-radius: var(--sl-radius-sm);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--sl-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
   transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
+  white-space: nowrap;
 }
+
+.tab-btn:hover {
+  color: var(--sl-text-primary);
+}
+
 .tab-btn.active {
-  background: var(--sl-surface);
   color: var(--sl-primary);
-  box-shadow: var(--sl-shadow-sm);
 }
+
 .tab-count {
   min-width: 20px;
   height: 20px;
@@ -557,6 +613,7 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
   align-items: center;
   justify-content: center;
 }
+
 .tab-btn.active .tab-count {
   background: var(--sl-primary-bg);
   color: var(--sl-primary);

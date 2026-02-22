@@ -129,28 +129,20 @@ const staticNavItems: NavItem[] = [
     group: "system",
   },
   {
+    name: "plugins",
+    path: "/plugins",
+    icon: "puzzle",
+    labelKey: "common.plugins",
+    label: i18n.t("common.plugins"),
+    group: "system",
+  },
+
+  {
     name: "settings",
     path: "/settings",
     icon: "settings",
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
-    group: "system",
-  },
-
-  {
-    name: "plugins",
-    path: "/plugins",
-    icon: "puzzle",
-    labelKey: "common.plugins",
-    label: i18n.t("common.plugins") || "插件",
-    group: "system",
-  },
-  {
-    name: "market",
-    path: "/market",
-    icon: "store",
-    labelKey: "common.market",
-    label: i18n.t("common.market") || "插件市场",
     group: "system",
   },
 ];
@@ -552,7 +544,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
           </div>
           <div v-else-if="group.group === 'plugins-default'" class="nav-group-label">
             <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed">{{ i18n.t("common.plugins") }}</span>
+              <span v-if="!ui.sidebarCollapsed">{{ i18n.t('common.plugins') }}</span>
             </transition>
           </div>
           <div v-else-if="group.group !== 'main'" class="nav-group-label"></div>
@@ -668,6 +660,15 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
   will-change: width;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* 在亚克力状态下调整边框透明度 */
+[data-acrylic="true"] .sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"][data-acrylic="true"] .sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .sidebar.collapsed {

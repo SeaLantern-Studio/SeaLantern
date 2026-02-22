@@ -383,7 +383,7 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
             @update:modelValue="switchServer"
           />
         </div>
-        <div v-else class="server-name-display">{{ i18n.t('console.no_server') }}</div>
+        <div v-else class="server-name-display">{{ i18n.t("console.no_server") }}</div>
         <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
           <span class="status-dot"></span>
           <span class="status-label">{{ getStatusText() }}</span>
@@ -396,7 +396,7 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
           :loading="startLoading"
           :disabled="isRunning || isStopping || startLoading"
           @click="handleStart"
-          >{{ i18n.t('home.start') }}</SLButton
+          >{{ i18n.t("home.start") }}</SLButton
         >
         <SLButton
           variant="danger"
@@ -404,20 +404,24 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
           :loading="stopLoading"
           :disabled="isStopped || isStopping || stopLoading"
           @click="handleStop"
-          >{{ i18n.t('home.stop') }}</SLButton
+          >{{ i18n.t("home.stop") }}</SLButton
         >
-        <SLButton variant="secondary" size="sm" @click="exportLogs">{{ i18n.t('console.copy_log') }}</SLButton>
-        <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{ i18n.t('console.clear_log') }}</SLButton>
+        <SLButton variant="secondary" size="sm" @click="exportLogs">{{
+          i18n.t("console.copy_log")
+        }}</SLButton>
+        <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
+          i18n.t("console.clear_log")
+        }}</SLButton>
       </div>
     </div>
 
     <div v-if="!serverId" class="no-server">
-      <p class="text-body">{{ i18n.t('console.create_server_first') }}</p>
+      <p class="text-body">{{ i18n.t("console.create_server_first") }}</p>
     </div>
 
     <template v-else>
       <div class="quick-commands">
-        <span class="quick-label">{{ i18n.t('console.quick') }}</span>
+        <span class="quick-label">{{ i18n.t("console.quick") }}</span>
         <div class="quick-groups">
           <div
             v-for="cmd in quickCommands"

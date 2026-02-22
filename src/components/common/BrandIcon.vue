@@ -15,6 +15,7 @@ import {
   siTelegram,
   siReddit,
   siSpotify,
+  siTiktok,
 } from "simple-icons";
 
 interface Props {
@@ -41,6 +42,7 @@ const iconMap: Record<string, SimpleIcon> = {
   telegram: siTelegram,
   reddit: siReddit,
   spotify: siSpotify,
+  tiktok: siTiktok,
 };
 
 const darkIcons = new Set(["github", "gitee"]);
@@ -52,11 +54,7 @@ const icon = computed(() => {
 
 const pathData = computed(() => icon.value?.path);
 const color = computed(() => {
-  const lowerName = props.name.toLowerCase();
-  if (darkIcons.has(lowerName)) {
-    return "currentColor";
-  }
-  return icon.value?.hex ? `#${icon.value.hex}` : "currentColor";
+  return "currentColor";
 });
 </script>
 

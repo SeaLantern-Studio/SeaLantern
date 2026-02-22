@@ -1,29 +1,29 @@
 .glass {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
 }
 
 .glass-subtle {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--sl-surface);
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.3));
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--sl-glass-strong-bg, rgba(255, 255, 255, 0.88));
   backdrop-filter: blur(24px) saturate(200%);
   -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.6));
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   border-radius: var(--sl-radius-lg);
   box-shadow: var(--sl-shadow-md);
   transition: all var(--sl-transition-normal);
@@ -36,61 +36,80 @@
 }
 
 [data-theme="dark"] .glass {
-  background: rgba(15, 17, 23, 0.72);
-  border-color: rgba(255, 255, 255, 0.08);
+  --sl-glass-bg: rgba(15, 17, 23, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
 }
 
 [data-theme="dark"] .glass-subtle {
-  background: rgba(15, 17, 23, 0.5);
   border-color: rgba(255, 255, 255, 0.05);
 }
 
 [data-theme="dark"] .glass-strong {
-  background: rgba(15, 17, 23, 0.88);
-  border-color: rgba(255, 255, 255, 0.1);
+  --sl-glass-strong-bg: rgba(15, 17, 23, 0.88);
+  --sl-glass-border: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="dark"] .glass-card {
-  background: rgba(26, 29, 40, 0.8);
-  border-color: rgba(255, 255, 255, 0.08);
+  --sl-glass-bg: rgba(26, 29, 40, 0.8);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
 }
 
 [data-acrylic="true"] .glass {
-  background: rgba(255, 255, 255, 0.45);
+  --sl-glass-bg: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
 }
 
 [data-acrylic="true"] .glass-subtle {
-  background: rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(4px) saturate(120%);
   -webkit-backdrop-filter: blur(4px) saturate(120%);
 }
 
 [data-acrylic="true"] .glass-strong {
-  background: rgba(255, 255, 255, 0.6);
+  --sl-glass-strong-bg: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
 }
 
 [data-acrylic="true"] .glass-card {
-  background: rgba(255, 255, 255, 0.5);
+  --sl-glass-bg: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
 }
 
 [data-theme="dark"][data-acrylic="true"] .glass {
-  background: rgba(15, 17, 23, 0.45);
-}
-
-[data-theme="dark"][data-acrylic="true"] .glass-subtle {
-  background: rgba(15, 17, 23, 0.3);
+  --sl-glass-bg: rgba(15, 17, 23, 0.45);
 }
 
 [data-theme="dark"][data-acrylic="true"] .glass-strong {
-  background: rgba(15, 17, 23, 0.6);
+  --sl-glass-strong-bg: rgba(15, 17, 23, 0.6);
 }
 
 [data-theme="dark"][data-acrylic="true"] .glass-card {
-  background: rgba(26, 29, 40, 0.5);
+  --sl-glass-bg: rgba(26, 29, 40, 0.5);
+}
+
+/* 亚克力关闭时，使用不透明背景 */
+[data-acrylic="false"] .glass {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-acrylic="false"] .glass-subtle {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-acrylic="false"] .glass-strong {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-acrylic="false"] .glass-card {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }

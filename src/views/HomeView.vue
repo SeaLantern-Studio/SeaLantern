@@ -1,410 +1,95 @@
 <script setup lang="ts">
-import type { EChartsOption } from "echarts";
-import { Menu, Clock, Server, Pencil, Folder, FolderOpen, Check, X, Gauge } from "lucide-vue-next";
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { Menu, Server, Pencil, FolderOpen, Check, X, Gauge } from "lucide-vue-next";
+import { onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
 import SLBadge from "../components/common/SLBadge.vue";
 import SLProgress from "../components/common/SLProgress.vue";
 import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { serverApi } from "../api/server";
-import { systemApi, type SystemInfo } from "../api/system";
+import { systemApi } from "../api/system";
 import { i18n } from "../language";
-import type { ServerInstance } from "../types/server";
+
+// 导入拆分后的模块
+import {
+  currentQuote,
+  displayText,
+  isTyping,
+  initQuote,
+  updateQuote,
+  startQuoteTimer,
+  cleanupQuoteResources,
+} from "../utils/quoteUtils";
+
+import {
+  systemInfo,
+  cpuUsage,
+  memUsage,
+  diskUsage,
+  statsViewMode,
+  statsLoading,
+  cpuGaugeOption,
+  memGaugeOption,
+  diskGaugeOption,
+  cpuLineOption,
+  memLineOption,
+  fetchSystemInfo,
+  startThemeObserver,
+  cleanupStatsResources,
+} from "../utils/statsUtils";
+
+import {
+  actionLoading,
+  actionError,
+  editingServerId,
+  editName,
+  editLoading,
+  deletingServerId,
+  deleteServerName,
+  inputServerName,
+  deleteError,
+  isClosing,
+  showDeleteConfirm,
+  recentAlerts,
+  formatBytes,
+  formatServerPath,
+  getStatusVariant,
+  getStatusText,
+  handleStart,
+  handleStop,
+  startEditServerName,
+  saveServerName,
+  cancelEdit,
+  showDeleteConfirmInput,
+  confirmDelete,
+  cancelDelete,
+  handleAnimationEnd,
+  handleClickOutside,
+  closeDeleteConfirm,
+} from "../utils/serverUtils";
 
 const router = useRouter();
 const store = useServerStore();
-const consoleStore = useConsoleStore();
 
-const actionLoading = ref<Record<string, boolean>>({});
-const actionError = ref<string | null>(null);
-
-const editingServerId = ref<string | null>(null);
-const editName = ref("");
-const editLoading = ref(false);
-
-const systemInfo = ref<SystemInfo | null>(null);
-const cpuUsage = ref(0);
-const memUsage = ref(0);
-const diskUsage = ref(0);
-const cpuHistory = ref<number[]>([]);
-const memHistory = ref<number[]>([]);
-const statsViewMode = ref<"detail" | "gauge">("gauge");
-const statsLoading = ref(true);
-
-// 获取当前主题标识（用于强制重新计算图表配置）
-const themeVersion = ref(0);
-
-// 模块级 MutationObserver 引用，避免污染全局命名空间
-let themeObserver: MutationObserver | null = null;
-
-// 获取 CSS 变量实际值的辅助函数，支持传入默认值
-const getCssVar = (varName: string, defaultValue: string): string => {
-  if (typeof window === "undefined") return defaultValue;
-  const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  return value || defaultValue;
-};
-
-// 获取当前根字体大小（px）
-const getRootFontSize = (): number => {
-  if (typeof window === "undefined") return 16;
-  const fontSize = getComputedStyle(document.documentElement).fontSize;
-  const parsed = parseFloat(fontSize);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 16;
-};
-
-// 解析 CSS 字体大小（支持 px 和 rem 单位）
-const parseFontSize = (varName: string, defaultPx: number): number => {
-  const value = getCssVar(varName, `${defaultPx}px`);
-  // 移除单位并解析为数字
-  const numMatch = value.match(/^[\d.]+/);
-  if (!numMatch) return defaultPx;
-
-  const num = parseFloat(numMatch[0]);
-  if (!Number.isFinite(num) || num <= 0) return defaultPx;
-
-  // 如果是 rem，使用实际的根字体大小进行换算
-  if (value.includes("rem")) {
-    return num * getRootFontSize();
+/**
+ * 处理服务器路径点击事件
+ * @param path 服务器路径
+ */
+async function handlePathClick(path: string) {
+  try {
+    await systemApi.openFolder(path);
+  } catch (e) {
+    console.error("打开文件夹失败:", e);
   }
-  return num;
-};
-
-// ECharts 公共基础配置
-const baseChartConfig: EChartsOption = {
-  backgroundColor: "transparent",
-  animation: true,
-  animationDuration: 300,
-  animationEasing: "cubicOut",
-};
-
-// ECharts 配置生成函数
-const createGaugeOption = (rawValue: number, colorVar: string, label: string): EChartsOption => {
-  const value = Number.isFinite(rawValue)
-    ? Math.min(100, Math.max(0, rawValue))
-    : 0;
-  const fontSize = parseFontSize("--sl-font-size-sm", 13);
-  const fontFamily = getCssVar("--sl-font-mono", "monospace");
-  const color = getCssVar(colorVar, "#3b82f6");
-  const textColor = getCssVar("--sl-text-primary", "#1f2937");
-  const borderColor = getCssVar("--sl-border", "#e5e7eb");
-
-  return {
-    ...baseChartConfig,
-    series: [
-      {
-        type: "pie",
-        radius: ["65%", "80%"],
-        center: ["50%", "45%"],
-        avoidLabelOverlap: false,
-        silent: true,
-        label: {
-          show: true,
-          position: "center",
-          formatter: () => `${value}%`,
-          fontSize: fontSize,
-          fontWeight: 600,
-          fontFamily: fontFamily,
-          color: textColor,
-        },
-        labelLine: {
-          show: false,
-        },
-        data: [
-          {
-            value: value,
-            name: label,
-            itemStyle: {
-              color: color,
-              borderRadius: 3,
-            },
-          },
-          {
-            value: 100 - value,
-            name: i18n.t("home.remaining"),
-            itemStyle: {
-              color: borderColor,
-            },
-            label: {
-              show: false,
-            },
-            emphasis: {
-              disabled: true,
-            },
-          },
-        ],
-      },
-    ],
-  };
-};
-
-const cpuGaugeOption = computed(() => {
-  //@ts-ignore
-  const _ = themeVersion.value;
-  return createGaugeOption(cpuUsage.value, "--sl-primary", i18n.t("home.cpu"));
-});
-const memGaugeOption = computed(() => {
-  //@ts-ignore
-  const _ = themeVersion.value;
-  return createGaugeOption(memUsage.value, "--sl-success", i18n.t("home.memory"));
-});
-const diskGaugeOption = computed(() => {
-  //@ts-ignore
-  const _ = themeVersion.value;
-  return createGaugeOption(diskUsage.value, "--sl-warning", i18n.t("home.disk"));
-});
-
-// 折线图公共配置
-const baseLineConfig: EChartsOption = {
-  ...baseChartConfig,
-  grid: {
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    show: false,
-  },
-  xAxis: {
-    type: "category",
-    show: false,
-    boundaryGap: false,
-  },
-  yAxis: {
-    type: "value",
-    show: false,
-    min: 0,
-    max: 100,
-  },
-};
-
-// 折线图配置生成函数
-const createLineOption = (data: number[], colorVar: string): EChartsOption => {
-  const color = getCssVar(colorVar, "#3b82f6");
-
-  return {
-    ...baseLineConfig,
-    xAxis: {
-      ...baseLineConfig.xAxis,
-      data: data.map((_, i) => i),
-    },
-    series: [
-      {
-        type: "line",
-        data: data,
-        smooth: false,
-        symbol: "none",
-        lineStyle: {
-          width: 2,
-          color: color,
-        },
-        areaStyle: {
-          color: color,
-          opacity: 0.15,
-        },
-      },
-    ],
-  };
-};
-
-const cpuLineOption = computed(() => {
-  const _ = themeVersion.value;
-  return createLineOption(cpuHistory.value, "--sl-primary");
-});
-const memLineOption = computed(() => {
-  const _ = themeVersion.value;
-  return createLineOption(memHistory.value, "--sl-success");
-});
+}
 
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-interface HitokotoResponse {
-  id: number;
-  hitokoto: string;
-  type: string;
-  from: string;
-  from_who: string | null;
-  creator: string;
-  creator_uid: number;
-  review_status: number;
-  uuid: string;
-  created_at: string;
-}
-
-const currentQuote = ref<{ text: string; author: string }>({ text: "", author: "" });
-const displayText = ref("");
-const isTyping = ref(false);
-const quoteCache = ref<Array<{ text: string; author: string }>>([]);
-let typeTimer: ReturnType<typeof setInterval> | null = null;
-
-function typeWriter(text: string, callback?: () => void) {
-  if (typeTimer) clearInterval(typeTimer);
-  displayText.value = "";
-  isTyping.value = true;
-  let index = 0;
-  typeTimer = setInterval(() => {
-    if (index < text.length) {
-      displayText.value += text[index];
-      index++;
-    } else {
-      if (typeTimer) clearInterval(typeTimer);
-      isTyping.value = false;
-      if (callback) callback();
-    }
-  }, 50);
-}
-
-function typeWriterOut(callback?: () => void) {
-  if (typeTimer) clearInterval(typeTimer);
-  if (!displayText.value) {
-    if (callback) callback();
-    return;
-  }
-  isTyping.value = true;
-  let chars = displayText.value.split("");
-  typeTimer = setInterval(() => {
-    if (chars.length > 0) {
-      chars.pop();
-      displayText.value = chars.join("");
-    } else {
-      if (typeTimer) clearInterval(typeTimer);
-      isTyping.value = false;
-      if (callback) callback();
-    }
-  }, 30);
-}
-
-async function fetchHitokoto(): Promise<{ text: string; author: string }> {
-  if (quoteCache.value.length > 0) {
-    const quote = quoteCache.value.shift();
-    replenishCache();
-    return quote!;
-  }
-
-  try {
-    const response = await fetch("https://v1.hitokoto.cn/?encode=json");
-    if (!response.ok) {
-      throw new Error("Failed to fetch hitokoto");
-    }
-    const data: HitokotoResponse = await response.json();
-    const quote = {
-      text: data.hitokoto,
-      author: data.from_who || data.from || i18n.t("common.unknown"),
-    };
-    replenishCache();
-    return quote;
-  } catch (error) {
-    console.error("Error fetching hitokoto:", error);
-    const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
-    return defaultQuote;
-  }
-}
-
-function isQuoteInCache(quote: { text: string; author: string }): boolean {
-  return quoteCache.value.some((cachedQuote) => cachedQuote.text === quote.text);
-}
-
-async function replenishCache() {
-  let attempts = 0;
-  const maxAttempts = 10;
-
-  while (quoteCache.value.length < 2 && attempts < maxAttempts) {
-    try {
-      const response = await fetch("https://v1.hitokoto.cn/?encode=json");
-      if (!response.ok) {
-        throw new Error("Failed to fetch hitokoto");
-      }
-      const data: HitokotoResponse = await response.json();
-      const newQuote = {
-        text: data.hitokoto,
-        author: data.from_who || data.from || i18n.t("common.unknown"),
-      };
-
-      if (!isQuoteInCache(newQuote)) {
-        quoteCache.value.push(newQuote);
-      } else {
-        attempts++;
-      }
-    } catch (error) {
-      console.error("Error replenishing quote cache:", error);
-      break;
-    }
-  }
-}
-
-async function updateQuote() {
-  if (isTyping.value) {
-    return;
-  }
-  typeWriterOut(async () => {
-    try {
-      const newQuote = await fetchHitokoto();
-      currentQuote.value = newQuote;
-      typeWriter(newQuote.text);
-    } catch (error) {
-      console.error("Error updating quote:", error);
-    }
-  });
-}
-
-async function initQuote() {
-  try {
-    await replenishCache();
-    const initialQuote = await fetchHitokoto();
-    currentQuote.value = initialQuote;
-    typeWriter(initialQuote.text);
-  } catch (error) {
-    console.error("Error initializing quote:", error);
-  }
-}
-
-initQuote();
-
-let quoteTimer: ReturnType<typeof setInterval> | null = null;
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-}
-
-function formatServerPath(path: string): string {
-  const serversIndex = path.indexOf("servers/");
-  if (serversIndex !== -1) {
-    return path.substring(serversIndex);
-  }
-  const serversIndexBackslash = path.indexOf("servers\\");
-  if (serversIndexBackslash !== -1) {
-    return path.substring(serversIndexBackslash);
-  }
-  return path;
-}
-
-const recentAlerts = computed(() => {
-  const alerts: { server: string; line: string }[] = [];
-  for (const [sid, logs] of Object.entries(consoleStore.logs)) {
-    const serverName = store.servers.find((s) => s.id === sid)?.name || sid.substring(0, 8);
-    const filtered = logs
-      .filter(
-        (l) =>
-          l.includes("[ERROR]") ||
-          l.includes("[WARN]") ||
-          l.includes("FATAL") ||
-          l.includes("[STDERR]"),
-      )
-      .slice(-5);
-    for (const line of filtered) {
-      alerts.push({ server: serverName, line });
-    }
-  }
-  return alerts.slice(-10);
-});
-
 onMounted(() => {
+  // 初始化名言
+  initQuote();
+
   // 异步加载服务器列表，不阻塞页面渲染
   const loadServers = async () => {
     try {
@@ -412,26 +97,6 @@ onMounted(() => {
       await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
     } catch (e) {
       console.error("Failed to load servers:", e);
-    }
-  };
-
-  // 获取真实系统信息（异步，不阻塞页面渲染）
-  const fetchSystemInfo = async () => {
-    try {
-      const info = await systemApi.getSystemInfo();
-      systemInfo.value = info;
-      // clamp CPU usage to 0-100 (sysinfo can sometimes return >100%)
-      cpuUsage.value = Math.min(100, Math.max(0, Math.round(info.cpu.usage)));
-      memUsage.value = Math.min(100, Math.max(0, Math.round(info.memory.usage)));
-      diskUsage.value = Math.min(100, Math.max(0, Math.round(info.disk.usage)));
-      cpuHistory.value.push(cpuUsage.value);
-      memHistory.value.push(memUsage.value);
-      if (cpuHistory.value.length > 30) cpuHistory.value.shift();
-      if (memHistory.value.length > 30) memHistory.value.shift();
-      statsLoading.value = false;
-    } catch (e) {
-      console.error("Failed to fetch system info:", e);
-      statsLoading.value = false;
     }
   };
 
@@ -443,7 +108,7 @@ onMounted(() => {
   statsTimer = setInterval(fetchSystemInfo, 3000);
 
   // 名言每30秒更新一次
-  quoteTimer = setInterval(updateQuote, 30000);
+  startQuoteTimer();
 
   // Refresh server statuses
   refreshTimer = setInterval(async () => {
@@ -454,214 +119,19 @@ onMounted(() => {
   document.addEventListener("click", handleClickOutside);
 
   // 监听主题和无障碍模式变化
-  themeObserver = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (
-        mutation.type === "attributes" &&
-        (mutation.attributeName === "data-theme" || mutation.attributeName === "data-senior")
-      ) {
-        themeVersion.value++;
-      }
-    });
-  });
-
-  themeObserver.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme", "data-senior"],
-  });
+  startThemeObserver();
 });
 
 onUnmounted(() => {
-  if (typeTimer) clearInterval(typeTimer);
   if (statsTimer) clearInterval(statsTimer);
   if (refreshTimer) clearInterval(refreshTimer);
-  if (quoteTimer) clearInterval(quoteTimer);
+  // 清理引用相关资源
+  cleanupQuoteResources();
+  // 清理系统状态相关资源
+  cleanupStatsResources();
   // 移除全局点击事件监听器
   document.removeEventListener("click", handleClickOutside);
-
-  // 清理 MutationObserver
-  if (themeObserver) {
-    themeObserver.disconnect();
-    themeObserver = null;
-  }
 });
-
-// 处理点击空白区域的逻辑
-function handleClickOutside(event: MouseEvent) {
-  if (!deletingServerId.value) return;
-
-  const target = event.target as HTMLElement;
-  // 检查是否点击了删除确认输入框或删除按钮
-  const isDeleteConfirmInput = target.closest(".delete-confirm-input");
-  const isDeleteButton = target.closest(".server-card-actions")?.querySelector("button");
-
-  // 如果没有点击这些元素，则收回输入框
-  if (!isDeleteConfirmInput && !isDeleteButton) {
-    cancelDelete();
-  }
-}
-
-function getStatusVariant(status: string | undefined) {
-  switch (status) {
-    case "Running":
-      return "success" as const;
-    case "Starting":
-    case "Stopping":
-      return "warning" as const;
-    case "Error":
-      return "error" as const;
-    default:
-      return "neutral" as const;
-  }
-}
-
-function getStatusText(status: string | undefined): string {
-  switch (status) {
-    case "Running":
-      return i18n.t("home.running");
-    case "Starting":
-      return i18n.t("home.starting");
-    case "Stopping":
-      return i18n.t("home.stopping");
-    case "Error":
-      return i18n.t("home.error");
-    default:
-      return i18n.t("home.stopped");
-  }
-}
-
-async function handleStart(id: string) {
-  actionLoading.value[id] = true;
-  actionError.value = null;
-  try {
-    await serverApi.start(id);
-    await store.refreshStatus(id);
-  } catch (e) {
-    actionError.value = String(e);
-  } finally {
-    actionLoading.value[id] = false;
-  }
-}
-
-async function handleStop(id: string) {
-  actionLoading.value[id] = true;
-  actionError.value = null;
-  try {
-    await serverApi.stop(id);
-    await store.refreshStatus(id);
-  } catch (e) {
-    actionError.value = String(e);
-  } finally {
-    actionLoading.value[id] = false;
-  }
-}
-
-// 开始就地编辑服务器名称
-function startEditServerName(server: ServerInstance) {
-  editingServerId.value = server.id;
-  editName.value = server.name;
-}
-
-// 保存服务器名称更改
-async function saveServerName(serverId: string) {
-  if (!serverId || !editName.value.trim()) return;
-
-  editLoading.value = true;
-  actionError.value = null;
-
-  try {
-    await serverApi.updateServerName(serverId, editName.value.trim());
-    await store.refreshList();
-    editingServerId.value = null;
-  } catch (e) {
-    actionError.value = String(e);
-  } finally {
-    editLoading.value = false;
-  }
-}
-
-// 取消编辑服务器名称
-function cancelEdit() {
-  editingServerId.value = null;
-  editName.value = "";
-}
-
-// 服务器删除确认相关
-const deletingServerId = ref<string | null>(null);
-const deleteServerName = ref("");
-const inputServerName = ref("");
-const deleteError = ref<string | null>(null);
-const isClosing = ref(false);
-
-// 显示/收回删除确认输入框
-function showDeleteConfirmInput(server: ServerInstance) {
-  // 如果当前服务器的删除确认输入框已显示，则收回
-  if (deletingServerId.value === server.id) {
-    cancelDelete();
-  } else {
-    // 否则显示删除确认输入框
-    deletingServerId.value = server.id;
-    deleteServerName.value = server.name;
-    inputServerName.value = "";
-    deleteError.value = null;
-  }
-}
-
-// 验证并执行删除
-async function confirmDelete() {
-  if (!deletingServerId.value) return;
-
-  if (inputServerName.value.trim() !== deleteServerName.value.trim()) {
-    deleteError.value = i18n.t("home.delete_error");
-    return;
-  }
-
-  try {
-    await serverApi.deleteServer(deletingServerId.value);
-    await store.refreshList();
-    // 添加关闭动画类
-    isClosing.value = true;
-
-    // 动画结束后重置状态
-    setTimeout(() => {
-      deletingServerId.value = null;
-      deleteServerName.value = "";
-      inputServerName.value = "";
-      deleteError.value = null;
-      isClosing.value = false;
-    }, 300);
-  } catch (e) {
-    actionError.value = String(e);
-  }
-}
-
-// 取消删除
-function cancelDelete() {
-  if (!deletingServerId.value) return;
-
-  // 添加关闭动画类
-  isClosing.value = true;
-
-  // 动画结束后重置状态
-  setTimeout(() => {
-    deletingServerId.value = null;
-    deleteServerName.value = "";
-    inputServerName.value = "";
-    deleteError.value = null;
-    isClosing.value = false;
-  }, 300);
-}
-
-// 处理动画结束事件
-function handleAnimationEnd(event: AnimationEvent) {
-  if (event.animationName === "deleteInputCollapse") {
-    deletingServerId.value = null;
-    deleteServerName.value = "";
-    inputServerName.value = "";
-    deleteError.value = null;
-    isClosing.value = false;
-  }
-}
 </script>
 
 <template>
@@ -691,7 +161,9 @@ function handleAnimationEnd(event: AnimationEvent) {
             >—— {{ currentQuote.author }}</span
           >
           <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
-          <span v-if="!displayText && !isTyping" class="quote-loading">{{ i18n.t("common.loading") }}</span>
+          <span v-if="!displayText && !isTyping" class="quote-loading">{{
+            i18n.t("common.loading")
+          }}</span>
         </div>
       </SLCard>
 
@@ -892,11 +364,7 @@ function handleAnimationEnd(event: AnimationEvent) {
           />
         </div>
 
-        <div
-          class="server-card-path text-mono text-caption"
-          :title="server.jar_path"
-          @click="systemApi.openFolder(server.path)"
-        >
+        <div class="server-card-path text-mono text-caption" :title="server.path" @click="handlePathClick(server.path)">
           <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
           <FolderOpen class="folder-icon" :size="16" />
         </div>
@@ -947,39 +415,40 @@ function handleAnimationEnd(event: AnimationEvent) {
           <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
             {{ i18n.t("home.delete") }}
           </SLButton>
-          <div
-            v-if="deletingServerId === server.id"
-            :class="['delete-confirm-input', { closing: isClosing }]"
-            @animationend="handleAnimationEnd"
-          >
-            <p
-              class="delete-confirm-message"
-              v-html="
-                i18n.t('home.delete_confirm_message', {
-                  server: '<strong>' + server.name + '</strong>',
-                })
-              "
-            ></p>
-            <div class="delete-input-group">
-              <input
-                type="text"
-                v-model="inputServerName"
-                class="delete-input"
-                :placeholder="i18n.t('home.delete_input_placeholder')"
-                @keyup.enter="confirmDelete"
-                @keyup.esc="cancelDelete"
-                ref="deleteInput"
-              />
-              <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
-            </div>
-            <div class="delete-actions">
-              <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
-                i18n.t("home.delete_cancel")
-              }}</SLButton>
-              <SLButton variant="danger" size="sm" @click="confirmDelete">{{
-                i18n.t("home.delete_confirm")
-              }}</SLButton>
-            </div>
+        </div>
+
+        <div
+          v-if="deletingServerId === server.id"
+          :class="['delete-confirm-area', { closing: isClosing }]"
+          @animationend="handleAnimationEnd"
+        >
+          <p
+            class="delete-confirm-message"
+            v-html="
+              i18n.t('home.delete_confirm_message', {
+                server: '<strong>' + server.name + '</strong>',
+              })
+            "
+          ></p>
+          <div class="delete-input-group">
+            <input
+              type="text"
+              v-model="inputServerName"
+              class="delete-input"
+              :placeholder="i18n.t('home.delete_input_placeholder')"
+              @keyup.enter="confirmDelete"
+              @keyup.esc="cancelDelete"
+              ref="deleteInput"
+            />
+            <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
+          </div>
+          <div class="delete-actions">
+            <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
+              i18n.t("home.delete_cancel")
+            }}</SLButton>
+            <SLButton variant="danger" size="sm" @click="confirmDelete">{{
+              i18n.t("home.delete_confirm")
+            }}</SLButton>
           </div>
         </div>
       </div>
@@ -1455,9 +924,7 @@ function handleAnimationEnd(event: AnimationEvent) {
 
 .server-card-path:hover {
   background: var(--sl-bg-secondary);
-  border-top-color: var(--sl-primary-light);
-  border-right-color: var(--sl-primary-light);
-  border-bottom-color: var(--sl-primary-light);
+  border-color: var(--sl-primary-light);
   color: var(--sl-text-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -1509,61 +976,44 @@ function handleAnimationEnd(event: AnimationEvent) {
   }
 }
 
-.delete-confirm-input {
-  width: 100%;
-  margin-top: var(--sl-space-sm);
-  padding: var(--sl-space-sm);
-  background: var(--sl-bg-secondary);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-radius: var(--sl-radius-md);
-  overflow: hidden;
-  animation: deleteInputExpand 0.3s ease forwards;
+.delete-confirm-area {
+  margin-top: var(--sl-space-md);
+  padding-top: var(--sl-space-md);
+  border-top: 1px solid var(--sl-border);
+  animation: slideDown 0.3s ease forwards;
 }
 
-.delete-confirm-input.closing {
-  animation: deleteInputCollapse 0.3s ease forwards;
+.delete-confirm-area.closing {
+  animation: slideUp 0.2s ease forwards;
 }
 
-@keyframes deleteInputExpand {
-  0% {
+@keyframes slideDown {
+  from {
     opacity: 0;
-    transform: translateY(-10px) scaleY(0.2);
     max-height: 0;
-    padding: 0 var(--sl-space-sm);
+    padding-top: 0;
+    margin-top: 0;
   }
-  60% {
+  to {
     opacity: 1;
-    transform: translateY(0) scaleY(1);
     max-height: 200px;
-    padding: var(--sl-space-sm);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-    max-height: 200px;
-    padding: var(--sl-space-sm);
+    padding-top: var(--sl-space-md);
+    margin-top: var(--sl-space-md);
   }
 }
 
-@keyframes deleteInputCollapse {
-  0% {
+@keyframes slideUp {
+  from {
     opacity: 1;
-    transform: translateY(0) scaleY(1);
     max-height: 200px;
-    padding: var(--sl-space-sm);
+    padding-top: var(--sl-space-md);
+    margin-top: var(--sl-space-md);
   }
-  40% {
+  to {
     opacity: 0;
-    transform: translateY(-5px) scaleY(1);
-    max-height: 200px;
-    padding: var(--sl-space-sm);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-10px) scaleY(0.2);
     max-height: 0;
-    padding: 0 var(--sl-space-sm);
+    padding-top: 0;
+    margin-top: 0;
   }
 }
 
@@ -1581,10 +1031,10 @@ function handleAnimationEnd(event: AnimationEvent) {
   width: 100%;
   padding: var(--sl-space-sm) var(--sl-space-md);
   border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-  background: var(--sl-bg-secondary);
-  color: var(--sl-text-primary);
-  font-size: 0.875rem;
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-bg-tertiary);
+  color: var(--sl-text-secondary);
+  font-size: 0.75rem;
   outline: none;
   transition: all 0.2s ease;
 }
@@ -1592,6 +1042,20 @@ function handleAnimationEnd(event: AnimationEvent) {
 .delete-input:focus {
   border-color: var(--sl-primary);
   box-shadow: 0 0 0 2px var(--sl-primary-bg);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+}
+
+.delete-input:hover {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-primary-light);
+  color: var(--sl-text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.delete-input:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .delete-error {
