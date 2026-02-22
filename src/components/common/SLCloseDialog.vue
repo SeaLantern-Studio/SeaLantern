@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { ArrowDownToLine, X } from "lucide-vue-next";
-import SLModal from "./SLModal.vue";
+import SLModal from "@components/common/SLModal.vue";
 
 interface Props {
   visible: boolean;

@@ -1,6 +1,6 @@
 import { onActivated, onDeactivated, onMounted, onUnmounted } from "vue";
-import { useComponentRegistry } from "./useComponentRegistry";
-import type { ComponentHandle } from "./useComponentRegistry";
+import { useComponentRegistry } from "@composables/useComponentRegistry";
+import type { ComponentHandle } from "@composables/useComponentRegistry";
 
 export function useRegisterComponent(id: string, handle: ComponentHandle) {
   const reg = useComponentRegistry();
