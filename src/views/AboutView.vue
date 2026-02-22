@@ -38,6 +38,7 @@ import { checkUpdate, type UpdateInfo } from "@api/update";
 import { getAppVersion, BUILD_YEAR } from "@utils/version";
 import { i18n } from "@language";
 import logo from "@assets/logo.svg";
+import tauriIcon64 from "@src-tauri/icons/64x64.png";
 
 const version = ref("Loading...");
 const buildDate = BUILD_YEAR;
@@ -235,7 +236,7 @@ async function handleManualDownload() {
           <AvatarRoot class="contributor-avatar" :alt="c.name">
             <AvatarImage :src="c.avatar" :alt="c.name" />
             <AvatarFallback>
-              <img src="../../src-tauri/icons/64x64.png" />
+              <img :src="tauriIcon64" />
             </AvatarFallback>
           </AvatarRoot>
 

@@ -20,7 +20,8 @@
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
+      "@src": ["src"],
+      "@src/*": ["src/*"],
       "@api/*": ["src/api/*"],
       "@assets/*": ["src/assets/*"],
       "@components/*": ["src/components/*"],
@@ -33,6 +34,8 @@
       "@styles/*": ["src/styles/*"],
       "@themes": ["src/themes"],
       "@themes/*": ["src/themes/*"],
+      "@src-tauri": ["src-tauri"],
+      "@src-tauri/*": ["src-tauri/*"],
       "@type/*": ["src/types/*"],
       "@utils/*": ["src/utils/*"],
       "@views/*": ["src/views/*"]
