@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, onMounted } from "vue";
 import HeroSection from "@components/views/about/HeroSection.vue";
 import ManifestoCard from "@components/views/about/ManifestoCard.vue";
 import ContributorWall from "@components/views/about/ContributorWall.vue";
@@ -6,15 +7,22 @@ import ProjectInfo from "@components/views/about/ProjectInfo.vue";
 import ContributeWays from "@components/views/about/ContributeWays.vue";
 import LinksSection from "@components/views/about/LinksSection.vue";
 import AboutFooter from "@components/views/about/AboutFooter.vue";
+import { getAppVersion } from "@utils/version";
+
+const version = ref("Loading...");
+
+onMounted(async () => {
+  version.value = await getAppVersion();
+});
 </script>
 
 <template>
   <div class="about-view animate-fade-in-up">
-    <HeroSection />
+    <HeroSection :version="version" />
     <ManifestoCard />
     <ContributorWall />
     <div class="info-grid">
-      <ProjectInfo />
+      <ProjectInfo :version="version" />
       <ContributeWays />
     </div>
     <LinksSection />

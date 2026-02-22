@@ -1,21 +1,34 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { RefreshCw, Check, XCircle } from "lucide-vue-next";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { ref } from "vue";
+import { RefreshCw, Check, XCircle, Copy, Terminal } from "lucide-vue-next";
+import {
+  DialogRoot,
+  DialogTrigger,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "reka-ui";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { checkUpdate, type UpdateInfo } from "@api/update";
-import { getAppVersion, BUILD_YEAR } from "@utils/version";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { BUILD_YEAR } from "@utils/version";
 import { i18n } from "@language";
 
-const version = ref("Loading...");
+const props = defineProps<{
+  version: string;
+}>();
+
 const buildDate = BUILD_YEAR;
 
 const isCheckingUpdate = ref(false);
 const updateInfo = ref<UpdateInfo | null>(null);
 const updateError = ref<string | null>(null);
 
-const showAurWindow = ref(false);
+const aurDialogOpen = ref(false);
 const aurInfo = ref<{
   currentVersion: string;
   latestVersion: string;
@@ -23,10 +36,9 @@ const aurInfo = ref<{
   command: string;
 } | null>(null);
 
-const isAurUpdate = computed(() => updateInfo.value?.source === "arch-aur");
+const isAurUpdate = ref(false);
 
 async function handleCheckUpdate() {
-  version.value = await getAppVersion();
   isCheckingUpdate.value = true;
   updateError.value = null;
   updateInfo.value = null;
@@ -36,35 +48,31 @@ async function handleCheckUpdate() {
 
     if (info) {
       updateInfo.value = info;
+      isAurUpdate.value = info.source === "arch-aur";
+
+      if (isAurUpdate.value) {
+        const helper =
+          info.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
+        aurInfo.value = {
+          currentVersion: info.current_version,
+          latestVersion: info.latest_version,
+          helper: helper,
+          command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
+        };
+      }
     } else {
       updateInfo.value = {
         has_update: false,
-        latest_version: version.value,
-        current_version: version.value,
+        latest_version: props.version,
+        current_version: props.version,
       };
+      isAurUpdate.value = false;
     }
   } catch (error) {
     console.error("[ProjectInfo] 检查更新失败:", error);
     updateError.value = error as string;
   } finally {
     isCheckingUpdate.value = false;
-  }
-}
-
-async function handlePrimaryUpdateAction() {
-  if (isAurUpdate.value && updateInfo.value) {
-    const helper =
-      updateInfo.value.release_notes?.match(/yay|paru|pamac|trizen|pacaur/)?.[0] || "yay";
-
-    aurInfo.value = {
-      currentVersion: updateInfo.value.current_version,
-      latestVersion: updateInfo.value.latest_version,
-      helper: helper,
-      command: `${helper} -Rns sealantern && ${helper} -S sealantern`,
-    };
-
-    showAurWindow.value = true;
-    return;
   }
 }
 
@@ -75,6 +83,16 @@ async function handleManualDownload() {
     } catch (error) {
       console.error("[ProjectInfo] 打开链接失败:", error);
       alert(`打开链接失败: ${error}`);
+    }
+  }
+}
+
+async function copyCommand() {
+  if (aurInfo.value?.command) {
+    try {
+      await navigator.clipboard.writeText(aurInfo.value.command);
+    } catch (e) {
+      console.error("[ProjectInfo] 复制命令失败:", e);
     }
   }
 }

@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
 import { i18n } from "@language";
-import { getAppVersion } from "@utils/version";
 import logo from "@assets/logo.svg";
 
-const version = ref("Loading...");
-
-onMounted(async () => {
-  version.value = await getAppVersion();
-});
+defineProps<{
+  version: string;
+}>();
 </script>
 
 <template>
