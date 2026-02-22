@@ -12,6 +12,7 @@
 
 - **Node.js**: 20+
 - **Rust**: 1.70+
+- **pnpm**: 9.15.9（推荐使用项目指定的包管理器）
 - **Git**: 最新版本
 
 ## 代码规范
@@ -64,6 +65,27 @@
    - 使用 CSS 变量（`var(--sl-*)`）
    - 避免硬编码颜色值
    - 使用 scoped 样式
+
+4. **格式化和检查**
+
+   ```bash
+   # 格式化代码
+   pnpm run fmt
+
+   # 检查格式
+   pnpm run fmt:check
+
+   # Lint 检查
+   pnpm run lint
+
+   # 自动修复 Lint 问题
+   pnpm run lint:fix
+   ```
+
+5. **变量引用检查**
+   - 声明变量时指定明确类型
+   - 避免使用 `any`，使用具体类型
+   - 使用 `ref<T>` 或 `reactive` 时指定泛型类型
 
 ### UI 组件与图标
 
@@ -130,7 +152,9 @@ feat: 添加服务器备份功能
    # 确保代码通过检查
    cargo fmt --all
    cargo clippy --workspace -- -D warnings
-   npm run build
+   pnpm run fmt
+   pnpm run lint
+   pnpm run build
 
    # 提交变更
    git add .
@@ -155,8 +179,9 @@ feat: 添加服务器备份功能
 ### 必须满足
 
 - ✅ 通过所有 CI 检查
-- ✅ 代码格式正确（cargo fmt）
+- ✅ 代码格式正确（cargo fmt / oxfmt）
 - ✅ 无 clippy 警告
+- ✅ 无 oxlint 警告
 - ✅ 功能完整且可用
 - ✅ 无明显的性能问题
 
@@ -172,14 +197,14 @@ feat: 添加服务器备份功能
 ### 如何运行开发环境？
 
 ```bash
-npm install
-npm run tauri dev
+pnpm install
+pnpm run tauri dev
 ```
 
 ### 如何构建发布版本？
 
 ```bash
-npm run tauri build
+pnpm run tauri build
 ```
 
 ### Clippy 检查失败怎么办？
