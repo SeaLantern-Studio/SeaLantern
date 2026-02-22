@@ -57,7 +57,7 @@ export async function setupTray() {
           action: async () => {
             try {
               // 调用后端停止所有服务器
-              const { tauriInvoke } = await import("../api/tauri");
+              const { tauriInvoke } = await import("@api/tauri");
               await tauriInvoke("force_stop_all_servers");
             } catch (e) {
               console.warn("Failed to stop servers before quit:", e);

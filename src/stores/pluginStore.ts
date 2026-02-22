@@ -1588,7 +1588,7 @@ export const usePluginStore = defineStore("plugin", () => {
         console.log(
           `[ContextMenu] Replaying ${contextMenuSnapshot.length} buffered context menu events`,
         );
-        const { useContextMenuStore } = await import("./contextMenuStore");
+        const { useContextMenuStore } = await import("@stores/contextMenuStore");
         const contextMenuStore = useContextMenuStore();
         for (const event of contextMenuSnapshot) {
           contextMenuStore.handleContextMenuEvent({

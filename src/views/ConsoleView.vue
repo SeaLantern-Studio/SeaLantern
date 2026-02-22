@@ -27,7 +27,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const showCommandModal = ref(false);
 const commandModalTitle = ref("");
-const editingCommand = ref<import("../types/server").ServerCommand | null>(null);
+const editingCommand = ref<import("@type/server").ServerCommand | null>(null);
 const commandName = ref("");
 const commandText = ref("");
 const commandLoading = ref(false);
@@ -231,7 +231,7 @@ function saveCommand() {
   showCommandModal.value = false;
 }
 
-function deleteCommand(_cmd: import("../types/server").ServerCommand) {
+function deleteCommand(_cmd: import("@type/server").ServerCommand) {
   console.warn("deleteCommand not implemented");
   showCommandModal.value = false;
 }

@@ -160,7 +160,7 @@ const pluginNavItems = computed<NavItem[]>(() => {
   }));
 });
 
-function sidebarItemToNavItem(item: import("../../types/plugin").SidebarItem): NavItem {
+function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem {
   const path =
     item.mode === "category" ? `/plugin-category/${item.pluginId}` : `/plugin/${item.pluginId}`;
   const pluginManifest = pluginStore.plugins.find((p) => p.manifest.id === item.pluginId)?.manifest;
