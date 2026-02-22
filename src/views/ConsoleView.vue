@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
-import SLButton from "../components/common/SLButton.vue";
-import ConsoleInput from "../components/console/ConsoleInput.vue";
-import CommandModal from "../components/console/CommandModal.vue";
-import ConsoleOutput from "../components/console/ConsoleOutput.vue";
-import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { serverApi } from "../api/server";
-import { settingsApi } from "../api/settings";
-import { i18n } from "../language";
-import { useLoading } from "../composables/useAsync";
+import SLButton from "@components/common/SLButton.vue";
+import ConsoleInput from "@components/console/ConsoleInput.vue";
+import CommandModal from "@components/console/CommandModal.vue";
+import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import { useServerStore } from "@stores/serverStore";
+import { useConsoleStore } from "@stores/consoleStore";
+import { serverApi } from "@api/server";
+import { settingsApi } from "@api/settings";
+import { i18n } from "@language/index";
+import { useLoading } from "@composables/useAsync";
 
 const serverStore = useServerStore();
 const consoleStore = useConsoleStore();
