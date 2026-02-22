@@ -9,6 +9,7 @@ import { useUpdateStore } from "./stores/updateStore";
 import { useSettingsStore } from "./stores/settingsStore";
 import { usePluginStore } from "./stores/pluginStore";
 import { useContextMenuStore } from "./stores/contextMenuStore";
+import { useServerStore } from "./stores/serverStore";
 import { applyTheme, applyFontSize, applyFontFamily } from "./utils/theme";
 
 const showSplash = ref(true);
@@ -17,6 +18,7 @@ const updateStore = useUpdateStore();
 const settingsStore = useSettingsStore();
 const pluginStore = usePluginStore();
 const contextMenuStore = useContextMenuStore();
+const serverStore = useServerStore();
 
 async function handleGlobalContextMenu(event: MouseEvent) {
   // 当开发者模式启用时，允许默认的右键菜单行为以打开开发者工具
@@ -97,6 +99,13 @@ onMounted(async () => {
       await pluginStore.loadPlugins();
     } catch (pluginErr) {
       console.warn("Failed to load plugins during startup:", pluginErr);
+    }
+
+    // 加载服务器列表并扫描端口信息
+    try {
+      await serverStore.refreshList();
+    } catch (serverErr) {
+      console.warn("Failed to load servers during startup:", serverErr);
     }
   } catch (e) {
     console.error("Failed to load settings during startup:", e);

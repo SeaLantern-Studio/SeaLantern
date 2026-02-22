@@ -544,7 +544,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
           </div>
           <div v-else-if="group.group === 'plugins-default'" class="nav-group-label">
             <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed">{{ i18n.t('common.plugins') }}</span>
+              <span v-if="!ui.sidebarCollapsed">{{ i18n.t("common.plugins") }}</span>
             </transition>
           </div>
           <div v-else-if="group.group !== 'main'" class="nav-group-label"></div>

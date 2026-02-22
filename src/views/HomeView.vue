@@ -364,7 +364,11 @@ onUnmounted(() => {
           />
         </div>
 
-        <div class="server-card-path text-mono text-caption" :title="server.path" @click="handlePathClick(server.path)">
+        <div
+          class="server-card-path text-mono text-caption"
+          :title="server.path"
+          @click="handlePathClick(server.path)"
+        >
           <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
           <FolderOpen class="folder-icon" :size="16" />
         </div>

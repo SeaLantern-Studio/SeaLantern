@@ -61,11 +61,14 @@ const gameruleValues: Record<string, string[]> = {
 const timeValues = ["day", "night", "noon"];
 
 // 获取当前光标所在词的位置
-function getCurrentWordInfo(input: string, cursorPos: number): { word: string; startIndex: number; wordIndex: number } {
+function getCurrentWordInfo(
+  input: string,
+  cursorPos: number,
+): { word: string; startIndex: number; wordIndex: number } {
   const words = input.split(" ");
   let currentPos = 0;
   let wordIndex = 0;
-  
+
   for (let i = 0; i < words.length; i++) {
     const wordEnd = currentPos + words[i].length;
     if (cursorPos <= wordEnd || (i === words.length - 1 && cursorPos <= wordEnd + 1)) {
@@ -74,13 +77,13 @@ function getCurrentWordInfo(input: string, cursorPos: number): { word: string; s
     }
     currentPos = wordEnd + 1;
   }
-  
+
   const words2 = input.split(" ");
   let startIndex = 0;
   for (let i = 0; i < wordIndex; i++) {
     startIndex += words2[i].length + 1;
   }
-  
+
   return {
     word: words2[wordIndex] || "",
     startIndex,
@@ -92,7 +95,7 @@ function getCurrentWordInfo(input: string, cursorPos: number): { word: string; s
 function getCompletions(input: string, wordIndex: number, currentWord: string): string[] {
   const words = input.trim().split(/\s+/);
   const lowerWord = currentWord.toLowerCase();
-  
+
   if (wordIndex === 0) {
     // 第一级：匹配命令名
     // 如果没有输入，返回所有命令
@@ -103,9 +106,9 @@ function getCompletions(input: string, wordIndex: number, currentWord: string): 
       .filter((cmd) => cmd.toLowerCase().startsWith(lowerWord))
       .sort();
   }
-  
+
   const cmd = words[0]?.toLowerCase();
-  
+
   if (wordIndex === 1) {
     // 第二级：命令的子命令
     if (cmd === "time") {
@@ -115,7 +118,7 @@ function getCompletions(input: string, wordIndex: number, currentWord: string): 
       return commandTree[cmd].filter((s) => s.toLowerCase().startsWith(lowerWord));
     }
   }
-  
+
   if (wordIndex === 2) {
     // 第三级
     if (cmd === "time" && words[1]?.toLowerCase() === "set") {
@@ -128,21 +131,19 @@ function getCompletions(input: string, wordIndex: number, currentWord: string): 
       }
     }
   }
-  
+
   return [];
 }
 
 const filteredSuggestions = computed(() => {
   const input = commandInput.value;
-  
+
   const cursorPos = inputRef.value?.selectionStart ?? input.length;
   const { word, wordIndex } = getCurrentWordInfo(input, cursorPos);
-  
+
   // 连续Tab时用原始词匹配，否则用当前词
-  const wordToMatch = lastTabWordIndex.value === wordIndex 
-    ? lastTabOriginalWord.value 
-    : word;
-  
+  const wordToMatch = lastTabWordIndex.value === wordIndex ? lastTabOriginalWord.value : word;
+
   return getCompletions(input, wordIndex, wordToMatch);
 });
 
@@ -162,16 +163,16 @@ function doTabComplete() {
   const input = commandInput.value;
   const cursorPos = inputRef.value?.selectionStart ?? input.length;
   const { word, startIndex, wordIndex } = getCurrentWordInfo(input, cursorPos);
-  
+
   // 检查是否是连续Tab（基于位置判断，用原始词匹配）
   const isContinuousTab = lastTabWordIndex.value === wordIndex;
-  
+
   // 连续Tab时用原始词匹配，否则用当前词
   const wordToMatch = isContinuousTab ? lastTabOriginalWord.value : word;
   const completions = getCompletions(input, wordIndex, wordToMatch);
-  
+
   if (completions.length === 0) return;
-  
+
   if (isContinuousTab) {
     tabCycleIndex.value = (tabCycleIndex.value + 1) % completions.length;
   } else {
@@ -179,26 +180,26 @@ function doTabComplete() {
     lastTabOriginalWord.value = word;
     lastTabWordIndex.value = wordIndex;
   }
-  
+
   // 无输入时或连续Tab时强制显示所有命令的建议列表
   if ((!word || isContinuousTab) && completions.length > 1) {
     showSuggestions.value = true;
   }
-  
+
   // 滚动到选中的建议项
   scrollToActiveSuggestion();
-  
+
   const completion = completions[tabCycleIndex.value];
-  
+
   // 替换当前词
   const before = input.substring(0, startIndex);
   const after = input.substring(startIndex + word.length);
   const newInput = before + completion + after;
-  
+
   // 标记正在补全，防止 onInputChange 重置状态
   isCompleting = true;
   commandInput.value = newInput;
-  
+
   // 设置光标位置到补全词之后
   nextTick(() => {
     if (inputRef.value) {
@@ -207,7 +208,7 @@ function doTabComplete() {
     }
     isCompleting = false;
   });
-  
+
   // 更新显示
   showSuggestions.value = completions.length > 1;
   suggestionIndex.value = tabCycleIndex.value;
@@ -220,7 +221,7 @@ function handleKeydown(e: KeyboardEvent) {
     lastTabWordIndex.value = -1;
     tabCycleIndex.value = 0;
   }
-  
+
   if (e.key === "Enter") {
     if (showSuggestions.value && filteredSuggestions.value.length > 0) {
       // 使用选中的补全
@@ -232,13 +233,13 @@ function handleKeydown(e: KeyboardEvent) {
     }
     return;
   }
-  
+
   if (e.key === "Tab") {
     e.preventDefault();
     doTabComplete();
     return;
   }
-  
+
   if (e.key === "ArrowUp") {
     e.preventDefault();
     if (showSuggestions.value && suggestionIndex.value > 0) {
@@ -247,7 +248,7 @@ function handleKeydown(e: KeyboardEvent) {
     }
     return;
   }
-  
+
   if (e.key === "ArrowDown") {
     e.preventDefault();
     if (showSuggestions.value && suggestionIndex.value < filteredSuggestions.value.length - 1) {
@@ -256,12 +257,12 @@ function handleKeydown(e: KeyboardEvent) {
     }
     return;
   }
-  
+
   if (e.key === "Escape") {
     showSuggestions.value = false;
     return;
   }
-  
+
   // 只有非Tab键才更新建议列表
   nextTick(() => {
     showSuggestions.value = filteredSuggestions.value.length > 1;
@@ -274,22 +275,22 @@ function handleKeydown(e: KeyboardEvent) {
 function scrollToActiveSuggestion() {
   nextTick(() => {
     if (!suggestionsRef.value) return;
-    
-    const activeItem = suggestionsRef.value.querySelector('.suggestion-item.active');
+
+    const activeItem = suggestionsRef.value.querySelector(".suggestion-item.active");
     if (!activeItem) return;
-    
+
     const popup = suggestionsRef.value;
     const popupHeight = popup.clientHeight;
     const itemHeight = activeItem.clientHeight;
     const itemTop = activeItem.offsetTop;
-    
+
     // 计算滚动位置，使选中项位于中间
-    const scrollPosition = itemTop - (popupHeight / 2) + (itemHeight / 2);
-    
+    const scrollPosition = itemTop - popupHeight / 2 + itemHeight / 2;
+
     // 确保滚动位置在有效范围内
     const maxScroll = popup.scrollHeight - popupHeight;
     const finalScroll = Math.max(0, Math.min(scrollPosition, maxScroll));
-    
+
     popup.scrollTop = finalScroll;
   });
 }
@@ -299,11 +300,11 @@ function applyCompletion(completion: string) {
   const input = commandInput.value;
   const cursorPos = inputRef.value?.selectionStart ?? input.length;
   const { word, startIndex } = getCurrentWordInfo(input, cursorPos);
-  
+
   const before = input.substring(0, startIndex);
   const after = input.substring(startIndex + word.length);
   commandInput.value = before + completion + after;
-  
+
   nextTick(() => {
     if (inputRef.value) {
       const newCursorPos = startIndex + completion.length;
@@ -323,7 +324,11 @@ function onInputChange() {
 
 <template>
   <div class="console-input-wrapper">
-    <div v-if="showSuggestions && filteredSuggestions.length > 0" class="suggestions-popup" ref="suggestionsRef">
+    <div
+      v-if="showSuggestions && filteredSuggestions.length > 0"
+      class="suggestions-popup"
+      ref="suggestionsRef"
+    >
       <div
         v-for="(sug, i) in filteredSuggestions"
         :key="sug"

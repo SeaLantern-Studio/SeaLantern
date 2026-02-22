@@ -144,6 +144,19 @@ async function loadProperties() {
   }
 }
 
+/**
+ * 更新当前服务器的端口信息
+ * @param port 端口号字符串
+ */
+function updateCurrentServerPort(port: string) {
+  if (!port) return;
+
+  const currentServer = store.servers.find((s) => s.id === store.currentServerId);
+  if (currentServer) {
+    currentServer.port = parseInt(port) || 25565;
+  }
+}
+
 async function saveProperties() {
   if (!serverPath.value) return;
   saving.value = true;
@@ -153,13 +166,10 @@ async function saveProperties() {
     await configApi.writeServerProperties(serverPath.value, editValues.value);
     successMsg.value = i18n.t("config.saved");
     setTimeout(() => (successMsg.value = null), 3000);
-    
+
     // 如果修改了服务器端口，更新服务器列表中的端口信息
-    if (editValues.value['server-port']) {
-      const currentServer = store.servers.find(s => s.id === store.currentServerId);
-      if (currentServer) {
-        currentServer.port = parseInt(editValues.value['server-port']) || 25565;
-      }
+    if (editValues.value["server-port"]) {
+      updateCurrentServerPort(editValues.value["server-port"]);
     }
   } catch (e) {
     error.value = String(e);
@@ -193,13 +203,10 @@ function autoSaveProperties() {
     .then(() => {
       successMsg.value = i18n.t("config.saved");
       setTimeout(() => (successMsg.value = null), 3000);
-      
+
       // 如果修改了服务器端口，更新服务器列表中的端口信息
-      if (editValues.value['server-port']) {
-        const currentServer = store.servers.find(s => s.id === store.currentServerId);
-        if (currentServer) {
-          currentServer.port = parseInt(editValues.value['server-port']) || 25565;
-        }
+      if (editValues.value["server-port"]) {
+        updateCurrentServerPort(editValues.value["server-port"]);
       }
       return Promise.resolve();
     })

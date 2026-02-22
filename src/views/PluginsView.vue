@@ -806,10 +806,7 @@ function goToMarket() {
       </div>
     </div>
 
-    <div
-      class="upload-zone"
-      :class="{ 'is-dragging': isDragging, 'is-installing': isInstalling }"
-    >
+    <div class="upload-zone" :class="{ 'is-dragging': isDragging, 'is-installing': isInstalling }">
       <div v-if="isInstalling" class="upload-loading">
         <div class="loading-spinner"></div>
         <span class="upload-text">{{ i18n.t("plugins.installing") }}</span>
@@ -838,10 +835,7 @@ function goToMarket() {
       <span class="loading-text">{{ i18n.t("plugins.loading_plugins") }}</span>
     </div>
 
-    <div
-      v-else-if="!pluginStore.loading && pluginStore.plugins.length === 0"
-      class="empty-state"
-    >
+    <div v-else-if="!pluginStore.loading && pluginStore.plugins.length === 0" class="empty-state">
       <div class="empty-icon">
         <Layers :size="48" :stroke-width="1.5" />
       </div>

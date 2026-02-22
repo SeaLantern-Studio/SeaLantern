@@ -266,8 +266,6 @@ function computeOverallProgress() {
 
 <template>
   <header class="app-header glass-strong">
-
-
     <div class="header-center" data-tauri-drag-region></div>
 
     <div class="header-right">
@@ -317,7 +315,11 @@ function computeOverallProgress() {
         <button class="win-btn" @click="minimizeWindow" :title="i18n.t('common.minimize')">
           <Minus :size="12" />
         </button>
-        <button class="win-btn" @click="toggleMaximize" :title="isMaximized ? i18n.t('common.restore') : i18n.t('common.maximize')">
+        <button
+          class="win-btn"
+          @click="toggleMaximize"
+          :title="isMaximized ? i18n.t('common.restore') : i18n.t('common.maximize')"
+        >
           <Copy v-if="isMaximized" :size="12" />
           <Square v-else :size="12" />
         </button>

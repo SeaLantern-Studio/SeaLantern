@@ -241,7 +241,9 @@ function deleteCommand(_cmd: import("../types/server").ServerCommand) {
     <div class="console-toolbar">
       <div class="toolbar-left">
         <div v-if="serverId" class="server-name-display">
-          {{ serverStore.servers.find(s => s.id === serverId)?.name || i18n.t("console.no_server") }}
+          {{
+            serverStore.servers.find((s) => s.id === serverId)?.name || i18n.t("console.no_server")
+          }}
         </div>
         <div v-else class="server-name-display">{{ i18n.t("console.no_server") }}</div>
         <div v-if="serverId" class="status-indicator" :class="getStatusClass()">

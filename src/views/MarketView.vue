@@ -35,7 +35,8 @@ const showUrlEditor = ref(false);
 const customMarketUrl = ref(localStorage.getItem(MARKET_URL_KEY) || "");
 const urlInput = ref(customMarketUrl.value);
 
-const { indicatorRef: tagIndicator, updatePosition: updateTagIndicator } = useTabIndicator(selectedTag);
+const { indicatorRef: tagIndicator, updatePosition: updateTagIndicator } =
+  useTabIndicator(selectedTag);
 
 const localeRef = i18n.getLocaleRef();
 watch(localeRef, () => {
@@ -87,9 +88,13 @@ const allTags = computed(() => {
   return Array.from(tags);
 });
 
-watch(allTags, () => {
-  updateTagIndicator();
-}, { deep: true });
+watch(
+  allTags,
+  () => {
+    updateTagIndicator();
+  },
+  { deep: true },
+);
 
 function resolveI18n(val: Record<string, string> | string | undefined): string {
   if (!val) return "";
@@ -274,8 +279,13 @@ onMounted(() => {
         >
           <Globe :size="14" />
         </button>
-        <button class="action-btn" @click="loadMarket" :disabled="loading" :title="i18n.t('market.refresh')">
-          <RefreshCw :size="14" :class="{ 'spin': loading }" />
+        <button
+          class="action-btn"
+          @click="loadMarket"
+          :disabled="loading"
+          :title="i18n.t('market.refresh')"
+        >
+          <RefreshCw :size="14" :class="{ spin: loading }" />
         </button>
       </div>
     </div>
