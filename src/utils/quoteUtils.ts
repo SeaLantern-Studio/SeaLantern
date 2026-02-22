@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { i18n } from "../language";
+import { i18n } from "@language/index";
 
 interface HitokotoResponse {
   id: number;
