@@ -266,8 +266,6 @@ function computeOverallProgress() {
 
 <template>
   <header class="app-header glass-strong">
-
-
     <div class="header-center" data-tauri-drag-region></div>
 
     <div class="header-right">
