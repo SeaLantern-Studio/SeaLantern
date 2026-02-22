@@ -2,7 +2,7 @@ import { createApp } from "vue";
 import App from "@/App.vue";
 import router from "@/router";
 import pinia from "@/stores";
-import "@style.css";
+import "@/style.css";
 import VueECharts from "vue-echarts";
 import { use } from "echarts/core";
 import { PieChart, LineChart } from "echarts/charts";
