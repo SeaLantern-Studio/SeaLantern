@@ -87,5 +87,5 @@ pub struct AddExistingServerRequest {
     pub min_memory: u32,
     pub port: u16,
     pub startup_mode: String,
-    pub executable_path: Option<String>, 
+    pub executable_path: Option<String>,
 }

@@ -408,9 +408,12 @@ impl ServerManager {
         Ok(server)
     }
 
-    pub fn add_existing_server(&self, req: AddExistingServerRequest) -> Result<ServerInstance, String> {
+    pub fn add_existing_server(
+        &self,
+        req: AddExistingServerRequest,
+    ) -> Result<ServerInstance, String> {
         let server_path = std::path::Path::new(&req.server_path);
-        
+
         // 验证路径存在且是目录
         if !server_path.exists() {
             return Err(format!("服务器目录不存在: {}", req.server_path));
@@ -461,13 +464,13 @@ impl ServerManager {
             .duration_since(UNIX_EPOCH)
             .expect("time went backwards")
             .as_secs();
-        
+
         let id = uuid::Uuid::new_v4().to_string();
-        
+
         let server = ServerInstance {
             id: id.clone(),
             name: req.name,
-            core_type:  "unknown".into(),
+            core_type: "unknown".into(),
             core_version: String::new(),
             mc_version: "unknown".into(),
             path: req.server_path,
