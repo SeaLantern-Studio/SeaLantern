@@ -1,7 +1,7 @@
 import type { EChartsOption } from "echarts";
 import { ref, computed } from "vue";
-import { i18n } from "../language";
-import { systemApi, type SystemInfo } from "../api/system";
+import { i18n } from "@language";
+import { systemApi, type SystemInfo } from "@api/system";
 
 // 系统状态相关的响应式数据
 const systemInfo = ref<SystemInfo | null>(null);

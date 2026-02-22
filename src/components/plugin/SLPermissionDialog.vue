@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import SLModal from "../common/SLModal.vue";
-import SLButton from "../common/SLButton.vue";
-import { i18n } from "../../language";
-import { type PermissionMetadata, groupPermissionsByDangerLevel } from "../../types/plugin";
+import SLModal from "@components/common/SLModal.vue";
+import SLButton from "@components/common/SLButton.vue";
+import { i18n } from "@language";
+import { type PermissionMetadata, groupPermissionsByDangerLevel } from "@type/plugin";
 import {
   AlertTriangle,
   Info,

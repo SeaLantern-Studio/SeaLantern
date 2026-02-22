@@ -80,7 +80,8 @@ export const contributors: Contributor[] = [
       github: "https://github.com/CmzYa",
       bilibili: "https://space.bilibili.com/1299848968",
       qq: "2933859893",
-      tiktok: "https://www.douyin.com/user/MS4wLjABAAAAnaa9DsrNixJyNCFPwtFSTNNI4wrE0ME9nwbiqCrppSIruK_9g-9QRKWbQFPzaPPw",
+      tiktok:
+        "https://www.douyin.com/user/MS4wLjABAAAAnaa9DsrNixJyNCFPwtFSTNNI4wrE0ME9nwbiqCrppSIruK_9g-9QRKWbQFPzaPPw",
     },
   },
   {
@@ -158,8 +159,7 @@ export const contributors: Contributor[] = [
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar:
-      "https://api.rms.net.cn/head/MC_KKY",
+    avatar: "https://api.rms.net.cn/head/MC_KKY",
     url: {
       github: "https://github.com/xuezhaju",
     },
@@ -213,23 +213,23 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/KercyDing",
     url: "https://github.com/KercyDing",
   },
-    {
+  {
     name: "OMIILII",
     role: "精神支柱",
     avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
   },
-    {
+  {
     name: "Yang458",
     role: "贡献者",
     avatar: "https://api.rms.net.cn/head/Yang4893",
     url: "https://github.com/minecraft-Yang458",
   },
-   {
+  {
     name: "鸽德迪",
     role: "自定义背景图方案",
     avatar: "https://api.rms.net.cn/head/Alex",
   },
-    {
+  {
     name: "凋空凌",
     role: "修复文档bug",
     avatar: "https://api.rms.net.cn/head/Alex",

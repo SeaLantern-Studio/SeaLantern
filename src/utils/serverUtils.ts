@@ -1,9 +1,9 @@
 import { ref, computed } from "vue";
-import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { serverApi } from "../api/server";
-import { i18n } from "../language";
-import type { ServerInstance } from "../types/server";
+import { useServerStore } from "@stores/serverStore";
+import { useConsoleStore } from "@stores/consoleStore";
+import { serverApi } from "@api/server";
+import { i18n } from "@language";
+import type { ServerInstance } from "@type/server";
 
 // 服务器管理相关的响应式数据
 const actionLoading = ref<Record<string, boolean>>({});

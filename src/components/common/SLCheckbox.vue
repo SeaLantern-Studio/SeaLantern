@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Check, Minus } from "lucide-vue-next";
-import { useRegisterComponent } from "../../composables/useRegisterComponent";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
 
 interface Props {
   modelValue?: boolean;

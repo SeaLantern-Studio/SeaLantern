@@ -1,28 +1,28 @@
 <script setup lang="ts">
 import { ChevronDown } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted, watch, computed } from "vue";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLSwitch from "../components/common/SLSwitch.vue";
-import SLModal from "../components/common/SLModal.vue";
-import SLSelect from "../components/common/SLSelect.vue";
-import { i18n } from "../language";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLModal from "@components/common/SLModal.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import { i18n } from "@language";
 import {
   settingsApi,
   checkAcrylicSupport,
   applyAcrylic,
   getSystemFonts,
   type AppSettings,
-} from "../api/settings";
-import { systemApi } from "../api/system";
+} from "@api/settings";
+import { systemApi } from "@api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { getThemeOptions } from "../themes";
-import { usePluginStore } from "../stores/pluginStore";
+import { getThemeOptions } from "@themes";
+import { usePluginStore } from "@stores/pluginStore";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
   type SettingsUpdateEvent,
-} from "../stores/settingsStore";
+} from "@stores/settingsStore";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
