@@ -155,18 +155,4 @@ function handleUpdateModalClose() {
   <SLContextMenu />
 </template>
 
-<style>
-#app {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.splash-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.splash-fade-leave-to {
-  opacity: 0;
-}
-</style>
+<style src="@styles/app.css"></style>
