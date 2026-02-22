@@ -1,5 +1,5 @@
-import { tauriInvoke } from "./tauri";
-import type { ServerInstance } from "../types/server";
+import { tauriInvoke } from "@api/tauri";
+import type { ServerInstance } from "@type/server";
 
 export interface ServerStatusInfo {
   id: string;

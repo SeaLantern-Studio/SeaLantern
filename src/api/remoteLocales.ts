@@ -1,4 +1,4 @@
-import { type LocaleCode } from "../language";
+import { type LocaleCode } from "@language/index";
 
 export async function fetchLocale(
   locale: LocaleCode,

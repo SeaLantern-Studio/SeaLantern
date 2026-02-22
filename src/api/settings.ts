@@ -1,5 +1,5 @@
-import { tauriInvoke } from "./tauri";
-import type { JavaInfo } from "./java";
+import { tauriInvoke } from "@api/tauri";
+import type { JavaInfo } from "@api/java";
 
 export type SettingsGroup =
   | "General"
