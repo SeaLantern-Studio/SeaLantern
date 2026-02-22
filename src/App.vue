@@ -10,7 +10,7 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
-import { applyTheme, applyFontSize, applyFontFamily } from "./utils/theme";
+import { applyTheme, applyFontSize, applyFontFamily } from "@utils/theme";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
