@@ -7,7 +7,7 @@ import {
   type AppSettings,
   type PartialSettings,
   type SettingsGroup,
-} from "../api/settings";
+} from "@api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 const THEME_CACHE_KEY = "sl_theme_cache";

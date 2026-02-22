@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      "@": path.resolve(rootDir, "src"),
+      "@src": path.resolve(rootDir, "src"),
       "@api": path.resolve(rootDir, "src/api"),
       "@assets": path.resolve(rootDir, "src/assets"),
       "@components": path.resolve(rootDir, "src/components"),
@@ -20,7 +20,8 @@ export default defineConfig({
       "@stores": path.resolve(rootDir, "src/stores"),
       "@styles": path.resolve(rootDir, "src/styles"),
       "@themes": path.resolve(rootDir, "src/themes"),
-      "@types": path.resolve(rootDir, "src/types"),
+      "@src-tauri": path.resolve(rootDir, "src-tauri"),
+      "@type": path.resolve(rootDir, "src/types"),
       "@utils": path.resolve(rootDir, "src/utils"),
       "@views": path.resolve(rootDir, "src/views"),
     },

@@ -3,17 +3,17 @@ import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X, ChevronDown, ChevronUp, Copy } from "lucide-vue-next";
-import { useI18nStore } from "../../stores/i18nStore";
-import { i18n } from "../../language";
-import SLModal from "../common/SLModal.vue";
-import SLButton from "../common/SLButton.vue";
-import { settingsApi, type AppSettings, type SettingsGroup } from "../../api/settings";
+import { useI18nStore } from "@stores/i18nStore";
+import { i18n } from "@language";
+import SLModal from "@components/common/SLModal.vue";
+import SLButton from "@components/common/SLButton.vue";
+import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
   type SettingsUpdateEvent,
-} from "../../stores/settingsStore";
+} from "@stores/settingsStore";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();

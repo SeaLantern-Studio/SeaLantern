@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
-import SLSpinner from "../components/common/SLSpinner.vue";
-import SLSwitch from "../components/common/SLSwitch.vue";
-import SLSelect from "../components/common/SLSelect.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLInput from "../components/common/SLInput.vue";
-import { configApi } from "../api/config";
-import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "../api/mcs_plugins";
-import type { ConfigEntry as ConfigEntryType } from "../api/config";
-import { useServerStore } from "../stores/serverStore";
-import { i18n } from "../language";
-import { useTabIndicator } from "../composables/useTabIndicator";
+import SLSpinner from "@components/common/SLSpinner.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import { configApi } from "@api/config";
+import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "@api/mcs_plugins";
+import type { ConfigEntry as ConfigEntryType } from "@api/config";
+import { useServerStore } from "@stores/serverStore";
+import { i18n } from "@language";
+import { useTabIndicator } from "@composables/useTabIndicator";
 import {
   Power,
   Trash2,
@@ -23,11 +23,11 @@ import {
   Edit,
 } from "lucide-vue-next";
 
-import ConfigToolbar from "../components/config/ConfigToolbar.vue";
-import ConfigCategories from "../components/config/ConfigCategories.vue";
-import ConfigEntry from "../components/config/ConfigEntry.vue";
-import { systemApi } from "../api/system";
-import "../styles/plugin-list.css";
+import ConfigToolbar from "@components/config/ConfigToolbar.vue";
+import ConfigCategories from "@components/config/ConfigCategories.vue";
+import ConfigEntry from "@components/config/ConfigEntry.vue";
+import { systemApi } from "@api/system";
+import "@styles/plugin-list.css";
 
 const route = useRoute();
 const store = useServerStore();

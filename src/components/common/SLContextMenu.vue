@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useContextMenuStore, type ContextMenuItem } from "@/stores/contextMenuStore";
+import { useContextMenuStore, type ContextMenuItem } from "@stores/contextMenuStore";
 
 const contextMenuStore = useContextMenuStore();
 

@@ -26,17 +26,19 @@ import {
   SquarePen,
 } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import BrandIcon from "../components/common/BrandIcon.vue";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import BrandIcon from "@components/common/BrandIcon.vue";
 import {
   contributors as contributorsList,
   type SocialLinks,
   type Contributor,
-} from "../data/contributors";
-import { checkUpdate, type UpdateInfo } from "../api/update";
-import { getAppVersion, BUILD_YEAR } from "../utils/version";
-import { i18n } from "../language";
+} from "@data/contributors";
+import { checkUpdate, type UpdateInfo } from "@api/update";
+import { getAppVersion, BUILD_YEAR } from "@utils/version";
+import { i18n } from "@language";
+import logo from "@assets/logo.svg";
+import tauriIcon64 from "@src-tauri/icons/64x64.png";
 
 const version = ref("Loading...");
 const buildDate = BUILD_YEAR;
@@ -192,7 +194,7 @@ async function handleManualDownload() {
     <!-- Hero Section -->
     <div class="hero-section">
       <div class="hero-logo">
-        <img src="../assets/logo.svg" alt="Sea Lantern" width="72" height="72" />
+        <img :src="logo" alt="Sea Lantern" width="72" height="72" />
       </div>
       <h1 class="hero-title">Sea Lantern</h1>
       <p class="hero-subtitle">{{ i18n.t("about.subtitle") }}</p>
@@ -234,7 +236,7 @@ async function handleManualDownload() {
           <AvatarRoot class="contributor-avatar" :alt="c.name">
             <AvatarImage :src="c.avatar" :alt="c.name" />
             <AvatarFallback>
-              <img src="../../src-tauri/icons/64x64.png" />
+              <img :src="tauriIcon64" />
             </AvatarFallback>
           </AvatarRoot>
 

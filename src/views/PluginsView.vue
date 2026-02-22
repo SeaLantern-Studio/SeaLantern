@@ -4,24 +4,19 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useRouter } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLModal from "../components/common/SLModal.vue";
-import PluginPermissionPanel from "../components/plugin/PluginPermissionPanel.vue";
-import SLPermissionDialog from "../components/plugin/SLPermissionDialog.vue";
-import { usePluginStore } from "../stores/pluginStore";
-import { i18n } from "../language";
-import type {
-  PluginState,
-  PluginInfo,
-  MissingDependency,
-  BatchInstallResult,
-} from "../types/plugin";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLModal from "@components/common/SLModal.vue";
+import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
+import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
+import { usePluginStore } from "@stores/pluginStore";
+import { i18n } from "@language";
+import type { PluginState, PluginInfo, MissingDependency, BatchInstallResult } from "@type/plugin";
 import {
   hasDangerousPermissions,
   getLocalizedPluginName,
   getLocalizedPluginDescription,
-} from "../types/plugin";
+} from "@type/plugin";
 import {
   Upload,
   Layers,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import SLButton from "../common/SLButton.vue";
-import { i18n } from "../../language";
+import SLButton from "@components/common/SLButton.vue";
+import { i18n } from "@language";
 
 interface Props {
   serverId: string;

@@ -1,4 +1,4 @@
-import type { ServerStatus } from "./common";
+import type { ServerStatus } from "@type/common";
 
 /**
  * 服务器实例类型

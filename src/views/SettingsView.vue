@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from "vue";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLInput from "../components/common/SLInput.vue";
-import SLSwitch from "../components/common/SLSwitch.vue";
-import SLModal from "../components/common/SLModal.vue";
-import SLSelect from "../components/common/SLSelect.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
-import JavaDownloader from "../components/JavaDownloader.vue";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLModal from "@components/common/SLModal.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import SLSpinner from "@components/common/SLSpinner.vue";
+import JavaDownloader from "@components/JavaDownloader.vue";
 import {
   settingsApi,
   checkAcrylicSupport,
@@ -15,14 +15,14 @@ import {
   getSystemFonts,
   type AppSettings,
   type SettingsGroup,
-} from "../api/settings";
-import { systemApi } from "../api/system";
+} from "@api/settings";
+import { systemApi } from "@api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { i18n } from "../language";
-import { useMessage } from "../composables/useMessage";
-import { useLoading } from "../composables/useAsync";
-import { getThemeOptions } from "../themes";
-import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "../stores/settingsStore";
+import { i18n } from "@language";
+import { useMessage } from "@composables/useMessage";
+import { useLoading } from "@composables/useAsync";
+import { getThemeOptions } from "@themes";
+import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "@stores/settingsStore";
 
 const { error, showError, clearError } = useMessage();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();

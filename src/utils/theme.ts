@@ -3,8 +3,8 @@
  * 提供主题、字体、颜色等通用处理功能
  */
 
-import type { AppSettings } from "../api/settings";
-import { getThemeColors, mapLegacyPlanName } from "../themes";
+import type { AppSettings } from "@api/settings";
+import { getThemeColors, mapLegacyPlanName } from "@themes";
 
 let _themeProviderOverrides: string[] = [];
 

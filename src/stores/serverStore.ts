@@ -1,10 +1,10 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { serverApi } from "../api/server";
-import { configApi } from "../api/config";
-import { useAsyncByKey, useLoading } from "../composables/useAsync";
-import type { ServerInstance } from "../types/server";
-import type { ServerStatusInfo } from "../api/server";
+import { serverApi } from "@api/server";
+import { configApi } from "@api/config";
+import { useAsyncByKey, useLoading } from "@composables/useAsync";
+import type { ServerInstance } from "@type/server";
+import type { ServerStatusInfo } from "@api/server";
 
 /**
  * 服务器状态管理 Store

@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { checkUpdate, type UpdateInfo } from "../api/update";
+import { checkUpdate, type UpdateInfo } from "@api/update";
 
 export type UpdateStatus =
   | "idle"

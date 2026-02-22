@@ -2,7 +2,7 @@
  * 日志工具
  */
 
-import type { LogLevel, LogEntry } from "../types/common";
+import type { LogLevel, LogEntry } from "@type/common";
 
 /**
  * 日志管理器

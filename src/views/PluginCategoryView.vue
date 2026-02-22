@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLFormField from "../components/common/SLFormField.vue";
-import SLInput from "../components/common/SLInput.vue";
-import SLSwitch from "../components/common/SLSwitch.vue";
-import SLSelect from "../components/common/SLSelect.vue";
-import SLTextarea from "../components/common/SLTextarea.vue";
-import SLCheckbox from "../components/common/SLCheckbox.vue";
-import { usePluginStore } from "../stores/pluginStore";
-import { i18n } from "../language";
-import type { PluginInfo, PluginSettingField } from "../types/plugin";
-import { getLocalizedPluginName, getLocalizedPluginDescription } from "../types/plugin";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLFormField from "@components/common/SLFormField.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import SLTextarea from "@components/common/SLTextarea.vue";
+import SLCheckbox from "@components/common/SLCheckbox.vue";
+import { usePluginStore } from "@stores/pluginStore";
+import { i18n } from "@language";
+import type { PluginInfo, PluginSettingField } from "@type/plugin";
+import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
 import { Palette, Puzzle } from "lucide-vue-next";
 
 const props = defineProps<{

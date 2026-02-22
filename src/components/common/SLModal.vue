@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch, onUnmounted, ref, nextTick } from "vue";
 import { X } from "lucide-vue-next";
-import { i18n } from "../../language";
+import { i18n } from "@language";
 
 interface Props {
   visible: boolean;

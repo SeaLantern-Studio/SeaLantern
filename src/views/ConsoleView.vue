@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
-import SLButton from "../components/common/SLButton.vue";
-import ConsoleInput from "../components/console/ConsoleInput.vue";
-import CommandModal from "../components/console/CommandModal.vue";
-import ConsoleOutput from "../components/console/ConsoleOutput.vue";
-import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { serverApi } from "../api/server";
-import { settingsApi } from "../api/settings";
-import { i18n } from "../language";
-import { useLoading } from "../composables/useAsync";
+import SLButton from "@components/common/SLButton.vue";
+import ConsoleInput from "@components/console/ConsoleInput.vue";
+import CommandModal from "@components/console/CommandModal.vue";
+import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import { useServerStore } from "@stores/serverStore";
+import { useConsoleStore } from "@stores/consoleStore";
+import { serverApi } from "@api/server";
+import { settingsApi } from "@api/settings";
+import { i18n } from "@language";
+import { useLoading } from "@composables/useAsync";
 
 const serverStore = useServerStore();
 const consoleStore = useConsoleStore();
@@ -27,7 +27,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const showCommandModal = ref(false);
 const commandModalTitle = ref("");
-const editingCommand = ref<import("../types/server").ServerCommand | null>(null);
+const editingCommand = ref<import("@type/server").ServerCommand | null>(null);
 const commandName = ref("");
 const commandText = ref("");
 const commandLoading = ref(false);
@@ -231,7 +231,7 @@ function saveCommand() {
   showCommandModal.value = false;
 }
 
-function deleteCommand(_cmd: import("../types/server").ServerCommand) {
+function deleteCommand(_cmd: import("@type/server").ServerCommand) {
   console.warn("deleteCommand not implemented");
   showCommandModal.value = false;
 }

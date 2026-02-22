@@ -1,12 +1,12 @@
 import type { App } from "vue";
 
-export * from "./common";
+export * from "@components/common";
 
-export * from "./layout";
+export * from "@components/layout";
 
-export * from "./plugin";
+export * from "@components/plugin";
 
-export type { TabItem } from "./common/SLTabs.vue";
+export type { TabItem } from "@components/common/SLTabs.vue";
 
 import {
   SLBadge,
@@ -28,9 +28,9 @@ import {
   SLTextarea,
   SLToast,
   SLTooltip,
-} from "./common";
+} from "@components/common";
 
-import { AppHeader, AppLayout, AppSidebar } from "./layout";
+import { AppHeader, AppLayout, AppSidebar } from "@components/layout";
 
 const components: Record<string, ReturnType<typeof import("vue").defineComponent>> = {
   SLBadge,

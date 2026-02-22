@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
-import AppLayout from "./components/layout/AppLayout.vue";
-import SplashScreen from "./components/splash/SplashScreen.vue";
-import UpdateModal from "./components/common/UpdateModal.vue";
-import SLContextMenu from "./components/common/SLContextMenu.vue";
-import { PluginComponentRenderer } from "./components/plugin";
-import { useUpdateStore } from "./stores/updateStore";
-import { useSettingsStore } from "./stores/settingsStore";
-import { usePluginStore } from "./stores/pluginStore";
-import { useContextMenuStore } from "./stores/contextMenuStore";
-import { useServerStore } from "./stores/serverStore";
-import { applyTheme, applyFontSize, applyFontFamily } from "./utils/theme";
+import AppLayout from "@components/layout/AppLayout.vue";
+import SplashScreen from "@components/splash/SplashScreen.vue";
+import UpdateModal from "@components/common/UpdateModal.vue";
+import SLContextMenu from "@components/common/SLContextMenu.vue";
+import { PluginComponentRenderer } from "@components/plugin";
+import { useUpdateStore } from "@stores/updateStore";
+import { useSettingsStore } from "@stores/settingsStore";
+import { usePluginStore } from "@stores/pluginStore";
+import { useContextMenuStore } from "@stores/contextMenuStore";
+import { useServerStore } from "@stores/serverStore";
+import { applyTheme, applyFontSize, applyFontFamily } from "@utils/theme";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);

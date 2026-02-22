@@ -1,10 +1,9 @@
 import { computed, onMounted, reactive } from "vue";
 import { defineStore } from "pinia";
-import { i18n, type LocaleCode, setTranslations } from "../language";
-import { settingsApi } from "../api/settings";
-import { fetchLocale, fetchByUrl } from "../api/remoteLocales";
-import { REMOTE_LOCALES_MAP } from "./i18nRemote";
-import { onLocaleChanged } from "../api/plugin";
+import { i18n, type LocaleCode, setTranslations } from "@language";
+import { settingsApi } from "@api/settings";
+import { fetchLocale } from "@api/remoteLocales";
+import { onLocaleChanged } from "@api/plugin";
 
 const LOCALE_LABEL_KEYS: Record<string, string> = {
   "zh-CN": "header.chinese",

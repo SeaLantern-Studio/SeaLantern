@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, onMounted, onUnmounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useUiStore } from "../../stores/uiStore";
-import { useServerStore } from "../../stores/serverStore";
-import { usePluginStore } from "../../stores/pluginStore";
-import { i18n } from "../../language";
+import { useUiStore } from "@stores/uiStore";
+import { useServerStore } from "@stores/serverStore";
+import { usePluginStore } from "@stores/pluginStore";
+import { i18n } from "@language";
 import {
   Listbox,
   ListboxButton,
@@ -160,7 +160,7 @@ const pluginNavItems = computed<NavItem[]>(() => {
   }));
 });
 
-function sidebarItemToNavItem(item: import("../../types/plugin").SidebarItem): NavItem {
+function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem {
   const path =
     item.mode === "category" ? `/plugin-category/${item.pluginId}` : `/plugin/${item.pluginId}`;
   const pluginManifest = pluginStore.plugins.find((p) => p.manifest.id === item.pluginId)?.manifest;

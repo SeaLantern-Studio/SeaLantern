@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { AlertTriangle } from "lucide-vue-next";
-import SLButton from "../components/common/SLButton.vue";
-import SLInput from "../components/common/SLInput.vue";
-import SLBadge from "../components/common/SLBadge.vue";
-import SLModal from "../components/common/SLModal.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
-import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
-import { TIME, MESSAGES } from "../utils/constants";
-import { validatePlayerName, handleError } from "../utils/errorHandler";
-import { i18n } from "../language";
-import { useMessage } from "../composables/useMessage";
-import { useLoading } from "../composables/useAsync";
-import { useTabIndicator } from "../composables/useTabIndicator";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLBadge from "@components/common/SLBadge.vue";
+import SLModal from "@components/common/SLModal.vue";
+import SLSpinner from "@components/common/SLSpinner.vue";
+import { useServerStore } from "@stores/serverStore";
+import { useConsoleStore } from "@stores/consoleStore";
+import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
+import { TIME, MESSAGES } from "@utils/constants";
+import { validatePlayerName, handleError } from "@utils/errorHandler";
+import { i18n } from "@language";
+import { useMessage } from "@composables/useMessage";
+import { useLoading } from "@composables/useAsync";
+import { useTabIndicator } from "@composables/useTabIndicator";
 
 const store = useServerStore();
 const consoleStore = useConsoleStore();

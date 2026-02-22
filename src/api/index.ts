@@ -3,25 +3,25 @@
  * 所有 API 模块统一从此处导入
  */
 
-export { tauriInvoke, tauriInvokeAll, createCachedInvoke } from "./tauri";
-export type { InvokeOptions } from "./tauri";
+export { tauriInvoke, tauriInvokeAll, createCachedInvoke } from "@api/tauri";
+export type { InvokeOptions } from "@api/tauri";
 
-export { serverApi } from "./server";
-export type { ServerStatusInfo } from "./server";
+export { serverApi } from "@api/server";
+export type { ServerStatusInfo } from "@api/server";
 
-export { javaApi } from "./java";
-export type { JavaInfo } from "./java";
+export { javaApi } from "@api/java";
+export type { JavaInfo } from "@api/java";
 
-export { configApi } from "./config";
-export type { ConfigEntry, ServerProperties } from "./config";
+export { configApi } from "@api/config";
+export type { ConfigEntry, ServerProperties } from "@api/config";
 
-export { playerApi } from "./player";
-export type { PlayerEntry, BanEntry, OpEntry } from "./player";
+export { playerApi } from "@api/player";
+export type { PlayerEntry, BanEntry, OpEntry } from "@api/player";
 
-export { settingsApi, checkAcrylicSupport, applyAcrylic, getSystemFonts } from "./settings";
-export type { AppSettings } from "./settings";
+export { settingsApi, checkAcrylicSupport, applyAcrylic, getSystemFonts } from "@api/settings";
+export type { AppSettings } from "@api/settings";
 
-export { systemApi } from "./system";
+export { systemApi } from "@api/system";
 export type {
   CpuInfo,
   MemoryInfo,
@@ -31,8 +31,8 @@ export type {
   NetworkInterface,
   NetworkInfo,
   SystemInfo,
-} from "./system";
+} from "@api/system";
 
-export * from "./update";
-export * from "./plugin";
-export * from "./remoteLocales";
+export * from "@api/update";
+export * from "@api/plugin";
+export * from "@api/remoteLocales";

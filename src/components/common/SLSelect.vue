@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { Check, ChevronDown, Loader2, Search } from "lucide-vue-next";
-import { i18n } from "../../language";
-import { useRegisterComponent } from "../../composables/useRegisterComponent";
+import { i18n } from "@language";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
 
 interface Option {
   label: string;

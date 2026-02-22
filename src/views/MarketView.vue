@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { usePluginStore } from "../stores/pluginStore";
-import { useToast } from "../composables/useToast";
-import { useTabIndicator } from "../composables/useTabIndicator";
+import { usePluginStore } from "@stores/pluginStore";
+import { useToast } from "@composables/useToast";
+import { useTabIndicator } from "@composables/useTabIndicator";
 import {
   fetchMarketPlugins,
   fetchMarketPluginDetail,
   fetchMarketCategories,
   installFromMarket,
-} from "../api/plugin";
-import type { MarketPluginInfo } from "../api/plugin";
-import { i18n } from "../language";
+} from "@api/plugin";
+import type { MarketPluginInfo } from "@api/plugin";
+import { i18n } from "@language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
-import SLCard from "../components/common/SLCard.vue";
+import SLCard from "@components/common/SLCard.vue";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 

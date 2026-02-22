@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useRegisterComponent } from "../../composables/useRegisterComponent";
-import { i18n } from "../../language";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
+import { i18n } from "@language";
 
 interface Props {
   value: number;

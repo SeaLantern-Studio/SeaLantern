@@ -2,13 +2,13 @@
 import { Menu, Server, Pencil, FolderOpen, Check, X, Gauge } from "lucide-vue-next";
 import { onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLBadge from "../components/common/SLBadge.vue";
-import SLProgress from "../components/common/SLProgress.vue";
-import { useServerStore } from "../stores/serverStore";
-import { systemApi } from "../api/system";
-import { i18n } from "../language";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLBadge from "@components/common/SLBadge.vue";
+import SLProgress from "@components/common/SLProgress.vue";
+import { useServerStore } from "@stores/serverStore";
+import { systemApi } from "@api/system";
+import { i18n } from "@language";
 
 // 导入拆分后的模块
 import {
@@ -19,7 +19,7 @@ import {
   updateQuote,
   startQuoteTimer,
   cleanupQuoteResources,
-} from "../utils/quoteUtils";
+} from "@utils/quoteUtils";
 
 import {
   systemInfo,
@@ -36,7 +36,7 @@ import {
   fetchSystemInfo,
   startThemeObserver,
   cleanupStatsResources,
-} from "../utils/statsUtils";
+} from "@utils/statsUtils";
 
 import {
   actionLoading,
@@ -66,7 +66,7 @@ import {
   handleAnimationEnd,
   handleClickOutside,
   closeDeleteConfirm,
-} from "../utils/serverUtils";
+} from "@utils/serverUtils";
 
 const router = useRouter();
 const store = useServerStore();
