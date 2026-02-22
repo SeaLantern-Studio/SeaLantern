@@ -162,6 +162,7 @@
     "jar_file": "Server JAR File",
     "bat_file": "Server BAT File",
     "sh_file": "Server SH File",
+    "ps1_file": "Server PS1 File",
     "select_startup_file": "Please select a server {{mode}} file",
     "browse": "Browse",
     "scan": "Scan",

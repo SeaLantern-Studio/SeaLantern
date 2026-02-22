@@ -18,7 +18,7 @@ export const serverApi = {
     port: number;
     javaPath: string;
     jarPath: string;
-    startupMode?: "jar" | "bat" | "sh";
+    startupMode?: "jar" | "bat" | "sh" | "ps1";
   }): Promise<ServerInstance> {
     return tauriInvoke("create_server", {
       name: params.name,
@@ -36,7 +36,7 @@ export const serverApi = {
   async importServer(params: {
     name: string;
     jarPath: string;
-    startupMode: "jar" | "bat" | "sh";
+    startupMode: "jar" | "bat" | "sh" | "ps1";
     javaPath: string;
     maxMemory: number;
     minMemory: number;

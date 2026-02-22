@@ -159,6 +159,7 @@
     "jar_file": "サーバー JAR ファイル",
     "bat_file": "サーバー BAT ファイル",
     "sh_file": "サーバー SH ファイル",
+    "ps1_file": "サーバー PS1 ファイル",
     "select_startup_file": "サーバーの {{mode}} ファイルを選択",
     "browse": "参照",
     "scan": "スキャン",

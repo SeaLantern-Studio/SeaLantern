@@ -593,6 +593,37 @@ impl ServerManager {
                 sh_cmd.env("PATH", path_value);
                 sh_cmd
             }
+            "ps1" => {
+                self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
+                let mut ps1_cmd = Command::new("pwsh");
+                ps1_cmd.arg("-NoProfile");
+                #[cfg(target_os = "windows")]
+                {
+                    ps1_cmd.arg("-ExecutionPolicy");
+                    ps1_cmd.arg("Bypass");
+                }
+                ps1_cmd.arg("-File");
+                ps1_cmd.arg(&startup_filename);
+                ps1_cmd.arg("nogui");
+                ps1_cmd.env("JAVA_HOME", &java_home_dir_str);
+
+                let existing_path = std::env::var("PATH").unwrap_or_default();
+                #[cfg(target_os = "windows")]
+                let path_value = if existing_path.is_empty() {
+                    java_bin_dir_str.clone()
+                } else {
+                    format!("{};{}", java_bin_dir_str, existing_path)
+                };
+                #[cfg(not(target_os = "windows"))]
+                let path_value = if existing_path.is_empty() {
+                    java_bin_dir_str.clone()
+                } else {
+                    format!("{}:{}", java_bin_dir_str, existing_path)
+                };
+
+                ps1_cmd.env("PATH", path_value);
+                ps1_cmd
+            }
             _ => {
                 let mut jar_cmd = Command::new(&server.java_path);
                 for arg in self.build_managed_jvm_args(&server, &settings, managed_console_encoding)
@@ -961,6 +992,7 @@ fn normalize_startup_mode(mode: &str) -> &str {
     match mode.to_ascii_lowercase().as_str() {
         "bat" => "bat",
         "sh" => "sh",
+        "ps1" => "ps1",
         _ => "jar",
     }
 }

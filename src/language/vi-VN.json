@@ -159,6 +159,7 @@
     "jar_file": "Tệp JAR máy chủ",
     "bat_file": "Tệp BAT máy chủ",
     "sh_file": "Tệp SH máy chủ",
+    "ps1_file": "Tệp PS1 máy chủ",
     "select_startup_file": "Chọn tệp {{mode}} máy chủ",
     "browse": "Duyệt",
     "scan": "Quét",

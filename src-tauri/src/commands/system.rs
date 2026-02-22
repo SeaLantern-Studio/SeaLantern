@@ -171,6 +171,11 @@ pub async fn pick_startup_file(
                 .set_title("Select server SH file")
                 .add_filter("Shell Scripts", &["sh"]);
         }
+        "ps1" => {
+            dialog = dialog
+                .set_title("Select server PS1 file")
+                .add_filter("PowerShell Scripts", &["ps1"]);
+        }
         _ => {
             dialog = dialog
                 .set_title("Select server JAR file")

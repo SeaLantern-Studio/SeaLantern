@@ -159,6 +159,7 @@
     "jar_file": "Archivo JAR del servidor",
     "bat_file": "Archivo BAT del servidor",
     "sh_file": "Archivo SH del servidor",
+    "ps1_file": "Archivo PS1 del servidor",
     "select_startup_file": "Selecciona el archivo {{mode}} del servidor",
     "browse": "Examinar",
     "scan": "Escanear",

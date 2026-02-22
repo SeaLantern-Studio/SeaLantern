@@ -158,6 +158,7 @@
     "jar_file": "服务端 JAR 文件",
     "bat_file": "服务端 BAT 文件",
     "sh_file": "服务端 SH 文件",
+    "ps1_file": "服务端 PS1 文件",
     "select_startup_file": "请选择服务端 {{mode}} 文件",
     "browse": "浏览",
     "scan": "扫描",

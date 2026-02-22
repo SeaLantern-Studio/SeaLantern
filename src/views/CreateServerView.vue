@@ -29,7 +29,7 @@ const maxMemory = ref("2048");
 const minMemory = ref("512");
 const port = ref("25565");
 const jarPath = ref("");
-type StartupMode = "jar" | "bat" | "sh";
+type StartupMode = "jar" | "bat" | "sh" | "ps1";
 const {
   activeTab: startupMode,
   indicatorRef: startupModeIndicator,
@@ -41,7 +41,7 @@ const onlineMode = ref(true);
 
 const javaList = ref<JavaInfo[]>([]);
 
-const startupModes: StartupMode[] = ["jar", "bat", "sh"];
+const startupModes: StartupMode[] = ["jar", "bat", "sh", "ps1"];
 
 // 监听语言变化，更新 Tab 指示器位置
 const localeRef = i18n.getLocaleRef();
@@ -219,6 +219,9 @@ const startupFileLabel = computed(() => {
   }
   if (startupMode.value === "sh") {
     return i18n.t("create.sh_file");
+  }
+  if (startupMode.value === "ps1") {
+    return i18n.t("create.ps1_file");
   }
   return i18n.t("create.jar_file");
 });

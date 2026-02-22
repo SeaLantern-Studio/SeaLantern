@@ -159,6 +159,7 @@
     "jar_file": "JAR-файл сервера",
     "bat_file": "BAT-файл сервера",
     "sh_file": "SH-файл сервера",
+    "ps1_file": "PS1-файл сервера",
     "select_startup_file": "Выберите файл {{mode}} сервера",
     "browse": "Обзор",
     "scan": "Сканировать",

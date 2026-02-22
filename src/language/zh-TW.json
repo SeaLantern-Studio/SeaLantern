@@ -159,6 +159,7 @@
     "jar_file": "伺服端 JAR 檔案",
     "bat_file": "伺服端 BAT 檔案",
     "sh_file": "伺服端 SH 檔案",
+    "ps1_file": "伺服端 PS1 檔案",
     "select_startup_file": "請選擇伺服端 {{mode}} 檔案",
     "browse": "瀏覽",
     "scan": "掃描",
