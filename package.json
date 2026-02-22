@@ -2,6 +2,7 @@
   "name": "sea-lantern",
   "version": "0.6.5",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -45,5 +46,11 @@
     "unplugin-icons": "^23.0.1",
     "vite": "^6.4.1",
     "vue-tsc": "^3.2.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "vue-demi"
+    ]
   }
 }

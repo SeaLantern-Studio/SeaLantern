@@ -54,7 +54,7 @@ jobs:
 
       - name: 安装前端依赖 (pnpm)
         run: |
-          npm i -g pnpm
+          corepack enable
           pnpm install --frozen-lockfile
 
       # 保存当前工作目录

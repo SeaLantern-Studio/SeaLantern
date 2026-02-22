@@ -40,7 +40,7 @@ jobs:
 
       - name: 安装前端依赖
         run: |
-          npm i -g pnpm
+          corepack enable
           pnpm install --frozen-lockfile
 
       - name: 并行运行前端 & 后端 格式化

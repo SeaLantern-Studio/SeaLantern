@@ -118,7 +118,7 @@ jobs:
       - name: 安装前端依赖
         if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
-          npm i -g pnpm
+          corepack enable
           pnpm install --frozen-lockfile
 
       - name: 运行格式化并检查前端 Lint
