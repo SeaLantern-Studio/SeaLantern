@@ -1,4 +1,4 @@
-import { tauriInvoke } from "./tauri";
+import { tauriInvoke } from "@api/tauri";
 
 /**
  * Java 环境信息
