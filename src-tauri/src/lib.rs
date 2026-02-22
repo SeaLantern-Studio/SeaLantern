@@ -77,6 +77,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             server_commands::create_server,
             server_commands::import_server,
+            server_commands::add_existing_server,
             server_commands::import_modpack,
             server_commands::start_server,
             server_commands::stop_server,

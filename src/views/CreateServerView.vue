@@ -173,6 +173,49 @@ async function handleCreate() {
   }
 }
 
+// 导入已有服务器
+async function handleImport() {
+  clearError();
+
+  if (!selectedJava.value) {
+    showError(i18n.t("common.select_java_path"));
+    return;
+  }
+  if (!serverName.value.trim()) {
+    showError(i18n.t("common.enter_server_name"));
+    return;
+  }
+
+  // 打开启动文件选择对话框（根据当前选择的启动模式）
+  const result = await systemApi.pickStartupFile(startupMode.value);
+  if (!result) {
+    return;
+  }
+
+  // 从文件路径提取服务器目录
+  const serverPath = result.substring(0, result.lastIndexOf('\\') || result.lastIndexOf('/'));
+
+  startCreating();
+  try {
+    await serverApi.addExistingServer({
+      name: serverName.value,
+      serverPath: serverPath,
+      javaPath: selectedJava.value,
+      maxMemory: parseInt(maxMemory.value) || 2048,
+      minMemory: parseInt(minMemory.value) || 512,
+      port: parseInt(port.value) || 25565,
+      startupMode: startupMode.value,
+      executablePath: result, // 传入用户选择的启动文件路径
+    });
+    await store.refreshList();
+    router.push("/");
+  } catch (e) {
+    showError(String(e));
+  } finally {
+    stopCreating();
+  }
+}
+
 function getJavaLabel(java: JavaInfo): { label: string; subLabel: string } {
   // 简化 Java 显示名称
   // label: 简短名称（如 "Java 17 Eclipse Temurin 64-bit"）
@@ -359,6 +402,9 @@ const startupFileLabel = computed(() => {
       }}</SLButton>
       <SLButton variant="primary" size="lg" :loading="creating" @click="handleCreate">
         {{ i18n.t("create.select_and_create") }}
+      </SLButton>
+      <SLButton variant="primary" size="lg" :loading="creating" @click="handleImport">
+        {{ i18n.t("create.import_existing") }}
       </SLButton>
     </div>
   </div>
