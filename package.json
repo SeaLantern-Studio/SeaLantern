@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.0",
+    "@types/node": "^25.3.0",
     "@vitejs/plugin-vue": "^6.0.4",
     "oxfmt": "^0.34.0",
     "oxlint": "^1.49.0",
