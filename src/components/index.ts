@@ -28,9 +28,9 @@ import {
   SLTextarea,
   SLToast,
   SLTooltip,
-} from "./common";
+} from "@components/common";
 
-import { AppHeader, AppLayout, AppSidebar } from "./layout";
+import { AppHeader, AppLayout, AppSidebar } from "@components/layout";
 
 const components: Record<string, ReturnType<typeof import("vue").defineComponent>> = {
   SLBadge,

@@ -19,7 +19,7 @@ import {
   updateQuote,
   startQuoteTimer,
   cleanupQuoteResources,
-} from "../utils/quoteUtils";
+} from "@utils/quoteUtils";
 
 import {
   systemInfo,
@@ -36,7 +36,7 @@ import {
   fetchSystemInfo,
   startThemeObserver,
   cleanupStatsResources,
-} from "../utils/statsUtils";
+} from "@utils/statsUtils";
 
 import {
   actionLoading,
@@ -66,7 +66,7 @@ import {
   handleAnimationEnd,
   handleClickOutside,
   closeDeleteConfirm,
-} from "../utils/serverUtils";
+} from "@utils/serverUtils";
 
 const router = useRouter();
 const store = useServerStore();
