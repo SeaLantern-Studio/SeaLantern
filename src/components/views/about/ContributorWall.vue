@@ -2,12 +2,12 @@
 import { ref, computed } from "vue";
 import { AvatarImage, AvatarRoot, AvatarFallback } from "reka-ui";
 import { Plus, Link, ExternalLink, Check } from "lucide-vue-next";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import SLButton from "@components/common/SLButton.vue";
 import BrandIcon from "@components/common/BrandIcon.vue";
 import { contributors as contributorsList, type SocialLinks } from "@data/contributors";
 import { i18n } from "@language";
 import tauriIcon64 from "@src-tauri/icons/64x64.png";
+import { useAboutLinks } from "@composables/useAboutLinks";
 
 const contributors = ref(contributorsList);
 
@@ -26,39 +26,10 @@ function loadMore() {
   currentPage.value++;
 }
 
-const copiedQQ = ref<string | null>(null);
+const { copiedQQ, openLink, copyQQ, openSocialLink } = useAboutLinks();
 
 function isSocialLinks(url: string | SocialLinks | undefined): url is SocialLinks {
   return typeof url === "object" && url !== null;
-}
-
-async function openSocialLink(platform: string, value: string) {
-  if (platform === "qq") {
-    await copyQQ(value);
-  } else {
-    await openLink(value);
-  }
-}
-
-async function copyQQ(qq: string) {
-  try {
-    await navigator.clipboard.writeText(qq);
-    copiedQQ.value = qq;
-    setTimeout(() => {
-      copiedQQ.value = null;
-    }, 2000);
-  } catch (e) {
-    console.error("[ContributorWall] 复制QQ失败:", e);
-  }
-}
-
-async function openLink(url: string) {
-  if (!url) return;
-  try {
-    await openUrl(url);
-  } catch (e) {
-    console.error("[ContributorWall] 打开URL失败:", e);
-  }
 }
 
 function getCustomLinks(links: SocialLinks): [string, string][] {

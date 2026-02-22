@@ -1,16 +1,9 @@
 <script setup lang="ts">
-import { openUrl } from "@tauri-apps/plugin-opener";
 import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
+import { useAboutLinks } from "@composables/useAboutLinks";
 
-async function openLink(url: string) {
-  if (!url) return;
-  try {
-    await openUrl(url);
-  } catch (e) {
-    console.error("[LinksSection] 打开URL失败:", e);
-  }
-}
+const { openLink } = useAboutLinks();
 </script>
 
 <template>
