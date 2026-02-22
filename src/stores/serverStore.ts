@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { serverApi } from "../api/server";
+import { configApi } from "../api/config";
 import { useAsyncByKey, useLoading } from "../composables/useAsync";
 import type { ServerInstance } from "../types/server";
 import type { ServerStatusInfo } from "../api/server";
@@ -41,9 +42,46 @@ export const useServerStore = defineStore("server", () => {
     error.value = null;
     try {
       servers.value = await withLoading(() => serverApi.getList());
+      // 扫描每个服务器的端口信息
+      await scanServerPorts();
     } catch (e) {
       error.value = String(e);
       throw e;
+    }
+  }
+
+  /**
+   * 扫描所有服务器的端口信息
+   */
+  async function scanServerPorts() {
+    try {
+      for (const server of servers.value) {
+        await scanServerPort(server);
+      }
+    } catch (e) {
+      console.warn("Failed to scan server ports:", e);
+    }
+  }
+
+  /**
+   * 扫描单个服务器的端口信息
+   */
+  async function scanServerPort(server: ServerInstance) {
+    try {
+      // 使用 configApi 读取 server.properties 文件
+      const serverPath = server.path;
+      if (!serverPath) return;
+
+      // 读取 server.properties 文件
+      const data = await configApi.readServerProperties(serverPath);
+      if (data.raw && data.raw["server-port"]) {
+        const port = parseInt(data.raw["server-port"]);
+        if (!isNaN(port)) {
+          server.port = port;
+        }
+      }
+    } catch (e) {
+      console.warn(`Failed to scan port for server ${server.id}:`, e);
     }
   }
 
@@ -110,5 +148,7 @@ export const useServerStore = defineStore("server", () => {
     getServerById,
     isServerLoading,
     clearError,
+    scanServerPorts,
+    scanServerPort,
   };
 });
