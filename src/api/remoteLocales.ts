@@ -1,10 +1,6 @@
 import { type LocaleCode } from "@language";
 
-export async function fetchLocale(
-  locale: LocaleCode,
-  onProgress?: (loaded: number, total: number | null) => void,
-  baseUrl?: string,
-) {
+export async function fetchLocale(locale: LocaleCode) {
   // 直接从本地导入语言文件
   try {
     // 语言代码映射，处理特殊情况

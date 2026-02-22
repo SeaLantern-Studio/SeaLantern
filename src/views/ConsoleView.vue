@@ -31,7 +31,6 @@ const editingCommand = ref<import("@type/server").ServerCommand | null>(null);
 const commandName = ref("");
 const commandText = ref("");
 const commandLoading = ref(false);
-const showSuggestions = ref(false);
 
 const quickCommands = computed(() => [
   { label: i18n.t("common.command_day"), cmd: "time set day" },
@@ -136,7 +135,6 @@ async function sendCommand(cmd?: string) {
     consoleStore.appendLocal(sid, "[ERROR] " + String(e));
   }
   commandInput.value = "";
-  showSuggestions.value = false;
   userScrolledUp.value = false;
   doScroll();
 }
