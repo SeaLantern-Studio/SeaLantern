@@ -20,7 +20,7 @@ export default defineConfig({
       "@stores": path.resolve(rootDir, "src/stores"),
       "@styles": path.resolve(rootDir, "src/styles"),
       "@themes": path.resolve(rootDir, "src/themes"),
-      "@types": path.resolve(rootDir, "src/types"),
+      "@type": path.resolve(rootDir, "src/types"),
       "@utils": path.resolve(rootDir, "src/utils"),
       "@views": path.resolve(rootDir, "src/views"),
     },

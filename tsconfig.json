@@ -31,7 +31,7 @@
       "@stores/*": ["src/stores/*"],
       "@styles/*": ["src/styles/*"],
       "@themes/*": ["src/themes/*"],
-      "@types/*": ["src/types/*"],
+      "@type/*": ["src/types/*"],
       "@utils/*": ["src/utils/*"],
       "@views/*": ["src/views/*"]
     },
