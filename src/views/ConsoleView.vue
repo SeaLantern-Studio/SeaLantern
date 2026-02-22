@@ -72,6 +72,10 @@ onMounted(async () => {
   }
 
   await serverStore.refreshList();
+  // 如果没有当前服务器但有服务器列表，选择第一个
+  if (!serverStore.currentServerId && serverStore.servers.length > 0) {
+    serverStore.setCurrentServer(serverStore.servers[0].id);
+  }
   if (serverId.value) {
     await serverStore.refreshStatus(serverId.value);
   }

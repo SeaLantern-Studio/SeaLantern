@@ -57,6 +57,10 @@ const isRunning = computed(() => {
 
 onMounted(async () => {
   await store.refreshList();
+  // 如果没有当前服务器但有服务器列表，选择第一个
+  if (!store.currentServerId && store.servers.length > 0) {
+    store.setCurrentServer(store.servers[0].id);
+  }
   if (store.currentServerId) {
     await store.refreshStatus(store.currentServerId);
     await loadAll();
