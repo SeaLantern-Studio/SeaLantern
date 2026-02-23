@@ -1,38 +1,45 @@
 ---
-name: Feature request
-about: Propose a new feature or improvement
-title: "[FEATURE] <brief description>"
-labels: enhancement
+name: 新功能请求
+about: 请求一个新的功能
+title: "[Feature] "
+labels: ["enhancement", "pending"]
 assignees: ""
 ---
 
-## Description / 描述
+## 功能描述
 
-- 提供清晰的特性描述/Provide a clear description of the feature
+<!-- 你想要的功能 -->
 
-## Rationale / 理由
 
-- 为什么需要这个功能/Why is this feature useful? What problem does it solve?
+## 理由
 
-## Proposed implementation / 实现方案
+<!-- 说明你为什么想要这个功能 -->
 
-- 高层实现思路或设计要点/High-level approach or design notes
-- 需要的 API 或 UI 更改/Any API or UI changes that would be needed
+## 如何实现
 
-## Alternatives considered / 替代方案
+> 可选
+<!-- 如何实现你所想要的功能? -->
 
-- 其他考虑过的方案及原因/Other approaches you considered and why you chose this one
 
-## Impact / 影响
+## 替代方案
 
-- 可能影响的系统部分与风险/What parts of the system would be affected? Any potential risks?
-- 是否存在现有用户的迁移路径/Is there a migration path for existing users?
+> 可选
+<!-- 是否有其他方案可选？ -->
 
-## Acceptance criteria / 验收标准
 
-- 验收条件/List concrete conditions for when this feature can be considered complete
-- 场景/测试用例示例/Example scenarios or test cases
+## 影响
 
-## Additional context / 其他上下文
+> 可选
+<!-- 是否对现有内容存在一定影响？ -->
 
-- 其他信息/Additional context
+
+## 验收标准
+
+> 可选
+<!-- 什么样的情况下才算是完成这个功能？ -->
+
+
+## 附加内容
+
+> 可选
+<!-- 例如界面的草图 -->
