@@ -522,7 +522,7 @@ onUnmounted(() => {
 
 .sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb {
   background: var(--sl-border);
-  border-radius: 3px;
+  border-radius: var(--sl-radius-sm);
 }
 
 .sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb:hover {

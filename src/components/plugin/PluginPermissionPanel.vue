@@ -181,7 +181,7 @@ onUnmounted(() => {
   gap: 4px;
   padding: 4px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   background: var(--sl-bg-tertiary);
   color: var(--sl-text-secondary);
   font-size: 12px;
@@ -210,7 +210,7 @@ onUnmounted(() => {
   margin-top: 4px;
   width: 320px;
   max-height: 400px;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
   background: var(--sl-surface);
   backdrop-filter: blur(12px);
   border: 1px solid var(--sl-border);
@@ -243,7 +243,7 @@ onUnmounted(() => {
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   background: transparent;
   color: var(--sl-text-tertiary);
   cursor: pointer;
@@ -289,7 +289,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
   background: var(--sl-primary-alpha, rgba(59, 130, 246, 0.15));
   color: var(--sl-primary);
   font-size: 12px;
@@ -309,7 +309,7 @@ onUnmounted(() => {
   font-weight: 400;
   line-height: 1.5;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   width: max-content;
   max-width: 220px;
   white-space: normal;
@@ -333,7 +333,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 6px 8px;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   background: var(--sl-bg-tertiary);
   margin-bottom: 4px;
 }
@@ -369,7 +369,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 6px 8px;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   background: var(--sl-bg-tertiary);
   margin-bottom: 4px;
 }

@@ -620,7 +620,7 @@ onMounted(() => {
 
 .retry-btn {
   padding: 8px 24px;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   border: none;
   background: var(--sl-primary);
   color: white;
@@ -673,7 +673,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
 }
 
 .card-info {
@@ -698,7 +698,7 @@ onMounted(() => {
 .card-version {
   padding: 2px 6px;
   background: var(--sl-bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 11px;
   color: var(--sl-text-tertiary);
 }
@@ -755,14 +755,14 @@ onMounted(() => {
 .card-tag {
   padding: 2px 8px;
   background: var(--sl-bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 11px;
   color: var(--sl-text-tertiary);
 }
 
 .install-btn {
   padding: 6px 16px;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   border: none;
   background: var(--sl-primary);
   color: white;
@@ -806,7 +806,7 @@ onMounted(() => {
   max-width: 560px;
   max-height: 80vh;
   overflow-y: auto;
-  border-radius: 16px;
+  border-radius: var(--sl-radius-lg);
   padding: 24px;
   position: relative;
 }
@@ -820,7 +820,7 @@ onMounted(() => {
   background: transparent;
   color: var(--sl-text-secondary);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
 }
 
 .modal-close:hover {
@@ -848,7 +848,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
 }
 
 .detail-title h2 {
@@ -861,7 +861,7 @@ onMounted(() => {
   display: inline-block;
   padding: 2px 8px;
   background: var(--sl-bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 12px;
   color: var(--sl-text-tertiary);
   margin-top: 4px;
@@ -910,7 +910,7 @@ onMounted(() => {
 
 .perm-badge {
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
   font-size: 12px;
   font-weight: 500;
   cursor: default;
@@ -935,7 +935,7 @@ onMounted(() => {
   margin: 0;
   padding: 12px;
   background: var(--sl-bg-tertiary);
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   font-size: 12px;
   color: var(--sl-text-secondary);
   white-space: pre-wrap;
@@ -988,7 +988,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: var(--sl-radius-md);
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
@@ -1003,7 +1003,7 @@ onMounted(() => {
   flex: 1;
   min-width: 200px;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   border: 1px solid var(--sl-border);
   background: var(--sl-bg-tertiary);
   color: var(--sl-text-primary);
@@ -1017,7 +1017,7 @@ onMounted(() => {
 
 .url-editor-btn {
   padding: 6px 14px;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   border: none;
   background: var(--sl-primary);
   color: white;

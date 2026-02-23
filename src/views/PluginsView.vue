@@ -1406,7 +1406,7 @@ function goToMarket() {
   padding: 24px;
   margin-bottom: 16px;
   border: 2px dashed var(--sl-border);
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
   cursor: pointer;
   transition: all 0.2s ease;
   background: var(--sl-bg-primary);
@@ -1485,7 +1485,7 @@ function goToMarket() {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   font-size: 13px;
 }
 
@@ -1527,7 +1527,7 @@ function goToMarket() {
   gap: 12px;
   padding: 12px 16px;
   margin-bottom: 16px;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   background: var(--sl-error-bg);
   border: 1px solid var(--sl-error);
 }
@@ -1654,7 +1654,7 @@ function goToMarket() {
   justify-content: space-between;
   padding: 12px 16px;
   margin-bottom: 12px;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   border: 1px solid var(--sl-border);
   background: var(--sl-bg-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -1699,7 +1699,7 @@ function goToMarket() {
   width: 18px;
   height: 18px;
   border: 1.5px solid var(--sl-text-tertiary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   background: transparent;
   transition: all var(--sl-transition-fast);
   position: relative;
@@ -1809,7 +1809,7 @@ function goToMarket() {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
 }
 
 .plugin-icon-default {
@@ -1847,7 +1847,7 @@ function goToMarket() {
   flex-shrink: 0;
   padding: 1px 5px;
   background: var(--sl-bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 11px;
   color: var(--sl-text-tertiary);
 }
@@ -1873,7 +1873,7 @@ function goToMarket() {
   padding: 0;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   color: var(--sl-text-tertiary);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1931,7 +1931,7 @@ function goToMarket() {
   height: 28px;
   border: none;
   background: var(--sl-bg-tertiary);
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   color: var(--sl-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1958,7 +1958,7 @@ function goToMarket() {
   width: 36px;
   height: 20px;
   background: var(--sl-bg-tertiary);
-  border-radius: 10px;
+  border-radius: var(--sl-radius-md);
   transition: background 0.2s ease;
 }
 
@@ -2017,7 +2017,7 @@ function goToMarket() {
   background: var(--sl-surface);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-radius: 16px;
+  border-radius: var(--sl-radius-lg);
   border: 1px solid var(--sl-border);
   box-shadow: var(--sl-shadow-xl);
   display: flex;
@@ -2051,7 +2051,7 @@ function goToMarket() {
   background: transparent;
   color: var(--sl-text-secondary);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   transition: all 0.2s ease;
 }
 
@@ -2097,7 +2097,7 @@ function goToMarket() {
   color: var(--sl-text-primary);
   background: var(--sl-bg-secondary);
   border: 1px solid var(--sl-border);
-  border-radius: 10px;
+  border-radius: var(--sl-radius-md);
   outline: none;
   transition: all 0.2s ease;
 }
@@ -2124,7 +2124,7 @@ function goToMarket() {
   height: 38px;
   padding: 2px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  border-radius: var(--sl-radius-md);
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
@@ -2147,7 +2147,7 @@ function goToMarket() {
   color: var(--sl-text-primary);
   background: var(--sl-bg-secondary);
   border: 1px solid var(--sl-border);
-  border-radius: 10px;
+  border-radius: var(--sl-radius-md);
   outline: none;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -2193,7 +2193,7 @@ function goToMarket() {
   width: 44px;
   height: 24px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
   transition: all 0.3s ease;
 }
 
@@ -2258,7 +2258,7 @@ function goToMarket() {
   background: transparent;
   color: var(--sl-text-tertiary);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   transition: all 0.2s ease;
 }
 
@@ -2274,7 +2274,7 @@ function goToMarket() {
   background: var(--sl-surface);
   backdrop-filter: blur(12px);
   border: 1px solid var(--sl-border);
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   padding: 4px;
   min-width: 140px;
   z-index: 100;
@@ -2290,7 +2290,7 @@ function goToMarket() {
   color: var(--sl-text-primary);
   text-align: left;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 13px;
 }
 
@@ -2392,7 +2392,7 @@ function goToMarket() {
   padding: 10px 12px;
   margin-bottom: 8px;
   background: var(--sl-bg-tertiary, rgba(255, 255, 255, 0.05));
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
@@ -2452,7 +2452,7 @@ function goToMarket() {
   padding: 10px 12px;
   margin-bottom: 8px;
   background: var(--sl-bg-tertiary, rgba(255, 255, 255, 0.05));
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   border: 1px solid var(--sl-border, rgba(255, 255, 255, 0.08));
 }
 
@@ -2475,7 +2475,7 @@ function goToMarket() {
 .dependency-badge {
   margin-left: auto;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 11px;
   font-weight: 500;
 }
@@ -2550,7 +2550,7 @@ function goToMarket() {
   color: var(--sl-text-primary, #e2e8f0);
   background: rgba(99, 102, 241, 0.15);
   border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
 }
 
 .dependency-list {
@@ -2566,7 +2566,7 @@ function goToMarket() {
   padding: 8px 12px;
   margin-bottom: 4px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   font-size: 13px;
 }
 
@@ -2590,7 +2590,7 @@ function goToMarket() {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
 }
 
 .dep-status--enabled {
@@ -2612,7 +2612,7 @@ function goToMarket() {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
 }
 
 .dep-type-tag--required {
