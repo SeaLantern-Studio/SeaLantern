@@ -4,7 +4,6 @@ import SLCard from "@components/common/SLCard.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import { i18n } from "@language";
-import { systemApi } from "@api/system";
 
 type StartupMode = "jar" | "bat" | "sh";
 
@@ -15,7 +14,6 @@ const props = defineProps<{
   minMemory: string;
   port: string;
   onlineMode: boolean;
-  jarPath?: string;
 }>();
 
 const emit = defineEmits<{
@@ -25,8 +23,6 @@ const emit = defineEmits<{
   (e: "update:minMemory", value: string): void;
   (e: "update:port", value: string): void;
   (e: "update:onlineMode", value: boolean): void;
-  (e: "update:jarPath", value: string): void;
-  (e: "selectFile"): void;
 }>();
 
 const startupModes: StartupMode[] = ["jar", "bat", "sh"];
@@ -45,18 +41,6 @@ function handleNumberInput(e: Event, type: "maxMemory" | "minMemory" | "port") {
   const value = target.value;
   if (value === "" || /^\d+$/.test(value)) {
     emit(`update:${type}`, value);
-  }
-}
-
-async function handleSelectFile() {
-  try {
-    const result = await systemApi.pickStartupFile(props.startupMode);
-    if (result) {
-      emit("update:jarPath", result);
-      emit("selectFile");
-    }
-  } catch (e) {
-    console.error("Pick file error:", e);
   }
 }
 
@@ -111,20 +95,6 @@ onMounted(updateIndicator);
           </div>
         </div>
       </div>
-      <div class="jar-picker-row">
-        <SLInput
-          :label="i18n.t('create.startup_file')"
-          :model-value="jarPath || ''"
-          :placeholder="i18n.t('create.select_startup_file')"
-          readonly
-        >
-          <template #suffix>
-            <button class="pick-btn" @click="handleSelectFile">
-              {{ i18n.t("create.browse") }}
-            </button>
-          </template>
-        </SLInput>
-      </div>
 
       <SLInput
         :label="i18n.t('create.max_memory')"
@@ -172,23 +142,6 @@ onMounted(updateIndicator);
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-xs);
-}
-.jar-picker-row {
-  grid-column: 1 / -1;
-}
-.pick-btn {
-  padding: 4px 12px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--sl-primary);
-  background: var(--sl-primary-bg);
-  border-radius: var(--sl-radius-sm);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.pick-btn:hover {
-  background: var(--sl-primary);
-  color: white;
 }
 .startup-mode-label {
   font-size: 0.8125rem;

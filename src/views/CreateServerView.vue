@@ -83,11 +83,27 @@ async function detectJava() {
   }
 }
 
+async function pickJarFile() {
+  try {
+    const mode = startupMode.value;
+    const result = await systemApi.pickStartupFile(mode);
+    if (result) {
+      jarPath.value = result;
+    } else {
+      jarPath.value = "";
+    }
+  } catch (e) {
+    console.error("Pick file error:", e);
+    jarPath.value = "";
+  }
+}
+
 async function handleCreate() {
   clearError();
 
+  await pickJarFile();
+
   if (!jarPath.value) {
-    showError(i18n.t("create.select_startup_file"));
     return;
   }
   if (!selectedJava.value) {
@@ -101,10 +117,11 @@ async function handleCreate() {
 
   startCreating();
   try {
+    const mode = startupMode.value;
     await serverApi.importServer({
       name: serverName.value,
       jarPath: jarPath.value,
-      startupMode: startupMode.value,
+      startupMode: mode,
       javaPath: selectedJava.value,
       maxMemory: parseInt(maxMemory.value) || 2048,
       minMemory: parseInt(minMemory.value) || 512,
@@ -141,6 +158,7 @@ async function handleImport() {
 
   startCreating();
   try {
+    const mode = startupMode.value;
     await serverApi.addExistingServer({
       name: serverName.value,
       serverPath: serverPath,
@@ -148,7 +166,7 @@ async function handleImport() {
       maxMemory: parseInt(maxMemory.value) || 2048,
       minMemory: parseInt(minMemory.value) || 512,
       port: parseInt(port.value) || 25565,
-      startupMode: startupMode.value,
+      startupMode: mode,
       executablePath: result,
     });
     await store.refreshList();
@@ -182,7 +200,6 @@ async function handleImport() {
       v-model:min-memory="minMemory"
       v-model:port="port"
       v-model:online-mode="onlineMode"
-      v-model:jar-path="jarPath"
     />
 
     <CreateServerActions :creating="creating" @create="handleCreate" @import="handleImport" />
