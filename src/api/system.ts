@@ -104,7 +104,11 @@ export const systemApi = {
     serverName: string;
     version: string;
   }): Promise<string | null> {
-    return tauriInvoke("download_server_core", params);
+    return tauriInvoke("download_server_core", {
+      url: params.url,
+      server_name: params.serverName,
+      version: params.version,
+    });
   },
 
   async deleteFile(path: string): Promise<void> {

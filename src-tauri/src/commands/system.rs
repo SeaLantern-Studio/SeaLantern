@@ -317,7 +317,7 @@ pub async fn download_server_core(
     version: String,
 ) -> Result<Option<String>, String> {
     let file_name = format!("{}-{}.jar", server_name, version);
-    
+
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let temp_dir = data_dir.join("temp");
     tokio::fs::create_dir_all(&temp_dir)
