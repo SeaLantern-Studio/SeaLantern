@@ -13,7 +13,37 @@ const DATA_FILE: &str = "sea_lantern_servers.json";
 /// Minecraft 服务器核心类型枚举
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CoreType {
-    ArclightForge, ArclightNeoforge, Youer, Mohist, Catserver, Spongeforge,ArclightFabric, Banner,Neoforge, Forge,Quilt, Fabric,PufferfishPurpur, Pufferfish, Spongevanilla, Purpur, Paper, Folia, Leaves, Leaf, Spigot, Bukkit,VanillaSnapshot, Vanilla,Nukkitx, Bedrock,Velocity, Bungeecord, Lightfall, Travertine,Unknown,
+    ArclightForge,
+    ArclightNeoforge,
+    Youer,
+    Mohist,
+    Catserver,
+    Spongeforge,
+    ArclightFabric,
+    Banner,
+    Neoforge,
+    Forge,
+    Quilt,
+    Fabric,
+    PufferfishPurpur,
+    Pufferfish,
+    Spongevanilla,
+    Purpur,
+    Paper,
+    Folia,
+    Leaves,
+    Leaf,
+    Spigot,
+    Bukkit,
+    VanillaSnapshot,
+    Vanilla,
+    Nukkitx,
+    Bedrock,
+    Velocity,
+    Bungeecord,
+    Lightfall,
+    Travertine,
+    Unknown,
 }
 
 impl CoreType {
@@ -64,19 +94,15 @@ impl CoreType {
             (CoreType::Mohist, &["mohist"]),
             (CoreType::Catserver, &["catserver"]),
             (CoreType::Spongeforge, &["spongeforge"]),
-
             // 2. 混合核心 (Fabric + 插件)
             (CoreType::ArclightFabric, &["arclight-fabric"]),
             (CoreType::Banner, &["banner"]),
-
             // 3. Forge 生态 - 优先检测 neoforge
             (CoreType::Neoforge, &["neoforge"]),
             (CoreType::Forge, &["forge"]),
-
             // 4. Fabric 生态
             (CoreType::Quilt, &["quilt"]),
             (CoreType::Fabric, &["fabric"]),
-
             // 5. 插件核心 - 优先检测更具体的
             (CoreType::PufferfishPurpur, &["pufferfish_purpur", "pufferfish-purpur"]),
             (CoreType::Pufferfish, &["pufferfish"]),
@@ -88,15 +114,12 @@ impl CoreType {
             (CoreType::Leaf, &["leaf"]),
             (CoreType::Spigot, &["spigot"]),
             (CoreType::Bukkit, &["bukkit"]),
-
             // 6. 原版核心
             (CoreType::VanillaSnapshot, &["vanilla-snapshot"]),
             (CoreType::Vanilla, &["vanilla"]),
-
             // 7. Bedrock 核心
             (CoreType::Nukkitx, &["nukkitx", "nukkit"]),
             (CoreType::Bedrock, &["bedrock"]),
-
             // 8. 代理核心
             (CoreType::Velocity, &["velocity"]),
             (CoreType::Bungeecord, &["bungeecord"]),
