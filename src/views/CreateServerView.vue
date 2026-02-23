@@ -9,7 +9,6 @@ import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
-import { useTabSwitch } from "@composables/useTabIndicator";
 import JavaEnvironmentCard from "@components/views/create/JavaEnvironmentCard.vue";
 import ServerConfigCard from "@components/views/create/ServerConfigCard.vue";
 import CreateServerActions from "@components/views/create/CreateServerActions.vue";
@@ -27,13 +26,10 @@ const maxMemory = ref("2048");
 const minMemory = ref("512");
 const port = ref("25565");
 const jarPath = ref("");
-const {
-  activeTab: startupMode,
-  indicatorRef: startupModeIndicator,
-  switchTab: switchStartupMode,
-} = useTabSwitch<StartupMode>("jar");
 const selectedJava = ref("");
 const onlineMode = ref(true);
+
+const serverConfigCardRef = ref<InstanceType<typeof ServerConfigCard> | null>(null);
 
 const javaList = ref<JavaInfo[]>([]);
 
@@ -86,7 +82,8 @@ async function detectJava() {
 
 async function pickJarFile() {
   try {
-    const result = await systemApi.pickStartupFile(startupMode.value);
+    const mode = serverConfigCardRef.value?.startupMode || "jar";
+    const result = await systemApi.pickStartupFile(mode);
     if (result) {
       jarPath.value = result;
     } else {
@@ -98,9 +95,8 @@ async function pickJarFile() {
   }
 }
 
-function handleSetStartupMode(mode: StartupMode) {
+function handleSetStartupMode() {
   jarPath.value = "";
-  switchStartupMode(mode);
 }
 
 async function handleCreate() {
@@ -122,10 +118,11 @@ async function handleCreate() {
 
   startCreating();
   try {
+    const mode = serverConfigCardRef.value?.startupMode || "jar";
     await serverApi.importServer({
       name: serverName.value,
       jarPath: jarPath.value,
-      startupMode: startupMode.value,
+      startupMode: mode,
       javaPath: selectedJava.value,
       maxMemory: parseInt(maxMemory.value) || 2048,
       minMemory: parseInt(minMemory.value) || 512,
@@ -153,7 +150,7 @@ async function handleImport() {
     return;
   }
 
-  const result = await systemApi.pickStartupFile(startupMode.value);
+  const result = await systemApi.pickStartupFile(serverConfigCardRef.value?.startupMode || "jar");
   if (!result) {
     return;
   }
@@ -162,6 +159,7 @@ async function handleImport() {
 
   startCreating();
   try {
+    const mode = serverConfigCardRef.value?.startupMode || "jar";
     await serverApi.addExistingServer({
       name: serverName.value,
       serverPath: serverPath,
@@ -169,7 +167,7 @@ async function handleImport() {
       maxMemory: parseInt(maxMemory.value) || 2048,
       minMemory: parseInt(minMemory.value) || 512,
       port: parseInt(port.value) || 25565,
-      startupMode: startupMode.value,
+      startupMode: mode,
       executablePath: result,
     });
     await store.refreshList();
@@ -197,9 +195,8 @@ async function handleImport() {
     />
 
     <ServerConfigCard
+      ref="serverConfigCardRef"
       v-model:server-name="serverName"
-      v-model:startup-mode="startupMode"
-      :startup-mode-indicator="startupModeIndicator!"
       v-model:max-memory="maxMemory"
       v-model:min-memory="minMemory"
       v-model:port="port"

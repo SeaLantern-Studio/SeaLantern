@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, watch } from "vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
@@ -10,31 +10,42 @@ type StartupMode = "jar" | "bat" | "sh";
 
 const props = defineProps<{
   serverName: string;
-  startupMode: StartupMode;
   maxMemory: string;
   minMemory: string;
   port: string;
   onlineMode: boolean;
-  startupModeIndicator: HTMLElement;
 }>();
 
 const emit = defineEmits<{
   (e: "update:serverName", value: string): void;
-  (e: "update:startupMode", value: StartupMode): void;
   (e: "update:maxMemory", value: string): void;
   (e: "update:minMemory", value: string): void;
   (e: "update:port", value: string): void;
   (e: "update:onlineMode", value: boolean): void;
-  (e: "setStartupMode", value: StartupMode): void;
+  (e: "setStartupMode"): void;
 }>();
 
 const startupModes: StartupMode[] = ["jar", "bat", "sh"];
 
+const indicatorRef = ref<HTMLElement | null>(null);
+
+const {
+  activeTab: localStartupMode,
+  switchTab,
+  updateIndicator,
+} = useTabSwitch<StartupMode>("jar", indicatorRef);
+
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, () => {
+  updateIndicator();
+});
+
 function handleSetStartupMode(mode: StartupMode) {
-  if (props.startupMode === mode) {
+  if (localStartupMode.value === mode) {
     return;
   }
-  emit("setStartupMode", mode);
+  switchTab(mode);
+  emit("setStartupMode");
 }
 
 function handleMemoryInput(e: Event, type: "max" | "min") {
@@ -56,6 +67,12 @@ function handlePortInput(e: Event) {
     emit("update:port", value);
   }
 }
+
+defineExpose({
+  indicatorRef,
+  updateIndicator,
+  startupMode: localStartupMode,
+});
 </script>
 
 <template>
@@ -73,13 +90,13 @@ function handlePortInput(e: Event) {
         <span class="startup-mode-label">{{ i18n.t("create.startup_mode") }}</span>
         <div class="startup-mode-control">
           <div class="startup-mode-tabs">
-            <div class="startup-mode-indicator" ref="startupModeIndicator"></div>
+            <div class="startup-mode-indicator" ref="indicatorRef"></div>
             <button
               v-for="mode in startupModes"
               :key="mode"
               type="button"
               class="startup-mode-tab"
-              :class="{ active: startupMode === mode }"
+              :class="{ active: localStartupMode === mode }"
               @click="handleSetStartupMode(mode)"
             >
               {{ mode === "jar" ? "JAR" : mode }}
