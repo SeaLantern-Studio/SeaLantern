@@ -229,7 +229,8 @@
     "java_env": "Java環境",
     "java_scan": "システム内のすべてのディスクからJavaを検索",
     "java_manual": "手動でJavaのパスを選択",
-    "java_path": "Javaのパス"
+    "java_path": "Javaのパス",
+    "file_hint": "「選択して作成」をクリックした後、サーバー起動ファイルを選択してください（.jar、.bat、.sh形式をサポート）。システムが自動的にファイルタイプを検出します"
   },
   "console": {
     "title": "コンソール",

@@ -79,6 +79,14 @@ export const systemApi = {
     return tauriInvoke("pick_startup_file", { mode });
   },
 
+  async pickServerExecutable(): Promise<{ path: string; mode: "jar" | "bat" | "sh" } | null> {
+    const result = await tauriInvoke<[string, string] | null>("pick_server_executable");
+    if (result) {
+      return { path: result[0], mode: result[1] as "jar" | "bat" | "sh" };
+    }
+    return null;
+  },
+
   async pickJavaFile(): Promise<string | null> {
     return tauriInvoke("pick_java_file");
   },

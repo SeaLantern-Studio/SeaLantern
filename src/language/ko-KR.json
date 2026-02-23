@@ -229,7 +229,8 @@
     "java_env": "Java 환경",
     "java_scan": "시스템의 모든 디스크에서 Java 설치 스캔",
     "java_manual": "Java 경로 수동 선택",
-    "java_path": "Java 경로"
+    "java_path": "Java 경로",
+    "file_hint": "「선택 및 생성」 버튼을 클릭한 후 서버 시작 파일을 선택하세요 (.jar, .bat 또는 .sh 형식 지원). 시스템이 자동으로 파일 유형을 감지합니다"
   },
   "console": {
     "title": "콘솔",

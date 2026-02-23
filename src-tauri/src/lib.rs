@@ -98,6 +98,7 @@ pub fn run() {
             system_commands::get_system_info,
             system_commands::pick_jar_file,
             system_commands::pick_startup_file,
+            system_commands::pick_server_executable,
             system_commands::pick_java_file,
             system_commands::pick_folder,
             system_commands::pick_image_file,
