@@ -136,9 +136,7 @@ async function pickJavaFile() {
 async function handleCreate() {
   clearError();
 
-  if (!jarPath.value) {
-    await pickJarFile();
-  }
+  await pickJarFile();
 
   if (!jarPath.value) {
     return;
