@@ -229,7 +229,8 @@
     "java_env": "Environnement Java",
     "java_scan": "Scanner tous les disques pour trouver des installations Java",
     "java_manual": "Sélection manuelle du chemin Java",
-    "java_path": "Chemin Java"
+    "java_path": "Chemin Java",
+    "file_hint": "Après avoir cliqué sur 「Sélectionner et Créer」, veuillez choisir le fichier de démarrage du serveur (formats .jar, .bat ou .sh supportés). Le système détectera automatiquement le type de fichier"
   },
   "console": {
     "title": "Console",
@@ -276,8 +277,10 @@
     "delete": "Supprimer",
     "refresh_list": "Rafraîchir la liste",
     "reload_plugins": "Recharger les plugins",
+    "reload_plugins_warning": "Le rechargement des plugins peut causer des problèmes serveur, certains plugins peuvent ne pas le supporter",
     "empty_config_folder": "Dossier de configuration vide",
     "no_config_files": "Aucune configuration",
+    "has_config_folder": "A configuration",
     "config_files_count": "configurations",
     "config_files": "Fichiers de configuration",
     "open": "Ouvrir",

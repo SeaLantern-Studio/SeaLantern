@@ -111,12 +111,7 @@ async function handleManualDownload() {
             <div class="notes-content">{{ updateInfo.release_notes }}</div>
           </div>
           <div class="update-buttons">
-            <SLButton
-              variant="primary"
-              size="sm"
-              @click="handleManualDownload"
-              style="width: 100%"
-            >
+            <SLButton variant="primary" size="sm" @click="handleManualDownload" style="width: 100%">
               {{ i18n.t("about.go_download") }}
             </SLButton>
           </div>

@@ -229,7 +229,8 @@
     "java_env": "Entorno Java",
     "java_scan": "Escanear todos los discos en busca de Java",
     "java_manual": "Seleccionar ruta manualmente",
-    "java_path": "Ruta de Java"
+    "java_path": "Ruta de Java",
+    "file_hint": "Después de hacer clic en 「Seleccionar y Crear」, elija el archivo de inicio del servidor (soporta formatos .jar, .bat o .sh). El sistema detectará automáticamente el tipo de archivo"
   },
   "console": {
     "title": "Consola",
@@ -275,8 +276,10 @@
     "delete": "Eliminar",
     "refresh_list": "Actualizar lista",
     "reload_plugins": "Recargar plugins",
+    "reload_plugins_warning": "Recargar plugins puede causar problemas en el servidor, algunos plugins pueden no admitirlo",
     "empty_config_folder": "Carpeta de configuración vacía",
     "no_config_files": "Sin configuración",
+    "has_config_folder": "Tiene configuración",
     "config_files_count": "configuraciones",
     "config_files": "Archivos de configuración",
     "open": "Abrir",

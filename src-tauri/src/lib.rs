@@ -98,6 +98,7 @@ pub fn run() {
             system_commands::get_system_info,
             system_commands::pick_jar_file,
             system_commands::pick_startup_file,
+            system_commands::pick_server_executable,
             system_commands::pick_java_file,
             system_commands::pick_folder,
             system_commands::pick_image_file,
@@ -162,6 +163,7 @@ pub fn run() {
             mcs_plugin_commands::m_toggle_plugin,
             mcs_plugin_commands::m_delete_plugin,
             mcs_plugin_commands::m_install_plugin,
+            mcs_plugin_commands::m_get_plugin_config_files,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

@@ -229,7 +229,8 @@
     "java_env": "Java-Umgebung",
     "java_scan": "Alle Laufwerke nach Java-Installationen durchsuchen",
     "java_manual": "Java-Pfad manuell auswählen",
-    "java_path": "Java-Pfad"
+    "java_path": "Java-Pfad",
+    "file_hint": "Nach dem Klicken auf 「Auswählen und Erstellen」 wählen Sie bitte die Server-Startdatei (unterstützt .jar, .bat oder .sh Formate). Das System erkennt den Dateityp automatisch"
   },
   "console": {
     "title": "Konsole",
@@ -275,8 +276,10 @@
     "delete": "Löschen",
     "refresh_list": "Liste aktualisieren",
     "reload_plugins": "Plugins neu laden",
+    "reload_plugins_warning": "Das Neuladen von Plugins kann Serverprobleme verursachen, einige Plugins unterstützen dies möglicherweise nicht",
     "empty_config_folder": "Konfigurationsordner ist leer",
     "no_config_files": "Keine Konfiguration",
+    "has_config_folder": "Hat Konfiguration",
     "config_files_count": "Konfigurationen",
     "config_files": "Konfigurationsdateien",
     "open": "Öffnen",

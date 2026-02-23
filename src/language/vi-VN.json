@@ -229,7 +229,8 @@
     "java_env": "Môi trường Java",
     "java_scan": "Quét tất cả ổ đĩa trong hệ thống để tìm Java",
     "java_manual": "Chọn đường dẫn Java thủ công",
-    "java_path": "Đường dẫn Java"
+    "java_path": "Đường dẫn Java",
+    "file_hint": "Sau khi nhấn 「Chọn và Tạo」, vui lòng chọn file khởi động máy chủ (hỗ trợ .jar, .bat hoặc .sh), hệ thống sẽ tự động nhận diện loại file"
   },
   "console": {
     "title": "Bảng điều khiển",
@@ -275,8 +276,10 @@
     "delete": "Xóa",
     "refresh_list": "Làm mới danh sách",
     "reload_plugins": "Tải lại trình bổ sung",
+    "reload_plugins_warning": "Tải lại trình bổ sung có thể gây ra sự cố máy chủ, một số trình bổ sung có thể không hỗ trợ",
     "empty_config_folder": "Thư mục cấu hình trống",
     "no_config_files": "Không có cấu hình",
+    "has_config_folder": "Có cấu hình",
     "config_files_count": "cấu hình",
     "config_files": "Tệp cấu hình",
     "open": "Mở",
