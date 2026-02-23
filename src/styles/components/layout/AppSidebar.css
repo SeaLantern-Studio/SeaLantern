@@ -300,7 +300,7 @@
 }
 
 .nav-plugin-icon {
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   object-fit: cover;
   display: block;
 }

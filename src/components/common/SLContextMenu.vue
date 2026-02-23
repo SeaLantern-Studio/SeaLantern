@@ -86,7 +86,7 @@ function handleItemClick(item: ContextMenuItem) {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   padding: 4px;
   min-width: 160px;
   max-width: 280px;
@@ -100,7 +100,7 @@ function handleItemClick(item: ContextMenuItem) {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: var(--sl-radius-sm);
   cursor: pointer;
   color: rgba(255, 255, 255, 0.9);
   font-size: 13px;

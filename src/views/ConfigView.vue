@@ -13,7 +13,6 @@ import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import { useTabIndicator } from "@composables/useTabIndicator";
 import {
-  Power,
   Trash2,
   RefreshCw,
   Settings,
@@ -655,22 +654,18 @@ onActivated(async () => {
                 </div>
               </div>
               <div class="plugin-list-actions">
-                <SLButton
-                  @click.stop="togglePlugin(plugin)"
-                  :variant="plugin.enabled ? 'danger' : 'success'"
-                  size="sm"
+                <SLSwitch
+                  :modelValue="plugin.enabled"
+                  @update:modelValue="togglePlugin(plugin)"
                   :title="plugin.enabled ? i18n.t('config.disable') : i18n.t('config.enable')"
-                >
-                  <Power :size="16" />
-                </SLButton>
-                <SLButton
+                />
+                <button
                   @click.stop="deletePlugin(plugin)"
-                  variant="danger"
-                  size="sm"
+                  class="icon-btn"
                   :title="i18n.t('config.delete')"
                 >
                   <Trash2 :size="16" />
-                </SLButton>
+                </button>
               </div>
             </div>
           </div>

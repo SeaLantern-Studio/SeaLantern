@@ -40,12 +40,12 @@ function toggleViewMode() {
         </button>
       </div>
     </template>
-    
+
     <div v-if="statsLoading" class="stats-loading">
       <div class="spinner"></div>
       <span>{{ i18n.t("common.loading") }}</span>
     </div>
-    
+
     <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
       <div class="gauge-grid">
         <div class="gauge-item">
@@ -76,9 +76,7 @@ function toggleViewMode() {
       <div v-if="systemInfo" class="gauge-details">
         <div class="gauge-detail-item">
           <span class="detail-label">{{ i18n.t("home.cpu") }}</span
-          ><span class="detail-value"
-            >{{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span
-          >
+          ><span class="detail-value">{{ systemInfo.cpu.count }} {{ i18n.t("home.core") }}</span>
         </div>
         <div class="gauge-detail-item">
           <span class="detail-label">{{ i18n.t("home.memory") }}</span
@@ -96,7 +94,7 @@ function toggleViewMode() {
         </div>
       </div>
     </div>
-    
+
     <div v-else class="stats-grid">
       <div class="stat-item">
         <div class="stat-header">
@@ -298,7 +296,7 @@ function toggleViewMode() {
   width: 100%;
   height: 30px;
   background: var(--sl-bg-secondary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   overflow: hidden;
 }
 
