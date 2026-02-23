@@ -229,7 +229,8 @@
     "java_env": "Java 環境",
     "java_scan": "掃描系統中所有磁碟的 Java 安裝",
     "java_manual": "手動選擇 Java 路徑",
-    "java_path": "Java 路徑"
+    "java_path": "Java 路徑",
+    "file_hint": "點擊「選擇並建立」按鈕後，請選擇伺服器啟動檔案（支援 .jar、.bat 或 .sh 格式），系統將自動識別檔案類型"
   },
   "console": {
     "title": "控制台",

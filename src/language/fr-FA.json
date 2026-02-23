@@ -229,7 +229,8 @@
     "java_env": "Environnement Java",
     "java_scan": "Scanner tous les disques pour trouver des installations Java",
     "java_manual": "Sélection manuelle du chemin Java",
-    "java_path": "Chemin Java"
+    "java_path": "Chemin Java",
+    "file_hint": "Après avoir cliqué sur 「Sélectionner et Créer」, veuillez choisir le fichier de démarrage du serveur (formats .jar, .bat ou .sh supportés). Le système détectera automatiquement le type de fichier"
   },
   "console": {
     "title": "Console",

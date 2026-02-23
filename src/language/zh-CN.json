@@ -226,7 +226,8 @@
     "java_env": "Java 环境",
     "java_scan": "扫描系统中所有磁盘的 Java 安装",
     "java_manual": "手动选择 Java 路径",
-    "java_path": "Java 路径"
+    "java_path": "Java 路径",
+    "file_hint": "点击「选择并创建」按钮后，请选择服务器启动文件（支持 .jar、.bat 或 .sh 格式），系统将自动识别文件类型"
   },
   "console": {
     "title": "控制台",

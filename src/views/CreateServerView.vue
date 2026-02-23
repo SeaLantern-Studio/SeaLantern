@@ -32,10 +32,6 @@ const onlineMode = ref(true);
 
 const javaList = ref<JavaInfo[]>([]);
 
-watch(startupMode, () => {
-  jarPath.value = "";
-});
-
 onMounted(async () => {
   await loadDefaultSettings();
 });
@@ -85,33 +81,36 @@ async function detectJava() {
 
 async function pickJarFile() {
   try {
-    const mode = startupMode.value;
-    const result = await systemApi.pickStartupFile(mode);
+    const result = await systemApi.pickServerExecutable();
     if (result) {
-      jarPath.value = result;
+      jarPath.value = result.path;
+      startupMode.value = result.mode;
+      return true;
     } else {
       jarPath.value = "";
+      return false;
     }
   } catch (e) {
     console.error("Pick file error:", e);
     jarPath.value = "";
+    return false;
   }
 }
 
 async function handleCreate() {
   clearError();
 
-  await pickJarFile();
-
-  if (!jarPath.value) {
-    return;
-  }
   if (!selectedJava.value) {
     showError(i18n.t("common.select_java_path"));
     return;
   }
   if (!serverName.value.trim()) {
     showError(i18n.t("common.enter_server_name"));
+    return;
+  }
+
+  const picked = await pickJarFile();
+  if (!picked || !jarPath.value) {
     return;
   }
 
@@ -149,16 +148,18 @@ async function handleImport() {
     return;
   }
 
-  const result = await systemApi.pickStartupFile(startupMode.value);
+  const result = await systemApi.pickServerExecutable();
   if (!result) {
     return;
   }
 
-  const serverPath = result.substring(0, result.lastIndexOf("\\") || result.lastIndexOf("/"));
+  const serverPath = result.path.substring(
+    0,
+    result.path.lastIndexOf("\\") || result.path.lastIndexOf("/"),
+  );
 
   startCreating();
   try {
-    const mode = startupMode.value;
     await serverApi.addExistingServer({
       name: serverName.value,
       serverPath: serverPath,
@@ -166,8 +167,8 @@ async function handleImport() {
       maxMemory: parseInt(maxMemory.value) || 2048,
       minMemory: parseInt(minMemory.value) || 512,
       port: parseInt(port.value) || 25565,
-      startupMode: mode,
-      executablePath: result,
+      startupMode: result.mode,
+      executablePath: result.path,
     });
     await store.refreshList();
     router.push("/");
@@ -195,7 +196,6 @@ async function handleImport() {
 
     <ServerConfigCard
       v-model:server-name="serverName"
-      v-model:startup-mode="startupMode"
       v-model:max-memory="maxMemory"
       v-model:min-memory="minMemory"
       v-model:port="port"

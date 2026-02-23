@@ -229,7 +229,8 @@
     "java_env": "Entorno Java",
     "java_scan": "Escanear todos los discos en busca de Java",
     "java_manual": "Seleccionar ruta manualmente",
-    "java_path": "Ruta de Java"
+    "java_path": "Ruta de Java",
+    "file_hint": "Después de hacer clic en 「Seleccionar y Crear」, elija el archivo de inicio del servidor (soporta formatos .jar, .bat o .sh). El sistema detectará automáticamente el tipo de archivo"
   },
   "console": {
     "title": "Consola",
