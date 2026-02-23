@@ -17,7 +17,5 @@
 /* 视图样式 */
 @import "@styles/views/HomeView.css";
 @import "@styles/views/ConsoleView.css";
-@import "@styles/views/SettingsView.css";
-
 /* 应用全局样式 */
 @import "@styles/app.css";
