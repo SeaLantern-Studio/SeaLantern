@@ -21,7 +21,11 @@ pub async fn m_get_plugins(server_id: String) -> Result<Vec<m_PluginInfo>, Strin
 }
 
 #[tauri::command]
-pub fn m_get_plugin_config_files(server_id: String, file_name: String, plugin_name: String) -> Result<Vec<m_PluginConfigFile>, String> {
+pub fn m_get_plugin_config_files(
+    server_id: String,
+    file_name: String,
+    plugin_name: String,
+) -> Result<Vec<m_PluginConfigFile>, String> {
     let server_manager = global::server_manager();
     let servers = server_manager.servers.lock().unwrap();
     let server = servers

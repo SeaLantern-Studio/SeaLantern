@@ -264,7 +264,7 @@ function setupIntersectionObserver() {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           const pluginElement = entry.target as HTMLElement;
-          const pluginFileName = pluginElement.getAttribute('data-plugin-file-name');
+          const pluginFileName = pluginElement.getAttribute("data-plugin-file-name");
           if (pluginFileName) {
             loadPluginDetails(pluginFileName);
           }
@@ -272,13 +272,13 @@ function setupIntersectionObserver() {
       });
     },
     {
-      rootMargin: '200px 0px',
-      threshold: 0.1
-    }
+      rootMargin: "200px 0px",
+      threshold: 0.1,
+    },
   );
 
   nextTick(() => {
-    const pluginElements = document.querySelectorAll('.plugin-list-item');
+    const pluginElements = document.querySelectorAll(".plugin-list-item");
     pluginElements.forEach((element) => {
       observer.value?.observe(element);
     });
@@ -312,14 +312,16 @@ async function togglePlugin(plugin: m_PluginInfo) {
 async function deletePlugin(plugin: m_PluginInfo) {
   if (!store.currentServerId) return;
   try {
-    const pluginElement = document.querySelector(`.plugin-list-item[data-plugin-file-name="${plugin.file_name}"]`);
+    const pluginElement = document.querySelector(
+      `.plugin-list-item[data-plugin-file-name="${plugin.file_name}"]`,
+    );
     if (pluginElement) {
       const originalHeight = pluginElement.offsetHeight;
       pluginElement.style.height = `${originalHeight}px`;
-      pluginElement.style.flexShrink = '0';
-      
-      pluginElement.classList.add('deleting');
-      
+      pluginElement.style.flexShrink = "0";
+
+      pluginElement.classList.add("deleting");
+
       setTimeout(async () => {
         await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
         plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
@@ -354,20 +356,24 @@ async function handlePluginClick(plugin: m_PluginInfo) {
   if (selectedPlugin.value?.file_name === plugin.file_name) {
     selectedPlugin.value = null;
   } else {
-    if (!plugin.config_files || plugin.config_files.length === 0 && plugin.has_config_folder) {
+    if (!plugin.config_files || (plugin.config_files.length === 0 && plugin.has_config_folder)) {
       try {
-        const configFiles = await m_pluginApi.m_getPluginConfigFiles(store.currentServerId, plugin.file_name, plugin.name);
+        const configFiles = await m_pluginApi.m_getPluginConfigFiles(
+          store.currentServerId,
+          plugin.file_name,
+          plugin.name,
+        );
         const updatedPlugin = {
           ...plugin,
-          config_files: configFiles
+          config_files: configFiles,
         };
         selectedPlugin.value = updatedPlugin;
-        const pluginIndex = plugins.value.findIndex(p => p.file_name === plugin.file_name);
+        const pluginIndex = plugins.value.findIndex((p) => p.file_name === plugin.file_name);
         if (pluginIndex !== -1) {
           plugins.value[pluginIndex] = updatedPlugin;
         }
       } catch (e) {
-        console.error('Failed to load plugin config files:', e);
+        console.error("Failed to load plugin config files:", e);
         selectedPlugin.value = plugin;
       }
     } else {
@@ -574,16 +580,16 @@ onActivated(async () => {
 
           <div v-else class="plugin-list-view">
             <div
-                v-for="plugin in plugins"
-                :key="plugin.file_name"
-                class="plugin-list-item"
-                :class="{
-                  disabled: !plugin.enabled,
-                  expanded: selectedPlugin?.file_name === plugin.file_name,
-                }"
-                :data-plugin-file-name="plugin.file_name"
-                @click="handlePluginClick(plugin)"
-              >
+              v-for="plugin in plugins"
+              :key="plugin.file_name"
+              class="plugin-list-item"
+              :class="{
+                disabled: !plugin.enabled,
+                expanded: selectedPlugin?.file_name === plugin.file_name,
+              }"
+              :data-plugin-file-name="plugin.file_name"
+              @click="handlePluginClick(plugin)"
+            >
               <div class="plugin-list-icon">
                 {{ plugin.name.charAt(0).toUpperCase() }}
               </div>
@@ -657,9 +663,9 @@ onActivated(async () => {
                 >
                   <Power :size="16" />
                 </SLButton>
-                <SLButton 
-                  @click.stop="deletePlugin(plugin)" 
-                  variant="danger" 
+                <SLButton
+                  @click.stop="deletePlugin(plugin)"
+                  variant="danger"
                   size="sm"
                   :title="i18n.t('config.delete')"
                 >
@@ -673,5 +679,3 @@ onActivated(async () => {
     </template>
   </div>
 </template>
-
-

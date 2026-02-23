@@ -58,11 +58,11 @@ const highlightedIndex = ref(-1);
 const dropdownStyle = ref<Record<string, string>>({});
 
 const optionsMaxHeight = computed(() => {
-    let maxHeight = parseInt(props.maxHeight) || 280;
-    if (props.searchable) {
-        maxHeight = Math.max(50, maxHeight - 50);
-    }
-    return `${maxHeight}px`;
+  let maxHeight = parseInt(props.maxHeight) || 280;
+  if (props.searchable) {
+    maxHeight = Math.max(50, maxHeight - 50);
+  }
+  return `${maxHeight}px`;
 });
 
 const getFontStyle = (value: string | number) => {
