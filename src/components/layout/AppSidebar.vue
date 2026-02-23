@@ -226,11 +226,16 @@ function updateNavIndicator() {
     if (!navIndicator.value) return;
 
     const activeNavItem = document.querySelector(".nav-item.active");
-    if (activeNavItem && navIndicator.value.parentElement) {
-      // 使用 getBoundingClientRect 来获取相对于父元素的正确位置
+    const sidebarNav = document.querySelector(".sidebar-nav");
+
+    if (activeNavItem && sidebarNav && navIndicator.value.parentElement) {
+      // 获取滚动容器和激活项的位置
       const navItemRect = activeNavItem.getBoundingClientRect();
-      const navRect = navIndicator.value.parentElement.getBoundingClientRect();
-      const top = navItemRect.top - navRect.top + (navItemRect.height - 16) / 2;
+      const navRect = sidebarNav.getBoundingClientRect();
+
+      // 计算相对于滚动容器的位置（考虑滚动偏移）
+      const top =
+        navItemRect.top - navRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
 
       // 确保导航指示器可见
       navIndicator.value.style.display = "block";
@@ -408,10 +413,22 @@ watch(
 // 监听窗口尺寸变化，更新选项位置
 onMounted(() => {
   window.addEventListener("resize", updateNavIndicator);
+
+  // 监听侧边栏滚动，更新指示器位置
+  const sidebarNav = document.querySelector(".sidebar-nav");
+  if (sidebarNav) {
+    sidebarNav.addEventListener("scroll", updateNavIndicator);
+  }
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", updateNavIndicator);
+
+  // 移除侧边栏滚动监听
+  const sidebarNav = document.querySelector(".sidebar-nav");
+  if (sidebarNav) {
+    sidebarNav.removeEventListener("scroll", updateNavIndicator);
+  }
 });
 
 // 便捷计算当前服务器标签
@@ -480,10 +497,10 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
       </transition>
     </div>
 
-    <!-- 导航激活指示器 -->
-    <div class="nav-active-indicator" ref="navIndicator"></div>
-
     <nav class="sidebar-nav">
+      <!-- 导航激活指示器 -->
+      <div class="nav-active-indicator" ref="navIndicator"></div>
+
       <!-- 服务器选择（Headless UI Listbox） -->
       <Listbox
         v-if="serverOptions.length > 0"
