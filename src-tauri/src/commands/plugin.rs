@@ -8,7 +8,7 @@ use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex};
 use url::Url;
 
-const MARKET_BASE_URL: &str = "https://sealantern-studio.github.io/plugin-market/";
+const MARKET_BASE_URL: &str = "https://sealantern-studio.github.io/plugin-market";
 
 const ALLOWED_DOWNLOAD_DOMAINS: &[&str] = &[
     "localhost",

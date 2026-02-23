@@ -16,7 +16,7 @@ import SLCard from "@components/common/SLCard.vue";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
-const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market/";
+const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market";
 const MARKET_URL_KEY = "sealantern_market_url";
 
 const pluginStore = usePluginStore();
