@@ -82,7 +82,7 @@ useRegisterComponent(id, {
   align-items: center;
   background: var(--sl-surface, #fff);
   border: 1px solid var(--sl-border, #ddd);
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   transition:
     border-color var(--sl-transition-fast),
     box-shadow var(--sl-transition-fast);

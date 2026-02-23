@@ -41,6 +41,7 @@
   --sl-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1);
 
   /* -- Border Radius -- */
+  --sl-radius-xs: 4px;
   --sl-radius-sm: 6px;
   --sl-radius-md: 10px;
   --sl-radius-lg: 16px;
