@@ -18,7 +18,7 @@ yarn-error.log
 # Rust
 target
 **/target/
-Cargo.lock
+# Cargo.lock 保留用于 Docker 构建
 
 # Tauri
 src-tauri/target
