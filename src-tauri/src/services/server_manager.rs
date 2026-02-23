@@ -408,6 +408,95 @@ impl ServerManager {
         Ok(server)
     }
 
+    pub fn add_existing_server(
+        &self,
+        req: AddExistingServerRequest,
+    ) -> Result<ServerInstance, String> {
+        let server_path = std::path::Path::new(&req.server_path);
+
+        // 验证路径存在且是目录
+        if !server_path.exists() {
+            return Err(format!("服务器目录不存在: {}", req.server_path));
+        }
+        if !server_path.is_dir() {
+            return Err("所选路径不是文件夹".to_string());
+        }
+
+        // 检查目录权限
+        let test_file = server_path.join(".sl_permission_test");
+        if std::fs::write(&test_file, "").is_err() {
+            return Err("无法写入服务器目录，请检查权限".to_string());
+        }
+        let _ = std::fs::remove_file(&test_file);
+
+        let startup_mode = normalize_startup_mode(&req.startup_mode);
+
+        // 验证用户指定的启动文件
+        let jar_path = if let Some(ref exec_path) = req.executable_path {
+            let path = std::path::Path::new(exec_path);
+            if !path.exists() {
+                return Err(format!("选择的可执行文件不存在: {}", exec_path));
+            }
+            exec_path.clone()
+        } else {
+            return Err("必须指定启动文件".to_string());
+        };
+
+        // 尝试从server.properties读取端口
+        let mut port = req.port;
+        let server_properties_path = server_path.join("server.properties");
+        if server_properties_path.exists() {
+            if let Ok(props) = crate::services::config_parser::read_properties(
+                server_properties_path.to_str().unwrap_or_default(),
+            ) {
+                if let Some(port_str) = props.get("server-port") {
+                    if let Ok(parsed_port) = port_str.parse::<u16>() {
+                        port = parsed_port;
+                        println!("从 server.properties 读取端口: {}", port);
+                    }
+                }
+            }
+        }
+
+        // 检测服务端类型
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_secs();
+
+        let id = uuid::Uuid::new_v4().to_string();
+
+        let server = ServerInstance {
+            id: id.clone(),
+            name: req.name,
+            core_type: "unknown".into(),
+            core_version: String::new(),
+            mc_version: "unknown".into(),
+            path: req.server_path,
+            jar_path,
+            startup_mode: startup_mode.to_string(),
+            java_path: req.java_path,
+            max_memory: req.max_memory,
+            min_memory: req.min_memory,
+            jvm_args: Vec::new(),
+            port,
+            created_at: now,
+            last_started_at: None,
+        };
+
+        self.servers
+            .lock()
+            .expect("servers lock poisoned")
+            .push(server.clone());
+        self.logs
+            .lock()
+            .expect("logs lock poisoned")
+            .insert(id, Vec::new());
+        self.save();
+        Ok(server)
+    }
+
     pub fn start_server(&self, id: &str) -> Result<(), String> {
         let server = {
             let servers = self.servers.lock().expect("servers lock poisoned");
