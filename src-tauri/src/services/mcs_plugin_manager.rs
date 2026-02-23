@@ -17,7 +17,7 @@ impl m_PluginManager {
         }
     }
 
-    pub fn m_get_plugins(&self, server_path: &str) -> Result<Vec<m_PluginInfo>, String> {
+    pub async fn m_get_plugins(&self, server_path: &str) -> Result<Vec<m_PluginInfo>, String> {
         let plugins_dir = Path::new(server_path).join("plugins");
 
         if !plugins_dir.exists() {
@@ -28,9 +28,9 @@ impl m_PluginManager {
 
         let mut plugins = Vec::new();
 
-        for entry in fs::read_dir(&plugins_dir)
-            .map_err(|e| format!("Failed to read plugins directory: {}", e))?
-        {
+        let entries = fs::read_dir(&plugins_dir)
+            .map_err(|e| format!("Failed to read plugins directory: {}", e))?;
+        for entry in entries {
             let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
             let path = entry.path();
 
@@ -58,11 +58,9 @@ impl m_PluginManager {
                                 .unwrap_or_else(|| base_file_name.replace(".jar", ""));
                             let config_folder_path = plugins_dir.join(&plugin_name);
                             let has_config_folder = config_folder_path.exists();
-                            let config_files = if has_config_folder {
-                                self.m_scan_plugin_config_files(&config_folder_path)
-                            } else {
-                                vec![]
-                            };
+                            
+                            // 暂时不扫描配置文件，只在需要时扫描
+                            let config_files = vec![];
 
                             let file_size = path.metadata().map(|m| m.len()).unwrap_or(0);
 
@@ -110,6 +108,17 @@ impl m_PluginManager {
         }
 
         Ok(plugins)
+    }
+
+    pub fn m_get_plugin_config_files(&self, server_path: &str, plugin_file_name: &str, plugin_name: &str) -> Result<Vec<m_PluginConfigFile>, String> {
+        let plugins_dir = Path::new(server_path).join("plugins");
+        let config_folder_path = plugins_dir.join(plugin_name);
+        
+        if config_folder_path.exists() {
+            Ok(self.m_scan_plugin_config_files(&config_folder_path))
+        } else {
+            Ok(vec![])
+        }
     }
 
     pub fn m_toggle_plugin(

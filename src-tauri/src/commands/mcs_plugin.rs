@@ -6,7 +6,22 @@ fn m_manager() -> &'static crate::services::mcs_plugin_manager::m_PluginManager 
 }
 
 #[tauri::command]
-pub fn m_get_plugins(server_id: String) -> Result<Vec<m_PluginInfo>, String> {
+pub async fn m_get_plugins(server_id: String) -> Result<Vec<m_PluginInfo>, String> {
+    let server_path = {
+        let server_manager = global::server_manager();
+        let servers = server_manager.servers.lock().unwrap();
+        let server = servers
+            .iter()
+            .find(|s| s.id == server_id)
+            .ok_or("Server not found")?;
+        server.path.clone()
+    };
+
+    m_manager().m_get_plugins(&server_path).await
+}
+
+#[tauri::command]
+pub fn m_get_plugin_config_files(server_id: String, file_name: String, plugin_name: String) -> Result<Vec<m_PluginConfigFile>, String> {
     let server_manager = global::server_manager();
     let servers = server_manager.servers.lock().unwrap();
     let server = servers
@@ -14,7 +29,7 @@ pub fn m_get_plugins(server_id: String) -> Result<Vec<m_PluginInfo>, String> {
         .find(|s| s.id == server_id)
         .ok_or("Server not found")?;
 
-    m_manager().m_get_plugins(&server.path)
+    m_manager().m_get_plugin_config_files(&server.path, &file_name, &plugin_name)
 }
 
 #[tauri::command]
