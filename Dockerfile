@@ -3,7 +3,7 @@
 # ============================================
 
 # ---------- 阶段 1: 构建前端 ----------
-FROM node:20-alpine AS frontend-builder
+FROM docker.m.daocloud.io/node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
@@ -20,12 +20,16 @@ COPY . .
 RUN npm run build
 
 # ---------- 阶段 2: 编译 Rust 后端 ----------
-FROM rust:1.80-slim AS backend-builder
+FROM docker.m.daocloud.io/rust:1.93.1-slim AS backend-builder
 
 WORKDIR /app
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
+# 安装系统依赖 (使用阿里云 HTTP 镜像源，避免证书问题)
+RUN { \
+    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
+    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
+    apt-get update && apt-get install -y \
     libwebkit2gtk-4.1-dev \
     build-essential \
     curl \
@@ -35,38 +39,44 @@ RUN apt-get update && apt-get install -y \
     libayatana-appindicator3-dev \
     librsvg2-dev \
     libxdo-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*; \
+}
 
-# 复制 Cargo 文件
+# 复制 Cargo 文件（src-tauri 使用顶层 Cargo.lock）
 COPY Cargo.toml Cargo.lock ./
-COPY src-tauri/Cargo.toml src-tauri/Cargo.lock ./src-tauri/
+COPY src-tauri/Cargo.toml ./src-tauri/
+
+# 复制源代码（cargo fetch 需要 src 目录）
+COPY . .
 
 # 预下载依赖（利用 Docker 缓存）
 RUN cd src-tauri && cargo fetch
-
-# 复制源代码
-COPY . .
 
 # 构建 Release 版本 (库和二进制)
 WORKDIR /app/src-tauri
 RUN cargo build --release --lib --bins
 
 # ---------- 阶段 3: 精简运行镜像 ----------
-FROM debian:bookworm-slim
+FROM docker.m.daocloud.io/debian:bookworm-slim
 
 WORKDIR /app
 
-# 安装运行时依赖
-RUN apt-get update && apt-get install -y \
+# 安装运行时依赖 (使用阿里云 HTTP 镜像源，避免证书问题)
+RUN { \
+    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
+    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
+    apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
     libgtk-3-0 \
     libwebkit2gtk-4.1-0 \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -m -u 1000 sealantern
+    && rm -rf /var/lib/apt/lists/*; \
+} \
+&& useradd -m -u 1000 sealantern
 
 # 从后端构建器复制编译好的二进制程序
-COPY --from=backend-builder /app/src-tauri/target/release/docker-entry /app/docker-entry
+COPY --from=backend-builder /app/target/release/docker-entry /app/docker-entry
 
 # 从前端构建器复制构建好的静态文件
 COPY --from=frontend-builder /app/dist /app/dist
