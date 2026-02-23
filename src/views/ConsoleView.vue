@@ -202,13 +202,18 @@ function getStatusClass(): string {
 
 function getStatusText(): string {
   const s = serverStore.statuses[serverId.value]?.status;
-  return s === "Running"
-    ? "Running"
-    : s === "Starting"
-      ? "Starting"
-      : s === "Stopping"
-        ? "Stopping"
-        : "Stopped";
+  switch (s) {
+    case "Running":
+      return i18n.t("common.server_status_running");
+    case "Starting":
+      return i18n.t("common.server_status_starting");
+    case "Stopping":
+      return i18n.t("common.server_status_stopping");
+    case "Error":
+      return i18n.t("common.server_status_error");
+    default:
+      return i18n.t("common.server_status_stopped");
+  }
 }
 
 function handleClearLogs() {
