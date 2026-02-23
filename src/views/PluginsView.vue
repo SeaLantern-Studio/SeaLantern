@@ -596,8 +596,8 @@ async function saveSettings() {
       ...settingsForm,
     });
 
-    if (pluginStore.isThemePalettePlugin(currentSettingsPlugin.value.manifest.id)) {
-      await pluginStore.applyThemeSettings(currentSettingsPlugin.value.manifest.id);
+    if (pluginStore.hasCapability(currentSettingsPlugin.value.manifest.id, "theme-provider")) {
+      await pluginStore.applyThemeProviderSettings(currentSettingsPlugin.value.manifest.id);
     }
     closeSettings();
   } finally {

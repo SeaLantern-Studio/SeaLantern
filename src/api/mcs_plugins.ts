@@ -26,6 +26,18 @@ export const m_pluginApi = {
     return tauriInvoke<m_PluginInfo[]>("m_get_plugins", { serverId });
   },
 
+  async m_getPluginConfigFiles(
+    serverId: string,
+    fileName: string,
+    pluginName: string,
+  ): Promise<m_PluginConfigFile[]> {
+    return tauriInvoke<m_PluginConfigFile[]>("m_get_plugin_config_files", {
+      serverId,
+      fileName,
+      pluginName,
+    });
+  },
+
   async m_togglePlugin(serverId: string, fileName: string, enabled: boolean): Promise<void> {
     return tauriInvoke<void>("m_toggle_plugin", { serverId, fileName, enabled });
   },

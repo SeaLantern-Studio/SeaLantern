@@ -189,6 +189,41 @@ pub async fn pick_startup_file(
 }
 
 #[tauri::command]
+pub async fn pick_server_executable(
+    app: tauri::AppHandle,
+) -> Result<Option<(String, String)>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    app.dialog()
+        .file()
+        .set_title("Select server executable file")
+        .add_filter("Server Files", &["jar", "bat", "sh"])
+        .add_filter("JAR Files", &["jar"])
+        .add_filter("BAT Files", &["bat"])
+        .add_filter("Shell Scripts", &["sh"])
+        .add_filter("All Files", &["*"])
+        .pick_file(move |path| {
+            let result = path.map(|p| {
+                let path_str = p.to_string();
+                let ext = std::path::Path::new(&path_str)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.to_ascii_lowercase())
+                    .unwrap_or_default();
+                let mode = match ext.as_str() {
+                    "bat" => "bat",
+                    "sh" => "sh",
+                    _ => "jar",
+                };
+                (path_str, mode.to_string())
+            });
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
 pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = tokio::sync::oneshot::channel();
 
@@ -248,7 +283,7 @@ pub fn open_file(path: String) -> Result<(), String> {
     {
         use std::process::Command;
         Command::new("explorer.exe")
-            .arg("/select,")
+            //.arg("/select,")   选中文件，非打开文件
             .arg(path)
             .spawn()
             .map_err(|e| format!("无法打开文件: {}", e))?;
