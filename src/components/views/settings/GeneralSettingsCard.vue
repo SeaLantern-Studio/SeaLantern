@@ -10,12 +10,19 @@ const props = defineProps<{
   closeAction: "ask" | "minimize" | "close";
 }>();
 
+type CloseAction = "ask" | "minimize" | "close";
+
 const emit = defineEmits<{
   (e: "update:closeServersOnExit", value: boolean): void;
   (e: "update:autoAcceptEula", value: boolean): void;
-  (e: "update:closeAction", value: "ask" | "minimize" | "close"): void;
+  (e: "update:closeAction", value: CloseAction): void;
   (e: "change"): void;
 }>();
+
+function handleCloseActionChange(v: string | number) {
+  emit("update:closeAction", v as CloseAction);
+  emit("change");
+}
 
 const closeActionOptions = [
   { label: i18n.t("settings.close_action_ask"), value: "ask" },
@@ -68,12 +75,7 @@ const closeActionOptions = [
           <SLSelect
             :model-value="closeAction"
             :options="closeActionOptions"
-            @update:model-value="
-              (v) => {
-                emit('update:closeAction', v);
-                emit('change');
-              }
-            "
+            @update:model-value="handleCloseActionChange"
           />
         </div>
       </div>

@@ -2,7 +2,7 @@
 import { Pencil, FolderOpen, Check, X } from "lucide-vue-next";
 import SLBadge from "@components/common/SLBadge.vue";
 import SLButton from "@components/common/SLButton.vue";
-import type { ServerInfo } from "@stores/serverStore";
+import type { ServerInstance } from "@type/server";
 import { i18n } from "@language";
 import { systemApi } from "@api/system";
 import { useRouter } from "vue-router";
@@ -31,7 +31,7 @@ import {
 import { useServerStore } from "@stores/serverStore";
 
 const props = defineProps<{
-  server: ServerInfo;
+  server: ServerInstance;
 }>();
 
 const store = useServerStore();
