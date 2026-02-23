@@ -189,7 +189,9 @@ pub async fn pick_startup_file(
 }
 
 #[tauri::command]
-pub async fn pick_server_executable(app: tauri::AppHandle) -> Result<Option<(String, String)>, String> {
+pub async fn pick_server_executable(
+    app: tauri::AppHandle,
+) -> Result<Option<(String, String)>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
 
     app.dialog()
