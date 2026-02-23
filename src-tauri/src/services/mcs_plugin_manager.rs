@@ -113,7 +113,7 @@ impl m_PluginManager {
     pub fn m_get_plugin_config_files(
         &self,
         server_path: &str,
-        plugin_file_name: &str,
+        _plugin_file_name: &str,
         plugin_name: &str,
     ) -> Result<Vec<m_PluginConfigFile>, String> {
         let plugins_dir = Path::new(server_path).join("plugins");
