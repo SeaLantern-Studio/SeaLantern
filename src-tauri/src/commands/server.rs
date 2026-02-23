@@ -58,6 +58,31 @@ pub fn import_server(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn add_existing_server(
+    name: String,
+    server_path: String,
+    java_path: String,
+    max_memory: u32,
+    min_memory: u32,
+    port: u16,
+    startup_mode: String,
+    executable_path: Option<String>,
+) -> Result<ServerInstance, String> {
+    let req = AddExistingServerRequest {
+        name,
+        server_path,
+        java_path,
+        max_memory,
+        min_memory,
+        port,
+        startup_mode,
+        executable_path,
+    };
+    manager().add_existing_server(req)
+}
+
+#[tauri::command]
 pub fn import_modpack(
     name: String,
     modpack_path: String,
