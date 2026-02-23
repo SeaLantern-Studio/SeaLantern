@@ -61,6 +61,20 @@ watch(
   }
 );
 
+watch(
+  () => props.backgroundImage,
+  (backgroundImage, previousBackgroundImage) => {
+    if (
+      props.expanded &&
+      backgroundImage &&
+      backgroundImage !== previousBackgroundImage
+    ) {
+      bgPreviewLoaded.value = false;
+      bgPreviewLoading.value = true;
+    }
+  }
+);
+
 function toggleExpanded() {
   emit("update:expanded", !props.expanded);
 }
