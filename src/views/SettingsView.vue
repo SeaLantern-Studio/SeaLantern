@@ -281,10 +281,7 @@ function handleJavaInstalled(path: string) {
         @change="markChanged"
       />
 
-      <DeveloperModeCard
-        v-model:developerMode="settings.developer_mode"
-        @change="markChanged"
-      />
+      <DeveloperModeCard v-model:developerMode="settings.developer_mode" @change="markChanged" />
 
       <SettingsActions
         @export="exportSettings"
@@ -293,15 +290,9 @@ function handleJavaInstalled(path: string) {
       />
     </template>
 
-    <ImportSettingsModal
-      v-model:visible="showImportModal"
-      @import="handleImport"
-    />
+    <ImportSettingsModal v-model:visible="showImportModal" @import="handleImport" />
 
-    <ResetConfirmModal
-      v-model:visible="showResetConfirm"
-      @confirm="resetSettings"
-    />
+    <ResetConfirmModal v-model:visible="showResetConfirm" @confirm="resetSettings" />
   </div>
 </template>
 

@@ -1,0 +1,239 @@
+.config-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
+
+.config-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+
+.server-path-display {
+  color: var(--sl-text-tertiary);
+  font-size: 0.75rem;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sl-space-2xl);
+}
+
+.error-banner,
+.success-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: var(--sl-radius-md);
+  font-size: 0.875rem;
+}
+
+.error-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--sl-error);
+}
+
+.success-banner {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: var(--sl-success);
+}
+
+.banner-close {
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-2xl);
+  color: var(--sl-text-tertiary);
+}
+
+.config-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+
+.config-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sl-space-md);
+  gap: var(--sl-space-lg);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  transition: all var(--sl-transition-fast);
+}
+
+.config-entry:hover {
+  border-color: var(--sl-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.entry-header {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-key-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+}
+
+.entry-key {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.entry-desc {
+  margin-top: 2px;
+}
+
+.entry-control {
+  flex-shrink: 0;
+  min-width: 200px;
+}
+
+.input {
+  width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.integer-input {
+  -moz-appearance: textfield;
+}
+
+.integer-input::-webkit-outer-spin-button,
+.integer-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tab-bar {
+  display: flex;
+  gap: var(--sl-space-xs);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-xs);
+  width: fit-content;
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-indicator {
+  position: absolute;
+  top: var(--sl-space-xs);
+  bottom: var(--sl-space-xs);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  transition: all 0.3s ease;
+  box-shadow: var(--sl-shadow-sm);
+  z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  border-radius: var(--sl-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
+}
+
+.tab-btn:hover {
+  color: var(--sl-text-primary);
+}
+
+.tab-btn.active {
+  color: var(--sl-primary);
+}
+
+.plugins-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.plugins-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.plugins-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.reload-btn {
+  font-size: 0.8125rem;
+  padding: 6px 12px;
+}
+
+.reload-btn:hover {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+.plugins-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

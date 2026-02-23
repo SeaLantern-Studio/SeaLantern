@@ -99,7 +99,10 @@ export async function fetchMarketPlugins(marketUrl?: string): Promise<MarketPlug
   return tauriInvoke("fetch_market_plugins", { marketUrl });
 }
 
-export async function fetchMarketPluginDetail(pluginPath: string, marketUrl?: string): Promise<MarketPluginInfo> {
+export async function fetchMarketPluginDetail(
+  pluginPath: string,
+  marketUrl?: string,
+): Promise<MarketPluginInfo> {
   return tauriInvoke("fetch_market_plugin_detail", { pluginPath, marketUrl });
 }
 
