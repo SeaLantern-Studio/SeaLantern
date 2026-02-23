@@ -372,15 +372,9 @@ function clearBackgroundImage() {
       <SettingsActions />
     </template>
 
-    <ImportSettingsModal
-      v-model:visible="showImportModal"
-      @import="handleImport"
-    />
+    <ImportSettingsModal v-model:visible="showImportModal" @import="handleImport" />
 
-    <ResetConfirmModal
-      v-model:visible="showResetConfirm"
-      @confirm="resetSettings"
-    />
+    <ResetConfirmModal v-model:visible="showResetConfirm" @confirm="resetSettings" />
   </div>
 </template>
 
