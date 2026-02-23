@@ -25,9 +25,7 @@ watch(
 );
 
 function handleImport() {
-  if (importJson.value.trim()) {
-    emit("import", importJson.value);
-  }
+  emit("import", importJson.value);
 }
 
 function close() {
