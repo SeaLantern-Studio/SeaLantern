@@ -20,7 +20,24 @@ COPY . .
 RUN npm run build
 
 # ---------- 阶段 2: 编译 Rust 后端 ----------
-FROM docker.m.daocloud.io/rust:1.93.1-slim AS backend-builder
+# 使用与运行镜像相同的基础镜像，避免 GLIBC 版本不兼容
+FROM docker.m.daocloud.io/debian:bookworm-slim AS backend-builder
+
+# 安装 Rust 工具链
+RUN { \
+    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
+    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
+    apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && . "$HOME/.cargo/env" \
+    && rustup default 1.93.1 \
+    && rm -rf /var/lib/apt/lists/*; \
+}
+
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
 
