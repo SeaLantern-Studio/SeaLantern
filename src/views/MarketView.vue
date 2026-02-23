@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { usePluginStore } from "../stores/pluginStore";
-import { useToast } from "../composables/useToast";
-import { useTabIndicator } from "../composables/useTabIndicator";
+import { usePluginStore } from "@stores/pluginStore";
+import { useToast } from "@composables/useToast";
+import { useTabIndicator } from "@composables/useTabIndicator";
 import {
   fetchMarketPlugins,
   fetchMarketPluginDetail,
   fetchMarketCategories,
   installFromMarket,
-} from "../api/plugin";
-import type { MarketPluginInfo } from "../api/plugin";
-import { i18n } from "../language";
+} from "@api/plugin";
+import type { MarketPluginInfo } from "@api/plugin";
+import { i18n } from "@language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
-import SLCard from "../components/common/SLCard.vue";
+import SLCard from "@components/common/SLCard.vue";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
-const MARKET_BASE_URL = "https://sealantern-studio.needhelp.icu/";
+const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market";
 const MARKET_URL_KEY = "sealantern_market_url";
 
 const pluginStore = usePluginStore();
@@ -35,7 +35,8 @@ const showUrlEditor = ref(false);
 const customMarketUrl = ref(localStorage.getItem(MARKET_URL_KEY) || "");
 const urlInput = ref(customMarketUrl.value);
 
-const { indicatorRef: tagIndicator, updatePosition: updateTagIndicator } = useTabIndicator(selectedTag);
+const { indicatorRef: tagIndicator, updatePosition: updateTagIndicator } =
+  useTabIndicator(selectedTag);
 
 const localeRef = i18n.getLocaleRef();
 watch(localeRef, () => {
@@ -87,9 +88,13 @@ const allTags = computed(() => {
   return Array.from(tags);
 });
 
-watch(allTags, () => {
-  updateTagIndicator();
-}, { deep: true });
+watch(
+  allTags,
+  () => {
+    updateTagIndicator();
+  },
+  { deep: true },
+);
 
 function resolveI18n(val: Record<string, string> | string | undefined): string {
   if (!val) return "";
@@ -173,7 +178,11 @@ async function showDetail(plugin: MarketPlugin) {
   selectedPlugin.value = plugin;
   detailLoading.value = true;
   try {
-    pluginDetail.value = await fetchMarketPluginDetail(plugin._path || `plugins/${plugin.id}.json`);
+    const url = activeMarketUrl.value.trim().replace(/\/$/, "");
+    pluginDetail.value = await fetchMarketPluginDetail(
+      plugin._path || `plugins/${plugin.id}.json`,
+      url === MARKET_BASE_URL ? undefined : url,
+    );
   } catch {
     pluginDetail.value = null;
   } finally {
@@ -274,8 +283,13 @@ onMounted(() => {
         >
           <Globe :size="14" />
         </button>
-        <button class="action-btn" @click="loadMarket" :disabled="loading" :title="i18n.t('market.refresh')">
-          <RefreshCw :size="14" :class="{ 'spin': loading }" />
+        <button
+          class="action-btn"
+          @click="loadMarket"
+          :disabled="loading"
+          :title="i18n.t('market.refresh')"
+        >
+          <RefreshCw :size="14" :class="{ spin: loading }" />
         </button>
       </div>
     </div>

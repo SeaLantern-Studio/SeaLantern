@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { Check, ChevronDown, Loader2, Search } from "lucide-vue-next";
-import { i18n } from "../../language";
-import { useRegisterComponent } from "../../composables/useRegisterComponent";
+import { i18n } from "@language";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
 
 interface Option {
   label: string;
@@ -56,6 +56,14 @@ const inputRef = ref<HTMLInputElement | null>(null);
 const highlightedIndex = ref(-1);
 
 const dropdownStyle = ref<Record<string, string>>({});
+
+const optionsMaxHeight = computed(() => {
+    let maxHeight = parseInt(props.maxHeight) || 280;
+    if (props.searchable) {
+        maxHeight = Math.max(50, maxHeight - 50);
+    }
+    return `${maxHeight}px`;
+});
 
 const getFontStyle = (value: string | number) => {
   if (!props.previewFont || !value) return {};
@@ -308,7 +316,7 @@ onUnmounted(() => {
           <div
             id="sl-select-listbox"
             class="sl-select-options"
-            :style="{ maxHeight }"
+            :style="{ maxHeight: optionsMaxHeight }"
             role="listbox"
             :aria-activedescendant="
               highlightedIndex >= 0

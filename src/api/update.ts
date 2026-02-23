@@ -1,4 +1,4 @@
-import { tauriInvoke } from "./tauri";
+import { tauriInvoke } from "@api/tauri";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface UpdateInfo {

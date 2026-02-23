@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import SLModal from "./SLModal.vue";
-import SLButton from "./SLButton.vue";
-import { useUpdateStore } from "../../stores/updateStore";
-import { i18n } from "../../language";
-import { downloadUpdate, installUpdate, onDownloadProgress } from "../../api/update";
-import { serverApi } from "../../api/server";
+import SLModal from "@components/common/SLModal.vue";
+import SLButton from "@components/common/SLButton.vue";
+import { useUpdateStore } from "@stores/updateStore";
+import { i18n } from "@language";
+import { downloadUpdate, installUpdate, onDownloadProgress } from "@api/update";
+import { serverApi } from "@api/server";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const updateStore = useUpdateStore();

@@ -1,5 +1,5 @@
-import { tauriInvoke } from "./tauri";
-import type { ServerInstance } from "../types/server";
+import { tauriInvoke } from "@api/tauri";
+import type { ServerInstance } from "@type/server";
 
 export interface ServerStatusInfo {
   id: string;
@@ -70,6 +70,28 @@ export const serverApi = {
       maxMemory: params.maxMemory,
       minMemory: params.minMemory,
       port: params.port,
+    });
+  },
+
+  async addExistingServer(params: {
+    name: string;
+    serverPath: string;
+    javaPath: string;
+    maxMemory: number;
+    minMemory: number;
+    port: number;
+    startupMode: "jar" | "bat" | "sh";
+    executablePath?: string;
+  }): Promise<ServerInstance> {
+    return tauriInvoke("add_existing_server", {
+      name: params.name,
+      serverPath: params.serverPath,
+      javaPath: params.javaPath,
+      maxMemory: params.maxMemory,
+      minMemory: params.minMemory,
+      port: params.port,
+      startupMode: params.startupMode,
+      executablePath: params.executablePath,
     });
   },
 

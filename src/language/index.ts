@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
 
-// 动态导入所有语言文件
+// 动态导入所有语言文件 ,此处不用别名导入，因为需要使用 import.meta.glob 来获取文件路径
 const languageFiles: Record<string, any> = import.meta.glob("./*.json", { eager: true });
 
 // 处理语言文件，提取语言代码和数据
@@ -174,4 +174,15 @@ class I18n {
 }
 
 export const i18n = new I18n();
-export default i18n;
+
+const languageAPI = {
+  i18n,
+  SUPPORTED_LOCALES,
+  setTranslations,
+  registerPluginLocale,
+  addPluginTranslations,
+  removePluginTranslations,
+  getPluginLocaleDisplayName,
+};
+
+export default languageAPI;

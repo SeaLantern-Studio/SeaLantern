@@ -4,24 +4,19 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useRouter } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLModal from "../components/common/SLModal.vue";
-import PluginPermissionPanel from "../components/plugin/PluginPermissionPanel.vue";
-import SLPermissionDialog from "../components/plugin/SLPermissionDialog.vue";
-import { usePluginStore } from "../stores/pluginStore";
-import { i18n } from "../language";
-import type {
-  PluginState,
-  PluginInfo,
-  MissingDependency,
-  BatchInstallResult,
-} from "../types/plugin";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLModal from "@components/common/SLModal.vue";
+import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
+import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
+import { usePluginStore } from "@stores/pluginStore";
+import { i18n } from "@language";
+import type { PluginState, PluginInfo, MissingDependency, BatchInstallResult } from "@type/plugin";
 import {
   hasDangerousPermissions,
   getLocalizedPluginName,
   getLocalizedPluginDescription,
-} from "../types/plugin";
+} from "@type/plugin";
 import {
   Upload,
   Layers,
@@ -601,8 +596,8 @@ async function saveSettings() {
       ...settingsForm,
     });
 
-    if (pluginStore.isThemePalettePlugin(currentSettingsPlugin.value.manifest.id)) {
-      await pluginStore.applyThemeSettings(currentSettingsPlugin.value.manifest.id);
+    if (pluginStore.hasCapability(currentSettingsPlugin.value.manifest.id, "theme-provider")) {
+      await pluginStore.applyThemeProviderSettings(currentSettingsPlugin.value.manifest.id);
     }
     closeSettings();
   } finally {
@@ -806,10 +801,7 @@ function goToMarket() {
       </div>
     </div>
 
-    <div
-      class="upload-zone"
-      :class="{ 'is-dragging': isDragging, 'is-installing': isInstalling }"
-    >
+    <div class="upload-zone" :class="{ 'is-dragging': isDragging, 'is-installing': isInstalling }">
       <div v-if="isInstalling" class="upload-loading">
         <div class="loading-spinner"></div>
         <span class="upload-text">{{ i18n.t("plugins.installing") }}</span>
@@ -838,10 +830,7 @@ function goToMarket() {
       <span class="loading-text">{{ i18n.t("plugins.loading_plugins") }}</span>
     </div>
 
-    <div
-      v-else-if="!pluginStore.loading && pluginStore.plugins.length === 0"
-      class="empty-state"
-    >
+    <div v-else-if="!pluginStore.loading && pluginStore.plugins.length === 0" class="empty-state">
       <div class="empty-icon">
         <Layers :size="48" :stroke-width="1.5" />
       </div>

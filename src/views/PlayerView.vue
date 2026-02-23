@@ -1,30 +1,24 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { AlertTriangle } from "lucide-vue-next";
-import { useRoute } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLInput from "../components/common/SLInput.vue";
-import SLSelect from "../components/common/SLSelect.vue";
-import SLBadge from "../components/common/SLBadge.vue";
-import SLModal from "../components/common/SLModal.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
-import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
-import { serverApi } from "../api/server";
-import { TIME, MESSAGES } from "../utils/constants";
-import { validatePlayerName, handleError } from "../utils/errorHandler";
-import { i18n } from "../language";
-import { useMessage } from "../composables/useMessage";
-import { useLoading } from "../composables/useAsync";
-import { useTabIndicator } from "../composables/useTabIndicator";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLBadge from "@components/common/SLBadge.vue";
+import SLModal from "@components/common/SLModal.vue";
+import SLSpinner from "@components/common/SLSpinner.vue";
+import { useServerStore } from "@stores/serverStore";
+import { useConsoleStore } from "@stores/consoleStore";
+import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
+import { TIME, MESSAGES } from "@utils/constants";
+import { validatePlayerName, handleError } from "@utils/errorHandler";
+import { i18n } from "@language";
+import { useMessage } from "@composables/useMessage";
+import { useLoading } from "@composables/useAsync";
+import { useTabIndicator } from "@composables/useTabIndicator";
 
-const route = useRoute();
 const store = useServerStore();
 const consoleStore = useConsoleStore();
 
-const selectedServerId = ref("");
 const activeTab = ref<"online" | "whitelist" | "banned" | "ops">("online");
 const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } =
   useTabIndicator(activeTab);
@@ -50,7 +44,7 @@ const addLoading = ref(false);
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-const serverOptions = computed(() => store.servers.map((s) => ({ label: s.name, value: s.id })));
+const selectedServerId = computed(() => store.currentServerId || "");
 
 const serverPath = computed(() => {
   const server = store.servers.find((s) => s.id === selectedServerId.value);
@@ -63,11 +57,15 @@ const isRunning = computed(() => {
 
 onMounted(async () => {
   await store.refreshList();
-  const routeId = route.params.id as string;
-  if (routeId) selectedServerId.value = routeId;
-  else if (store.currentServerId) selectedServerId.value = store.currentServerId;
-  else if (store.servers.length > 0) selectedServerId.value = store.servers[0].id;
-
+  // 如果没有当前服务器但有服务器列表，选择第一个
+  if (!store.currentServerId && store.servers.length > 0) {
+    store.setCurrentServer(store.servers[0].id);
+  }
+  if (store.currentServerId) {
+    await store.refreshStatus(store.currentServerId);
+    await loadAll();
+    parseOnlinePlayers();
+  }
   startRefresh();
 });
 
@@ -86,13 +84,16 @@ function startRefresh() {
   }, 5000);
 }
 
-watch(selectedServerId, async () => {
-  if (selectedServerId.value) {
-    await store.refreshStatus(selectedServerId.value);
-    await loadAll();
-    parseOnlinePlayers();
-  }
-});
+watch(
+  () => store.currentServerId,
+  async () => {
+    if (store.currentServerId) {
+      await store.refreshStatus(store.currentServerId);
+      await loadAll();
+      parseOnlinePlayers();
+    }
+  },
+);
 
 async function loadAll() {
   if (!serverPath.value) return;
@@ -256,39 +257,10 @@ function getAddLabel(): string {
       return i18n.t("players.add");
   }
 }
-
-function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
-  activeTab.value = tab;
-  updateTabIndicator();
-}
 </script>
 
 <template>
   <div class="player-view animate-fade-in-up">
-    <div class="player-header">
-      <div class="server-picker">
-        <SLSelect
-          :label="i18n.t('players.select_server')"
-          :options="serverOptions"
-          v-model="selectedServerId"
-          :placeholder="i18n.t('players.select_server')"
-        />
-      </div>
-      <div v-if="selectedServerId" class="server-status">
-        <SLBadge
-          :text="
-            isRunning
-              ? i18n.t('common.server_status_running')
-              : i18n.t('common.server_status_stopped')
-          "
-          :variant="isRunning ? 'success' : 'neutral'"
-        />
-        <span v-if="!isRunning" class="status-hint text-caption">{{
-          i18n.t("players.server_not_run")
-        }}</span>
-      </div>
-    </div>
-
     <div v-if="!selectedServerId" class="empty-state">
       <p class="text-body">{{ i18n.t("players.no_server") }}</p>
     </div>
@@ -503,23 +475,6 @@ function selectTab(tab: "online" | "whitelist" | "banned" | "ops") {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
-}
-.player-header {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--sl-space-lg);
-}
-.server-picker {
-  min-width: 300px;
-}
-.server-status {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-sm);
-  padding-bottom: 4px;
-}
-.status-hint {
-  color: var(--sl-warning);
 }
 .empty-state {
   display: flex;

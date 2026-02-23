@@ -1,4 +1,4 @@
-import { tauriInvoke } from "./tauri";
+import { tauriInvoke } from "@api/tauri";
 
 export interface m_PluginInfo {
   m_id: string;

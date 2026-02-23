@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { handleError, AppError, ErrorType } from "../utils/errorHandler";
+import { handleError, AppError, ErrorType } from "@utils/errorHandler";
 
 /**
  * Tauri 命令调用选项

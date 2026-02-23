@@ -63,14 +63,17 @@ sea-lantern/
 │   │   │   ├── ConsoleOutput.vue     # 控制台输出组件
 │   │   │   └── ConsoleToolbar.vue    # 控制台工具栏组件
 │   │   │
-│   │   ├── effects/                  # 特效组件
-│   │   │   └── ZombieOverlay.vue     # 僵尸特效覆盖层组件
-│   │   │
 │   │   ├── layout/                   # 页面布局组件
 │   │   │   ├── AppLayout.vue         # 总布局（左侧栏 + 右侧内容区）
 │   │   │   ├── AppSidebar.vue        # 侧边导航栏
 │   │   │   ├── AppHeader.vue         # 顶部标题栏
 │   │   │   └── index.ts              # 布局组件导出文件
+│   │   │
+│   │   ├── plugin/                   # 插件相关组件
+│   │   │   ├── PluginComponentRenderer.vue  # 插件组件渲染器
+│   │   │   ├── PluginPermissionPanel.vue    # 插件权限面板
+│   │   │   ├── SLPermissionDialog.vue       # 权限对话框
+│   │   │   └── index.ts              # 插件组件导出文件
 │   │   │
 │   │   ├── splash/                   # 启动画面
 │   │   │   └── SplashScreen.vue      # 应用启动时的加载动画
@@ -80,7 +83,9 @@ sea-lantern/
 │   │
 │   ├── composables/                   # 组合式函数
 │   │   ├── useAsync.ts               # 异步操作处理
+│   │   ├── useComponentRegistry.ts   # 组件注册表
 │   │   ├── useMessage.ts             # 消息处理
+│   │   ├── useRegisterComponent.ts   # 组件注册函数
 │   │   ├── useTabIndicator.ts        # 标签指示器
 │   │   └── useToast.ts               # 提示组件的组合式函数
 │   │
@@ -89,19 +94,18 @@ sea-lantern/
 │   │
 │   ├── language/                      # 国际化资源
 │   │   ├── index.ts                   # i18n 核心模块
-│   │   ├── README.md                  # 本文档
+│   │   ├── README.md                  # 语言包说明
 │   │   ├── README-en.md               # 英文版本
-│   │   └── locales/                   # 翻译文件目录
-│   │       ├── zh-CN.json             # 简体中文
-│   │       ├── zh-TW.json             # 繁体中文
-│   │       ├── en-US.json             # 英语
-│   │       ├── ja-JP.json             # 日语
-│   │       ├── ko-KR.json             # 韩语
-│   │       ├── de-DE.json             # 德语
-│   │       ├── es-ES.json             # 西班牙语
-│   │       ├── fr-FA.json             # 波斯语
-│   │       ├── ru-RU.json             # 俄语
-│   │       └── vi-VN.json             # 越南语
+│   │   ├── zh-CN.json                 # 简体中文
+│   │   ├── zh-TW.json                 # 繁体中文
+│   │   ├── en-US.json                 # 英语
+│   │   ├── ja-JP.json                 # 日语
+│   │   ├── ko-KR.json                 # 韩语
+│   │   ├── de-DE.json                 # 德语
+│   │   ├── es-ES.json                 # 西班牙语
+│   │   ├── fr-FA.json                 # 波斯语
+│   │   ├── ru-RU.json                 # 俄语
+│   │   └── vi-VN.json                 # 越南语
 │   │
 │   ├── router/                        # 路由配置
 │   │   └── index.ts                   # 路由表定义
@@ -114,7 +118,8 @@ sea-lantern/
 │   │   ├── settingsStore.ts           # 应用设置状态
 │   │   ├── i18nStore.ts               # 国际化状态
 │   │   ├── updateStore.ts             # 更新检查状态
-│   │   └── contextMenuStore.ts        # 上下文菜单状态
+│   │   ├── contextMenuStore.ts        # 上下文菜单状态
+│   │   └── pluginStore.ts             # 插件状态管理
 │   │
 │   ├── styles/                        # 全局样式
 │   │   ├── variables.css              # CSS 变量（颜色、间距、圆角、字体、阴影）
@@ -126,6 +131,7 @@ sea-lantern/
 │   │
 │   ├── types/                         # 类型定义
 │   │   ├── common.ts                  # 通用类型定义
+│   │   ├── plugin.ts                  # 插件相关类型定义
 │   │   └── server.ts                  # 服务器相关类型定义
 │   │
 │   ├── utils/                         # 工具函数
@@ -133,7 +139,11 @@ sea-lantern/
 │   │   ├── errorHandler.ts            # 错误处理工具
 │   │   ├── format.ts                  # 格式化工具
 │   │   ├── logger.ts                  # 日志工具
+│   │   ├── quoteUtils.ts              # 引号处理工具
 │   │   ├── serverStatus.ts            # 服务器状态工具
+│   │   ├── serverUtils.ts             # 服务器工具函数
+│   │   ├── statsUtils.ts              # 统计工具函数
+│   │   ├── theme.ts                   # 主题工具
 │   │   ├── tray.ts                    # 系统托盘工具
 │   │   └── version.ts                 # 版本工具
 │   │
@@ -145,7 +155,12 @@ sea-lantern/
 │   │   ├── PlayerView.vue             # 玩家管理页面（白名单、封禁、OP）
 │   │   ├── SettingsView.vue           # 应用设置页面
 │   │   ├── PaintView.vue              # 个性化设置页面
-│   │   └── AboutView.vue              # 关于页面（贡献者墙、更新检查）
+│   │   ├── AboutView.vue              # 关于页面（贡献者墙、更新检查）
+│   │   ├── MarketView.vue             # 市场页面
+│   │   ├── PluginsView.vue           # 插件列表页面
+│   │   ├── PluginsPageView.vue       # 插件分页视图
+│   │   ├── PluginCategoryView.vue     # 插件分类视图
+│   │   └── PluginPageView.vue         # 插件详情页面
 │   │
 │   ├── App.vue                        # 根组件
 │   ├── main.ts                        # 应用入口（初始化 Vue、Pinia、Router）
@@ -189,9 +204,18 @@ sea-lantern/
 │   │   │   ├── settings.rs            # 应用设置命令
 │   │   │   ├── system.rs              # 系统信息、文件对话框命令
 │   │   │   ├── update.rs              # 软件更新检查命令
+│   │   │   ├── update_arch.rs         # 更新架构检测
+│   │   │   ├── update_checksum.rs     # 更新校验和
+│   │   │   ├── update_download.rs     # 更新下载
+│   │   │   ├── update_github.rs       # GitHub 更新源
+│   │   │   ├── update_install.rs      # 更新安装
+│   │   │   ├── update_types.rs        # 更新类型定义
+│   │   │   ├── update_version.rs      # 更新版本比较
 │   │   │   ├── join.rs                # 加入服务器命令
 │   │   │   ├── mods.rs                # 模组管理命令
-│   │   │   └── server_id.rs           # 服务器 ID 管理命令
+│   │   │   ├── server_id.rs           # 服务器 ID 管理命令
+│   │   │   ├── mcs_plugin.rs          # MCS 插件命令
+│   │   │   └── plugin.rs              # 插件系统命令
 │   │   │
 │   │   ├── services/                  # 业务逻辑层
 │   │   │   ├── mod.rs                 # 模块导出
@@ -204,19 +228,46 @@ sea-lantern/
 │   │   │   ├── mod_manager.rs         # 模组管理器
 │   │   │   ├── join_manager.rs        # 加入服务器管理器
 │   │   │   ├── server_id_manager.rs   # 服务器 ID 管理器
+│   │   │   ├── mcs_plugin_manager.rs  # MCS 插件管理器
+│   │   │   ├── async_loader.rs        # 异步加载器
 │   │   │   ├── i18n.rs                # 国际化服务
 │   │   │   └── global.rs              # 全局单例管理器
+│   │   │
+│   │   ├── plugins/                   # 插件系统
+│   │   │   ├── mod.rs                 # 插件模块导出
+│   │   │   ├── api.rs                 # 插件 API
+│   │   │   ├── loader.rs              # 插件加载器
+│   │   │   ├── manager.rs             # 插件管理器
+│   │   │   └── runtime/               # 插件运行时
+│   │   │       ├── mod.rs             # 运行时模块导出
+│   │   │       ├── api_bridge.rs      # API 桥接
+│   │   │       ├── console.rs         # 控制台 API
+│   │   │       ├── element.rs         # UI 元素 API
+│   │   │       ├── filesystem.rs      # 文件系统 API
+│   │   │       ├── helpers.rs         # 辅助函数
+│   │   │       ├── http.rs            # HTTP API
+│   │   │       ├── i18n.rs            # 国际化 API
+│   │   │       ├── log.rs             # 日志 API
+│   │   │       ├── plugins_api.rs     # 插件管理 API
+│   │   │       ├── process.rs         # 进程 API
+│   │   │       ├── server.rs          # 服务器 API
+│   │   │       ├── storage.rs         # 存储 API
+│   │   │       ├── system.rs          # 系统 API
+│   │   │       └── ui.rs              # UI API
 │   │   │
 │   │   ├── models/                    # 数据结构定义
 │   │   │   ├── mod.rs                 # 模块导出
 │   │   │   ├── server.rs              # 服务器实例、状态数据结构
 │   │   │   ├── config.rs              # 配置项数据结构
-│   │   │   └── settings.rs            # 应用设置数据结构
+│   │   │   ├── settings.rs            # 应用设置数据结构
+│   │   │   ├── mcs_plugin.rs          # MCS 插件数据结构
+│   │   │   └── plugin.rs              # 插件数据结构
 │   │   │
 │   │   ├── utils/                     # 工具函数
 │   │   │   ├── mod.rs                 # 工具模块
 │   │   │   ├── cli.rs                 # 命令行工具
-│   │   │   └── downloader.rs          # 下载工具
+│   │   │   ├── downloader.rs          # 下载工具
+│   │   │   └── path.rs                # 路径工具
 │   │   │
 │   │   ├── lib.rs                     # Tauri 库入口（插件注册、命令注册）
 │   │   └── main.rs                    # 应用主函数
@@ -231,14 +282,11 @@ sea-lantern/
 ├── docs/                              # 文档
 │   ├── AI_GUIDE.md                    # AI 使用指南
 │   ├── CONTRIBUTING.md                # 贡献指南
-│   ├── CONTRIBUTING-en.md             # 英文贡献指南
+│   ├── STRUCTURE.md                   # 项目结构文档
 │   ├── 新手使用教程.html              # 新手使用教程
-│   ├── STRUCTURE.md                   # 本文档
-│   ├── STRUCTURE-en.md                # 英文版本
-│   ├── AI_GUIDE.md                    # AI 使用指南
-│   ├── CONTRIBUTING.md                # 贡献指南
-│   ├── CONTRIBUTING-en.md             # 英文贡献指南
-│   └── 新手使用教程.html              # 新手使用教程
+│   └── language/
+│       ├── README.md                  # 语言包说明
+│       └── README-en.md               # 英文版本
 │
 ├── .SRCINFO                           # 包信息
 ├── .editorconfig                      # 编辑器配置
@@ -302,6 +350,19 @@ sea-lantern/
 
 - 检查更新
 - 一键下载新版本
+
+### 8. 插件系统
+
+- 支持动态加载插件
+- 插件 API 桥接（控制台、文件系统、HTTP、UI 等）
+- 插件权限管理
+- 插件市场
+
+### 9. 主题系统
+
+- 多种内置主题（默认、午夜、海洋、玫瑰、日落）
+- 自定义主题支持
+- CSS 变量驱动的主题切换
 
 ## 技术特点
 

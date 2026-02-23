@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::process::{Child, Command, Stdio};
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -8,6 +9,209 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::models::server::*;
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
+
+/// Minecraft 服务器核心类型枚举
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CoreType {
+    ArclightForge,
+    ArclightNeoforge,
+    Youer,
+    Mohist,
+    Catserver,
+    Spongeforge,
+    ArclightFabric,
+    Banner,
+    Neoforge,
+    Forge,
+    Quilt,
+    Fabric,
+    PufferfishPurpur,
+    Pufferfish,
+    Spongevanilla,
+    Purpur,
+    Paper,
+    Folia,
+    Leaves,
+    Leaf,
+    Spigot,
+    Bukkit,
+    VanillaSnapshot,
+    Vanilla,
+    Nukkitx,
+    Bedrock,
+    Velocity,
+    Bungeecord,
+    Lightfall,
+    Travertine,
+    Unknown,
+}
+
+impl CoreType {
+    /// 获取核心类型的显示名称
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CoreType::ArclightForge => "Arclight-Forge",
+            CoreType::ArclightNeoforge => "Arclight-Neoforge",
+            CoreType::Youer => "Youer",
+            CoreType::Mohist => "Mohist",
+            CoreType::Catserver => "Catserver",
+            CoreType::Spongeforge => "Spongeforge",
+            CoreType::ArclightFabric => "Arclight-Fabric",
+            CoreType::Banner => "Banner",
+            CoreType::Neoforge => "Neoforge",
+            CoreType::Forge => "Forge",
+            CoreType::Quilt => "Quilt",
+            CoreType::Fabric => "Fabric",
+            CoreType::PufferfishPurpur => "Pufferfish_Purpur",
+            CoreType::Pufferfish => "Pufferfish",
+            CoreType::Spongevanilla => "Spongevanilla",
+            CoreType::Purpur => "Purpur",
+            CoreType::Paper => "Paper",
+            CoreType::Folia => "Folia",
+            CoreType::Leaves => "Leaves",
+            CoreType::Leaf => "Leaf",
+            CoreType::Spigot => "Spigot",
+            CoreType::Bukkit => "Bukkit",
+            CoreType::VanillaSnapshot => "Vanilla-Snapshot",
+            CoreType::Vanilla => "Vanilla",
+            CoreType::Nukkitx => "Nukkitx",
+            CoreType::Bedrock => "Bedrock",
+            CoreType::Velocity => "Velocity",
+            CoreType::Bungeecord => "Bungeecord",
+            CoreType::Lightfall => "Lightfall",
+            CoreType::Travertine => "Travertine",
+            CoreType::Unknown => "Unknown",
+        }
+    }
+
+    /// 获取所有核心类型的检测映射表，按优先级排序
+    fn detection_table() -> &'static [(CoreType, &'static [&'static str])] {
+        &[
+            // 1. 混合核心 (Forge + 插件) - 优先检测
+            (CoreType::ArclightForge, &["arclight-forge"]),
+            (CoreType::ArclightNeoforge, &["arclight-neoforge"]),
+            (CoreType::Youer, &["youer"]),
+            (CoreType::Mohist, &["mohist"]),
+            (CoreType::Catserver, &["catserver"]),
+            (CoreType::Spongeforge, &["spongeforge"]),
+            // 2. 混合核心 (Fabric + 插件)
+            (CoreType::ArclightFabric, &["arclight-fabric"]),
+            (CoreType::Banner, &["banner"]),
+            // 3. Forge 生态 - 优先检测 neoforge
+            (CoreType::Neoforge, &["neoforge"]),
+            (CoreType::Forge, &["forge"]),
+            // 4. Fabric 生态
+            (CoreType::Quilt, &["quilt"]),
+            (CoreType::Fabric, &["fabric"]),
+            // 5. 插件核心 - 优先检测更具体的
+            (CoreType::PufferfishPurpur, &["pufferfish_purpur", "pufferfish-purpur"]),
+            (CoreType::Pufferfish, &["pufferfish"]),
+            (CoreType::Spongevanilla, &["spongevanilla"]),
+            (CoreType::Purpur, &["purpur"]),
+            (CoreType::Paper, &["paper"]),
+            (CoreType::Folia, &["folia"]),
+            (CoreType::Leaves, &["leaves"]),
+            (CoreType::Leaf, &["leaf"]),
+            (CoreType::Spigot, &["spigot"]),
+            (CoreType::Bukkit, &["bukkit"]),
+            // 6. 原版核心
+            (CoreType::VanillaSnapshot, &["vanilla-snapshot"]),
+            (CoreType::Vanilla, &["vanilla"]),
+            // 7. Bedrock 核心
+            (CoreType::Nukkitx, &["nukkitx", "nukkit"]),
+            (CoreType::Bedrock, &["bedrock"]),
+            // 8. 代理核心
+            (CoreType::Velocity, &["velocity"]),
+            (CoreType::Bungeecord, &["bungeecord"]),
+            (CoreType::Lightfall, &["lightfall"]),
+            (CoreType::Travertine, &["travertine"]),
+        ]
+    }
+
+    /// 从文件名检测核心类型
+    pub fn detect_from_filename(filename: &str) -> Self {
+        let filename_lower = filename.to_lowercase();
+
+        for (core_type, keywords) in Self::detection_table() {
+            for keyword in *keywords {
+                if filename_lower.contains(keyword) {
+                    return *core_type;
+                }
+            }
+        }
+
+        CoreType::Unknown
+    }
+}
+
+impl FromStr for CoreType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "arclight-forge" => Ok(CoreType::ArclightForge),
+            "arclight-neoforge" => Ok(CoreType::ArclightNeoforge),
+            "youer" => Ok(CoreType::Youer),
+            "mohist" => Ok(CoreType::Mohist),
+            "catserver" => Ok(CoreType::Catserver),
+            "spongeforge" => Ok(CoreType::Spongeforge),
+            "arclight-fabric" => Ok(CoreType::ArclightFabric),
+            "banner" => Ok(CoreType::Banner),
+            "neoforge" => Ok(CoreType::Neoforge),
+            "forge" => Ok(CoreType::Forge),
+            "quilt" => Ok(CoreType::Quilt),
+            "fabric" => Ok(CoreType::Fabric),
+            "pufferfish_purpur" | "pufferfish-purpur" => Ok(CoreType::PufferfishPurpur),
+            "pufferfish" => Ok(CoreType::Pufferfish),
+            "spongevanilla" => Ok(CoreType::Spongevanilla),
+            "purpur" => Ok(CoreType::Purpur),
+            "paper" => Ok(CoreType::Paper),
+            "folia" => Ok(CoreType::Folia),
+            "leaves" => Ok(CoreType::Leaves),
+            "leaf" => Ok(CoreType::Leaf),
+            "spigot" => Ok(CoreType::Spigot),
+            "bukkit" => Ok(CoreType::Bukkit),
+            "vanilla-snapshot" => Ok(CoreType::VanillaSnapshot),
+            "vanilla" => Ok(CoreType::Vanilla),
+            "nukkitx" | "nukkit" => Ok(CoreType::Nukkitx),
+            "bedrock" => Ok(CoreType::Bedrock),
+            "velocity" => Ok(CoreType::Velocity),
+            "bungeecord" => Ok(CoreType::Bungeecord),
+            "lightfall" => Ok(CoreType::Lightfall),
+            "travertine" => Ok(CoreType::Travertine),
+            "unknown" => Ok(CoreType::Unknown),
+            _ => Err(format!("Unknown core type: {}", s)),
+        }
+    }
+}
+
+impl std::fmt::Display for CoreType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// 检测核心类型，返回精确的核心名称（首字母大写）
+///
+/// # Arguments
+/// * `input` - 文件名或路径
+///
+/// # Returns
+/// * `String` - 核心类型名称，如 "Paper", "Forge", "Vanilla" 等
+///
+/// # Examples
+/// ```
+/// let core_type = detect_core_type("paper-1.20.1.jar");
+/// assert_eq!(core_type, "Paper");
+/// ```
+pub fn detect_core_type(input: &str) -> String {
+    let filename = std::path::Path::new(input)
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_else(|| input.to_string());
+
+    CoreType::detect_from_filename(&filename).to_string()
+}
 
 #[derive(Clone, Copy, Debug)]
 enum ManagedConsoleEncoding {
@@ -126,8 +330,8 @@ impl ServerManager {
     }
 
     fn save(&self) {
-        let servers = self.servers.lock().unwrap();
-        let data_dir = self.data_dir.lock().unwrap();
+        let servers = self.servers.lock().expect("servers lock poisoned");
+        let data_dir = self.data_dir.lock().expect("data_dir lock poisoned");
         save_servers(&data_dir, &servers);
     }
 
@@ -181,7 +385,7 @@ impl ServerManager {
         let id = uuid::Uuid::new_v4().to_string();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("time went backwards")
             .as_secs();
         let jar_path_obj = std::path::Path::new(&req.jar_path);
         let server_dir = jar_path_obj
@@ -206,8 +410,14 @@ impl ServerManager {
             created_at: now,
             last_started_at: None,
         };
-        self.servers.lock().unwrap().push(server.clone());
-        self.logs.lock().unwrap().insert(id, Vec::new());
+        self.servers
+            .lock()
+            .expect("servers lock poisoned")
+            .push(server.clone());
+        self.logs
+            .lock()
+            .expect("logs lock poisoned")
+            .insert(id, Vec::new());
         self.save();
         Ok(server)
     }
@@ -219,9 +429,12 @@ impl ServerManager {
             return Err(format!("启动文件不存在: {}", req.jar_path));
         }
 
-        // 在软件目录下创建服务器文件夹
         let id = uuid::Uuid::new_v4().to_string();
-        let data_dir = self.data_dir.lock().unwrap().clone();
+        let data_dir = self
+            .data_dir
+            .lock()
+            .expect("data_dir lock poisoned")
+            .clone();
         let servers_dir = std::path::Path::new(&data_dir).join("servers");
         let server_dir = servers_dir.join(&id);
 
@@ -259,7 +472,22 @@ impl ServerManager {
         };
 
         let server_properties_path = server_dir.join("server.properties");
-        if !server_properties_path.exists() {
+        let mut port = req.port;
+
+        // 如果 server.properties 已存在，读取其中的端口信息
+        if server_properties_path.exists() {
+            if let Ok(props) = crate::services::config_parser::read_properties(
+                server_properties_path.to_str().unwrap_or_default(),
+            ) {
+                if let Some(port_str) = props.get("server-port") {
+                    if let Ok(parsed_port) = port_str.parse::<u16>() {
+                        port = parsed_port;
+                        println!("从 server.properties 读取端口: {}", port);
+                    }
+                }
+            }
+        } else {
+            // 如果不存在，创建默认的 server.properties
             let server_properties_content = format!(
                 "# Minecraft server properties\n\
                  # Generated by SeaLantern\n\
@@ -272,15 +500,19 @@ impl ServerManager {
             println!("已创建 server.properties: {}", server_properties_path.display());
         }
 
-        // 创建服务器实例
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("time went backwards")
             .as_secs();
+
+        // 检测核心类型
+        let core_type = detect_core_type(&dest_startup.to_string_lossy());
+        println!("检测到核心类型: {}", core_type);
+
         let server = ServerInstance {
             id: id.clone(),
             name: req.name,
-            core_type: "unknown".into(),
+            core_type,
             core_version: String::new(),
             mc_version: "unknown".into(),
             path: server_dir.to_string_lossy().to_string(),
@@ -290,13 +522,19 @@ impl ServerManager {
             max_memory: req.max_memory,
             min_memory: req.min_memory,
             jvm_args: Vec::new(),
-            port: req.port,
+            port,
             created_at: now,
             last_started_at: None,
         };
 
-        self.servers.lock().unwrap().push(server.clone());
-        self.logs.lock().unwrap().insert(id, Vec::new());
+        self.servers
+            .lock()
+            .expect("servers lock poisoned")
+            .push(server.clone());
+        self.logs
+            .lock()
+            .expect("logs lock poisoned")
+            .insert(id, Vec::new());
         self.save();
         Ok(server)
     }
@@ -310,13 +548,15 @@ impl ServerManager {
             return Err("所选路径不是文件夹".to_string());
         }
 
-        // 查找服务端JAR文件
         let source_jar = find_server_jar(source_path)?;
         println!("找到服务端JAR文件: {}", source_jar);
 
-        // 在软件目录下创建服务器文件夹
         let id = uuid::Uuid::new_v4().to_string();
-        let data_dir = self.data_dir.lock().unwrap().clone();
+        let data_dir = self
+            .data_dir
+            .lock()
+            .expect("data_dir lock poisoned")
+            .clone();
         let servers_dir = std::path::Path::new(&data_dir).join("servers");
         let server_dir = servers_dir.join(&id);
 
@@ -338,10 +578,9 @@ impl ServerManager {
             return Err(format!("复制后的JAR文件不存在: {}", dest_jar.display()));
         }
 
-        // 创建服务器实例
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("time went backwards")
             .as_secs();
         let server = ServerInstance {
             id: id.clone(),
@@ -366,15 +605,112 @@ impl ServerManager {
             server.id, server.path, server.jar_path
         );
 
-        self.servers.lock().unwrap().push(server.clone());
-        self.logs.lock().unwrap().insert(id, Vec::new());
+        self.servers
+            .lock()
+            .expect("servers lock poisoned")
+            .push(server.clone());
+        self.logs
+            .lock()
+            .expect("logs lock poisoned")
+            .insert(id, Vec::new());
+        self.save();
+        Ok(server)
+    }
+
+    pub fn add_existing_server(
+        &self,
+        req: AddExistingServerRequest,
+    ) -> Result<ServerInstance, String> {
+        let server_path = std::path::Path::new(&req.server_path);
+
+        // 验证路径存在且是目录
+        if !server_path.exists() {
+            return Err(format!("服务器目录不存在: {}", req.server_path));
+        }
+        if !server_path.is_dir() {
+            return Err("所选路径不是文件夹".to_string());
+        }
+
+        // 检查目录权限
+        let test_file = server_path.join(".sl_permission_test");
+        if std::fs::write(&test_file, "").is_err() {
+            return Err("无法写入服务器目录，请检查权限".to_string());
+        }
+        let _ = std::fs::remove_file(&test_file);
+
+        let startup_mode = normalize_startup_mode(&req.startup_mode);
+
+        // 验证用户指定的启动文件
+        let jar_path = if let Some(ref exec_path) = req.executable_path {
+            let path = std::path::Path::new(exec_path);
+            if !path.exists() {
+                return Err(format!("选择的可执行文件不存在: {}", exec_path));
+            }
+            exec_path.clone()
+        } else {
+            return Err("必须指定启动文件".to_string());
+        };
+
+        // 尝试从server.properties读取端口
+        let mut port = req.port;
+        let server_properties_path = server_path.join("server.properties");
+        if server_properties_path.exists() {
+            if let Ok(props) = crate::services::config_parser::read_properties(
+                server_properties_path.to_str().unwrap_or_default(),
+            ) {
+                if let Some(port_str) = props.get("server-port") {
+                    if let Ok(parsed_port) = port_str.parse::<u16>() {
+                        port = parsed_port;
+                        println!("从 server.properties 读取端口: {}", port);
+                    }
+                }
+            }
+        }
+
+        // 检测服务端类型
+        let core_type = detect_core_type(&jar_path);
+        println!("检测到核心类型: {}", core_type);
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_secs();
+
+        let id = uuid::Uuid::new_v4().to_string();
+
+        let server = ServerInstance {
+            id: id.clone(),
+            name: req.name,
+            core_type,
+            core_version: String::new(),
+            mc_version: "unknown".into(),
+            path: req.server_path,
+            jar_path,
+            startup_mode: startup_mode.to_string(),
+            java_path: req.java_path,
+            max_memory: req.max_memory,
+            min_memory: req.min_memory,
+            jvm_args: Vec::new(),
+            port,
+            created_at: now,
+            last_started_at: None,
+        };
+
+        self.servers
+            .lock()
+            .expect("servers lock poisoned")
+            .push(server.clone());
+        self.logs
+            .lock()
+            .expect("logs lock poisoned")
+            .insert(id, Vec::new());
         self.save();
         Ok(server)
     }
 
     pub fn start_server(&self, id: &str) -> Result<(), String> {
         let server = {
-            let servers = self.servers.lock().unwrap();
+            let servers = self.servers.lock().expect("servers lock poisoned");
             servers
                 .iter()
                 .find(|s| s.id == id)
@@ -387,9 +723,8 @@ impl ServerManager {
             server.id, server.name, server.startup_mode, server.jar_path, server.java_path
         );
 
-        // Check if already running
         {
-            let mut procs = self.processes.lock().unwrap();
+            let mut procs = self.processes.lock().expect("processes lock poisoned");
             if let Some(child) = procs.get_mut(id) {
                 match child.try_wait() {
                     Ok(Some(_)) => {
@@ -603,16 +938,19 @@ impl ServerManager {
         let child = cmd.spawn().map_err(|e| format!("启动失败: {}", e))?;
         println!("Java进程已启动，PID: {:?}", child.id());
 
-        self.processes.lock().unwrap().insert(id.to_string(), child);
+        self.processes
+            .lock()
+            .expect("processes lock poisoned")
+            .insert(id.to_string(), child);
         self.mark_starting(id);
 
         {
-            let mut servers = self.servers.lock().unwrap();
+            let mut servers = self.servers.lock().expect("servers lock poisoned");
             if let Some(s) = servers.iter_mut().find(|s| s.id == id) {
                 s.last_started_at = Some(
                     SystemTime::now()
                         .duration_since(UNIX_EPOCH)
-                        .unwrap()
+                        .expect("time went backwards")
                         .as_secs(),
                 );
             }
@@ -620,10 +958,12 @@ impl ServerManager {
         self.save();
         self.append_log(id, "[Sea Lantern] 服务器启动中...");
 
-        // 启动日志读取线程
         let stop_flag = Arc::new(AtomicBool::new(false));
         {
-            let mut stops = self.log_thread_stops.lock().unwrap();
+            let mut stops = self
+                .log_thread_stops
+                .lock()
+                .expect("log_thread_stops lock poisoned");
             if let Some(old) = stops.insert(id.to_string(), Arc::clone(&stop_flag)) {
                 old.store(true, Ordering::Relaxed);
             }
@@ -693,7 +1033,7 @@ impl ServerManager {
     pub fn stop_server(&self, id: &str) -> Result<(), String> {
         // Check if actually running first
         let is_running = {
-            let mut procs = self.processes.lock().unwrap();
+            let mut procs = self.processes.lock().expect("processes lock poisoned");
             if let Some(child) = procs.get_mut(id) {
                 match child.try_wait() {
                     Ok(Some(_)) => {
@@ -717,14 +1057,12 @@ impl ServerManager {
             return Ok(());
         }
 
-        // Send stop command
         self.append_log(id, "[Sea Lantern] 正在发送停止命令...");
         let _ = self.send_command(id, "stop");
 
-        // Wait for graceful shutdown (up to 10 seconds)
         for _ in 0..20 {
             std::thread::sleep(std::time::Duration::from_millis(500));
-            let mut procs = self.processes.lock().unwrap();
+            let mut procs = self.processes.lock().expect("processes lock poisoned");
             if let Some(child) = procs.get_mut(id) {
                 match child.try_wait() {
                     Ok(Some(_)) => {
@@ -747,8 +1085,7 @@ impl ServerManager {
             }
         }
 
-        // Force kill after timeout
-        let mut procs = self.processes.lock().unwrap();
+        let mut procs = self.processes.lock().expect("processes lock poisoned");
         if let Some(mut child) = procs.remove(id) {
             let _ = child.kill();
             let _ = child.wait();
@@ -759,7 +1096,7 @@ impl ServerManager {
     }
 
     pub fn send_command(&self, id: &str, command: &str) -> Result<(), String> {
-        let mut procs = self.processes.lock().unwrap();
+        let mut procs = self.processes.lock().expect("processes lock poisoned");
         let child = procs
             .get_mut(id)
             .ok_or_else(|| "服务器未运行".to_string())?;
@@ -771,11 +1108,11 @@ impl ServerManager {
     }
 
     pub fn get_server_list(&self) -> Vec<ServerInstance> {
-        self.servers.lock().unwrap().clone()
+        self.servers.lock().expect("servers lock poisoned").clone()
     }
 
     pub fn get_server_status(&self, id: &str) -> ServerStatusInfo {
-        let mut procs = self.processes.lock().unwrap();
+        let mut procs = self.processes.lock().expect("processes lock poisoned");
         let is_running = if let Some(child) = procs.get_mut(id) {
             match child.try_wait() {
                 Ok(Some(_)) => {
@@ -810,18 +1147,16 @@ impl ServerManager {
     }
 
     pub fn delete_server(&self, id: &str) -> Result<(), String> {
-        // Only stop if actually running
         {
-            let procs = self.processes.lock().unwrap();
+            let procs = self.processes.lock().expect("processes lock poisoned");
             if procs.contains_key(id) {
                 drop(procs);
                 let _ = self.stop_server(id);
             }
         }
 
-        // 获取服务器目录路径，删除磁盘上的文件
         let server_path = {
-            let servers = self.servers.lock().unwrap();
+            let servers = self.servers.lock().expect("servers lock poisoned");
             servers.iter().find(|s| s.id == id).map(|s| s.path.clone())
         };
         if let Some(path) = server_path {
@@ -831,14 +1166,17 @@ impl ServerManager {
             }
         }
 
-        self.servers.lock().unwrap().retain(|s| s.id != id);
-        self.logs.lock().unwrap().remove(id);
+        self.servers
+            .lock()
+            .expect("servers lock poisoned")
+            .retain(|s| s.id != id);
+        self.logs.lock().expect("logs lock poisoned").remove(id);
         self.save();
         Ok(())
     }
 
     pub fn get_logs(&self, id: &str, since: usize) -> Vec<String> {
-        let logs = self.logs.lock().unwrap();
+        let logs = self.logs.lock().expect("logs lock poisoned");
         if let Some(v) = logs.get(id) {
             if since < v.len() {
                 v[since..].to_vec()
@@ -851,12 +1189,12 @@ impl ServerManager {
     }
 
     pub fn get_all_logs(&self) -> Vec<(String, Vec<String>)> {
-        let logs = self.logs.lock().unwrap();
+        let logs = self.logs.lock().expect("logs lock poisoned");
         logs.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 
     pub fn get_running_server_ids(&self) -> Vec<String> {
-        let procs = self.processes.lock().unwrap();
+        let procs = self.processes.lock().expect("processes lock poisoned");
         procs.keys().cloned().collect()
     }
 
@@ -869,7 +1207,7 @@ impl ServerManager {
     }
 
     pub fn update_server_name(&self, id: &str, new_name: &str) -> Result<(), String> {
-        let mut servers = self.servers.lock().unwrap();
+        let mut servers = self.servers.lock().expect("servers lock poisoned");
         if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
             server.name = new_name.to_string();
             drop(servers);
@@ -881,7 +1219,13 @@ impl ServerManager {
     }
 
     pub fn stop_all_servers(&self) {
-        let ids: Vec<String> = self.processes.lock().unwrap().keys().cloned().collect();
+        let ids: Vec<String> = self
+            .processes
+            .lock()
+            .expect("processes lock poisoned")
+            .keys()
+            .cloned()
+            .collect();
         for id in ids {
             let _ = self.stop_server(&id);
         }

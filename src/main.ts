@@ -1,8 +1,8 @@
 import { createApp } from "vue";
-import App from "./App.vue";
-import router from "./router";
-import pinia from "./stores";
-import "./style.css";
+import App from "@src/App.vue";
+import router from "@src/router";
+import pinia from "@src/stores";
+import "@src/style.css";
 import VueECharts from "vue-echarts";
 import { use } from "echarts/core";
 import { PieChart, LineChart } from "echarts/charts";

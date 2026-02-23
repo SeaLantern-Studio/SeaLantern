@@ -1,5 +1,5 @@
 import { ref, onUnmounted } from "vue";
-import { TIME } from "../utils/constants";
+import { TIME } from "@utils/constants";
 
 /**
  * 消息类型

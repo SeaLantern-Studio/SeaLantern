@@ -3,8 +3,8 @@
  * 提供主题、字体、颜色等通用处理功能
  */
 
-import type { AppSettings } from "../api/settings";
-import { getThemeColors, mapLegacyPlanName } from "../themes";
+import type { AppSettings } from "@api/settings";
+import { getThemeColors, mapLegacyPlanName } from "@themes";
 
 let _themeProviderOverrides: string[] = [];
 
@@ -217,6 +217,14 @@ export function applyColors(settings: AppSettings): void {
     "--sl-shadow-xl",
     `0 16px 48px rgba(0, 0, 0, ${shadowOpacity * 1.6})`,
   );
+
+  // Glass 效果变量
+  const glassBg = isDark ? "rgba(15, 17, 23, 0.72)" : "rgba(255, 255, 255, 0.72)";
+  const glassStrongBg = isDark ? "rgba(15, 17, 23, 0.88)" : "rgba(255, 255, 255, 0.88)";
+  const glassBorder = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.5)";
+  document.documentElement.style.setProperty("--sl-glass-bg", glassBg);
+  document.documentElement.style.setProperty("--sl-glass-strong-bg", glassStrongBg);
+  document.documentElement.style.setProperty("--sl-glass-border", glassBorder);
 }
 
 /**

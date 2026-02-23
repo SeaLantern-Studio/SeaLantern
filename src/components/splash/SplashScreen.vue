@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
+import logo from "@assets/logo.svg";
 
 const props = defineProps<{
   loading?: boolean;
@@ -44,7 +45,7 @@ watch(
   <div class="splash-screen">
     <div class="splash-content">
       <div class="splash-logo" :style="{ transform: `scale(${logoScale})` }">
-        <img src="../../assets/logo.svg" alt="Sea Lantern" width="120" height="120" />
+        <img :src="logo" alt="Sea Lantern" width="120" height="120" />
       </div>
 
       <div class="splash-text" :style="{ opacity: textOpacity }">

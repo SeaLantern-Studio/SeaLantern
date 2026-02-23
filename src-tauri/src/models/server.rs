@@ -77,3 +77,15 @@ pub struct ImportModpackRequest {
     pub min_memory: u32,
     pub port: u16,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AddExistingServerRequest {
+    pub name: String,
+    pub server_path: String,
+    pub java_path: String,
+    pub max_memory: u32,
+    pub min_memory: u32,
+    pub port: u16,
+    pub startup_mode: String,
+    pub executable_path: Option<String>,
+}

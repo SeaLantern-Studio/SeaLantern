@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
-import { i18n } from "../../language";
-import SLInput from "../common/SLInput.vue";
+import { i18n } from "@language";
+import SLInput from "@components/common/SLInput.vue";
 
 interface Props {
   categories: string[];

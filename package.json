@@ -1,7 +1,6 @@
 {
   "name": "sea-lantern",
   "version": "0.6.5",
-  "packageManager": "pnpm@9.15.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -33,18 +32,20 @@
     "simple-icons": "^16.9.0",
     "vue": "^3.5.28",
     "vue-echarts": "^8.0.1",
-    "vue-router": "^4.6.4"
+    "vue-router": "^5.0.3"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.0",
-    "@vitejs/plugin-vue": "^5.2.4",
-    "oxfmt": "^0.32.0",
+    "@types/node": "^25.3.0",
+    "@vitejs/plugin-vue": "^6.0.4",
+    "oxfmt": "^0.34.0",
     "oxlint": "^1.49.0",
     "sass-embedded": "^1.97.3",
     "terser": "^5.46.0",
-    "typescript": "~5.6.3",
+    "typescript": "~5.9.3",
     "unplugin-icons": "^23.0.1",
-    "vite": "^6.4.1",
+    "vite": "^7.3.1",
     "vue-tsc": "^3.2.5"
-  }
+  },
+  "packageManager": "pnpm@9.15.9"
 }

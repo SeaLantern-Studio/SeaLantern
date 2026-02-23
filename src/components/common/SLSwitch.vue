@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useRegisterComponent } from "../../composables/useRegisterComponent";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
 
 interface Props {
   modelValue?: boolean;

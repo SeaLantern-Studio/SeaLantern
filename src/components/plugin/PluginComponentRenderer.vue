@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import { usePluginStore } from "../../stores/pluginStore";
-import SLCard from "../common/SLCard.vue";
-import SLButton from "../common/SLButton.vue";
-import SLInput from "../common/SLInput.vue";
-import SLCheckbox from "../common/SLCheckbox.vue";
-import SLSwitch from "../common/SLSwitch.vue";
-import SLProgress from "../common/SLProgress.vue";
-import SLSelect from "../common/SLSelect.vue";
-import SLTabs from "../common/SLTabs.vue";
+import { usePluginStore } from "@stores/pluginStore";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLCheckbox from "@components/common/SLCheckbox.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLProgress from "@components/common/SLProgress.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import SLTabs from "@components/common/SLTabs.vue";
 
 type PendingCreate = {
   component_type: string;

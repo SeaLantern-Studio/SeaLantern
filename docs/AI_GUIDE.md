@@ -417,7 +417,7 @@ setInterval(async () => {
 **示例**：访问 serverStore
 
 ```typescript
-import { useServerStore } from "@/stores/serverStore";
+import { useServerStore } from "@stores/serverStore";
 
 const serverStore = useServerStore();
 const servers = serverStore.servers;
@@ -558,15 +558,133 @@ cd src-tauri && cargo test
 - `src/router/index.ts` - 添加路由
 - `src/components/layout/AppSidebar.vue` - 添加导航项
 
-### 3. 代码风格
+### 3. 代码风格和注释规范
 
-- 前端：使用 2 空格缩进
-- 后端：使用 4 空格缩进（Rust 标准）
+#### 前端代码风格
+
+- 使用 2 空格缩进
 - 使用有意义的变量名和函数名
-- 添加必要的注释
-- 参考check.yml
+- 使用 TypeScript 严格类型，避免使用 `any`
+- 组件文件使用 `PascalCase`（如 `ServerCard.vue`）
 
-### 4. 性能优化建议
+#### 前端注释规范（简单少量）
+
+模块级注释（文件顶部）：
+
+```typescript
+// 模块功能简述
+import { ref } from "vue";
+```
+
+组件 Props 注释：
+
+```typescript
+interface Props {
+  /** 按钮变体类型 */
+  variant?: "primary" | "secondary" | "ghost";
+  /** 加载状态 */
+  loading?: boolean;
+}
+```
+
+复杂逻辑注释：
+
+```typescript
+// 检查变量引用是否正确
+const value = ref<string>("");
+```
+
+#### 后端代码风格
+
+- 使用 4 空格缩进（Rust 标准）
+- 文件名使用 `snake_case`（如 `server_manager.rs`）
+- 函数名使用 `snake_case`（如 `get_server_list`）
+- 结构体使用 `PascalCase`（如 `ServerInstance`）
+- 常量使用 `SCREAMING_SNAKE_CASE`（如 `MAX_MEMORY`）
+
+#### 后端注释规范（简单少量）
+
+模块级注释（文件顶部）：
+
+```rust
+//! 服务器管理命令模块
+//! 提供服务器创建、启动、停止等命令接口
+```
+
+公共函数注释：
+
+```rust
+/// 创建新的 Minecraft 服务器
+/// # Arguments
+/// * `name` - 服务器名称
+/// * `jar_path` - 核心文件路径
+pub async fn create_server(name: String, jar_path: String) -> Result<ServerInstance, String> {
+    // 检查参数引用是否有效
+    if name.is_empty() {
+        return Err("服务器名称不能为空".to_string());
+    }
+    // 业务逻辑
+}
+```
+
+复杂逻辑注释：
+
+```rust
+// 获取全局管理器单例
+let manager = global::server_manager();
+```
+
+#### 注释注意事项
+
+- 避免无意义的注释（如 `// 变量++`）
+- 优先使用清晰的代码表达，而不是依赖注释
+- 注释应该解释"为什么"，而不是"是什么"
+- 保持注释与代码同步更新
+
+### 4. 变量引用和申请检查
+
+#### 前端变量检查
+
+```typescript
+// 正确：声明时指定类型
+const serverName = ref<string>("");
+const serverList = ref<ServerInstance[]>([]);
+
+// 错误：使用 any
+const serverName = ref<any>("");
+
+// 正确：使用具体类型而非 any
+interface ServerInfo {
+  id: string;
+  name: string;
+}
+const info = ref<ServerInfo | null>(null);
+```
+
+#### 后端变量检查
+
+```rust
+// 正确：明确声明类型
+let name: String = String::new();
+let servers: Vec<ServerInstance> = Vec::new();
+
+// 错误：使用未初始化的可变变量（除非有明确目的）
+// let mut name;  // 不推荐
+
+// 正确：使用引用避免不必要的复制
+fn process_server(server: &ServerInstance) -> Result<(), String> {
+    // 只读引用，无需复制数据
+}
+```
+
+#### 常见问题
+
+1. **未使用的变量**：使用下划线前缀 `_unused_var` 或直接删除
+2. **未初始化的变量**：确保在使用前赋值
+3. **所有权问题**：使用引用（`&`、`&mut`）避免不必要的复制
+4. **生命周期**：复杂结构考虑使用 `Arc`、`Rc` 等智能指针
+
+### 5. 性能优化建议
 
 - 避免在循环中调用 Tauri 命令
 - 大量数据传输时考虑分页
@@ -593,6 +711,6 @@ cd src-tauri && cargo test
 
 ---
 
-**最后更新**: 2026-02-17
-**文档版本**: 1.1
+**最后更新**: 2026-02-22
+**文档版本**: 1.2
 **当前项目版本**: 0.6.5

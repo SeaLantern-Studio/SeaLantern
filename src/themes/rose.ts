@@ -1,4 +1,4 @@
-import type { ThemeDefinition } from "../types";
+import type { ThemeDefinition } from "@type/theme";
 
 export const roseTheme: ThemeDefinition = {
   id: "rose",
