@@ -14,7 +14,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <SLCard :title="i18n.t('settings.developer_mode')" :subtitle="i18n.t('settings.developer_mode_desc')">
+  <SLCard
+    :title="i18n.t('settings.developer_mode')"
+    :subtitle="i18n.t('settings.developer_mode_desc')"
+  >
     <div class="settings-group">
       <div class="setting-row">
         <div class="setting-info">

@@ -58,7 +58,7 @@ impl m_PluginManager {
                                 .unwrap_or_else(|| base_file_name.replace(".jar", ""));
                             let config_folder_path = plugins_dir.join(&plugin_name);
                             let has_config_folder = config_folder_path.exists();
-                            
+
                             // 暂时不扫描配置文件，只在需要时扫描
                             let config_files = vec![];
 
@@ -110,10 +110,15 @@ impl m_PluginManager {
         Ok(plugins)
     }
 
-    pub fn m_get_plugin_config_files(&self, server_path: &str, plugin_file_name: &str, plugin_name: &str) -> Result<Vec<m_PluginConfigFile>, String> {
+    pub fn m_get_plugin_config_files(
+        &self,
+        server_path: &str,
+        plugin_file_name: &str,
+        plugin_name: &str,
+    ) -> Result<Vec<m_PluginConfigFile>, String> {
         let plugins_dir = Path::new(server_path).join("plugins");
         let config_folder_path = plugins_dir.join(plugin_name);
-        
+
         if config_folder_path.exists() {
             Ok(self.m_scan_plugin_config_files(&config_folder_path))
         } else {

@@ -121,7 +121,10 @@ onMounted(updateIndicator);
           <span class="online-mode-text">{{
             onlineMode ? i18n.t("create.online_mode_on") : i18n.t("create.online_mode_off")
           }}</span>
-          <SLSwitch :model-value="onlineMode" @update:model-value="$emit('update:onlineMode', $event)" />
+          <SLSwitch
+            :model-value="onlineMode"
+            @update:model-value="$emit('update:onlineMode', $event)"
+          />
         </div>
       </div>
     </div>
