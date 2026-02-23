@@ -63,7 +63,7 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
         .allow_headers(Any);
 
     let mut app = Router::new()
-        .route("/api/:command", post(handle_api_command))
+        .route("/api/{command}", post(handle_api_command))
         .route("/health", get(|| async { "OK" }))
         .route("/api/list", get(list_api_endpoints))
         .layer(cors)
@@ -72,7 +72,7 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
     // 添加静态文件服务
     if let Some(dir) = static_dir {
         let serve_dir = ServeDir::new(&dir).append_index_html_on_directories(true);
-        app = app.nest_service("/", serve_dir);
+        app = app.fallback_service(serve_dir);
         println!("Serving static files from: {}", dir);
     }
 
