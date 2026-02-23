@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import { i18n } from "@language";
-import { useTabSwitch } from "@composables/useTabIndicator";
 
 type StartupMode = "jar" | "bat" | "sh";
 
 const props = defineProps<{
   serverName: string;
+  startupMode: StartupMode;
   maxMemory: string;
   minMemory: string;
   port: string;
@@ -18,61 +18,52 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "update:serverName", value: string): void;
+  (e: "update:startupMode", value: StartupMode): void;
   (e: "update:maxMemory", value: string): void;
   (e: "update:minMemory", value: string): void;
   (e: "update:port", value: string): void;
   (e: "update:onlineMode", value: boolean): void;
-  (e: "setStartupMode"): void;
 }>();
 
 const startupModes: StartupMode[] = ["jar", "bat", "sh"];
 
 const indicatorRef = ref<HTMLElement | null>(null);
 
-const {
-  activeTab: localStartupMode,
-  switchTab,
-  updateIndicator,
-} = useTabSwitch<StartupMode>("jar", indicatorRef);
-
-const localeRef = i18n.getLocaleRef();
-watch(localeRef, () => {
-  updateIndicator();
-});
-
-function handleSetStartupMode(mode: StartupMode) {
-  if (localStartupMode.value === mode) {
+function handleStartupModeChange(mode: StartupMode) {
+  if (props.startupMode === mode) {
     return;
   }
-  switchTab(mode);
-  emit("setStartupMode");
+  emit("update:startupMode", mode);
 }
 
-function handleMemoryInput(e: Event, type: "max" | "min") {
+function handleNumberInput(e: Event, type: "maxMemory" | "minMemory" | "port") {
   const target = e.target as HTMLInputElement;
   const value = target.value;
   if (value === "" || /^\d+$/.test(value)) {
-    if (type === "max") {
-      emit("update:maxMemory", value);
-    } else {
-      emit("update:minMemory", value);
+    emit(`update:${type}`, value);
+  }
+}
+
+function updateIndicator() {
+  requestAnimationFrame(() => {
+    if (indicatorRef.value) {
+      const tabs = indicatorRef.value.parentElement;
+      if (!tabs) return;
+      const activeTab = tabs.querySelector(".startup-mode-tab.active") as HTMLElement;
+      if (activeTab) {
+        indicatorRef.value.style.left = `${activeTab.offsetLeft}px`;
+        indicatorRef.value.style.width = `${activeTab.offsetWidth}px`;
+      }
     }
-  }
+  });
 }
 
-function handlePortInput(e: Event) {
-  const target = e.target as HTMLInputElement;
-  const value = target.value;
-  if (value === "" || /^\d+$/.test(value)) {
-    emit("update:port", value);
-  }
-}
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, updateIndicator);
 
-defineExpose({
-  indicatorRef,
-  updateIndicator,
-  startupMode: localStartupMode,
-});
+watch(() => props.startupMode, updateIndicator);
+
+onMounted(updateIndicator);
 </script>
 
 <template>
@@ -96,8 +87,8 @@ defineExpose({
               :key="mode"
               type="button"
               class="startup-mode-tab"
-              :class="{ active: localStartupMode === mode }"
-              @click="handleSetStartupMode(mode)"
+              :class="{ active: startupMode === mode }"
+              @click="handleStartupModeChange(mode)"
             >
               {{ mode === "jar" ? "JAR" : mode }}
             </button>
@@ -109,20 +100,20 @@ defineExpose({
         :label="i18n.t('create.max_memory')"
         type="text"
         :model-value="maxMemory"
-        @input="handleMemoryInput($event, 'max')"
+        @input="handleNumberInput($event, 'maxMemory')"
       />
       <SLInput
         :label="i18n.t('create.min_memory')"
         type="text"
         :model-value="minMemory"
-        @input="handleMemoryInput($event, 'min')"
+        @input="handleNumberInput($event, 'minMemory')"
       />
       <SLInput
         :label="i18n.t('settings.default_port')"
         type="text"
         :model-value="port"
         :placeholder="i18n.t('create.default_port_placeholder')"
-        @input="handlePortInput"
+        @input="handleNumberInput($event, 'port')"
       />
       <div class="online-mode-cell">
         <span class="online-mode-label">{{ i18n.t("create.online_mode") }}</span>

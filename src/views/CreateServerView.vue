@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { serverApi } from "@api/server";
 import { javaApi, type JavaInfo } from "@api/java";
@@ -26,12 +26,15 @@ const maxMemory = ref("2048");
 const minMemory = ref("512");
 const port = ref("25565");
 const jarPath = ref("");
+const startupMode = ref<StartupMode>("jar");
 const selectedJava = ref("");
 const onlineMode = ref(true);
 
-const serverConfigCardRef = ref<InstanceType<typeof ServerConfigCard> | null>(null);
-
 const javaList = ref<JavaInfo[]>([]);
+
+watch(startupMode, () => {
+  jarPath.value = "";
+});
 
 onMounted(async () => {
   await loadDefaultSettings();
@@ -82,7 +85,7 @@ async function detectJava() {
 
 async function pickJarFile() {
   try {
-    const mode = serverConfigCardRef.value?.startupMode || "jar";
+    const mode = startupMode.value;
     const result = await systemApi.pickStartupFile(mode);
     if (result) {
       jarPath.value = result;
@@ -93,10 +96,6 @@ async function pickJarFile() {
     console.error("Pick file error:", e);
     jarPath.value = "";
   }
-}
-
-function handleSetStartupMode() {
-  jarPath.value = "";
 }
 
 async function handleCreate() {
@@ -118,7 +117,7 @@ async function handleCreate() {
 
   startCreating();
   try {
-    const mode = serverConfigCardRef.value?.startupMode || "jar";
+    const mode = startupMode.value;
     await serverApi.importServer({
       name: serverName.value,
       jarPath: jarPath.value,
@@ -150,7 +149,7 @@ async function handleImport() {
     return;
   }
 
-  const result = await systemApi.pickStartupFile(serverConfigCardRef.value?.startupMode || "jar");
+  const result = await systemApi.pickStartupFile(startupMode.value);
   if (!result) {
     return;
   }
@@ -159,7 +158,7 @@ async function handleImport() {
 
   startCreating();
   try {
-    const mode = serverConfigCardRef.value?.startupMode || "jar";
+    const mode = startupMode.value;
     await serverApi.addExistingServer({
       name: serverName.value,
       serverPath: serverPath,
@@ -195,13 +194,12 @@ async function handleImport() {
     />
 
     <ServerConfigCard
-      ref="serverConfigCardRef"
       v-model:server-name="serverName"
+      v-model:startup-mode="startupMode"
       v-model:max-memory="maxMemory"
       v-model:min-memory="minMemory"
       v-model:port="port"
       v-model:online-mode="onlineMode"
-      @set-startup-mode="handleSetStartupMode"
     />
 
     <CreateServerActions :creating="creating" @create="handleCreate" @import="handleImport" />

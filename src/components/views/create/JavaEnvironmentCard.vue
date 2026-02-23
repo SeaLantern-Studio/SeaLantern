@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { computed } from "vue";
 import { RefreshCw } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
-import { javaApi, type JavaInfo } from "@api/java";
 import { systemApi } from "@api/system";
-import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
-import { useLoading } from "@composables/useAsync";
-import { useMessage } from "@composables/useMessage";
+import type { JavaInfo } from "@api/java";
 
 const props = defineProps<{
   javaList: JavaInfo[];
@@ -20,11 +17,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "update:selectedJava", value: string): void;
-  (e: "update:javaList", value: JavaInfo[]): void;
   (e: "detect"): void;
 }>();
-
-const { showError } = useMessage();
 
 function getJavaLabel(java: JavaInfo): { label: string; subLabel: string } {
   const version = java.major_version;
