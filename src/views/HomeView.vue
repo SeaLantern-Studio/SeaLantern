@@ -27,6 +27,7 @@ import {
   closeDeleteConfirm,
   handleClickOutside,
 } from "@utils/serverUtils";
+import { i18n } from "@language";
 
 const router = useRouter();
 const store = useServerStore();
@@ -88,17 +89,17 @@ function handleCreate() {
 
     <SLConfirmDialog
       :visible="showDeleteConfirm"
-      :title="$t('home.delete_server')"
+      :title="i18n.t('home.delete_server')"
       :message="
-        $t('home.delete_confirm_message', {
+        i18n.t('home.delete_confirm_message', {
           server: '<strong>' + deleteServerName + '</strong>',
         })
       "
-      :confirmText="$t('home.delete_confirm')"
-      :cancelText="$t('home.delete_cancel')"
+      :confirmText="i18n.t('home.delete_confirm')"
+      :cancelText="i18n.t('home.delete_cancel')"
       confirmVariant="danger"
       :requireInput="true"
-      :inputPlaceholder="$t('home.delete_input_placeholder')"
+      :inputPlaceholder="i18n.t('home.delete_input_placeholder')"
       :expectedInput="deleteServerName"
       @confirm="confirmDelete"
       @cancel="cancelDelete"

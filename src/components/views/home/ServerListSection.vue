@@ -2,15 +2,12 @@
 import { Server } from "lucide-vue-next";
 import ServerCard from "./ServerCard.vue";
 import type { ServerInfo } from "@stores/serverStore";
-import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 
 defineProps<{
   servers: ServerInfo[];
   loading: boolean;
 }>();
-
-const store = useServerStore();
 </script>
 
 <template>
