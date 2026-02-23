@@ -40,6 +40,7 @@ const isThemeProxied = computed(() => !!themeProxyPlugin.value);
 const themeProxyPluginName = computed(() => themeProxyPlugin.value?.manifest.name || "");
 
 const fontSize = ref("14");
+const consoleFontSize = ref("13");
 const bgOpacity = ref("0.3");
 const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
@@ -80,6 +81,7 @@ function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
 
 function syncLocalValues(s: AppSettings) {
   fontSize.value = String(s.font_size);
+  consoleFontSize.value = String(s.console_font_size);
   bgOpacity.value = String(s.background_opacity);
   bgBlur.value = String(s.background_blur);
   bgBrightness.value = String(s.background_brightness);
@@ -107,6 +109,7 @@ async function loadSettings() {
     const s = await settingsApi.get();
     settings.value = s;
     fontSize.value = String(s.font_size);
+    consoleFontSize.value = String(s.console_font_size);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -211,6 +214,7 @@ async function handleThemeChange() {
 async function saveSettings() {
   if (!settings.value) return;
 
+  settings.value.console_font_size = parseInt(consoleFontSize.value) || 13;
   settings.value.background_opacity = parseFloat(bgOpacity.value) || 0.3;
   settings.value.background_blur = parseInt(bgBlur.value) || 0;
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
@@ -252,6 +256,7 @@ async function resetSettings() {
     const s = await settingsApi.reset();
     settings.value = s;
     fontSize.value = String(s.font_size);
+    consoleFontSize.value = String(s.console_font_size);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -283,6 +288,7 @@ async function handleImport(json: string) {
     const s = await settingsApi.importJson(json);
     settings.value = s;
     fontSize.value = String(s.font_size);
+    consoleFontSize.value = String(s.console_font_size);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
