@@ -16,9 +16,9 @@ pub fn detect_core_type(input: &str) -> String {
         .file_name()
         .map(|f| f.to_string_lossy().to_lowercase())
         .unwrap_or_else(|| normalized.clone());
-    
+
     // 按优先级顺序检测（更具体的优先）
-    
+
     // 1. 混合核心 (Forge + 插件) - 优先检测
     if filename.contains("arclight-forge") {
         return "Arclight-Forge".to_string();
@@ -38,7 +38,7 @@ pub fn detect_core_type(input: &str) -> String {
     if filename.contains("spongeforge") {
         return "Spongeforge".to_string();
     }
-    
+
     // 2. 混合核心 (Fabric + 插件)
     if filename.contains("arclight-fabric") {
         return "Arclight-Fabric".to_string();
@@ -46,7 +46,7 @@ pub fn detect_core_type(input: &str) -> String {
     if filename.contains("banner") {
         return "Banner".to_string();
     }
-    
+
     // 3. Forge 生态 - 优先检测 neoforge
     if filename.contains("neoforge") {
         return "Neoforge".to_string();
@@ -54,7 +54,7 @@ pub fn detect_core_type(input: &str) -> String {
     if filename.contains("forge") {
         return "Forge".to_string();
     }
-    
+
     // 4. Fabric 生态
     if filename.contains("quilt") {
         return "Quilt".to_string();
@@ -62,7 +62,7 @@ pub fn detect_core_type(input: &str) -> String {
     if filename.contains("fabric") {
         return "Fabric".to_string();
     }
-    
+
     // 5. 插件核心 - 优先检测更具体的
     if filename.contains("pufferfish_purpur") || filename.contains("pufferfish-purpur") {
         return "Pufferfish_Purpur".to_string();
@@ -94,7 +94,7 @@ pub fn detect_core_type(input: &str) -> String {
     if filename.contains("bukkit") {
         return "Bukkit".to_string();
     }
-    
+
     // 6. 原版核心
     if filename.contains("vanilla-snapshot") {
         return "Vanilla-Snapshot".to_string();
@@ -102,7 +102,7 @@ pub fn detect_core_type(input: &str) -> String {
     if filename.contains("vanilla") {
         return "Vanilla".to_string();
     }
-    
+
     // 7. Bedrock 核心
     if filename.contains("nukkitx") || filename.contains("nukkit") {
         return "Nukkitx".to_string();
@@ -110,7 +110,7 @@ pub fn detect_core_type(input: &str) -> String {
     if filename.contains("bedrock") {
         return "Bedrock".to_string();
     }
-    
+
     // 8. 代理核心
     if filename.contains("velocity") {
         return "Velocity".to_string();
@@ -124,7 +124,7 @@ pub fn detect_core_type(input: &str) -> String {
     if filename.contains("travertine") {
         return "Travertine".to_string();
     }
-    
+
     "Unknown".to_string()
 }
 
@@ -419,11 +419,11 @@ impl ServerManager {
             .duration_since(UNIX_EPOCH)
             .expect("time went backwards")
             .as_secs();
-        
+
         // 检测核心类型
         let core_type = detect_core_type(&dest_startup.to_string_lossy());
         println!("检测到核心类型: {}", core_type);
-        
+
         let server = ServerInstance {
             id: id.clone(),
             name: req.name,
