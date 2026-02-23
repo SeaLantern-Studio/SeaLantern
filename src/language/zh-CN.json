@@ -853,5 +853,27 @@
       "inProgress": "Log Demo 插件正在禁用...",
       "complete": "Log Demo 插件已禁用"
     }
+  },
+  "server_download": {
+    "title": "下载服务端",
+    "download_server": "下载服务端",
+    "category": "分类",
+    "select_server": "选择服务端",
+    "select_server_hint": "请从左侧列表选择服务端",
+    "mc_version": "MC 版本",
+    "build_version": "构建版本",
+    "download": "下载",
+    "category_plugins": "插件端",
+    "category_hybrid": "混合端",
+    "category_forge": "Forge端",
+    "category_fabric": "Fabric端",
+    "category_vanilla": "原版端",
+    "category_bedrock": "基岩端",
+    "category_proxy": "代理端",
+    "downloading": "正在下载...",
+    "download_success": "下载完成",
+    "download_failed": "下载失败",
+    "save_path": "保存路径",
+    "save_path_placeholder": "请选择保存文件夹"
   }
 }

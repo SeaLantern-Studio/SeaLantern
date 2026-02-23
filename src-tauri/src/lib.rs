@@ -103,6 +103,8 @@ pub fn run() {
             system_commands::pick_image_file,
             system_commands::open_file,
             system_commands::open_folder,
+            system_commands::download_server_core,
+            system_commands::delete_file,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,

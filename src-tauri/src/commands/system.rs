@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use sysinfo::{Disks, Networks, System};
+use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 
 static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new_all()));
@@ -305,5 +306,63 @@ pub fn open_folder(path: String) -> Result<(), String> {
             .map_err(|e| format!("无法打开文件夹: {}", e))?;
     }
 
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn download_server_core(
+    app: tauri::AppHandle,
+    url: String,
+    server_name: String,
+    version: String,
+) -> Result<Option<String>, String> {
+    let file_name = format!("{}-{}.jar", server_name, version);
+    
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let temp_dir = data_dir.join("temp");
+    tokio::fs::create_dir_all(&temp_dir)
+        .await
+        .map_err(|e| format!("无法创建目录: {}", e))?;
+    let file_path = temp_dir.join(&file_name);
+
+    if file_path.exists() {
+        return Ok(Some(file_path.to_string_lossy().to_string()));
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent("SeaLantern/1.0")
+        .build()
+        .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
+
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("下载失败: HTTP {}", response.status()));
+    }
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("读取响应失败: {}", e))?;
+
+    tokio::fs::write(&file_path, &bytes)
+        .await
+        .map_err(|e| format!("写入文件失败: {}", e))?;
+
+    Ok(Some(file_path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub async fn delete_file(path: String) -> Result<(), String> {
+    let file_path = std::path::Path::new(&path);
+    if file_path.exists() {
+        tokio::fs::remove_file(file_path)
+            .await
+            .map_err(|e| format!("删除文件失败: {}", e))?;
+    }
     Ok(())
 }

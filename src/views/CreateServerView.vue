@@ -7,7 +7,7 @@ import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
-import SLSpinner from "@components/common/SLSpinner.vue";
+import ServerDownloadModal from "@components/common/ServerDownloadModal.vue";
 import { serverApi } from "@api/server";
 import { javaApi, type JavaInfo } from "@api/java";
 import { systemApi } from "@api/system";
@@ -28,7 +28,6 @@ const serverName = ref("My Server");
 const maxMemory = ref("2048");
 const minMemory = ref("512");
 const port = ref("25565");
-const jarPath = ref("");
 type StartupMode = "jar" | "bat" | "sh";
 const {
   activeTab: startupMode,
@@ -43,7 +42,9 @@ const javaList = ref<JavaInfo[]>([]);
 
 const startupModes: StartupMode[] = ["jar", "bat", "sh"];
 
-// 监听语言变化，更新 Tab 指示器位置
+const showDownloadModal = ref(false);
+const downloadingServer = ref(false);
+
 const localeRef = i18n.getLocaleRef();
 watch(localeRef, () => {
   updateIndicator();
@@ -57,16 +58,13 @@ async function loadDefaultSettings() {
   try {
     const settings = await settingsApi.get();
 
-    // Load default values from settings
     maxMemory.value = String(settings.default_max_memory);
     minMemory.value = String(settings.default_min_memory);
     port.value = String(settings.default_port);
 
-    // Load cached Java list
     if (settings.cached_java_list && settings.cached_java_list.length > 0) {
       javaList.value = settings.cached_java_list;
 
-      // Auto-select Java: prefer default_java_path, then recommended version
       if (settings.default_java_path) {
         selectedJava.value = settings.default_java_path;
       } else if (javaList.value.length > 0) {
@@ -99,26 +97,10 @@ async function detectJava() {
   }
 }
 
-async function pickJarFile() {
-  try {
-    const result = await systemApi.pickStartupFile(startupMode.value);
-    if (result) {
-      jarPath.value = result;
-    } else {
-      // 重置 jarPath，防炸...
-      jarPath.value = "";
-    }
-  } catch (e) {
-    console.error("Pick file error:", e);
-    jarPath.value = "";
-  }
-}
-
 function handleSetStartupMode(mode: StartupMode) {
   if (startupMode.value === mode) {
     return;
   }
-  jarPath.value = "";
   switchStartupMode(mode);
 }
 
@@ -133,14 +115,8 @@ async function pickJavaFile() {
   }
 }
 
-async function handleCreate() {
+function openDownloadModal() {
   clearError();
-
-  await pickJarFile();
-
-  if (!jarPath.value) {
-    return;
-  }
   if (!selectedJava.value) {
     showError(i18n.t("common.select_java_path"));
     return;
@@ -149,12 +125,21 @@ async function handleCreate() {
     showError(i18n.t("common.enter_server_name"));
     return;
   }
+  showDownloadModal.value = true;
+}
 
+async function handleServerSelect(jarPath: string, serverName_: string, version: string) {
+  showDownloadModal.value = false;
+  downloadingServer.value = true;
   startCreating();
   try {
+    const finalName = serverName.value === "My Server" 
+      ? `${serverName_}-${version}` 
+      : serverName.value;
+
     await serverApi.importServer({
-      name: serverName.value,
-      jarPath: jarPath.value,
+      name: finalName,
+      jarPath: jarPath,
       startupMode: startupMode.value,
       javaPath: selectedJava.value,
       maxMemory: parseInt(maxMemory.value) || 2048,
@@ -162,16 +147,17 @@ async function handleCreate() {
       port: parseInt(port.value) || 25565,
       onlineMode: onlineMode.value,
     });
+    await systemApi.deleteFile(jarPath);
     await store.refreshList();
     router.push("/");
   } catch (e) {
     showError(String(e));
   } finally {
     stopCreating();
+    downloadingServer.value = false;
   }
 }
 
-// 导入已有服务器
 async function handleImport() {
   clearError();
 
@@ -184,13 +170,11 @@ async function handleImport() {
     return;
   }
 
-  // 打开启动文件选择对话框（根据当前选择的启动模式）
   const result = await systemApi.pickStartupFile(startupMode.value);
   if (!result) {
     return;
   }
 
-  // 从文件路径提取服务器目录
   const serverPath = result.substring(0, result.lastIndexOf('\\') || result.lastIndexOf('/'));
 
   startCreating();
@@ -203,7 +187,7 @@ async function handleImport() {
       minMemory: parseInt(minMemory.value) || 512,
       port: parseInt(port.value) || 25565,
       startupMode: startupMode.value,
-      executablePath: result, // 传入用户选择的启动文件路径
+      executablePath: result,
     });
     await store.refreshList();
     router.push("/");
@@ -215,13 +199,9 @@ async function handleImport() {
 }
 
 function getJavaLabel(java: JavaInfo): { label: string; subLabel: string } {
-  // 简化 Java 显示名称
-  // label: 简短名称（如 "Java 17 Eclipse Temurin 64-bit"）
-  // subLabel: 路径
   const version = java.major_version;
   const arch = java.is_64bit ? i18n.t("common.java_64bit") : i18n.t("common.java_32bit");
 
-  // 简化 vendor 名称
   let vendor = java.vendor;
   if (vendor.includes("Oracle") || vendor.includes("Sun")) {
     vendor = "Oracle";
@@ -252,16 +232,6 @@ const javaOptions = computed(() => {
       value: java.path,
     };
   });
-});
-
-const startupFileLabel = computed(() => {
-  if (startupMode.value === "bat") {
-    return i18n.t("create.bat_file");
-  }
-  if (startupMode.value === "sh") {
-    return i18n.t("create.sh_file");
-  }
-  return i18n.t("create.jar_file");
 });
 </script>
 
@@ -398,13 +368,24 @@ const startupFileLabel = computed(() => {
       <SLButton variant="secondary" size="lg" @click="router.push('/')">{{
         i18n.t("create.cancel")
       }}</SLButton>
-      <SLButton variant="primary" size="lg" :loading="creating" @click="handleCreate">
+      <SLButton 
+        variant="primary" 
+        size="lg" 
+        :loading="creating || downloadingServer" 
+        @click="openDownloadModal"
+      >
         {{ i18n.t("create.select_and_create") }}
       </SLButton>
       <SLButton variant="primary" size="lg" :loading="creating" @click="handleImport">
         {{ i18n.t("create.import_existing") }}
       </SLButton>
     </div>
+
+    <ServerDownloadModal
+      :visible="showDownloadModal"
+      @close="showDownloadModal = false"
+      @select="handleServerSelect"
+    />
   </div>
 </template>
 
@@ -564,7 +545,6 @@ const startupFileLabel = computed(() => {
   color: var(--sl-primary);
 }
 
-/* 增强暗色模式下的对比度 */
 @media (prefers-color-scheme: dark) {
   .startup-mode-tab {
     color: var(--sl-text-tertiary);

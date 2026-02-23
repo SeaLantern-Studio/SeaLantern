@@ -98,4 +98,16 @@ export const systemApi = {
   async openFolder(path: string): Promise<void> {
     return tauriInvoke("open_folder", { path });
   },
+
+  async downloadServerCore(params: {
+    url: string;
+    serverName: string;
+    version: string;
+  }): Promise<string | null> {
+    return tauriInvoke("download_server_core", params);
+  },
+
+  async deleteFile(path: string): Promise<void> {
+    return tauriInvoke("delete_file", { path });
+  },
 };

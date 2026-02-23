@@ -890,5 +890,27 @@
       "inProgress": "Log Demo plugin is being disabled...",
       "complete": "Log Demo plugin disabled"
     }
+  },
+  "server_download": {
+    "title": "Download Server",
+    "download_server": "Download Server",
+    "category": "Category",
+    "select_server": "Select Server",
+    "select_server_hint": "Please select a server from the list",
+    "mc_version": "MC Version",
+    "build_version": "Build Version",
+    "download": "Download",
+    "category_plugins": "Plugins",
+    "category_hybrid": "Hybrid",
+    "category_forge": "Forge",
+    "category_fabric": "Fabric",
+    "category_vanilla": "Vanilla",
+    "category_bedrock": "Bedrock",
+    "category_proxy": "Proxy",
+    "downloading": "Downloading...",
+    "download_success": "Download completed",
+    "download_failed": "Download failed",
+    "save_path": "Save Path",
+    "save_path_placeholder": "Please select a folder to save"
   }
 }
