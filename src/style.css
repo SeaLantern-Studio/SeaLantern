@@ -15,7 +15,6 @@
 @import "@styles/components/common/SLModal.css";
 
 /* 视图样式 */
-@import "@styles/views/HomeView.css";
 @import "@styles/views/ConsoleView.css";
 /* 应用全局样式 */
 @import "@styles/app.css";
