@@ -259,30 +259,30 @@ function handleJavaInstalled(path: string) {
 
     <template v-else-if="settings">
       <GeneralSettingsCard
-        v-model:close-servers-on-exit="settings.close_servers_on_exit"
-        v-model:auto-accept-eula="settings.auto_accept_eula"
-        v-model:close-action="settings.close_action"
+        v-model:closeServersOnExit="settings.close_servers_on_exit"
+        v-model:autoAcceptEula="settings.auto_accept_eula"
+        v-model:closeAction="settings.close_action"
         @change="markChanged"
       />
 
       <ServerDefaultsCard
-        v-model:max-memory="maxMem"
-        v-model:min-memory="minMem"
+        v-model:maxMemory="maxMem"
+        v-model:minMemory="minMem"
         v-model:port="port"
-        v-model:default-java-path="settings.default_java_path"
-        v-model:default-jvm-args="settings.default_jvm_args"
+        v-model:defaultJavaPath="settings.default_java_path"
+        v-model:defaultJvmArgs="settings.default_jvm_args"
         @change="markChanged"
-        @java-installed="handleJavaInstalled"
+        @javaInstalled="handleJavaInstalled"
       />
 
       <ConsoleSettingsCard
-        v-model:console-font-size="fontSize"
-        v-model:max-log-lines="logLines"
+        v-model:consoleFontSize="fontSize"
+        v-model:maxLogLines="logLines"
         @change="markChanged"
       />
 
       <DeveloperModeCard
-        v-model:developer-mode="settings.developer_mode"
+        v-model:developerMode="settings.developer_mode"
         @change="markChanged"
       />
 
