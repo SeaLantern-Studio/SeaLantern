@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
-import { RefreshCw } from "lucide-vue-next";
+import { ref, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
@@ -16,7 +15,11 @@ import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
-import { useTabSwitch } from "@composables/useTabIndicator";
+import JavaEnvironmentCard from "@components/views/create/JavaEnvironmentCard.vue";
+import ServerConfigCard from "@components/views/create/ServerConfigCard.vue";
+import CreateServerActions from "@components/views/create/CreateServerActions.vue";
+
+type StartupMode = "jar" | "bat" | "sh";
 
 const router = useRouter();
 const store = useServerStore();
@@ -179,6 +182,7 @@ async function handleImport() {
 
   startCreating();
   try {
+    const mode = startupMode.value;
     await serverApi.addExistingServer({
       name: serverName.value,
       serverPath: serverPath,
