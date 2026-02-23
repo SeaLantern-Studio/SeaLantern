@@ -205,12 +205,46 @@ impl std::fmt::Display for CoreType {
 /// assert_eq!(core_type, "Paper");
 /// ```
 pub fn detect_core_type(input: &str) -> String {
-    let filename = std::path::Path::new(input)
-        .file_name()
-        .map(|f| f.to_string_lossy().to_string())
-        .unwrap_or_else(|| input.to_string());
+    let path = std::path::Path::new(input);
 
-    CoreType::detect_from_filename(&filename).to_string()
+    // 获取要检测的文件名（如果是脚本则查找同目录下的 jar）
+    let target_file = if is_script_file(path) {
+        path.parent()
+            .and_then(find_server_jar_in_dir)
+            .unwrap_or_else(|| input.to_string())
+    } else {
+        path.file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .unwrap_or_else(|| input.to_string())
+    };
+
+    CoreType::detect_from_filename(&target_file).to_string()
+}
+
+/// 检查文件是否是脚本文件（sh/bat）
+fn is_script_file(path: &std::path::Path) -> bool {
+    path.extension()
+        .map(|e| {
+            let ext = e.to_string_lossy().to_lowercase();
+            ext == "sh" || ext == "bat"
+        })
+        .unwrap_or(false)
+}
+
+/// 在指定目录中查找服务器 jar 文件
+fn find_server_jar_in_dir(dir: &std::path::Path) -> Option<String> {
+    let entries = std::fs::read_dir(dir).ok()?;
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.is_file() && path.extension()? == "jar" {
+                path.file_name().map(|n| n.to_string_lossy().to_string())
+            } else {
+                None
+            }
+        })
+        .next()
 }
 
 #[derive(Clone, Copy, Debug)]
