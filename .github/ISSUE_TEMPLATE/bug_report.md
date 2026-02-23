@@ -1,41 +1,50 @@
 ---
-name: Bug report
-about: Create a report about a bug
-title: "[BUG] <short description>"
-labels: bug
+name: Bug 报告
+about: 创建一个 Bug 报告
+title: "[Bug] "
+labels: ["bug", "pending"]
 assignees: ""
 ---
 
-## Summary / 概要
+<!-- 标注 `\<!--xxx--\>` 的是需要删除后，将要写的内容写上去的，而不是直接在 `\<!--xxx--\>` 下写内容 -->
 
-- 简短描述错误/Short description of the bug
+## 问题描述
 
-## Steps to reproduce / 重现步骤
+<!--这里写你的问题描述-->
 
-- 步骤 1/Step 1
-- 步骤 2/Step 2
-- 步骤 3/Step 3
 
-## Expected behavior / 预期行为
+## 复现步骤
 
-- 期望发生的行为/Expected behavior
+> 可选
 
-## Actual behavior / 实际行为
+<!--这里写你的复现步骤-->
 
-- 实际发生的行为
-- Actual behavior
 
-## Environment / 环境
+## 预期行为
 
-- 版本、操作系统、架构等/Sea Lantern version, OS/distro, architecture, etc.
-- 构建类型（源代码/包/应用镜像等）/Build type: source / package (deb/rpm / appimage / other)
-- Node.js 版本（若前端涉及）/Node.js version (if frontend involved)
-- Rust toolchain 版本（若后端涉及）/Rust toolchain version (if backend involved)
+> 可选
+<!--这里写你的认为预期是怎么样的-->
 
-## Logs / Screenshots / 日志截图
 
-- 相关日志或截图（若有）/Attach relevant logs or screenshots (if available)
+## 实际行为
 
-## Additional notes / 其他备注
+<!--这里写你的实际操作时是怎么样的-->
 
-- 其他可能有用的信息/Additional notes
+
+## 环境
+
+- 操作系统：<!--如windows11-->
+- 软件版本：<!--如0.6.5或最新dev分支-->
+
+<!--其他环境信息-->
+
+## 日志或截图（如果存在）
+
+<!--这里粘贴你的日志文件上传地址，或是上传图片-->
+
+
+## 备注
+
+> 可选
+<!--其他信息，如果没有请忽略-->
+
