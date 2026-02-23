@@ -16,7 +16,7 @@ import SLCard from "@components/common/SLCard.vue";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
-const MARKET_BASE_URL = "https://sealantern-studio.needhelp.icu/";
+const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market/";
 const MARKET_URL_KEY = "sealantern_market_url";
 
 const pluginStore = usePluginStore();
@@ -178,7 +178,11 @@ async function showDetail(plugin: MarketPlugin) {
   selectedPlugin.value = plugin;
   detailLoading.value = true;
   try {
-    pluginDetail.value = await fetchMarketPluginDetail(plugin._path || `plugins/${plugin.id}.json`);
+    const url = activeMarketUrl.value.trim().replace(/\/$/, "");
+    pluginDetail.value = await fetchMarketPluginDetail(
+      plugin._path || `plugins/${plugin.id}.json`,
+      url === MARKET_BASE_URL ? undefined : url,
+    );
   } catch {
     pluginDetail.value = null;
   } finally {

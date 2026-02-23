@@ -8,7 +8,7 @@ use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex};
 use url::Url;
 
-const MARKET_BASE_URL: &str = "https://sealantern-studio.needhelp.icu/";
+const MARKET_BASE_URL: &str = "https://sealantern-studio.github.io/plugin-market/";
 
 const ALLOWED_DOWNLOAD_DOMAINS: &[&str] = &[
     "localhost",
@@ -453,9 +453,12 @@ pub async fn fetch_market_categories(
 pub async fn fetch_market_plugin_detail(
     _manager: tauri::State<'_, Arc<Mutex<PluginManager>>>,
     plugin_path: String,
+    market_url: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    let base_url = market_url.unwrap_or_else(|| MARKET_BASE_URL.to_string());
+    let base_url = base_url.trim_end_matches('/').to_string();
     tokio::task::spawn_blocking(move || {
-        let url = format!("{}/{}", MARKET_BASE_URL, plugin_path);
+        let url = format!("{}/{}", base_url, plugin_path);
         let response = reqwest::blocking::get(&url)
             .map_err(|e| format!("Failed to fetch plugin detail: {}", e))?;
 
