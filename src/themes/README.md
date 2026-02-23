@@ -21,7 +21,7 @@ themes/
 ### 使用主题
 
 ```typescript
-import { getThemeById, getAllThemes, getThemeColors } from "@/themes";
+import { getThemeById, getAllThemes, getThemeColors } from "@themes";
 
 // 获取所有主题
 const themes = getAllThemes();
@@ -36,7 +36,7 @@ const lightColors = getThemeColors("default", "light");
 ### 注册自定义主题
 
 ```typescript
-import { registerTheme } from "@/themes";
+import { registerTheme } from "@themes";
 
 registerTheme({
   id: "my-theme",
@@ -69,7 +69,7 @@ registerTheme({
  * @author Your Name
  * @version 1.0.0
  */
-import type { ThemeDefinition } from "./types";
+import type { ThemeDefinition } from "@type/theme";
 
 const forestTheme: ThemeDefinition = {
   id: "forest",

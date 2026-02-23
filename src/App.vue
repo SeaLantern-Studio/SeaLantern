@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
-import AppLayout from "./components/layout/AppLayout.vue";
-import SplashScreen from "./components/splash/SplashScreen.vue";
-import UpdateModal from "./components/common/UpdateModal.vue";
-import SLContextMenu from "./components/common/SLContextMenu.vue";
-import { PluginComponentRenderer } from "./components/plugin";
-import { useUpdateStore } from "./stores/updateStore";
-import { useSettingsStore } from "./stores/settingsStore";
-import { usePluginStore } from "./stores/pluginStore";
-import { useContextMenuStore } from "./stores/contextMenuStore";
-import { applyTheme, applyFontSize, applyFontFamily } from "./utils/theme";
+import AppLayout from "@components/layout/AppLayout.vue";
+import SplashScreen from "@components/splash/SplashScreen.vue";
+import UpdateModal from "@components/common/UpdateModal.vue";
+import SLContextMenu from "@components/common/SLContextMenu.vue";
+import { PluginComponentRenderer } from "@components/plugin";
+import { useUpdateStore } from "@stores/updateStore";
+import { useSettingsStore } from "@stores/settingsStore";
+import { usePluginStore } from "@stores/pluginStore";
+import { useContextMenuStore } from "@stores/contextMenuStore";
+import { useServerStore } from "@stores/serverStore";
+import { applyTheme, applyFontSize, applyFontFamily } from "@utils/theme";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
@@ -17,8 +18,14 @@ const updateStore = useUpdateStore();
 const settingsStore = useSettingsStore();
 const pluginStore = usePluginStore();
 const contextMenuStore = useContextMenuStore();
+const serverStore = useServerStore();
 
 async function handleGlobalContextMenu(event: MouseEvent) {
+  // 当开发者模式启用时，允许默认的右键菜单行为以打开开发者工具
+  if (settingsStore.settings.developer_mode) {
+    return;
+  }
+
   event.preventDefault();
 
   const wasVisible = contextMenuStore.visible;
@@ -93,6 +100,13 @@ onMounted(async () => {
     } catch (pluginErr) {
       console.warn("Failed to load plugins during startup:", pluginErr);
     }
+
+    // 加载服务器列表并扫描端口信息
+    try {
+      await serverStore.refreshList();
+    } catch (serverErr) {
+      console.warn("Failed to load servers during startup:", serverErr);
+    }
   } catch (e) {
     console.error("Failed to load settings during startup:", e);
   } finally {
@@ -141,18 +155,4 @@ function handleUpdateModalClose() {
   <SLContextMenu />
 </template>
 
-<style>
-#app {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.splash-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.splash-fade-leave-to {
-  opacity: 0;
-}
-</style>
+<style src="@styles/app.css"></style>

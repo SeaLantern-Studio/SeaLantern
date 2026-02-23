@@ -1,4 +1,4 @@
-import { tauriInvoke } from "./tauri";
+import { tauriInvoke } from "@api/tauri";
 
 export interface CpuInfo {
   name: string;
@@ -89,5 +89,13 @@ export const systemApi = {
 
   async pickImageFile(): Promise<string | null> {
     return tauriInvoke("pick_image_file");
+  },
+
+  async openFile(path: string): Promise<void> {
+    return tauriInvoke("open_file", { path });
+  },
+
+  async openFolder(path: string): Promise<void> {
+    return tauriInvoke("open_folder", { path });
   },
 };

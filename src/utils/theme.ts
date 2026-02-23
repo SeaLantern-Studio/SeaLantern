@@ -3,8 +3,8 @@
  * 提供主题、字体、颜色等通用处理功能
  */
 
-import type { AppSettings } from "../api/settings";
-import { getThemeColors, mapLegacyPlanName } from "../themes";
+import type { AppSettings } from "@api/settings";
+import { getThemeColors, mapLegacyPlanName } from "@themes";
 
 let _themeProviderOverrides: string[] = [];
 
@@ -111,63 +111,10 @@ export function getColorValue(settings: AppSettings, colorType: string, theme: s
   if (!settings) return "";
 
   const plan = mapLegacyPlanName(theme);
-
-  if (settings.color !== "custom") {
-    const themeColors = getThemeColors(settings.color, plan);
-    if (themeColors) {
-      return themeColors[colorType as keyof typeof themeColors] || "";
-    }
-    return "";
-  }
-
-  const customColor: Record<string, Record<string, string | undefined>> = {
-    light: {
-      bg: settings.bg_color,
-      bgSecondary: settings.bg_secondary_color,
-      bgTertiary: settings.bg_tertiary_color,
-      primary: settings.primary_color,
-      secondary: settings.secondary_color,
-      textPrimary: settings.text_primary_color,
-      textSecondary: settings.text_secondary_color,
-      border: settings.border_color,
-    },
-    dark: {
-      bg: settings.bg_dark,
-      bgSecondary: settings.bg_secondary_dark,
-      bgTertiary: settings.bg_tertiary_dark,
-      primary: settings.primary_dark,
-      secondary: settings.secondary_dark,
-      textPrimary: settings.text_primary_dark,
-      textSecondary: settings.text_secondary_dark,
-      border: settings.border_dark,
-    },
-    light_acrylic: {
-      bg: settings.bg_acrylic,
-      bgSecondary: settings.bg_secondary_acrylic,
-      bgTertiary: settings.bg_tertiary_acrylic,
-      primary: settings.primary_acrylic,
-      secondary: settings.secondary_acrylic,
-      textPrimary: settings.text_primary_acrylic,
-      textSecondary: settings.text_secondary_acrylic,
-      border: settings.border_acrylic,
-    },
-    dark_acrylic: {
-      bg: settings.bg_dark_acrylic,
-      bgSecondary: settings.bg_secondary_dark_acrylic,
-      bgTertiary: settings.bg_tertiary_dark_acrylic,
-      primary: settings.primary_dark_acrylic,
-      secondary: settings.secondary_dark_acrylic,
-      textPrimary: settings.text_primary_dark_acrylic,
-      textSecondary: settings.text_secondary_dark_acrylic,
-      border: settings.border_dark_acrylic,
-    },
-  };
-
-  const themeColors = customColor[theme];
+  const themeColors = getThemeColors(settings.color, plan);
   if (themeColors) {
-    return themeColors[colorType] || "";
+    return themeColors[colorType as keyof typeof themeColors] || "";
   }
-
   return "";
 }
 
@@ -270,6 +217,14 @@ export function applyColors(settings: AppSettings): void {
     "--sl-shadow-xl",
     `0 16px 48px rgba(0, 0, 0, ${shadowOpacity * 1.6})`,
   );
+
+  // Glass 效果变量
+  const glassBg = isDark ? "rgba(15, 17, 23, 0.72)" : "rgba(255, 255, 255, 0.72)";
+  const glassStrongBg = isDark ? "rgba(15, 17, 23, 0.88)" : "rgba(255, 255, 255, 0.88)";
+  const glassBorder = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.5)";
+  document.documentElement.style.setProperty("--sl-glass-bg", glassBg);
+  document.documentElement.style.setProperty("--sl-glass-strong-bg", glassStrongBg);
+  document.documentElement.style.setProperty("--sl-glass-border", glassBorder);
 }
 
 /**

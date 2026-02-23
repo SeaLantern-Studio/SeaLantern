@@ -1,3 +1,3 @@
-export { default as PluginPermissionPanel } from "./PluginPermissionPanel.vue";
-export { default as SLPermissionDialog } from "./SLPermissionDialog.vue";
-export { default as PluginComponentRenderer } from "./PluginComponentRenderer.vue";
+export { default as PluginPermissionPanel } from "@components/plugin/PluginPermissionPanel.vue";
+export { default as SLPermissionDialog } from "@components/plugin/SLPermissionDialog.vue";
+export { default as PluginComponentRenderer } from "@components/plugin/PluginComponentRenderer.vue";

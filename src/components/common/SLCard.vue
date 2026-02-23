@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import DOMPurify from "dompurify";
-import { useRegisterComponent } from "../../composables/useRegisterComponent";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
 
 const PADDING_MAP = {
   none: "0",

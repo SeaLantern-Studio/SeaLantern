@@ -2,7 +2,7 @@ node_modules/
 dist/
 src-tauri/target/
 target/
-.vscode/
+
 .idea/
 *.log
 .DS_Store

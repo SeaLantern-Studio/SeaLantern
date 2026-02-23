@@ -25,7 +25,7 @@ language/
 ### 使用翻译
 
 ```typescript
-import { i18n } from "@/language";
+import { i18n } from "@language";
 
 // 获取翻译文本
 const text = i18n.t("common.home");
@@ -43,7 +43,7 @@ const locale = i18n.getLocale();
 ### 在 Vue 组件中使用
 
 ```typescript
-import { i18n } from "@/language";
+import { i18n } from "@language";
 
 // 响应式获取当前语言
 const currentLocale = i18n.getLocaleRef();

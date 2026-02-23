@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
-import { usePluginStore } from "../stores/pluginStore";
-import { useToast } from "../composables/useToast";
+import { ref, computed, onMounted, watch } from "vue";
+import { usePluginStore } from "@stores/pluginStore";
+import { useToast } from "@composables/useToast";
+import { useTabIndicator } from "@composables/useTabIndicator";
 import {
   fetchMarketPlugins,
   fetchMarketPluginDetail,
   fetchMarketCategories,
   installFromMarket,
-} from "../api/plugin";
-import type { MarketPluginInfo } from "../api/plugin";
-import { i18n } from "../language";
+} from "@api/plugin";
+import type { MarketPluginInfo } from "@api/plugin";
+import { i18n } from "@language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
+import SLCard from "@components/common/SLCard.vue";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
-const MARKET_BASE_URL = "https://sealantern-studio.needhelp.icu/";
+const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market";
 const MARKET_URL_KEY = "sealantern_market_url";
 
 const pluginStore = usePluginStore();
@@ -32,6 +34,14 @@ const pluginDetail = ref<MarketPluginInfo | null>(null);
 const showUrlEditor = ref(false);
 const customMarketUrl = ref(localStorage.getItem(MARKET_URL_KEY) || "");
 const urlInput = ref(customMarketUrl.value);
+
+const { indicatorRef: tagIndicator, updatePosition: updateTagIndicator } =
+  useTabIndicator(selectedTag);
+
+const localeRef = i18n.getLocaleRef();
+watch(localeRef, () => {
+  updateTagIndicator();
+});
 
 const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
 
@@ -77,6 +87,14 @@ const allTags = computed(() => {
   marketPlugins.value.forEach((p) => p.categories?.forEach((t) => tags.add(t)));
   return Array.from(tags);
 });
+
+watch(
+  allTags,
+  () => {
+    updateTagIndicator();
+  },
+  { deep: true },
+);
 
 function resolveI18n(val: Record<string, string> | string | undefined): string {
   if (!val) return "";
@@ -160,7 +178,11 @@ async function showDetail(plugin: MarketPlugin) {
   selectedPlugin.value = plugin;
   detailLoading.value = true;
   try {
-    pluginDetail.value = await fetchMarketPluginDetail(plugin._path || `plugins/${plugin.id}.json`);
+    const url = activeMarketUrl.value.trim().replace(/\/$/, "");
+    pluginDetail.value = await fetchMarketPluginDetail(
+      plugin._path || `plugins/${plugin.id}.json`,
+      url === MARKET_BASE_URL ? undefined : url,
+    );
   } catch {
     pluginDetail.value = null;
   } finally {
@@ -204,30 +226,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="market-view">
-    <div class="market-header">
-      <h1 class="market-title">{{ i18n.t("market.title") }}</h1>
-      <div class="market-actions">
-        <input
-          v-model="searchQuery"
-          type="text"
-          :placeholder="i18n.t('market.search_placeholder')"
-          class="market-search"
-        />
-        <button
-          class="refresh-btn"
-          :class="{ active: customMarketUrl }"
-          @click="showUrlEditor = !showUrlEditor"
-          :title="i18n.t('market.custom_source')"
-        >
-          <Globe :size="16" />
-        </button>
-        <button class="refresh-btn" @click="loadMarket" :disabled="loading">
-          <RefreshCw :size="16" />
-        </button>
-      </div>
-    </div>
-
+  <div class="market-view animate-fade-in-up">
     <div v-if="showUrlEditor" class="url-editor glass">
       <span class="url-editor-label">{{ i18n.t("market.source_url") }}</span>
       <input
@@ -250,14 +249,49 @@ onMounted(() => {
     </div>
 
     <div v-if="allTags.length" class="market-tags">
-      <button
-        v-for="tag in allTags"
-        :key="tag"
-        :class="['tag-btn', { active: selectedTag === tag }]"
-        @click="selectedTag = selectedTag === tag ? null : tag"
-      >
-        {{ getCategoryLabel(tag) }}
-      </button>
+      <div class="tags-container">
+        <div class="tag-indicator" ref="tagIndicator"></div>
+        <button
+          class="tag-btn"
+          :class="{ active: selectedTag === null }"
+          @click="selectedTag = null"
+        >
+          全部
+        </button>
+        <button
+          v-for="tag in allTags"
+          :key="tag"
+          class="tag-btn"
+          :class="{ active: selectedTag === tag }"
+          @click="selectedTag = selectedTag === tag ? null : tag"
+        >
+          {{ getCategoryLabel(tag) }}
+        </button>
+      </div>
+      <div class="search-container">
+        <input
+          v-model="searchQuery"
+          type="text"
+          :placeholder="i18n.t('market.search_placeholder')"
+          class="market-search"
+        />
+        <button
+          class="action-btn"
+          :class="{ active: customMarketUrl }"
+          @click="showUrlEditor = !showUrlEditor"
+          :title="i18n.t('market.custom_source')"
+        >
+          <Globe :size="14" />
+        </button>
+        <button
+          class="action-btn"
+          @click="loadMarket"
+          :disabled="loading"
+          :title="i18n.t('market.refresh')"
+        >
+          <RefreshCw :size="14" :class="{ spin: loading }" />
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="market-loading">
@@ -280,10 +314,10 @@ onMounted(() => {
     </div>
 
     <div v-else class="market-grid">
-      <div
+      <SLCard
         v-for="plugin in filteredPlugins"
         :key="plugin.id"
-        class="market-card glass"
+        class="market-card"
         @click="showDetail(plugin)"
       >
         <div class="card-icon">
@@ -330,7 +364,7 @@ onMounted(() => {
             </button>
           </div>
         </div>
-      </div>
+      </SLCard>
     </div>
 
     <Teleport to="body">
@@ -408,40 +442,22 @@ onMounted(() => {
 
 <style scoped>
 .market-view {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-  font-family: var(--sl-font-sans);
-}
-
-.market-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.market-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin: 0;
-}
-
-.market-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+  min-height: 100%;
+  flex: 1;
 }
 
 .market-search {
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 6px 12px;
+  border-radius: var(--sl-radius-sm);
   border: 1px solid var(--sl-border);
   background: var(--sl-bg-secondary);
   color: var(--sl-text-primary);
-  font-size: 14px;
-  width: 240px;
+  font-size: 13px;
+  width: 180px;
+  transition: all var(--sl-transition-fast);
 }
 
 .market-search:focus {
@@ -449,61 +465,125 @@ onMounted(() => {
   border-color: var(--sl-primary);
 }
 
-.refresh-btn {
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid var(--sl-border);
-  background: var(--sl-bg-secondary);
-  color: var(--sl-text-secondary);
+.action-btn {
+  padding: 6px;
+  border-radius: var(--sl-radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sl-text-tertiary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all var(--sl-transition-fast);
 }
 
-.refresh-btn:hover {
-  background: var(--sl-bg-tertiary);
+.action-btn:hover {
   color: var(--sl-text-primary);
+  background: var(--sl-bg-tertiary);
+}
+
+.action-btn.active {
+  color: var(--sl-primary);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.search-container {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .market-tags {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: var(--sl-space-xs);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  margin-bottom: var(--sl-space-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.tags-container {
+  display: flex;
+  gap: var(--sl-space-xs);
+  flex: 1;
+  position: relative;
+}
+
+.tag-indicator {
+  position: absolute;
+  top: var(--sl-space-xs);
+  bottom: var(--sl-space-xs);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  transition: all 0.3s ease;
+  box-shadow: var(--sl-shadow-sm);
+  z-index: 1;
+  border: 1px solid var(--sl-primary);
+  opacity: 0.9;
 }
 
 .tag-btn {
-  padding: 6px 12px;
-  border-radius: 16px;
-  border: 1px solid var(--sl-border);
-  background: var(--sl-bg-secondary);
+  padding: 8px 16px;
+  border-radius: var(--sl-radius-sm);
+  border: none;
+  background: transparent;
   color: var(--sl-text-secondary);
-  font-size: 13px;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--sl-transition-fast);
+  position: relative;
+  z-index: 2;
 }
 
 .tag-btn:hover {
-  border-color: var(--sl-primary);
+  color: var(--sl-text-primary);
 }
 
 .tag-btn.active {
-  background: var(--sl-primary);
-  border-color: var(--sl-primary);
-  color: white;
+  color: var(--sl-primary);
 }
 
-.market-loading,
+.market-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-2xl);
+  text-align: center;
+  color: var(--sl-text-tertiary);
+}
+
 .market-error,
 .market-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 64px 24px;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-2xl);
   text-align: center;
-  color: var(--sl-text-secondary);
+  color: var(--sl-text-tertiary);
 }
 
 .loading-spinner {
@@ -549,8 +629,14 @@ onMounted(() => {
 
 .market-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sl-space-md);
+}
+
+@media (max-width: 1200px) {
+  .market-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
@@ -560,19 +646,17 @@ onMounted(() => {
 }
 
 .market-card {
-  padding: 18px;
-  border-radius: 12px;
   cursor: pointer;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+  transition: all var(--sl-transition-fast);
   display: flex;
-  gap: 12px;
+  gap: var(--sl-space-lg);
   box-sizing: border-box;
+  height: 100%;
 }
 
 .market-card:hover {
-  transform: translateY(-2px);
+  border-color: var(--sl-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .card-icon {

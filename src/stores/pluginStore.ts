@@ -1,13 +1,13 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
-import { registerPluginLocale, addPluginTranslations, removePluginTranslations } from "../language";
-import { useComponentRegistry } from "../composables/useComponentRegistry";
-import { useToast } from "../composables/useToast";
+import { registerPluginLocale, addPluginTranslations, removePluginTranslations } from "@language";
+import { useComponentRegistry } from "@composables/useComponentRegistry";
+import { useToast } from "@composables/useToast";
 import DOMPurify from "dompurify";
-import * as pluginApi from "../api/plugin";
-import type { BufferedComponentEvent } from "../api/plugin";
-import { setThemeProviderOverrides } from "../utils/theme";
+import * as pluginApi from "@api/plugin";
+import type { BufferedComponentEvent } from "@api/plugin";
+import { setThemeProviderOverrides } from "@utils/theme";
 import type {
   PluginInfo,
   PluginNavItem,
@@ -21,7 +21,7 @@ import type {
   PluginUiAction,
   PluginPermissionLog,
   PluginLogEvent,
-} from "../types/plugin";
+} from "@type/plugin";
 
 interface PluginUiEvent {
   plugin_id: string;
@@ -302,110 +302,8 @@ export const usePluginStore = defineStore("plugin", () => {
   }
 
   function collectSidebarItems() {
-    const items: SidebarItem[] = [];
-
-    const getDependencyId = (dep: PluginDependency): string => {
-      return typeof dep === "string" ? dep : dep.id;
-    };
-
-    const categoryPluginIds = new Set<string>();
-    for (const plugin of plugins.value) {
-      if (plugin.state !== "enabled") continue;
-      if (plugin.manifest.sidebar?.mode === "category") {
-        categoryPluginIds.add(plugin.manifest.id);
-      }
-    }
-
-    const dependentPluginIds = new Set<string>();
-    for (const plugin of plugins.value) {
-      if (plugin.state !== "enabled") continue;
-      const deps = plugin.manifest.dependencies || [];
-      for (const dep of deps) {
-        const depId = getDependencyId(dep);
-        if (categoryPluginIds.has(depId)) {
-          dependentPluginIds.add(plugin.manifest.id);
-          break;
-        }
-      }
-    }
-
-    const childPluginIds = new Set<string>();
-    for (const plugin of plugins.value) {
-      if (plugin.state !== "enabled") continue;
-      if (plugin.manifest.sidebar?.mode === "child") {
-        childPluginIds.add(plugin.manifest.id);
-      }
-    }
-
-    for (const plugin of plugins.value) {
-      if (plugin.state !== "enabled") continue;
-      if (dependentPluginIds.has(plugin.manifest.id)) continue;
-      if (childPluginIds.has(plugin.manifest.id)) continue;
-
-      const sidebar = plugin.manifest.sidebar;
-      if (!sidebar) continue;
-
-      const mode: SidebarMode = sidebar.mode || "none";
-      if (mode !== "self" && mode !== "category") continue;
-
-      items.push({
-        pluginId: plugin.manifest.id,
-        label: sidebar.label,
-        icon: sidebar.icon,
-        mode: mode,
-        showDependents: sidebar.show_dependents !== false,
-        priority: sidebar.priority ?? 100,
-        isDefault: false,
-        after: sidebar.after,
-        children: [],
-      });
-    }
-
-    for (const plugin of plugins.value) {
-      if (plugin.state !== "enabled") continue;
-      const sidebar = plugin.manifest.sidebar;
-      if (sidebar?.mode !== "child" || !sidebar.parent) continue;
-      const parentItem = items.find((i) => i.pluginId === sidebar.parent);
-      if (parentItem) {
-        parentItem.children = parentItem.children || [];
-        parentItem.children.push({
-          pluginId: plugin.manifest.id,
-          label: sidebar.label,
-          icon: sidebar.icon,
-          mode: "child",
-          showDependents: false,
-          priority: sidebar.priority ?? 100,
-          parent: sidebar.parent,
-        });
-      }
-    }
-
-    const handledIds = new Set(items.map((i) => i.pluginId));
-    for (const plugin of plugins.value) {
-      if (plugin.state !== "enabled") continue;
-      if (handledIds.has(plugin.manifest.id)) continue;
-      if (dependentPluginIds.has(plugin.manifest.id)) continue;
-      if (childPluginIds.has(plugin.manifest.id)) continue;
-
-      const uiSidebar = plugin.manifest.ui?.sidebar;
-      if (!uiSidebar) continue;
-
-      items.push({
-        pluginId: plugin.manifest.id,
-        label: uiSidebar.label || plugin.manifest.name,
-        icon: uiSidebar.icon,
-        mode: "self",
-        showDependents: false,
-        priority: uiSidebar.priority ?? 100,
-        isDefault: true,
-      });
-    }
-
-    items.sort((a, b) => {
-      if (a.isDefault !== b.isDefault) return a.isDefault ? 1 : -1;
-      return a.priority - b.priority;
-    });
-    sidebarItems.value = items;
+    // 已禁用插件注册的侧栏按钮功能
+    sidebarItems.value = [];
   }
 
   async function installFromZip(zipPath: string): Promise<PluginInstallResult> {
@@ -1290,39 +1188,8 @@ export const usePluginStore = defineStore("plugin", () => {
   let sidebarEventUnlisten: UnlistenFn | null = null;
 
   async function initSidebarEventListener() {
-    if (sidebarEventUnlisten) {
-      return;
-    }
-
-    try {
-      sidebarEventUnlisten = await listen<PluginSidebarEvent>("plugin-sidebar-event", (event) => {
-        const { plugin_id, action, label, icon, mode } = event.payload;
-
-        if (action === "register") {
-          const sidebarMode: SidebarMode = mode || "self";
-
-          const filtered = sidebarItems.value.filter((item) => item.pluginId !== plugin_id);
-          filtered.push({
-            pluginId: plugin_id,
-            label,
-            icon: icon || undefined,
-            mode: sidebarMode,
-            showDependents: true,
-            priority: 100,
-          });
-
-          filtered.sort((a, b) => a.priority - b.priority);
-          sidebarItems.value = filtered;
-        } else if (action === "unregister") {
-          sidebarItems.value = sidebarItems.value.filter((item) => item.pluginId !== plugin_id);
-        }
-
-        console.log(`[PluginSidebar] ${action} sidebar item for plugin: ${plugin_id}`);
-      });
-      console.log("[PluginSidebar] Event listener initialized");
-    } catch (e) {
-      console.error("[PluginSidebar] Failed to initialize event listener:", e);
-    }
+    // 已禁用插件动态注册侧栏按钮功能
+    console.log("[PluginSidebar] Event listener disabled");
   }
 
   function cleanupSidebarEventListener() {
@@ -1721,7 +1588,7 @@ export const usePluginStore = defineStore("plugin", () => {
         console.log(
           `[ContextMenu] Replaying ${contextMenuSnapshot.length} buffered context menu events`,
         );
-        const { useContextMenuStore } = await import("./contextMenuStore");
+        const { useContextMenuStore } = await import("@stores/contextMenuStore");
         const contextMenuStore = useContextMenuStore();
         for (const event of contextMenuSnapshot) {
           contextMenuStore.handleContextMenuEvent({

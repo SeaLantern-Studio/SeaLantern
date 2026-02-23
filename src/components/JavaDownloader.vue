@@ -24,7 +24,7 @@
             />
           </div>
           <SLButton variant="primary" size="sm" :loading="loadingUrl" @click="startDownload">
-            {{ i18n.t("settings.java_download_btn") }}
+            {{ downloadButtonText }}
           </SLButton>
         </template>
 
@@ -89,11 +89,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from "vue";
-import { i18n } from "../language";
+import { i18n } from "@language";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
-import { javaApi } from "../api/java";
-import SLButton from "./common/SLButton.vue";
-import SLSelect from "./common/SLSelect.vue";
+import { javaApi } from "@api/java";
+import SLButton from "@components/common/SLButton.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import { X, CheckCircle, AlertCircle } from "lucide-vue-next";
 
 const emit = defineEmits(["installed"]);
@@ -113,7 +113,12 @@ const versionOptions = computed(() => [
   { label: "Java 8 (LTS)", value: "8" },
   { label: "Java 17 (LTS)", value: "17" },
   { label: "Java 21 (LTS)", value: "21" },
+  { label: "Java 25 (LTS)", value: "25" },
 ]);
+
+const downloadButtonText = computed(() => {
+  return i18n.t("settings.java_download_btn", { version: selectedVersion.value });
+});
 
 const resetState = () => {
   errorMessage.value = "";
@@ -123,10 +128,9 @@ const resetState = () => {
   progress.value = 0;
 };
 
-const getDownloadUrl = async (version: string): Promise<string> => {
+const getDownloadUrl = (version: string): string => {
   // Construct URL for Adoptium API
   const baseUrl = "https://api.adoptium.net/v3/binary/latest";
-  const featureVersion = version;
   const releaseType = "ga";
 
   // Detect OS and Arch
@@ -139,7 +143,7 @@ const getDownloadUrl = async (version: string): Promise<string> => {
   if (navigator.userAgent.indexOf("aarch64") !== -1 || navigator.userAgent.indexOf("arm64") !== -1)
     arch = "aarch64";
 
-  return `${baseUrl}/${featureVersion}/${releaseType}/${os}/${arch}/jdk/hotspot/normal/eclipse`;
+  return `${baseUrl}/${version}/${releaseType}/${os}/${arch}/jdk/hotspot/normal/eclipse`;
 };
 
 const cancelDownload = async () => {
@@ -166,7 +170,8 @@ const startDownload = async () => {
   loadingUrl.value = true;
 
   try {
-    const url = await getDownloadUrl(selectedVersion.value);
+    const url = getDownloadUrl(selectedVersion.value);
+    const versionName = `jdk-${selectedVersion.value}`;
     loadingUrl.value = false;
     isDownloading.value = true;
     progress.value = 0;
@@ -197,7 +202,7 @@ const startDownload = async () => {
       }
     });
 
-    const resultPath = await javaApi.installJava(url, `jdk-${selectedVersion.value}`);
+    const resultPath = await javaApi.installJava(url, versionName);
 
     installedPath.value = resultPath;
     successMessage.value = "Success"; // Just a flag, text is in template

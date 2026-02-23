@@ -25,7 +25,7 @@ language/
 ### Using Translations
 
 ```typescript
-import { i18n } from "@/language";
+import { i18n } from "@language";
 
 // Get translated text
 const text = i18n.t("common.home");
@@ -43,7 +43,7 @@ const locale = i18n.getLocale();
 ### Using in Vue Components
 
 ```typescript
-import { i18n } from "@/language";
+import { i18n } from "@language";
 
 // Reactively get current language
 const currentLocale = i18n.getLocaleRef();

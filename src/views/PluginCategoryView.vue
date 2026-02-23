@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLFormField from "../components/common/SLFormField.vue";
-import SLInput from "../components/common/SLInput.vue";
-import SLSwitch from "../components/common/SLSwitch.vue";
-import SLSelect from "../components/common/SLSelect.vue";
-import SLTextarea from "../components/common/SLTextarea.vue";
-import SLCheckbox from "../components/common/SLCheckbox.vue";
-import { usePluginStore } from "../stores/pluginStore";
-import { i18n } from "../language";
-import type { PluginInfo, PluginSettingField } from "../types/plugin";
-import { getLocalizedPluginName, getLocalizedPluginDescription } from "../types/plugin";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLFormField from "@components/common/SLFormField.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import SLTextarea from "@components/common/SLTextarea.vue";
+import SLCheckbox from "@components/common/SLCheckbox.vue";
+import { usePluginStore } from "@stores/pluginStore";
+import { i18n } from "@language";
+import type { PluginInfo, PluginSettingField } from "@type/plugin";
+import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
 import { Palette, Puzzle } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -222,7 +222,7 @@ watch(
   <div class="category-view">
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
-      <span>加载中...</span>
+      <span>{{ i18n.t("common.loading") }}</span>
     </div>
 
     <template v-else-if="plugin">
@@ -244,7 +244,7 @@ watch(
       </header>
 
       <SLCard v-if="isThemeProvider && pluginPresets" class="settings-card">
-        <h3 class="section-title">预设主题</h3>
+        <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
         <div class="presets-grid">
           <button
             v-for="(presetData, presetKey) in pluginPresets"
@@ -269,7 +269,7 @@ watch(
       </SLCard>
 
       <SLCard v-if="plugin.manifest.settings?.length" class="settings-card main-settings">
-        <h3 class="section-title">{{ plugin.manifest.name }} 设置</h3>
+        <h3 class="section-title">{{ plugin.manifest.name }} {{ i18n.t("plugins.settings") }}</h3>
         <div class="settings-form">
           <SLFormField
             v-for="field in plugin.manifest.settings"
@@ -328,8 +328,8 @@ watch(
 
       <template v-if="showDependents && dependentPlugins.length > 0">
         <div class="dependent-section-header">
-          <h2>关联插件</h2>
-          <p>以下插件依赖 {{ plugin.manifest.name }}</p>
+          <h2>{{ i18n.t("plugins.related_plugins") }}</h2>
+          <p>{{ i18n.t("plugins.related_plugins_desc", { name: plugin.manifest.name }) }}</p>
         </div>
 
         <SLCard
@@ -422,13 +422,17 @@ watch(
       </template>
 
       <div class="action-buttons">
-        <SLButton variant="secondary" @click="resetToDefault">重置为默认</SLButton>
-        <span class="auto-save-hint">{{ saving ? "保存中..." : "已自动保存" }}</span>
+        <SLButton variant="secondary" @click="resetToDefault">{{
+          i18n.t("plugins.reset_default")
+        }}</SLButton>
+        <span class="auto-save-hint">{{
+          saving ? i18n.t("plugins.saving") : i18n.t("plugins.auto_saved")
+        }}</span>
       </div>
     </template>
 
     <div v-else class="not-found">
-      <p>未找到插件</p>
+      <p>{{ i18n.t("plugins.not_found") }}</p>
     </div>
   </div>
 </template>

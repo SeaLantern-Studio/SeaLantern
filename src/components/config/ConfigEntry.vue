@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { i18n } from "../../language";
-import SLInput from "../common/SLInput.vue";
-import SLSwitch from "../common/SLSwitch.vue";
-import SLBadge from "../common/SLBadge.vue";
-import type { ConfigEntry } from "../../api/config";
+import { i18n } from "@language";
+import SLInput from "@components/common/SLInput.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLBadge from "@components/common/SLBadge.vue";
+import type { ConfigEntry } from "@api/config";
 
 interface Props {
   entry: ConfigEntry;

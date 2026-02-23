@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useRegisterComponent } from "../../composables/useRegisterComponent";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
+import { i18n } from "@language";
 
 interface Props {
   value: number;
@@ -63,7 +64,7 @@ const barClass = computed(() => `sl-progress-bar--${props.variant}`);
         :aria-valuenow="value"
         :aria-valuemin="0"
         :aria-valuemax="max"
-        :aria-label="label || '进度'"
+        :aria-label="label || i18n.t('common.progress')"
       />
     </div>
   </div>

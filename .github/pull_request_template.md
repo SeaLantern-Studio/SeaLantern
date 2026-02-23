@@ -1,9 +1,17 @@
+## 提交前须知
+
+- [ ] 是否阅读 提交前测试必读！！！.md 并按照要求进行测试
+
+---
+
 ## 变更类型 / Change Type (请选择至少一项 / Select at least one)
 
 - [ ] 前端 Frontend
   - [ ] UI 变动 (样式/布局/模板)
   - [ ] TS/JS 逻辑变动 (组件/状态/路由等)
   - [ ] 前端依赖变动 (package.json / lockfile)
+
+**检查导入是否使用了正确的别名导入而不是相对路径导入**
 
 - [ ] 后端 Backend
   - [ ] API 变动 (接口/契约变更)
@@ -26,6 +34,7 @@
 ## 关联的Issue / Linked Issue
 
 (请修改为你要解决或修复的Issue编号)
+
 - [ ] Closes #999999
 - [ ] Fixes #999999
 - [ ] Resolves #999999

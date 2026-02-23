@@ -1,26 +1,26 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from "vue";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLInput from "../components/common/SLInput.vue";
-import SLSwitch from "../components/common/SLSwitch.vue";
-import SLModal from "../components/common/SLModal.vue";
-import SLSelect from "../components/common/SLSelect.vue";
-import SLSpinner from "../components/common/SLSpinner.vue";
-import JavaDownloader from "../components/JavaDownloader.vue";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLModal from "@components/common/SLModal.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import SLSpinner from "@components/common/SLSpinner.vue";
+import JavaDownloader from "@components/JavaDownloader.vue";
 import {
   settingsApi,
   checkAcrylicSupport,
   applyAcrylic,
   getSystemFonts,
   type AppSettings,
-} from "../api/settings";
-import { systemApi } from "../api/system";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { i18n } from "../language";
-import { useMessage } from "../composables/useMessage";
-import { useLoading } from "../composables/useAsync";
-import { getThemeOptions } from "../themes";
+  type SettingsGroup,
+} from "@api/settings";
+import { systemApi } from "@api/system";
+import { i18n } from "@language";
+import { useMessage } from "@composables/useMessage";
+import { useLoading } from "@composables/useAsync";
+import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "@stores/settingsStore";
 
 const { error, showError, clearError } = useMessage();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
@@ -50,24 +50,6 @@ const backgroundSizeOptions = computed(() => [
   { label: i18n.t("common.background_size_auto"), value: "auto" },
 ]);
 
-const colorOptions = computed(() => {
-  const themes = getThemeOptions();
-  return [...themes, { label: i18n.t("common.color_custom"), value: "custom" }];
-});
-
-const editColorOptions = computed(() => [
-  { label: i18n.t("common.edit_color_light"), value: "light" },
-  { label: i18n.t("common.edit_color_dark"), value: "dark" },
-  { label: i18n.t("common.edit_color_light_acrylic"), value: "light_acrylic" },
-  { label: i18n.t("common.edit_color_dark_acrylic"), value: "dark_acrylic" },
-]);
-
-const themeOptions = computed(() => [
-  { label: i18n.t("common.theme_auto"), value: "auto" },
-  { label: i18n.t("common.theme_light"), value: "light" },
-  { label: i18n.t("common.theme_dark"), value: "dark" },
-]);
-
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("common.font_system_default"), value: "" },
 ]);
@@ -76,46 +58,48 @@ const showImportModal = ref(false);
 const importJson = ref("");
 const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
-const colorSettingsExpanded = ref(false);
 const bgPreviewLoaded = ref(false);
 const bgPreviewLoading = ref(false);
-
-const backgroundPreviewUrl = computed(() => {
-  if (!settings.value?.background_image) return "";
-  if (!bgSettingsExpanded.value) return "";
-  return convertFileSrc(settings.value.background_image);
-});
-
-function getFileExtension(path: string): string {
-  return path.split(".").pop()?.toLowerCase() || "";
-}
-
-function isAnimatedImage(path: string): boolean {
-  const ext = getFileExtension(path);
-  return ext === "gif" || ext === "webp" || ext === "apng";
-}
 
 onMounted(async () => {
   await loadSettings();
   await loadSystemFonts();
-  // 检测亚克力支持
   try {
     acrylicSupported.value = await checkAcrylicSupport();
   } catch {
     acrylicSupported.value = false;
   }
 
-  // 监听设置更新事件
-  window.addEventListener("settings-updated", loadSettings);
+  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("settings-updated", loadSettings);
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
 });
+
+function handleSettingsUpdateEvent(
+  e: CustomEvent<{ changedGroups: SettingsGroup[]; settings: AppSettings }>,
+) {
+  const newSettings = e.detail.settings;
+  settings.value = newSettings;
+  syncLocalValues(newSettings);
+}
+
+function syncLocalValues(s: AppSettings) {
+  maxMem.value = String(s.default_max_memory);
+  minMem.value = String(s.default_min_memory);
+  port.value = String(s.default_port);
+  fontSize.value = String(s.console_font_size);
+  logLines.value = String(s.max_log_lines);
+  bgOpacity.value = String(s.background_opacity);
+  bgBlur.value = String(s.background_blur);
+  bgBrightness.value = String(s.background_brightness);
+  uiFontSize.value = String(s.font_size);
+}
 
 async function loadSystemFonts() {
   startFontsLoading();
@@ -271,7 +255,7 @@ async function saveSettings() {
   startSaving();
   clearError();
   try {
-    await settingsApi.save(settings.value);
+    const result = await settingsApi.saveWithDiff(settings.value);
 
     localStorage.setItem(
       "sl_theme_cache",
@@ -281,17 +265,20 @@ async function saveSettings() {
       }),
     );
 
-    applyTheme(settings.value.theme);
-    applyFontSize(settings.value.font_size);
+    if (result.changed_groups.includes("Appearance")) {
+      applyTheme(settings.value.theme);
+      applyFontSize(settings.value.font_size);
+      applyFontFamily(settings.value.font_family);
 
-    if (acrylicSupported.value) {
-      try {
-        const isDark = getEffectiveTheme(settings.value.theme) === "dark";
-        await applyAcrylic(settings.value.acrylic_enabled, isDark);
-      } catch {}
+      if (acrylicSupported.value) {
+        try {
+          const isDark = getEffectiveTheme(settings.value.theme) === "dark";
+          await applyAcrylic(settings.value.acrylic_enabled, isDark);
+        } catch {}
+      }
     }
 
-    window.dispatchEvent(new CustomEvent("settings-updated"));
+    dispatchSettingsUpdate(result.changed_groups, result.settings);
   } catch (e) {
     showError(String(e));
   } finally {
@@ -625,337 +612,4 @@ function handleDeveloperModeChange() {
   </div>
 </template>
 
-<style scoped>
-.settings-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-lg);
-  max-width: 860px;
-  margin: 0 auto;
-  padding-bottom: var(--sl-space-2xl);
-}
-
-.msg-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-radius: var(--sl-radius-md);
-  font-size: 0.875rem;
-}
-.error-banner {
-  background: var(--sl-error-bg);
-  border: 1px solid var(--sl-error);
-  color: var(--sl-error);
-}
-.msg-banner button {
-  font-weight: 600;
-  color: inherit;
-}
-
-.loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sl-space-sm);
-  padding: var(--sl-space-2xl);
-  color: var(--sl-text-tertiary);
-}
-
-.settings-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sl-space-md) 0;
-  border-bottom: 1px solid var(--sl-border-light);
-  gap: var(--sl-space-lg);
-}
-.setting-row:last-child {
-  border-bottom: none;
-}
-.setting-row.full-width {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.setting-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.setting-label {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--sl-text-primary);
-}
-.setting-desc {
-  font-size: 0.8125rem;
-  color: var(--sl-text-tertiary);
-  line-height: 1.4;
-}
-
-.input-sm {
-  width: 120px;
-  flex-shrink: 0;
-}
-.input-md {
-  width: 200px;
-  flex-shrink: 0;
-}
-.input-lg {
-  width: 320px;
-  flex-shrink: 0;
-}
-
-.jvm-textarea,
-.import-textarea {
-  width: 100%;
-  margin-top: var(--sl-space-sm);
-  padding: var(--sl-space-sm) var(--sl-space-md);
-  font-family: var(--sl-font-mono);
-  font-size: 0.8125rem;
-  color: var(--sl-text-primary);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  resize: vertical;
-  line-height: 1.6;
-}
-.jvm-textarea:focus,
-.import-textarea:focus {
-  border-color: var(--sl-primary);
-  box-shadow: 0 0 0 3px var(--sl-primary-bg);
-  outline: none;
-}
-
-.settings-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sl-space-md) 0;
-  border-top: 1px solid var(--sl-border);
-}
-.actions-left,
-.actions-right {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-sm);
-}
-
-.import-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-md);
-}
-
-.bg-image-picker {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-sm);
-  margin-top: var(--sl-space-sm);
-}
-
-.bg-preview {
-  position: relative;
-  width: 100%;
-  max-width: 400px;
-  height: 200px;
-  border-radius: var(--sl-radius-md);
-  overflow: hidden;
-  border: 1px solid var(--sl-border);
-}
-
-.bg-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.bg-preview-loading {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sl-space-sm);
-  background: var(--sl-surface);
-  color: var(--sl-text-secondary);
-  font-size: 0.875rem;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--sl-border);
-  border-top-color: var(--sl-primary);
-  border-radius: 50%;
-  animation: sl-spin 1s linear infinite;
-}
-
-.bg-animated-badge {
-  position: absolute;
-  top: var(--sl-space-sm);
-  right: var(--sl-space-sm);
-  padding: 2px 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: var(--sl-text-inverse);
-  font-size: 0.75rem;
-  font-weight: 500;
-  border-radius: var(--sl-radius-sm);
-}
-
-.bg-preview-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: var(--sl-space-sm) var(--sl-space-md);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sl-space-sm);
-}
-
-.bg-preview-path {
-  font-size: 0.8125rem;
-  color: var(--sl-text-inverse);
-  font-family: var(--sl-font-mono);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.slider-control {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-md);
-  min-width: 200px;
-}
-
-.sl-slider {
-  flex: 1;
-  height: 6px;
-  border-radius: var(--sl-radius-full);
-  background: var(--sl-border);
-  outline: none;
-  -webkit-appearance: none;
-}
-
-.sl-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--sl-primary);
-  cursor: pointer;
-  transition: all var(--sl-transition-fast);
-}
-
-.sl-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 0 4px var(--sl-primary-bg);
-}
-
-.sl-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--sl-primary);
-  cursor: pointer;
-  border: none;
-  transition: all var(--sl-transition-fast);
-}
-
-.sl-slider::-moz-range-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 0 4px var(--sl-primary-bg);
-}
-
-.slider-value {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  min-width: 50px;
-  text-align: right;
-}
-
-.collapsible-section {
-  border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  overflow: hidden;
-  margin: var(--sl-space-sm) 0;
-}
-
-.collapsible-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sl-space-md);
-  cursor: pointer;
-  background: var(--sl-surface);
-  transition: background-color var(--sl-transition-fast);
-}
-
-.collapsible-header:hover {
-  background: var(--sl-surface-hover);
-}
-
-.collapsible-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--sl-radius-sm);
-  color: var(--sl-text-secondary);
-  transition: all var(--sl-transition-normal);
-  flex-shrink: 0;
-}
-
-.collapsible-toggle:hover {
-  background: var(--sl-border-light);
-  color: var(--sl-text-primary);
-}
-
-.collapsible-toggle.expanded {
-  transform: rotate(180deg);
-}
-
-.collapsible-content {
-  padding: 0 var(--sl-space-md) var(--sl-space-md);
-  background: var(--sl-surface);
-}
-
-.collapse-enter-active,
-.collapse-leave-active {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.collapse-enter-from,
-.collapse-leave-to {
-  opacity: 0;
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.collapse-enter-to,
-.collapse-leave-from {
-  opacity: 1;
-  max-height: 800px;
-}
-</style>
+<style src="@styles/views/SettingsView.css" scoped></style>

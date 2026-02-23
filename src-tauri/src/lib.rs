@@ -6,6 +6,7 @@ mod utils;
 
 use commands::config as config_commands;
 use commands::java as java_commands;
+use commands::mcs_plugin as mcs_plugin_commands;
 use commands::player as player_commands;
 use commands::plugin as plugin_commands;
 use commands::server as server_commands;
@@ -35,10 +36,14 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
-            let _ = app
-                .get_webview_window("main")
-                .expect("no main window")
-                .set_focus();
+            if let Some(window) = app.get_webview_window("main") {
+                // 先显示窗口（处理隐藏状态）
+                let _ = window.show();
+                // 恢复窗口（处理最小化状态）
+                let _ = window.unminimize();
+                // 设置焦点
+                let _ = window.set_focus();
+            }
             print!("Received second instance with args: {:?}, cwd: {:?}", args, cwd);
         }))
         .on_tray_icon_event(|app, event| {
@@ -72,6 +77,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             server_commands::create_server,
             server_commands::import_server,
+            server_commands::add_existing_server,
             server_commands::import_modpack,
             server_commands::start_server,
             server_commands::stop_server,
@@ -95,6 +101,8 @@ pub fn run() {
             system_commands::pick_java_file,
             system_commands::pick_folder,
             system_commands::pick_image_file,
+            system_commands::open_file,
+            system_commands::open_folder,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -108,6 +116,8 @@ pub fn run() {
             player_commands::export_logs,
             settings_commands::get_settings,
             settings_commands::save_settings,
+            settings_commands::save_settings_with_diff,
+            settings_commands::update_settings_partial,
             settings_commands::reset_settings,
             settings_commands::export_settings,
             settings_commands::import_settings,
@@ -148,6 +158,10 @@ pub fn run() {
             plugin_commands::get_plugin_ui_snapshot,
             plugin_commands::get_plugin_sidebar_snapshot,
             plugin_commands::get_plugin_context_menu_snapshot,
+            mcs_plugin_commands::m_get_plugins,
+            mcs_plugin_commands::m_toggle_plugin,
+            mcs_plugin_commands::m_delete_plugin,
+            mcs_plugin_commands::m_install_plugin,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -185,10 +199,8 @@ pub fn run() {
         })
         .setup(|app| {
             // 初始化插件管理
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+            // 插件目录与其他模块共用同一套数据目录选择规则
+            let app_data_dir = crate::utils::path::get_app_data_dir();
             let plugins_dir = app_data_dir.join("plugins");
             let data_dir = app_data_dir.join("plugin_data");
 
@@ -437,7 +449,11 @@ pub fn run() {
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "show" => {
                             if let Some(window) = app.get_webview_window("main") {
+                                // 先显示窗口（处理隐藏状态）
                                 let _ = window.show();
+                                // 恢复窗口（处理最小化状态）
+                                let _ = window.unminimize();
+                                // 设置焦点
                                 let _ = window.set_focus();
                             }
                         }
@@ -465,7 +481,11 @@ pub fn run() {
                         } = event
                         {
                             if let Some(window) = tray.app_handle().get_webview_window("main") {
+                                // 先显示窗口（处理隐藏状态）
                                 let _ = window.show();
+                                // 恢复窗口（处理最小化状态）
+                                let _ = window.unminimize();
+                                // 设置焦点
                                 let _ = window.set_focus();
                             }
                         }

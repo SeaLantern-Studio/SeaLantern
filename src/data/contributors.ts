@@ -29,24 +29,9 @@ export const contributors: Contributor[] = [
     },
   },
   {
-    name: "鸽德迪",
-    role: "自定义背景图方案",
-    avatar: "https://api.rms.net.cn/head/Alex",
-  },
-  {
-    name: "OMIILII",
-    role: "精神支柱",
-    avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
-  },
-  {
     name: "烬白Jinby",
     role: "自定义配色/宣传",
     avatar: "https://api.rms.net.cn/head/Jinby_6325",
-  },
-  {
-    name: "凋空凌",
-    role: "修复文档bug",
-    avatar: "https://api.rms.net.cn/head/Alex",
   },
   {
     name: "NIUNIU3303",
@@ -93,6 +78,10 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/CmzYa",
     url: {
       github: "https://github.com/CmzYa",
+      bilibili: "https://space.bilibili.com/1299848968",
+      qq: "2933859893",
+      tiktok:
+        "https://www.douyin.com/user/MS4wLjABAAAAnaa9DsrNixJyNCFPwtFSTNNI4wrE0ME9nwbiqCrppSIruK_9g-9QRKWbQFPzaPPw",
     },
   },
   {
@@ -130,7 +119,7 @@ export const contributors: Contributor[] = [
   {
     name: "猫不笨qwq",
     role: "找到软件图形化错误",
-    avatar: "https://minotar.net/helm/f04be4dcd0ca49af89faf61068ec34e2/64",
+    avatar: "https://api.rms.net.cn/head/maobuben_qwq",
     url: {
       github: "https://github.com/maobuben",
     },
@@ -138,7 +127,7 @@ export const contributors: Contributor[] = [
   {
     name: "橙子冰棒",
     role: "修复Java查找算法",
-    avatar: "https://blog.orllow.cn/images/author.webp",
+    avatar: "https://api.rms.net.cn/head/TNTNTBTT",
     url: {
       github: "https://github.com/Orange-Icepop",
     },
@@ -162,7 +151,7 @@ export const contributors: Contributor[] = [
   {
     name: "I账户已注销I",
     role: "提出了个性化页面，提供了颜色编辑和颜色选择器",
-    avatar: "https://zhuxiaojt.github.io/favicon.ico",
+    avatar: "https://api.rms.net.cn/head/echo500",
     url: {
       github: "https://github.com/zhuxiaojt",
     },
@@ -170,8 +159,7 @@ export const contributors: Contributor[] = [
   {
     name: "学渣驹",
     role: "Arch Linux 的 AUR 包维护者",
-    avatar:
-      "https://github.com/xuezhaju/xuezhaju_Icon/blob/main/F421312221AA32EA130B490230A78779.jpg?raw=true",
+    avatar: "https://api.rms.net.cn/head/MC_KKY",
     url: {
       github: "https://github.com/xuezhaju",
     },
@@ -184,12 +172,7 @@ export const contributors: Contributor[] = [
       github: "https://github.com/NanaLoveyuki",
     },
   },
-  {
-    name: "Yang458",
-    role: "贡献者",
-    avatar: "https://api.rms.net.cn/head/Yang4893",
-    url: "https://github.com/minecraft-Yang458",
-  },
+
   {
     name: "福瑞控海天",
     role: "海内存知己，天涯若比邻",
@@ -219,16 +202,46 @@ export const contributors: Contributor[] = [
     url: "",
   },
   {
-   name:"龙腾_H",
-   role:"贡献者 美术这块 河南卷死我了",
-   avatar:"https://api.rms.net.cn/head/Longteng_H",
-   url:"https://github.com/longteng-H",
+    name: "龙腾_H",
+    role: "贡献者 美术这块 河南卷死我了",
+    avatar: "https://api.rms.net.cn/head/Longteng_H",
+    url: "https://github.com/longteng-H",
   },
   {
     name: "KercyDing",
     role: "代码审查与CI",
     avatar: "https://api.rms.net.cn/head/KercyDing",
     url: "https://github.com/KercyDing",
+  },
+  {
+    name: "OMIILII",
+    role: "精神支柱",
+    avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
+  },
+  {
+    name: "Yang458",
+    role: "贡献者",
+    avatar: "https://api.rms.net.cn/head/Yang4893",
+    url: "https://github.com/minecraft-Yang458",
+  },
+  {
+    name: "鸽德迪",
+    role: "自定义背景图方案",
+    avatar: "https://api.rms.net.cn/head/Alex",
+  },
+  {
+    name: "凋空凌",
+    role: "修复文档bug",
+    avatar: "https://api.rms.net.cn/head/Alex",
+  },
+  {
+    name: "黎明lime",
+    role: "修修补补",
+    avatar: "https://api.rms.net.cn/head/lmyyds",
+    url: {
+      github: "https://github.com/lmyyds1",
+      bilibili: "https://space.bilibili.com/514672422",
+    },
   },
   // ============================================
   // 在这里添加更多贡献者！
@@ -247,6 +260,7 @@ export const contributors: Contributor[] = [
   //     gitee: "https://gitee.com/your-username",
   //     github: "https://github.com/your-username",
   //     bilibili: "https://space.bilibili.com/your-bilibili-id",
+  //     tiktok: "https://www.douyin.com/user/",
   //     qq: "your-qq-number",
   //   },
   // },
