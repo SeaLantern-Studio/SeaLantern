@@ -11,3 +11,4 @@ pub mod server_id_manager;
 pub mod server_manager;
 pub mod settings_manager;
 pub mod http_server;
+pub mod http_command_handlers;
