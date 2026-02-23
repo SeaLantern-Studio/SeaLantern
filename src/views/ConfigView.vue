@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, onActivated } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, onActivated, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
@@ -28,6 +28,7 @@ import ConfigCategories from "@components/config/ConfigCategories.vue";
 import ConfigEntry from "@components/config/ConfigEntry.vue";
 import { systemApi } from "@api/system";
 import "@styles/plugin-list.css";
+import "@styles/views/ConfigView.css";
 
 const route = useRoute();
 const store = useServerStore();
@@ -48,6 +49,8 @@ const serverPath = computed(() => {
 const plugins = ref<m_PluginInfo[]>([]);
 const pluginsLoading = ref(false);
 const selectedPlugin = ref<m_PluginInfo | null>(null);
+const loadedPlugins = ref<Set<string>>(new Set());
+const observer = ref<IntersectionObserver | null>(null);
 const activeTab = ref<"properties" | "plugins">("properties");
 const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } =
   useTabIndicator(activeTab);
@@ -239,12 +242,55 @@ async function loadPlugins() {
   error.value = null;
   try {
     plugins.value = await m_pluginApi.m_getPlugins(store.currentServerId);
+    loadedPlugins.value = new Set();
+    nextTick(() => {
+      setupIntersectionObserver();
+    });
   } catch (e) {
     error.value = String(e);
     plugins.value = [];
   } finally {
     pluginsLoading.value = false;
   }
+}
+
+function setupIntersectionObserver() {
+  if (observer.value) {
+    observer.value.disconnect();
+  }
+
+  observer.value = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const pluginElement = entry.target as HTMLElement;
+          const pluginFileName = pluginElement.getAttribute("data-plugin-file-name");
+          if (pluginFileName) {
+            loadPluginDetails(pluginFileName);
+          }
+        }
+      });
+    },
+    {
+      rootMargin: "200px 0px",
+      threshold: 0.1,
+    },
+  );
+
+  nextTick(() => {
+    const pluginElements = document.querySelectorAll(".plugin-list-item");
+    pluginElements.forEach((element) => {
+      observer.value?.observe(element);
+    });
+  });
+}
+
+async function loadPluginDetails(pluginFileName: string) {
+  if (loadedPlugins.value.has(pluginFileName)) {
+    return;
+  }
+
+  loadedPlugins.value.add(pluginFileName);
 }
 
 async function togglePlugin(plugin: m_PluginInfo) {
@@ -265,12 +311,31 @@ async function togglePlugin(plugin: m_PluginInfo) {
 
 async function deletePlugin(plugin: m_PluginInfo) {
   if (!store.currentServerId) return;
-  if (!confirm(i18n.t("config.confirm_delete_plugin", { name: plugin.name }))) return;
   try {
-    await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
-    plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
-    if (selectedPlugin.value?.file_name === plugin.file_name) {
-      selectedPlugin.value = null;
+    const pluginElement = document.querySelector(
+      `.plugin-list-item[data-plugin-file-name="${plugin.file_name}"]`,
+    );
+    if (pluginElement) {
+      const originalHeight = pluginElement.offsetHeight;
+      pluginElement.style.height = `${originalHeight}px`;
+      pluginElement.style.flexShrink = "0";
+
+      pluginElement.classList.add("deleting");
+
+      setTimeout(async () => {
+        await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
+        plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
+        if (selectedPlugin.value?.file_name === plugin.file_name) {
+          selectedPlugin.value = null;
+        }
+      }, 500);
+    } else {
+      // 如果找不到元素，直接删除
+      await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
+      plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
+      if (selectedPlugin.value?.file_name === plugin.file_name) {
+        selectedPlugin.value = null;
+      }
     }
   } catch (e) {
     error.value = String(e);
@@ -287,11 +352,33 @@ async function reloadPlugins() {
   }
 }
 
-function handlePluginClick(plugin: m_PluginInfo) {
+async function handlePluginClick(plugin: m_PluginInfo) {
   if (selectedPlugin.value?.file_name === plugin.file_name) {
     selectedPlugin.value = null;
   } else {
-    selectedPlugin.value = plugin;
+    if (!plugin.config_files || (plugin.config_files.length === 0 && plugin.has_config_folder)) {
+      try {
+        const configFiles = await m_pluginApi.m_getPluginConfigFiles(
+          store.currentServerId,
+          plugin.file_name,
+          plugin.name,
+        );
+        const updatedPlugin = {
+          ...plugin,
+          config_files: configFiles,
+        };
+        selectedPlugin.value = updatedPlugin;
+        const pluginIndex = plugins.value.findIndex((p) => p.file_name === plugin.file_name);
+        if (pluginIndex !== -1) {
+          plugins.value[pluginIndex] = updatedPlugin;
+        }
+      } catch (e) {
+        console.error("Failed to load plugin config files:", e);
+        selectedPlugin.value = plugin;
+      }
+    } else {
+      selectedPlugin.value = plugin;
+    }
   }
 }
 
@@ -301,7 +388,6 @@ async function openPluginFolder(plugin: m_PluginInfo) {
   if (!server) return;
 
   const basePath = server.path.replace(/[/\\]$/, "");
-  // 使用插件名称作为配置文件夹名，而不是 m_id
   const pluginConfigPath = `${basePath}${basePath.includes("\\") ? "\\" : "/"}plugins${basePath.includes("\\") ? "\\" : "/"}${plugin.name}`;
 
   try {
@@ -474,7 +560,7 @@ onActivated(async () => {
               variant="danger"
               size="sm"
               class="reload-btn"
-              title="重载插件可能导致服务器异常，部分插件可能不支持"
+              :title="i18n.t('config.reload_plugins_warning')"
             >
               <RefreshCw :size="14" />
               {{ i18n.t("config.reload_plugins") }}
@@ -501,6 +587,7 @@ onActivated(async () => {
                 disabled: !plugin.enabled,
                 expanded: selectedPlugin?.file_name === plugin.file_name,
               }"
+              :data-plugin-file-name="plugin.file_name"
               @click="handlePluginClick(plugin)"
             >
               <div class="plugin-list-icon">
@@ -512,7 +599,12 @@ onActivated(async () => {
                   <span class="plugin-list-version">{{ plugin.version }}</span>
                   <div v-if="plugin.has_config_folder" class="config-badge">
                     <Settings :size="14" />
-                    {{ plugin.config_files.length }} {{ i18n.t("config.config_files_count") }}
+                    <template v-if="selectedPlugin?.file_name === plugin.file_name">
+                      {{ plugin.config_files.length }} {{ i18n.t("config.config_files_count") }}
+                    </template>
+                    <template v-else>
+                      {{ i18n.t("config.has_config_folder") }}
+                    </template>
                   </div>
                   <div v-else class="no-config-badge">
                     <FileText :size="14" />
@@ -567,13 +659,17 @@ onActivated(async () => {
                   @click.stop="togglePlugin(plugin)"
                   :variant="plugin.enabled ? 'danger' : 'success'"
                   size="sm"
+                  :title="plugin.enabled ? i18n.t('config.disable') : i18n.t('config.enable')"
                 >
                   <Power :size="16" />
-                  {{ plugin.enabled ? i18n.t("config.disable") : i18n.t("config.enable") }}
                 </SLButton>
-                <SLButton @click.stop="deletePlugin(plugin)" variant="danger" size="sm">
+                <SLButton
+                  @click.stop="deletePlugin(plugin)"
+                  variant="danger"
+                  size="sm"
+                  :title="i18n.t('config.delete')"
+                >
                   <Trash2 :size="16" />
-                  {{ i18n.t("config.delete") }}
                 </SLButton>
               </div>
             </div>
@@ -583,228 +679,3 @@ onActivated(async () => {
     </template>
   </div>
 </template>
-
-<style scoped>
-.config-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-md);
-}
-.config-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-sm);
-}
-.server-path-display {
-  color: var(--sl-text-tertiary);
-  font-size: 0.75rem;
-}
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sl-space-2xl);
-}
-.error-banner,
-.success-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-radius: var(--sl-radius-md);
-  font-size: 0.875rem;
-}
-.error-banner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: var(--sl-error);
-}
-.success-banner {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  color: var(--sl-success);
-}
-.banner-close {
-  font-weight: 600;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: inherit;
-}
-.loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sl-space-sm);
-  padding: var(--sl-space-2xl);
-  color: var(--sl-text-tertiary);
-}
-.config-entries {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-sm);
-}
-.config-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sl-space-md);
-  gap: var(--sl-space-lg);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  transition: all var(--sl-transition-fast);
-}
-.config-entry:hover {
-  border-color: var(--sl-border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-.entry-header {
-  flex: 1;
-  min-width: 0;
-}
-.entry-key-row {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-sm);
-}
-.entry-key {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-}
-.entry-desc {
-  margin-top: 2px;
-}
-.entry-control {
-  flex-shrink: 0;
-  min-width: 200px;
-}
-
-.input {
-  width: 200px;
-  padding: 6px 10px;
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-  background: var(--sl-bg-secondary);
-  color: var(--sl-text-primary);
-}
-.input:focus {
-  outline: none;
-  border-color: var(--sl-primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-.integer-input {
-  -moz-appearance: textfield;
-}
-
-.integer-input::-webkit-outer-spin-button,
-.integer-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.tab-bar {
-  display: flex;
-  gap: var(--sl-space-xs);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-xs);
-  width: fit-content;
-  margin-top: 8px;
-  position: relative;
-  overflow: hidden;
-}
-
-.tab-indicator {
-  position: absolute;
-  top: var(--sl-space-xs);
-  bottom: var(--sl-space-xs);
-  background: var(--sl-primary-bg);
-  border-radius: var(--sl-radius-sm);
-  transition: all 0.3s ease;
-  box-shadow: var(--sl-shadow-sm);
-  z-index: 1;
-  border: 1px solid var(--sl-primary);
-  opacity: 0.9;
-}
-
-.tab-btn {
-  padding: 8px 16px;
-  border-radius: var(--sl-radius-sm);
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--sl-text-secondary);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all var(--sl-transition-fast);
-  position: relative;
-  z-index: 2;
-}
-
-.tab-btn:hover {
-  color: var(--sl-text-primary);
-}
-
-.tab-btn.active {
-  color: var(--sl-primary);
-}
-
-.plugins-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.plugins-header h3 {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-}
-
-.plugins-header-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.reload-btn {
-  font-size: 0.8125rem;
-  padding: 6px 12px;
-}
-
-.reload-btn:hover {
-  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-}
-
-@keyframes shake {
-  10%,
-  90% {
-    transform: translate3d(-1px, 0, 0);
-  }
-  20%,
-  80% {
-    transform: translate3d(2px, 0, 0);
-  }
-  30%,
-  50%,
-  70% {
-    transform: translate3d(-4px, 0, 0);
-  }
-  40%,
-  60% {
-    transform: translate3d(4px, 0, 0);
-  }
-}
-
-.plugins-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-</style>

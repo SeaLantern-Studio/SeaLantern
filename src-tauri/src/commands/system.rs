@@ -283,7 +283,7 @@ pub fn open_file(path: String) -> Result<(), String> {
     {
         use std::process::Command;
         Command::new("explorer.exe")
-            .arg("/select,")
+            //.arg("/select,")   选中文件，非打开文件
             .arg(path)
             .spawn()
             .map_err(|e| format!("无法打开文件: {}", e))?;
