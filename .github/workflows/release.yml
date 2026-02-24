@@ -270,7 +270,7 @@ jobs:
             sed -i 's|^sha256sums=.*|sha256sums=(\"SKIP\")|' PKGBUILD && \
 
             # 修改 package() 函数中的文件名
-            sed -i 's|Sea\.Lantern_\${pkgver}_amd64\.deb|sealantern.deb|g' PKGBUILD && \
+            sed -i 's|Sea\.Lantern_\${pkgver}_amd64_Linux\.deb|sealantern.deb|g' PKGBUILD && \
 
             # 更新版本号
             sed -i 's/^pkgver=.*/pkgver=$VERSION/' PKGBUILD && \
