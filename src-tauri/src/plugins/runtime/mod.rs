@@ -276,26 +276,26 @@ impl PluginRuntime {
             .map_err(|e| format!("Failed to set error for {}: {}", module_name, e))?;
 
         let module_name_for_meta = module_name.to_string();
-        let meta_table = self.lua.create_table().map_err(|e| {
-            format!(
-                "Failed to create metatable for {}: {}",
-                module_name, e
-            )
-        })?;
+        let meta_table = self
+            .lua
+            .create_table()
+            .map_err(|e| format!("Failed to create metatable for {}: {}", module_name, e))?;
 
-        let index_fn = self.lua.create_function(move |_, _key: mlua::Value| -> Result<mlua::Value, mlua::Error> {
-            Err(mlua::Error::runtime(format!(
-                "权限不足: 使用 'sl.{}' 模块需要在 manifest.json 中声明 '{}' 权限",
-                module_name_for_meta, module_name_for_meta
-            )))
-        }).map_err(|e| format!("Failed to create __index for {}: {}", module_name, e))?;
+        let index_fn = self
+            .lua
+            .create_function(move |_, _key: mlua::Value| -> Result<mlua::Value, mlua::Error> {
+                Err(mlua::Error::runtime(format!(
+                    "权限不足: 使用 'sl.{}' 模块需要在 manifest.json 中声明 '{}' 权限",
+                    module_name_for_meta, module_name_for_meta
+                )))
+            })
+            .map_err(|e| format!("Failed to create __index for {}: {}", module_name, e))?;
 
         meta_table
             .set(mlua::MetaMethod::Index.name(), index_fn)
             .map_err(|e| format!("Failed to set __index for {}: {}", module_name, e))?;
 
-        module_table
-            .set_metatable(Some(meta_table));
+        module_table.set_metatable(Some(meta_table));
 
         sl.set(module_name, module_table)
             .map_err(|e| format!("Failed to set sl.{}: {}", module_name, e))?;
