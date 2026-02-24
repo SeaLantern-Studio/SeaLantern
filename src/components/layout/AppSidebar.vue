@@ -155,6 +155,7 @@ const pluginNavItems = computed<NavItem[]>(() => {
     group: "plugins",
     isPlugin: true,
     pluginId: item.plugin_id,
+    pluginIcon: pluginStore.icons[item.plugin_id] || undefined,
   }));
 });
 
