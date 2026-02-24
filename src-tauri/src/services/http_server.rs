@@ -9,7 +9,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 
@@ -91,7 +90,7 @@ async fn list_api_endpoints(State(state): State<AppState>) -> impl IntoResponse 
         .filter(|cmd| !cmd.starts_with("plugin/") || !cmd.contains("unsupported"))
         .collect();
 
-    let unsupported: Vec<&String> = endpoints
+    let _unsupported: Vec<&String> = endpoints
         .iter()
         .filter(|cmd| cmd.starts_with("plugin/"))
         .collect();

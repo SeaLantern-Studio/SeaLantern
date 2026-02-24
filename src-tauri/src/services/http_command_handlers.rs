@@ -6,7 +6,7 @@ use crate::commands::settings as settings_commands;
 use crate::commands::system as system_commands;
 use crate::commands::update as update_commands;
 use crate::models::settings::AppSettings;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 
