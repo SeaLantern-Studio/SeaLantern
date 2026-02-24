@@ -103,6 +103,11 @@ pub fn import_modpack(
 }
 
 #[tauri::command]
+pub fn parse_server_core_type(source_path: String) -> Result<ParsedServerCoreInfo, String> {
+    crate::services::server_installer::parse_server_core_type(&source_path)
+}
+
+#[tauri::command]
 pub fn start_server(id: String) -> Result<(), String> {
     manager().start_server(&id)
 }

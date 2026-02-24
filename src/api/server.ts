@@ -8,6 +8,18 @@ export interface ServerStatusInfo {
   uptime: number | null;
 }
 
+export interface ParsedServerCoreInfo {
+  coreType: string;
+  mainClass: string | null;
+  jarPath: string | null;
+}
+
+interface ParsedServerCoreInfoRaw {
+  core_type: string;
+  main_class: string | null;
+  jar_path: string | null;
+}
+
 export const serverApi = {
   async create(params: {
     name: string;
@@ -71,6 +83,15 @@ export const serverApi = {
       minMemory: params.minMemory,
       port: params.port,
     });
+  },
+
+  async parseServerCoreType(sourcePath: string): Promise<ParsedServerCoreInfo> {
+    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", { sourcePath });
+    return {
+      coreType: result.core_type,
+      mainClass: result.main_class,
+      jarPath: result.jar_path,
+    };
   },
 
   async addExistingServer(params: {

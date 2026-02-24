@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -9,243 +9,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::models::server::*;
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
-
-/// Minecraft 服务器核心类型枚举
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CoreType {
-    ArclightForge,
-    ArclightNeoforge,
-    Youer,
-    Mohist,
-    Catserver,
-    Spongeforge,
-    ArclightFabric,
-    Banner,
-    Neoforge,
-    Forge,
-    Quilt,
-    Fabric,
-    PufferfishPurpur,
-    Pufferfish,
-    Spongevanilla,
-    Purpur,
-    Paper,
-    Folia,
-    Leaves,
-    Leaf,
-    Spigot,
-    Bukkit,
-    VanillaSnapshot,
-    Vanilla,
-    Nukkitx,
-    Bedrock,
-    Velocity,
-    Bungeecord,
-    Lightfall,
-    Travertine,
-    Unknown,
-}
-
-impl CoreType {
-    /// 获取核心类型的显示名称
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            CoreType::ArclightForge => "Arclight-Forge",
-            CoreType::ArclightNeoforge => "Arclight-Neoforge",
-            CoreType::Youer => "Youer",
-            CoreType::Mohist => "Mohist",
-            CoreType::Catserver => "Catserver",
-            CoreType::Spongeforge => "Spongeforge",
-            CoreType::ArclightFabric => "Arclight-Fabric",
-            CoreType::Banner => "Banner",
-            CoreType::Neoforge => "Neoforge",
-            CoreType::Forge => "Forge",
-            CoreType::Quilt => "Quilt",
-            CoreType::Fabric => "Fabric",
-            CoreType::PufferfishPurpur => "Pufferfish_Purpur",
-            CoreType::Pufferfish => "Pufferfish",
-            CoreType::Spongevanilla => "Spongevanilla",
-            CoreType::Purpur => "Purpur",
-            CoreType::Paper => "Paper",
-            CoreType::Folia => "Folia",
-            CoreType::Leaves => "Leaves",
-            CoreType::Leaf => "Leaf",
-            CoreType::Spigot => "Spigot",
-            CoreType::Bukkit => "Bukkit",
-            CoreType::VanillaSnapshot => "Vanilla-Snapshot",
-            CoreType::Vanilla => "Vanilla",
-            CoreType::Nukkitx => "Nukkitx",
-            CoreType::Bedrock => "Bedrock",
-            CoreType::Velocity => "Velocity",
-            CoreType::Bungeecord => "Bungeecord",
-            CoreType::Lightfall => "Lightfall",
-            CoreType::Travertine => "Travertine",
-            CoreType::Unknown => "Unknown",
-        }
-    }
-
-    /// 获取所有核心类型的检测映射表，按优先级排序
-    fn detection_table() -> &'static [(CoreType, &'static [&'static str])] {
-        &[
-            // 1. 混合核心 (Forge + 插件) - 优先检测
-            (CoreType::ArclightForge, &["arclight-forge"]),
-            (CoreType::ArclightNeoforge, &["arclight-neoforge"]),
-            (CoreType::Youer, &["youer"]),
-            (CoreType::Mohist, &["mohist"]),
-            (CoreType::Catserver, &["catserver"]),
-            (CoreType::Spongeforge, &["spongeforge"]),
-            // 2. 混合核心 (Fabric + 插件)
-            (CoreType::ArclightFabric, &["arclight-fabric"]),
-            (CoreType::Banner, &["banner"]),
-            // 3. Forge 生态 - 优先检测 neoforge
-            (CoreType::Neoforge, &["neoforge"]),
-            (CoreType::Forge, &["forge"]),
-            // 4. Fabric 生态
-            (CoreType::Quilt, &["quilt"]),
-            (CoreType::Fabric, &["fabric"]),
-            // 5. 插件核心 - 优先检测更具体的
-            (CoreType::PufferfishPurpur, &["pufferfish_purpur", "pufferfish-purpur"]),
-            (CoreType::Pufferfish, &["pufferfish"]),
-            (CoreType::Spongevanilla, &["spongevanilla"]),
-            (CoreType::Purpur, &["purpur"]),
-            (CoreType::Paper, &["paper"]),
-            (CoreType::Folia, &["folia"]),
-            (CoreType::Leaves, &["leaves"]),
-            (CoreType::Leaf, &["leaf"]),
-            (CoreType::Spigot, &["spigot"]),
-            (CoreType::Bukkit, &["bukkit"]),
-            // 6. 原版核心
-            (CoreType::VanillaSnapshot, &["vanilla-snapshot"]),
-            (CoreType::Vanilla, &["vanilla"]),
-            // 7. Bedrock 核心
-            (CoreType::Nukkitx, &["nukkitx", "nukkit"]),
-            (CoreType::Bedrock, &["bedrock"]),
-            // 8. 代理核心
-            (CoreType::Velocity, &["velocity"]),
-            (CoreType::Bungeecord, &["bungeecord"]),
-            (CoreType::Lightfall, &["lightfall"]),
-            (CoreType::Travertine, &["travertine"]),
-        ]
-    }
-
-    /// 从文件名检测核心类型
-    pub fn detect_from_filename(filename: &str) -> Self {
-        let filename_lower = filename.to_lowercase();
-
-        for (core_type, keywords) in Self::detection_table() {
-            for keyword in *keywords {
-                if filename_lower.contains(keyword) {
-                    return *core_type;
-                }
-            }
-        }
-
-        CoreType::Unknown
-    }
-}
-
-impl FromStr for CoreType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "arclight-forge" => Ok(CoreType::ArclightForge),
-            "arclight-neoforge" => Ok(CoreType::ArclightNeoforge),
-            "youer" => Ok(CoreType::Youer),
-            "mohist" => Ok(CoreType::Mohist),
-            "catserver" => Ok(CoreType::Catserver),
-            "spongeforge" => Ok(CoreType::Spongeforge),
-            "arclight-fabric" => Ok(CoreType::ArclightFabric),
-            "banner" => Ok(CoreType::Banner),
-            "neoforge" => Ok(CoreType::Neoforge),
-            "forge" => Ok(CoreType::Forge),
-            "quilt" => Ok(CoreType::Quilt),
-            "fabric" => Ok(CoreType::Fabric),
-            "pufferfish_purpur" | "pufferfish-purpur" => Ok(CoreType::PufferfishPurpur),
-            "pufferfish" => Ok(CoreType::Pufferfish),
-            "spongevanilla" => Ok(CoreType::Spongevanilla),
-            "purpur" => Ok(CoreType::Purpur),
-            "paper" => Ok(CoreType::Paper),
-            "folia" => Ok(CoreType::Folia),
-            "leaves" => Ok(CoreType::Leaves),
-            "leaf" => Ok(CoreType::Leaf),
-            "spigot" => Ok(CoreType::Spigot),
-            "bukkit" => Ok(CoreType::Bukkit),
-            "vanilla-snapshot" => Ok(CoreType::VanillaSnapshot),
-            "vanilla" => Ok(CoreType::Vanilla),
-            "nukkitx" | "nukkit" => Ok(CoreType::Nukkitx),
-            "bedrock" => Ok(CoreType::Bedrock),
-            "velocity" => Ok(CoreType::Velocity),
-            "bungeecord" => Ok(CoreType::Bungeecord),
-            "lightfall" => Ok(CoreType::Lightfall),
-            "travertine" => Ok(CoreType::Travertine),
-            "unknown" => Ok(CoreType::Unknown),
-            _ => Err(format!("Unknown core type: {}", s)),
-        }
-    }
-}
-
-impl std::fmt::Display for CoreType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-/// 检测核心类型，返回精确的核心名称（首字母大写）
-///
-/// # Arguments
-/// * `input` - 文件名或路径
-///
-/// # Returns
-/// * `String` - 核心类型名称，如 "Paper", "Forge", "Vanilla" 等
-///
-/// # Examples
-/// ```
-/// let core_type = detect_core_type("paper-1.20.1.jar");
-/// assert_eq!(core_type, "Paper");
-/// ```
-pub fn detect_core_type(input: &str) -> String {
-    let path = std::path::Path::new(input);
-
-    // 获取要检测的文件名（如果是脚本则查找同目录下的 jar）
-    let target_file = if is_script_file(path) {
-        path.parent()
-            .and_then(find_server_jar_in_dir)
-            .unwrap_or_else(|| input.to_string())
-    } else {
-        path.file_name()
-            .map(|f| f.to_string_lossy().to_string())
-            .unwrap_or_else(|| input.to_string())
-    };
-
-    CoreType::detect_from_filename(&target_file).to_string()
-}
-
-/// 检查文件是否是脚本文件（sh/bat）
-fn is_script_file(path: &std::path::Path) -> bool {
-    path.extension()
-        .map(|e| {
-            let ext = e.to_string_lossy().to_lowercase();
-            ext == "sh" || ext == "bat"
-        })
-        .unwrap_or(false)
-}
-
-/// 在指定目录中查找服务器 jar 文件
-fn find_server_jar_in_dir(dir: &std::path::Path) -> Option<String> {
-    let entries = std::fs::read_dir(dir).ok()?;
-    entries
-        .flatten()
-        .filter_map(|entry| {
-            let path = entry.path();
-            if path.is_file() && path.extension()? == "jar" {
-                path.file_name().map(|n| n.to_string_lossy().to_string())
-            } else {
-                None
-            }
-        })
-        .next()
-}
 
 #[derive(Clone, Copy, Debug)]
 enum ManagedConsoleEncoding {
@@ -540,7 +303,7 @@ impl ServerManager {
             .as_secs();
 
         // 检测核心类型
-        let core_type = detect_core_type(&dest_startup.to_string_lossy());
+        let core_type = super::server_installer::detect_core_type(&dest_startup.to_string_lossy());
         println!("检测到核心类型: {}", core_type);
 
         let server = ServerInstance {
@@ -574,81 +337,94 @@ impl ServerManager {
     }
 
     pub fn import_modpack(&self, req: ImportModpackRequest) -> Result<ServerInstance, String> {
-        let source_path = std::path::Path::new(&req.modpack_path);
+        let source_path = Path::new(&req.modpack_path);
         if !source_path.exists() {
-            return Err(format!("整合包文件夹不存在: {}", req.modpack_path));
-        }
-        if !source_path.is_dir() {
-            return Err("所选路径不是文件夹".to_string());
+            return Err(format!("整合包路径不存在: {}", req.modpack_path));
         }
 
-        let source_jar = find_server_jar(source_path)?;
-        println!("找到服务端JAR文件: {}", source_jar);
+        let mut extracted_temp_dir: Option<PathBuf> = None;
+        let source_dir = if source_path.is_file() {
+            let temp_dir = std::env::temp_dir()
+                .join(format!("sea_lantern_modpack_extract_{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&temp_dir)
+                .map_err(|e| format!("无法创建临时解压目录: {}", e))?;
 
-        let id = uuid::Uuid::new_v4().to_string();
-        let data_dir = self
-            .data_dir
-            .lock()
-            .expect("data_dir lock poisoned")
-            .clone();
-        let servers_dir = std::path::Path::new(&data_dir).join("servers");
-        let server_dir = servers_dir.join(&id);
-
-        // 创建服务器目录
-        std::fs::create_dir_all(&server_dir).map_err(|e| format!("无法创建服务器目录: {}", e))?;
-
-        // 复制整合包文件夹的所有内容到服务器目录
-        println!("正在复制整合包文件: {} -> {}", source_path.display(), server_dir.display());
-        copy_dir_recursive(source_path, &server_dir)
-            .map_err(|e| format!("复制整合包文件失败: {}", e))?;
-
-        // 获取复制后的JAR文件路径
-        let jar_filename = std::path::Path::new(&source_jar)
-            .file_name()
-            .ok_or_else(|| "无法获取JAR文件名".to_string())?;
-        let dest_jar = server_dir.join(jar_filename);
-
-        if !dest_jar.exists() {
-            return Err(format!("复制后的JAR文件不存在: {}", dest_jar.display()));
-        }
-
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("time went backwards")
-            .as_secs();
-        let server = ServerInstance {
-            id: id.clone(),
-            name: req.name,
-            core_type: "modpack".into(),
-            core_version: String::new(),
-            mc_version: "unknown".into(),
-            path: server_dir.to_string_lossy().to_string(),
-            jar_path: dest_jar.to_string_lossy().to_string(),
-            startup_mode: "jar".to_string(),
-            java_path: req.java_path,
-            max_memory: req.max_memory,
-            min_memory: req.min_memory,
-            jvm_args: Vec::new(),
-            port: req.port,
-            created_at: now,
-            last_started_at: None,
+            super::server_installer::extract_modpack_archive(source_path, &temp_dir)?;
+            let resolved_root = super::server_installer::resolve_extracted_root(&temp_dir);
+            extracted_temp_dir = Some(temp_dir);
+            resolved_root
+        } else if source_path.is_dir() {
+            source_path.to_path_buf()
+        } else {
+            return Err("无效的整合包路径".to_string());
         };
 
-        println!(
-            "创建服务器实例: id={}, path={}, jar_path={}",
-            server.id, server.path, server.jar_path
-        );
+        let result = (|| {
+            let source_jar = super::server_installer::find_server_jar(&source_dir)?;
+            println!("找到服务端JAR文件: {}", source_jar);
 
-        self.servers
-            .lock()
-            .expect("servers lock poisoned")
-            .push(server.clone());
-        self.logs
-            .lock()
-            .expect("logs lock poisoned")
-            .insert(id, Vec::new());
-        self.save();
-        Ok(server)
+            let id = uuid::Uuid::new_v4().to_string();
+            let data_dir = self
+                .data_dir
+                .lock()
+                .expect("data_dir lock poisoned")
+                .clone();
+            let servers_dir = Path::new(&data_dir).join("servers");
+            let server_dir = servers_dir.join(&id);
+
+            std::fs::create_dir_all(&server_dir)
+                .map_err(|e| format!("无法创建服务器目录: {}", e))?;
+
+            println!("正在复制整合包文件: {} -> {}", source_dir.display(), server_dir.display());
+            copy_dir_recursive(&source_dir, &server_dir)
+                .map_err(|e| format!("复制整合包文件失败: {}", e))?;
+
+            let copied_jar = super::server_installer::find_server_jar(&server_dir)?;
+
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time went backwards")
+                .as_secs();
+            let server = ServerInstance {
+                id: id.clone(),
+                name: req.name,
+                core_type: "modpack".into(),
+                core_version: String::new(),
+                mc_version: "unknown".into(),
+                path: server_dir.to_string_lossy().to_string(),
+                jar_path: copied_jar,
+                startup_mode: "jar".to_string(),
+                java_path: req.java_path,
+                max_memory: req.max_memory,
+                min_memory: req.min_memory,
+                jvm_args: Vec::new(),
+                port: req.port,
+                created_at: now,
+                last_started_at: None,
+            };
+
+            println!(
+                "创建服务器实例: id={}, path={}, jar_path={}",
+                server.id, server.path, server.jar_path
+            );
+
+            self.servers
+                .lock()
+                .expect("servers lock poisoned")
+                .push(server.clone());
+            self.logs
+                .lock()
+                .expect("logs lock poisoned")
+                .insert(id, Vec::new());
+            self.save();
+            Ok(server)
+        })();
+
+        if let Some(temp_dir) = extracted_temp_dir {
+            let _ = std::fs::remove_dir_all(temp_dir);
+        }
+
+        result
     }
 
     pub fn add_existing_server(
@@ -672,17 +448,14 @@ impl ServerManager {
         }
         let _ = std::fs::remove_file(&test_file);
 
-        let startup_mode = normalize_startup_mode(&req.startup_mode);
-
-        // 验证用户指定的启动文件
-        let jar_path = if let Some(ref exec_path) = req.executable_path {
+        let (jar_path, startup_mode) = if let Some(ref exec_path) = req.executable_path {
             let path = std::path::Path::new(exec_path);
             if !path.exists() {
                 return Err(format!("选择的可执行文件不存在: {}", exec_path));
             }
-            exec_path.clone()
+            (exec_path.clone(), detect_startup_mode_from_path(path))
         } else {
-            return Err("必须指定启动文件".to_string());
+            find_server_executable(server_path)?
         };
 
         // 尝试从server.properties读取端口
@@ -702,7 +475,7 @@ impl ServerManager {
         }
 
         // 检测服务端类型
-        let core_type = detect_core_type(&jar_path);
+        let core_type = super::server_installer::detect_core_type(&jar_path);
         println!("检测到核心类型: {}", core_type);
 
         let now = SystemTime::now()
@@ -720,7 +493,7 @@ impl ServerManager {
             mc_version: "unknown".into(),
             path: req.server_path,
             jar_path,
-            startup_mode: startup_mode.to_string(),
+            startup_mode,
             java_path: req.java_path,
             max_memory: req.max_memory,
             min_memory: req.min_memory,
@@ -1299,6 +1072,60 @@ fn normalize_startup_mode(mode: &str) -> &str {
     }
 }
 
+fn detect_startup_mode_from_path(path: &Path) -> String {
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase())
+        .unwrap_or_default();
+
+    match extension.as_str() {
+        "bat" => "bat".to_string(),
+        "sh" => "sh".to_string(),
+        _ => "jar".to_string(),
+    }
+}
+
+fn find_server_executable(server_path: &Path) -> Result<(String, String), String> {
+    let preferred_scripts =
+        ["start.bat", "run.bat", "launch.bat", "start.sh", "run.sh", "launch.sh"];
+
+    for script in preferred_scripts {
+        let script_path = server_path.join(script);
+        if script_path.exists() {
+            let mode = detect_startup_mode_from_path(&script_path);
+            return Ok((script_path.to_string_lossy().to_string(), mode));
+        }
+    }
+
+    if let Ok(jar_path) = super::server_installer::find_server_jar(server_path) {
+        return Ok((jar_path, "jar".to_string()));
+    }
+
+    let entries =
+        std::fs::read_dir(server_path).map_err(|e| format!("无法读取服务器目录: {}", e))?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let extension = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_ascii_lowercase())
+            .unwrap_or_default();
+        if extension != "jar" && extension != "bat" && extension != "sh" {
+            continue;
+        }
+
+        let mode = detect_startup_mode_from_path(&path);
+        return Ok((path.to_string_lossy().to_string(), mode));
+    }
+
+    Err("未找到可用的启动文件（.jar/.bat/.sh）".to_string())
+}
+
 fn resolve_managed_console_encoding(
     startup_mode: &str,
     startup_path: &std::path::Path,
@@ -1375,74 +1202,6 @@ fn decode_console_bytes(bytes: &[u8]) -> String {
     {
         String::from_utf8_lossy(bytes).into_owned()
     }
-}
-
-fn find_server_jar(modpack_path: &std::path::Path) -> Result<String, String> {
-    // 常见的服务端JAR文件名模式
-    let patterns = vec![
-        "server.jar",
-        "forge.jar",
-        "fabric-server.jar",
-        "minecraft_server.jar",
-        "paper.jar",
-        "spigot.jar",
-        "purpur.jar",
-    ];
-
-    // 首先尝试精确匹配
-    for pattern in &patterns {
-        let jar_path = modpack_path.join(pattern);
-        if jar_path.exists() {
-            return Ok(jar_path.to_string_lossy().to_string());
-        }
-    }
-
-    // 如果没有精确匹配，查找所有.jar文件
-    let entries = std::fs::read_dir(modpack_path).map_err(|e| format!("无法读取文件夹: {}", e))?;
-
-    let mut jar_files = Vec::new();
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_file() {
-            if let Some(ext) = path.extension() {
-                if ext == "jar" {
-                    jar_files.push(path);
-                }
-            }
-        }
-    }
-
-    if jar_files.is_empty() {
-        return Err("整合包文件夹中未找到JAR文件".to_string());
-    }
-
-    // 如果只有一个JAR文件，直接使用
-    if jar_files.len() == 1 {
-        return Ok(jar_files[0].to_string_lossy().to_string());
-    }
-
-    // 如果有多个JAR文件，优先选择包含服务端关键词的文件
-    for jar in &jar_files {
-        if let Some(name) = jar.file_name() {
-            let name_lower = name.to_string_lossy().to_lowercase();
-            if name_lower.contains("server")
-                || name_lower.contains("forge")
-                || name_lower.contains("fabric")
-                || name_lower.contains("mohist")
-                || name_lower.contains("paper")
-                || name_lower.contains("spigot")
-                || name_lower.contains("purpur")
-                || name_lower.contains("bukkit")
-                || name_lower.contains("catserver")
-                || name_lower.contains("arclight")
-            {
-                return Ok(jar.to_string_lossy().to_string());
-            }
-        }
-    }
-
-    // 如果都不匹配，返回第一个JAR文件
-    Ok(jar_files[0].to_string_lossy().to_string())
 }
 
 fn load_servers(dir: &str) -> Vec<ServerInstance> {
