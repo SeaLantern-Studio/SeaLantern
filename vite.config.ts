@@ -39,7 +39,18 @@ export default defineConfig({
       output: {
         manualChunks: {
           "vue-vendor": ["vue", "vue-router", "pinia"],
-          "tauri-vendor": ["@tauri-apps/api", "@tauri-apps/plugin-dialog"],
+          "tauri-vendor": [
+            "@tauri-apps/api",
+            "@tauri-apps/plugin-dialog",
+            "@tauri-apps/plugin-fs",
+            "@tauri-apps/plugin-http",
+            "@tauri-apps/plugin-opener",
+            "@tauri-apps/plugin-process",
+            "@tauri-apps/plugin-updater",
+          ],
+          "echarts-vendor": ["echarts", "vue-echarts"],
+          "ui-vendor": ["@headlessui/vue", "reka-ui"],
+          "utils-vendor": ["@vueuse/core", "dompurify", "lucide-vue-next"],
         },
       },
     },
