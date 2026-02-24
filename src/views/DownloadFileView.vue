@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
-import SLCard from "../components/common/SLCard.vue";
-import SLButton from "../components/common/SLButton.vue";
-import SLInput from "../components/common/SLInput.vue";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
-import { useMessage } from "../composables/useMessage";
-import { useLoading } from "../composables/useAsync";
+import { useMessage } from "@composables/useMessage";
+import { useLoading } from "@composables/useAsync";
 import { systemApi } from "@src/api";
-import { downloadApi } from "../api/downloader.ts";
+import { downloadApi } from "@api/downloader.ts";
 import {SLProgress} from "@src/components";
 
 const router = useRouter();
