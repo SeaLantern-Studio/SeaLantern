@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { AlertTriangle } from "lucide-vue-next";
+import { AvatarRoot, AvatarImage, AvatarFallback } from "reka-ui";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLBadge from "@components/common/SLBadge.vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
+import tauriIcon64 from "@src-tauri/icons/64x64.png";
 import { useServerStore } from "@stores/serverStore";
 import { useConsoleStore } from "@stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
@@ -326,12 +328,25 @@ function getAddLabel(): string {
         </div>
         <div v-for="name in onlinePlayers" :key="name" class="player-item glass-card">
           <div class="player-avatar">
-            <img
-              :src="'https://api.rms.net.cn/head/' + name"
-              :alt="name"
-              class="avatar-img"
-              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
-            />
+            <AvatarRoot class="avatar-root">
+              <AvatarImage
+                :src="'https://api.rms.net.cn/head/' + name"
+                :alt="name"
+                class="avatar-img"
+              />
+              <AvatarFallback class="avatar-fallback">
+                <AvatarRoot class="avatar-root">
+                  <AvatarImage
+                    src="https://api.rms.net.cn/head/Alex"
+                    alt="Alex"
+                    class="avatar-img"
+                  />
+                  <AvatarFallback class="avatar-fallback">
+                    <img :src="tauriIcon64" alt="default" class="avatar-img" />
+                  </AvatarFallback>
+                </AvatarRoot>
+              </AvatarFallback>
+            </AvatarRoot>
           </div>
           <div class="player-info">
             <span class="player-name">{{ name }}</span>
@@ -351,11 +366,25 @@ function getAddLabel(): string {
         </div>
         <div v-for="p in whitelist" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img
-              :src="'https://api.rms.net.cn/head/' + p.name"
-              class="avatar-img"
-              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
-            />
+            <AvatarRoot class="avatar-root">
+              <AvatarImage
+                :src="'https://api.rms.net.cn/head/' + p.name"
+                :alt="p.name"
+                class="avatar-img"
+              />
+              <AvatarFallback class="avatar-fallback">
+                <AvatarRoot class="avatar-root">
+                  <AvatarImage
+                    src="https://api.rms.net.cn/head/Alex"
+                    alt="Alex"
+                    class="avatar-img"
+                  />
+                  <AvatarFallback class="avatar-fallback">
+                    <img :src="tauriIcon64" alt="default" class="avatar-img" />
+                  </AvatarFallback>
+                </AvatarRoot>
+              </AvatarFallback>
+            </AvatarRoot>
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
@@ -379,11 +408,25 @@ function getAddLabel(): string {
         </div>
         <div v-for="p in bannedPlayers" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img
-              :src="'https://api.rms.net.cn/head/' + p.name"
-              class="avatar-img"
-              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
-            />
+            <AvatarRoot class="avatar-root">
+              <AvatarImage
+                :src="'https://api.rms.net.cn/head/' + p.name"
+                :alt="p.name"
+                class="avatar-img"
+              />
+              <AvatarFallback class="avatar-fallback">
+                <AvatarRoot class="avatar-root">
+                  <AvatarImage
+                    src="https://api.rms.net.cn/head/Alex"
+                    alt="Alex"
+                    class="avatar-img"
+                  />
+                  <AvatarFallback class="avatar-fallback">
+                    <img :src="tauriIcon64" alt="default" class="avatar-img" />
+                  </AvatarFallback>
+                </AvatarRoot>
+              </AvatarFallback>
+            </AvatarRoot>
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
@@ -410,11 +453,25 @@ function getAddLabel(): string {
         </div>
         <div v-for="p in ops" :key="p.name" class="player-item glass-card">
           <div class="player-avatar">
-            <img
-              :src="'https://api.rms.net.cn/head/' + p.name"
-              class="avatar-img"
-              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
-            />
+            <AvatarRoot class="avatar-root">
+              <AvatarImage
+                :src="'https://api.rms.net.cn/head/' + p.name"
+                :alt="p.name"
+                class="avatar-img"
+              />
+              <AvatarFallback class="avatar-fallback">
+                <AvatarRoot class="avatar-root">
+                  <AvatarImage
+                    src="https://api.rms.net.cn/head/Alex"
+                    alt="Alex"
+                    class="avatar-img"
+                  />
+                  <AvatarFallback class="avatar-fallback">
+                    <img :src="tauriIcon64" alt="default" class="avatar-img" />
+                  </AvatarFallback>
+                </AvatarRoot>
+              </AvatarFallback>
+            </AvatarRoot>
           </div>
           <div class="player-info">
             <span class="player-name">{{ p.name }}</span>
@@ -629,6 +686,29 @@ function getAddLabel(): string {
 }
 .player-actions {
   flex-shrink: 0;
+}
+.avatar-root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  overflow: hidden;
+  user-select: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--sl-radius-sm);
+  background-color: var(--sl-surface);
+}
+.avatar-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--sl-primary-bg);
+  color: var(--sl-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 .modal-form {
   display: flex;
