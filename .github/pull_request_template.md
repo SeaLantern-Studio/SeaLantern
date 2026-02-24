@@ -60,14 +60,34 @@
 
 > 如果不存在关联，此项请忽略
 
-- fixes：#`填写 Issue 编号`
+- Fix #`填写 Issue 编号`
 
-示例:
+<details><summary>示例:</summary>
 
 ```markdown
-- close #114514
-  关闭 Issue #114514
+- Close #123
+  关闭 Issue #123
 ```
+
+| 常见关键词                                 | 示例             |
+| ----------------------------------- | -------------- |
+| `close` / `closes` / `closed`       | `Close #123`   |
+| `fix` / `fixes` / `fixed`           | `Fixes #123`   |
+| `resolve` / `resolves` / `resolved` | `Resolve #123` |
+
+
+| 其他前缀                            | 用途            | 示例                |
+| ----------------------------- | ------------- | ----------------- |
+| `ref` / `references` / `refs` | 引用关联，不关闭      | `Ref #123`        |
+| `related` / `relates to`      | 表明相关          | `Related to #123` |
+| `part of`                     | 表明是其中一部分      | `Part of #123`    |
+| `see` / `see also`            | 参考其他 Issue    | `See #123`        |
+| `re`                          | 关于/回复某个 Issue | `Re #123`         |
+| `addresses`                   | 涉及但未完全解决      | `Addresses #123`  |
+| `implements`                  | 实现某个功能请求      | `Implements #123` |
+| `merges`                      | 合并相关          | `Merges #123`     |
+
+</details>
 
 ---
 
