@@ -96,3 +96,13 @@ pub struct ParsedServerCoreInfo {
     pub main_class: Option<String>,
     pub jar_path: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StartupCandidateItem {
+    pub id: String,
+    pub mode: String,
+    pub label: String,
+    pub detail: String,
+    pub path: String,
+    pub recommended: u8,
+}

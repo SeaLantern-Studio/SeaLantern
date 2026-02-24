@@ -115,7 +115,7 @@ const router = useRouter();
               @update:custom-startup-command="customStartupCommand = $event"
             />
 
-            <template v-else>
+            <template v-else-if="item.step === 4">
               <div class="create-config-step">
                 <JavaEnvironmentStep
                   :java-list="javaList"
@@ -137,21 +137,23 @@ const router = useRouter();
                   @update:port="port = $event"
                   @update:online-mode="onlineMode = $event"
                 />
+              </div>
+            </template>
 
-                <div class="create-submit-actions">
-                  <SLButton variant="secondary" size="lg" @click="router.push('/')">
-                    {{ i18n.t("create.cancel") }}
-                  </SLButton>
-                  <SLButton
-                    variant="primary"
-                    size="lg"
-                    :loading="creating"
-                    :disabled="!canSubmit || creating"
-                    @click="handleSubmit"
-                  >
-                    {{ i18n.t("create.create_config_only") }}
-                  </SLButton>
-                </div>
+            <template v-else>
+              <div class="create-submit-actions">
+                <SLButton variant="secondary" size="lg" @click="router.push('/')">
+                  {{ i18n.t("create.cancel") }}
+                </SLButton>
+                <SLButton
+                  variant="primary"
+                  size="lg"
+                  :loading="creating"
+                  :disabled="!canSubmit || creating"
+                  @click="handleSubmit"
+                >
+                  {{ i18n.t("create.create") }}
+                </SLButton>
               </div>
             </template>
           </div>

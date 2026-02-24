@@ -81,50 +81,52 @@ function getStartupIcon(mode: StartupMode) {
     <div v-else-if="candidates.length === 0" class="startup-step-empty">
       {{ i18n.t("create.startup_empty") }}
     </div>
-    <div v-else class="startup-grid">
-      <button
+    <div v-else class="startup-list">
+      <div
         v-for="candidate in candidates"
         :key="candidate.id"
-        type="button"
-        class="startup-card"
+        class="startup-row"
         :class="{
           active: selectedStartupId === candidate.id,
           recommended: candidate.recommended <= 2,
         }"
-        :disabled="disabled"
-        @click="emit('update:selectedStartupId', candidate.id)"
       >
-        <div class="startup-card-icon">
-          <component :is="getStartupIcon(candidate.mode)" :size="16" />
-        </div>
-        <div class="startup-card-copy">
-          <div class="startup-card-title-row">
-            <p class="startup-card-title">{{ candidate.label }}</p>
-            <span class="startup-mode-badge">{{ startupModeLabel(candidate.mode) }}</span>
+        <button
+          type="button"
+          class="startup-card"
+          :disabled="disabled"
+          @click="emit('update:selectedStartupId', candidate.id)"
+        >
+          <div class="startup-card-icon">
+            <component :is="getStartupIcon(candidate.mode)" :size="16" />
           </div>
-          <p class="startup-card-detail">{{ candidate.detail || candidate.path || "-" }}</p>
-          <span class="startup-recommend">{{ candidateRecommendedText(candidate) }}</span>
+          <div class="startup-card-copy">
+            <div class="startup-card-title-row">
+              <p class="startup-card-title">{{ candidate.label }}</p>
+              <span class="startup-mode-badge">{{ startupModeLabel(candidate.mode) }}</span>
+            </div>
+            <p class="startup-card-detail">{{ candidate.detail || candidate.path || "-" }}</p>
+            <span class="startup-recommend">{{ candidateRecommendedText(candidate) }}</span>
+          </div>
+        </button>
+
+        <div v-if="candidate.mode === 'custom'" class="startup-inline-custom">
+          <SLInput
+            :label="i18n.t('create.startup_custom_label')"
+            :model-value="customStartupCommand"
+            :disabled="disabled"
+            :placeholder="i18n.t('create.startup_custom_placeholder')"
+            @update:model-value="emit('update:customStartupCommand', $event)"
+          />
+          <p class="startup-step-hint">{{ i18n.t("create.startup_custom_hint") }}</p>
+          <p v-if="customCommandHasRedirect" class="startup-step-error">
+            {{ i18n.t("create.startup_custom_redirect_forbidden") }}
+          </p>
         </div>
-      </button>
+      </div>
     </div>
 
-    <div
-      v-if="candidates.find((item) => item.id === selectedStartupId)?.mode === 'custom'"
-      class="startup-custom"
-    >
-      <SLInput
-        :label="i18n.t('create.startup_custom_label')"
-        :model-value="customStartupCommand"
-        :disabled="disabled"
-        :placeholder="i18n.t('create.startup_custom_placeholder')"
-        @update:model-value="emit('update:customStartupCommand', $event)"
-      />
-      <p class="startup-step-hint">{{ i18n.t("create.startup_custom_hint") }}</p>
-      <p v-if="customCommandHasRedirect" class="startup-step-error">
-        {{ i18n.t("create.startup_custom_redirect_forbidden") }}
-      </p>
-      <p class="startup-step-warning">{{ i18n.t("create.startup_custom_not_supported") }}</p>
-    </div>
+    <p class="startup-step-warning">{{ i18n.t("create.startup_custom_not_supported") }}</p>
   </div>
 </template>
 

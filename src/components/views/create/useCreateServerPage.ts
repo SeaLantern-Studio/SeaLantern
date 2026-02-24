@@ -1,12 +1,6 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import {
-  appendCustomCandidate,
-  buildArchiveStartupCandidates,
-  buildFolderStartupCandidates,
-  collectCopyConflicts,
-  copyDirectoryRecursive,
-} from "@components/views/create/createServerWorkflow";
+import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
 import {
   containsIoRedirection,
@@ -27,8 +21,6 @@ import { useServerStore } from "@stores/serverStore";
 type SourceType = "archive" | "folder" | "";
 
 export function useCreateServerPage() {
-  const isWindows = navigator.userAgent.toLowerCase().includes("windows");
-
   const router = useRouter();
   const store = useServerStore();
   const { error: errorMsg, showError, clearError } = useMessage();
@@ -76,6 +68,7 @@ export function useCreateServerPage() {
     if (sourceType.value !== "folder") {
       return "";
     }
+
     const source = sourcePath.value.trim();
     const target = runPath.value.trim();
     if (!target || normalizePathForCompare(source) === normalizePathForCompare(target)) {
@@ -119,7 +112,10 @@ export function useCreateServerPage() {
     if (!step3Completed.value) {
       return 3;
     }
-    return 4;
+    if (!step4Completed.value) {
+      return 4;
+    }
+    return 5;
   });
 
   const stepItems = computed(() => [
@@ -146,6 +142,12 @@ export function useCreateServerPage() {
       title: i18n.t("create.step_config_title"),
       description: i18n.t("create.step_config_desc"),
       completed: step4Completed.value,
+    },
+    {
+      step: 5,
+      title: i18n.t("create.step_action_title"),
+      description: i18n.t("create.step_action_desc"),
+      completed: false,
     },
   ]);
 
@@ -208,44 +210,7 @@ export function useCreateServerPage() {
   watch(
     [sourcePath, sourceType],
     async ([path, type]) => {
-      const requestId = ++startupDetectRequestId;
-
-      if (!path.trim() || !type) {
-        startupDetecting.value = false;
-        startupCandidates.value = [];
-        selectedStartupId.value = "";
-        customStartupCommand.value = "";
-        return;
-      }
-
-      startupDetecting.value = true;
-      try {
-        const discovered =
-          type === "folder"
-            ? await buildFolderStartupCandidates(path, serverApi.parseServerCoreType, isWindows)
-            : await buildArchiveStartupCandidates(path, serverApi.parseServerCoreType);
-        const list = appendCustomCandidate(discovered);
-
-        if (requestId !== startupDetectRequestId) {
-          return;
-        }
-
-        startupCandidates.value = list;
-        if (!list.some((item) => item.id === selectedStartupId.value)) {
-          selectedStartupId.value = list[0]?.id ?? "";
-        }
-      } catch (error) {
-        if (requestId !== startupDetectRequestId) {
-          return;
-        }
-        startupCandidates.value = appendCustomCandidate([]);
-        selectedStartupId.value = startupCandidates.value[0]?.id ?? "";
-        showError(String(error));
-      } finally {
-        if (requestId === startupDetectRequestId) {
-          startupDetecting.value = false;
-        }
-      }
+      await refreshStartupCandidates(path, type, false);
     },
     { immediate: true },
   );
@@ -303,22 +268,21 @@ export function useCreateServerPage() {
     }
   }
 
-  async function rescanStartupCandidates() {
-    const path = sourcePath.value.trim();
-    const type = sourceType.value;
-    if (!path || !type) {
+  async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
+    const requestId = ++startupDetectRequestId;
+
+    if (!path.trim() || !type) {
+      startupDetecting.value = false;
       startupCandidates.value = [];
       selectedStartupId.value = "";
+      customStartupCommand.value = "";
       return;
     }
 
-    const requestId = ++startupDetectRequestId;
     startupDetecting.value = true;
     try {
-      const discovered =
-        type === "folder"
-          ? await buildFolderStartupCandidates(path, serverApi.parseServerCoreType, isWindows)
-          : await buildArchiveStartupCandidates(path, serverApi.parseServerCoreType);
+      // 启动项扫描改为后端执行，前端只负责展示和选择。
+      const discovered = await serverApi.scanStartupCandidates(path, type as "archive" | "folder");
       const list = appendCustomCandidate(discovered);
 
       if (requestId !== startupDetectRequestId) {
@@ -326,17 +290,26 @@ export function useCreateServerPage() {
       }
 
       startupCandidates.value = list;
-      selectedStartupId.value = list[0]?.id ?? "";
+
+      if (forceReset || !list.some((item) => item.id === selectedStartupId.value)) {
+        selectedStartupId.value = list[0]?.id ?? "";
+      }
     } catch (error) {
       if (requestId !== startupDetectRequestId) {
         return;
       }
+      startupCandidates.value = appendCustomCandidate([]);
+      selectedStartupId.value = startupCandidates.value[0]?.id ?? "";
       showError(String(error));
     } finally {
       if (requestId === startupDetectRequestId) {
         startupDetecting.value = false;
       }
     }
+  }
+
+  async function rescanStartupCandidates() {
+    await refreshStartupCandidates(sourcePath.value.trim(), sourceType.value, true);
   }
 
   function validateBeforeSubmit(): boolean {
@@ -424,14 +397,15 @@ export function useCreateServerPage() {
         }
 
         if (normalizePathForCompare(sourceDir) !== normalizePathForCompare(targetDir)) {
-          const conflicts = await collectCopyConflicts(sourceDir, targetDir);
+          // 冲突探测与复制均在后端执行，减少前端阻塞与权限差异问题。
+          const conflicts = await serverApi.collectCopyConflicts(sourceDir, targetDir);
           if (conflicts.length > 0) {
             const confirmed = await requestCopyConflictConfirm(conflicts);
             if (!confirmed) {
               return;
             }
           }
-          await copyDirectoryRecursive(sourceDir, targetDir);
+          await serverApi.copyDirectoryContents(sourceDir, targetDir);
         }
 
         const startup = selectedStartup.value;

@@ -14,10 +14,28 @@ export interface ParsedServerCoreInfo {
   jarPath: string | null;
 }
 
+export interface StartupCandidateItem {
+  id: string;
+  mode: "starter" | "jar" | "bat" | "sh" | "ps1";
+  label: string;
+  detail: string;
+  path: string;
+  recommended: number;
+}
+
 interface ParsedServerCoreInfoRaw {
   core_type: string;
   main_class: string | null;
   jar_path: string | null;
+}
+
+interface StartupCandidateItemRaw {
+  id: string;
+  mode: string;
+  label: string;
+  detail: string;
+  path: string;
+  recommended: number;
 }
 
 export const serverApi = {
@@ -92,6 +110,33 @@ export const serverApi = {
       mainClass: result.main_class,
       jarPath: result.jar_path,
     };
+  },
+
+  async scanStartupCandidates(
+    sourcePath: string,
+    sourceType: "archive" | "folder",
+  ): Promise<StartupCandidateItem[]> {
+    const result = await tauriInvoke<StartupCandidateItemRaw[]>("scan_startup_candidates", {
+      sourcePath,
+      sourceType,
+    });
+
+    return result.map((item) => ({
+      id: item.id,
+      mode: (item.mode as StartupCandidateItem["mode"]) ?? "jar",
+      label: item.label,
+      detail: item.detail,
+      path: item.path,
+      recommended: item.recommended,
+    }));
+  },
+
+  async collectCopyConflicts(sourceDir: string, targetDir: string): Promise<string[]> {
+    return tauriInvoke("collect_copy_conflicts", { sourceDir, targetDir });
+  },
+
+  async copyDirectoryContents(sourceDir: string, targetDir: string): Promise<void> {
+    return tauriInvoke("copy_directory_contents", { sourceDir, targetDir });
   },
 
   async addExistingServer(params: {
