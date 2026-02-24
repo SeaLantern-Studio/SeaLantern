@@ -383,6 +383,7 @@ fn detect_core_type_with_main_class(input: &str) -> (String, Option<String>) {
 
 fn core_type_from_main_class(main_class: &str) -> Option<CoreType> {
     match main_class {
+        value if value.starts_with("net.neoforged.serverstarterjar") => Some(CoreType::Neoforge),
         "net.minecraft.server.MinecraftServer" | "net.minecraft.bundler.Main" => {
             Some(CoreType::Vanilla)
         }

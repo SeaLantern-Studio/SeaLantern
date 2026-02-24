@@ -114,7 +114,7 @@
 }
 
 .create-step-panel {
-  margin-left: calc(26px + var(--sl-space-sm));
+  margin-left: calc(26px + var(--sl-space-md));
   background: transparent;
   padding: 0;
   position: relative;
