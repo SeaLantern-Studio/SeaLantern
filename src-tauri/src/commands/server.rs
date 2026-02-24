@@ -152,6 +152,22 @@ fn unknown_parsed_core_info() -> ParsedServerCoreInfo {
     }
 }
 
+fn to_relative_archive_path(base_dir: &Path, absolute_path: &str) -> Result<String, String> {
+    let absolute = Path::new(absolute_path);
+    let relative = absolute.strip_prefix(base_dir).map_err(|_| {
+        format!(
+            "扫描到的启动文件不在临时解压目录内: {}",
+            absolute_path
+        )
+    })?;
+
+    if relative.as_os_str().is_empty() {
+        return Err("扫描到的启动文件路径无效".to_string());
+    }
+
+    Ok(relative.to_string_lossy().to_string())
+}
+
 fn scan_startup_candidates_blocking(
     source_path: String,
     source_type: String,
@@ -194,9 +210,14 @@ fn scan_startup_candidates_blocking(
             return Err("archive 来源无效".to_string());
         };
 
-        let parsed = crate::services::server_installer::parse_server_core_type(
+        let mut parsed = crate::services::server_installer::parse_server_core_type(
             &inspect_root.to_string_lossy(),
         )?;
+
+        if let (Some(temp_dir), Some(jar_path)) = (temp_extract_dir.as_ref(), parsed.jar_path.clone()) {
+            parsed.jar_path = Some(to_relative_archive_path(temp_dir, &jar_path)?);
+        }
+
         let (detected_mc_version, mc_version_detection_failed) =
             crate::services::server_installer::detect_mc_version_from_mods(&inspect_root);
         let detected_core_type_key =

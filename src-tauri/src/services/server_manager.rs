@@ -436,7 +436,7 @@ impl ServerManager {
                 .map(|value| value.trim())
                 .filter(|value| !value.is_empty())
                 .ok_or_else(|| "未提供启动文件路径".to_string())?;
-            Some(resolve_startup_file_path(source_path, &run_dir, raw_path))
+            Some(resolve_startup_file_path(source_path, &run_dir, raw_path)?)
         };
 
         let startup_path = startup_file_path.clone().unwrap_or_default();
@@ -1642,10 +1642,10 @@ fn resolve_startup_file_path(
     source_path: &Path,
     run_dir: &Path,
     startup_file_path: &str,
-) -> String {
+) -> Result<String, String> {
     let startup_path = PathBuf::from(startup_file_path);
     if startup_path.is_relative() {
-        return run_dir.join(&startup_path).to_string_lossy().to_string();
+        return Ok(run_dir.join(&startup_path).to_string_lossy().to_string());
     }
 
     if source_path.is_dir() {
@@ -1653,16 +1653,12 @@ fn resolve_startup_file_path(
         let startup_norm = normalize_path_for_compare(&startup_path);
         if startup_norm.starts_with(&(source_norm.clone() + "/")) {
             if let Ok(relative) = startup_path.strip_prefix(source_path) {
-                return run_dir.join(relative).to_string_lossy().to_string();
+                return Ok(run_dir.join(relative).to_string_lossy().to_string());
             }
         }
     }
 
-    if let Some(name) = startup_path.file_name() {
-        return run_dir.join(name).to_string_lossy().to_string();
-    }
-
-    run_dir.join(startup_path).to_string_lossy().to_string()
+    Err(format!("无法安全映射启动文件路径，请重新扫描后重试: {}", startup_file_path))
 }
 
 fn load_run_path_mappings(dir: &str) -> Vec<RunPathServerMapping> {
