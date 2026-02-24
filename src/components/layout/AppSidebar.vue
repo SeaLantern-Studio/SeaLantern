@@ -179,35 +179,52 @@ function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem
 }
 
 const navItems = computed<NavItem[]>(() => {
-  const result: NavItem[] = [...staticNavItems];
+  const result: NavItem[] = [];
 
+  // 收集插件边栏项目
   const positioned = pluginStore.sidebarItems
     .filter((i) => !i.isDefault && i.after)
     .map(sidebarItemToNavItem);
 
-  for (const item of positioned) {
-    const idx = result.findIndex((r) => r.name === item.after);
-    if (idx !== -1) {
-      result.splice(idx + 1, 0, item);
-    } else {
-      result.push(item);
-    }
-  }
-
   const unpositioned = pluginStore.sidebarItems
     .filter((i) => !i.isDefault && !i.after)
     .map(sidebarItemToNavItem);
-  result.push(...unpositioned);
 
   const defaultItems = pluginStore.sidebarItems
     .filter((i) => i.isDefault)
     .map(sidebarItemToNavItem);
-  result.push(...defaultItems);
 
   const handledPluginIds = new Set(pluginStore.sidebarItems.map((i) => i.pluginId));
-  result.push(
-    ...pluginNavItems.value.filter((i) => !i.pluginId || !handledPluginIds.has(i.pluginId)),
+  const remainingPluginItems = pluginNavItems.value.filter(
+    (i) => !i.pluginId || !handledPluginIds.has(i.pluginId),
   );
+
+  // 放在 plugins 和 settings 之间的插件项
+  const pluginItemsBetweenPluginsAndSettings = [
+    ...unpositioned,
+    ...defaultItems,
+    ...remainingPluginItems,
+  ];
+
+  // 遍历静态导航项，在 plugins 和 settings 之间插入插件边栏项目
+  for (const staticItem of staticNavItems) {
+    result.push(staticItem);
+
+    // 在 plugins 项之后插入插件边栏项目
+    if (staticItem.name === "plugins") {
+      result.push(...pluginItemsBetweenPluginsAndSettings);
+    }
+  }
+
+  // 处理有 after 定位的插件项（插入到指定位置）
+  for (const item of positioned) {
+    const targetIdx = result.findIndex((r) => r.name === item.after);
+    if (targetIdx !== -1) {
+      result.splice(targetIdx + 1, 0, item);
+    } else {
+      result.push(item);
+    }
+  }
 
   return result;
 });
