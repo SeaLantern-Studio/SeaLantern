@@ -91,6 +91,10 @@ export const systemApi = {
     return tauriInvoke("pick_java_file");
   },
 
+  async pickSaveFile(): Promise<string | null> {
+    return tauriInvoke("pick_save_file");
+  },
+
   async pickFolder(): Promise<string | null> {
     return tauriInvoke("pick_folder");
   },

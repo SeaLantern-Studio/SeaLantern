@@ -241,12 +241,26 @@ pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 }
 
 #[tauri::command]
+pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.dialog()
+        .file()
+        .set_title("Save")
+        .save_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
 pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = tokio::sync::oneshot::channel();
 
     app.dialog()
         .file()
-        .set_title("Select modpack folder")
+        .set_title("Select folder")
         .pick_folder(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
@@ -283,7 +297,7 @@ pub fn open_file(path: String) -> Result<(), String> {
     {
         use std::process::Command;
         Command::new("explorer.exe")
-            //.arg("/select,")   选中文件，非打开文件
+            .arg("/select,")
             .arg(path)
             .spawn()
             .map_err(|e| format!("无法打开文件: {}", e))?;
