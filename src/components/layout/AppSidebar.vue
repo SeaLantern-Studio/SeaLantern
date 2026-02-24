@@ -141,7 +141,7 @@ const staticNavItems: NavItem[] = [
     icon: "settings",
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
-    group: "system",
+    group: "settings",
   },
 ];
 
@@ -179,35 +179,52 @@ function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem
 }
 
 const navItems = computed<NavItem[]>(() => {
-  const result: NavItem[] = [...staticNavItems];
+  const result: NavItem[] = [];
 
+  // 收集插件边栏项目
   const positioned = pluginStore.sidebarItems
     .filter((i) => !i.isDefault && i.after)
     .map(sidebarItemToNavItem);
 
-  for (const item of positioned) {
-    const idx = result.findIndex((r) => r.name === item.after);
-    if (idx !== -1) {
-      result.splice(idx + 1, 0, item);
-    } else {
-      result.push(item);
-    }
-  }
-
   const unpositioned = pluginStore.sidebarItems
     .filter((i) => !i.isDefault && !i.after)
     .map(sidebarItemToNavItem);
-  result.push(...unpositioned);
 
   const defaultItems = pluginStore.sidebarItems
     .filter((i) => i.isDefault)
     .map(sidebarItemToNavItem);
-  result.push(...defaultItems);
 
   const handledPluginIds = new Set(pluginStore.sidebarItems.map((i) => i.pluginId));
-  result.push(
-    ...pluginNavItems.value.filter((i) => !i.pluginId || !handledPluginIds.has(i.pluginId)),
+  const remainingPluginItems = pluginNavItems.value.filter(
+    (i) => !i.pluginId || !handledPluginIds.has(i.pluginId),
   );
+
+  // 放在 plugins 和 settings 之间的插件项
+  const pluginItemsBetweenPluginsAndSettings = [
+    ...unpositioned,
+    ...defaultItems,
+    ...remainingPluginItems,
+  ];
+
+  // 遍历静态导航项，在 plugins 和 settings 之间插入插件边栏项目
+  for (const staticItem of staticNavItems) {
+    result.push(staticItem);
+
+    // 在 plugins 项之后插入插件边栏项目
+    if (staticItem.name === "plugins") {
+      result.push(...pluginItemsBetweenPluginsAndSettings);
+    }
+  }
+
+  // 处理有 after 定位的插件项（插入到指定位置）
+  for (const item of positioned) {
+    const targetIdx = result.findIndex((r) => r.name === item.after);
+    if (targetIdx !== -1) {
+      result.splice(targetIdx + 1, 0, item);
+    } else {
+      result.push(item);
+    }
+  }
 
   return result;
 });
@@ -224,22 +241,22 @@ function updateNavIndicator() {
     if (!navIndicator.value) return;
 
     const activeNavItem = document.querySelector(".nav-item.active");
-    const sidebar = document.querySelector(".sidebar");
+    const sidebarNav = document.querySelector(".sidebar-nav");
 
-    if (activeNavItem && sidebar && navIndicator.value.parentElement) {
+    if (activeNavItem && sidebarNav && navIndicator.value.parentElement) {
       // 获取滚动容器和激活项的位置
       const navItemRect = activeNavItem.getBoundingClientRect();
-      const sidebarRect = sidebar.getBoundingClientRect();
+      const sidebarNavRect = sidebarNav.getBoundingClientRect();
 
       // 计算相对于滚动容器的位置（考虑滚动偏移）
       const top =
-        navItemRect.top - sidebarRect.top + sidebar.scrollTop + (navItemRect.height - 16) / 2;
+        navItemRect.top - sidebarNavRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
 
       // 确保导航指示器可见
       navIndicator.value.style.display = "block";
 
       // 强制触发重排，确保动画能够正确执行
-      void navIndicator.value.offsetHeight; // 触发重排
+      void navIndicator.value.offsetHeight;
 
       // 使用 requestAnimationFrame 确保动画在正确的时机执行
       requestAnimationFrame(() => {
@@ -494,11 +511,9 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
         <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t("common.app_name") }}</span>
       </transition>
     </div>
-    <!-- 导航激活指示器 -->
-    <!-- 不要挂在sidebar-nav上不然在关于页面会出bug -->
-    <div class="nav-active-indicator" ref="navIndicator"></div>
-
     <nav class="sidebar-nav">
+      <!-- 导航激活指示器 -->
+      <div class="nav-active-indicator" ref="navIndicator"></div>
       <!-- 服务器选择（Headless UI Listbox） -->
       <Listbox
         v-if="serverOptions.length > 0"
@@ -627,22 +642,26 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
           </div>
         </div>
       </template>
+
+      <!-- 关于按钮 -->
+      <div class="nav-group">
+        <div
+          class="nav-item"
+          :class="{ active: isActive('/about') }"
+          @click="navigateTo('/about')"
+          :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
+        >
+          <Info class="nav-icon" :size="20" :stroke-width="1.8" />
+          <transition name="fade">
+            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
+          </transition>
+        </div>
+      </div>
     </nav>
 
     <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
 
     <div class="sidebar-footer">
-      <div
-        class="nav-item"
-        :class="{ active: isActive('/about') }"
-        @click="navigateTo('/about')"
-        :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
-      >
-        <Info class="nav-icon" :size="20" :stroke-width="1.8" />
-        <transition name="fade">
-          <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
-        </transition>
-      </div>
       <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
         <ChevronLeft
           class="nav-icon"
