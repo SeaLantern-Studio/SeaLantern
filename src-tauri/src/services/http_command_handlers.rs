@@ -30,22 +30,34 @@ impl CommandRegistry {
         handlers.insert("stop_server".to_string(), handle_stop_server as CommandHandler);
         handlers.insert("send_command".to_string(), handle_send_command as CommandHandler);
         handlers.insert("get_server_list".to_string(), handle_get_server_list as CommandHandler);
-        handlers.insert("get_server_status".to_string(), handle_get_server_status as CommandHandler);
+        handlers
+            .insert("get_server_status".to_string(), handle_get_server_status as CommandHandler);
         handlers.insert("delete_server".to_string(), handle_delete_server as CommandHandler);
         handlers.insert("get_server_logs".to_string(), handle_get_server_logs as CommandHandler);
-        handlers.insert("update_server_name".to_string(), handle_update_server_name as CommandHandler);
+        handlers
+            .insert("update_server_name".to_string(), handle_update_server_name as CommandHandler);
 
         // 注册 Java 命令
         handlers.insert("detect_java".to_string(), handle_detect_java as CommandHandler);
-        handlers.insert("validate_java_path".to_string(), handle_validate_java_path as CommandHandler);
+        handlers
+            .insert("validate_java_path".to_string(), handle_validate_java_path as CommandHandler);
         // 注意：install_java 和 cancel_java_install 需要特殊处理，暂时不支持
-        handlers.insert("cancel_java_install".to_string(), handle_cancel_java_install as CommandHandler);
+        handlers.insert(
+            "cancel_java_install".to_string(),
+            handle_cancel_java_install as CommandHandler,
+        );
 
         // 注册 Config 命令
         handlers.insert("read_config".to_string(), handle_read_config as CommandHandler);
         handlers.insert("write_config".to_string(), handle_write_config as CommandHandler);
-        handlers.insert("read_server_properties".to_string(), handle_read_server_properties as CommandHandler);
-        handlers.insert("write_server_properties".to_string(), handle_write_server_properties as CommandHandler);
+        handlers.insert(
+            "read_server_properties".to_string(),
+            handle_read_server_properties as CommandHandler,
+        );
+        handlers.insert(
+            "write_server_properties".to_string(),
+            handle_write_server_properties as CommandHandler,
+        );
 
         // 注册 System 命令
         handlers.insert("get_system_info".to_string(), handle_get_system_info as CommandHandler);
@@ -58,10 +70,14 @@ impl CommandRegistry {
 
         // 注册 Player 命令
         handlers.insert("get_whitelist".to_string(), handle_get_whitelist as CommandHandler);
-        handlers.insert("get_banned_players".to_string(), handle_get_banned_players as CommandHandler);
+        handlers
+            .insert("get_banned_players".to_string(), handle_get_banned_players as CommandHandler);
         handlers.insert("get_ops".to_string(), handle_get_ops as CommandHandler);
         handlers.insert("add_to_whitelist".to_string(), handle_add_to_whitelist as CommandHandler);
-        handlers.insert("remove_from_whitelist".to_string(), handle_remove_from_whitelist as CommandHandler);
+        handlers.insert(
+            "remove_from_whitelist".to_string(),
+            handle_remove_from_whitelist as CommandHandler,
+        );
         handlers.insert("ban_player".to_string(), handle_ban_player as CommandHandler);
         handlers.insert("unban_player".to_string(), handle_unban_player as CommandHandler);
         handlers.insert("add_op".to_string(), handle_add_op as CommandHandler);
@@ -75,13 +91,17 @@ impl CommandRegistry {
         handlers.insert("reset_settings".to_string(), handle_reset_settings as CommandHandler);
         handlers.insert("export_settings".to_string(), handle_export_settings as CommandHandler);
         handlers.insert("import_settings".to_string(), handle_import_settings as CommandHandler);
-        handlers.insert("check_acrylic_support".to_string(), handle_check_acrylic_support as CommandHandler);
+        handlers.insert(
+            "check_acrylic_support".to_string(),
+            handle_check_acrylic_support as CommandHandler,
+        );
         handlers.insert("apply_acrylic".to_string(), handle_apply_acrylic as CommandHandler);
         handlers.insert("get_system_fonts".to_string(), handle_get_system_fonts as CommandHandler);
 
         // 注册 Update 命令
         handlers.insert("check_update".to_string(), handle_check_update as CommandHandler);
-        handlers.insert("open_download_url".to_string(), handle_open_download_url as CommandHandler);
+        handlers
+            .insert("open_download_url".to_string(), handle_open_download_url as CommandHandler);
 
         // 注意：Plugin 命令暂时不支持，需要插件管理器在 HTTP 模式下的支持
         let plugin_commands = vec![
@@ -146,8 +166,8 @@ fn handle_create_server(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: CreateServerRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: CreateServerRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = server_commands::create_server(
             req.name,
             req.core_type,
@@ -167,8 +187,8 @@ fn handle_import_server(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: ImportServerRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: ImportServerRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = server_commands::import_server(
             req.name,
             req.jar_path,
@@ -187,8 +207,8 @@ fn handle_import_modpack(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: ImportModpackRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: ImportModpackRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = server_commands::import_modpack(
             req.name,
             req.modpack_path,
@@ -205,19 +225,17 @@ fn handle_start_server(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let id: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let id: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         server_commands::start_server(id)?;
         Ok(Value::Null)
     })
 }
 
-fn handle_stop_server(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_stop_server(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let id: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let id: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         server_commands::stop_server(id)?;
         Ok(Value::Null)
     })
@@ -227,8 +245,8 @@ fn handle_send_command(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: SendCommandRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: SendCommandRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         server_commands::send_command(req.id, req.command)?;
         Ok(Value::Null)
     })
@@ -247,8 +265,8 @@ fn handle_get_server_status(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let id: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let id: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = server_commands::get_server_status(id);
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -258,8 +276,8 @@ fn handle_delete_server(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let id: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let id: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         server_commands::delete_server(id)?;
         Ok(Value::Null)
     })
@@ -269,8 +287,8 @@ fn handle_get_server_logs(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: GetLogsRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: GetLogsRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = server_commands::get_server_logs(req.id, req.since);
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -280,8 +298,8 @@ fn handle_update_server_name(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: UpdateNameRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: UpdateNameRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         server_commands::update_server_name(req.id, req.name)?;
         Ok(Value::Null)
     })
@@ -302,8 +320,8 @@ fn handle_validate_java_path(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let path: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let path: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = java_commands::validate_java_path(path).await?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -320,12 +338,10 @@ fn handle_cancel_java_install(
 
 // ============ Config 命令处理器 ============
 
-fn handle_read_config(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_read_config(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: ReadConfigRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: ReadConfigRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = config_commands::read_config(req.server_path, req.path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -335,8 +351,8 @@ fn handle_write_config(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: WriteConfigRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: WriteConfigRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         config_commands::write_config(req.server_path, req.path, req.values)?;
         Ok(Value::Null)
     })
@@ -346,8 +362,8 @@ fn handle_read_server_properties(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let server_path: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let server_path: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = config_commands::read_server_properties(server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -357,8 +373,8 @@ fn handle_write_server_properties(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: WriteServerPropertiesRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: WriteServerPropertiesRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         config_commands::write_server_properties(req.server_path, req.values)?;
         Ok(Value::Null)
     })
@@ -378,9 +394,7 @@ fn handle_get_system_info(
 fn handle_unsupported(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
-    Box::pin(async move {
-        Err("This command is not supported in HTTP/Docker mode".to_string())
-    })
+    Box::pin(async move { Err("This command is not supported in HTTP/Docker mode".to_string()) })
 }
 
 // ============ Player 命令处理器 ============
@@ -389,8 +403,8 @@ fn handle_get_whitelist(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let server_path: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let server_path: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::get_whitelist(server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -400,19 +414,17 @@ fn handle_get_banned_players(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let server_path: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let server_path: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::get_banned_players(server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
 
-fn handle_get_ops(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_get_ops(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let server_path: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let server_path: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::get_ops(server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -422,8 +434,8 @@ fn handle_add_to_whitelist(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: PlayerActionRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: PlayerActionRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::add_to_whitelist(req.server_id, req.name)?;
         Ok(Value::String(result))
     })
@@ -433,19 +445,17 @@ fn handle_remove_from_whitelist(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: PlayerActionRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: PlayerActionRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::remove_from_whitelist(req.server_id, req.name)?;
         Ok(Value::String(result))
     })
 }
 
-fn handle_ban_player(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_ban_player(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: BanPlayerRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: BanPlayerRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::ban_player(req.server_id, req.name, req.reason)?;
         Ok(Value::String(result))
     })
@@ -455,52 +465,44 @@ fn handle_unban_player(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: PlayerActionRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: PlayerActionRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::unban_player(req.server_id, req.name)?;
         Ok(Value::String(result))
     })
 }
 
-fn handle_add_op(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_add_op(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: PlayerActionRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: PlayerActionRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::add_op(req.server_id, req.name)?;
         Ok(Value::String(result))
     })
 }
 
-fn handle_remove_op(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_remove_op(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: PlayerActionRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: PlayerActionRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::remove_op(req.server_id, req.name)?;
         Ok(Value::String(result))
     })
 }
 
-fn handle_kick_player(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_kick_player(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: KickPlayerRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: KickPlayerRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = player_commands::kick_player(req.server_id, req.name, req.reason)?;
         Ok(Value::String(result))
     })
 }
 
-fn handle_export_logs(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_export_logs(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: ExportLogsRequest = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let req: ExportLogsRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         player_commands::export_logs(req.logs, req.save_path)?;
         Ok(Value::Null)
     })
@@ -521,8 +523,8 @@ fn handle_save_settings(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let settings: AppSettings = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let settings: AppSettings =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         settings_commands::save_settings(settings)?;
         Ok(Value::Null)
     })
@@ -550,8 +552,8 @@ fn handle_import_settings(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let json: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let json: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = settings_commands::import_settings(json)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -570,7 +572,8 @@ fn handle_apply_acrylic(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        Err("apply_acrylic is not supported in HTTP/Docker mode (requires Window handle)".to_string())
+        Err("apply_acrylic is not supported in HTTP/Docker mode (requires Window handle)"
+            .to_string())
     })
 }
 
@@ -598,8 +601,8 @@ fn handle_open_download_url(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let url: String = serde_json::from_value(params)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let url: String =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         update_commands::open_download_url(url).await?;
         Ok(Value::Null)
     })

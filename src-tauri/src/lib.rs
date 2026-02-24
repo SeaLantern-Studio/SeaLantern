@@ -30,11 +30,12 @@ pub fn run() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             // 尝试从环境变量获取静态文件目录，默认为 /app/dist
-            let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "/app/dist".to_string());
+            let static_dir =
+                std::env::var("STATIC_DIR").unwrap_or_else(|_| "/app/dist".to_string());
             let static_dir_opt = std::path::Path::new(&static_dir)
                 .exists()
                 .then_some(static_dir);
-            
+
             services::http_server::run_http_server("0.0.0.0:3000", static_dir_opt).await;
         });
         return;

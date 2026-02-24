@@ -54,10 +54,8 @@ impl ApiResponse {
 pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
     // 创建命令注册表
     let command_registry = Arc::new(CommandRegistry::new());
-    
-    let state = AppState {
-        command_registry,
-    };
+
+    let state = AppState { command_registry };
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -87,12 +85,14 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
 
 async fn list_api_endpoints(State(state): State<AppState>) -> impl IntoResponse {
     let endpoints = state.command_registry.list_commands();
-    
-    let supported: Vec<&String> = endpoints.iter()
+
+    let supported: Vec<&String> = endpoints
+        .iter()
         .filter(|cmd| !cmd.starts_with("plugin/") || !cmd.contains("unsupported"))
         .collect();
-    
-    let unsupported: Vec<&String> = endpoints.iter()
+
+    let unsupported: Vec<&String> = endpoints
+        .iter()
         .filter(|cmd| cmd.starts_with("plugin/"))
         .collect();
 
@@ -134,11 +134,7 @@ async fn handle_api_command(
         }
         Err(e) => {
             eprintln!("[HTTP API] Command '{}' failed: {}", command, e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(e)),
-            )
-                .into_response()
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::error(e))).into_response()
         }
     }
 }
