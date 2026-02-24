@@ -271,6 +271,7 @@
     "path_label": "Server Path",
     "path_required_archive": "Archive source requires a target server path.",
     "path_optional_folder": "Folder source can run in place or use a new target path.",
+    "path_child_of_source_forbidden": "Server path cannot be a subdirectory of the source folder.",
     "path_archive_placeholder": "Choose the target path for archive import",
     "path_folder_placeholder": "Leave empty to run in place",
     "path_use_in_place": "Run In Place",

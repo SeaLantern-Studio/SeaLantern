@@ -10,6 +10,20 @@ export function normalizePathForCompare(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+$/, "");
 }
 
+export function isStrictChildPath(candidatePath: string, parentPath: string): boolean {
+  const candidateNorm = normalizePathForCompare(candidatePath.trim());
+  const parentNorm = normalizePathForCompare(parentPath.trim());
+  if (!candidateNorm || !parentNorm) {
+    return false;
+  }
+
+  const windowsLike = /^[a-zA-Z]:/.test(candidateNorm) || /^[a-zA-Z]:/.test(parentNorm);
+  const candidate = windowsLike ? candidateNorm.toLowerCase() : candidateNorm;
+  const parent = windowsLike ? parentNorm.toLowerCase() : parentNorm;
+
+  return candidate !== parent && candidate.startsWith(`${parent}/`);
+}
+
 export function getPathSeparator(path: string): string {
   return path.includes("\\") ? "\\" : "/";
 }

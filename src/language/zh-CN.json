@@ -267,6 +267,7 @@
     "path_label": "开服路径",
     "path_required_archive": "压缩包来源必须指定开服路径。",
     "path_optional_folder": "文件夹来源可原地开服，也可指定新路径。",
+    "path_child_of_source_forbidden": "开服路径不能是源文件夹路径的子目录。",
     "path_archive_placeholder": "请选择压缩包的开服目录",
     "path_folder_placeholder": "留空表示原地开服",
     "path_use_in_place": "原地开服",

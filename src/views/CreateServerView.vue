@@ -57,6 +57,7 @@ const {
   stepItems,
   canSubmit,
   pickRunPath,
+  updateRunPath,
   toggleUseSoftwareDataDir,
   rescanStartupCandidates,
   detectJava,
@@ -105,7 +106,7 @@ const router = useRouter();
               :use-software-data-dir="useSoftwareDataDir"
               :disabled="creating"
               @pick-path="pickRunPath"
-              @update:run-path="runPath = $event"
+              @update:run-path="updateRunPath"
               @toggle-use-software-data-dir="toggleUseSoftwareDataDir"
             />
 

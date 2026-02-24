@@ -4,6 +4,7 @@ import { appendCustomCandidate } from "@components/views/create/createServerWork
 import type { StartupCandidate } from "@components/views/create/startupTypes";
 import {
   containsIoRedirection,
+  isStrictChildPath,
   mapStartupModeForModpack,
 } from "@components/views/create/startupUtils";
 import type { JavaInfo } from "@api/java";
@@ -248,8 +249,22 @@ export function useCreateServerPage() {
   async function pickRunPath() {
     const selected = await systemApi.pickFolder();
     if (selected) {
-      runPath.value = selected;
+      updateRunPath(selected);
     }
+  }
+
+  function updateRunPath(nextPath: string) {
+    const targetPath = nextPath.trim();
+    if (
+      sourceType.value === "folder" &&
+      !useSoftwareDataDir.value &&
+      isStrictChildPath(targetPath, sourcePath.value)
+    ) {
+      showError(i18n.t("create.path_child_of_source_forbidden"));
+      return;
+    }
+
+    runPath.value = nextPath;
   }
 
   function toggleUseSoftwareDataDir() {
@@ -358,6 +373,14 @@ export function useCreateServerPage() {
     }
     if (requiresRunPath.value && !useSoftwareDataDir.value && runPath.value.trim().length === 0) {
       showError(i18n.t("create.path_required_archive"));
+      return false;
+    }
+    if (
+      sourceType.value === "folder" &&
+      !useSoftwareDataDir.value &&
+      isStrictChildPath(runPath.value, sourcePath.value)
+    ) {
+      showError(i18n.t("create.path_child_of_source_forbidden"));
       return false;
     }
     if (!selectedStartup.value) {
@@ -488,6 +511,7 @@ export function useCreateServerPage() {
     stepItems,
     canSubmit,
     pickRunPath,
+    updateRunPath,
     toggleUseSoftwareDataDir,
     rescanStartupCandidates,
     detectJava,

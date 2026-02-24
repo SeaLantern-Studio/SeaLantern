@@ -397,6 +397,10 @@ impl ServerManager {
             super::server_installer::extract_modpack_archive(source_path, &run_dir)?;
         } else if source_path.is_dir() {
             if !paths_equal(source_path, &run_dir) {
+                // 防止目标目录位于源目录内部，避免递归复制时出现 run/run/run 自套娃。
+                if path_is_child_of(&run_dir, source_path) {
+                    return Err("运行目录不能位于整合包源目录内部，请选择其他目录".to_string());
+                }
                 std::fs::create_dir_all(&run_dir)
                     .map_err(|e| format!("无法创建运行目录: {}", e))?;
                 copy_dir_recursive(source_path, &run_dir)
@@ -1593,6 +1597,47 @@ fn paths_equal(left: &Path, right: &Path) -> bool {
     normalize_path_for_compare(left) == normalize_path_for_compare(right)
 }
 
+fn normalize_absolute_path_for_compare(path: &Path) -> Option<String> {
+    let absolute_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir().ok()?.join(path)
+    };
+
+    let mut normalized = PathBuf::new();
+    for component in absolute_path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            _ => normalized.push(component.as_os_str()),
+        }
+    }
+
+    let normalized = normalize_path_for_compare(&normalized);
+
+    #[cfg(target_os = "windows")]
+    {
+        Some(normalized.to_ascii_lowercase())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Some(normalized)
+    }
+}
+
+fn path_is_child_of(candidate: &Path, parent: &Path) -> bool {
+    let Some(candidate_norm) = normalize_absolute_path_for_compare(candidate) else {
+        return false;
+    };
+    let Some(parent_norm) = normalize_absolute_path_for_compare(parent) else {
+        return false;
+    };
+
+    candidate_norm.starts_with(&(parent_norm + "/"))
+}
+
 fn resolve_startup_file_path(
     source_path: &Path,
     run_dir: &Path,
@@ -1686,6 +1731,10 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
         let dst_path = dst.join(entry.file_name());
 
         if src_path.is_dir() {
+            // 若遍历到当前复制目标目录本身，直接跳过，作为额外兜底保护。
+            if paths_equal(&src_path, dst) {
+                continue;
+            }
             copy_dir_recursive(&src_path, &dst_path)?;
         } else {
             std::fs::copy(&src_path, &dst_path)?;
