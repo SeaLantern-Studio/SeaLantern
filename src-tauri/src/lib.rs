@@ -187,7 +187,7 @@ pub fn run() {
                             >>()
                         {
                             if let Ok(mut m) = manager.lock() {
-                                m.disable_all_plugins();
+                                m.disable_all_plugins_for_shutdown();
                             }
                         }
                     }
@@ -468,7 +468,7 @@ pub fn run() {
                                 std::sync::Mutex<crate::plugins::manager::PluginManager>,
                             >>() {
                                 if let Ok(mut m) = manager.lock() {
-                                    m.disable_all_plugins();
+                                    m.disable_all_plugins_for_shutdown();
                                 }
                             }
                             app.exit(0);
