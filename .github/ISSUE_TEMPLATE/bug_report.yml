@@ -17,7 +17,7 @@ body:
     id: reproduce
     attributes:
       label: 复现步骤
-      description: 可选 - 如何重现这个问题
+      description: 如何重现这个问题
       placeholder: 这里写你的复现步骤
     validations:
       required: true
