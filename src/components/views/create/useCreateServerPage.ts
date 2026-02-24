@@ -44,6 +44,8 @@ export function useCreateServerPage() {
   const mcVersionDetectionFailed = ref(false);
 
   const startupDetecting = ref(false);
+  // 源路径变更后先进入同步等待态，覆盖防抖空窗，防止提交时仍引用旧启动项。
+  const startupSyncPending = ref(false);
   const startupCandidates = ref<StartupCandidate[]>([]);
   const selectedStartupId = ref("");
   const customStartupCommand = ref("");
@@ -156,7 +158,8 @@ export function useCreateServerPage() {
     },
   ]);
 
-  const canSubmit = computed(() => step4Completed.value);
+  // 只有步骤完成且“启动项同步”完成后才允许提交，避免新源路径配旧 startupFilePath。
+  const canSubmit = computed(() => step4Completed.value && !startupSyncPending.value && !startupDetecting.value);
 
   onMounted(async () => {
     await loadDefaultSettings();
@@ -182,9 +185,13 @@ export function useCreateServerPage() {
     }
 
     if (!path.trim() || !type) {
+      startupSyncPending.value = false;
       void refreshStartupCandidates(path, type, false);
       return;
     }
+
+    // 源路径一旦变化就立刻锁提交，直到本轮扫描完成。
+    startupSyncPending.value = true;
 
     startupDetectTimer = setTimeout(() => {
       startupDetectTimer = null;
@@ -289,6 +296,7 @@ export function useCreateServerPage() {
       mcVersionOptions.value = [];
       selectedMcVersion.value = "";
       mcVersionDetectionFailed.value = false;
+      startupSyncPending.value = false;
       return;
     }
 
@@ -356,6 +364,7 @@ export function useCreateServerPage() {
       if (requestId === startupDetectRequestId) {
         coreDetecting.value = false;
         startupDetecting.value = false;
+        startupSyncPending.value = false;
       }
     }
   }
