@@ -21,7 +21,7 @@ watch(
     if (!v) {
       importJson.value = "";
     }
-  }
+  },
 );
 
 function handleImport() {
@@ -45,9 +45,7 @@ function close() {
       ></textarea>
     </div>
     <template #footer>
-      <SLButton variant="secondary" @click="close">{{
-        i18n.t("settings.cancel")
-      }}</SLButton>
+      <SLButton variant="secondary" @click="close">{{ i18n.t("settings.cancel") }}</SLButton>
       <SLButton variant="primary" @click="handleImport">{{
         i18n.t("settings.confirm_import")
       }}</SLButton>

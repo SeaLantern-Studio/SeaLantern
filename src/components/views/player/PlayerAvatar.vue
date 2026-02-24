@@ -9,7 +9,10 @@ defineProps<{
 </script>
 
 <template>
-  <AvatarRoot class="player-avatar-root" :style="{ width: `${size || 36}px`, height: `${size || 36}px` }">
+  <AvatarRoot
+    class="player-avatar-root"
+    :style="{ width: `${size || 36}px`, height: `${size || 36}px` }"
+  >
     <AvatarImage
       :src="`https://api.rms.net.cn/head/${name}`"
       :alt="name"
@@ -17,11 +20,7 @@ defineProps<{
     />
     <AvatarFallback class="player-avatar-fallback">
       <AvatarRoot class="player-avatar-root">
-        <AvatarImage
-          src="https://api.rms.net.cn/head/Alex"
-          alt="Alex"
-          class="player-avatar-img"
-        />
+        <AvatarImage src="https://api.rms.net.cn/head/Alex" alt="Alex" class="player-avatar-img" />
         <AvatarFallback class="player-avatar-fallback">
           <img :src="tauriIcon64" alt="default" class="player-avatar-img" />
         </AvatarFallback>

@@ -58,21 +58,17 @@ watch(
       bgPreviewLoaded.value = false;
       bgPreviewLoading.value = true;
     }
-  }
+  },
 );
 
 watch(
   () => props.backgroundImage,
   (backgroundImage, previousBackgroundImage) => {
-    if (
-      props.expanded &&
-      backgroundImage &&
-      backgroundImage !== previousBackgroundImage
-    ) {
+    if (props.expanded && backgroundImage && backgroundImage !== previousBackgroundImage) {
       bgPreviewLoaded.value = false;
       bgPreviewLoading.value = true;
     }
-  }
+  },
 );
 
 function toggleExpanded() {

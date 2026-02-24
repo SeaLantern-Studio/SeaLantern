@@ -21,9 +21,7 @@ function close() {
   <SLModal :visible="visible" :title="i18n.t('settings.reset_confirm')" @close="close">
     <p class="text-body">{{ i18n.t("settings.reset_desc") }}</p>
     <template #footer>
-      <SLButton variant="secondary" @click="close">{{
-        i18n.t("settings.cancel")
-      }}</SLButton>
+      <SLButton variant="secondary" @click="close">{{ i18n.t("settings.cancel") }}</SLButton>
       <SLButton variant="danger" @click="emit('confirm')">{{
         i18n.t("settings.confirm_reset")
       }}</SLButton>

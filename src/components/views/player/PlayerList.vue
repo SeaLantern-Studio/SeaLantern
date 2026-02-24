@@ -41,11 +41,7 @@ const emit = defineEmits<{
       <div v-else-if="!onlinePlayers?.length" class="player-list-empty">
         <p class="text-caption">{{ i18n.t("players.no_players") }}</p>
       </div>
-      <div
-        v-for="name in onlinePlayers"
-        :key="name"
-        class="player-item glass-card"
-      >
+      <div v-for="name in onlinePlayers" :key="name" class="player-item glass-card">
         <PlayerAvatar :name="name" :size="36" />
         <div class="player-info">
           <span class="player-name">{{ name }}</span>
@@ -64,11 +60,7 @@ const emit = defineEmits<{
       <div v-if="!whitelist?.length" class="player-list-empty">
         <p class="text-caption">{{ i18n.t("players.empty_whitelist") }}</p>
       </div>
-      <div
-        v-for="p in whitelist"
-        :key="p.name"
-        class="player-item glass-card"
-      >
+      <div v-for="p in whitelist" :key="p.name" class="player-item glass-card">
         <PlayerAvatar :name="p.name" :size="36" />
         <div class="player-info">
           <span class="player-name">{{ p.name }}</span>
@@ -91,11 +83,7 @@ const emit = defineEmits<{
       <div v-if="!bannedPlayers?.length" class="player-list-empty">
         <p class="text-caption">{{ i18n.t("players.empty_banned") }}</p>
       </div>
-      <div
-        v-for="p in bannedPlayers"
-        :key="p.name"
-        class="player-item glass-card"
-      >
+      <div v-for="p in bannedPlayers" :key="p.name" class="player-item glass-card">
         <PlayerAvatar :name="p.name" :size="36" />
         <div class="player-info">
           <span class="player-name">{{ p.name }}</span>
@@ -121,11 +109,7 @@ const emit = defineEmits<{
       <div v-if="!ops?.length" class="player-list-empty">
         <p class="text-caption">{{ i18n.t("players.empty_ops") }}</p>
       </div>
-      <div
-        v-for="p in ops"
-        :key="p.name"
-        class="player-item glass-card"
-      >
+      <div v-for="p in ops" :key="p.name" class="player-item glass-card">
         <PlayerAvatar :name="p.name" :size="36" />
         <div class="player-info">
           <span class="player-name">{{ p.name }}</span>
