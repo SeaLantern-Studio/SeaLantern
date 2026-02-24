@@ -17,7 +17,7 @@ language/
 ├── fr-FA.json    # Persian
 ├── ru-RU.json    # Russian
 ├── vi-VN.json    # Vietnamese
-├── README.md     # This documentation (Simplified Chinese)
+├── README.md     # Simplified Chinese version of this document
 └── README-en.md  # This documentation
 ```
 
