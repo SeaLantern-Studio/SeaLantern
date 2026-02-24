@@ -1,0 +1,91 @@
+name: Bug 报告
+description: 创建一个 Bug 报告
+title: "[Bug] "
+labels: ["bug", "pending"]
+assignees: []
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请详细描述遇到的问题
+      placeholder: 这里写你的问题描述
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 可选 - 如何重现这个问题
+      placeholder: 这里写你的复现步骤
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 可选 - 你认为预期应该是怎么样的
+      placeholder: 这里写你认为预期是怎么样的
+    validations:
+      required: false
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际操作时是怎么样的
+      placeholder: 这里写你的实际操作时是怎么样的
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 环境
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      description: 如 Windows 11、macOS 14、Ubuntu 22.04 等
+      placeholder: 如 windows11
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 软件版本
+      description: 如 0.6.5 或最新 dev 分支
+      placeholder: 如 0.6.5 或最新 dev 分支
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-env
+    attributes:
+      label: 其他环境信息
+      description: 如有其他环境信息请在此填写
+      placeholder: 其他环境信息
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图（如果存在）
+      description: 粘贴日志文件上传地址，或是上传图片
+      placeholder: 这里粘贴你的日志文件上传地址，或是上传图片
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 备注
+      description: 可选 - 其他信息，如果没有请忽略
+      placeholder: 其他信息，如果没有请忽略
+    validations:
+      required: false
