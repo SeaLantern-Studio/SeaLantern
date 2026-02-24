@@ -627,22 +627,26 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
           </div>
         </div>
       </template>
+
+      <!-- 关于按钮 -->
+      <div class="nav-group">
+        <div
+          class="nav-item"
+          :class="{ active: isActive('/about') }"
+          @click="navigateTo('/about')"
+          :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
+        >
+          <Info class="nav-icon" :size="20" :stroke-width="1.8" />
+          <transition name="fade">
+            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
+          </transition>
+        </div>
+      </div>
     </nav>
 
     <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
 
     <div class="sidebar-footer">
-      <div
-        class="nav-item"
-        :class="{ active: isActive('/about') }"
-        @click="navigateTo('/about')"
-        :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
-      >
-        <Info class="nav-icon" :size="20" :stroke-width="1.8" />
-        <transition name="fade">
-          <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
-        </transition>
-      </div>
       <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
         <ChevronLeft
           class="nav-icon"
