@@ -141,7 +141,7 @@ const staticNavItems: NavItem[] = [
     icon: "settings",
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
-    group: "system",
+    group: "settings",
   },
 ];
 
@@ -224,22 +224,22 @@ function updateNavIndicator() {
     if (!navIndicator.value) return;
 
     const activeNavItem = document.querySelector(".nav-item.active");
-    const sidebar = document.querySelector(".sidebar");
+    const sidebarNav = document.querySelector(".sidebar-nav");
 
-    if (activeNavItem && sidebar && navIndicator.value.parentElement) {
+    if (activeNavItem && sidebarNav && navIndicator.value.parentElement) {
       // 获取滚动容器和激活项的位置
       const navItemRect = activeNavItem.getBoundingClientRect();
-      const sidebarRect = sidebar.getBoundingClientRect();
+      const sidebarNavRect = sidebarNav.getBoundingClientRect();
 
       // 计算相对于滚动容器的位置（考虑滚动偏移）
       const top =
-        navItemRect.top - sidebarRect.top + sidebar.scrollTop + (navItemRect.height - 16) / 2;
+        navItemRect.top - sidebarNavRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
 
       // 确保导航指示器可见
       navIndicator.value.style.display = "block";
 
       // 强制触发重排，确保动画能够正确执行
-      void navIndicator.value.offsetHeight; // 触发重排
+      void navIndicator.value.offsetHeight;
 
       // 使用 requestAnimationFrame 确保动画在正确的时机执行
       requestAnimationFrame(() => {
@@ -494,11 +494,9 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
         <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t("common.app_name") }}</span>
       </transition>
     </div>
-    <!-- 导航激活指示器 -->
-    <!-- 不要挂在sidebar-nav上不然在关于页面会出bug -->
-    <div class="nav-active-indicator" ref="navIndicator"></div>
-
     <nav class="sidebar-nav">
+      <!-- 导航激活指示器 -->
+      <div class="nav-active-indicator" ref="navIndicator"></div>
       <!-- 服务器选择（Headless UI Listbox） -->
       <Listbox
         v-if="serverOptions.length > 0"
