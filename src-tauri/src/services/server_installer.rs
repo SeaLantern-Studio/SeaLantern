@@ -81,7 +81,7 @@ impl CoreType {
         &Self::API_CORE_KEYS
     }
 
-    pub fn to_api_core_key(&self) -> Option<&'static str> {
+    pub fn to_api_core_key(self) -> Option<&'static str> {
         match self {
             CoreType::ArclightForge => Some("arclight-forge"),
             CoreType::ArclightNeoforge => Some("arclight-neoforge"),

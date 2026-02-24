@@ -88,6 +88,7 @@ pub fn add_existing_server(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn import_modpack(
     name: String,
     modpack_path: String,
@@ -154,12 +155,9 @@ fn unknown_parsed_core_info() -> ParsedServerCoreInfo {
 
 fn to_relative_archive_path(base_dir: &Path, absolute_path: &str) -> Result<String, String> {
     let absolute = Path::new(absolute_path);
-    let relative = absolute.strip_prefix(base_dir).map_err(|_| {
-        format!(
-            "扫描到的启动文件不在临时解压目录内: {}",
-            absolute_path
-        )
-    })?;
+    let relative = absolute
+        .strip_prefix(base_dir)
+        .map_err(|_| format!("扫描到的启动文件不在临时解压目录内: {}", absolute_path))?;
 
     if relative.as_os_str().is_empty() {
         return Err("扫描到的启动文件路径无效".to_string());
@@ -194,10 +192,8 @@ fn scan_startup_candidates_blocking(
         let mut temp_extract_dir: Option<std::path::PathBuf> = None;
 
         let inspect_root = if source.is_file() {
-            let temp_dir = std::env::temp_dir().join(format!(
-                "sea_lantern_startup_scan_{}",
-                uuid::Uuid::new_v4()
-            ));
+            let temp_dir = std::env::temp_dir()
+                .join(format!("sea_lantern_startup_scan_{}", uuid::Uuid::new_v4()));
             std::fs::create_dir_all(&temp_dir)
                 .map_err(|e| format!("无法创建临时解压目录: {}", e))?;
             crate::services::server_installer::extract_modpack_archive(source, &temp_dir)?;
@@ -214,14 +210,18 @@ fn scan_startup_candidates_blocking(
             &inspect_root.to_string_lossy(),
         )?;
 
-        if let (Some(temp_dir), Some(jar_path)) = (temp_extract_dir.as_ref(), parsed.jar_path.clone()) {
+        if let (Some(temp_dir), Some(jar_path)) =
+            (temp_extract_dir.as_ref(), parsed.jar_path.clone())
+        {
             parsed.jar_path = Some(to_relative_archive_path(temp_dir, &jar_path)?);
         }
 
         let (detected_mc_version, mc_version_detection_failed) =
             crate::services::server_installer::detect_mc_version_from_mods(&inspect_root);
         let detected_core_type_key =
-            crate::services::server_installer::CoreType::normalize_to_api_core_key(&parsed.core_type);
+            crate::services::server_installer::CoreType::normalize_to_api_core_key(
+                &parsed.core_type,
+            );
 
         if let Some(jar_path) = parsed.jar_path.clone() {
             let is_starter = parsed
@@ -373,7 +373,9 @@ fn scan_startup_candidates_blocking(
         .map(|(_, parsed)| parsed)
         .unwrap_or_else(unknown_parsed_core_info);
     let detected_core_type_key =
-        crate::services::server_installer::CoreType::normalize_to_api_core_key(&parsed_core.core_type);
+        crate::services::server_installer::CoreType::normalize_to_api_core_key(
+            &parsed_core.core_type,
+        );
     let (detected_mc_version, mc_version_detection_failed) =
         crate::services::server_installer::detect_mc_version_from_mods(source);
 
