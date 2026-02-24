@@ -24,6 +24,8 @@ pub struct ServerInstance {
     pub jar_path: String,
     #[serde(default = "default_startup_mode")]
     pub startup_mode: String,
+    #[serde(default)]
+    pub custom_command: Option<String>,
     pub java_path: String,
     pub max_memory: u32,
     pub min_memory: u32,
@@ -53,6 +55,8 @@ pub struct CreateServerRequest {
     pub jar_path: String,
     #[serde(default = "default_startup_mode")]
     pub startup_mode: String,
+    #[serde(default)]
+    pub custom_command: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +66,8 @@ pub struct ImportServerRequest {
     pub java_path: String,
     #[serde(default = "default_startup_mode")]
     pub startup_mode: String,
+    #[serde(default)]
+    pub custom_command: Option<String>,
     pub max_memory: u32,
     pub min_memory: u32,
     pub port: u16,
@@ -76,6 +82,18 @@ pub struct ImportModpackRequest {
     pub max_memory: u32,
     pub min_memory: u32,
     pub port: u16,
+    #[serde(default = "default_startup_mode")]
+    pub startup_mode: String,
+    #[serde(default)]
+    pub online_mode: bool,
+    #[serde(default)]
+    pub custom_command: Option<String>,
+    #[serde(default)]
+    pub run_path: String,
+    #[serde(default)]
+    pub use_software_data_dir: bool,
+    #[serde(default)]
+    pub startup_file_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,6 +106,8 @@ pub struct AddExistingServerRequest {
     pub port: u16,
     pub startup_mode: String,
     pub executable_path: Option<String>,
+    #[serde(default)]
+    pub custom_command: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,6 +115,12 @@ pub struct ParsedServerCoreInfo {
     pub core_type: String,
     pub main_class: Option<String>,
     pub jar_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StartupScanResult {
+    pub parsed_core: ParsedServerCoreInfo,
+    pub candidates: Vec<StartupCandidateItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

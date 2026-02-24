@@ -126,7 +126,6 @@ function getStartupIcon(mode: StartupMode) {
       </div>
     </div>
 
-    <p class="startup-step-warning">{{ i18n.t("create.startup_custom_not_supported") }}</p>
   </div>
 </template>
 

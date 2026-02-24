@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import type { SourceType } from "@components/views/create/SourceIntakeField.vue";
 import { getPathName, normalizePathForCompare } from "@components/views/create/startupUtils";
@@ -11,6 +10,7 @@ const props = withDefaults(
     sourceType: SourceType;
     sourcePath: string;
     runPath: string;
+    useSoftwareDataDir: boolean;
     disabled?: boolean;
   }>(),
   {
@@ -21,7 +21,19 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: "update:runPath", value: string): void;
   (e: "pickPath"): void;
+  (e: "toggleUseSoftwareDataDir"): void;
 }>();
+
+const softwareDataDirText = "已使用软件数据目录";
+
+const inputValue = computed(() => {
+  if (props.useSoftwareDataDir) {
+    return softwareDataDirText;
+  }
+  return props.runPath;
+});
+
+const inputDisabled = computed(() => props.disabled || props.useSoftwareDataDir);
 
 const effectivePath = computed(() => {
   if (props.sourceType !== "folder") {
@@ -48,36 +60,37 @@ const effectivePath = computed(() => {
       }}
     </p>
 
-    <SLInput
-      :label="i18n.t('create.path_label')"
-      :model-value="runPath"
-      :disabled="disabled"
-      :placeholder="
-        sourceType === 'archive'
-          ? i18n.t('create.path_archive_placeholder')
-          : i18n.t('create.path_folder_placeholder')
-      "
-      @update:model-value="emit('update:runPath', $event)"
-    >
-      <template #suffix>
-        <button type="button" class="run-path-picker" :disabled="disabled" @click="emit('pickPath')">
-          {{ i18n.t("create.browse") }}
-        </button>
-      </template>
-    </SLInput>
-
-    <div v-if="sourceType === 'folder'" class="run-path-actions">
-      <SLButton variant="secondary" size="sm" :disabled="disabled" @click="emit('update:runPath', '')">
-        {{ i18n.t("create.path_use_in_place") }}
-      </SLButton>
-      <SLButton
-        variant="secondary"
-        size="sm"
-        :disabled="disabled"
-        @click="emit('update:runPath', sourcePath)"
+    <div class="run-path-row">
+      <span class="run-path-label">{{ i18n.t("create.path_label") }}</span>
+      <SLInput
+        class="run-path-input"
+        :model-value="inputValue"
+        :disabled="inputDisabled"
+        :placeholder="
+          sourceType === 'archive'
+            ? i18n.t('create.path_archive_placeholder')
+            : i18n.t('create.path_folder_placeholder')
+        "
+        @update:model-value="emit('update:runPath', $event)"
       >
-        {{ i18n.t("create.path_use_source") }}
-      </SLButton>
+        <template #suffix>
+          <button type="button" class="run-path-picker" :disabled="inputDisabled" @click="emit('pickPath')">
+            {{ i18n.t("create.browse") }}
+          </button>
+        </template>
+      </SLInput>
+    </div>
+
+    <div class="run-path-toggle-row">
+      <button
+        type="button"
+        class="run-path-data-dir-toggle"
+        :class="{ 'is-active': useSoftwareDataDir }"
+        :disabled="disabled"
+        @click="emit('toggleUseSoftwareDataDir')"
+      >
+        使用软件数据目录
+      </button>
     </div>
 
     <p v-if="sourceType === 'folder'" class="run-path-effective">

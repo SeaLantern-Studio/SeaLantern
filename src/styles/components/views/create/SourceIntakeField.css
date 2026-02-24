@@ -62,6 +62,11 @@
   color: var(--sl-text-primary);
 }
 
+.source-intake-title.selected {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
 .source-intake-subtitle {
   margin: 0;
   font-size: 0.8125rem;

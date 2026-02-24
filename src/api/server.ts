@@ -23,6 +23,11 @@ export interface StartupCandidateItem {
   recommended: number;
 }
 
+export interface StartupScanResult {
+  parsedCore: ParsedServerCoreInfo;
+  candidates: StartupCandidateItem[];
+}
+
 interface ParsedServerCoreInfoRaw {
   core_type: string;
   main_class: string | null;
@@ -36,6 +41,11 @@ interface StartupCandidateItemRaw {
   detail: string;
   path: string;
   recommended: number;
+}
+
+interface StartupScanResultRaw {
+  parsed_core: ParsedServerCoreInfoRaw;
+  candidates: StartupCandidateItemRaw[];
 }
 
 export const serverApi = {
@@ -92,6 +102,12 @@ export const serverApi = {
     maxMemory: number;
     minMemory: number;
     port: number;
+    startupMode: "jar" | "bat" | "sh" | "ps1" | "custom";
+    onlineMode: boolean;
+    customCommand?: string;
+    runPath: string;
+    useSoftwareDataDir: boolean;
+    startupFilePath?: string;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_modpack", {
       name: params.name,
@@ -100,6 +116,12 @@ export const serverApi = {
       maxMemory: params.maxMemory,
       minMemory: params.minMemory,
       port: params.port,
+      startupMode: params.startupMode,
+      onlineMode: params.onlineMode,
+      customCommand: params.customCommand,
+      runPath: params.runPath,
+      useSoftwareDataDir: params.useSoftwareDataDir,
+      startupFilePath: params.startupFilePath,
     });
   },
 
@@ -115,20 +137,27 @@ export const serverApi = {
   async scanStartupCandidates(
     sourcePath: string,
     sourceType: "archive" | "folder",
-  ): Promise<StartupCandidateItem[]> {
-    const result = await tauriInvoke<StartupCandidateItemRaw[]>("scan_startup_candidates", {
+  ): Promise<StartupScanResult> {
+    const result = await tauriInvoke<StartupScanResultRaw>("scan_startup_candidates", {
       sourcePath,
       sourceType,
     });
 
-    return result.map((item) => ({
-      id: item.id,
-      mode: (item.mode as StartupCandidateItem["mode"]) ?? "jar",
-      label: item.label,
-      detail: item.detail,
-      path: item.path,
-      recommended: item.recommended,
-    }));
+    return {
+      parsedCore: {
+        coreType: result.parsed_core.core_type,
+        mainClass: result.parsed_core.main_class,
+        jarPath: result.parsed_core.jar_path,
+      },
+      candidates: result.candidates.map((item) => ({
+        id: item.id,
+        mode: (item.mode as StartupCandidateItem["mode"]) ?? "jar",
+        label: item.label,
+        detail: item.detail,
+        path: item.path,
+        recommended: item.recommended,
+      })),
+    };
   },
 
   async collectCopyConflicts(sourceDir: string, targetDir: string): Promise<string[]> {

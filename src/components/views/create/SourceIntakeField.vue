@@ -147,19 +147,11 @@ async function pickFolder() {
     >
       <div class="source-intake-icon">+</div>
       <div class="source-intake-main">
-        <p class="source-intake-title">
-          {{
-            sourcePath
-              ? i18n.t("create.source_selected_title")
-              : i18n.t("create.source_drop_or_click")
-          }}
+        <p class="source-intake-title" :class="{ selected: !!sourcePath }">
+          {{ sourcePath ? selectedName : i18n.t("create.source_drop_or_click") }}
         </p>
-        <p class="source-intake-subtitle">
-          {{
-            sourcePath
-              ? selectedName
-              : i18n.t("create.source_accept_hint")
-          }}
+        <p v-if="!sourcePath" class="source-intake-subtitle">
+          {{ i18n.t("create.source_accept_hint") }}
         </p>
       </div>
       <div class="source-intake-meta">

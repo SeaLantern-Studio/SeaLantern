@@ -39,17 +39,24 @@ export function sortStartupCandidates(candidates: StartupCandidate[]): StartupCa
   });
 }
 
-export function mapStartupModeForApi(mode: StartupMode): "jar" | "bat" | "sh" | "ps1" {
+export function mapStartupModeForApi(mode: Exclude<StartupMode, "custom">): "jar" | "bat" | "sh" | "ps1" {
   switch (mode) {
     case "bat":
       return "bat";
     case "sh":
       return "sh";
     case "ps1":
-      return "bat";
+      return "ps1";
     default:
       return "jar";
   }
+}
+
+export function mapStartupModeForModpack(mode: StartupMode): "jar" | "bat" | "sh" | "ps1" | "custom" {
+  if (mode === "custom") {
+    return "custom";
+  }
+  return mapStartupModeForApi(mode);
 }
 
 export function resolveExecutablePathForTarget(

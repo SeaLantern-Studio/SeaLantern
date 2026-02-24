@@ -29,6 +29,7 @@ const {
   sourcePath,
   sourceType,
   runPath,
+  useSoftwareDataDir,
   coreDetecting,
   startupDetecting,
   startupCandidates,
@@ -50,6 +51,7 @@ const {
   showSourceCoreInfo,
   sourceCoreInfoText,
   pickRunPath,
+  toggleUseSoftwareDataDir,
   rescanStartupCandidates,
   detectJava,
   handleSubmit,
@@ -97,9 +99,11 @@ const router = useRouter();
               :source-type="sourceType"
               :source-path="sourcePath"
               :run-path="runPath"
+              :use-software-data-dir="useSoftwareDataDir"
               :disabled="creating"
               @pick-path="pickRunPath"
               @update:run-path="runPath = $event"
+              @toggle-use-software-data-dir="toggleUseSoftwareDataDir"
             />
 
             <StartupSelectionStep

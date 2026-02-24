@@ -7,8 +7,22 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
+use serde::{Deserialize, Serialize};
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
+const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RunPathServerMapping {
+    run_path: String,
+    server_id: String,
+    server_name: String,
+    startup_mode: String,
+    startup_file_path: Option<String>,
+    custom_command: Option<String>,
+    source_modpack_path: String,
+    updated_at: u64,
+}
 
 #[derive(Clone, Copy, Debug)]
 enum ManagedConsoleEncoding {
@@ -199,6 +213,7 @@ impl ServerManager {
             path: server_dir,
             jar_path: req.jar_path,
             startup_mode: normalize_startup_mode(&req.startup_mode).to_string(),
+            custom_command: req.custom_command,
             java_path: req.java_path,
             max_memory: req.max_memory,
             min_memory: req.min_memory,
@@ -315,6 +330,7 @@ impl ServerManager {
             path: server_dir.to_string_lossy().to_string(),
             jar_path: dest_startup.to_string_lossy().to_string(),
             startup_mode,
+            custom_command: req.custom_command,
             java_path: req.java_path,
             max_memory: req.max_memory,
             min_memory: req.min_memory,
@@ -342,89 +358,159 @@ impl ServerManager {
             return Err(format!("整合包路径不存在: {}", req.modpack_path));
         }
 
-        let mut extracted_temp_dir: Option<PathBuf> = None;
-        let source_dir = if source_path.is_file() {
-            let temp_dir = std::env::temp_dir()
-                .join(format!("sea_lantern_modpack_extract_{}", uuid::Uuid::new_v4()));
-            std::fs::create_dir_all(&temp_dir)
-                .map_err(|e| format!("无法创建临时解压目录: {}", e))?;
+        let id = uuid::Uuid::new_v4().to_string();
+        let data_dir = self
+            .data_dir
+            .lock()
+            .expect("data_dir lock poisoned")
+            .clone();
 
-            super::server_installer::extract_modpack_archive(source_path, &temp_dir)?;
-            let resolved_root = super::server_installer::resolve_extracted_root(&temp_dir);
-            extracted_temp_dir = Some(temp_dir);
-            resolved_root
-        } else if source_path.is_dir() {
-            source_path.to_path_buf()
-        } else {
-            return Err("无效的整合包路径".to_string());
-        };
-
-        let result = (|| {
-            let source_jar = super::server_installer::find_server_jar(&source_dir)?;
-            println!("找到服务端JAR文件: {}", source_jar);
-
-            let id = uuid::Uuid::new_v4().to_string();
-            let data_dir = self
-                .data_dir
-                .lock()
-                .expect("data_dir lock poisoned")
-                .clone();
-            let servers_dir = Path::new(&data_dir).join("servers");
-            let server_dir = servers_dir.join(&id);
-
+        let mut run_path = req.run_path.trim().to_string();
+        if req.use_software_data_dir {
+            let server_dir = Path::new(&data_dir).join("servers").join(&id);
             std::fs::create_dir_all(&server_dir)
-                .map_err(|e| format!("无法创建服务器目录: {}", e))?;
-
-            println!("正在复制整合包文件: {} -> {}", source_dir.display(), server_dir.display());
-            copy_dir_recursive(&source_dir, &server_dir)
-                .map_err(|e| format!("复制整合包文件失败: {}", e))?;
-
-            let copied_jar = super::server_installer::find_server_jar(&server_dir)?;
-
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time went backwards")
-                .as_secs();
-            let server = ServerInstance {
-                id: id.clone(),
-                name: req.name,
-                core_type: "modpack".into(),
-                core_version: String::new(),
-                mc_version: "unknown".into(),
-                path: server_dir.to_string_lossy().to_string(),
-                jar_path: copied_jar,
-                startup_mode: "jar".to_string(),
-                java_path: req.java_path,
-                max_memory: req.max_memory,
-                min_memory: req.min_memory,
-                jvm_args: Vec::new(),
-                port: req.port,
-                created_at: now,
-                last_started_at: None,
-            };
-
-            println!(
-                "创建服务器实例: id={}, path={}, jar_path={}",
-                server.id, server.path, server.jar_path
-            );
-
-            self.servers
-                .lock()
-                .expect("servers lock poisoned")
-                .push(server.clone());
-            self.logs
-                .lock()
-                .expect("logs lock poisoned")
-                .insert(id, Vec::new());
-            self.save();
-            Ok(server)
-        })();
-
-        if let Some(temp_dir) = extracted_temp_dir {
-            let _ = std::fs::remove_dir_all(temp_dir);
+                .map_err(|e| format!("无法创建软件数据目录中的服务器目录: {}", e))?;
+            run_path = server_dir.to_string_lossy().to_string();
+        } else if run_path.is_empty() {
+            if source_path.is_dir() {
+                run_path = source_path.to_string_lossy().to_string();
+            } else {
+                return Err("运行目录不能为空".to_string());
+            }
         }
 
-        result
+        let run_dir = PathBuf::from(&run_path);
+        if source_path.is_file() {
+            std::fs::create_dir_all(&run_dir).map_err(|e| format!("无法创建运行目录: {}", e))?;
+            super::server_installer::extract_modpack_archive(source_path, &run_dir)?;
+        } else if source_path.is_dir() {
+            if !paths_equal(source_path, &run_dir) {
+                std::fs::create_dir_all(&run_dir)
+                    .map_err(|e| format!("无法创建运行目录: {}", e))?;
+                copy_dir_recursive(source_path, &run_dir)
+                    .map_err(|e| format!("复制整合包文件失败: {}", e))?;
+            }
+        } else {
+            return Err("无效的整合包路径".to_string());
+        }
+
+        let startup_mode = normalize_startup_mode(&req.startup_mode).to_string();
+        let custom_command = req
+            .custom_command
+            .as_ref()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+
+        let startup_file_path = if startup_mode == "custom" {
+            None
+        } else {
+            let raw_path = req
+                .startup_file_path
+                .as_ref()
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| "未提供启动文件路径".to_string())?;
+            Some(resolve_startup_file_path(source_path, &run_dir, raw_path))
+        };
+
+        let startup_path = startup_file_path.clone().unwrap_or_default();
+        if startup_mode != "custom" && !Path::new(&startup_path).exists() {
+            return Err(format!("启动文件不存在: {}", startup_path));
+        }
+
+        if startup_mode == "custom" && custom_command.is_none() {
+            return Err("自定义启动命令不能为空".to_string());
+        }
+
+        upsert_run_path_mapping(
+            &data_dir,
+            RunPathServerMapping {
+                run_path: run_path.clone(),
+                server_id: id.clone(),
+                server_name: req.name.clone(),
+                startup_mode: startup_mode.clone(),
+                startup_file_path: startup_file_path.clone(),
+                custom_command: custom_command.clone(),
+                source_modpack_path: req.modpack_path.clone(),
+                updated_at: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .expect("time went backwards")
+                    .as_secs(),
+            },
+        )?;
+
+        let mut port = req.port;
+        let server_properties_path = run_dir.join("server.properties");
+        if server_properties_path.exists() {
+            if let Ok(props) = crate::services::config_parser::read_properties(
+                server_properties_path.to_str().unwrap_or_default(),
+            ) {
+                if let Some(port_str) = props.get("server-port") {
+                    if let Ok(parsed_port) = port_str.parse::<u16>() {
+                        port = parsed_port;
+                    }
+                }
+            }
+            let mut updates = HashMap::new();
+            updates.insert("online-mode".to_string(), req.online_mode.to_string());
+            crate::services::config_parser::write_properties(
+                server_properties_path.to_str().unwrap_or_default(),
+                &updates,
+            )
+            .map_err(|e| format!("更新 server.properties 失败: {}", e))?;
+        } else {
+            let content = format!(
+                "# Minecraft server properties\n# Generated by SeaLantern\nserver-port={}\nonline-mode={}\n",
+                req.port, req.online_mode
+            );
+            std::fs::write(&server_properties_path, content)
+                .map_err(|e| format!("创建 server.properties 失败: {}", e))?;
+        }
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_secs();
+        let core_type = if startup_mode == "custom" {
+            "modpack".to_string()
+        } else {
+            super::server_installer::detect_core_type(&startup_path)
+        };
+
+        let server = ServerInstance {
+            id: id.clone(),
+            name: req.name,
+            core_type,
+            core_version: String::new(),
+            mc_version: "unknown".into(),
+            path: run_path,
+            jar_path: startup_path,
+            startup_mode,
+            custom_command,
+            java_path: req.java_path,
+            max_memory: req.max_memory,
+            min_memory: req.min_memory,
+            jvm_args: Vec::new(),
+            port,
+            created_at: now,
+            last_started_at: None,
+        };
+
+        println!(
+            "创建服务器实例: id={}, path={}, startup_path={}",
+            server.id, server.path, server.jar_path
+        );
+
+        self.servers
+            .lock()
+            .expect("servers lock poisoned")
+            .push(server.clone());
+        self.logs
+            .lock()
+            .expect("logs lock poisoned")
+            .insert(id, Vec::new());
+        self.save();
+        Ok(server)
     }
 
     pub fn add_existing_server(
@@ -448,14 +534,24 @@ impl ServerManager {
         }
         let _ = std::fs::remove_file(&test_file);
 
-        let (jar_path, startup_mode) = if let Some(ref exec_path) = req.executable_path {
+        let requested_mode = normalize_startup_mode(&req.startup_mode).to_string();
+        let (jar_path, startup_mode, custom_command) = if requested_mode == "custom" {
+            let command = req
+                .custom_command
+                .as_ref()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| "自定义启动命令不能为空".to_string())?;
+            (String::new(), requested_mode, Some(command))
+        } else if let Some(ref exec_path) = req.executable_path {
             let path = std::path::Path::new(exec_path);
             if !path.exists() {
                 return Err(format!("选择的可执行文件不存在: {}", exec_path));
             }
-            (exec_path.clone(), detect_startup_mode_from_path(path))
+            (exec_path.clone(), detect_startup_mode_from_path(path), None)
         } else {
-            find_server_executable(server_path)?
+            let (path, mode) = find_server_executable(server_path)?;
+            (path, mode, None)
         };
 
         // 尝试从server.properties读取端口
@@ -475,7 +571,11 @@ impl ServerManager {
         }
 
         // 检测服务端类型
-        let core_type = super::server_installer::detect_core_type(&jar_path);
+        let core_type = if startup_mode == "custom" {
+            "Unknown".to_string()
+        } else {
+            super::server_installer::detect_core_type(&jar_path)
+        };
         println!("检测到核心类型: {}", core_type);
 
         let now = SystemTime::now()
@@ -494,6 +594,7 @@ impl ServerManager {
             path: req.server_path,
             jar_path,
             startup_mode,
+            custom_command,
             java_path: req.java_path,
             max_memory: req.max_memory,
             min_memory: req.min_memory,
@@ -632,10 +733,13 @@ impl ServerManager {
 
         let startup_mode = normalize_startup_mode(&server.startup_mode);
         let startup_path_obj = std::path::Path::new(&server.jar_path);
-        let managed_console_encoding =
-            resolve_managed_console_encoding(startup_mode, startup_path_obj);
+        let managed_console_encoding = if startup_mode == "custom" {
+            ManagedConsoleEncoding::Utf8
+        } else {
+            resolve_managed_console_encoding(startup_mode, startup_path_obj)
+        };
 
-        if startup_mode != "jar" {
+        if startup_mode != "jar" && startup_mode != "custom" {
             if let Some(major_version) = detect_java_major_version(&server.java_path) {
                 if major_version < 9 {
                     return Err(format!(
@@ -659,6 +763,46 @@ impl ServerManager {
             .unwrap_or_else(|| server.jar_path.clone());
 
         let mut cmd = match startup_mode {
+            "custom" => {
+                let custom_command = server
+                    .custom_command
+                    .as_ref()
+                    .map(|value| value.trim())
+                    .filter(|value| !value.is_empty())
+                    .ok_or_else(|| "自定义启动命令为空".to_string())?;
+
+                #[cfg(target_os = "windows")]
+                {
+                    let mut custom_cmd = Command::new("cmd");
+                    custom_cmd.arg("/d");
+                    custom_cmd.arg("/c");
+                    custom_cmd.arg(custom_command);
+                    custom_cmd.env("JAVA_HOME", &java_home_dir_str);
+                    let existing_path = std::env::var("PATH").unwrap_or_default();
+                    let path_value = if existing_path.is_empty() {
+                        java_bin_dir_str.clone()
+                    } else {
+                        format!("{};{}", java_bin_dir_str, existing_path)
+                    };
+                    custom_cmd.env("PATH", path_value);
+                    custom_cmd
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let mut custom_cmd = Command::new("sh");
+                    custom_cmd.arg("-c");
+                    custom_cmd.arg(custom_command);
+                    custom_cmd.env("JAVA_HOME", &java_home_dir_str);
+                    let existing_path = std::env::var("PATH").unwrap_or_default();
+                    let path_value = if existing_path.is_empty() {
+                        java_bin_dir_str.clone()
+                    } else {
+                        format!("{}:{}", java_bin_dir_str, existing_path)
+                    };
+                    custom_cmd.env("PATH", path_value);
+                    custom_cmd
+                }
+            }
             "bat" => {
                 self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
 
@@ -699,6 +843,31 @@ impl ServerManager {
                 };
                 sh_cmd.env("PATH", path_value);
                 sh_cmd
+            }
+            "ps1" => {
+                self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
+                #[cfg(target_os = "windows")]
+                {
+                    use std::os::windows::process::CommandExt;
+
+                    let mut ps_cmd = Command::new("cmd");
+                    let code_page = managed_console_encoding.cmd_code_page();
+                    let launch_command = format!(
+                        "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & powershell -ExecutionPolicy Bypass -File \"{}\" nogui",
+                        code_page,
+                        escape_cmd_arg(&java_home_dir_str),
+                        escape_cmd_arg(&java_bin_dir_str),
+                        escape_cmd_arg(&startup_filename)
+                    );
+                    ps_cmd.arg("/d");
+                    ps_cmd.arg("/c");
+                    ps_cmd.raw_arg(&launch_command);
+                    ps_cmd
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    return Err("PS1 启动方式仅支持 Windows".to_string());
+                }
             }
             _ => {
                 let mut jar_cmd = Command::new(&server.java_path);
@@ -978,6 +1147,12 @@ impl ServerManager {
             .expect("servers lock poisoned")
             .retain(|s| s.id != id);
         self.logs.lock().expect("logs lock poisoned").remove(id);
+        let data_dir = self
+            .data_dir
+            .lock()
+            .expect("data_dir lock poisoned")
+            .clone();
+        remove_run_path_mapping(&data_dir, id);
         self.save();
         Ok(())
     }
@@ -1068,6 +1243,8 @@ fn normalize_startup_mode(mode: &str) -> &str {
     match mode.to_ascii_lowercase().as_str() {
         "bat" => "bat",
         "sh" => "sh",
+        "ps1" => "ps1",
+        "custom" => "custom",
         _ => "jar",
     }
 }
@@ -1082,13 +1259,23 @@ fn detect_startup_mode_from_path(path: &Path) -> String {
     match extension.as_str() {
         "bat" => "bat".to_string(),
         "sh" => "sh".to_string(),
+        "ps1" => "ps1".to_string(),
         _ => "jar".to_string(),
     }
 }
 
 fn find_server_executable(server_path: &Path) -> Result<(String, String), String> {
-    let preferred_scripts =
-        ["start.bat", "run.bat", "launch.bat", "start.sh", "run.sh", "launch.sh"];
+    let preferred_scripts = [
+        "start.bat",
+        "run.bat",
+        "launch.bat",
+        "start.sh",
+        "run.sh",
+        "launch.sh",
+        "start.ps1",
+        "run.ps1",
+        "launch.ps1",
+    ];
 
     for script in preferred_scripts {
         let script_path = server_path.join(script);
@@ -1115,7 +1302,7 @@ fn find_server_executable(server_path: &Path) -> Result<(String, String), String
             .and_then(|ext| ext.to_str())
             .map(|ext| ext.to_ascii_lowercase())
             .unwrap_or_default();
-        if extension != "jar" && extension != "bat" && extension != "sh" {
+        if extension != "jar" && extension != "bat" && extension != "sh" && extension != "ps1" {
             continue;
         }
 
@@ -1123,7 +1310,7 @@ fn find_server_executable(server_path: &Path) -> Result<(String, String), String
         return Ok((path.to_string_lossy().to_string(), mode));
     }
 
-    Err("未找到可用的启动文件（.jar/.bat/.sh）".to_string())
+    Err("未找到可用的启动文件（.jar/.bat/.sh/.ps1）".to_string())
 }
 
 fn resolve_managed_console_encoding(
@@ -1132,7 +1319,7 @@ fn resolve_managed_console_encoding(
 ) -> ManagedConsoleEncoding {
     #[cfg(target_os = "windows")]
     {
-        if startup_mode == "bat" {
+        if startup_mode == "bat" || startup_mode == "ps1" {
             return detect_windows_batch_encoding(startup_path);
         }
     }
@@ -1202,6 +1389,82 @@ fn decode_console_bytes(bytes: &[u8]) -> String {
     {
         String::from_utf8_lossy(bytes).into_owned()
     }
+}
+
+fn normalize_path_for_compare(path: &Path) -> String {
+    path.to_string_lossy()
+        .replace('\\', "/")
+        .trim_end_matches('/')
+        .to_string()
+}
+
+fn paths_equal(left: &Path, right: &Path) -> bool {
+    normalize_path_for_compare(left) == normalize_path_for_compare(right)
+}
+
+fn resolve_startup_file_path(
+    source_path: &Path,
+    run_dir: &Path,
+    startup_file_path: &str,
+) -> String {
+    let startup_path = PathBuf::from(startup_file_path);
+    if startup_path.is_relative() {
+        return run_dir.join(&startup_path).to_string_lossy().to_string();
+    }
+
+    if source_path.is_dir() {
+        let source_norm = normalize_path_for_compare(source_path);
+        let startup_norm = normalize_path_for_compare(&startup_path);
+        if startup_norm.starts_with(&(source_norm.clone() + "/")) {
+            if let Ok(relative) = startup_path.strip_prefix(source_path) {
+                return run_dir.join(relative).to_string_lossy().to_string();
+            }
+        }
+    }
+
+    if let Some(name) = startup_path.file_name() {
+        return run_dir.join(name).to_string_lossy().to_string();
+    }
+
+    run_dir.join(startup_path).to_string_lossy().to_string()
+}
+
+fn load_run_path_mappings(dir: &str) -> Vec<RunPathServerMapping> {
+    let path = Path::new(dir).join(RUN_PATH_MAP_FILE);
+    if !path.exists() {
+        return Vec::new();
+    }
+
+    std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|content| serde_json::from_str::<Vec<RunPathServerMapping>>(&content).ok())
+        .unwrap_or_default()
+}
+
+fn save_run_path_mappings(dir: &str, mappings: &[RunPathServerMapping]) -> Result<(), String> {
+    let path = Path::new(dir).join(RUN_PATH_MAP_FILE);
+    let json = serde_json::to_string_pretty(mappings)
+        .map_err(|e| format!("序列化运行路径映射失败: {}", e))?;
+    std::fs::write(path, json).map_err(|e| format!("写入运行路径映射失败: {}", e))
+}
+
+fn upsert_run_path_mapping(dir: &str, mapping: RunPathServerMapping) -> Result<(), String> {
+    let mut mappings = load_run_path_mappings(dir);
+    mappings
+        .retain(|item| item.server_id != mapping.server_id && item.run_path != mapping.run_path);
+    mappings.push(mapping);
+    save_run_path_mappings(dir, &mappings)
+}
+
+fn remove_run_path_mapping(dir: &str, server_id: &str) {
+    let mut mappings = load_run_path_mappings(dir);
+    let before = mappings.len();
+    mappings.retain(|item| item.server_id != server_id);
+    if mappings.len() == before {
+        return;
+    }
+
+    let _ = save_run_path_mappings(dir, &mappings);
 }
 
 fn load_servers(dir: &str) -> Vec<ServerInstance> {

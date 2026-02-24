@@ -1,12 +1,10 @@
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
 import {
   containsIoRedirection,
-  mapStartupModeForApi,
-  normalizePathForCompare,
-  resolveExecutablePathForTarget,
+  mapStartupModeForModpack,
 } from "@components/views/create/startupUtils";
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
@@ -30,17 +28,20 @@ export function useCreateServerPage() {
   const sourcePath = ref("");
   const sourceType = ref<SourceType>("");
   const runPath = ref("");
+  const useSoftwareDataDir = ref(false);
 
   const coreDetecting = ref(false);
   const detectedCoreType = ref("");
   const detectedCoreMainClass = ref("");
-  let coreDetectRequestId = 0;
 
   const startupDetecting = ref(false);
   const startupCandidates = ref<StartupCandidate[]>([]);
   const selectedStartupId = ref("");
   const customStartupCommand = ref("");
   let startupDetectRequestId = 0;
+
+  const AUTO_SCAN_DEBOUNCE_MS = 120;
+  let startupDetectTimer: ReturnType<typeof setTimeout> | null = null;
 
   const copyConflictDialogOpen = ref(false);
   const copyConflictItems = ref<string[]>([]);
@@ -64,24 +65,11 @@ export function useCreateServerPage() {
     () => selectedStartup.value?.mode === "custom" && containsIoRedirection(customStartupCommand.value),
   );
 
-  const resolvedFolderServerPath = computed(() => {
-    if (sourceType.value !== "folder") {
-      return "";
-    }
-
-    const source = sourcePath.value.trim();
-    const target = runPath.value.trim();
-    if (!target || normalizePathForCompare(source) === normalizePathForCompare(target)) {
-      return source;
-    }
-    return target;
-  });
-
   const hasPathStep = computed(() => {
     if (!hasSource.value) {
       return false;
     }
-    return requiresRunPath.value ? runPath.value.trim().length > 0 : true;
+    return requiresRunPath.value ? useSoftwareDataDir.value || runPath.value.trim().length > 0 : true;
   });
 
   const hasStartupStep = computed(() => {
@@ -151,7 +139,7 @@ export function useCreateServerPage() {
     },
   ]);
 
-  const canSubmit = computed(() => step4Completed.value && selectedStartup.value?.mode !== "custom");
+  const canSubmit = computed(() => step4Completed.value);
 
   const showSourceCoreInfo = computed(() => sourcePath.value.trim().length > 0 && sourceType.value !== "");
   const sourceCoreInfoText = computed(() => {
@@ -171,46 +159,34 @@ export function useCreateServerPage() {
     }
   });
 
-  watch(
-    [sourcePath, sourceType],
-    async ([path, type]) => {
-      const requestId = ++coreDetectRequestId;
+  onUnmounted(() => {
+    if (startupDetectTimer) {
+      clearTimeout(startupDetectTimer);
+      startupDetectTimer = null;
+    }
+  });
 
-      if (!path.trim() || !type) {
-        coreDetecting.value = false;
-        detectedCoreType.value = "";
-        detectedCoreMainClass.value = "";
-        return;
-      }
+  function scheduleStartupDetect(path: string, type: SourceType) {
+    if (startupDetectTimer) {
+      clearTimeout(startupDetectTimer);
+      startupDetectTimer = null;
+    }
 
-      coreDetecting.value = true;
-      try {
-        const result = await serverApi.parseServerCoreType(path);
-        if (requestId !== coreDetectRequestId) {
-          return;
-        }
-        detectedCoreType.value = result.coreType;
-        detectedCoreMainClass.value = result.mainClass ?? "";
-      } catch (error) {
-        if (requestId !== coreDetectRequestId) {
-          return;
-        }
-        detectedCoreType.value = i18n.t("create.source_core_unknown");
-        detectedCoreMainClass.value = "";
-        showError(String(error));
-      } finally {
-        if (requestId === coreDetectRequestId) {
-          coreDetecting.value = false;
-        }
-      }
-    },
-    { immediate: true },
-  );
+    if (!path.trim() || !type) {
+      void refreshStartupCandidates(path, type, false);
+      return;
+    }
+
+    startupDetectTimer = setTimeout(() => {
+      startupDetectTimer = null;
+      void refreshStartupCandidates(path, type, false);
+    }, AUTO_SCAN_DEBOUNCE_MS);
+  }
 
   watch(
     [sourcePath, sourceType],
-    async ([path, type]) => {
-      await refreshStartupCandidates(path, type, false);
+    ([path, type]) => {
+      scheduleStartupDetect(path, type);
     },
     { immediate: true },
   );
@@ -268,10 +244,17 @@ export function useCreateServerPage() {
     }
   }
 
+  function toggleUseSoftwareDataDir() {
+    useSoftwareDataDir.value = !useSoftwareDataDir.value;
+  }
+
   async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
     const requestId = ++startupDetectRequestId;
 
     if (!path.trim() || !type) {
+      coreDetecting.value = false;
+      detectedCoreType.value = "";
+      detectedCoreMainClass.value = "";
       startupDetecting.value = false;
       startupCandidates.value = [];
       selectedStartupId.value = "";
@@ -279,16 +262,22 @@ export function useCreateServerPage() {
       return;
     }
 
+    coreDetecting.value = true;
     startupDetecting.value = true;
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    if (requestId !== startupDetectRequestId) {
+      return;
+    }
     try {
-      // 启动项扫描改为后端执行，前端只负责展示和选择。
       const discovered = await serverApi.scanStartupCandidates(path, type as "archive" | "folder");
-      const list = appendCustomCandidate(discovered);
+      const list = appendCustomCandidate(discovered.candidates);
 
       if (requestId !== startupDetectRequestId) {
         return;
       }
 
+      detectedCoreType.value = discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
+      detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
       startupCandidates.value = list;
 
       if (forceReset || !list.some((item) => item.id === selectedStartupId.value)) {
@@ -298,11 +287,14 @@ export function useCreateServerPage() {
       if (requestId !== startupDetectRequestId) {
         return;
       }
+      detectedCoreType.value = i18n.t("create.source_core_unknown");
+      detectedCoreMainClass.value = "";
       startupCandidates.value = appendCustomCandidate([]);
       selectedStartupId.value = startupCandidates.value[0]?.id ?? "";
       showError(String(error));
     } finally {
       if (requestId === startupDetectRequestId) {
+        coreDetecting.value = false;
         startupDetecting.value = false;
       }
     }
@@ -319,7 +311,7 @@ export function useCreateServerPage() {
       showError(i18n.t("create.source_required"));
       return false;
     }
-    if (requiresRunPath.value && runPath.value.trim().length === 0) {
+    if (requiresRunPath.value && !useSoftwareDataDir.value && runPath.value.trim().length === 0) {
       showError(i18n.t("create.path_required_archive"));
       return false;
     }
@@ -337,8 +329,6 @@ export function useCreateServerPage() {
         showError(i18n.t("create.startup_custom_redirect_forbidden"));
         return false;
       }
-      showError(i18n.t("create.startup_custom_not_supported"));
-      return false;
     }
 
     if (!selectedJava.value) {
@@ -351,14 +341,6 @@ export function useCreateServerPage() {
     }
 
     return true;
-  }
-
-  function requestCopyConflictConfirm(conflicts: string[]): Promise<boolean> {
-    copyConflictItems.value = conflicts;
-    copyConflictDialogOpen.value = true;
-    return new Promise<boolean>((resolve) => {
-      copyConflictResolver = resolve;
-    });
   }
 
   function confirmCopyConflict() {
@@ -380,51 +362,22 @@ export function useCreateServerPage() {
 
     startCreating();
     try {
-      if (sourceType.value === "archive") {
-        await serverApi.importModpack({
-          name: serverName.value.trim(),
-          modpackPath: sourcePath.value,
-          javaPath: selectedJava.value,
-          maxMemory: parseNumber(maxMemory.value, 2048),
-          minMemory: parseNumber(minMemory.value, 512),
-          port: parseNumber(port.value, 25565),
-        });
-      } else {
-        const sourceDir = sourcePath.value.trim();
-        const targetDir = resolvedFolderServerPath.value;
-        if (!targetDir) {
-          throw new Error(i18n.t("create.path_required_folder_target"));
-        }
-
-        if (normalizePathForCompare(sourceDir) !== normalizePathForCompare(targetDir)) {
-          // 冲突探测与复制均在后端执行，减少前端阻塞与权限差异问题。
-          const conflicts = await serverApi.collectCopyConflicts(sourceDir, targetDir);
-          if (conflicts.length > 0) {
-            const confirmed = await requestCopyConflictConfirm(conflicts);
-            if (!confirmed) {
-              return;
-            }
-          }
-          await serverApi.copyDirectoryContents(sourceDir, targetDir);
-        }
-
-        const startup = selectedStartup.value;
-        const startupMode = mapStartupModeForApi(startup?.mode ?? "jar");
-        const executablePath = startup?.path
-          ? resolveExecutablePathForTarget(startup.path, sourceDir, targetDir)
-          : undefined;
-
-        await serverApi.addExistingServer({
-          name: serverName.value.trim(),
-          serverPath: targetDir,
-          javaPath: selectedJava.value,
-          maxMemory: parseNumber(maxMemory.value, 2048),
-          minMemory: parseNumber(minMemory.value, 512),
-          port: parseNumber(port.value, 25565),
-          startupMode,
-          executablePath,
-        });
-      }
+      const startup = selectedStartup.value;
+      const startupMode = mapStartupModeForModpack(startup?.mode ?? "jar");
+      await serverApi.importModpack({
+        name: serverName.value.trim(),
+        modpackPath: sourcePath.value,
+        javaPath: selectedJava.value,
+        maxMemory: parseNumber(maxMemory.value, 2048),
+        minMemory: parseNumber(minMemory.value, 512),
+        port: parseNumber(port.value, 25565),
+        startupMode,
+        onlineMode: onlineMode.value,
+        customCommand: startupMode === "custom" ? customStartupCommand.value.trim() : undefined,
+        runPath: runPath.value.trim(),
+        useSoftwareDataDir: useSoftwareDataDir.value,
+        startupFilePath: startupMode === "custom" ? undefined : startup?.path,
+      });
 
       await store.refreshList();
       router.push("/");
@@ -444,6 +397,7 @@ export function useCreateServerPage() {
     sourcePath,
     sourceType,
     runPath,
+    useSoftwareDataDir,
     coreDetecting,
     detectedCoreType,
     detectedCoreMainClass,
@@ -467,6 +421,7 @@ export function useCreateServerPage() {
     showSourceCoreInfo,
     sourceCoreInfoText,
     pickRunPath,
+    toggleUseSoftwareDataDir,
     rescanStartupCandidates,
     detectJava,
     handleSubmit,

@@ -29,6 +29,7 @@ pub fn create_server(
         java_path,
         jar_path,
         startup_mode,
+        custom_command: None,
     };
     manager().create_server(req)
 }
@@ -49,6 +50,7 @@ pub fn import_server(
         name,
         jar_path,
         startup_mode,
+        custom_command: None,
         java_path,
         max_memory,
         min_memory,
@@ -69,6 +71,7 @@ pub fn add_existing_server(
     port: u16,
     startup_mode: String,
     executable_path: Option<String>,
+    custom_command: Option<String>,
 ) -> Result<ServerInstance, String> {
     let req = AddExistingServerRequest {
         name,
@@ -79,6 +82,7 @@ pub fn add_existing_server(
         port,
         startup_mode,
         executable_path,
+        custom_command,
     };
     manager().add_existing_server(req)
 }
@@ -91,6 +95,12 @@ pub fn import_modpack(
     max_memory: u32,
     min_memory: u32,
     port: u16,
+    startup_mode: String,
+    online_mode: bool,
+    custom_command: Option<String>,
+    run_path: String,
+    use_software_data_dir: bool,
+    startup_file_path: Option<String>,
 ) -> Result<ServerInstance, String> {
     let req = ImportModpackRequest {
         name,
@@ -99,20 +109,49 @@ pub fn import_modpack(
         max_memory,
         min_memory,
         port,
+        startup_mode,
+        online_mode,
+        custom_command,
+        run_path,
+        use_software_data_dir,
+        startup_file_path,
     };
     manager().import_modpack(req)
 }
 
 #[tauri::command]
-pub fn parse_server_core_type(source_path: String) -> Result<ParsedServerCoreInfo, String> {
-    crate::services::server_installer::parse_server_core_type(&source_path)
+pub async fn parse_server_core_type(source_path: String) -> Result<ParsedServerCoreInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::services::server_installer::parse_server_core_type(&source_path)
+    })
+    .await
+    .map_err(|e| format!("解析核心类型任务失败: {}", e))?
 }
 
 #[tauri::command]
-pub fn scan_startup_candidates(
+pub async fn scan_startup_candidates(
     source_path: String,
     source_type: String,
-) -> Result<Vec<StartupCandidateItem>, String> {
+) -> Result<StartupScanResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        scan_startup_candidates_blocking(source_path, source_type)
+    })
+    .await
+    .map_err(|e| format!("扫描启动项任务失败: {}", e))?
+}
+
+fn unknown_parsed_core_info() -> ParsedServerCoreInfo {
+    ParsedServerCoreInfo {
+        core_type: "Unknown".to_string(),
+        main_class: None,
+        jar_path: None,
+    }
+}
+
+fn scan_startup_candidates_blocking(
+    source_path: String,
+    source_type: String,
+) -> Result<StartupScanResult, String> {
     const STARTER_MAIN_CLASS_PREFIX: &str = "net.neoforged.serverstarterjar";
 
     let source = Path::new(&source_path);
@@ -123,10 +162,9 @@ pub fn scan_startup_candidates(
     let mut candidates = Vec::new();
     let source_kind = source_type.to_ascii_lowercase();
 
-    // 压缩包来源无法先看到脚本文件，所以这里先返回 starter/server.jar 候选。
     if source_kind == "archive" {
         let parsed = crate::services::server_installer::parse_server_core_type(&source_path)?;
-        if let Some(jar_path) = parsed.jar_path {
+        if let Some(jar_path) = parsed.jar_path.clone() {
             let is_starter = parsed
                 .main_class
                 .as_deref()
@@ -134,7 +172,7 @@ pub fn scan_startup_candidates(
                 .unwrap_or(false);
             let mode = if is_starter { "starter" } else { "jar" };
             let label = if is_starter { "Starter" } else { "server.jar" };
-            let detail = [Some(parsed.core_type), parsed.main_class]
+            let detail = [Some(parsed.core_type.clone()), parsed.main_class.clone()]
                 .into_iter()
                 .flatten()
                 .collect::<Vec<String>>()
@@ -150,14 +188,16 @@ pub fn scan_startup_candidates(
             });
         }
 
-        return Ok(candidates);
+        return Ok(StartupScanResult {
+            parsed_core: parsed,
+            candidates,
+        });
     }
 
     if source_kind != "folder" {
         return Err("来源类型无效，仅支持 archive 或 folder".to_string());
     }
 
-    // 目录扫描在后端执行，避免前端并发读取文件系统造成卡顿。
     let entries = std::fs::read_dir(source)
         .map_err(|e| format!("读取目录失败: {}", e))?
         .flatten()
@@ -165,7 +205,8 @@ pub fn scan_startup_candidates(
         .filter(|path| path.is_file())
         .collect::<Vec<_>>();
 
-    // 文件夹来源：逐个文件识别，统一返回给前端做选择展示。
+    let mut detected_core: Option<(u8, ParsedServerCoreInfo)> = None;
+
     for path in entries {
         let filename = path
             .file_name()
@@ -181,7 +222,7 @@ pub fn scan_startup_candidates(
 
         if extension == "jar" {
             let parsed = crate::services::server_installer::parse_server_core_type(&full_path)
-                .unwrap_or(ParsedServerCoreInfo {
+                .unwrap_or_else(|_| ParsedServerCoreInfo {
                     core_type: "Unknown".to_string(),
                     main_class: None,
                     jar_path: Some(full_path.clone()),
@@ -193,6 +234,13 @@ pub fn scan_startup_candidates(
                 .map(|main| main.starts_with(STARTER_MAIN_CLASS_PREFIX))
                 .unwrap_or(false);
             let is_server_jar = filename.eq_ignore_ascii_case("server.jar");
+            let recommended = if is_starter {
+                1
+            } else if is_server_jar {
+                3
+            } else {
+                4
+            };
             let label = if is_starter {
                 "Starter".to_string()
             } else if is_server_jar {
@@ -201,11 +249,24 @@ pub fn scan_startup_candidates(
                 filename.clone()
             };
 
-            let detail = [Some(parsed.core_type), parsed.main_class]
+            let detail = [Some(parsed.core_type.clone()), parsed.main_class.clone()]
                 .into_iter()
                 .flatten()
                 .collect::<Vec<String>>()
                 .join(" · ");
+
+            let parsed_info = ParsedServerCoreInfo {
+                core_type: parsed.core_type.clone(),
+                main_class: parsed.main_class.clone(),
+                jar_path: Some(full_path.clone()),
+            };
+            if detected_core
+                .as_ref()
+                .map(|(best_recommended, _)| recommended < *best_recommended)
+                .unwrap_or(true)
+            {
+                detected_core = Some((recommended, parsed_info));
+            }
 
             candidates.push(StartupCandidateItem {
                 id: format!("jar-{}", filename),
@@ -217,13 +278,7 @@ pub fn scan_startup_candidates(
                 label,
                 detail,
                 path: full_path,
-                recommended: if is_starter {
-                    1
-                } else if is_server_jar {
-                    3
-                } else {
-                    4
-                },
+                recommended,
             });
             continue;
         }
@@ -246,7 +301,14 @@ pub fn scan_startup_candidates(
             .then_with(|| a.label.cmp(&b.label))
     });
 
-    Ok(candidates)
+    let parsed_core = detected_core
+        .map(|(_, parsed)| parsed)
+        .unwrap_or_else(unknown_parsed_core_info);
+
+    Ok(StartupScanResult {
+        parsed_core,
+        candidates,
+    })
 }
 
 #[tauri::command]
