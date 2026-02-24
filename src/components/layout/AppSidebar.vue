@@ -150,7 +150,7 @@ const staticNavItems: NavItem[] = [
     path: "/download-file",
     icon: "download",
     labelKey: "common.download-file",
-    label: "common.download-file",
+    label: i18n.t("common.download-file"),
     group: "tools",
   },
 ];
