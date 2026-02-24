@@ -499,7 +499,6 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
     <div class="nav-active-indicator" ref="navIndicator"></div>
 
     <nav class="sidebar-nav">
-
       <!-- 服务器选择（Headless UI Listbox） -->
       <Listbox
         v-if="serverOptions.length > 0"
