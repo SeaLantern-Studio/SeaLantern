@@ -33,7 +33,7 @@ const commandLogs = computed(() => {
   return logs.value
     .filter((log) => log.log_type === "command")
     .slice(-50)
-    .reverse();
+    .toReversed();
 });
 
 const apiStats = computed(() => {
@@ -45,7 +45,7 @@ const apiStats = computed(() => {
     });
   return Array.from(stats.entries())
     .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
+    .toSorted((a, b) => b.count - a.count);
 });
 
 function formatTime(timestamp: number): string {

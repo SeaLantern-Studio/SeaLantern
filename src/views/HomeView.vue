@@ -8,16 +8,8 @@ import ServerListSection from "@components/views/home/ServerListSection.vue";
 import AlertsSection from "@components/views/home/AlertsSection.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import { useServerStore } from "@stores/serverStore";
-import {
-  initQuote,
-  startQuoteTimer,
-  cleanupQuoteResources,
-} from "@utils/quoteUtils";
-import {
-  fetchSystemInfo,
-  startThemeObserver,
-  cleanupStatsResources,
-} from "@utils/statsUtils";
+import { initQuote, startQuoteTimer, cleanupQuoteResources } from "@utils/quoteUtils";
+import { fetchSystemInfo, startThemeObserver, cleanupStatsResources } from "@utils/statsUtils";
 import {
   actionError,
   deleteServerName,
