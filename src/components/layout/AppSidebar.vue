@@ -26,7 +26,6 @@ import {
   Info,
   Server,
   ChevronLeft,
-  ChevronRight,
   Puzzle,
   Store,
   LayoutDashboard,
@@ -42,7 +41,6 @@ const iconMap: Record<string, LucideIcon> = {
   settings: Settings,
   users: Users,
   sliders: Sliders,
-  palette: Palette,
   paint: Palette,
   info: Info,
   server: Server,
@@ -226,16 +224,16 @@ function updateNavIndicator() {
     if (!navIndicator.value) return;
 
     const activeNavItem = document.querySelector(".nav-item.active");
-    const sidebarNav = document.querySelector(".sidebar-nav");
+    const sidebar = document.querySelector(".sidebar");
 
-    if (activeNavItem && sidebarNav && navIndicator.value.parentElement) {
+    if (activeNavItem && sidebar && navIndicator.value.parentElement) {
       // 获取滚动容器和激活项的位置
       const navItemRect = activeNavItem.getBoundingClientRect();
-      const navRect = sidebarNav.getBoundingClientRect();
+      const sidebarRect = sidebar.getBoundingClientRect();
 
       // 计算相对于滚动容器的位置（考虑滚动偏移）
       const top =
-        navItemRect.top - navRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
+        navItemRect.top - sidebarRect.top + sidebar.scrollTop + (navItemRect.height - 16) / 2;
 
       // 确保导航指示器可见
       navIndicator.value.style.display = "block";
@@ -496,10 +494,11 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
         <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t("common.app_name") }}</span>
       </transition>
     </div>
+    <!-- 导航激活指示器 -->
+    <!-- 不要挂在sidebar-nav上不然在关于页面会出bug -->
+    <div class="nav-active-indicator" ref="navIndicator"></div>
 
     <nav class="sidebar-nav">
-      <!-- 导航激活指示器 -->
-      <div class="nav-active-indicator" ref="navIndicator"></div>
 
       <!-- 服务器选择（Headless UI Listbox） -->
       <Listbox
