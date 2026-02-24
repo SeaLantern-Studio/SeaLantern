@@ -137,6 +137,22 @@
   color: var(--sl-text-secondary);
 }
 
+.create-config-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
+
+.create-submit-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--sl-space-md);
+}
+
+.create-submit-actions :deep(.sl-button) {
+  min-width: 128px;
+}
+
 @media (max-width: 980px) {
   .create-stepper-separator {
     left: 20px;

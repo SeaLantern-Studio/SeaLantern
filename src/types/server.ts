@@ -1,5 +1,3 @@
-import type { ServerStatus } from "@type/common";
-
 /**
  * 服务器实例类型
  */
@@ -11,7 +9,7 @@ export interface ServerInstance {
   mc_version: string;
   path: string;
   jar_path: string;
-  startup_mode: "jar" | "bat" | "sh";
+  startup_mode: "jar" | "bat" | "sh" | "ps1";
   java_path: string;
   max_memory: number;
   min_memory: number;
