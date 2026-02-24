@@ -58,7 +58,7 @@ watch(
       lastParsedLength = newLength;
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 watch(
@@ -79,6 +79,8 @@ function handleScroll() {
   const el = logContainer.value;
   emit("scroll", el.scrollHeight - el.scrollTop - el.clientHeight > 40);
 }
+
+defineExpose({ doScroll });
 </script>
 
 <template>
