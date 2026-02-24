@@ -52,7 +52,12 @@ export function mapStartupModeForApi(mode: Exclude<StartupMode, "custom">): "jar
   }
 }
 
-export function mapStartupModeForModpack(mode: StartupMode): "jar" | "bat" | "sh" | "ps1" | "custom" {
+export function mapStartupModeForModpack(
+  mode: StartupMode,
+): "starter" | "jar" | "bat" | "sh" | "ps1" | "custom" {
+  if (mode === "starter") {
+    return "starter";
+  }
   if (mode === "custom") {
     return "custom";
   }

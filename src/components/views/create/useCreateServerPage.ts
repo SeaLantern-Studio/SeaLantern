@@ -33,6 +33,14 @@ export function useCreateServerPage() {
   const coreDetecting = ref(false);
   const detectedCoreType = ref("");
   const detectedCoreMainClass = ref("");
+  const detectedCoreTypeKey = ref("");
+  const coreTypeOptions = ref<string[]>([]);
+  const selectedCoreType = ref("");
+
+  const detectedMcVersion = ref("");
+  const mcVersionOptions = ref<string[]>([]);
+  const selectedMcVersion = ref("");
+  const mcVersionDetectionFailed = ref(false);
 
   const startupDetecting = ref(false);
   const startupCandidates = ref<StartupCandidate[]>([]);
@@ -61,6 +69,7 @@ export function useCreateServerPage() {
   const selectedStartup = computed(
     () => startupCandidates.value.find((item) => item.id === selectedStartupId.value) ?? null,
   );
+  const starterSelected = computed(() => selectedStartup.value?.mode === "starter");
   const customCommandHasRedirect = computed(
     () => selectedStartup.value?.mode === "custom" && containsIoRedirection(customStartupCommand.value),
   );
@@ -76,10 +85,17 @@ export function useCreateServerPage() {
     if (!hasPathStep.value || !selectedStartup.value) {
       return false;
     }
-    if (selectedStartup.value.mode !== "custom") {
-      return true;
+    if (selectedStartup.value.mode === "custom") {
+      return customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value;
     }
-    return customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value;
+    if (
+      selectedStartup.value.mode === "starter" &&
+      mcVersionDetectionFailed.value &&
+      selectedMcVersion.value.trim().length === 0
+    ) {
+      return false;
+    }
+    return true;
   });
 
   const hasJava = computed(() => selectedJava.value.trim().length > 0);
@@ -140,14 +156,6 @@ export function useCreateServerPage() {
   ]);
 
   const canSubmit = computed(() => step4Completed.value);
-
-  const showSourceCoreInfo = computed(() => sourcePath.value.trim().length > 0 && sourceType.value !== "");
-  const sourceCoreInfoText = computed(() => {
-    const coreName = detectedCoreType.value || i18n.t("create.source_core_unknown");
-    const mainClass = detectedCoreMainClass.value;
-    const suffix = mainClass ? `（${mainClass}）` : "（）";
-    return `${i18n.t("create.source_core_label")}${coreName}${suffix}`;
-  });
 
   onMounted(async () => {
     await loadDefaultSettings();
@@ -259,6 +267,13 @@ export function useCreateServerPage() {
       startupCandidates.value = [];
       selectedStartupId.value = "";
       customStartupCommand.value = "";
+      detectedCoreTypeKey.value = "";
+      coreTypeOptions.value = [];
+      selectedCoreType.value = "";
+      detectedMcVersion.value = "";
+      mcVersionOptions.value = [];
+      selectedMcVersion.value = "";
+      mcVersionDetectionFailed.value = false;
       return;
     }
 
@@ -278,10 +293,33 @@ export function useCreateServerPage() {
 
       detectedCoreType.value = discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
       detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
+      const previousDetectedCoreKey = detectedCoreTypeKey.value;
+      const previousDetectedMcVersion = detectedMcVersion.value;
+      detectedCoreTypeKey.value = discovered.detectedCoreTypeKey ?? "";
+      coreTypeOptions.value = discovered.coreTypeOptions;
+      detectedMcVersion.value = discovered.detectedMcVersion ?? "";
+      mcVersionOptions.value = discovered.mcVersionOptions;
+      mcVersionDetectionFailed.value = discovered.mcVersionDetectionFailed;
       startupCandidates.value = list;
 
       if (forceReset || !list.some((item) => item.id === selectedStartupId.value)) {
         selectedStartupId.value = list[0]?.id ?? "";
+      }
+
+      if (
+        forceReset ||
+        !coreTypeOptions.value.includes(selectedCoreType.value) ||
+        selectedCoreType.value === previousDetectedCoreKey
+      ) {
+        selectedCoreType.value = detectedCoreTypeKey.value;
+      }
+
+      if (
+        forceReset ||
+        !mcVersionOptions.value.includes(selectedMcVersion.value) ||
+        selectedMcVersion.value === previousDetectedMcVersion
+      ) {
+        selectedMcVersion.value = detectedMcVersion.value;
       }
     } catch (error) {
       if (requestId !== startupDetectRequestId) {
@@ -291,6 +329,13 @@ export function useCreateServerPage() {
       detectedCoreMainClass.value = "";
       startupCandidates.value = appendCustomCandidate([]);
       selectedStartupId.value = startupCandidates.value[0]?.id ?? "";
+      detectedCoreTypeKey.value = "";
+      coreTypeOptions.value = [];
+      selectedCoreType.value = "";
+      detectedMcVersion.value = "";
+      mcVersionOptions.value = [];
+      selectedMcVersion.value = "";
+      mcVersionDetectionFailed.value = false;
       showError(String(error));
     } finally {
       if (requestId === startupDetectRequestId) {
@@ -331,6 +376,15 @@ export function useCreateServerPage() {
       }
     }
 
+    if (
+      selectedStartup.value.mode === "starter" &&
+      mcVersionDetectionFailed.value &&
+      selectedMcVersion.value.trim().length === 0
+    ) {
+      showError(i18n.t("create.startup_mc_version_required"));
+      return false;
+    }
+
     if (!selectedJava.value) {
       showError(i18n.t("common.select_java_path"));
       return false;
@@ -364,6 +418,11 @@ export function useCreateServerPage() {
     try {
       const startup = selectedStartup.value;
       const startupMode = mapStartupModeForModpack(startup?.mode ?? "jar");
+      const resolvedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
+      const resolvedMcVersion =
+        startupMode === "starter"
+          ? selectedMcVersion.value.trim() || detectedMcVersion.value.trim()
+          : "";
       await serverApi.importModpack({
         name: serverName.value.trim(),
         modpackPath: sourcePath.value,
@@ -377,6 +436,8 @@ export function useCreateServerPage() {
         runPath: runPath.value.trim(),
         useSoftwareDataDir: useSoftwareDataDir.value,
         startupFilePath: startupMode === "custom" ? undefined : startup?.path,
+        coreType: resolvedCoreType || undefined,
+        mcVersion: resolvedMcVersion || undefined,
       });
 
       await store.refreshList();
@@ -405,6 +466,14 @@ export function useCreateServerPage() {
     startupCandidates,
     selectedStartupId,
     customStartupCommand,
+    starterSelected,
+    detectedCoreTypeKey,
+    coreTypeOptions,
+    selectedCoreType,
+    detectedMcVersion,
+    mcVersionOptions,
+    selectedMcVersion,
+    mcVersionDetectionFailed,
     customCommandHasRedirect,
     copyConflictDialogOpen,
     copyConflictItems,
@@ -418,8 +487,6 @@ export function useCreateServerPage() {
     activeStep,
     stepItems,
     canSubmit,
-    showSourceCoreInfo,
-    sourceCoreInfoText,
     pickRunPath,
     toggleUseSoftwareDataDir,
     rescanStartupCandidates,

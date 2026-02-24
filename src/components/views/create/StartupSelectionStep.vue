@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { FileCode2, FileCog, FolderOpen, RefreshCw, TerminalSquare } from "lucide-vue-next";
 import SLInput from "@components/common/SLInput.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import type { StartupCandidate, StartupMode } from "@components/views/create/startupTypes";
 import { i18n } from "@language";
 
@@ -11,6 +13,15 @@ const props = withDefaults(
     selectedStartupId: string;
     customStartupCommand: string;
     customCommandHasRedirect: boolean;
+    starterSelected: boolean;
+    coreDetecting: boolean;
+    detectedCoreTypeKey: string;
+    coreTypeOptions: string[];
+    selectedCoreType: string;
+    detectedMcVersion: string;
+    mcVersionOptions: string[];
+    selectedMcVersion: string;
+    mcVersionDetectionFailed: boolean;
     disabled?: boolean;
   }>(),
   {
@@ -22,7 +33,23 @@ const emit = defineEmits<{
   (e: "rescan"): void;
   (e: "update:selectedStartupId", value: string): void;
   (e: "update:customStartupCommand", value: string): void;
+  (e: "update:selectedCoreType", value: string): void;
+  (e: "update:selectedMcVersion", value: string): void;
 }>();
+
+const coreTypeSelectOptions = computed(() =>
+  props.coreTypeOptions.map((value) => ({
+    value,
+    label: value,
+  })),
+);
+
+const mcVersionSelectOptions = computed(() =>
+  props.mcVersionOptions.map((value) => ({
+    value,
+    label: value,
+  })),
+);
 
 function startupModeLabel(mode: StartupMode): string {
   switch (mode) {
@@ -123,6 +150,47 @@ function getStartupIcon(mode: StartupMode) {
             {{ i18n.t("create.startup_custom_redirect_forbidden") }}
           </p>
         </div>
+      </div>
+    </div>
+
+    <div class="startup-extra-grid">
+      <div class="startup-extra-item">
+        <p class="startup-extra-label">{{ i18n.t("create.startup_core_type_label") }}</p>
+        <p class="startup-step-hint">
+          <template v-if="coreDetecting">{{ i18n.t("create.source_detecting_core") }}</template>
+          <template v-else-if="detectedCoreTypeKey">
+            {{ i18n.t("create.startup_core_type_detected", { core: detectedCoreTypeKey }) }}
+          </template>
+          <template v-else>{{ i18n.t("create.source_core_unknown") }}</template>
+        </p>
+        <SLSelect
+          :model-value="selectedCoreType"
+          :options="coreTypeSelectOptions"
+          :disabled="disabled || coreTypeSelectOptions.length === 0"
+          :placeholder="i18n.t('create.startup_core_type_placeholder')"
+          searchable
+          max-height="220px"
+          @update:model-value="emit('update:selectedCoreType', String($event))"
+        />
+      </div>
+
+      <div v-if="starterSelected" class="startup-extra-item">
+        <p class="startup-extra-label">{{ i18n.t("create.startup_mc_version_label") }}</p>
+        <p class="startup-step-hint" v-if="detectedMcVersion">
+          {{ i18n.t("create.startup_mc_version_detected", { version: detectedMcVersion }) }}
+        </p>
+        <p class="startup-step-warning" v-if="mcVersionDetectionFailed">
+          {{ i18n.t("create.startup_mc_version_detection_failed") }}
+        </p>
+        <SLSelect
+          :model-value="selectedMcVersion"
+          :options="mcVersionSelectOptions"
+          :disabled="disabled || mcVersionSelectOptions.length === 0"
+          :placeholder="i18n.t('create.startup_mc_version_placeholder')"
+          searchable
+          max-height="220px"
+          @update:model-value="emit('update:selectedMcVersion', String($event))"
+        />
       </div>
     </div>
 

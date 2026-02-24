@@ -4,13 +4,25 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
 use serde::{Deserialize, Serialize};
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
+const STARTER_DOWNLOAD_API_BASE: &str = "https://api.mslmc.cn/v3/download/server";
+
+#[derive(Debug, Deserialize)]
+struct StarterDownloadApiResponse {
+    data: Option<StarterDownloadApiData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct StarterDownloadApiData {
+    url: Option<String>,
+    sha256: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RunPathServerMapping {
@@ -400,6 +412,16 @@ impl ServerManager {
             .as_ref()
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
+        let selected_core_type = req
+            .core_type
+            .as_ref()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let selected_mc_version = req
+            .mc_version
+            .as_ref()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
 
         let startup_file_path = if startup_mode == "custom" {
             None
@@ -471,18 +493,20 @@ impl ServerManager {
             .duration_since(UNIX_EPOCH)
             .expect("time went backwards")
             .as_secs();
-        let core_type = if startup_mode == "custom" {
+        let detected_core_type = if startup_mode == "custom" {
             "modpack".to_string()
         } else {
             super::server_installer::detect_core_type(&startup_path)
         };
+        let core_type = selected_core_type.unwrap_or(detected_core_type);
+        let mc_version = selected_mc_version.unwrap_or_else(|| "unknown".to_string());
 
         let server = ServerInstance {
             id: id.clone(),
             name: req.name,
             core_type,
             core_version: String::new(),
-            mc_version: "unknown".into(),
+            mc_version,
             path: run_path,
             jar_path: startup_path,
             startup_mode,
@@ -739,7 +763,7 @@ impl ServerManager {
             resolve_managed_console_encoding(startup_mode, startup_path_obj)
         };
 
-        if startup_mode != "jar" && startup_mode != "custom" {
+        if startup_mode == "bat" || startup_mode == "sh" || startup_mode == "ps1" {
             if let Some(major_version) = detect_java_major_version(&server.java_path) {
                 if major_version < 9 {
                     return Err(format!(
@@ -761,6 +785,47 @@ impl ServerManager {
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| server.jar_path.clone());
+
+        let starter_installer_url = if startup_mode == "starter" {
+            let detected_core_type = super::server_installer::detect_core_type(&server.jar_path);
+            let core_key =
+                super::server_installer::CoreType::normalize_to_api_core_key(&server.core_type)
+                    .or_else(|| {
+                        super::server_installer::CoreType::normalize_to_api_core_key(
+                            &detected_core_type,
+                        )
+                    })
+                    .ok_or_else(|| {
+                        format!(
+                            "无法识别 Starter 核心类型：{}",
+                            if server.core_type.trim().is_empty() {
+                                detected_core_type
+                            } else {
+                                server.core_type.clone()
+                            }
+                        )
+                    })?;
+
+            let mc_version = server.mc_version.trim();
+            if mc_version.is_empty() || mc_version.eq_ignore_ascii_case("unknown") {
+                return Err("Starter 启动需要 MC 版本，请在步骤三中选择后再创建服务器".to_string());
+            }
+
+            let (installer_url, installer_sha256) =
+                fetch_starter_installer_url(&core_key, mc_version)?;
+            if let Some(sha256) = installer_sha256 {
+                self.append_log(
+                    id,
+                    &format!(
+                        "[Sea Lantern] Starter 安装器: core={}, version={}, sha256={}",
+                        core_key, mc_version, sha256
+                    ),
+                );
+            }
+            Some(installer_url)
+        } else {
+            None
+        };
 
         let mut cmd = match startup_mode {
             "custom" => {
@@ -848,26 +913,55 @@ impl ServerManager {
                 self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
                 #[cfg(target_os = "windows")]
                 {
-                    use std::os::windows::process::CommandExt;
-
-                    let mut ps_cmd = Command::new("cmd");
-                    let code_page = managed_console_encoding.cmd_code_page();
-                    let launch_command = format!(
-                        "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & powershell -ExecutionPolicy Bypass -File \"{}\" nogui",
-                        code_page,
-                        escape_cmd_arg(&java_home_dir_str),
-                        escape_cmd_arg(&java_bin_dir_str),
-                        escape_cmd_arg(&startup_filename)
-                    );
-                    ps_cmd.arg("/d");
-                    ps_cmd.arg("/c");
-                    ps_cmd.raw_arg(&launch_command);
+                    let mut ps_cmd = Command::new("powershell");
+                    ps_cmd.arg("-NoProfile");
+                    ps_cmd.arg("-NonInteractive");
+                    ps_cmd.arg("-ExecutionPolicy");
+                    ps_cmd.arg("Bypass");
+                    ps_cmd.arg("-File");
+                    ps_cmd.arg(&startup_filename);
+                    ps_cmd.arg("nogui");
+                    ps_cmd.env("JAVA_HOME", &java_home_dir_str);
+                    let existing_path = std::env::var("PATH").unwrap_or_default();
+                    let path_value = if existing_path.is_empty() {
+                        java_bin_dir_str.clone()
+                    } else {
+                        format!("{};{}", java_bin_dir_str, existing_path)
+                    };
+                    ps_cmd.env("PATH", path_value);
                     ps_cmd
                 }
                 #[cfg(not(target_os = "windows"))]
                 {
                     return Err("PS1 启动方式仅支持 Windows".to_string());
                 }
+            }
+            "starter" => {
+                let installer_url = starter_installer_url
+                    .clone()
+                    .ok_or_else(|| "Starter 安装器下载链接为空".to_string())?;
+                let mut starter_cmd = Command::new(&server.java_path);
+                for arg in self.build_managed_jvm_args(&server, &settings, managed_console_encoding)
+                {
+                    starter_cmd.arg(arg);
+                }
+                starter_cmd.arg("-jar");
+                starter_cmd.arg(&startup_filename);
+                starter_cmd.arg("nogui");
+                starter_cmd.arg("--installer");
+                starter_cmd.arg(installer_url);
+                starter_cmd
+            }
+            "jar" => {
+                let mut jar_cmd = Command::new(&server.java_path);
+                for arg in self.build_managed_jvm_args(&server, &settings, managed_console_encoding)
+                {
+                    jar_cmd.arg(arg);
+                }
+                jar_cmd.arg("-jar");
+                jar_cmd.arg(&startup_filename);
+                jar_cmd.arg("nogui");
+                jar_cmd
             }
             _ => {
                 let mut jar_cmd = Command::new(&server.java_path);
@@ -881,6 +975,9 @@ impl ServerManager {
                 jar_cmd
             }
         };
+
+        let command_for_log = format_command_for_log(&cmd);
+        self.append_log(id, &format!("[Sea Lantern] 启动命令: {}", command_for_log));
 
         cmd.current_dir(&server.path);
 
@@ -1241,6 +1338,7 @@ fn get_data_dir() -> String {
 
 fn normalize_startup_mode(mode: &str) -> &str {
     match mode.to_ascii_lowercase().as_str() {
+        "starter" => "starter",
         "bat" => "bat",
         "sh" => "sh",
         "ps1" => "ps1",
@@ -1373,6 +1471,99 @@ fn detect_java_major_version(java_path: &str) -> Option<u32> {
     }
 
     None
+}
+
+fn fetch_starter_installer_url(
+    core_type_key: &str,
+    mc_version: &str,
+) -> Result<(String, Option<String>), String> {
+    let mut url = reqwest::Url::parse(STARTER_DOWNLOAD_API_BASE)
+        .map_err(|e| format!("构建 Starter 下载链接失败: {}", e))?;
+    {
+        let mut segments = url
+            .path_segments_mut()
+            .map_err(|_| "Starter 下载链接不支持路径段写入".to_string())?;
+        segments.push(core_type_key);
+        segments.push(mc_version);
+    }
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
+    let response = client
+        .get(url.clone())
+        .send()
+        .map_err(|e| format!("请求 Starter 下载信息失败: {}", e))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!("Starter 下载接口返回异常状态: {} ({})", status, url));
+    }
+
+    let payload: StarterDownloadApiResponse = response
+        .json()
+        .map_err(|e| format!("解析 Starter 下载信息失败: {}", e))?;
+    let data = payload
+        .data
+        .ok_or_else(|| "Starter 下载接口缺少 data 字段".to_string())?;
+    let installer_url = data
+        .url
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "Starter 下载接口未返回 data.url".to_string())?;
+
+    Ok((
+        installer_url,
+        data.sha256
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty()),
+    ))
+}
+
+fn format_command_for_log(command: &Command) -> String {
+    let mut parts = Vec::new();
+
+    let env_parts = command
+        .get_envs()
+        .filter_map(|(key, value)| {
+            value.map(|v| {
+                format!(
+                    "{}={}",
+                    key.to_string_lossy(),
+                    quote_command_fragment(&v.to_string_lossy())
+                )
+            })
+        })
+        .collect::<Vec<String>>();
+    if !env_parts.is_empty() {
+        parts.push(format!("env {{{}}}", env_parts.join(", ")));
+    }
+
+    parts.push(quote_command_fragment(&command.get_program().to_string_lossy()));
+    parts.extend(
+        command
+            .get_args()
+            .map(|arg| quote_command_fragment(&arg.to_string_lossy())),
+    );
+
+    parts.join(" ")
+}
+
+fn quote_command_fragment(value: &str) -> String {
+    let requires_quotes = value.is_empty()
+        || value.chars().any(|ch| ch.is_whitespace())
+        || value.contains('"')
+        || value.contains('\'')
+        || value.contains(';')
+        || value.contains('&')
+        || value.contains('|');
+
+    if !requires_quotes {
+        return value.to_string();
+    }
+
+    format!("\"{}\"", value.replace('"', "\\\""))
 }
 
 fn decode_console_bytes(bytes: &[u8]) -> String {

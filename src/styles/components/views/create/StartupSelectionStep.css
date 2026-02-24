@@ -159,3 +159,30 @@
   font-size: 0.8125rem;
   color: var(--sl-warning);
 }
+
+.startup-extra-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sl-space-sm);
+  border-top: 1px dashed var(--sl-border-light);
+  padding-top: var(--sl-space-sm);
+}
+
+.startup-extra-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.startup-extra-label {
+  margin: 0;
+  color: var(--sl-text-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .startup-extra-grid {
+    grid-template-columns: 1fr;
+  }
+}

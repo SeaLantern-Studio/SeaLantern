@@ -94,6 +94,10 @@ pub struct ImportModpackRequest {
     pub use_software_data_dir: bool,
     #[serde(default)]
     pub startup_file_path: Option<String>,
+    #[serde(default)]
+    pub core_type: Option<String>,
+    #[serde(default)]
+    pub mc_version: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,6 +125,11 @@ pub struct ParsedServerCoreInfo {
 pub struct StartupScanResult {
     pub parsed_core: ParsedServerCoreInfo,
     pub candidates: Vec<StartupCandidateItem>,
+    pub detected_core_type_key: Option<String>,
+    pub core_type_options: Vec<String>,
+    pub mc_version_options: Vec<String>,
+    pub detected_mc_version: Option<String>,
+    pub mc_version_detection_failed: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

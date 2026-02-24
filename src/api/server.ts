@@ -26,6 +26,11 @@ export interface StartupCandidateItem {
 export interface StartupScanResult {
   parsedCore: ParsedServerCoreInfo;
   candidates: StartupCandidateItem[];
+  detectedCoreTypeKey: string | null;
+  coreTypeOptions: string[];
+  mcVersionOptions: string[];
+  detectedMcVersion: string | null;
+  mcVersionDetectionFailed: boolean;
 }
 
 interface ParsedServerCoreInfoRaw {
@@ -46,6 +51,11 @@ interface StartupCandidateItemRaw {
 interface StartupScanResultRaw {
   parsed_core: ParsedServerCoreInfoRaw;
   candidates: StartupCandidateItemRaw[];
+  detected_core_type_key: string | null;
+  core_type_options: string[];
+  mc_version_options: string[];
+  detected_mc_version: string | null;
+  mc_version_detection_failed: boolean;
 }
 
 export const serverApi = {
@@ -102,12 +112,14 @@ export const serverApi = {
     maxMemory: number;
     minMemory: number;
     port: number;
-    startupMode: "jar" | "bat" | "sh" | "ps1" | "custom";
+    startupMode: "starter" | "jar" | "bat" | "sh" | "ps1" | "custom";
     onlineMode: boolean;
     customCommand?: string;
     runPath: string;
     useSoftwareDataDir: boolean;
     startupFilePath?: string;
+    coreType?: string;
+    mcVersion?: string;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_modpack", {
       name: params.name,
@@ -122,6 +134,8 @@ export const serverApi = {
       runPath: params.runPath,
       useSoftwareDataDir: params.useSoftwareDataDir,
       startupFilePath: params.startupFilePath,
+      coreType: params.coreType,
+      mcVersion: params.mcVersion,
     });
   },
 
@@ -157,6 +171,11 @@ export const serverApi = {
         path: item.path,
         recommended: item.recommended,
       })),
+      detectedCoreTypeKey: result.detected_core_type_key,
+      coreTypeOptions: result.core_type_options,
+      mcVersionOptions: result.mc_version_options,
+      detectedMcVersion: result.detected_mc_version,
+      mcVersionDetectionFailed: result.mc_version_detection_failed,
     };
   },
 

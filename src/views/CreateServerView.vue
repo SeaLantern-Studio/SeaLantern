@@ -35,6 +35,14 @@ const {
   startupCandidates,
   selectedStartupId,
   customStartupCommand,
+  starterSelected,
+  detectedCoreTypeKey,
+  coreTypeOptions,
+  selectedCoreType,
+  detectedMcVersion,
+  mcVersionOptions,
+  selectedMcVersion,
+  mcVersionDetectionFailed,
   customCommandHasRedirect,
   copyConflictDialogOpen,
   copyConflictItems,
@@ -48,8 +56,6 @@ const {
   activeStep,
   stepItems,
   canSubmit,
-  showSourceCoreInfo,
-  sourceCoreInfoText,
   pickRunPath,
   toggleUseSoftwareDataDir,
   rescanStartupCandidates,
@@ -89,9 +95,6 @@ const router = useRouter();
           <div class="create-step-panel">
             <template v-if="item.step === 1">
               <SourceIntakeField v-model:source-path="sourcePath" v-model:source-type="sourceType" @error="showError" />
-              <p v-if="showSourceCoreInfo" class="create-source-core-info">
-                {{ coreDetecting ? i18n.t("create.source_detecting_core") : sourceCoreInfoText }}
-              </p>
             </template>
 
             <RunPathStep
@@ -113,10 +116,21 @@ const router = useRouter();
               :selected-startup-id="selectedStartupId"
               :custom-startup-command="customStartupCommand"
               :custom-command-has-redirect="customCommandHasRedirect"
+              :starter-selected="starterSelected"
+              :core-detecting="coreDetecting"
+              :detected-core-type-key="detectedCoreTypeKey"
+              :core-type-options="coreTypeOptions"
+              :selected-core-type="selectedCoreType"
+              :detected-mc-version="detectedMcVersion"
+              :mc-version-options="mcVersionOptions"
+              :selected-mc-version="selectedMcVersion"
+              :mc-version-detection-failed="mcVersionDetectionFailed"
               :disabled="creating"
               @rescan="rescanStartupCandidates"
               @update:selected-startup-id="selectedStartupId = $event"
               @update:custom-startup-command="customStartupCommand = $event"
+              @update:selected-core-type="selectedCoreType = $event"
+              @update:selected-mc-version="selectedMcVersion = $event"
             />
 
             <template v-else-if="item.step === 4">

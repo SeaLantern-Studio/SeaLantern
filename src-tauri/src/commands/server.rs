@@ -101,6 +101,8 @@ pub fn import_modpack(
     run_path: String,
     use_software_data_dir: bool,
     startup_file_path: Option<String>,
+    core_type: Option<String>,
+    mc_version: Option<String>,
 ) -> Result<ServerInstance, String> {
     let req = ImportModpackRequest {
         name,
@@ -115,6 +117,8 @@ pub fn import_modpack(
         run_path,
         use_software_data_dir,
         startup_file_path,
+        core_type,
+        mc_version,
     };
     manager().import_modpack(req)
 }
@@ -161,9 +165,43 @@ fn scan_startup_candidates_blocking(
 
     let mut candidates = Vec::new();
     let source_kind = source_type.to_ascii_lowercase();
+    let core_type_options = crate::services::server_installer::CoreType::all_api_core_keys()
+        .iter()
+        .map(|value| value.to_string())
+        .collect::<Vec<String>>();
+    let mc_version_options = crate::services::server_installer::STARTER_MC_VERSION_OPTIONS
+        .iter()
+        .map(|value| value.to_string())
+        .collect::<Vec<String>>();
 
     if source_kind == "archive" {
-        let parsed = crate::services::server_installer::parse_server_core_type(&source_path)?;
+        let mut temp_extract_dir: Option<std::path::PathBuf> = None;
+
+        let inspect_root = if source.is_file() {
+            let temp_dir = std::env::temp_dir().join(format!(
+                "sea_lantern_startup_scan_{}",
+                uuid::Uuid::new_v4()
+            ));
+            std::fs::create_dir_all(&temp_dir)
+                .map_err(|e| format!("无法创建临时解压目录: {}", e))?;
+            crate::services::server_installer::extract_modpack_archive(source, &temp_dir)?;
+            let root_dir = crate::services::server_installer::resolve_extracted_root(&temp_dir);
+            temp_extract_dir = Some(temp_dir);
+            root_dir
+        } else if source.is_dir() {
+            source.to_path_buf()
+        } else {
+            return Err("archive 来源无效".to_string());
+        };
+
+        let parsed = crate::services::server_installer::parse_server_core_type(
+            &inspect_root.to_string_lossy(),
+        )?;
+        let (detected_mc_version, mc_version_detection_failed) =
+            crate::services::server_installer::detect_mc_version_from_mods(&inspect_root);
+        let detected_core_type_key =
+            crate::services::server_installer::CoreType::normalize_to_api_core_key(&parsed.core_type);
+
         if let Some(jar_path) = parsed.jar_path.clone() {
             let is_starter = parsed
                 .main_class
@@ -188,9 +226,18 @@ fn scan_startup_candidates_blocking(
             });
         }
 
+        if let Some(temp_dir) = temp_extract_dir {
+            let _ = std::fs::remove_dir_all(temp_dir);
+        }
+
         return Ok(StartupScanResult {
             parsed_core: parsed,
             candidates,
+            detected_core_type_key,
+            core_type_options,
+            mc_version_options,
+            detected_mc_version,
+            mc_version_detection_failed,
         });
     }
 
@@ -304,10 +351,19 @@ fn scan_startup_candidates_blocking(
     let parsed_core = detected_core
         .map(|(_, parsed)| parsed)
         .unwrap_or_else(unknown_parsed_core_info);
+    let detected_core_type_key =
+        crate::services::server_installer::CoreType::normalize_to_api_core_key(&parsed_core.core_type);
+    let (detected_mc_version, mc_version_detection_failed) =
+        crate::services::server_installer::detect_mc_version_from_mods(source);
 
     Ok(StartupScanResult {
         parsed_core,
         candidates,
+        detected_core_type_key,
+        core_type_options,
+        mc_version_options,
+        detected_mc_version,
+        mc_version_detection_failed,
     })
 }
 
