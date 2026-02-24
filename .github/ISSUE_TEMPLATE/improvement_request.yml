@@ -1,7 +1,7 @@
 name: 优化请求
 description: 请求优化内容
 title: "[Perf] "
-labels: ["improvement", "pending"]
+labels: ["performance", "pending"]
 assignees: []
 body:
   - type: textarea
