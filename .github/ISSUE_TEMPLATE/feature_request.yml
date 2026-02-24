@@ -1,0 +1,68 @@
+name: 新功能请求
+description: 请求一个新的功能
+title: "[Feature] "
+labels: ["enhancement", "pending"]
+assignees: []
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 功能描述
+      description: 你想要的功能
+      placeholder: 你想要的功能
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 理由
+      description: 说明你为什么想要这个功能
+      placeholder: 说明你为什么想要这个功能
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: 如何实现
+      description: 可选 - 如何实现你所想要的功能？
+      placeholder: 如何实现你所想要的功能？
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案
+      description: 可选 - 是否有其他方案可选？
+      placeholder: 是否有其他方案可选？
+    validations:
+      required: false
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影响
+      description: 可选 - 是否对现有内容存在一定影响？
+      placeholder: 是否对现有内容存在一定影响？
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 可选 - 什么样的情况下才算是完成这个功能？
+      placeholder: 什么样的情况下才算是完成这个功能？
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 附加内容
+      description: 可选 - 例如界面的草图
+      placeholder: 例如界面的草图
+    validations:
+      required: false

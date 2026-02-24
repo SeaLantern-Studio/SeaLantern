@@ -20,7 +20,7 @@ body:
       description: 可选 - 如何重现这个问题
       placeholder: 这里写你的复现步骤
     validations:
-      required: false
+      required: true
 
   - type: textarea
     id: expected
