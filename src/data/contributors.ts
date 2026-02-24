@@ -117,14 +117,6 @@ export const contributors: Contributor[] = [
     },
   },
   {
-    name: "猫不笨qwq",
-    role: "找到软件图形化错误",
-    avatar: "https://api.rms.net.cn/head/maobuben_qwq",
-    url: {
-      github: "https://github.com/maobuben",
-    },
-  },
-  {
     name: "橙子冰棒",
     role: "修复Java查找算法",
     avatar: "https://api.rms.net.cn/head/TNTNTBTT",
@@ -190,12 +182,6 @@ export const contributors: Contributor[] = [
     },
   },
   {
-    name: "Yashiro Nene°",
-    role: "幸运☆星",
-    avatar: "https://api.rms.net.cn/head/QiuHuang2007",
-    url: "https://m.bilibili.com/space/327701",
-  },
-  {
     name: "NyaCl",
     role: "awa",
     avatar: "https://api.rms.net.cn/head/XueChen_NyaCl",
@@ -219,22 +205,6 @@ export const contributors: Contributor[] = [
     avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
   },
   {
-    name: "Yang458",
-    role: "贡献者",
-    avatar: "https://api.rms.net.cn/head/Yang4893",
-    url: "https://github.com/minecraft-Yang458",
-  },
-  {
-    name: "鸽德迪",
-    role: "自定义背景图方案",
-    avatar: "https://api.rms.net.cn/head/Alex",
-  },
-  {
-    name: "凋空凌",
-    role: "修复文档bug",
-    avatar: "https://api.rms.net.cn/head/Alex",
-  },
-  {
     name: "黎明lime",
     role: "修修补补",
     avatar: "https://api.rms.net.cn/head/lmyyds",
@@ -243,6 +213,7 @@ export const contributors: Contributor[] = [
       bilibili: "https://space.bilibili.com/514672422",
     },
   },
+
   // ============================================
   // 在这里添加更多贡献者！
   // 没有正版怎么办？

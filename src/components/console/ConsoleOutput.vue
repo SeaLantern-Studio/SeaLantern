@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from "vue";
+import { ref, watch, nextTick, shallowRef } from "vue";
 import { i18n } from "@language";
 
 interface Props {
@@ -26,10 +26,10 @@ const emit = defineEmits<{
 
 const logContainer = ref<HTMLElement | null>(null);
 
+const LOG_REGEX = /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/;
+
 function parseLogLine(line: string): ParsedLog {
-  const match = line.match(
-    /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/,
-  );
+  const match = line.match(LOG_REGEX);
   if (match) {
     const [, time, source, level, message] = match;
     return { isParsed: true, time, source, level, message, raw: line };
@@ -37,7 +37,29 @@ function parseLogLine(line: string): ParsedLog {
   return { isParsed: false, raw: line };
 }
 
-const parsedLogs = computed(() => props.logs.map((line) => parseLogLine(line)));
+const parsedLogs = shallowRef<ParsedLog[]>([]);
+let lastParsedLength = 0;
+
+watch(
+  () => props.logs.length,
+  (newLength) => {
+    if (newLength === 0) {
+      parsedLogs.value = [];
+      lastParsedLength = 0;
+      return;
+    }
+    if (newLength > lastParsedLength) {
+      const newLogs = props.logs.slice(lastParsedLength);
+      const newParsed = newLogs.map(parseLogLine);
+      parsedLogs.value = [...parsedLogs.value, ...newParsed];
+      lastParsedLength = newLength;
+    } else if (newLength < lastParsedLength) {
+      parsedLogs.value = props.logs.map(parseLogLine);
+      lastParsedLength = newLength;
+    }
+  },
+  { immediate: true }
+);
 
 watch(
   () => props.logs.length,

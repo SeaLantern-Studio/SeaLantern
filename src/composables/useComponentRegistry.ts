@@ -89,18 +89,18 @@ export function useComponentRegistry() {
   }
 
   function removeProxy(componentId: string, pluginId: string) {
-    const list = interceptors.get(componentId);
-    if (list) {
+    const proxyList = interceptors.get(componentId);
+    if (proxyList) {
       interceptors.set(
         componentId,
-        list.filter((i) => i.pluginId !== pluginId),
+        proxyList.filter((i) => i.pluginId !== pluginId),
       );
     }
   }
 
   function runInterceptors(componentId: string, event: object): boolean {
-    const list = interceptors.get(componentId) ?? [];
-    for (const interceptor of list) {
+    const interceptorList = interceptors.get(componentId) ?? [];
+    for (const interceptor of interceptorList) {
       if (interceptor.handler(event as any) === false) return false;
     }
     return true;

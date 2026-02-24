@@ -62,26 +62,31 @@ async function loadDependentPlugins() {
 
   Object.keys(dependentSettingsForms).forEach((key) => delete dependentSettingsForms[key]);
 
-  for (const p of pluginStore.plugins) {
-    if (p.state !== "enabled") continue;
-    if (p.manifest.id === props.pluginId) continue;
-
+  const candidates = pluginStore.plugins.filter((p) => {
+    if (p.state !== "enabled") return false;
+    if (p.manifest.id === props.pluginId) return false;
     const deps = p.manifest.dependencies || [];
-    const hasDep = deps.some((dep: string | { id: string }) => {
+    return deps.some((dep: string | { id: string }) => {
       const depId = typeof dep === "string" ? dep : dep.id;
       return depId === props.pluginId;
     });
+  });
 
-    if (hasDep && p.manifest.settings?.length) {
-      dependentPlugins.value.push(p);
-
+  const settingsPromises = candidates
+    .filter((p) => p.manifest.settings?.length)
+    .map(async (p) => {
       const depSettings = await pluginStore.getPluginSettings(p.manifest.id);
-      dependentSettingsForms[p.manifest.id] = {};
-      for (const field of p.manifest.settings) {
-        dependentSettingsForms[p.manifest.id][field.key] =
-          depSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
+      const form: Record<string, any> = {};
+      for (const field of p.manifest.settings!) {
+        form[field.key] = depSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
       }
-    }
+      return { plugin: p, form };
+    });
+
+  const results = await Promise.all(settingsPromises);
+  for (const { plugin: depPlugin, form } of results) {
+    dependentPlugins.value.push(depPlugin);
+    dependentSettingsForms[depPlugin.manifest.id] = form;
   }
 }
 
@@ -104,12 +109,15 @@ async function applyPreset(presetKey: string) {
   const presetData = presets[presetKey];
   const pluginId = plugin.value?.manifest.id;
   if (!pluginId) return;
+
+  const settingsToSave: Record<string, any> = {};
   for (const [key, value] of Object.entries(presetData)) {
     if (key !== "name") {
       settingsForm[key] = value as string | number | boolean;
-      await pluginStore.setPluginSettings(pluginId, { [key]: value });
+      settingsToSave[key] = value;
     }
   }
+  await pluginStore.setPluginSettings(pluginId, settingsToSave);
   await pluginStore.applyThemeProviderSettings(pluginId);
 }
 
@@ -122,17 +130,16 @@ async function saveSettings() {
       await pluginStore.applyThemeProviderSettings(props.pluginId);
     }
 
-    for (const depPlugin of dependentPlugins.value) {
+    const depPromises = dependentPlugins.value.map(async (depPlugin) => {
       const depForm = dependentSettingsForms[depPlugin.manifest.id];
       if (depForm) {
-        await pluginStore.setPluginSettings(depPlugin.manifest.id, {
-          ...depForm,
-        });
+        await pluginStore.setPluginSettings(depPlugin.manifest.id, { ...depForm });
         if (pluginStore.hasCapability(depPlugin.manifest.id, "theme-widgets-provider")) {
           await pluginStore.applyThemeWidgetsProviderSettings(depPlugin.manifest.id);
         }
       }
-    }
+    });
+    await Promise.all(depPromises);
   } finally {
     saving.value = false;
   }
