@@ -57,10 +57,16 @@
   overflow-x: hidden;
   padding: var(--sl-space-sm);
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .nav-group {
   margin-bottom: var(--sl-space-sm);
+}
+
+.nav-group.lower-side {
+  margin-top: auto;
 }
 
 .nav-group-label {

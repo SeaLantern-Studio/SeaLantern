@@ -5,6 +5,7 @@ import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
+import { useSettingsStore } from "@stores/settingsStore";
 import {
   Listbox,
   ListboxButton,
@@ -141,7 +142,7 @@ const staticNavItems: NavItem[] = [
     icon: "settings",
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
-    group: "settings",
+    group: "system",
   },
 ];
 
@@ -425,6 +426,15 @@ watch(
   },
 );
 
+// 监听字号变化，更新指示器位置
+watch(
+  () => useSettingsStore().settings.font_size,
+  () => {
+    updateNavIndicator();
+  },
+);
+
+
 // 监听窗口尺寸变化，更新选项位置
 onMounted(() => {
   window.addEventListener("resize", updateNavIndicator);
@@ -436,7 +446,7 @@ onMounted(() => {
   }
 });
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
   window.removeEventListener("resize", updateNavIndicator);
 
   // 移除侧边栏滚动监听
@@ -644,7 +654,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
       </template>
 
       <!-- 关于按钮 -->
-      <div class="nav-group">
+      <div class="nav-group lower-side">
         <div
           class="nav-item"
           :class="{ active: isActive('/about') }"
