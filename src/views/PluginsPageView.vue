@@ -88,7 +88,7 @@ watch(
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-xs);
   width: fit-content;
-  margin-top: 8px;
+  margin-bottom: var(--sl-space-md);
   position: relative;
   overflow: hidden;
 }

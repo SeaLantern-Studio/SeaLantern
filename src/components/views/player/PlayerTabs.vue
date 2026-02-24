@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTabIndicator } from "@composables/useTabIndicator";
 import { i18n } from "@language";
-import { watch } from "vue";
+import { watch, computed } from "vue";
 
 type PlayerTab = "online" | "whitelist" | "banned" | "ops";
 
@@ -17,10 +17,10 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: PlayerTab): void;
 }>();
 
-const activeTab = {
+const activeTab = computed({
   get: () => props.modelValue,
   set: (value: PlayerTab) => emit("update:modelValue", value),
-};
+});
 
 const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } =
   useTabIndicator(activeTab);
@@ -71,7 +71,7 @@ watch(localeRef, () => {
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-xs);
   width: fit-content;
-  margin: var(--sl-space-md) 0;
+  margin-bottom: var(--sl-space-md);
   position: relative;
   overflow: hidden;
 }

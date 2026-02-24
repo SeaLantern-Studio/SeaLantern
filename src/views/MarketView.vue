@@ -543,7 +543,7 @@ onMounted(() => {
 }
 
 .tag-btn {
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-radius: var(--sl-radius-sm);
   border: none;
   background: transparent;
