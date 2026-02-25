@@ -95,6 +95,7 @@ pub fn run() {
             server_commands::send_command,
             server_commands::get_server_list,
             server_commands::get_server_status,
+            server_commands::get_server_version,
             server_commands::delete_server,
             server_commands::get_server_logs,
             server_commands::update_server_name,

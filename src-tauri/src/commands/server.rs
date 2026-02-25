@@ -496,6 +496,11 @@ pub fn get_server_status(id: String) -> ServerStatusInfo {
 }
 
 #[tauri::command]
+pub fn get_server_version(jar_path: String) -> Result<String, String> {
+    manager().get_server_version(&jar_path)
+}
+
+#[tauri::command]
 pub fn delete_server(id: String) -> Result<(), String> {
     manager().delete_server(&id)
 }
