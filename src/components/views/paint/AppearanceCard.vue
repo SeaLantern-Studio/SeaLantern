@@ -22,6 +22,7 @@ defineProps<{
   bgBrightness: string;
   backgroundSize: string;
   bgSettingsExpanded: boolean;
+  minimalMode: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -34,10 +35,12 @@ const emit = defineEmits<{
   (e: "update:bgBlur", value: string): void;
   (e: "update:bgBrightness", value: string): void;
   (e: "update:backgroundSize", value: string): void;
+  (e: "update:minimalMode", value: boolean): void;
   (e: "themeChange"): void;
   (e: "fontSizeChange"): void;
   (e: "fontFamilyChange"): void;
   (e: "acrylicChange", value: boolean): void;
+  (e: "minimalModeChange", value: boolean): void;
   (e: "pickImage"): void;
   (e: "clearImage"): void;
   (e: "change"): void;
@@ -67,6 +70,11 @@ function handleFontFamilyChange(value: string) {
 function handleAcrylicChange(value: boolean) {
   emit("update:acrylicEnabled", value);
   emit("acrylicChange", value);
+}
+
+function handleMinimalModeChange(value: boolean) {
+  emit("update:minimalMode", value);
+  emit("minimalModeChange", value);
 }
 </script>
 
@@ -145,6 +153,17 @@ function handleAcrylicChange(value: boolean) {
           :model-value="acrylicEnabled"
           :disabled="!acrylicSupported"
           @update:model-value="handleAcrylicChange"
+        />
+      </div>
+
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.minimal_mode") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.minimal_mode_desc") }}</span>
+        </div>
+        <SLSwitch
+          :model-value="minimalMode"
+          @update:model-value="handleMinimalModeChange"
         />
       </div>
 

@@ -40,6 +40,7 @@ export interface AppSettings {
   developer_mode: boolean;
   close_action: string;
   last_run_path: string;
+  minimal_mode: boolean;
 }
 
 export interface PartialSettings {
@@ -72,6 +73,7 @@ export interface PartialSettings {
   developer_mode?: boolean;
   close_action?: string;
   last_run_path?: string;
+  minimal_mode?: boolean;
 }
 
 export interface UpdateSettingsResult {
