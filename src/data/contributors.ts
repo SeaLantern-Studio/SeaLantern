@@ -29,48 +29,10 @@ export const contributors: Contributor[] = [
     },
   },
   {
-    name: "烬白Jinby",
-    role: "自定义配色/宣传",
-    avatar: "https://api.rms.net.cn/head/Jinby_6325",
-  },
-  {
-    name: "NIUNIU3303",
-    role: "必火推荐！",
-    avatar: "https://api.rms.net.cn/head/NIUNIU3303",
-  },
-  {
-    name: "Little_100",
-    role: "打杂",
-    avatar: "https://api.rms.net.cn/head/Little100",
-    url: {
-      gitee: "https://gitee.com/little_100",
-      github: "https://github.com/Little100",
-      bilibili: "https://space.bilibili.com/1492647738",
-      qq: "2662308929",
-    },
-  },
-  {
-    name: "MinecraftYJQ",
-    role: "小修小改罢",
-    avatar: "https://api.rms.net.cn/head/MinecraftYJQ_",
-    url: {
-      gitee: "https://gitee.com/minecraftyjq",
-      github: "https://github.com/MinecraftYJQ",
-    },
-  },
-  {
-    name: "HKYZYH",
-    role: "修复Wayland协议下白屏问题",
-    avatar: "https://api.rms.net.cn/head/HKYZYH",
-    url: {
-      gitee: "https://gitee.com/HKYZYHgezi",
-      github: "https://github.com/HKYZYH",
-    },
-  },
-  {
-    name: "清初Lucky",
-    role: "喵喵喵~",
-    avatar: "https://api.rms.net.cn/head/qingchu2010",
+    name: "KercyDing",
+    role: "代码审查与CI，官网创始人",
+    avatar: "https://api.rms.net.cn/head/KercyDing",
+    url: "https://github.com/KercyDing",
   },
   {
     name: "CmzYa",
@@ -85,45 +47,17 @@ export const contributors: Contributor[] = [
     },
   },
   {
-    name: "LingyeNB",
-    role: "+3",
-    avatar: "https://api.rms.net.cn/head/LingyeNB",
+    name: "Little_100",
+    role: "插件哥",
+    avatar: "https://api.rms.net.cn/head/Little100",
     url: {
-      github: "https://github.com/LingyeNBird",
+      gitee: "https://gitee.com/little_100",
+      github: "https://github.com/Little100",
+      bilibili: "https://space.bilibili.com/1492647738",
+      qq: "2662308929",
     },
   },
-  {
-    name: "皓天是条龙",
-    role: "增加了一点新功能",
-    avatar: "https://api.rms.net.cn/head/zhu_hao_tian",
-    url: {
-      github: "https://github.com/zhu1h1t1",
-    },
-  },
-  {
-    name: "ieshishinjin",
-    role: "新增了功能，并吃了明太鱼干",
-    avatar: "https://api.rms.net.cn/head/ieshishinjin",
-    url: {
-      github: "https://github.com/ieshishinjin",
-    },
-  },
-  {
-    name: "欧耶熊猫人",
-    role: "Github文档转英文",
-    avatar: "https://api.rms.net.cn/head/Pandaman_AF",
-    url: {
-      github: "https://github.com/PandamanAF",
-    },
-  },
-  {
-    name: "橙子冰棒",
-    role: "修复Java查找算法",
-    avatar: "https://api.rms.net.cn/head/TNTNTBTT",
-    url: {
-      github: "https://github.com/Orange-Icepop",
-    },
-  },
+
   {
     name: "xingwangzhe",
     role: "贡献者",
@@ -133,11 +67,12 @@ export const contributors: Contributor[] = [
     },
   },
   {
-    name: "TNTXZ",
-    role: "诶嘿~",
-    avatar: "https://api.rms.net.cn/head/_TNTXZ_",
+    name: "黎明lime",
+    role: "修修补补",
+    avatar: "https://api.rms.net.cn/head/lmyyds",
     url: {
-      github: "https://github.com/TNTXZ",
+      github: "https://github.com/lmyyds1",
+      bilibili: "https://space.bilibili.com/514672422",
     },
   },
   {
@@ -157,12 +92,95 @@ export const contributors: Contributor[] = [
     },
   },
   {
+    name: "清初Lucky",
+    role: "喵喵喵~",
+    avatar: "https://api.rms.net.cn/head/qingchu2010",
+  },
+  {
+    name: "ieshishinjin",
+    role: "新增了功能，并吃了明太鱼干",
+    avatar: "https://api.rms.net.cn/head/ieshishinjin",
+    url: {
+      github: "https://github.com/ieshishinjin",
+    },
+  },
+  {
+    name: "LingyeNB",
+    role: "+3",
+    avatar: "https://api.rms.net.cn/head/LingyeNB",
+    url: {
+      github: "https://github.com/LingyeNBird",
+    },
+  },
+  {
+    name: "皓天是条龙",
+    role: "增加了一点新功能",
+    avatar: "https://api.rms.net.cn/head/zhu_hao_tian",
+    url: {
+      github: "https://github.com/zhu1h1t1",
+    },
+  },
+  {
     name: "NanaLoveyuki",
     role: "欧内该,只要我能帮忙我什么都会做的",
     avatar: "https://api.rms.net.cn/head/NanaLoveyuki",
     url: {
       github: "https://github.com/NanaLoveyuki",
     },
+  },
+  {
+    name: "欧耶熊猫人",
+    role: "Github文档转英文",
+    avatar: "https://api.rms.net.cn/head/Pandaman_AF",
+    url: {
+      github: "https://github.com/PandamanAF",
+    },
+  },
+  {
+    name: "橙子冰棒",
+    role: "修复Java查找算法",
+    avatar: "https://api.rms.net.cn/head/TNTNTBTT",
+    url: {
+      github: "https://github.com/Orange-Icepop",
+    },
+  },
+  {
+    name: "NyaCl",
+    role: "awa",
+    avatar: "https://api.rms.net.cn/head/XueChen_NyaCl",
+    url: "",
+  },
+  {
+    name: "TNTXZ",
+    role: "诶嘿~",
+    avatar: "https://api.rms.net.cn/head/_TNTXZ_",
+    url: {
+      github: "https://github.com/TNTXZ",
+    },
+  },
+  {
+    name: "HKYZYH",
+    role: "修复Wayland协议下白屏问题",
+    avatar: "https://api.rms.net.cn/head/HKYZYH",
+    url: {
+      gitee: "https://gitee.com/HKYZYHgezi",
+      github: "https://github.com/HKYZYH",
+    },
+  },
+  {
+    name: "MinecraftYJQ",
+    role: "小修小改罢",
+    avatar: "https://api.rms.net.cn/head/MinecraftYJQ_",
+    url: {
+      gitee: "https://gitee.com/minecraftyjq",
+      github: "https://github.com/MinecraftYJQ",
+    },
+  },
+  {
+    name: "龙腾_H",
+    role: "贡献者 美术这块 河南卷死我了",
+    avatar: "https://api.rms.net.cn/head/Longteng_H",
+    url: "https://github.com/longteng-H",
   },
 
   {
@@ -181,37 +199,21 @@ export const contributors: Contributor[] = [
       github: "https://github.com/foxcyber907",
     },
   },
-  {
-    name: "NyaCl",
-    role: "awa",
-    avatar: "https://api.rms.net.cn/head/XueChen_NyaCl",
-    url: "",
-  },
-  {
-    name: "龙腾_H",
-    role: "贡献者 美术这块 河南卷死我了",
-    avatar: "https://api.rms.net.cn/head/Longteng_H",
-    url: "https://github.com/longteng-H",
-  },
-  {
-    name: "KercyDing",
-    role: "代码审查与CI",
-    avatar: "https://api.rms.net.cn/head/KercyDing",
-    url: "https://github.com/KercyDing",
-  },
+
   {
     name: "OMIILII",
     role: "精神支柱",
     avatar: "https://api.rms.net.cn/head/Derschnitzelgott",
   },
   {
-    name: "黎明lime",
-    role: "修修补补",
-    avatar: "https://api.rms.net.cn/head/lmyyds",
-    url: {
-      github: "https://github.com/lmyyds1",
-      bilibili: "https://space.bilibili.com/514672422",
-    },
+    name: "烬白Jinby",
+    role: "自定义配色/宣传",
+    avatar: "https://api.rms.net.cn/head/Jinby_6325",
+  },
+  {
+    name: "NIUNIU3303",
+    role: "必火推荐！",
+    avatar: "https://api.rms.net.cn/head/NIUNIU3303",
   },
 
   // ============================================

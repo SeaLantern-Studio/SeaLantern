@@ -7,6 +7,7 @@ import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -995,28 +996,17 @@ function goToMarket() {
                 >
                   <Settings :size="16" />
                 </button>
-                <label
-                  class="toggle-switch"
-                  :class="{
-                    disabled:
-                      hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state),
-                  }"
+                <SLSwitch
+                  :modelValue="isPluginEnabled(plugin.state)"
+                  :disabled="hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)"
                   :title="
                     hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
                       ? i18n.t('plugins.missing_required_deps')
                       : ''
                   "
-                >
-                  <input
-                    type="checkbox"
-                    :checked="isPluginEnabled(plugin.state)"
-                    :disabled="
-                      hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
-                    "
-                    @click.prevent="handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))"
-                  />
-                  <span class="toggle-slider"></span>
-                </label>
+                  @update:modelValue="handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))"
+                  size="sm"
+                />
               </div>
             </div>
           </div>
@@ -1066,8 +1056,7 @@ function goToMarket() {
                 class="setting-input"
               />
               <label v-else-if="field.type === 'boolean'" class="setting-toggle">
-                <input type="checkbox" v-model="settingsForm[field.key]" />
-                <span class="toggle-slider"></span>
+                <SLSwitch :modelValue="Boolean(settingsForm[field.key])" @update:modelValue="settingsForm[field.key] = $event" size="sm" />
               </label>
               <select
                 v-else-if="field.type === 'select'"
@@ -1942,60 +1931,6 @@ function goToMarket() {
   color: var(--sl-primary);
 }
 
-.toggle-switch {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.toggle-switch input {
-  display: none;
-}
-
-.toggle-slider {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  background: var(--sl-bg-tertiary);
-  border-radius: var(--sl-radius-md);
-  transition: background 0.2s ease;
-}
-
-.toggle-slider::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  background: var(--sl-surface);
-  border-radius: 50%;
-  transition: transform 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-switch input:checked + .toggle-slider {
-  background: var(--sl-primary);
-}
-
-.toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(16px);
-}
-
-.toggle-switch.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.toggle-switch.disabled input {
-  cursor: not-allowed;
-}
-
-.toggle-switch.disabled .toggle-slider {
-  cursor: not-allowed;
-}
-
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -2175,55 +2110,6 @@ function goToMarket() {
   background: var(--sl-bg-secondary);
   color: var(--sl-text-primary);
   padding: 8px;
-}
-
-.setting-toggle {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
-}
-
-.setting-toggle input {
-  display: none;
-}
-
-.setting-toggle .toggle-slider {
-  position: relative;
-  width: 44px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: var(--sl-radius-lg);
-  transition: all 0.3s ease;
-}
-
-.setting-toggle .toggle-slider::before {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  background: white;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.setting-toggle input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-}
-
-.setting-toggle input:checked + .toggle-slider::before {
-  transform: translateX(20px);
-}
-
-.setting-toggle:hover .toggle-slider {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.setting-toggle:hover input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
 }
 
 .modal-footer {
