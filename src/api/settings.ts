@@ -39,6 +39,7 @@ export interface AppSettings {
   locales_base_url?: string;
   developer_mode: boolean;
   close_action: string;
+  last_run_path: string;
 }
 
 export interface PartialSettings {
@@ -70,6 +71,7 @@ export interface PartialSettings {
   language?: string;
   developer_mode?: boolean;
   close_action?: string;
+  last_run_path?: string;
 }
 
 export interface UpdateSettingsResult {

@@ -30,7 +30,6 @@ export function useCreateServerPage() {
   const sourcePath = ref("");
   const sourceType = ref<SourceType>("");
   const runPath = ref("");
-  const useSoftwareDataDir = ref(false);
 
   const coreDetecting = ref(false);
   const detectedCoreType = ref("");
@@ -69,7 +68,6 @@ export function useCreateServerPage() {
   const javaList = ref<JavaInfo[]>([]);
 
   const hasSource = computed(() => sourcePath.value.trim().length > 0 && sourceType.value !== "");
-  const requiresRunPath = computed(() => sourceType.value === "archive");
 
   const selectedStartup = computed(
     () => startupCandidates.value.find((item) => item.id === selectedStartupId.value) ?? null,
@@ -84,9 +82,7 @@ export function useCreateServerPage() {
     if (!hasSource.value) {
       return false;
     }
-    return requiresRunPath.value
-      ? useSoftwareDataDir.value || runPath.value.trim().length > 0
-      : true;
+    return runPath.value.trim().length > 0;
   });
 
   const hasStartupStep = computed(() => {
@@ -174,12 +170,6 @@ export function useCreateServerPage() {
     await loadDefaultSettings();
   });
 
-  watch(sourceType, (nextType) => {
-    if (nextType === "archive") {
-      runPath.value = "";
-    }
-  });
-
   onUnmounted(() => {
     if (startupDetectTimer) {
       clearTimeout(startupDetectTimer);
@@ -199,7 +189,7 @@ export function useCreateServerPage() {
 
     const sourceDir = sourcePath.value.trim();
     const targetDir = runPath.value.trim();
-    if (!sourceDir || !targetDir || sourceType.value !== "folder" || useSoftwareDataDir.value) {
+    if (!sourceDir || !targetDir || sourceType.value !== "folder") {
       runPathConflictRequestId += 1;
       runPathOverwriteRisk.value = false;
       return;
@@ -235,7 +225,7 @@ export function useCreateServerPage() {
   }
 
   watch(
-    [sourceType, sourcePath, runPath, useSoftwareDataDir],
+    [sourceType, sourcePath, runPath],
     () => {
       scheduleRunPathConflictCheck();
     },
@@ -284,6 +274,11 @@ export function useCreateServerPage() {
       minMemory.value = String(settings.default_min_memory);
       port.value = String(settings.default_port);
 
+      // 加载上次选择的开服路径
+      if (settings.last_run_path) {
+        runPath.value = settings.last_run_path;
+      }
+
       if (settings.cached_java_list && settings.cached_java_list.length > 0) {
         javaList.value = settings.cached_java_list;
         if (settings.default_java_path) {
@@ -325,25 +320,23 @@ export function useCreateServerPage() {
     const selected = await systemApi.pickFolder();
     if (selected) {
       updateRunPath(selected);
+      // 保存选择的开服路径
+      try {
+        await settingsApi.updatePartial({ last_run_path: selected });
+      } catch (error) {
+        console.error("Failed to save last run path:", error);
+      }
     }
   }
 
   function updateRunPath(nextPath: string) {
     const targetPath = nextPath.trim();
-    if (
-      sourceType.value === "folder" &&
-      !useSoftwareDataDir.value &&
-      isStrictChildPath(targetPath, sourcePath.value)
-    ) {
+    if (sourceType.value === "folder" && isStrictChildPath(targetPath, sourcePath.value)) {
       showError(i18n.t("create.path_child_of_source_forbidden"));
       return;
     }
 
     runPath.value = nextPath;
-  }
-
-  function toggleUseSoftwareDataDir() {
-    useSoftwareDataDir.value = !useSoftwareDataDir.value;
   }
 
   async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
@@ -449,15 +442,11 @@ export function useCreateServerPage() {
       showError(i18n.t("create.source_required"));
       return false;
     }
-    if (requiresRunPath.value && !useSoftwareDataDir.value && runPath.value.trim().length === 0) {
-      showError(i18n.t("create.path_required_archive"));
+    if (runPath.value.trim().length === 0) {
+      showError(i18n.t("create.path_required"));
       return false;
     }
-    if (
-      sourceType.value === "folder" &&
-      !useSoftwareDataDir.value &&
-      isStrictChildPath(runPath.value, sourcePath.value)
-    ) {
+    if (sourceType.value === "folder" && isStrictChildPath(runPath.value, sourcePath.value)) {
       showError(i18n.t("create.path_child_of_source_forbidden"));
       return false;
     }
@@ -523,7 +512,6 @@ export function useCreateServerPage() {
         onlineMode: onlineMode.value,
         customCommand: startupMode === "custom" ? customStartupCommand.value.trim() : undefined,
         runPath: runPath.value.trim(),
-        useSoftwareDataDir: useSoftwareDataDir.value,
         startupFilePath: startupMode === "custom" ? undefined : startup?.path,
         coreType: resolvedCoreType || undefined,
         mcVersion: resolvedMcVersion || undefined,
@@ -548,7 +536,6 @@ export function useCreateServerPage() {
     sourceType,
     runPath,
     runPathOverwriteRisk,
-    useSoftwareDataDir,
     coreDetecting,
     detectedCoreType,
     detectedCoreMainClass,
@@ -577,7 +564,6 @@ export function useCreateServerPage() {
     canSubmit,
     pickRunPath,
     updateRunPath,
-    toggleUseSoftwareDataDir,
     rescanStartupCandidates,
     detectJava,
     handleSubmit,
