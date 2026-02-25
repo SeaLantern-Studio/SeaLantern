@@ -371,33 +371,52 @@ impl ServerManager {
         }
 
         let id = uuid::Uuid::new_v4().to_string();
-        let data_dir = self
-            .data_dir
-            .lock()
-            .expect("data_dir lock poisoned")
-            .clone();
 
-        let mut run_path = req.run_path.trim().to_string();
-        if req.use_software_data_dir {
-            let server_dir = Path::new(&data_dir).join("servers").join(&id);
-            std::fs::create_dir_all(&server_dir)
-                .map_err(|e| format!("无法创建软件数据目录中的服务器目录: {}", e))?;
-            run_path = server_dir.to_string_lossy().to_string();
-        } else if run_path.is_empty() {
-            if source_path.is_dir() {
-                run_path = source_path.to_string_lossy().to_string();
-            } else {
-                return Err("运行目录不能为空".to_string());
-            }
+        let base_path = req.run_path.trim().to_string();
+        if base_path.is_empty() {
+            return Err("运行目录不能为空，请选择开服路径".to_string());
         }
 
-        let run_dir = PathBuf::from(&run_path);
+        // 在用户选择的路径下创建以服务器名称命名的子文件夹
+        let server_name = req.name.trim();
+        if server_name.is_empty() {
+            return Err("服务器名称不能为空".to_string());
+        }
+        let run_dir = PathBuf::from(&base_path).join(server_name);
+
+        // 检查目标目录是否已存在
+        if run_dir.exists() {
+            return Err(format!(
+                "目录已存在：{}，请更换服务器名称或选择其他路径",
+                run_dir.to_string_lossy()
+            ));
+        }
+
+        // 判断文件类型并处理
+        let source_file_name = source_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("server.jar");
+        let source_extension = source_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_ascii_lowercase())
+            .unwrap_or_default();
+
         if source_path.is_file() {
             std::fs::create_dir_all(&run_dir).map_err(|e| format!("无法创建运行目录: {}", e))?;
-            super::server_installer::extract_modpack_archive(source_path, &run_dir)?;
+
+            // jar 文件直接复制到目标目录
+            if source_extension == "jar" {
+                let target_jar = run_dir.join(source_file_name);
+                std::fs::copy(source_path, &target_jar)
+                    .map_err(|e| format!("复制 JAR 文件失败: {}", e))?;
+            } else {
+                // 其他压缩包解压
+                super::server_installer::extract_modpack_archive(source_path, &run_dir)?;
+            }
         } else if source_path.is_dir() {
             if !paths_equal(source_path, &run_dir) {
-                // 防止目标目录位于源目录内部，避免递归复制时出现 run/run/run 自套娃。
                 if path_is_child_of(&run_dir, source_path) {
                     return Err("运行目录不能位于整合包源目录内部，请选择其他目录".to_string());
                 }
@@ -448,10 +467,16 @@ impl ServerManager {
             return Err("自定义启动命令不能为空".to_string());
         }
 
+        let data_dir = self
+            .data_dir
+            .lock()
+            .expect("data_dir lock poisoned")
+            .clone();
+
         upsert_run_path_mapping(
             &data_dir,
             RunPathServerMapping {
-                run_path: run_path.clone(),
+                run_path: run_dir.to_string_lossy().to_string(),
                 server_id: id.clone(),
                 server_name: req.name.clone(),
                 startup_mode: startup_mode.clone(),
@@ -511,7 +536,7 @@ impl ServerManager {
             core_type,
             core_version: String::new(),
             mc_version,
-            path: run_path,
+            path: run_dir.to_string_lossy().to_string(),
             jar_path: startup_path,
             startup_mode,
             custom_command,
@@ -1646,6 +1671,15 @@ fn resolve_startup_file_path(
     let startup_path = PathBuf::from(startup_file_path);
     if startup_path.is_relative() {
         return Ok(run_dir.join(&startup_path).to_string_lossy().to_string());
+    }
+
+    // 如果源是 jar 文件，启动项就是 jar 本身，复制后在 run_dir 中
+    if source_path.is_file() {
+        let source_file_name = source_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("server.jar");
+        return Ok(run_dir.join(source_file_name).to_string_lossy().to_string());
     }
 
     if source_path.is_dir() {
