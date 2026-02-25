@@ -6,8 +6,11 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
+// 静默执行命令
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+// 获取 win 注册表内容
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
@@ -77,6 +80,14 @@ fn get_candidate_paths() -> Vec<String> {
                         .join("Eclipse Adoptium"),
                 );
                 scan_roots.push(PathBuf::from(&drive).join("Program Files").join("BellSoft"));
+
+                // 一种基于常见目录结构的扫描
+                for java_dir in &["java", "jdk", "jre", "graalvm", "corretto", "temurin"] {
+                    let java_path = PathBuf::from(&drive).join(java_dir);
+                    if java_path.exists() {
+                        scan_roots.push(java_path);
+                    }
+                }
             }
         }
 
