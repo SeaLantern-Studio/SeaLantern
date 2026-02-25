@@ -22,6 +22,7 @@
     "settings": "설정",
     "personalize": "개인 설정",
     "about": "정보",
+    "download-file": "파일 다운로드",
     "loading": "로딩 중...",
     "select_server": "서버 선택",
     "open_folder": "폴더 열기",
@@ -229,8 +230,7 @@
     "java_env": "Java 환경",
     "java_scan": "시스템의 모든 디스크에서 Java 설치 스캔",
     "java_manual": "Java 경로 수동 선택",
-    "java_path": "Java 경로",
-    "file_hint": "「선택 및 생성」 버튼을 클릭한 후 서버 시작 파일을 선택하세요 (.jar, .bat 또는 .sh 형식 지원). 시스템이 자동으로 파일 유형을 감지합니다"
+    "java_path": "Java 경로"
   },
   "console": {
     "title": "콘솔",
@@ -277,10 +277,8 @@
     "delete": "삭제",
     "refresh_list": "목록 새로고침",
     "reload_plugins": "플러그인 다시 로드",
-    "reload_plugins_warning": "플러그인을 다시 로드하면 서버에 문제가 발생할 수 있으며 일부 플러그인은 지원하지 않을 수 있습니다",
     "empty_config_folder": "설정 폴더가 비어 있습니다",
     "no_config_files": "설정 없음",
-    "has_config_folder": "설정 있음",
     "config_files_count": "개 설정",
     "config_files": "설정 파일",
     "open": "열기",
@@ -635,6 +633,19 @@
     "show": "표시",
     "quit": "종료"
   },
-
-  "delete_server": "서버 삭제"
+  "delete_server": "서버 삭제",
+  "download-file": {
+    "title": "멀티스레드 다운로더를 사용하여 파일 다운로드",
+    "url": "다운로드 주소",
+    "save_folder": "저장 위치",
+    "filename": "파일 이름",
+    "thread_count": "스레드 수",
+    "cancel": "취소",
+    "download": "다운로드",
+    "browse": "찾아보기",
+    "downloading": "리소스 다운로드 중...",
+    "status-finished": "다운로드 완료",
+    "failed": "다운로드 실패",
+    "completed": "완료"
+  }
 }

@@ -22,6 +22,7 @@
     "settings": "设置",
     "personalize": "个性化",
     "about": "关于",
+    "download-file": "文件下载",
     "loading": "加载中...",
     "select_server": "选择服务器",
     "open_folder": "打开文件夹",
@@ -357,10 +358,8 @@
     "delete": "删除",
     "refresh_list": "刷新列表",
     "reload_plugins": "重载插件",
-    "reload_plugins_warning": "重载插件可能导致服务器异常，部分插件可能不支持",
     "empty_config_folder": "配置文件夹为空",
     "no_config_files": "无配置",
-    "has_config_folder": "有配置",
     "config_files_count": "个配置",
     "config_files": "配置文件",
     "open": "打开",
@@ -936,5 +935,19 @@
       "inProgress": "Log Demo 插件正在禁用...",
       "complete": "Log Demo 插件已禁用"
     }
+  },
+  "download-file": {
+    "title": "使用多线程下载器下载文件",
+    "url": "下载地址",
+    "save_folder": "保存到",
+    "filename": "文件名",
+    "thread_count": "线程数",
+    "cancel": "取消",
+    "download": "下载",
+    "browse": "浏览",
+    "downloading": "正在下载资源...",
+    "status-finished": "下载已完成",
+    "failed": "下载失败",
+    "completed": "已完成"
   }
 }
