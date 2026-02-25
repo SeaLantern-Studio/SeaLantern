@@ -11,6 +11,7 @@ import SLSwitch from "@components/common/SLSwitch.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
+import SLMenu from "@components/common/SLMenu.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -31,6 +32,7 @@ import {
   X,
   Trash2,
   Trash,
+  RefreshCw,
 } from "lucide-vue-next";
 
 const router = useRouter();
@@ -60,7 +62,6 @@ const currentSettingsPlugin = ref<PluginInfo | null>(null);
 const settingsForm = reactive<Record<string, any>>({});
 const savingSettings = ref(false);
 
-const openMenuId = ref<string | null>(null);
 const checkingUpdate = ref<string | null>(null);
 const checkingAllUpdates = ref(false);
 
@@ -123,8 +124,6 @@ onMounted(async () => {
     pluginStore.loadPlugins();
   }
 
-  document.addEventListener("click", handleClickOutside);
-
   unlistenDragDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
     if (event.payload.type === "over") {
       isDragging.value = true;
@@ -149,7 +148,6 @@ onUnmounted(() => {
   if (unlistenDragDrop) {
     unlistenDragDrop();
   }
-  document.removeEventListener("click", handleClickOutside);
 });
 
 async function handleInstall(filePath: string) {
@@ -609,20 +607,36 @@ async function saveSettings() {
   }
 }
 
-function toggleMenu(pluginId: string) {
-  if (openMenuId.value === pluginId) {
-    openMenuId.value = null;
-  } else {
-    openMenuId.value = pluginId;
+function getPluginMenuItems(pluginId: string) {
+  return [
+    {
+      id: "check_update",
+      label: i18n.t("plugins.menu.check_update"),
+      icon: RefreshCw,
+      disabled: checkingUpdate.value === pluginId,
+    },
+    { id: "divider", label: "", divider: true },
+    {
+      id: "delete",
+      label: i18n.t("plugins.menu.delete"),
+      icon: Trash2,
+      danger: true,
+    },
+  ];
+}
+
+async function handleMenuSelect(item: { id: string | number }, pluginId: string) {
+  switch (item.id) {
+    case "check_update":
+      await handleCheckUpdate(pluginId);
+      break;
+    case "delete":
+      await handleDelete(pluginId);
+      break;
   }
 }
 
-function closeMenu() {
-  openMenuId.value = null;
-}
-
 async function handleCheckUpdate(pluginId: string) {
-  openMenuId.value = null;
   checkingUpdate.value = pluginId;
   try {
     const update = await pluginStore.checkUpdate(pluginId);
@@ -644,8 +658,6 @@ const showSingleDeleteDialog = ref(false);
 const singleDeletePluginName = ref("");
 
 async function handleDelete(pluginId: string) {
-  openMenuId.value = null;
-
   const plugin = pluginStore.plugins.find((p) => p.manifest.id === pluginId);
   if (plugin?.state === "enabled") {
     showAlert(i18n.t("plugins.cannot_delete_enabled"), plugin.manifest.name);
@@ -751,13 +763,6 @@ async function handleCheckAllUpdates() {
     }
   } finally {
     checkingAllUpdates.value = false;
-  }
-}
-
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as HTMLElement;
-  if (!target.closest(".plugin-menu-wrapper")) {
-    closeMenu();
   }
 }
 
@@ -911,34 +916,15 @@ function goToMarket() {
                 :permissions="plugin.manifest.permissions || []"
               />
 
-              <div class="plugin-menu-wrapper">
-                <SLButton
-                  variant="ghost"
-                  icon-only
-                  size="sm"
-                  @click.stop="toggleMenu(plugin.manifest.id)"
-                >
+              <SLMenu
+                :items="getPluginMenuItems(plugin.manifest.id)"
+                position="bottom-end"
+                @select="handleMenuSelect($event, plugin.manifest.id)"
+              >
+                <SLButton variant="ghost" icon-only size="sm">
                   <MoreVertical :size="16" />
                 </SLButton>
-                <div v-if="openMenuId === plugin.manifest.id" class="plugin-menu-dropdown">
-                  <SLButton
-                    variant="ghost"
-                    size="sm"
-                    @click="handleCheckUpdate(plugin.manifest.id)"
-                    :disabled="checkingUpdate === plugin.manifest.id"
-                    :loading="checkingUpdate === plugin.manifest.id"
-                  >
-                    {{
-                      checkingUpdate === plugin.manifest.id
-                        ? ""
-                        : i18n.t("plugins.menu.check_update")
-                    }}
-                  </SLButton>
-                  <SLButton variant="danger" size="sm" @click="handleDelete(plugin.manifest.id)">
-                    {{ i18n.t("plugins.menu.delete") }}
-                  </SLButton>
-                </div>
-              </div>
+              </SLMenu>
             </div>
             <div class="plugin-main">
               <div class="plugin-icon">
@@ -2111,73 +2097,6 @@ function goToMarket() {
   align-items: center;
   gap: 4px;
   z-index: 10;
-}
-
-.plugin-menu-wrapper {
-  position: relative;
-}
-
-.plugin-menu-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: var(--sl-text-tertiary);
-  cursor: pointer;
-  border-radius: var(--sl-radius-sm);
-  transition: all 0.2s ease;
-}
-
-.plugin-menu-btn:hover {
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-primary);
-}
-
-.plugin-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  background: var(--sl-surface);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  padding: 4px;
-  min-width: 140px;
-  z-index: 100;
-  box-shadow: var(--sl-shadow-lg);
-}
-
-.plugin-menu-dropdown button {
-  display: block;
-  width: 100%;
-  padding: 8px 12px;
-  background: none;
-  border: none;
-  color: var(--sl-text-primary);
-  text-align: left;
-  cursor: pointer;
-  border-radius: var(--sl-radius-xs);
-  font-size: 13px;
-}
-
-.plugin-menu-dropdown button:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.plugin-menu-dropdown button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.plugin-menu-dropdown button.danger {
-  color: #ef4444;
-}
-
-.plugin-menu-dropdown button.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
 }
 
 .update-badge {
