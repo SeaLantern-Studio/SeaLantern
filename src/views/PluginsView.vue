@@ -910,23 +910,31 @@ function goToMarket() {
               />
 
               <div class="plugin-menu-wrapper">
-                <button class="plugin-menu-btn" @click.stop="toggleMenu(plugin.manifest.id)">
+                <SLButton
+                  variant="ghost"
+                  icon-only
+                  size="sm"
+                  @click.stop="toggleMenu(plugin.manifest.id)"
+                >
                   <MoreVertical :size="16" />
-                </button>
+                </SLButton>
                 <div v-if="openMenuId === plugin.manifest.id" class="plugin-menu-dropdown">
-                  <button
+                  <SLButton
+                    variant="ghost"
+                    size="sm"
                     @click="handleCheckUpdate(plugin.manifest.id)"
                     :disabled="checkingUpdate === plugin.manifest.id"
+                    :loading="checkingUpdate === plugin.manifest.id"
                   >
                     {{
                       checkingUpdate === plugin.manifest.id
-                        ? i18n.t("plugins.checking")
+                        ? ""
                         : i18n.t("plugins.menu.check_update")
                     }}
-                  </button>
-                  <button class="danger" @click="handleDelete(plugin.manifest.id)">
+                  </SLButton>
+                  <SLButton variant="danger" size="sm" @click="handleDelete(plugin.manifest.id)">
                     {{ i18n.t("plugins.menu.delete") }}
-                  </button>
+                  </SLButton>
                 </div>
               </div>
             </div>
@@ -952,14 +960,16 @@ function goToMarket() {
                     <span v-if="plugin.manifest.author" class="plugin-author">
                       by {{ plugin.manifest.author.name }}
                     </span>
-                    <button
+                    <SLButton
                       v-if="plugin.manifest.repository"
-                      class="repo-link-btn"
+                      variant="ghost"
+                      icon-only
+                      size="sm"
                       @click.stop="openRepository(plugin.manifest.repository)"
                       :title="i18n.t('plugins.open_repository')"
                     >
                       <Github :size="14" />
-                    </button>
+                    </SLButton>
                   </div>
                 </div>
                 <p v-if="plugin.manifest.description" class="plugin-description">
@@ -987,14 +997,16 @@ function goToMarket() {
                 {{ getStatusLabel(plugin.state) }}
               </span>
               <div class="plugin-actions">
-                <button
+                <SLButton
                   v-if="hasSettings(plugin)"
-                  class="settings-btn"
+                  variant="ghost"
+                  icon-only
+                  size="sm"
                   @click="openSettings(plugin)"
                   :title="i18n.t('plugins.settings')"
                 >
                   <Settings :size="16" />
-                </button>
+                </SLButton>
                 <SLSwitch
                   :modelValue="isPluginEnabled(plugin.state)"
                   :disabled="
@@ -1024,9 +1036,9 @@ function goToMarket() {
             <h2 class="modal-title">
               {{ i18n.t("plugins.settings_title", { name: currentSettingsPlugin?.manifest.name }) }}
             </h2>
-            <button class="modal-close" @click="closeSettings">
+            <SLButton variant="ghost" icon-only class="modal-close" @click="closeSettings">
               <X :size="20" />
-            </button>
+            </SLButton>
           </div>
           <div class="modal-body">
             <div
@@ -1200,14 +1212,22 @@ function goToMarket() {
           {{ i18n.t("plugins.confirm_delete_message", { name: singleDeletePluginName }) }}
         </p>
         <div class="batch-delete-options">
-          <button class="batch-delete-option" @click="executeSingleDelete(true)">
+          <SLButton
+            variant="secondary"
+            class="batch-delete-option"
+            @click="executeSingleDelete(true)"
+          >
             <Trash2 class="option-icon delete-with-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_with_data") }}</span>
-          </button>
-          <button class="batch-delete-option" @click="executeSingleDelete(false)">
+          </SLButton>
+          <SLButton
+            variant="secondary"
+            class="batch-delete-option"
+            @click="executeSingleDelete(false)"
+          >
             <Trash class="option-icon delete-without-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_without_data") }}</span>
-          </button>
+          </SLButton>
         </div>
       </div>
       <template #footer>
@@ -1227,14 +1247,22 @@ function goToMarket() {
           {{ i18n.t("plugins.confirm_batch_delete_message", { count: selectedPlugins.size }) }}
         </p>
         <div class="batch-delete-options">
-          <button class="batch-delete-option" @click="executeBatchDelete(true)">
+          <SLButton
+            variant="secondary"
+            class="batch-delete-option"
+            @click="executeBatchDelete(true)"
+          >
             <Trash2 class="option-icon delete-with-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_with_data") }}</span>
-          </button>
-          <button class="batch-delete-option" @click="executeBatchDelete(false)">
+          </SLButton>
+          <SLButton
+            variant="secondary"
+            class="batch-delete-option"
+            @click="executeBatchDelete(false)"
+          >
             <Trash class="option-icon delete-without-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_without_data") }}</span>
-          </button>
+          </SLButton>
         </div>
       </div>
       <template #footer>

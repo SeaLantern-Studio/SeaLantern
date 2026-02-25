@@ -172,10 +172,10 @@ watch(
 <template>
   <div class="plugin-page-view">
     <div class="page-header">
-      <button class="back-btn" @click="goBack">
+      <SLButton variant="ghost" @click="goBack">
         <ArrowLeft :size="20" />
         <span>{{ i18n.t("plugins.back") }}</span>
-      </button>
+      </SLButton>
       <h1 class="page-title" v-if="plugin">{{ plugin.manifest.name }}</h1>
     </div>
 
@@ -215,14 +215,15 @@ watch(
       <SLCard v-if="isThemeProvider && pluginPresets" class="presets-card">
         <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
         <div class="presets-grid">
-          <button
+          <SLButton
             v-for="(presetData, presetKey) in pluginPresets"
             :key="presetKey"
+            variant="secondary"
             class="preset-btn"
             @click="applyPreset(String(presetKey))"
           >
             <span class="preset-name">{{ (presetData as any).name ?? presetKey }}</span>
-          </button>
+          </SLButton>
         </div>
       </SLCard>
 
@@ -242,7 +243,11 @@ watch(
                 <input type="number" class="field-input" v-model.number="settingsForm[field.key]" />
               </template>
               <template v-else-if="field.type === 'boolean'">
-                <SLSwitch :modelValue="Boolean(settingsForm[field.key])" @update:modelValue="settingsForm[field.key] = $event" size="sm" />
+                <SLSwitch
+                  :modelValue="Boolean(settingsForm[field.key])"
+                  @update:modelValue="settingsForm[field.key] = $event"
+                  size="sm"
+                />
               </template>
               <template v-else-if="field.type === 'select'">
                 <select class="field-select" v-model="settingsForm[field.key]">
@@ -290,7 +295,13 @@ watch(
                 />
               </template>
               <template v-else-if="field.type === 'boolean'">
-                <SLSwitch :modelValue="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])" @update:modelValue="dependentSettingsForms[depPlugin.manifest.id][field.key] = $event" size="sm" />
+                <SLSwitch
+                  :modelValue="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])"
+                  @update:modelValue="
+                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
+                  "
+                  size="sm"
+                />
               </template>
               <template v-else-if="field.type === 'select'">
                 <select

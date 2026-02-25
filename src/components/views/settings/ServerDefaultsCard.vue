@@ -28,13 +28,13 @@ const emit = defineEmits<{
     :title="i18n.t('settings.server_defaults')"
     :subtitle="i18n.t('settings.server_defaults_desc')"
   >
-    <div class="settings-group">
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.default_memory") }} (MB)</span>
-          <span class="setting-desc">{{ i18n.t("settings.max_memory_desc") }}</span>
+    <div class="sl-settings-group">
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.default_memory") }} (MB)</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.max_memory_desc") }}</span>
         </div>
-        <div class="input-sm">
+        <div class="sl-input-sm">
           <SLInput
             :model-value="maxMemory"
             type="number"
@@ -48,12 +48,12 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.min_memory") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.min_memory_desc") }}</span>
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.min_memory") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.min_memory_desc") }}</span>
         </div>
-        <div class="input-sm">
+        <div class="sl-input-sm">
           <SLInput
             :model-value="minMemory"
             type="number"
@@ -67,12 +67,12 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.default_port") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.port_desc") }}</span>
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.default_port") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.port_desc") }}</span>
         </div>
-        <div class="input-sm">
+        <div class="sl-input-sm">
           <SLInput
             :model-value="port"
             type="number"
@@ -86,12 +86,12 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.default_java") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.default_java_desc") }}</span>
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.default_java") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.default_java_desc") }}</span>
         </div>
-        <div class="input-lg">
+        <div class="sl-input-lg">
           <SLInput
             :model-value="defaultJavaPath"
             :placeholder="i18n.t('settings.default_java_desc')"
@@ -105,7 +105,7 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="setting-row full-width">
+      <div class="sl-setting-row full-width">
         <JavaDownloader
           @installed="
             (path) => {
@@ -116,10 +116,10 @@ const emit = defineEmits<{
         />
       </div>
 
-      <div class="setting-row full-width">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.jvm_args") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
+      <div class="sl-setting-row full-width">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.jvm_args") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
         </div>
         <textarea
           class="jvm-textarea"
@@ -139,57 +139,9 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-.settings-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sl-space-md) 0;
-  border-bottom: 1px solid var(--sl-border-light);
-  gap: var(--sl-space-lg);
-}
-
-.setting-row:last-child {
-  border-bottom: none;
-}
-
-.setting-row.full-width {
+.sl-setting-row.full-width {
   flex-direction: column;
   align-items: stretch;
-}
-
-.setting-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.setting-label {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--sl-text-primary);
-}
-
-.setting-desc {
-  font-size: 0.8125rem;
-  color: var(--sl-text-tertiary);
-  line-height: 1.4;
-}
-
-.input-sm {
-  width: 120px;
-  flex-shrink: 0;
-}
-
-.input-lg {
-  width: 320px;
-  flex-shrink: 0;
 }
 
 .jvm-textarea {

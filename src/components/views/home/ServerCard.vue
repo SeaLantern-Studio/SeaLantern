@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Pencil, FolderOpen, Check, X } from "lucide-vue-next";
+import SLCard from "@components/common/SLCard.vue";
 import SLBadge from "@components/common/SLBadge.vue";
 import SLButton from "@components/common/SLButton.vue";
 import type { ServerInstance } from "@type/server";
@@ -57,58 +58,60 @@ function handleConfig() {
 </script>
 
 <template>
-  <div class="server-card glass-card">
-    <div class="server-card-header">
-      <div class="server-info">
-        <div class="server-name-container">
-          <template v-if="editingServerId === server.id">
-            <div class="inline-edit">
-              <input
-                type="text"
-                v-model="editName"
-                class="server-name-input"
-                @keyup.enter="saveServerName(server.id)"
-                @keyup.esc="cancelEdit"
-                @blur="saveServerName(server.id)"
-              />
-              <div class="inline-edit-actions">
-                <button
-                  class="inline-edit-btn save"
-                  @click="saveServerName(server.id)"
-                  :disabled="!editName.trim() || editLoading"
-                  :class="{ loading: editLoading }"
-                >
-                  <Check :size="16" />
-                </button>
-                <button class="inline-edit-btn cancel" @click="cancelEdit" :disabled="editLoading">
-                  <X :size="16" />
-                </button>
+  <SLCard variant="glass" hoverable class="server-card">
+    <template #header>
+      <div class="server-card-header">
+        <div class="server-info">
+          <div class="server-name-container">
+            <template v-if="editingServerId === server.id">
+              <div class="inline-edit">
+                <input
+                  type="text"
+                  v-model="editName"
+                  class="server-name-input"
+                  @keyup.enter="saveServerName(server.id)"
+                  @keyup.esc="cancelEdit"
+                  @blur="saveServerName(server.id)"
+                />
+                <div class="inline-edit-actions">
+                  <button
+                    class="inline-edit-btn save"
+                    @click="saveServerName(server.id)"
+                    :disabled="!editName.trim() || editLoading"
+                    :class="{ loading: editLoading }"
+                  >
+                    <Check :size="16" />
+                  </button>
+                  <button class="inline-edit-btn cancel" @click="cancelEdit" :disabled="editLoading">
+                    <X :size="16" />
+                  </button>
+                </div>
               </div>
-            </div>
-          </template>
-          <template v-else>
-            <h4 class="server-name">{{ server.name }}</h4>
-            <button
-              class="edit-server-name"
-              @click="startEditServerName(server)"
-              :title="i18n.t('common.edit_server_name')"
-            >
-              <Pencil :size="16" />
-            </button>
-          </template>
+            </template>
+            <template v-else>
+              <h4 class="server-name">{{ server.name }}</h4>
+              <button
+                class="edit-server-name"
+                @click="startEditServerName(server)"
+                :title="i18n.t('common.edit_server_name')"
+              >
+                <Pencil :size="16" />
+              </button>
+            </template>
+          </div>
+          <div class="server-meta">
+            <span>{{ server.core_type }}</span>
+            <span>{{ i18n.t("home.port") }} {{ server.port }}</span>
+            <span>{{ server.max_memory }}MB</span>
+          </div>
         </div>
-        <div class="server-meta">
-          <span>{{ server.core_type }}</span>
-          <span>{{ i18n.t("home.port") }} {{ server.port }}</span>
-          <span>{{ server.max_memory }}MB</span>
-        </div>
+        <SLBadge
+          :text="getStatusText(store.statuses[server.id]?.status)"
+          :variant="getStatusVariant(store.statuses[server.id]?.status)"
+          size="large"
+        />
       </div>
-      <SLBadge
-        :text="getStatusText(store.statuses[server.id]?.status)"
-        :variant="getStatusVariant(store.statuses[server.id]?.status)"
-        size="large"
-      />
-    </div>
+    </template>
 
     <div
       class="server-card-path text-mono text-caption"
@@ -186,27 +189,14 @@ function handleConfig() {
         }}</SLButton>
       </div>
     </div>
-  </div>
+  </SLCard>
 </template>
 
 <style scoped>
 .server-card {
-  padding: var(--sl-space-lg);
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
-  border-radius: var(--sl-radius-lg);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  background: var(--sl-bg-secondary);
-  box-shadow: var(--sl-shadow-sm);
-}
-
-.server-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--sl-shadow-lg);
-  border-color: var(--sl-primary-light);
 }
 
 .server-card::before {
@@ -220,6 +210,7 @@ function handleConfig() {
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.3s ease;
+  z-index: 1;
 }
 
 .server-card:hover::before {

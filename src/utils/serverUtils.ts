@@ -153,7 +153,11 @@ async function saveServerName(serverId: string) {
 
   try {
     await serverApi.updateServerName(serverId, editName.value.trim());
-    await store.refreshList();
+    // 直接更新本地 store 中的服务器名称，避免刷新整个列表
+    const server = store.servers.find((s) => s.id === serverId);
+    if (server) {
+      server.name = editName.value.trim();
+    }
     editingServerId.value = null;
   } catch (e) {
     actionError.value = String(e);
@@ -199,20 +203,18 @@ async function confirmDelete() {
     return;
   }
 
-  try {
-    await serverApi.deleteServer(deletingServerId.value);
-    await store.refreshList();
-    // 添加关闭动画类
-    isClosing.value = true;
+  const serverIdToDelete = deletingServerId.value;
 
-    // 动画结束后重置状态
-    setTimeout(() => {
-      deletingServerId.value = null;
-      deleteServerName.value = "";
-      inputServerName.value = "";
-      deleteError.value = null;
-      isClosing.value = false;
-    }, 300);
+  try {
+    await serverApi.deleteServer(serverIdToDelete);
+    // 先重置删除状态
+    deletingServerId.value = null;
+    deleteServerName.value = "";
+    inputServerName.value = "";
+    deleteError.value = null;
+    isClosing.value = false;
+    // 然后刷新列表
+    await store.refreshList();
   } catch (e) {
     actionError.value = String(e);
   }
