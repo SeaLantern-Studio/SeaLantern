@@ -93,8 +93,6 @@ pub struct ImportModpackRequest {
     #[serde(default)]
     pub startup_file_path: Option<String>,
     #[serde(default)]
-    pub startup_id: Option<String>,
-    #[serde(default)]
     pub core_type: Option<String>,
     #[serde(default)]
     pub mc_version: Option<String>,

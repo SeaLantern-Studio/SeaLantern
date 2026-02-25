@@ -101,7 +101,6 @@ pub fn import_modpack(
     custom_command: Option<String>,
     run_path: String,
     startup_file_path: Option<String>,
-    startup_id: Option<String>,
     core_type: Option<String>,
     mc_version: Option<String>,
 ) -> Result<ServerInstance, String> {
@@ -117,7 +116,6 @@ pub fn import_modpack(
         custom_command,
         run_path,
         startup_file_path,
-        startup_id,
         core_type,
         mc_version,
     };

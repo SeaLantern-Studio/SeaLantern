@@ -414,10 +414,19 @@ impl ServerManager {
             return Err("运行目录不能为空，请选择开服路径".to_string());
         }
 
-        // 使用启动项 ID 作为文件夹名称，若不存在则回退到服务器名称
+        // 使用启动项路径的哈希值作为文件夹名称
         let server_name = validate_server_name(&req.name)?;
-        let folder_name = req.startup_id.as_ref().map(|s| s.as_str()).unwrap_or(&server_name);
-        let run_dir = PathBuf::from(&base_path).join(folder_name);
+        let folder_name = if let Some(ref startup_path) = req.startup_file_path {
+            use sha2::{Digest, Sha256};
+            let mut hasher = Sha256::new();
+            hasher.update(startup_path.as_bytes());
+            hasher.update(&req.startup_mode.as_bytes());
+            let hash = hasher.finalize();
+            format!("{:x}", hash)
+        } else {
+            server_name.clone()
+        };
+        let run_dir = PathBuf::from(&base_path).join(&folder_name);
 
         // 检查目标目录是否已存在
         if run_dir.exists() {

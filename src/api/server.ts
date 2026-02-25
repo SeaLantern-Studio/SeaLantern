@@ -117,7 +117,6 @@ export const serverApi = {
     customCommand?: string;
     runPath: string;
     startupFilePath?: string;
-    startupId?: string;
     coreType?: string;
     mcVersion?: string;
   }): Promise<ServerInstance> {
@@ -133,7 +132,6 @@ export const serverApi = {
       customCommand: params.customCommand,
       runPath: params.runPath,
       startupFilePath: params.startupFilePath,
-      startupId: params.startupId,
       coreType: params.coreType,
       mcVersion: params.mcVersion,
     });
