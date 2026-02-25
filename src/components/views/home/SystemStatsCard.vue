@@ -24,7 +24,7 @@ function toggleViewMode() {
 </script>
 
 <template>
-  <SLCard class="stats-card">
+  <SLCard variant="solid" class="stats-card">
     <template #header>
       <div class="stats-card-header">
         <span class="card-title">{{ i18n.t("home.system_resources") }}</span>
@@ -145,11 +145,6 @@ function toggleViewMode() {
 <style scoped>
 .stats-card {
   height: 280px;
-  padding: var(--sl-space-sm);
-  background: var(--sl-bg-secondary);
-  border: 1px solid var(--sl-border);
-  box-shadow: var(--sl-shadow-sm);
-  border-radius: var(--sl-radius-lg);
   display: flex;
   flex-direction: column;
 }
@@ -159,7 +154,6 @@ function toggleViewMode() {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: var(--sl-space-sm);
 }
 
 .card-title {

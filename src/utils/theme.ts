@@ -256,3 +256,11 @@ function blockDevTools(e: KeyboardEvent): void {
     e.preventDefault();
   }
 }
+
+/**
+ * 应用极简模式到 DOM
+ * @param enabled - 是否启用极简模式
+ */
+export function applyMinimalMode(enabled: boolean): void {
+  document.documentElement.setAttribute("data-minimal", String(enabled));
+}

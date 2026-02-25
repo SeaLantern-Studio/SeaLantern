@@ -39,7 +39,6 @@ const {
   sourceType,
   runPath,
   runPathOverwriteRisk,
-  useSoftwareDataDir,
   coreDetecting,
   startupDetecting,
   startupCandidates,
@@ -66,7 +65,6 @@ const {
   validateStep,
   pickRunPath,
   updateRunPath,
-  toggleUseSoftwareDataDir,
   rescanStartupCandidates,
   detectJava,
   handleSubmit,
@@ -390,11 +388,9 @@ async function handleCoreDownload() {
               :source-path="sourcePath"
               :run-path="runPath"
               :show-overwrite-warning="runPathOverwriteRisk"
-              :use-software-data-dir="useSoftwareDataDir"
               :disabled="creating"
               @pick-path="pickRunPath"
               @update:run-path="updateRunPath"
-              @toggle-use-software-data-dir="toggleUseSoftwareDataDir"
             />
 
             <StartupSelectionStep
