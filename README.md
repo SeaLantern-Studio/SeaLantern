@@ -19,6 +19,7 @@
 
 <kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
 
+有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 ---
 
 </div>
