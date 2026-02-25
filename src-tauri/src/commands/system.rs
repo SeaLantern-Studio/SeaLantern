@@ -377,4 +377,3 @@ pub fn open_folder(path: String) -> Result<(), String> {
 
     Ok(())
 }
-
