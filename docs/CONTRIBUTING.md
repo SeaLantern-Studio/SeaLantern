@@ -17,7 +17,7 @@
 
 ⛔对于在可贡献范围以外的PR，项目组**有权直接拒绝**
 ### 示例
-|<img width="834" height="123" alt="image" src="https://github.com/user-attachments/assets/45af38b1-17e5-4e46-91cc-d74f4956a2f0" />|
+|<img width="677" height="113" alt="image" src="https://github.com/user-attachments/assets/c79127c5-0193-4a4d-9b91-de962b59f540" />|
 |-|
 
 ### 为什么？
