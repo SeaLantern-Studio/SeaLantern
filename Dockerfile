@@ -11,7 +11,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # 安装依赖
-RUN npm ci --frozen-lockfile
+RUN npm ci
 
 # 复制前端源代码
 COPY . .
