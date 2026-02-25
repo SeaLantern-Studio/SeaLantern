@@ -12,6 +12,7 @@ export interface ParsedServerCoreInfo {
   coreType: string;
   mainClass: string | null;
   jarPath: string | null;
+  versionId: string | null;
 }
 
 export interface StartupCandidateItem {
@@ -37,6 +38,7 @@ interface ParsedServerCoreInfoRaw {
   core_type: string;
   main_class: string | null;
   jar_path: string | null;
+  version_id: string | null;
 }
 
 interface StartupCandidateItemRaw {
@@ -145,6 +147,7 @@ export const serverApi = {
       coreType: result.core_type,
       mainClass: result.main_class,
       jarPath: result.jar_path,
+      versionId: result.version_id,
     };
   },
 
@@ -162,6 +165,7 @@ export const serverApi = {
         coreType: result.parsed_core.core_type,
         mainClass: result.parsed_core.main_class,
         jarPath: result.parsed_core.jar_path,
+        versionId: result.parsed_core.version_id,
       },
       candidates: result.candidates.map((item) => ({
         id: item.id,

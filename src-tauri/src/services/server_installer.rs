@@ -735,6 +735,7 @@ pub fn find_server_jar(modpack_path: &Path) -> Result<String, String> {
 
 fn detect_core_type_with_metadata(jar_path: &Path) -> Result<ParsedServerCoreInfo> {
     let (main_class, version_id) = read_jar_metadata(jar_path)?;
+    println!("{:?}", version_id); // 测试用的，记得删
 
     let core_type = if let Some(ref class) = main_class {
         if let Some(ct) = core_type_from_main_class(class) {
@@ -787,7 +788,7 @@ fn read_jar_metadata(jar_path: &Path) -> Result<(Option<String>, Option<String>)
         .with_context(|| format!("无法打开 JAR 文件: {}", jar_path.display()))?;
     let mut archive = ZipArchive::new(file).context("无法解析 JAR 文件作为 ZIP 归档")?;
 
-    // 读取 MANIFEST.MF 获取主类
+    // 读取 MANIFEST.MF 获取主类（原函数逻辑）
     let main_class = archive
         .by_name("META-INF/MANIFEST.MF")
         .ok()
@@ -795,7 +796,7 @@ fn read_jar_metadata(jar_path: &Path) -> Result<(Option<String>, Option<String>)
             let mut bytes = Vec::new();
             f.read_to_end(&mut bytes).ok()?;
             let content = String::from_utf8_lossy(&bytes);
-            find_manifest_main_class(&content) // 你已有的函数
+            find_manifest_main_class(&content)
         });
 
     // 读取 version.json 获取 id

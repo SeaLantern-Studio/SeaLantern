@@ -218,7 +218,11 @@ fn scan_startup_candidates_blocking(
         }
 
         let (detected_mc_version, mc_version_detection_failed) =
-            crate::services::server_installer::detect_mc_version(&inspect_root);
+            if let Some(ver) = parsed.version_id.clone() {
+                (Some(ver), false)
+            } else {
+                crate::services::server_installer::detect_mc_version(&inspect_root)
+            };
         let detected_core_type_key =
             crate::services::server_installer::CoreType::normalize_to_api_core_key(
                 &parsed.core_type,
@@ -380,7 +384,11 @@ fn scan_startup_candidates_blocking(
             &parsed_core.core_type,
         );
     let (detected_mc_version, mc_version_detection_failed) =
-        crate::services::server_installer::detect_mc_version(source);
+        if let Some(ver) = parsed_core.version_id.clone() {
+            (Some(ver), false)
+        } else {
+            crate::services::server_installer::detect_mc_version(source)
+        };
 
     Ok(StartupScanResult {
         parsed_core,

@@ -337,6 +337,7 @@ export function useCreateServerPage() {
 
   async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
     const requestId = ++startupDetectRequestId;
+    const debugRawVersion = ref<string | null>('');
 
     if (!path.trim() || !type) {
       coreDetecting.value = false;
@@ -366,6 +367,7 @@ export function useCreateServerPage() {
     try {
       const discovered = await serverApi.scanStartupCandidates(path, type as "archive" | "folder");
       const list = appendCustomCandidate(discovered.candidates);
+      debugRawVersion.value = discovered.detectedMcVersion;
 
       if (requestId !== startupDetectRequestId) {
         return;
