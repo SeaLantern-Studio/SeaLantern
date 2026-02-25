@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import type { PluginInfo } from "@type/plugin";
@@ -241,10 +242,7 @@ watch(
                 <input type="number" class="field-input" v-model.number="settingsForm[field.key]" />
               </template>
               <template v-else-if="field.type === 'boolean'">
-                <label class="toggle">
-                  <input type="checkbox" v-model="settingsForm[field.key]" />
-                  <span class="toggle-slider"></span>
-                </label>
+                <SLSwitch :modelValue="Boolean(settingsForm[field.key])" @update:modelValue="settingsForm[field.key] = $event" size="sm" />
               </template>
               <template v-else-if="field.type === 'select'">
                 <select class="field-select" v-model="settingsForm[field.key]">
@@ -292,13 +290,7 @@ watch(
                 />
               </template>
               <template v-else-if="field.type === 'boolean'">
-                <label class="toggle">
-                  <input
-                    type="checkbox"
-                    v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                  />
-                  <span class="toggle-slider"></span>
-                </label>
+                <SLSwitch :modelValue="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])" @update:modelValue="dependentSettingsForms[depPlugin.manifest.id][field.key] = $event" size="sm" />
               </template>
               <template v-else-if="field.type === 'select'">
                 <select
@@ -682,48 +674,6 @@ watch(
   border-color: var(--accent-primary);
 }
 
-.toggle {
-  position: relative;
-  width: 48px;
-  height: 24px;
-  cursor: pointer;
-}
-
-.toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  inset: 0;
-  background: var(--bg-tertiary);
-  border-radius: 12px;
-  transition: 0.2s;
-}
-
-.toggle-slider::before {
-  content: "";
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  left: 3px;
-  top: 3px;
-  background: var(--text-secondary);
-  border-radius: 50%;
-  transition: 0.2s;
-}
-
-.toggle input:checked + .toggle-slider {
-  background: var(--accent-primary);
-}
-
-.toggle input:checked + .toggle-slider::before {
-  transform: translateX(24px);
-  background: white;
-}
-
 .import-export-card {
   padding: 20px;
 }
@@ -777,61 +727,6 @@ watch(
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin: -8px 0 16px 0;
-}
-
-.dependent-settings .toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 44px;
-  height: 24px;
-  cursor: pointer;
-}
-
-.dependent-settings .toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-
-.dependent-settings .toggle-slider {
-  position: absolute;
-  inset: 0;
-  width: 44px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  transition: all 0.3s ease;
-}
-
-.dependent-settings .toggle-slider::before {
-  content: "";
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  left: 3px;
-  top: 3px;
-  background: white;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.dependent-settings .toggle input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-}
-
-.dependent-settings .toggle input:checked + .toggle-slider::before {
-  transform: translateX(20px);
-}
-
-.dependent-settings .toggle:hover .toggle-slider {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.dependent-settings .toggle:hover input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
 }
 
 .dependent-settings .field-select {
