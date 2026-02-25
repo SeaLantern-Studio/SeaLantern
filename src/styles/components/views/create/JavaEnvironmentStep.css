@@ -30,9 +30,14 @@
   gap: var(--sl-space-sm);
 }
 
-.java-step-toolbar {
+.java-step-select-row {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: var(--sl-space-sm);
+}
+
+.java-step-select-row :deep(.sl-select) {
+  flex: 1;
 }
 
 .java-step-rescan {
@@ -76,10 +81,12 @@
 
 @media (max-width: 768px) {
   .java-step-row {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .java-step-toolbar {
-    justify-content: flex-start;
+  .java-step-select-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
