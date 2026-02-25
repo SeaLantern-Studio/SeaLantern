@@ -735,7 +735,6 @@ pub fn find_server_jar(modpack_path: &Path) -> Result<String, String> {
 
 fn detect_core_type_with_metadata(jar_path: &Path) -> Result<ParsedServerCoreInfo> {
     let (main_class, version_id) = read_jar_metadata(jar_path)?;
-    println!("{:?}", version_id); // 测试用的，记得删
 
     let core_type = if let Some(ref class) = main_class {
         if let Some(ct) = core_type_from_main_class(class) {
