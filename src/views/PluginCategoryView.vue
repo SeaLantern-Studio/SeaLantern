@@ -73,32 +73,35 @@ async function loadPluginData() {
 async function loadDependentPlugins() {
   if (!plugin.value) return;
 
-  const deps: PluginInfo[] = [];
-  for (const p of pluginStore.plugins) {
-    if (p.state !== "enabled") continue;
-    if (p.manifest.id === props.pluginId) continue;
+  const candidates = pluginStore.plugins.filter((p) => {
+    if (p.state !== "enabled") return false;
+    if (p.manifest.id === props.pluginId) return false;
 
     const allDeps = [
       ...(p.manifest.dependencies || []),
       ...(p.manifest.optional_dependencies || []),
     ];
-    const dependsOnCurrent = allDeps.some((dep) => getDependencyId(dep) === props.pluginId);
+    return allDeps.some((dep) => getDependencyId(dep) === props.pluginId);
+  });
 
-    if (dependsOnCurrent && p.manifest.settings?.length) {
-      deps.push(p);
-
+  const settingsPromises = candidates
+    .filter((p) => p.manifest.settings?.length)
+    .map(async (p) => {
       const depSettings = await pluginStore.getPluginSettings(p.manifest.id);
-      dependentSettingsForms[p.manifest.id] = { ...depSettings };
-
-      for (const field of p.manifest.settings) {
-        if (dependentSettingsForms[p.manifest.id][field.key] === undefined) {
-          dependentSettingsForms[p.manifest.id][field.key] =
-            field.default ?? getDefaultValue(field.type);
+      const form: Record<string, any> = { ...depSettings };
+      for (const field of p.manifest.settings!) {
+        if (form[field.key] === undefined) {
+          form[field.key] = field.default ?? getDefaultValue(field.type);
         }
       }
-    }
+      return { plugin: p, form };
+    });
+
+  const results = await Promise.all(settingsPromises);
+  dependentPlugins.value = results.map((r) => r.plugin);
+  for (const { plugin: depPlugin, form } of results) {
+    dependentSettingsForms[depPlugin.manifest.id] = form;
   }
-  dependentPlugins.value = deps;
 }
 
 function getDefaultValue(type: string): any {
@@ -134,15 +137,19 @@ async function applyPreset(presetKey: string) {
   const presetData = presets[presetKey];
   const pluginId = plugin.value?.manifest.id;
   if (!pluginId) return;
+
+  const settingsToSave: Record<string, any> = {};
   for (const [key, value] of Object.entries(presetData)) {
     if (key !== "name") {
       settingsForm[key] = value;
-      await pluginStore.setPluginSettings(pluginId, { [key]: value });
+      settingsToSave[key] = value;
     }
   }
 
   settingsForm["preset"] = presetKey;
-  await pluginStore.setPluginSettings(pluginId, { preset: presetKey });
+  settingsToSave["preset"] = presetKey;
+
+  await pluginStore.setPluginSettings(pluginId, settingsToSave);
   await pluginStore.applyThemeProviderSettings(pluginId);
 }
 
@@ -155,17 +162,16 @@ async function saveSettings() {
       await pluginStore.applyThemeProviderSettings(props.pluginId);
     }
 
-    for (const depPlugin of dependentPlugins.value) {
+    const depPromises = dependentPlugins.value.map(async (depPlugin) => {
       const depForm = dependentSettingsForms[depPlugin.manifest.id];
       if (depForm) {
-        await pluginStore.setPluginSettings(depPlugin.manifest.id, {
-          ...depForm,
-        });
+        await pluginStore.setPluginSettings(depPlugin.manifest.id, { ...depForm });
         if (pluginStore.hasCapability(depPlugin.manifest.id, "theme-widgets-provider")) {
           await pluginStore.applyThemeWidgetsProviderSettings(depPlugin.manifest.id);
         }
       }
-    }
+    });
+    await Promise.all(depPromises);
   } finally {
     saving.value = false;
   }

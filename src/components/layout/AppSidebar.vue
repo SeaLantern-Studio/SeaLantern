@@ -31,6 +31,7 @@ import {
   LayoutDashboard,
   BarChart2,
   Sparkles,
+  DownloadCloudIcon,
   type LucideIcon,
 } from "lucide-vue-next";
 
@@ -49,6 +50,7 @@ const iconMap: Record<string, LucideIcon> = {
   "layout-dashboard": LayoutDashboard,
   chart: BarChart2,
   sparkles: Sparkles,
+  download: DownloadCloudIcon,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -141,7 +143,15 @@ const staticNavItems: NavItem[] = [
     icon: "settings",
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
-    group: "settings",
+    group: "system",
+  },
+  {
+    name: "download-file",
+    path: "/download-file",
+    icon: "download",
+    labelKey: "common.download-file",
+    label: i18n.t("common.download-file"),
+    group: "tools",
   },
 ];
 
@@ -155,6 +165,7 @@ const pluginNavItems = computed<NavItem[]>(() => {
     group: "plugins",
     isPlugin: true,
     pluginId: item.plugin_id,
+    pluginIcon: pluginStore.icons[item.plugin_id] || undefined,
   }));
 });
 

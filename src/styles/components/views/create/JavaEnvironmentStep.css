@@ -1,0 +1,83 @@
+.java-step {
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-md);
+  background: var(--sl-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+
+.java-step-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--sl-space-sm);
+  align-items: start;
+}
+
+.java-step-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.java-step-control {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+
+.java-step-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.java-step-rescan {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-sm);
+  padding: 4px 10px;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.java-step-loading,
+.java-step-empty {
+  font-size: 0.8125rem;
+  color: var(--sl-text-secondary);
+}
+
+.java-step-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-sm);
+}
+
+.java-step-row-manual {
+  padding-top: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+}
+
+.java-step-pick {
+  padding: 4px 10px;
+  border-radius: var(--sl-radius-sm);
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .java-step-row {
+    grid-template-columns: 1fr;
+  }
+
+  .java-step-toolbar {
+    justify-content: flex-start;
+  }
+}

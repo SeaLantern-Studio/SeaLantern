@@ -11,6 +11,7 @@ export { default as SLProgress } from "@components/common/SLProgress.vue";
 export { default as SLSelect } from "@components/common/SLSelect.vue";
 export { default as SLSpinner } from "@components/common/SLSpinner.vue";
 export { default as SLSwitch } from "@components/common/SLSwitch.vue";
+export { default as SLTabBar } from "@components/common/SLTabBar.vue";
 export { default as SLTabs } from "@components/common/SLTabs.vue";
 export { default as SLTextarea } from "@components/common/SLTextarea.vue";
 export { default as UpdateModal } from "@components/common/UpdateModal.vue";

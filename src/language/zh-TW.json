@@ -22,6 +22,7 @@
     "settings": "設定",
     "personalize": "個人化",
     "about": "關於",
+    "download-file": "檔案下載",
     "loading": "載入中...",
     "select_server": "選擇伺服器",
     "open_folder": "開啟資料夾",
@@ -229,8 +230,7 @@
     "java_env": "Java 環境",
     "java_scan": "掃描系統中所有磁碟的 Java 安裝",
     "java_manual": "手動選擇 Java 路徑",
-    "java_path": "Java 路徑",
-    "file_hint": "點擊「選擇並建立」按鈕後，請選擇伺服器啟動檔案（支援 .jar、.bat 或 .sh 格式），系統將自動識別檔案類型"
+    "java_path": "Java 路徑"
   },
   "console": {
     "title": "控制台",
@@ -276,10 +276,8 @@
     "delete": "刪除",
     "refresh_list": "刷新列表",
     "reload_plugins": "重新載入外掛",
-    "reload_plugins_warning": "重新載入外掛可能導致伺服器異常，部分外掛可能不支援",
     "empty_config_folder": "配置資料夾為空",
     "no_config_files": "無配置",
-    "has_config_folder": "有配置",
     "config_files_count": "個配置",
     "config_files": "配置檔案",
     "open": "開啟",
@@ -632,6 +630,19 @@
     "show": "顯示",
     "quit": "退出"
   },
-
-  "delete_server": "刪除伺服器"
+  "delete_server": "刪除伺服器",
+  "download-file": {
+    "title": "使用多線程下載器下載檔案",
+    "url": "下載位址",
+    "save_folder": "儲存到",
+    "filename": "檔案名稱",
+    "thread_count": "線程數",
+    "cancel": "取消",
+    "download": "下載",
+    "browse": "瀏覽",
+    "downloading": "正在下載資源...",
+    "status-finished": "下載已完成",
+    "failed": "下載失敗",
+    "completed": "已完成"
+  }
 }

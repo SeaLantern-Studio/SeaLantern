@@ -84,6 +84,57 @@ function sanitizeCss(css: string): string {
   return sanitized;
 }
 
+function playSound(soundUrl: string) {
+  try {
+    const audio = new Audio(soundUrl);
+    audio.play().catch((e) => console.error("Failed to play sound:", e));
+  } catch (e) {
+    console.error("Failed to create audio:", e);
+  }
+}
+
+function removeThemeWidgetsSettings() {
+  const root = document.documentElement;
+  root.removeAttribute("data-glow-intensity");
+  root.removeAttribute("data-gradient-text");
+  root.removeAttribute("data-particles");
+}
+
+function getPluginUiContainer(): HTMLElement {
+  let container = document.getElementById("plugin-ui-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "plugin-ui-container";
+    container.style.cssText =
+      "position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998;";
+    document.body.appendChild(container);
+  }
+  return container;
+}
+
+function removePluginUiElements(pluginId: string) {
+  const elements = document.querySelectorAll(`[data-plugin-id="${pluginId}"]`);
+  console.log(`[PluginUI] Removing ${elements.length} UI elements for plugin: ${pluginId}`);
+  elements.forEach((el) => el.remove());
+
+  const insertedElements = document.querySelectorAll(`[data-plugin-inserted="${pluginId}"]`);
+  insertedElements.forEach((el) => el.remove());
+
+  const hiddenElements = document.querySelectorAll(`[data-plugin-hidden="${pluginId}"]`);
+  hiddenElements.forEach((el) => {
+    (el as HTMLElement).style.display = "";
+    delete (el as HTMLElement).dataset.pluginHidden;
+  });
+
+  const disabledElements = document.querySelectorAll(`[data-plugin-disabled="${pluginId}"]`);
+  disabledElements.forEach((el) => {
+    (el as HTMLElement).removeAttribute("disabled");
+    (el as HTMLElement).style.pointerEvents = "";
+    (el as HTMLElement).style.opacity = "";
+    delete (el as HTMLElement).dataset.pluginDisabled;
+  });
+}
+
 export const usePluginStore = defineStore("plugin", () => {
   const plugins = ref<PluginInfo[]>([]);
   const navItems = ref<PluginNavItem[]>([]);
@@ -453,25 +504,18 @@ export const usePluginStore = defineStore("plugin", () => {
         }
       }
 
+      const themeProviderPromises: Promise<void>[] = [];
       for (const [pluginId] of allCss) {
         if (hasCapability(pluginId, "theme-provider")) {
-          await applyThemeProviderSettings(pluginId);
+          themeProviderPromises.push(applyThemeProviderSettings(pluginId));
         }
         if (hasCapability(pluginId, "theme-widgets-provider")) {
-          await applyThemeWidgetsProviderSettings(pluginId);
+          themeProviderPromises.push(applyThemeWidgetsProviderSettings(pluginId));
         }
       }
+      await Promise.all(themeProviderPromises);
     } catch (e) {
       console.error("Failed to inject all plugin CSS:", e);
-    }
-  }
-
-  function playSound(soundUrl: string) {
-    try {
-      const audio = new Audio(soundUrl);
-      audio.play().catch((e) => console.error("Failed to play sound:", e));
-    } catch (e) {
-      console.error("Failed to create audio:", e);
     }
   }
 
@@ -638,13 +682,6 @@ export const usePluginStore = defineStore("plugin", () => {
     }
   }
 
-  function removeThemeWidgetsSettings() {
-    const root = document.documentElement;
-    root.removeAttribute("data-glow-intensity");
-    root.removeAttribute("data-gradient-text");
-    root.removeAttribute("data-particles");
-  }
-
   async function deletePlugin(pluginId: string, deleteData?: boolean) {
     try {
       await pluginApi.deletePlugin(pluginId, deleteData);
@@ -697,18 +734,6 @@ export const usePluginStore = defineStore("plugin", () => {
       console.error("Failed to check all updates:", e);
       return [];
     }
-  }
-
-  function getPluginUiContainer(): HTMLElement {
-    let container = document.getElementById("plugin-ui-container");
-    if (!container) {
-      container = document.createElement("div");
-      container.id = "plugin-ui-container";
-      container.style.cssText =
-        "position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998;";
-      document.body.appendChild(container);
-    }
-    return container;
   }
 
   async function handlePluginUiEvent(event: PluginUiEvent) {
@@ -1137,29 +1162,6 @@ export const usePluginStore = defineStore("plugin", () => {
     }
   }
 
-  function removePluginUiElements(pluginId: string) {
-    const elements = document.querySelectorAll(`[data-plugin-id="${pluginId}"]`);
-    console.log(`[PluginUI] Removing ${elements.length} UI elements for plugin: ${pluginId}`);
-    elements.forEach((el) => el.remove());
-
-    const insertedElements = document.querySelectorAll(`[data-plugin-inserted="${pluginId}"]`);
-    insertedElements.forEach((el) => el.remove());
-
-    const hiddenElements = document.querySelectorAll(`[data-plugin-hidden="${pluginId}"]`);
-    hiddenElements.forEach((el) => {
-      (el as HTMLElement).style.display = "";
-      delete (el as HTMLElement).dataset.pluginHidden;
-    });
-
-    const disabledElements = document.querySelectorAll(`[data-plugin-disabled="${pluginId}"]`);
-    disabledElements.forEach((el) => {
-      (el as HTMLElement).removeAttribute("disabled");
-      (el as HTMLElement).style.pointerEvents = "";
-      (el as HTMLElement).style.opacity = "";
-      delete (el as HTMLElement).dataset.pluginDisabled;
-    });
-  }
-
   let uiEventUnlisten: UnlistenFn | null = null;
 
   async function initUiEventListener() {
@@ -1185,10 +1187,7 @@ export const usePluginStore = defineStore("plugin", () => {
     }
   }
 
-  let sidebarEventUnlisten: UnlistenFn | null = null;
-
-  async function initSidebarEventListener() {
-    // 已禁用插件动态注册侧栏按钮功能
+  function initSidebarEventListener() {
     console.log("[PluginSidebar] Event listener disabled");
   }
 
