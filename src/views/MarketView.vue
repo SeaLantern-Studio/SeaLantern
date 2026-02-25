@@ -257,7 +257,11 @@ async function handleInstall(plugin: MarketPlugin) {
     const errorMessage = normalizeErrorMessage(e);
     const hint = resolveMarketNetworkHint(errorMessage);
     const extraHint = hint ? `\n${hint}` : "";
-    showInstallFeedback("error", `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`, 0);
+    showInstallFeedback(
+      "error",
+      `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`,
+      0,
+    );
   } finally {
     installing.value = null;
   }

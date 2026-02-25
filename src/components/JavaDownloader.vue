@@ -15,7 +15,15 @@
       <div class="flex items-center gap-3 flex-shrink-0">
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
-          <div class="w-36">
+          <div class="w-24">
+            <SLSelect
+              v-model="selectedSource"
+              :options="sourceOptions"
+              :disabled="loadingUrl"
+              size="sm"
+            />
+          </div>
+          <div class="w-28">
             <SLSelect
               v-model="selectedVersion"
               :options="versionOptions"
@@ -34,17 +42,11 @@
             <div class="flex flex-col items-end gap-1 w-40">
               <div class="flex items-center gap-2 text-xs text-[var(--sl-text-primary)]">
                 <span>{{ statusMessage }}</span>
-                <span class="font-mono opacity-70">{{
-                  isExtracting ? "" : `${progress.toFixed(0)}%`
+                <span v-if="!isExtracting" class="font-mono opacity-70">{{
+                  `${progress.toFixed(0)}%`
                 }}</span>
               </div>
-              <div class="w-full h-1.5 bg-[var(--sl-border)] rounded-full overflow-hidden">
-                <div
-                  class="h-full bg-[var(--sl-primary)] transition-all duration-300 ease-out"
-                  :class="{ 'indeterminate-progress': isExtracting }"
-                  :style="{ width: isExtracting ? '100%' : `${progress}%` }"
-                ></div>
-              </div>
+              <SLProgress :value="progress" :indeterminate="isExtracting" :show-percent="false" />
             </div>
             <SLButton
               size="sm"
@@ -94,10 +96,12 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { javaApi } from "@api/java";
 import SLButton from "@components/common/SLButton.vue";
 import SLSelect from "@components/common/SLSelect.vue";
+import SLProgress from "@components/common/SLProgress.vue";
 import { X, CheckCircle, AlertCircle } from "lucide-vue-next";
 
 const emit = defineEmits(["installed"]);
 
+const selectedSource = ref("adoptium");
 const selectedVersion = ref("17");
 const isDownloading = ref(false);
 const isExtracting = ref(false);
@@ -109,12 +113,24 @@ const successMessage = ref("");
 const installedPath = ref("");
 const unlistenProgress = ref<UnlistenFn | null>(null);
 
-const versionOptions = computed(() => [
-  { label: "Java 8 (LTS)", value: "8" },
-  { label: "Java 17 (LTS)", value: "17" },
-  { label: "Java 21 (LTS)", value: "21" },
-  { label: "Java 25 (LTS)", value: "25" },
+const sourceOptions = computed(() => [
+  { label: "Adoptium", value: "adoptium" },
+  { label: "OpenJDK", value: "openjdk" },
 ]);
+
+const versionOptions = computed(() => {
+  if (selectedSource.value === "openjdk") {
+    return [
+      { label: "Java 17", value: "17" },
+      { label: "Java 21", value: "21" },
+    ];
+  }
+  return [
+    { label: "Java 8", value: "8" },
+    { label: "Java 17", value: "17" },
+    { label: "Java 21", value: "21" },
+  ];
+});
 
 const downloadButtonText = computed(() => {
   return i18n.t("settings.java_download_btn", { version: selectedVersion.value });
@@ -128,14 +144,9 @@ const resetState = () => {
   progress.value = 0;
 };
 
-const getDownloadUrl = (version: string): string => {
-  // Construct URL for Adoptium API
-  const baseUrl = "https://api.adoptium.net/v3/binary/latest";
-  const releaseType = "ga";
-
+const getDownloadUrl = (version: string, source: string): { url: string; versionName: string } => {
   // Detect OS and Arch
   let os = "windows";
-  // Adoptium API uses 'mac' for macOS
   if (navigator.userAgent.indexOf("Mac") !== -1) os = "mac";
   if (navigator.userAgent.indexOf("Linux") !== -1) os = "linux";
 
@@ -143,7 +154,43 @@ const getDownloadUrl = (version: string): string => {
   if (navigator.userAgent.indexOf("aarch64") !== -1 || navigator.userAgent.indexOf("arm64") !== -1)
     arch = "aarch64";
 
-  return `${baseUrl}/${version}/${releaseType}/${os}/${arch}/jdk/hotspot/normal/eclipse`;
+  if (source === "adoptium") {
+    const baseUrl = "https://api.adoptium.net/v3/binary/latest";
+    const releaseType = "ga";
+    const adoptiumOs = os === "mac" ? "mac" : os;
+    return {
+      url: `${baseUrl}/${version}/${releaseType}/${adoptiumOs}/${arch}/jdk/hotspot/normal/eclipse`,
+      versionName: `jdk-${version}`,
+    };
+  } else {
+    // OpenJDK source - use archive URLs
+    const openjdkVersions: Record<string, string> = {
+      "17": "https://download.java.net/java/GA/jdk17.0.1/2a2082e5a09d4267845be086888add4f/12/GPL/openjdk-17.0.1_windows-x64_bin.zip",
+      "21": "https://download.java.net/java/GA/jdk21.0.1/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-21.0.1_windows-x64_bin.zip",
+    };
+
+    const macVersions: Record<string, string> = {
+      "17": "https://download.java.net/java/GA/jdk17.0.1/2a2082e5a09d4267845be086888add4f/12/GPL/openjdk-17.0.1_macos-x64_bin.tar.gz",
+      "21": "https://download.java.net/java/GA/jdk21.0.1/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-21.0.1_macos-x64_bin.tar.gz",
+    };
+
+    const linuxVersions: Record<string, string> = {
+      "17": "https://download.java.net/java/GA/jdk17.0.1/2a2082e5a09d4267845be086888add4f/12/GPL/openjdk-17.0.1_linux-x64_bin.tar.gz",
+      "21": "https://download.java.net/java/GA/jdk21.0.1/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-21.0.1_linux-x64_bin.tar.gz",
+    };
+
+    let url = openjdkVersions[version] || openjdkVersions["17"];
+    if (os === "mac") {
+      url = macVersions[version] || macVersions["17"];
+    } else if (os === "linux") {
+      url = linuxVersions[version] || linuxVersions["17"];
+    }
+
+    return {
+      url,
+      versionName: `jdk-${version}-openjdk`,
+    };
+  }
 };
 
 const cancelDownload = async () => {
@@ -170,8 +217,7 @@ const startDownload = async () => {
   loadingUrl.value = true;
 
   try {
-    const url = getDownloadUrl(selectedVersion.value);
-    const versionName = `jdk-${selectedVersion.value}`;
+    const { url, versionName } = getDownloadUrl(selectedVersion.value, selectedSource.value);
     loadingUrl.value = false;
     isDownloading.value = true;
     progress.value = 0;
@@ -227,30 +273,3 @@ onUnmounted(() => {
   if (unlistenProgress.value) unlistenProgress.value();
 });
 </script>
-
-<style scoped>
-@keyframes indeterminate {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.indeterminate-progress {
-  position: relative;
-  overflow: hidden;
-}
-
-.indeterminate-progress::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  animation: indeterminate 1.5s infinite linear;
-}
-</style>

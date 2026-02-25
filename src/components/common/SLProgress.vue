@@ -9,6 +9,7 @@ interface Props {
   label?: string;
   showPercent?: boolean;
   variant?: "primary" | "success" | "warning" | "error";
+  indeterminate?: boolean;
   componentId?: string;
 }
 
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
   max: 100,
   showPercent: true,
   variant: "primary",
+  indeterminate: false,
 });
 
 const elRef = ref<HTMLElement | null>(null);
@@ -39,10 +41,13 @@ const roundedPercent = computed(() => Math.round(percentage.value));
 const barWidth = computed(() => `${percentage.value}%`);
 
 // 计算属性 - 是否有头部内容（标签或百分比）
-const hasHeader = computed(() => props.label || props.showPercent);
+const hasHeader = computed(() => props.label || (props.showPercent && !props.indeterminate));
 
 // 计算属性 - 颜色类名
-const barClass = computed(() => `sl-progress-bar--${props.variant}`);
+const barClass = computed(() => [
+  `sl-progress-bar--${props.variant}`,
+  { "sl-progress-bar--indeterminate": props.indeterminate },
+]);
 </script>
 
 <template>
@@ -59,9 +64,9 @@ const barClass = computed(() => `sl-progress-bar--${props.variant}`);
       <div
         class="sl-progress-bar"
         :class="barClass"
-        :style="{ width: barWidth }"
+        :style="!props.indeterminate ? { width: barWidth } : {}"
         role="progressbar"
-        :aria-valuenow="value"
+        :aria-valuenow="props.indeterminate ? undefined : value"
         :aria-valuemin="0"
         :aria-valuemax="max"
         :aria-label="label || i18n.t('common.progress')"
@@ -164,6 +169,24 @@ const barClass = computed(() => `sl-progress-bar--${props.variant}`);
   .sl-progress-bar {
     will-change: width;
     transform: translateZ(0); /* 触发GPU加速 */
+  }
+}
+
+/* Indeterminate 模式动画 */
+.sl-progress-bar--indeterminate {
+  width: 30% !important;
+  animation: sl-progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes sl-progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(350%);
+  }
+  100% {
+    transform: translateX(-100%);
   }
 }
 

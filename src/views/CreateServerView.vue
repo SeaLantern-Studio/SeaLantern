@@ -73,7 +73,12 @@ const router = useRouter();
     </div>
 
     <SLCard class="create-stepper-card" :title="i18n.t('create.title')">
-      <StepperRoot orientation="vertical" :model-value="activeStep" :linear="false" class="create-stepper">
+      <StepperRoot
+        orientation="vertical"
+        :model-value="activeStep"
+        :linear="false"
+        class="create-stepper"
+      >
         <StepperItem
           v-for="item in stepItems"
           :key="item.step"
@@ -85,13 +90,19 @@ const router = useRouter();
             <StepperIndicator class="create-stepper-indicator">{{ item.step }}</StepperIndicator>
             <div class="create-stepper-copy">
               <StepperTitle class="create-stepper-title">{{ item.title }}</StepperTitle>
-              <StepperDescription class="create-stepper-description">{{ item.description }}</StepperDescription>
+              <StepperDescription class="create-stepper-description">{{
+                item.description
+              }}</StepperDescription>
             </div>
           </StepperTrigger>
 
           <div class="create-step-panel">
             <template v-if="item.step === 1">
-              <SourceIntakeField v-model:source-path="sourcePath" v-model:source-type="sourceType" @error="showError" />
+              <SourceIntakeField
+                v-model:source-path="sourcePath"
+                v-model:source-type="sourceType"
+                @error="showError"
+              />
             </template>
 
             <RunPathStep
@@ -178,7 +189,6 @@ const router = useRouter();
         </StepperItem>
       </StepperRoot>
     </SLCard>
-
   </div>
 </template>
 
