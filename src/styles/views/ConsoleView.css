@@ -39,8 +39,7 @@
 }
 
 .primary-actions {
-  padding-right: var(--sl-space-sm);
-  border-right: 1px solid var(--sl-border-light);
+  /* 启动/停止按钮组，无需分隔线 */
 }
 
 .server-name-display {

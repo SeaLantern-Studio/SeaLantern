@@ -55,23 +55,25 @@ function handleConfig() {
   store.setCurrentServer(props.server.id);
   router.push("/config/" + props.server.id);
 }
+
+function getStatusClass(status: string | undefined): string {
+  return status === "Running"
+    ? "running"
+    : status === "Starting"
+      ? "starting"
+      : status === "Stopping"
+        ? "stopping"
+        : "stopped";
+}
 </script>
 
 <template>
   <SLCard variant="glass" hoverable class="server-card">
     <div class="status-badge-container">
-      <SLBadge
-        :text="getStatusText(store.statuses[server.id]?.status)"
-        :variant="getStatusVariant(store.statuses[server.id]?.status)"
-        :rounded="
-          ['Starting', 'Stopping'].includes(store.statuses[server.id]?.status) ? 'full' : true
-        "
-        size="large"
-        class="server-status-badge"
-        :class="{
-          'status-pending': ['Starting', 'Stopping'].includes(store.statuses[server.id]?.status),
-        }"
-      />
+      <div class="status-indicator" :class="getStatusClass(store.statuses[server.id]?.status)">
+        <span class="status-dot"></span>
+        <span class="status-label">{{ getStatusText(store.statuses[server.id]?.status) }}</span>
+      </div>
     </div>
     <template #header>
       <div class="server-card-header">
@@ -224,6 +226,52 @@ function handleConfig() {
   z-index: 10;
 }
 
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: 4px 12px;
+  border-radius: var(--sl-radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-indicator.running {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--sl-success);
+}
+
+.status-indicator.running .status-dot {
+  background: var(--sl-success);
+}
+
+.status-indicator.stopped {
+  background: var(--sl-bg-tertiary);
+  color: var(--sl-text-tertiary);
+}
+
+.status-indicator.stopped .status-dot {
+  background: var(--sl-text-tertiary);
+}
+
+.status-indicator.starting,
+.status-indicator.stopping {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--sl-warning);
+}
+
+.status-indicator.starting .status-dot,
+.status-indicator.stopping .status-dot {
+  background: var(--sl-warning);
+  animation: pulse 2s infinite;
+}
+
 .server-card::before {
   content: "";
   position: absolute;
@@ -271,36 +319,6 @@ function handleConfig() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.server-card-header :deep(.sl-badge) {
-  flex-shrink: 0;
-}
-
-.server-status-badge {
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.status-pending {
-  position: relative;
-  padding-left: 24px !important;
-  background: rgba(245, 158, 11, 0.1) !important;
-  color: rgb(245, 158, 11) !important;
-  border: 1px solid rgba(245, 158, 11, 0.3) !important;
-}
-
-.status-pending::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgb(245, 158, 11);
-  animation: pulse 2s infinite;
 }
 
 @keyframes pulse {

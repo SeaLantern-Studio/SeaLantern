@@ -256,21 +256,25 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
       <div class="toolbar-right">
         <div class="action-group primary-actions">
           <SLButton
-            variant="primary"
-            size="sm"
-            :loading="startLoading"
-            :disabled="isRunning || isStopping || startLoading"
-            @click="handleStart"
-            >{{ i18n.t("home.start") }}</SLButton
-          >
-          <SLButton
+            v-if="isRunning"
             variant="danger"
             size="sm"
             :loading="stopLoading"
-            :disabled="isStopped || isStopping || stopLoading"
+            :disabled="isStopping || stopLoading"
             @click="handleStop"
-            >{{ i18n.t("home.stop") }}</SLButton
           >
+            {{ i18n.t("home.stop") }}
+          </SLButton>
+          <SLButton
+            v-else
+            variant="primary"
+            size="sm"
+            :loading="startLoading"
+            :disabled="isStopping || startLoading"
+            @click="handleStart"
+          >
+            {{ i18n.t("home.start") }}
+          </SLButton>
         </div>
         <div class="action-group secondary-actions">
           <SLButton variant="secondary" size="sm" @click="exportLogs">{{
