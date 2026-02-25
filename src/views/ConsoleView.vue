@@ -52,8 +52,9 @@ const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
 const isRunning = computed(() => serverStatus.value === "Running");
-const isStopped = computed(() => serverStatus.value === "Stopped");
+const isStopped = computed(() => serverStatus.value === "Stopped" || serverStatus.value === "Error" || !serverStatus.value);
 const isStopping = computed(() => serverStatus.value === "Stopping");
+const isStarting = computed(() => serverStatus.value === "Starting");
 
 watch(
   () => currentLogs.value.length,
@@ -256,14 +257,14 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
       <div class="toolbar-right">
         <div class="action-group primary-actions">
           <SLButton
-            v-if="isRunning"
+            v-if="isRunning || isStarting"
             variant="danger"
             size="sm"
             :loading="stopLoading"
             :disabled="isStopping || stopLoading"
             @click="handleStop"
           >
-            {{ i18n.t("home.stop") }}
+            {{ isStarting ? i18n.t("home.stop") : i18n.t("home.stop") }}
           </SLButton>
           <SLButton
             v-else
