@@ -100,15 +100,16 @@ function handleConfig() {
             </template>
           </div>
           <div class="server-meta">
-            <span>{{ server.core_type }}</span>
-            <span>{{ i18n.t("home.port") }} {{ server.port }}</span>
-            <span>{{ server.max_memory }}MB</span>
+            <span class="meta-tag core-type">{{ server.core_type }}</span>
+            <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
+            <span class="meta-tag">{{ server.max_memory }}MB</span>
           </div>
         </div>
         <SLBadge
           :text="getStatusText(store.statuses[server.id]?.status)"
           :variant="getStatusVariant(store.statuses[server.id]?.status)"
           size="large"
+          class="server-status-badge"
         />
       </div>
     </template>
@@ -123,37 +124,41 @@ function handleConfig() {
     </div>
 
     <div class="server-card-actions">
-      <SLButton
-        v-if="
-          store.statuses[server.id]?.status === 'Stopped' ||
-          store.statuses[server.id]?.status === 'Error' ||
-          !store.statuses[server.id]?.status
-        "
-        variant="primary"
-        size="sm"
-        :loading="actionLoading[server.id]"
-        :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
-        @click="handleStart(server.id)"
-        >{{ i18n.t("home.start") }}</SLButton
-      >
-      <SLButton
-        v-else
-        variant="danger"
-        size="sm"
-        :loading="actionLoading[server.id]"
-        :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
-        @click="handleStop(server.id)"
-        >{{ i18n.t("home.stop") }}</SLButton
-      >
-      <SLButton variant="ghost" size="sm" @click="handleConsole">
-        {{ i18n.t("common.console") }}
-      </SLButton>
-      <SLButton variant="ghost" size="sm" @click="handleConfig">
-        {{ i18n.t("common.config_edit") }}
-      </SLButton>
-      <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
-        {{ i18n.t("home.delete") }}
-      </SLButton>
+      <div class="action-group primary-actions">
+        <SLButton
+          v-if="
+            store.statuses[server.id]?.status === 'Stopped' ||
+            store.statuses[server.id]?.status === 'Error' ||
+            !store.statuses[server.id]?.status
+          "
+          variant="primary"
+          size="sm"
+          :loading="actionLoading[server.id]"
+          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
+          @click="handleStart(server.id)"
+          >{{ i18n.t("home.start") }}</SLButton
+        >
+        <SLButton
+          v-else
+          variant="danger"
+          size="sm"
+          :loading="actionLoading[server.id]"
+          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
+          @click="handleStop(server.id)"
+          >{{ i18n.t("home.stop") }}</SLButton
+        >
+      </div>
+      <div class="action-group secondary-actions">
+        <SLButton variant="ghost" size="sm" @click="handleConsole">
+          {{ i18n.t("common.console") }}
+        </SLButton>
+        <SLButton variant="ghost" size="sm" @click="handleConfig">
+          {{ i18n.t("common.config_edit") }}
+        </SLButton>
+        <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
+          {{ i18n.t("home.delete") }}
+        </SLButton>
+      </div>
     </div>
 
     <div
@@ -219,9 +224,8 @@ function handleConfig() {
 
 .server-card-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: var(--sl-space-md);
 }
 
@@ -251,6 +255,11 @@ function handleConfig() {
 
 .server-card-header :deep(.sl-badge) {
   flex-shrink: 0;
+}
+
+.server-status-badge {
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .edit-server-name {
@@ -283,18 +292,30 @@ function handleConfig() {
   margin-top: var(--sl-space-xs);
 }
 
-.server-meta span {
+.meta-tag {
   background: var(--sl-bg-tertiary);
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: var(--sl-radius-full);
   white-space: nowrap;
   border: 1px solid var(--sl-border);
   transition: all 0.2s ease;
 }
 
-.server-meta span:hover {
+.meta-tag:hover {
   background: var(--sl-bg-secondary);
   border-color: var(--sl-primary-light);
+}
+
+.meta-tag.core-type {
+  background: var(--sl-primary-bg);
+  border-color: var(--sl-primary-light);
+  color: var(--sl-primary);
+  font-weight: 500;
+}
+
+.meta-tag.core-type:hover {
+  background: var(--sl-primary);
+  color: white;
 }
 
 .inline-edit {
@@ -423,13 +444,24 @@ function handleConfig() {
   gap: var(--sl-space-sm);
   padding-top: var(--sl-space-md);
   border-top: 1px solid var(--sl-border-light);
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.action-group {
+  display: flex;
+  gap: var(--sl-space-sm);
   align-items: center;
 }
 
-.server-card-actions :deep(.sl-button) {
-  flex: 1;
-  min-width: 90px;
+.primary-actions :deep(.sl-button) {
+  min-width: 80px;
+  border-radius: var(--sl-radius-md);
+  transition: all 0.2s ease;
+}
+
+.secondary-actions :deep(.sl-button) {
+  min-width: unset;
   border-radius: var(--sl-radius-md);
   transition: all 0.2s ease;
 }
@@ -438,10 +470,22 @@ function handleConfig() {
   transform: translateY(-1px);
 }
 
-.server-card-actions
-  :deep(.sl-button:not(.sl-button--variant-primary):not(.sl-button--variant-danger)) {
-  flex: 0 0 auto;
-  min-width: unset;
+@media (max-width: 640px) {
+  .server-card-actions {
+    flex-wrap: wrap;
+  }
+
+  .action-group {
+    flex: 1;
+  }
+
+  .primary-actions {
+    flex: 0 0 auto;
+  }
+
+  .secondary-actions {
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 480px) {
@@ -450,9 +494,13 @@ function handleConfig() {
     align-items: stretch;
   }
 
-  .server-card-actions :deep(.sl-button) {
+  .action-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .action-group :deep(.sl-button) {
     flex: 1;
-    min-width: unset;
   }
 }
 
