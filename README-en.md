@@ -34,6 +34,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 ## Quick Start
 (TipsActually, we already have a documentation site!There you can view all kinds of documents more intuitively and conveniently.You can click here to go to the docs site.)
+
 [Jump to SL Official Doc Site](https://docs.ideaflash.cn/en/intro)
 
 Download the software from [Releases](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest);
