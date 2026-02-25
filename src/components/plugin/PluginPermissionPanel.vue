@@ -66,21 +66,21 @@ function updatePanelPosition() {
   const padding = 8;
 
   let top = rect.bottom + 4;
-  let left = rect.right - panelWidth;
+  let left = rect.left;
 
   // 确保面板不超出视口底部
   if (top + panelHeight > window.innerHeight - padding) {
     top = rect.top - panelHeight - 4;
   }
 
-  // 确保面板不超出视口左侧
-  if (left < padding) {
-    left = padding;
-  }
-
   // 确保面板不超出视口右侧
   if (left + panelWidth > window.innerWidth - padding) {
     left = window.innerWidth - panelWidth - padding;
+  }
+
+  // 确保面板不超出视口左侧
+  if (left < padding) {
+    left = padding;
   }
 
   panelPosition.value = { top, left };

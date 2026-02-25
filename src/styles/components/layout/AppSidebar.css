@@ -169,6 +169,23 @@
   border-top: 1px solid var(--sl-border-light);
 }
 
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 8px;
+}
+
+.sidebar.collapsed .nav-label {
+  display: none;
+}
+
+.sidebar.collapsed .nav-group-label {
+  display: none;
+}
+
+.sidebar.collapsed .nav-children {
+  display: none;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.15s ease;
