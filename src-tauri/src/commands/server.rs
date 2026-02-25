@@ -196,7 +196,8 @@ fn scan_startup_candidates_blocking(
                 .unwrap_or_default();
 
             if extension == "jar" {
-                let parsed = crate::services::server_installer::parse_server_core_type(&source_path)?;
+                let parsed =
+                    crate::services::server_installer::parse_server_core_type(&source_path)?;
                 let is_starter = parsed
                     .main_class
                     .as_deref()
