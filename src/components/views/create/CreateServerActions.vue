@@ -3,9 +3,17 @@ import { useRouter } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 
-defineProps<{
-  creating: boolean;
-}>();
+withDefaults(
+  defineProps<{
+    creating: boolean;
+    createDisabled?: boolean;
+    importDisabled?: boolean;
+  }>(),
+  {
+    createDisabled: false,
+    importDisabled: false,
+  },
+);
 
 const emit = defineEmits<{
   (e: "create"): void;
@@ -20,10 +28,22 @@ const router = useRouter();
     <SLButton variant="secondary" size="lg" @click="router.push('/')">{{
       i18n.t("create.cancel")
     }}</SLButton>
-    <SLButton variant="primary" size="lg" :loading="creating" @click="$emit('create')">
+    <SLButton
+      variant="primary"
+      size="lg"
+      :loading="creating"
+      :disabled="createDisabled"
+      @click="$emit('create')"
+    >
       {{ i18n.t("create.select_and_create") }}
     </SLButton>
-    <SLButton variant="primary" size="lg" :loading="creating" @click="$emit('import')">
+    <SLButton
+      variant="primary"
+      size="lg"
+      :loading="creating"
+      :disabled="importDisabled"
+      @click="$emit('import')"
+    >
       {{ i18n.t("create.import_existing") }}
     </SLButton>
   </div>

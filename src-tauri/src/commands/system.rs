@@ -152,6 +152,26 @@ pub async fn pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, Stri
 }
 
 #[tauri::command]
+pub async fn pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    app.dialog()
+        .file()
+        .set_title("Select modpack archive")
+        .add_filter("Archive Files", &["zip", "tar", "tgz", "gz"])
+        .add_filter("ZIP Files", &["zip"])
+        .add_filter("TAR Files", &["tar"])
+        .add_filter("Compressed TAR", &["tgz", "gz"])
+        .add_filter("All Files", &["*"])
+        .pick_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
 pub async fn pick_startup_file(
     app: tauri::AppHandle,
     mode: String,
@@ -241,12 +261,26 @@ pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 }
 
 #[tauri::command]
+pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.dialog()
+        .file()
+        .set_title("Save")
+        .save_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
 pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = tokio::sync::oneshot::channel();
 
     app.dialog()
         .file()
-        .set_title("Select modpack folder")
+        .set_title("Select folder")
         .pick_folder(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
@@ -283,7 +317,7 @@ pub fn open_file(path: String) -> Result<(), String> {
     {
         use std::process::Command;
         Command::new("explorer.exe")
-            //.arg("/select,")   选中文件，非打开文件
+            .arg("/select,")
             .arg(path)
             .spawn()
             .map_err(|e| format!("无法打开文件: {}", e))?;

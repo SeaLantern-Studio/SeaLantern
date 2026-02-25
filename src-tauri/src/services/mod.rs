@@ -1,5 +1,6 @@
 pub mod async_loader;
 pub mod config_parser;
+pub mod download_manager;
 pub mod global;
 pub mod i18n;
 pub mod java_detector;
@@ -9,5 +10,6 @@ pub mod mcs_plugin_manager;
 pub mod mod_manager;
 pub mod player_manager;
 pub mod server_id_manager;
+pub mod server_installer;
 pub mod server_manager;
 pub mod settings_manager;

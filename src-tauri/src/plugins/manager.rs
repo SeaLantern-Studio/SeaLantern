@@ -238,7 +238,9 @@ impl PluginManager {
 
     pub fn disable_plugin(&mut self, plugin_id: &str) -> Result<Vec<String>, String> {
         let mut visited = HashSet::new();
-        self.disable_plugin_internal(plugin_id, &mut visited)
+        let disabled_plugins = self.disable_plugin_internal(plugin_id, &mut visited)?;
+        self.save_enabled_plugins();
+        Ok(disabled_plugins)
     }
 
     fn disable_plugin_internal(
@@ -320,8 +322,6 @@ impl PluginManager {
         if let Some(info) = self.plugins.get_mut(plugin_id) {
             info.state = PluginState::Disabled;
         }
-
-        self.save_enabled_plugins();
 
         Ok(disabled_plugins)
     }
@@ -486,7 +486,7 @@ impl PluginManager {
         }
     }
 
-    pub fn disable_all_plugins(&mut self) {
+    pub fn disable_all_plugins_for_shutdown(&mut self) {
         let enabled_ids: Vec<String> = self
             .plugins
             .iter()
@@ -494,8 +494,9 @@ impl PluginManager {
             .map(|(id, _)| id.clone())
             .collect();
         for id in enabled_ids {
-            if let Err(e) = self.disable_plugin(&id) {
-                eprintln!("[WARN] Failed to disable plugin '{}' on exit: {}", id, e);
+            let mut visited = HashSet::new();
+            if let Err(e) = self.disable_plugin_internal(&id, &mut visited) {
+                eprintln!("[WARN] Failed to disable plugin '{}' during shutdown: {}", id, e);
             }
         }
     }

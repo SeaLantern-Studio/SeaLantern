@@ -74,23 +74,36 @@ const routes = [
     props: true,
     meta: { title: "插件分类", icon: "folder" },
   },
+  {
+    path: "/download-file",
+    name: "download-file",
+    component: () => import("../views/DownloadFileView.vue"),
+    meta: { titleKey: "common.download-file", icon: "info" },
+  },
 ];
 const router = createRouter({
   history: createWebHistory(),
   routes,
 });
 
-let pageChangedTimer: number | null = null;
+let pageChangedTimers: number[] = [];
 
 router.afterEach((to) => {
-  if (pageChangedTimer !== null) {
-    clearTimeout(pageChangedTimer);
+  for (const t of pageChangedTimers) {
+    clearTimeout(t);
   }
+  pageChangedTimers = [];
 
-  pageChangedTimer = window.setTimeout(() => {
-    onPageChanged(to.path).catch(() => {});
-    pageChangedTimer = null;
-  }, 300);
+  pageChangedTimers.push(
+    window.setTimeout(() => {
+      onPageChanged(to.path).catch(() => {});
+    }, 250),
+  );
+  pageChangedTimers.push(
+    window.setTimeout(() => {
+      onPageChanged(to.path).catch(() => {});
+    }, 900),
+  );
 });
 
 export default router;

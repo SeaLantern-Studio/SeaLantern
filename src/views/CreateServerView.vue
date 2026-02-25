@@ -1,232 +1,195 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from "vue";
+import {
+  StepperDescription,
+  StepperIndicator,
+  StepperItem,
+  StepperRoot,
+  StepperSeparator,
+  StepperTitle,
+  StepperTrigger,
+} from "reka-ui";
 import { useRouter } from "vue-router";
-import { serverApi } from "@api/server";
-import { javaApi, type JavaInfo } from "@api/java";
-import { systemApi } from "@api/system";
-import { settingsApi } from "@api/settings";
-import { useServerStore } from "@stores/serverStore";
+import SLButton from "@components/common/SLButton.vue";
+import SLCard from "@components/common/SLCard.vue";
+import CopyConflictDialog from "@components/views/create/CopyConflictDialog.vue";
+import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
+import RunPathStep from "@components/views/create/RunPathStep.vue";
+import ServerStartupConfigStep from "@components/views/create/ServerStartupConfigStep.vue";
+import SourceIntakeField from "@components/views/create/SourceIntakeField.vue";
+import StartupSelectionStep from "@components/views/create/StartupSelectionStep.vue";
 import { i18n } from "@language";
-import { useMessage } from "@composables/useMessage";
-import { useLoading } from "@composables/useAsync";
-import JavaEnvironmentCard from "@components/views/create/JavaEnvironmentCard.vue";
-import ServerConfigCard from "@components/views/create/ServerConfigCard.vue";
-import CreateServerActions from "@components/views/create/CreateServerActions.vue";
+import { useCreateServerPage } from "@components/views/create/useCreateServerPage";
 
-type StartupMode = "jar" | "bat" | "sh";
+const {
+  errorMsg,
+  clearError,
+  showError,
+  javaLoading,
+  creating,
+  sourcePath,
+  sourceType,
+  runPath,
+  useSoftwareDataDir,
+  coreDetecting,
+  startupDetecting,
+  startupCandidates,
+  selectedStartupId,
+  customStartupCommand,
+  starterSelected,
+  detectedCoreTypeKey,
+  coreTypeOptions,
+  selectedCoreType,
+  detectedMcVersion,
+  mcVersionOptions,
+  selectedMcVersion,
+  mcVersionDetectionFailed,
+  customCommandHasRedirect,
+  copyConflictDialogOpen,
+  copyConflictItems,
+  serverName,
+  maxMemory,
+  minMemory,
+  port,
+  selectedJava,
+  onlineMode,
+  javaList,
+  activeStep,
+  stepItems,
+  canSubmit,
+  pickRunPath,
+  updateRunPath,
+  toggleUseSoftwareDataDir,
+  rescanStartupCandidates,
+  detectJava,
+  handleSubmit,
+  confirmCopyConflict,
+  cancelCopyConflict,
+} = useCreateServerPage();
 
 const router = useRouter();
-const store = useServerStore();
-const { error: errorMsg, showError, clearError } = useMessage();
-const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
-const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
-
-const serverName = ref("My Server");
-const maxMemory = ref("2048");
-const minMemory = ref("512");
-const port = ref("25565");
-const jarPath = ref("");
-const startupMode = ref<StartupMode>("jar");
-const selectedJava = ref("");
-const onlineMode = ref(true);
-
-const javaList = ref<JavaInfo[]>([]);
-
-onMounted(async () => {
-  await loadDefaultSettings();
-});
-
-async function loadDefaultSettings() {
-  try {
-    const settings = await settingsApi.get();
-
-    maxMemory.value = String(settings.default_max_memory);
-    minMemory.value = String(settings.default_min_memory);
-    port.value = String(settings.default_port);
-
-    if (settings.cached_java_list && settings.cached_java_list.length > 0) {
-      javaList.value = settings.cached_java_list;
-
-      if (settings.default_java_path) {
-        selectedJava.value = settings.default_java_path;
-      } else if (javaList.value.length > 0) {
-        const preferred = javaList.value.find((j) => j.is_64bit && j.major_version >= 17);
-        selectedJava.value = preferred ? preferred.path : javaList.value[0].path;
-      }
-    }
-  } catch (e) {
-    console.error("Failed to load default settings:", e);
-  }
-}
-
-async function detectJava() {
-  startJavaLoading();
-  try {
-    javaList.value = await javaApi.detect();
-    if (javaList.value.length > 0) {
-      const preferred = javaList.value.find((j) => j.is_64bit && j.major_version >= 17);
-      selectedJava.value = preferred ? preferred.path : javaList.value[0].path;
-    }
-
-    const settings = await settingsApi.get();
-    settings.cached_java_list = javaList.value;
-    await settingsApi.save(settings);
-  } catch (e) {
-    console.error("Java detection failed:", e);
-    showError(String(e));
-  } finally {
-    stopJavaLoading();
-  }
-}
-
-async function pickJarFile() {
-  try {
-    const result = await systemApi.pickServerExecutable();
-    if (result) {
-      jarPath.value = result.path;
-      startupMode.value = result.mode;
-      return true;
-    } else {
-      jarPath.value = "";
-      return false;
-    }
-  } catch (e) {
-    console.error("Pick file error:", e);
-    jarPath.value = "";
-    return false;
-  }
-}
-
-async function handleCreate() {
-  clearError();
-
-  if (!selectedJava.value) {
-    showError(i18n.t("common.select_java_path"));
-    return;
-  }
-  if (!serverName.value.trim()) {
-    showError(i18n.t("common.enter_server_name"));
-    return;
-  }
-
-  const picked = await pickJarFile();
-  if (!picked || !jarPath.value) {
-    return;
-  }
-
-  startCreating();
-  try {
-    const mode = startupMode.value;
-    await serverApi.importServer({
-      name: serverName.value,
-      jarPath: jarPath.value,
-      startupMode: mode,
-      javaPath: selectedJava.value,
-      maxMemory: parseInt(maxMemory.value) || 2048,
-      minMemory: parseInt(minMemory.value) || 512,
-      port: parseInt(port.value) || 25565,
-      onlineMode: onlineMode.value,
-    });
-    await store.refreshList();
-    router.push("/");
-  } catch (e) {
-    showError(String(e));
-  } finally {
-    stopCreating();
-  }
-}
-
-async function handleImport() {
-  clearError();
-
-  if (!selectedJava.value) {
-    showError(i18n.t("common.select_java_path"));
-    return;
-  }
-  if (!serverName.value.trim()) {
-    showError(i18n.t("common.enter_server_name"));
-    return;
-  }
-
-  const result = await systemApi.pickServerExecutable();
-  if (!result) {
-    return;
-  }
-
-  const serverPath = result.path.substring(
-    0,
-    result.path.lastIndexOf("\\") || result.path.lastIndexOf("/"),
-  );
-
-  startCreating();
-  try {
-    await serverApi.addExistingServer({
-      name: serverName.value,
-      serverPath: serverPath,
-      javaPath: selectedJava.value,
-      maxMemory: parseInt(maxMemory.value) || 2048,
-      minMemory: parseInt(minMemory.value) || 512,
-      port: parseInt(port.value) || 25565,
-      startupMode: result.mode,
-      executablePath: result.path,
-    });
-    await store.refreshList();
-    router.push("/");
-  } catch (e) {
-    showError(String(e));
-  } finally {
-    stopCreating();
-  }
-}
 </script>
 
 <template>
   <div class="create-view animate-fade-in-up">
-    <div v-if="errorMsg" class="error-banner">
+    <div v-if="errorMsg" class="create-error-banner">
       <span>{{ errorMsg }}</span>
-      <button class="error-close" @click="clearError()">x</button>
+      <button class="create-error-close" @click="clearError">x</button>
     </div>
 
-    <JavaEnvironmentCard
-      :java-list="javaList"
-      v-model:selected-java="selectedJava"
-      :loading="javaLoading"
-      @detect="detectJava"
-    />
+    <SLCard class="create-stepper-card" :title="i18n.t('create.title')">
+      <StepperRoot orientation="vertical" :model-value="activeStep" :linear="false" class="create-stepper">
+        <StepperItem
+          v-for="item in stepItems"
+          :key="item.step"
+          :step="item.step"
+          :completed="item.completed"
+          class="create-stepper-item"
+        >
+          <StepperTrigger class="create-stepper-trigger">
+            <StepperIndicator class="create-stepper-indicator">{{ item.step }}</StepperIndicator>
+            <div class="create-stepper-copy">
+              <StepperTitle class="create-stepper-title">{{ item.title }}</StepperTitle>
+              <StepperDescription class="create-stepper-description">{{ item.description }}</StepperDescription>
+            </div>
+          </StepperTrigger>
 
-    <ServerConfigCard
-      v-model:server-name="serverName"
-      v-model:max-memory="maxMemory"
-      v-model:min-memory="minMemory"
-      v-model:port="port"
-      v-model:online-mode="onlineMode"
-    />
+          <div class="create-step-panel">
+            <template v-if="item.step === 1">
+              <SourceIntakeField v-model:source-path="sourcePath" v-model:source-type="sourceType" @error="showError" />
+            </template>
 
-    <CreateServerActions :creating="creating" @create="handleCreate" @import="handleImport" />
+            <RunPathStep
+              v-else-if="item.step === 2"
+              :source-type="sourceType"
+              :source-path="sourcePath"
+              :run-path="runPath"
+              :use-software-data-dir="useSoftwareDataDir"
+              :disabled="creating"
+              @pick-path="pickRunPath"
+              @update:run-path="updateRunPath"
+              @toggle-use-software-data-dir="toggleUseSoftwareDataDir"
+            />
+
+            <StartupSelectionStep
+              v-else-if="item.step === 3"
+              :loading="startupDetecting"
+              :candidates="startupCandidates"
+              :selected-startup-id="selectedStartupId"
+              :custom-startup-command="customStartupCommand"
+              :custom-command-has-redirect="customCommandHasRedirect"
+              :starter-selected="starterSelected"
+              :core-detecting="coreDetecting"
+              :detected-core-type-key="detectedCoreTypeKey"
+              :core-type-options="coreTypeOptions"
+              :selected-core-type="selectedCoreType"
+              :detected-mc-version="detectedMcVersion"
+              :mc-version-options="mcVersionOptions"
+              :selected-mc-version="selectedMcVersion"
+              :mc-version-detection-failed="mcVersionDetectionFailed"
+              :disabled="creating"
+              @rescan="rescanStartupCandidates"
+              @update:selected-startup-id="selectedStartupId = $event"
+              @update:custom-startup-command="customStartupCommand = $event"
+              @update:selected-core-type="selectedCoreType = $event"
+              @update:selected-mc-version="selectedMcVersion = $event"
+            />
+
+            <template v-else-if="item.step === 4">
+              <div class="create-config-step">
+                <JavaEnvironmentStep
+                  :java-list="javaList"
+                  :loading="javaLoading"
+                  :selected-java="selectedJava"
+                  @detect="detectJava"
+                  @update:selected-java="selectedJava = $event"
+                />
+
+                <ServerStartupConfigStep
+                  :server-name="serverName"
+                  :max-memory="maxMemory"
+                  :min-memory="minMemory"
+                  :port="port"
+                  :online-mode="onlineMode"
+                  @update:server-name="serverName = $event"
+                  @update:max-memory="maxMemory = $event"
+                  @update:min-memory="minMemory = $event"
+                  @update:port="port = $event"
+                  @update:online-mode="onlineMode = $event"
+                />
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="create-submit-actions">
+                <SLButton variant="secondary" size="lg" @click="router.push('/')">
+                  {{ i18n.t("create.cancel") }}
+                </SLButton>
+                <SLButton
+                  variant="primary"
+                  size="lg"
+                  :loading="creating"
+                  :disabled="!canSubmit || creating"
+                  @click="handleSubmit"
+                >
+                  {{ i18n.t("create.create") }}
+                </SLButton>
+              </div>
+            </template>
+          </div>
+
+          <StepperSeparator v-if="item.step < stepItems.length" class="create-stepper-separator" />
+        </StepperItem>
+      </StepperRoot>
+    </SLCard>
+
+    <CopyConflictDialog
+      :open="copyConflictDialogOpen"
+      :items="copyConflictItems"
+      @update:open="copyConflictDialogOpen = $event"
+      @confirm="confirmCopyConflict"
+      @cancel="cancelCopyConflict"
+    />
   </div>
 </template>
 
-<style scoped>
-.create-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-lg);
-  max-width: 760px;
-  margin: 0 auto;
-}
-.error-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: var(--sl-radius-md);
-  color: var(--sl-error);
-  font-size: 0.875rem;
-}
-.error-close {
-  color: var(--sl-error);
-  font-weight: 600;
-}
-</style>
+<style src="@styles/views/CreateServerView.css" scoped></style>

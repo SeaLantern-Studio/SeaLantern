@@ -1,0 +1,85 @@
+.run-path-step {
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-surface);
+  padding: var(--sl-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+
+.run-path-hint {
+  margin: 0;
+  color: var(--sl-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.run-path-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--sl-space-sm);
+  align-items: center;
+}
+
+.run-path-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.run-path-input {
+  min-width: 0;
+}
+
+.run-path-picker {
+  padding: 4px 10px;
+  border-radius: var(--sl-radius-sm);
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.run-path-picker:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.run-path-effective {
+  margin: 0;
+  color: var(--sl-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.run-path-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.run-path-data-dir-toggle {
+  padding: 6px 12px;
+  border-radius: var(--sl-radius-sm);
+  border: 1px solid var(--sl-border-light);
+  background: var(--sl-surface);
+  color: var(--sl-text-primary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.run-path-data-dir-toggle.is-active {
+  border-color: var(--sl-primary);
+  color: var(--sl-primary);
+  background: color-mix(in srgb, var(--sl-primary) 10%, var(--sl-surface));
+}
+
+.run-path-data-dir-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .run-path-row {
+    grid-template-columns: 1fr;
+  }
+}

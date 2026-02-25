@@ -16,7 +16,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-fs = "2"
+tauri-plugin-fs = "2.0.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 trash = "5.1"
@@ -36,7 +36,6 @@ uuid = { version = "1", features = ["v4"] }
 dirs-next = "2"
 reqwest = { version = "0.12", features = ["json", "blocking", "stream"] }
 opener = "0.7"
-tauri-plugin-updater = "2.10.0"
 tauri-plugin-process = "2.3.1"
 tauri-plugin-http = "2.5.7"
 tauri-plugin-window-state = "2"
@@ -45,14 +44,12 @@ font-kit = "0.14"
 sysinfo = "0.32"
 regex = "1.10"
 futures = "0.3.32"
-indicatif = "0.18.4"
 sha2 = "0.10"
 encoding_rs = "0.8"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
 zip = "2.0"
 tar = "0.4"
 flate2 = "1.0"
-url = "2"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = [
     "png",
@@ -62,7 +59,7 @@ image = { version = "0.25", default-features = false, features = [
     "bmp",
     "ico",
 ] }
-notify = { version = "6.0", optional = true }
+url = "2.5"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = ["Win32_System_Performance", "Win32_Foundation"] }
