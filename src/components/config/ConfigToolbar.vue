@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 

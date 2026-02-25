@@ -358,7 +358,9 @@
     "delete": "Delete",
     "refresh_list": "Refresh List",
     "reload_plugins": "Reload Plugins",
+    "reload_plugins_warning": "Reloading plugins may cause server lag, please proceed with caution",
     "empty_config_folder": "Config folder is empty",
+    "has_config_folder": "Has Config",
     "no_config_files": "No config",
     "config_files_count": "configs",
     "config_files": "Config Files",
@@ -645,6 +647,8 @@
     "developer_mode_desc": "Enable advanced features and debugging options",
     "developer_mode_toggle": "Toggle Developer Mode",
     "developer_mode_toggle_desc": "Enable to use debug tools while in developer mode",
+    "minimal_mode": "Minimal Mode",
+    "minimal_mode_desc": "Disable all animations and effects, keeping only basic rendering and interactions",
     "color_options": {
       "custom": "Custom"
     }

@@ -3,35 +3,41 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  animation: overlay-fade var(--sl-transition-fast) ease;
+  animation: overlay-fade-in 0.25s ease;
 }
-
 .sl-modal {
   width: 90%;
   max-width: 480px;
-  border-radius: var(--sl-radius-lg, 8px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border-radius: var(--sl-radius-xl, 16px);
+  border: 1px solid var(--sl-border, #e2e8f0);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
   background: var(--sl-surface, #fff);
-  animation: modal-slide var(--sl-transition-normal) ease;
+  animation: modal-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .sl-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--sl-border-light, #e5e7eb);
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--sl-border-light, #f1f5f9);
 }
 
 .sl-modal-title {
-  font-size: 17px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
-  color: var(--sl-text-primary, #1f2937);
+  color: var(--sl-text-primary, #0f172a);
 }
 
 .sl-modal-close {
@@ -40,27 +46,51 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: var(--sl-radius-md, 6px);
+  border-radius: var(--sl-radius-md, 8px);
   border: none;
   background: transparent;
-  color: var(--sl-text-tertiary, #6b7280);
+  color: var(--sl-text-tertiary, #94a3b8);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-  flex-shrink: 0;
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sl-modal-close::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sl-error, #ef4444);
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .sl-modal-close:hover {
-  background: var(--sl-bg-tertiary, #f3f4f6);
-  color: var(--sl-text-primary, #1f2937);
+  color: var(--sl-error, #ef4444);
+  transform: rotate(90deg);
+}
+
+.sl-modal-close:hover::before {
+  opacity: 0.1;
+  transform: scale(1);
+}
+
+.sl-modal-close:active {
+  transform: rotate(90deg) scale(0.9);
 }
 
 .sl-modal-body {
-  padding: 20px;
+  padding: 24px;
   max-height: 70vh;
   overflow-y: auto;
-  color: var(--sl-text-secondary);
+  color: var(--sl-text-secondary, #475569);
 }
 
 .sl-modal-footer {
@@ -68,23 +98,27 @@
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid var(--sl-border-light, #e5e5e5);
+  padding: 18px 24px;
+  border-top: 1px solid var(--sl-border-light, #f1f5f9);
+  background: var(--sl-bg-secondary, #f8fafc);
 }
 
-@keyframes overlay-fade {
+/* Animations */
+@keyframes overlay-fade-in {
   from {
     opacity: 0;
+    backdrop-filter: blur(0);
   }
   to {
     opacity: 1;
+    backdrop-filter: blur(4px);
   }
 }
 
-@keyframes modal-slide {
+@keyframes modal-enter {
   from {
     opacity: 0;
-    transform: translateY(-10px) scale(0.98);
+    transform: translateY(-20px) scale(0.95);
   }
   to {
     opacity: 1;
@@ -92,17 +126,71 @@
   }
 }
 
+/* Exit animation class (for Vue transition) */
+.sl-modal-overlay-leave-active {
+  animation: overlay-fade-out 0.2s ease;
+}
+
+.sl-modal-leave-active {
+  animation: modal-exit 0.2s ease;
+}
+
+@keyframes overlay-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+/* Performance optimizations */
 .sl-modal-overlay,
 .sl-modal {
   will-change: transform, opacity;
   backface-visibility: hidden;
 }
 
+/* Glass effect variant */
 .sl-modal.glass-strong {
-  backdrop-filter: blur(4px);
-  background: var(--sl-surface, rgba(255, 255, 255, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: var(--sl-surface, rgba(255, 255, 255, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 0, 0, 0.3);
+    0 20px 40px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Dark mode */
+[data-theme="dark"] .sl-modal-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="dark"] .sl-modal {
+  background: var(--sl-surface, #1e2130);
+  border-color: var(--sl-border, rgba(255, 255, 255, 0.1));
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .sl-modal-footer {
+  background: var(--sl-bg-tertiary, #242836);
+}
+
+[data-theme="dark"] .sl-modal.glass-strong {
+  background: var(--sl-surface, rgba(30, 33, 48, 0.9));
+  border-color: rgba(255, 255, 255, 0.1);
 }

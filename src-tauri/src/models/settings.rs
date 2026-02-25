@@ -104,6 +104,10 @@ pub struct AppSettings {
     // 上次选择的开服路径
     #[serde(default)]
     pub last_run_path: String,
+
+    // 极简模式：关闭所有动效和特效
+    #[serde(default)]
+    pub minimal_mode: bool,
 }
 
 fn default_true() -> bool {
@@ -206,6 +210,7 @@ impl AppSettings {
             || self.color != other.color
             || self.font_size != other.font_size
             || self.font_family != other.font_family
+            || self.minimal_mode != other.minimal_mode
         {
             changed.push(SettingsGroup::Appearance);
         }
@@ -314,6 +319,9 @@ impl AppSettings {
         if let Some(ref v) = partial.last_run_path {
             self.last_run_path = v.clone();
         }
+        if let Some(v) = partial.minimal_mode {
+            self.minimal_mode = v;
+        }
     }
 }
 
@@ -377,6 +385,8 @@ pub struct PartialSettings {
     pub close_action: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_run_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimal_mode: Option<bool>,
 }
 
 impl Default for AppSettings {
@@ -411,6 +421,7 @@ impl Default for AppSettings {
             developer_mode: false,
             close_action: "ask".to_string(),
             last_run_path: String::new(),
+            minimal_mode: false,
         }
     }
 }
