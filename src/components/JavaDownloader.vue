@@ -1,7 +1,6 @@
 <template>
   <div class="w-full">
     <div class="flex items-center justify-between py-1">
-      <!-- Left Side: Label & Desc -->
       <div class="flex flex-col gap-1 min-w-0 pr-4">
         <span class="text-[0.9375rem] font-medium text-[var(--sl-text-primary)]">
           {{ i18n.t("settings.java_download") }}
@@ -11,9 +10,7 @@
         </span>
       </div>
 
-      <!-- Right Side: Interaction Area -->
       <div class="flex items-center gap-3 flex-shrink-0">
-        <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
           <div class="w-24">
             <SLSelect
@@ -31,12 +28,17 @@
               size="sm"
             />
           </div>
-          <SLButton variant="primary" size="sm" :loading="loadingUrl" @click="startDownload">
+          <SLButton
+            variant="primary"
+            size="sm"
+            :loading="loadingUrl"
+            :disabled="!isCurrentSelectionSupported"
+            @click="startDownload"
+          >
             {{ downloadButtonText }}
           </SLButton>
         </template>
 
-        <!-- Downloading State -->
         <template v-else-if="isDownloading || isExtracting">
           <div class="flex items-center gap-3">
             <div class="flex flex-col items-end gap-1 w-40">
@@ -60,7 +62,6 @@
           </div>
         </template>
 
-        <!-- Success State -->
         <template v-else-if="successMessage">
           <div class="flex items-center gap-3 animate-fade-in">
             <div class="flex items-center gap-1.5 text-[var(--sl-success)] text-sm font-medium">
@@ -73,7 +74,14 @@
       </div>
     </div>
 
-    <!-- Error Message (Full Width below) -->
+    <div
+      v-if="!isCurrentSelectionSupported && !isDownloading && !isExtracting && !successMessage"
+      class="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 text-[var(--sl-warning)] text-xs rounded border border-yellow-200 dark:border-yellow-800 flex items-center gap-2"
+    >
+      <AlertCircle :size="14" />
+      <span>{{ unsupportedMessage }}</span>
+    </div>
+
     <div
       v-if="errorMessage"
       class="mt-2 p-3 bg-red-50 dark:bg-red-900/20 text-[var(--sl-error)] text-sm rounded border border-red-200 dark:border-red-800 flex items-center justify-between animate-fade-in"
@@ -90,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from "vue";
+import { ref, computed, onUnmounted, watch } from "vue";
 import { i18n } from "@language";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { javaApi } from "@api/java";
@@ -98,10 +106,17 @@ import SLButton from "@components/common/SLButton.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLProgress from "@components/common/SLProgress.vue";
 import { X, CheckCircle, AlertCircle } from "lucide-vue-next";
+import {
+  type JavaSource,
+  detectSystem,
+  isSourceSupported,
+  getUnsupportedReason,
+  getJavaDownloadInfo,
+} from "@utils/javaDownloadUtils";
 
 const emit = defineEmits(["installed"]);
 
-const selectedSource = ref("adoptium");
+const selectedSource = ref<JavaSource>("adoptium");
 const selectedVersion = ref("17");
 const isDownloading = ref(false);
 const isExtracting = ref(false);
@@ -112,6 +127,8 @@ const errorMessage = ref("");
 const successMessage = ref("");
 const installedPath = ref("");
 const unlistenProgress = ref<UnlistenFn | null>(null);
+
+const systemInfo = detectSystem();
 
 const sourceOptions = computed(() => [
   { label: "Adoptium", value: "adoptium" },
@@ -132,8 +149,22 @@ const versionOptions = computed(() => {
   ];
 });
 
+const isCurrentSelectionSupported = computed(() => {
+  return isSourceSupported(selectedSource.value, systemInfo);
+});
+
+const unsupportedMessage = computed(() => {
+  return getUnsupportedReason(selectedSource.value, systemInfo) || "";
+});
+
 const downloadButtonText = computed(() => {
   return i18n.t("settings.java_download_btn", { version: selectedVersion.value });
+});
+
+watch(selectedSource, () => {
+  if (selectedSource.value === "openjdk" && selectedVersion.value === "8") {
+    selectedVersion.value = "17";
+  }
 });
 
 const resetState = () => {
@@ -144,76 +175,9 @@ const resetState = () => {
   progress.value = 0;
 };
 
-const getDownloadUrl = (version: string, source: string): { url: string; versionName: string } => {
-  // Detect OS and Arch
-  let os = "windows";
-  if (navigator.userAgent.indexOf("Mac") !== -1) os = "mac";
-  if (navigator.userAgent.indexOf("Linux") !== -1) os = "linux";
-
-  let arch = "x64";
-  if (navigator.userAgent.indexOf("aarch64") !== -1 || navigator.userAgent.indexOf("arm64") !== -1)
-    arch = "aarch64";
-
-  if (source === "adoptium") {
-    const baseUrl = "https://api.adoptium.net/v3/binary/latest";
-    const releaseType = "ga";
-    const adoptiumOs = os === "mac" ? "mac" : os;
-    return {
-      url: `${baseUrl}/${version}/${releaseType}/${adoptiumOs}/${arch}/jdk/hotspot/normal/eclipse`,
-      versionName: `jdk-${version}`,
-    };
-  } else {
-    // OpenJDK source - use archive URLs from jdk.java.net/archive/
-    type OsArchUrls = { x64: string; aarch64: string };
-    type OsUrls = { windows: OsArchUrls; mac: OsArchUrls; linux: OsArchUrls };
-    type VersionUrls = Record<string, OsUrls>;
-
-    const openjdkUrls: VersionUrls = {
-      "17": {
-        windows: {
-          x64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip",
-          aarch64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip",
-        },
-        mac: {
-          x64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_macos-x64_bin.tar.gz",
-          aarch64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_macos-aarch64_bin.tar.gz",
-        },
-        linux: {
-          x64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz",
-          aarch64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz",
-        },
-      },
-      "21": {
-        windows: {
-          x64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_windows-x64_bin.zip",
-          aarch64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_windows-aarch64_bin.zip",
-        },
-        mac: {
-          x64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_macos-x64_bin.tar.gz",
-          aarch64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_macos-aarch64_bin.tar.gz",
-        },
-        linux: {
-          x64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-x64_bin.tar.gz",
-          aarch64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-aarch64_bin.tar.gz",
-        },
-      },
-    };
-
-    const versionUrls = openjdkUrls[version] || openjdkUrls["17"];
-    const osUrls = versionUrls[os as keyof OsUrls] || versionUrls["windows"];
-    const url = osUrls[arch as keyof OsArchUrls] || osUrls["x64"];
-
-    return {
-      url,
-      versionName: `jdk-${version}-openjdk`,
-    };
-  }
-};
-
 const cancelDownload = async () => {
   try {
     await javaApi.cancelInstall();
-    // Reset state immediately for better UX
     isDownloading.value = false;
     isExtracting.value = false;
     loadingUrl.value = false;
@@ -230,11 +194,22 @@ const cancelDownload = async () => {
 };
 
 const startDownload = async () => {
+  if (!isCurrentSelectionSupported.value) {
+    return;
+  }
+
   resetState();
   loadingUrl.value = true;
 
   try {
-    const { url, versionName } = getDownloadUrl(selectedVersion.value, selectedSource.value);
+    const downloadInfo = getJavaDownloadInfo(selectedVersion.value, selectedSource.value);
+
+    if (!downloadInfo.supported) {
+      loadingUrl.value = false;
+      errorMessage.value = downloadInfo.unsupportedReason || "不支持的配置";
+      return;
+    }
+
     loadingUrl.value = false;
     isDownloading.value = true;
     progress.value = 0;
@@ -253,7 +228,7 @@ const startDownload = async () => {
 
       if (payload.state === "extracting") {
         isExtracting.value = true;
-        progress.value = 100; // Force full bar or let indeterminate animation take over
+        progress.value = 100;
       } else if (payload.state === "downloading") {
         isExtracting.value = false;
         if (payload.total > 0) {
@@ -265,10 +240,10 @@ const startDownload = async () => {
       }
     });
 
-    const resultPath = await javaApi.installJava(url, versionName);
+    const resultPath = await javaApi.installJava(downloadInfo.url, downloadInfo.versionName);
 
     installedPath.value = resultPath;
-    successMessage.value = "Success"; // Just a flag, text is in template
+    successMessage.value = "Success";
     emit("installed", resultPath);
   } catch (e: any) {
     console.error(e);
