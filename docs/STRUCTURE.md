@@ -12,6 +12,7 @@ sea-lantern/
 ├── src/                                # 前端代码（Vue 3 + TypeScript）
 │   │
 │   ├── api/                           # 与 Rust 后端通信的封装层
+│   │   ├── index.ts                   # API 入口
 │   │   ├── tauri.ts                  # 基础 invoke 封装，所有 API 的入口
 │   │   ├── server.ts                 # 服务器管理 API（创建、启动、停止、日志）
 │   │   ├── java.ts                   # Java 环境检测 API
@@ -20,11 +21,13 @@ sea-lantern/
 │   │   ├── settings.ts               # 应用设置 API
 │   │   ├── system.ts                 # 系统信息、文件对话框 API
 │   │   ├── update.ts                 # 软件更新检查 API
-│   │   └── remoteLocales.ts          # 远程语言包 API
+│   │   ├── remoteLocales.ts          # 远程语言包 API
+│   │   ├── plugin.ts                 # 插件系统 API
+│   │   ├── mcs_plugins.ts            # MCS 插件 API
+│   │   └── downloader.ts             # 下载管理 API
 │   │
 │   ├── assets/                        # 静态资源
-│   │   ├── logo.svg                  # 应用图标
-│   │   └── vue.svg                   # Vue 图标
+│   │   └── logo.svg                  # 应用图标
 │   │
 │   ├── components/                    # UI 组件
 │   │   ├── common/                   # 通用组件（整个项目的积木块）
@@ -37,17 +40,14 @@ sea-lantern/
 │   │   │   ├── SLModal.vue           # 弹窗组件
 │   │   │   ├── SLProgress.vue        # 进度条组件
 │   │   │   ├── SLBadge.vue           # 状态标签组件
-│   │   │   ├── SLToast.vue           # 提示组件
-│   │   │   ├── SLTooltip.vue         # 工具提示组件
 │   │   │   ├── SLCheckbox.vue        # 复选框组件
 │   │   │   ├── SLFormField.vue       # 表单字段组件
 │   │   │   ├── SLTextarea.vue        # 文本域组件
 │   │   │   ├── SLTabs.vue            # 标签页组件
-│   │   │   ├── SLTabPanel.vue        # 标签页面板组件
+│   │   │   ├── SLTabBar.vue          # 标签栏组件
 │   │   │   ├── SLSpinner.vue         # 加载动画组件
 │   │   │   ├── SLContextMenu.vue     # 上下文菜单组件
-│   │   │   ├── SLNotification.vue    # 通知组件
-│   │   │   ├── SLCloseDialog.vue     # 关闭对话框组件
+│   │   │   ├── SLConfirmDialog.vue   # 确认对话框组件
 │   │   │   ├── UpdateModal.vue       # 更新模态框组件
 │   │   │   └── index.ts              # 组件导出文件
 │   │   │
@@ -58,10 +58,8 @@ sea-lantern/
 │   │   │
 │   │   ├── console/                  # 控制台相关组件
 │   │   │   ├── CommandModal.vue      # 命令模态框组件
-│   │   │   ├── ConsoleCommands.vue   # 控制台命令组件
 │   │   │   ├── ConsoleInput.vue      # 控制台输入组件
 │   │   │   ├── ConsoleOutput.vue     # 控制台输出组件
-│   │   │   └── ConsoleToolbar.vue    # 控制台工具栏组件
 │   │   │
 │   │   ├── layout/                   # 页面布局组件
 │   │   │   ├── AppLayout.vue         # 总布局（左侧栏 + 右侧内容区）
@@ -78,6 +76,14 @@ sea-lantern/
 │   │   ├── splash/                   # 启动画面
 │   │   │   └── SplashScreen.vue      # 应用启动时的加载动画
 │   │   │
+│   │   ├── views/                    # 页面相关子组件
+│   │   │   ├── about/                # 关于页面组件
+│   │   │   ├── create/               # 创建服务器页面组件
+│   │   │   ├── home/                 # 首页组件
+│   │   │   ├── paint/                # 个性化设置页面组件
+│   │   │   ├── player/               # 玩家管理页面组件
+│   │   │   └── settings/             # 设置页面组件
+│   │   │
 │   │   ├── JavaDownloader.vue        # Java 下载器组件
 │   │   └── index.ts                  # 组件导出文件
 │   │
@@ -87,7 +93,8 @@ sea-lantern/
 │   │   ├── useMessage.ts             # 消息处理
 │   │   ├── useRegisterComponent.ts   # 组件注册函数
 │   │   ├── useTabIndicator.ts        # 标签指示器
-│   │   └── useToast.ts               # 提示组件的组合式函数
+│   │   ├── useToast.ts               # 提示组件的组合式函数
+│   │   └── useAboutLinks.ts          # 关于页面链接处理
 │   │
 │   ├── data/                          # 静态数据
 │   │   └── contributors.ts           # 贡献者信息列表
@@ -122,29 +129,42 @@ sea-lantern/
 │   │   └── pluginStore.ts             # 插件状态管理
 │   │
 │   ├── styles/                        # 全局样式
+│   │   ├── components/                # 组件样式
+│   │   │   ├── common/                # 通用组件样式
+│   │   │   ├── layout/                # 布局组件样式
+│   │   │   └── views/                 # 页面组件样式
+│   │   ├── views/                     # 页面样式
 │   │   ├── variables.css              # CSS 变量（颜色、间距、圆角、字体、阴影）
 │   │   ├── reset.css                  # 浏览器样式重置
 │   │   ├── typography.css             # 排版样式
 │   │   ├── animations.css             # 动画关键帧
 │   │   ├── glass.css                  # 毛玻璃效果样式
-│   │   └── initial.css                # 初始样式
+│   │   ├── initial.css                # 初始样式
+│   │   ├── app.css                    # 应用全局样式
+│   │   └── plugin-list.css            # 插件列表样式
+│   │
+│   ├── themes/                        # 主题系统
+│   │   ├── index.ts                   # 主题入口
+│   │   ├── default.ts                 # 默认主题
+│   │   ├── midnight.ts                # 午夜主题
+│   │   ├── ocean.ts                   # 海洋主题
+│   │   ├── rose.ts                    # 玫瑰主题
+│   │   ├── sunset.ts                  # 日落主题
+│   │   └── README.md                  # 主题说明
 │   │
 │   ├── types/                         # 类型定义
 │   │   ├── common.ts                  # 通用类型定义
 │   │   ├── plugin.ts                  # 插件相关类型定义
-│   │   └── server.ts                  # 服务器相关类型定义
+│   │   ├── server.ts                  # 服务器相关类型定义
+│   │   └── theme.ts                   # 主题相关类型定义
 │   │
 │   ├── utils/                         # 工具函数
 │   │   ├── constants.ts               # 常量定义
 │   │   ├── errorHandler.ts            # 错误处理工具
-│   │   ├── format.ts                  # 格式化工具
-│   │   ├── logger.ts                  # 日志工具
 │   │   ├── quoteUtils.ts              # 引号处理工具
-│   │   ├── serverStatus.ts            # 服务器状态工具
 │   │   ├── serverUtils.ts             # 服务器工具函数
 │   │   ├── statsUtils.ts              # 统计工具函数
 │   │   ├── theme.ts                   # 主题工具
-│   │   ├── tray.ts                    # 系统托盘工具
 │   │   └── version.ts                 # 版本工具
 │   │
 │   ├── views/                         # 页面视图（每个路由对应一个）
@@ -160,7 +180,8 @@ sea-lantern/
 │   │   ├── PluginsView.vue           # 插件列表页面
 │   │   ├── PluginsPageView.vue       # 插件分页视图
 │   │   ├── PluginCategoryView.vue     # 插件分类视图
-│   │   └── PluginPageView.vue         # 插件详情页面
+│   │   ├── PluginPageView.vue         # 插件详情页面
+│   │   └── DownloadFileView.vue       # 文件下载页面
 │   │
 │   ├── App.vue                        # 根组件
 │   ├── main.ts                        # 应用入口（初始化 Vue、Pinia、Router）
@@ -215,7 +236,8 @@ sea-lantern/
 │   │   │   ├── mods.rs                # 模组管理命令
 │   │   │   ├── server_id.rs           # 服务器 ID 管理命令
 │   │   │   ├── mcs_plugin.rs          # MCS 插件命令
-│   │   │   └── plugin.rs              # 插件系统命令
+│   │   │   ├── plugin.rs              # 插件系统命令
+│   │   │   └── downloader.rs          # 下载管理命令
 │   │   │
 │   │   ├── services/                  # 业务逻辑层
 │   │   │   ├── mod.rs                 # 模块导出
@@ -231,7 +253,9 @@ sea-lantern/
 │   │   │   ├── mcs_plugin_manager.rs  # MCS 插件管理器
 │   │   │   ├── async_loader.rs        # 异步加载器
 │   │   │   ├── i18n.rs                # 国际化服务
-│   │   │   └── global.rs              # 全局单例管理器
+│   │   │   ├── global.rs              # 全局单例管理器
+│   │   │   ├── download_manager.rs    # 下载管理器
+│   │   │   └── server_installer.rs    # 服务器安装器
 │   │   │
 │   │   ├── plugins/                   # 插件系统
 │   │   │   ├── mod.rs                 # 插件模块导出
@@ -261,7 +285,8 @@ sea-lantern/
 │   │   │   ├── config.rs              # 配置项数据结构
 │   │   │   ├── settings.rs            # 应用设置数据结构
 │   │   │   ├── mcs_plugin.rs          # MCS 插件数据结构
-│   │   │   └── plugin.rs              # 插件数据结构
+│   │   │   ├── plugin.rs              # 插件数据结构
+│   │   │   └── download.rs            # 下载相关数据结构
 │   │   │
 │   │   ├── utils/                     # 工具函数
 │   │   │   ├── mod.rs                 # 工具模块
@@ -283,10 +308,19 @@ sea-lantern/
 │   ├── AI_GUIDE.md                    # AI 使用指南
 │   ├── CONTRIBUTING.md                # 贡献指南
 │   ├── STRUCTURE.md                   # 项目结构文档
-│   ├── 新手使用教程.html              # 新手使用教程
-│   └── language/
-│       ├── README.md                  # 语言包说明
-│       └── README-en.md               # 英文版本
+│   └── 新手使用教程.html              # 新手使用教程
+│
+├── .github/                           # GitHub 配置
+│   ├── ISSUE_TEMPLATE/                #  issue 模板
+│   ├── workflows/                     # GitHub Actions 工作流
+│   └── pull_request_template.md       # PR 模板
+│
+├── .vscode/                           # VS Code 配置
+│   ├── extensions.json                # 推荐扩展
+│   └── settings.json                  # 编辑器设置
+│
+├── .zed/                              # Zed 编辑器配置
+│   └── settings.json                  # 编辑器设置
 │
 ├── .SRCINFO                           # 包信息
 ├── .editorconfig                      # 编辑器配置
@@ -303,153 +337,11 @@ sea-lantern/
 ├── index.html                         # HTML 入口文件
 ├── package-lock.json                  # Node.js 依赖锁定文件
 ├── package.json                       # Node.js 依赖配置
+├── pnpm-lock.yaml                     # pnpm 依赖锁定文件
 ├── rustfmt.toml                       # Rust 代码格式化配置
 ├── sealantern.desktop                 # Linux 桌面文件
 ├── sealantern.install                 # 安装脚本
 ├── tsconfig.json                      # TypeScript 配置
 ├── tsconfig.node.json                 # Node.js 环境 TypeScript 配置
-└── vite.config.ts                     # Vite 构建配置
-```
-
-## 核心功能模块
-
-### 1. 服务器管理
-
-- 创建、导入、启动、停止、删除服务器
-- 支持不同类型的服务器启动方式（jar、bat、sh）
-- 支持整合包导入
-
-### 2. 控制台管理
-
-- 实时查看服务器日志
-- 直接向服务器发送命令
-- 支持自定义命令
-
-### 3. 配置管理
-
-- 图形化编辑 server.properties
-- 支持多种配置项类型
-
-### 4. 玩家管理
-
-- 白名单管理
-- 封禁管理
-- OP 管理
-
-### 5. 系统监控
-
-- CPU、内存、磁盘使用情况
-- 实时系统资源监控
-
-### 6. 国际化
-
-- 支持多语言
-- 内置多种语言包
-
-### 7. 更新管理
-
-- 检查更新
-- 一键下载新版本
-
-### 8. 插件系统
-
-- 支持动态加载插件
-- 插件 API 桥接（控制台、文件系统、HTTP、UI 等）
-- 插件权限管理
-- 插件市场
-
-### 9. 主题系统
-
-- 多种内置主题（默认、午夜、海洋、玫瑰、日落）
-- 自定义主题支持
-- CSS 变量驱动的主题切换
-
-## 技术特点
-
-1. **轻量级**：使用 Tauri 替代 Electron，体积小，启动快，内存占用低
-2. **高性能**：Rust 后端处理核心逻辑，性能优异
-3. **跨平台**：支持 Windows、macOS、Linux
-4. **响应式设计**：支持不同屏幕尺寸
-5. **模块化架构**：清晰的代码结构，易于扩展
-6. **国际化支持**：内置多语言支持
-7. **安全可靠**：关闭软件时自动停止服务器，防止丢存档
-
-## 开发指南
-
-### 前端开发
-
-- 使用 Vue 3 Composition API
-- 使用 TypeScript 确保类型安全
-- 使用 Pinia 进行状态管理
-- 使用 Vite 进行构建
-
-### 后端开发
-
-- 使用 Rust 语言
-- 使用 Tauri 2 作为桌面应用框架
-- 使用 serde 进行序列化/反序列化
-- 使用 tokio 进行异步处理
-
-### 代码规范
-
-- 前端：使用 ESLint 和 Prettier 确保代码质量
-- 后端：使用 rustfmt 和 clippy 确保代码质量
-
-## 构建与部署
-
-### 开发环境
-
-```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run tauri dev
-```
-
-### 生产构建
-
-```bash
-# 构建发布版
-npm run tauri build
-
-# 产物位置
-src-tauri/target/release/bundle/
-```
-
-## 扩展指南
-
-### 添加新功能
-
-1. **后端**：
-   - 在 `src-tauri/src/services/` 下创建新的服务文件
-   - 在 `src-tauri/src/commands/` 下创建新的命令文件
-   - 在 `commands/mod.rs` 中导出模块
-   - 在 `lib.rs` 的 `generate_handler!` 宏中注册命令
-
-2. **前端**：
-   - 在 `src/api/` 下创建新的 API 封装文件
-   - 在 `src/views/` 下创建新的页面组件
-   - 在 `src/router/index.ts` 中添加路由
-   - 在 `src/components/` 下创建相关组件
-   - 在 `src/stores/` 下创建相关状态管理
-
-## 注意事项
-
-1. **数据存储**：服务器数据存储在可执行文件所在目录的 `sea_lantern_servers.json` 文件中
-2. **日志管理**：服务器日志存储在服务器目录的 `latest.log` 文件中
-3. **权限管理**：确保应用具有足够的文件系统权限
-4. **性能优化**：避免在主线程中执行耗时操作
-5. **错误处理**：确保所有错误都有适当的处理和提示
-
-## 未来规划
-
-- 下载中心：下载服务端核心，插件，模组
-- 备份管理：世界存档的增量备份和还原
-- 内网穿透：集成 FRP
-- 定时任务：自动重启、定时备份、定时执行命令
-- 资源管理：从 Modrinth / CurseForge 搜索安装插件和 Mod
-
----
-
-**提示**：本文档会随着项目的发展而更新，如需了解最新的项目结构，请参考代码仓库。
+├── vite.config.ts                     # Vite 构建配置
+└── 提交前测试必读！！！.md            # 提交前测试指南
