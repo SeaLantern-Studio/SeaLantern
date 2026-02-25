@@ -496,10 +496,7 @@ impl PluginManager {
         for id in enabled_ids {
             let mut visited = HashSet::new();
             if let Err(e) = self.disable_plugin_internal(&id, &mut visited) {
-                eprintln!(
-                    "[WARN] Failed to disable plugin '{}' during shutdown: {}",
-                    id, e
-                );
+                eprintln!("[WARN] Failed to disable plugin '{}' during shutdown: {}", id, e);
             }
         }
     }
