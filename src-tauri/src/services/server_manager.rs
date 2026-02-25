@@ -35,9 +35,10 @@ fn validate_server_name(name: &str) -> Result<String, String> {
         return Err("服务器名称不能以点开头或结尾，也不能以空格结尾".to_string());
     }
     // 禁止Windows保留名称
-    let reserved = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", 
-                    "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", 
-                    "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"];
+    let reserved = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
     let upper = trimmed.to_uppercase();
     for r in reserved {
         if upper == r || upper.starts_with(&format!("{}.", r)) {
