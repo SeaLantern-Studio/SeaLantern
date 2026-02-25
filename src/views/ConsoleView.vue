@@ -254,28 +254,32 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
         </div>
       </div>
       <div class="toolbar-right">
-        <SLButton
-          variant="primary"
-          size="sm"
-          :loading="startLoading"
-          :disabled="isRunning || isStopping || startLoading"
-          @click="handleStart"
-          >{{ i18n.t("home.start") }}</SLButton
-        >
-        <SLButton
-          variant="danger"
-          size="sm"
-          :loading="stopLoading"
-          :disabled="isStopped || isStopping || stopLoading"
-          @click="handleStop"
-          >{{ i18n.t("home.stop") }}</SLButton
-        >
-        <SLButton variant="secondary" size="sm" @click="exportLogs">{{
-          i18n.t("console.copy_log")
-        }}</SLButton>
-        <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
-          i18n.t("console.clear_log")
-        }}</SLButton>
+        <div class="action-group primary-actions">
+          <SLButton
+            variant="primary"
+            size="sm"
+            :loading="startLoading"
+            :disabled="isRunning || isStopping || startLoading"
+            @click="handleStart"
+            >{{ i18n.t("home.start") }}</SLButton
+          >
+          <SLButton
+            variant="danger"
+            size="sm"
+            :loading="stopLoading"
+            :disabled="isStopped || isStopping || stopLoading"
+            @click="handleStop"
+            >{{ i18n.t("home.stop") }}</SLButton
+          >
+        </div>
+        <div class="action-group secondary-actions">
+          <SLButton variant="secondary" size="sm" @click="exportLogs">{{
+            i18n.t("console.copy_log")
+          }}</SLButton>
+          <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
+            i18n.t("console.clear_log")
+          }}</SLButton>
+        </div>
       </div>
     </div>
 
