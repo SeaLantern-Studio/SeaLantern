@@ -302,26 +302,17 @@ watch(
 }
 
 .sl-server-selector.collapsed .server-selector-trigger {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   justify-content: center;
   padding: 0;
   border: none;
   background: transparent;
-  margin-top: 5px;
-  border-radius: var(--sl-radius-md);
+  margin-top: 0;
 }
 
 .sl-server-selector.collapsed .server-selector-trigger:hover {
   background: var(--sl-primary-bg);
-}
-
-.sl-server-selector.collapsed .server-selector-trigger .server-icon {
-  color: var(--sl-text-secondary);
-}
-
-.sl-server-selector.collapsed .server-selector-trigger:hover .server-icon {
-  color: var(--sl-primary);
 }
 </style>
 
