@@ -541,8 +541,8 @@ fn handle_reset_settings(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        settings_commands::reset_settings()?;
-        Ok(Value::Null)
+        let result = settings_commands::reset_settings()?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
 
