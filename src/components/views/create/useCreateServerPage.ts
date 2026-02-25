@@ -20,6 +20,11 @@ import { useServerStore } from "@stores/serverStore";
 
 type SourceType = "archive" | "folder" | "";
 
+function parseNumber(value: string, fallbackValue: number): number {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
+}
+
 export function useCreateServerPage() {
   const router = useRouter();
   const store = useServerStore();
@@ -76,14 +81,17 @@ export function useCreateServerPage() {
   );
   const starterSelected = computed(() => selectedStartup.value?.mode === "starter");
   const customCommandHasRedirect = computed(
-    () => selectedStartup.value?.mode === "custom" && containsIoRedirection(customStartupCommand.value),
+    () =>
+      selectedStartup.value?.mode === "custom" && containsIoRedirection(customStartupCommand.value),
   );
 
   const hasPathStep = computed(() => {
     if (!hasSource.value) {
       return false;
     }
-    return requiresRunPath.value ? useSoftwareDataDir.value || runPath.value.trim().length > 0 : true;
+    return requiresRunPath.value
+      ? useSoftwareDataDir.value || runPath.value.trim().length > 0
+      : true;
   });
 
   const hasStartupStep = computed(() => {
@@ -109,7 +117,9 @@ export function useCreateServerPage() {
   const step1Completed = computed(() => hasSource.value);
   const step2Completed = computed(() => step1Completed.value && hasPathStep.value);
   const step3Completed = computed(() => step2Completed.value && hasStartupStep.value);
-  const step4Completed = computed(() => step3Completed.value && hasJava.value && hasServerConfig.value);
+  const step4Completed = computed(
+    () => step3Completed.value && hasJava.value && hasServerConfig.value,
+  );
 
   const activeStep = computed(() => {
     if (!step1Completed.value) {
@@ -161,7 +171,9 @@ export function useCreateServerPage() {
   ]);
 
   // 只有步骤完成且“启动项同步”完成后才允许提交，避免新源路径配旧 startupFilePath。
-  const canSubmit = computed(() => step4Completed.value && !startupSyncPending.value && !startupDetecting.value);
+  const canSubmit = computed(
+    () => step4Completed.value && !startupSyncPending.value && !startupDetecting.value,
+  );
 
   onMounted(async () => {
     await loadDefaultSettings();
@@ -264,11 +276,6 @@ export function useCreateServerPage() {
     { immediate: true },
   );
 
-  function parseNumber(value: string, fallbackValue: number): number {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
-  }
-
   async function loadDefaultSettings() {
     try {
       const settings = await settingsApi.get();
@@ -282,7 +289,9 @@ export function useCreateServerPage() {
         if (settings.default_java_path) {
           selectedJava.value = settings.default_java_path;
         } else {
-          const preferredJava = javaList.value.find((java) => java.is_64bit && java.major_version >= 17);
+          const preferredJava = javaList.value.find(
+            (java) => java.is_64bit && java.major_version >= 17,
+          );
           selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
         }
       }
@@ -296,7 +305,9 @@ export function useCreateServerPage() {
     try {
       javaList.value = await javaApi.detect();
       if (javaList.value.length > 0) {
-        const preferredJava = javaList.value.find((java) => java.is_64bit && java.major_version >= 17);
+        const preferredJava = javaList.value.find(
+          (java) => java.is_64bit && java.major_version >= 17,
+        );
         selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
       }
 
@@ -371,7 +382,8 @@ export function useCreateServerPage() {
         return;
       }
 
-      detectedCoreType.value = discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
+      detectedCoreType.value =
+        discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
       detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
       const previousDetectedCoreKey = detectedCoreTypeKey.value;
       const previousDetectedMcVersion = detectedMcVersion.value;

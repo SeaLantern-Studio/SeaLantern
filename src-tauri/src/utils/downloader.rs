@@ -21,7 +21,7 @@ pub struct DownloadSnapshot {
 
 /// 状态管理
 pub struct DownloadStatus {
-    pub total_size: u64,
+    pub total_size: AtomicU64,
     pub downloaded: AtomicU64,
     // 使用 tokio 的 RwLock 存储错误信息
     pub error_message: RwLock<Option<String>>,
@@ -30,7 +30,7 @@ pub struct DownloadStatus {
 impl DownloadStatus {
     pub fn new(total_size: u64) -> Self {
         Self {
-            total_size,
+            total_size: AtomicU64::new(total_size),
             downloaded: AtomicU64::new(0),
             error_message: RwLock::new(None),
         }
@@ -45,17 +45,18 @@ impl DownloadStatus {
     /// 获取当前快照，用于传递给前端
     pub async fn snapshot(&self) -> DownloadSnapshot {
         let downloaded = self.downloaded.load(Ordering::Relaxed);
+        let total_size = self.total_size.load(Ordering::Relaxed);
         let error = self.error_message.read().await.clone();
 
         DownloadSnapshot {
             downloaded,
-            total_size: self.total_size,
-            progress_percentage: if self.total_size > 0 {
-                (downloaded as f64 / self.total_size as f64) * 100.0
+            total_size,
+            progress_percentage: if total_size > 0 {
+                (downloaded as f64 / total_size as f64) * 100.0
             } else {
                 0.0
             },
-            is_finished: downloaded >= self.total_size || error.is_some(),
+            is_finished: downloaded >= total_size || error.is_some(),
             error,
         }
     }
@@ -95,13 +96,27 @@ impl MultiThreadDownloader {
             .await
             .map_err(|e| format!("HEAD 请求失败: {}", e))?;
 
-        let total_size = res
+        let total_size_opt = res
             .headers()
             .get(reqwest::header::CONTENT_LENGTH)
             .and_then(|ct| ct.to_str().ok())
-            .and_then(|ct| ct.parse::<u64>().ok())
-            .ok_or("服务器未返回 Content-Length")?;
+            .and_then(|ct| ct.parse::<u64>().ok());
 
+        if let Some(total_size) = total_size_opt {
+            self.download_multithread(url, output_path, thread_count, total_size)
+                .await
+        } else {
+            self.download_single(url, output_path).await
+        }
+    }
+
+    async fn download_multithread(
+        &self,
+        url: &str,
+        output_path: &str,
+        thread_count: usize,
+        total_size: u64,
+    ) -> Result<Arc<DownloadStatus>, String> {
         let file = tokio::fs::File::create(output_path)
             .await
             .map_err(|e| e.to_string())?;
@@ -126,29 +141,72 @@ impl MultiThreadDownloader {
             let client_ptr = Arc::clone(&client);
             let status_ptr = Arc::clone(&status);
 
-            // 移除 unwrap()，让子任务返回 Result
             tasks.push(tokio::spawn(async move {
                 Self::_worker(client_ptr, url, path, start, end, status_ptr).await
             }));
         }
 
-        // 异步监控线程结果
         let status_for_monitor = Arc::clone(&status);
         tokio::spawn(async move {
             for task in tasks {
                 match task.await {
-                    Ok(Ok(_)) => {} // 线程执行成功
+                    Ok(Ok(_)) => {}
                     Ok(Err(e)) => {
-                        // 子任务逻辑错误 (如 TimedOut)
                         status_for_monitor.set_error(e.to_string()).await;
                     }
                     Err(e) => {
-                        // 线程 Panic 或被取消
                         status_for_monitor
                             .set_error(format!("线程崩溃: {}", e))
                             .await;
                     }
                 }
+            }
+        });
+
+        Ok(status)
+    }
+
+    async fn download_single(
+        &self,
+        url: &str,
+        output_path: &str,
+    ) -> Result<Arc<DownloadStatus>, String> {
+        let mut response = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| format!("GET 请求失败: {}", e))?;
+
+        let total_size = response.content_length().unwrap_or(0);
+        let status = Arc::new(DownloadStatus::new(total_size));
+
+        let file = tokio::fs::File::create(output_path)
+            .await
+            .map_err(|e| e.to_string())?;
+        let mut writer = BufWriter::with_capacity(128 * 1024, file);
+
+        let status_clone = Arc::clone(&status);
+        tokio::spawn(async move {
+            let mut downloaded = 0u64;
+            while let Ok(Some(chunk)) = response.chunk().await {
+                if let Err(e) = writer.write_all(&chunk).await {
+                    status_clone.set_error(format!("写入文件失败: {}", e)).await;
+                    return;
+                }
+                downloaded += chunk.len() as u64;
+                status_clone.downloaded.store(downloaded, Ordering::Relaxed);
+            }
+
+            if let Err(e) = writer.flush().await {
+                status_clone.set_error(format!("刷新文件失败: {}", e)).await;
+                return;
+            }
+
+            if total_size > 0 && downloaded < total_size {
+                status_clone.set_error("下载未完成".to_string()).await;
+            } else if total_size == 0 {
+                status_clone.total_size.store(downloaded, Ordering::Relaxed);
             }
         });
 

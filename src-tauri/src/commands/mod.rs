@@ -2,6 +2,7 @@ pub mod config;
 pub mod downloader;
 pub mod java;
 pub mod mcs_plugin;
+pub mod mslapi;
 pub mod player;
 pub mod plugin;
 pub mod server;

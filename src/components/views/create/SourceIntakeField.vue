@@ -166,16 +166,28 @@ async function pickFolder() {
       <DialogPortal>
         <DialogOverlay class="source-chooser-overlay" />
         <DialogContent class="source-chooser-content">
-          <DialogTitle class="source-chooser-title">{{ i18n.t("create.source_choose_title") }}</DialogTitle>
+          <DialogTitle class="source-chooser-title">{{
+            i18n.t("create.source_choose_title")
+          }}</DialogTitle>
           <DialogDescription class="source-chooser-description">
             {{ i18n.t("create.source_choose_description") }}
           </DialogDescription>
           <div class="source-chooser-actions">
-            <SLButton variant="primary" size="lg" class="source-chooser-option" @click="pickArchive">
+            <SLButton
+              variant="primary"
+              size="lg"
+              class="source-chooser-option"
+              @click="pickArchive"
+            >
               <Archive :size="22" />
               <span>{{ i18n.t("create.source_pick_archive") }}</span>
             </SLButton>
-            <SLButton variant="secondary" size="lg" class="source-chooser-option" @click="pickFolder">
+            <SLButton
+              variant="secondary"
+              size="lg"
+              class="source-chooser-option"
+              @click="pickFolder"
+            >
               <Folder :size="22" />
               <span>{{ i18n.t("create.source_pick_folder") }}</span>
             </SLButton>

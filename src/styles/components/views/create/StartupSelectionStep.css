@@ -55,7 +55,9 @@
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   background: var(--sl-surface);
-  transition: border-color var(--sl-transition-fast), background var(--sl-transition-fast);
+  transition:
+    border-color var(--sl-transition-fast),
+    background var(--sl-transition-fast);
   overflow: hidden;
 }
 

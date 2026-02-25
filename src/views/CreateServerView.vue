@@ -9,6 +9,7 @@ import {
   StepperTrigger,
 } from "reka-ui";
 import { useRouter } from "vue-router";
+import { ArrowLeft } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
@@ -63,17 +64,31 @@ const {
 } = useCreateServerPage();
 
 const router = useRouter();
+
+const goBack = () => {
+  router.push("/core-download/mode");
+};
 </script>
 
 <template>
   <div class="create-view animate-fade-in-up">
+    <button class="create-back-button" @click="goBack">
+      <ArrowLeft :size="20" />
+      <span>返回</span>
+    </button>
+
     <div v-if="errorMsg" class="create-error-banner">
       <span>{{ errorMsg }}</span>
       <button class="create-error-close" @click="clearError">x</button>
     </div>
 
     <SLCard class="create-stepper-card" :title="i18n.t('create.title')">
-      <StepperRoot orientation="vertical" :model-value="activeStep" :linear="false" class="create-stepper">
+      <StepperRoot
+        orientation="vertical"
+        :model-value="activeStep"
+        :linear="false"
+        class="create-stepper"
+      >
         <StepperItem
           v-for="item in stepItems"
           :key="item.step"
@@ -85,13 +100,19 @@ const router = useRouter();
             <StepperIndicator class="create-stepper-indicator">{{ item.step }}</StepperIndicator>
             <div class="create-stepper-copy">
               <StepperTitle class="create-stepper-title">{{ item.title }}</StepperTitle>
-              <StepperDescription class="create-stepper-description">{{ item.description }}</StepperDescription>
+              <StepperDescription class="create-stepper-description">{{
+                item.description
+              }}</StepperDescription>
             </div>
           </StepperTrigger>
 
           <div class="create-step-panel">
             <template v-if="item.step === 1">
-              <SourceIntakeField v-model:source-path="sourcePath" v-model:source-type="sourceType" @error="showError" />
+              <SourceIntakeField
+                v-model:source-path="sourcePath"
+                v-model:source-type="sourceType"
+                @error="showError"
+              />
             </template>
 
             <RunPathStep
@@ -178,7 +199,6 @@ const router = useRouter();
         </StepperItem>
       </StepperRoot>
     </SLCard>
-
   </div>
 </template>
 

@@ -8,6 +8,7 @@ use commands::config as config_commands;
 use commands::downloader as download_commands;
 use commands::java as java_commands;
 use commands::mcs_plugin as mcs_plugin_commands;
+use commands::mslapi as msl_commands;
 use commands::player as player_commands;
 use commands::plugin as plugin_commands;
 use commands::server as server_commands;
@@ -89,6 +90,9 @@ pub fn run() {
             server_commands::parse_server_core_type,
             server_commands::scan_startup_candidates,
             server_commands::collect_copy_conflicts,
+            server_commands::is_directory_empty,
+            server_commands::verify_file_sha256,
+            server_commands::verify_file_sha1,
             server_commands::copy_directory_contents,
             server_commands::start_server,
             server_commands::stop_server,
@@ -98,6 +102,12 @@ pub fn run() {
             server_commands::delete_server,
             server_commands::get_server_logs,
             server_commands::update_server_name,
+            msl_commands::get_msl_server_types,
+            msl_commands::get_msl_server_description,
+            msl_commands::get_msl_server_classify,
+            msl_commands::get_msl_server_versions,
+            msl_commands::get_msl_server_builds,
+            msl_commands::get_msl_server_download_url,
             java_commands::detect_java,
             java_commands::validate_java_path,
             java_commands::install_java,

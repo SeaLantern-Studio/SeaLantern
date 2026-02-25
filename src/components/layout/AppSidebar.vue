@@ -90,7 +90,7 @@ const staticNavItems: NavItem[] = [
   },
   {
     name: "create",
-    path: "/create",
+    path: "/core-download/mode",
     icon: "plus",
     labelKey: "common.create_server",
     label: i18n.t("common.create_server"),

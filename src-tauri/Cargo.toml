@@ -45,6 +45,7 @@ sysinfo = "0.32"
 regex = "1.10"
 futures = "0.3.32"
 sha2 = "0.10"
+sha1 = "0.10"
 encoding_rs = "0.8"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
 zip = "2.0"
