@@ -278,6 +278,7 @@
     "path_use_in_place": "Run In Place",
     "path_use_source": "Use Source Path",
     "path_effective_label": "Effective server path:",
+    "path_overwrite_warning": "Files with the same name already exist in server path and will be overwritten.",
     "path_required_folder_target": "Cannot resolve target server path for folder source",
     "startup_title": "Startup Selection",
     "startup_hint": "Recommended: starter > bat/sh/ps1 > server.jar",

@@ -11,9 +11,11 @@ const props = withDefaults(
     sourcePath: string;
     runPath: string;
     useSoftwareDataDir: boolean;
+    showOverwriteWarning?: boolean;
     disabled?: boolean;
   }>(),
   {
+    showOverwriteWarning: false,
     disabled: false,
   },
 );
@@ -82,6 +84,9 @@ const effectivePath = computed(() => {
     </div>
 
     <div class="run-path-toggle-row">
+      <p v-if="showOverwriteWarning" class="run-path-overwrite-warning">
+        {{ i18n.t("create.path_overwrite_warning") }}
+      </p>
       <button
         type="button"
         class="run-path-data-dir-toggle"
