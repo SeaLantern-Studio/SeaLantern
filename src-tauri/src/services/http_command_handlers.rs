@@ -216,6 +216,14 @@ fn handle_import_modpack(
             req.max_memory,
             req.min_memory,
             req.port,
+            req.startup_mode,
+            req.online_mode,
+            req.custom_command,
+            req.run_path,
+            req.use_software_data_dir,
+            req.startup_file_path,
+            req.core_type,
+            req.mc_version,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -643,6 +651,14 @@ struct ImportModpackRequest {
     max_memory: u32,
     min_memory: u32,
     port: u16,
+    startup_mode: String,
+    online_mode: bool,
+    custom_command: Option<String>,
+    run_path: String,
+    use_software_data_dir: bool,
+    startup_file_path: Option<String>,
+    core_type: Option<String>,
+    mc_version: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

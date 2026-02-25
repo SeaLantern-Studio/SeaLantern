@@ -2662,12 +2662,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "minisign-verify"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e856fdd13623a2f5f2f54676a4ee49502a96a80ef4a62bcedd23d52427c44d43"
-
-[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4306,7 +4300,6 @@ dependencies = [
  "font-kit",
  "futures",
  "image",
- "indicatif",
  "mime_guess",
  "mlua",
  "once_cell",

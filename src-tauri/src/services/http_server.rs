@@ -87,12 +87,12 @@ async fn list_api_endpoints(State(state): State<AppState>) -> impl IntoResponse 
 
     let supported: Vec<&String> = endpoints
         .iter()
-        .filter(|cmd| !cmd.starts_with("plugin/") || !cmd.contains("unsupported"))
+        .filter(|cmd: &&String| !cmd.starts_with("plugin/") || !cmd.contains("unsupported"))
         .collect();
 
     let _unsupported: Vec<&String> = endpoints
         .iter()
-        .filter(|cmd| cmd.starts_with("plugin/"))
+        .filter(|cmd: &&String| cmd.starts_with("plugin/"))
         .collect();
 
     Json(ApiResponse::success(serde_json::json!({
