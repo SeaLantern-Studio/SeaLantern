@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { join } from "@tauri-apps/api/path";
 import { downloadApi } from "@api/downloader";
 import { serverApi } from "@api/server";
 import { getPaperBuildInfo } from "@utils/networkapi/paperapi";
-import { getServerDownloadUrl } from "@utils/networkapi/mslapi.ts";
+import { getServerDownloadUrl } from "@utils/networkapi/mslapi";
 
 const router = useRouter();
 const route = useRoute();
@@ -19,6 +20,8 @@ const serverPath = ref<string>("");
 const maxMemory = ref<number>(0);
 const minMemory = ref<number>(0);
 const javaPath = ref<string>("");
+const downloadedFileName = ref<string>(""); // 存储实际下载的文件名
+const downloadedFilePath = ref<string>(""); // 存储完整的文件路径
 
 const currentStep = ref<number>(1);
 const stepStatus = ref<{ [key: number]: "pending" | "running" | "completed" | "error" }>({
@@ -52,30 +55,33 @@ const formatBytes = (bytes: number): string => {
 };
 
 const startProcess = async () => {
-  let downloadedFilePath = "";
-  let fileName = "";
-  let downloadSha256 = "";
-
   try {
     currentStep.value = 1;
     stepStatus.value[1] = "running";
 
     let downloadUrl = "";
+    let downloadSha256 = "";
 
     if (source.value === "official") {
       const buildInfo = await getPaperBuildInfo(version.value, parseInt(build.value));
-      fileName = buildInfo.downloads.application.name;
-      downloadUrl = `https://api.papermc.io/v2/projects/paper/versions/${version.value}/builds/${build.value}/downloads/${fileName}`;
+      downloadedFileName.value = buildInfo.downloads.application.name;
+      downloadUrl = `https://api.papermc.io/v2/projects/paper/versions/${version.value}/builds/${build.value}/downloads/${downloadedFileName.value}`;
       downloadSha256 = buildInfo.downloads.application.sha256;
     } else {
       const downloadInfo = await getServerDownloadUrl(serverName.value, version.value, build.value);
       downloadUrl = downloadInfo.url;
       downloadSha256 = downloadInfo.sha256 || "";
-      // 从 URL 中提取文件名
-      fileName = downloadUrl.split("/").pop() || `${serverName.value}-${version.value}.jar`;
+      // 从 URL 中提取文件名，移除查询参数和非法字符
+      const urlPath = downloadUrl.split("?")[0]; // 移除查询参数
+      const extractedName = urlPath.split("/").pop() || "";
+      // 清理文件名中的非法字符（Windows 文件名不允许的字符）
+      downloadedFileName.value =
+        extractedName.replace(/[<>:"|?*]/g, "_") || `${serverName.value}-${version.value}.jar`;
     }
 
-    downloadedFilePath = `${serverPath.value}/${fileName}`;
+    // 使用 Tauri 的 path API 构建跨平台路径
+    downloadedFilePath.value = await join(serverPath.value, downloadedFileName.value);
+    sha256.value = downloadSha256; // 保存 SHA256 供后续使用
 
     stepStatus.value[1] = "completed";
     currentStep.value = 2;
@@ -83,7 +89,7 @@ const startProcess = async () => {
 
     await startDownload({
       url: downloadUrl,
-      savePath: downloadedFilePath,
+      savePath: downloadedFilePath.value,
       threadCount: 16,
     });
   } catch (err) {
@@ -145,29 +151,12 @@ onMounted(() => {
       }
 
       try {
-        let fileName = "";
-        let fileSha256 = sha256.value;
-
-        if (source.value === "official") {
-          const buildInfo = await getPaperBuildInfo(version.value, parseInt(build.value));
-          fileName = buildInfo.downloads.application.name;
-          fileSha256 = buildInfo.downloads.application.sha256;
-        } else {
-          const downloadInfo = await getServerDownloadUrl(
-            serverName.value,
-            version.value,
-            build.value,
-          );
-          fileName =
-            downloadInfo.url.split("/").pop() || `${serverName.value}-${version.value}.jar`;
-          fileSha256 = downloadInfo.sha256 || "";
-        }
-
-        const downloadedFilePath = `${serverPath.value}/${fileName}`;
+        // 使用已保存的文件路径和 SHA256
+        const fileSha256 = sha256.value;
 
         // 只有当有 SHA256 时才进行校验
         if (fileSha256) {
-          const isValid = await serverApi.verifyFileSha256(downloadedFilePath, fileSha256);
+          const isValid = await serverApi.verifyFileSha256(downloadedFilePath.value, fileSha256);
           if (!isValid) {
             stepStatus.value[3] = "error";
             errorMessage.value = "文件校验失败，SHA256 不匹配";
@@ -187,7 +176,7 @@ onMounted(() => {
           minMemory: minMemory.value,
           port: 25565,
           javaPath: javaPath.value,
-          jarPath: downloadedFilePath,
+          jarPath: downloadedFilePath.value,
           startupMode: "jar",
         });
 

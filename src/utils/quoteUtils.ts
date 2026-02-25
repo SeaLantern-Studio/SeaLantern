@@ -119,8 +119,8 @@ async function replenishCache() {
   const maxAttempts = 10;
   const fetchPromises: Promise<Quote | null>[] = [];
 
-  // 计算需要获取的数量
-  const needed = Math.min(2 - quoteCache.value.length, maxAttempts);
+  // 计算需要获取的数量，并限制为非负数
+  const needed = Math.max(0, Math.min(2 - quoteCache.value.length, maxAttempts));
 
   // 并行发起所有请求
   for (let i = 0; i < needed; i++) {

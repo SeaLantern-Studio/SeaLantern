@@ -235,12 +235,7 @@ watch(
         </div>
         <div class="config-field">
           <label class="config-label">服务器目录</label>
-          <SLInput
-            :model-value="serverPath"
-            placeholder="选择服务器目录（必须为空）"
-            readonly
-            disabled
-          >
+          <SLInput :model-value="serverPath" placeholder="选择服务器目录（必须为空）" readonly>
             <template #suffix>
               <button class="config-browse-button" @click="pickPath">浏览</button>
             </template>

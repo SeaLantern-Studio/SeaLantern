@@ -45,12 +45,14 @@ export function containsIoRedirection(command: string): boolean {
 }
 
 export function sortStartupCandidates(candidates: StartupCandidate[]): StartupCandidate[] {
-  return [...candidates].toSorted((a, b) => {
+  const sorted = [...candidates];
+  sorted.sort((a, b) => {
     if (a.recommended !== b.recommended) {
       return a.recommended - b.recommended;
     }
     return a.label.localeCompare(b.label);
   });
+  return sorted;
 }
 
 export function mapStartupModeForApi(
