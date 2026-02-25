@@ -163,28 +163,45 @@ const getDownloadUrl = (version: string, source: string): { url: string; version
       versionName: `jdk-${version}`,
     };
   } else {
-    // OpenJDK source - use archive URLs
-    const openjdkVersions: Record<string, string> = {
-      "17": "https://download.java.net/java/GA/jdk17.0.1/2a2082e5a09d4267845be086888add4f/12/GPL/openjdk-17.0.1_windows-x64_bin.zip",
-      "21": "https://download.java.net/java/GA/jdk21.0.1/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-21.0.1_windows-x64_bin.zip",
+    // OpenJDK source - use archive URLs from jdk.java.net/archive/
+    type OsArchUrls = { x64: string; aarch64: string };
+    type OsUrls = { windows: OsArchUrls; mac: OsArchUrls; linux: OsArchUrls };
+    type VersionUrls = Record<string, OsUrls>;
+
+    const openjdkUrls: VersionUrls = {
+      "17": {
+        windows: {
+          x64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip",
+          aarch64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip",
+        },
+        mac: {
+          x64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_macos-x64_bin.tar.gz",
+          aarch64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_macos-aarch64_bin.tar.gz",
+        },
+        linux: {
+          x64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz",
+          aarch64: "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz",
+        },
+      },
+      "21": {
+        windows: {
+          x64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_windows-x64_bin.zip",
+          aarch64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_windows-aarch64_bin.zip",
+        },
+        mac: {
+          x64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_macos-x64_bin.tar.gz",
+          aarch64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_macos-aarch64_bin.tar.gz",
+        },
+        linux: {
+          x64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-x64_bin.tar.gz",
+          aarch64: "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-aarch64_bin.tar.gz",
+        },
+      },
     };
 
-    const macVersions: Record<string, string> = {
-      "17": "https://download.java.net/java/GA/jdk17.0.1/2a2082e5a09d4267845be086888add4f/12/GPL/openjdk-17.0.1_macos-x64_bin.tar.gz",
-      "21": "https://download.java.net/java/GA/jdk21.0.1/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-21.0.1_macos-x64_bin.tar.gz",
-    };
-
-    const linuxVersions: Record<string, string> = {
-      "17": "https://download.java.net/java/GA/jdk17.0.1/2a2082e5a09d4267845be086888add4f/12/GPL/openjdk-17.0.1_linux-x64_bin.tar.gz",
-      "21": "https://download.java.net/java/GA/jdk21.0.1/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-21.0.1_linux-x64_bin.tar.gz",
-    };
-
-    let url = openjdkVersions[version] || openjdkVersions["17"];
-    if (os === "mac") {
-      url = macVersions[version] || macVersions["17"];
-    } else if (os === "linux") {
-      url = linuxVersions[version] || linuxVersions["17"];
-    }
+    const versionUrls = openjdkUrls[version] || openjdkUrls["17"];
+    const osUrls = versionUrls[os as keyof OsUrls] || versionUrls["windows"];
+    const url = osUrls[arch as keyof OsArchUrls] || osUrls["x64"];
 
     return {
       url,

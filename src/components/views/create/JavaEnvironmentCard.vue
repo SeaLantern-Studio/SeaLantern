@@ -92,7 +92,7 @@ async function pickJavaFile() {
       </div>
       <SLSelect
         :model-value="selectedJava"
-        @update:model-value="$emit('update:selectedJava', $event)"
+        @update:model-value="$emit('update:selectedJava', String($event))"
         :options="javaOptions"
         :placeholder="i18n.t('create.select_java')"
         searchable
