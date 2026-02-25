@@ -414,18 +414,9 @@ impl ServerManager {
             return Err("运行目录不能为空，请选择开服路径".to_string());
         }
 
-        // 使用启动项路径的哈希值作为文件夹名称
+        // 使用 UUID 作为文件夹名称，确保绝对不会重复
         let server_name = validate_server_name(&req.name)?;
-        let folder_name = if let Some(ref startup_path) = req.startup_file_path {
-            use sha2::{Digest, Sha256};
-            let mut hasher = Sha256::new();
-            hasher.update(startup_path.as_bytes());
-            hasher.update(&req.startup_mode.as_bytes());
-            let hash = hasher.finalize();
-            format!("{:x}", hash)
-        } else {
-            server_name.clone()
-        };
+        let folder_name = uuid::Uuid::new_v4().to_string();
         let run_dir = PathBuf::from(&base_path).join(&folder_name);
 
         // 检查目标目录是否已存在
