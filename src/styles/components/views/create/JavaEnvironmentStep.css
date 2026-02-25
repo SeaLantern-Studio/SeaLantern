@@ -9,19 +9,21 @@
 }
 
 .java-step-row {
-  display: grid;
-  grid-template-columns: 120px 1fr;
+  display: flex;
   gap: var(--sl-space-sm);
   align-items: start;
 }
 
 .java-step-label {
+  flex-shrink: 0;
+  min-width: 80px;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--sl-text-primary);
 }
 
 .java-step-control {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
