@@ -119,6 +119,7 @@ pub struct ParsedServerCoreInfo {
     pub core_type: String,
     pub main_class: Option<String>,
     pub jar_path: Option<String>,
+    pub version_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

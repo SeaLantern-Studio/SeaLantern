@@ -1,12 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use zip::ZipArchive;
 
 use crate::models::server::*;
 use serde::{Deserialize, Serialize};
@@ -1223,23 +1221,6 @@ impl ServerManager {
             pid: None,
             uptime: None,
         }
-    }
-
-    /// 从 server.jar 中提取 version.json 的 id 字段
-    pub fn get_server_version(&self, jar_path: &String) -> Result<String, String> {
-        let file = File::open(jar_path).map_err(|e| e.to_string())?;
-        let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
-        let mut version_file = archive.by_name("version.json").map_err(|e| e.to_string())?;
-        let mut content = String::new();
-        version_file
-            .read_to_string(&mut content)
-            .map_err(|e| e.to_string())?;
-        let json: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-        let id = json["id"]
-            .as_str()
-            .ok_or_else(|| "Missing or invalid 'id' field in version.json".to_string())?
-            .to_string();
-        Ok(id)
     }
 
     pub fn delete_server(&self, id: &str) -> Result<(), String> {

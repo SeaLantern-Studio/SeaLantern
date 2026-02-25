@@ -150,6 +150,7 @@ fn unknown_parsed_core_info() -> ParsedServerCoreInfo {
         core_type: "Unknown".to_string(),
         main_class: None,
         jar_path: None,
+        version_id: None,
     }
 }
 
@@ -217,7 +218,7 @@ fn scan_startup_candidates_blocking(
         }
 
         let (detected_mc_version, mc_version_detection_failed) =
-            crate::services::server_installer::detect_mc_version_from_mods(&inspect_root);
+            crate::services::server_installer::detect_mc_version(&inspect_root);
         let detected_core_type_key =
             crate::services::server_installer::CoreType::normalize_to_api_core_key(
                 &parsed.core_type,
@@ -294,6 +295,7 @@ fn scan_startup_candidates_blocking(
                     core_type: "Unknown".to_string(),
                     main_class: None,
                     jar_path: Some(full_path.clone()),
+                    version_id: None,
                 });
 
             let is_starter = parsed
@@ -327,6 +329,7 @@ fn scan_startup_candidates_blocking(
                 core_type: parsed.core_type.clone(),
                 main_class: parsed.main_class.clone(),
                 jar_path: Some(full_path.clone()),
+                version_id: parsed.version_id.clone(),
             };
             if detected_core
                 .as_ref()
@@ -377,7 +380,7 @@ fn scan_startup_candidates_blocking(
             &parsed_core.core_type,
         );
     let (detected_mc_version, mc_version_detection_failed) =
-        crate::services::server_installer::detect_mc_version_from_mods(source);
+        crate::services::server_installer::detect_mc_version(source);
 
     Ok(StartupScanResult {
         parsed_core,
@@ -493,11 +496,6 @@ pub fn get_server_list() -> Vec<ServerInstance> {
 #[tauri::command]
 pub fn get_server_status(id: String) -> ServerStatusInfo {
     manager().get_server_status(&id)
-}
-
-#[tauri::command]
-pub fn get_server_version(jar_path: String) -> Result<String, String> {
-    manager().get_server_version(&jar_path)
 }
 
 #[tauri::command]
