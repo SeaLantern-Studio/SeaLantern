@@ -53,7 +53,15 @@
 
 .run-path-toggle-row {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-sm);
+}
+
+.run-path-overwrite-warning {
+  margin: 0;
+  color: var(--sl-warning);
+  font-size: 0.8125rem;
 }
 
 .run-path-data-dir-toggle {
@@ -81,5 +89,10 @@
 @media (max-width: 768px) {
   .run-path-row {
     grid-template-columns: 1fr;
+  }
+
+  .run-path-toggle-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
