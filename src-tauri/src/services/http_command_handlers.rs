@@ -219,8 +219,6 @@ fn handle_import_modpack(
             req.startup_mode,
             req.online_mode,
             req.custom_command,
-            req.run_path,
-            req.use_software_data_dir,
             req.startup_file_path,
             req.core_type,
             req.mc_version,
