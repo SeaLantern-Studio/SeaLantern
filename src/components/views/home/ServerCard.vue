@@ -59,6 +59,20 @@ function handleConfig() {
 
 <template>
   <SLCard variant="glass" hoverable class="server-card">
+    <div class="status-badge-container">
+      <SLBadge
+        :text="getStatusText(store.statuses[server.id]?.status)"
+        :variant="getStatusVariant(store.statuses[server.id]?.status)"
+        :rounded="
+          ['Starting', 'Stopping'].includes(store.statuses[server.id]?.status) ? 'full' : true
+        "
+        size="large"
+        class="server-status-badge"
+        :class="{
+          'status-pending': ['Starting', 'Stopping'].includes(store.statuses[server.id]?.status),
+        }"
+      />
+    </div>
     <template #header>
       <div class="server-card-header">
         <div class="server-info">
@@ -82,7 +96,11 @@ function handleConfig() {
                   >
                     <Check :size="16" />
                   </button>
-                  <button class="inline-edit-btn cancel" @click="cancelEdit" :disabled="editLoading">
+                  <button
+                    class="inline-edit-btn cancel"
+                    @click="cancelEdit"
+                    :disabled="editLoading"
+                  >
                     <X :size="16" />
                   </button>
                 </div>
@@ -105,12 +123,6 @@ function handleConfig() {
             <span class="meta-tag">{{ server.max_memory }}MB</span>
           </div>
         </div>
-        <SLBadge
-          :text="getStatusText(store.statuses[server.id]?.status)"
-          :variant="getStatusVariant(store.statuses[server.id]?.status)"
-          size="large"
-          class="server-status-badge"
-        />
       </div>
     </template>
 
@@ -201,7 +213,15 @@ function handleConfig() {
 .server-card {
   display: flex;
   flex-direction: column;
-  gap: var(--sl-space-md);
+  gap: var(--sl-space-sm);
+  position: relative;
+}
+
+.status-badge-container {
+  position: absolute;
+  top: var(--sl-space-sm);
+  right: var(--sl-space-sm);
+  z-index: 10;
 }
 
 .server-card::before {
@@ -224,9 +244,10 @@ function handleConfig() {
 
 .server-card-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: var(--sl-space-md);
+  padding-right: 120px;
 }
 
 .server-info {
@@ -237,9 +258,8 @@ function handleConfig() {
 .server-name-container {
   display: flex;
   align-items: center;
-  gap: var(--sl-space-sm);
+  gap: var(--sl-space-xs);
   flex-wrap: wrap;
-  margin-bottom: var(--sl-space-xs);
 }
 
 .server-name {
@@ -260,6 +280,39 @@ function handleConfig() {
 .server-status-badge {
   font-weight: 600;
   letter-spacing: 0.5px;
+}
+
+.status-pending {
+  position: relative;
+  padding-left: 24px !important;
+  background: rgba(245, 158, 11, 0.1) !important;
+  color: rgb(245, 158, 11) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.status-pending::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(245, 158, 11);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(1.2);
+  }
 }
 
 .edit-server-name {
@@ -289,7 +342,6 @@ function handleConfig() {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sl-space-xs);
-  margin-top: var(--sl-space-xs);
 }
 
 .meta-tag {
@@ -398,9 +450,8 @@ function handleConfig() {
   font-size: 0.75rem;
   color: var(--sl-text-secondary);
   background: var(--sl-bg-tertiary);
-  padding: var(--sl-space-sm) var(--sl-space-md);
+  padding: 6px var(--sl-space-sm);
   border-radius: var(--sl-radius-md);
-  margin: var(--sl-space-xs) 0;
   border: 1px solid var(--sl-border);
   transition: all 0.2s ease;
   cursor: pointer;
@@ -442,7 +493,7 @@ function handleConfig() {
 .server-card-actions {
   display: flex;
   gap: var(--sl-space-sm);
-  padding-top: var(--sl-space-md);
+  padding-top: var(--sl-space-sm);
   border-top: 1px solid var(--sl-border-light);
   align-items: center;
   justify-content: space-between;

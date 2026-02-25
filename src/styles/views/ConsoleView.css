@@ -76,6 +76,18 @@
 .status-indicator.starting .status-dot,
 .status-indicator.stopping .status-dot {
   background: var(--sl-warning);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
 }
 
 .no-server {

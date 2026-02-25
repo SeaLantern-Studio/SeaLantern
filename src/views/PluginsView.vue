@@ -1052,10 +1052,7 @@ function goToMarket() {
                 {{ field.label }}
                 <span v-if="field.description" class="setting-desc">{{ field.description }}</span>
               </label>
-              <SLInput
-                v-if="field.type === 'string'"
-                v-model="settingsForm[field.key]"
-              />
+              <SLInput v-if="field.type === 'string'" v-model="settingsForm[field.key]" />
               <div v-else-if="field.type === 'color'" class="setting-color-field">
                 <input
                   type="color"

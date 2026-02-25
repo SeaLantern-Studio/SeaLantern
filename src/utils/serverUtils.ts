@@ -42,18 +42,17 @@ function formatBytes(bytes: number): string {
 /**
  * 格式化服务器路径
  * @param path 完整路径
- * @returns 格式化后的路径
+ * @returns 格式化后的路径（仅显示uuid文件夹名称）
  */
 function formatServerPath(path: string): string {
-  const serversIndex = path.indexOf("servers/");
-  if (serversIndex !== -1) {
-    return path.substring(serversIndex);
+  // 提取路径最后一部分（uuid文件夹）
+  const normalizedPath = path.replace(/\\/g, "/");
+  const parts = normalizedPath.split("/").filter(Boolean);
+  // 返回最后两部分（父文件夹/uuid文件夹）
+  if (parts.length >= 2) {
+    return parts.slice(-2).join("/");
   }
-  const serversIndexBackslash = path.indexOf("servers\\");
-  if (serversIndexBackslash !== -1) {
-    return path.substring(serversIndexBackslash);
-  }
-  return path;
+  return parts.length > 0 ? parts[parts.length - 1] : path;
 }
 
 /**
