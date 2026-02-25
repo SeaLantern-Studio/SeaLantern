@@ -31,7 +31,14 @@ pub fn run() {
     if std::path::Path::new("/.dockerenv").exists() {
         eprintln!("SeaLantern: Running in Docker, headless mode with HTTP server enabled");
         // 在 Docker 中启动 HTTP 服务器
-        let rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                eprintln!("SeaLantern: Failed to create Tokio runtime for HTTP server: {}", e);
+                eprintln!("SeaLantern: This may be due to container resource limits (memory, threads, etc.)");
+                std::process::exit(1);
+            }
+        };
         rt.block_on(async {
             // 尝试从环境变量获取静态文件目录，默认为 /app/dist
             let static_dir =
