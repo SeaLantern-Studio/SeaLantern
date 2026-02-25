@@ -325,11 +325,11 @@ function getStatusClass(status: string | undefined): string {
   0%,
   100% {
     opacity: 1;
-    transform: translateY(-50%) scale(1);
+    transform: scale(1);
   }
   50% {
     opacity: 0.5;
-    transform: translateY(-50%) scale(1.2);
+    transform: scale(1.2);
   }
 }
 
