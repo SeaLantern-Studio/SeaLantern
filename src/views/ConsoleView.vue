@@ -15,7 +15,7 @@ const serverStore = useServerStore();
 const consoleStore = useConsoleStore();
 
 const commandInput = ref("");
-const logContainer = ref<HTMLElement | null>(null);
+const consoleOutputRef = ref<InstanceType<typeof ConsoleOutput> | null>(null);
 const userScrolledUp = ref(false);
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref(-1);
@@ -140,9 +140,7 @@ async function sendCommand(cmd?: string) {
 }
 
 function doScroll() {
-  nextTick(() => {
-    if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight;
-  });
+  consoleOutputRef.value?.doScroll();
 }
 
 async function handleStart() {
@@ -303,6 +301,7 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
 
       <!-- 控制台输出部分 -->
       <ConsoleOutput
+        ref="consoleOutputRef"
         :logs="currentLogs"
         :consoleFontSize="consoleFontSize"
         :userScrolledUp="userScrolledUp"

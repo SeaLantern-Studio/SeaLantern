@@ -75,6 +75,10 @@ export const systemApi = {
     return tauriInvoke("pick_jar_file");
   },
 
+  async pickArchiveFile(): Promise<string | null> {
+    return tauriInvoke("pick_archive_file");
+  },
+
   async pickStartupFile(mode: "jar" | "bat" | "sh"): Promise<string | null> {
     return tauriInvoke("pick_startup_file", { mode });
   },
