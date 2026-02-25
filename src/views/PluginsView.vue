@@ -9,6 +9,8 @@ import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -1050,11 +1052,9 @@ function goToMarket() {
                 {{ field.label }}
                 <span v-if="field.description" class="setting-desc">{{ field.description }}</span>
               </label>
-              <input
+              <SLInput
                 v-if="field.type === 'string'"
                 v-model="settingsForm[field.key]"
-                type="text"
-                class="setting-input"
               />
               <div v-else-if="field.type === 'color'" class="setting-color-field">
                 <input
@@ -1062,13 +1062,12 @@ function goToMarket() {
                   v-model="settingsForm[field.key]"
                   class="setting-color-picker"
                 />
-                <input type="text" v-model="settingsForm[field.key]" class="setting-input" />
+                <SLInput v-model="settingsForm[field.key]" />
               </div>
-              <input
+              <SLInput
                 v-else-if="field.type === 'number'"
-                v-model.number="settingsForm[field.key]"
+                v-model="settingsForm[field.key]"
                 type="number"
-                class="setting-input"
               />
               <label v-else-if="field.type === 'boolean'" class="setting-toggle">
                 <SLSwitch
@@ -1077,15 +1076,11 @@ function goToMarket() {
                   size="sm"
                 />
               </label>
-              <select
+              <SLSelect
                 v-else-if="field.type === 'select'"
                 v-model="settingsForm[field.key]"
-                class="setting-select"
-              >
-                <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </select>
+                :options="field.options"
+              />
             </div>
 
             <div class="plugin-details-section">

@@ -25,17 +25,6 @@
   overflow: hidden;
 }
 
-.sl-modal::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--sl-primary, #0ea5e9), var(--sl-accent, #06b6d4));
-  opacity: 0.8;
-}
-
 .sl-modal-header {
   display: flex;
   align-items: center;

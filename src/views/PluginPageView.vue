@@ -4,6 +4,8 @@ import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import type { PluginInfo } from "@type/plugin";
@@ -237,10 +239,10 @@ watch(
                 <span v-if="field.description" class="field-desc">{{ field.description }}</span>
               </label>
               <template v-if="field.type === 'string'">
-                <input type="text" class="field-input" v-model="settingsForm[field.key]" />
+                <SLInput v-model="settingsForm[field.key]" />
               </template>
               <template v-else-if="field.type === 'number'">
-                <input type="number" class="field-input" v-model.number="settingsForm[field.key]" />
+                <SLInput type="number" v-model="settingsForm[field.key]" />
               </template>
               <template v-else-if="field.type === 'boolean'">
                 <SLSwitch
@@ -250,11 +252,7 @@ watch(
                 />
               </template>
               <template v-else-if="field.type === 'select'">
-                <select class="field-select" v-model="settingsForm[field.key]">
-                  <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                <SLSelect v-model="settingsForm[field.key]" :options="field.options" />
               </template>
             </div>
           </div>
@@ -281,17 +279,12 @@ watch(
                 <span v-if="field.description" class="field-desc">{{ field.description }}</span>
               </label>
               <template v-if="field.type === 'string'">
-                <input
-                  type="text"
-                  class="field-input"
-                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                />
+                <SLInput v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]" />
               </template>
               <template v-else-if="field.type === 'number'">
-                <input
+                <SLInput
                   type="number"
-                  class="field-input"
-                  v-model.number="dependentSettingsForms[depPlugin.manifest.id][field.key]"
+                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
                 />
               </template>
               <template v-else-if="field.type === 'boolean'">
@@ -304,14 +297,10 @@ watch(
                 />
               </template>
               <template v-else-if="field.type === 'select'">
-                <select
-                  class="field-select"
+                <SLSelect
                   v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                >
-                  <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                  :options="field.options"
+                />
               </template>
             </div>
           </div>

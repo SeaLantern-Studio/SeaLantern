@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SLCard from "@components/common/SLCard.vue";
 import SLInput from "@components/common/SLInput.vue";
+import SLTextarea from "@components/common/SLTextarea.vue";
 import JavaDownloader from "@components/JavaDownloader.vue";
 import { i18n } from "@language";
 
@@ -121,18 +122,17 @@ const emit = defineEmits<{
           <span class="sl-setting-label">{{ i18n.t("settings.jvm_args") }}</span>
           <span class="sl-setting-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
         </div>
-        <textarea
-          class="jvm-textarea"
-          :value="defaultJvmArgs"
+        <SLTextarea
+          :model-value="defaultJvmArgs"
           :placeholder="i18n.t('settings.jvm_args_placeholder')"
-          rows="3"
-          @input="
-            (e) => {
-              emit('update:defaultJvmArgs', (e.target as HTMLTextAreaElement).value);
+          :rows="3"
+          @update:model-value="
+            (v) => {
+              emit('update:defaultJvmArgs', v);
               emit('change');
             }
           "
-        ></textarea>
+        />
       </div>
     </div>
   </SLCard>
@@ -144,23 +144,10 @@ const emit = defineEmits<{
   align-items: stretch;
 }
 
-.jvm-textarea {
-  width: 100%;
+.sl-setting-row.full-width :deep(.sl-textarea) {
   margin-top: var(--sl-space-sm);
-  padding: var(--sl-space-sm) var(--sl-space-md);
   font-family: var(--sl-font-mono);
   font-size: 0.8125rem;
-  color: var(--sl-text-primary);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  resize: vertical;
   line-height: 1.6;
-}
-
-.jvm-textarea:focus {
-  border-color: var(--sl-primary);
-  box-shadow: 0 0 0 3px var(--sl-primary-bg);
-  outline: none;
 }
 </style>
