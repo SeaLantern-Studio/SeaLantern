@@ -17,7 +17,8 @@ language/
 ├── fr-FA.json    # 波斯语
 ├── ru-RU.json    # 俄语
 ├── vi-VN.json    # 越南语
-└── README.md     # 本文档
+├── README.md     # 本文档
+└── README-en.md  # 本文档的英文版
 ```
 
 ## 快速开始
