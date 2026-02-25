@@ -7,11 +7,14 @@ FROM docker.m.daocloud.io/node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
+# 安装 pnpm
+RUN npm install -g pnpm@9.15.9
+
 # 复制 package 文件
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # 安装依赖
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # 复制前端源代码
 COPY . .
