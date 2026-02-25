@@ -145,7 +145,9 @@ async function pickFolder() {
       @dragleave.prevent="dragging = false"
       @drop="handleDrop"
     >
-      <div class="source-intake-icon">+</div>
+      <div class="source-intake-icon">
+        <Folder :size="16" class="source-intake-icon-svg" />
+      </div>
       <div class="source-intake-main">
         <p class="source-intake-title" :class="{ selected: !!sourcePath }">
           {{ sourcePath ? selectedName : i18n.t("create.source_drop_or_click") }}
@@ -166,16 +168,28 @@ async function pickFolder() {
       <DialogPortal>
         <DialogOverlay class="source-chooser-overlay" />
         <DialogContent class="source-chooser-content">
-          <DialogTitle class="source-chooser-title">{{ i18n.t("create.source_choose_title") }}</DialogTitle>
+          <DialogTitle class="source-chooser-title">{{
+            i18n.t("create.source_choose_title")
+          }}</DialogTitle>
           <DialogDescription class="source-chooser-description">
             {{ i18n.t("create.source_choose_description") }}
           </DialogDescription>
           <div class="source-chooser-actions">
-            <SLButton variant="primary" size="lg" class="source-chooser-option" @click="pickArchive">
+            <SLButton
+              variant="primary"
+              size="lg"
+              class="source-chooser-option"
+              @click="pickArchive"
+            >
               <Archive :size="22" />
               <span>{{ i18n.t("create.source_pick_archive") }}</span>
             </SLButton>
-            <SLButton variant="secondary" size="lg" class="source-chooser-option" @click="pickFolder">
+            <SLButton
+              variant="secondary"
+              size="lg"
+              class="source-chooser-option"
+              @click="pickFolder"
+            >
               <Folder :size="22" />
               <span>{{ i18n.t("create.source_pick_folder") }}</span>
             </SLButton>

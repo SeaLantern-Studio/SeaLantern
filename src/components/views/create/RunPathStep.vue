@@ -76,7 +76,12 @@ const effectivePath = computed(() => {
         @update:model-value="emit('update:runPath', $event)"
       >
         <template #suffix>
-          <button type="button" class="run-path-picker" :disabled="inputDisabled" @click="emit('pickPath')">
+          <button
+            type="button"
+            class="run-path-picker"
+            :disabled="inputDisabled"
+            @click="emit('pickPath')"
+          >
             {{ i18n.t("create.browse") }}
           </button>
         </template>

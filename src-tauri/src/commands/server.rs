@@ -1,9 +1,28 @@
 use crate::models::server::*;
 use crate::services::global;
 use std::path::Path;
+use std::time::Duration;
+
+const STARTER_DOWNLOAD_API_BASE: &str = "https://api.mslmc.cn/v3/download/server";
 
 fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
+}
+
+#[derive(serde::Serialize)]
+pub struct StarterDownloadOptions {
+    pub core_type_options: Vec<String>,
+    pub mc_version_options: Vec<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct StarterDownloadApiResponse {
+    data: Option<StarterDownloadApiData>,
+}
+
+#[derive(serde::Deserialize)]
+struct StarterDownloadApiData {
+    url: Option<String>,
 }
 
 #[tauri::command]
@@ -143,6 +162,69 @@ pub async fn scan_startup_candidates(
     })
     .await
     .map_err(|e| format!("扫描启动项任务失败: {}", e))?
+}
+
+#[tauri::command]
+pub fn get_starter_download_options() -> StarterDownloadOptions {
+    StarterDownloadOptions {
+        core_type_options: crate::services::server_installer::CoreType::all_api_core_keys()
+            .iter()
+            .map(|value| value.to_string())
+            .collect::<Vec<String>>(),
+        mc_version_options: crate::services::server_installer::STARTER_MC_VERSION_OPTIONS
+            .iter()
+            .map(|value| value.to_string())
+            .collect::<Vec<String>>(),
+    }
+}
+
+#[tauri::command]
+pub fn resolve_starter_download_url(
+    core_type: String,
+    mc_version: String,
+) -> Result<String, String> {
+    let core_type_key =
+        crate::services::server_installer::CoreType::normalize_to_api_core_key(&core_type)
+            .ok_or_else(|| format!("无效的核心类别: {}", core_type))?;
+    let mc_version_trimmed = mc_version.trim().to_string();
+    if mc_version_trimmed.is_empty() {
+        return Err("游戏版本不能为空".to_string());
+    }
+
+    let mut url = reqwest::Url::parse(STARTER_DOWNLOAD_API_BASE)
+        .map_err(|e| format!("构建 Starter 下载链接失败: {}", e))?;
+    {
+        let mut segments = url
+            .path_segments_mut()
+            .map_err(|_| "Starter 下载链接不支持路径段写入".to_string())?;
+        segments.push(core_type_key.as_str());
+        segments.push(mc_version_trimmed.as_str());
+    }
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
+    let response = client
+        .get(url.clone())
+        .send()
+        .map_err(|e| format!("请求 Starter 下载信息失败: {}", e))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!("Starter 下载接口返回异常状态: {} ({})", status, url));
+    }
+
+    let payload: StarterDownloadApiResponse = response
+        .json()
+        .map_err(|e| format!("解析 Starter 下载信息失败: {}", e))?;
+    let data = payload
+        .data
+        .ok_or_else(|| "Starter 下载接口缺少 data 字段".to_string())?;
+    data.url
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "Starter 下载接口未返回 data.url".to_string())
 }
 
 fn unknown_parsed_core_info() -> ParsedServerCoreInfo {

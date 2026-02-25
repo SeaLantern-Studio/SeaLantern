@@ -33,6 +33,11 @@ export interface StartupScanResult {
   mcVersionDetectionFailed: boolean;
 }
 
+export interface StarterDownloadOptions {
+  coreTypeOptions: string[];
+  mcVersionOptions: string[];
+}
+
 interface ParsedServerCoreInfoRaw {
   core_type: string;
   main_class: string | null;
@@ -56,6 +61,11 @@ interface StartupScanResultRaw {
   mc_version_options: string[];
   detected_mc_version: string | null;
   mc_version_detection_failed: boolean;
+}
+
+interface StarterDownloadOptionsRaw {
+  core_type_options: string[];
+  mc_version_options: string[];
 }
 
 export const serverApi = {
@@ -140,7 +150,9 @@ export const serverApi = {
   },
 
   async parseServerCoreType(sourcePath: string): Promise<ParsedServerCoreInfo> {
-    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", { sourcePath });
+    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", {
+      sourcePath,
+    });
     return {
       coreType: result.core_type,
       mainClass: result.main_class,
@@ -177,6 +189,21 @@ export const serverApi = {
       detectedMcVersion: result.detected_mc_version,
       mcVersionDetectionFailed: result.mc_version_detection_failed,
     };
+  },
+
+  async getStarterDownloadOptions(): Promise<StarterDownloadOptions> {
+    const result = await tauriInvoke<StarterDownloadOptionsRaw>("get_starter_download_options");
+    return {
+      coreTypeOptions: result.core_type_options,
+      mcVersionOptions: result.mc_version_options,
+    };
+  },
+
+  async resolveStarterDownloadUrl(coreType: string, mcVersion: string): Promise<string> {
+    return tauriInvoke<string>("resolve_starter_download_url", {
+      coreType,
+      mcVersion,
+    });
   },
 
   async collectCopyConflicts(sourceDir: string, targetDir: string): Promise<string[]> {

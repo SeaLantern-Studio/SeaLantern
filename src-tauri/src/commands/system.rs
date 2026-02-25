@@ -376,3 +376,17 @@ pub fn open_folder(path: String) -> Result<(), String> {
 
     Ok(())
 }
+
+#[tauri::command]
+pub fn remove_file_if_exists(path: String) -> Result<bool, String> {
+    let file_path = std::path::Path::new(&path);
+    if !file_path.exists() {
+        return Ok(false);
+    }
+    if !file_path.is_file() {
+        return Err(format!("目标不是文件: {}", file_path.display()));
+    }
+
+    std::fs::remove_file(file_path).map_err(|e| format!("删除文件失败: {}", e))?;
+    Ok(true)
+}

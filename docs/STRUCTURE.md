@@ -345,3 +345,4 @@ sea-lantern/
 ├── tsconfig.node.json                 # Node.js 环境 TypeScript 配置
 ├── vite.config.ts                     # Vite 构建配置
 └── 提交前测试必读！！！.md            # 提交前测试指南
+```

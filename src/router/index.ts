@@ -10,7 +10,11 @@ const routes = [
   },
   {
     path: "/create",
-    name: "create-server",
+    redirect: "/create/step/1",
+  },
+  {
+    path: "/create/step/:step",
+    name: "create-server-step",
     component: () => import("@views/CreateServerView.vue"),
     meta: { title: "创建服务器", icon: "plus" },
   },
