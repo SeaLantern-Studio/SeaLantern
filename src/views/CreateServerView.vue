@@ -25,6 +25,8 @@ import { downloadApi } from "@api/downloader";
 import { serverApi } from "@api/server";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
+import { STARTER_SERVER_JAR_NAME } from "@components/views/create/constants";
+import { joinPath, normalizePathForMatch } from "@components/views/create/startupUtils";
 import { useCreateServerPage } from "@components/views/create/useCreateServerPage";
 
 const {
@@ -169,23 +171,6 @@ watch(isCoreDownloadCompleted, (completed) => {
   sourceType.value = "folder";
 });
 
-function normalizePathForMatch(path: string): string {
-  const normalized = path.trim().replace(/\\/g, "/").replace(/\/+$/, "");
-  if (!normalized) {
-    return "";
-  }
-  return /^[a-zA-Z]:/.test(normalized) ? normalized.toLowerCase() : normalized;
-}
-
-function joinPath(basePath: string, fileName: string): string {
-  const trimmedBase = basePath.replace(/[\\/]+$/, "");
-  if (!trimmedBase) {
-    return fileName;
-  }
-  const separator = basePath.includes("\\") ? "\\" : "/";
-  return `${trimmedBase}${separator}${fileName}`;
-}
-
 const totalSteps = computed(() => Math.max(stepItems.value.length, 1));
 
 const currentStep = computed(() => {
@@ -251,7 +236,7 @@ async function handleCoreDownload() {
     );
 
     const normalizedTargetPath = coreDownloadTargetPath.value.trim().replace(/[\\/]+$/, "");
-    const fileName = "server.jar";
+    const fileName = STARTER_SERVER_JAR_NAME;
 
     const savePath = joinPath(normalizedTargetPath, fileName);
     const sameDownloadFolder =

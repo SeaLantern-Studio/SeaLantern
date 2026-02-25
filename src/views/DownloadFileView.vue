@@ -92,12 +92,12 @@ async function handleDownload() {
     return;
   }
 
-  const threadCountValue = threadCount.value;
-  if (threadCountValue == "") {
+  const threadCountValue = threadCount.value.trim();
+  if (!threadCountValue) {
     showError("线程数不能为空");
     return;
   }
-  if (!/^-?\d+$/.test(threadCountValue)) {
+  if (!/^\d+$/.test(threadCountValue)) {
     showError("字符不合法");
     return;
   }
@@ -105,7 +105,11 @@ async function handleDownload() {
     showError("线程数必须是一个正整数");
     return;
   }
-  const threadCountInt = parseInt(threadCountValue, 10);
+  const threadCountInt = Number.parseInt(threadCountValue, 10);
+  if (!Number.isFinite(threadCountInt) || threadCountInt <= 0) {
+    showError("线程数必须是一个正整数");
+    return;
+  }
 
   clearError();
   resetTask();

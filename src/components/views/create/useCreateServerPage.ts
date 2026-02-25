@@ -286,14 +286,10 @@ export function useCreateServerPage() {
 
       if (settings.cached_java_list && settings.cached_java_list.length > 0) {
         javaList.value = settings.cached_java_list;
-        if (settings.default_java_path) {
-          selectedJava.value = settings.default_java_path;
-        } else {
-          const preferredJava = javaList.value.find(
-            (java) => java.is_64bit && java.major_version >= 17,
-          );
-          selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
-        }
+        selectedJava.value = resolvePreferredJavaPath(
+          javaList.value,
+          settings.default_java_path,
+        );
       }
     } catch (error) {
       console.error("Failed to load default settings:", error);
@@ -305,10 +301,7 @@ export function useCreateServerPage() {
     try {
       javaList.value = await javaApi.detect();
       if (javaList.value.length > 0) {
-        const preferredJava = javaList.value.find(
-          (java) => java.is_64bit && java.major_version >= 17,
-        );
-        selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
+        selectedJava.value = resolvePreferredJavaPath(javaList.value);
       }
 
       const settings = await settingsApi.get();
@@ -592,4 +585,15 @@ export function useCreateServerPage() {
     detectJava,
     handleSubmit,
   };
+}
+
+function resolvePreferredJavaPath(javaList: JavaInfo[], defaultPath?: string): string {
+  if (defaultPath) {
+    return defaultPath;
+  }
+  if (javaList.length === 0) {
+    return "";
+  }
+  const preferredJava = javaList.find((java) => java.is_64bit && java.major_version >= 17);
+  return preferredJava ? preferredJava.path : javaList[0].path;
 }

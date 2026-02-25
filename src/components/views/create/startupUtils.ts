@@ -10,6 +10,14 @@ export function normalizePathForCompare(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+$/, "");
 }
 
+export function normalizePathForMatch(path: string): string {
+  const normalized = normalizePathForCompare(path.trim());
+  if (!normalized) {
+    return "";
+  }
+  return /^[a-zA-Z]:/.test(normalized) ? normalized.toLowerCase() : normalized;
+}
+
 export function isStrictChildPath(candidatePath: string, parentPath: string): boolean {
   const candidateNorm = normalizePathForCompare(candidatePath.trim());
   const parentNorm = normalizePathForCompare(parentPath.trim());
