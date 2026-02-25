@@ -34,6 +34,8 @@
 - 检查更新，一键下载新版本
 
 ## 快速开始
+(Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击这里跳转)
+[前往SL官方文档](https://docs.ideaflash.cn/zh/intro)
 
 下载 [release](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest) 版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
 
