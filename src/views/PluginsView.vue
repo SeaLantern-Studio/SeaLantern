@@ -8,6 +8,7 @@ import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
+import SLCheckbox from "@components/common/SLCheckbox.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -875,12 +876,10 @@ function goToMarket() {
         >
           <div class="plugin-content">
             <label v-if="batchMode" class="plugin-checkbox" @click.stop>
-              <input
-                type="checkbox"
-                :checked="selectedPlugins.has(plugin.manifest.id)"
-                @change="togglePluginSelection(plugin.manifest.id)"
+              <SLCheckbox
+                :modelValue="selectedPlugins.has(plugin.manifest.id)"
+                @update:modelValue="togglePluginSelection(plugin.manifest.id)"
               />
-              <span class="checkbox-custom"></span>
             </label>
 
             <div class="plugin-card-actions">
@@ -998,13 +997,17 @@ function goToMarket() {
                 </button>
                 <SLSwitch
                   :modelValue="isPluginEnabled(plugin.state)"
-                  :disabled="hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)"
+                  :disabled="
+                    hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
+                  "
                   :title="
                     hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
                       ? i18n.t('plugins.missing_required_deps')
                       : ''
                   "
-                  @update:modelValue="handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))"
+                  @update:modelValue="
+                    handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))
+                  "
                   size="sm"
                 />
               </div>
@@ -1056,7 +1059,11 @@ function goToMarket() {
                 class="setting-input"
               />
               <label v-else-if="field.type === 'boolean'" class="setting-toggle">
-                <SLSwitch :modelValue="Boolean(settingsForm[field.key])" @update:modelValue="settingsForm[field.key] = $event" size="sm" />
+                <SLSwitch
+                  :modelValue="Boolean(settingsForm[field.key])"
+                  @update:modelValue="settingsForm[field.key] = $event"
+                  size="sm"
+                />
               </label>
               <select
                 v-else-if="field.type === 'select'"
@@ -1674,50 +1681,6 @@ function goToMarket() {
   z-index: 5;
   display: flex;
   align-items: center;
-  cursor: pointer;
-}
-
-.plugin-checkbox input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.plugin-checkbox .checkbox-custom {
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid var(--sl-text-tertiary);
-  border-radius: var(--sl-radius-xs);
-  background: transparent;
-  transition: all var(--sl-transition-fast);
-  position: relative;
-}
-
-.plugin-checkbox .checkbox-custom::after {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 2px;
-  width: 5px;
-  height: 9px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) scale(0);
-  transition: transform var(--sl-transition-fast);
-}
-
-.plugin-checkbox input[type="checkbox"]:checked + .checkbox-custom {
-  background: var(--sl-primary);
-  border-color: var(--sl-primary);
-}
-
-.plugin-checkbox input[type="checkbox"]:checked + .checkbox-custom::after {
-  transform: rotate(45deg) scale(1);
-}
-
-.plugin-checkbox:hover .checkbox-custom {
-  border-color: var(--sl-primary);
 }
 
 .batch-delete-dialog {

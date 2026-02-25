@@ -7,6 +7,7 @@ import { useI18nStore } from "@stores/i18nStore";
 import { i18n } from "@language";
 import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
+import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 import {
