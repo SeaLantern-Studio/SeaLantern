@@ -13,6 +13,40 @@ const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
 const STARTER_DOWNLOAD_API_BASE: &str = "https://api.mslmc.cn/v3/download/server";
 
+/// 验证服务器名称，防止路径遍历攻击
+/// 返回清理后的名称或错误信息
+fn validate_server_name(name: &str) -> Result<String, String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err("服务器名称不能为空".to_string());
+    }
+    if trimmed.len() > 64 {
+        return Err("服务器名称不能超过64个字符".to_string());
+    }
+    // 禁止的字符：路径分隔符和Windows保留字符
+    let forbidden_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'];
+    for c in forbidden_chars {
+        if trimmed.contains(c) {
+            return Err(format!("服务器名称包含非法字符: '{}'", c));
+        }
+    }
+    // 禁止以点开头（防止隐藏文件）或以空格/点结尾
+    if trimmed.starts_with('.') || trimmed.ends_with('.') || trimmed.ends_with(' ') {
+        return Err("服务器名称不能以点开头或结尾，也不能以空格结尾".to_string());
+    }
+    // 禁止Windows保留名称
+    let reserved = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", 
+                    "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", 
+                    "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"];
+    let upper = trimmed.to_uppercase();
+    for r in reserved {
+        if upper == r || upper.starts_with(&format!("{}.", r)) {
+            return Err(format!("服务器名称不能使用系统保留名称: {}", r));
+        }
+    }
+    Ok(trimmed.to_string())
+}
+
 #[derive(Debug, Deserialize)]
 struct StarterDownloadApiResponse {
     data: Option<StarterDownloadApiData>,
@@ -205,6 +239,7 @@ impl ServerManager {
     }
 
     pub fn create_server(&self, req: CreateServerRequest) -> Result<ServerInstance, String> {
+        let server_name = validate_server_name(&req.name)?;
         let id = uuid::Uuid::new_v4().to_string();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -218,7 +253,7 @@ impl ServerManager {
 
         let server = ServerInstance {
             id: id.clone(),
-            name: req.name,
+            name: server_name,
             core_type: req.core_type,
             core_version: String::new(),
             mc_version: req.mc_version,
@@ -247,6 +282,7 @@ impl ServerManager {
     }
 
     pub fn import_server(&self, req: ImportServerRequest) -> Result<ServerInstance, String> {
+        let server_name = validate_server_name(&req.name)?;
         let startup_mode = normalize_startup_mode(&req.startup_mode).to_string();
         let source_startup_file = std::path::Path::new(&req.jar_path);
         if !source_startup_file.exists() {
@@ -335,7 +371,7 @@ impl ServerManager {
 
         let server = ServerInstance {
             id: id.clone(),
-            name: req.name,
+            name: server_name,
             core_type,
             core_version: String::new(),
             mc_version: "unknown".into(),
@@ -378,11 +414,8 @@ impl ServerManager {
         }
 
         // 在用户选择的路径下创建以服务器名称命名的子文件夹
-        let server_name = req.name.trim();
-        if server_name.is_empty() {
-            return Err("服务器名称不能为空".to_string());
-        }
-        let run_dir = PathBuf::from(&base_path).join(server_name);
+        let server_name = validate_server_name(&req.name)?;
+        let run_dir = PathBuf::from(&base_path).join(&server_name);
 
         // 检查目标目录是否已存在
         if run_dir.exists() {
@@ -478,7 +511,7 @@ impl ServerManager {
             RunPathServerMapping {
                 run_path: run_dir.to_string_lossy().to_string(),
                 server_id: id.clone(),
-                server_name: req.name.clone(),
+                server_name: server_name.clone(),
                 startup_mode: startup_mode.clone(),
                 startup_file_path: startup_file_path.clone(),
                 custom_command: custom_command.clone(),
@@ -532,7 +565,7 @@ impl ServerManager {
 
         let server = ServerInstance {
             id: id.clone(),
-            name: req.name,
+            name: server_name,
             core_type,
             core_version: String::new(),
             mc_version,
@@ -570,6 +603,7 @@ impl ServerManager {
         &self,
         req: AddExistingServerRequest,
     ) -> Result<ServerInstance, String> {
+        let server_name = validate_server_name(&req.name)?;
         let server_path = std::path::Path::new(&req.server_path);
 
         // 验证路径存在且是目录
@@ -640,7 +674,7 @@ impl ServerManager {
 
         let server = ServerInstance {
             id: id.clone(),
-            name: req.name,
+            name: server_name,
             core_type,
             core_version: String::new(),
             mc_version: "unknown".into(),
@@ -1315,9 +1349,10 @@ impl ServerManager {
     }
 
     pub fn update_server_name(&self, id: &str, new_name: &str) -> Result<(), String> {
+        let validated_name = validate_server_name(new_name)?;
         let mut servers = self.servers.lock().expect("servers lock poisoned");
         if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
-            server.name = new_name.to_string();
+            server.name = validated_name;
             drop(servers);
             self.save();
             Ok(())
