@@ -377,3 +377,4 @@ pub fn open_folder(path: String) -> Result<(), String> {
 
     Ok(())
 }
+//fuck U Cargo fmt Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！Fuck U！
