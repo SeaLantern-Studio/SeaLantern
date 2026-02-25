@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Pencil, FolderOpen, Check, X } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
-import SLBadge from "@components/common/SLBadge.vue";
 import SLButton from "@components/common/SLButton.vue";
 import type { ServerInstance } from "@type/server";
 import { i18n } from "@language";
@@ -75,66 +74,61 @@ function getStatusClass(status: string | undefined): string {
         <span class="status-label">{{ getStatusText(store.statuses[server.id]?.status) }}</span>
       </div>
     </div>
-    <template #header>
-      <div class="server-card-header">
-        <div class="server-info">
-          <div class="server-name-container">
-            <template v-if="editingServerId === server.id">
-              <div class="inline-edit">
-                <input
-                  type="text"
-                  v-model="editName"
-                  class="server-name-input"
-                  @keyup.enter="saveServerName(server.id)"
-                  @keyup.esc="cancelEdit"
-                  @blur="saveServerName(server.id)"
-                />
-                <div class="inline-edit-actions">
-                  <button
-                    class="inline-edit-btn save"
-                    @click="saveServerName(server.id)"
-                    :disabled="!editName.trim() || editLoading"
-                    :class="{ loading: editLoading }"
-                  >
-                    <Check :size="16" />
-                  </button>
-                  <button
-                    class="inline-edit-btn cancel"
-                    @click="cancelEdit"
-                    :disabled="editLoading"
-                  >
-                    <X :size="16" />
-                  </button>
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <h4 class="server-name">{{ server.name }}</h4>
-              <button
-                class="edit-server-name"
-                @click="startEditServerName(server)"
-                :title="i18n.t('common.edit_server_name')"
-              >
-                <Pencil :size="16" />
-              </button>
-            </template>
-          </div>
-          <div class="server-meta">
-            <span class="meta-tag core-type">{{ server.core_type }}</span>
-            <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
-            <span class="meta-tag">{{ server.max_memory }}MB</span>
-          </div>
-        </div>
-      </div>
-    </template>
 
-    <div
-      class="server-card-path text-mono text-caption"
-      :title="server.path"
-      @click="handlePathClick(server.path)"
-    >
-      <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
-      <FolderOpen class="folder-icon" :size="16" />
+    <div class="server-card-header">
+      <div class="server-name-container">
+        <template v-if="editingServerId === server.id">
+          <div class="inline-edit">
+            <input
+              type="text"
+              v-model="editName"
+              class="server-name-input"
+              @keyup.enter="saveServerName(server.id)"
+              @keyup.esc="cancelEdit"
+              @blur="saveServerName(server.id)"
+            />
+            <div class="inline-edit-actions">
+              <button
+                class="inline-edit-btn save"
+                @click="saveServerName(server.id)"
+                :disabled="!editName.trim() || editLoading"
+                :class="{ loading: editLoading }"
+              >
+                <Check :size="16" />
+              </button>
+              <button class="inline-edit-btn cancel" @click="cancelEdit" :disabled="editLoading">
+                <X :size="16" />
+              </button>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <h4 class="server-name">{{ server.name }}</h4>
+          <button
+            class="edit-server-name"
+            @click="startEditServerName(server)"
+            :title="i18n.t('common.edit_server_name')"
+          >
+            <Pencil :size="16" />
+          </button>
+        </template>
+      </div>
+      <div class="server-meta">
+        <span class="meta-tag core-type">{{ server.core_type }}</span>
+        <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
+        <span class="meta-tag">{{ server.max_memory }}MB</span>
+      </div>
+    </div>
+
+    <div class="server-card-content">
+      <div
+        class="server-card-path text-mono text-caption"
+        :title="server.path"
+        @click="handlePathClick(server.path)"
+      >
+        <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
+        <FolderOpen class="folder-icon" :size="16" />
+      </div>
     </div>
 
     <div class="server-card-actions">
@@ -215,8 +209,9 @@ function getStatusClass(status: string | undefined): string {
 .server-card {
   display: flex;
   flex-direction: column;
-  gap: var(--sl-space-sm);
   position: relative;
+  height: 100%;
+  min-height: 200px;
 }
 
 .status-badge-container {
@@ -272,6 +267,18 @@ function getStatusClass(status: string | undefined): string {
   animation: pulse 2s infinite;
 }
 
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
 .server-card::before {
   content: "";
   position: absolute;
@@ -292,22 +299,15 @@ function getStatusClass(status: string | undefined): string {
 
 .server-card-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: var(--sl-space-md);
-  padding-right: 120px;
-}
-
-.server-info {
-  flex: 1;
-  min-width: 0;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+  padding-right: 100px;
 }
 
 .server-name-container {
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  flex-wrap: wrap;
 }
 
 .server-name {
@@ -321,28 +321,16 @@ function getStatusClass(status: string | undefined): string {
   white-space: nowrap;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.2);
-  }
-}
-
 .edit-server-name {
   opacity: 0;
   background: transparent;
   border: none;
   cursor: pointer;
-  font-size: 0.875rem;
   transition: all 0.2s ease;
   padding: 4px;
   border-radius: var(--sl-radius-sm);
   flex-shrink: 0;
+  color: var(--sl-text-secondary);
 }
 
 .server-card:hover .edit-server-name {
@@ -351,41 +339,7 @@ function getStatusClass(status: string | undefined): string {
 
 .edit-server-name:hover {
   background: var(--sl-bg-secondary);
-  transform: scale(1.05);
-}
-
-.server-meta {
-  font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sl-space-xs);
-}
-
-.meta-tag {
-  background: var(--sl-bg-tertiary);
-  padding: 4px 10px;
-  border-radius: var(--sl-radius-full);
-  white-space: nowrap;
-  border: 1px solid var(--sl-border);
-  transition: all 0.2s ease;
-}
-
-.meta-tag:hover {
-  background: var(--sl-bg-secondary);
-  border-color: var(--sl-primary-light);
-}
-
-.meta-tag.core-type {
-  background: var(--sl-primary-bg);
-  border-color: var(--sl-primary-light);
-  color: var(--sl-primary);
-  font-weight: 500;
-}
-
-.meta-tag.core-type:hover {
-  background: var(--sl-primary);
-  color: white;
+  color: var(--sl-text-primary);
 }
 
 .inline-edit {
@@ -425,7 +379,6 @@ function getStatusClass(status: string | undefined): string {
   border-radius: var(--sl-radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
-  font-size: 0.875rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -460,6 +413,48 @@ function getStatusClass(status: string | undefined): string {
   opacity: 0.8;
 }
 
+.server-meta {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-xs);
+}
+
+.meta-tag {
+  background: var(--sl-bg-tertiary);
+  padding: 4px 10px;
+  border-radius: var(--sl-radius-full);
+  white-space: nowrap;
+  border: 1px solid var(--sl-border);
+  transition: all 0.2s ease;
+}
+
+.meta-tag:hover {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-primary-light);
+}
+
+.meta-tag.core-type {
+  background: var(--sl-primary-bg);
+  border-color: var(--sl-primary-light);
+  color: var(--sl-primary);
+  font-weight: 500;
+}
+
+.meta-tag.core-type:hover {
+  background: var(--sl-primary);
+  color: white;
+}
+
+.server-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--sl-space-sm) 0;
+}
+
 .server-card-path {
   display: flex;
   align-items: center;
@@ -468,7 +463,7 @@ function getStatusClass(status: string | undefined): string {
   font-size: 0.75rem;
   color: var(--sl-text-secondary);
   background: var(--sl-bg-tertiary);
-  padding: 6px var(--sl-space-sm);
+  padding: 8px var(--sl-space-sm);
   border-radius: var(--sl-radius-md);
   border: 1px solid var(--sl-border);
   transition: all 0.2s ease;
@@ -495,17 +490,11 @@ function getStatusClass(status: string | undefined): string {
   background: var(--sl-bg-secondary);
   border-color: var(--sl-primary-light);
   color: var(--sl-text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .server-card-path:hover .folder-icon {
   opacity: 1;
   color: var(--sl-text-primary);
-}
-
-.server-card-path:active {
-  transform: translateY(1px);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .server-card-actions {
@@ -515,22 +504,22 @@ function getStatusClass(status: string | undefined): string {
   border-top: 1px solid var(--sl-border-light);
   align-items: center;
   justify-content: space-between;
+  margin-top: auto;
 }
 
 .action-group {
   display: flex;
-  gap: var(--sl-space-sm);
+  gap: var(--sl-space-xs);
   align-items: center;
 }
 
 .primary-actions :deep(.sl-button) {
-  min-width: 80px;
+  min-width: 72px;
   border-radius: var(--sl-radius-md);
   transition: all 0.2s ease;
 }
 
 .secondary-actions :deep(.sl-button) {
-  min-width: unset;
   border-radius: var(--sl-radius-md);
   transition: all 0.2s ease;
 }
@@ -574,8 +563,8 @@ function getStatusClass(status: string | undefined): string {
 }
 
 .delete-confirm-area {
-  margin-top: var(--sl-space-md);
-  padding-top: var(--sl-space-md);
+  margin-top: var(--sl-space-sm);
+  padding-top: var(--sl-space-sm);
   border-top: 1px solid var(--sl-border);
   animation: slideDown 0.3s ease forwards;
 }
@@ -594,8 +583,8 @@ function getStatusClass(status: string | undefined): string {
   to {
     opacity: 1;
     max-height: 200px;
-    padding-top: var(--sl-space-md);
-    margin-top: var(--sl-space-md);
+    padding-top: var(--sl-space-sm);
+    margin-top: var(--sl-space-sm);
   }
 }
 
@@ -603,8 +592,8 @@ function getStatusClass(status: string | undefined): string {
   from {
     opacity: 1;
     max-height: 200px;
-    padding-top: var(--sl-space-md);
-    margin-top: var(--sl-space-md);
+    padding-top: var(--sl-space-sm);
+    margin-top: var(--sl-space-sm);
   }
   to {
     opacity: 0;
@@ -626,7 +615,7 @@ function getStatusClass(status: string | undefined): string {
 
 .delete-input {
   width: 100%;
-  padding: var(--sl-space-sm) var(--sl-space-md);
+  padding: var(--sl-space-xs) var(--sl-space-sm);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   background: var(--sl-bg-tertiary);
@@ -643,18 +632,6 @@ function getStatusClass(status: string | undefined): string {
   color: var(--sl-text-primary);
 }
 
-.delete-input:hover {
-  background: var(--sl-bg-secondary);
-  border-color: var(--sl-primary-light);
-  color: var(--sl-text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.delete-input:active {
-  transform: translateY(1px);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
 .delete-error {
   margin-top: var(--sl-space-xs);
   font-size: 0.75rem;
@@ -665,6 +642,5 @@ function getStatusClass(status: string | undefined): string {
   display: flex;
   gap: var(--sl-space-xs);
   justify-content: flex-end;
-  margin-top: var(--sl-space-sm);
 }
 </style>

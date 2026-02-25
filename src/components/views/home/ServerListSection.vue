@@ -109,6 +109,7 @@ defineProps<{
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: var(--sl-space-lg);
+  align-items: stretch;
 }
 
 /* 服务器列表过渡动画 */
