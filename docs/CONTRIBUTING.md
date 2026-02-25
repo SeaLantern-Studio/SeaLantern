@@ -1,5 +1,6 @@
 # 贡献指南
-
+[我们有了文档站!点击这里跳转!](https://github.com/SeaLantern-Studio/sea-lantern-docs/blob/main/CONTRIBUTING.md)
+[We've got an document site,press here to redirect.](https://github.com/SeaLantern-Studio/sea-lantern-docs/blob/main/CONTRIBUTING_en.md)
 感谢你对 Sea Lantern 项目的关注！这份文档将帮助你了解如何为项目做出贡献。
 
 ## 开发环境要求
