@@ -11,13 +11,12 @@
   z-index: 9999;
   animation: overlay-fade-in 0.25s ease;
 }
-
 .sl-modal {
   width: 90%;
   max-width: 480px;
   border-radius: var(--sl-radius-xl, 16px);
   border: 1px solid var(--sl-border, #e2e8f0);
-  box-shadow: 
+  box-shadow:
     0 20px 40px rgba(0, 0, 0, 0.15),
     0 0 0 1px rgba(0, 0, 0, 0.05);
   background: var(--sl-surface, #fff);
@@ -79,7 +78,9 @@
   border-radius: inherit;
   opacity: 0;
   transform: scale(0.5);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .sl-modal-close:hover {

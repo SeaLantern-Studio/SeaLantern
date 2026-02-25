@@ -340,8 +340,7 @@ function computeOverallProgress() {
     <div class="close-modal-content">
       <p>{{ i18n.t("home.close_window_message") }}</p>
       <div class="remember-option">
-        <input type="checkbox" id="remember-choice" v-model="rememberChoice" />
-        <label for="remember-choice">{{ i18n.t("home.remember_choice") }}</label>
+        <SLCheckbox v-model="rememberChoice" :label="i18n.t('home.remember_choice')" />
       </div>
       <div class="close-options">
         <SLButton variant="secondary" @click="handleCloseOption('minimize')">{{
