@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
+import { useSettingsStore } from "./settingsStore";
 
-const MAX_LOG_LINES = 5000;
+const DEFAULT_MAX_LOG_LINES = 5000;
 
 export const useConsoleStore = defineStore("console", () => {
   // Logs per server, persisted across navigation
@@ -11,10 +12,20 @@ export const useConsoleStore = defineStore("console", () => {
   // Currently selected console server
   const activeServerId = ref<string | null>(null);
 
+  function getMaxLogLines(): number {
+    try {
+      const settingsStore = useSettingsStore();
+      return settingsStore.settings.max_log_lines || DEFAULT_MAX_LOG_LINES;
+    } catch {
+      return DEFAULT_MAX_LOG_LINES;
+    }
+  }
+
   function trimLogs(serverId: string) {
     const arr = logs.value[serverId];
-    if (arr && arr.length > MAX_LOG_LINES) {
-      logs.value[serverId] = arr.slice(-MAX_LOG_LINES);
+    const maxLines = getMaxLogLines();
+    if (arr && arr.length > maxLines) {
+      logs.value[serverId] = arr.slice(-maxLines);
     }
   }
 
