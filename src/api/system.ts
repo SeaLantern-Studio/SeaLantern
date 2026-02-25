@@ -114,4 +114,8 @@ export const systemApi = {
   async openFolder(path: string): Promise<void> {
     return tauriInvoke("open_folder", { path });
   },
+
+  async removeFileIfExists(path: string): Promise<boolean> {
+    return tauriInvoke("remove_file_if_exists", { path });
+  },
 };

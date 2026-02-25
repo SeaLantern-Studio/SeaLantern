@@ -145,7 +145,9 @@ async function pickFolder() {
       @dragleave.prevent="dragging = false"
       @drop="handleDrop"
     >
-      <div class="source-intake-icon">+</div>
+      <div class="source-intake-icon">
+        <Folder :size="16" class="source-intake-icon-svg" />
+      </div>
       <div class="source-intake-main">
         <p class="source-intake-title" :class="{ selected: !!sourcePath }">
           {{ sourcePath ? selectedName : i18n.t("create.source_drop_or_click") }}

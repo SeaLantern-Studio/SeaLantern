@@ -47,6 +47,10 @@
   flex-shrink: 0;
 }
 
+.source-intake-icon-svg {
+  stroke-width: 2;
+}
+
 .source-intake-main {
   display: flex;
   flex-direction: column;

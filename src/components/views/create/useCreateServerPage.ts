@@ -430,60 +430,69 @@ export function useCreateServerPage() {
     await refreshStartupCandidates(sourcePath.value.trim(), sourceType.value, true);
   }
 
-  function validateBeforeSubmit(): boolean {
-    clearError();
-
-    if (!hasSource.value) {
+  function validateStep(step: number): boolean {
+    if (step >= 1 && !hasSource.value) {
       showError(i18n.t("create.source_required"));
       return false;
     }
-    if (requiresRunPath.value && !useSoftwareDataDir.value && runPath.value.trim().length === 0) {
-      showError(i18n.t("create.path_required_archive"));
-      return false;
-    }
-    if (
-      sourceType.value === "folder" &&
-      !useSoftwareDataDir.value &&
-      isStrictChildPath(runPath.value, sourcePath.value)
-    ) {
-      showError(i18n.t("create.path_child_of_source_forbidden"));
-      return false;
-    }
-    if (!selectedStartup.value) {
-      showError(i18n.t("create.startup_required"));
-      return false;
-    }
 
-    if (selectedStartup.value.mode === "custom") {
-      if (!customStartupCommand.value.trim()) {
-        showError(i18n.t("create.startup_custom_required"));
+    if (step >= 2) {
+      if (requiresRunPath.value && !useSoftwareDataDir.value && runPath.value.trim().length === 0) {
+        showError(i18n.t("create.path_required_archive"));
         return false;
       }
-      if (containsIoRedirection(customStartupCommand.value)) {
-        showError(i18n.t("create.startup_custom_redirect_forbidden"));
+      if (
+        sourceType.value === "folder" &&
+        !useSoftwareDataDir.value &&
+        isStrictChildPath(runPath.value, sourcePath.value)
+      ) {
+        showError(i18n.t("create.path_child_of_source_forbidden"));
         return false;
       }
     }
 
-    if (
-      selectedStartup.value.mode === "starter" &&
-      mcVersionDetectionFailed.value &&
-      selectedMcVersion.value.trim().length === 0
-    ) {
-      showError(i18n.t("create.startup_mc_version_required"));
-      return false;
+    if (step >= 3) {
+      if (!selectedStartup.value) {
+        showError(i18n.t("create.startup_required"));
+        return false;
+      }
+      if (selectedStartup.value.mode === "custom") {
+        if (!customStartupCommand.value.trim()) {
+          showError(i18n.t("create.startup_custom_required"));
+          return false;
+        }
+        if (containsIoRedirection(customStartupCommand.value)) {
+          showError(i18n.t("create.startup_custom_redirect_forbidden"));
+          return false;
+        }
+      }
+      if (
+        selectedStartup.value.mode === "starter" &&
+        mcVersionDetectionFailed.value &&
+        selectedMcVersion.value.trim().length === 0
+      ) {
+        showError(i18n.t("create.startup_mc_version_required"));
+        return false;
+      }
     }
 
-    if (!selectedJava.value) {
-      showError(i18n.t("common.select_java_path"));
-      return false;
-    }
-    if (!serverName.value.trim()) {
-      showError(i18n.t("common.enter_server_name"));
-      return false;
+    if (step >= 4) {
+      if (!selectedJava.value) {
+        showError(i18n.t("common.select_java_path"));
+        return false;
+      }
+      if (!serverName.value.trim()) {
+        showError(i18n.t("common.enter_server_name"));
+        return false;
+      }
     }
 
     return true;
+  }
+
+  function validateBeforeSubmit(): boolean {
+    clearError();
+    return validateStep(4);
   }
 
   async function handleSubmit() {
@@ -563,6 +572,7 @@ export function useCreateServerPage() {
     activeStep,
     stepItems,
     canSubmit,
+    validateStep,
     pickRunPath,
     updateRunPath,
     toggleUseSoftwareDataDir,
