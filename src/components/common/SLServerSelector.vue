@@ -309,6 +309,8 @@ watch(
   border: none;
   background: transparent;
   margin-top: 0;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .sl-server-selector.collapsed .server-selector-trigger:hover {
