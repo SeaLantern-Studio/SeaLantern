@@ -69,64 +69,56 @@ function getStatusClass(status: string | undefined): string {
 
 <template>
   <SLCard variant="glass" hoverable class="server-card">
-    <div class="status-badge-container">
+    <div class="server-card-header">
+      <div class="server-info">
+        <div class="server-name-container">
+          <template v-if="editingServerId === server.id">
+            <div class="inline-edit">
+              <input
+                type="text"
+                v-model="editName"
+                class="server-name-input"
+                @keyup.enter="saveServerName(server.id)"
+                @keyup.esc="cancelEdit"
+                @blur="saveServerName(server.id)"
+              />
+              <div class="inline-edit-actions">
+                <button
+                  class="inline-edit-btn save"
+                  @click="saveServerName(server.id)"
+                  :disabled="!editName.trim() || editLoading"
+                  :class="{ loading: editLoading }"
+                >
+                  <Check :size="16" />
+                </button>
+                <button class="inline-edit-btn cancel" @click="cancelEdit" :disabled="editLoading">
+                  <X :size="16" />
+                </button>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <h4 class="server-name">{{ server.name }}</h4>
+            <button
+              class="edit-server-name"
+              @click="startEditServerName(server)"
+              :title="i18n.t('common.edit_server_name')"
+            >
+              <Pencil :size="16" />
+            </button>
+          </template>
+        </div>
+        <div class="server-meta">
+          <span class="meta-tag core-type">{{ server.core_type }}</span>
+          <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
+          <span class="meta-tag">{{ server.max_memory }}MB</span>
+        </div>
+      </div>
       <div class="status-indicator" :class="getStatusClass(store.statuses[server.id]?.status)">
         <span class="status-dot"></span>
         <span class="status-label">{{ getStatusText(store.statuses[server.id]?.status) }}</span>
       </div>
     </div>
-    <template #header>
-      <div class="server-card-header">
-        <div class="server-info">
-          <div class="server-name-container">
-            <template v-if="editingServerId === server.id">
-              <div class="inline-edit">
-                <input
-                  type="text"
-                  v-model="editName"
-                  class="server-name-input"
-                  @keyup.enter="saveServerName(server.id)"
-                  @keyup.esc="cancelEdit"
-                  @blur="saveServerName(server.id)"
-                />
-                <div class="inline-edit-actions">
-                  <button
-                    class="inline-edit-btn save"
-                    @click="saveServerName(server.id)"
-                    :disabled="!editName.trim() || editLoading"
-                    :class="{ loading: editLoading }"
-                  >
-                    <Check :size="16" />
-                  </button>
-                  <button
-                    class="inline-edit-btn cancel"
-                    @click="cancelEdit"
-                    :disabled="editLoading"
-                  >
-                    <X :size="16" />
-                  </button>
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <h4 class="server-name">{{ server.name }}</h4>
-              <button
-                class="edit-server-name"
-                @click="startEditServerName(server)"
-                :title="i18n.t('common.edit_server_name')"
-              >
-                <Pencil :size="16" />
-              </button>
-            </template>
-          </div>
-          <div class="server-meta">
-            <span class="meta-tag core-type">{{ server.core_type }}</span>
-            <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
-            <span class="meta-tag">{{ server.max_memory }}MB</span>
-          </div>
-        </div>
-      </div>
-    </template>
 
     <div
       class="server-card-path text-mono text-caption"
