@@ -414,9 +414,9 @@ impl ServerManager {
             return Err("运行目录不能为空，请选择开服路径".to_string());
         }
 
-        // 使用 UUID 前20位作为文件夹名称，确保唯一性
+        // 使用 UUID 前30位作为文件夹名称，确保唯一性
         let server_name = validate_server_name(&req.name)?;
-        let folder_name = uuid::Uuid::new_v4().to_string().replace("-", "")[..20].to_string();
+        let folder_name = uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
         let run_dir = PathBuf::from(&base_path).join(&folder_name);
 
         // 检查目标目录是否已存在
