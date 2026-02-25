@@ -996,6 +996,7 @@
     "downloading": "Downloading resource...",
     "status-finished": "Download Finished",
     "failed": "Download Failed",
-    "completed": "Completed"
+    "completed": "Completed",
+    "invalid_input": "Please check download URL, save path, and file name"
   }
 }

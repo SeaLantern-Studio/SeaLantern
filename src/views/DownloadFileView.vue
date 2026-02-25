@@ -27,29 +27,39 @@ const savePath = ref("");
 const filename = ref("");
 const threadCount = ref("32");
 
-const isUrlValid = ref(false);
+const isUrlValid = computed(() => {
+  try {
+    const parsed = new URL(url.value.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+});
+const isFilenameValid = computed(() => filename.value.trim().length > 0);
+const isSavePathValid = computed(() => savePath.value.trim().length > 0);
+const isFormValid = computed(
+  () => isUrlValid.value && isFilenameValid.value && isSavePathValid.value,
+);
 
 const isDownloading = computed(() => taskInfo.id !== "" && !taskInfo.isFinished);
 const combinedLoading = computed(() => submitting.value || isDownloading.value);
 
-function checkUrl(event: { target: { value: any } }) {
-  const url = event.target.value;
+function checkUrl(event: Event) {
+  const input = event.target as HTMLInputElement | null;
+  const rawUrl = input?.value?.trim() ?? "";
   try {
-    const urlObj = new URL(url);
+    const urlObj = new URL(rawUrl);
     const pathName = urlObj.pathname;
-    const segments = pathName.split("/");
-    if (segments.length > 1) {
-      filename.value = segments[segments.length - 1];
-      isUrlValid.value = filename.value.length > 0;
+    const segments = pathName.split("/").filter(Boolean);
+    if (segments.length > 0) {
+      const candidateFileName = segments[segments.length - 1];
+      if (candidateFileName) {
+        filename.value = candidateFileName;
+      }
     }
   } catch {
-    isUrlValid.value = false;
+    // Keep current filename; URL validity is computed separately.
   }
-}
-
-function checkFilename(event: { target: { value: any } }) {
-  const filename = event.target.value;
-  isUrlValid.value = filename.length > 0;
 }
 
 async function pickFloder() {
@@ -77,6 +87,10 @@ const statusLabel = computed(() => {
 
 async function handleDownload() {
   if (combinedLoading.value) return;
+  if (!isFormValid.value) {
+    showError(i18n.t("download-file.invalid_input"));
+    return;
+  }
 
   const threadCountValue = threadCount.value;
   if (threadCountValue == "") {
@@ -147,7 +161,6 @@ watch(taskError, (newError) => {
           :label="i18n.t('download-file.filename')"
           v-model="filename"
           :disabled="isDownloading"
-          @input="checkFilename"
         />
         <SLInput
           :label="i18n.t('download-file.thread_count')"
@@ -166,7 +179,7 @@ watch(taskError, (newError) => {
         size="lg"
         :loading="combinedLoading"
         @click="handleDownload"
-        :disabled="isDownloading || !isUrlValid"
+        :disabled="isDownloading || !isFormValid"
       >
         {{ isDownloading ? i18n.t("download-file.downloading") : i18n.t("download-file.download") }}
       </SLButton>

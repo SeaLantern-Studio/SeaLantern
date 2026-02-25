@@ -45,7 +45,9 @@ export function containsIoRedirection(command: string): boolean {
 }
 
 export function sortStartupCandidates(candidates: StartupCandidate[]): StartupCandidate[] {
-  return [...candidates].toSorted((a, b) => {
+  // Keep `sort` for wider runtime compatibility (older WebView environments may not support `toSorted`).
+  // eslint-disable-next-line unicorn/no-array-sort
+  return [...candidates].sort((a, b) => {
     if (a.recommended !== b.recommended) {
       return a.recommended - b.recommended;
     }

@@ -186,10 +186,12 @@ function joinPath(basePath: string, fileName: string): string {
   return `${trimmedBase}${separator}${fileName}`;
 }
 
+const totalSteps = computed(() => Math.max(stepItems.value.length, 1));
+
 const currentStep = computed(() => {
   const rawStep = Number(route.params.step ?? 1);
   const parsedStep = Number.isFinite(rawStep) ? Math.trunc(rawStep) : 1;
-  return parsedStep >= 1 && parsedStep <= 5 ? parsedStep : 1;
+  return parsedStep >= 1 && parsedStep <= totalSteps.value ? parsedStep : 1;
 });
 
 function goToStep(step: number) {
@@ -217,7 +219,7 @@ function goPrevStep() {
 }
 
 function goNextStep() {
-  if (currentStep.value >= 5) {
+  if (currentStep.value >= totalSteps.value) {
     return;
   }
   goToStep(currentStep.value + 1);
@@ -459,7 +461,7 @@ async function handleCoreDownload() {
               </div>
             </template>
 
-            <div v-if="currentStep < 5" class="create-nav-actions">
+            <div v-if="currentStep < totalSteps" class="create-nav-actions">
               <SLButton
                 variant="secondary"
                 size="lg"

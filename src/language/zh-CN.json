@@ -963,6 +963,7 @@
     "downloading": "正在下载资源...",
     "status-finished": "下载已完成",
     "failed": "下载失败",
-    "completed": "已完成"
+    "completed": "已完成",
+    "invalid_input": "请检查下载地址、保存路径和文件名"
   }
 }
