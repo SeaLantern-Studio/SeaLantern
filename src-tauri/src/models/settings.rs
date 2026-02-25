@@ -100,6 +100,10 @@ pub struct AppSettings {
     // 关闭行为: "ask", "minimize", "close"，默认 "ask"
     #[serde(default = "default_close_action")]
     pub close_action: String,
+
+    // 上次选择的开服路径
+    #[serde(default)]
+    pub last_run_path: String,
 }
 
 fn default_true() -> bool {
@@ -307,6 +311,9 @@ impl AppSettings {
         if let Some(ref v) = partial.close_action {
             self.close_action = v.clone();
         }
+        if let Some(ref v) = partial.last_run_path {
+            self.last_run_path = v.clone();
+        }
     }
 }
 
@@ -368,6 +375,8 @@ pub struct PartialSettings {
     pub developer_mode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub close_action: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_run_path: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -401,6 +410,7 @@ impl Default for AppSettings {
             language: "zh-CN".to_string(),
             developer_mode: false,
             close_action: "ask".to_string(),
+            last_run_path: String::new(),
         }
     }
 }

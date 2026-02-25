@@ -157,8 +157,9 @@ pub async fn pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, 
 
     app.dialog()
         .file()
-        .set_title("Select modpack archive")
-        .add_filter("Archive Files", &["zip", "tar", "tgz", "gz"])
+        .set_title("Select server file")
+        .add_filter("Server Files", &["jar", "zip", "tar", "tgz", "gz"])
+        .add_filter("JAR Files", &["jar"])
         .add_filter("ZIP Files", &["zip"])
         .add_filter("TAR Files", &["tar"])
         .add_filter("Compressed TAR", &["tgz", "gz"])
