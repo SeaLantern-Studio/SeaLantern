@@ -88,6 +88,7 @@ RUN { \
     libssl3 \
     libgtk-3-0 \
     libwebkit2gtk-4.1-0 \
+    curl \
     && rm -rf /var/lib/apt/lists/*; \
 } \
 && useradd -m -u 1000 sealantern
