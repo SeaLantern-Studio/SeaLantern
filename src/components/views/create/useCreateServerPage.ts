@@ -513,6 +513,7 @@ export function useCreateServerPage() {
         customCommand: startupMode === "custom" ? customStartupCommand.value.trim() : undefined,
         runPath: runPath.value.trim(),
         startupFilePath: startupMode === "custom" ? undefined : startup?.path,
+        startupId: startupMode === "custom" ? undefined : startup?.id,
         coreType: resolvedCoreType || undefined,
         mcVersion: resolvedMcVersion || undefined,
       });

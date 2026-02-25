@@ -414,14 +414,15 @@ impl ServerManager {
             return Err("运行目录不能为空，请选择开服路径".to_string());
         }
 
-        // 在用户选择的路径下创建以服务器名称命名的子文件夹
+        // 使用启动项 ID 作为文件夹名称，若不存在则回退到服务器名称
         let server_name = validate_server_name(&req.name)?;
-        let run_dir = PathBuf::from(&base_path).join(&server_name);
+        let folder_name = req.startup_id.as_ref().map(|s| s.as_str()).unwrap_or(&server_name);
+        let run_dir = PathBuf::from(&base_path).join(folder_name);
 
         // 检查目标目录是否已存在
         if run_dir.exists() {
             return Err(format!(
-                "目录已存在：{}，请更换服务器名称或选择其他路径",
+                "目录已存在：{}，请更换启动项或选择其他路径",
                 run_dir.to_string_lossy()
             ));
         }
