@@ -55,9 +55,7 @@ export const useServerStore = defineStore("server", () => {
    */
   async function scanServerPorts() {
     try {
-      for (const server of servers.value) {
-        await scanServerPort(server);
-      }
+      await Promise.all(servers.value.map((server) => scanServerPort(server)));
     } catch (e) {
       console.warn("Failed to scan server ports:", e);
     }

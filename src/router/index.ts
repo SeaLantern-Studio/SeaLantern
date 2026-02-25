@@ -80,24 +80,17 @@ const router = createRouter({
   routes,
 });
 
-let pageChangedTimers: number[] = [];
+let pageChangedTimer: number | null = null;
 
 router.afterEach((to) => {
-  for (const t of pageChangedTimers) {
-    clearTimeout(t);
+  if (pageChangedTimer !== null) {
+    clearTimeout(pageChangedTimer);
   }
-  pageChangedTimers = [];
 
-  pageChangedTimers.push(
-    window.setTimeout(() => {
-      onPageChanged(to.path).catch(() => {});
-    }, 250),
-  );
-  pageChangedTimers.push(
-    window.setTimeout(() => {
-      onPageChanged(to.path).catch(() => {});
-    }, 900),
-  );
+  pageChangedTimer = window.setTimeout(() => {
+    onPageChanged(to.path).catch(() => {});
+    pageChangedTimer = null;
+  }, 300);
 });
 
 export default router;

@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { useToast } from "@composables/useToast";
-import { useTabIndicator } from "@composables/useTabIndicator";
 import {
   fetchMarketPlugins,
   fetchMarketPluginDetail,
@@ -13,6 +12,7 @@ import type { MarketPluginInfo } from "@api/plugin";
 import { i18n } from "@language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
+import { SLTabBar, type TabBarItem } from "@components/common";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
@@ -34,14 +34,6 @@ const pluginDetail = ref<MarketPluginInfo | null>(null);
 const showUrlEditor = ref(false);
 const customMarketUrl = ref(localStorage.getItem(MARKET_URL_KEY) || "");
 const urlInput = ref(customMarketUrl.value);
-
-const { indicatorRef: tagIndicator, updatePosition: updateTagIndicator } =
-  useTabIndicator(selectedTag);
-
-const localeRef = i18n.getLocaleRef();
-watch(localeRef, () => {
-  updateTagIndicator();
-});
 
 const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
 
@@ -87,14 +79,6 @@ const allTags = computed(() => {
   marketPlugins.value.forEach((p) => p.categories?.forEach((t) => tags.add(t)));
   return Array.from(tags);
 });
-
-watch(
-  allTags,
-  () => {
-    updateTagIndicator();
-  },
-  { deep: true },
-);
 
 function resolveI18n(val: Record<string, string> | string | undefined): string {
   if (!val) return "";
@@ -248,27 +232,16 @@ onMounted(() => {
       </button>
     </div>
 
-    <div v-if="allTags.length" class="market-tags">
-      <div class="tags-container">
-        <div class="tag-indicator" ref="tagIndicator"></div>
-        <button
-          class="tag-btn"
-          :class="{ active: selectedTag === null }"
-          @click="selectedTag = null"
-        >
-          全部
-        </button>
-        <button
-          v-for="tag in allTags"
-          :key="tag"
-          class="tag-btn"
-          :class="{ active: selectedTag === tag }"
-          @click="selectedTag = selectedTag === tag ? null : tag"
-        >
-          {{ getCategoryLabel(tag) }}
-        </button>
-      </div>
-      <div class="search-container">
+    <SLTabBar
+      v-if="allTags.length"
+      v-model="selectedTag"
+      :tabs="[
+        { key: null, label: '全部' },
+        ...allTags.map((tag) => ({ key: tag, label: getCategoryLabel(tag) })),
+      ]"
+      :level="2"
+    >
+      <template #extra>
         <input
           v-model="searchQuery"
           type="text"
@@ -291,8 +264,8 @@ onMounted(() => {
         >
           <RefreshCw :size="14" :class="{ spin: loading }" />
         </button>
-      </div>
-    </div>
+      </template>
+    </SLTabBar>
 
     <div v-if="loading" class="market-loading">
       <div class="loading-spinner"></div>
@@ -500,68 +473,6 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
-}
-
-.search-container {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.market-tags {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-xs);
-  padding: var(--sl-space-xs);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  margin-bottom: var(--sl-space-md);
-  position: relative;
-  overflow: hidden;
-}
-
-.tags-container {
-  display: flex;
-  gap: var(--sl-space-xs);
-  flex: 1;
-  position: relative;
-}
-
-.tag-indicator {
-  position: absolute;
-  top: var(--sl-space-xs);
-  bottom: var(--sl-space-xs);
-  background: var(--sl-primary-bg);
-  border-radius: var(--sl-radius-sm);
-  transition: all 0.3s ease;
-  box-shadow: var(--sl-shadow-sm);
-  z-index: 1;
-  border: 1px solid var(--sl-primary);
-  opacity: 0.9;
-}
-
-.tag-btn {
-  padding: 8px 16px;
-  border-radius: var(--sl-radius-sm);
-  border: none;
-  background: transparent;
-  color: var(--sl-text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--sl-transition-fast);
-  position: relative;
-  z-index: 2;
-}
-
-.tag-btn:hover {
-  color: var(--sl-text-primary);
-}
-
-.tag-btn.active {
-  color: var(--sl-primary);
 }
 
 .market-loading {

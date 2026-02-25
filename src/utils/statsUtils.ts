@@ -3,7 +3,6 @@ import { ref, computed } from "vue";
 import { i18n } from "@language";
 import { systemApi, type SystemInfo } from "@api/system";
 
-// 系统状态相关的响应式数据
 const systemInfo = ref<SystemInfo | null>(null);
 const cpuUsage = ref(0);
 const memUsage = ref(0);
@@ -13,22 +12,29 @@ const memHistory = ref<number[]>([]);
 const statsViewMode = ref<"detail" | "gauge">("gauge");
 const statsLoading = ref(true);
 
-// 获取当前主题标识（用于强制重新计算图表配置）
 const themeVersion = ref(0);
 
-// 模块级 MutationObserver 引用，避免污染全局命名空间
 let themeObserver: MutationObserver | null = null;
 
-/**
- * 获取 CSS 变量实际值的辅助函数，支持传入默认值
- * @param varName CSS 变量名
- * @param defaultValue 默认值
- * @returns CSS 变量值或默认值
- */
+let cssVarCache: Map<string, { value: string; timestamp: number }> = new Map();
+const CSS_VAR_CACHE_TTL = 100;
+
 const getCssVar = (varName: string, defaultValue: string): string => {
   if (typeof window === "undefined") return defaultValue;
+  
+  const now = Date.now();
+  const cached = cssVarCache.get(varName);
+  if (cached && now - cached.timestamp < CSS_VAR_CACHE_TTL) {
+    return cached.value || defaultValue;
+  }
+  
   const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  cssVarCache.set(varName, { value, timestamp: now });
   return value || defaultValue;
+};
+
+const invalidateCssVarCache = () => {
+  cssVarCache.clear();
 };
 
 /**
@@ -247,9 +253,6 @@ async function fetchSystemInfo() {
   }
 }
 
-/**
- * 启动主题和无障碍模式变化监听
- */
 function startThemeObserver() {
   stopThemeObserver();
 
@@ -259,6 +262,7 @@ function startThemeObserver() {
         mutation.type === "attributes" &&
         (mutation.attributeName === "data-theme" || mutation.attributeName === "data-senior")
       ) {
+        invalidateCssVarCache();
         themeVersion.value++;
       }
     });
