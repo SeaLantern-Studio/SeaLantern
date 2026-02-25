@@ -16,6 +16,9 @@
 2. 文档、i18n方向且改动极小的
 
 ⛔对于在可贡献范围以外的PR，项目组**有权直接拒绝**
+### 示例
+|<img width="682" height="109" alt="image" src="https://github.com/user-attachments/assets/655de85c-0990-48a5-bf84-bd543c784083" />|
+|-|
 
 ### 为什么？
 此举是为了保证贡献范围可控以及你的贡献方向不与开发组的计划相悖
