@@ -17,6 +17,7 @@ use winreg::enums::*;
 use winreg::RegKey;
 
 // 常见 Java 目录别名
+#[allow(dead_code)] // 我实在绷不住了, 本地clippy能过但是github action上会报错 fuck the linter
 const JAVA_PATH_ALIASES: &[&str] = &[
     "java", "jdk", "jre", "graalvm", "corretto", "temurin", "zulu", "openjdk", "gvl", "ojdk",
 ];
