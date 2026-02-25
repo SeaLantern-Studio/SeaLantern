@@ -1,6 +1,8 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
+const MAX_LOG_LINES = 5000;
+
 export const useConsoleStore = defineStore("console", () => {
   // Logs per server, persisted across navigation
   const logs = ref<Record<string, string[]>>({});
@@ -9,16 +11,19 @@ export const useConsoleStore = defineStore("console", () => {
   // Currently selected console server
   const activeServerId = ref<string | null>(null);
 
+  function trimLogs(serverId: string) {
+    const arr = logs.value[serverId];
+    if (arr && arr.length > MAX_LOG_LINES) {
+      logs.value[serverId] = arr.slice(-MAX_LOG_LINES);
+    }
+  }
+
   function appendLogs(serverId: string, newLines: string[]) {
     if (!logs.value[serverId]) {
       logs.value[serverId] = [];
     }
     logs.value[serverId].push(...newLines);
-    // Keep max 5000 lines per server
-    if (logs.value[serverId].length > 5000) {
-      const drain = logs.value[serverId].length - 5000;
-      logs.value[serverId].splice(0, drain);
-    }
+    trimLogs(serverId);
   }
 
   function appendLocal(serverId: string, line: string) {
@@ -26,10 +31,7 @@ export const useConsoleStore = defineStore("console", () => {
       logs.value[serverId] = [];
     }
     logs.value[serverId].push(line);
-    if (logs.value[serverId].length > 5000) {
-      const drain = logs.value[serverId].length - 5000;
-      logs.value[serverId].splice(0, drain);
-    }
+    trimLogs(serverId);
   }
 
   function getLogCursor(serverId: string): number {
