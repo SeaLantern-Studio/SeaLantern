@@ -6,6 +6,7 @@ import {
   containsIoRedirection,
   isStrictChildPath,
   mapStartupModeForModpack,
+  normalizePathForCompare,
 } from "@components/views/create/startupUtils";
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
@@ -54,9 +55,10 @@ export function useCreateServerPage() {
   const AUTO_SCAN_DEBOUNCE_MS = 120;
   let startupDetectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const copyConflictDialogOpen = ref(false);
-  const copyConflictItems = ref<string[]>([]);
-  let copyConflictResolver: ((confirmed: boolean) => void) | null = null;
+  const runPathOverwriteRisk = ref(false);
+  const RUN_PATH_CONFLICT_DEBOUNCE_MS = 180;
+  let runPathConflictTimer: ReturnType<typeof setTimeout> | null = null;
+  let runPathConflictRequestId = 0;
 
   const serverName = ref("My Server");
   const maxMemory = ref("2048");
@@ -176,7 +178,62 @@ export function useCreateServerPage() {
       clearTimeout(startupDetectTimer);
       startupDetectTimer = null;
     }
+    if (runPathConflictTimer) {
+      clearTimeout(runPathConflictTimer);
+      runPathConflictTimer = null;
+    }
   });
+
+  function scheduleRunPathConflictCheck() {
+    if (runPathConflictTimer) {
+      clearTimeout(runPathConflictTimer);
+      runPathConflictTimer = null;
+    }
+
+    const sourceDir = sourcePath.value.trim();
+    const targetDir = runPath.value.trim();
+    if (!sourceDir || !targetDir || sourceType.value !== "folder" || useSoftwareDataDir.value) {
+      runPathConflictRequestId += 1;
+      runPathOverwriteRisk.value = false;
+      return;
+    }
+
+    if (normalizePathForCompare(sourceDir) === normalizePathForCompare(targetDir)) {
+      runPathConflictRequestId += 1;
+      runPathOverwriteRisk.value = false;
+      return;
+    }
+
+    const requestId = ++runPathConflictRequestId;
+    runPathConflictTimer = setTimeout(() => {
+      runPathConflictTimer = null;
+      void checkRunPathConflict(sourceDir, targetDir, requestId);
+    }, RUN_PATH_CONFLICT_DEBOUNCE_MS);
+  }
+
+  async function checkRunPathConflict(sourceDir: string, targetDir: string, requestId: number) {
+    try {
+      const conflicts = await serverApi.collectCopyConflicts(sourceDir, targetDir);
+      if (requestId !== runPathConflictRequestId) {
+        return;
+      }
+      runPathOverwriteRisk.value = conflicts.length > 0;
+    } catch (error) {
+      if (requestId !== runPathConflictRequestId) {
+        return;
+      }
+      runPathOverwriteRisk.value = false;
+      console.error("Failed to check run path conflict:", error);
+    }
+  }
+
+  watch(
+    [sourceType, sourcePath, runPath, useSoftwareDataDir],
+    () => {
+      scheduleRunPathConflictCheck();
+    },
+    { immediate: true },
+  );
 
   function scheduleStartupDetect(path: string, type: SourceType) {
     if (startupDetectTimer) {
@@ -429,18 +486,6 @@ export function useCreateServerPage() {
     return true;
   }
 
-  function confirmCopyConflict() {
-    copyConflictDialogOpen.value = false;
-    copyConflictResolver?.(true);
-    copyConflictResolver = null;
-  }
-
-  function cancelCopyConflict() {
-    copyConflictDialogOpen.value = false;
-    copyConflictResolver?.(false);
-    copyConflictResolver = null;
-  }
-
   async function handleSubmit() {
     if (!validateBeforeSubmit()) {
       return;
@@ -490,6 +535,7 @@ export function useCreateServerPage() {
     sourcePath,
     sourceType,
     runPath,
+    runPathOverwriteRisk,
     useSoftwareDataDir,
     coreDetecting,
     detectedCoreType,
@@ -507,8 +553,6 @@ export function useCreateServerPage() {
     selectedMcVersion,
     mcVersionDetectionFailed,
     customCommandHasRedirect,
-    copyConflictDialogOpen,
-    copyConflictItems,
     serverName,
     maxMemory,
     minMemory,
@@ -525,7 +569,5 @@ export function useCreateServerPage() {
     rescanStartupCandidates,
     detectJava,
     handleSubmit,
-    confirmCopyConflict,
-    cancelCopyConflict,
   };
 }

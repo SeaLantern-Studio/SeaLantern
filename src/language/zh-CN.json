@@ -274,6 +274,7 @@
     "path_use_in_place": "原地开服",
     "path_use_source": "使用源路径",
     "path_effective_label": "实际开服目录：",
+    "path_overwrite_warning": "开服路径下有同名文件，会被覆盖",
     "path_required_folder_target": "无法确定文件夹开服目录，请重新选择路径",
     "startup_title": "启动项选择",
     "startup_hint": "推荐顺序：starter > bat/sh/ps1 > server.jar",

@@ -11,7 +11,6 @@ import {
 import { useRouter } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
-import CopyConflictDialog from "@components/views/create/CopyConflictDialog.vue";
 import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
 import RunPathStep from "@components/views/create/RunPathStep.vue";
 import ServerStartupConfigStep from "@components/views/create/ServerStartupConfigStep.vue";
@@ -29,6 +28,7 @@ const {
   sourcePath,
   sourceType,
   runPath,
+  runPathOverwriteRisk,
   useSoftwareDataDir,
   coreDetecting,
   startupDetecting,
@@ -44,8 +44,6 @@ const {
   selectedMcVersion,
   mcVersionDetectionFailed,
   customCommandHasRedirect,
-  copyConflictDialogOpen,
-  copyConflictItems,
   serverName,
   maxMemory,
   minMemory,
@@ -62,8 +60,6 @@ const {
   rescanStartupCandidates,
   detectJava,
   handleSubmit,
-  confirmCopyConflict,
-  cancelCopyConflict,
 } = useCreateServerPage();
 
 const router = useRouter();
@@ -103,6 +99,7 @@ const router = useRouter();
               :source-type="sourceType"
               :source-path="sourcePath"
               :run-path="runPath"
+              :show-overwrite-warning="runPathOverwriteRisk"
               :use-software-data-dir="useSoftwareDataDir"
               :disabled="creating"
               @pick-path="pickRunPath"
@@ -182,13 +179,6 @@ const router = useRouter();
       </StepperRoot>
     </SLCard>
 
-    <CopyConflictDialog
-      :open="copyConflictDialogOpen"
-      :items="copyConflictItems"
-      @update:open="copyConflictDialogOpen = $event"
-      @confirm="confirmCopyConflict"
-      @cancel="cancelCopyConflict"
-    />
   </div>
 </template>
 
