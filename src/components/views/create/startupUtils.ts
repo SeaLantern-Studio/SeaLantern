@@ -45,7 +45,7 @@ export function containsIoRedirection(command: string): boolean {
 }
 
 export function sortStartupCandidates(candidates: StartupCandidate[]): StartupCandidate[] {
-  return [...candidates].sort((a, b) => {
+  return [...candidates].toSorted((a, b) => {
     if (a.recommended !== b.recommended) {
       return a.recommended - b.recommended;
     }
@@ -53,7 +53,9 @@ export function sortStartupCandidates(candidates: StartupCandidate[]): StartupCa
   });
 }
 
-export function mapStartupModeForApi(mode: Exclude<StartupMode, "custom">): "jar" | "bat" | "sh" | "ps1" {
+export function mapStartupModeForApi(
+  mode: Exclude<StartupMode, "custom">,
+): "jar" | "bat" | "sh" | "ps1" {
   switch (mode) {
     case "bat":
       return "bat";

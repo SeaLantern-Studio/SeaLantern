@@ -6,6 +6,30 @@
   margin: 0 auto;
 }
 
+.create-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  color: var(--sl-text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition:
+    background-color var(--sl-transition-fast) ease,
+    border-color var(--sl-transition-fast) ease,
+    color var(--sl-transition-fast) ease;
+  width: fit-content;
+}
+
+.create-back-button:hover {
+  background: var(--sl-surface-hover);
+  border-color: var(--sl-primary);
+  color: var(--sl-primary);
+}
+
 .create-error-banner {
   display: flex;
   align-items: center;

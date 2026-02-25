@@ -140,7 +140,9 @@ export const serverApi = {
   },
 
   async parseServerCoreType(sourcePath: string): Promise<ParsedServerCoreInfo> {
-    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", { sourcePath });
+    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", {
+      sourcePath,
+    });
     return {
       coreType: result.core_type,
       mainClass: result.main_class,
@@ -181,6 +183,18 @@ export const serverApi = {
 
   async collectCopyConflicts(sourceDir: string, targetDir: string): Promise<string[]> {
     return tauriInvoke("collect_copy_conflicts", { sourceDir, targetDir });
+  },
+
+  async isDirectoryEmpty(dirPath: string): Promise<boolean> {
+    return tauriInvoke("is_directory_empty", { dirPath });
+  },
+
+  async verifyFileSha256(filePath: string, expectedSha256: string): Promise<boolean> {
+    return tauriInvoke("verify_file_sha256", { filePath, expectedSha256 });
+  },
+
+  async verifyFileSha1(filePath: string, expectedSha1: string): Promise<boolean> {
+    return tauriInvoke("verify_file_sha1", { filePath, expectedSha1 });
   },
 
   async copyDirectoryContents(sourceDir: string, targetDir: string): Promise<void> {

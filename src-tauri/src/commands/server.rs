@@ -1,5 +1,9 @@
 use crate::models::server::*;
 use crate::services::global;
+use sha1::Sha1;
+use sha2::{Digest, Sha256};
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 
 fn manager() -> &'static crate::services::server_manager::ServerManager {
@@ -406,6 +410,75 @@ pub fn collect_copy_conflicts(
     let mut conflicts = Vec::new();
     collect_copy_conflicts_recursive(source, target, "", &mut conflicts)?;
     Ok(conflicts)
+}
+
+#[tauri::command]
+pub fn is_directory_empty(dir_path: String) -> Result<bool, String> {
+    let path = Path::new(&dir_path);
+
+    if !path.exists() {
+        return Err(format!("目录不存在: {}", dir_path));
+    }
+
+    if !path.is_dir() {
+        return Err(format!("路径不是目录: {}", dir_path));
+    }
+
+    let entries = std::fs::read_dir(path).map_err(|e| format!("读取目录失败: {}", e))?;
+
+    Ok(entries.count() == 0)
+}
+
+#[tauri::command]
+pub fn verify_file_sha256(file_path: String, expected_sha256: String) -> Result<bool, String> {
+    let path = Path::new(&file_path);
+
+    if !path.exists() {
+        return Err(format!("文件不存在: {}", file_path));
+    }
+
+    let mut file = File::open(path).map_err(|e| format!("打开文件失败: {}", e))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("读取文件失败: {}", e))?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let calculated = format!("{:x}", hasher.finalize());
+    Ok(calculated.to_lowercase() == expected_sha256.to_lowercase())
+}
+
+#[tauri::command]
+pub fn verify_file_sha1(file_path: String, expected_sha1: String) -> Result<bool, String> {
+    let path = Path::new(&file_path);
+
+    if !path.exists() {
+        return Err(format!("文件不存在: {}", file_path));
+    }
+
+    let mut file = File::open(path).map_err(|e| format!("打开文件失败: {}", e))?;
+    let mut hasher = Sha1::new();
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("读取文件失败: {}", e))?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let calculated = format!("{:x}", hasher.finalize());
+    Ok(calculated.to_lowercase() == expected_sha1.to_lowercase())
 }
 
 #[tauri::command]

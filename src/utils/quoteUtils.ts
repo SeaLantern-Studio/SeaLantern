@@ -116,29 +116,43 @@ async function fetchHitokoto(): Promise<Quote> {
  * 补充引用缓存
  */
 async function replenishCache() {
-  let attempts = 0;
   const maxAttempts = 10;
+  const fetchPromises: Promise<Quote | null>[] = [];
 
-  while (quoteCache.value.length < 2 && attempts < maxAttempts) {
-    try {
-      const response = await fetch("https://v1.hitokoto.cn/?encode=json");
-      if (!response.ok) {
-        throw new Error("Failed to fetch hitokoto");
-      }
-      const data: HitokotoResponse = await response.json();
-      const newQuote = {
-        text: data.hitokoto,
-        author: data.from_who || data.from || i18n.t("common.unknown"),
-      };
+  // 计算需要获取的数量
+  const needed = Math.min(2 - quoteCache.value.length, maxAttempts);
 
-      if (!isQuoteInCache(newQuote)) {
-        quoteCache.value.push(newQuote);
-      } else {
-        attempts++;
-      }
-    } catch (error) {
-      console.error("Error replenishing quote cache:", error);
-      break;
+  // 并行发起所有请求
+  for (let i = 0; i < needed; i++) {
+    fetchPromises.push(
+      fetch("https://v1.hitokoto.cn/?encode=json")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to fetch hitokoto");
+          }
+          return response.json();
+        })
+        .then((data: HitokotoResponse) => {
+          const newQuote = {
+            text: data.hitokoto,
+            author: data.from_who || data.from || i18n.t("common.unknown"),
+          };
+          return newQuote;
+        })
+        .catch((error) => {
+          console.error("Error replenishing quote cache:", error);
+          return null;
+        }),
+    );
+  }
+
+  // 等待所有请求完成
+  const results = await Promise.all(fetchPromises);
+
+  // 将不重复的引用添加到缓存
+  for (const newQuote of results) {
+    if (newQuote && !isQuoteInCache(newQuote) && quoteCache.value.length < 2) {
+      quoteCache.value.push(newQuote);
     }
   }
 }

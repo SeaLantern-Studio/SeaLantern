@@ -135,6 +135,10 @@ function removePluginUiElements(pluginId: string) {
   });
 }
 
+function initSidebarEventListener() {
+  console.log("[PluginSidebar] Event listener disabled");
+}
+
 export const usePluginStore = defineStore("plugin", () => {
   const plugins = ref<PluginInfo[]>([]);
   const navItems = ref<PluginNavItem[]>([]);
@@ -1163,6 +1167,7 @@ export const usePluginStore = defineStore("plugin", () => {
   }
 
   let uiEventUnlisten: UnlistenFn | null = null;
+  let sidebarEventUnlisten: UnlistenFn | null = null;
 
   async function initUiEventListener() {
     if (uiEventUnlisten) {
@@ -1185,10 +1190,6 @@ export const usePluginStore = defineStore("plugin", () => {
       uiEventUnlisten();
       uiEventUnlisten = null;
     }
-  }
-
-  function initSidebarEventListener() {
-    console.log("[PluginSidebar] Event listener disabled");
   }
 
   function cleanupSidebarEventListener() {

@@ -80,6 +80,42 @@ const routes = [
     component: () => import("../views/DownloadFileView.vue"),
     meta: { titleKey: "common.download-file", icon: "info" },
   },
+  {
+    path: "/core-download/mode",
+    name: "core-download-mode",
+    component: () => import("@views/CoreDownloadModeView.vue"),
+    meta: { title: "选择创建方式", icon: "download" },
+  },
+  {
+    path: "/core-download/quick",
+    name: "core-select",
+    component: () => import("@views/CoreSelectView.vue"),
+    meta: { title: "选择核心", icon: "zap" },
+  },
+  {
+    path: "/core-download/versions/:coreName",
+    name: "core-version-select",
+    component: () => import("@views/CoreVersionSelectView.vue"),
+    meta: { title: "选择版本", icon: "download" },
+  },
+  {
+    path: "/core-download/builds/:coreName/:version",
+    name: "core-build-select",
+    component: () => import("@views/CoreBuildSelectView.vue"),
+    meta: { title: "选择构建版本", icon: "download" },
+  },
+  {
+    path: "/core-download/config/:coreName/:version/:build",
+    name: "core-server-config",
+    component: () => import("@views/CoreServerConfigView.vue"),
+    meta: { title: "配置服务器", icon: "settings" },
+  },
+  {
+    path: "/core-download/download/:coreName/:version/:build",
+    name: "core-download",
+    component: () => import("@views/CoreDownloadView.vue"),
+    meta: { title: "下载核心", icon: "download" },
+  },
 ];
 const router = createRouter({
   history: createWebHistory(),

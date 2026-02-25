@@ -62,7 +62,7 @@ onUnmounted(() => {
 });
 
 function handleCreate() {
-  router.push("/create");
+  router.push("/core-download/mode");
 }
 </script>
 

@@ -345,10 +345,10 @@ function getMissingRequiredDependencies(plugin: PluginInfo): MissingDependency[]
   const missing: MissingDependency[] = [];
 
   if (plugin.missing_dependencies) {
-    for (const d of plugin.missing_dependencies.filter((d) => d.required)) {
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === d.id);
+    for (const dep of plugin.missing_dependencies.filter((d) => d.required)) {
+      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === dep.id);
       if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push(d);
+        missing.push(dep);
       }
     }
   }
@@ -371,10 +371,10 @@ function getMissingOptionalDependencies(plugin: PluginInfo): MissingDependency[]
   const missing: MissingDependency[] = [];
 
   if (plugin.missing_dependencies) {
-    for (const d of plugin.missing_dependencies.filter((d) => !d.required)) {
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === d.id);
+    for (const dep of plugin.missing_dependencies.filter((d) => !d.required)) {
+      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === dep.id);
       if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push(d);
+        missing.push(dep);
       }
     }
   }
