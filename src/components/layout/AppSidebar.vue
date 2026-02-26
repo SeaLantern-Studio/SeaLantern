@@ -13,11 +13,11 @@ import {
   Settings,
   Users,
   Sliders,
-  Palette,
+  PaintRoller,
   Info,
   Server,
   ChevronLeft,
-  Puzzle,
+  Blocks,
   Store,
   LayoutDashboard,
   BarChart2,
@@ -34,10 +34,10 @@ const iconMap: Record<string, LucideIcon> = {
   settings: Settings,
   users: Users,
   sliders: Sliders,
-  paint: Palette,
+  paint: PaintRoller,
   info: Info,
   server: Server,
-  puzzle: Puzzle,
+  blocks: Blocks,
   store: Store,
   "layout-dashboard": LayoutDashboard,
   chart: BarChart2,
@@ -123,7 +123,7 @@ const staticNavItems: NavItem[] = [
   {
     name: "plugins",
     path: "/plugins",
-    icon: "puzzle",
+    icon: "blocks",
     labelKey: "common.plugins",
     label: i18n.t("common.plugins"),
     group: "system",
@@ -151,7 +151,7 @@ const pluginNavItems = computed<NavItem[]>(() => {
   return pluginStore.navItems.map((item) => ({
     name: `plugin-${item.plugin_id}`,
     path: `/plugin/${item.plugin_id}`,
-    icon: item.icon || "puzzle",
+    icon: item.icon || "blocks",
     labelKey: "",
     label: item.label,
     group: "plugins",
@@ -168,7 +168,7 @@ function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem
   return {
     name: `sidebar-${item.pluginId}`,
     path,
-    icon: item.icon || "puzzle",
+    icon: item.icon || "blocks",
     labelKey: "",
     label: item.label,
     group: item.isDefault ? "plugins-default" : "plugins-custom",
@@ -471,7 +471,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
                   />
                   <component
                     v-else
-                    :is="getNavIcon(child.icon || 'puzzle')"
+                    :is="getNavIcon(child.icon || 'blocks')"
                     class="nav-icon"
                     :size="16"
                     :stroke-width="1.8"
