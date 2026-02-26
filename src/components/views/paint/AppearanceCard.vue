@@ -140,13 +140,7 @@ function handleMinimalModeChange(value: boolean) {
       <div class="sl-setting-row">
         <div class="sl-setting-info">
           <span class="sl-setting-label">{{ i18n.t("settings.acrylic") }}</span>
-          <span class="sl-setting-desc">
-            {{
-              acrylicSupported
-                ? i18n.t("settings.acrylic_desc")
-                : i18n.t("settings.acrylic_not_supported")
-            }}
-          </span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
         </div>
         <SLSwitch
           :model-value="acrylicEnabled"
