@@ -1,6 +1,6 @@
 use super::http_command_handlers::CommandRegistry;
 use axum::{
-    extract::{Multipart, Path, State},
+    extract::{DefaultBodyLimit, Multipart, Path, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
@@ -67,6 +67,8 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
         .route("/health", get(|| async { "OK" }))
         .route("/api/list", get(list_api_endpoints))
         .route("/upload", post(handle_file_upload))
+        // 上传路由添加请求体大小限制（500MB）
+        .layer(DefaultBodyLimit::max(500 * 1024 * 1024))
         .layer(cors)
         .with_state(state);
 
@@ -95,6 +97,7 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
 async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
     let upload_dir = "/app/uploads";
     let mut uploaded_files = Vec::new();
+    let mut error_message = None;
 
     while let Ok(Some(field)) = multipart.next_field().await {
         let file_name = match field.file_name() {
@@ -105,15 +108,15 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
             }
         };
 
+        eprintln!("[Upload] Processing file: {} (mime: {:?})", file_name, field.content_type());
+
         let file_data: Vec<u8> = match field.bytes().await {
             Ok(data) => data.to_vec(),
             Err(e) => {
-                eprintln!("[Upload] Failed to read field '{}': {}", file_name, e);
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(ApiResponse::error(format!("Failed to read file: {}", e))),
-                )
-                    .into_response();
+                let msg = format!("Failed to read file '{}': {}", file_name, e);
+                eprintln!("[Upload] {}", msg);
+                error_message = Some(msg);
+                break;
             }
         };
 

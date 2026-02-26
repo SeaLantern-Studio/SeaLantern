@@ -36,6 +36,26 @@ impl CommandRegistry {
         handlers.insert("get_server_logs".to_string(), handle_get_server_logs as CommandHandler);
         handlers
             .insert("update_server_name".to_string(), handle_update_server_name as CommandHandler);
+        handlers.insert(
+            "scan_startup_candidates".to_string(),
+            handle_scan_startup_candidates as CommandHandler,
+        );
+        handlers.insert(
+            "parse_server_core_type".to_string(),
+            handle_parse_server_core_type as CommandHandler,
+        );
+        handlers.insert(
+            "collect_copy_conflicts".to_string(),
+            handle_collect_copy_conflicts as CommandHandler,
+        );
+        handlers.insert(
+            "copy_directory_contents".to_string(),
+            handle_copy_directory_contents as CommandHandler,
+        );
+        handlers.insert(
+            "add_existing_server".to_string(),
+            handle_add_existing_server as CommandHandler,
+        );
 
         // 注册 Java 命令
         handlers.insert("detect_java".to_string(), handle_detect_java as CommandHandler);
@@ -309,6 +329,75 @@ fn handle_update_server_name(
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         server_commands::update_server_name(req.id, req.name)?;
         Ok(Value::Null)
+    })
+}
+
+fn handle_scan_startup_candidates(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ScanStartupCandidatesRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = server_commands::scan_startup_candidates(req.source_path, req.source_type)
+            .await
+            .map_err(|e| format!("Failed to scan startup candidates: {}", e))?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_parse_server_core_type(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ParseServerCoreTypeRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = server_commands::parse_server_core_type(req.source_path)
+            .await
+            .map_err(|e| format!("Failed to parse server core type: {}", e))?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_collect_copy_conflicts(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: CollectCopyConflictsRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = server_commands::collect_copy_conflicts(req.source_dir, req.target_dir)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_copy_directory_contents(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: CopyDirectoryContentsRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        server_commands::copy_directory_contents(req.source_dir, req.target_dir)?;
+        Ok(Value::Null)
+    })
+}
+
+fn handle_add_existing_server(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: AddExistingServerRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = server_commands::add_existing_server(
+            req.name,
+            req.server_path,
+            req.java_path,
+            req.max_memory,
+            req.min_memory,
+            req.port,
+            req.startup_mode,
+            req.executable_path,
+            req.custom_command,
+        )?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
 
@@ -677,6 +766,42 @@ struct GetLogsRequest {
 struct UpdateNameRequest {
     id: String,
     name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ScanStartupCandidatesRequest {
+    source_path: String,
+    source_type: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ParseServerCoreTypeRequest {
+    source_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CollectCopyConflictsRequest {
+    source_dir: String,
+    target_dir: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CopyDirectoryContentsRequest {
+    source_dir: String,
+    target_dir: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AddExistingServerRequest {
+    name: String,
+    server_path: String,
+    java_path: String,
+    max_memory: u32,
+    min_memory: u32,
+    port: u16,
+    startup_mode: String,
+    executable_path: Option<String>,
+    custom_command: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
