@@ -18,7 +18,7 @@ export type { ConfigEntry, ServerProperties } from "@api/config";
 export { playerApi } from "@api/player";
 export type { PlayerEntry, BanEntry, OpEntry } from "@api/player";
 
-export { settingsApi, checkAcrylicSupport, applyAcrylic, getSystemFonts } from "@api/settings";
+export { settingsApi, getSystemFonts } from "@api/settings";
 export type { AppSettings } from "@api/settings";
 
 export { systemApi } from "@api/system";

@@ -93,7 +93,7 @@ async function pickJavaFile() {
           @update:model-value="$emit('update:selectedJava', $event)"
         >
           <template #suffix>
-            <button class="java-step-pick" @click="pickJavaFile">
+            <button class="sl-input-action" @click="pickJavaFile">
               {{ i18n.t("create.browse") }}
             </button>
           </template>

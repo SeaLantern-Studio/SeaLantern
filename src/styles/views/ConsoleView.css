@@ -44,7 +44,7 @@
 
 .server-name-display {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--sl-font-size-lg);
   white-space: nowrap;
 }
 
@@ -54,7 +54,7 @@
   gap: var(--sl-space-xs);
   padding: 4px 12px;
   border-radius: var(--sl-radius-full);
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   font-weight: 500;
 }
 
@@ -126,7 +126,7 @@
 }
 
 .quick-label {
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-tertiary);
   white-space: nowrap;
 }
@@ -139,7 +139,7 @@
 .quick-btn {
   padding: 3px 10px;
   border-radius: var(--sl-radius-sm);
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   cursor: pointer;
   border: 1px solid var(--sl-border);
   color: var(--sl-text-secondary);
@@ -209,7 +209,7 @@
   background: var(--sl-primary);
   color: white;
   border-radius: var(--sl-radius-full);
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   cursor: pointer;
   box-shadow: var(--sl-shadow-md);
   z-index: 10;
@@ -238,7 +238,7 @@
 .suggestion-item {
   padding: 6px 14px;
   font-family: var(--sl-font-mono);
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-primary);
   cursor: pointer;
   transition: background var(--sl-transition-fast);

@@ -142,8 +142,6 @@ pub async fn run() {
             settings_commands::reset_settings,
             settings_commands::export_settings,
             settings_commands::import_settings,
-            settings_commands::check_acrylic_support,
-            settings_commands::apply_acrylic,
             settings_commands::get_system_fonts,
             update_commands::check_update,
             update_commands::open_download_url,
