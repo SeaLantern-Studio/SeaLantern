@@ -13,7 +13,8 @@ const isBrowserEnv = (): boolean => {
 };
 
 // HTTP API 基础 URL（Docker 模式下使用）
-export const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+// 使用相对路径，这样在 Docker 环境下浏览器会自动使用当前页面的域名
+export const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 /**
  * 通过 HTTP API 调用命令（Docker/浏览器模式）
