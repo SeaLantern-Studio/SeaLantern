@@ -147,14 +147,14 @@
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
-  
+
   [data-acrylic="true"] .glass,
   [data-acrylic="true"] .glass-subtle,
   [data-acrylic="true"] .glass-strong,
   [data-acrylic="true"] .glass-card {
     background: rgba(255, 255, 255, 0.95);
   }
-  
+
   [data-theme="dark"][data-acrylic="true"] .glass,
   [data-theme="dark"][data-acrylic="true"] .glass-strong,
   [data-theme="dark"][data-acrylic="true"] .glass-card {
@@ -171,7 +171,7 @@
     transition: none;
     will-change: auto;
   }
-  
+
   .glass-card:hover {
     transform: none;
   }

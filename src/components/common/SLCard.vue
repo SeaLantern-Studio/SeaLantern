@@ -143,11 +143,7 @@ const cardClasses = computed(() => ({
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(14, 165, 233, 0.03) 0%,
-    transparent 50%
-  );
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.03) 0%, transparent 50%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -159,7 +155,7 @@ const cardClasses = computed(() => ({
 }
 
 .sl-card--solid.sl-card--hoverable:hover {
-  box-shadow: 
+  box-shadow:
     var(--sl-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08)),
     0 0 0 1px var(--sl-primary-bg, rgba(14, 165, 233, 0.1));
   transform: translateY(-2px);
@@ -257,7 +253,7 @@ const cardClasses = computed(() => ({
 [data-theme="dark"] .sl-card--solid.sl-card--hoverable:hover,
 [data-theme="dark"] .sl-card--glass.sl-card--hoverable:hover {
   border-color: var(--sl-primary, #60a5fa);
-  box-shadow: 
+  box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(96, 165, 250, 0.2);
 }
@@ -295,11 +291,11 @@ const cardClasses = computed(() => ({
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
-  
+
   [data-acrylic="true"] .sl-card--glass {
     background: rgba(255, 255, 255, 0.95);
   }
-  
+
   [data-theme="dark"][data-acrylic="true"] .sl-card--glass {
     background: rgba(30, 33, 48, 0.95);
   }

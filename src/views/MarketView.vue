@@ -257,7 +257,11 @@ async function handleInstall(plugin: MarketPlugin) {
     const errorMessage = normalizeErrorMessage(e);
     const hint = resolveMarketNetworkHint(errorMessage);
     const extraHint = hint ? `\n${hint}` : "";
-    showInstallFeedback("error", `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`, 0);
+    showInstallFeedback(
+      "error",
+      `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`,
+      0,
+    );
   } finally {
     installing.value = null;
   }
@@ -308,7 +312,7 @@ onMounted(() => {
       v-if="allTags.length"
       v-model="selectedTag"
       :tabs="[
-        { key: null, label: '全部' },
+        { key: null, label: i18n.t('config.categories.all') },
         ...allTags.map((tag) => ({ key: tag, label: getCategoryLabel(tag) })),
       ]"
       :level="2"

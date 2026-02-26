@@ -325,6 +325,7 @@
     "enter_command_content": "Enter command content",
     "cancel": "Cancel",
     "delete": "Delete",
+    "save": "Save",
     "add": "Add",
     "update": "Update",
     "back_to_bottom": "Back to bottom",
@@ -336,7 +337,8 @@
     "stopping": "Stopping",
     "stopped": "Stopped",
     "no_server": "No servers",
-    "create_server_first": "Please create and select a server first"
+    "create_server_first": "Please create and select a server first",
+    "suggestion_hint": "Tab to complete / Up Down to select"
   },
   "config": {
     "title": "Config Edit",
@@ -774,6 +776,7 @@
     "not_found": "Plugin not found",
     "back": "Back",
     "plugin_settings": "Plugin Settings",
+    "plugin_category": "Plugin Category",
     "depends_on": "This plugin depends on {{name}}",
     "save_settings": "Save Settings",
     "status": {
@@ -983,6 +986,9 @@
     "save_folder": "Save to",
     "filename": "File Name",
     "thread_count": "Thread Count",
+    "thread_count_empty": "Thread count cannot be empty",
+    "thread_count_invalid": "Invalid character",
+    "thread_count_positive": "Thread count must be a positive integer",
     "cancel": "Cancel",
     "download": "Download",
     "browse": "Browse",
@@ -990,5 +996,16 @@
     "status-finished": "Download Finished",
     "failed": "Download Failed",
     "completed": "Completed"
+  },
+  "dropzone": {
+    "placeholder": "Drop file here or click to select",
+    "support_both": "Supports files and folders",
+    "support_files": "Supports files",
+    "support_folders": "Supports folders",
+    "error_no_path": "Unable to get dropped file path",
+    "error_unsupported_type": "Unsupported file type"
+  },
+  "downloader": {
+    "connection_lost": "Task connection lost"
   }
 }

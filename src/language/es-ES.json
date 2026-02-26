@@ -245,6 +245,7 @@
     "enter_command_content": "Introduce el contenido",
     "cancel": "Cancelar",
     "delete": "Eliminar",
+    "save": "Guardar",
     "add": "Añadir",
     "update": "Actualizar",
     "back_to_bottom": "Ir al final",
@@ -254,7 +255,10 @@
     "running": "En ejecución",
     "starting": "Iniciando",
     "stopping": "Deteniendo",
-    "stopped": "Detenido"
+    "stopped": "Detenido",
+    "no_server": "Sin servidores",
+    "create_server_first": "Por favor, crea y selecciona un servidor primero",
+    "suggestion_hint": "Tab autocompletar / Up Down seleccionar"
   },
   "config": {
     "title": "Editar configuración",
@@ -623,6 +627,9 @@
     "save_folder": "Guardar en",
     "filename": "Nombre del archivo",
     "thread_count": "Número de hilos",
+    "thread_count_empty": "El número de hilos no puede estar vacío",
+    "thread_count_invalid": "Carácter no válido",
+    "thread_count_positive": "El número de hilos debe ser un número entero positivo",
     "cancel": "Cancelar",
     "download": "Descargar",
     "browse": "Examinar",
@@ -630,5 +637,16 @@
     "status-finished": "Descarga finalizada",
     "failed": "Descarga fallida",
     "completed": "Completado"
+  },
+  "dropzone": {
+    "placeholder": "Arrastra un archivo aquí o haz clic para seleccionar",
+    "support_both": "Soporta archivos y carpetas",
+    "support_files": "Soporta archivos",
+    "support_folders": "Soporta carpetas",
+    "error_no_path": "No se pudo obtener la ruta del archivo arrastrado",
+    "error_unsupported_type": "Tipo de archivo no soportado"
+  },
+  "downloader": {
+    "connection_lost": "Conexión de tarea perdida"
   }
 }
