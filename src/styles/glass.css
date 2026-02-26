@@ -1,40 +1,58 @@
+/* 基础 Glass 类 - GPU 加速优化 */
 .glass {
   background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
   border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
+  /* GPU 加速 */
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
+/* 轻微模糊 */
 .glass-subtle {
   background: var(--sl-surface);
-  backdrop-filter: blur(8px) saturate(150%);
-  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  backdrop-filter: blur(var(--sl-blur-sm)) saturate(var(--sl-saturate-subtle));
+  -webkit-backdrop-filter: blur(var(--sl-blur-sm)) saturate(var(--sl-saturate-subtle));
   border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.3));
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
+/* 强模糊 */
 .glass-strong {
   background: var(--sl-glass-strong-bg, rgba(255, 255, 255, 0.88));
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-strong));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-strong));
   border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.6));
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
+/* Glass 卡片 */
 .glass-card {
   background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
   border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   border-radius: var(--sl-radius-lg);
   box-shadow: var(--sl-shadow-md);
   transition: all var(--sl-transition-normal);
+  will-change: backdrop-filter, transform, box-shadow;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .glass-card:hover {
   box-shadow: var(--sl-shadow-lg);
-  transform: translateY(-2px);
+  transform: translateZ(0) translateY(-2px);
   border-color: var(--sl-primary-light);
 }
 
+/* 暗色模式 */
 [data-theme="dark"] .glass {
   --sl-glass-bg: rgba(15, 17, 23, 0.72);
   --sl-glass-border: rgba(255, 255, 255, 0.08);
@@ -54,39 +72,40 @@
   --sl-glass-border: rgba(255, 255, 255, 0.08);
 }
 
+/* 亚克力模式 - 增强模糊效果 */
 [data-acrylic="true"] .glass {
-  --sl-glass-bg: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(8px) saturate(150%);
-  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(var(--sl-blur-xl)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl)) saturate(var(--sl-saturate-normal));
 }
 
 [data-acrylic="true"] .glass-subtle {
-  backdrop-filter: blur(4px) saturate(120%);
-  -webkit-backdrop-filter: blur(4px) saturate(120%);
+  backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-subtle));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-subtle));
 }
 
 [data-acrylic="true"] .glass-strong {
-  --sl-glass-strong-bg: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  --sl-glass-strong-bg: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(var(--sl-blur-xxl)) saturate(var(--sl-saturate-strong));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xxl)) saturate(var(--sl-saturate-strong));
 }
 
 [data-acrylic="true"] .glass-card {
-  --sl-glass-bg: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(8px) saturate(150%);
-  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(var(--sl-blur-xl)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl)) saturate(var(--sl-saturate-normal));
 }
 
 [data-theme="dark"][data-acrylic="true"] .glass {
-  --sl-glass-bg: rgba(15, 17, 23, 0.45);
+  --sl-glass-bg: rgba(15, 17, 23, 0.65);
 }
 
 [data-theme="dark"][data-acrylic="true"] .glass-strong {
-  --sl-glass-strong-bg: rgba(15, 17, 23, 0.6);
+  --sl-glass-strong-bg: rgba(15, 17, 23, 0.75);
 }
 
 [data-theme="dark"][data-acrylic="true"] .glass-card {
-  --sl-glass-bg: rgba(26, 29, 40, 0.5);
+  --sl-glass-bg: rgba(26, 29, 40, 0.65);
 }
 
 /* 亚克力关闭时，使用不透明背景 */
@@ -94,22 +113,66 @@
   background: var(--sl-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 [data-acrylic="false"] .glass-subtle {
   background: var(--sl-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 [data-acrylic="false"] .glass-strong {
   background: var(--sl-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 [data-acrylic="false"] .glass-card {
   background: var(--sl-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  will-change: auto;
+}
+
+/* 浏览器兼容性降级 - 不支持 backdrop-filter 时 */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass,
+  .glass-subtle,
+  .glass-strong,
+  .glass-card {
+    background: var(--sl-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  [data-acrylic="true"] .glass,
+  [data-acrylic="true"] .glass-subtle,
+  [data-acrylic="true"] .glass-strong,
+  [data-acrylic="true"] .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+  }
+
+  [data-theme="dark"][data-acrylic="true"] .glass,
+  [data-theme="dark"][data-acrylic="true"] .glass-strong,
+  [data-theme="dark"][data-acrylic="true"] .glass-card {
+    background: rgba(30, 33, 48, 0.95);
+  }
+}
+
+/* 低性能设备优化 - 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .glass,
+  .glass-subtle,
+  .glass-strong,
+  .glass-card {
+    transition: none;
+    will-change: auto;
+  }
+
+  .glass-card:hover {
+    transform: none;
+  }
 }

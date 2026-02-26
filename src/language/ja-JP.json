@@ -245,6 +245,7 @@
     "enter_command_content": "コマンド内容を入力",
     "cancel": "キャンセル",
     "delete": "削除",
+    "save": "保存",
     "add": "追加",
     "update": "更新",
     "back_to_bottom": "最下部へ",
@@ -254,7 +255,10 @@
     "running": "実行中",
     "starting": "起動中",
     "stopping": "停止中",
-    "stopped": "停止済み"
+    "stopped": "停止済み",
+    "no_server": "サーバーなし",
+    "create_server_first": "先にサーバーを作成して選択してください",
+    "suggestion_hint": "Tab 補完 / Up Down 選択"
   },
   "config": {
     "title": "設定編集",
@@ -276,7 +280,9 @@
     "delete": "削除",
     "refresh_list": "リストを更新",
     "reload_plugins": "プラグインを再読み込み",
+    "reload_plugins_warning": "プラグインの再読み込みはサーバーに負荷がかかる場合がありますので注意してください",
     "empty_config_folder": "設定フォルダが空です",
+    "has_config_folder": "設定あり",
     "no_config_files": "設定なし",
     "config_files_count": "個の設定",
     "config_files": "設定ファイル",
@@ -458,8 +464,7 @@
     "font_family": "フォント",
     "font_family_desc": "使用するフォントを選択。一部フォントはインストールが必要",
     "acrylic": "アクリル効果",
-    "acrylic_desc": "Windowsのアクリル効果を有効化。背景画像と併用可能",
-    "acrylic_not_supported": "現在のシステムではアクリル効果はサポートされていません",
+    "acrylic_desc": "ソフトガウシアンブラー効果を有効化。全プラットフォーム対応、背景画像と併用可能",
     "background": "背景画像",
     "background_desc": "ソフトウェアの背景画像をアップロード（PNG、JPG、WEBP対応）",
     "opacity": "透明度",
@@ -638,6 +643,9 @@
     "save_folder": "保存先",
     "filename": "ファイル名",
     "thread_count": "スレッド数",
+    "thread_count_empty": "スレッド数を入力してください",
+    "thread_count_invalid": "無効な文字です",
+    "thread_count_positive": "スレッド数は正の整数で入力してください",
     "cancel": "キャンセル",
     "download": "ダウンロード",
     "browse": "参照",
@@ -645,5 +653,16 @@
     "status-finished": "ダウンロード完了",
     "failed": "ダウンロード失敗",
     "completed": "完了"
+  },
+  "dropzone": {
+    "placeholder": "ファイルをドラッグするかクリックして選択",
+    "support_both": "ファイルとフォルダをサポート",
+    "support_files": "ファイルをサポート",
+    "support_folders": "フォルダをサポート",
+    "error_no_path": "ドロップされたファイルのパスを取得できません",
+    "error_unsupported_type": "サポートされていないファイルタイプです"
+  },
+  "downloader": {
+    "connection_lost": "タスク接続が失われました"
   }
 }

@@ -255,7 +255,10 @@
     "running": "En cours",
     "starting": "Démarrage",
     "stopping": "Arrêt en cours",
-    "stopped": "Arrêté"
+    "stopped": "Arrêté",
+    "no_server": "Aucun serveur",
+    "create_server_first": "Veuillez d'abord créer et sélectionner un serveur",
+    "suggestion_hint": "Tab complétion / Up Down sélection"
   },
   "config": {
     "title": "Édition de configuration",
@@ -277,7 +280,9 @@
     "delete": "Supprimer",
     "refresh_list": "Rafraîchir la liste",
     "reload_plugins": "Recharger les plugins",
+    "reload_plugins_warning": "Recharger les plugins peut causer des ralentissements sur le serveur, veuillez faire attention",
     "empty_config_folder": "Dossier de configuration vide",
+    "has_config_folder": "Configuration présente",
     "no_config_files": "Aucune configuration",
     "config_files_count": "configurations",
     "config_files": "Fichiers de configuration",
@@ -460,8 +465,7 @@
     "font_family": "Police",
     "font_family_desc": "Choisissez la police de l'interface. Certaines polices doivent être installées sur le système",
     "acrylic": "Effet acrylique",
-    "acrylic_desc": "Activer l'effet de flou acrylique (Windows uniquement). Compatible avec l'image d'arrière-plan",
-    "acrylic_not_supported": "Votre système ne supporte pas l'effet acrylique",
+    "acrylic_desc": "Activer l'effet de flou gaussien doux, supporté sur toutes les plateformes, compatible avec l'image d'arrière-plan",
     "background": "Image d'arrière-plan",
     "background_desc": "Téléchargez une image d'arrière-plan. Formats supportés : PNG, JPG, WEBP",
     "opacity": "Opacité",
@@ -640,6 +644,9 @@
     "save_folder": "Enregistrer dans",
     "filename": "Nom du fichier",
     "thread_count": "Nombre de threads",
+    "thread_count_empty": "Le nombre de threads ne peut pas être vide",
+    "thread_count_invalid": "Caractère invalide",
+    "thread_count_positive": "Le nombre de threads doit être un entier positif",
     "cancel": "Annuler",
     "download": "Télécharger",
     "browse": "Parcourir",
@@ -647,5 +654,16 @@
     "status-finished": "Téléchargement terminé",
     "failed": "Échec du téléchargement",
     "completed": "Terminé"
+  },
+  "dropzone": {
+    "placeholder": "Déposez un fichier ici ou cliquez pour sélectionner",
+    "support_both": "Prend en charge fichiers et dossiers",
+    "support_files": "Prend en charge les fichiers",
+    "support_folders": "Prend en charge les dossiers",
+    "error_no_path": "Impossible d'obtenir le chemin du fichier déposé",
+    "error_unsupported_type": "Type de fichier non pris en charge"
+  },
+  "downloader": {
+    "connection_lost": "Connexion à la tâche perdue"
   }
 }

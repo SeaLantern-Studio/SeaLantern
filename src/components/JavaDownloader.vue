@@ -1,46 +1,51 @@
 <template>
-  <div class="w-full">
-    <div class="flex items-center justify-between py-1">
+  <div class="java-downloader-container">
+    <div class="java-downloader-header">
       <!-- Left Side: Label & Desc -->
-      <div class="flex flex-col gap-1 min-w-0 pr-4">
-        <span class="text-[0.9375rem] font-medium text-[var(--sl-text-primary)]">
+      <div class="sl-setting-info">
+        <span class="sl-setting-label">
           {{ i18n.t("settings.java_download") }}
         </span>
-        <span class="text-[0.8125rem] text-[var(--sl-text-tertiary)] leading-snug">
+        <span class="sl-setting-desc">
           {{ i18n.t("settings.java_download_desc") }}
         </span>
       </div>
 
       <!-- Right Side: Interaction Area -->
-      <div class="flex items-center gap-3 flex-shrink-0">
+      <div class="java-downloader-actions">
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
-          <div class="w-36">
+          <div class="download-setting-div">
             <SLSelect
               v-model="selectedVersion"
               :options="versionOptions"
               :disabled="loadingUrl"
               size="sm"
             />
+            <SLButton
+              variant="primary"
+              class="download-button"
+              :loading="loadingUrl"
+              @click="startDownload"
+            >
+              {{ downloadButtonText }}
+            </SLButton>
           </div>
-          <SLButton variant="primary" size="sm" :loading="loadingUrl" @click="startDownload">
-            {{ downloadButtonText }}
-          </SLButton>
         </template>
 
         <!-- Downloading State -->
         <template v-else-if="isDownloading || isExtracting">
-          <div class="flex items-center gap-3">
-            <div class="flex flex-col items-end gap-1 w-40">
-              <div class="flex items-center gap-2 text-xs text-[var(--sl-text-primary)]">
+          <div class="downloading-state">
+            <div class="progress-container">
+              <div class="status-text">
                 <span>{{ statusMessage }}</span>
-                <span class="font-mono opacity-70">{{
+                <span class="progress-percentage">{{
                   isExtracting ? "" : `${progress.toFixed(0)}%`
                 }}</span>
               </div>
-              <div class="w-full h-1.5 bg-[var(--sl-border)] rounded-full overflow-hidden">
+              <div class="progress-bar-container">
                 <div
-                  class="h-full bg-[var(--sl-primary)] transition-all duration-300 ease-out"
+                  class="progress-bar"
                   :class="{ 'indeterminate-progress': isExtracting }"
                   :style="{ width: isExtracting ? '100%' : `${progress}%` }"
                 ></div>
@@ -49,7 +54,7 @@
             <SLButton
               size="sm"
               variant="ghost"
-              class="!p-1.5 text-[var(--sl-text-tertiary)] hover:text-[var(--sl-error)]"
+              class="cancel-button"
               title="Cancel"
               @click="cancelDownload"
             >
@@ -60,8 +65,8 @@
 
         <!-- Success State -->
         <template v-else-if="successMessage">
-          <div class="flex items-center gap-3 animate-fade-in">
-            <div class="flex items-center gap-1.5 text-[var(--sl-success)] text-sm font-medium">
+          <div class="success-state">
+            <div class="success-message">
               <CheckCircle :size="16" />
               <span>{{ i18n.t("settings.java_install_success").replace(":", "") }}</span>
             </div>
@@ -72,12 +77,9 @@
     </div>
 
     <!-- Error Message (Full Width below) -->
-    <div
-      v-if="errorMessage"
-      class="mt-2 p-3 bg-red-50 dark:bg-red-900/20 text-[var(--sl-error)] text-sm rounded border border-red-200 dark:border-red-800 flex items-center justify-between animate-fade-in"
-    >
-      <div class="flex items-center gap-2">
-        <AlertCircle class="flex-shrink-0" :size="16" />
+    <div v-if="errorMessage" class="error-message">
+      <div class="error-content">
+        <AlertCircle class="error-icon" :size="16" />
         <span>{{ errorMessage }}</span>
       </div>
       <SLButton size="sm" variant="ghost" @click="resetState">
@@ -229,6 +231,76 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.download-button {
+  padding: 0.5rem 2rem;
+}
+
+.java-downloader-container {
+  width: 100%;
+}
+
+.java-downloader-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+}
+
+.java-downloader-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.download-setting-div {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.downloading-state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  width: 10rem;
+}
+
+.status-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--sl-text-primary);
+}
+
+.progress-percentage {
+  font-family: var(--sl-font-mono);
+  opacity: 0.7;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 0.375rem;
+  background-color: var(--sl-border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--sl-primary);
+  transition: all 0.3s ease-out;
+}
+
 @keyframes indeterminate {
   0% {
     transform: translateX(-100%);
@@ -252,5 +324,70 @@ onUnmounted(() => {
   width: 50%;
   background: rgba(255, 255, 255, 0.3);
   animation: indeterminate 1.5s infinite linear;
+}
+
+.cancel-button {
+  padding: 0.375rem !important;
+  color: var(--sl-text-tertiary);
+}
+
+.cancel-button:hover {
+  color: var(--sl-error);
+}
+
+.success-state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: fade-in 0.3s ease;
+}
+
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--sl-success);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.error-message {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: #fef2f2;
+  color: var(--sl-error);
+  font-size: 0.875rem;
+  border-radius: var(--sl-radius-md);
+  border: 1px solid #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: fade-in 0.3s ease;
+}
+
+[data-theme="dark"] .error-message {
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.error-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-icon {
+  flex-shrink: 0;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
