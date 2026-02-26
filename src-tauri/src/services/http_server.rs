@@ -96,63 +96,51 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
     let upload_dir = "/app/uploads";
     let mut uploaded_files = Vec::new();
 
-    while let Some(field) = multipart.next_field().await {
-        match field {
-            Ok(field) => {
-                let file_name = match field.file_name() {
-                    Some(name) => name.to_string(),
-                    None => {
-                        eprintln!("[Upload] Field without filename, skipping");
-                        continue;
-                    }
-                };
-
-                let file_data: Vec<u8> = match field.bytes().await {
-                    Ok(data) => data.to_vec(),
-                    Err(e) => {
-                        eprintln!("[Upload] Failed to read field '{}': {}", file_name, e);
-                        return (
-                            StatusCode::BAD_REQUEST,
-                            Json(ApiResponse::error(format!("Failed to read file: {}", e))),
-                        )
-                            .into_response();
-                    }
-                };
-
-                // 生成唯一文件名
-                let timestamp = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
-                let unique_filename = format!("{}-{}", timestamp, file_name);
-                let file_path = format!("{}/{}", upload_dir, unique_filename);
-
-                // 写入文件
-                if let Err(e) = fs::write(&file_path, &file_data).await {
-                    eprintln!("[Upload] Failed to write file '{}': {}", file_path, e);
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(ApiResponse::error(format!("Failed to save file: {}", e))),
-                    )
-                        .into_response();
-                }
-
-                println!("[Upload] File '{}' saved to '{}'", file_name, file_path);
-                uploaded_files.push(serde_json::json!({
-                    "original_name": file_name,
-                    "saved_path": file_path,
-                    "size": file_data.len()
-                }));
+    while let Ok(Some(field)) = multipart.next_field().await {
+        let file_name = match field.file_name() {
+            Some(name) => name.to_string(),
+            None => {
+                eprintln!("[Upload] Field without filename, skipping");
+                continue;
             }
+        };
+
+        let file_data: Vec<u8> = match field.bytes().await {
+            Ok(data) => data.to_vec(),
             Err(e) => {
-                eprintln!("[Upload] Failed to read field: {}", e);
+                eprintln!("[Upload] Failed to read field '{}': {}", file_name, e);
                 return (
                     StatusCode::BAD_REQUEST,
-                    Json(ApiResponse::error(format!("Failed to read multipart field: {}", e))),
+                    Json(ApiResponse::error(format!("Failed to read file: {}", e))),
                 )
                     .into_response();
             }
+        };
+
+        // 生成唯一文件名
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let unique_filename = format!("{}-{}", timestamp, file_name);
+        let file_path = format!("{}/{}", upload_dir, unique_filename);
+
+        // 写入文件
+        if let Err(e) = fs::write(&file_path, &file_data).await {
+            eprintln!("[Upload] Failed to write file '{}': {}", file_path, e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Failed to save file: {}", e))),
+            )
+                .into_response();
         }
+
+        println!("[Upload] File '{}' saved to '{}'", file_name, file_path);
+        uploaded_files.push(serde_json::json!({
+            "original_name": file_name,
+            "saved_path": file_path,
+            "size": file_data.len()
+        }));
     }
 
     if uploaded_files.is_empty() {
