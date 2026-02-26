@@ -9,6 +9,7 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { systemApi } from "@src/api";
 import { downloadApi } from "@api/downloader.ts";
+import { joinPath } from "@components/views/create/startupUtils";
 import { SLProgress } from "@src/components";
 
 const router = useRouter();
@@ -175,9 +176,10 @@ async function handleDownload() {
   startLoading();
 
   try {
+    const resolvedSavePath = joinPath(savePath.value.trim(), filename.value.trim());
     await startTask({
-      url: url.value,
-      savePath: savePath.value + "/" + filename.value,
+      url: url.value.trim(),
+      savePath: resolvedSavePath,
       threadCount: threadCountValidation.value,
     });
 

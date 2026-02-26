@@ -219,6 +219,12 @@
   color: var(--sl-success);
 }
 
+.create-download-unavailable {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--sl-error);
+}
+
 .create-download-path-picker {
   padding: 4px 12px;
   font-size: 0.8125rem;

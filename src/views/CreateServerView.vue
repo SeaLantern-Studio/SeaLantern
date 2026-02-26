@@ -78,6 +78,8 @@ const {
   mcVersionSelectOptions,
   isCoreDownloading,
   isCoreDownloadCompleted,
+  isStarterDownloadControlDisabled,
+  starterOptionsUnavailableMessage,
   pickCoreDownloadTargetPath,
   handleCoreDownload,
 } = useStarterCoreDownload({
@@ -198,14 +200,14 @@ function goNextStep() {
                   <SLInput
                     :label="i18n.t('create.source_method_two_target_path')"
                     :model-value="coreDownloadTargetPath"
-                    :disabled="isCoreDownloading"
+                    :disabled="isStarterDownloadControlDisabled"
                     @update:model-value="coreDownloadTargetPath = String($event)"
                   >
                     <template #suffix>
                       <button
                         type="button"
                         class="create-download-path-picker"
-                        :disabled="isCoreDownloading"
+                        :disabled="isStarterDownloadControlDisabled"
                         @click="pickCoreDownloadTargetPath"
                       >
                         {{ i18n.t("create.source_method_two_pick_path") }}
@@ -221,7 +223,7 @@ function goNextStep() {
                       <SLSelect
                         :model-value="coreDownloadCoreType"
                         :options="coreTypeSelectOptions"
-                        :disabled="isCoreDownloading || coreTypeSelectOptions.length === 0"
+                        :disabled="isStarterDownloadControlDisabled"
                         searchable
                         max-height="220px"
                         @update:model-value="coreDownloadCoreType = String($event)"
@@ -234,7 +236,7 @@ function goNextStep() {
                       <SLSelect
                         :model-value="coreDownloadMcVersion"
                         :options="mcVersionSelectOptions"
-                        :disabled="isCoreDownloading || mcVersionSelectOptions.length === 0"
+                        :disabled="isStarterDownloadControlDisabled"
                         searchable
                         max-height="220px"
                         @update:model-value="coreDownloadMcVersion = String($event)"
@@ -247,6 +249,7 @@ function goNextStep() {
                       v-if="!isCoreDownloading && !isCoreDownloadCompleted"
                       variant="primary"
                       size="lg"
+                      :disabled="isStarterDownloadControlDisabled"
                       @click="handleCoreDownload"
                     >
                       {{ i18n.t("create.source_method_two_download") }}
@@ -260,6 +263,9 @@ function goNextStep() {
                       {{ i18n.t("create.source_method_two_done") }}
                     </p>
                   </div>
+                  <p v-if="starterOptionsUnavailableMessage" class="create-download-unavailable">
+                    {{ starterOptionsUnavailableMessage }}
+                  </p>
                 </div>
               </div>
             </template>

@@ -272,6 +272,7 @@
     "source_method_two_download": "Download",
     "source_method_two_downloading": "Downloading...",
     "source_method_two_done": "Download Completed",
+    "source_method_two_unavailable": "Starter core download is currently unavailable. Please try again later.",
     "source_method_two_required": "Please select target path, core category, and game version first",
     "source_drop_unavailable": "Cannot read dropped item path. Please click the receiver to select manually.",
     "source_required": "Please select a modpack archive or server folder first",

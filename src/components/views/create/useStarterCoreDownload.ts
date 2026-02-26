@@ -23,6 +23,8 @@ export function useStarterCoreDownload(options: UseStarterCoreDownloadOptions) {
   const coreDownloadMcVersion = ref("");
   const coreDownloadCoreOptions = ref<string[]>([]);
   const coreDownloadMcVersionOptions = ref<string[]>([]);
+  const starterOptionsLoading = ref(false);
+  const starterOptionsLoadFailed = ref(false);
   const coreDownloadLaunching = ref(false);
   const coreDownloadResolvedSourcePath = ref("");
   const coreDownloadResolvedSavePath = ref("");
@@ -58,14 +60,51 @@ export function useStarterCoreDownload(options: UseStarterCoreDownloadOptions) {
   const isCoreDownloadCompleted = computed(
     () => coreDownloadTaskInfo.isFinished && coreDownloadTaskInfo.status === "Completed",
   );
+  const hasStarterDownloadOptions = computed(
+    () =>
+      coreDownloadCoreOptions.value.length > 0 && coreDownloadMcVersionOptions.value.length > 0,
+  );
+  const isStarterOptionsUnavailable = computed(
+    () =>
+      !starterOptionsLoading.value &&
+      (starterOptionsLoadFailed.value || !hasStarterDownloadOptions.value),
+  );
+  const starterOptionsUnavailableMessage = computed(() =>
+    isStarterOptionsUnavailable.value ? i18n.t("create.source_method_two_unavailable") : "",
+  );
+  const isStarterDownloadControlDisabled = computed(
+    () =>
+      isCoreDownloading.value || starterOptionsLoading.value || isStarterOptionsUnavailable.value,
+  );
+
+  function markStarterOptionsUnavailable(error?: unknown) {
+    starterOptionsLoadFailed.value = true;
+    coreDownloadCoreOptions.value = [];
+    coreDownloadMcVersionOptions.value = [];
+
+    if (error !== undefined) {
+      console.error("Failed to load starter download options:", error);
+    }
+    showError(i18n.t("create.source_method_two_unavailable"));
+  }
 
   onMounted(async () => {
+    starterOptionsLoading.value = true;
+    starterOptionsLoadFailed.value = false;
     try {
       const starterOptions = await serverApi.getStarterDownloadOptions();
-      coreDownloadCoreOptions.value = starterOptions.coreTypeOptions;
-      coreDownloadMcVersionOptions.value = starterOptions.mcVersionOptions;
+      const coreTypeOptions = starterOptions.coreTypeOptions ?? [];
+      const mcVersionOptions = starterOptions.mcVersionOptions ?? [];
+      coreDownloadCoreOptions.value = coreTypeOptions;
+      coreDownloadMcVersionOptions.value = mcVersionOptions;
+
+      if (coreTypeOptions.length === 0 || mcVersionOptions.length === 0) {
+        markStarterOptionsUnavailable();
+      }
     } catch (error) {
-      showError(String(error));
+      markStarterOptionsUnavailable(error);
+    } finally {
+      starterOptionsLoading.value = false;
     }
   });
 
@@ -77,11 +116,11 @@ export function useStarterCoreDownload(options: UseStarterCoreDownloadOptions) {
 
   watch(
     [coreDownloadTargetPath, coreDownloadCoreType, coreDownloadMcVersion],
-    ([target, coreType, mcVersion], previous = []) => {
-      if (!previous.length) {
+    ([target, coreType, mcVersion], previous) => {
+      if (!previous) {
         return;
       }
-      const [prevTarget, prevCoreType, prevMcVersion] = previous as [string, string, string];
+      const [prevTarget, prevCoreType, prevMcVersion] = previous;
       if (isCoreDownloading.value) {
         return;
       }
@@ -127,6 +166,10 @@ export function useStarterCoreDownload(options: UseStarterCoreDownloadOptions) {
 
   async function handleCoreDownload() {
     clearError();
+    if (starterOptionsLoading.value || isStarterOptionsUnavailable.value) {
+      showError(i18n.t("create.source_method_two_unavailable"));
+      return;
+    }
     if (
       !coreDownloadTargetPath.value.trim() ||
       !coreDownloadCoreType.value ||
@@ -181,6 +224,8 @@ export function useStarterCoreDownload(options: UseStarterCoreDownloadOptions) {
     mcVersionSelectOptions,
     isCoreDownloading,
     isCoreDownloadCompleted,
+    isStarterDownloadControlDisabled,
+    starterOptionsUnavailableMessage,
     pickCoreDownloadTargetPath,
     handleCoreDownload,
   };

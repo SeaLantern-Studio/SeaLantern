@@ -268,6 +268,7 @@
     "source_method_two_download": "下载",
     "source_method_two_downloading": "正在下载...",
     "source_method_two_done": "下载完成",
+    "source_method_two_unavailable": "Starter 核心下载暂时不可用，请稍后重试",
     "source_method_two_required": "请先完成目标路径、核心类别和游戏版本选择",
     "source_drop_unavailable": "无法读取拖入项路径，请点击接收区手动选择",
     "source_required": "请先选择整合包压缩文件或服务器文件夹",
