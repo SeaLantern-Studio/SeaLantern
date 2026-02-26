@@ -391,3 +391,10 @@ pub fn remove_file_if_exists(path: String) -> Result<bool, String> {
     std::fs::remove_file(file_path).map_err(|e| format!("删除文件失败: {}", e))?;
     Ok(true)
 }
+
+pub fn get_default_run_path() -> Result<String, String> {
+    let documents_dir = dirs_next::document_dir().ok_or_else(|| "无法获取文档目录".to_string())?;
+    let minecraft_servers_dir = documents_dir.join("Minecraft Servers");
+
+    Ok(minecraft_servers_dir.to_string_lossy().to_string())
+}
