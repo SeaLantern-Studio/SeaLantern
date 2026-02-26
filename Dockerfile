@@ -92,9 +92,29 @@ RUN { \
     libgtk-3-0 \
     libwebkit2gtk-4.1-0 \
     curl \
+    wget \
     && rm -rf /var/lib/apt/lists/*; \
-} \
-&& useradd -m -u 1000 sealantern
+}
+
+# 添加Temurin官方仓库并安装Java 8, 11, 17, 21
+RUN apt-get update && apt-get install -y wget apt-transport-https gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    wget -q -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/deb bookworm main" > /etc/apt/sources.list.d/adoptium.list && \
+    apt-get update && apt-get install -y \
+    temurin-8-jdk \
+    temurin-11-jdk \
+    temurin-17-jdk \
+    temurin-21-jdk \
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建 Java 版本软链接
+RUN mkdir -p /opt/java && \
+    ln -sf /usr/lib/jvm/temurin-8-jdk-amd64 /opt/java/jdk-8 && \
+    ln -sf /usr/lib/jvm/temurin-11-jdk-amd64 /opt/java/jdk-11 && \
+    ln -sf /usr/lib/jvm/temurin-17-jdk-amd64 /opt/java/jdk-17 && \
+    ln -sf /usr/lib/jvm/temurin-21-jdk-amd64 /opt/java/jdk-21 && \
+    useradd -m -u 1000 sealantern
 
 # 从后端构建器复制编译好的二进制程序
 COPY --from=backend-builder /app/target/release/docker-entry /app/docker-entry
@@ -105,6 +125,8 @@ COPY --from=frontend-builder /app/dist /app/dist
 # 设置环境变量
 ENV STATIC_DIR=/app/dist
 ENV RUST_LOG=info
+ENV JAVA_HOME=/opt/java/jdk-21
+ENV PATH=/opt/java/jdk-21/bin:$PATH
 
 # 创建数据目录和上传目录
 RUN mkdir -p /app/data /app/uploads && chown -R sealantern:sealantern /app
