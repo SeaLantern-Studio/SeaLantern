@@ -96,14 +96,10 @@ export function useCreateServerPage() {
     if (selectedStartup.value.mode === "custom") {
       return customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value;
     }
-    if (
-      selectedStartup.value.mode === "starter" &&
-      mcVersionDetectionFailed.value &&
-      selectedMcVersion.value.trim().length === 0
-    ) {
-      return false;
-    }
-    return true;
+    return !(selectedStartup.value.mode === "starter" &&
+        mcVersionDetectionFailed.value &&
+        selectedMcVersion.value.trim().length === 0);
+
   });
 
   const hasJava = computed(() => selectedJava.value.trim().length > 0);
@@ -437,12 +433,15 @@ export function useCreateServerPage() {
   }
 
   function validateStep(step: number): boolean {
-    if (step >= 1 && !hasSource.value) {
-      showError(i18n.t("create.source_required"));
-      return false;
+    if (step === 1) {
+      if (!hasSource.value) {
+        showError(i18n.t("create.source_required"));
+        return false;
+      }
+      return true;
     }
 
-    if (step >= 2) {
+    if (step === 2) {
       if (requiresRunPath.value && !useSoftwareDataDir.value && runPath.value.trim().length === 0) {
         showError(i18n.t("create.path_required_archive"));
         return false;
@@ -455,9 +454,10 @@ export function useCreateServerPage() {
         showError(i18n.t("create.path_child_of_source_forbidden"));
         return false;
       }
+      return true;
     }
 
-    if (step >= 3) {
+    if (step === 3) {
       if (!selectedStartup.value) {
         showError(i18n.t("create.startup_required"));
         return false;
@@ -480,9 +480,10 @@ export function useCreateServerPage() {
         showError(i18n.t("create.startup_mc_version_required"));
         return false;
       }
+      return true;
     }
 
-    if (step >= 4) {
+    if (step === 4) {
       if (!selectedJava.value) {
         showError(i18n.t("common.select_java_path"));
         return false;
@@ -491,6 +492,7 @@ export function useCreateServerPage() {
         showError(i18n.t("common.enter_server_name"));
         return false;
       }
+      return true;
     }
 
     return true;
@@ -498,7 +500,13 @@ export function useCreateServerPage() {
 
   function validateBeforeSubmit(): boolean {
     clearError();
-    return validateStep(totalSteps.value);
+    // Step 5 is the action/submit step, so we validate all data-entry steps before it.
+    for (let step = 1; step < totalSteps.value; step += 1) {
+      if (!validateStep(step)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   async function handleSubmit() {

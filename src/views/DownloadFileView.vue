@@ -26,6 +26,7 @@ const url = ref("");
 const savePath = ref("");
 const filename = ref("");
 const threadCount = ref("32");
+const isFilenameManuallyEdited = ref(false);
 
 type DownloadValidationKey =
   | "invalid_input"
@@ -117,13 +118,19 @@ function checkUrl(event: Event) {
     const segments = pathName.split("/").filter(Boolean);
     if (segments.length > 0) {
       const candidateFileName = segments[segments.length - 1];
-      if (candidateFileName) {
+      const currentFilename = filename.value.trim();
+      if (candidateFileName && (!isFilenameManuallyEdited.value || !currentFilename)) {
         filename.value = candidateFileName;
       }
     }
   } catch {
     // Keep current filename; URL validity is computed separately.
   }
+}
+
+function handleFilenameInput(value: string | number) {
+  isFilenameManuallyEdited.value = true;
+  filename.value = String(value);
 }
 
 async function pickFloder() {
@@ -215,8 +222,9 @@ watch(taskError, (newError) => {
         </SLInput>
         <SLInput
           :label="i18n.t('download-file.filename')"
-          v-model="filename"
+          :model-value="filename"
           :disabled="isDownloading"
+          @update:model-value="handleFilenameInput"
         />
         <p v-if="filenameError && !isDownloading" class="field-error">{{ filenameError }}</p>
         <SLInput
