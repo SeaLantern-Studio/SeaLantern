@@ -33,7 +33,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 - Check for and download updates in one click
 
 ## Quick Start
-(TipsActually, we already have a documentation site!There you can view all kinds of documents more intuitively and conveniently.You can click here to go to the docs site.)
+(Tips:Actually, we already have a documentation site!There you can view all kinds of documents more intuitively and conveniently.You can click here to go to the docs site.)
 
 [Jump to SL Official Doc Site](https://docs.ideaflash.cn/en/intro)
 
