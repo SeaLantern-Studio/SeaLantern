@@ -31,7 +31,9 @@ defineProps<{
     </div>
 
     <div v-else class="server-grid">
-      <ServerCard v-for="server in servers" :key="server.id" :server="server" />
+      <TransitionGroup name="server-list">
+        <ServerCard v-for="server in servers" :key="server.id" :server="server" />
+      </TransitionGroup>
     </div>
   </div>
 </template>
@@ -107,6 +109,43 @@ defineProps<{
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: var(--sl-space-lg);
+  align-items: stretch;
+}
+
+/* 服务器列表过渡动画 */
+.server-list-enter-active {
+  animation: server-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.server-list-leave-active {
+  animation: server-leave 0.25s ease;
+  position: absolute;
+}
+
+.server-list-move {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes server-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes server-leave {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
 }
 
 @media (max-width: 768px) {

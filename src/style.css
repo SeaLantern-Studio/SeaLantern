@@ -13,6 +13,7 @@
 /* 组件样式 - Common */
 @import "@styles/components/common/SLButton.css";
 @import "@styles/components/common/SLModal.css";
+@import "@styles/components/common/SLCard.css";
 
 /* 视图样式 */
 @import "@styles/views/ConsoleView.css";

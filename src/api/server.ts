@@ -116,7 +116,6 @@ export const serverApi = {
     onlineMode: boolean;
     customCommand?: string;
     runPath: string;
-    useSoftwareDataDir: boolean;
     startupFilePath?: string;
     coreType?: string;
     mcVersion?: string;
@@ -132,7 +131,6 @@ export const serverApi = {
       onlineMode: params.onlineMode,
       customCommand: params.customCommand,
       runPath: params.runPath,
-      useSoftwareDataDir: params.useSoftwareDataDir,
       startupFilePath: params.startupFilePath,
       coreType: params.coreType,
       mcVersion: params.mcVersion,

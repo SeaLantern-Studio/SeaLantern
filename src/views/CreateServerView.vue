@@ -30,7 +30,6 @@ const {
   sourceType,
   runPath,
   runPathOverwriteRisk,
-  useSoftwareDataDir,
   coreDetecting,
   startupDetecting,
   startupCandidates,
@@ -57,7 +56,6 @@ const {
   canSubmit,
   pickRunPath,
   updateRunPath,
-  toggleUseSoftwareDataDir,
   rescanStartupCandidates,
   detectJava,
   handleSubmit,
@@ -121,11 +119,9 @@ const goBack = () => {
               :source-path="sourcePath"
               :run-path="runPath"
               :show-overwrite-warning="runPathOverwriteRisk"
-              :use-software-data-dir="useSoftwareDataDir"
               :disabled="creating"
               @pick-path="pickRunPath"
               @update:run-path="updateRunPath"
-              @toggle-use-software-data-dir="toggleUseSoftwareDataDir"
             />
 
             <StartupSelectionStep

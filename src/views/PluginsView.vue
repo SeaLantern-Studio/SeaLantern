@@ -7,6 +7,11 @@ import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLCheckbox from "@components/common/SLCheckbox.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import SLMenu from "@components/common/SLMenu.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -27,6 +32,7 @@ import {
   X,
   Trash2,
   Trash,
+  RefreshCw,
 } from "lucide-vue-next";
 
 const router = useRouter();
@@ -56,7 +62,6 @@ const currentSettingsPlugin = ref<PluginInfo | null>(null);
 const settingsForm = reactive<Record<string, any>>({});
 const savingSettings = ref(false);
 
-const openMenuId = ref<string | null>(null);
 const checkingUpdate = ref<string | null>(null);
 const checkingAllUpdates = ref(false);
 
@@ -119,8 +124,6 @@ onMounted(async () => {
     pluginStore.loadPlugins();
   }
 
-  document.addEventListener("click", handleClickOutside);
-
   unlistenDragDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
     if (event.payload.type === "over") {
       isDragging.value = true;
@@ -145,7 +148,6 @@ onUnmounted(() => {
   if (unlistenDragDrop) {
     unlistenDragDrop();
   }
-  document.removeEventListener("click", handleClickOutside);
 });
 
 async function handleInstall(filePath: string) {
@@ -605,20 +607,36 @@ async function saveSettings() {
   }
 }
 
-function toggleMenu(pluginId: string) {
-  if (openMenuId.value === pluginId) {
-    openMenuId.value = null;
-  } else {
-    openMenuId.value = pluginId;
+function getPluginMenuItems(pluginId: string) {
+  return [
+    {
+      id: "check_update",
+      label: i18n.t("plugins.menu.check_update"),
+      icon: RefreshCw,
+      disabled: checkingUpdate.value === pluginId,
+    },
+    { id: "divider", label: "", divider: true },
+    {
+      id: "delete",
+      label: i18n.t("plugins.menu.delete"),
+      icon: Trash2,
+      danger: true,
+    },
+  ];
+}
+
+async function handleMenuSelect(item: { id: string | number }, pluginId: string) {
+  switch (item.id) {
+    case "check_update":
+      await handleCheckUpdate(pluginId);
+      break;
+    case "delete":
+      await handleDelete(pluginId);
+      break;
   }
 }
 
-function closeMenu() {
-  openMenuId.value = null;
-}
-
 async function handleCheckUpdate(pluginId: string) {
-  openMenuId.value = null;
   checkingUpdate.value = pluginId;
   try {
     const update = await pluginStore.checkUpdate(pluginId);
@@ -640,8 +658,6 @@ const showSingleDeleteDialog = ref(false);
 const singleDeletePluginName = ref("");
 
 async function handleDelete(pluginId: string) {
-  openMenuId.value = null;
-
   const plugin = pluginStore.plugins.find((p) => p.manifest.id === pluginId);
   if (plugin?.state === "enabled") {
     showAlert(i18n.t("plugins.cannot_delete_enabled"), plugin.manifest.name);
@@ -747,13 +763,6 @@ async function handleCheckAllUpdates() {
     }
   } finally {
     checkingAllUpdates.value = false;
-  }
-}
-
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as HTMLElement;
-  if (!target.closest(".plugin-menu-wrapper")) {
-    closeMenu();
   }
 }
 
@@ -874,12 +883,10 @@ function goToMarket() {
         >
           <div class="plugin-content">
             <label v-if="batchMode" class="plugin-checkbox" @click.stop>
-              <input
-                type="checkbox"
-                :checked="selectedPlugins.has(plugin.manifest.id)"
-                @change="togglePluginSelection(plugin.manifest.id)"
+              <SLCheckbox
+                :modelValue="selectedPlugins.has(plugin.manifest.id)"
+                @update:modelValue="togglePluginSelection(plugin.manifest.id)"
               />
-              <span class="checkbox-custom"></span>
             </label>
 
             <div class="plugin-card-actions">
@@ -909,26 +916,15 @@ function goToMarket() {
                 :permissions="plugin.manifest.permissions || []"
               />
 
-              <div class="plugin-menu-wrapper">
-                <button class="plugin-menu-btn" @click.stop="toggleMenu(plugin.manifest.id)">
+              <SLMenu
+                :items="getPluginMenuItems(plugin.manifest.id)"
+                position="bottom-end"
+                @select="handleMenuSelect($event, plugin.manifest.id)"
+              >
+                <SLButton variant="ghost" icon-only size="sm">
                   <MoreVertical :size="16" />
-                </button>
-                <div v-if="openMenuId === plugin.manifest.id" class="plugin-menu-dropdown">
-                  <button
-                    @click="handleCheckUpdate(plugin.manifest.id)"
-                    :disabled="checkingUpdate === plugin.manifest.id"
-                  >
-                    {{
-                      checkingUpdate === plugin.manifest.id
-                        ? i18n.t("plugins.checking")
-                        : i18n.t("plugins.menu.check_update")
-                    }}
-                  </button>
-                  <button class="danger" @click="handleDelete(plugin.manifest.id)">
-                    {{ i18n.t("plugins.menu.delete") }}
-                  </button>
-                </div>
-              </div>
+                </SLButton>
+              </SLMenu>
             </div>
             <div class="plugin-main">
               <div class="plugin-icon">
@@ -952,14 +948,16 @@ function goToMarket() {
                     <span v-if="plugin.manifest.author" class="plugin-author">
                       by {{ plugin.manifest.author.name }}
                     </span>
-                    <button
+                    <SLButton
                       v-if="plugin.manifest.repository"
-                      class="repo-link-btn"
+                      variant="ghost"
+                      icon-only
+                      size="sm"
                       @click.stop="openRepository(plugin.manifest.repository)"
                       :title="i18n.t('plugins.open_repository')"
                     >
                       <Github :size="14" />
-                    </button>
+                    </SLButton>
                   </div>
                 </div>
                 <p v-if="plugin.manifest.description" class="plugin-description">
@@ -987,36 +985,31 @@ function goToMarket() {
                 {{ getStatusLabel(plugin.state) }}
               </span>
               <div class="plugin-actions">
-                <button
+                <SLButton
                   v-if="hasSettings(plugin)"
-                  class="settings-btn"
+                  variant="ghost"
+                  icon-only
+                  size="sm"
                   @click="openSettings(plugin)"
                   :title="i18n.t('plugins.settings')"
                 >
                   <Settings :size="16" />
-                </button>
-                <label
-                  class="toggle-switch"
-                  :class="{
-                    disabled:
-                      hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state),
-                  }"
+                </SLButton>
+                <SLSwitch
+                  :modelValue="isPluginEnabled(plugin.state)"
+                  :disabled="
+                    hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
+                  "
                   :title="
                     hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
                       ? i18n.t('plugins.missing_required_deps')
                       : ''
                   "
-                >
-                  <input
-                    type="checkbox"
-                    :checked="isPluginEnabled(plugin.state)"
-                    :disabled="
-                      hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
-                    "
-                    @click.prevent="handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))"
-                  />
-                  <span class="toggle-slider"></span>
-                </label>
+                  @update:modelValue="
+                    handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))
+                  "
+                  size="sm"
+                />
               </div>
             </div>
           </div>
@@ -1031,9 +1024,9 @@ function goToMarket() {
             <h2 class="modal-title">
               {{ i18n.t("plugins.settings_title", { name: currentSettingsPlugin?.manifest.name }) }}
             </h2>
-            <button class="modal-close" @click="closeSettings">
+            <SLButton variant="ghost" icon-only class="modal-close" @click="closeSettings">
               <X :size="20" />
-            </button>
+            </SLButton>
           </div>
           <div class="modal-body">
             <div
@@ -1045,39 +1038,32 @@ function goToMarket() {
                 {{ field.label }}
                 <span v-if="field.description" class="setting-desc">{{ field.description }}</span>
               </label>
-              <input
-                v-if="field.type === 'string'"
-                v-model="settingsForm[field.key]"
-                type="text"
-                class="setting-input"
-              />
+              <SLInput v-if="field.type === 'string'" v-model="settingsForm[field.key]" />
               <div v-else-if="field.type === 'color'" class="setting-color-field">
                 <input
                   type="color"
                   v-model="settingsForm[field.key]"
                   class="setting-color-picker"
                 />
-                <input type="text" v-model="settingsForm[field.key]" class="setting-input" />
+                <SLInput v-model="settingsForm[field.key]" />
               </div>
-              <input
+              <SLInput
                 v-else-if="field.type === 'number'"
-                v-model.number="settingsForm[field.key]"
+                v-model="settingsForm[field.key]"
                 type="number"
-                class="setting-input"
               />
               <label v-else-if="field.type === 'boolean'" class="setting-toggle">
-                <input type="checkbox" v-model="settingsForm[field.key]" />
-                <span class="toggle-slider"></span>
+                <SLSwitch
+                  :modelValue="Boolean(settingsForm[field.key])"
+                  @update:modelValue="settingsForm[field.key] = $event"
+                  size="sm"
+                />
               </label>
-              <select
+              <SLSelect
                 v-else-if="field.type === 'select'"
                 v-model="settingsForm[field.key]"
-                class="setting-select"
-              >
-                <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </select>
+                :options="field.options"
+              />
             </div>
 
             <div class="plugin-details-section">
@@ -1204,14 +1190,22 @@ function goToMarket() {
           {{ i18n.t("plugins.confirm_delete_message", { name: singleDeletePluginName }) }}
         </p>
         <div class="batch-delete-options">
-          <button class="batch-delete-option" @click="executeSingleDelete(true)">
+          <SLButton
+            variant="secondary"
+            class="batch-delete-option"
+            @click="executeSingleDelete(true)"
+          >
             <Trash2 class="option-icon delete-with-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_with_data") }}</span>
-          </button>
-          <button class="batch-delete-option" @click="executeSingleDelete(false)">
+          </SLButton>
+          <SLButton
+            variant="secondary"
+            class="batch-delete-option"
+            @click="executeSingleDelete(false)"
+          >
             <Trash class="option-icon delete-without-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_without_data") }}</span>
-          </button>
+          </SLButton>
         </div>
       </div>
       <template #footer>
@@ -1231,14 +1225,22 @@ function goToMarket() {
           {{ i18n.t("plugins.confirm_batch_delete_message", { count: selectedPlugins.size }) }}
         </p>
         <div class="batch-delete-options">
-          <button class="batch-delete-option" @click="executeBatchDelete(true)">
+          <SLButton
+            variant="secondary"
+            class="batch-delete-option"
+            @click="executeBatchDelete(true)"
+          >
             <Trash2 class="option-icon delete-with-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_with_data") }}</span>
-          </button>
-          <button class="batch-delete-option" @click="executeBatchDelete(false)">
+          </SLButton>
+          <SLButton
+            variant="secondary"
+            class="batch-delete-option"
+            @click="executeBatchDelete(false)"
+          >
             <Trash class="option-icon delete-without-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_without_data") }}</span>
-          </button>
+          </SLButton>
         </div>
       </div>
       <template #footer>
@@ -1685,50 +1687,6 @@ function goToMarket() {
   z-index: 5;
   display: flex;
   align-items: center;
-  cursor: pointer;
-}
-
-.plugin-checkbox input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.plugin-checkbox .checkbox-custom {
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid var(--sl-text-tertiary);
-  border-radius: var(--sl-radius-xs);
-  background: transparent;
-  transition: all var(--sl-transition-fast);
-  position: relative;
-}
-
-.plugin-checkbox .checkbox-custom::after {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 2px;
-  width: 5px;
-  height: 9px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) scale(0);
-  transition: transform var(--sl-transition-fast);
-}
-
-.plugin-checkbox input[type="checkbox"]:checked + .checkbox-custom {
-  background: var(--sl-primary);
-  border-color: var(--sl-primary);
-}
-
-.plugin-checkbox input[type="checkbox"]:checked + .checkbox-custom::after {
-  transform: rotate(45deg) scale(1);
-}
-
-.plugin-checkbox:hover .checkbox-custom {
-  border-color: var(--sl-primary);
 }
 
 .batch-delete-dialog {
@@ -1942,60 +1900,6 @@ function goToMarket() {
   color: var(--sl-primary);
 }
 
-.toggle-switch {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.toggle-switch input {
-  display: none;
-}
-
-.toggle-slider {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  background: var(--sl-bg-tertiary);
-  border-radius: var(--sl-radius-md);
-  transition: background 0.2s ease;
-}
-
-.toggle-slider::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  background: var(--sl-surface);
-  border-radius: 50%;
-  transition: transform 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-switch input:checked + .toggle-slider {
-  background: var(--sl-primary);
-}
-
-.toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(16px);
-}
-
-.toggle-switch.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.toggle-switch.disabled input {
-  cursor: not-allowed;
-}
-
-.toggle-switch.disabled .toggle-slider {
-  cursor: not-allowed;
-}
-
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -2177,55 +2081,6 @@ function goToMarket() {
   padding: 8px;
 }
 
-.setting-toggle {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
-}
-
-.setting-toggle input {
-  display: none;
-}
-
-.setting-toggle .toggle-slider {
-  position: relative;
-  width: 44px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: var(--sl-radius-lg);
-  transition: all 0.3s ease;
-}
-
-.setting-toggle .toggle-slider::before {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  background: white;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.setting-toggle input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-}
-
-.setting-toggle input:checked + .toggle-slider::before {
-  transform: translateX(20px);
-}
-
-.setting-toggle:hover .toggle-slider {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.setting-toggle:hover input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-}
-
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -2242,73 +2097,6 @@ function goToMarket() {
   align-items: center;
   gap: 4px;
   z-index: 10;
-}
-
-.plugin-menu-wrapper {
-  position: relative;
-}
-
-.plugin-menu-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: var(--sl-text-tertiary);
-  cursor: pointer;
-  border-radius: var(--sl-radius-sm);
-  transition: all 0.2s ease;
-}
-
-.plugin-menu-btn:hover {
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-primary);
-}
-
-.plugin-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  background: var(--sl-surface);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  padding: 4px;
-  min-width: 140px;
-  z-index: 100;
-  box-shadow: var(--sl-shadow-lg);
-}
-
-.plugin-menu-dropdown button {
-  display: block;
-  width: 100%;
-  padding: 8px 12px;
-  background: none;
-  border: none;
-  color: var(--sl-text-primary);
-  text-align: left;
-  cursor: pointer;
-  border-radius: var(--sl-radius-xs);
-  font-size: 13px;
-}
-
-.plugin-menu-dropdown button:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.plugin-menu-dropdown button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.plugin-menu-dropdown button.danger {
-  color: #ef4444;
-}
-
-.plugin-menu-dropdown button.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
 }
 
 .update-badge {

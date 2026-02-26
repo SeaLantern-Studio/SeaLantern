@@ -23,8 +23,16 @@ jobs:
             args: "--target x86_64-apple-darwin"
           - platform: "ubuntu-24.04"
             args: ""
+            arch: "amd64"
+          - platform: "ubuntu-24.04-arm"
+            args: ""
+            arch: "arm64"
           - platform: "windows-latest"
             args: ""
+            arch: "amd64"
+          - platform: "windows-11-arm"
+            args: ""
+            arch: "arm64"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -32,10 +40,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 安装系统依赖 (Ubuntu 专用)
-        if: matrix.platform == 'ubuntu-24.04'
+        if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
@@ -83,43 +91,13 @@ jobs:
           args: ${{ matrix.args }}
 
       # 修复：使用正确的路径查找 deb 文件
-      - name: 检查 deb 文件并上传 Ubuntu 构建产物
-        if: matrix.platform == 'ubuntu-24.04'
-        run: |
-          WORKSPACE="${{ steps.workspace.outputs.path }}"
-          echo "工作目录: $WORKSPACE"
-
-          # Tauri 的构建输出在项目根目录的 target 下，而不是 src-tauri/target
-          DEB_PATH="$WORKSPACE/target/release/bundle/deb"
-          echo "检查路径: $DEB_PATH"
-
-          if [ -d "$DEB_PATH" ]; then
-            echo "deb 目录内容:"
-            ls -la "$DEB_PATH" || true
-
-            # 查找 .deb 文件
-            DEB_COUNT=$(find "$DEB_PATH" -name "*.deb" -type f | wc -l)
-            if [ "$DEB_COUNT" -gt 0 ]; then
-              echo "✅ 找到 $DEB_COUNT 个 deb 文件"
-              find "$DEB_PATH" -name "*.deb" -type f -exec ls -la {} \;
-            else
-              echo "❌ 未找到 deb 文件"
-              exit 1
-            fi
-          else
-            echo "❌ deb 目录不存在"
-            echo "尝试查找所有可能的路径:"
-            find "$WORKSPACE" -path "*/bundle/deb/*.deb" -type f 2>/dev/null || echo "未找到"
-            exit 1
-          fi
-
-      - name: 上传 Ubuntu 构建产物
+      - name: 上传 Ubuntu x64 构建产物 (用于 AUR 构建)
         if: matrix.platform == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
         with:
-          name: ubuntu-build
+          name: ubuntu-build-x64
           path: |
-            ${{ steps.workspace.outputs.path }}/target/release/bundle/deb/*.deb
+            ${{ steps.workspace.outputs.path }}/target/release/bundle/deb/*_amd64.deb
             ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
@@ -142,14 +120,14 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "✅ 版本号: $VERSION"
 
-      - name: 下载 Ubuntu 构建产物
+      - name: 下载 Ubuntu x64 构建产物 (用于 AUR 构建)
         uses: actions/download-artifact@v4
         with:
-          name: ubuntu-build
+          name: ubuntu-build-x64
           path: ./downloads
         continue-on-error: true
 
-      - name: 查找 deb 包
+      - name: 查找 x64 deb 包
         id: find_deb
         run: |
           echo "当前目录内容:"
@@ -158,20 +136,20 @@ jobs:
           if [ -d "./downloads" ]; then
             echo "downloads 目录内容:"
             ls -la ./downloads
-            DEB_FILE=$(find ./downloads -name "*.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
+            DEB_FILE=$(find ./downloads -name "*_amd64.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
           fi
 
           if [ -z "$DEB_FILE" ]; then
             echo "在根目录查找 deb 文件..."
-            DEB_FILE=$(find . -name "*.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
+            DEB_FILE=$(find . -name "*_amd64.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
           fi
 
           if [ -z "$DEB_FILE" ]; then
-            echo "❌ 未找到 deb 包文件"
+            echo "❌ 未找到 x64 deb 包文件"
             exit 1
           fi
 
-          echo "✅ 找到 deb 包: $DEB_FILE"
+          echo "✅ 找到 x64 deb 包: $DEB_FILE"
           cp "$DEB_FILE" ./sealantern.deb
           echo "DEB_FILE=$DEB_FILE" >> $GITHUB_OUTPUT
 

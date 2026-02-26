@@ -8,7 +8,7 @@ import {
   DialogRoot,
   DialogTitle,
 } from "reka-ui";
-import { Archive, Folder } from "lucide-vue-next";
+import { File, Folder } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
@@ -35,12 +35,12 @@ const emit = defineEmits<{
 const chooserOpen = ref(false);
 const dragging = ref(false);
 
-const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz"];
+const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz", ".jar"];
 
 const selectedName = computed(() => getPathName(props.sourcePath));
 const sourceTypeText = computed(() => {
   if (props.sourceType === "archive") {
-    return i18n.t("create.source_kind_archive");
+    return i18n.t("create.source_kind_file");
   }
   if (props.sourceType === "folder") {
     return i18n.t("create.source_kind_folder");
@@ -115,7 +115,7 @@ function openChooser() {
   chooserOpen.value = true;
 }
 
-async function pickArchive() {
+async function pickFile() {
   chooserOpen.value = false;
   const selected = await systemApi.pickArchiveFile();
   if (selected) {
@@ -151,7 +151,7 @@ async function pickFolder() {
           {{ sourcePath ? selectedName : i18n.t("create.source_drop_or_click") }}
         </p>
         <p v-if="!sourcePath" class="source-intake-subtitle">
-          {{ i18n.t("create.source_accept_hint") }}
+          {{ i18n.t("create.source_accept_hint_file") }}
         </p>
       </div>
       <div class="source-intake-meta">
@@ -170,17 +170,12 @@ async function pickFolder() {
             i18n.t("create.source_choose_title")
           }}</DialogTitle>
           <DialogDescription class="source-chooser-description">
-            {{ i18n.t("create.source_choose_description") }}
+            {{ i18n.t("create.source_choose_description_file") }}
           </DialogDescription>
           <div class="source-chooser-actions">
-            <SLButton
-              variant="primary"
-              size="lg"
-              class="source-chooser-option"
-              @click="pickArchive"
-            >
-              <Archive :size="22" />
-              <span>{{ i18n.t("create.source_pick_archive") }}</span>
+            <SLButton variant="primary" size="lg" class="source-chooser-option" @click="pickFile">
+              <File :size="22" />
+              <span>{{ i18n.t("create.source_pick_file") }}</span>
             </SLButton>
             <SLButton
               variant="secondary"

@@ -104,7 +104,6 @@ pub fn import_modpack(
     online_mode: bool,
     custom_command: Option<String>,
     run_path: String,
-    use_software_data_dir: bool,
     startup_file_path: Option<String>,
     core_type: Option<String>,
     mc_version: Option<String>,
@@ -120,7 +119,6 @@ pub fn import_modpack(
         online_mode,
         custom_command,
         run_path,
-        use_software_data_dir,
         startup_file_path,
         core_type,
         mc_version,
@@ -193,6 +191,56 @@ fn scan_startup_candidates_blocking(
         .collect::<Vec<String>>();
 
     if source_kind == "archive" {
+        // 检查是否是 jar 文件，直接作为启动项
+        if source.is_file() {
+            let extension = source
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext.to_ascii_lowercase())
+                .unwrap_or_default();
+
+            if extension == "jar" {
+                let parsed =
+                    crate::services::server_installer::parse_server_core_type(&source_path)?;
+                let is_starter = parsed
+                    .main_class
+                    .as_deref()
+                    .map(|main| main.starts_with(STARTER_MAIN_CLASS_PREFIX))
+                    .unwrap_or(false);
+                let mode = if is_starter { "starter" } else { "jar" };
+                let label = if is_starter { "Starter" } else { "server.jar" };
+                let detail = [Some(parsed.core_type.clone()), parsed.main_class.clone()]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<String>>()
+                    .join(" · ");
+
+                candidates.push(StartupCandidateItem {
+                    id: format!("archive-{}", mode),
+                    mode: mode.to_string(),
+                    label: label.to_string(),
+                    detail,
+                    path: source_path.clone(),
+                    recommended: if is_starter { 1 } else { 3 },
+                });
+
+                let detected_core_type_key =
+                    crate::services::server_installer::CoreType::normalize_to_api_core_key(
+                        &parsed.core_type,
+                    );
+
+                return Ok(StartupScanResult {
+                    parsed_core: parsed,
+                    candidates,
+                    detected_core_type_key,
+                    core_type_options,
+                    mc_version_options,
+                    detected_mc_version: None,
+                    mc_version_detection_failed: false,
+                });
+            }
+        }
+
         let mut temp_extract_dir: Option<std::path::PathBuf> = None;
 
         let inspect_root = if source.is_file() {
