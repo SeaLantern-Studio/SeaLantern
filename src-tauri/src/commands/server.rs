@@ -3,8 +3,6 @@ use crate::services::global;
 use std::path::Path;
 use std::time::Duration;
 
-const STARTER_DOWNLOAD_API_BASE: &str = "https://api.mslmc.cn/v3/download/server";
-
 fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
 }
@@ -189,7 +187,8 @@ pub fn resolve_starter_download_url(
         return Err("游戏版本不能为空".to_string());
     }
 
-    let mut url = reqwest::Url::parse(STARTER_DOWNLOAD_API_BASE)
+    let api_base = crate::utils::starter_download::starter_download_api_base();
+    let mut url = reqwest::Url::parse(&api_base)
         .map_err(|e| format!("构建 Starter 下载链接失败: {}", e))?;
     {
         let mut segments = url

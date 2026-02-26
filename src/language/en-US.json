@@ -1001,6 +1001,9 @@
     "url_invalid": "Invalid URL. Please use an http(s) link.",
     "save_folder_required": "Please select a save folder.",
     "filename_required": "Filename is required.",
-    "filename_invalid": "Filename must not contain path separators (/ or \\)."
+    "filename_invalid": "Filename must not contain path separators (/ or \\).",
+    "thread_count_required": "Thread count is required.",
+    "thread_count_invalid_chars": "Thread count must contain digits only.",
+    "thread_count_positive_integer": "Thread count must be a positive integer."
   }
 }

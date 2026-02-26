@@ -119,20 +119,20 @@ async function handleDownload() {
 
   const threadCountValue = threadCount.value.trim();
   if (!threadCountValue) {
-    showError("线程数不能为空");
+    showError(i18n.t("download-file.thread_count_required"));
     return;
   }
   if (!/^\d+$/.test(threadCountValue)) {
-    showError("字符不合法");
+    showError(i18n.t("download-file.thread_count_invalid_chars"));
     return;
   }
   if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    showError("线程数必须是一个正整数");
+    showError(i18n.t("download-file.thread_count_positive_integer"));
     return;
   }
   const threadCountInt = Number.parseInt(threadCountValue, 10);
   if (!Number.isFinite(threadCountInt) || threadCountInt <= 0) {
-    showError("线程数必须是一个正整数");
+    showError(i18n.t("download-file.thread_count_positive_integer"));
     return;
   }
 

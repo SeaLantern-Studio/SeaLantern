@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
-const STARTER_DOWNLOAD_API_BASE: &str = "https://api.mslmc.cn/v3/download/server";
 
 /// 验证服务器名称，防止路径遍历攻击
 /// 返回清理后的名称或错误信息
@@ -1543,7 +1542,8 @@ fn fetch_starter_installer_url(
     core_type_key: &str,
     mc_version: &str,
 ) -> Result<(String, Option<String>), String> {
-    let mut url = reqwest::Url::parse(STARTER_DOWNLOAD_API_BASE)
+    let api_base = crate::utils::starter_download::starter_download_api_base();
+    let mut url = reqwest::Url::parse(&api_base)
         .map_err(|e| format!("构建 Starter 下载链接失败: {}", e))?;
     {
         let mut segments = url
