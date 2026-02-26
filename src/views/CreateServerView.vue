@@ -87,22 +87,30 @@ const {
   showError,
 });
 
-const totalSteps = computed(() => Math.max(stepItems.value.length, 1));
+const stepSequence = computed(() =>
+  stepItems.value.map((item) => item.step).sort((left, right) => left - right),
+);
+const firstStep = computed(() => stepSequence.value[0] ?? 1);
+const totalSteps = computed(() => stepSequence.value[stepSequence.value.length - 1] ?? 1);
+const validStepSet = computed(() => new Set(stepSequence.value));
 
 const currentStep = computed(() => {
-  const rawStep = Number(route.params.step ?? 1);
-  const parsedStep = Number.isFinite(rawStep) ? Math.trunc(rawStep) : 1;
-  return parsedStep >= 1 && parsedStep <= totalSteps.value ? parsedStep : 1;
+  const rawStep = Number(route.params.step ?? firstStep.value);
+  const parsedStep = Number.isFinite(rawStep) ? Math.trunc(rawStep) : firstStep.value;
+  return validStepSet.value.has(parsedStep) ? parsedStep : firstStep.value;
 });
 
 function goToStep(step: number) {
-  if (step < 1 || step > stepItems.value.length) {
+  if (!validStepSet.value.has(step)) {
     return;
   }
 
   if (step > currentStep.value) {
     clearError();
-    for (let s = currentStep.value; s < step; s += 1) {
+    const pendingSteps = stepSequence.value.filter(
+      (current) => current >= currentStep.value && current < step,
+    );
+    for (const s of pendingSteps) {
       if (!validateStep(s)) {
         return;
       }
@@ -116,20 +124,24 @@ function goToStep(step: number) {
 }
 
 function goPrevStep() {
-  if (currentStep.value <= 1) {
+  const currentIndex = stepSequence.value.indexOf(currentStep.value);
+  if (currentIndex <= 0) {
     return;
   }
+  const previousStep = stepSequence.value[currentIndex - 1];
   void router.push({
     name: "create-server-step",
-    params: { step: String(currentStep.value - 1) },
+    params: { step: String(previousStep) },
   });
 }
 
 function goNextStep() {
-  if (currentStep.value >= totalSteps.value) {
+  const currentIndex = stepSequence.value.indexOf(currentStep.value);
+  if (currentIndex < 0 || currentIndex >= stepSequence.value.length - 1) {
     return;
   }
-  goToStep(currentStep.value + 1);
+  const nextStep = stepSequence.value[currentIndex + 1];
+  goToStep(nextStep);
 }
 
 </script>
@@ -345,7 +357,7 @@ function goNextStep() {
             </div>
           </div>
 
-          <StepperSeparator v-if="item.step < stepItems.length" class="create-stepper-separator" />
+          <StepperSeparator v-if="item.step < totalSteps" class="create-stepper-separator" />
         </StepperItem>
       </StepperRoot>
     </SLCard>

@@ -19,6 +19,16 @@ import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
 
 type SourceType = "archive" | "folder" | "";
+type CreateStepId = "source" | "path" | "startup" | "config" | "action";
+
+type CreateStepItem = {
+  id: CreateStepId;
+  step: number;
+  title: string;
+  description: string;
+  completed: boolean;
+  requiresValidation: boolean;
+};
 
 export function useCreateServerPage() {
   const router = useRouter();
@@ -96,10 +106,11 @@ export function useCreateServerPage() {
     if (selectedStartup.value.mode === "custom") {
       return customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value;
     }
-    return !(selectedStartup.value.mode === "starter" &&
+    return !(
+      selectedStartup.value.mode === "starter" &&
         mcVersionDetectionFailed.value &&
-        selectedMcVersion.value.trim().length === 0);
-
+        selectedMcVersion.value.trim().length === 0
+    );
   });
 
   const hasJava = computed(() => selectedJava.value.trim().length > 0);
@@ -112,55 +123,57 @@ export function useCreateServerPage() {
     () => step3Completed.value && hasJava.value && hasServerConfig.value,
   );
 
-  const activeStep = computed(() => {
-    if (!step1Completed.value) {
-      return 1;
-    }
-    if (!step2Completed.value) {
-      return 2;
-    }
-    if (!step3Completed.value) {
-      return 3;
-    }
-    if (!step4Completed.value) {
-      return 4;
-    }
-    return 5;
-  });
-
-  const stepItems = computed(() => [
+  const stepItems = computed<CreateStepItem[]>(() => [
     {
+      id: "source",
       step: 1,
       title: i18n.t("create.step_source_title"),
       description: i18n.t("create.step_source_desc"),
       completed: step1Completed.value,
+      requiresValidation: true,
     },
     {
+      id: "path",
       step: 2,
       title: i18n.t("create.step_path_title"),
       description: i18n.t("create.step_path_desc"),
       completed: step2Completed.value,
+      requiresValidation: true,
     },
     {
+      id: "startup",
       step: 3,
       title: i18n.t("create.step_startup_title"),
       description: i18n.t("create.step_startup_desc"),
       completed: step3Completed.value,
+      requiresValidation: true,
     },
     {
+      id: "config",
       step: 4,
       title: i18n.t("create.step_config_title"),
       description: i18n.t("create.step_config_desc"),
       completed: step4Completed.value,
+      requiresValidation: true,
     },
     {
+      id: "action",
       step: 5,
       title: i18n.t("create.step_action_title"),
       description: i18n.t("create.step_action_desc"),
       completed: false,
+      requiresValidation: false,
     },
   ]);
-  const totalSteps = computed(() => Math.max(stepItems.value.length, 1));
+  const activeStep = computed(() => {
+    const firstIncompleteStep = stepItems.value.find(
+      (item) => item.requiresValidation && !item.completed,
+    );
+    if (firstIncompleteStep) {
+      return firstIncompleteStep.step;
+    }
+    return stepItems.value[stepItems.value.length - 1]?.step ?? 1;
+  });
 
   // 只有步骤完成且“启动项同步”完成后才允许提交，避免新源路径配旧 startupFilePath。
   const canSubmit = computed(
@@ -432,8 +445,8 @@ export function useCreateServerPage() {
     await refreshStartupCandidates(sourcePath.value.trim(), sourceType.value, true);
   }
 
-  function validateStep(step: number): boolean {
-    if (step === 1) {
+  function validateStepById(stepId: CreateStepId): boolean {
+    if (stepId === "source") {
       if (!hasSource.value) {
         showError(i18n.t("create.source_required"));
         return false;
@@ -441,7 +454,7 @@ export function useCreateServerPage() {
       return true;
     }
 
-    if (step === 2) {
+    if (stepId === "path") {
       if (requiresRunPath.value && !useSoftwareDataDir.value && runPath.value.trim().length === 0) {
         showError(i18n.t("create.path_required_archive"));
         return false;
@@ -457,7 +470,7 @@ export function useCreateServerPage() {
       return true;
     }
 
-    if (step === 3) {
+    if (stepId === "startup") {
       if (!selectedStartup.value) {
         showError(i18n.t("create.startup_required"));
         return false;
@@ -483,7 +496,7 @@ export function useCreateServerPage() {
       return true;
     }
 
-    if (step === 4) {
+    if (stepId === "config") {
       if (!selectedJava.value) {
         showError(i18n.t("common.select_java_path"));
         return false;
@@ -498,11 +511,21 @@ export function useCreateServerPage() {
     return true;
   }
 
+  function validateStep(step: number): boolean {
+    const stepItem = stepItems.value.find((item) => item.step === step);
+    if (!stepItem || !stepItem.requiresValidation) {
+      return true;
+    }
+    return validateStepById(stepItem.id);
+  }
+
   function validateBeforeSubmit(): boolean {
     clearError();
-    // Step 5 is the action/submit step, so we validate all data-entry steps before it.
-    for (let step = 1; step < totalSteps.value; step += 1) {
-      if (!validateStep(step)) {
+    for (const stepItem of stepItems.value) {
+      if (!stepItem.requiresValidation) {
+        continue;
+      }
+      if (!validateStepById(stepItem.id)) {
         return false;
       }
     }

@@ -254,6 +254,7 @@
     "step_action_panel_desc": "Confirm settings and run create or import.",
     "source_drop_or_click": "Method 1: Drop a file or folder here, or click to choose",
     "source_accept_hint": "Supports .jar, .zip, .tar, .tar.gz, .tgz files, or a server folder",
+    "source_accept_hint_file": "Supports .jar, .zip, .tar, .tar.gz, .tgz files, or a server folder",
     "source_selected_title": "Source Selected",
     "source_kind_file": "File",
     "source_kind_folder": "Folder",

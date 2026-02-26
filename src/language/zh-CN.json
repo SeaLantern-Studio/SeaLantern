@@ -250,6 +250,7 @@
     "step_action_panel_desc": "确认参数后执行创建或导入。",
     "source_drop_or_click": "方式一：拖拽文件或文件夹到这里，或点击选择",
     "source_accept_hint": "支持 .jar、.zip、.tar、.tar.gz、.tgz 文件或服务器文件夹",
+    "source_accept_hint_file": "支持 .jar、.zip、.tar、.tar.gz、.tgz 文件或服务器文件夹",
     "source_selected_title": "已选择来源",
     "source_kind_file": "文件",
     "source_kind_folder": "文件夹",

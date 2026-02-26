@@ -1,7 +1,6 @@
 use crate::models::server::*;
 use crate::services::global;
 use std::path::Path;
-use std::time::Duration;
 
 fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
@@ -11,16 +10,6 @@ fn manager() -> &'static crate::services::server_manager::ServerManager {
 pub struct StarterDownloadOptions {
     pub core_type_options: Vec<String>,
     pub mc_version_options: Vec<String>,
-}
-
-#[derive(serde::Deserialize)]
-struct StarterDownloadApiResponse {
-    data: Option<StarterDownloadApiData>,
-}
-
-#[derive(serde::Deserialize)]
-struct StarterDownloadApiData {
-    url: Option<String>,
 }
 
 #[tauri::command]
@@ -187,43 +176,12 @@ pub async fn resolve_starter_download_url(
         return Err("游戏版本不能为空".to_string());
     }
 
-    let api_base = crate::utils::starter_download::starter_download_api_base();
-    let mut url = reqwest::Url::parse(&api_base)
-        .map_err(|e| format!("构建 Starter 下载链接失败: {}", e))?;
-    {
-        let mut segments = url
-            .path_segments_mut()
-            .map_err(|_| "Starter 下载链接不支持路径段写入".to_string())?;
-        segments.push(core_type_key.as_str());
-        segments.push(mc_version_trimmed.as_str());
-    }
-
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(15))
-        .build()
-        .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
-    let response = client
-        .get(url.clone())
-        .send()
-        .await
-        .map_err(|e| format!("请求 Starter 下载信息失败: {}", e))?;
-
-    let status = response.status();
-    if !status.is_success() {
-        return Err(format!("Starter 下载接口返回异常状态: {} ({})", status, url));
-    }
-
-    let payload: StarterDownloadApiResponse = response
-        .json()
-        .await
-        .map_err(|e| format!("解析 Starter 下载信息失败: {}", e))?;
-    let data = payload
-        .data
-        .ok_or_else(|| "Starter 下载接口缺少 data 字段".to_string())?;
-    data.url
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| "Starter 下载接口未返回 data.url".to_string())
+    let (download_url, _) = crate::utils::starter_download::fetch_starter_download_info(
+        core_type_key.as_str(),
+        mc_version_trimmed.as_str(),
+    )
+    .await?;
+    Ok(download_url)
 }
 
 fn unknown_parsed_core_info() -> ParsedServerCoreInfo {
