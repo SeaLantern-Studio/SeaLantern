@@ -82,37 +82,59 @@ function handleItemClick(item: ContextMenuItem) {
 
 .sl-context-menu {
   position: fixed;
-  background: rgba(30, 30, 46, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--sl-radius-md);
-  padding: 4px;
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
+  border-radius: var(--sl-radius-lg, 12px);
+  padding: var(--sl-space-xs, 4px);
   min-width: 160px;
   max-width: 280px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--sl-shadow-lg);
   z-index: 100001;
   user-select: none;
+  transform-origin: top left;
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .sl-context-menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: var(--sl-radius-sm);
+  gap: var(--sl-space-sm, 8px);
+  padding: 10px 12px;
+  border-radius: var(--sl-radius-md, 8px);
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 13px;
-  transition: background 0.15s ease;
+  color: var(--sl-text-primary, rgba(255, 255, 255, 0.9));
+  font-size: 0.875rem;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.sl-context-menu-item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sl-primary, #0ea5e9);
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  border-radius: inherit;
 }
 
 .sl-context-menu-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--sl-surface-hover, rgba(255, 255, 255, 0.1));
 }
 
-.sl-context-menu-item:active {
-  background: rgba(255, 255, 255, 0.15);
+.sl-context-menu-item:active::before {
+  opacity: 0.1;
+  transform: scale(1);
 }
 
 .sl-context-menu-icon {
@@ -120,6 +142,7 @@ function handleItemClick(item: ContextMenuItem) {
   width: 16px;
   text-align: center;
   opacity: 0.8;
+  color: var(--sl-text-tertiary, rgba(255, 255, 255, 0.6));
 }
 
 .sl-context-menu-label {
@@ -131,10 +154,10 @@ function handleItemClick(item: ContextMenuItem) {
 
 .sl-context-menu-header {
   padding: 6px 12px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 4px;
+  font-size: 0.6875rem;
+  color: var(--sl-text-tertiary, rgba(255, 255, 255, 0.45));
+  border-bottom: 1px solid var(--sl-border, rgba(255, 255, 255, 0.08));
+  margin-bottom: var(--sl-space-xs, 4px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -143,50 +166,125 @@ function handleItemClick(item: ContextMenuItem) {
 
 .sl-context-menu-empty {
   padding: 8px 12px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+  color: var(--sl-text-tertiary, rgba(255, 255, 255, 0.5));
+  font-size: 0.75rem;
   text-align: center;
 }
 
-/* 淡入淡出动画 */
-.context-menu-fade-enter-active,
-.context-menu-fade-leave-active {
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+/* 弹性入场动画 */
+.context-menu-fade-enter-active {
+  animation: context-menu-enter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.context-menu-fade-enter-from,
-.context-menu-fade-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
+.context-menu-fade-leave-active {
+  animation: context-menu-leave 0.15s ease;
+}
+
+@keyframes context-menu-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes context-menu-leave {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* 菜单项交错入场动画 */
+.sl-context-menu-item {
+  animation: menu-item-fade-in 0.2s ease backwards;
+}
+
+.sl-context-menu-item:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.sl-context-menu-item:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.sl-context-menu-item:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.sl-context-menu-item:nth-child(4) {
+  animation-delay: 0.08s;
+}
+.sl-context-menu-item:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.sl-context-menu-item:nth-child(6) {
+  animation-delay: 0.12s;
+}
+.sl-context-menu-item:nth-child(7) {
+  animation-delay: 0.14s;
+}
+.sl-context-menu-item:nth-child(8) {
+  animation-delay: 0.16s;
+}
+
+@keyframes menu-item-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* 亮色主题适配 */
 [data-theme="light"] .sl-context-menu {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  --sl-glass-bg: rgba(255, 255, 255, 0.72);
+  --sl-glass-border: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .sl-context-menu {
+  --sl-glass-bg: rgba(15, 17, 23, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+[data-acrylic="true"] .sl-context-menu {
+  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+}
+
+[data-theme="dark"][data-acrylic="true"] .sl-context-menu {
+  --sl-glass-bg: rgba(15, 17, 23, 0.65);
+}
+
+[data-acrylic="false"] .sl-context-menu {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 [data-theme="light"] .sl-context-menu-item {
-  color: rgba(0, 0, 0, 0.85);
+  color: var(--sl-text-primary, rgba(0, 0, 0, 0.85));
 }
 
 [data-theme="light"] .sl-context-menu-item:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-[data-theme="light"] .sl-context-menu-item:active {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--sl-surface-hover, rgba(0, 0, 0, 0.05));
 }
 
 [data-theme="light"] .sl-context-menu-header {
-  color: rgba(0, 0, 0, 0.4);
-  border-bottom-color: rgba(0, 0, 0, 0.08);
+  color: var(--sl-text-tertiary, rgba(0, 0, 0, 0.4));
+  border-bottom-color: var(--sl-border, rgba(0, 0, 0, 0.08));
 }
 
 [data-theme="light"] .sl-context-menu-empty {
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--sl-text-tertiary, rgba(0, 0, 0, 0.4));
 }
 </style>

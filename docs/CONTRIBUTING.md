@@ -1,12 +1,37 @@
 # 贡献指南
 
-切换语言(Change Language)
+[我们有了文档站!点击这里跳转!](https://docs.ideaflash.cn/zh/intro)
 
-[简体中文(当前)](CONTRIBUTING.md)
-
-[English Version Doc](CONTRIBUTING-en.md)
+[We've got a document site,press here to redirect.](https://docs.ideaflash.cn/en/intro)
 
 感谢你对 Sea Lantern 项目的关注！这份文档将帮助你了解如何为项目做出贡献。
+
+## ⭐可接受PR贡献的范围
+
+对于非项目组织成员，你的PR可贡献范围如下
+
+1. 对于已获得accepted标签的issue，你可以提交PR
+2. 文档、i18n方向且改动极小的
+
+⛔对于在可贡献范围以外的PR，项目组**有权直接拒绝**
+
+### 示例
+
+| <img width="677" height="113" alt="image" src="https://github.com/user-attachments/assets/c79127c5-0193-4a4d-9b91-de962b59f540" /> |
+| ---------------------------------------------------------------------------------------------------------------------------------- |
+
+### 为什么？
+
+此举是为了保证贡献范围可控以及你的贡献方向不与开发组的计划相悖
+
+我们的原则在于，**任何贡献对项目的价值都应大于审查它所需的工作量**
+
+请与项目组保持良好的沟通
+
+> 满足以下条件的，你可能会被邀请至开发组：
+>
+> 1.  贡献代码行数(仅算增加行) > 1000的
+> 2.  基于其他方面考虑, 获得开发组主动邀请的
 
 ## 开发环境要求
 

@@ -114,4 +114,8 @@ export const systemApi = {
   async openFolder(path: string): Promise<void> {
     return tauriInvoke("open_folder", { path });
   },
+
+  async getDefaultRunPath(): Promise<string> {
+    return tauriInvoke("get_default_run_path");
+  },
 };

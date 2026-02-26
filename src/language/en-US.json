@@ -325,6 +325,7 @@
     "enter_command_content": "Enter command content",
     "cancel": "Cancel",
     "delete": "Delete",
+    "save": "Save",
     "add": "Add",
     "update": "Update",
     "back_to_bottom": "Back to bottom",
@@ -336,7 +337,8 @@
     "stopping": "Stopping",
     "stopped": "Stopped",
     "no_server": "No servers",
-    "create_server_first": "Please create and select a server first"
+    "create_server_first": "Please create and select a server first",
+    "suggestion_hint": "Tab to complete / Up Down to select"
   },
   "config": {
     "title": "Config Edit",
@@ -358,7 +360,9 @@
     "delete": "Delete",
     "refresh_list": "Refresh List",
     "reload_plugins": "Reload Plugins",
+    "reload_plugins_warning": "Reloading plugins may cause server lag, please proceed with caution",
     "empty_config_folder": "Config folder is empty",
+    "has_config_folder": "Has Config",
     "no_config_files": "No config",
     "config_files_count": "configs",
     "config_files": "Config Files",
@@ -525,6 +529,9 @@
     "min_memory_desc": "Recommended to set to 1/4 to 1/2 of max memory",
     "default_java": "Default Java Version",
     "default_java_desc": "Leave blank to automatically detect the most suitable Java each time",
+    "default_run_path": "Default Server Path",
+    "default_run_path_desc": "Default storage path for creating servers",
+    "browse": "Browse",
     "jvm_args_desc": "These parameters will be added to all server startups. Suitable for GC optimization parameters",
     "port_desc": "Minecraft default port is 25565. Multiple servers need different ports",
     "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
@@ -543,8 +550,7 @@
     "font_family": "Font",
     "font_family_desc": "Select the font used by the interface, some fonts need to be installed on the system or loaded from the network",
     "acrylic": "Acrylic Effect (Glass)",
-    "acrylic_desc": "Enable Windows system-level acrylic glass effect, compatible with background images",
-    "acrylic_not_supported": "Acrylic effect not supported on current system",
+    "acrylic_desc": "Enable soft Gaussian blur glass effect, supports all platforms, compatible with background images",
     "background": "Background Image",
     "background_desc": "Upload an image as software background, supports PNG, JPG, WEBP and other formats",
     "opacity": "Opacity",
@@ -645,6 +651,8 @@
     "developer_mode_desc": "Enable advanced features and debugging options",
     "developer_mode_toggle": "Toggle Developer Mode",
     "developer_mode_toggle_desc": "Enable to use debug tools while in developer mode",
+    "minimal_mode": "Minimal Mode",
+    "minimal_mode_desc": "Disable all animations and effects, keeping only basic rendering and interactions",
     "color_options": {
       "custom": "Custom"
     }
@@ -752,6 +760,8 @@
     "checking": "Checking...",
     "refresh": "Refresh",
     "drag_hint": "Drag ZIP plugin, manifest.json or plugin folder here",
+    "choose_title": "Choose Plugin Source",
+    "choose_description": "Select a plugin ZIP file or a folder containing plugins",
     "select_file": "Select File",
     "select_folder": "Select Folder",
     "loading_plugins": "Loading plugins...",
@@ -766,6 +776,7 @@
     "not_found": "Plugin not found",
     "back": "Back",
     "plugin_settings": "Plugin Settings",
+    "plugin_category": "Plugin Category",
     "depends_on": "This plugin depends on {{name}}",
     "save_settings": "Save Settings",
     "status": {
@@ -975,6 +986,9 @@
     "save_folder": "Save to",
     "filename": "File Name",
     "thread_count": "Thread Count",
+    "thread_count_empty": "Thread count cannot be empty",
+    "thread_count_invalid": "Invalid character",
+    "thread_count_positive": "Thread count must be a positive integer",
     "cancel": "Cancel",
     "download": "Download",
     "browse": "Browse",
@@ -982,5 +996,16 @@
     "status-finished": "Download Finished",
     "failed": "Download Failed",
     "completed": "Completed"
+  },
+  "dropzone": {
+    "placeholder": "Drop file here or click to select",
+    "support_both": "Supports files and folders",
+    "support_files": "Supports files",
+    "support_folders": "Supports folders",
+    "error_no_path": "Unable to get dropped file path",
+    "error_unsupported_type": "Unsupported file type"
+  },
+  "downloader": {
+    "connection_lost": "Task connection lost"
   }
 }

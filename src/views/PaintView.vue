@@ -6,13 +6,7 @@ import AppearanceCard from "@components/views/paint/AppearanceCard.vue";
 import SettingsActions from "@components/views/paint/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/paint/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/paint/ResetConfirmModal.vue";
-import {
-  settingsApi,
-  checkAcrylicSupport,
-  applyAcrylic,
-  getSystemFonts,
-  type AppSettings,
-} from "@api/settings";
+import { settingsApi, getSystemFonts, type AppSettings } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { usePluginStore } from "@stores/pluginStore";
@@ -27,7 +21,6 @@ const loading = ref(true);
 const fontsLoading = ref(false);
 const error = ref<string | null>(null);
 
-const acrylicSupported = ref(true);
 const pluginStore = usePluginStore();
 
 const themeProxyPlugin = computed(() => {
@@ -56,11 +49,6 @@ const bgSettingsExpanded = ref(false);
 onMounted(async () => {
   await loadSettings();
   await loadSystemFonts();
-  try {
-    acrylicSupported.value = await checkAcrylicSupport();
-  } catch {
-    acrylicSupported.value = false;
-  }
 
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
@@ -180,35 +168,21 @@ function handleFontFamilyChange() {
   }
 }
 
-async function handleAcrylicChange(enabled: boolean) {
+function handleAcrylicChange(enabled: boolean) {
   markChanged();
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
-
-  if (!acrylicSupported.value) {
-    return;
-  }
-
-  try {
-    const theme = settings.value?.theme || "auto";
-    const isDark = getEffectiveTheme(theme) === "dark";
-    await applyAcrylic(enabled, isDark);
-  } catch (e) {
-    error.value = String(e);
-  }
 }
 
-async function handleThemeChange() {
+function handleMinimalModeChange(enabled: boolean) {
+  markChanged();
+  document.documentElement.setAttribute("data-minimal", enabled ? "true" : "false");
+}
+
+function handleThemeChange() {
   markChanged();
   if (!settings.value) return;
 
-  const effectiveTheme = applyTheme(settings.value.theme);
-
-  if (settings.value.acrylic_enabled && acrylicSupported.value) {
-    try {
-      const isDark = effectiveTheme === "dark";
-      await applyAcrylic(true, isDark);
-    } catch {}
-  }
+  applyTheme(settings.value.theme);
 }
 
 async function saveSettings() {
@@ -236,13 +210,6 @@ async function saveSettings() {
     if (result.changed_groups.includes("Appearance")) {
       applyTheme(settings.value.theme);
       applyFontSize(settings.value.font_size);
-
-      if (acrylicSupported.value) {
-        try {
-          const isDark = getEffectiveTheme(settings.value.theme) === "dark";
-          await applyAcrylic(settings.value.acrylic_enabled, isDark);
-        } catch {}
-      }
     }
 
     dispatchSettingsUpdate(result.changed_groups, result.settings);
@@ -348,7 +315,6 @@ function clearBackgroundImage() {
         :font-family-options="fontFamilyOptions"
         :fonts-loading="fontsLoading"
         :acrylic-enabled="settings.acrylic_enabled"
-        :acrylic-supported="acrylicSupported"
         :is-theme-proxied="isThemeProxied"
         :theme-proxy-plugin-name="themeProxyPluginName"
         :background-image="settings.background_image"
@@ -357,6 +323,7 @@ function clearBackgroundImage() {
         :bg-brightness="bgBrightness"
         :background-size="settings.background_size"
         :bg-settings-expanded="bgSettingsExpanded"
+        :minimal-mode="settings.minimal_mode"
         @update:theme="settings.theme = $event"
         @update:font-size="fontSize = $event"
         @update:font-family="settings.font_family = $event"
@@ -366,10 +333,12 @@ function clearBackgroundImage() {
         @update:bg-blur="bgBlur = $event"
         @update:bg-brightness="bgBrightness = $event"
         @update:background-size="settings.background_size = $event"
+        @update:minimal-mode="settings.minimal_mode = $event"
         @theme-change="handleThemeChange"
         @font-size-change="handleFontSizeChange"
         @font-family-change="handleFontFamilyChange"
         @acrylic-change="handleAcrylicChange"
+        @minimal-mode-change="handleMinimalModeChange"
         @pick-image="pickBackgroundImage"
         @clear-image="clearBackgroundImage"
         @change="markChanged"

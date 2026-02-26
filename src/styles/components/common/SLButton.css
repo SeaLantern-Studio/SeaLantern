@@ -1,5 +1,7 @@
 /* SLButton 组件样式 */
 .sl-button {
+  --btn-ripple-color: rgba(255, 255, 255, 0.3);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7,18 +9,45 @@
   font-weight: 500;
   border-radius: var(--sl-radius-md, 0.375rem);
   border: 1px solid transparent;
-  transition:
-    background-color var(--sl-transition-fast) ease-in-out,
-    border-color var(--sl-transition-fast) ease-in-out,
-    box-shadow var(--sl-transition-fast) ease-in-out,
-    transform 0.1s ease-in-out;
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  will-change: transform, box-shadow;
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.sl-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
+    var(--btn-ripple-color) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transform: scale(0);
+  transition:
+    transform 0.5s ease,
+    opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.sl-button:active::before {
+  opacity: 1;
+  transform: scale(2.5);
+  transition:
+    transform 0s,
+    opacity 0s;
+}
+
+/* Size variants */
 .sl-button--sm {
   padding: 0.375rem 0.75rem;
   font-size: 0.8125rem;
@@ -37,65 +66,122 @@
   line-height: 1.5;
 }
 
+/* Primary variant */
 .sl-button--primary {
-  background-color: var(--sl-primary, #2563eb);
+  --btn-ripple-color: rgba(255, 255, 255, 0.25);
+
+  background-color: var(--sl-primary, #0ea5e9);
   color: var(--sl-text-inverse, #ffffff);
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+  box-shadow:
+    0 2px 4px rgba(14, 165, 233, 0.25),
+    0 4px 8px rgba(14, 165, 233, 0.15);
 }
 
 .sl-button--primary:hover:not(:disabled) {
-  background-color: var(--sl-primary-dark, #1d4ed8);
-  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.4);
-  transform: translateY(-1px);
+  background-color: var(--sl-primary-dark, #0369a1);
+  box-shadow:
+    0 4px 8px rgba(14, 165, 233, 0.3),
+    0 8px 16px rgba(14, 165, 233, 0.2);
+  transform: translateY(-2px);
 }
 
 .sl-button--primary:active:not(:disabled) {
   transform: translateY(0);
+  box-shadow:
+    0 1px 2px rgba(14, 165, 233, 0.2),
+    0 2px 4px rgba(14, 165, 233, 0.1);
 }
 
+/* Secondary variant */
 .sl-button--secondary {
-  background-color: var(--sl-bg-secondary, #f8fafc);
-  color: var(--sl-text-primary, #1e293b);
-  border-color: var(--sl-border, #cbd5e1);
+  --btn-ripple-color: rgba(14, 165, 233, 0.15);
+
+  background-color: var(--sl-bg-secondary, #f1f5f9);
+  color: var(--sl-text-primary, #0f172a);
+  border-color: var(--sl-border, #e2e8f0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .sl-button--secondary:hover:not(:disabled) {
-  background-color: var(--sl-bg-tertiary, #f1f5f9);
-  border-color: var(--sl-primary-light, #93c5fd);
+  background-color: var(--sl-bg-tertiary, #e2e8f0);
+  border-color: var(--sl-primary, #0ea5e9);
+  color: var(--sl-primary, #0ea5e9);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
+.sl-button--secondary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Ghost variant */
 .sl-button--ghost {
+  --btn-ripple-color: rgba(14, 165, 233, 0.2);
+
   background-color: transparent;
-  color: var(--sl-text-secondary, #64748b);
+  color: var(--sl-text-secondary, #475569);
 }
 
 .sl-button--ghost:hover:not(:disabled) {
-  background-color: var(--sl-primary-bg, #eff6ff);
-  color: var(--sl-primary, #2563eb);
+  background-color: var(--sl-primary-bg, rgba(14, 165, 233, 0.08));
+  color: var(--sl-primary, #0ea5e9);
 }
 
+.sl-button--ghost:active:not(:disabled) {
+  background-color: var(--sl-primary-bg, rgba(14, 165, 233, 0.15));
+}
+
+/* Danger variant */
 .sl-button--danger {
-  background-color: var(--sl-error, #dc2626);
+  --btn-ripple-color: rgba(255, 255, 255, 0.25);
+
+  background-color: var(--sl-error, #ef4444);
   color: var(--sl-text-inverse, #ffffff);
-  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.3);
+  box-shadow:
+    0 2px 4px rgba(239, 68, 68, 0.25),
+    0 4px 8px rgba(239, 68, 68, 0.15);
 }
 
 .sl-button--danger:hover:not(:disabled) {
-  background-color: #b91c1c;
-  box-shadow: 0 2px 5px rgba(220, 38, 38, 0.4);
-  transform: translateY(-1px);
+  background-color: #dc2626;
+  box-shadow:
+    0 4px 8px rgba(239, 68, 68, 0.3),
+    0 8px 16px rgba(239, 68, 68, 0.2);
+  transform: translateY(-2px);
 }
 
+.sl-button--danger:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    0 1px 2px rgba(239, 68, 68, 0.2),
+    0 2px 4px rgba(239, 68, 68, 0.1);
+}
+
+/* Success variant */
 .sl-button--success {
-  background: var(--sl-success);
-  color: var(--sl-text-inverse);
+  --btn-ripple-color: rgba(255, 255, 255, 0.25);
+
+  background: var(--sl-success, #22c55e);
+  color: var(--sl-text-inverse, #ffffff);
+  box-shadow:
+    0 2px 4px rgba(34, 197, 94, 0.25),
+    0 4px 8px rgba(34, 197, 94, 0.15);
 }
 
-.sl-button--success:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+.sl-button--success:hover:not(:disabled) {
+  background: #16a34a;
+  box-shadow:
+    0 4px 8px rgba(34, 197, 94, 0.3),
+    0 8px 16px rgba(34, 197, 94, 0.2);
+  transform: translateY(-2px);
 }
 
+.sl-button--success:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Disabled state */
 .sl-button--disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -103,16 +189,82 @@
   box-shadow: none !important;
 }
 
-.sl-button-spinner {
-  flex-shrink: 0;
-  animation: spin 0.75s linear infinite;
+.sl-button--disabled::before {
+  display: none;
 }
 
-@keyframes spin {
+/* Loading spinner */
+.sl-button-spinner {
+  flex-shrink: 0;
+  animation: btn-spin 0.6s linear infinite;
+}
+
+@keyframes btn-spin {
   from {
     transform: rotate(0deg);
   }
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .sl-button--primary {
+  box-shadow:
+    0 2px 4px rgba(96, 165, 250, 0.2),
+    0 4px 8px rgba(96, 165, 250, 0.1);
+}
+
+[data-theme="dark"] .sl-button--secondary {
+  background-color: var(--sl-bg-tertiary, #242836);
+  border-color: var(--sl-border, rgba(255, 255, 255, 0.1));
+}
+
+[data-theme="dark"] .sl-button--secondary:hover:not(:disabled) {
+  background-color: var(--sl-bg, #0f1117);
+  border-color: var(--sl-primary, #60a5fa);
+}
+
+/* Icon-only variant */
+.sl-button--icon-only {
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--sl-radius-md, 8px);
+}
+
+.sl-button--icon-only.sl-button--sm {
+  width: 28px;
+  height: 28px;
+}
+
+.sl-button--icon-only.sl-button--lg {
+  width: 40px;
+  height: 40px;
+}
+
+/* Icon-only ghost variant - for toolbar buttons */
+.sl-button--icon-only.sl-button--ghost {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.sl-button--icon-only.sl-button--ghost:hover:not(:disabled) {
+  background-color: var(--sl-bg-tertiary, #e2e8f0);
+  transform: scale(1.05);
+}
+
+.sl-button--icon-only.sl-button--ghost:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+[data-theme="dark"] .sl-button--icon-only.sl-button--ghost:hover:not(:disabled) {
+  background-color: var(--sl-bg-tertiary, rgba(255, 255, 255, 0.1));
+}
+
+/* Close button variant */
+.sl-button--icon-only.sl-button--ghost.close-btn:hover:not(:disabled) {
+  background-color: var(--sl-error, #ef4444);
+  color: var(--sl-text-inverse, #ffffff);
 }

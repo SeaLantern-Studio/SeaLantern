@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
+import SLTextarea from "@components/common/SLTextarea.vue";
 import { i18n } from "@language";
 import { ref, watch } from "vue";
 
@@ -37,12 +38,11 @@ function close() {
   <SLModal :visible="visible" :title="i18n.t('settings.import_settings')" @close="close">
     <div class="import-form">
       <p class="text-caption">{{ i18n.t("settings.import_desc") }}</p>
-      <textarea
+      <SLTextarea
         v-model="importJson"
-        class="import-textarea"
         placeholder='{"close_servers_on_exit": true, ...}'
-        rows="10"
-      ></textarea>
+        :rows="10"
+      />
     </div>
     <template #footer>
       <SLButton variant="secondary" @click="close">{{ i18n.t("settings.cancel") }}</SLButton>
@@ -65,23 +65,10 @@ function close() {
   color: var(--sl-text-tertiary);
 }
 
-.import-textarea {
-  width: 100%;
+.import-form :deep(.sl-textarea) {
   margin-top: var(--sl-space-sm);
-  padding: var(--sl-space-sm) var(--sl-space-md);
   font-family: var(--sl-font-mono);
   font-size: 0.8125rem;
-  color: var(--sl-text-primary);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  resize: vertical;
   line-height: 1.6;
-}
-
-.import-textarea:focus {
-  border-color: var(--sl-primary);
-  box-shadow: 0 0 0 3px var(--sl-primary-bg);
-  outline: none;
 }
 </style>

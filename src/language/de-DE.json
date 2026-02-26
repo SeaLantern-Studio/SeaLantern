@@ -245,6 +245,7 @@
     "enter_command_content": "Befehlsinhalt eingeben",
     "cancel": "Abbrechen",
     "delete": "Löschen",
+    "save": "Speichern",
     "add": "Hinzufügen",
     "update": "Aktualisieren",
     "back_to_bottom": "Zum Ende",
@@ -254,7 +255,10 @@
     "running": "Läuft",
     "starting": "Starte",
     "stopping": "Stoppe",
-    "stopped": "Gestoppt"
+    "stopped": "Gestoppt",
+    "no_server": "Keine Server",
+    "create_server_first": "Bitte erstellen und wählen Sie zuerst einen Server",
+    "suggestion_hint": "Tab Vervollständigung / Up Down Auswahl"
   },
   "config": {
     "title": "Konfiguration bearbeiten",
@@ -276,7 +280,9 @@
     "delete": "Löschen",
     "refresh_list": "Liste aktualisieren",
     "reload_plugins": "Plugins neu laden",
+    "reload_plugins_warning": "Das Neuladen von Plugins kann zu Serververzögerungen führen, bitte seien Sie vorsichtig",
     "empty_config_folder": "Konfigurationsordner ist leer",
+    "has_config_folder": "Konfiguration vorhanden",
     "no_config_files": "Keine Konfiguration",
     "config_files_count": "Konfigurationen",
     "config_files": "Konfigurationsdateien",
@@ -457,8 +463,7 @@
     "font_family": "Schriftart",
     "font_family_desc": "Wähle die Schriftart für die Oberfläche. Einige Schriftarten müssen auf dem System installiert sein",
     "acrylic": "Acryl-Effekt",
-    "acrylic_desc": "Aktiviere den Windows-System-Acrylglaseffekt, kompatibel mit Hintergrundbildern",
-    "acrylic_not_supported": "Acryl-Effekt wird auf diesem System nicht unterstützt",
+    "acrylic_desc": "Aktiviere den weichen Gaußschen Weichzeichnereffekt, unterstützt auf allen Plattformen, kompatibel mit Hintergrundbildern",
     "background": "Hintergrundbild",
     "background_desc": "Lade ein Bild als Software-Hintergrund hoch. Unterstützt PNG, JPG, WEBP und andere Formate",
     "opacity": "Deckkraft",
@@ -637,6 +642,9 @@
     "save_folder": "Speichern unter",
     "filename": "Dateiname",
     "thread_count": "Thread-Anzahl",
+    "thread_count_empty": "Thread-Anzahl darf nicht leer sein",
+    "thread_count_invalid": "Ungültiges Zeichen",
+    "thread_count_positive": "Thread-Anzahl muss eine positive ganze Zahl sein",
     "cancel": "Abbrechen",
     "download": "Herunterladen",
     "browse": "Durchsuchen",
@@ -644,5 +652,16 @@
     "status-finished": "Download abgeschlossen",
     "failed": "Download fehlgeschlagen",
     "completed": "Fertiggestellt"
+  },
+  "dropzone": {
+    "placeholder": "Datei hier ablegen oder klicken zum Auswählen",
+    "support_both": "Unterstützt Dateien und Ordner",
+    "support_files": "Unterstützt Dateien",
+    "support_folders": "Unterstützt Ordner",
+    "error_no_path": "Pfad der abgelegten Datei konnte nicht ermittelt werden",
+    "error_unsupported_type": "Nicht unterstützter Dateityp"
+  },
+  "downloader": {
+    "connection_lost": "Verbindung zum Task verloren"
   }
 }

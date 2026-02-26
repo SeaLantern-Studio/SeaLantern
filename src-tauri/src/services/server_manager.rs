@@ -306,31 +306,23 @@ impl ServerManager {
             .file_name()
             .ok_or_else(|| "无法获取启动文件名".to_string())?;
 
-        let dest_startup = if startup_mode == "jar" {
-            let dest_jar = server_dir.join(startup_filename);
-            std::fs::copy(source_startup_file, &dest_jar)
-                .map_err(|e| format!("复制JAR文件失败: {}", e))?;
-            println!("已复制JAR文件: {} -> {}", req.jar_path, dest_jar.display());
-            dest_jar
-        } else {
-            let source_server_dir = source_startup_file
-                .parent()
-                .ok_or_else(|| "无法获取启动文件所在目录".to_string())?;
+        // 获取启动文件所在目录，复制整个目录内容到 UUID 文件夹
+        let source_server_dir = source_startup_file
+            .parent()
+            .ok_or_else(|| "无法获取启动文件所在目录".to_string())?;
 
-            println!(
-                "脚本模式导入：复制服务端目录 {} -> {}",
-                source_server_dir.display(),
-                server_dir.display()
-            );
-            copy_dir_recursive(source_server_dir, &server_dir)
-                .map_err(|e| format!("复制服务端目录失败: {}", e))?;
+        println!(
+            "导入服务器：复制源目录 {} -> {}",
+            source_server_dir.display(),
+            server_dir.display()
+        );
+        copy_dir_recursive(source_server_dir, &server_dir)
+            .map_err(|e| format!("复制服务端目录失败: {}", e))?;
 
-            let copied_startup = server_dir.join(startup_filename);
-            if !copied_startup.exists() {
-                return Err(format!("复制后的启动文件不存在: {}", copied_startup.display()));
-            }
-            copied_startup
-        };
+        let dest_startup = server_dir.join(startup_filename);
+        if !dest_startup.exists() {
+            return Err(format!("复制后的启动文件不存在: {}", dest_startup.display()));
+        }
 
         let server_properties_path = server_dir.join("server.properties");
         let mut port = req.port;
@@ -414,14 +406,15 @@ impl ServerManager {
             return Err("运行目录不能为空，请选择开服路径".to_string());
         }
 
-        // 在用户选择的路径下创建以服务器名称命名的子文件夹
+        // 使用 UUID 前30位作为文件夹名称，确保唯一性
         let server_name = validate_server_name(&req.name)?;
-        let run_dir = PathBuf::from(&base_path).join(&server_name);
+        let folder_name = uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
+        let run_dir = PathBuf::from(&base_path).join(&folder_name);
 
         // 检查目标目录是否已存在
         if run_dir.exists() {
             return Err(format!(
-                "目录已存在：{}，请更换服务器名称或选择其他路径",
+                "目录已存在：{}，请更换启动项或选择其他路径",
                 run_dir.to_string_lossy()
             ));
         }
