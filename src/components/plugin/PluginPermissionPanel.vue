@@ -150,7 +150,7 @@ function formatTime(timestamp: number): string {
   border-radius: var(--sl-radius-xs);
   background: var(--sl-bg-tertiary);
   color: var(--sl-text-secondary);
-  font-size: 12px;
+  font-size: var(--sl-font-size-xs);
   cursor: pointer;
   transition: all var(--sl-transition-fast);
 }
@@ -173,9 +173,7 @@ function formatTime(timestamp: number): string {
   width: 320px;
   max-height: 400px;
   border-radius: var(--sl-radius-lg);
-  background: var(--sl-surface);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--sl-border);
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
   display: flex;
@@ -239,7 +237,7 @@ function formatTime(timestamp: number): string {
   border-radius: var(--sl-radius-lg);
   background: var(--sl-primary-alpha, rgba(59, 130, 246, 0.15));
   color: var(--sl-primary);
-  font-size: 12px;
+  font-size: var(--sl-font-size-xs);
   font-weight: 500;
   cursor: default;
 }
@@ -252,7 +250,7 @@ function formatTime(timestamp: number): string {
   background: var(--sl-bg-tertiary);
   border: 1px solid var(--sl-border);
   color: var(--sl-text-secondary);
-  font-size: 11px;
+  font-size: var(--sl-font-size-xs);
   font-weight: 400;
   line-height: 1.5;
   padding: 6px 10px;
@@ -291,7 +289,7 @@ function formatTime(timestamp: number): string {
 
 :deep(.command-action) {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-primary);
   font-family: monospace;
   overflow: hidden;
