@@ -461,32 +461,40 @@ onUnmounted(() => {
 <style>
 /* 下拉框样式 - 非 scoped，因为使用 Teleport 渲染到 body */
 .sl-select-dropdown {
-  background: var(--sl-surface, #1e2130);
-  border: 1px solid var(--sl-border);
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   border-radius: var(--sl-radius-lg, 12px);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.12),
-    0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  will-change: transform, opacity;
+  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   color: var(--sl-text-primary);
   transform-origin: top center;
 }
 
-:root[data-acrylic="true"][data-theme="dark"] .sl-select-dropdown {
-  background: rgba(30, 33, 48, 0.95);
-}
-
-:root[data-acrylic="true"][data-theme="light"] .sl-select-dropdown {
-  background: rgba(255, 255, 255, 0.95);
-}
-
 [data-theme="dark"] .sl-select-dropdown {
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.3),
-    0 4px 12px rgba(0, 0, 0, 0.2);
+  --sl-glass-bg: rgba(15, 17, 23, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+[data-acrylic="true"] .sl-select-dropdown {
+  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+}
+
+[data-theme="dark"][data-acrylic="true"] .sl-select-dropdown {
+  --sl-glass-bg: rgba(15, 17, 23, 0.65);
+}
+
+[data-acrylic="false"] .sl-select-dropdown {
+  background: var(--sl-surface, #ffffff);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 .sl-select-dropdown .sl-select-search {

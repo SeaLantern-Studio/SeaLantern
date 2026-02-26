@@ -59,44 +59,49 @@ function formatTime(timestamp: number): string {
 }
 
 function updatePanelPosition() {
-  if (!buttonRef.value) return;
+  if (!buttonRef.value) {
+    console.warn('Button ref not found');
+    return;
+  }
+  
   const rect = buttonRef.value.getBoundingClientRect();
   const panelWidth = 320;
   const panelHeight = 400;
   const minHeight = 200;
   const padding = 8;
 
+  // 计算可用空间
   const spaceBelow = window.innerHeight - rect.bottom - padding;
   const spaceAbove = rect.top - padding;
+  const spaceRight = window.innerWidth - rect.right - padding;
 
+  // 确定面板位置
   let top: number;
+  let left: number;
   let actualMaxHeight = panelHeight;
 
-  // 优先在下方显示，如果下方空间不足则尝试上方
+  // 优先在下方显示
   if (spaceBelow >= panelHeight) {
     top = rect.bottom + 4;
   } else if (spaceAbove >= panelHeight) {
     top = rect.top - panelHeight - 4;
-  } else if (spaceBelow >= spaceAbove) {
-    // 下方空间更大，在下方显示并限制高度
-    top = rect.bottom + 4;
-    actualMaxHeight = Math.max(minHeight, spaceBelow - 4);
   } else {
-    // 上方空间更大，在上方显示并限制高度
-    top = padding;
-    actualMaxHeight = Math.max(minHeight, spaceAbove - 4);
+    // 空间不足，选择空间较大的方向并调整高度
+    if (spaceBelow >= spaceAbove) {
+      top = rect.bottom + 4;
+      actualMaxHeight = Math.max(minHeight, spaceBelow - 4);
+    } else {
+      top = padding;
+      actualMaxHeight = Math.max(minHeight, spaceAbove - 4);
+    }
   }
 
-  let left = rect.left;
-
-  // 确保面板不超出视口右侧
-  if (left + panelWidth > window.innerWidth - padding) {
-    left = window.innerWidth - panelWidth - padding;
-  }
-
-  // 确保面板不超出视口左侧
-  if (left < padding) {
-    left = padding;
+  // 优先在右侧显示（如果空间足够）
+  if (spaceRight >= panelWidth) {
+    left = rect.right + 4;
+  } else {
+    // 右侧空间不足，显示在左侧
+    left = Math.max(padding, rect.left - panelWidth - 4);
   }
 
   panelPosition.value = { top, left, maxHeight: actualMaxHeight };
@@ -278,14 +283,17 @@ onUnmounted(() => {
   width: 320px;
   max-height: 400px;
   border-radius: var(--sl-radius-lg);
-  background: var(--sl-surface);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--sl-border);
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   box-shadow: var(--sl-shadow-lg);
   z-index: 9999;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .panel-header {
@@ -474,5 +482,24 @@ onUnmounted(() => {
 .panel-fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+</style>
+
+<style>
+/* 非 scoped 样式，用于响应全局 data 属性 */
+[data-theme="dark"] .permission-panel {
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+[data-acrylic="true"] .permission-panel {
+  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+}
+
+[data-acrylic="false"] .permission-panel {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
+  background: var(--sl-surface);
 }
 </style>
