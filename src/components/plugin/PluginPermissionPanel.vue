@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import { getPermissionMetadata } from "@type/plugin";
@@ -14,6 +14,7 @@ const props = defineProps<Props>();
 const pluginStore = usePluginStore();
 
 const isOpen = ref(false);
+const panelPosition = ref({ top: 0, left: 0 });
 
 function getPermissionLabel(permission: string): string {
   const meta = getPermissionMetadata(permission);
@@ -57,8 +58,40 @@ function formatTime(timestamp: number): string {
   });
 }
 
-function togglePanel() {
+function updatePanelPosition() {
+  if (!buttonRef.value) return;
+  const rect = buttonRef.value.getBoundingClientRect();
+  const panelWidth = 320;
+  const panelHeight = 400;
+  const padding = 8;
+
+  let top = rect.bottom + 4;
+  let left = rect.left;
+
+  // 确保面板不超出视口底部
+  if (top + panelHeight > window.innerHeight - padding) {
+    top = rect.top - panelHeight - 4;
+  }
+
+  // 确保面板不超出视口右侧
+  if (left + panelWidth > window.innerWidth - padding) {
+    left = window.innerWidth - panelWidth - padding;
+  }
+
+  // 确保面板不超出视口左侧
+  if (left < padding) {
+    left = padding;
+  }
+
+  panelPosition.value = { top, left };
+}
+
+async function togglePanel() {
   isOpen.value = !isOpen.value;
+  if (isOpen.value) {
+    await nextTick();
+    updatePanelPosition();
+  }
 }
 
 function closePanel() {
@@ -81,12 +114,22 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
+function handleScroll() {
+  if (isOpen.value) {
+    updatePanelPosition();
+  }
+}
+
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
+  window.addEventListener("scroll", handleScroll, true);
+  window.addEventListener("resize", handleScroll);
 });
 
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
+  window.removeEventListener("scroll", handleScroll, true);
+  window.removeEventListener("resize", handleScroll);
 });
 </script>
 
@@ -103,64 +146,71 @@ onUnmounted(() => {
       <span class="permission-btn-text">{{ i18n.t("plugins.permission.panel_btn_text") }}</span>
     </button>
 
-    <div v-if="isOpen" ref="panelRef" class="permission-panel glass">
-      <div class="panel-header">
-        <span class="panel-title">{{ i18n.t("plugins.permission.panel_title") }}</span>
-        <button class="panel-close" @click="closePanel">
-          <X :size="14" :stroke-width="2" />
-        </button>
+    <Teleport to="body">
+      <div
+        v-if="isOpen"
+        ref="panelRef"
+        class="permission-panel glass"
+        :style="{ top: `${panelPosition.top}px`, left: `${panelPosition.left}px` }"
+      >
+        <div class="panel-header">
+          <span class="panel-title">{{ i18n.t("plugins.permission.panel_title") }}</span>
+          <button class="panel-close" @click="closePanel">
+            <X :size="14" :stroke-width="2" />
+          </button>
+        </div>
+
+        <div class="panel-content">
+          <div class="panel-section">
+            <div class="section-title">{{ i18n.t("plugins.permission.panel_declared") }}</div>
+            <div class="permission-tags">
+              <span
+                v-for="perm in permissions"
+                :key="perm"
+                class="permission-tag"
+                :title="getPermissionDesc(perm)"
+              >
+                {{ getPermissionLabel(perm) }}
+                <span v-if="getPermissionDesc(perm)" class="permission-tag-tooltip">{{
+                  getPermissionDesc(perm)
+                }}</span>
+              </span>
+              <span v-if="permissions.length === 0" class="empty-hint">
+                {{ i18n.t("plugins.permission.panel_no_permissions") }}
+              </span>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">{{ i18n.t("plugins.permission.panel_command_log") }}</div>
+            <div class="command-list">
+              <div v-for="(log, index) in commandLogs" :key="index" class="command-item">
+                <span class="command-action" :title="log.detail">{{ log.action }}</span>
+                <span class="command-time">{{ formatTime(log.timestamp) }}</span>
+              </div>
+              <div v-if="commandLogs.length === 0" class="empty-hint">
+                {{ i18n.t("plugins.permission.panel_no_commands") }}
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">{{ i18n.t("plugins.permission.panel_api_stats") }}</div>
+            <div class="api-stats">
+              <div v-for="stat in apiStats" :key="stat.name" class="api-stat-item">
+                <span class="api-name">{{ stat.name }}</span>
+                <span class="api-count">{{
+                  i18n.t("plugins.permission.panel_call_count", { count: stat.count })
+                }}</span>
+              </div>
+              <div v-if="apiStats.length === 0" class="empty-hint">
+                {{ i18n.t("plugins.permission.panel_no_api_calls") }}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div class="panel-content">
-        <div class="panel-section">
-          <div class="section-title">{{ i18n.t("plugins.permission.panel_declared") }}</div>
-          <div class="permission-tags">
-            <span
-              v-for="perm in permissions"
-              :key="perm"
-              class="permission-tag"
-              :title="getPermissionDesc(perm)"
-            >
-              {{ getPermissionLabel(perm) }}
-              <span v-if="getPermissionDesc(perm)" class="permission-tag-tooltip">{{
-                getPermissionDesc(perm)
-              }}</span>
-            </span>
-            <span v-if="permissions.length === 0" class="empty-hint">
-              {{ i18n.t("plugins.permission.panel_no_permissions") }}
-            </span>
-          </div>
-        </div>
-
-        <div class="panel-section">
-          <div class="section-title">{{ i18n.t("plugins.permission.panel_command_log") }}</div>
-          <div class="command-list">
-            <div v-for="(log, index) in commandLogs" :key="index" class="command-item">
-              <span class="command-action" :title="log.detail">{{ log.action }}</span>
-              <span class="command-time">{{ formatTime(log.timestamp) }}</span>
-            </div>
-            <div v-if="commandLogs.length === 0" class="empty-hint">
-              {{ i18n.t("plugins.permission.panel_no_commands") }}
-            </div>
-          </div>
-        </div>
-
-        <div class="panel-section">
-          <div class="section-title">{{ i18n.t("plugins.permission.panel_api_stats") }}</div>
-          <div class="api-stats">
-            <div v-for="stat in apiStats" :key="stat.name" class="api-stat-item">
-              <span class="api-name">{{ stat.name }}</span>
-              <span class="api-count">{{
-                i18n.t("plugins.permission.panel_call_count", { count: stat.count })
-              }}</span>
-            </div>
-            <div v-if="apiStats.length === 0" class="empty-hint">
-              {{ i18n.t("plugins.permission.panel_no_api_calls") }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -204,10 +254,7 @@ onUnmounted(() => {
 }
 
 .permission-panel {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
+  position: fixed;
   width: 320px;
   max-height: 400px;
   border-radius: var(--sl-radius-lg);
@@ -215,7 +262,7 @@ onUnmounted(() => {
   backdrop-filter: blur(12px);
   border: 1px solid var(--sl-border);
   box-shadow: var(--sl-shadow-lg);
-  z-index: 1000;
+  z-index: 9999;
   overflow: hidden;
   display: flex;
   flex-direction: column;

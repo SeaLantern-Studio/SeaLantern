@@ -32,11 +32,13 @@ export const contributors: Contributor[] = [
     name: "KercyDing",
     role: "代码审查与CI，官网创始人",
     avatar: "https://api.rms.net.cn/head/KercyDing",
-    url: "https://github.com/KercyDing",
+    url: {
+      github: "https://github.com/KercyDing",
+    },
   },
   {
     name: "CmzYa",
-    role: "不明所以的commit带来了巨量的体验优化",
+    role: "统一前端组件，赛博擒矢蝗",
     avatar: "https://api.rms.net.cn/head/CmzYa",
     url: {
       github: "https://github.com/CmzYa",
@@ -80,6 +82,7 @@ export const contributors: Contributor[] = [
     role: "提出了个性化页面，提供了颜色编辑和颜色选择器",
     avatar: "https://api.rms.net.cn/head/echo500",
     url: {
+      gitee: "https://gitee.com/zhuxiaojt",
       github: "https://github.com/zhuxiaojt",
     },
   },
@@ -180,7 +183,9 @@ export const contributors: Contributor[] = [
     name: "龙腾_H",
     role: "贡献者 美术这块 河南卷死我了",
     avatar: "https://api.rms.net.cn/head/Longteng_H",
-    url: "https://github.com/longteng-H",
+    url: {
+      github: "https://github.com/longteng-H",
+    },
   },
 
   {

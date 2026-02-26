@@ -277,6 +277,14 @@ export function useCreateServerPage() {
       // 加载上次选择的开服路径
       if (settings.last_run_path) {
         runPath.value = settings.last_run_path;
+      } else {
+        // 如果没有上次的路径，获取默认路径
+        try {
+          const defaultPath = await systemApi.getDefaultRunPath();
+          runPath.value = defaultPath;
+        } catch (error) {
+          console.error("Failed to get default run path:", error);
+        }
       }
 
       if (settings.cached_java_list && settings.cached_java_list.length > 0) {

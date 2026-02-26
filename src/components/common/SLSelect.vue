@@ -463,12 +463,16 @@ onUnmounted(() => {
 .sl-select-dropdown {
   background: var(--sl-surface, #1e2130);
   border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  box-shadow: var(--sl-shadow-lg);
+  border-radius: var(--sl-radius-lg, 12px);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   will-change: transform, opacity;
   color: var(--sl-text-primary);
+  transform-origin: top center;
 }
 
 :root[data-acrylic="true"][data-theme="dark"] .sl-select-dropdown {
@@ -477,6 +481,12 @@ onUnmounted(() => {
 
 :root[data-acrylic="true"][data-theme="light"] .sl-select-dropdown {
   background: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="dark"] .sl-select-dropdown {
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .sl-select-dropdown .sl-select-search {
@@ -542,8 +552,28 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 10px 12px;
   cursor: pointer;
-  transition: background var(--sl-transition-fast);
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.sl-select-dropdown .sl-select-option::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sl-primary, #0ea5e9);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  border-radius: inherit;
+}
+
+.sl-select-dropdown .sl-select-option:active:not(.selected)::before {
+  opacity: 0.1;
+  transform: scale(1);
 }
 
 .sl-select-dropdown .sl-select-option:hover,
@@ -584,18 +614,73 @@ onUnmounted(() => {
   color: var(--sl-primary);
   flex-shrink: 0;
   margin-left: 8px;
+  animation: check-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.dropdown-enter-active,
+@keyframes check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-45deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.dropdown-enter-active {
+  animation: dropdown-enter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 .dropdown-leave-active {
-  transition: all 0.15s ease;
-  will-change: transform, opacity;
+  animation: dropdown-leave 0.15s ease;
 }
 
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
+@keyframes dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/* Option stagger animation */
+.sl-select-option {
+  animation: option-fade-in 0.2s ease backwards;
+}
+
+.sl-select-option:nth-child(1) { animation-delay: 0.02s; }
+.sl-select-option:nth-child(2) { animation-delay: 0.04s; }
+.sl-select-option:nth-child(3) { animation-delay: 0.06s; }
+.sl-select-option:nth-child(4) { animation-delay: 0.08s; }
+.sl-select-option:nth-child(5) { animation-delay: 0.1s; }
+.sl-select-option:nth-child(6) { animation-delay: 0.12s; }
+.sl-select-option:nth-child(7) { animation-delay: 0.14s; }
+.sl-select-option:nth-child(8) { animation-delay: 0.16s; }
+
+@keyframes option-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @media (max-width: 768px) {
