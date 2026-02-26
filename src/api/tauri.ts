@@ -9,25 +9,22 @@ declare global {
 
 // 环境检测：判断是否在浏览器环境（Docker 模式）
 const isBrowserEnv = (): boolean => {
-  return typeof window !== 'undefined' && !window.__TAURI__;
+  return typeof window !== "undefined" && !window.__TAURI__;
 };
 
 // HTTP API 基础 URL（Docker 模式下使用）
-const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+export const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 /**
  * 通过 HTTP API 调用命令（Docker/浏览器模式）
  */
-async function httpInvoke<T>(
-  command: string,
-  args?: Record<string, unknown>,
-): Promise<T> {
+async function httpInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const url = `${HTTP_API_BASE}/api/${command}`;
-  
+
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ params: args || {} }),
   });
@@ -38,21 +35,18 @@ async function httpInvoke<T>(
   }
 
   const result = await response.json();
-  
+
   if (!result.success) {
-    throw new Error(result.error || 'Unknown error');
+    throw new Error(result.error || "Unknown error");
   }
-  
+
   return result.data as T;
 }
 
 /**
  * 通过 Tauri invoke 调用命令（原生应用模式）
  */
-async function tauriInvokeNative<T>(
-  command: string,
-  args?: Record<string, unknown>,
-): Promise<T> {
+async function tauriInvokeNative<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   // 动态导入，避免在浏览器环境下加载 @tauri-apps/api/core 导致报错
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<T>(command, args);
@@ -81,15 +75,15 @@ export async function tauriInvoke<T>(
   options: InvokeOptions = {},
 ): Promise<T> {
   const isHttp = isBrowserEnv();
-  
+
   try {
     // 根据环境选择调用方式
-    const result = isHttp 
+    const result = isHttp
       ? await httpInvoke<T>(command, args)
       : await tauriInvokeNative<T>(command, args);
-    
+
     if (import.meta.env.DEV) {
-      console.debug(`[${isHttp ? 'HTTP' : 'Tauri'}] Command "${command}" succeeded`);
+      console.debug(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" succeeded`);
     }
 
     return result;
@@ -97,7 +91,7 @@ export async function tauriInvoke<T>(
     const errorMessage = handleError(error, options.context || command);
 
     if (import.meta.env.DEV) {
-      console.warn(`[${isHttp ? 'HTTP' : 'Tauri'}] Command "${command}" failed:`, errorMessage);
+      console.warn(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" failed:`, errorMessage);
     }
 
     if (!options.silent) {

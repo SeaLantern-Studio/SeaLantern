@@ -106,8 +106,8 @@ COPY --from=frontend-builder /app/dist /app/dist
 ENV STATIC_DIR=/app/dist
 ENV RUST_LOG=info
 
-# 创建数据目录
-RUN mkdir -p /app/data && chown -R sealantern:sealantern /app
+# 创建数据目录和上传目录
+RUN mkdir -p /app/data /app/uploads && chown -R sealantern:sealantern /app
 
 # 切换到非 root 用户
 USER sealantern

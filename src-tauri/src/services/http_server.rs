@@ -1,6 +1,6 @@
 use super::http_command_handlers::CommandRegistry;
 use axum::{
-    extract::{Path, State},
+    extract::{Multipart, Path, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
@@ -9,6 +9,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
+use tokio::fs;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 
@@ -65,6 +66,7 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
         .route("/api/{command}", post(handle_api_command))
         .route("/health", get(|| async { "OK" }))
         .route("/api/list", get(list_api_endpoints))
+        .route("/upload", post(handle_file_upload))
         .layer(cors)
         .with_state(state);
 
@@ -75,11 +77,101 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
         println!("Serving static files from: {}", dir);
     }
 
+    // 创建上传目录
+    let upload_dir = "/app/uploads";
+    if let Err(e) = fs::create_dir_all(upload_dir).await {
+        eprintln!("Failed to create upload directory: {}", e);
+    }
+
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     println!("SeaLantern HTTP server listening on {}", addr);
     println!("API endpoints available at http://{}/api/<command>", addr);
     println!("Health check at http://{}/health", addr);
+    println!("File upload available at http://{}/upload", addr);
     axum::serve(listener, app).await.unwrap();
+}
+
+/// 处理文件上传请求
+async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
+    let upload_dir = "/app/uploads";
+    let mut uploaded_files = Vec::new();
+
+    while let Some(field) = multipart.next_field().await {
+        match field {
+            Ok(field) => {
+                let file_name = match field.file_name() {
+                    Some(name) => name.to_string(),
+                    None => {
+                        eprintln!("[Upload] Field without filename, skipping");
+                        continue;
+                    }
+                };
+
+                let file_data = match field.bytes().await {
+                    Ok(data) => data,
+                    Err(e) => {
+                        eprintln!("[Upload] Failed to read field '{}': {}", file_name, e);
+                        return (
+                            StatusCode::BAD_REQUEST,
+                            Json(ApiResponse::error(format!("Failed to read file: {}", e))),
+                        )
+                            .into_response();
+                    }
+                };
+
+                // 生成唯一文件名
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+                let unique_filename = format!("{}-{}", timestamp, file_name);
+                let file_path = format!("{}/{}", upload_dir, unique_filename);
+
+                // 写入文件
+                if let Err(e) = fs::write(&file_path, &file_data).await {
+                    eprintln!("[Upload] Failed to write file '{}': {}", file_path, e);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiResponse::error(format!("Failed to save file: {}", e))),
+                    )
+                        .into_response();
+                }
+
+                println!("[Upload] File '{}' saved to '{}'", file_name, file_path);
+                uploaded_files.push(serde_json::json!({
+                    "original_name": file_name,
+                    "saved_path": file_path,
+                    "size": file_data.len()
+                }));
+            }
+            Err(e) => {
+                eprintln!("[Upload] Failed to read field: {}", e);
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ApiResponse::error(format!("Failed to read multipart field: {}", e))),
+                )
+                    .into_response();
+            }
+        }
+    }
+
+    if uploaded_files.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error("No files uploaded".to_string())),
+        )
+            .into_response();
+    }
+
+    println!("[Upload] Successfully uploaded {} file(s)", uploaded_files.len());
+    (
+        StatusCode::OK,
+        Json(ApiResponse::success(serde_json::json!({
+            "files": uploaded_files,
+            "count": uploaded_files.len()
+        }))),
+    )
+        .into_response()
 }
 
 async fn list_api_endpoints(State(state): State<AppState>) -> impl IntoResponse {
