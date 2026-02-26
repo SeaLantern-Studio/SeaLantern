@@ -69,7 +69,11 @@ pub fn check_acrylic_support() -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub fn apply_acrylic(_window: tauri::Window, _enabled: bool, _dark_mode: bool) -> Result<(), String> {
+pub fn apply_acrylic(
+    _window: tauri::Window,
+    _enabled: bool,
+    _dark_mode: bool,
+) -> Result<(), String> {
     Ok(())
 }
 
