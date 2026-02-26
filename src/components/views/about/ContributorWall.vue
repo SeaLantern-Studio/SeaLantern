@@ -39,16 +39,8 @@ function isSocialLinks(url: string | SocialLinks | undefined): url is SocialLink
   return typeof url === "object" && url !== null;
 }
 
-function getWechatValue(links: SocialLinks): string | undefined {
-  return links.wechat || links.weixin;
-}
-
-function getWechatCopyTitle(): string {
-  return i18n.t("about.qq_click_copy").replace("QQ", "WeChat");
-}
-
 function getCustomLinks(links: SocialLinks): [string, string][] {
-  const predefined = new Set(["gitee", "github", "bilibili", "qq", "tiktok", "wechat", "weixin"]);
+  const predefined = new Set(["gitee", "github", "bilibili", "qq", "tiktok"]);
   return Object.entries(links).filter(([key, value]) => !predefined.has(key) && value) as [
     string,
     string,
@@ -147,19 +139,6 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
               >
                 <Check v-if="copiedQQ === c.url.qq" :size="16" />
                 <BrandIcon v-else name="qq" :size="16" />
-              </button>
-
-              <button
-                v-if="getWechatValue(c.url)"
-                @click="openSocialLink('wechat', getWechatValue(c.url) || '')"
-                class="social-icon"
-                :class="{ copied: copiedQQ === getWechatValue(c.url) }"
-                :title="
-                  copiedQQ === getWechatValue(c.url) ? i18n.t('about.copied') : getWechatCopyTitle()
-                "
-              >
-                <Check v-if="copiedQQ === getWechatValue(c.url)" :size="16" />
-                <BrandIcon v-else name="wechat" :size="16" />
               </button>
 
               <a

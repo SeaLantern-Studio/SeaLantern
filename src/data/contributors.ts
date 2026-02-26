@@ -5,7 +5,7 @@
  * 无论是代码、设计、建议、文档还是推广，你的名字都值得被记住。
  */
 
-export type SocialPlatform = "gitee" | "github" | "bilibili" | "qq" | "wechat" | "weixin";
+export type SocialPlatform = "gitee" | "github" | "bilibili" | "qq";
 
 export interface SocialLinks {
   [key: string]: string | undefined;
@@ -229,7 +229,6 @@ export const contributors: Contributor[] = [
       gitee: "https://gitee.com/lyh2026",
       github: "https://github.com/zalataraglados-prog",
       qq: "3810164802",
-      wechat: "wxid_53xx2vfelbv922",
     },
   },
   // ============================================
