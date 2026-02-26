@@ -8,7 +8,7 @@ import {
   DialogRoot,
   DialogTitle,
 } from "reka-ui";
-import { File, Folder, Plus } from "lucide-vue-next";
+import { File, Folder, Plus, X } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLDropzone from "@components/common/SLDropzone.vue";
 import { systemApi } from "@api/system";
@@ -124,9 +124,18 @@ async function pickFolder() {
       <DialogPortal>
         <DialogOverlay class="source-chooser-overlay" />
         <DialogContent class="source-chooser-content">
-          <DialogTitle class="source-chooser-title">{{
-            i18n.t("create.source_choose_title")
-          }}</DialogTitle>
+          <div class="source-chooser-header">
+            <DialogTitle class="source-chooser-title">{{
+              i18n.t("create.source_choose_title")
+            }}</DialogTitle>
+            <button
+              class="source-chooser-close"
+              @click="chooserOpen = false"
+              :aria-label="i18n.t('common.close_modal')"
+            >
+              <X :size="18" />
+            </button>
+          </div>
           <DialogDescription class="source-chooser-description">
             {{ i18n.t("create.source_choose_description_file") }}
           </DialogDescription>

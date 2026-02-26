@@ -849,9 +849,18 @@ function goToMarket() {
       <DialogPortal>
         <DialogOverlay class="plugin-chooser-overlay" />
         <DialogContent class="plugin-chooser-content">
-          <DialogTitle class="plugin-chooser-title">{{
-            i18n.t("plugins.choose_title")
-          }}</DialogTitle>
+          <div class="plugin-chooser-header">
+            <DialogTitle class="plugin-chooser-title">{{
+              i18n.t("plugins.choose_title")
+            }}</DialogTitle>
+            <button
+              class="plugin-chooser-close"
+              @click="chooserOpen = false"
+              :aria-label="i18n.t('common.close_modal')"
+            >
+              <X :size="18" />
+            </button>
+          </div>
           <DialogDescription class="plugin-chooser-description">
             {{ i18n.t("plugins.choose_description") }}
           </DialogDescription>
@@ -1490,9 +1499,37 @@ function goToMarket() {
   z-index: 3001;
 }
 
+.plugin-chooser-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sl-space-xs);
+}
+
 .plugin-chooser-title {
   margin: 0;
   font-size: var(--sl-font-size-lg);
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.plugin-chooser-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--sl-radius-sm);
+  background: transparent;
+  color: var(--sl-text-tertiary);
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+}
+
+.plugin-chooser-close:hover {
+  background: var(--sl-bg-tertiary);
   color: var(--sl-text-primary);
 }
 

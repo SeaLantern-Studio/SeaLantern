@@ -29,9 +29,37 @@
   z-index: 3001;
 }
 
+.source-chooser-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sl-space-xs);
+}
+
 .source-chooser-title {
   margin: 0;
   font-size: var(--sl-font-size-lg);
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.source-chooser-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--sl-radius-sm);
+  background: transparent;
+  color: var(--sl-text-tertiary);
+  cursor: pointer;
+  transition: all var(--sl-transition-fast);
+}
+
+.source-chooser-close:hover {
+  background: var(--sl-bg-tertiary);
   color: var(--sl-text-primary);
 }
 
