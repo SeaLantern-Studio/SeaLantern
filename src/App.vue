@@ -10,7 +10,7 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
-import { applyTheme, applyFontSize, applyFontFamily } from "@utils/theme";
+import { applyTheme, applyFontSize, applyFontFamily, applyMinimalMode } from "@utils/theme";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
@@ -91,6 +91,7 @@ onMounted(async () => {
     applyTheme(settings.theme || "auto");
     applyFontSize(settings.font_size || 14);
     applyFontFamily(settings.font_family || "");
+    applyMinimalMode(settings.minimal_mode || false);
 
     // 托盘图标已在 Rust 后端创建，前端不需要再创建
     // 相关代码在 src-tauri/src/lib.rs 的 .setup() 中

@@ -355,7 +355,9 @@
     "delete": "删除",
     "refresh_list": "刷新列表",
     "reload_plugins": "重载插件",
+    "reload_plugins_warning": "重载插件可能会导致服务器卡顿，请谨慎操作",
     "empty_config_folder": "配置文件夹为空",
+    "has_config_folder": "配置",
     "no_config_files": "无配置",
     "config_files_count": "个配置",
     "config_files": "配置文件",
@@ -613,7 +615,9 @@
     "developer_mode": "开发者模式",
     "developer_mode_desc": "启动高级功能和调试选项",
     "developer_mode_toggle": "启动开发者模式",
-    "developer_mode_toggle_desc": "启用后将允许使用调试工具"
+    "developer_mode_toggle_desc": "启用后将允许使用调试工具",
+    "minimal_mode": "极简模式",
+    "minimal_mode_desc": "关闭所有动效和特效，只保留最基本的渲染和互动"
   },
   "about": {
     "title": "关于",
