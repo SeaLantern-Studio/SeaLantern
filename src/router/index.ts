@@ -10,7 +10,8 @@ const routes = [
   },
   {
     path: "/create",
-    redirect: "/create/step/1",
+    name: "create-server",
+    redirect: { name: "create-server-step", params: { step: "1" } },
   },
   {
     path: "/create/step/:step",
@@ -81,7 +82,7 @@ const routes = [
   {
     path: "/download-file",
     name: "download-file",
-    component: () => import("../views/DownloadFileView.vue"),
+    component: () => import("@views/DownloadFileView.vue"),
     meta: { titleKey: "common.download-file", icon: "info" },
   },
 ];

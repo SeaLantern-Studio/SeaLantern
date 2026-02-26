@@ -134,8 +134,11 @@ watch(coreDownloadError, (value) => {
 
 watch(
   [coreDownloadTargetPath, coreDownloadCoreType, coreDownloadMcVersion],
-  ([target, coreType, mcVersion], previous) => {
-    const [prevTarget, prevCoreType, prevMcVersion] = previous;
+  ([target, coreType, mcVersion], previous = []) => {
+    if (!previous.length) {
+      return;
+    }
+    const [prevTarget, prevCoreType, prevMcVersion] = previous as [string, string, string];
     if (isCoreDownloading.value) {
       return;
     }
@@ -193,14 +196,20 @@ function goToStep(step: number) {
     }
   }
 
-  router.push(`/create/step/${step}`);
+  router.push({
+    name: "create-server-step",
+    params: { step: String(step) },
+  });
 }
 
 function goPrevStep() {
   if (currentStep.value <= 1) {
     return;
   }
-  void router.push(`/create/step/${currentStep.value - 1}`);
+  void router.push({
+    name: "create-server-step",
+    params: { step: String(currentStep.value - 1) },
+  });
 }
 
 function goNextStep() {

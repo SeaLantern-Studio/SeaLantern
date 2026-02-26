@@ -35,7 +35,20 @@ const isUrlValid = computed(() => {
     return false;
   }
 });
-const isFilenameValid = computed(() => filename.value.trim().length > 0);
+const isFilenameValid = computed(() => {
+  const name = filename.value.trim();
+  return name.length > 0 && !/[\\/]/.test(name);
+});
+const filenameError = computed(() => {
+  const name = filename.value.trim();
+  if (!name) {
+    return i18n.t("download-file.filename_required");
+  }
+  if (/[\\/]/.test(name)) {
+    return i18n.t("download-file.filename_invalid");
+  }
+  return "";
+});
 const isSavePathValid = computed(() => savePath.value.trim().length > 0);
 const isFormValid = computed(
   () => isUrlValid.value && isFilenameValid.value && isSavePathValid.value,
@@ -88,6 +101,18 @@ const statusLabel = computed(() => {
 async function handleDownload() {
   if (combinedLoading.value) return;
   if (!isFormValid.value) {
+    if (!isUrlValid.value) {
+      showError(i18n.t("download-file.url_invalid"));
+      return;
+    }
+    if (!isSavePathValid.value) {
+      showError(i18n.t("download-file.save_folder_required"));
+      return;
+    }
+    if (!isFilenameValid.value) {
+      showError(filenameError.value || i18n.t("download-file.invalid_input"));
+      return;
+    }
     showError(i18n.t("download-file.invalid_input"));
     return;
   }
@@ -166,6 +191,7 @@ watch(taskError, (newError) => {
           v-model="filename"
           :disabled="isDownloading"
         />
+        <p v-if="filenameError && !isDownloading" class="field-error">{{ filenameError }}</p>
         <SLInput
           :label="i18n.t('download-file.thread_count')"
           v-model="threadCount"
@@ -239,6 +265,11 @@ watch(taskError, (newError) => {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
+}
+.field-error {
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--sl-error);
 }
 .pick-btn {
   padding: 4px 12px;

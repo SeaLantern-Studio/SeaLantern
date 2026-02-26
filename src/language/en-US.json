@@ -997,6 +997,10 @@
     "status-finished": "Download Finished",
     "failed": "Download Failed",
     "completed": "Completed",
-    "invalid_input": "Please check download URL, save path, and file name"
+    "invalid_input": "Please check download URL, save path, and file name",
+    "url_invalid": "Invalid URL. Please use an http(s) link.",
+    "save_folder_required": "Please select a save folder.",
+    "filename_required": "Filename is required.",
+    "filename_invalid": "Filename must not contain path separators (/ or \\)."
   }
 }

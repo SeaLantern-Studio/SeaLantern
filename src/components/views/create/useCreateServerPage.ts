@@ -164,6 +164,7 @@ export function useCreateServerPage() {
       completed: false,
     },
   ]);
+  const totalSteps = computed(() => Math.max(stepItems.value.length, 1));
 
   // 只有步骤完成且“启动项同步”完成后才允许提交，避免新源路径配旧 startupFilePath。
   const canSubmit = computed(
@@ -497,7 +498,7 @@ export function useCreateServerPage() {
 
   function validateBeforeSubmit(): boolean {
     clearError();
-    return validateStep(4);
+    return validateStep(totalSteps.value);
   }
 
   async function handleSubmit() {
