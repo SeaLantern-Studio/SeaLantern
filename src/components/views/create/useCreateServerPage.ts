@@ -30,6 +30,7 @@ export function useCreateServerPage() {
   const sourcePath = ref("");
   const sourceType = ref<SourceType>("");
   const runPath = ref("");
+  const useSoftwareDataDir = ref(false);
 
   const coreDetecting = ref(false);
   const detectedCoreType = ref("");
@@ -68,6 +69,7 @@ export function useCreateServerPage() {
   const javaList = ref<JavaInfo[]>([]);
 
   const hasSource = computed(() => sourcePath.value.trim().length > 0 && sourceType.value !== "");
+  const requiresRunPath = computed(() => sourceType.value === "archive");
 
   const selectedStartup = computed(
     () => startupCandidates.value.find((item) => item.id === selectedStartupId.value) ?? null,
@@ -437,18 +439,6 @@ export function useCreateServerPage() {
   function validateStep(step: number): boolean {
     if (step >= 1 && !hasSource.value) {
       showError(i18n.t("create.source_required"));
-      return false;
-    }
-    if (runPath.value.trim().length === 0) {
-      showError(i18n.t("create.path_required"));
-      return false;
-    }
-    if (sourceType.value === "folder" && isStrictChildPath(runPath.value, sourcePath.value)) {
-      showError(i18n.t("create.path_child_of_source_forbidden"));
-      return false;
-    }
-    if (!selectedStartup.value) {
-      showError(i18n.t("create.startup_required"));
       return false;
     }
 
