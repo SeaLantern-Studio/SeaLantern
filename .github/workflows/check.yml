@@ -6,7 +6,6 @@ on:
     branches: [main, dev]
 
 jobs:
-  # 第一步：检测变更文件
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -21,24 +20,16 @@ jobs:
           filters: |
             backend:
               - 'src-tauri/**'
-              - 'src-tauri/Cargo.toml'
-              - 'src-tauri/**/*.rs'
               - 'Cargo.toml'
               - 'Cargo.lock'
             frontend:
               - 'src/**'
-              - 'package*.json'
-              - 'package-lock.json'
+              - 'package.json'
               - 'pnpm-lock.yaml'
-              - 'yarn.lock'
               - 'vite.config.ts'
               - 'tsconfig*.json'
               - 'index.html'
               - 'public/**'
-              - 'assets/**'
-              - 'src/**/*.vue'
-              - 'src/**/*.ts'
-              - 'src/**/*.css'
 
   backend:
     name: 后端检查 (Rust)
@@ -111,10 +102,6 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@9.15.9 --activate
-      - name: Pin PNPM version with Corepack
-        if: ${{ needs.changes.outputs.frontend == 'true' }}
-        run: |
-          corepack prepare pnpm@9.15.9 --activate
 
       - name: 缓存 pnpm 依赖
         if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -133,7 +120,7 @@ jobs:
       - name: 运行格式化并检查前端 Lint
         if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
-          pnpm run fmt && pnpm run lint
+          pnpm run fmt:check && pnpm run lint
 
       - name: 检查前端构建
         if: ${{ needs.changes.outputs.frontend == 'true' }}
