@@ -333,12 +333,28 @@ impl ServerManager {
         let core_type = super::server_installer::detect_core_type(&dest_startup.to_string_lossy());
         println!("检测到核心类型: {}", core_type);
 
+        println!("[DEBUG] 尝试解析 JAR: {}", dest_startup.display());
+        let parsed_info =
+            super::server_installer::parse_server_core_type(&dest_startup.to_string_lossy())
+                .unwrap_or_else(|e| {
+                    println!("[DEBUG] 解析失败: {}", e);
+                    ParsedServerCoreInfo {
+                        core_type: core_type.clone(),
+                        main_class: None,
+                        jar_path: Some(dest_startup.to_string_lossy().to_string()),
+                        version_id: None,
+                    }
+                });
+        println!("[DEBUG] 解析结果: version_id = {:?}", parsed_info.version_id);
+
         let server = ServerInstance {
             id: id.clone(),
             name: req.name,
             core_type,
             core_version: String::new(),
-            mc_version: "unknown".into(),
+            mc_version: parsed_info
+                .version_id
+                .unwrap_or_else(|| "unknown".to_string()),
             path: server_dir.to_string_lossy().to_string(),
             jar_path: dest_startup.to_string_lossy().to_string(),
             startup_mode,
@@ -503,7 +519,21 @@ impl ServerManager {
             super::server_installer::detect_core_type(&startup_path)
         };
         let core_type = selected_core_type.unwrap_or(detected_core_type);
-        let mc_version = selected_mc_version.unwrap_or_else(|| "unknown".to_string());
+        // 获取启动文件路径（startup_file_path 是 Option<String>，已在前面定义）
+        let startup_path = startup_file_path.clone().unwrap_or_default();
+
+        // 尝试从启动 JAR 解析版本号
+        let parsed_version =
+            if !startup_path.is_empty() && startup_path.to_lowercase().ends_with(".jar") {
+                super::server_installer::parse_server_core_type(&startup_path)
+                    .map(|info| info.version_id.unwrap_or_else(|| "unknown".to_string()))
+                    .unwrap_or_else(|_| "unknown".to_string())
+            } else {
+                "unknown".to_string()
+            };
+
+        // 最终版本号：优先使用用户手动选择的，否则使用解析值
+        let mc_version = selected_mc_version.clone().unwrap_or(parsed_version);
 
         let server = ServerInstance {
             id: id.clone(),
@@ -613,12 +643,20 @@ impl ServerManager {
 
         let id = uuid::Uuid::new_v4().to_string();
 
+        let version_id = if startup_mode != "custom" && jar_path.to_lowercase().ends_with(".jar") {
+            super::server_installer::parse_server_core_type(&jar_path)
+                .map(|info| info.version_id.unwrap_or_else(|| "unknown".to_string()))
+                .unwrap_or_else(|_| "unknown".to_string())
+        } else {
+            "unknown".to_string()
+        };
+
         let server = ServerInstance {
             id: id.clone(),
             name: req.name,
             core_type,
             core_version: String::new(),
-            mc_version: "unknown".into(),
+            mc_version: version_id,
             path: req.server_path,
             jar_path,
             startup_mode,

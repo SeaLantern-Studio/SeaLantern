@@ -51,6 +51,9 @@ const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
 
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
+const currentServer = computed(() => serverStore.servers.find(s => s.id === serverId.value));
+const minecraftVersion = computed(() => currentServer.value?.mc_version || '');
+
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopped = computed(() => serverStatus.value === "Stopped");
 const isStopping = computed(() => serverStatus.value === "Stopping");
@@ -313,7 +316,7 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
       />
 
       <!-- 控制台输入部分 -->
-      <ConsoleInput :consoleFontSize="consoleFontSize" @sendCommand="sendCommand" />
+      <ConsoleInput :consoleFontSize="consoleFontSize" :minecraftVersion="minecraftVersion" @sendCommand="sendCommand" />
 
       <!-- 自定义指令模态框 -->
       <CommandModal
