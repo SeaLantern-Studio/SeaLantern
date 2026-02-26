@@ -107,8 +107,8 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
                     }
                 };
 
-                let file_data = match field.bytes().await {
-                    Ok(data) => data,
+                let file_data: Vec<u8> = match field.bytes().await {
+                    Ok(data) => data.to_vec(),
                     Err(e) => {
                         eprintln!("[Upload] Failed to read field '{}': {}", file_name, e);
                         return (
