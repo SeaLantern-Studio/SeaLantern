@@ -570,8 +570,10 @@ fn handle_check_acrylic_support(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        Err("check_acrylic_support is not supported in HTTP/Docker mode (requires Window handle)"
-            .to_string())
+        Err(
+            "check_acrylic_support is not supported in HTTP/Docker mode (requires Window handle)"
+                .to_string(),
+        )
     })
 }
 
