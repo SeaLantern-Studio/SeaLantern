@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { X, FileUp, Loader2 } from "lucide-vue-next";
+import { i18n } from "@language";
 
 export interface DropzoneProps {
   modelValue?: string;
@@ -61,7 +62,7 @@ const displayLabel = computed(() => {
   if (props.modelValue) {
     return props.label || getPathName(props.modelValue);
   }
-  return props.placeholder || "拖拽文件到此处或点击选择";
+  return props.placeholder || i18n.t("dropzone.placeholder");
 });
 
 const displaySubLabel = computed(() => {
@@ -69,13 +70,13 @@ const displaySubLabel = computed(() => {
     return props.subLabel || "";
   }
   if (props.acceptFiles && props.acceptFolders) {
-    return "支持文件和文件夹";
+    return i18n.t("dropzone.support_both");
   }
   if (props.acceptFiles) {
-    return "支持文件";
+    return i18n.t("dropzone.support_files");
   }
   if (props.acceptFolders) {
-    return "支持文件夹";
+    return i18n.t("dropzone.support_folders");
   }
   return "";
 });
@@ -137,7 +138,7 @@ function handleDrop(event: DragEvent) {
 
   const droppedPaths = extractPathsFromDrop(event);
   if (droppedPaths.length === 0) {
-    emit("error", "无法获取拖拽的文件路径");
+    emit("error", i18n.t("dropzone.error_no_path"));
     return;
   }
 
@@ -149,7 +150,7 @@ function handleDrop(event: DragEvent) {
   });
 
   if (validPaths.length === 0) {
-    emit("error", "不支持的文件类型");
+    emit("error", i18n.t("dropzone.error_unsupported_type"));
     return;
   }
 

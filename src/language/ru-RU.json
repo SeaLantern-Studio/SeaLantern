@@ -245,6 +245,7 @@
     "enter_command_content": "Введите команду",
     "cancel": "Отмена",
     "delete": "Удалить",
+    "save": "Сохранить",
     "add": "Добавить",
     "update": "Обновить",
     "back_to_bottom": "Вниз",
@@ -254,7 +255,10 @@
     "running": "Работает",
     "starting": "Запускается",
     "stopping": "Останавливается",
-    "stopped": "Остановлен"
+    "stopped": "Остановлен",
+    "no_server": "Нет серверов",
+    "create_server_first": "Пожалуйста, сначала создайте и выберите сервер",
+    "suggestion_hint": "Tab автозавершение / Up Down выбор"
   },
   "config": {
     "title": "Редактор настроек",
@@ -638,6 +642,9 @@
     "save_folder": "Сохранить в",
     "filename": "Имя файла",
     "thread_count": "Количество потоков",
+    "thread_count_empty": "Количество потоков не может быть пустым",
+    "thread_count_invalid": "Недопустимый символ",
+    "thread_count_positive": "Количество потоков должно быть положительным целым числом",
     "cancel": "Отмена",
     "download": "Скачать",
     "browse": "Обзор",
@@ -645,5 +652,16 @@
     "status-finished": "Загрузка завершена",
     "failed": "Ошибка загрузки",
     "completed": "Завершено"
+  },
+  "dropzone": {
+    "placeholder": "Перетащите файл сюда или нажмите для выбора",
+    "support_both": "Поддерживает файлы и папки",
+    "support_files": "Поддерживает файлы",
+    "support_folders": "Поддерживает папки",
+    "error_no_path": "Не удалось получить путь перетащенного файла",
+    "error_unsupported_type": "Неподдерживаемый тип файла"
+  },
+  "downloader": {
+    "connection_lost": "Соединение с задачей потеряно"
   }
 }

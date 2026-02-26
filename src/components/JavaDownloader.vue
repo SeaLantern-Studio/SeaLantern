@@ -22,8 +22,13 @@
               :disabled="loadingUrl"
               size="sm"
             />
-            <SLButton variant="primary" class="download-button" :loading="loadingUrl" @click="startDownload">
-                {{ downloadButtonText }}
+            <SLButton
+              variant="primary"
+              class="download-button"
+              :loading="loadingUrl"
+              @click="startDownload"
+            >
+              {{ downloadButtonText }}
             </SLButton>
           </div>
         </template>
@@ -72,10 +77,7 @@
     </div>
 
     <!-- Error Message (Full Width below) -->
-    <div
-      v-if="errorMessage"
-      class="error-message"
-    >
+    <div v-if="errorMessage" class="error-message">
       <div class="error-content">
         <AlertCircle class="error-icon" :size="16" />
         <span>{{ errorMessage }}</span>

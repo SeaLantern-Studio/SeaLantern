@@ -333,7 +333,8 @@
     "stopping": "停止中",
     "stopped": "已停止",
     "no_server": "暂无服务器",
-    "create_server_first": "请先创建并选择一个服务器"
+    "create_server_first": "请先创建并选择一个服务器",
+    "suggestion_hint": "Tab 补全 / Up Down 选择"
   },
   "config": {
     "title": "配置编辑",
@@ -740,6 +741,7 @@
     "not_found": "未找到插件",
     "back": "返回",
     "plugin_settings": "插件设置",
+    "plugin_category": "插件分类",
     "depends_on": "此插件依赖 {{name}}",
     "save_settings": "保存设置",
     "status": {
@@ -950,6 +952,9 @@
     "save_folder": "保存到",
     "filename": "文件名",
     "thread_count": "线程数",
+    "thread_count_empty": "线程数不能为空",
+    "thread_count_invalid": "字符不合法",
+    "thread_count_positive": "线程数必须是一个正整数",
     "cancel": "取消",
     "download": "下载",
     "browse": "浏览",
@@ -957,5 +962,16 @@
     "status-finished": "下载已完成",
     "failed": "下载失败",
     "completed": "已完成"
+  },
+  "dropzone": {
+    "placeholder": "拖拽文件到此处或点击选择",
+    "support_both": "支持文件和文件夹",
+    "support_files": "支持文件",
+    "support_folders": "支持文件夹",
+    "error_no_path": "无法获取拖拽的文件路径",
+    "error_unsupported_type": "不支持的文件类型"
+  },
+  "downloader": {
+    "connection_lost": "任务连接丢失"
   }
 }

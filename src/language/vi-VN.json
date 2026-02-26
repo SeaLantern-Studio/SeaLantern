@@ -245,6 +245,7 @@
     "enter_command_content": "Nhập nội dung lệnh",
     "cancel": "Hủy",
     "delete": "Xóa",
+    "save": "Lưu",
     "add": "Thêm",
     "update": "Cập nhật",
     "back_to_bottom": "Về cuối",
@@ -254,7 +255,10 @@
     "running": "Đang chạy",
     "starting": "Đang khởi động",
     "stopping": "Đang dừng",
-    "stopped": "Đã dừng"
+    "stopped": "Đã dừng",
+    "no_server": "Không có máy chủ",
+    "create_server_first": "Vui lòng tạo và chọn một máy chủ trước",
+    "suggestion_hint": "Tab tự động hoàn thành / Up Down chọn"
   },
   "config": {
     "title": "Chỉnh sửa cấu hình",
@@ -638,6 +642,9 @@
     "save_folder": "Lưu vào",
     "filename": "Tên tập tin",
     "thread_count": "Số luồng",
+    "thread_count_empty": "Số luồng không được để trống",
+    "thread_count_invalid": "Ký tự không hợp lệ",
+    "thread_count_positive": "Số luồng phải là số nguyên dương",
     "cancel": "Hủy",
     "download": "Tải xuống",
     "browse": "Duyệt",
@@ -645,5 +652,16 @@
     "status-finished": "Tải xuống hoàn tất",
     "failed": "Tải xuống thất bại",
     "completed": "Đã hoàn thành"
+  },
+  "dropzone": {
+    "placeholder": "Kéo tệp vào đây hoặc nhấp để chọn",
+    "support_both": "Hỗ trợ tệp và thư mục",
+    "support_files": "Hỗ trợ tệp",
+    "support_folders": "Hỗ trợ thư mục",
+    "error_no_path": "Không thể lấy đường dẫn tệp đã kéo",
+    "error_unsupported_type": "Loại tệp không được hỗ trợ"
+  },
+  "downloader": {
+    "connection_lost": "Mất kết nối tác vụ"
   }
 }

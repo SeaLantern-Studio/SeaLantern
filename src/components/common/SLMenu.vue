@@ -121,7 +121,10 @@ const handleKeydown = (e: KeyboardEvent) => {
   switch (e.key) {
     case "ArrowDown":
       e.preventDefault();
-      highlightedIndex.value = Math.min(highlightedIndex.value + 1, flattenedItems.value.length - 1);
+      highlightedIndex.value = Math.min(
+        highlightedIndex.value + 1,
+        flattenedItems.value.length - 1,
+      );
       break;
     case "ArrowUp":
       e.preventDefault();
@@ -306,7 +309,9 @@ defineExpose({ open, close, toggle });
   background: var(--sl-primary, #0ea5e9);
   opacity: 0;
   transform: scale(0.5);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   border-radius: inherit;
 }
 
@@ -403,14 +408,30 @@ defineExpose({ open, close, toggle });
   animation: item-fade-in 0.2s ease backwards;
 }
 
-.sl-menu-item:nth-child(1) { animation-delay: 0.02s; }
-.sl-menu-item:nth-child(2) { animation-delay: 0.04s; }
-.sl-menu-item:nth-child(3) { animation-delay: 0.06s; }
-.sl-menu-item:nth-child(4) { animation-delay: 0.08s; }
-.sl-menu-item:nth-child(5) { animation-delay: 0.1s; }
-.sl-menu-item:nth-child(6) { animation-delay: 0.12s; }
-.sl-menu-item:nth-child(7) { animation-delay: 0.14s; }
-.sl-menu-item:nth-child(8) { animation-delay: 0.16s; }
+.sl-menu-item:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.sl-menu-item:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.sl-menu-item:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.sl-menu-item:nth-child(4) {
+  animation-delay: 0.08s;
+}
+.sl-menu-item:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.sl-menu-item:nth-child(6) {
+  animation-delay: 0.12s;
+}
+.sl-menu-item:nth-child(7) {
+  animation-delay: 0.14s;
+}
+.sl-menu-item:nth-child(8) {
+  animation-delay: 0.16s;
+}
 
 @keyframes item-fade-in {
   from {

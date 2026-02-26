@@ -53,7 +53,9 @@ export function sortStartupCandidates(candidates: StartupCandidate[]): StartupCa
   });
 }
 
-export function mapStartupModeForApi(mode: Exclude<StartupMode, "custom">): "jar" | "bat" | "sh" | "ps1" {
+export function mapStartupModeForApi(
+  mode: Exclude<StartupMode, "custom">,
+): "jar" | "bat" | "sh" | "ps1" {
   switch (mode) {
     case "bat":
       return "bat";
