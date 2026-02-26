@@ -70,7 +70,13 @@ watch(
 
 function doScroll() {
   nextTick(() => {
-    if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight;
+    if (!logContainer.value) return;
+    logContainer.value.scrollTop = logContainer.value.scrollHeight;
+    requestAnimationFrame(() => {
+      if (!logContainer.value) return;
+      logContainer.value.scrollTop = logContainer.value.scrollHeight;
+      handleScroll();
+    });
   });
 }
 
