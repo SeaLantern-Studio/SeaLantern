@@ -142,10 +142,7 @@ function handleMinimalModeChange(value: boolean) {
           <span class="sl-setting-label">{{ i18n.t("settings.acrylic") }}</span>
           <span class="sl-setting-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
         </div>
-        <SLSwitch
-          :model-value="acrylicEnabled"
-          @update:model-value="handleAcrylicChange"
-        />
+        <SLSwitch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
       </div>
 
       <div class="sl-setting-row">
@@ -153,10 +150,7 @@ function handleMinimalModeChange(value: boolean) {
           <span class="sl-setting-label">{{ i18n.t("settings.minimal_mode") }}</span>
           <span class="sl-setting-desc">{{ i18n.t("settings.minimal_mode_desc") }}</span>
         </div>
-        <SLSwitch
-          :model-value="minimalMode"
-          @update:model-value="handleMinimalModeChange"
-        />
+        <SLSwitch :model-value="minimalMode" @update:model-value="handleMinimalModeChange" />
       </div>
 
       <BackgroundSettings

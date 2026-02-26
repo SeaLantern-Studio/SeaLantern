@@ -81,7 +81,7 @@
 }
 
 .sidebar.collapsed .server-selector {
-  padding: 2px;
+  padding: 1px;
 }
 
 .nav-item {
@@ -178,15 +178,23 @@
 
 .sidebar.collapsed .nav-item {
   padding: 8px;
-  padding-left: 11px;
+  padding-left: 10px;
 }
 
 .sidebar.collapsed .nav-label {
-  display: none;
+  visibility: hidden;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
 }
 
 .sidebar.collapsed .nav-group-label {
-  display: none;
+  visibility: hidden;
+  opacity: 0;
+  height: 0;
+  padding: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--sl-border);
 }
 
 .sidebar.collapsed .nav-children {
