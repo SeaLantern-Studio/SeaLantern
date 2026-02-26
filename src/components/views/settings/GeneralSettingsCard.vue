@@ -33,11 +33,11 @@ const closeActionOptions = [
 
 <template>
   <SLCard :title="i18n.t('settings.general')" :subtitle="i18n.t('settings.general_desc')">
-    <div class="settings-group">
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.auto_stop") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.auto_stop_desc") }}</span>
+    <div class="sl-settings-group">
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.auto_stop") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.auto_stop_desc") }}</span>
         </div>
         <SLSwitch
           :model-value="closeServersOnExit"
@@ -50,10 +50,10 @@ const closeActionOptions = [
         />
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.auto_eula") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.auto_eula_desc") }}</span>
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.auto_eula") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.auto_eula_desc") }}</span>
         </div>
         <SLSwitch
           :model-value="autoAcceptEula"
@@ -66,12 +66,12 @@ const closeActionOptions = [
         />
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.close_action") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.close_action_desc") }}</span>
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.close_action") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.close_action_desc") }}</span>
         </div>
-        <div class="input-md">
+        <div class="sl-input-md">
           <SLSelect
             :model-value="closeAction"
             :options="closeActionOptions"
@@ -82,48 +82,3 @@ const closeActionOptions = [
     </div>
   </SLCard>
 </template>
-
-<style scoped>
-.settings-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sl-space-md) 0;
-  border-bottom: 1px solid var(--sl-border-light);
-  gap: var(--sl-space-lg);
-}
-
-.setting-row:last-child {
-  border-bottom: none;
-}
-
-.setting-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.setting-label {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--sl-text-primary);
-}
-
-.setting-desc {
-  font-size: 0.8125rem;
-  color: var(--sl-text-tertiary);
-  line-height: 1.4;
-}
-
-.input-md {
-  width: 200px;
-  flex-shrink: 0;
-}
-</style>

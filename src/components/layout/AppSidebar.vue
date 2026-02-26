@@ -1,20 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onMounted, onUnmounted, onBeforeUnmount } from "vue";
+import { computed, ref, nextTick, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOptions,
-  ListboxOption,
-  Disclosure,
-  DisclosureButton,
-  DisclosurePanel,
-  Portal,
-} from "@headlessui/vue";
+import SLServerSelector from "@components/common/SLServerSelector.vue";
 import {
   Home,
   Plus,
@@ -34,6 +25,7 @@ import {
   DownloadCloudIcon,
   type LucideIcon,
 } from "lucide-vue-next";
+import logoSvg from "@assets/logo.svg";
 
 const iconMap: Record<string, LucideIcon> = {
   home: Home,
@@ -244,9 +236,6 @@ function navigateTo(path: string) {
   router.push(path);
 }
 
-// 服务器选择由 Headless UI 的 Listbox 管理
-
-// 更新导航指示器位置
 function updateNavIndicator() {
   nextTick(() => {
     if (!navIndicator.value) return;
@@ -281,12 +270,9 @@ function updateNavIndicator() {
 watch(
   () => ui.sidebarCollapsed,
   () => {
-    // 延迟更新，确保动画完成后再计算位置
     setTimeout(() => {
       updateNavIndicator();
-      // 在侧边栏折叠/展开后同时更新弹出列表位置
-      updateOptionsPosition();
-    }, 350); // 等待350ms，确保CSS过渡动画完全完成
+    }, 350);
   },
 );
 
@@ -294,33 +280,21 @@ watch(
 watch(
   () => route.path,
   () => {
-    // 使用 nextTick 确保 DOM 已经更新
     nextTick(() => {
       updateNavIndicator();
-      // 路由变化时也更新弹出列表位置（若正在打开）
-      updateOptionsPosition();
     });
   },
 );
 
-// 组件挂载后初始化指示器位置和服务器列表
 onMounted(async () => {
-  // 加载服务器列表
   await serverStore.refreshList();
-
-  // 等待服务器列表加载完成后再更新指示器位置
   nextTick(() => {
     updateNavIndicator();
-    // 初始化 ListboxOptions 的位置，确保弹出在合适的位置
-    updateOptionsPosition();
   });
-
-  // 不再需要手动外部点击处理，Listbox 会负责焦点/键盘可访问性
 });
 
-function handleServerChange(value: string | number) {
-  serverStore.setCurrentServer(String(value));
-  // 如果当前在服务器相关页面，更新路由
+function handleServerChange(value: string) {
+  serverStore.setCurrentServer(value);
   if (
     route.path.startsWith("/console") ||
     route.path.startsWith("/config") ||
@@ -331,67 +305,6 @@ function handleServerChange(value: string | number) {
   }
 }
 
-// 用于把 ListboxOptions 渲染到 body，并在侧边栏收起时调整到侧边栏右侧
-const listboxButton = ref<HTMLElement | null>(null);
-const optionsStyle = ref<Record<string, string | number>>({});
-
-function updateOptionsPosition() {
-  nextTick(() => {
-    // listboxButton 可能是 DOM 元素，也可能是组件实例（有 $el）
-    let btnEl: HTMLElement | null = null;
-    const raw = listboxButton.value as any;
-    if (!raw) return;
-    if (raw instanceof HTMLElement) {
-      btnEl = raw;
-    } else if (raw.$el && raw.$el instanceof HTMLElement) {
-      btnEl = raw.$el as HTMLElement;
-    } else if (raw.$el && raw.$el.$el && raw.$el.$el instanceof HTMLElement) {
-      // 处理嵌套组件暴露的情况
-      btnEl = raw.$el.$el as HTMLElement;
-    }
-    if (!btnEl) return;
-
-    const btnRect = btnEl.getBoundingClientRect();
-    const sidebarEl = document.querySelector(".sidebar") as HTMLElement | null;
-    const sidebarRect = sidebarEl ? sidebarEl.getBoundingClientRect() : null;
-
-    // 默认宽度与样式：当侧边栏存在且未收起时允许更宽一些
-    const width = sidebarRect && !ui.sidebarCollapsed ? Math.max(200, btnRect.width) : 200;
-
-    // 计算固定定位的 top/left（相对于视口）
-    let top = Math.round(btnRect.bottom);
-    let left = Math.round(btnRect.left);
-
-    // 如果存在侧边栏，无论收起或展开，都将列表显示在侧边栏右侧，避免被侧栏容器裁剪
-    // 使用相同的垂直居中逻辑，确保展开与收起时起始位置一致
-    if (sidebarRect) {
-      left = Math.round(sidebarRect.right + 8);
-      top = Math.round(btnRect.top + (btnRect.height - 40) / 2);
-    }
-
-    optionsStyle.value = {
-      position: "fixed",
-      top: `${top}px`,
-      left: `${left}px`,
-      width: `${width}px`,
-    };
-  });
-}
-
-// 更新位置：窗口尺寸变动或滚动时
-function onWindowChange() {
-  updateOptionsPosition();
-}
-
-window.addEventListener("resize", onWindowChange);
-window.addEventListener("scroll", onWindowChange, true);
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", onWindowChange);
-  window.removeEventListener("scroll", onWindowChange, true);
-});
-
-// 服务器选项
 const serverOptions = computed(() => {
   return serverStore.servers.map((s) => ({
     label: s.name,
@@ -399,38 +312,15 @@ const serverOptions = computed(() => {
   }));
 });
 
-// 使用本地 ref 作为 Listbox 的 v-model，保持和 store 同步
-const currentServerRef = ref<string | undefined>(serverStore.currentServerId ?? undefined);
-
-// 当 store 改变时同步到本地 ref
-watch(
-  () => serverStore.currentServerId,
-  (v) => {
-    currentServerRef.value = v ?? undefined;
+const currentServerRef = computed({
+  get: () => serverStore.currentServerId ?? undefined,
+  set: (v) => {
+    if (v) handleServerChange(v);
   },
-);
+});
 
-// 当本地 ref 改变时触发处理逻辑（会更新 store）
-watch(
-  () => currentServerRef.value,
-  (v, old) => {
-    if (v != null && v !== old) {
-      handleServerChange(v);
-    }
-  },
-);
-
-// 监听服务器列表变化，更新指示器位置
 watch(
   () => serverOptions.value.length,
-  () => {
-    updateNavIndicator();
-  },
-);
-
-// 监听当前服务器变化（本地 ref），更新指示器位置
-watch(
-  () => currentServerRef.value,
   () => {
     updateNavIndicator();
   },
@@ -455,12 +345,6 @@ onUnmounted(() => {
   if (sidebarNav) {
     sidebarNav.removeEventListener("scroll", updateNavIndicator);
   }
-});
-
-// 便捷计算当前服务器标签
-const getCurrentServerLabel = computed(() => {
-  const cur = serverOptions.value.find((o) => o.value === currentServerRef.value);
-  return cur ? cur.label : i18n.t("common.select_server");
 });
 
 function isActive(path: string): boolean {
@@ -500,78 +384,26 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
   <aside class="sidebar glass-strong" :class="{ collapsed: ui.sidebarCollapsed }">
     <div class="sidebar-logo" @click="navigateTo('/')">
       <div class="logo-icon">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 512 512"
+        <img
+          :src="logoSvg"
           width="28"
           height="28"
-          :aria-label="i18n.t('common.app_name')"
-          role="img"
-        >
-          <defs>
-            <linearGradient id="sl-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color: #60a5fa" />
-              <stop offset="100%" style="stop-color: #818cf8" />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="512" height="512" rx="128" fill="url(#sl-logo-grad)" />
-          <rect x="176" y="176" width="160" height="160" rx="48" fill="white" fill-opacity="0.85" />
-        </svg>
+          :alt="i18n.t('common.app_name')"
+        />
       </div>
       <transition name="fade">
         <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t("common.app_name") }}</span>
       </transition>
     </div>
     <nav class="sidebar-nav">
-      <!-- 导航激活指示器 -->
       <div class="nav-active-indicator" ref="navIndicator"></div>
-      <!-- 服务器选择（Headless UI Listbox） -->
-      <Listbox
+      <SLServerSelector
         v-if="serverOptions.length > 0"
         v-model="currentServerRef"
+        :options="serverOptions"
+        :collapsed="ui.sidebarCollapsed"
         class="server-selector"
-        horizontal
-      >
-        <div>
-          <ListboxButton
-            ref="listboxButton"
-            class="server-selector-button"
-            :aria-label="i18n.t('common.select_server')"
-            @click="updateOptionsPosition"
-            @focus="updateOptionsPosition"
-          >
-            <Server :size="20" :stroke-width="1.8" class="server-icon" />
-            <template v-if="!ui.sidebarCollapsed">
-              <div class="server-select-box">{{ getCurrentServerLabel }}</div>
-            </template>
-          </ListboxButton>
-
-          <!-- 将 ListboxOptions 渲染到 body（Portal），并使用固定定位样式 -->
-          <Portal>
-            <transition name="bubble">
-              <ListboxOptions class="server-select-bubble-content-portal" :style="optionsStyle">
-                <div class="server-select-bubble-body">
-                  <ListboxOption
-                    v-for="option in serverOptions"
-                    :key="option.value"
-                    :value="option.value"
-                    v-slot="{ selected }"
-                  >
-                    <div
-                      :class="[
-                        'server-select-option',
-                        { active: option.value === currentServerRef },
-                      ]"
-                    >
-                      {{ option.label }}
-                    </div>
-                  </ListboxOption>
-                </div>
-              </ListboxOptions>
-            </transition>
-          </Portal>
-        </div>
-      </Listbox>
+      />
 
       <!-- 按顺序渲染 -->
       <template v-for="(group, gi) in orderedNavGroups" :key="gi">
@@ -669,8 +501,6 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
         </div>
       </div>
     </nav>
-
-    <!-- 弹出服务器选择由 Listbox 管理（原手动气泡已移除） -->
 
     <div class="sidebar-footer">
       <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
