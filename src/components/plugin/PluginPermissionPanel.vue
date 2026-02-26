@@ -14,7 +14,7 @@ const props = defineProps<Props>();
 const pluginStore = usePluginStore();
 
 const isOpen = ref(false);
-const panelPosition = ref({ top: 0, left: 0 });
+const panelPosition = ref({ top: 0, left: 0, maxHeight: 400 });
 
 function getPermissionLabel(permission: string): string {
   const meta = getPermissionMetadata(permission);
@@ -63,15 +63,31 @@ function updatePanelPosition() {
   const rect = buttonRef.value.getBoundingClientRect();
   const panelWidth = 320;
   const panelHeight = 400;
+  const minHeight = 200;
   const padding = 8;
 
-  let top = rect.bottom + 4;
-  let left = rect.left;
+  const spaceBelow = window.innerHeight - rect.bottom - padding;
+  const spaceAbove = rect.top - padding;
 
-  // 确保面板不超出视口底部
-  if (top + panelHeight > window.innerHeight - padding) {
+  let top: number;
+  let actualMaxHeight = panelHeight;
+
+  // 优先在下方显示，如果下方空间不足则尝试上方
+  if (spaceBelow >= panelHeight) {
+    top = rect.bottom + 4;
+  } else if (spaceAbove >= panelHeight) {
     top = rect.top - panelHeight - 4;
+  } else if (spaceBelow >= spaceAbove) {
+    // 下方空间更大，在下方显示并限制高度
+    top = rect.bottom + 4;
+    actualMaxHeight = Math.max(minHeight, spaceBelow - 4);
+  } else {
+    // 上方空间更大，在上方显示并限制高度
+    top = padding;
+    actualMaxHeight = Math.max(minHeight, spaceAbove - 4);
   }
+
+  let left = rect.left;
 
   // 确保面板不超出视口右侧
   if (left + panelWidth > window.innerWidth - padding) {
@@ -83,7 +99,7 @@ function updatePanelPosition() {
     left = padding;
   }
 
-  panelPosition.value = { top, left };
+  panelPosition.value = { top, left, maxHeight: actualMaxHeight };
 }
 
 async function togglePanel() {
@@ -151,7 +167,11 @@ onUnmounted(() => {
         v-if="isOpen"
         ref="panelRef"
         class="permission-panel glass"
-        :style="{ top: `${panelPosition.top}px`, left: `${panelPosition.left}px` }"
+        :style="{
+          top: `${panelPosition.top}px`,
+          left: `${panelPosition.left}px`,
+          maxHeight: `${panelPosition.maxHeight}px`,
+        }"
       >
         <div class="panel-header">
           <span class="panel-title">{{ i18n.t("plugins.permission.panel_title") }}</span>
