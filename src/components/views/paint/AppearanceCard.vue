@@ -140,7 +140,7 @@ function handleMinimalModeChange(value: boolean) {
       <div class="sl-setting-row">
         <div class="sl-setting-info">
           <span class="sl-setting-label">{{ i18n.t("settings.acrylic") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
         </div>
         <SLSwitch
           :model-value="acrylicEnabled"
@@ -188,7 +188,7 @@ function handleMinimalModeChange(value: boolean) {
   border: 1px solid rgba(96, 165, 250, 0.3);
   border-radius: var(--sl-radius-md);
   color: var(--sl-primary);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   min-width: 200px;
 }
 

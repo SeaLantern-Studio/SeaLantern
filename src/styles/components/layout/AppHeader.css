@@ -26,7 +26,7 @@
 }
 
 .page-title {
-  font-size: 1rem;
+  font-size: var(--sl-font-size-lg);
   font-weight: 600;
   color: var(--sl-text-primary);
 }
@@ -66,7 +66,7 @@
 }
 
 .status-text {
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-secondary);
 }
 
@@ -122,7 +122,7 @@
 }
 
 .language-text {
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-secondary);
   font-weight: 500;
 }
@@ -174,7 +174,7 @@
 
 .language-item {
   padding: 8px 12px;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-secondary);
   cursor: pointer;
   transition:

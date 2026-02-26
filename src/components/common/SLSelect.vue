@@ -369,7 +369,7 @@ onUnmounted(() => {
 
 .sl-select-label {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   font-weight: 500;
   color: var(--sl-text-secondary);
   margin-bottom: var(--sl-space-xs);
@@ -381,7 +381,7 @@ onUnmounted(() => {
   justify-content: space-between;
   width: 100%;
   padding: 8px 12px;
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
@@ -506,7 +506,7 @@ onUnmounted(() => {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   color: var(--sl-text-primary);
   outline: none;
   width: 100%;
@@ -526,7 +526,7 @@ onUnmounted(() => {
   padding: 16px;
   text-align: center;
   color: var(--sl-text-tertiary);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .sl-select-dropdown .sl-select-option {
@@ -585,7 +585,7 @@ onUnmounted(() => {
 }
 
 .sl-select-dropdown .sl-select-option .option-sublabel {
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-tertiary);
   font-family: var(--sl-font-mono);
   overflow: hidden;

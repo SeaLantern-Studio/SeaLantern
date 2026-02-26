@@ -292,7 +292,7 @@ function handleJavaInstalled(path: string) {
   justify-content: space-between;
   padding: 10px 16px;
   border-radius: var(--sl-radius-md);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .error-banner {

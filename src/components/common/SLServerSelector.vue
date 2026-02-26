@@ -288,7 +288,7 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .chevron {
@@ -394,7 +394,7 @@ watch(
   padding: 16px;
   text-align: center;
   color: var(--sl-text-tertiary);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .dropdown-enter-active {

@@ -127,7 +127,7 @@ watch(taskError, (newError) => {
         <SLInput :label="i18n.t('download-file.url')" v-model="url" :disabled="isDownloading" @input="checkUrl" />
         <SLInput :label="i18n.t('download-file.save_folder')" v-model="savePath" :disabled="isDownloading">
           <template #suffix>
-            <button class="pick-btn" @click="pickFloder" :disabled="isDownloading">
+            <button class="sl-input-action" @click="pickFloder" :disabled="isDownloading">
               {{ i18n.t("download-file.browse") }}
             </button>
           </template>
@@ -195,20 +195,6 @@ watch(taskError, (newError) => {
   flex-direction: column;
   gap: var(--sl-space-md);
 }
-.pick-btn {
-  padding: 4px 12px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--sl-primary);
-  background: var(--sl-primary-bg);
-  border-radius: var(--sl-radius-sm);
-  cursor: pointer;
-  white-space: nowrap;
-  border: none;
-  transition: all var(--sl-transition-fast);
-}
-.pick-btn:hover { background: var(--sl-primary); color: white; }
-.pick-btn:disabled { filter: grayscale(1); opacity: 0.5; cursor: not-allowed; }
 .create-actions {
   display: flex;
   justify-content: center;

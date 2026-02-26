@@ -70,15 +70,6 @@
   border-top: 1px solid var(--sl-border-light);
 }
 
-.java-step-pick {
-  padding: 4px 10px;
-  border-radius: var(--sl-radius-sm);
-  color: var(--sl-primary);
-  background: var(--sl-primary-bg);
-  font-size: 0.8125rem;
-  cursor: pointer;
-}
-
 @media (max-width: 768px) {
   .java-step-row {
     flex-direction: column;

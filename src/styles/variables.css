@@ -61,6 +61,21 @@
   --sl-font-mono: "JetBrains Mono", "Fira Code", monospace;
   --sl-font-display: "Inter", "PingFang SC", sans-serif;
 
+  /* -- Font Sizes -- */
+  --sl-font-size-xs: 0.75rem;
+  --sl-font-size-sm: 0.8125rem;
+  --sl-font-size-base: 0.875rem;
+  --sl-font-size-lg: 1rem;
+  --sl-font-size-xl: 1.125rem;
+  --sl-font-size-2xl: 1.25rem;
+  --sl-font-size-3xl: 1.5rem;
+  --sl-font-size-4xl: 2rem;
+
+  /* -- Line Heights -- */
+  --sl-line-height-tight: 1.25;
+  --sl-line-height-normal: 1.5;
+  --sl-line-height-relaxed: 1.625;
+
   /* -- Transitions -- */
   --sl-transition-fast: 0.15s ease;
   --sl-transition-normal: 0.25s ease;
@@ -76,6 +91,16 @@
   --sl-scrollbar-thumb-bg: var(--sl-border);
   --sl-scrollbar-thumb-hover-bg: var(--sl-text-tertiary);
   --sl-scrollbar-thumb-radius: var(--sl-radius-full);
+
+  /* -- Glass Blur -- */
+  --sl-blur-sm: 8px;
+  --sl-blur-md: 16px;
+  --sl-blur-lg: 24px;
+  --sl-blur-xl: 32px;
+  --sl-blur-xxl: 40px;
+  --sl-saturate-subtle: 150%;
+  --sl-saturate-normal: 180%;
+  --sl-saturate-strong: 200%;
 }
 
 [data-theme="dark"] {
