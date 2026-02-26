@@ -1231,7 +1231,7 @@ export const usePluginStore = defineStore("plugin", () => {
     return permissionLogs.value[pluginId] || [];
   }
 
-  const HIGH_RISK_PERMISSIONS = [
+  const HIGH_RISK_PERMISSIONS = new Set([
     "network",
     "fs",
     "server",
@@ -1240,12 +1240,12 @@ export const usePluginStore = defineStore("plugin", () => {
     "system",
     "execute_program",
     "plugin_folder_access",
-  ];
+  ]);
 
   function getHighRiskPermissions(pluginId: string): string[] {
     const plugin = plugins.value.find((p) => p.manifest.id === pluginId);
     if (!plugin || !plugin.manifest.permissions) return [];
-    return plugin.manifest.permissions.filter((p) => HIGH_RISK_PERMISSIONS.includes(p));
+    return plugin.manifest.permissions.filter((p) => HIGH_RISK_PERMISSIONS.has(p));
   }
 
   function clearPermissionLogs(pluginId: string) {

@@ -80,11 +80,7 @@ function handleConfig() {
                 >
                   <Check :size="16" />
                 </button>
-                <button
-                  class="inline-edit-btn cancel"
-                  @click="cancelEdit"
-                  :disabled="editLoading"
-                >
+                <button class="inline-edit-btn cancel" @click="cancelEdit" :disabled="editLoading">
                   <X :size="16" />
                 </button>
               </div>
@@ -146,18 +142,10 @@ function handleConfig() {
         @click="handleStop(server.id)"
         >{{ i18n.t("home.stop") }}</SLButton
       >
-      <SLButton
-        variant="ghost"
-        size="sm"
-        @click="handleConsole"
-      >
+      <SLButton variant="ghost" size="sm" @click="handleConsole">
         {{ i18n.t("common.console") }}
       </SLButton>
-      <SLButton
-        variant="ghost"
-        size="sm"
-        @click="handleConfig"
-      >
+      <SLButton variant="ghost" size="sm" @click="handleConfig">
         {{ i18n.t("common.config_edit") }}
       </SLButton>
       <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
@@ -459,7 +447,8 @@ function handleConfig() {
   transform: translateY(-1px);
 }
 
-.server-card-actions :deep(.sl-button:not(.sl-button--variant-primary):not(.sl-button--variant-danger)) {
+.server-card-actions
+  :deep(.sl-button:not(.sl-button--variant-primary):not(.sl-button--variant-danger)) {
   flex: 0 0 auto;
   min-width: unset;
 }

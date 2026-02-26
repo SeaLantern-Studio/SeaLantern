@@ -2,12 +2,7 @@
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
-import {
-  currentQuote,
-  displayText,
-  isTyping,
-  updateQuote,
-} from "@utils/quoteUtils";
+import { currentQuote, displayText, isTyping, updateQuote } from "@utils/quoteUtils";
 
 const emit = defineEmits<{
   (e: "create"): void;

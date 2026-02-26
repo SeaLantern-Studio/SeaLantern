@@ -33,8 +33,8 @@ function isSocialLinks(url: string | SocialLinks | undefined): url is SocialLink
 }
 
 function getCustomLinks(links: SocialLinks): [string, string][] {
-  const predefined = ["gitee", "github", "bilibili", "qq", "tiktok"];
-  return Object.entries(links).filter(([key, value]) => !predefined.includes(key) && value) as [
+  const predefined = new Set(["gitee", "github", "bilibili", "qq", "tiktok"]);
+  return Object.entries(links).filter(([key, value]) => !predefined.has(key) && value) as [
     string,
     string,
   ][];

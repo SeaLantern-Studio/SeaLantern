@@ -249,7 +249,7 @@ fn get_memory_load() -> f64 {
                 }
             }
         }
-        if total > 0{
+        if total > 0 {
             return (total.saturating_sub(available) as f64 / total as f64) * 100.0;
         }
     }
