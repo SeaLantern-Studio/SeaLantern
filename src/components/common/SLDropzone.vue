@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { X, FileUp, Loader2 } from "lucide-vue-next";
-import { useI18n } from "vue-i18n";
+import { i18n } from "@language";
 
-const { t } = useI18n();
+const { t } = i18n;
 
 export interface DropzoneProps {
   modelValue?: string;
