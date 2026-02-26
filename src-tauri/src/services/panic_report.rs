@@ -99,6 +99,7 @@ pub async fn panic_report() {
         let script = format!(
             r#"
                 panicreportname={}
+                rm -r $panicreportname
                 touch $panicreportname
                 echo "============!Panicked!============" >> $panicreportname
                 echo "===============Info===============" >> $panicreportname
@@ -111,6 +112,32 @@ pub async fn panic_report() {
                 echo "Loaded Memory : {}" >> $panicreportname
                 echo "Handle Counts : {}" >> $panicreportname
                 echo "CPU Cores : {}" >> $panicreportname
+                echo "============Registers=============" >> $panicreportname
+                echo "RAX : {}" >> $panicreportname
+                echo "RBX : {}" >> $panicreportname
+                echo "RCX : {}" >> $panicreportname
+                echo "RDX : {}" >> $panicreportname
+                echo "RSI : {}" >> $panicreportname
+                echo "RDI : {}" >> $panicreportname
+                echo "RBP : {}" >> $panicreportname
+                echo "RSP : {}" >> $panicreportname
+                echo "R8  : {}" >> $panicreportname
+                echo "R9  : {}" >> $panicreportname
+                echo "R10 : {}" >> $panicreportname
+                echo "R11 : {}" >> $panicreportname
+                echo "R12 : {}" >> $panicreportname
+                echo "R13 : {}" >> $panicreportname
+                echo "R14 : {}" >> $panicreportname
+                echo "R15 : {}" >> $panicreportname
+                echo "RIP : {}" >> $panicreportname
+                echo "RFLAGS : {}" >> $panicreportname
+                echo "CS : {}" >> $panicreportname
+                echo "DS : {}" >> $panicreportname
+                echo "ES : {}" >> $panicreportname
+                echo "FS : {}" >> $panicreportname
+                echo "GS : {}" >> $panicreportname
+                echo "SS : {}" >> $panicreportname
+                echo "FXSAVEAREA : {:?}" >> $panicreportname
                 echo "============Panic Info============" >> $panicreportname
                 echo "{}" >> $panicreportname
                 echo "============ReportEnds============" >> $panicreportname
@@ -126,6 +153,31 @@ pub async fn panic_report() {
             shlex::quote(&mem_load.to_string()),
             shlex::quote(&handle_count.to_string()),
             shlex::quote(&cpu_cores.to_string()),
+            shlex::quote(&regs.rax.to_string()),
+            shlex::quote(&regs.rbx.to_string()),
+            shlex::quote(&regs.rcx.to_string()),
+            shlex::quote(&regs.rdx.to_string()),
+            shlex::quote(&regs.rsi.to_string()),
+            shlex::quote(&regs.rdi.to_string()),
+            shlex::quote(&regs.rbp.to_string()),
+            shlex::quote(&regs.rsp.to_string()),
+            shlex::quote(&regs.r8.to_string()),
+            shlex::quote(&regs.r9.to_string()),
+            shlex::quote(&regs.r10.to_string()),
+            shlex::quote(&regs.r11.to_string()),
+            shlex::quote(&regs.r12.to_string()),
+            shlex::quote(&regs.r13.to_string()),
+            shlex::quote(&regs.r14.to_string()),
+            shlex::quote(&regs.r15.to_string()),
+            shlex::quote(&regs.rip.to_string()),
+            shlex::quote(&regs.rflags.to_string()),
+            shlex::quote(&regs.cs.to_string()),
+            shlex::quote(&regs.ds.to_string()),
+            shlex::quote(&regs.es.to_string()),
+            shlex::quote(&regs.fs.to_string()),
+            shlex::quote(&regs.gs.to_string()),
+            shlex::quote(&regs.ss.to_string()),
+            shlex::quote(format!("{:?}", &regs.fxsave_area).as_str()),
             shlex::quote(&panic_info.to_string()),
         );
 
