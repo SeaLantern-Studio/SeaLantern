@@ -455,29 +455,4 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-8px);
 }
-
-.panel-content::-webkit-scrollbar,
-.command-list::-webkit-scrollbar,
-.api-stats::-webkit-scrollbar {
-  width: 4px;
-}
-
-.panel-content::-webkit-scrollbar-track,
-.command-list::-webkit-scrollbar-track,
-.api-stats::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.panel-content::-webkit-scrollbar-thumb,
-.command-list::-webkit-scrollbar-thumb,
-.api-stats::-webkit-scrollbar-thumb {
-  background: var(--sl-border);
-  border-radius: 2px;
-}
-
-.panel-content::-webkit-scrollbar-thumb:hover,
-.command-list::-webkit-scrollbar-thumb:hover,
-.api-stats::-webkit-scrollbar-thumb:hover {
-  background: var(--sl-text-tertiary);
-}
 </style>

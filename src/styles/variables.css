@@ -70,6 +70,12 @@
   --sl-sidebar-width: 220px;
   --sl-sidebar-collapsed-width: 60px;
   --sl-header-height: 48px;
+
+  /* -- Scrollbar -- */
+  --sl-scrollbar-width: 0px;
+  --sl-scrollbar-thumb-bg: var(--sl-border);
+  --sl-scrollbar-thumb-hover-bg: var(--sl-text-tertiary);
+  --sl-scrollbar-thumb-radius: var(--sl-radius-full);
 }
 
 [data-theme="dark"] {

@@ -522,23 +522,6 @@ onUnmounted(() => {
   -webkit-overflow-scrolling: touch;
 }
 
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb {
-  background: var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb:hover {
-  background: var(--sl-text-tertiary);
-}
-
 .sl-select-dropdown .sl-select-empty {
   padding: 16px;
   text-align: center;

@@ -341,19 +341,6 @@ watch(
   padding: var(--sl-space-xs);
 }
 
-.server-selector-options::-webkit-scrollbar {
-  width: 6px;
-}
-
-.server-selector-options::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.server-selector-options::-webkit-scrollbar-thumb {
-  background: var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-}
-
 .server-selector-option {
   display: flex;
   align-items: center;

@@ -253,23 +253,6 @@
   display: inline-block;
 }
 
-.language-menu::-webkit-scrollbar {
-  width: 4px;
-}
-
-.language-menu::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.language-menu::-webkit-scrollbar-thumb {
-  background: var(--sl-border-light);
-  border-radius: var(--sl-radius-full);
-}
-
-.language-menu::-webkit-scrollbar-thumb:hover {
-  background: var(--sl-text-tertiary);
-}
-
 .language-item-full-width {
   grid-column: span 2;
 }
