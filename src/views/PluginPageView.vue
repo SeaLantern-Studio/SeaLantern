@@ -4,6 +4,8 @@ import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import type { PluginInfo } from "@type/plugin";
@@ -172,10 +174,10 @@ watch(
 <template>
   <div class="plugin-page-view">
     <div class="page-header">
-      <button class="back-btn" @click="goBack">
+      <SLButton variant="ghost" @click="goBack">
         <ArrowLeft :size="20" />
         <span>{{ i18n.t("plugins.back") }}</span>
-      </button>
+      </SLButton>
       <h1 class="page-title" v-if="plugin">{{ plugin.manifest.name }}</h1>
     </div>
 
@@ -215,14 +217,15 @@ watch(
       <SLCard v-if="isThemeProvider && pluginPresets" class="presets-card">
         <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
         <div class="presets-grid">
-          <button
+          <SLButton
             v-for="(presetData, presetKey) in pluginPresets"
             :key="presetKey"
+            variant="secondary"
             class="preset-btn"
             @click="applyPreset(String(presetKey))"
           >
             <span class="preset-name">{{ (presetData as any).name ?? presetKey }}</span>
-          </button>
+          </SLButton>
         </div>
       </SLCard>
 
@@ -236,20 +239,20 @@ watch(
                 <span v-if="field.description" class="field-desc">{{ field.description }}</span>
               </label>
               <template v-if="field.type === 'string'">
-                <input type="text" class="field-input" v-model="settingsForm[field.key]" />
+                <SLInput v-model="settingsForm[field.key]" />
               </template>
               <template v-else-if="field.type === 'number'">
-                <input type="number" class="field-input" v-model.number="settingsForm[field.key]" />
+                <SLInput type="number" v-model="settingsForm[field.key]" />
               </template>
               <template v-else-if="field.type === 'boolean'">
-                <SLSwitch :modelValue="Boolean(settingsForm[field.key])" @update:modelValue="settingsForm[field.key] = $event" size="sm" />
+                <SLSwitch
+                  :modelValue="Boolean(settingsForm[field.key])"
+                  @update:modelValue="settingsForm[field.key] = $event"
+                  size="sm"
+                />
               </template>
               <template v-else-if="field.type === 'select'">
-                <select class="field-select" v-model="settingsForm[field.key]">
-                  <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                <SLSelect v-model="settingsForm[field.key]" :options="field.options" />
               </template>
             </div>
           </div>
@@ -276,31 +279,28 @@ watch(
                 <span v-if="field.description" class="field-desc">{{ field.description }}</span>
               </label>
               <template v-if="field.type === 'string'">
-                <input
-                  type="text"
-                  class="field-input"
-                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                />
+                <SLInput v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]" />
               </template>
               <template v-else-if="field.type === 'number'">
-                <input
+                <SLInput
                   type="number"
-                  class="field-input"
-                  v-model.number="dependentSettingsForms[depPlugin.manifest.id][field.key]"
+                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
                 />
               </template>
               <template v-else-if="field.type === 'boolean'">
-                <SLSwitch :modelValue="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])" @update:modelValue="dependentSettingsForms[depPlugin.manifest.id][field.key] = $event" size="sm" />
+                <SLSwitch
+                  :modelValue="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])"
+                  @update:modelValue="
+                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
+                  "
+                  size="sm"
+                />
               </template>
               <template v-else-if="field.type === 'select'">
-                <select
-                  class="field-select"
+                <SLSelect
                   v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                >
-                  <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                  :options="field.options"
+                />
               </template>
             </div>
           </div>

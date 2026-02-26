@@ -1,10 +1,7 @@
 # 贡献指南
+[我们有了文档站!点击这里跳转!](https://docs.ideaflash.cn/zh/intro)
 
-切换语言(Change Language)
-
-[简体中文(当前)](CONTRIBUTING.md)
-
-[English Version Doc](CONTRIBUTING-en.md)
+[We've got a document site,press here to redirect.](https://docs.ideaflash.cn/en/intro)
 
 感谢你对 Sea Lantern 项目的关注！这份文档将帮助你了解如何为项目做出贡献。
 
