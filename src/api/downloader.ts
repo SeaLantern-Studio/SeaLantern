@@ -1,6 +1,6 @@
 import { reactive, onUnmounted, computed } from "vue";
 import { tauriInvoke } from "./tauri";
-import { i18n } from "@/language";
+import { i18n } from "@language";
 
 export type TaskStatus = "Pending" | "Downloading" | "Completed" | { Error: string };
 
