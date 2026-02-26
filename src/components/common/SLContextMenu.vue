@@ -82,20 +82,21 @@ function handleItemClick(item: ContextMenuItem) {
 
 .sl-context-menu {
   position: fixed;
-  background: var(--sl-surface, rgba(30, 30, 46, 0.95));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--sl-border, rgba(255, 255, 255, 0.1));
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   border-radius: var(--sl-radius-lg, 12px);
   padding: var(--sl-space-xs, 4px);
   min-width: 160px;
   max-width: 280px;
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.25),
-    0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--sl-shadow-lg);
   z-index: 100001;
   user-select: none;
   transform-origin: top left;
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .sl-context-menu-item {
@@ -226,11 +227,30 @@ function handleItemClick(item: ContextMenuItem) {
 
 /* 亮色主题适配 */
 [data-theme="light"] .sl-context-menu {
-  background: var(--sl-surface, rgba(255, 255, 255, 0.95));
-  border-color: var(--sl-border, rgba(0, 0, 0, 0.1));
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.12),
-    0 4px 12px rgba(0, 0, 0, 0.08);
+  --sl-glass-bg: rgba(255, 255, 255, 0.72);
+  --sl-glass-border: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .sl-context-menu {
+  --sl-glass-bg: rgba(15, 17, 23, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+[data-acrylic="true"] .sl-context-menu {
+  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+}
+
+[data-theme="dark"][data-acrylic="true"] .sl-context-menu {
+  --sl-glass-bg: rgba(15, 17, 23, 0.65);
+}
+
+[data-acrylic="false"] .sl-context-menu {
+  background: var(--sl-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 [data-theme="light"] .sl-context-menu-item {

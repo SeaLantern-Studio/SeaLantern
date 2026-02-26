@@ -61,6 +61,21 @@
   --sl-font-mono: "JetBrains Mono", "Fira Code", monospace;
   --sl-font-display: "Inter", "PingFang SC", sans-serif;
 
+  /* -- Font Sizes -- */
+  --sl-font-size-xs: 0.75rem;
+  --sl-font-size-sm: 0.8125rem;
+  --sl-font-size-base: 0.875rem;
+  --sl-font-size-lg: 1rem;
+  --sl-font-size-xl: 1.125rem;
+  --sl-font-size-2xl: 1.25rem;
+  --sl-font-size-3xl: 1.5rem;
+  --sl-font-size-4xl: 2rem;
+
+  /* -- Line Heights -- */
+  --sl-line-height-tight: 1.25;
+  --sl-line-height-normal: 1.5;
+  --sl-line-height-relaxed: 1.625;
+
   /* -- Transitions -- */
   --sl-transition-fast: 0.15s ease;
   --sl-transition-normal: 0.25s ease;
@@ -70,6 +85,22 @@
   --sl-sidebar-width: 220px;
   --sl-sidebar-collapsed-width: 60px;
   --sl-header-height: 48px;
+
+  /* -- Scrollbar -- */
+  --sl-scrollbar-width: 2px;
+  --sl-scrollbar-thumb-bg: var(--sl-border);
+  --sl-scrollbar-thumb-hover-bg: var(--sl-text-tertiary);
+  --sl-scrollbar-thumb-radius: var(--sl-radius-full);
+
+  /* -- Glass Blur -- */
+  --sl-blur-sm: 8px;
+  --sl-blur-md: 16px;
+  --sl-blur-lg: 24px;
+  --sl-blur-xl: 32px;
+  --sl-blur-xxl: 40px;
+  --sl-saturate-subtle: 150%;
+  --sl-saturate-normal: 180%;
+  --sl-saturate-strong: 200%;
 }
 
 [data-theme="dark"] {
@@ -110,19 +141,19 @@
 }
 
 [data-acrylic="true"] {
-  --sl-bg: rgba(248, 250, 252, 0.7);
-  --sl-bg-secondary: rgba(241, 245, 249, 0.6);
-  --sl-bg-tertiary: rgba(226, 232, 240, 0.5);
-  --sl-surface: rgba(255, 255, 255, 0.6);
-  --sl-surface-hover: rgba(248, 250, 252, 0.7);
+  --sl-bg: rgba(248, 250, 252, 0.65);
+  --sl-bg-secondary: rgba(241, 245, 249, 0.55);
+  --sl-bg-tertiary: rgba(226, 232, 240, 0.45);
+  --sl-surface: rgba(255, 255, 255, 0.65);
+  --sl-surface-hover: rgba(248, 250, 252, 0.75);
 }
 
 [data-theme="dark"][data-acrylic="true"] {
-  --sl-bg: rgba(15, 17, 23, 0.7);
-  --sl-bg-secondary: rgba(26, 29, 40, 0.6);
-  --sl-bg-tertiary: rgba(36, 40, 54, 0.5);
-  --sl-surface: rgba(30, 33, 48, 0.6);
-  --sl-surface-hover: rgba(40, 44, 62, 0.7);
+  --sl-bg: rgba(15, 17, 23, 0.65);
+  --sl-bg-secondary: rgba(26, 29, 40, 0.55);
+  --sl-bg-tertiary: rgba(36, 40, 54, 0.45);
+  --sl-surface: rgba(30, 33, 48, 0.65);
+  --sl-surface-hover: rgba(40, 44, 62, 0.75);
 }
 
 [data-minimal="true"] {

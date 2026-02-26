@@ -59,7 +59,7 @@ const effectivePath = computed(() => {
         <template #suffix>
           <button
             type="button"
-            class="run-path-picker"
+            class="sl-input-action"
             :disabled="inputDisabled"
             @click="emit('pickPath')"
           >

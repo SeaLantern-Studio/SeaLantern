@@ -369,7 +369,7 @@ onUnmounted(() => {
 
 .sl-select-label {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   font-weight: 500;
   color: var(--sl-text-secondary);
   margin-bottom: var(--sl-space-xs);
@@ -381,7 +381,7 @@ onUnmounted(() => {
   justify-content: space-between;
   width: 100%;
   padding: 8px 12px;
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
@@ -461,32 +461,40 @@ onUnmounted(() => {
 <style>
 /* 下拉框样式 - 非 scoped，因为使用 Teleport 渲染到 body */
 .sl-select-dropdown {
-  background: var(--sl-surface, #1e2130);
-  border: 1px solid var(--sl-border);
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   border-radius: var(--sl-radius-lg, 12px);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.12),
-    0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  will-change: transform, opacity;
+  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   color: var(--sl-text-primary);
   transform-origin: top center;
 }
 
-:root[data-acrylic="true"][data-theme="dark"] .sl-select-dropdown {
-  background: rgba(30, 33, 48, 0.95);
-}
-
-:root[data-acrylic="true"][data-theme="light"] .sl-select-dropdown {
-  background: rgba(255, 255, 255, 0.95);
-}
-
 [data-theme="dark"] .sl-select-dropdown {
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.3),
-    0 4px 12px rgba(0, 0, 0, 0.2);
+  --sl-glass-bg: rgba(15, 17, 23, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+[data-acrylic="true"] .sl-select-dropdown {
+  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+}
+
+[data-theme="dark"][data-acrylic="true"] .sl-select-dropdown {
+  --sl-glass-bg: rgba(15, 17, 23, 0.65);
+}
+
+[data-acrylic="false"] .sl-select-dropdown {
+  background: var(--sl-surface, #ffffff);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 .sl-select-dropdown .sl-select-search {
@@ -506,7 +514,7 @@ onUnmounted(() => {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   color: var(--sl-text-primary);
   outline: none;
   width: 100%;
@@ -522,28 +530,11 @@ onUnmounted(() => {
   -webkit-overflow-scrolling: touch;
 }
 
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb {
-  background: var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb:hover {
-  background: var(--sl-text-tertiary);
-}
-
 .sl-select-dropdown .sl-select-empty {
   padding: 16px;
   text-align: center;
   color: var(--sl-text-tertiary);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .sl-select-dropdown .sl-select-option {
@@ -602,7 +593,7 @@ onUnmounted(() => {
 }
 
 .sl-select-dropdown .sl-select-option .option-sublabel {
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-tertiary);
   font-family: var(--sl-font-mono);
   overflow: hidden;
