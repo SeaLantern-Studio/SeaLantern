@@ -3,8 +3,6 @@ import { ref, computed, watch } from "vue";
 import { X, FileUp, Loader2 } from "lucide-vue-next";
 import { i18n } from "@language";
 
-const { t } = i18n;
-
 export interface DropzoneProps {
   modelValue?: string;
   label?: string;
@@ -64,7 +62,7 @@ const displayLabel = computed(() => {
   if (props.modelValue) {
     return props.label || getPathName(props.modelValue);
   }
-  return props.placeholder || t("dropzone.placeholder");
+  return props.placeholder || i18n.t("dropzone.placeholder");
 });
 
 const displaySubLabel = computed(() => {
@@ -72,13 +70,13 @@ const displaySubLabel = computed(() => {
     return props.subLabel || "";
   }
   if (props.acceptFiles && props.acceptFolders) {
-    return t("dropzone.support_both");
+    return i18n.t("dropzone.support_both");
   }
   if (props.acceptFiles) {
-    return t("dropzone.support_files");
+    return i18n.t("dropzone.support_files");
   }
   if (props.acceptFolders) {
-    return t("dropzone.support_folders");
+    return i18n.t("dropzone.support_folders");
   }
   return "";
 });
@@ -140,7 +138,7 @@ function handleDrop(event: DragEvent) {
 
   const droppedPaths = extractPathsFromDrop(event);
   if (droppedPaths.length === 0) {
-    emit("error", t("dropzone.error_no_path"));
+    emit("error", i18n.t("dropzone.error_no_path"));
     return;
   }
 
@@ -152,7 +150,7 @@ function handleDrop(event: DragEvent) {
   });
 
   if (validPaths.length === 0) {
-    emit("error", t("dropzone.error_unsupported_type"));
+    emit("error", i18n.t("dropzone.error_unsupported_type"));
     return;
   }
 
