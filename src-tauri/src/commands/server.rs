@@ -175,7 +175,7 @@ pub fn get_starter_download_options() -> StarterDownloadOptions {
 }
 
 #[tauri::command]
-pub fn resolve_starter_download_url(
+pub async fn resolve_starter_download_url(
     core_type: String,
     mc_version: String,
 ) -> Result<String, String> {
@@ -198,13 +198,14 @@ pub fn resolve_starter_download_url(
         segments.push(mc_version_trimmed.as_str());
     }
 
-    let client = reqwest::blocking::Client::builder()
+    let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(15))
         .build()
         .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
     let response = client
         .get(url.clone())
         .send()
+        .await
         .map_err(|e| format!("请求 Starter 下载信息失败: {}", e))?;
 
     let status = response.status();
@@ -214,6 +215,7 @@ pub fn resolve_starter_download_url(
 
     let payload: StarterDownloadApiResponse = response
         .json()
+        .await
         .map_err(|e| format!("解析 Starter 下载信息失败: {}", e))?;
     let data = payload
         .data

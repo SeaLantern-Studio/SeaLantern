@@ -27,6 +27,66 @@ const savePath = ref("");
 const filename = ref("");
 const threadCount = ref("32");
 
+type DownloadValidationKey =
+  | "invalid_input"
+  | "url_invalid"
+  | "save_folder_required"
+  | "filename_required"
+  | "filename_invalid"
+  | "thread_count_required"
+  | "thread_count_invalid_chars"
+  | "thread_count_positive_integer";
+
+type ThreadCountValidationResult =
+  | { ok: true; value: number }
+  | { ok: false; errorKey: DownloadValidationKey };
+
+function translateDownloadValidationError(key: DownloadValidationKey): string {
+  return i18n.t(`download-file.${key}`);
+}
+
+function showDownloadValidationError(key: DownloadValidationKey): void {
+  showError(translateDownloadValidationError(key));
+}
+
+function getFilenameValidationKey(name: string): DownloadValidationKey | null {
+  if (!name) {
+    return "filename_required";
+  }
+  if (/[\\/]/.test(name)) {
+    return "filename_invalid";
+  }
+  return null;
+}
+
+function getFormValidationKey(): DownloadValidationKey | null {
+  if (!isUrlValid.value) {
+    return "url_invalid";
+  }
+  if (!isSavePathValid.value) {
+    return "save_folder_required";
+  }
+  return filenameErrorKey.value;
+}
+
+function validateThreadCount(rawValue: string): ThreadCountValidationResult {
+  const value = rawValue.trim();
+  if (!value) {
+    return { ok: false, errorKey: "thread_count_required" };
+  }
+  if (!/^\d+$/.test(value)) {
+    return { ok: false, errorKey: "thread_count_invalid_chars" };
+  }
+  if (!/^[1-9]\d*$/.test(value)) {
+    return { ok: false, errorKey: "thread_count_positive_integer" };
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return { ok: false, errorKey: "thread_count_positive_integer" };
+  }
+  return { ok: true, value: parsed };
+}
+
 const isUrlValid = computed(() => {
   try {
     const parsed = new URL(url.value.trim());
@@ -35,19 +95,10 @@ const isUrlValid = computed(() => {
     return false;
   }
 });
-const isFilenameValid = computed(() => {
-  const name = filename.value.trim();
-  return name.length > 0 && !/[\\/]/.test(name);
-});
+const filenameErrorKey = computed(() => getFilenameValidationKey(filename.value.trim()));
+const isFilenameValid = computed(() => !filenameErrorKey.value);
 const filenameError = computed(() => {
-  const name = filename.value.trim();
-  if (!name) {
-    return i18n.t("download-file.filename_required");
-  }
-  if (/[\\/]/.test(name)) {
-    return i18n.t("download-file.filename_invalid");
-  }
-  return "";
+  return filenameErrorKey.value ? translateDownloadValidationError(filenameErrorKey.value) : "";
 });
 const isSavePathValid = computed(() => savePath.value.trim().length > 0);
 const isFormValid = computed(
@@ -100,39 +151,15 @@ const statusLabel = computed(() => {
 
 async function handleDownload() {
   if (combinedLoading.value) return;
-  if (!isFormValid.value) {
-    if (!isUrlValid.value) {
-      showError(i18n.t("download-file.url_invalid"));
-      return;
-    }
-    if (!isSavePathValid.value) {
-      showError(i18n.t("download-file.save_folder_required"));
-      return;
-    }
-    if (!isFilenameValid.value) {
-      showError(filenameError.value || i18n.t("download-file.invalid_input"));
-      return;
-    }
-    showError(i18n.t("download-file.invalid_input"));
+  const formErrorKey = getFormValidationKey();
+  if (formErrorKey) {
+    showDownloadValidationError(formErrorKey);
     return;
   }
 
-  const threadCountValue = threadCount.value.trim();
-  if (!threadCountValue) {
-    showError(i18n.t("download-file.thread_count_required"));
-    return;
-  }
-  if (!/^\d+$/.test(threadCountValue)) {
-    showError(i18n.t("download-file.thread_count_invalid_chars"));
-    return;
-  }
-  if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    showError(i18n.t("download-file.thread_count_positive_integer"));
-    return;
-  }
-  const threadCountInt = Number.parseInt(threadCountValue, 10);
-  if (!Number.isFinite(threadCountInt) || threadCountInt <= 0) {
-    showError(i18n.t("download-file.thread_count_positive_integer"));
+  const threadCountValidation = validateThreadCount(threadCount.value);
+  if (!threadCountValidation.ok) {
+    showDownloadValidationError(threadCountValidation.errorKey);
     return;
   }
 
@@ -144,7 +171,7 @@ async function handleDownload() {
     await startTask({
       url: url.value,
       savePath: savePath.value + "/" + filename.value,
-      threadCount: threadCountInt,
+      threadCount: threadCountValidation.value,
     });
 
     if (taskError.value) showError(taskError.value);
