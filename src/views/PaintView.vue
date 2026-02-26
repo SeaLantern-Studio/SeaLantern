@@ -197,6 +197,11 @@ async function handleAcrylicChange(enabled: boolean) {
   }
 }
 
+function handleMinimalModeChange(enabled: boolean) {
+  markChanged();
+  document.documentElement.setAttribute("data-minimal", enabled ? "true" : "false");
+}
+
 async function handleThemeChange() {
   markChanged();
   if (!settings.value) return;
@@ -357,6 +362,7 @@ function clearBackgroundImage() {
         :bg-brightness="bgBrightness"
         :background-size="settings.background_size"
         :bg-settings-expanded="bgSettingsExpanded"
+        :minimal-mode="settings.minimal_mode"
         @update:theme="settings.theme = $event"
         @update:font-size="fontSize = $event"
         @update:font-family="settings.font_family = $event"
@@ -366,10 +372,12 @@ function clearBackgroundImage() {
         @update:bg-blur="bgBlur = $event"
         @update:bg-brightness="bgBrightness = $event"
         @update:background-size="settings.background_size = $event"
+        @update:minimal-mode="settings.minimal_mode = $event"
         @theme-change="handleThemeChange"
         @font-size-change="handleFontSizeChange"
         @font-family-change="handleFontFamilyChange"
         @acrylic-change="handleAcrylicChange"
+        @minimal-mode-change="handleMinimalModeChange"
         @pick-image="pickBackgroundImage"
         @clear-image="clearBackgroundImage"
         @change="markChanged"

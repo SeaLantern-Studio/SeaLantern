@@ -152,8 +152,8 @@ function handleCancel() {
 
 <style scoped>
 .permission-dialog {
-  width: 440px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 440px;
 }
 
 .dialog-header {

@@ -96,3 +96,18 @@
 .animate-pulse {
   animation: sl-pulse 2s ease-in-out infinite;
 }
+
+[data-minimal="true"] .animate-fade-in,
+[data-minimal="true"] .animate-fade-in-up,
+[data-minimal="true"] .animate-scale-in,
+[data-minimal="true"] .animate-spin,
+[data-minimal="true"] .animate-pulse {
+  animation: none !important;
+}
+
+[data-minimal="true"] * {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}

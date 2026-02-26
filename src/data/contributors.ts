@@ -36,7 +36,7 @@ export const contributors: Contributor[] = [
   },
   {
     name: "CmzYa",
-    role: "不明所以的commit带来了巨量的体验优化",
+    role: "统一前端组件，赛博擒矢蝗",
     avatar: "https://api.rms.net.cn/head/CmzYa",
     url: {
       github: "https://github.com/CmzYa",

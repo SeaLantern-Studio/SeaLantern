@@ -60,13 +60,6 @@ async function pickJavaFile() {
     <div class="java-step-row">
       <span class="java-step-label">{{ i18n.t("create.java_env") }}</span>
       <div class="java-step-control">
-        <div class="java-step-toolbar">
-          <button type="button" class="java-step-rescan" @click="$emit('detect')">
-            <RefreshCw :size="14" />
-            {{ i18n.t("create.rescan") }}
-          </button>
-        </div>
-
         <div v-if="loading" class="java-step-loading">{{ i18n.t("create.scanning") }}</div>
         <div v-else-if="javaList.length === 0" class="java-step-empty">
           <span>{{ i18n.t("create.no_java") }}</span>
@@ -74,15 +67,20 @@ async function pickJavaFile() {
             {{ i18n.t("create.scan") }}
           </SLButton>
         </div>
-        <SLSelect
-          v-else
-          :model-value="selectedJava"
-          :options="javaOptions"
-          :placeholder="i18n.t('create.select_java')"
-          searchable
-          maxHeight="240px"
-          @update:model-value="$emit('update:selectedJava', String($event))"
-        />
+        <div v-else class="java-step-select-row">
+          <SLSelect
+            :model-value="selectedJava"
+            :options="javaOptions"
+            :placeholder="i18n.t('create.select_java')"
+            searchable
+            maxHeight="240px"
+            @update:model-value="$emit('update:selectedJava', String($event))"
+          />
+          <button type="button" class="java-step-rescan" @click="$emit('detect')">
+            <RefreshCw :size="14" />
+            {{ i18n.t("create.rescan") }}
+          </button>
+        </div>
       </div>
     </div>
 

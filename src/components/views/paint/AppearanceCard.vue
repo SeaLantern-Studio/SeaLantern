@@ -22,6 +22,7 @@ defineProps<{
   bgBrightness: string;
   backgroundSize: string;
   bgSettingsExpanded: boolean;
+  minimalMode: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -34,10 +35,12 @@ const emit = defineEmits<{
   (e: "update:bgBlur", value: string): void;
   (e: "update:bgBrightness", value: string): void;
   (e: "update:backgroundSize", value: string): void;
+  (e: "update:minimalMode", value: boolean): void;
   (e: "themeChange"): void;
   (e: "fontSizeChange"): void;
   (e: "fontFamilyChange"): void;
   (e: "acrylicChange", value: boolean): void;
+  (e: "minimalModeChange", value: boolean): void;
   (e: "pickImage"): void;
   (e: "clearImage"): void;
   (e: "change"): void;
@@ -68,17 +71,22 @@ function handleAcrylicChange(value: boolean) {
   emit("update:acrylicEnabled", value);
   emit("acrylicChange", value);
 }
+
+function handleMinimalModeChange(value: boolean) {
+  emit("update:minimalMode", value);
+  emit("minimalModeChange", value);
+}
 </script>
 
 <template>
   <SLCard :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
-    <div class="settings-group">
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.theme") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
+    <div class="sl-settings-group">
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.theme") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
         </div>
-        <div class="input-lg">
+        <div class="sl-input-lg">
           <div v-if="isThemeProxied" class="theme-proxied-notice">
             <span class="proxied-text">{{
               i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
@@ -93,12 +101,12 @@ function handleAcrylicChange(value: boolean) {
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.font_size") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.font_size") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
         </div>
-        <div class="slider-control">
+        <div class="sl-slider-control">
           <input
             type="range"
             min="12"
@@ -108,16 +116,16 @@ function handleAcrylicChange(value: boolean) {
             @input="handleFontSizeChange"
             class="sl-slider"
           />
-          <span class="slider-value">{{ fontSize }}px</span>
+          <span class="sl-slider-value">{{ fontSize }}px</span>
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.font_family") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.font_family_desc") }}</span>
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.font_family") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.font_family_desc") }}</span>
         </div>
-        <div class="input-lg">
+        <div class="sl-input-lg">
           <SLSelect
             :model-value="fontFamily"
             :options="fontFamilyOptions"
@@ -130,9 +138,9 @@ function handleAcrylicChange(value: boolean) {
         </div>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.acrylic") }}</span>
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.acrylic") }}</span>
           <span class="setting-desc">
             {{
               acrylicSupported
@@ -145,6 +153,17 @@ function handleAcrylicChange(value: boolean) {
           :model-value="acrylicEnabled"
           :disabled="!acrylicSupported"
           @update:model-value="handleAcrylicChange"
+        />
+      </div>
+
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.minimal_mode") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.minimal_mode_desc") }}</span>
+        </div>
+        <SLSwitch
+          :model-value="minimalMode"
+          @update:model-value="handleMinimalModeChange"
         />
       </div>
 
@@ -169,49 +188,6 @@ function handleAcrylicChange(value: boolean) {
 </template>
 
 <style scoped>
-.settings-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sl-space-md) 0;
-  border-bottom: 1px solid var(--sl-border-light);
-  gap: var(--sl-space-lg);
-}
-
-.setting-row:last-child {
-  border-bottom: none;
-}
-
-.setting-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.setting-label {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--sl-text-primary);
-}
-
-.setting-desc {
-  font-size: 0.8125rem;
-  color: var(--sl-text-tertiary);
-  line-height: 1.4;
-}
-
-.input-lg {
-  width: 320px;
-  flex-shrink: 0;
-}
-
 .theme-proxied-notice {
   display: flex;
   align-items: center;
@@ -226,60 +202,5 @@ function handleAcrylicChange(value: boolean) {
 
 .proxied-text {
   white-space: nowrap;
-}
-
-.slider-control {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-md);
-  min-width: 200px;
-}
-
-.sl-slider {
-  flex: 1;
-  height: 6px;
-  border-radius: var(--sl-radius-full);
-  background: var(--sl-border);
-  outline: none;
-  -webkit-appearance: none;
-}
-
-.sl-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--sl-primary);
-  cursor: pointer;
-  transition: all var(--sl-transition-fast);
-}
-
-.sl-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 0 4px var(--sl-primary-bg);
-}
-
-.sl-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--sl-primary);
-  cursor: pointer;
-  border: none;
-  transition: all var(--sl-transition-fast);
-}
-
-.sl-slider::-moz-range-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 0 4px var(--sl-primary-bg);
-}
-
-.slider-value {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  min-width: 50px;
-  text-align: right;
 }
 </style>
