@@ -15,10 +15,19 @@
 }
 
 .startup-row {
-  display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
+  display: flex;
   align-items: center;
   gap: var(--sl-space-sm);
+}
+
+.startup-row .startup-row-label {
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.startup-row :deep(.sl-input-wrapper) {
+  flex: 1;
+  width: 100%;
 }
 
 .startup-pair-row {
@@ -28,10 +37,19 @@
 }
 
 .startup-pair-item {
-  display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
+  display: flex;
   align-items: center;
   gap: var(--sl-space-sm);
+}
+
+.startup-pair-item .startup-row-label {
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.startup-pair-item :deep(.sl-input-wrapper) {
+  flex: 1;
+  width: 100%;
 }
 
 .startup-row-label {

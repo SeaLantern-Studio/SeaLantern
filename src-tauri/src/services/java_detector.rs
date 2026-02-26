@@ -6,12 +6,40 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
+// 静默执行命令
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+// 获取 win 注册表内容
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
+
+// 常见 Java 目录别名
+#[allow(dead_code)] // 我实在绷不住了, 本地clippy能过但是github action上会报错 fuck the linter
+const JAVA_PATH_ALIASES: &[&str] = &[
+    "java", "jdk", "jre", "graalvm", "corretto", "temurin", "zulu", "openjdk", "gvl", "ojdk",
+];
+
+#[cfg(target_os = "windows")]
+const ENV_VARS: &[&str] = &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"];
+
+#[cfg(target_os = "windows")]
+const PROGRAM_FILES_JAVA_DIRS: &[&str] = &["Java", "Zulu", "Eclipse Adoptium", "BellSoft"];
+
+#[cfg(not(target_os = "windows"))]
+const ENV_VARS: &[&str] = &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"];
+
+#[cfg(not(target_os = "windows"))]
+const COMMON_JAVA_DIRS: &[&str] =
+    &["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];
+
+#[cfg(target_os = "windows")]
+const MAX_SCAN_DEPTH: u32 = 5;
+
+#[cfg(not(target_os = "windows"))]
+const MAX_SCAN_DEPTH: u32 = 4;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct JavaInfo {
@@ -52,11 +80,10 @@ pub fn validate_java(path: &str) -> Result<JavaInfo, String> {
 }
 
 fn get_candidate_paths() -> Vec<String> {
-    let mut paths = Vec::new();
+    let mut paths = Vec::with_capacity(32);
+    paths.push(String::from("java"));
 
-    paths.push("java".to_string());
-
-    for env_var in &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"] {
+    for env_var in ENV_VARS {
         if let Ok(val) = std::env::var(env_var) {
             push_java_exe(&val, &mut paths);
         }
@@ -64,31 +91,35 @@ fn get_candidate_paths() -> Vec<String> {
 
     #[cfg(target_os = "windows")]
     {
-        let mut scan_roots = Vec::new();
+        let mut scan_roots = Vec::with_capacity(128);
 
         for drive_letter in b'C'..=b'Z' {
             let drive = format!("{}:\\", drive_letter as char);
-            if Path::new(&drive).exists() {
-                scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Java"));
-                scan_roots.push(PathBuf::from(&drive).join("Program Files").join("Zulu"));
-                scan_roots.push(
-                    PathBuf::from(&drive)
-                        .join("Program Files")
-                        .join("Eclipse Adoptium"),
-                );
-                scan_roots.push(PathBuf::from(&drive).join("Program Files").join("BellSoft"));
+            if !Path::new(&drive).exists() {
+                continue;
+            }
+
+            let drive_path = PathBuf::from(&drive);
+            let program_files = drive_path.join("Program Files");
+
+            for java_dir in PROGRAM_FILES_JAVA_DIRS {
+                scan_roots.push(program_files.join(java_dir));
+            }
+
+            for java_dir in JAVA_PATH_ALIASES {
+                let java_path = drive_path.join(java_dir);
+                if java_path.exists() {
+                    scan_roots.push(java_path);
+                }
             }
         }
 
         if let Ok(appdata) = std::env::var("APPDATA") {
-            scan_roots.push(PathBuf::from(&appdata).join(".minecraft").join("runtime"));
-            scan_roots.push(
-                PathBuf::from(&appdata)
-                    .join(".minecraft")
-                    .join("cache")
-                    .join("java"),
-            );
+            let minecraft_root = PathBuf::from(&appdata).join(".minecraft");
+            scan_roots.push(minecraft_root.join("runtime"));
+            scan_roots.push(minecraft_root.join("cache").join("java"));
         }
+
         if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
             scan_roots.push(
                 PathBuf::from(&local_appdata)
@@ -98,23 +129,24 @@ fn get_candidate_paths() -> Vec<String> {
         }
 
         for root in scan_roots {
-            deep_scan_recursive(&root, &mut paths, 5);
+            deep_scan_recursive(&root, &mut paths, MAX_SCAN_DEPTH);
         }
 
         if let Some(output) = command_output("where", &["java"]) {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
-                paths.push(line.trim().to_string());
+                let trimmed = line.trim();
+                if !trimmed.is_empty() {
+                    paths.push(trimmed.to_string());
+                }
             }
         }
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        let common_dirs =
-            vec!["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];
-        for dir in common_dirs {
-            deep_scan_recursive(Path::new(dir), &mut paths, 4);
+        for dir in COMMON_JAVA_DIRS {
+            deep_scan_recursive(Path::new(dir), &mut paths, MAX_SCAN_DEPTH);
         }
     }
 

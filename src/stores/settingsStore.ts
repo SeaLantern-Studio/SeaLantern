@@ -68,6 +68,8 @@ const defaultSettings: AppSettings = {
   language: "zh-CN",
   developer_mode: false,
   close_action: "ask",
+  last_run_path: "",
+  minimal_mode: false,
 };
 
 export interface SettingsUpdateEvent {
@@ -99,6 +101,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const fontSize = computed(() => settings.value.font_size || 14);
   const acrylicEnabled = computed(() => settings.value.acrylic_enabled);
   const colorScheme = computed(() => settings.value.color || "default");
+  const minimalMode = computed(() => settings.value.minimal_mode || false);
   const backgroundImage = computed(() =>
     settings.value.background_image ? convertFileSrc(settings.value.background_image) : "",
   );
@@ -196,6 +199,7 @@ export const useSettingsStore = defineStore("settings", () => {
     fontSize,
     acrylicEnabled,
     colorScheme,
+    minimalMode,
     backgroundImage,
     backgroundOpacity,
     backgroundBlur,

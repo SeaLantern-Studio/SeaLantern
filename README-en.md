@@ -18,6 +18,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 <kbd>[简体中文](README.md)</kbd> <kbd>English</kbd>
 
+Any questions? Try→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 ---
 
 </div>

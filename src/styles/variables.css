@@ -124,3 +124,9 @@
   --sl-surface: rgba(30, 33, 48, 0.6);
   --sl-surface-hover: rgba(40, 44, 62, 0.7);
 }
+
+[data-minimal="true"] {
+  --sl-transition-fast: 0s;
+  --sl-transition-normal: 0s;
+  --sl-transition-slow: 0s;
+}
