@@ -26,7 +26,7 @@ export function useAboutLinks() {
   }
 
   async function openSocialLink(platform: string, value: string) {
-    if (platform === "qq") {
+    if (platform === "qq" || platform === "wechat" || platform === "weixin") {
       await copyQQ(value);
     } else {
       await openLink(value);
