@@ -24,6 +24,7 @@ const minMem = ref("512");
 const port = ref("25565");
 const fontSize = ref("13");
 const logLines = ref("5000");
+const defaultRunPath = ref("");
 
 const showImportModal = ref(false);
 const showResetConfirm = ref(false);
@@ -56,6 +57,7 @@ function syncLocalValues(s: AppSettings) {
   port.value = String(s.default_port);
   fontSize.value = String(s.console_font_size);
   logLines.value = String(s.max_log_lines);
+  defaultRunPath.value = s.last_run_path || "";
 }
 
 async function loadSettings() {
@@ -69,6 +71,7 @@ async function loadSettings() {
     port.value = String(s.default_port);
     fontSize.value = String(s.console_font_size);
     logLines.value = String(s.max_log_lines);
+    defaultRunPath.value = s.last_run_path || "";
     settings.value.color = s.color || "default";
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -131,6 +134,7 @@ async function saveSettings() {
   settings.value.default_port = parseInt(port.value) || 25565;
   settings.value.console_font_size = parseInt(fontSize.value) || 13;
   settings.value.max_log_lines = parseInt(logLines.value) || 5000;
+  settings.value.last_run_path = defaultRunPath.value;
   settings.value.color = settings.value.color || "default";
   settings.value.developer_mode = settings.value.developer_mode || false;
 
@@ -167,6 +171,7 @@ async function resetSettings() {
     port.value = String(s.default_port);
     fontSize.value = String(s.console_font_size);
     logLines.value = String(s.max_log_lines);
+    defaultRunPath.value = s.last_run_path || "";
     showResetConfirm.value = false;
     settings.value.color = "default";
 
@@ -223,6 +228,22 @@ function handleJavaInstalled(path: string) {
     markChanged();
   }
 }
+
+async function handleBrowseJavaPath() {
+  const selected = await systemApi.pickJavaFile();
+  if (selected) {
+    settings.value.default_java_path = selected;
+    markChanged();
+  }
+}
+
+async function handleBrowseRunPath() {
+  const selected = await systemApi.pickFolder();
+  if (selected) {
+    defaultRunPath.value = selected;
+    markChanged();
+  }
+}
 </script>
 
 <template>
@@ -251,8 +272,11 @@ function handleJavaInstalled(path: string) {
         v-model:port="port"
         v-model:defaultJavaPath="settings.default_java_path"
         v-model:defaultJvmArgs="settings.default_jvm_args"
+        v-model:defaultRunPath="defaultRunPath"
         @change="markChanged"
         @javaInstalled="handleJavaInstalled"
+        @browseJavaPath="handleBrowseJavaPath"
+        @browseRunPath="handleBrowseRunPath"
       />
 
       <ConsoleSettingsCard
