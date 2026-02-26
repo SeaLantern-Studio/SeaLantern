@@ -142,7 +142,7 @@ useRegisterComponent(id, {
   border-radius: var(--sl-radius-sm);
   color: var(--sl-primary);
   background: var(--sl-primary-bg);
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   cursor: pointer;
   border: none;
   transition: background-color 0.15s ease, opacity 0.15s ease;

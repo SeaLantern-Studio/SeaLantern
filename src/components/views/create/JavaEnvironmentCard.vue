@@ -107,7 +107,9 @@ async function pickJavaFile() {
         :placeholder="i18n.t('create.java_manual')"
       >
         <template #suffix>
-          <button class="sl-input-action" @click="pickJavaFile">{{ i18n.t("create.browse") }}</button>
+          <button class="sl-input-action" @click="pickJavaFile">
+            {{ i18n.t("create.browse") }}
+          </button>
         </template>
       </SLInput>
     </div>
@@ -145,7 +147,7 @@ async function pickJavaFile() {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   font-weight: 500;
   color: var(--sl-primary);
   background: var(--sl-primary-bg);

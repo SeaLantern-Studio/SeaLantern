@@ -9,13 +9,18 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { systemApi } from "@src/api";
 import { downloadApi } from "@api/downloader.ts";
-import {SLProgress} from "@src/components";
+import { SLProgress } from "@src/components";
 
 const router = useRouter();
 const { error: errorMsg, showError, clearError } = useMessage();
 const { loading: submitting, start: startLoading, stop: stopLoading } = useLoading();
 
-const { taskInfo, start: startTask, reset: resetTask, errorMessage: taskError } = downloadApi.useDownload();
+const {
+  taskInfo,
+  start: startTask,
+  reset: resetTask,
+  errorMessage: taskError,
+} = downloadApi.useDownload();
 
 const url = ref("");
 const savePath = ref("");
@@ -27,7 +32,7 @@ const isUrlValid = ref(false);
 const isDownloading = computed(() => taskInfo.id !== "" && !taskInfo.isFinished);
 const combinedLoading = computed(() => submitting.value || isDownloading.value);
 
-function checkUrl(event: { target: { value: any; }; }) {
+function checkUrl(event: { target: { value: any } }) {
   const url = event.target.value;
   try {
     const urlObj = new URL(url);
@@ -42,9 +47,9 @@ function checkUrl(event: { target: { value: any; }; }) {
   }
 }
 
-function checkFilename(event: { target: { value: any; }; }) {
+function checkFilename(event: { target: { value: any } }) {
   const filename = event.target.value;
-  isUrlValid.value = filename.length > 0
+  isUrlValid.value = filename.length > 0;
 }
 
 async function pickFloder() {
@@ -63,7 +68,6 @@ const formatSize = (bytes: number) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
-
 
 const statusLabel = computed(() => {
   if (taskError.value) return i18n.t("download-file.failed");
@@ -89,7 +93,6 @@ async function handleDownload() {
   }
   const threadCountInt = parseInt(threadCountValue, 10);
 
-
   clearError();
   resetTask();
   startLoading();
@@ -109,7 +112,6 @@ async function handleDownload() {
   }
 }
 
-
 watch(taskError, (newError) => {
   if (newError) showError(newError);
 });
@@ -124,24 +126,48 @@ watch(taskError, (newError) => {
 
     <SLCard :title="i18n.t('download-file.title')">
       <div class="form-grid">
-        <SLInput :label="i18n.t('download-file.url')" v-model="url" :disabled="isDownloading" @input="checkUrl" />
-        <SLInput :label="i18n.t('download-file.save_folder')" v-model="savePath" :disabled="isDownloading">
+        <SLInput
+          :label="i18n.t('download-file.url')"
+          v-model="url"
+          :disabled="isDownloading"
+          @input="checkUrl"
+        />
+        <SLInput
+          :label="i18n.t('download-file.save_folder')"
+          v-model="savePath"
+          :disabled="isDownloading"
+        >
           <template #suffix>
             <button class="sl-input-action" @click="pickFloder" :disabled="isDownloading">
               {{ i18n.t("download-file.browse") }}
             </button>
           </template>
         </SLInput>
-        <SLInput :label="i18n.t('download-file.filename')" v-model="filename" :disabled="isDownloading" @input="checkFilename" />
-        <SLInput :label="i18n.t('download-file.thread_count')" v-model="threadCount" :disabled="isDownloading" />
+        <SLInput
+          :label="i18n.t('download-file.filename')"
+          v-model="filename"
+          :disabled="isDownloading"
+          @input="checkFilename"
+        />
+        <SLInput
+          :label="i18n.t('download-file.thread_count')"
+          v-model="threadCount"
+          :disabled="isDownloading"
+        />
       </div>
     </SLCard>
 
     <div class="create-actions">
-      <SLButton variant="secondary" size="lg" @click="router.push('/')" >
+      <SLButton variant="secondary" size="lg" @click="router.push('/')">
         {{ i18n.t("download-file.cancel") }}
       </SLButton>
-      <SLButton variant="primary" size="lg" :loading="combinedLoading" @click="handleDownload" :disabled="isDownloading || !isUrlValid">
+      <SLButton
+        variant="primary"
+        size="lg"
+        :loading="combinedLoading"
+        @click="handleDownload"
+        :disabled="isDownloading || !isUrlValid"
+      >
         {{ isDownloading ? i18n.t("download-file.downloading") : i18n.t("download-file.download") }}
       </SLButton>
     </div>
@@ -150,12 +176,14 @@ watch(taskError, (newError) => {
       <div v-if="taskInfo.id" class="bottom-progress-area">
         <div class="progress-wrapper">
           <SLProgress
-              :value="taskInfo.progress"
-              :variant="taskError ? 'error' : (taskInfo.isFinished ? 'success' : 'primary')"
-              :label="statusLabel"
+            :value="taskInfo.progress"
+            :variant="taskError ? 'error' : taskInfo.isFinished ? 'success' : 'primary'"
+            :label="statusLabel"
           />
           <div class="progress-footer">
-            <span class="size-text">{{ formatSize(taskInfo.downloaded) }} / {{ formatSize(taskInfo.totalSize) }}</span>
+            <span class="size-text"
+              >{{ formatSize(taskInfo.downloaded) }} / {{ formatSize(taskInfo.totalSize) }}</span
+            >
             <span class="percent-text">{{ taskInfo.progress.toFixed(1) }}%</span>
           </div>
         </div>
@@ -181,7 +209,7 @@ watch(taskError, (newError) => {
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--sl-radius-md);
   color: var(--sl-error);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 .error-close {
   color: var(--sl-error);
@@ -201,10 +229,18 @@ watch(taskError, (newError) => {
   gap: var(--sl-space-md);
   margin-top: var(--sl-space-md);
 }
-.animate-fade-in-up { animation: fadeInUp 0.4s ease-out; }
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .bottom-progress-area {
@@ -227,9 +263,8 @@ watch(taskError, (newError) => {
   display: flex;
   justify-content: space-between;
   margin-top: 8px;
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-secondary);
   font-family: var(--sl-font-mono, monospace), serif;
 }
-
 </style>

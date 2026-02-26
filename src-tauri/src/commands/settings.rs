@@ -64,20 +64,6 @@ pub fn import_settings(json: String) -> Result<AppSettings, String> {
 }
 
 #[tauri::command]
-pub fn check_acrylic_support() -> Result<bool, String> {
-    Ok(true)
-}
-
-#[tauri::command]
-pub fn apply_acrylic(
-    _window: tauri::Window,
-    _enabled: bool,
-    _dark_mode: bool,
-) -> Result<(), String> {
-    Ok(())
-}
-
-#[tauri::command]
 pub fn get_system_fonts() -> Result<Vec<String>, String> {
     let source = SystemSource::new();
     let fonts = source

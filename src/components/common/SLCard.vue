@@ -218,7 +218,7 @@ const cardClasses = computed(() => ({
 }
 
 .sl-card-subtitle {
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-tertiary, #94a3b8);
   margin: 0.125rem 0 0 0;
 }
