@@ -87,7 +87,7 @@
   --sl-header-height: 48px;
 
   /* -- Scrollbar -- */
-  --sl-scrollbar-width: 0px;
+  --sl-scrollbar-width: 2px;
   --sl-scrollbar-thumb-bg: var(--sl-border);
   --sl-scrollbar-thumb-hover-bg: var(--sl-text-tertiary);
   --sl-scrollbar-thumb-radius: var(--sl-radius-full);

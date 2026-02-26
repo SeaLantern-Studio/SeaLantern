@@ -1512,13 +1512,12 @@ function goToMarket() {
 
 .plugin-chooser-option {
   width: 100%;
-  aspect-ratio: 1 / 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: var(--sl-space-sm);
-  padding: var(--sl-space-sm);
+  padding: var(--sl-space-md) var(--sl-space-lg);
 }
 
 .batch-result-dialog {
