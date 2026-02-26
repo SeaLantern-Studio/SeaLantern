@@ -106,11 +106,11 @@ export const settingsApi = {
 };
 
 export async function checkAcrylicSupport(): Promise<boolean> {
-  return tauriInvoke<boolean>("check_acrylic_support");
+  return true;
 }
 
-export async function applyAcrylic(enabled: boolean, darkMode: boolean): Promise<void> {
-  return tauriInvoke<void>("apply_acrylic", { enabled, darkMode });
+export async function applyAcrylic(_enabled: boolean, _darkMode: boolean): Promise<void> {
+  return Promise.resolve();
 }
 
 export async function getSystemFonts(): Promise<string[]> {

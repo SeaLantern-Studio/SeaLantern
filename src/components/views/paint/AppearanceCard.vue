@@ -13,7 +13,6 @@ defineProps<{
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
   acrylicEnabled: boolean;
-  acrylicSupported: boolean;
   isThemeProxied: boolean;
   themeProxyPluginName: string;
   backgroundImage: string;
@@ -141,17 +140,10 @@ function handleMinimalModeChange(value: boolean) {
       <div class="sl-setting-row">
         <div class="sl-setting-info">
           <span class="sl-setting-label">{{ i18n.t("settings.acrylic") }}</span>
-          <span class="setting-desc">
-            {{
-              acrylicSupported
-                ? i18n.t("settings.acrylic_desc")
-                : i18n.t("settings.acrylic_not_supported")
-            }}
-          </span>
+          <span class="setting-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
         </div>
         <SLSwitch
           :model-value="acrylicEnabled"
-          :disabled="!acrylicSupported"
           @update:model-value="handleAcrylicChange"
         />
       </div>

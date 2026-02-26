@@ -8,13 +8,7 @@ import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue"
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue";
-import {
-  settingsApi,
-  checkAcrylicSupport,
-  applyAcrylic,
-  type AppSettings,
-  type SettingsGroup,
-} from "@api/settings";
+import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
@@ -24,8 +18,6 @@ const { error, showError, clearError } = useMessage();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
 
 const settings = ref<AppSettings | null>(null);
-
-const acrylicSupported = ref(true);
 
 const maxMem = ref("2048");
 const minMem = ref("512");
@@ -38,11 +30,6 @@ const showResetConfirm = ref(false);
 
 onMounted(async () => {
   await loadSettings();
-  try {
-    acrylicSupported.value = await checkAcrylicSupport();
-  } catch {
-    acrylicSupported.value = false;
-  }
 
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
@@ -163,13 +150,6 @@ async function saveSettings() {
       applyTheme(settings.value.theme);
       applyFontSize(settings.value.font_size);
       applyFontFamily(settings.value.font_family);
-
-      if (acrylicSupported.value) {
-        try {
-          const isDark = getEffectiveTheme(settings.value.theme) === "dark";
-          await applyAcrylic(settings.value.acrylic_enabled, isDark);
-        } catch {}
-      }
     }
 
     dispatchSettingsUpdate(result.changed_groups, result.settings);
