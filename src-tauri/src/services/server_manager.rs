@@ -4,17 +4,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
-const STARTER_INSTALLER_LINKS_URL: &str = "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/releases/download/26.02.27/jar_lfs_links.json";
-const STARTER_INSTALLER_LINKS_FILE: &str = "jar_lfs_links.json";
-const STARTER_INSTALLER_LINKS_CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// 验证服务器名称，防止路径遍历攻击
 /// 返回清理后的名称或错误信息
@@ -861,7 +857,7 @@ impl ServerManager {
             }
 
             let (installer_url, installer_sha256) =
-                fetch_starter_installer_url(&core_key, mc_version)?;
+                super::starter_installer_links::fetch_starter_installer_url(&core_key, mc_version)?;
             if let Some(sha256) = installer_sha256 {
                 self.append_log(
                     id,
@@ -1521,207 +1517,6 @@ fn detect_java_major_version(java_path: &str) -> Option<u32> {
     }
 
     None
-}
-
-fn fetch_starter_installer_url(
-    core_type_key: &str,
-    mc_version: &str,
-) -> Result<(String, Option<String>), String> {
-    let data_dir = PathBuf::from(get_data_dir());
-    std::fs::create_dir_all(&data_dir).map_err(|e| format!("创建软件目录失败: {}", e))?;
-    let links_file_path = data_dir.join(STARTER_INSTALLER_LINKS_FILE);
-    let body = load_or_refresh_starter_links_json(&links_file_path)?;
-
-    let payload: Value =
-        serde_json::from_slice(&body).map_err(|e| format!("解析 Starter 下载信息失败: {}", e))?;
-    let core_key = core_type_key.trim().to_ascii_lowercase();
-    let target_version = mc_version.trim().to_ascii_lowercase();
-    if core_key.is_empty() || target_version.is_empty() {
-        return Err("Starter 下载参数缺少核心类型或 MC 版本".to_string());
-    }
-
-    if let Some(installer_url) =
-        resolve_installer_url_from_nested_json(&payload, &core_key, &target_version)
-    {
-        return Ok((installer_url, None));
-    }
-
-    Err(format!(
-        "未在 CNB 镜像中找到匹配下载链接：core={}, version={}",
-        core_type_key, mc_version
-    ))
-}
-
-fn load_or_refresh_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>, String> {
-    if should_use_cached_links_file(links_file_path)? {
-        return std::fs::read(links_file_path)
-            .map_err(|e| format!("读取本地 Starter 下载信息失败: {}", e));
-    }
-
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(15))
-        .build()
-        .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
-    let response = client
-        .get(STARTER_INSTALLER_LINKS_URL)
-        .send()
-        .map_err(|e| format!("请求 Starter 下载信息失败: {}", e))?;
-
-    let status = response.status();
-    if !status.is_success() {
-        return Err(format!(
-            "Starter 下载接口返回异常状态: {} ({})",
-            status, STARTER_INSTALLER_LINKS_URL
-        ));
-    }
-
-    let body = response
-        .bytes()
-        .map_err(|e| format!("读取 Starter 下载信息失败: {}", e))?
-        .to_vec();
-
-    std::fs::write(links_file_path, &body)
-        .map_err(|e| format!("写入 Starter 下载信息失败: {}", e))?;
-
-    Ok(body)
-}
-
-fn should_use_cached_links_file(links_file_path: &Path) -> Result<bool, String> {
-    let metadata = match std::fs::metadata(links_file_path) {
-        Ok(metadata) => metadata,
-        Err(error) => {
-            if error.kind() == std::io::ErrorKind::NotFound {
-                return Ok(false);
-            }
-            return Err(format!("读取 Starter 缓存文件元数据失败: {}", error));
-        }
-    };
-
-    let modified_time = metadata
-        .modified()
-        .map_err(|e| format!("读取 Starter 缓存文件时间失败: {}", e))?;
-    let age = SystemTime::now()
-        .duration_since(modified_time)
-        .unwrap_or(Duration::ZERO);
-
-    Ok(age <= STARTER_INSTALLER_LINKS_CACHE_TTL)
-}
-
-fn resolve_installer_url_from_nested_json(
-    payload: &Value,
-    core_key: &str,
-    target_version: &str,
-) -> Option<String> {
-    let root = payload.as_object()?;
-    if !type_list_contains_core(root, core_key) {
-        return None;
-    }
-
-    let core_node = root.get(core_key).or_else(|| {
-        root.iter()
-            .find(|(k, _)| k.as_str().eq_ignore_ascii_case(core_key))
-            .map(|(_, v)| v)
-    })?;
-    let core_obj = core_node.as_object()?;
-
-    let mut best_version_bucket: Option<(i32, &serde_json::Map<String, Value>)> = None;
-    for (version_key, files_value) in core_obj {
-        if version_key.as_str().eq_ignore_ascii_case("versions") {
-            continue;
-        }
-        let Some(files_obj) = files_value.as_object() else {
-            continue;
-        };
-
-        let version_lower = version_key.trim().to_ascii_lowercase();
-        let mut score = if version_lower == target_version {
-            1000
-        } else if version_lower.starts_with(target_version)
-            || target_version.starts_with(version_lower.as_str())
-        {
-            500
-        } else {
-            continue;
-        };
-
-        if files_obj
-            .keys()
-            .any(|name| name.to_ascii_lowercase().contains("installer"))
-        {
-            score += 100;
-        }
-
-        let replace = match &best_version_bucket {
-            None => true,
-            Some((best_score, best_bucket)) => {
-                score > *best_score || (score == *best_score && files_obj.len() > best_bucket.len())
-            }
-        };
-
-        if replace {
-            best_version_bucket = Some((score, files_obj));
-        }
-    }
-
-    let (_, files_obj) = best_version_bucket?;
-    select_best_url_from_file_map(files_obj)
-}
-
-fn type_list_contains_core(root: &serde_json::Map<String, Value>, core_key: &str) -> bool {
-    let Some(types_node) = root.get("types") else {
-        return true;
-    };
-
-    if let Some(types_arr) = types_node.as_array() {
-        return types_arr.iter().any(|item| {
-            item.as_str()
-                .map(|s| s.eq_ignore_ascii_case(core_key))
-                .unwrap_or(false)
-        });
-    }
-
-    if let Some(types_obj) = types_node.as_object() {
-        return types_obj
-            .keys()
-            .any(|k| k.as_str().eq_ignore_ascii_case(core_key));
-    }
-
-    false
-}
-
-fn select_best_url_from_file_map(files_obj: &serde_json::Map<String, Value>) -> Option<String> {
-    let mut best: Option<(i32, String)> = None;
-    for (file_name, file_url) in files_obj {
-        let Some(url) = file_url.as_str() else {
-            continue;
-        };
-        let candidate_url = url.trim();
-        if candidate_url.is_empty() {
-            continue;
-        }
-
-        let file_name_lower = file_name.to_ascii_lowercase();
-        let mut score = 0;
-        if file_name_lower.contains("installer") {
-            score += 100;
-        }
-        if file_name_lower.ends_with(".jar") {
-            score += 10;
-        }
-
-        let replace = match &best {
-            None => true,
-            Some((best_score, best_url)) => {
-                score > *best_score || (score == *best_score && candidate_url < best_url.as_str())
-            }
-        };
-
-        if replace {
-            best = Some((score, candidate_url.to_string()));
-        }
-    }
-
-    best.map(|(_, url)| url)
 }
 
 fn format_command_for_log(command: &Command) -> String {
