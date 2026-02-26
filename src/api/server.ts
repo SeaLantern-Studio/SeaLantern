@@ -138,7 +138,9 @@ export const serverApi = {
   },
 
   async parseServerCoreType(sourcePath: string): Promise<ParsedServerCoreInfo> {
-    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", { sourcePath });
+    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", {
+      sourcePath,
+    });
     return {
       coreType: result.core_type,
       mainClass: result.main_class,

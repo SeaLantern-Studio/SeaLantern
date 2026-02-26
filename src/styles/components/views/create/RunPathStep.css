@@ -58,7 +58,10 @@
   color: var(--sl-text-primary);
   font-size: var(--sl-font-size-sm);
   cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .run-path-data-dir-toggle.is-active {

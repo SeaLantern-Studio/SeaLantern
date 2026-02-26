@@ -145,7 +145,9 @@ useRegisterComponent(id, {
   font-size: var(--sl-font-size-sm);
   cursor: pointer;
   border: none;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
 }
 
 :deep(.sl-input-action:hover) {

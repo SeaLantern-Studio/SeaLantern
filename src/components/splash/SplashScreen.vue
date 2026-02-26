@@ -51,7 +51,7 @@ watch(
 
       <div class="splash-text" :style="{ opacity: textOpacity }">
         <h1 class="splash-title">Sea Lantern</h1>
-        <p class="splash-subtitle">{{ i18n.t('about.subtitle') }}</p>
+        <p class="splash-subtitle">{{ i18n.t("about.subtitle") }}</p>
       </div>
 
       <div class="splash-loader" :style="{ opacity: textOpacity }">
