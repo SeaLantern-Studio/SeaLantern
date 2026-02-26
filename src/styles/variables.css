@@ -41,6 +41,7 @@
   --sl-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1);
 
   /* -- Border Radius -- */
+  --sl-radius-xs: 4px;
   --sl-radius-sm: 6px;
   --sl-radius-md: 10px;
   --sl-radius-lg: 16px;
@@ -122,4 +123,10 @@
   --sl-bg-tertiary: rgba(36, 40, 54, 0.5);
   --sl-surface: rgba(30, 33, 48, 0.6);
   --sl-surface-hover: rgba(40, 44, 62, 0.7);
+}
+
+[data-minimal="true"] {
+  --sl-transition-fast: 0s;
+  --sl-transition-normal: 0s;
+  --sl-transition-slow: 0s;
 }

@@ -5,6 +5,7 @@ mod services;
 mod utils;
 
 use commands::config as config_commands;
+use commands::downloader as download_commands;
 use commands::java as java_commands;
 use commands::mcs_plugin as mcs_plugin_commands;
 use commands::player as player_commands;
@@ -13,7 +14,10 @@ use commands::server as server_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
 use commands::update as update_commands;
+
+use crate::services::download_manager::DownloadManager;
 use plugins::manager::PluginManager;
+
 use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
@@ -34,7 +38,10 @@ pub async fn run() {
         });
     }
 
+    let download_manager = DownloadManager::new();
+
     tauri::Builder::default()
+        .manage(download_manager)
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -85,6 +92,10 @@ pub async fn run() {
             server_commands::import_server,
             server_commands::add_existing_server,
             server_commands::import_modpack,
+            server_commands::parse_server_core_type,
+            server_commands::scan_startup_candidates,
+            server_commands::collect_copy_conflicts,
+            server_commands::copy_directory_contents,
             server_commands::start_server,
             server_commands::stop_server,
             server_commands::send_command,
@@ -103,13 +114,16 @@ pub async fn run() {
             config_commands::write_server_properties,
             system_commands::get_system_info,
             system_commands::pick_jar_file,
+            system_commands::pick_archive_file,
             system_commands::pick_startup_file,
             system_commands::pick_server_executable,
             system_commands::pick_java_file,
+            system_commands::pick_save_file,
             system_commands::pick_folder,
             system_commands::pick_image_file,
             system_commands::open_file,
             system_commands::open_folder,
+            system_commands::get_default_run_path,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -133,6 +147,16 @@ pub async fn run() {
             settings_commands::get_system_fonts,
             update_commands::check_update,
             update_commands::open_download_url,
+            update_commands::download_update,
+            update_commands::install_update,
+            update_commands::check_pending_update,
+            update_commands::clear_pending_update,
+            update_commands::restart_and_install,
+            update_commands::download_update_from_debug_url,
+            download_commands::download_file,
+            download_commands::poll_task,
+            download_commands::poll_all_downloads,
+            download_commands::remove_download_task,
             plugin_commands::list_plugins,
             plugin_commands::scan_plugins,
             plugin_commands::enable_plugin,
@@ -169,7 +193,7 @@ pub async fn run() {
             mcs_plugin_commands::m_toggle_plugin,
             mcs_plugin_commands::m_delete_plugin,
             mcs_plugin_commands::m_install_plugin,
-            mcs_plugin_commands::m_get_plugin_config_files,
+            mcs_plugin_commands::m_get_plugin_config_files
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -193,7 +217,7 @@ pub async fn run() {
                             >>()
                         {
                             if let Ok(mut m) = manager.lock() {
-                                m.disable_all_plugins();
+                                m.disable_all_plugins_for_shutdown();
                             }
                         }
                     }
@@ -474,7 +498,7 @@ pub async fn run() {
                                 std::sync::Mutex<crate::plugins::manager::PluginManager>,
                             >>() {
                                 if let Ok(mut m) = manager.lock() {
-                                    m.disable_all_plugins();
+                                    m.disable_all_plugins_for_shutdown();
                                 }
                             }
                             app.exit(0);

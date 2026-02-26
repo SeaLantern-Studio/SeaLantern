@@ -6,14 +6,13 @@ import SLSwitch from "@components/common/SLSwitch.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
+import { SLTabBar } from "@components/common";
 import { configApi } from "@api/config";
 import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "@api/mcs_plugins";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
-import { useTabIndicator } from "@composables/useTabIndicator";
 import {
-  Power,
   Trash2,
   RefreshCw,
   Settings,
@@ -52,11 +51,8 @@ const selectedPlugin = ref<m_PluginInfo | null>(null);
 const loadedPlugins = ref<Set<string>>(new Set());
 const observer = ref<IntersectionObserver | null>(null);
 const activeTab = ref<"properties" | "plugins">("properties");
-const { indicatorRef: tabIndicator, updatePosition: updateTabIndicator } =
-  useTabIndicator(activeTab);
 const isLoading = ref(false);
 const loadingDebounceTimer = ref<number | null>(null);
-const LOADING_DEBOUNCE_DELAY = 300;
 
 const autoSaveDebounceTimer = ref<number | null>(null);
 const AUTO_SAVE_DELAY = 1000;
@@ -102,12 +98,6 @@ onMounted(async () => {
     store.setCurrentServer(store.servers[0].id);
   }
   await loadProperties();
-});
-
-// 监听语言变化，更新 Tab 指示器位置
-const localeRef = i18n.getLocaleRef();
-watch(localeRef, () => {
-  updateTabIndicator();
 });
 
 onUnmounted(() => {
@@ -435,25 +425,14 @@ onActivated(async () => {
       <div class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
       </div>
-      <div class="tab-bar">
-        <div class="tab-indicator" ref="tabIndicator"></div>
-        <button
-          type="button"
-          class="tab-btn"
-          :class="{ active: activeTab === 'properties' }"
-          @click="activeTab = 'properties'"
-        >
-          {{ i18n.t("config.server_properties") }}
-        </button>
-        <button
-          type="button"
-          class="tab-btn"
-          :class="{ active: activeTab === 'plugins' }"
-          @click="activeTab = 'plugins'"
-        >
-          {{ i18n.t("config.server_plugins") }}
-        </button>
-      </div>
+      <SLTabBar
+        v-model="activeTab"
+        :tabs="[
+          { key: 'properties', label: i18n.t('config.server_properties') },
+          { key: 'plugins', label: i18n.t('config.server_plugins') },
+        ]"
+        :level="1"
+      />
     </div>
 
     <div v-if="!currentServerId" class="empty-state">
@@ -655,22 +634,18 @@ onActivated(async () => {
                 </div>
               </div>
               <div class="plugin-list-actions">
-                <SLButton
-                  @click.stop="togglePlugin(plugin)"
-                  :variant="plugin.enabled ? 'danger' : 'success'"
-                  size="sm"
+                <SLSwitch
+                  :modelValue="plugin.enabled"
+                  @update:modelValue="togglePlugin(plugin)"
                   :title="plugin.enabled ? i18n.t('config.disable') : i18n.t('config.enable')"
-                >
-                  <Power :size="16" />
-                </SLButton>
-                <SLButton
+                />
+                <button
                   @click.stop="deletePlugin(plugin)"
-                  variant="danger"
-                  size="sm"
+                  class="icon-btn"
                   :title="i18n.t('config.delete')"
                 >
                   <Trash2 :size="16" />
-                </SLButton>
+                </button>
               </div>
             </div>
           </div>

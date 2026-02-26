@@ -74,6 +74,12 @@ const routes = [
     props: true,
     meta: { title: "插件分类", icon: "folder" },
   },
+  {
+    path: "/download-file",
+    name: "download-file",
+    component: () => import("../views/DownloadFileView.vue"),
+    meta: { titleKey: "common.download-file", icon: "info" },
+  },
 ];
 const router = createRouter({
   history: createWebHistory(),

@@ -22,6 +22,7 @@
     "settings": "Ajustes",
     "personalize": "Personalizar",
     "about": "Acerca de",
+    "download-file": "Descargar archivo",
     "loading": "Cargando...",
     "select_server": "Seleccionar servidor",
     "open_folder": "Abrir carpeta",
@@ -229,8 +230,7 @@
     "java_env": "Entorno Java",
     "java_scan": "Escanear todos los discos en busca de Java",
     "java_manual": "Seleccionar ruta manualmente",
-    "java_path": "Ruta de Java",
-    "file_hint": "Después de hacer clic en 「Seleccionar y Crear」, elija el archivo de inicio del servidor (soporta formatos .jar, .bat o .sh). El sistema detectará automáticamente el tipo de archivo"
+    "java_path": "Ruta de Java"
   },
   "console": {
     "title": "Consola",
@@ -276,10 +276,10 @@
     "delete": "Eliminar",
     "refresh_list": "Actualizar lista",
     "reload_plugins": "Recargar plugins",
-    "reload_plugins_warning": "Recargar plugins puede causar problemas en el servidor, algunos plugins pueden no admitirlo",
+    "reload_plugins_warning": "Recargar plugins puede causar lag en el servidor, por favor ten cuidado",
     "empty_config_folder": "Carpeta de configuración vacía",
+    "has_config_folder": "Configuración presente",
     "no_config_files": "Sin configuración",
-    "has_config_folder": "Tiene configuración",
     "config_files_count": "configuraciones",
     "config_files": "Archivos de configuración",
     "open": "Abrir",
@@ -617,6 +617,19 @@
     "show": "Mostrar",
     "quit": "Salir"
   },
-
-  "delete_server": "Eliminar servidor"
+  "delete_server": "Eliminar servidor",
+  "download-file": {
+    "title": "Descargar archivo usando descargador multihilo",
+    "url": "URL de descarga",
+    "save_folder": "Guardar en",
+    "filename": "Nombre del archivo",
+    "thread_count": "Número de hilos",
+    "cancel": "Cancelar",
+    "download": "Descargar",
+    "browse": "Examinar",
+    "downloading": "Descargando recurso...",
+    "status-finished": "Descarga finalizada",
+    "failed": "Descarga fallida",
+    "completed": "Completado"
+  }
 }

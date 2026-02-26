@@ -181,46 +181,68 @@ impl PluginRuntime {
 
         if self.permissions.iter().any(|p| p == "storage") {
             self.setup_storage_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "storage")?;
         }
 
         if self.permissions.iter().any(|p| p == "fs") {
             self.setup_fs_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "fs")?;
         }
 
         if self.permissions.iter().any(|p| p == "api") {
             self.setup_api_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "api")?;
         }
 
         if self.permissions.iter().any(|p| p == "ui") {
             self.setup_ui_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "ui")?;
         }
 
         if self.permissions.iter().any(|p| p == "element") {
             self.setup_element_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "element")?;
         }
 
         if self.permissions.iter().any(|p| p == "server") {
             self.setup_server_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "server")?;
         }
 
         if self.permissions.iter().any(|p| p == "console") {
             self.setup_console_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "console")?;
         }
 
         if self.permissions.iter().any(|p| p == "system") {
             self.setup_system_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "system")?;
         }
 
         if self.permissions.iter().any(|p| p == "network") {
             self.setup_http_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "network")?;
         }
 
         if self.permissions.iter().any(|p| p == "execute_program") {
             self.setup_process_namespace(&sl, Arc::clone(&self.process_registry))?;
+        } else {
+            self.setup_permission_denied_module(&sl, "execute_program")?;
         }
 
         if self.permissions.iter().any(|p| p == "plugin_folder_access") {
             self.setup_plugins_namespace(&sl)?;
+        } else {
+            self.setup_permission_denied_module(&sl, "plugin_folder_access")?;
         }
 
         self.setup_i18n_namespace(&sl)?;
@@ -228,6 +250,55 @@ impl PluginRuntime {
         globals
             .set("sl", sl)
             .map_err(|e| format!("Failed to set sl global: {}", e))?;
+
+        Ok(())
+    }
+
+    fn setup_permission_denied_module(&self, sl: &Table, module_name: &str) -> Result<(), String> {
+        let module_table = self
+            .lua
+            .create_table()
+            .map_err(|e| format!("Failed to create {} table: {}", module_name, e))?;
+
+        let module_name_owned = module_name.to_string();
+        let error_fn = self
+            .lua
+            .create_function(move |_, ()| -> Result<(), mlua::Error> {
+                Err(mlua::Error::runtime(format!(
+                    "权限不足: 使用 'sl.{}' 模块需要在 manifest.json 中声明 '{}' 权限",
+                    module_name_owned, module_name_owned
+                )))
+            })
+            .map_err(|e| format!("Failed to create error function for {}: {}", module_name, e))?;
+
+        module_table
+            .set("_error", error_fn)
+            .map_err(|e| format!("Failed to set error for {}: {}", module_name, e))?;
+
+        let module_name_for_meta = module_name.to_string();
+        let meta_table = self
+            .lua
+            .create_table()
+            .map_err(|e| format!("Failed to create metatable for {}: {}", module_name, e))?;
+
+        let index_fn = self
+            .lua
+            .create_function(move |_, _key: mlua::Value| -> Result<mlua::Value, mlua::Error> {
+                Err(mlua::Error::runtime(format!(
+                    "权限不足: 使用 'sl.{}' 模块需要在 manifest.json 中声明 '{}' 权限",
+                    module_name_for_meta, module_name_for_meta
+                )))
+            })
+            .map_err(|e| format!("Failed to create __index for {}: {}", module_name, e))?;
+
+        meta_table
+            .set(mlua::MetaMethod::Index.name(), index_fn)
+            .map_err(|e| format!("Failed to set __index for {}: {}", module_name, e))?;
+
+        module_table.set_metatable(Some(meta_table));
+
+        sl.set(module_name, module_table)
+            .map_err(|e| format!("Failed to set sl.{}: {}", module_name, e))?;
 
         Ok(())
     }

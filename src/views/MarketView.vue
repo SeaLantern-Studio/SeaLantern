@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
-import { useToast } from "@composables/useToast";
-import { useTabIndicator } from "@composables/useTabIndicator";
 import {
   fetchMarketPlugins,
   fetchMarketPluginDetail,
@@ -13,6 +11,7 @@ import type { MarketPluginInfo } from "@api/plugin";
 import { i18n } from "@language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
+import { SLTabBar, type TabBarItem } from "@components/common";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
@@ -20,9 +19,12 @@ const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market";
 const MARKET_URL_KEY = "sealantern_market_url";
 
 const pluginStore = usePluginStore();
-const toast = useToast();
 const loading = ref(true);
 const error = ref<string | null>(null);
+const installFeedback = ref<{
+  type: "success" | "warning" | "error";
+  message: string;
+} | null>(null);
 const marketPlugins = ref<MarketPlugin[]>([]);
 const categories = ref<Record<string, Record<string, string> | string>>({});
 const searchQuery = ref("");
@@ -35,15 +37,26 @@ const showUrlEditor = ref(false);
 const customMarketUrl = ref(localStorage.getItem(MARKET_URL_KEY) || "");
 const urlInput = ref(customMarketUrl.value);
 
-const { indicatorRef: tagIndicator, updatePosition: updateTagIndicator } =
-  useTabIndicator(selectedTag);
-
-const localeRef = i18n.getLocaleRef();
-watch(localeRef, () => {
-  updateTagIndicator();
+const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
+const marketErrorHint = computed<string>(() => {
+  if (!error.value) return "";
+  return resolveMarketNetworkHint(error.value);
 });
 
-const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
+function showInstallFeedback(
+  type: "success" | "warning" | "error",
+  message: string,
+  duration = 6000,
+) {
+  installFeedback.value = { type, message };
+  if (duration > 0) {
+    setTimeout(() => {
+      if (installFeedback.value?.message === message) {
+        installFeedback.value = null;
+      }
+    }, duration);
+  }
+}
 
 function saveMarketUrl() {
   const url = urlInput.value.trim();
@@ -87,14 +100,6 @@ const allTags = computed(() => {
   marketPlugins.value.forEach((p) => p.categories?.forEach((t) => tags.add(t)));
   return Array.from(tags);
 });
-
-watch(
-  allTags,
-  () => {
-    updateTagIndicator();
-  },
-  { deep: true },
-);
 
 function resolveI18n(val: Record<string, string> | string | undefined): string {
   if (!val) return "";
@@ -156,6 +161,46 @@ function getIconUrl(plugin: MarketPlugin): string | null {
   return `${activeMarketUrl.value.trim().replace(/\/$/, "")}/${dir}/${plugin.icon_url}`;
 }
 
+function normalizeErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "string") return err;
+  return String(err);
+}
+
+function resolveMarketNetworkHint(message: string): string {
+  const text = message.toLowerCase();
+  const looksLikeNetworkIssue =
+    text.includes("download") ||
+    text.includes("fetch") ||
+    text.includes("network") ||
+    text.includes("timeout") ||
+    text.includes("proxy") ||
+    text.includes("连接") ||
+    text.includes("请求") ||
+    text.includes("下载");
+
+  if (!looksLikeNetworkIssue) {
+    return "";
+  }
+
+  const isProxyRefused =
+    text.includes("127.0.0.1:9") ||
+    text.includes("actively refused") ||
+    text.includes("connection refused") ||
+    text.includes("proxyconnect") ||
+    text.includes("proxy connect") ||
+    text.includes("无法连接") ||
+    text.includes("积极拒绝");
+
+  if (isProxyRefused) {
+    return i18n.t("market.network_hint_proxy");
+  }
+  if (text.includes("timed out") || text.includes("timeout") || text.includes("超时")) {
+    return i18n.t("market.network_hint_timeout");
+  }
+  return i18n.t("market.network_hint_check");
+}
+
 async function loadMarket() {
   loading.value = true;
   error.value = null;
@@ -168,7 +213,7 @@ async function loadMarket() {
     marketPlugins.value = plugins;
     categories.value = cats;
   } catch (e: any) {
-    error.value = e.message || "Failed to load market";
+    error.value = normalizeErrorMessage(e);
   } finally {
     loading.value = false;
   }
@@ -204,12 +249,15 @@ async function handleInstall(plugin: MarketPlugin) {
     });
     await pluginStore.loadPlugins();
     if (result?.untrusted_url) {
-      toast.warning(i18n.t("market.untrusted_download_warning"));
+      showInstallFeedback("warning", i18n.t("market.untrusted_download_warning"));
     } else {
-      toast.success(i18n.t("market.install_success"));
+      showInstallFeedback("success", i18n.t("market.install_success"));
     }
   } catch (e: any) {
-    toast.error(i18n.t("market.install_failed") + ": " + (e.message || e));
+    const errorMessage = normalizeErrorMessage(e);
+    const hint = resolveMarketNetworkHint(errorMessage);
+    const extraHint = hint ? `\n${hint}` : "";
+    showInstallFeedback("error", `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`, 0);
   } finally {
     installing.value = null;
   }
@@ -227,6 +275,14 @@ onMounted(() => {
 
 <template>
   <div class="market-view animate-fade-in-up">
+    <div
+      v-if="installFeedback"
+      :class="['install-feedback', `install-feedback--${installFeedback.type}`]"
+    >
+      <span>{{ installFeedback.message }}</span>
+      <button class="install-feedback-close" @click="installFeedback = null">x</button>
+    </div>
+
     <div v-if="showUrlEditor" class="url-editor glass">
       <span class="url-editor-label">{{ i18n.t("market.source_url") }}</span>
       <input
@@ -248,27 +304,16 @@ onMounted(() => {
       </button>
     </div>
 
-    <div v-if="allTags.length" class="market-tags">
-      <div class="tags-container">
-        <div class="tag-indicator" ref="tagIndicator"></div>
-        <button
-          class="tag-btn"
-          :class="{ active: selectedTag === null }"
-          @click="selectedTag = null"
-        >
-          全部
-        </button>
-        <button
-          v-for="tag in allTags"
-          :key="tag"
-          class="tag-btn"
-          :class="{ active: selectedTag === tag }"
-          @click="selectedTag = selectedTag === tag ? null : tag"
-        >
-          {{ getCategoryLabel(tag) }}
-        </button>
-      </div>
-      <div class="search-container">
+    <SLTabBar
+      v-if="allTags.length"
+      v-model="selectedTag"
+      :tabs="[
+        { key: null, label: '全部' },
+        ...allTags.map((tag) => ({ key: tag, label: getCategoryLabel(tag) })),
+      ]"
+      :level="2"
+    >
+      <template #extra>
         <input
           v-model="searchQuery"
           type="text"
@@ -291,8 +336,8 @@ onMounted(() => {
         >
           <RefreshCw :size="14" :class="{ spin: loading }" />
         </button>
-      </div>
-    </div>
+      </template>
+    </SLTabBar>
 
     <div v-if="loading" class="market-loading">
       <div class="loading-spinner"></div>
@@ -303,6 +348,7 @@ onMounted(() => {
       <AlertCircle :size="48" :stroke-width="1.5" />
       <p class="error-title">{{ i18n.t("market.error_title") }}</p>
       <p class="error-detail">{{ error }}</p>
+      <p v-if="marketErrorHint" class="error-hint">{{ marketErrorHint }}</p>
       <button class="retry-btn" @click="loadMarket">
         {{ i18n.t("market.retry") }}
       </button>
@@ -449,6 +495,46 @@ onMounted(() => {
   flex: 1;
 }
 
+.install-feedback {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--sl-radius-md);
+  border: 1px solid transparent;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+.install-feedback--success {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
+  border-color: rgba(46, 125, 50, 0.28);
+}
+
+.install-feedback--warning {
+  color: #8a6d00;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.install-feedback--error {
+  color: var(--sl-error);
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.install-feedback-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .market-search {
   padding: 6px 12px;
   border-radius: var(--sl-radius-sm);
@@ -502,68 +588,6 @@ onMounted(() => {
   }
 }
 
-.search-container {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.market-tags {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-xs);
-  padding: var(--sl-space-xs);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  margin-bottom: var(--sl-space-md);
-  position: relative;
-  overflow: hidden;
-}
-
-.tags-container {
-  display: flex;
-  gap: var(--sl-space-xs);
-  flex: 1;
-  position: relative;
-}
-
-.tag-indicator {
-  position: absolute;
-  top: var(--sl-space-xs);
-  bottom: var(--sl-space-xs);
-  background: var(--sl-primary-bg);
-  border-radius: var(--sl-radius-sm);
-  transition: all 0.3s ease;
-  box-shadow: var(--sl-shadow-sm);
-  z-index: 1;
-  border: 1px solid var(--sl-primary);
-  opacity: 0.9;
-}
-
-.tag-btn {
-  padding: 8px 16px;
-  border-radius: var(--sl-radius-sm);
-  border: none;
-  background: transparent;
-  color: var(--sl-text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--sl-transition-fast);
-  position: relative;
-  z-index: 2;
-}
-
-.tag-btn:hover {
-  color: var(--sl-text-primary);
-}
-
-.tag-btn.active {
-  color: var(--sl-primary);
-}
-
 .market-loading {
   display: flex;
   align-items: center;
@@ -584,6 +608,13 @@ onMounted(() => {
   padding: var(--sl-space-2xl);
   text-align: center;
   color: var(--sl-text-tertiary);
+}
+
+.error-hint {
+  margin-top: 8px;
+  color: var(--sl-text-secondary);
+  max-width: 640px;
+  line-height: 1.5;
 }
 
 .loading-spinner {
@@ -620,7 +651,7 @@ onMounted(() => {
 
 .retry-btn {
   padding: 8px 24px;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   border: none;
   background: var(--sl-primary);
   color: white;
@@ -673,7 +704,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
 }
 
 .card-info {
@@ -698,7 +729,7 @@ onMounted(() => {
 .card-version {
   padding: 2px 6px;
   background: var(--sl-bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 11px;
   color: var(--sl-text-tertiary);
 }
@@ -755,14 +786,14 @@ onMounted(() => {
 .card-tag {
   padding: 2px 8px;
   background: var(--sl-bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 11px;
   color: var(--sl-text-tertiary);
 }
 
 .install-btn {
   padding: 6px 16px;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   border: none;
   background: var(--sl-primary);
   color: white;
@@ -806,7 +837,7 @@ onMounted(() => {
   max-width: 560px;
   max-height: 80vh;
   overflow-y: auto;
-  border-radius: 16px;
+  border-radius: var(--sl-radius-lg);
   padding: 24px;
   position: relative;
 }
@@ -820,7 +851,7 @@ onMounted(() => {
   background: transparent;
   color: var(--sl-text-secondary);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
 }
 
 .modal-close:hover {
@@ -848,7 +879,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
 }
 
 .detail-title h2 {
@@ -861,7 +892,7 @@ onMounted(() => {
   display: inline-block;
   padding: 2px 8px;
   background: var(--sl-bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--sl-radius-xs);
   font-size: 12px;
   color: var(--sl-text-tertiary);
   margin-top: 4px;
@@ -910,7 +941,7 @@ onMounted(() => {
 
 .perm-badge {
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: var(--sl-radius-lg);
   font-size: 12px;
   font-weight: 500;
   cursor: default;
@@ -935,7 +966,7 @@ onMounted(() => {
   margin: 0;
   padding: 12px;
   background: var(--sl-bg-tertiary);
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   font-size: 12px;
   color: var(--sl-text-secondary);
   white-space: pre-wrap;
@@ -988,7 +1019,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: var(--sl-radius-md);
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
@@ -1003,7 +1034,7 @@ onMounted(() => {
   flex: 1;
   min-width: 200px;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   border: 1px solid var(--sl-border);
   background: var(--sl-bg-tertiary);
   color: var(--sl-text-primary);
@@ -1017,7 +1048,7 @@ onMounted(() => {
 
 .url-editor-btn {
   padding: 6px 14px;
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   border: none;
   background: var(--sl-primary);
   color: white;

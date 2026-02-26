@@ -270,16 +270,27 @@
   height: 32px;
 }
 
-.plugin-list-actions .sl-button {
+.plugin-list-actions .sl-switch-wrapper {
+  flex-shrink: 0;
+}
+
+.plugin-list-actions .icon-btn {
   width: 32px;
   height: 32px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: var(--sl-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-secondary);
 }
 
-.plugin-list-actions .sl-button i {
-  margin: 0;
+.plugin-list-actions .icon-btn:hover {
+  background: var(--sl-error-bg, #fef2f2);
+  color: var(--sl-error, #dc2626);
+  border-color: var(--sl-error-light, #fca5a5);
 }

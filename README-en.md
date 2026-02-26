@@ -5,12 +5,20 @@
 
 A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
-| [![github-stars](https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/SeaLantern-Studio/SeaLantern/stargazers) | [![github-forks](https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/SeaLantern-Studio/SeaLantern/network/members) | [![github-latest](https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Latest%20version)](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)                                                                                    |
-| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)                                                      | [![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)                                                              | [![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=Latest%20version&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases/latest) |
+<div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+  <a href="https://github.com/SeaLantern-Studio/SeaLantern/stargazers"><img src="https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars" alt="GitHub Stars"></a>
+  <a href="https://github.com/SeaLantern-Studio/SeaLantern/network/members"><img src="https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks" alt="GitHub Forks"></a>
+  <a href="https://github.com/SeaLantern-Studio/SeaLantern/releases/latest"><img src="https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=latest" alt="GitHub Latest"></a>
+</div>
+
+<div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+  <a href="https://gitee.com/fps_z/SeaLantern/stargazers"><img src="https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark" alt="Gitee Stars"></a>
+  <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
+</div>
 
 <kbd>[简体中文](README.md)</kbd> <kbd>English</kbd>
 
+Any questions? Try→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 ---
 
 </div>
@@ -26,6 +34,9 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 - Check for and download updates in one click
 
 ## Quick Start
+(Tips:Actually, we already have a documentation site!There you can view all kinds of documents more intuitively and conveniently.You can click here to go to the docs site.)
+
+[Jump to SL Official Doc Site](https://docs.ideaflash.cn/en/intro)
 
 Download the software from [Releases](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest);
 
@@ -35,19 +46,38 @@ Import a server .jar, choose a Java version, then click Start. It's that simple.
 
 You'll need Node.js 20+ and Rust 1.70+.
 
+Please also install `pnpm` and `cargo`.
+
+**You need to first Fork the source repository, then proceed with development work in your own repository.**
+
+If you only want to check the latest progress, you can directly fetch the source repository:
+
 ```bash
 git clone https://github.com/SeaLantern-Studio/SeaLantern.git
 cd SeaLantern
-npm install
-npm run tauri dev
 ```
 
-On some Linux distributions, such as Arch, running `npm run tauri dev` directly may not compile successfully. Please check if your dependency libraries are complete. It is recommended to use your package manager to install `Tauri` dependencies beforehand when running the above command to avoid missing dependency issues. [Click here to go to "Tauri | Prerequisites"](https://tauri.app/start/prerequisites/#linux)
+The project's package manager was voted to switch from `npm` to `pnpm`.
+
+Frontend and Backend:
+
+```bash
+pnpm install
+pnpm run tauri dev
+```
+
+On some Linux distributions, such as Arch, running `pnpm run tauri dev` directly may not compile successfully. Please check if your dependency libraries are complete. It is recommended to use your package manager to install `Tauri` dependencies beforehand when running the above command to avoid missing dependency issues. [Click here to go to "Tauri | Prerequisites"](https://tauri.app/start/prerequisites/#linux)
+
+Only Frontend:
+
+```bash
+pnpm dev
+```
 
 Build release:
 
 ```bash
-npm run tauri build
+pnpm run tauri build
 ```
 
 Built binaries are in `src-tauri/target/release/bundle/`.
@@ -56,34 +86,38 @@ Built binaries are in `src-tauri/target/release/bundle/`.
 
 Before your PR, we encourage you to run the commands below to check the code's quality:
 
-- For frontend
+<details><summary>For frontend</summary>
 
-> ```bash
-> # Code Quality Check
-> npm run lint
->
-> # Fix fixable problems
-> npm run lint:fix
->
-> # Format code
-> npm run fmt
->
-> # Check format
-> npm run fmt:check
-> ```
+```bash
+# Code Quality Check
+pnpm run lint
 
-- For backend
+# Fix fixable problems
+pnpm run lint:fix
 
-> ```bash
-> # Check format
-> cargo fmt --all -- --check
->
-> # Run Clippy check
-> cargo clippy --workspace -- -D warnings
->
-> # Format code
-> cargo fmt --all
-> ```
+# Format code
+pnpm run fmt
+
+# Check format
+pnpm run fmt:check
+```
+
+</details>
+
+<details><summary>For backend</summary>
+
+```bash
+# Check format
+cargo fmt --all -- --check
+
+# Run Clippy check
+cargo clippy --workspace -- -D warnings
+
+# Format code
+cargo fmt --all
+```
+
+</details>
 
 CI automated checks are set up to ensure that all submitted code meets the standards.
 
@@ -96,6 +130,8 @@ CI automated checks are set up to ensure that all submitted code meets the stand
 
 No Electron, no Node backend, no Webpack. Launch fast, size small, RAM saved.
 
+> We use WebView as the frontend rendering component. WebView is a built-in application in modern computer systems, with frontend and backend memory usage generally not exceeding 70MiB
+
 ### Project Structure
 
 See [Project Structure](docs/STRUCTURE-en.md).
@@ -105,7 +141,6 @@ See [Project Structure](docs/STRUCTURE-en.md).
 Placeholders have been reserved for these features with existing code
 skeletons—waiting for your contributions:
 
-- Download Center - Download server cores, plugins and mods
 - Backup Management - Incremental backup and restore of save files
 - Intranet Penetration - FRP integration
 - Scheduled Tasks - Automatic restarts, scheduled backups, and scheduled commands
@@ -124,14 +159,26 @@ change any part you don't like.
 Want to create a theme/skin? Go for it;
 want to completely redesign the layout? That's fine!
 
+Of course, the prerequisite for all of this is that you have sufficient reasons and abilities, and can only do it after discussing with everyone in the group, otherwise it is very likely that we will **reject the PR**
+
 ### How to Contribute
 
-1. Fork the repository
+1. Fork the `dev` branch of repository
 2. Create a branch and implement your changes
 3. Submit a Pull Request
 4. Your name will be added to the contributor wall
 
-You don't need coding skills to contribute. Just suggest new features you want or share a UI sketch — they all count as contributions!
+We have certain limitations on AI programming, namely `Vibe Coding`: only fixing, not refactoring, not making significant changes, manual review.
+
+- Only fix: Due to the limitations of most current AI capabilities, it is unrealistic to rely entirely on AI.
+
+- Not Refactoring: AI's contextual and abstract understanding abilities are not sufficient for AI to refactor existing content. Of course, there may be lucky ones who can still use it after refactoring, but that is just an example.
+
+- Not much changed: **Do not let AI make unauthorized changes to any content that has a huge impact**.
+
+- Manual review: After using AI, it is necessary to manually review whether there are any errors. If you do not know how to review, you can go to the group to find the management. Remember to politely ask questions instead of harassing the management.
+
+Not being able to write code is also acceptable. Say what feature you want, or draw a UI sketch and send it out. As long as it is verified to be useful, it is considered a contribution.
 
 ### Add a new function
 
@@ -156,6 +203,8 @@ The frontend and backend each have 3 files, plus one line each for the router an
 ### i18n — Internationalization Guide
 
 Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [src/language/README-en.md](src/language/README-en.md)
+
+If you want to add additional languages besides the commonly used ones, please create plugins.
 
 ## License
 

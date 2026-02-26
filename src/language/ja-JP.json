@@ -22,6 +22,7 @@
     "settings": "設定",
     "personalize": "パーソナライズ",
     "about": "このソフトについて",
+    "download-file": "ファイルをダウンロード",
     "loading": "読み込み中...",
     "select_server": "サーバーを選択",
     "open_folder": "フォルダを開く",
@@ -229,8 +230,7 @@
     "java_env": "Java環境",
     "java_scan": "システム内のすべてのディスクからJavaを検索",
     "java_manual": "手動でJavaのパスを選択",
-    "java_path": "Javaのパス",
-    "file_hint": "「選択して作成」をクリックした後、サーバー起動ファイルを選択してください（.jar、.bat、.sh形式をサポート）。システムが自動的にファイルタイプを検出します"
+    "java_path": "Javaのパス"
   },
   "console": {
     "title": "コンソール",
@@ -276,10 +276,10 @@
     "delete": "削除",
     "refresh_list": "リストを更新",
     "reload_plugins": "プラグインを再読み込み",
-    "reload_plugins_warning": "プラグインの再読み込みはサーバーに問題を引き起こす可能性があります。一部のプラグインはサポートしていない場合があります",
+    "reload_plugins_warning": "プラグインの再読み込みはサーバーに負荷がかかる場合がありますので注意してください",
     "empty_config_folder": "設定フォルダが空です",
-    "no_config_files": "設定なし",
     "has_config_folder": "設定あり",
+    "no_config_files": "設定なし",
     "config_files_count": "個の設定",
     "config_files": "設定ファイル",
     "open": "開く",
@@ -633,6 +633,19 @@
     "show": "表示",
     "quit": "終了"
   },
-
-  "delete_server": "サーバーを削除"
+  "delete_server": "サーバーを削除",
+  "download-file": {
+    "title": "マルチスレッドダウンローダーでファイルをダウンロード",
+    "url": "ダウンロードURL",
+    "save_folder": "保存先",
+    "filename": "ファイル名",
+    "thread_count": "スレッド数",
+    "cancel": "キャンセル",
+    "download": "ダウンロード",
+    "browse": "参照",
+    "downloading": "リソースをダウンロード中...",
+    "status-finished": "ダウンロード完了",
+    "failed": "ダウンロード失敗",
+    "completed": "完了"
+  }
 }

@@ -1,0 +1,164 @@
+.create-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-lg);
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.create-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: var(--sl-radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--sl-error);
+  font-size: 0.875rem;
+}
+
+.create-error-close {
+  color: inherit;
+  font-weight: 600;
+}
+
+.create-stepper-card :deep(.sl-card-body) {
+  padding: var(--sl-space-md);
+}
+
+.create-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.create-stepper-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+  padding-bottom: var(--sl-space-md);
+}
+
+.create-stepper-item:last-child {
+  padding-bottom: 0;
+}
+
+.create-stepper-trigger {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-sm);
+  border-radius: var(--sl-radius-md);
+  text-align: left;
+  transition: background var(--sl-transition-fast);
+  position: relative;
+  z-index: 1;
+}
+
+.create-stepper-trigger[data-state="active"] {
+  background: var(--sl-primary-bg);
+}
+
+.create-stepper-trigger[data-state="completed"] .create-stepper-indicator {
+  background: var(--sl-primary);
+  color: white;
+  border-color: var(--sl-primary);
+}
+
+.create-stepper-indicator {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--sl-radius-full);
+  border: 1px solid var(--sl-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--sl-text-secondary);
+  background: var(--sl-surface);
+  flex-shrink: 0;
+}
+
+.create-stepper-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.create-stepper-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.create-stepper-description {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  line-height: 1.4;
+}
+
+.create-stepper-separator {
+  position: absolute;
+  width: 1px;
+  top: 30px;
+  left: 22px;
+  bottom: 0;
+  margin: 0;
+  background: var(--sl-border-light);
+  z-index: 0;
+}
+
+.create-step-panel {
+  margin-left: calc(26px + var(--sl-space-md));
+  background: transparent;
+  padding: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.create-placeholder-block {
+  border: 1px dashed var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-surface);
+  color: var(--sl-text-secondary);
+  font-size: 0.8125rem;
+  padding: 12px;
+}
+
+.create-source-core-info {
+  margin: 2px 0 0;
+  padding-left: 2px;
+  font-size: 0.8125rem;
+  color: var(--sl-text-secondary);
+}
+
+.create-config-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
+
+.create-submit-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--sl-space-md);
+}
+
+.create-submit-actions :deep(.sl-button) {
+  min-width: 128px;
+}
+
+@media (max-width: 980px) {
+  .create-stepper-separator {
+    left: 20px;
+  }
+
+  .create-step-panel {
+    margin-left: 0;
+  }
+}

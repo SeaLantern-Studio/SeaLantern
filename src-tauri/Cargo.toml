@@ -1,6 +1,6 @@
 [package]
 name = "sea-lantern"
-version = "0.6.5"
+version = "1.0.0"
 description = "Minecraft Server Manager"
 authors = ["FPS_Z and MORE"]
 edition = "2021"
@@ -17,7 +17,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-fs = "2"
+tauri-plugin-fs = "2.0.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 trash = "5.1"
@@ -55,7 +55,6 @@ mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"]
 zip = "2.0"
 tar = "0.4"
 flate2 = "1.0"
-url = "2"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = [
     "png",
@@ -76,6 +75,14 @@ nasm-rs = "0.3.1"
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = ["Win32_System_Performance", "Win32_Foundation"] }
 winreg = "0.55.0"
+url = "2.5"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_System_Performance",
+    "Win32_Foundation",
+] }
+winreg = "0.52"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"

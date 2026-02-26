@@ -6,12 +6,20 @@
 
 一个轻量化的 Minecraft 服务器管理工具，基于 Tauri 2 + Rust + Vue 3
 
-| [![github-stars](https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars)](https://github.com/SeaLantern-Studio/SeaLantern/stargazers) | [![github-forks](https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks)](https://github.com/SeaLantern-Studio/SeaLantern/network/members) | [![github-latest](https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=最新版本)](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)                                                                                    |
-| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![gitee-stars](https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/stargazers)                                                      | [![gitee-forks](https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark)](https://gitee.com/fps_z/SeaLantern/members)                                                              | [![gitee-latest](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FFPS_Z%2FSeaLantern%2Freleases%2Flatest&query=%24.tag_name&label=最新版本&color=brightgreen&logo=gitee&style=flat)](https://gitee.com/FPS_Z/SeaLantern/releases/latest) |
+<div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+  <a href="https://github.com/SeaLantern-Studio/SeaLantern/stargazers"><img src="https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars" alt="GitHub Stars"></a>
+  <a href="https://github.com/SeaLantern-Studio/SeaLantern/network/members"><img src="https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks" alt="GitHub Forks"></a>
+  <a href="https://github.com/SeaLantern-Studio/SeaLantern/releases/latest"><img src="https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" alt="GitHub Latest"></a>
+</div>
+
+<div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+  <a href="https://gitee.com/fps_z/SeaLantern/stargazers"><img src="https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark" alt="Gitee Stars"></a>
+  <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
+</div>
 
 <kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
 
+有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 ---
 
 </div>
@@ -27,26 +35,48 @@
 - 检查更新，一键下载新版本
 
 ## 快速开始
+(Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击这里跳转)
+
+[前往SL官方文档](https://docs.ideaflash.cn/zh/intro)
 
 下载 [release](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest) 版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
 
 ## 开发
 
-您将会需要 Node.js 20+ 和 Rust 1.70+。
+你需要 `Node.js 20+` 和 `Rust 1.70+`。
+
+同时请安装`pnpm`和`cargo`。
+
+**您需要先 Fork 源仓库，然后在你自己的仓库进行开发工作。**
+
+如果你只是想要查看最新进度，可以直接拉取源仓库：
 
 ```bash
 git clone https://github.com/SeaLantern-Studio/SeaLantern.git
 cd SeaLantern
-npm install
-npm run tauri dev
 ```
 
-部分 Linux 发行版，例如 Arch 直接使用 `npm run tauri dev` 可能不会编译成功，请检查您的依赖库是否完全，建议您在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
+项目的包管理器经过投票，从`npm`切换至`pnpm`。
+
+前端与后端：
+
+```bash
+pnpm install
+pnpm run tauri dev
+```
+
+部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm run tauri dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
+
+仅前端：
+
+```bash
+pnpm dev
+```
 
 构建发布版：
 
 ```bash
-npm run tauri build
+pnpm run tauri build
 ```
 
 产物在 `src-tauri/target/release/bundle/` 里。
@@ -55,34 +85,38 @@ npm run tauri build
 
 提交代码前，我们建议运行以下命令来检查代码质量：
 
-- 前端检查
+<details><summary>前端检查</summary>
 
-> ```bash
-> # 代码质量检查
-> npm run lint
->
-> # 自动修复可修复问题
-> npm run lint:fix
->
-> # 格式化代码
-> npm run fmt
->
-> # 检查代码格式
-> npm run fmt:check
-> ```
+```bash
+# 代码质量检查
+pnpm run lint
 
-- 后端检查
+# 自动修复可修复问题
+pnpm run lint:fix
 
-> ```bash
-> # 检查代码格式
-> cargo fmt --all -- --check
->
-> # 运行 Clippy 检查
-> cargo clippy --workspace -- -D warnings
->
-> # 格式化代码
-> cargo fmt --all
-> ```
+# 格式化代码
+pnpm run fmt
+
+# 检查代码格式
+pnpm run fmt:check
+```
+
+</details>
+
+<details><summary>后端检查</summary>
+
+```bash
+# 检查代码格式
+cargo fmt --all -- --check
+
+# 运行 Clippy 检查
+cargo clippy --workspace -- -D warnings
+
+# 格式化代码
+cargo fmt --all
+```
+
+</details>
 
 项目已配置 CI 自动检查，确保所有提交的代码都符合规范。
 
@@ -95,6 +129,8 @@ npm run tauri build
 
 没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
 
+> 我们使用 Webview 作为前端渲染，Webview 是现代计算机系统中自带的应用，前后端内存占用基本不超过70MiB
+
 ### 项目结构
 
 详见 [项目结构](docs/STRUCTURE.md)。
@@ -103,7 +139,6 @@ npm run tauri build
 
 这些功能的位置都预留好了，代码骨架是现成的，等你来写：
 
-- 下载中心 - 下载服务端核心，插件，模组
 - 备份管理 - 世界存档的增量备份和还原
 - 内网穿透 - 集成 FRP
 - 定时任务 - 自动重启、定时备份、定时执行命令
@@ -120,14 +155,26 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 界面也是。颜色在 CSS 变量里，组件是独立的，不喜欢就换。
 想做个主题皮肤？做。想把整个布局推翻重来？也行。
 
+当然，这一切的前提是你有足够的理由和能力，并且与群内的各位商讨后才能做，不然我们很有可能会**拒收 PR**
+
 ### 怎么贡献
 
-1. Fork 这个仓库
+1. Fork 这个仓库的`dev`分支
 2. 建分支写代码
 3. 提 Pull Request
 4. 你的名字会出现在关于页面的贡献者墙上
 
-不会写代码也行。说你想要什么功能，或者画个 UI 草图发出来，都算贡献。
+我们对AI编程，即`Vibe Coding`有一定限制：仅修复，不重构，不大改，人工审。
+
+- 仅修复：由于目前大部分 AI 的能力局限性，如果要完全依赖 AI 是很不现实的。
+
+- 不重构：AI 的上下文和抽象理解能力都不足以让AI重构已有内容，当然也许会有比较幸运的重构完还能用，但那只是个例。
+
+- 不大改：**不要让 AI 擅自改动任何一个影响巨大内容**。
+
+- 人工审：使用完 AI 一定要人工审查一遍是否有误，如果不会审，可以去群里找管理，要记得有礼貌的提问而不是骚扰管理。
+
+不会写代码也行。说你想要什么功能，或者画个 UI 草图发出来，只要核实有用，都算贡献。
 
 ### 添加新功能
 
@@ -152,6 +199,8 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 ### i18n 国际化支持指南
 
 Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](src/language/README.md)
+
+除了当前已有的常见语言，想要加额外语言，请制作插件。
 
 ## License
 

@@ -15,7 +15,7 @@ const serverStore = useServerStore();
 const consoleStore = useConsoleStore();
 
 const commandInput = ref("");
-const logContainer = ref<HTMLElement | null>(null);
+const consoleOutputRef = ref<InstanceType<typeof ConsoleOutput> | null>(null);
 const userScrolledUp = ref(false);
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref(-1);
@@ -52,8 +52,9 @@ const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
 const isRunning = computed(() => serverStatus.value === "Running");
-const isStopped = computed(() => serverStatus.value === "Stopped");
+const isStopped = computed(() => serverStatus.value === "Stopped" || serverStatus.value === "Error" || !serverStatus.value);
 const isStopping = computed(() => serverStatus.value === "Stopping");
+const isStarting = computed(() => serverStatus.value === "Starting");
 
 watch(
   () => currentLogs.value.length,
@@ -140,9 +141,7 @@ async function sendCommand(cmd?: string) {
 }
 
 function doScroll() {
-  nextTick(() => {
-    if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight;
-  });
+  consoleOutputRef.value?.doScroll();
 }
 
 async function handleStart() {
@@ -256,28 +255,36 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
         </div>
       </div>
       <div class="toolbar-right">
-        <SLButton
-          variant="primary"
-          size="sm"
-          :loading="startLoading"
-          :disabled="isRunning || isStopping || startLoading"
-          @click="handleStart"
-          >{{ i18n.t("home.start") }}</SLButton
-        >
-        <SLButton
-          variant="danger"
-          size="sm"
-          :loading="stopLoading"
-          :disabled="isStopped || isStopping || stopLoading"
-          @click="handleStop"
-          >{{ i18n.t("home.stop") }}</SLButton
-        >
-        <SLButton variant="secondary" size="sm" @click="exportLogs">{{
-          i18n.t("console.copy_log")
-        }}</SLButton>
-        <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
-          i18n.t("console.clear_log")
-        }}</SLButton>
+        <div class="action-group primary-actions">
+          <SLButton
+            v-if="isRunning || isStarting"
+            variant="danger"
+            size="sm"
+            :loading="stopLoading"
+            :disabled="isStopping || stopLoading"
+            @click="handleStop"
+          >
+            {{ isStarting ? i18n.t("home.stop") : i18n.t("home.stop") }}
+          </SLButton>
+          <SLButton
+            v-else
+            variant="primary"
+            size="sm"
+            :loading="startLoading"
+            :disabled="isStopping || startLoading"
+            @click="handleStart"
+          >
+            {{ i18n.t("home.start") }}
+          </SLButton>
+        </div>
+        <div class="action-group secondary-actions">
+          <SLButton variant="secondary" size="sm" @click="exportLogs">{{
+            i18n.t("console.copy_log")
+          }}</SLButton>
+          <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
+            i18n.t("console.clear_log")
+          }}</SLButton>
+        </div>
       </div>
     </div>
 
@@ -303,6 +310,7 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
 
       <!-- 控制台输出部分 -->
       <ConsoleOutput
+        ref="consoleOutputRef"
         :logs="currentLogs"
         :consoleFontSize="consoleFontSize"
         :userScrolledUp="userScrolledUp"

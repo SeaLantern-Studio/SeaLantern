@@ -12,7 +12,7 @@ export interface TabIndicatorPosition {
  * Tab 指示器动画 composable
  * 用于管理 Tab 切换时的滑动指示器动画
  */
-export function useTabIndicator<T extends string>(
+export function useTabIndicator<T extends string | null>(
   activeTab: Ref<T>,
   options: {
     /** 延迟更新时间（毫秒） */
