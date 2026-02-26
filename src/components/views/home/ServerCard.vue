@@ -118,7 +118,7 @@ function getStatusClass(status: string | undefined): string {
         :title="server.path"
         @click="handlePathClick(server.path)"
       >
-        <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
+        <span class="server-path-text">{{ formatServerPath(server.path) }}</span>
         <FolderOpen class="folder-icon" :size="16" />
       </div>
     </div>

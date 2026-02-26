@@ -1517,20 +1517,46 @@ function goToMarket() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--sl-radius-md);
   border: none;
-  border-radius: var(--sl-radius-sm);
   background: transparent;
   color: var(--sl-text-tertiary);
   cursor: pointer;
-  transition: all var(--sl-transition-fast);
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.plugin-chooser-close::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sl-error);
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .plugin-chooser-close:hover {
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-primary);
+  color: var(--sl-error);
+  transform: rotate(90deg);
+}
+
+.plugin-chooser-close:hover::before {
+  opacity: 0.1;
+  transform: scale(1);
+}
+
+.plugin-chooser-close:active {
+  transform: rotate(90deg) scale(0.9);
 }
 
 .plugin-chooser-description {
