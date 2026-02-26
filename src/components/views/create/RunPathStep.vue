@@ -10,7 +10,6 @@ const props = withDefaults(
     sourceType: SourceType;
     sourcePath: string;
     runPath: string;
-    useSoftwareDataDir: boolean;
     showOverwriteWarning?: boolean;
     disabled?: boolean;
   }>(),
@@ -23,19 +22,9 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: "update:runPath", value: string): void;
   (e: "pickPath"): void;
-  (e: "toggleUseSoftwareDataDir"): void;
 }>();
 
-const softwareDataDirText = "已使用软件数据目录";
-
-const inputValue = computed(() => {
-  if (props.useSoftwareDataDir) {
-    return softwareDataDirText;
-  }
-  return props.runPath;
-});
-
-const inputDisabled = computed(() => props.disabled || props.useSoftwareDataDir);
+const inputDisabled = computed(() => props.disabled);
 
 const effectivePath = computed(() => {
   if (props.sourceType !== "folder") {
@@ -55,48 +44,34 @@ const effectivePath = computed(() => {
 <template>
   <div class="run-path-step">
     <p class="run-path-hint">
-      {{
-        sourceType === "archive"
-          ? i18n.t("create.path_required_archive")
-          : i18n.t("create.path_optional_folder")
-      }}
+      {{ i18n.t("create.path_required_hint") }}
     </p>
 
     <div class="run-path-row">
       <span class="run-path-label">{{ i18n.t("create.path_label") }}</span>
       <SLInput
         class="run-path-input"
-        :model-value="inputValue"
+        :model-value="runPath"
         :disabled="inputDisabled"
-        :placeholder="
-          sourceType === 'archive'
-            ? i18n.t('create.path_archive_placeholder')
-            : i18n.t('create.path_folder_placeholder')
-        "
+        :placeholder="i18n.t('create.path_custom_placeholder')"
         @update:model-value="emit('update:runPath', $event)"
       >
         <template #suffix>
-          <button type="button" class="run-path-picker" :disabled="inputDisabled" @click="emit('pickPath')">
+          <button
+            type="button"
+            class="sl-input-action"
+            :disabled="inputDisabled"
+            @click="emit('pickPath')"
+          >
             {{ i18n.t("create.browse") }}
           </button>
         </template>
       </SLInput>
     </div>
 
-    <div class="run-path-toggle-row">
-      <p v-if="showOverwriteWarning" class="run-path-overwrite-warning">
-        {{ i18n.t("create.path_overwrite_warning") }}
-      </p>
-      <button
-        type="button"
-        class="run-path-data-dir-toggle"
-        :class="{ 'is-active': useSoftwareDataDir }"
-        :disabled="disabled"
-        @click="emit('toggleUseSoftwareDataDir')"
-      >
-        使用软件数据目录
-      </button>
-    </div>
+    <p v-if="showOverwriteWarning" class="run-path-overwrite-warning">
+      {{ i18n.t("create.path_overwrite_warning") }}
+    </p>
 
     <p v-if="sourceType === 'folder'" class="run-path-effective">
       {{ i18n.t("create.path_effective_label") }} {{ getPathName(effectivePath) || "-" }}

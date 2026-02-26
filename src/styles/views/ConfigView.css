@@ -12,7 +12,7 @@
 
 .server-path-display {
   color: var(--sl-text-tertiary);
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
 }
 
 .empty-state {
@@ -29,7 +29,7 @@
   justify-content: space-between;
   padding: 10px 16px;
   border-radius: var(--sl-radius-md);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .error-banner {
@@ -96,7 +96,7 @@
 }
 
 .entry-key {
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   font-weight: 600;
   color: var(--sl-text-primary);
 }
@@ -144,7 +144,7 @@
 
 .plugins-header h3 {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--sl-font-size-xl);
   font-weight: 600;
   color: var(--sl-text-primary);
 }
@@ -156,7 +156,7 @@
 }
 
 .reload-btn {
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   padding: 6px 12px;
 }
 

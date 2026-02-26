@@ -157,8 +157,9 @@ pub async fn pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, 
 
     app.dialog()
         .file()
-        .set_title("Select modpack archive")
-        .add_filter("Archive Files", &["zip", "tar", "tgz", "gz"])
+        .set_title("Select server file")
+        .add_filter("Server Files", &["jar", "zip", "tar", "tgz", "gz"])
+        .add_filter("JAR Files", &["jar"])
         .add_filter("ZIP Files", &["zip"])
         .add_filter("TAR Files", &["tar"])
         .add_filter("Compressed TAR", &["tgz", "gz"])
@@ -375,4 +376,12 @@ pub fn open_folder(path: String) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_default_run_path() -> Result<String, String> {
+    let documents_dir = dirs_next::document_dir().ok_or_else(|| "无法获取文档目录".to_string())?;
+    let minecraft_servers_dir = documents_dir.join("Minecraft Servers");
+
+    Ok(minecraft_servers_dir.to_string_lossy().to_string())
 }

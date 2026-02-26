@@ -2,8 +2,6 @@ use crate::models::settings::{AppSettings, PartialSettings};
 use crate::services::global;
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
-#[cfg(target_os = "windows")]
-use window_vibrancy;
 
 #[derive(serde::Serialize)]
 pub struct UpdateSettingsResult {
@@ -63,46 +61,6 @@ pub fn import_settings(json: String) -> Result<AppSettings, String> {
     let s: AppSettings = serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
     global::settings_manager().update(s.clone())?;
     Ok(s)
-}
-
-#[tauri::command]
-pub fn check_acrylic_support() -> Result<bool, String> {
-    #[cfg(target_os = "windows")]
-    {
-        Ok(true)
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        Ok(false)
-    }
-}
-
-#[tauri::command]
-pub fn apply_acrylic(window: tauri::Window, enabled: bool, dark_mode: bool) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        if enabled {
-            // 根据主题选择不同的亚克力颜色
-            // 格式: (R, G, B, A) - A 是透明度 (0-255)
-            let color = if dark_mode {
-                // 暗色主题: 深色半透明背景
-                Some((15, 17, 23, 200))
-            } else {
-                // 浅色主题: 浅色半透明背景
-                Some((248, 250, 252, 200))
-            };
-            window_vibrancy::apply_acrylic(&window, color)
-                .map_err(|e| format!("Failed to apply acrylic: {}", e))?;
-        } else {
-            window_vibrancy::clear_acrylic(&window)
-                .map_err(|e| format!("Failed to clear acrylic: {}", e))?;
-        }
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = (window, enabled, dark_mode);
-    }
-    Ok(())
 }
 
 #[tauri::command]

@@ -13,6 +13,41 @@ const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
 const STARTER_DOWNLOAD_API_BASE: &str = "https://api.mslmc.cn/v3/download/server";
 
+/// 验证服务器名称，防止路径遍历攻击
+/// 返回清理后的名称或错误信息
+fn validate_server_name(name: &str) -> Result<String, String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err("服务器名称不能为空".to_string());
+    }
+    if trimmed.len() > 64 {
+        return Err("服务器名称不能超过64个字符".to_string());
+    }
+    // 禁止的字符：路径分隔符和Windows保留字符
+    let forbidden_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'];
+    for c in forbidden_chars {
+        if trimmed.contains(c) {
+            return Err(format!("服务器名称包含非法字符: '{}'", c));
+        }
+    }
+    // 禁止以点开头（防止隐藏文件）或以空格/点结尾
+    if trimmed.starts_with('.') || trimmed.ends_with('.') || trimmed.ends_with(' ') {
+        return Err("服务器名称不能以点开头或结尾，也不能以空格结尾".to_string());
+    }
+    // 禁止Windows保留名称
+    let reserved = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+    let upper = trimmed.to_uppercase();
+    for r in reserved {
+        if upper == r || upper.starts_with(&format!("{}.", r)) {
+            return Err(format!("服务器名称不能使用系统保留名称: {}", r));
+        }
+    }
+    Ok(trimmed.to_string())
+}
+
 #[derive(Debug, Deserialize)]
 struct StarterDownloadApiResponse {
     data: Option<StarterDownloadApiData>,
@@ -205,6 +240,7 @@ impl ServerManager {
     }
 
     pub fn create_server(&self, req: CreateServerRequest) -> Result<ServerInstance, String> {
+        let server_name = validate_server_name(&req.name)?;
         let id = uuid::Uuid::new_v4().to_string();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -218,7 +254,7 @@ impl ServerManager {
 
         let server = ServerInstance {
             id: id.clone(),
-            name: req.name,
+            name: server_name,
             core_type: req.core_type,
             core_version: String::new(),
             mc_version: req.mc_version,
@@ -247,6 +283,7 @@ impl ServerManager {
     }
 
     pub fn import_server(&self, req: ImportServerRequest) -> Result<ServerInstance, String> {
+        let server_name = validate_server_name(&req.name)?;
         let startup_mode = normalize_startup_mode(&req.startup_mode).to_string();
         let source_startup_file = std::path::Path::new(&req.jar_path);
         if !source_startup_file.exists() {
@@ -269,31 +306,23 @@ impl ServerManager {
             .file_name()
             .ok_or_else(|| "无法获取启动文件名".to_string())?;
 
-        let dest_startup = if startup_mode == "jar" {
-            let dest_jar = server_dir.join(startup_filename);
-            std::fs::copy(source_startup_file, &dest_jar)
-                .map_err(|e| format!("复制JAR文件失败: {}", e))?;
-            println!("已复制JAR文件: {} -> {}", req.jar_path, dest_jar.display());
-            dest_jar
-        } else {
-            let source_server_dir = source_startup_file
-                .parent()
-                .ok_or_else(|| "无法获取启动文件所在目录".to_string())?;
+        // 获取启动文件所在目录，复制整个目录内容到 UUID 文件夹
+        let source_server_dir = source_startup_file
+            .parent()
+            .ok_or_else(|| "无法获取启动文件所在目录".to_string())?;
 
-            println!(
-                "脚本模式导入：复制服务端目录 {} -> {}",
-                source_server_dir.display(),
-                server_dir.display()
-            );
-            copy_dir_recursive(source_server_dir, &server_dir)
-                .map_err(|e| format!("复制服务端目录失败: {}", e))?;
+        println!(
+            "导入服务器：复制源目录 {} -> {}",
+            source_server_dir.display(),
+            server_dir.display()
+        );
+        copy_dir_recursive(source_server_dir, &server_dir)
+            .map_err(|e| format!("复制服务端目录失败: {}", e))?;
 
-            let copied_startup = server_dir.join(startup_filename);
-            if !copied_startup.exists() {
-                return Err(format!("复制后的启动文件不存在: {}", copied_startup.display()));
-            }
-            copied_startup
-        };
+        let dest_startup = server_dir.join(startup_filename);
+        if !dest_startup.exists() {
+            return Err(format!("复制后的启动文件不存在: {}", dest_startup.display()));
+        }
 
         let server_properties_path = server_dir.join("server.properties");
         let mut port = req.port;
@@ -349,7 +378,7 @@ impl ServerManager {
 
         let server = ServerInstance {
             id: id.clone(),
-            name: req.name,
+            name: server_name,
             core_type,
             core_version: String::new(),
             mc_version: parsed_info
@@ -387,33 +416,50 @@ impl ServerManager {
         }
 
         let id = uuid::Uuid::new_v4().to_string();
-        let data_dir = self
-            .data_dir
-            .lock()
-            .expect("data_dir lock poisoned")
-            .clone();
 
-        let mut run_path = req.run_path.trim().to_string();
-        if req.use_software_data_dir {
-            let server_dir = Path::new(&data_dir).join("servers").join(&id);
-            std::fs::create_dir_all(&server_dir)
-                .map_err(|e| format!("无法创建软件数据目录中的服务器目录: {}", e))?;
-            run_path = server_dir.to_string_lossy().to_string();
-        } else if run_path.is_empty() {
-            if source_path.is_dir() {
-                run_path = source_path.to_string_lossy().to_string();
-            } else {
-                return Err("运行目录不能为空".to_string());
-            }
+        let base_path = req.run_path.trim().to_string();
+        if base_path.is_empty() {
+            return Err("运行目录不能为空，请选择开服路径".to_string());
         }
 
-        let run_dir = PathBuf::from(&run_path);
+        // 使用 UUID 前30位作为文件夹名称，确保唯一性
+        let server_name = validate_server_name(&req.name)?;
+        let folder_name = uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
+        let run_dir = PathBuf::from(&base_path).join(&folder_name);
+
+        // 检查目标目录是否已存在
+        if run_dir.exists() {
+            return Err(format!(
+                "目录已存在：{}，请更换启动项或选择其他路径",
+                run_dir.to_string_lossy()
+            ));
+        }
+
+        // 判断文件类型并处理
+        let source_file_name = source_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("server.jar");
+        let source_extension = source_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_ascii_lowercase())
+            .unwrap_or_default();
+
         if source_path.is_file() {
             std::fs::create_dir_all(&run_dir).map_err(|e| format!("无法创建运行目录: {}", e))?;
-            super::server_installer::extract_modpack_archive(source_path, &run_dir)?;
+
+            // jar 文件直接复制到目标目录
+            if source_extension == "jar" {
+                let target_jar = run_dir.join(source_file_name);
+                std::fs::copy(source_path, &target_jar)
+                    .map_err(|e| format!("复制 JAR 文件失败: {}", e))?;
+            } else {
+                // 其他压缩包解压
+                super::server_installer::extract_modpack_archive(source_path, &run_dir)?;
+            }
         } else if source_path.is_dir() {
             if !paths_equal(source_path, &run_dir) {
-                // 防止目标目录位于源目录内部，避免递归复制时出现 run/run/run 自套娃。
                 if path_is_child_of(&run_dir, source_path) {
                     return Err("运行目录不能位于整合包源目录内部，请选择其他目录".to_string());
                 }
@@ -464,12 +510,18 @@ impl ServerManager {
             return Err("自定义启动命令不能为空".to_string());
         }
 
+        let data_dir = self
+            .data_dir
+            .lock()
+            .expect("data_dir lock poisoned")
+            .clone();
+
         upsert_run_path_mapping(
             &data_dir,
             RunPathServerMapping {
-                run_path: run_path.clone(),
+                run_path: run_dir.to_string_lossy().to_string(),
                 server_id: id.clone(),
-                server_name: req.name.clone(),
+                server_name: server_name.clone(),
                 startup_mode: startup_mode.clone(),
                 startup_file_path: startup_file_path.clone(),
                 custom_command: custom_command.clone(),
@@ -537,11 +589,11 @@ impl ServerManager {
 
         let server = ServerInstance {
             id: id.clone(),
-            name: req.name,
+            name: server_name,
             core_type,
             core_version: String::new(),
             mc_version,
-            path: run_path,
+            path: run_dir.to_string_lossy().to_string(),
             jar_path: startup_path,
             startup_mode,
             custom_command,
@@ -575,6 +627,7 @@ impl ServerManager {
         &self,
         req: AddExistingServerRequest,
     ) -> Result<ServerInstance, String> {
+        let server_name = validate_server_name(&req.name)?;
         let server_path = std::path::Path::new(&req.server_path);
 
         // 验证路径存在且是目录
@@ -653,7 +706,7 @@ impl ServerManager {
 
         let server = ServerInstance {
             id: id.clone(),
-            name: req.name,
+            name: server_name,
             core_type,
             core_version: String::new(),
             mc_version: version_id,
@@ -1328,9 +1381,10 @@ impl ServerManager {
     }
 
     pub fn update_server_name(&self, id: &str, new_name: &str) -> Result<(), String> {
+        let validated_name = validate_server_name(new_name)?;
         let mut servers = self.servers.lock().expect("servers lock poisoned");
         if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
-            server.name = new_name.to_string();
+            server.name = validated_name;
             drop(servers);
             self.save();
             Ok(())
@@ -1684,6 +1738,15 @@ fn resolve_startup_file_path(
     let startup_path = PathBuf::from(startup_file_path);
     if startup_path.is_relative() {
         return Ok(run_dir.join(&startup_path).to_string_lossy().to_string());
+    }
+
+    // 如果源是 jar 文件，启动项就是 jar 本身，复制后在 run_dir 中
+    if source_path.is_file() {
+        let source_file_name = source_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("server.jar");
+        return Ok(run_dir.join(source_file_name).to_string_lossy().to_string());
     }
 
     if source_path.is_dir() {

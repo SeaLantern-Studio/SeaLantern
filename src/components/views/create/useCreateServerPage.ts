@@ -30,7 +30,6 @@ export function useCreateServerPage() {
   const sourcePath = ref("");
   const sourceType = ref<SourceType>("");
   const runPath = ref("");
-  const useSoftwareDataDir = ref(false);
 
   const coreDetecting = ref(false);
   const detectedCoreType = ref("");
@@ -69,21 +68,21 @@ export function useCreateServerPage() {
   const javaList = ref<JavaInfo[]>([]);
 
   const hasSource = computed(() => sourcePath.value.trim().length > 0 && sourceType.value !== "");
-  const requiresRunPath = computed(() => sourceType.value === "archive");
 
   const selectedStartup = computed(
     () => startupCandidates.value.find((item) => item.id === selectedStartupId.value) ?? null,
   );
   const starterSelected = computed(() => selectedStartup.value?.mode === "starter");
   const customCommandHasRedirect = computed(
-    () => selectedStartup.value?.mode === "custom" && containsIoRedirection(customStartupCommand.value),
+    () =>
+      selectedStartup.value?.mode === "custom" && containsIoRedirection(customStartupCommand.value),
   );
 
   const hasPathStep = computed(() => {
     if (!hasSource.value) {
       return false;
     }
-    return requiresRunPath.value ? useSoftwareDataDir.value || runPath.value.trim().length > 0 : true;
+    return runPath.value.trim().length > 0;
   });
 
   const hasStartupStep = computed(() => {
@@ -109,7 +108,9 @@ export function useCreateServerPage() {
   const step1Completed = computed(() => hasSource.value);
   const step2Completed = computed(() => step1Completed.value && hasPathStep.value);
   const step3Completed = computed(() => step2Completed.value && hasStartupStep.value);
-  const step4Completed = computed(() => step3Completed.value && hasJava.value && hasServerConfig.value);
+  const step4Completed = computed(
+    () => step3Completed.value && hasJava.value && hasServerConfig.value,
+  );
 
   const activeStep = computed(() => {
     if (!step1Completed.value) {
@@ -161,16 +162,12 @@ export function useCreateServerPage() {
   ]);
 
   // 只有步骤完成且“启动项同步”完成后才允许提交，避免新源路径配旧 startupFilePath。
-  const canSubmit = computed(() => step4Completed.value && !startupSyncPending.value && !startupDetecting.value);
+  const canSubmit = computed(
+    () => step4Completed.value && !startupSyncPending.value && !startupDetecting.value,
+  );
 
   onMounted(async () => {
     await loadDefaultSettings();
-  });
-
-  watch(sourceType, (nextType) => {
-    if (nextType === "archive") {
-      runPath.value = "";
-    }
   });
 
   onUnmounted(() => {
@@ -192,7 +189,7 @@ export function useCreateServerPage() {
 
     const sourceDir = sourcePath.value.trim();
     const targetDir = runPath.value.trim();
-    if (!sourceDir || !targetDir || sourceType.value !== "folder" || useSoftwareDataDir.value) {
+    if (!sourceDir || !targetDir || sourceType.value !== "folder") {
       runPathConflictRequestId += 1;
       runPathOverwriteRisk.value = false;
       return;
@@ -228,7 +225,7 @@ export function useCreateServerPage() {
   }
 
   watch(
-    [sourceType, sourcePath, runPath, useSoftwareDataDir],
+    [sourceType, sourcePath, runPath],
     () => {
       scheduleRunPathConflictCheck();
     },
@@ -277,12 +274,27 @@ export function useCreateServerPage() {
       minMemory.value = String(settings.default_min_memory);
       port.value = String(settings.default_port);
 
+      // 加载上次选择的开服路径
+      if (settings.last_run_path) {
+        runPath.value = settings.last_run_path;
+      } else {
+        // 如果没有上次的路径，获取默认路径
+        try {
+          const defaultPath = await systemApi.getDefaultRunPath();
+          runPath.value = defaultPath;
+        } catch (error) {
+          console.error("Failed to get default run path:", error);
+        }
+      }
+
       if (settings.cached_java_list && settings.cached_java_list.length > 0) {
         javaList.value = settings.cached_java_list;
         if (settings.default_java_path) {
           selectedJava.value = settings.default_java_path;
         } else {
-          const preferredJava = javaList.value.find((java) => java.is_64bit && java.major_version >= 17);
+          const preferredJava = javaList.value.find(
+            (java) => java.is_64bit && java.major_version >= 17,
+          );
           selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
         }
       }
@@ -296,7 +308,9 @@ export function useCreateServerPage() {
     try {
       javaList.value = await javaApi.detect();
       if (javaList.value.length > 0) {
-        const preferredJava = javaList.value.find((java) => java.is_64bit && java.major_version >= 17);
+        const preferredJava = javaList.value.find(
+          (java) => java.is_64bit && java.major_version >= 17,
+        );
         selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
       }
 
@@ -314,25 +328,23 @@ export function useCreateServerPage() {
     const selected = await systemApi.pickFolder();
     if (selected) {
       updateRunPath(selected);
+      // 保存选择的开服路径
+      try {
+        await settingsApi.updatePartial({ last_run_path: selected });
+      } catch (error) {
+        console.error("Failed to save last run path:", error);
+      }
     }
   }
 
   function updateRunPath(nextPath: string) {
     const targetPath = nextPath.trim();
-    if (
-      sourceType.value === "folder" &&
-      !useSoftwareDataDir.value &&
-      isStrictChildPath(targetPath, sourcePath.value)
-    ) {
+    if (sourceType.value === "folder" && isStrictChildPath(targetPath, sourcePath.value)) {
       showError(i18n.t("create.path_child_of_source_forbidden"));
       return;
     }
 
     runPath.value = nextPath;
-  }
-
-  function toggleUseSoftwareDataDir() {
-    useSoftwareDataDir.value = !useSoftwareDataDir.value;
   }
 
   async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
@@ -373,7 +385,8 @@ export function useCreateServerPage() {
         return;
       }
 
-      detectedCoreType.value = discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
+      detectedCoreType.value =
+        discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
       detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
       const previousDetectedCoreKey = detectedCoreTypeKey.value;
       const previousDetectedMcVersion = detectedMcVersion.value;
@@ -439,15 +452,11 @@ export function useCreateServerPage() {
       showError(i18n.t("create.source_required"));
       return false;
     }
-    if (requiresRunPath.value && !useSoftwareDataDir.value && runPath.value.trim().length === 0) {
-      showError(i18n.t("create.path_required_archive"));
+    if (runPath.value.trim().length === 0) {
+      showError(i18n.t("create.path_required"));
       return false;
     }
-    if (
-      sourceType.value === "folder" &&
-      !useSoftwareDataDir.value &&
-      isStrictChildPath(runPath.value, sourcePath.value)
-    ) {
+    if (sourceType.value === "folder" && isStrictChildPath(runPath.value, sourcePath.value)) {
       showError(i18n.t("create.path_child_of_source_forbidden"));
       return false;
     }
@@ -513,7 +522,6 @@ export function useCreateServerPage() {
         onlineMode: onlineMode.value,
         customCommand: startupMode === "custom" ? customStartupCommand.value.trim() : undefined,
         runPath: runPath.value.trim(),
-        useSoftwareDataDir: useSoftwareDataDir.value,
         startupFilePath: startupMode === "custom" ? undefined : startup?.path,
         coreType: resolvedCoreType || undefined,
         mcVersion: resolvedMcVersion || undefined,
@@ -538,7 +546,6 @@ export function useCreateServerPage() {
     sourceType,
     runPath,
     runPathOverwriteRisk,
-    useSoftwareDataDir,
     coreDetecting,
     detectedCoreType,
     detectedCoreMainClass,
@@ -567,7 +574,6 @@ export function useCreateServerPage() {
     canSubmit,
     pickRunPath,
     updateRunPath,
-    toggleUseSoftwareDataDir,
     rescanStartupCandidates,
     detectJava,
     handleSubmit,
