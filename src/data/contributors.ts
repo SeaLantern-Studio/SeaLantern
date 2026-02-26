@@ -60,7 +60,7 @@ export const contributors: Contributor[] = [
   },
   {
     name: "HKYZYH",
-    role: "修复Wayland协议下白屏问题",
+    role: "我不到啊",
     avatar: "https://api.rms.net.cn/head/HKYZYH",
     url: {
       gitee: "https://gitee.com/HKYZYHgezi",
