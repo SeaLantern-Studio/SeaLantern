@@ -758,6 +758,8 @@
     "checking": "Checking...",
     "refresh": "Refresh",
     "drag_hint": "Drag ZIP plugin, manifest.json or plugin folder here",
+    "choose_title": "Choose Plugin Source",
+    "choose_description": "Select a plugin ZIP file or a folder containing plugins",
     "select_file": "Select File",
     "select_folder": "Select Folder",
     "loading_plugins": "Loading plugins...",

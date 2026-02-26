@@ -724,6 +724,8 @@
     "checking": "检查中...",
     "refresh": "刷新",
     "drag_hint": "拖拽 ZIP 插件、manifest.json 或插件文件夹到此处",
+    "choose_title": "选择插件来源",
+    "choose_description": "选择插件 ZIP 文件或包含插件的文件夹",
     "select_file": "选择文件",
     "select_folder": "选择文件夹",
     "loading_plugins": "正在加载插件列表...",
