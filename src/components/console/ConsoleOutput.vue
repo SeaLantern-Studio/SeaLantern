@@ -39,6 +39,7 @@ function parseLogLine(line: string): ParsedLog {
 
 const parsedLogs = shallowRef<ParsedLog[]>([]);
 let lastParsedLength = 0;
+let internalScrollGuard = 0;
 
 watch(
   () => props.logs.length,
@@ -70,18 +71,28 @@ watch(
 
 function doScroll() {
   nextTick(() => {
-    if (!logContainer.value) return;
-    logContainer.value.scrollTop = logContainer.value.scrollHeight;
+    const el = logContainer.value;
+    if (!el) return;
+    internalScrollGuard += 1;
+    el.scrollTop = el.scrollHeight;
     requestAnimationFrame(() => {
-      if (!logContainer.value) return;
-      logContainer.value.scrollTop = logContainer.value.scrollHeight;
-      handleScroll();
+      const current = logContainer.value;
+      if (!current) {
+        internalScrollGuard = Math.max(0, internalScrollGuard - 1);
+        return;
+      }
+      // A second adjustment after paint ensures we still land at the true bottom
+      // when layout/line wrapping changes happen after new logs are rendered.
+      current.scrollTop = current.scrollHeight;
+      emit("scroll", current.scrollHeight - current.scrollTop - current.clientHeight > 40);
+      internalScrollGuard = Math.max(0, internalScrollGuard - 1);
     });
   });
 }
 
 function handleScroll() {
   if (!logContainer.value) return;
+  if (internalScrollGuard > 0) return;
   const el = logContainer.value;
   emit("scroll", el.scrollHeight - el.scrollTop - el.clientHeight > 40);
 }
