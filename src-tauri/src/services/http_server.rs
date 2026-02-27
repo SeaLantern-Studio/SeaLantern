@@ -97,7 +97,6 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
 async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
     let upload_dir = "/app/uploads";
     let mut uploaded_files = Vec::new();
-    let mut error_message = None;
 
     while let Ok(Some(field)) = multipart.next_field().await {
         let file_name = match field.file_name() {
@@ -115,7 +114,6 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
             Err(e) => {
                 let msg = format!("Failed to read file '{}': {}", file_name, e);
                 eprintln!("[Upload] {}", msg);
-                error_message = Some(msg);
                 break;
             }
         };
