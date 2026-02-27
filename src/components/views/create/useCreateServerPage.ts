@@ -108,8 +108,8 @@ export function useCreateServerPage() {
     }
     return !(
       selectedStartup.value.mode === "starter" &&
-        mcVersionDetectionFailed.value &&
-        selectedMcVersion.value.trim().length === 0
+      mcVersionDetectionFailed.value &&
+      selectedMcVersion.value.trim().length === 0
     );
   });
 
@@ -303,10 +303,7 @@ export function useCreateServerPage() {
 
       if (settings.cached_java_list && settings.cached_java_list.length > 0) {
         javaList.value = settings.cached_java_list;
-        selectedJava.value = resolvePreferredJavaPath(
-          javaList.value,
-          settings.default_java_path,
-        );
+        selectedJava.value = resolvePreferredJavaPath(javaList.value, settings.default_java_path);
       }
     } catch (error) {
       console.error("Failed to load default settings:", error);

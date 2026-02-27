@@ -61,8 +61,7 @@ export function useStarterCoreDownload(options: UseStarterCoreDownloadOptions) {
     () => coreDownloadTaskInfo.isFinished && coreDownloadTaskInfo.status === "Completed",
   );
   const hasStarterDownloadOptions = computed(
-    () =>
-      coreDownloadCoreOptions.value.length > 0 && coreDownloadMcVersionOptions.value.length > 0,
+    () => coreDownloadCoreOptions.value.length > 0 && coreDownloadMcVersionOptions.value.length > 0,
   );
   const isStarterOptionsUnavailable = computed(
     () =>

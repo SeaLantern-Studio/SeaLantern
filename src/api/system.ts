@@ -118,7 +118,7 @@ export const systemApi = {
   async removeFileIfExists(path: string): Promise<boolean> {
     return tauriInvoke("remove_file_if_exists", { path });
   },
-  
+
   async getDefaultRunPath(): Promise<string> {
     return tauriInvoke("get_default_run_path");
   },

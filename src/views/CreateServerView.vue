@@ -145,7 +145,6 @@ function goNextStep() {
   const nextStep = stepSequence.value[currentIndex + 1];
   goToStep(nextStep);
 }
-
 </script>
 
 <template>
