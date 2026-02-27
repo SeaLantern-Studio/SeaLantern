@@ -986,7 +986,6 @@
     "thread_count_required": "线程数不能为空",
     "thread_count_invalid_chars": "线程数只能包含数字",
     "thread_count_positive_integer": "线程数必须是一个正整数"
-    "completed": "已完成"
   },
   "dropzone": {
     "placeholder": "拖拽文件到此处或点击选择",

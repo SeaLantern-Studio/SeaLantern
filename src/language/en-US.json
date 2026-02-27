@@ -1020,7 +1020,6 @@
     "thread_count_required": "Thread count is required.",
     "thread_count_invalid_chars": "Thread count must contain digits only.",
     "thread_count_positive_integer": "Thread count must be a positive integer."
-    "completed": "Completed"
   },
   "dropzone": {
     "placeholder": "Drop file here or click to select",

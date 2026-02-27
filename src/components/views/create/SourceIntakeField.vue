@@ -79,6 +79,11 @@ function handleClear() {
   setSource("", "");
 }
 
+function clearSource(event: MouseEvent) {
+  event.stopPropagation();
+  handleClear();
+}
+
 function openChooser() {
   if (props.disabled) return;
   chooserOpen.value = true;
@@ -132,7 +137,7 @@ async function pickFolder() {
           {{ i18n.t("create.source_clear") }}
         </SLButton>
       </div>
-    </button>
+    </SLDropzone>
 
     <DialogRoot v-model:open="chooserOpen">
       <DialogPortal>

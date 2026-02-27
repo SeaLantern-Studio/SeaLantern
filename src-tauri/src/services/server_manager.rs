@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
