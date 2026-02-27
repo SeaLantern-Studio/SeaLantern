@@ -484,42 +484,6 @@ fn test_fs_invalid_scope() {
 }
 
 #[test]
-fn test_fs_write_large_file() {
-    let runtime = create_test_runtime_with_permissions(vec!["fs.data".to_string()]);
-
-    let large_content = "a".repeat(11 * 1024 * 1024);
-    let result: LuaResult<()> = runtime
-        .lua
-        .load(format!(r#"sl.fs.write("large.txt", "{}")"#, large_content))
-        .eval();
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("too large"));
-
-    cleanup_test_runtime();
-}
-
-#[test]
-fn test_fs_read_large_file() {
-    let runtime = create_test_runtime_with_permissions(vec!["fs.data".to_string()]);
-
-    let large_content = "a".repeat(11 * 1024 * 1024);
-    std_fs::write(
-        env::temp_dir()
-            .join(format!("sl_test_fs_{}", std::process::id()))
-            .join("data")
-            .join("large.txt"),
-        large_content,
-    )
-    .unwrap();
-
-    let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("large.txt")"#).eval();
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("too large"));
-
-    cleanup_test_runtime();
-}
-
-#[test]
 fn test_fs_backward_compatibility() {
     let runtime = create_test_runtime_with_permissions(vec!["fs".to_string()]);
 

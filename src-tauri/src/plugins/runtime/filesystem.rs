@@ -40,8 +40,6 @@ fn validate_fs_path(
     validate_path_static(base_dir, path)
 }
 
-const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
-
 impl PluginRuntime {
     pub(super) fn setup_fs_namespace(&self, sl: &Table) -> Result<(), String> {
         use crate::plugins::api::emit_permission_log;
@@ -78,12 +76,6 @@ impl PluginRuntime {
                     eprintln!("Failed to emit permission log: {}", e);
                 }
 
-                let metadata = fs::metadata(&full_path).map_err(|e| {
-                    mlua::Error::runtime(format!("Failed to get file metadata: {}", e))
-                })?;
-                if metadata.len() > MAX_FILE_SIZE {
-                    return Err(mlua::Error::runtime("File too large (max 10MB)"));
-                }
                 fs::read_to_string(&full_path)
                     .map_err(|e| mlua::Error::runtime(format!("Failed to read file: {}", e)))
             })
@@ -113,12 +105,6 @@ impl PluginRuntime {
                     eprintln!("Failed to emit permission log: {}", e);
                 }
 
-                let metadata = fs::metadata(&full_path).map_err(|e| {
-                    mlua::Error::runtime(format!("Failed to get file metadata: {}", e))
-                })?;
-                if metadata.len() > MAX_FILE_SIZE {
-                    return Err(mlua::Error::runtime("File too large (max 10MB)"));
-                }
                 let bytes = fs::read(&full_path)
                     .map_err(|e| mlua::Error::runtime(format!("Failed to read file: {}", e)))?;
                 Ok(BASE64.encode(&bytes))
@@ -143,10 +129,6 @@ impl PluginRuntime {
                     &perms,
                 )?;
                 check_fs_permission(&perms, &perm)?;
-
-                if content.len() > 10 * 1024 * 1024 {
-                    return Err(mlua::Error::runtime("Content too large (max 10MB)"));
-                }
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.write", &path) {

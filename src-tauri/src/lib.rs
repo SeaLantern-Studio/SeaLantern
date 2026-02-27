@@ -181,6 +181,8 @@ pub fn run() {
             plugin_commands::get_plugin_ui_snapshot,
             plugin_commands::get_plugin_sidebar_snapshot,
             plugin_commands::get_plugin_context_menu_snapshot,
+            plugin_commands::get_permission_list,
+            plugin_commands::get_plugin_permissions,
             mcs_plugin_commands::m_get_plugins,
             mcs_plugin_commands::m_toggle_plugin,
             mcs_plugin_commands::m_delete_plugin,

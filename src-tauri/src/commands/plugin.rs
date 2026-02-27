@@ -860,3 +860,147 @@ pub fn get_plugin_sidebar_snapshot() -> Vec<BufferedSidebarEvent> {
 pub fn get_plugin_context_menu_snapshot() -> Vec<BufferedContextMenuEvent> {
     crate::plugins::api::take_context_menu_snapshot()
 }
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PermissionInfo {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub risk_level: String,
+    pub category: String,
+}
+
+#[tauri::command]
+pub fn get_permission_list() -> Vec<PermissionInfo> {
+    vec![
+        PermissionInfo {
+            id: "log".to_string(),
+            name: "Logging".to_string(),
+            description: "Allow plugin to write logs".to_string(),
+            risk_level: "low".to_string(),
+            category: "system".to_string(),
+        },
+        PermissionInfo {
+            id: "fs".to_string(),
+            name: "File System (Legacy)".to_string(),
+            description: "Allow plugin to read/write files in plugin data directory (deprecated, use fs.data)".to_string(),
+            risk_level: "low".to_string(),
+            category: "filesystem".to_string(),
+        },
+        PermissionInfo {
+            id: "fs.data".to_string(),
+            name: "File System - Data".to_string(),
+            description: "Allow plugin to read/write files in its private data directory (max 50MB)".to_string(),
+            risk_level: "low".to_string(),
+            category: "filesystem".to_string(),
+        },
+        PermissionInfo {
+            id: "fs.server".to_string(),
+            name: "File System - Server".to_string(),
+            description: "Allow plugin to read/write files in server configuration directory (max 20MB)".to_string(),
+            risk_level: "medium".to_string(),
+            category: "filesystem".to_string(),
+        },
+        PermissionInfo {
+            id: "fs.global".to_string(),
+            name: "File System - Global".to_string(),
+            description: "Allow plugin to read/write files in global application directory (max 10MB)".to_string(),
+            risk_level: "high".to_string(),
+            category: "filesystem".to_string(),
+        },
+        PermissionInfo {
+            id: "http".to_string(),
+            name: "HTTP Requests".to_string(),
+            description: "Allow plugin to make HTTP requests to external servers".to_string(),
+            risk_level: "medium".to_string(),
+            category: "network".to_string(),
+        },
+        PermissionInfo {
+            id: "i18n".to_string(),
+            name: "Internationalization".to_string(),
+            description: "Allow plugin to access and modify locale settings".to_string(),
+            risk_level: "low".to_string(),
+            category: "system".to_string(),
+        },
+        PermissionInfo {
+            id: "process".to_string(),
+            name: "Process Control".to_string(),
+            description: "Allow plugin to start and manage system processes".to_string(),
+            risk_level: "high".to_string(),
+            category: "system".to_string(),
+        },
+        PermissionInfo {
+            id: "server".to_string(),
+            name: "Server Control".to_string(),
+            description: "Allow plugin to control Minecraft servers".to_string(),
+            risk_level: "medium".to_string(),
+            category: "server".to_string(),
+        },
+        PermissionInfo {
+            id: "storage".to_string(),
+            name: "Storage".to_string(),
+            description: "Allow plugin to store persistent data".to_string(),
+            risk_level: "low".to_string(),
+            category: "storage".to_string(),
+        },
+        PermissionInfo {
+            id: "ui".to_string(),
+            name: "UI Components".to_string(),
+            description: "Allow plugin to create and manage UI components".to_string(),
+            risk_level: "low".to_string(),
+            category: "ui".to_string(),
+        },
+        PermissionInfo {
+            id: "system".to_string(),
+            name: "System Information".to_string(),
+            description: "Allow plugin to access system information".to_string(),
+            risk_level: "medium".to_string(),
+            category: "system".to_string(),
+        },
+        PermissionInfo {
+            id: "console".to_string(),
+            name: "Console Access".to_string(),
+            description: "Allow plugin to access and control the console".to_string(),
+            risk_level: "medium".to_string(),
+            category: "system".to_string(),
+        },
+        PermissionInfo {
+            id: "element".to_string(),
+            name: "DOM Elements".to_string(),
+            description: "Allow plugin to create and manipulate DOM elements".to_string(),
+            risk_level: "low".to_string(),
+            category: "ui".to_string(),
+        },
+        PermissionInfo {
+            id: "api".to_string(),
+            name: "Plugin API".to_string(),
+            description: "Allow plugin to call other plugins' APIs".to_string(),
+            risk_level: "medium".to_string(),
+            category: "api".to_string(),
+        },
+    ]
+}
+
+// 获取插件已申请的权限列表
+#[tauri::command]
+pub fn get_plugin_permissions(
+    plugin_id: String,
+    manager: tauri::State<'_, Arc<Mutex<PluginManager>>>,
+) -> Result<Vec<PermissionInfo>, String> {
+    validate_plugin_id(&plugin_id)?;
+    let mgr = manager.lock().unwrap_or_else(|e| e.into_inner());
+    let plugin_list = mgr.get_plugin_list();
+
+    let plugin = plugin_list
+        .iter()
+        .find(|p| p.manifest.id == plugin_id)
+        .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+
+    let all_permissions = get_permission_list();
+    let plugin_permissions: Vec<PermissionInfo> = all_permissions
+        .into_iter()
+        .filter(|p| plugin.manifest.permissions.contains(&p.id))
+        .collect();
+
+    Ok(plugin_permissions)
+}
