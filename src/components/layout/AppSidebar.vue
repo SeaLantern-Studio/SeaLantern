@@ -384,12 +384,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
   <aside class="sidebar glass-strong" :class="{ collapsed: ui.sidebarCollapsed }">
     <div class="sidebar-logo" @click="navigateTo('/')">
       <div class="logo-icon">
-        <img
-          :src="logoSvg"
-          width="28"
-          height="28"
-          :alt="i18n.t('common.app_name')"
-        />
+        <img :src="logoSvg" width="28" height="28" :alt="i18n.t('common.app_name')" />
       </div>
       <transition name="fade">
         <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t("common.app_name") }}</span>

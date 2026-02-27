@@ -80,15 +80,15 @@ async function handleDownload() {
 
   const threadCountValue = threadCount.value;
   if (threadCountValue == "") {
-    showError("线程数不能为空");
+    showError(i18n.t("download-file.thread_count_empty"));
     return;
   }
   if (!/^-?\d+$/.test(threadCountValue)) {
-    showError("字符不合法");
+    showError(i18n.t("download-file.thread_count_invalid"));
     return;
   }
   if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    showError("线程数必须是一个正整数");
+    showError(i18n.t("download-file.thread_count_positive"));
     return;
   }
   const threadCountInt = parseInt(threadCountValue, 10);

@@ -52,7 +52,9 @@ const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
 const isRunning = computed(() => serverStatus.value === "Running");
-const isStopped = computed(() => serverStatus.value === "Stopped" || serverStatus.value === "Error" || !serverStatus.value);
+const isStopped = computed(
+  () => serverStatus.value === "Stopped" || serverStatus.value === "Error" || !serverStatus.value,
+);
 const isStopping = computed(() => serverStatus.value === "Stopping");
 const isStarting = computed(() => serverStatus.value === "Starting");
 

@@ -245,6 +245,7 @@
     "enter_command_content": "コマンド内容を入力",
     "cancel": "キャンセル",
     "delete": "削除",
+    "save": "保存",
     "add": "追加",
     "update": "更新",
     "back_to_bottom": "最下部へ",
@@ -254,7 +255,10 @@
     "running": "実行中",
     "starting": "起動中",
     "stopping": "停止中",
-    "stopped": "停止済み"
+    "stopped": "停止済み",
+    "no_server": "サーバーなし",
+    "create_server_first": "先にサーバーを作成して選択してください",
+    "suggestion_hint": "Tab 補完 / Up Down 選択"
   },
   "config": {
     "title": "設定編集",
@@ -639,6 +643,9 @@
     "save_folder": "保存先",
     "filename": "ファイル名",
     "thread_count": "スレッド数",
+    "thread_count_empty": "スレッド数を入力してください",
+    "thread_count_invalid": "無効な文字です",
+    "thread_count_positive": "スレッド数は正の整数で入力してください",
     "cancel": "キャンセル",
     "download": "ダウンロード",
     "browse": "参照",
@@ -646,5 +653,16 @@
     "status-finished": "ダウンロード完了",
     "failed": "ダウンロード失敗",
     "completed": "完了"
+  },
+  "dropzone": {
+    "placeholder": "ファイルをドラッグするかクリックして選択",
+    "support_both": "ファイルとフォルダをサポート",
+    "support_files": "ファイルをサポート",
+    "support_folders": "フォルダをサポート",
+    "error_no_path": "ドロップされたファイルのパスを取得できません",
+    "error_unsupported_type": "サポートされていないファイルタイプです"
+  },
+  "downloader": {
+    "connection_lost": "タスク接続が失われました"
   }
 }

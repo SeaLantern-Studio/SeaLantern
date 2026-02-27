@@ -158,7 +158,7 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
       </div>
 
       <!-- Join Card -->
-      <div 
+      <div
         class="contributor-card glass-card join-card"
         :style="{ 'grid-column-end': `span ${joinCardSpan}` }"
       >
@@ -380,7 +380,7 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
   .contributor-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .join-card {
     grid-column-end: span 2 !important;
   }
@@ -390,7 +390,7 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
   .contributor-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .join-card {
     grid-column-end: span 1 !important;
   }

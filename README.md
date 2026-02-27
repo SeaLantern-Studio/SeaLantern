@@ -19,8 +19,7 @@
 
 <kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
 
-有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
----
+## 有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
 </div>
 
@@ -35,6 +34,7 @@
 - 检查更新，一键下载新版本
 
 ## 快速开始
+
 (Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击这里跳转)
 
 [前往SL官方文档](https://docs.ideaflash.cn/zh/intro)

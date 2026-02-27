@@ -6,11 +6,7 @@ import AppearanceCard from "@components/views/paint/AppearanceCard.vue";
 import SettingsActions from "@components/views/paint/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/paint/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/paint/ResetConfirmModal.vue";
-import {
-  settingsApi,
-  getSystemFonts,
-  type AppSettings,
-} from "@api/settings";
+import { settingsApi, getSystemFonts, type AppSettings } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { usePluginStore } from "@stores/pluginStore";

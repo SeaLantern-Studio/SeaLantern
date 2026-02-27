@@ -21,8 +21,8 @@
   "[css]": {
     "editor.suggest.insertMode": "replace",
     "editor.formatOnSave": true
-},
-"[rust]": {
+  },
+  "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer"
-}
+  }
 }
