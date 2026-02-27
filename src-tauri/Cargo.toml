@@ -61,6 +61,7 @@ image = { version = "0.25", default-features = false, features = [
 ] }
 url = "2.5"
 rusqlite = { version = "0.32", features = ["bundled"] }
+ipnet = "2.10"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = ["Win32_System_Performance", "Win32_Foundation"] }
