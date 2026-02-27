@@ -75,7 +75,7 @@ pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, Strin
     let has_update = compare_versions(current_clean, aur_clean);
 
     let aur_helper = get_aur_helper().unwrap_or_else(|| "yay".to_string());
-    let update_command = format!("{} -Rns sealantern && {} -S sealantern", aur_helper, aur_helper);
+    let update_command = format!("{} -Syu sealantern", aur_helper, aur_helper);
 
     // 构建 release_notes 文本
     let release_notes = if has_update {
