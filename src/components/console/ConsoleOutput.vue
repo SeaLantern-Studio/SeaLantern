@@ -1,123 +1,246 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, shallowRef } from "vue";
+import { ref, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 import { i18n } from "@language";
 
 interface Props {
-  logs: string[];
   consoleFontSize: number;
   userScrolledUp: boolean;
+  maxLogLines: number;
 }
 
-interface ParsedLog {
-  isParsed: boolean;
-  time?: string;
-  source?: string;
-  level?: string;
-  message?: string;
-  raw: string;
-}
-
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  maxLogLines: 5000,
+});
 
 const emit = defineEmits<{
   (e: "scroll", value: boolean): void;
   (e: "scrollToBottom"): void;
 }>();
 
-const logContainer = ref<HTMLElement | null>(null);
+const terminalHost = ref<HTMLDivElement | null>(null);
 
 const LOG_REGEX = /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/;
 
-function parseLogLine(line: string): ParsedLog {
-  const match = line.match(LOG_REGEX);
-  if (match) {
-    const [, time, source, level, message] = match;
-    return { isParsed: true, time, source, level, message, raw: line };
-  }
-  return { isParsed: false, raw: line };
+let terminal: Terminal | null = null;
+let fitAddon: FitAddon | null = null;
+let viewportEl: HTMLElement | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let removeViewportScrollListener: (() => void) | null = null;
+let hasAnyLine = false;
+
+function cssVar(name: string, fallback: string): string {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
 }
 
-const parsedLogs = shallowRef<ParsedLog[]>([]);
-let lastParsedLength = 0;
+function getLevelColor(level: string): string {
+  switch (level) {
+    case "ERROR":
+    case "FATAL":
+      return "31";
+    case "WARN":
+      return "33";
+    case "DEBUG":
+      return "36";
+    case "INFO":
+    default:
+      return "32";
+  }
+}
 
-watch(
-  () => props.logs.length,
-  (newLength) => {
-    if (newLength === 0) {
-      parsedLogs.value = [];
-      lastParsedLength = 0;
-      return;
-    }
-    if (newLength > lastParsedLength) {
-      const newLogs = props.logs.slice(lastParsedLength);
-      const newParsed = newLogs.map(parseLogLine);
-      parsedLogs.value = [...parsedLogs.value, ...newParsed];
-      lastParsedLength = newLength;
-    } else if (newLength < lastParsedLength) {
-      parsedLogs.value = props.logs.map(parseLogLine);
-      lastParsedLength = newLength;
-    }
-  },
-  { immediate: true },
-);
+function formatLine(line: string): string {
+  const parsed = line.match(LOG_REGEX);
+  if (parsed) {
+    const [, time, source, level, message] = parsed;
+    const levelColor = getLevelColor(level);
+    return `\x1b[90m[${time}]\x1b[0m \x1b[${levelColor}m[${source}/${level}]\x1b[0m ${message}`;
+  }
 
-watch(
-  () => props.logs.length,
-  () => {
-    if (!props.userScrolledUp) doScroll();
-  },
-);
+  if (line.startsWith(">")) {
+    return `\x1b[36;1m${line}\x1b[0m`;
+  }
+  if (line.startsWith("[Sea Lantern]")) {
+    return `\x1b[32;3m${line}\x1b[0m`;
+  }
+  if (line.includes("[ERROR]") || line.includes("ERROR") || line.includes("[STDERR]")) {
+    return `\x1b[31m${line}\x1b[0m`;
+  }
+  if (line.includes("[WARN]") || line.includes("WARNING")) {
+    return `\x1b[33m${line}\x1b[0m`;
+  }
+  return line;
+}
+
+function fitTerminal() {
+  fitAddon?.fit();
+}
+
+function renderEmptyState() {
+  if (!terminal) return;
+  terminal.writeln(`\x1b[2m${i18n.t("console.waiting_for_output")}\x1b[0m`);
+}
+
+function appendLines(lines: string[]) {
+  if (!terminal) return;
+  if (lines.length === 0) return;
+
+  if (!hasAnyLine) {
+    terminal.clear();
+    terminal.reset();
+    hasAnyLine = true;
+  }
+
+  for (const line of lines) {
+    terminal.writeln(formatLine(line));
+  }
+
+  if (!props.userScrolledUp) {
+    doScroll();
+  }
+}
+
+function clear() {
+  if (!terminal) return;
+  terminal.clear();
+  terminal.reset();
+  hasAnyLine = false;
+  renderEmptyState();
+  emit("scroll", false);
+}
+
+function getAllPlainText(): string {
+  if (!terminal || !hasAnyLine) return "";
+
+  const buffer = terminal.buffer.active;
+  const lines: string[] = [];
+  for (let i = 0; i < buffer.length; i++) {
+    const line = buffer.getLine(i);
+    if (!line) continue;
+    lines.push(line.translateToString(true));
+  }
+  return lines.join("\n");
+}
+
+function setupViewportScrollTracking() {
+  if (!terminalHost.value) return;
+
+  const viewport = terminalHost.value.querySelector(".xterm-viewport");
+  if (!(viewport instanceof HTMLElement)) return;
+
+  viewportEl = viewport;
+
+  const onScroll = () => {
+    if (!viewportEl) return;
+    const delta = viewportEl.scrollHeight - viewportEl.scrollTop - viewportEl.clientHeight;
+    emit("scroll", delta > 40);
+  };
+
+  viewportEl.addEventListener("scroll", onScroll);
+  removeViewportScrollListener = () => {
+    viewportEl?.removeEventListener("scroll", onScroll);
+  };
+}
 
 function doScroll() {
   nextTick(() => {
-    if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight;
+    terminal?.scrollToBottom();
+    if (viewportEl) {
+      viewportEl.scrollTop = viewportEl.scrollHeight;
+    }
+    emit("scroll", false);
   });
 }
 
-function handleScroll() {
-  if (!logContainer.value) return;
-  const el = logContainer.value;
-  emit("scroll", el.scrollHeight - el.scrollTop - el.clientHeight > 40);
-}
+onMounted(() => {
+  if (!terminalHost.value || terminal) return;
 
-defineExpose({ doScroll });
+  terminal = new Terminal({
+    convertEol: true,
+    allowTransparency: false,
+    disableStdin: true,
+    fontFamily: cssVar("--sl-font-mono", "monospace"),
+    fontSize: props.consoleFontSize,
+    lineHeight: 1,
+    scrollback: Math.max(100, props.maxLogLines),
+    theme: {
+      background: cssVar("--sl-bg-secondary", "#111827"),
+      foreground: cssVar("--sl-text-primary", "#e5e7eb"),
+      cursor: cssVar("--sl-primary", "#3b82f6"),
+      selectionBackground: cssVar("--sl-primary-bg", "#1e3a8a"),
+    },
+  });
+
+  fitAddon = new FitAddon();
+  terminal.loadAddon(fitAddon);
+  terminal.open(terminalHost.value);
+  terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+      const selectedText = terminal?.getSelection() || "";
+      if (selectedText.length > 0) {
+        void navigator.clipboard.writeText(selectedText);
+        return false;
+      }
+    }
+    return true;
+  });
+  fitTerminal();
+  setupViewportScrollTracking();
+  clear();
+
+  resizeObserver = new ResizeObserver(() => {
+    fitTerminal();
+  });
+  resizeObserver.observe(terminalHost.value);
+
+  window.addEventListener("resize", fitTerminal);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", fitTerminal);
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+  removeViewportScrollListener?.();
+  removeViewportScrollListener = null;
+  viewportEl = null;
+  fitAddon = null;
+  terminal?.dispose();
+  terminal = null;
+  hasAnyLine = false;
+});
+
+watch(
+  () => props.consoleFontSize,
+  (size) => {
+    if (!terminal) return;
+    terminal.options.fontSize = size;
+    fitTerminal();
+  },
+);
+
+watch(
+  () => props.maxLogLines,
+  (value) => {
+    if (!terminal) return;
+    terminal.options.scrollback = Math.max(100, value || 5000);
+  },
+);
+
+watch(
+  () => props.userScrolledUp,
+  (value) => {
+    if (!value) doScroll();
+  },
+);
+
+defineExpose({ doScroll, appendLines, clear, getAllPlainText });
 </script>
 
 <template>
-  <div
-    class="console-output"
-    ref="logContainer"
-    @scroll="handleScroll"
-    :style="{ fontSize: consoleFontSize + 'px' }"
-  >
-    <div
-      v-for="(line, i) in logs"
-      :key="i"
-      class="log-line"
-      :class="{
-        'log-error':
-          line.includes('[ERROR]') || line.includes('ERROR') || line.includes('[STDERR]'),
-        'log-warn': line.includes('[WARN]') || line.includes('WARNING'),
-        'log-command': line.startsWith('>'),
-        'log-system': line.startsWith('[Sea Lantern]'),
-      }"
-    >
-      <!-- 解析日志行，提取时间和等级 -->
-      <template v-if="parsedLogs[i].isParsed">
-        <span class="log-time">[{{ parsedLogs[i].time }}]</span>
-        <span class="log-level" :class="'level-' + parsedLogs[i].level?.toLowerCase()"
-          >[{{ parsedLogs[i].source }}/{{ parsedLogs[i].level }}]</span
-        >
-        <span class="log-content">{{ parsedLogs[i].message }}</span>
-      </template>
-      <!-- 对于不符合标准格式的日志行，直接显示 -->
-      <template v-else>
-        {{ line }}
-      </template>
-    </div>
-    <div v-if="logs.length === 0" class="log-empty">
-      {{ i18n.t("console.waiting_for_output") }}
-    </div>
+  <div class="console-output">
+    <div ref="terminalHost" class="terminal-host"></div>
   </div>
   <div v-if="userScrolledUp" class="scroll-btn" @click="emit('scrollToBottom')">
     {{ i18n.t("console.back_to_bottom") }}
@@ -127,79 +250,36 @@ defineExpose({ doScroll });
 <style scoped>
 .console-output {
   flex: 1;
+  display: flex;
   background: var(--sl-bg-secondary);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-md);
-  overflow-y: auto;
-  font-family: var(--sl-font-mono);
-  line-height: 1.7;
-  color: var(--sl-text-primary);
   min-height: 0;
+  overflow: hidden;
+  padding: var(--sl-space-md);
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
 }
-.log-line {
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-.log-error {
-  color: var(--sl-error);
-  font-weight: 500;
-}
-.log-warn {
-  color: var(--sl-warning);
-  font-weight: 500;
-}
-.log-command {
-  color: var(--sl-info);
-  font-weight: 600;
-}
-.log-system {
-  color: var(--sl-success);
-  font-style: italic;
-}
-.log-empty {
-  color: var(--sl-text-tertiary);
-  font-style: italic;
+
+.terminal-host {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
 }
 
-/* 日志时间和等级样式 */
-.log-time {
-  color: var(--sl-text-tertiary);
-  margin-right: 8px;
-}
-
-.log-level {
-  margin-right: 8px;
-  font-weight: 500;
-}
-
-.log-level.level-error {
-  color: var(--sl-error);
-}
-
-.log-level.level-info {
-  color: var(--sl-success);
-}
-
-.log-level.level-warn {
-  color: var(--sl-warning);
-}
-
-.log-level.level-debug {
-  color: var(--sl-info);
-}
-
-.log-level.level-fatal {
-  color: var(--sl-error);
-  font-weight: 700;
-}
-
-.log-content {
+.terminal-host :deep(.xterm) {
+  height: 100%;
   color: var(--sl-text-primary);
+  font-family: var(--sl-font-mono);
 }
+
+.terminal-host :deep(.xterm-viewport) {
+  overflow-y: auto !important;
+  background: var(--sl-bg-secondary);
+}
+
 .scroll-btn {
   position: absolute;
   bottom: 70px;

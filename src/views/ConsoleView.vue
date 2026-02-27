@@ -5,25 +5,32 @@ import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
-import { useConsoleStore } from "@stores/consoleStore";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();
-const consoleStore = useConsoleStore();
+
+interface ConsoleOutputExpose {
+  doScroll: () => void;
+  appendLines: (lines: string[]) => void;
+  clear: () => void;
+  getAllPlainText: () => string;
+}
 
 const commandInput = ref("");
-const consoleOutputRef = ref<InstanceType<typeof ConsoleOutput> | null>(null);
+const consoleOutputRef = ref<ConsoleOutputExpose | null>(null);
 const userScrolledUp = ref(false);
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref(-1);
 const consoleFontSize = ref(13);
+const maxLogLines = ref(5000);
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
-const isPolling = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let unlistenLogLine: UnlistenFn | null = null;
 
 const showCommandModal = ref(false);
 const commandModalTitle = ref("");
@@ -47,8 +54,6 @@ const quickCommands = computed(() => [
 
 const serverId = computed(() => serverStore.currentServerId || "");
 
-const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
-
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
 const isRunning = computed(() => serverStatus.value === "Running");
@@ -58,18 +63,11 @@ const isStopped = computed(
 const isStopping = computed(() => serverStatus.value === "Stopping");
 const isStarting = computed(() => serverStatus.value === "Starting");
 
-watch(
-  () => currentLogs.value.length,
-  () => {
-    if (!userScrolledUp.value) doScroll();
-  },
-);
-
 onMounted(async () => {
-  // Load console font size from settings
   try {
     const settings = await settingsApi.get();
     consoleFontSize.value = settings.console_font_size;
+    maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
   } catch (e) {
     console.error("Failed to load settings:", e);
   }
@@ -81,38 +79,53 @@ onMounted(async () => {
   }
   if (serverId.value) {
     await serverStore.refreshStatus(serverId.value);
+    await syncLogsOnce(serverId.value);
   }
+  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
+    const sid = serverId.value;
+    if (!sid || server_id !== sid) return;
+    consoleOutputRef.value?.appendLines([line]);
+  });
   startPolling();
   nextTick(() => doScroll());
 });
 
 onUnmounted(() => {
   stopPolling();
+  if (unlistenLogLine) {
+    unlistenLogLine();
+    unlistenLogLine = null;
+  }
 });
+
+watch(
+  () => serverId.value,
+  async (sid) => {
+    if (!sid) return;
+    await serverStore.refreshStatus(sid);
+    await syncLogsOnce(sid);
+    userScrolledUp.value = false;
+    nextTick(() => doScroll());
+  },
+);
+
+async function syncLogsOnce(sid: string) {
+  consoleOutputRef.value?.clear();
+  try {
+    const lines = await serverApi.getLogs(sid, 0);
+    consoleOutputRef.value?.appendLines(lines);
+  } catch (_e) {}
+}
 
 function startPolling() {
   stopPolling();
   pollTimer = setInterval(async () => {
-    // 防止并发执行
-    if (isPolling.value) return;
-    isPolling.value = true;
-
     try {
       const sid = serverId.value;
       if (!sid) return;
-      const cursor = consoleStore.getLogCursor(sid);
-      try {
-        const newLines = await serverApi.getLogs(sid, cursor);
-        if (newLines.length > 0) {
-          consoleStore.appendLogs(sid, newLines);
-          consoleStore.setLogCursor(sid, cursor + newLines.length);
-        }
-      } catch (_e) {}
       await serverStore.refreshStatus(sid);
-    } finally {
-      isPolling.value = false;
-    }
-  }, 800);
+    } catch (_e) {}
+  }, 1200);
 }
 
 function stopPolling() {
@@ -126,7 +139,7 @@ async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
-  consoleStore.appendLocal(sid, "> " + command);
+  consoleOutputRef.value?.appendLines(["> " + command]);
   commandHistory.value.push(command);
   if (commandHistory.value.length > 500) {
     commandHistory.value.splice(0, commandHistory.value.length - 500);
@@ -135,7 +148,7 @@ async function sendCommand(cmd?: string) {
   try {
     await serverApi.sendCommand(sid, command);
   } catch (e) {
-    consoleStore.appendLocal(sid, "[ERROR] " + String(e));
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
   }
   commandInput.value = "";
   userScrolledUp.value = false;
@@ -154,7 +167,7 @@ async function handleStart() {
     await serverApi.start(sid);
     await serverStore.refreshStatus(sid);
   } catch (e) {
-    consoleStore.appendLocal(sid, "[ERROR] " + String(e));
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
   } finally {
     stopStartLoading();
   }
@@ -168,25 +181,23 @@ async function handleStop() {
     await serverApi.stop(sid);
     await serverStore.refreshStatus(sid);
   } catch (e) {
-    consoleStore.appendLocal(sid, "[ERROR] " + String(e));
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
   } finally {
     stopStopLoading();
   }
 }
 
 async function exportLogs() {
-  const logs = currentLogs.value;
-  if (logs.length === 0) return;
-  // Copy to clipboard as fallback
-  const text = logs.join("\n");
+  const text = consoleOutputRef.value?.getAllPlainText() || "";
+  if (!text.trim()) return;
+  const lineCount = text.split("\n").length;
   try {
     await navigator.clipboard.writeText(text);
-    consoleStore.appendLocal(
-      serverId.value,
-      "[Sea Lantern] Logs copied to clipboard (" + logs.length + " lines)",
-    );
+    consoleOutputRef.value?.appendLines([
+      "[Sea Lantern] 日志已复制到剪贴板（" + lineCount + " 行）",
+    ]);
   } catch (_e) {
-    consoleStore.appendLocal(serverId.value, "[Sea Lantern] Failed to copy logs");
+    consoleOutputRef.value?.appendLines(["[Sea Lantern] 复制日志到剪贴板失败"]);
   }
 }
 
@@ -218,15 +229,7 @@ function getStatusText(): string {
 }
 
 function handleClearLogs() {
-  const sid = serverId.value;
-  console.log("[清屏] serverId:", sid);
-  console.log("[清屏] 当前日志数量:", currentLogs.value.length);
-  if (!sid) {
-    console.log("[清屏] serverId 为空，取消操作");
-    return;
-  }
-  consoleStore.clearLogs(sid);
-  console.log("[清屏] 清空后日志数量:", currentLogs.value.length);
+  consoleOutputRef.value?.clear();
   userScrolledUp.value = false;
 }
 
@@ -313,8 +316,8 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
       <!-- 控制台输出部分 -->
       <ConsoleOutput
         ref="consoleOutputRef"
-        :logs="currentLogs"
         :consoleFontSize="consoleFontSize"
+        :maxLogLines="maxLogLines"
         :userScrolledUp="userScrolledUp"
         @scroll="(value) => (userScrolledUp = value)"
         @scrollToBottom="

@@ -11,6 +11,7 @@ pub mod mod_manager;
 pub mod player_manager;
 pub mod server_id_manager;
 pub mod server_installer;
+pub mod server_log_pipeline;
 pub mod server_manager;
 pub mod settings_manager;
 pub mod starter_installer_links;
