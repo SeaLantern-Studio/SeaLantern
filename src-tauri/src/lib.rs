@@ -118,6 +118,7 @@ pub fn run() {
             system_commands::open_file,
             system_commands::open_folder,
             system_commands::get_default_run_path,
+            system_commands::get_safe_mode_status,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -230,12 +231,21 @@ pub fn run() {
 
             let mut plugin_manager = PluginManager::new(plugins_dir, data_dir);
 
+            // Check for safe mode
+            let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
+
+            // Always scan plugins to load the list, even in safe mode
             if let Err(e) = plugin_manager.scan_plugins() {
                 eprintln!("Failed to scan plugins: {}", e);
             }
 
-            // 自动启用上启用的插件
-            plugin_manager.auto_enable_plugins();
+            if safe_mode {
+                eprintln!("Safe mode enabled: plugins will be disabled");
+                // In safe mode, don't enable any plugins
+            } else {
+                // 自动启用上启用的插件
+                plugin_manager.auto_enable_plugins();
+            }
 
             let shared_runtimes = plugin_manager.get_shared_runtimes();
             let shared_runtimes_for_server_ready = Arc::clone(&shared_runtimes);
@@ -477,9 +487,23 @@ pub fn run() {
 
             app.manage(manager);
 
+            // Check if currently in safe mode
+            let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
+
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
+            let safe_mode_item = if safe_mode {
+                MenuItem::with_id(
+                    app,
+                    "exit-safe-mode",
+                    "退出安全模式并退出程序",
+                    true,
+                    None::<&str>,
+                )?
+            } else {
+                MenuItem::with_id(app, "restart-safe-mode", "以安全模式重启", true, None::<&str>)?
+            };
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[&show_item, &safe_mode_item, &quit_item])?;
 
             let icon_bytes = include_bytes!("../icons/icon.png");
             let img = image::load_from_memory(icon_bytes)
@@ -503,6 +527,43 @@ pub fn run() {
                                 // 设置焦点
                                 let _ = window.set_focus();
                             }
+                        }
+                        "restart-safe-mode" => {
+                            // Restart in safe mode
+                            let settings = services::global::settings_manager().get();
+                            if settings.close_servers_on_exit {
+                                services::global::server_manager().stop_all_servers();
+                            }
+                            if let Some(manager) = app.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>() {
+                                if let Ok(mut m) = manager.lock() {
+                                    m.disable_all_plugins_for_shutdown();
+                                }
+                            }
+
+                            // Restart with --safe-mode flag
+                            let exe_path = std::env::current_exe()
+                                .unwrap_or_else(|_| std::path::PathBuf::from("SeaLantern.exe"));
+                            let _ = std::process::Command::new(exe_path)
+                                .arg("--safe-mode")
+                                .spawn();
+
+                            app.exit(0);
+                        }
+                        "exit-safe-mode" => {
+                            let settings = services::global::settings_manager().get();
+                            if settings.close_servers_on_exit {
+                                services::global::server_manager().stop_all_servers();
+                            }
+                            if let Some(manager) = app.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>() {
+                                if let Ok(mut m) = manager.lock() {
+                                    m.disable_all_plugins_for_shutdown();
+                                }
+                            }
+                            app.exit(0);
                         }
                         "quit" => {
                             let settings = services::global::settings_manager().get();

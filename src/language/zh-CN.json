@@ -760,6 +760,8 @@
     "update_available": "有更新可用",
     "settings": "插件设置",
     "settings_title": "{{name}} 设置",
+    "safe_mode_disabled": "安全模式下已禁用",
+    "safe_mode": "安全模式",
     "permissions": "权限",
     "dependencies": "依赖",
     "optional_dependencies": "可选依赖",
