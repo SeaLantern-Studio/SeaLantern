@@ -316,7 +316,7 @@ fn handle_get_server_logs(
     Box::pin(async move {
         let req: GetLogsRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        let result = server_commands::get_server_logs(req.id, req.since);
+        let result = server_commands::get_server_logs(req.id, req.since,None);
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
