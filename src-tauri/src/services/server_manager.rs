@@ -413,7 +413,7 @@ impl ServerManager {
             // 路径包含分隔符，可能已经包含UUID子目录
             let path = PathBuf::from(&base_path);
             // 检查路径的最后一级是否是UUID格式（32位十六进制字符）
-            if let Some(last_comp) = path.components().last() {
+            if let Some(last_comp) = path.components().next_back() {
                 let comp_str = last_comp.as_os_str().to_string_lossy();
                 // UUID格式：32位十六进制字符（包含或不包含连字符）
                 if comp_str.len() == 32 && comp_str.chars().all(|c| c.is_ascii_hexdigit()) {
