@@ -8,9 +8,14 @@ const isPullRequestSummaryCommit = (message) => {
   return lines.slice(1).some((line) => line.trim().startsWith("* "));
 };
 
+const isFixupCommit = (message) => {
+  const header = message.split("\n")[0]?.trim() ?? "";
+  return /^fixup!?$/i.test(header);
+};
+
 module.exports = {
   extends: ["@commitlint/config-conventional"],
-  ignores: [(message) => message.startsWith("Merge "), isPullRequestSummaryCommit],
+  ignores: [(message) => message.startsWith("Merge "), isPullRequestSummaryCommit, isFixupCommit],
   rules: {
     "type-enum": [
       2,
