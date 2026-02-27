@@ -7,7 +7,7 @@ import { i18n } from "@language";
 // 获取服务器ID，定义历史指令缓存参数
 const serverStore = useServerStore();
 const serverId = computed(() => serverStore.currentServerId || "");
-const COMMAND_HISTORY_CACHE_KEY = "commond_history";
+const COMMAND_HISTORY_CACHE_KEY = "command_history";
 const COMMAND_HISTORY_MAX_LENGTH = 20;
 
 interface Props {
@@ -30,9 +30,15 @@ const lastTabWordIndex = ref(-1);
 const tabCycleIndex = ref(0);
 
 let isCompleting = false;
+
+// 初始化历史记录保存变量
 const commandHistoryCacheAll = JSON.parse(localStorage.getItem(COMMAND_HISTORY_CACHE_KEY) || "{}");
-const commandHistoryCache = commandHistoryCacheAll[serverId.value] || [];
+const commandHistoryCache = computed(() => {
+  commandHistoryCacheAll[serverId.value] = commandHistoryCacheAll[serverId.value] || [];
+  return commandHistoryCacheAll[serverId.value];
+});
 let commandHistoryIndex = -1;
+let commandHistoryCover = "";
 
 // 命令树结构：按词层级组织
 const commandTree: Record<string, string[]> = {
@@ -164,15 +170,16 @@ function sendCommand() {
   emit("sendCommand", command);
 
   // 保存历史记录
-  if (commandHistoryCache.unshift(command) > COMMAND_HISTORY_MAX_LENGTH) {
-    commandHistoryCache.splice(
+  if (commandHistoryCache.value.unshift(command) > COMMAND_HISTORY_MAX_LENGTH) {
+    commandHistoryCache.value.splice(
       COMMAND_HISTORY_MAX_LENGTH,
-      commandHistoryCache.length - COMMAND_HISTORY_MAX_LENGTH,
+      commandHistoryCache.value.length - COMMAND_HISTORY_MAX_LENGTH,
     );
   }
   localStorage.setItem(COMMAND_HISTORY_CACHE_KEY, JSON.stringify(commandHistoryCacheAll));
 
   // 重置输入
+  commandHistoryCover = "";
   commandHistoryIndex = -1;
   commandInput.value = "";
   showSuggestions.value = false;
@@ -245,15 +252,27 @@ function handleKeydown(e: KeyboardEvent) {
     tabCycleIndex.value = 0;
   }
 
-  // 上下键选择历史指令
+  // 提前保存当前输入框内容
+  if (commandHistoryIndex < 0) {
+    commandHistoryCover = commandInput.value;
+  }
+
+  // 上下键选择历史指令（如果补全指令未启用）
   if (showSuggestions.value == false && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    // 索引改变，范围 [-1, commandHistoryCache.length]
     commandHistoryIndex += e.key === "ArrowUp" ? 1 : -1;
-    if (commandHistoryCache.length <= commandHistoryIndex) {
-      commandHistoryIndex = commandHistoryCache.length - 1;
-    } else if (commandHistoryIndex < 0) {
-      commandHistoryIndex = 0;
+    if (commandHistoryCache.value.length <= commandHistoryIndex) {
+      commandHistoryIndex = commandHistoryCache.value.length - 1;
+    } else if (commandHistoryIndex < -1) {
+      commandHistoryIndex = -1;
     }
-    commandInput.value = commandHistoryCache[commandHistoryIndex];
+
+    // 索引为负时恢复之前输入的内容
+    if (commandHistoryIndex < 0) {
+      commandInput.value = commandHistoryCover;
+    } else {
+      commandInput.value = commandHistoryCache.value[commandHistoryIndex];
+    }
     return;
   }
 
