@@ -125,13 +125,14 @@ function fitTerminal() {
 
 function renderEmptyState() {
   if (!terminal) return;
-  terminal.writeln(`\x1b[2m${i18n.t("console.waiting_for_output")}\x1b[0m`);
+  terminal.write(`\x1b[2m${i18n.t("console.waiting_for_output")}\x1b[0m`);
 }
 
 function appendLines(lines: string[]) {
   if (!terminal) return;
   if (lines.length === 0) return;
 
+  let isFirstLineInBuffer = !hasAnyLine;
   if (!hasAnyLine) {
     terminal.clear();
     terminal.reset();
@@ -139,7 +140,13 @@ function appendLines(lines: string[]) {
   }
 
   for (const line of lines) {
-    terminal.writeln(formatLine(line));
+    const formattedLine = formatLine(line);
+    if (isFirstLineInBuffer) {
+      terminal.write(formattedLine);
+      isFirstLineInBuffer = false;
+    } else {
+      terminal.write(`\r\n${formattedLine}`);
+    }
   }
 
   if (!props.userScrolledUp) {
