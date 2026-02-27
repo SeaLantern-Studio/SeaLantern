@@ -39,6 +39,15 @@ export const downloadApi = {
   },
 
   /**
+   * 删除/取消下载任务
+   */
+  async cancelDownloadTask(id: string): Promise<void> {
+    return tauriInvoke<void>("cancel_download_task", {
+      idStr: id,
+    });
+  },
+
+  /**
    * 启动并自动轮询
    */
   useDownload() {
