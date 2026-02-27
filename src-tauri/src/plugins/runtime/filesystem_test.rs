@@ -115,10 +115,8 @@ fn test_fs_mkdir_and_list() {
         .eval::<()>()
         .unwrap();
 
-    let result: LuaResult<mlua::Table> = runtime
-        .lua
-        .load(r#"return sl.fs.list("test_dir")"#)
-        .eval();
+    let result: LuaResult<mlua::Table> =
+        runtime.lua.load(r#"return sl.fs.list("test_dir")"#).eval();
     assert!(result.is_ok());
 
     let table = result.unwrap();
@@ -206,10 +204,8 @@ fn test_fs_info() {
         .eval::<()>()
         .unwrap();
 
-    let result: LuaResult<mlua::Table> = runtime
-        .lua
-        .load(r#"return sl.fs.info("test.txt")"#)
-        .eval();
+    let result: LuaResult<mlua::Table> =
+        runtime.lua.load(r#"return sl.fs.info("test.txt")"#).eval();
     assert!(result.is_ok());
 
     let info = result.unwrap();
@@ -250,10 +246,7 @@ fn test_fs_copy_file() {
         .eval();
     assert_eq!(result.unwrap(), true);
 
-    let result: LuaResult<String> = runtime
-        .lua
-        .load(r#"return sl.fs.read("dest.txt")"#)
-        .eval();
+    let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("dest.txt")"#).eval();
     assert_eq!(result.unwrap(), "Content");
 
     cleanup_test_runtime();
@@ -329,10 +322,7 @@ fn test_fs_move() {
         .eval();
     assert_eq!(result.unwrap(), true);
 
-    let result: LuaResult<String> = runtime
-        .lua
-        .load(r#"return sl.fs.read("dest.txt")"#)
-        .eval();
+    let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("dest.txt")"#).eval();
     assert_eq!(result.unwrap(), "Content");
 
     cleanup_test_runtime();
@@ -424,10 +414,18 @@ fn test_fs_get_path_global() {
 fn test_fs_permission_denied() {
     let runtime = create_test_runtime_with_permissions(vec![]);
 
-    let result: LuaResult<()> = runtime.lua.load(r#"sl.fs.write("test.txt", "Content")"#).eval();
+    let result: LuaResult<()> = runtime
+        .lua
+        .load(r#"sl.fs.write("test.txt", "Content")"#)
+        .eval();
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("权限不足") || error_msg.contains("Permission denied") || error_msg.contains("permission") || error_msg.contains("required"));
+    assert!(
+        error_msg.contains("权限不足")
+            || error_msg.contains("Permission denied")
+            || error_msg.contains("permission")
+            || error_msg.contains("required")
+    );
 
     cleanup_test_runtime();
 }
@@ -475,7 +473,10 @@ fn test_fs_global_permission() {
 fn test_fs_invalid_scope() {
     let runtime = create_test_runtime_with_permissions(vec!["fs.data".to_string()]);
 
-    let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.get_path("invalid")"#).eval();
+    let result: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.get_path("invalid")"#)
+        .eval();
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("Invalid scope"));
 

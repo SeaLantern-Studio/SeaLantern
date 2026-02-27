@@ -171,7 +171,8 @@ impl PluginManager {
 
         let permissions = plugin_info.manifest.permissions.clone();
 
-        let app_data_dir = std::path::PathBuf::from(crate::utils::path::get_or_create_app_data_dir());
+        let app_data_dir =
+            std::path::PathBuf::from(crate::utils::path::get_or_create_app_data_dir());
         let server_dir = app_data_dir.join("servers");
         let global_dir = app_data_dir;
 
