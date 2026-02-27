@@ -8,7 +8,7 @@ declare global {
 }
 
 // 环境检测：判断是否在浏览器环境（Docker 模式）
-const isBrowserEnv = (): boolean => {
+export const isBrowserEnv = (): boolean => {
   return typeof window !== "undefined" && !window.__TAURI__;
 };
 
