@@ -78,12 +78,6 @@ export const contributors: Contributor[] = [
     avatar: "https://mc-heads.net/avatar/LingyeNB/64",
     url: "https://github.com/LingyeNBird",
   },
-  {
-    name: "HYJ-hello",
-    role: "修改细节罢了",
-    avatar: "https://github.githubassets.com/favicons/favicon.svg",
-    url: "https://github.com/HYJ-hello",
-  },
   /*
      ============================================
      在这里添加更多贡献者！
