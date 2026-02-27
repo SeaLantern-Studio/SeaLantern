@@ -16,7 +16,9 @@ const contributors = ref(contributorsList);
 
 const updateInfo = ref<UpdateInfo | null>(null);
 const updateError = ref<string | null>(null);
-const updateStatus = ref<"idle" | "checking" | "latest" | "available" | "error">("idle");
+const updateStatus = ref<
+  "idle" | "checking" | "latest" | "available" | "error"
+>("idle");
 let resetTimer: ReturnType<typeof setTimeout> | null = null;
 
 const showUpdateModal = ref(false);
@@ -26,7 +28,10 @@ const showNotification = ref(false);
 const notificationMessage = ref("");
 const notificationType = ref<"success" | "error" | "warning" | "info">("info");
 
-function showNotify(msg: string, type: "success" | "error" | "warning" | "info" = "info") {
+function showNotify(
+  msg: string,
+  type: "success" | "error" | "warning" | "info" = "info",
+) {
   notificationMessage.value = msg;
   notificationType.value = type;
   showNotification.value = true;
@@ -143,7 +148,12 @@ async function handleManualDownload() {
       <!-- Hero Section -->
       <div class="hero-section">
         <div class="hero-logo">
-          <img src="../assets/logo.svg" alt="Sea Lantern" width="72" height="72" />
+          <img
+            src="../assets/logo.svg"
+            alt="Sea Lantern"
+            width="72"
+            height="72"
+          />
         </div>
         <h1 class="hero-title">Sea Lantern</h1>
         <p class="hero-subtitle">Minecraft 服务器管理工具</p>
@@ -153,7 +163,7 @@ async function handleManualDownload() {
           <span class="license-badge">GPLv3</span>
         </div>
         <p class="hero-desc">
-          一个由社区共同打造的 Minecraft 开服器。<br />
+          一款由社区共同打造的 Minecraft 开服器。<br />
           不仅代码开源，连灵魂都由你们定义。
         </p>
       </div>
@@ -184,7 +194,11 @@ async function handleManualDownload() {
         </div>
 
         <div class="contributor-grid">
-          <div v-for="c in contributors" :key="c.name" class="contributor-card glass-card">
+          <div
+            v-for="c in contributors"
+            :key="c.name"
+            class="contributor-card glass-card"
+          >
             <img :src="c.avatar" :alt="c.name" class="contributor-avatar" />
             <div class="contributor-info">
               <span class="contributor-name">{{ c.name }}</span>
@@ -403,7 +417,9 @@ async function handleManualDownload() {
                   stroke-linejoin="round"
                 >
                   <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  <path
+                    d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+                  ></path>
                 </svg>
               </div>
               <div class="way-info">
@@ -470,10 +486,22 @@ async function handleManualDownload() {
         >
           Gitee 仓库
         </SLButton>
+        <!-- 新增 GitHub 按钮 -->
+        <SLButton
+          variant="primary"
+          size="lg"
+          @click="openLink('https://github.com/SeaLantern-Studio/SeaLantern')"
+        >
+          GitHub 仓库
+        </SLButton>
         <SLButton
           variant="secondary"
           size="lg"
-          @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')"
+          @click="
+            openLink(
+              'https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0',
+            )
+          "
         >
           B站主页
         </SLButton>
@@ -482,7 +510,9 @@ async function handleManualDownload() {
       <!-- Footer -->
       <div class="about-footer">
         <p class="footer-text">Sea Lantern 是一个开源项目，遵循 GPLv3 协议。</p>
-        <p class="footer-text">Minecraft 是 Mojang Studios 的注册商标。本项目与 Mojang 无关。</p>
+        <p class="footer-text">
+          Minecraft 是 Mojang Studios 的注册商标。本项目与 Mojang 无关。
+        </p>
         <p class="footer-quote">"我们搭建了骨架，而灵魂，交给你们。"</p>
       </div>
     </div>
@@ -490,19 +520,32 @@ async function handleManualDownload() {
     <!-- 更新日志弹窗 -->
     <SLModal
       :visible="showUpdateModal"
-      :title="modalUpdateInfo ? `新版本 v${modalUpdateInfo.latest_version}` : '发现新版本'"
+      :title="
+        modalUpdateInfo
+          ? `新版本 v${modalUpdateInfo.latest_version}`
+          : '发现新版本'
+      "
       @close="closeUpdateModal"
     >
       <div v-if="modalUpdateInfo" class="modal-update-content">
         <div class="modal-update-header">
-          <div class="modal-current-version">当前版本: v{{ modalUpdateInfo.current_version }}</div>
+          <div class="modal-current-version">
+            当前版本: v{{ modalUpdateInfo.current_version }}
+          </div>
         </div>
         <div v-if="modalUpdateInfo.release_notes" class="modal-release-notes">
           <div class="modal-notes-title">更新内容:</div>
-          <div class="modal-notes-content">{{ modalUpdateInfo.release_notes }}</div>
+          <div class="modal-notes-content">
+            {{ modalUpdateInfo.release_notes }}
+          </div>
         </div>
         <div class="modal-update-actions">
-          <SLButton variant="primary" size="md" @click="handleManualDownload" style="width: 100%">
+          <SLButton
+            variant="primary"
+            size="md"
+            @click="handleManualDownload"
+            style="width: 100%"
+          >
             立即更新
           </SLButton>
         </div>

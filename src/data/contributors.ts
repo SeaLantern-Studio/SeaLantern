@@ -78,14 +78,21 @@ export const contributors: Contributor[] = [
     avatar: "https://mc-heads.net/avatar/LingyeNB/64",
     url: "https://github.com/LingyeNBird",
   },
-
-  // ============================================
-  // 在这里添加更多贡献者！
-  // ============================================
-  // {
-  //   name: "你的名字",
-  //   role: "贡献者",
-  //   avatar: "https://mc-heads.net/avatar/YourName/64",
-  //   url: "https://github.com/your-username",
-  // },
+  {
+    name: "HYJ-hello",
+    role: "修改细节罢了",
+    avatar: "https://github.githubassets.com/favicons/favicon.svg",
+    url: "https://github.com/HYJ-hello",
+  },
+  /*
+     ============================================
+     在这里添加更多贡献者！
+     ============================================
+     {
+       name: "你的名字或昵称",
+       role: "角色描述",
+       avatar: "头像URL",
+       url: "可选：个人主页链接",
+     },
+  */
 ];
