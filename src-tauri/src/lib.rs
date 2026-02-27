@@ -7,6 +7,7 @@ mod utils;
 use commands::config as config_commands;
 use commands::downloader as download_commands;
 use commands::java as java_commands;
+use commands::logging as logging_commands;
 use commands::mcs_plugin as mcs_plugin_commands;
 use commands::player as player_commands;
 use commands::plugin as plugin_commands;
@@ -187,7 +188,10 @@ pub fn run() {
             mcs_plugin_commands::m_toggle_plugin,
             mcs_plugin_commands::m_delete_plugin,
             mcs_plugin_commands::m_install_plugin,
-            mcs_plugin_commands::m_get_plugin_config_files
+            mcs_plugin_commands::m_get_plugin_config_files,
+            logging_commands::get_logs,
+            logging_commands::clear_logs,
+            logging_commands::check_developer_mode
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

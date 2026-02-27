@@ -3,6 +3,7 @@ use crate::commands::update_types::{ReleaseAsset, ReleaseResponse, RepoConfig, U
 use crate::commands::update_version::normalize_release_tag_version;
 
 /// 查找适合当前平台的资源文件
+#[allow(dead_code)]
 pub fn find_suitable_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
     let target_suffixes: &[&str] = if cfg!(target_os = "windows") {
         &[".msi", ".exe"]
@@ -25,6 +26,7 @@ pub fn find_suitable_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
 }
 
 /// 获取 GitHub 最新发布版本
+#[allow(dead_code)]
 pub async fn fetch_release(
     client: &reqwest::Client,
     config: &RepoConfig,

@@ -1,6 +1,7 @@
 pub mod config;
 pub mod downloader;
 pub mod java;
+pub mod logging;
 pub mod mcs_plugin;
 pub mod player;
 pub mod plugin;

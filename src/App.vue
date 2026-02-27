@@ -130,7 +130,11 @@ onUnmounted(() => {
 function handleSplashReady() {
   if (isInitializing.value) return;
   showSplash.value = false;
-  updateStore.checkForUpdateOnStartup();
+
+  // Dev模式下跳过更新检查, 想要检查更新去关于页面检查
+  if (!import.meta.env.DEV) {
+    updateStore.checkForUpdateOnStartup();
+  }
 }
 
 function handleUpdateModalClose() {

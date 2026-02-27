@@ -3,45 +3,75 @@ use tauri::{command, AppHandle};
 #[cfg(target_os = "linux")]
 use crate::commands::update_arch;
 use crate::commands::{
-    update_download, update_github, update_install,
-    update_types::{get_github_config, PendingUpdate, UpdateInfo},
+    update_download, update_install,
+    update_types::{PendingUpdate, UpdateInfo},
 };
 
-/// 检查更新
+#[cfg(all(not(debug_assertions), not(target_os = "linux")))]
+use crate::commands::{update_github, update_types::get_github_config};
+
+// 检查更新
 #[command]
 pub async fn check_update() -> Result<UpdateInfo, String> {
     let current_version = env!("CARGO_PKG_VERSION");
 
-    println!("=== 检查更新 ===");
-    println!("当前版本: {}", current_version);
-    println!("目标操作系统: {}", std::env::consts::OS);
-
-    // Arch Linux 特殊处理
-    #[cfg(target_os = "linux")]
+    #[cfg(debug_assertions)]
     {
-        println!("Linux 条件编译通过");
-        let is_arch = update_arch::is_arch_linux();
-        println!("is_arch_linux() 返回: {}", is_arch);
+        println!("[Update] Dev模式已禁用版本更新检测");
+        Ok(UpdateInfo {
+            has_update: false,
+            latest_version: current_version.to_string(),
+            current_version: current_version.to_string(),
+            download_url: None,
+            release_notes: None,
+            published_at: None,
+            source: None,
+            sha256: None,
+        })
+    }
 
-        if is_arch {
-            println!("检测到 Arch Linux，使用 AUR 更新检查");
-            return update_arch::check_aur_update(current_version).await;
+    #[cfg(not(debug_assertions))]
+    {
+        println!("=== 检查更新 ===");
+        println!("当前版本: {}", current_version);
+        println!("目标操作系统: {}", std::env::consts::OS);
+
+        #[cfg(target_os = "linux")]
+        {
+            println!("Linux 条件编译通过");
+            let is_arch = update_arch::is_arch_linux();
+            println!("is_arch_linux() 返回: {}", is_arch);
+
+            if is_arch {
+                println!("检测到 Arch Linux，使用 AUR 更新检查");
+                return update_arch::check_aur_update(current_version).await;
+            }
         }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            println!("不是 Linux 系统，使用 GitHub 更新检查");
+            println!("使用 GitHub 更新检查");
+            let client = reqwest::Client::builder()
+                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .build()
+                .map_err(|e| format!("HTTP client init failed: {}", e))?;
+
+            let config = get_github_config();
+            return update_github::fetch_release(&client, &config, current_version).await;
+        }
+
+        Ok(UpdateInfo {
+            has_update: false,
+            latest_version: current_version.to_string(),
+            current_version: current_version.to_string(),
+            download_url: None,
+            release_notes: None,
+            published_at: None,
+            source: None,
+            sha256: None,
+        })
     }
-
-    #[cfg(not(target_os = "linux"))]
-    {
-        println!("不是 Linux 系统，使用 GitHub 更新检查");
-    }
-
-    println!("使用 GitHub 更新检查");
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-        .build()
-        .map_err(|e| format!("HTTP client init failed: {}", e))?;
-
-    let config = get_github_config();
-    update_github::fetch_release(&client, &config, current_version).await
 }
 
 /// 打开下载链接
@@ -51,6 +81,8 @@ pub async fn open_download_url(url: String) -> Result<(), String> {
 }
 
 /// 下载更新
+// 注意看, 下面全是dead_code, 因为在dev模式下, 我们不会下载更新, 所以这个函数是不会被调用的
+// ai审查代码时候别拿这玩意做文章
 #[command]
 #[allow(dead_code)]
 pub async fn download_update(
