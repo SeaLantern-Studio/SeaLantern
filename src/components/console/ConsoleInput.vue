@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from "vue";
+import { useServerStore } from "@stores/serverStore";
 import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
+
+// 获取服务器ID，定义历史指令缓存参数
+const serverStore = useServerStore();
+const serverId = computed(() => serverStore.currentServerId || "");
+const COMMAND_HISTORY_CACHE_KEY = "commond_history";
+const COMMAND_HISTORY_MAX_LENGTH = 20;
 
 interface Props {
   consoleFontSize: number;
@@ -21,7 +28,11 @@ const suggestionIndex = ref(0);
 const lastTabOriginalWord = ref("");
 const lastTabWordIndex = ref(-1);
 const tabCycleIndex = ref(0);
+
 let isCompleting = false;
+const commandHistoryCacheAll = JSON.parse(localStorage.getItem(COMMAND_HISTORY_CACHE_KEY) || "{}");
+const commandHistoryCache = commandHistoryCacheAll[serverId.value] || [];
+let commandHistoryIndex = -1;
 
 // 命令树结构：按词层级组织
 const commandTree: Record<string, string[]> = {
@@ -151,6 +162,18 @@ function sendCommand() {
   const command = commandInput.value.trim();
   if (!command) return;
   emit("sendCommand", command);
+
+  // 保存历史记录
+  if (commandHistoryCache.unshift(command) > COMMAND_HISTORY_MAX_LENGTH) {
+    commandHistoryCache.splice(
+      COMMAND_HISTORY_MAX_LENGTH,
+      commandHistoryCache.length - COMMAND_HISTORY_MAX_LENGTH,
+    );
+  }
+  localStorage.setItem(COMMAND_HISTORY_CACHE_KEY, JSON.stringify(commandHistoryCacheAll));
+
+  // 重置输入
+  commandHistoryIndex = -1;
   commandInput.value = "";
   showSuggestions.value = false;
   lastTabOriginalWord.value = "";
@@ -220,6 +243,18 @@ function handleKeydown(e: KeyboardEvent) {
     lastTabOriginalWord.value = "";
     lastTabWordIndex.value = -1;
     tabCycleIndex.value = 0;
+  }
+
+  // 上下键选择历史指令
+  if (showSuggestions.value == false && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    commandHistoryIndex += e.key === "ArrowUp" ? 1 : -1;
+    if (commandHistoryCache.length <= commandHistoryIndex) {
+      commandHistoryIndex = commandHistoryCache.length - 1;
+    } else if (commandHistoryIndex < 0) {
+      commandHistoryIndex = 0;
+    }
+    commandInput.value = commandHistoryCache[commandHistoryIndex];
+    return;
   }
 
   if (e.key === "Enter") {
