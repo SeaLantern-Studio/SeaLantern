@@ -272,6 +272,12 @@ function computeOverallProgress() {
     <div class="header-right">
       <Menu as="div" class="language-selector">
         <MenuButton class="language-button">
+          <!-- 添加当前语言的国旗 -->
+          <img
+            :src="`@/assets/flags/${i18nStore.currentLocale}.png`"
+            alt="Current flag"
+            class="flag-icon"
+          />
           <span class="language-text">{{ currentLanguageText }}</span>
         </MenuButton>
         <MenuItems class="language-menu">
@@ -279,6 +285,8 @@ function computeOverallProgress() {
           <MenuItem v-for="option in primaryLanguages" :key="option.code" v-slot="{ close }">
             <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
               <div class="language-item-main">
+                <!-- 添加国旗 -->
+                <img :src="`@/assets/flags/${option.code}.png`" class="flag-icon" />
                 <span class="language-label">{{ option.label }}</span>
               </div>
             </div>
@@ -299,6 +307,8 @@ function computeOverallProgress() {
             <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
               <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
                 <div class="language-item-main">
+                  <!-- 添加国旗 -->
+                  <img :src="`@/assets/flags/${option.code}.png`" class="flag-icon" />
                   <span class="language-label">{{ option.label }}</span>
                 </div>
               </div>
