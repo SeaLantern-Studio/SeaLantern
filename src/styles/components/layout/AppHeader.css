@@ -312,3 +312,10 @@
   justify-content: center;
   margin-top: var(--sl-space-md);
 }
+/* 小国旗样式 */
+.flag-icon {
+  width: 20px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
