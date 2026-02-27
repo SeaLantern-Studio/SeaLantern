@@ -3,7 +3,6 @@ import { ref, onMounted, onUnmounted } from "vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
 import ServerDefaultsCard from "@components/views/settings/ServerDefaultsCard.vue";
-import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.vue";
 import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue";
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
@@ -23,8 +22,6 @@ const settings = ref<AppSettings | null>(null);
 const maxMem = ref("2048");
 const minMem = ref("512");
 const port = ref("25565");
-const fontSize = ref("13");
-const logLines = ref("5000");
 const defaultRunPath = ref("");
 
 const showImportModal = ref(false);
@@ -56,8 +53,6 @@ function syncLocalValues(s: AppSettings) {
   maxMem.value = String(s.default_max_memory);
   minMem.value = String(s.default_min_memory);
   port.value = String(s.default_port);
-  fontSize.value = String(s.console_font_size);
-  logLines.value = String(s.max_log_lines);
   defaultRunPath.value = s.last_run_path || "";
 }
 
@@ -70,8 +65,6 @@ async function loadSettings() {
     maxMem.value = String(s.default_max_memory);
     minMem.value = String(s.default_min_memory);
     port.value = String(s.default_port);
-    fontSize.value = String(s.console_font_size);
-    logLines.value = String(s.max_log_lines);
     defaultRunPath.value = s.last_run_path || "";
     settings.value.color = s.color || "default";
     applyTheme(s.theme);
@@ -133,8 +126,6 @@ async function saveSettings() {
   settings.value.default_max_memory = parseInt(maxMem.value) || 2048;
   settings.value.default_min_memory = parseInt(minMem.value) || 512;
   settings.value.default_port = parseInt(port.value) || 25565;
-  settings.value.console_font_size = parseInt(fontSize.value) || 13;
-  settings.value.max_log_lines = parseInt(logLines.value) || 5000;
   settings.value.last_run_path = defaultRunPath.value;
   settings.value.color = settings.value.color || "default";
   settings.value.developer_mode = settings.value.developer_mode || false;
@@ -170,8 +161,6 @@ async function resetSettings() {
     maxMem.value = String(s.default_max_memory);
     minMem.value = String(s.default_min_memory);
     port.value = String(s.default_port);
-    fontSize.value = String(s.console_font_size);
-    logLines.value = String(s.max_log_lines);
     defaultRunPath.value = s.last_run_path || "";
     showResetConfirm.value = false;
     settings.value.color = "default";
@@ -212,8 +201,6 @@ async function handleImport(json: string) {
     maxMem.value = String(s.default_max_memory);
     minMem.value = String(s.default_min_memory);
     port.value = String(s.default_port);
-    fontSize.value = String(s.console_font_size);
-    logLines.value = String(s.max_log_lines);
     showImportModal.value = false;
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -278,12 +265,6 @@ async function handleBrowseRunPath() {
         @javaInstalled="handleJavaInstalled"
         @browseJavaPath="handleBrowseJavaPath"
         @browseRunPath="handleBrowseRunPath"
-      />
-
-      <ConsoleSettingsCard
-        v-model:consoleFontSize="fontSize"
-        v-model:maxLogLines="logLines"
-        @change="markChanged"
       />
 
       <DeveloperModeCard v-model:developerMode="settings.developer_mode" @change="markChanged" />
