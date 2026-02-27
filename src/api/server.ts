@@ -1,5 +1,6 @@
 import { tauriInvoke } from "@api/tauri";
 import type { ServerInstance } from "@type/server";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface ServerStatusInfo {
   id: string;
@@ -12,6 +13,11 @@ export interface ParsedServerCoreInfo {
   coreType: string;
   mainClass: string | null;
   jarPath: string | null;
+}
+
+export interface ServerLogLineEvent {
+  server_id: string;
+  line: string;
 }
 
 export interface StartupCandidateItem {
@@ -233,8 +239,14 @@ export const serverApi = {
     return tauriInvoke("delete_server", { id });
   },
 
-  async getLogs(id: string, since: number): Promise<string[]> {
-    return tauriInvoke("get_server_logs", { id, since });
+  async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
+    return tauriInvoke("get_server_logs", { id, since, maxLines });
+  },
+
+  onLogLine(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
+    return listen<ServerLogLineEvent>("server-log-line", (event) => {
+      callback(event.payload);
+    });
   },
 
   async updateServerName(id: string, name: string): Promise<void> {
