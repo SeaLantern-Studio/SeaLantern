@@ -252,18 +252,18 @@ fn handle_start_server(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let id: String =
+        let req: ServerIdRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        server_commands::start_server(id)?;
+        server_commands::start_server(req.id)?;
         Ok(Value::Null)
     })
 }
 
 fn handle_stop_server(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let id: String =
+        let req: ServerIdRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        server_commands::stop_server(id)?;
+        server_commands::stop_server(req.id)?;
         Ok(Value::Null)
     })
 }
@@ -292,9 +292,9 @@ fn handle_get_server_status(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let id: String =
+        let req: GetServerStatusRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        let result = server_commands::get_server_status(id);
+        let result = server_commands::get_server_status(req.id);
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -303,9 +303,9 @@ fn handle_delete_server(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let id: String =
+        let req: ServerIdRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        server_commands::delete_server(id)?;
+        server_commands::delete_server(req.id)?;
         Ok(Value::Null)
     })
 }
@@ -416,9 +416,9 @@ fn handle_validate_java_path(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let path: String =
+        let req: ValidateJavaPathRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        let result = java_commands::validate_java_path(path).await?;
+        let result = java_commands::validate_java_path(req.path).await?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -458,9 +458,9 @@ fn handle_read_server_properties(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let server_path: String =
+        let req: ReadServerPropertiesRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        let result = config_commands::read_server_properties(server_path)?;
+        let result = config_commands::read_server_properties(req.server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -499,9 +499,9 @@ fn handle_get_whitelist(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let server_path: String =
+        let req: ServerPathRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        let result = player_commands::get_whitelist(server_path)?;
+        let result = player_commands::get_whitelist(req.server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -510,18 +510,18 @@ fn handle_get_banned_players(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let server_path: String =
+        let req: ServerPathRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        let result = player_commands::get_banned_players(server_path)?;
+        let result = player_commands::get_banned_players(req.server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
 
 fn handle_get_ops(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let server_path: String =
+        let req: ServerPathRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        let result = player_commands::get_ops(server_path)?;
+        let result = player_commands::get_ops(req.server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -762,6 +762,18 @@ struct SendCommandRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct GetServerStatusRequest {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ServerIdRequest {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct GetLogsRequest {
     id: String,
     since: usize,
@@ -835,6 +847,24 @@ struct WriteConfigRequest {
 struct WriteServerPropertiesRequest {
     server_path: String,
     values: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ValidateJavaPathRequest {
+    path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReadServerPropertiesRequest {
+    server_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ServerPathRequest {
+    server_path: String,
 }
 
 #[derive(Debug, Deserialize)]
