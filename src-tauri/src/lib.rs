@@ -492,13 +492,7 @@ pub fn run() {
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let safe_mode_item = if safe_mode {
-                MenuItem::with_id(
-                    app,
-                    "exit-safe-mode",
-                    "退出安全模式并退出程序",
-                    true,
-                    None::<&str>,
-                )?
+                MenuItem::with_id(app, "quit", "退出安全模式并退出程序", true, None::<&str>)?
             } else {
                 MenuItem::with_id(app, "restart-safe-mode", "以安全模式重启", true, None::<&str>)?
             };
@@ -549,20 +543,6 @@ pub fn run() {
                                 .arg("--safe-mode")
                                 .spawn();
 
-                            app.exit(0);
-                        }
-                        "exit-safe-mode" => {
-                            let settings = services::global::settings_manager().get();
-                            if settings.close_servers_on_exit {
-                                services::global::server_manager().stop_all_servers();
-                            }
-                            if let Some(manager) = app.try_state::<std::sync::Arc<
-                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
-                            >>() {
-                                if let Ok(mut m) = manager.lock() {
-                                    m.disable_all_plugins_for_shutdown();
-                                }
-                            }
                             app.exit(0);
                         }
                         "quit" => {
