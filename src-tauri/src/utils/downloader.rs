@@ -7,6 +7,37 @@ use tokio::io::{AsyncSeekExt, AsyncWriteExt, BufWriter, SeekFrom};
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 
+#[derive(Debug)]
+pub enum DownloadError {
+    Reqwest(reqwest::Error),
+    Io(std::io::Error),
+    Cancelled(String),
+}
+
+impl std::fmt::Display for DownloadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DownloadError::Reqwest(e) => write!(f, "Request error: {}", e),
+            DownloadError::Io(e) => write!(f, "IO error: {}", e),
+            DownloadError::Cancelled(msg) => write!(f, "Download cancelled: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for DownloadError {}
+
+impl From<reqwest::Error> for DownloadError {
+    fn from(err: reqwest::Error) -> Self {
+        DownloadError::Reqwest(err)
+    }
+}
+
+impl From<std::io::Error> for DownloadError {
+    fn from(err: std::io::Error) -> Self {
+        DownloadError::Io(err)
+    }
+}
+
 ///一个基本的User-agent
 pub const USER_AGENT_EXAMPLE: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0";
 
@@ -178,7 +209,7 @@ impl MultiThreadDownloader {
         start: u64,
         end: u64,
         status: Arc<DownloadStatus>,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<(), DownloadError> {
         // 使用 tokio::select! 监听取消信号
         tokio::select! {
             result = async{
@@ -197,7 +228,7 @@ impl MultiThreadDownloader {
             // 检查取消令牌
             if status.cancelled() {
                 // 如果任务被取消，返回错误，文件将在上层被删除
-                return Err("任务已取消".into());
+                return Err(DownloadError::Cancelled("任务已取消".to_string()));
             }
 
             let len = chunk.len() as u64;
@@ -228,7 +259,7 @@ impl MultiThreadDownloader {
                         if status.cancelled() {
                             // 如果是取消导致的，可能需要清理文件
                             // 但由于文件可能已经在其他地方被删除，这里只需返回错误
-                            Err(e)
+                            Err(DownloadError::Cancelled("任务已取消".to_string()))
                         } else {
                             Err(e)
                         }
@@ -237,7 +268,7 @@ impl MultiThreadDownloader {
             },
             _ = status.cancel_token.cancelled() => {
                 // 当取消信号到达时，返回取消错误
-                Err("任务已取消".into())
+                Err(DownloadError::Cancelled("任务已取消".to_string()))
             }
         }
     }
@@ -312,10 +343,13 @@ impl MultiThreadDownloader {
 async fn test_multi_thread_download() -> Result<(), String> {
     let downloader = MultiThreadDownloader::new("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0"); //下载的线程数, User-agent
 
-    let url = "https://files.mcjars.app/mohist/1.12.2/1.12.2-17e3fd09/server.jar"; // 一个大文件
-    let save_path = "D:\\Projects\\MinecraftLuncher\\SeaLantern\\target\\multi_thread_download.bin";
+    let url = "https://httpbin.org/bytes/1024"; // 使用一个较小的测试文件
+    let save_path = "./target/multi_thread_download_test.bin";
 
-    match downloader.download(url, save_path, 32).await {
+    // 创建目标目录
+    std::fs::create_dir_all("./target").map_err(|e| e.to_string())?;
+
+    match downloader.download(url, save_path, 4).await {
         Ok(status_handle) => {
             println!("Downloaded to {:?}", save_path);
             loop {
