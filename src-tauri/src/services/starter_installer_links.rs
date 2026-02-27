@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -75,20 +76,45 @@ pub fn fetch_starter_installer_url(
 
 fn load_or_refresh_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>, String> {
     if should_use_cached_links_file(links_file_path)? {
-        return std::fs::read(links_file_path)
-            .map_err(|e| format!("读取本地 Starter 下载信息失败: {}", e));
+        return match read_and_validate_cached_links_file(links_file_path) {
+            Ok(body) => Ok(body),
+            Err(local_error) => {
+                fetch_and_cache_starter_links_json(links_file_path).map_err(|refresh_error| {
+                    format!(
+                        "读取本地 Starter 下载信息失败: {}; 刷新远端 Starter 下载信息也失败: {}",
+                        local_error, refresh_error
+                    )
+                })
+            }
+        };
     }
 
     match fetch_and_cache_starter_links_json(links_file_path) {
         Ok(body) => Ok(body),
         Err(refresh_error) => {
             if links_file_path.is_file() {
-                return std::fs::read(links_file_path)
-                    .map_err(|e| format!("读取本地 Starter 下载信息失败: {}", e));
+                return read_and_validate_cached_links_file(links_file_path).map_err(
+                    |local_error| {
+                        format!("{}；且本地 Starter 下载信息不可用: {}", refresh_error, local_error)
+                    },
+                );
             }
             Err(refresh_error)
         }
     }
+}
+
+fn read_and_validate_cached_links_file(links_file_path: &Path) -> Result<Vec<u8>, String> {
+    let body = std::fs::read(links_file_path)
+        .map_err(|e| format!("读取本地 Starter 下载信息失败: {}", e))?;
+    validate_starter_links_json(&body)?;
+    Ok(body)
+}
+
+fn validate_starter_links_json(body: &[u8]) -> Result<(), String> {
+    serde_json::from_slice::<StarterLinksPayload>(body)
+        .map(|_| ())
+        .map_err(|e| format!("解析 Starter 下载信息失败: {}", e))
 }
 
 fn fetch_and_cache_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>, String> {
@@ -224,13 +250,101 @@ fn choose_more_specific_bucket<'a>(
         None => true,
         Some((selected_version, selected_files)) => {
             files.len() > selected_files.len()
-                || (files.len() == selected_files.len() && version > *selected_version)
+                || (files.len() == selected_files.len()
+                    && compare_version_keys_numeric(version, selected_version).is_gt())
         }
     };
 
     if should_replace {
         *selected = Some((version, files));
     }
+}
+
+fn compare_version_keys_numeric(left: &str, right: &str) -> Ordering {
+    let mut left_index = 0usize;
+    let mut right_index = 0usize;
+
+    loop {
+        let left_token = next_version_token(left, &mut left_index);
+        let right_token = next_version_token(right, &mut right_index);
+
+        let ordering = match (left_token, right_token) {
+            (None, None) => return left.cmp(right),
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (Some(VersionToken::Numeric(left_num)), Some(VersionToken::Numeric(right_num))) => {
+                compare_numeric_token(left_num, right_num)
+            }
+            (Some(VersionToken::Text(left_text)), Some(VersionToken::Text(right_text))) => {
+                compare_text_token(left_text, right_text)
+            }
+            (Some(VersionToken::Numeric(_)), Some(VersionToken::Text(_))) => Ordering::Greater,
+            (Some(VersionToken::Text(_)), Some(VersionToken::Numeric(_))) => Ordering::Less,
+        };
+
+        if ordering != Ordering::Equal {
+            return ordering;
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum VersionToken<'a> {
+    Numeric(&'a str),
+    Text(&'a str),
+}
+
+fn next_version_token<'a>(value: &'a str, index: &mut usize) -> Option<VersionToken<'a>> {
+    let bytes = value.as_bytes();
+
+    while *index < bytes.len() && !bytes[*index].is_ascii_alphanumeric() {
+        *index += 1;
+    }
+
+    if *index >= bytes.len() {
+        return None;
+    }
+
+    let start = *index;
+    if bytes[*index].is_ascii_digit() {
+        while *index < bytes.len() && bytes[*index].is_ascii_digit() {
+            *index += 1;
+        }
+        return Some(VersionToken::Numeric(&value[start..*index]));
+    }
+
+    while *index < bytes.len() && bytes[*index].is_ascii_alphabetic() {
+        *index += 1;
+    }
+    Some(VersionToken::Text(&value[start..*index]))
+}
+
+fn compare_numeric_token(left: &str, right: &str) -> Ordering {
+    let left_trimmed = left.trim_start_matches('0');
+    let right_trimmed = right.trim_start_matches('0');
+    let left_normalized = if left_trimmed.is_empty() {
+        "0"
+    } else {
+        left_trimmed
+    };
+    let right_normalized = if right_trimmed.is_empty() {
+        "0"
+    } else {
+        right_trimmed
+    };
+
+    left_normalized
+        .len()
+        .cmp(&right_normalized.len())
+        .then_with(|| left_normalized.cmp(right_normalized))
+}
+
+fn compare_text_token(left: &str, right: &str) -> Ordering {
+    let case_insensitive = left.to_ascii_lowercase().cmp(&right.to_ascii_lowercase());
+    if case_insensitive != Ordering::Equal {
+        return case_insensitive;
+    }
+    left.cmp(right)
 }
 
 fn type_list_contains_core(types: &StarterTypes, core_key: &str) -> bool {
