@@ -2,11 +2,11 @@ use super::PluginRuntime;
 use mlua::Table;
 use std::collections::{HashMap, HashSet};
 
-fn i18n_arg(key: &str, value: &str) -> HashMap<String, String> {
+pub fn i18n_arg(key: &str, value: &str) -> HashMap<String, String> {
     HashMap::from([(key.to_string(), value.to_string())])
 }
 
-fn i18n_args(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+pub fn i18n_args(pairs: &[(&str, &str)]) -> HashMap<String, String> {
     pairs
         .iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))

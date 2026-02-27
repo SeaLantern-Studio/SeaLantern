@@ -260,6 +260,109 @@ impl I18nService {
             "设置 sl.console 失败: {0}".to_string(),
         );
 
+        map.insert("element.create_table_failed".to_string(), "创建元素表失败: {0}".to_string());
+        map.insert(
+            "element.create_get_text_failed".to_string(),
+            "创建 element.get_text 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_text_failed".to_string(),
+            "设置 element.get_text 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_value_failed".to_string(),
+            "创建 element.get_value 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_value_failed".to_string(),
+            "设置 element.get_value 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_attribute_failed".to_string(),
+            "创建 element.get_attribute 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_attribute_failed".to_string(),
+            "设置 element.get_attribute 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_attributes_failed".to_string(),
+            "创建 element.get_attributes 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_attributes_failed".to_string(),
+            "设置 element.get_attributes 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_click_failed".to_string(),
+            "创建 element.click 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_click_failed".to_string(),
+            "设置 element.click 失败: {0}".to_string(),
+        );
+        map.insert("element.click_error".to_string(), "点击元素失败: {0}".to_string());
+        map.insert(
+            "element.create_set_value_failed".to_string(),
+            "创建 element.set_value 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_set_value_failed".to_string(),
+            "设置 element.set_value 失败: {0}".to_string(),
+        );
+        map.insert("element.set_value_error".to_string(), "设置元素值失败: {0}".to_string());
+        map.insert(
+            "element.create_check_failed".to_string(),
+            "创建 element.check 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_check_failed".to_string(),
+            "设置 element.check 失败: {0}".to_string(),
+        );
+        map.insert("element.check_error".to_string(), "勾选元素失败: {0}".to_string());
+        map.insert(
+            "element.create_select_failed".to_string(),
+            "创建 element.select 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_select_failed".to_string(),
+            "设置 element.select 失败: {0}".to_string(),
+        );
+        map.insert("element.select_error".to_string(), "选择元素失败: {0}".to_string());
+        map.insert(
+            "element.create_focus_failed".to_string(),
+            "创建 element.focus 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_focus_failed".to_string(),
+            "设置 element.focus 失败: {0}".to_string(),
+        );
+        map.insert("element.focus_error".to_string(), "聚焦元素失败: {0}".to_string());
+        map.insert(
+            "element.create_blur_failed".to_string(),
+            "创建 element.blur 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_blur_failed".to_string(),
+            "设置 element.blur 失败: {0}".to_string(),
+        );
+        map.insert("element.blur_error".to_string(), "失焦元素失败: {0}".to_string());
+        map.insert(
+            "element.create_on_change_failed".to_string(),
+            "创建 element.on_change 失败: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_on_change_failed".to_string(),
+            "设置 element.on_change 失败: {0}".to_string(),
+        );
+        map.insert("element.on_change_error".to_string(), "设置元素变更监听失败: {0}".to_string());
+        map.insert("element.store_callback_failed".to_string(), "存储回调失败: {0}".to_string());
+        map.insert("element.cleanup_callback_failed".to_string(), "清理回调失败: {0}".to_string());
+        map.insert(
+            "element.set_element_failed".to_string(),
+            "设置 sl.element 失败: {0}".to_string(),
+        );
+
         map
     }
 
@@ -320,6 +423,124 @@ impl I18nService {
             "Failed to set sl.console: {0}".to_string(),
         );
 
+        map.insert(
+            "element.create_table_failed".to_string(),
+            "Failed to create element table: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_text_failed".to_string(),
+            "Failed to create element.get_text: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_text_failed".to_string(),
+            "Failed to set element.get_text: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_value_failed".to_string(),
+            "Failed to create element.get_value: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_value_failed".to_string(),
+            "Failed to set element.get_value: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_attribute_failed".to_string(),
+            "Failed to create element.get_attribute: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_attribute_failed".to_string(),
+            "Failed to set element.get_attribute: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_attributes_failed".to_string(),
+            "Failed to create element.get_attributes: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_attributes_failed".to_string(),
+            "Failed to set element.get_attributes: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_click_failed".to_string(),
+            "Failed to create element.click: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_click_failed".to_string(),
+            "Failed to set element.click: {0}".to_string(),
+        );
+        map.insert("element.click_error".to_string(), "Failed to click element: {0}".to_string());
+        map.insert(
+            "element.create_set_value_failed".to_string(),
+            "Failed to create element.set_value: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_set_value_failed".to_string(),
+            "Failed to set element.set_value: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_value_error".to_string(),
+            "Failed to set element value: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_check_failed".to_string(),
+            "Failed to create element.check: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_check_failed".to_string(),
+            "Failed to set element.check: {0}".to_string(),
+        );
+        map.insert("element.check_error".to_string(), "Failed to check element: {0}".to_string());
+        map.insert(
+            "element.create_select_failed".to_string(),
+            "Failed to create element.select: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_select_failed".to_string(),
+            "Failed to set element.select: {0}".to_string(),
+        );
+        map.insert("element.select_error".to_string(), "Failed to select element: {0}".to_string());
+        map.insert(
+            "element.create_focus_failed".to_string(),
+            "Failed to create element.focus: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_focus_failed".to_string(),
+            "Failed to set element.focus: {0}".to_string(),
+        );
+        map.insert("element.focus_error".to_string(), "Failed to focus element: {0}".to_string());
+        map.insert(
+            "element.create_blur_failed".to_string(),
+            "Failed to create element.blur: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_blur_failed".to_string(),
+            "Failed to set element.blur: {0}".to_string(),
+        );
+        map.insert("element.blur_error".to_string(), "Failed to blur element: {0}".to_string());
+        map.insert(
+            "element.create_on_change_failed".to_string(),
+            "Failed to create element.on_change: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_on_change_failed".to_string(),
+            "Failed to set element.on_change: {0}".to_string(),
+        );
+        map.insert(
+            "element.on_change_error".to_string(),
+            "Failed to set element change listener: {0}".to_string(),
+        );
+        map.insert(
+            "element.store_callback_failed".to_string(),
+            "Failed to store callback: {0}".to_string(),
+        );
+        map.insert(
+            "element.cleanup_callback_failed".to_string(),
+            "Failed to cleanup callback: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_element_failed".to_string(),
+            "Failed to set sl.element: {0}".to_string(),
+        );
+
         map
     }
 
@@ -369,6 +590,109 @@ impl I18nService {
         map.insert(
             "console.set_console_failed".to_string(),
             "設置 sl.console 失敗: {0}".to_string(),
+        );
+
+        map.insert("element.create_table_failed".to_string(), "創建元素表失敗: {0}".to_string());
+        map.insert(
+            "element.create_get_text_failed".to_string(),
+            "創建 element.get_text 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_text_failed".to_string(),
+            "設置 element.get_text 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_value_failed".to_string(),
+            "創建 element.get_value 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_value_failed".to_string(),
+            "設置 element.get_value 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_attribute_failed".to_string(),
+            "創建 element.get_attribute 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_attribute_failed".to_string(),
+            "設置 element.get_attribute 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_get_attributes_failed".to_string(),
+            "創建 element.get_attributes 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_get_attributes_failed".to_string(),
+            "設置 element.get_attributes 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.create_click_failed".to_string(),
+            "創建 element.click 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_click_failed".to_string(),
+            "設置 element.click 失敗: {0}".to_string(),
+        );
+        map.insert("element.click_error".to_string(), "點擊元素失敗: {0}".to_string());
+        map.insert(
+            "element.create_set_value_failed".to_string(),
+            "創建 element.set_value 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_set_value_failed".to_string(),
+            "設置 element.set_value 失敗: {0}".to_string(),
+        );
+        map.insert("element.set_value_error".to_string(), "設置元素值失敗: {0}".to_string());
+        map.insert(
+            "element.create_check_failed".to_string(),
+            "創建 element.check 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_check_failed".to_string(),
+            "設置 element.check 失敗: {0}".to_string(),
+        );
+        map.insert("element.check_error".to_string(), "勾選元素失敗: {0}".to_string());
+        map.insert(
+            "element.create_select_failed".to_string(),
+            "創建 element.select 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_select_failed".to_string(),
+            "設置 element.select 失敗: {0}".to_string(),
+        );
+        map.insert("element.select_error".to_string(), "選擇元素失敗: {0}".to_string());
+        map.insert(
+            "element.create_focus_failed".to_string(),
+            "創建 element.focus 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_focus_failed".to_string(),
+            "設置 element.focus 失敗: {0}".to_string(),
+        );
+        map.insert("element.focus_error".to_string(), "聚焦元素失敗: {0}".to_string());
+        map.insert(
+            "element.create_blur_failed".to_string(),
+            "創建 element.blur 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_blur_failed".to_string(),
+            "設置 element.blur 失敗: {0}".to_string(),
+        );
+        map.insert("element.blur_error".to_string(), "失焦元素失敗: {0}".to_string());
+        map.insert(
+            "element.create_on_change_failed".to_string(),
+            "創建 element.on_change 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "element.set_on_change_failed".to_string(),
+            "設置 element.on_change 失敗: {0}".to_string(),
+        );
+        map.insert("element.on_change_error".to_string(), "設置元素變更監聽失敗: {0}".to_string());
+        map.insert("element.store_callback_failed".to_string(), "存儲回調失敗: {0}".to_string());
+        map.insert("element.cleanup_callback_failed".to_string(), "清理回調失敗: {0}".to_string());
+        map.insert(
+            "element.set_element_failed".to_string(),
+            "設置 sl.element 失敗: {0}".to_string(),
         );
 
         map
