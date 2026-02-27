@@ -452,6 +452,29 @@ pub fn run() {
                 });
             }
 
+            {
+                use serde::Serialize;
+
+                #[derive(Serialize, Clone)]
+                struct ServerLogLineEvent {
+                    server_id: String,
+                    line: String,
+                }
+
+                let app_handle = app.handle().clone();
+                let _ = services::server_log_pipeline::set_server_log_event_handler(Arc::new(
+                    move |server_id, line| {
+                        let event = ServerLogLineEvent {
+                            server_id: server_id.to_string(),
+                            line: line.to_string(),
+                        };
+                        app_handle
+                            .emit("server-log-line", event)
+                            .map_err(|e| format!("Failed to emit server log line event: {}", e))
+                    },
+                ));
+            }
+
             app.manage(manager);
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
