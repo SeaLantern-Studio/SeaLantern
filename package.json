@@ -12,7 +12,9 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt:check": "oxfmt --check",
+    "commitlint": "commitlint",
+    "prepare": "husky"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
@@ -35,9 +37,13 @@
     "vue-router": "^5.0.3"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
     "@tauri-apps/cli": "^2.10.0",
     "@types/node": "^25.3.0",
     "@vitejs/plugin-vue": "^6.0.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
     "sass-embedded": "^1.97.3",
@@ -46,6 +52,11 @@
     "unplugin-icons": "^23.0.1",
     "vite": "^7.3.1",
     "vue-tsc": "^3.2.5"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md}": [
+      "pnpm exec oxfmt"
+    ]
   },
   "packageManager": "pnpm@9.15.9"
 }

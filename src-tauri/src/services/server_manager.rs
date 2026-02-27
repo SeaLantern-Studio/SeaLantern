@@ -4,14 +4,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
 use serde::{Deserialize, Serialize};
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
-const STARTER_DOWNLOAD_API_BASE: &str = "https://api.mslmc.cn/v3/download/server";
 
 /// 验证服务器名称，防止路径遍历攻击
 /// 返回清理后的名称或错误信息
@@ -46,17 +45,6 @@ fn validate_server_name(name: &str) -> Result<String, String> {
         }
     }
     Ok(trimmed.to_string())
-}
-
-#[derive(Debug, Deserialize)]
-struct StarterDownloadApiResponse {
-    data: Option<StarterDownloadApiData>,
-}
-
-#[derive(Debug, Deserialize)]
-struct StarterDownloadApiData {
-    url: Option<String>,
-    sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -869,7 +857,7 @@ impl ServerManager {
             }
 
             let (installer_url, installer_sha256) =
-                fetch_starter_installer_url(&core_key, mc_version)?;
+                super::starter_installer_links::fetch_starter_installer_url(&core_key, mc_version)?;
             if let Some(sha256) = installer_sha256 {
                 self.append_log(
                     id,
@@ -1529,54 +1517,6 @@ fn detect_java_major_version(java_path: &str) -> Option<u32> {
     }
 
     None
-}
-
-fn fetch_starter_installer_url(
-    core_type_key: &str,
-    mc_version: &str,
-) -> Result<(String, Option<String>), String> {
-    let mut url = reqwest::Url::parse(STARTER_DOWNLOAD_API_BASE)
-        .map_err(|e| format!("构建 Starter 下载链接失败: {}", e))?;
-    {
-        let mut segments = url
-            .path_segments_mut()
-            .map_err(|_| "Starter 下载链接不支持路径段写入".to_string())?;
-        segments.push(core_type_key);
-        segments.push(mc_version);
-    }
-
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(15))
-        .build()
-        .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
-    let response = client
-        .get(url.clone())
-        .send()
-        .map_err(|e| format!("请求 Starter 下载信息失败: {}", e))?;
-
-    let status = response.status();
-    if !status.is_success() {
-        return Err(format!("Starter 下载接口返回异常状态: {} ({})", status, url));
-    }
-
-    let payload: StarterDownloadApiResponse = response
-        .json()
-        .map_err(|e| format!("解析 Starter 下载信息失败: {}", e))?;
-    let data = payload
-        .data
-        .ok_or_else(|| "Starter 下载接口缺少 data 字段".to_string())?;
-    let installer_url = data
-        .url
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| "Starter 下载接口未返回 data.url".to_string())?;
-
-    Ok((
-        installer_url,
-        data.sha256
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty()),
-    ))
 }
 
 fn format_command_for_log(command: &Command) -> String {
