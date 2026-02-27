@@ -2,6 +2,8 @@ mod api_bridge;
 mod console;
 mod element;
 mod filesystem;
+#[cfg(test)]
+mod filesystem_test;
 pub(crate) mod helpers;
 mod http;
 mod i18n;
@@ -30,6 +32,8 @@ pub struct PluginRuntime {
     pub(super) plugin_id: String,
     pub(super) plugin_dir: PathBuf,
     pub(super) data_dir: PathBuf,
+    pub(super) server_dir: PathBuf,
+    pub(super) global_dir: PathBuf,
     loaded: AtomicBool,
 
     pub(super) permissions: Vec<String>,
@@ -49,6 +53,8 @@ impl PluginRuntime {
         plugin_id: &str,
         plugin_dir: &Path,
         data_dir: &Path,
+        server_dir: &Path,
+        global_dir: &Path,
         api_registry: ApiRegistry,
         permissions: Vec<String>,
     ) -> Result<Self, String> {
@@ -64,13 +70,20 @@ impl PluginRuntime {
 
         fs::create_dir_all(data_dir).map_err(|e| format!("Failed to create data dir: {}", e))?;
 
+        let normalized_permissions = permissions
+            .into_iter()
+            .map(|p| if p == "fs" { "fs.data".to_string() } else { p })
+            .collect();
+
         let runtime = Self {
             lua,
             plugin_id: plugin_id.to_string(),
             plugin_dir: plugin_dir.to_path_buf(),
             data_dir: data_dir.to_path_buf(),
+            server_dir: server_dir.to_path_buf(),
+            global_dir: global_dir.to_path_buf(),
             loaded: AtomicBool::new(false),
-            permissions,
+            permissions: normalized_permissions,
             api_registry,
             storage_lock: Arc::new(Mutex::new(())),
             process_registry: new_process_registry(),
@@ -185,7 +198,11 @@ impl PluginRuntime {
             self.setup_permission_denied_module(&sl, "storage")?;
         }
 
-        if self.permissions.iter().any(|p| p == "fs") {
+        if self
+            .permissions
+            .iter()
+            .any(|p| matches!(p.as_str(), "fs.data" | "fs.server" | "fs.global"))
+        {
             self.setup_fs_namespace(&sl)?;
         } else {
             self.setup_permission_denied_module(&sl, "fs")?;
@@ -503,9 +520,19 @@ mod tests {
     fn test_runtime_creation() {
         let temp_dir = env::temp_dir().join("sl_test_plugin");
         let data_dir = temp_dir.join("data");
+        let server_dir = temp_dir.join("servers");
+        let global_dir = temp_dir.join("global");
         let api_registry = new_api_registry();
 
-        let runtime = PluginRuntime::new("test-plugin", &temp_dir, &data_dir, api_registry, vec![]);
+        let runtime = PluginRuntime::new(
+            "test-plugin",
+            &temp_dir,
+            &data_dir,
+            &server_dir,
+            &global_dir,
+            api_registry,
+            vec![],
+        );
         assert!(runtime.is_ok());
 
         let runtime = runtime.unwrap();
@@ -518,10 +545,20 @@ mod tests {
     fn test_sandbox_restrictions() {
         let temp_dir = env::temp_dir().join("sl_test_sandbox");
         let data_dir = temp_dir.join("data");
+        let server_dir = temp_dir.join("servers");
+        let global_dir = temp_dir.join("global");
         let api_registry = new_api_registry();
 
-        let runtime =
-            PluginRuntime::new("test-sandbox", &temp_dir, &data_dir, api_registry, vec![]).unwrap();
+        let runtime = PluginRuntime::new(
+            "test-sandbox",
+            &temp_dir,
+            &data_dir,
+            &server_dir,
+            &global_dir,
+            api_registry,
+            vec![],
+        )
+        .unwrap();
 
         let result: LuaResult<Value> = runtime.lua.load("return os").eval();
         assert!(matches!(result, Ok(Value::Nil)));
