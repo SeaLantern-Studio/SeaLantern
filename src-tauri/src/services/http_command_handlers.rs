@@ -709,6 +709,7 @@ fn handle_open_download_url(
 // ============ 请求结构体 ============
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CreateServerRequest {
     name: String,
     core_type: String,
@@ -722,6 +723,7 @@ struct CreateServerRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ImportServerRequest {
     name: String,
     jar_path: String,
@@ -734,6 +736,7 @@ struct ImportServerRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ImportModpackRequest {
     name: String,
     modpack_path: String,
@@ -751,47 +754,55 @@ struct ImportModpackRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct SendCommandRequest {
     id: String,
     command: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct GetLogsRequest {
     id: String,
     since: usize,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct UpdateNameRequest {
     id: String,
     name: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ScanStartupCandidatesRequest {
     source_path: String,
     source_type: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ParseServerCoreTypeRequest {
     source_path: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CollectCopyConflictsRequest {
     source_dir: String,
     target_dir: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CopyDirectoryContentsRequest {
     source_dir: String,
     target_dir: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct AddExistingServerRequest {
     name: String,
     server_path: String,
@@ -805,12 +816,14 @@ struct AddExistingServerRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ReadConfigRequest {
     server_path: String,
     path: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct WriteConfigRequest {
     server_path: String,
     path: String,
@@ -818,18 +831,21 @@ struct WriteConfigRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct WriteServerPropertiesRequest {
     server_path: String,
     values: HashMap<String, String>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PlayerActionRequest {
     server_id: String,
     name: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct BanPlayerRequest {
     server_id: String,
     name: String,
@@ -837,6 +853,7 @@ struct BanPlayerRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct KickPlayerRequest {
     server_id: String,
     name: String,
@@ -844,6 +861,7 @@ struct KickPlayerRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ExportLogsRequest {
     logs: Vec<String>,
     save_path: String,
