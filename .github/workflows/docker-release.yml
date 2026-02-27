@@ -40,7 +40,7 @@ jobs:
         run: |
           # 查找匹配版本的 Release
           RELEASE_ID=$(gh release list --limit 10 --search "v${{ steps.version.outputs.version }}" --json id,name --jq '.[] | select(.name | contains("${{ steps.version.outputs.version }}")) | .id' | head -1)
-          
+
           if [ -z "$RELEASE_ID" ]; then
             echo "未找到匹配的 Release，可能需要先创建 Release"
             echo "release_id=" >> $GITHUB_OUTPUT
