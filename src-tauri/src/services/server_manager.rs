@@ -419,17 +419,25 @@ impl ServerManager {
                 if comp_str.len() == 32 && comp_str.chars().all(|c| c.is_ascii_hexdigit()) {
                     // 已经是UUID路径，直接使用
                     path
-                } else if comp_str.len() == 36 && comp_str.chars().take(32).all(|c| c.is_ascii_hexdigit()) && comp_str.chars().nth(8) == Some('-') && comp_str.chars().nth(13) == Some('-') && comp_str.chars().nth(18) == Some('-') && comp_str.chars().nth(23) == Some('-') {
+                } else if comp_str.len() == 36
+                    && comp_str.chars().take(32).all(|c| c.is_ascii_hexdigit())
+                    && comp_str.chars().nth(8) == Some('-')
+                    && comp_str.chars().nth(13) == Some('-')
+                    && comp_str.chars().nth(18) == Some('-')
+                    && comp_str.chars().nth(23) == Some('-')
+                {
                     // 带连字符的UUID格式
                     path
                 } else {
                     // 生成UUID子目录
-                    let folder_name = uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
+                    let folder_name =
+                        uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
                     PathBuf::from(&base_path).join(&folder_name)
                 }
             } else {
                 // 生成UUID子目录
-                let folder_name = uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
+                let folder_name =
+                    uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
                 PathBuf::from(&base_path).join(&folder_name)
             }
         } else {
