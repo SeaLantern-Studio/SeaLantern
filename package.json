@@ -54,7 +54,7 @@
     "vue-tsc": "^3.2.5"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md,yml,yaml}": [
+    "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md}": [
       "pnpm exec oxfmt"
     ]
   },
