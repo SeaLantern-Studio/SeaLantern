@@ -125,24 +125,24 @@
 
 ### 分支命名
 
-- `feature/功能名` - 新功能
+- `feat/功能名` - 新功能
 - `fix/问题描述` - Bug 修复
+- `refactor/任务描述` - 重构
 - `chore/任务描述` - 杂项任务
 - `docs/文档说明` - 文档更新
 
 ### Commit 规范
 
-使用约定式提交（Conventional Commits）：
+本仓库强制使用约定式提交（Conventional Commits），格式如下：
 
 ```
-<类型>: <简短描述>
-
-<详细描述>（可选）
+<type>: <subject>
+<type>(scope): <subject>
 
 Co-Authored-By: 贡献者名 <email>
 ```
 
-**类型**：
+其中 `type` 必须是小写，并且只能使用：
 
 - `feat`: 新功能
 - `fix`: Bug 修复
@@ -152,44 +152,57 @@ Co-Authored-By: 贡献者名 <email>
 - `perf`: 性能优化
 - `test`: 测试相关
 - `chore`: 构建/工具链相关
+- `revert`: 回滚提交
+- `security`: 安全修复
 
-**示例**：
+提交前会自动执行以下检查：
+
+- `pre-commit`：运行 `lint-staged`，自动格式化暂存区前端文件（`oxfmt`）
+- `commit-msg`：运行 `commitlint`，校验提交信息格式
+- CI：再次校验提交信息，避免 `--no-verify` 绕过本地检查
+
+**示例（符合规范）**：
 
 ```
-feat: 添加服务器备份功能
-
-- 实现增量备份
-- 支持自动备份计划
-- 添加备份恢复功能
+feat(plugin): 增加插件下载重试机制
+fix(server): 修复开服路径识别异常
+chore(ci): 调整工作流缓存策略
+docs(contributing): 更新提交规范说明
 ```
+
+### 提交被拦截时如何处理
+
+1. 看到 `commit-msg script failed`：说明提交信息不符合规范，按提示改为 `type: 描述` 或 `type(scope): 描述`。
+2. 看到 `pre-commit` 执行后有文件变化：重新 `git add` 后再次提交（因为格式化可能修改了暂存文件）。
+3. 想提前自检：运行 `pnpm run fmt:check && pnpm run lint`，再执行 `git commit`。
 
 ### Pull Request 流程
 
 1. **Fork 项目并创建分支**
 
    ```bash
-   git checkout -b feature/your-feature
+   git checkout -b feat/your-feature
    ```
 
 2. **开发并提交**
 
    ```bash
    # 确保代码通过检查
-   cargo fmt --all
+   cargo fmt --all -- --check
    cargo clippy --workspace -- -D warnings
-   pnpm run fmt
+   pnpm run fmt:check
    pnpm run lint
    pnpm run build
 
-   # 提交变更
+   # 提交变更（commit-msg 会自动校验）
    git add .
-   git commit -m "feat: 你的功能描述"
+   git commit -m "feat(scope): 你的功能描述"
    ```
 
 3. **推送并创建 PR**
 
    ```bash
-   git push origin feature/your-feature
+   git push origin feat/your-feature
    ```
 
 4. **PR 标题和描述**

@@ -1,17 +1,16 @@
 use std::collections::{HashMap, HashSet};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
+use crate::services::server_log_pipeline;
 use serde::{Deserialize, Serialize};
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
-const STARTER_DOWNLOAD_API_BASE: &str = "https://api.mslmc.cn/v3/download/server";
 
 /// 验证服务器名称，防止路径遍历攻击
 /// 返回清理后的名称或错误信息
@@ -46,17 +45,6 @@ fn validate_server_name(name: &str) -> Result<String, String> {
         }
     }
     Ok(trimmed.to_string())
-}
-
-#[derive(Debug, Deserialize)]
-struct StarterDownloadApiResponse {
-    data: Option<StarterDownloadApiData>,
-}
-
-#[derive(Debug, Deserialize)]
-struct StarterDownloadApiData {
-    url: Option<String>,
-    sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,27 +89,19 @@ pub struct ServerManager {
     pub processes: Mutex<HashMap<String, Child>>,
     pub stopping_servers: Mutex<HashSet<String>>,
     pub starting_servers: Mutex<HashSet<String>>,
-    pub logs: Mutex<HashMap<String, Vec<String>>>,
     pub data_dir: Mutex<String>,
-    pub log_thread_stops: Mutex<HashMap<String, Arc<AtomicBool>>>,
 }
 
 impl ServerManager {
     pub fn new() -> Self {
         let data_dir = get_data_dir();
         let servers = load_servers(&data_dir);
-        let mut logs_map = HashMap::new();
-        for s in &servers {
-            logs_map.insert(s.id.clone(), Vec::new());
-        }
         ServerManager {
             servers: Mutex::new(servers),
             processes: Mutex::new(HashMap::new()),
             stopping_servers: Mutex::new(HashSet::new()),
             starting_servers: Mutex::new(HashSet::new()),
-            logs: Mutex::new(logs_map),
             data_dir: Mutex::new(data_dir),
-            log_thread_stops: Mutex::new(HashMap::new()),
         }
     }
 
@@ -141,12 +121,6 @@ impl ServerManager {
     fn clear_stopping(&self, id: &str) {
         if let Ok(mut stopping) = self.stopping_servers.lock() {
             stopping.remove(id);
-        }
-        // 通知对应的日志轮询线程退出
-        if let Ok(stops) = self.log_thread_stops.lock() {
-            if let Some(flag) = stops.get(id) {
-                flag.store(true, Ordering::Relaxed);
-            }
         }
     }
 
@@ -179,7 +153,10 @@ impl ServerManager {
         std::thread::spawn(move || {
             let manager = super::global::server_manager();
             if let Err(err) = manager.stop_server(&sid) {
-                manager.append_log(&sid, &format!("[Sea Lantern] 停止失败: {}", err));
+                let _ = server_log_pipeline::append_sealantern_log(
+                    &sid,
+                    &format!("[Sea Lantern] 停止失败: {}", err),
+                );
                 manager.clear_stopping(&sid);
             }
         });
@@ -274,10 +251,6 @@ impl ServerManager {
             .lock()
             .expect("servers lock poisoned")
             .push(server.clone());
-        self.logs
-            .lock()
-            .expect("logs lock poisoned")
-            .insert(id, Vec::new());
         self.save();
         Ok(server)
     }
@@ -385,10 +358,6 @@ impl ServerManager {
             .lock()
             .expect("servers lock poisoned")
             .push(server.clone());
-        self.logs
-            .lock()
-            .expect("logs lock poisoned")
-            .insert(id, Vec::new());
         self.save();
         Ok(server)
     }
@@ -585,10 +554,6 @@ impl ServerManager {
             .lock()
             .expect("servers lock poisoned")
             .push(server.clone());
-        self.logs
-            .lock()
-            .expect("logs lock poisoned")
-            .insert(id, Vec::new());
         self.save();
         Ok(server)
     }
@@ -689,10 +654,6 @@ impl ServerManager {
             .lock()
             .expect("servers lock poisoned")
             .push(server.clone());
-        self.logs
-            .lock()
-            .expect("logs lock poisoned")
-            .insert(id, Vec::new());
         self.save();
         Ok(server)
     }
@@ -718,10 +679,12 @@ impl ServerManager {
                 match child.try_wait() {
                     Ok(Some(_)) => {
                         procs.remove(id);
+                        server_log_pipeline::shutdown_writer(id);
                     } // Dead process, clean up
                     Ok(None) => return Err("服务器已在运行中".to_string()),
                     Err(_) => {
                         procs.remove(id);
+                        server_log_pipeline::shutdown_writer(id);
                     }
                 }
             }
@@ -739,7 +702,10 @@ impl ServerManager {
             let preload_script = std::path::Path::new(&server.path).join("preload.bat");
             if preload_script.exists() {
                 println!("发现预加载脚本: {:?}", preload_script);
-                self.append_log(id, "[preload] 开始执行预加载脚本...");
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    "[preload] 开始执行预加载脚本...",
+                );
 
                 let mut cmd = std::process::Command::new("cmd");
                 cmd.args(["/c", preload_script.to_str().unwrap_or("preload.bat")])
@@ -756,20 +722,32 @@ impl ServerManager {
                             if !result.stdout.is_empty() {
                                 let output = String::from_utf8_lossy(&result.stdout);
                                 for line in output.lines() {
-                                    self.append_log(id, &format!("[preload] {}", line));
+                                    let _ = server_log_pipeline::append_sealantern_log(
+                                        id,
+                                        &format!("[preload] {}", line),
+                                    );
                                 }
                             }
-                            self.append_log(id, "[preload] 预加载脚本执行成功");
+                            let _ = server_log_pipeline::append_sealantern_log(
+                                id,
+                                "[preload] 预加载脚本执行成功",
+                            );
                         } else {
                             let error = String::from_utf8_lossy(&result.stderr);
                             println!("preload.bat 执行失败: {}", error);
-                            self.append_log(id, &format!("[preload] 执行失败: {}", error));
+                            let _ = server_log_pipeline::append_sealantern_log(
+                                id,
+                                &format!("[preload] 执行失败: {}", error),
+                            );
                         }
                     }
                     Err(e) => {
                         let error_msg = format!("执行 preload.bat 失败: {}", e);
                         println!("{}", error_msg);
-                        self.append_log(id, &format!("[preload] {}", error_msg));
+                        let _ = server_log_pipeline::append_sealantern_log(
+                            id,
+                            &format!("[preload] {}", error_msg),
+                        );
                     }
                 }
             }
@@ -780,7 +758,10 @@ impl ServerManager {
             let preload_script = std::path::Path::new(&server.path).join("preload.sh");
             if preload_script.exists() {
                 println!("发现预加载脚本: {:?}", preload_script);
-                self.append_log(id, "[preload] 开始执行预加载脚本...");
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    "[preload] 开始执行预加载脚本...",
+                );
 
                 match std::process::Command::new("sh")
                     .arg(&preload_script)
@@ -793,20 +774,32 @@ impl ServerManager {
                             if !result.stdout.is_empty() {
                                 let output = String::from_utf8_lossy(&result.stdout);
                                 for line in output.lines() {
-                                    self.append_log(id, &format!("[preload] {}", line));
+                                    let _ = server_log_pipeline::append_sealantern_log(
+                                        id,
+                                        &format!("[preload] {}", line),
+                                    );
                                 }
                             }
-                            self.append_log(id, "[preload] 预加载脚本执行成功");
+                            let _ = server_log_pipeline::append_sealantern_log(
+                                id,
+                                "[preload] 预加载脚本执行成功",
+                            );
                         } else {
                             let error = String::from_utf8_lossy(&result.stderr);
                             println!("preload.sh 执行失败: {}", error);
-                            self.append_log(id, &format!("[preload] 执行失败: {}", error));
+                            let _ = server_log_pipeline::append_sealantern_log(
+                                id,
+                                &format!("[preload] 执行失败: {}", error),
+                            );
                         }
                     }
                     Err(e) => {
                         let error_msg = format!("执行 preload.sh 失败: {}", e);
                         println!("{}", error_msg);
-                        self.append_log(id, &format!("[preload] {}", error_msg));
+                        let _ = server_log_pipeline::append_sealantern_log(
+                            id,
+                            &format!("[preload] {}", error_msg),
+                        );
                     }
                 }
             }
@@ -869,9 +862,9 @@ impl ServerManager {
             }
 
             let (installer_url, installer_sha256) =
-                fetch_starter_installer_url(&core_key, mc_version)?;
+                super::starter_installer_links::fetch_starter_installer_url(&core_key, mc_version)?;
             if let Some(sha256) = installer_sha256 {
-                self.append_log(
+                let _ = server_log_pipeline::append_sealantern_log(
                     id,
                     &format!(
                         "[Sea Lantern] Starter 安装器: core={}, version={}, sha256={}",
@@ -1034,27 +1027,17 @@ impl ServerManager {
         };
 
         let command_for_log = format_command_for_log(&cmd);
-        self.append_log(id, &format!("[Sea Lantern] 启动命令: {}", command_for_log));
+        let _ = server_log_pipeline::append_sealantern_log(
+            id,
+            &format!("[Sea Lantern] 启动命令: {}", command_for_log),
+        );
 
         cmd.current_dir(&server.path);
 
-        // 使用文件重定向，避免piped导致的Java代理加载问题
-        let log_file = std::path::Path::new(&server.path).join("latest.log");
+        server_log_pipeline::init_db(Path::new(&server.path))?;
 
-        // 清空旧日志文件，避免读取历史日志
-        let stdout_file = std::fs::OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&log_file)
-            .map_err(|e| format!("无法创建日志文件: {}", e))?;
-
-        let stderr_file = stdout_file
-            .try_clone()
-            .map_err(|e| format!("无法克隆文件句柄: {}", e))?;
-
-        cmd.stdout(Stdio::from(stdout_file));
-        cmd.stderr(Stdio::from(stderr_file));
+        cmd.stdout(Stdio::piped());
+        cmd.stderr(Stdio::piped());
         cmd.stdin(Stdio::piped());
 
         // 隐藏控制台窗口
@@ -1065,8 +1048,11 @@ impl ServerManager {
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let child = cmd.spawn().map_err(|e| format!("启动失败: {}", e))?;
+        let mut child = cmd.spawn().map_err(|e| format!("启动失败: {}", e))?;
         println!("Java进程已启动，PID: {:?}", child.id());
+
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
 
         self.processes
             .lock()
@@ -1086,81 +1072,25 @@ impl ServerManager {
             }
         }
         self.save();
-        self.append_log(id, "[Sea Lantern] 服务器启动中...");
+        let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器启动中...");
 
-        let stop_flag = Arc::new(AtomicBool::new(false));
-        {
-            let mut stops = self
-                .log_thread_stops
-                .lock()
-                .expect("log_thread_stops lock poisoned");
-            if let Some(old) = stops.insert(id.to_string(), Arc::clone(&stop_flag)) {
-                old.store(true, Ordering::Relaxed);
-            }
+        if let Some(stdout) = stdout {
+            server_log_pipeline::spawn_server_output_reader(id.to_string(), stdout);
         }
-
-        let max_lines = settings.max_log_lines as usize;
-        let lid = id.to_string();
-        let log_path = log_file.clone();
-        let stop = Arc::clone(&stop_flag);
-
-        std::thread::spawn(move || {
-            use std::io::Seek;
-            let mut pos = 0u64;
-            let mut last_size = 0u64;
-
-            loop {
-                std::thread::sleep(std::time::Duration::from_millis(500));
-
-                if stop.load(Ordering::Relaxed) {
-                    break;
-                }
-
-                if let Ok(mut file) = std::fs::File::open(&log_path) {
-                    if let Ok(metadata) = file.metadata() {
-                        let len = metadata.len();
-
-                        if len > last_size {
-                            if file.seek(std::io::SeekFrom::Start(pos)).is_ok() {
-                                let manager = super::global::server_manager();
-                                let mut buffer = Vec::new();
-
-                                if file.read_to_end(&mut buffer).is_ok() {
-                                    let content = decode_console_bytes(&buffer);
-                                    for line in content.lines() {
-                                        if !line.trim().is_empty() {
-                                            if let Ok(mut l) = manager.logs.lock() {
-                                                if let Some(v) = l.get_mut(&lid) {
-                                                    v.push(line.to_string());
-                                                    if v.len() > max_lines {
-                                                        let d = v.len() - max_lines;
-                                                        v.drain(0..d);
-                                                    }
-                                                }
-                                            }
-                                            if line.contains("Done (")
-                                                && line.contains(")! For help")
-                                            {
-                                                manager.clear_starting(&lid);
-                                                let _ =
-                                                    crate::plugins::api::emit_server_ready(&lid);
-                                            }
-                                        }
-                                    }
-                                    pos = len;
-                                }
-                            }
-                            last_size = len;
-                        }
-                    }
-                }
-            }
-        });
+        if let Some(stderr) = stderr {
+            server_log_pipeline::spawn_server_output_reader(id.to_string(), stderr);
+        }
 
         Ok(())
     }
 
     pub fn stop_server(&self, id: &str) -> Result<(), String> {
+        // 日志 Writer 生命周期说明：
+        // 1) 停服流程中“最后一条 Sea Lantern 提示日志”要先入队，随后再 shutdown_writer。
+        //    这样可以保证提示日志也被刷盘，不会因为先关 Writer 而丢失。
+        // 2) shutdown_writer 会触发 writer 线程 flush+join，确保 SQLite 句柄被释放。
+        //    这对 Windows 很关键，可避免删除目录或外部工具读取 DB 时遇到句柄占用。
+        // 3) 所有 return 分支都要覆盖 shutdown_writer，避免异常路径漏清理。
         // Check if actually running first
         let is_running = {
             let mut procs = self.processes.lock().expect("processes lock poisoned");
@@ -1168,11 +1098,13 @@ impl ServerManager {
                 match child.try_wait() {
                     Ok(Some(_)) => {
                         procs.remove(id);
+                        server_log_pipeline::shutdown_writer(id);
                         false
                     }
                     Ok(None) => true,
                     Err(_) => {
                         procs.remove(id);
+                        server_log_pipeline::shutdown_writer(id);
                         false
                     }
                 }
@@ -1183,11 +1115,12 @@ impl ServerManager {
 
         if !is_running {
             self.clear_stopping(id);
-            self.append_log(id, "[Sea Lantern] 服务器未运行");
+            let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器未运行");
+            server_log_pipeline::shutdown_writer(id);
             return Ok(());
         }
 
-        self.append_log(id, "[Sea Lantern] 正在发送停止命令...");
+        let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 正在发送停止命令...");
         let _ = self.send_command(id, "stop");
 
         for _ in 0..20 {
@@ -1198,19 +1131,26 @@ impl ServerManager {
                     Ok(Some(_)) => {
                         procs.remove(id);
                         self.clear_stopping(id);
-                        self.append_log(id, "[Sea Lantern] 服务器已正常停止");
+                        let _ = server_log_pipeline::append_sealantern_log(
+                            id,
+                            "[Sea Lantern] 服务器已正常停止",
+                        );
+                        server_log_pipeline::shutdown_writer(id);
                         return Ok(());
                     }
                     Ok(None) => {} // Still running
                     Err(_) => {
                         procs.remove(id);
                         self.clear_stopping(id);
+                        server_log_pipeline::shutdown_writer(id);
                         return Ok(());
                     }
                 }
             } else {
                 self.clear_stopping(id);
-                self.append_log(id, "[Sea Lantern] 服务器已停止");
+                let _ =
+                    server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器已停止");
+                server_log_pipeline::shutdown_writer(id);
                 return Ok(());
             }
         }
@@ -1219,8 +1159,12 @@ impl ServerManager {
         if let Some(mut child) = procs.remove(id) {
             let _ = child.kill();
             let _ = child.wait();
-            self.append_log(id, "[Sea Lantern] 服务器超时，已强制终止");
+            let _ = server_log_pipeline::append_sealantern_log(
+                id,
+                "[Sea Lantern] 服务器超时，已强制终止",
+            );
         }
+        server_log_pipeline::shutdown_writer(id);
         self.clear_stopping(id);
         Ok(())
     }
@@ -1247,12 +1191,14 @@ impl ServerManager {
             match child.try_wait() {
                 Ok(Some(_)) => {
                     procs.remove(id);
+                    server_log_pipeline::shutdown_writer(id);
                     self.clear_starting(id);
                     false
                 }
                 Ok(None) => true,
                 Err(_) => {
                     procs.remove(id);
+                    server_log_pipeline::shutdown_writer(id);
                     self.clear_starting(id);
                     false
                 }
@@ -1285,6 +1231,8 @@ impl ServerManager {
             }
         }
 
+        server_log_pipeline::shutdown_writer(id);
+
         let server_path = {
             let servers = self.servers.lock().expect("servers lock poisoned");
             servers.iter().find(|s| s.id == id).map(|s| s.path.clone())
@@ -1300,7 +1248,6 @@ impl ServerManager {
             .lock()
             .expect("servers lock poisoned")
             .retain(|s| s.id != id);
-        self.logs.lock().expect("logs lock poisoned").remove(id);
         let data_dir = self
             .data_dir
             .lock()
@@ -1311,35 +1258,9 @@ impl ServerManager {
         Ok(())
     }
 
-    pub fn get_logs(&self, id: &str, since: usize) -> Vec<String> {
-        let logs = self.logs.lock().expect("logs lock poisoned");
-        if let Some(v) = logs.get(id) {
-            if since < v.len() {
-                v[since..].to_vec()
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        }
-    }
-
-    pub fn get_all_logs(&self) -> Vec<(String, Vec<String>)> {
-        let logs = self.logs.lock().expect("logs lock poisoned");
-        logs.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
-    }
-
     pub fn get_running_server_ids(&self) -> Vec<String> {
         let procs = self.processes.lock().expect("processes lock poisoned");
         procs.keys().cloned().collect()
-    }
-
-    fn append_log(&self, id: &str, msg: &str) {
-        if let Ok(mut logs) = self.logs.lock() {
-            if let Some(v) = logs.get_mut(id) {
-                v.push(msg.to_string());
-            }
-        }
     }
 
     pub fn update_server_name(&self, id: &str, new_name: &str) -> Result<(), String> {
@@ -1529,54 +1450,6 @@ fn detect_java_major_version(java_path: &str) -> Option<u32> {
     }
 
     None
-}
-
-fn fetch_starter_installer_url(
-    core_type_key: &str,
-    mc_version: &str,
-) -> Result<(String, Option<String>), String> {
-    let mut url = reqwest::Url::parse(STARTER_DOWNLOAD_API_BASE)
-        .map_err(|e| format!("构建 Starter 下载链接失败: {}", e))?;
-    {
-        let mut segments = url
-            .path_segments_mut()
-            .map_err(|_| "Starter 下载链接不支持路径段写入".to_string())?;
-        segments.push(core_type_key);
-        segments.push(mc_version);
-    }
-
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(15))
-        .build()
-        .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
-    let response = client
-        .get(url.clone())
-        .send()
-        .map_err(|e| format!("请求 Starter 下载信息失败: {}", e))?;
-
-    let status = response.status();
-    if !status.is_success() {
-        return Err(format!("Starter 下载接口返回异常状态: {} ({})", status, url));
-    }
-
-    let payload: StarterDownloadApiResponse = response
-        .json()
-        .map_err(|e| format!("解析 Starter 下载信息失败: {}", e))?;
-    let data = payload
-        .data
-        .ok_or_else(|| "Starter 下载接口缺少 data 字段".to_string())?;
-    let installer_url = data
-        .url
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| "Starter 下载接口未返回 data.url".to_string())?;
-
-    Ok((
-        installer_url,
-        data.sha256
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty()),
-    ))
 }
 
 fn format_command_for_log(command: &Command) -> String {
