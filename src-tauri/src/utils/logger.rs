@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Local};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct LogEntry {
@@ -32,7 +32,7 @@ impl LogCollector {
             message: message.to_string(),
         };
         logs.push(entry);
-        
+
         if logs.len() > self.max_logs {
             logs.remove(0);
         }

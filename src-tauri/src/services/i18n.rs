@@ -216,6 +216,50 @@ impl I18nService {
         let mut map = HashMap::new();
         map.insert("app.title".to_string(), "SeaLantern".to_string());
         map.insert("app.subtitle".to_string(), "Minecraft 服务器管理器".to_string());
+
+        map.insert("console.server_not_found".to_string(), "服务器不存在: {0}".to_string());
+        map.insert("console.server_not_running".to_string(), "服务器未运行".to_string());
+        map.insert("console.command_forbidden".to_string(), "命令 '{0}' 被禁止执行".to_string());
+        map.insert(
+            "console.command_not_allowed".to_string(),
+            "命令 '{0}' 不在允许列表中。允许的命令: {1}".to_string(),
+        );
+        map.insert(
+            "console.command_has_forbidden_chars".to_string(),
+            "命令包含非法字符".to_string(),
+        );
+        map.insert("console.empty_command".to_string(), "空命令".to_string());
+        map.insert("console.send_command_failed".to_string(), "发送命令失败: {0}".to_string());
+        map.insert("console.create_table_failed".to_string(), "创建控制台表失败: {0}".to_string());
+        map.insert(
+            "console.create_send_failed".to_string(),
+            "创建 console.send 失败: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_send_failed".to_string(),
+            "设置 console.send 失败: {0}".to_string(),
+        );
+        map.insert(
+            "console.create_get_logs_failed".to_string(),
+            "创建 console.get_logs 失败: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_get_logs_failed".to_string(),
+            "设置 console.get_logs 失败: {0}".to_string(),
+        );
+        map.insert(
+            "console.create_get_status_failed".to_string(),
+            "创建 console.get_status 失败: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_get_status_failed".to_string(),
+            "设置 console.get_status 失败: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_console_failed".to_string(),
+            "设置 sl.console 失败: {0}".to_string(),
+        );
+
         map
     }
 
@@ -223,6 +267,59 @@ impl I18nService {
         let mut map = HashMap::new();
         map.insert("app.title".to_string(), "SeaLantern".to_string());
         map.insert("app.subtitle".to_string(), "Minecraft Server Manager".to_string());
+
+        map.insert("console.server_not_found".to_string(), "Server not found: {0}".to_string());
+        map.insert("console.server_not_running".to_string(), "Server is not running".to_string());
+        map.insert(
+            "console.command_forbidden".to_string(),
+            "Command '{0}' is forbidden".to_string(),
+        );
+        map.insert(
+            "console.command_not_allowed".to_string(),
+            "Command '{0}' is not in the allowed list. Allowed commands: {1}".to_string(),
+        );
+        map.insert(
+            "console.command_has_forbidden_chars".to_string(),
+            "Command contains forbidden characters".to_string(),
+        );
+        map.insert("console.empty_command".to_string(), "Empty command".to_string());
+        map.insert(
+            "console.send_command_failed".to_string(),
+            "Failed to send command: {0}".to_string(),
+        );
+        map.insert(
+            "console.create_table_failed".to_string(),
+            "Failed to create console table: {0}".to_string(),
+        );
+        map.insert(
+            "console.create_send_failed".to_string(),
+            "Failed to create console.send: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_send_failed".to_string(),
+            "Failed to set console.send: {0}".to_string(),
+        );
+        map.insert(
+            "console.create_get_logs_failed".to_string(),
+            "Failed to create console.get_logs: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_get_logs_failed".to_string(),
+            "Failed to set console.get_logs: {0}".to_string(),
+        );
+        map.insert(
+            "console.create_get_status_failed".to_string(),
+            "Failed to create console.get_status: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_get_status_failed".to_string(),
+            "Failed to set console.get_status: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_console_failed".to_string(),
+            "Failed to set sl.console: {0}".to_string(),
+        );
+
         map
     }
 
@@ -230,6 +327,50 @@ impl I18nService {
         let mut map = HashMap::new();
         map.insert("app.title".to_string(), "SeaLantern".to_string());
         map.insert("app.subtitle".to_string(), "Minecraft 伺服器管理器".to_string());
+
+        map.insert("console.server_not_found".to_string(), "伺服器不存在: {0}".to_string());
+        map.insert("console.server_not_running".to_string(), "伺服器未運行".to_string());
+        map.insert("console.command_forbidden".to_string(), "命令 '{0}' 被禁止執行".to_string());
+        map.insert(
+            "console.command_not_allowed".to_string(),
+            "命令 '{0}' 不在允許列表中。允許的命令: {1}".to_string(),
+        );
+        map.insert(
+            "console.command_has_forbidden_chars".to_string(),
+            "命令包含非法字符".to_string(),
+        );
+        map.insert("console.empty_command".to_string(), "空命令".to_string());
+        map.insert("console.send_command_failed".to_string(), "發送命令失敗: {0}".to_string());
+        map.insert("console.create_table_failed".to_string(), "創建控制台表失敗: {0}".to_string());
+        map.insert(
+            "console.create_send_failed".to_string(),
+            "創建 console.send 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_send_failed".to_string(),
+            "設置 console.send 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "console.create_get_logs_failed".to_string(),
+            "創建 console.get_logs 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_get_logs_failed".to_string(),
+            "設置 console.get_logs 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "console.create_get_status_failed".to_string(),
+            "創建 console.get_status 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_get_status_failed".to_string(),
+            "設置 console.get_status 失敗: {0}".to_string(),
+        );
+        map.insert(
+            "console.set_console_failed".to_string(),
+            "設置 sl.console 失敗: {0}".to_string(),
+        );
+
         map
     }
 }

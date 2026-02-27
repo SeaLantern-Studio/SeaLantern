@@ -138,6 +138,8 @@ pub fn run() {
             settings_commands::export_settings,
             settings_commands::import_settings,
             settings_commands::get_system_fonts,
+            settings_commands::get_plugin_commands,
+            settings_commands::update_plugin_commands,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,

@@ -1,5 +1,5 @@
 use crate::services::global;
-use crate::utils::logger::{GLOBAL_LOG_COLLECTOR, LogEntry};
+use crate::utils::logger::{LogEntry, GLOBAL_LOG_COLLECTOR};
 use tauri::command;
 
 #[command]

@@ -92,9 +92,11 @@ impl PluginManager {
             println!("[PluginManager] 正在加载插件: {}", plugin_dir.display());
             match PluginLoader::load_manifest(plugin_dir) {
                 Ok(manifest) => {
-                    println!("[PluginManager] 插件 '{}' (ID: {}) 版本 {}", 
-                        manifest.name, manifest.id, manifest.version);
-                    
+                    println!(
+                        "[PluginManager] 插件 '{}' (ID: {}) 版本 {}",
+                        manifest.name, manifest.id, manifest.version
+                    );
+
                     let state = match PluginLoader::validate_manifest(&manifest) {
                         Ok(()) => {
                             println!("[PluginManager] 插件 '{}' 验证通过", manifest.id);
@@ -117,7 +119,11 @@ impl PluginManager {
                     println!("[PluginManager] 插件 '{}' 已添加到管理器", manifest.id);
                 }
                 Err(e) => {
-                    println!("[PluginManager] 从 {} 加载 manifest 失败: {}", plugin_dir.display(), e);
+                    println!(
+                        "[PluginManager] 从 {} 加载 manifest 失败: {}",
+                        plugin_dir.display(),
+                        e
+                    );
                 }
             }
         }
@@ -145,7 +151,7 @@ impl PluginManager {
 
     pub fn enable_plugin(&mut self, plugin_id: &str) -> Result<(), String> {
         println!("[PluginManager] 正在启用插件: {}", plugin_id);
-        
+
         let plugin_info = self
             .plugins
             .get(plugin_id)
