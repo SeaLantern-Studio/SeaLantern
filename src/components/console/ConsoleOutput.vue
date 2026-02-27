@@ -2,6 +2,8 @@
 import { ref, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { ClipboardAddon } from "@xterm/addon-clipboard";
+import { SerializeAddon } from "@xterm/addon-serialize";
 import "@xterm/xterm/css/xterm.css";
 import { i18n } from "@language";
 
@@ -26,10 +28,46 @@ const LOG_REGEX = /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATA
 
 let terminal: Terminal | null = null;
 let fitAddon: FitAddon | null = null;
-let viewportEl: HTMLElement | null = null;
+let clipboardAddon: ClipboardAddon | null = null;
+let serializeAddon: SerializeAddon | null = null;
 let resizeObserver: ResizeObserver | null = null;
-let removeViewportScrollListener: (() => void) | null = null;
+let scrollDisposable: { dispose: () => void } | null = null;
 let hasAnyLine = false;
+let terminalTextarea: HTMLTextAreaElement | null = null;
+
+async function handleCopyShortcut(event: KeyboardEvent) {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
+  if (!terminal?.hasSelection()) return;
+
+  const selectedText = terminal.getSelection();
+  if (!selectedText) return;
+
+  event.preventDefault();
+  const copied = typeof document.execCommand === "function" && document.execCommand("copy");
+  if (copied) {
+    terminal.clearSelection();
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(selectedText);
+    terminal.clearSelection();
+  } catch (_err) {
+    // Keep selection when clipboard write fails.
+  }
+}
+
+function handleCopyEvent(event: ClipboardEvent) {
+  if (!terminal?.hasSelection()) return;
+  const selectedText = terminal.getSelection();
+  if (!selectedText || !event.clipboardData) return;
+  event.preventDefault();
+  event.clipboardData.setData("text/plain", selectedText);
+}
+
+function keepDisplayOnlyFocus() {
+  terminal?.blur();
+}
 
 function cssVar(name: string, fallback: string): string {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -112,44 +150,26 @@ function clear() {
 }
 
 function getAllPlainText(): string {
-  if (!terminal || !hasAnyLine) return "";
-
-  const buffer = terminal.buffer.active;
-  const lines: string[] = [];
-  for (let i = 0; i < buffer.length; i++) {
-    const line = buffer.getLine(i);
-    if (!line) continue;
-    lines.push(line.translateToString(true));
-  }
-  return lines.join("\n");
+  if (!serializeAddon || !hasAnyLine) return "";
+  const serialized = serializeAddon.serialize({
+    excludeAltBuffer: true,
+    excludeModes: true,
+  });
+  return serialized.replace(/\x1B\[[0-9;?]*[ -/]*[@-~]/g, "").replace(/\r/g, "");
 }
 
-function setupViewportScrollTracking() {
-  if (!terminalHost.value) return;
-
-  const viewport = terminalHost.value.querySelector(".xterm-viewport");
-  if (!(viewport instanceof HTMLElement)) return;
-
-  viewportEl = viewport;
-
-  const onScroll = () => {
-    if (!viewportEl) return;
-    const delta = viewportEl.scrollHeight - viewportEl.scrollTop - viewportEl.clientHeight;
-    emit("scroll", delta > 40);
-  };
-
-  viewportEl.addEventListener("scroll", onScroll);
-  removeViewportScrollListener = () => {
-    viewportEl?.removeEventListener("scroll", onScroll);
-  };
+function setupScrollTracking() {
+  if (!terminal) return;
+  scrollDisposable = terminal.onScroll(() => {
+    const buffer = terminal?.buffer.active;
+    if (!buffer) return;
+    emit("scroll", buffer.baseY - buffer.viewportY > 0);
+  });
 }
 
 function doScroll() {
   nextTick(() => {
     terminal?.scrollToBottom();
-    if (viewportEl) {
-      viewportEl.scrollTop = viewportEl.scrollHeight;
-    }
     emit("scroll", false);
   });
 }
@@ -161,6 +181,8 @@ onMounted(() => {
     convertEol: true,
     allowTransparency: false,
     disableStdin: true,
+    cursorBlink: false,
+    cursorInactiveStyle: "none",
     fontFamily: cssVar("--sl-font-mono", "monospace"),
     fontSize: props.consoleFontSize,
     lineHeight: 1,
@@ -168,26 +190,28 @@ onMounted(() => {
     theme: {
       background: cssVar("--sl-bg-secondary", "#111827"),
       foreground: cssVar("--sl-text-primary", "#e5e7eb"),
-      cursor: cssVar("--sl-primary", "#3b82f6"),
+      cursor: "transparent",
+      cursorAccent: "transparent",
       selectionBackground: cssVar("--sl-primary-bg", "#1e3a8a"),
     },
   });
 
   fitAddon = new FitAddon();
+  clipboardAddon = new ClipboardAddon();
+  serializeAddon = new SerializeAddon();
   terminal.loadAddon(fitAddon);
+  terminal.loadAddon(clipboardAddon);
+  terminal.loadAddon(serializeAddon);
   terminal.open(terminalHost.value);
-  terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
-      const selectedText = terminal?.getSelection() || "";
-      if (selectedText.length > 0) {
-        void navigator.clipboard.writeText(selectedText);
-        return false;
-      }
-    }
-    return true;
-  });
+  terminalTextarea = terminal.textarea;
+  if (terminalTextarea) {
+    terminalTextarea.tabIndex = -1;
+    terminalTextarea.readOnly = true;
+    terminalTextarea.addEventListener("focus", keepDisplayOnlyFocus);
+  }
+  terminalHost.value.addEventListener("mousedown", keepDisplayOnlyFocus);
   fitTerminal();
-  setupViewportScrollTracking();
+  setupScrollTracking();
   clear();
 
   resizeObserver = new ResizeObserver(() => {
@@ -196,16 +220,25 @@ onMounted(() => {
   resizeObserver.observe(terminalHost.value);
 
   window.addEventListener("resize", fitTerminal);
+  window.addEventListener("keydown", handleCopyShortcut);
+  document.addEventListener("copy", handleCopyEvent, true);
+  keepDisplayOnlyFocus();
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", fitTerminal);
+  window.removeEventListener("keydown", handleCopyShortcut);
+  document.removeEventListener("copy", handleCopyEvent, true);
+  terminalHost.value?.removeEventListener("mousedown", keepDisplayOnlyFocus);
+  terminalTextarea?.removeEventListener("focus", keepDisplayOnlyFocus);
+  terminalTextarea = null;
   resizeObserver?.disconnect();
   resizeObserver = null;
-  removeViewportScrollListener?.();
-  removeViewportScrollListener = null;
-  viewportEl = null;
+  scrollDisposable?.dispose();
+  scrollDisposable = null;
   fitAddon = null;
+  clipboardAddon = null;
+  serializeAddon = null;
   terminal?.dispose();
   terminal = null;
   hasAnyLine = false;
@@ -248,20 +281,6 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
 </template>
 
 <style scoped>
-.console-output {
-  flex: 1;
-  display: flex;
-  background: var(--sl-bg-secondary);
-  border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  min-height: 0;
-  overflow: hidden;
-  padding: var(--sl-space-md);
-  user-select: text;
-  -webkit-user-select: text;
-  cursor: text;
-}
-
 .terminal-host {
   flex: 1;
   min-height: 0;

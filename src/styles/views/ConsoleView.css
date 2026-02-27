@@ -156,15 +156,12 @@
 
 .console-output {
   flex: 1;
+  display: flex;
   background: var(--sl-bg-secondary);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-md);
-  overflow-y: auto;
-  font-family: var(--sl-font-mono);
-  line-height: 1.7;
-  color: var(--sl-text-primary);
   min-height: 0;
+  overflow: hidden;
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
