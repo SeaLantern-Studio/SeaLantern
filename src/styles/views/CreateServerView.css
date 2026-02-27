@@ -15,7 +15,7 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
   background: rgba(239, 68, 68, 0.1);
   color: var(--sl-error);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .create-error-close {
@@ -76,7 +76,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   font-weight: 700;
   color: var(--sl-text-secondary);
   background: var(--sl-surface);
@@ -91,13 +91,13 @@
 }
 
 .create-stepper-title {
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   font-weight: 600;
   color: var(--sl-text-primary);
 }
 
 .create-stepper-description {
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-tertiary);
   line-height: 1.4;
 }
@@ -126,14 +126,14 @@
   border-radius: var(--sl-radius-md);
   background: var(--sl-surface);
   color: var(--sl-text-secondary);
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   padding: 12px;
 }
 
 .create-source-core-info {
   margin: 2px 0 0;
   padding-left: 2px;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-secondary);
 }
 

@@ -121,7 +121,10 @@ const handleKeydown = (e: KeyboardEvent) => {
   switch (e.key) {
     case "ArrowDown":
       e.preventDefault();
-      highlightedIndex.value = Math.min(highlightedIndex.value + 1, flattenedItems.value.length - 1);
+      highlightedIndex.value = Math.min(
+        highlightedIndex.value + 1,
+        flattenedItems.value.length - 1,
+      );
       break;
     case "ArrowUp":
       e.preventDefault();
@@ -246,24 +249,38 @@ defineExpose({ open, close, toggle });
 
 <style>
 .sl-menu {
-  background: var(--sl-surface, #ffffff);
-  border: 1px solid var(--sl-border, #e2e8f0);
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   border-radius: var(--sl-radius-lg, 12px);
-  box-shadow:
-    0 10px 25px rgba(0, 0, 0, 0.1),
-    0 4px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  will-change: transform, opacity;
+  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 [data-theme="dark"] .sl-menu {
-  background: var(--sl-surface, #1e2130);
-  border-color: var(--sl-border, rgba(255, 255, 255, 0.1));
-  box-shadow:
-    0 10px 25px rgba(0, 0, 0, 0.3),
-    0 4px 10px rgba(0, 0, 0, 0.2);
+  --sl-glass-bg: rgba(15, 17, 23, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+[data-acrylic="true"] .sl-menu {
+  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+}
+
+[data-theme="dark"][data-acrylic="true"] .sl-menu {
+  --sl-glass-bg: rgba(15, 17, 23, 0.65);
+}
+
+[data-acrylic="false"] .sl-menu {
+  background: var(--sl-surface, #ffffff);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 .sl-menu-content {
@@ -292,7 +309,9 @@ defineExpose({ open, close, toggle });
   background: var(--sl-primary, #0ea5e9);
   opacity: 0;
   transform: scale(0.5);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   border-radius: inherit;
 }
 
@@ -389,14 +408,30 @@ defineExpose({ open, close, toggle });
   animation: item-fade-in 0.2s ease backwards;
 }
 
-.sl-menu-item:nth-child(1) { animation-delay: 0.02s; }
-.sl-menu-item:nth-child(2) { animation-delay: 0.04s; }
-.sl-menu-item:nth-child(3) { animation-delay: 0.06s; }
-.sl-menu-item:nth-child(4) { animation-delay: 0.08s; }
-.sl-menu-item:nth-child(5) { animation-delay: 0.1s; }
-.sl-menu-item:nth-child(6) { animation-delay: 0.12s; }
-.sl-menu-item:nth-child(7) { animation-delay: 0.14s; }
-.sl-menu-item:nth-child(8) { animation-delay: 0.16s; }
+.sl-menu-item:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.sl-menu-item:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.sl-menu-item:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.sl-menu-item:nth-child(4) {
+  animation-delay: 0.08s;
+}
+.sl-menu-item:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.sl-menu-item:nth-child(6) {
+  animation-delay: 0.12s;
+}
+.sl-menu-item:nth-child(7) {
+  animation-delay: 0.14s;
+}
+.sl-menu-item:nth-child(8) {
+  animation-delay: 0.16s;
+}
 
 @keyframes item-fade-in {
   from {

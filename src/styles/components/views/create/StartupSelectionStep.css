@@ -16,7 +16,7 @@
 }
 
 .startup-step-title {
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   font-weight: 600;
   color: var(--sl-text-primary);
 }
@@ -29,7 +29,7 @@
   background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-sm);
   padding: 4px 10px;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   cursor: pointer;
 }
 
@@ -42,7 +42,7 @@
 .startup-step-empty {
   margin: 0;
   color: var(--sl-text-secondary);
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
 }
 
 .startup-list {
@@ -115,12 +115,12 @@
 .startup-card-title {
   margin: 0;
   color: var(--sl-text-primary);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   font-weight: 600;
 }
 
 .startup-mode-badge {
-  font-size: 0.72rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-primary);
   background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-full);
@@ -130,7 +130,7 @@
 .startup-card-detail {
   margin: 0;
   color: var(--sl-text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -138,7 +138,7 @@
 
 .startup-recommend {
   color: var(--sl-text-tertiary);
-  font-size: 0.72rem;
+  font-size: var(--sl-font-size-xs);
 }
 
 .startup-inline-custom {
@@ -152,13 +152,13 @@
 
 .startup-step-error {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-error);
 }
 
 .startup-step-warning {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-warning);
 }
 
@@ -179,7 +179,7 @@
 .startup-extra-label {
   margin: 0;
   color: var(--sl-text-primary);
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   font-weight: 600;
 }
 

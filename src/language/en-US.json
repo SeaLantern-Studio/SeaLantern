@@ -338,6 +338,7 @@
     "enter_command_content": "Enter command content",
     "cancel": "Cancel",
     "delete": "Delete",
+    "save": "Save",
     "add": "Add",
     "update": "Update",
     "back_to_bottom": "Back to bottom",
@@ -349,7 +350,8 @@
     "stopping": "Stopping",
     "stopped": "Stopped",
     "no_server": "No servers",
-    "create_server_first": "Please create and select a server first"
+    "create_server_first": "Please create and select a server first",
+    "suggestion_hint": "Tab to complete / Up Down to select"
   },
   "config": {
     "title": "Config Edit",
@@ -560,9 +562,11 @@
     "font_size_desc": "Adjust the size of interface text",
     "font_family": "Font",
     "font_family_desc": "Select the font used by the interface, some fonts need to be installed on the system or loaded from the network",
+    "console_font_family_desc": "Select the font used by the console interface, some fonts need to be installed on the system or loaded from the network",
+    "console_letter_spacing": "Console Letter Spacing (px)",
+    "console_letter_spacing_desc": "Adjust spacing between console characters, default 0; negative values make text tighter",
     "acrylic": "Acrylic Effect (Glass)",
-    "acrylic_desc": "Enable Windows system-level acrylic glass effect, compatible with background images",
-    "acrylic_not_supported": "Acrylic effect not supported on current system",
+    "acrylic_desc": "Enable soft Gaussian blur glass effect, supports all platforms, compatible with background images",
     "background": "Background Image",
     "background_desc": "Upload an image as software background, supports PNG, JPG, WEBP and other formats",
     "opacity": "Opacity",
@@ -772,6 +776,8 @@
     "checking": "Checking...",
     "refresh": "Refresh",
     "drag_hint": "Drag ZIP plugin, manifest.json or plugin folder here",
+    "choose_title": "Choose Plugin Source",
+    "choose_description": "Select a plugin ZIP file or a folder containing plugins",
     "select_file": "Select File",
     "select_folder": "Select Folder",
     "loading_plugins": "Loading plugins...",
@@ -786,6 +792,7 @@
     "not_found": "Plugin not found",
     "back": "Back",
     "plugin_settings": "Plugin Settings",
+    "plugin_category": "Plugin Category",
     "depends_on": "This plugin depends on {{name}}",
     "save_settings": "Save Settings",
     "status": {
@@ -995,6 +1002,9 @@
     "save_folder": "Save to",
     "filename": "File Name",
     "thread_count": "Thread Count",
+    "thread_count_empty": "Thread count cannot be empty",
+    "thread_count_invalid": "Invalid character",
+    "thread_count_positive": "Thread count must be a positive integer",
     "cancel": "Cancel",
     "download": "Download",
     "browse": "Browse",
@@ -1010,5 +1020,17 @@
     "thread_count_required": "Thread count is required.",
     "thread_count_invalid_chars": "Thread count must contain digits only.",
     "thread_count_positive_integer": "Thread count must be a positive integer."
+    "completed": "Completed"
+  },
+  "dropzone": {
+    "placeholder": "Drop file here or click to select",
+    "support_both": "Supports files and folders",
+    "support_files": "Supports files",
+    "support_folders": "Supports folders",
+    "error_no_path": "Unable to get dropped file path",
+    "error_unsupported_type": "Unsupported file type"
+  },
+  "downloader": {
+    "connection_lost": "Task connection lost"
   }
 }

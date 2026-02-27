@@ -11,12 +11,7 @@ import {
   editingServerId,
   editName,
   editLoading,
-  deletingServerId,
-  inputServerName,
-  deleteError,
-  isClosing,
   formatServerPath,
-  getStatusVariant,
   getStatusText,
   handleStart,
   handleStop,
@@ -24,9 +19,6 @@ import {
   saveServerName,
   cancelEdit,
   showDeleteConfirmInput,
-  confirmDelete,
-  cancelDelete,
-  handleAnimationEnd,
 } from "@utils/serverUtils";
 import { useServerStore } from "@stores/serverStore";
 
@@ -126,7 +118,7 @@ function getStatusClass(status: string | undefined): string {
         :title="server.path"
         @click="handlePathClick(server.path)"
       >
-        <span class="server-path-text">{{ formatServerPath(server.jar_path) }}</span>
+        <span class="server-path-text">{{ formatServerPath(server.path) }}</span>
         <FolderOpen class="folder-icon" :size="16" />
       </div>
     </div>
@@ -166,40 +158,6 @@ function getStatusClass(status: string | undefined): string {
         <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
           {{ i18n.t("home.delete") }}
         </SLButton>
-      </div>
-    </div>
-
-    <div
-      v-if="deletingServerId === server.id"
-      :class="['delete-confirm-area', { closing: isClosing }]"
-      @animationend="handleAnimationEnd"
-    >
-      <p
-        class="delete-confirm-message"
-        v-html="
-          i18n.t('home.delete_confirm_message', {
-            server: '<strong>' + server.name + '</strong>',
-          })
-        "
-      ></p>
-      <div class="delete-input-group">
-        <input
-          type="text"
-          v-model="inputServerName"
-          class="delete-input"
-          :placeholder="i18n.t('home.delete_input_placeholder')"
-          @keyup.enter="confirmDelete"
-          @keyup.esc="cancelDelete"
-        />
-        <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
-      </div>
-      <div class="delete-actions">
-        <SLButton variant="ghost" size="sm" @click="cancelDelete">{{
-          i18n.t("home.delete_cancel")
-        }}</SLButton>
-        <SLButton variant="danger" size="sm" @click="confirmDelete">{{
-          i18n.t("home.delete_confirm")
-        }}</SLButton>
       </div>
     </div>
   </SLCard>
@@ -560,87 +518,5 @@ function getStatusClass(status: string | undefined): string {
   .action-group :deep(.sl-button) {
     flex: 1;
   }
-}
-
-.delete-confirm-area {
-  margin-top: var(--sl-space-sm);
-  padding-top: var(--sl-space-sm);
-  border-top: 1px solid var(--sl-border);
-  animation: slideDown 0.3s ease forwards;
-}
-
-.delete-confirm-area.closing {
-  animation: slideUp 0.2s ease forwards;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    max-height: 0;
-    padding-top: 0;
-    margin-top: 0;
-  }
-  to {
-    opacity: 1;
-    max-height: 200px;
-    padding-top: var(--sl-space-sm);
-    margin-top: var(--sl-space-sm);
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 1;
-    max-height: 200px;
-    padding-top: var(--sl-space-sm);
-    margin-top: var(--sl-space-sm);
-  }
-  to {
-    opacity: 0;
-    max-height: 0;
-    padding-top: 0;
-    margin-top: 0;
-  }
-}
-
-.delete-confirm-message {
-  font-size: 0.875rem;
-  margin-bottom: var(--sl-space-sm);
-  line-height: 1.4;
-}
-
-.delete-input-group {
-  margin-bottom: var(--sl-space-sm);
-}
-
-.delete-input {
-  width: 100%;
-  padding: var(--sl-space-xs) var(--sl-space-sm);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-secondary);
-  font-size: 0.75rem;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.delete-input:focus {
-  border-color: var(--sl-primary);
-  box-shadow: 0 0 0 2px var(--sl-primary-bg);
-  background: var(--sl-bg-secondary);
-  color: var(--sl-text-primary);
-}
-
-.delete-error {
-  margin-top: var(--sl-space-xs);
-  font-size: 0.75rem;
-  color: var(--sl-error);
-}
-
-.delete-actions {
-  display: flex;
-  gap: var(--sl-space-xs);
-  justify-content: flex-end;
 }
 </style>

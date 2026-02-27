@@ -312,7 +312,7 @@ onMounted(() => {
       v-if="allTags.length"
       v-model="selectedTag"
       :tabs="[
-        { key: null, label: '全部' },
+        { key: null, label: i18n.t('config.categories.all') },
         ...allTags.map((tag) => ({ key: tag, label: getCategoryLabel(tag) })),
       ]"
       :level="2"

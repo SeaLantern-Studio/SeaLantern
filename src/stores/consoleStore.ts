@@ -1,3 +1,6 @@
+// 控制台状态仓库：提供日志缓存、游标与清理能力，供玩家页/插件页等非控制台场景复用。
+// 实时控制台渲染已切到 xterm 直写，这里保留跨页面日志状态用途。
+
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useSettingsStore } from "./settingsStore";

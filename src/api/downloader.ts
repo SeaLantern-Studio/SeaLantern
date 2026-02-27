@@ -1,5 +1,6 @@
 import { reactive, onUnmounted, computed } from "vue";
 import { tauriInvoke } from "./tauri";
+import { i18n } from "@language";
 
 export type TaskStatus = "Pending" | "Downloading" | "Completed" | { Error: string };
 
@@ -79,7 +80,7 @@ export const downloadApi = {
             }
           } catch (err) {
             if (!taskInfo.isFinished) {
-              taskInfo.status = { Error: "任务连接丢失" };
+              taskInfo.status = { Error: i18n.t("downloader.connection_lost") };
             }
             stop();
           }

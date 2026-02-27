@@ -245,6 +245,7 @@
     "enter_command_content": "輸入指令內容",
     "cancel": "取消",
     "delete": "刪除",
+    "save": "儲存",
     "add": "新增",
     "update": "更新",
     "back_to_bottom": "回到底部",
@@ -254,7 +255,10 @@
     "running": "執行中",
     "starting": "啟動中",
     "stopping": "停止中",
-    "stopped": "已停止"
+    "stopped": "已停止",
+    "no_server": "暫無伺服器",
+    "create_server_first": "請先建立並選擇一個伺服器",
+    "suggestion_hint": "Tab 補全 / Up Down 選擇"
   },
   "config": {
     "title": "設定編輯",
@@ -461,9 +465,11 @@
     "font_size_desc": "調整介面文字的大小",
     "font_family": "字型",
     "font_family_desc": "選擇介面使用的字型，部分字型需要系統已安裝或從網路載入",
+    "console_font_family_desc": "選擇控制台介面使用的字型，部分字型需要系統已安裝或從網路載入",
+    "console_letter_spacing": "控制台字元間距 (px)",
+    "console_letter_spacing_desc": "調整控制台字元之間的間距，預設 0；可用負值讓字元更緊密",
     "acrylic": "壓克力效果 (毛玻璃)",
-    "acrylic_desc": "啟用 Windows 系統級壓克力毛玻璃效果，與背景圖片相容",
-    "acrylic_not_supported": "目前系統不支援壓克力效果",
+    "acrylic_desc": "啟用軟高斯模糊毛玻璃效果，支援所有平台，與背景圖片相容",
     "background": "背景圖片",
     "background_desc": "上傳一張圖片作為軟體背景，支援 PNG、JPG、WEBP 等格式",
     "opacity": "不透明度",
@@ -642,6 +648,9 @@
     "save_folder": "儲存到",
     "filename": "檔案名稱",
     "thread_count": "線程數",
+    "thread_count_empty": "線程數不能為空",
+    "thread_count_invalid": "字符不合法",
+    "thread_count_positive": "線程數必須是一個正整數",
     "cancel": "取消",
     "download": "下載",
     "browse": "瀏覽",
@@ -649,5 +658,16 @@
     "status-finished": "下載已完成",
     "failed": "下載失敗",
     "completed": "已完成"
+  },
+  "dropzone": {
+    "placeholder": "拖曳檔案到此處或點擊選擇",
+    "support_both": "支援檔案和資料夾",
+    "support_files": "支援檔案",
+    "support_folders": "支援資料夾",
+    "error_no_path": "無法取得拖曳的檔案路徑",
+    "error_unsupported_type": "不支援的檔案類型"
+  },
+  "downloader": {
+    "connection_lost": "任務連線遺失"
   }
 }

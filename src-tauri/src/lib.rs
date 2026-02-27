@@ -139,8 +139,6 @@ pub fn run() {
             settings_commands::reset_settings,
             settings_commands::export_settings,
             settings_commands::import_settings,
-            settings_commands::check_acrylic_support,
-            settings_commands::apply_acrylic,
             settings_commands::get_system_fonts,
             update_commands::check_update,
             update_commands::open_download_url,
@@ -455,6 +453,29 @@ pub fn run() {
                         }
                     }
                 });
+            }
+
+            {
+                use serde::Serialize;
+
+                #[derive(Serialize, Clone)]
+                struct ServerLogLineEvent {
+                    server_id: String,
+                    line: String,
+                }
+
+                let app_handle = app.handle().clone();
+                let _ = services::server_log_pipeline::set_server_log_event_handler(Arc::new(
+                    move |server_id, line| {
+                        let event = ServerLogLineEvent {
+                            server_id: server_id.to_string(),
+                            line: line.to_string(),
+                        };
+                        app_handle
+                            .emit("server-log-line", event)
+                            .map_err(|e| format!("Failed to emit server log line event: {}", e))
+                    },
+                ));
             }
 
             app.manage(manager);

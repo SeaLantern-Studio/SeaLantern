@@ -166,11 +166,11 @@ export function applyColors(settings: AppSettings): void {
   let surfaceHoverColor: string;
   if (isAcrylic) {
     if (isDark) {
-      surfaceColor = "rgba(30, 33, 48, 0.6)";
-      surfaceHoverColor = "rgba(40, 44, 62, 0.7)";
+      surfaceColor = "rgba(30, 33, 48, 0.65)";
+      surfaceHoverColor = "rgba(40, 44, 62, 0.75)";
     } else {
-      surfaceColor = "rgba(255, 255, 255, 0.6)";
-      surfaceHoverColor = "rgba(248, 250, 252, 0.7)";
+      surfaceColor = "rgba(255, 255, 255, 0.65)";
+      surfaceHoverColor = "rgba(248, 250, 252, 0.75)";
     }
   } else {
     surfaceColor = isDark ? colors.bgSecondary : "#ffffff";
@@ -219,8 +219,8 @@ export function applyColors(settings: AppSettings): void {
   );
 
   // Glass 效果变量
-  const glassBg = isDark ? "rgba(15, 17, 23, 0.72)" : "rgba(255, 255, 255, 0.72)";
-  const glassStrongBg = isDark ? "rgba(15, 17, 23, 0.88)" : "rgba(255, 255, 255, 0.88)";
+  const glassBg = isDark ? "rgba(15, 17, 23, 0.65)" : "rgba(255, 255, 255, 0.65)";
+  const glassStrongBg = isDark ? "rgba(15, 17, 23, 0.75)" : "rgba(255, 255, 255, 0.75)";
   const glassBorder = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.5)";
   document.documentElement.style.setProperty("--sl-glass-bg", glassBg);
   document.documentElement.style.setProperty("--sl-glass-strong-bg", glassStrongBg);

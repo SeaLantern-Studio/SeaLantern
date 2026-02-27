@@ -1,0 +1,87 @@
+name: "推送 AUR"
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  aur-publish:
+    name: 发布到 AUR
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --user root
+
+    steps:
+      - name: 安装依赖
+        run: |
+          set -euo pipefail
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Syu --noconfirm base-devel git sudo openssh dpkg
+
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+      - name: 检出仓库代码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: 提取版本信息
+        id: meta
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          VERSION="$(echo "$RELEASE_TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
+          if [ -z "$VERSION" ]; then
+            echo "❌ 无法从 tag 提取版本号: $RELEASE_TAG"
+            exit 1
+          fi
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "✅ 发布版本: $VERSION"
+
+      - name: 更新 PKGBUILD 版本
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cp PKGBUILD PKGBUILD.bak
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          sed -i "s|^source=.*|source=(\"https://github.com/${REPO}/releases/download/${TAG}/Sea.Lantern_\${pkgver}_amd64.deb\")|" PKGBUILD
+
+      - name: 生成 .SRCINFO
+        run: |
+          set -euo pipefail
+          chown -R builder:builder .
+          sudo -u builder makepkg --printsrcinfo > .SRCINFO
+
+      - name: 发布到 AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        with:
+          pkgname: sealantern
+          pkgbuild: PKGBUILD
+          assets: |
+            .SRCINFO
+            sealantern.install
+          commit_username: "${{ github.actor }}"
+          commit_email: "${{ github.actor }}@users.noreply.github.com"
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "chore(release): 发布 sealantern v${{ steps.meta.outputs.version }}"
+          allow_empty_commits: false
+          force_push: false
+          updpkgsums: false
+
+      - name: 清理
+        if: always()
+        run: |
+          [ -f "PKGBUILD.bak" ] && mv -f PKGBUILD.bak PKGBUILD || true

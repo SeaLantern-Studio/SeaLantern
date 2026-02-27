@@ -113,6 +113,7 @@ const combinedLoading = computed(() => submitting.value || isDownloading.value);
 function checkUrl(event: Event) {
   const input = event.target as HTMLInputElement | null;
   const rawUrl = input?.value?.trim() ?? "";
+  const url = event.target.value;
   try {
     const urlObj = new URL(rawUrl);
     const pathName = urlObj.pathname;
@@ -132,6 +133,11 @@ function checkUrl(event: Event) {
 function handleFilenameInput(value: string | number) {
   isFilenameManuallyEdited.value = true;
   filename.value = String(value);
+}
+
+function checkFilename(event: { target: { value: any } }) {
+  const filename = event.target.value;
+  isUrlValid.value = filename.length > 0;
 }
 
 async function pickFloder() {
@@ -217,7 +223,7 @@ watch(taskError, (newError) => {
           :disabled="isDownloading"
         >
           <template #suffix>
-            <button class="pick-btn" @click="pickFloder" :disabled="isDownloading">
+            <button class="sl-input-action" @click="pickFloder" :disabled="isDownloading">
               {{ i18n.t("download-file.browse") }}
             </button>
           </template>
@@ -289,7 +295,7 @@ watch(taskError, (newError) => {
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--sl-radius-md);
   color: var(--sl-error);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 .error-close {
   color: var(--sl-error);
@@ -369,7 +375,7 @@ watch(taskError, (newError) => {
   display: flex;
   justify-content: space-between;
   margin-top: 8px;
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-secondary);
   font-family: var(--sl-font-mono, monospace), serif;
 }
