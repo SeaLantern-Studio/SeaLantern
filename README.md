@@ -19,8 +19,7 @@
 
 <kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
 
-有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
----
+## 有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
 </div>
 
@@ -35,6 +34,7 @@
 - 检查更新，一键下载新版本
 
 ## 快速开始
+
 (Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击这里跳转)
 
 [前往SL官方文档](https://docs.ideaflash.cn/zh/intro)
@@ -119,6 +119,15 @@ cargo fmt --all
 </details>
 
 项目已配置 CI 自动检查，确保所有提交的代码都符合规范。
+
+### 提交规范自动检查（已启用）
+
+- 本地 `pre-commit`：自动对暂存区前端文件执行 `oxfmt`（通过 `lint-staged`）
+- 本地 `commit-msg`：强制提交信息符合 Conventional Commits
+- CI：在 PR/推送时再次校验提交信息与代码质量
+
+允许的提交类型：`feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`chore`、`revert`、`security`  
+示例：`feat(plugin): 增加插件下载重试机制`
 
 ## 技术栈
 

@@ -11,6 +11,7 @@ defineProps<{
   port: string;
   defaultJavaPath: string;
   defaultJvmArgs: string;
+  defaultRunPath: string;
 }>();
 
 const emit = defineEmits<{
@@ -19,8 +20,11 @@ const emit = defineEmits<{
   (e: "update:port", value: string): void;
   (e: "update:defaultJavaPath", value: string): void;
   (e: "update:defaultJvmArgs", value: string): void;
+  (e: "update:defaultRunPath", value: string): void;
   (e: "change"): void;
   (e: "javaInstalled", path: string): void;
+  (e: "browseJavaPath"): void;
+  (e: "browseRunPath"): void;
 }>();
 </script>
 
@@ -102,7 +106,38 @@ const emit = defineEmits<{
                 emit('change');
               }
             "
-          />
+          >
+            <template #suffix>
+              <button type="button" class="sl-input-action" @click="emit('browseJavaPath')">
+                {{ i18n.t("settings.browse") }}
+              </button>
+            </template>
+          </SLInput>
+        </div>
+      </div>
+
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.default_run_path") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.default_run_path_desc") }}</span>
+        </div>
+        <div class="sl-input-lg">
+          <SLInput
+            :model-value="defaultRunPath"
+            :placeholder="i18n.t('settings.default_run_path_desc')"
+            @update:model-value="
+              (v) => {
+                emit('update:defaultRunPath', v);
+                emit('change');
+              }
+            "
+          >
+            <template #suffix>
+              <button type="button" class="sl-input-action" @click="emit('browseRunPath')">
+                {{ i18n.t("settings.browse") }}
+              </button>
+            </template>
+          </SLInput>
         </div>
       </div>
 

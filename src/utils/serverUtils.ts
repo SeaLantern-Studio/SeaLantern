@@ -16,9 +16,6 @@ const editLoading = ref(false);
 // 服务器删除确认相关
 const deletingServerId = ref<string | null>(null);
 const deleteServerName = ref("");
-const inputServerName = ref("");
-const deleteError = ref<string | null>(null);
-const isClosing = ref(false);
 
 const showDeleteConfirm = ref(false);
 
@@ -174,20 +171,13 @@ function cancelEdit() {
 }
 
 /**
- * 显示/收回删除确认输入框
+ * 显示删除确认模态框
  * @param server 服务器实例
  */
 function showDeleteConfirmInput(server: ServerInstance) {
-  // 如果当前服务器的删除确认输入框已显示，则收回
-  if (deletingServerId.value === server.id) {
-    cancelDelete();
-  } else {
-    // 否则显示删除确认输入框
-    deletingServerId.value = server.id;
-    deleteServerName.value = server.name;
-    inputServerName.value = "";
-    deleteError.value = null;
-  }
+  deletingServerId.value = server.id;
+  deleteServerName.value = server.name;
+  showDeleteConfirm.value = true;
 }
 
 /**
@@ -197,22 +187,11 @@ function showDeleteConfirmInput(server: ServerInstance) {
 async function confirmDelete() {
   if (!deletingServerId.value) return;
 
-  if (inputServerName.value.trim() !== deleteServerName.value.trim()) {
-    deleteError.value = i18n.t("home.delete_error");
-    return;
-  }
-
   const serverIdToDelete = deletingServerId.value;
 
   try {
     await serverApi.deleteServer(serverIdToDelete);
-    // 先重置删除状态
-    deletingServerId.value = null;
-    deleteServerName.value = "";
-    inputServerName.value = "";
-    deleteError.value = null;
-    isClosing.value = false;
-    // 然后刷新列表
+    closeDeleteConfirm();
     await store.refreshList();
   } catch (e) {
     actionError.value = String(e);
@@ -223,51 +202,7 @@ async function confirmDelete() {
  * 取消删除
  */
 function cancelDelete() {
-  if (!deletingServerId.value) return;
-
-  // 添加关闭动画类
-  isClosing.value = true;
-
-  // 动画结束后重置状态
-  setTimeout(() => {
-    deletingServerId.value = null;
-    deleteServerName.value = "";
-    inputServerName.value = "";
-    deleteError.value = null;
-    isClosing.value = false;
-  }, 300);
-}
-
-/**
- * 处理动画结束事件
- * @param event 动画事件
- */
-function handleAnimationEnd(event: AnimationEvent) {
-  if (event.animationName === "deleteInputCollapse") {
-    deletingServerId.value = null;
-    deleteServerName.value = "";
-    inputServerName.value = "";
-    deleteError.value = null;
-    isClosing.value = false;
-  }
-}
-
-/**
- * 处理点击外部区域
- * @param event 鼠标事件
- */
-function handleClickOutside(event: MouseEvent) {
-  if (!deletingServerId.value) return;
-
-  const target = event.target as HTMLElement;
-  // 检查是否点击了删除确认区域或删除按钮
-  const isDeleteConfirmArea = target.closest(".delete-confirm-area");
-  const isDeleteButton = target.closest(".server-card-actions")?.querySelector("button");
-
-  // 如果没有点击这些元素，则收回输入框
-  if (!isDeleteConfirmArea && !isDeleteButton) {
-    cancelDelete();
-  }
+  closeDeleteConfirm();
 }
 
 /**
@@ -300,8 +235,6 @@ function closeDeleteConfirm() {
   showDeleteConfirm.value = false;
   deletingServerId.value = null;
   deleteServerName.value = "";
-  inputServerName.value = "";
-  deleteError.value = null;
 }
 
 export {
@@ -313,9 +246,6 @@ export {
   editLoading,
   deletingServerId,
   deleteServerName,
-  inputServerName,
-  deleteError,
-  isClosing,
   showDeleteConfirm,
 
   // 计算属性
@@ -338,9 +268,5 @@ export {
   showDeleteConfirmInput,
   confirmDelete,
   cancelDelete,
-  handleAnimationEnd,
   closeDeleteConfirm,
-
-  // 其他函数
-  handleClickOutside,
 };

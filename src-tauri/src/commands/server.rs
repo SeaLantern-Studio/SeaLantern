@@ -549,8 +549,8 @@ pub fn delete_server(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_server_logs(id: String, since: usize) -> Vec<String> {
-    manager().get_logs(&id, since)
+pub fn get_server_logs(id: String, since: usize, max_lines: Option<usize>) -> Vec<String> {
+    crate::services::server_log_pipeline::get_logs(&id, since, max_lines)
 }
 
 #[tauri::command]

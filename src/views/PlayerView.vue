@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useServerStore } from "@stores/serverStore";
 import { useConsoleStore } from "@stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
-import { TIME, MESSAGES } from "@utils/constants";
+import { TIME, MESSAGES, getMessage } from "@utils/constants";
 import { validatePlayerName, handleError } from "@utils/errorHandler";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
@@ -154,12 +154,12 @@ function openAddModal() {
 async function handleAdd() {
   const validation = validatePlayerName(addPlayerName.value);
   if (!validation.valid) {
-    showError(validation.error || MESSAGES.ERROR.INVALID_PLAYER_NAME);
+    showError(validation.error || getMessage(MESSAGES.ERROR.INVALID_PLAYER_NAME));
     return;
   }
 
   if (!isRunning.value) {
-    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
+    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
 
@@ -169,15 +169,15 @@ async function handleAdd() {
     switch (activeTab.value) {
       case "whitelist":
         await playerApi.addToWhitelist(sid, addPlayerName.value);
-        showSuccess(MESSAGES.SUCCESS.WHITELIST_ADDED);
+        showSuccess(getMessage(MESSAGES.SUCCESS.WHITELIST_ADDED));
         break;
       case "banned":
         await playerApi.banPlayer(sid, addPlayerName.value, addBanReason.value);
-        showSuccess(MESSAGES.SUCCESS.PLAYER_BANNED);
+        showSuccess(getMessage(MESSAGES.SUCCESS.PLAYER_BANNED));
         break;
       case "ops":
         await playerApi.addOp(sid, addPlayerName.value);
-        showSuccess(MESSAGES.SUCCESS.OP_ADDED);
+        showSuccess(getMessage(MESSAGES.SUCCESS.OP_ADDED));
         break;
     }
     showAddModal.value = false;
@@ -193,12 +193,12 @@ async function handleAdd() {
 
 async function handleRemoveWhitelist(name: string) {
   if (!isRunning.value) {
-    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
+    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
   try {
     await playerApi.removeFromWhitelist(selectedServerId.value, name);
-    showSuccess(MESSAGES.SUCCESS.WHITELIST_REMOVED);
+    showSuccess(getMessage(MESSAGES.SUCCESS.WHITELIST_REMOVED));
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
     showError(handleError(e, "RemoveWhitelist"));
@@ -207,12 +207,12 @@ async function handleRemoveWhitelist(name: string) {
 
 async function handleUnban(name: string) {
   if (!isRunning.value) {
-    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
+    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
   try {
     await playerApi.unbanPlayer(selectedServerId.value, name);
-    showSuccess(MESSAGES.SUCCESS.PLAYER_UNBANNED);
+    showSuccess(getMessage(MESSAGES.SUCCESS.PLAYER_UNBANNED));
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
     showError(handleError(e, "UnbanPlayer"));
@@ -221,12 +221,12 @@ async function handleUnban(name: string) {
 
 async function handleRemoveOp(name: string) {
   if (!isRunning.value) {
-    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
+    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
   try {
     await playerApi.removeOp(selectedServerId.value, name);
-    showSuccess(MESSAGES.SUCCESS.OP_REMOVED);
+    showSuccess(getMessage(MESSAGES.SUCCESS.OP_REMOVED));
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
     showError(handleError(e, "RemoveOp"));
@@ -235,12 +235,12 @@ async function handleRemoveOp(name: string) {
 
 async function handleKick(name: string) {
   if (!isRunning.value) {
-    showError(MESSAGES.ERROR.SERVER_NOT_RUNNING);
+    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
   try {
     await playerApi.kickPlayer(selectedServerId.value, name);
-    showSuccess(`${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`);
+    showSuccess(`${name} ${getMessage(MESSAGES.SUCCESS.PLAYER_KICKED)}`);
     setTimeout(() => parseOnlinePlayers(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
     showError(handleError(e, "KickPlayer"));

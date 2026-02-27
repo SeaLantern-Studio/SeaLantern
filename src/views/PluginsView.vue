@@ -4,6 +4,14 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useRouter } from "vue-router";
+import {
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+} from "reka-ui";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
@@ -12,6 +20,7 @@ import SLCheckbox from "@components/common/SLCheckbox.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLMenu from "@components/common/SLMenu.vue";
+import SLDropzone from "@components/common/SLDropzone.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -33,12 +42,15 @@ import {
   Trash2,
   Trash,
   RefreshCw,
+  File,
+  Folder,
 } from "lucide-vue-next";
 
 const router = useRouter();
 const pluginStore = usePluginStore();
 const isDragging = ref(false);
 const searchQuery = ref("");
+const chooserOpen = ref(false);
 
 const filteredPlugins = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
@@ -183,7 +195,12 @@ async function handleBatchInstall(paths: string[]) {
   }
 }
 
-async function handleSelectFile() {
+function openChooser() {
+  chooserOpen.value = true;
+}
+
+async function pickFile() {
+  chooserOpen.value = false;
   const selected = await open({
     multiple: true,
     filters: [
@@ -202,7 +219,8 @@ async function handleSelectFile() {
   }
 }
 
-async function handleSelectFolder() {
+async function pickFolder() {
+  chooserOpen.value = false;
   const selected = await open({
     directory: true,
     multiple: true,
@@ -810,24 +828,60 @@ function goToMarket() {
       </div>
     </div>
 
-    <div class="upload-zone" :class="{ 'is-dragging': isDragging, 'is-installing': isInstalling }">
-      <div v-if="isInstalling" class="upload-loading">
-        <div class="loading-spinner"></div>
-        <span class="upload-text">{{ i18n.t("plugins.installing") }}</span>
-      </div>
-      <div v-else class="upload-content">
-        <Upload class="upload-icon" :size="32" :stroke-width="1.5" />
-        <span class="upload-text">{{ i18n.t("plugins.drag_hint") }}</span>
-        <div class="upload-buttons">
-          <SLButton variant="secondary" size="sm" @click="handleSelectFile">{{
-            i18n.t("plugins.select_file")
-          }}</SLButton>
-          <SLButton variant="secondary" size="sm" @click="handleSelectFolder">{{
-            i18n.t("plugins.select_folder")
-          }}</SLButton>
-        </div>
-      </div>
-    </div>
+    <SLDropzone
+      class="plugins-dropzone"
+      :is-dragging="isDragging"
+      :loading="isInstalling"
+      :placeholder="i18n.t('plugins.drag_hint')"
+      accept-folders
+      accept-files
+      :file-extensions="['.zip', '.json']"
+      multiple
+      @click="openChooser"
+      @drop-multiple="handleBatchInstall"
+    >
+      <template #icon>
+        <Upload :size="24" :stroke-width="1.5" />
+      </template>
+    </SLDropzone>
+
+    <DialogRoot v-model:open="chooserOpen">
+      <DialogPortal>
+        <DialogOverlay class="plugin-chooser-overlay" />
+        <DialogContent class="plugin-chooser-content">
+          <div class="plugin-chooser-header">
+            <DialogTitle class="plugin-chooser-title">{{
+              i18n.t("plugins.choose_title")
+            }}</DialogTitle>
+            <button
+              class="plugin-chooser-close"
+              @click="chooserOpen = false"
+              :aria-label="i18n.t('common.close_modal')"
+            >
+              <X :size="18" />
+            </button>
+          </div>
+          <DialogDescription class="plugin-chooser-description">
+            {{ i18n.t("plugins.choose_description") }}
+          </DialogDescription>
+          <div class="plugin-chooser-actions">
+            <SLButton variant="primary" size="lg" class="plugin-chooser-option" @click="pickFile">
+              <File :size="22" />
+              <span>{{ i18n.t("plugins.select_file") }}</span>
+            </SLButton>
+            <SLButton
+              variant="secondary"
+              size="lg"
+              class="plugin-chooser-option"
+              @click="pickFolder"
+            >
+              <Folder :size="22" />
+              <span>{{ i18n.t("plugins.select_folder") }}</span>
+            </SLButton>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
 
     <div v-if="pluginStore.error" class="error-banner">
       <span class="error-icon">!</span>
@@ -1401,64 +1455,132 @@ function goToMarket() {
   border-color: var(--sl-primary);
 }
 
-.upload-zone {
-  display: flex;
-  align-items: center;
+.plugins-dropzone {
+  margin-bottom: var(--sl-space-md);
+}
+
+.plugins-dropzone :deep(.sl-dropzone) {
   justify-content: center;
-  padding: 24px;
-  margin-bottom: 16px;
-  border: 2px dashed var(--sl-border);
-  border-radius: var(--sl-radius-lg);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: var(--sl-bg-primary);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.upload-zone:hover {
-  border-color: var(--sl-primary);
-  background: var(--sl-bg-tertiary);
-}
-
-.upload-zone.is-dragging {
-  border-style: solid;
-  border-color: var(--sl-primary);
-  background: var(--sl-primary-bg);
-}
-
-.upload-zone.is-installing {
-  pointer-events: none;
-  opacity: 0.8;
-}
-
-.upload-content,
-.upload-loading {
-  display: flex;
   flex-direction: column;
+  padding: var(--sl-space-lg);
+}
+
+.plugins-dropzone :deep(.sl-dropzone-content) {
   align-items: center;
-  gap: 12px;
-}
-
-.upload-icon {
-  color: var(--sl-text-tertiary);
-  transition: color 0.2s ease;
-}
-
-.upload-zone:hover .upload-icon,
-.upload-zone.is-dragging .upload-icon {
-  color: var(--sl-primary);
-}
-
-.upload-text {
-  font-size: 14px;
-  color: var(--sl-text-secondary);
   text-align: center;
 }
 
-.upload-buttons {
+.plugins-dropzone :deep(.sl-dropzone-title) {
+  text-align: center;
+}
+
+.plugin-chooser-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 3000;
+}
+
+.plugin-chooser-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 32px));
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-lg);
+  box-shadow: var(--sl-shadow-lg);
+  padding: var(--sl-space-lg);
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+  z-index: 3001;
+}
+
+.plugin-chooser-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sl-space-xs);
+}
+
+.plugin-chooser-title {
+  margin: 0;
+  font-size: var(--sl-font-size-lg);
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.plugin-chooser-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--sl-radius-md);
+  border: none;
+  background: transparent;
+  color: var(--sl-text-tertiary);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.plugin-chooser-close::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sl-error);
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.plugin-chooser-close:hover {
+  color: var(--sl-error);
+  transform: rotate(90deg);
+}
+
+.plugin-chooser-close:hover::before {
+  opacity: 0.1;
+  transform: scale(1);
+}
+
+.plugin-chooser-close:active {
+  transform: rotate(90deg) scale(0.9);
+}
+
+.plugin-chooser-description {
+  margin: 0;
+  font-size: var(--sl-font-size-base);
+  color: var(--sl-text-secondary);
+  line-height: 1.5;
+}
+
+.plugin-chooser-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sl-space-sm);
+  margin: var(--sl-space-sm) 0;
+}
+
+.plugin-chooser-option {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-md) var(--sl-space-lg);
 }
 
 .batch-result-dialog {

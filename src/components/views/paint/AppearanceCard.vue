@@ -13,7 +13,6 @@ defineProps<{
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
   acrylicEnabled: boolean;
-  acrylicSupported: boolean;
   isThemeProxied: boolean;
   themeProxyPluginName: string;
   backgroundImage: string;
@@ -141,19 +140,9 @@ function handleMinimalModeChange(value: boolean) {
       <div class="sl-setting-row">
         <div class="sl-setting-info">
           <span class="sl-setting-label">{{ i18n.t("settings.acrylic") }}</span>
-          <span class="setting-desc">
-            {{
-              acrylicSupported
-                ? i18n.t("settings.acrylic_desc")
-                : i18n.t("settings.acrylic_not_supported")
-            }}
-          </span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
         </div>
-        <SLSwitch
-          :model-value="acrylicEnabled"
-          :disabled="!acrylicSupported"
-          @update:model-value="handleAcrylicChange"
-        />
+        <SLSwitch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
       </div>
 
       <div class="sl-setting-row">
@@ -161,10 +150,7 @@ function handleMinimalModeChange(value: boolean) {
           <span class="sl-setting-label">{{ i18n.t("settings.minimal_mode") }}</span>
           <span class="sl-setting-desc">{{ i18n.t("settings.minimal_mode_desc") }}</span>
         </div>
-        <SLSwitch
-          :model-value="minimalMode"
-          @update:model-value="handleMinimalModeChange"
-        />
+        <SLSwitch :model-value="minimalMode" @update:model-value="handleMinimalModeChange" />
       </div>
 
       <BackgroundSettings
@@ -196,7 +182,7 @@ function handleMinimalModeChange(value: boolean) {
   border: 1px solid rgba(96, 165, 250, 0.3);
   border-radius: var(--sl-radius-md);
   color: var(--sl-primary);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   min-width: 200px;
 }
 
