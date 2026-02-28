@@ -530,120 +530,66 @@ pub fn run() {
                         if let Some(manager) =
                             app.try_state::<std::sync::Arc<
                                 std::sync::Mutex<crate::plugins::manager::PluginManager>,
-                            >>() {
-                                if let Ok(mut m) = manager.lock() {
-                                    m.disable_all_plugins_for_shutdown();
-                                }
+                            >>()
+                        {
+                            if let Ok(mut m) = manager.lock() {
+                                m.disable_all_plugins_for_shutdown();
                             }
+                        }
 
-                            // Restart with --safe-mode flag
-                            let default_name = if cfg!(windows) {
-                                "SeaLantern.exe"
-                            } else {
-                                "SeaLantern"
-                            };
-                            let app_path = std::env::current_exe()
-                                .or_else(|_| {
-                                    std::env::args().next().map(std::path::PathBuf::from).ok_or(
-                                        std::io::Error::new(
-                                            std::io::ErrorKind::NotFound,
-                                            "Executable path not found",
-                                        ),
-                                    )
-                                })
-                                .unwrap_or_else(|_| std::path::PathBuf::from(default_name));
+                        // Restart with --safe-mode flag
+                        let default_name = if cfg!(windows) {
+                            "SeaLantern.exe"
+                        } else {
+                            "SeaLantern"
+                        };
+                        let app_path = std::env::current_exe()
+                            .or_else(|_| {
+                                std::env::args().next().map(std::path::PathBuf::from).ok_or(
+                                    std::io::Error::new(
+                                        std::io::ErrorKind::NotFound,
+                                        "Executable path not found",
+                                    ),
+                                )
+                            })
+                            .unwrap_or_else(|_| std::path::PathBuf::from(default_name));
 
-                            // Handle platform-specific restart logic
-                            #[cfg(target_os = "macos")]
+                        // Handle platform-specific restart logic
+                        #[cfg(target_os = "macos")]
+                        {
+                            // On macOS, try to find the .app bundle and use open command
+                            if let Some(app_bundle_path) = app_path
+                                .ancestors()
+                                .find(|p| p.extension().map_or(false, |ext| ext == "app"))
                             {
-                                // On macOS, try to find the .app bundle and use open command
-                                if let Some(app_bundle_path) = app_path
-                                    .ancestors()
-                                    .find(|p| p.extension().map_or(false, |ext| ext == "app"))
-                                {
-                                    match std::process::Command::new("open")
+                                match std::process::Command::new("open")
                                         .arg("-n") // Open a new instance
                                         .arg(app_bundle_path)
                                         .arg("--args")
                                         .arg("--safe-mode")
                                         .spawn()
-                                    {
-                                        Ok(_) => app.exit(0),
-                                        Err(e) => {
-                                            eprintln!(
-                                                "Failed to restart in safe mode using open command: {}",
-                                                e
-                                            );
-                                            // Fallback to direct execution if open command fails
-                                            match std::process::Command::new(app_path)
-                                                .arg("--safe-mode")
-                                                .spawn()
-                                            {
-                                                Ok(_) => app.exit(0),
-                                                Err(e) => {
-                                                    eprintln!("Failed to restart in safe mode: {}", e);
-                                                    app.exit(1);
-                                                }
+                                {
+                                    Ok(_) => app.exit(0),
+                                    Err(e) => {
+                                        eprintln!(
+                                            "Failed to restart in safe mode using open command: {}",
+                                            e
+                                        );
+                                        // Fallback to direct execution if open command fails
+                                        match std::process::Command::new(app_path)
+                                            .arg("--safe-mode")
+                                            .spawn()
+                                        {
+                                            Ok(_) => app.exit(0),
+                                            Err(e) => {
+                                                eprintln!("Failed to restart in safe mode: {}", e);
+                                                app.exit(1);
                                             }
                                         }
                                     }
-                                } else {
-                                    // If not in an app bundle, use direct execution
-                                    match std::process::Command::new(app_path)
-                                        .arg("--safe-mode")
-                                        .spawn()
-                                    {
-                                        Ok(_) => app.exit(0),
-                                        Err(e) => {
-                                            eprintln!("Failed to restart in safe mode: {}", e);
-                                            app.exit(1);
-                                        }
-                                    }
                                 }
-                            }
-
-                            #[cfg(target_os = "linux")]
-                            {
-                                // On Linux, check execute permissions
-                                use std::fs::Permissions;
-                                use std::os::unix::fs::PermissionsExt;
-
-                                if let Ok(metadata) = app_path.metadata() {
-                                    let perms = metadata.permissions();
-                                    if (perms.mode() & 0o111) == 0 {
-                                        // Try to add execute permissions
-                                        if let Ok(()) = std::fs::set_permissions(
-                                            &app_path,
-                                            Permissions::from_mode(perms.mode() | 0o111),
-                                        ) {
-                                            eprintln!(
-                                                "Added execute permissions to {}",
-                                                app_path.display()
-                                            );
-                                        } else {
-                                            eprintln!(
-                                                "Warning: No execute permissions on {}",
-                                                app_path.display()
-                                            );
-                                        }
-                                    }
-                                }
-
-                                match std::process::Command::new(app_path)
-                                    .arg("--safe-mode")
-                                    .spawn()
-                                {
-                                    Ok(_) => app.exit(0),
-                                    Err(e) => {
-                                        eprintln!("Failed to restart in safe mode: {}", e);
-                                        app.exit(1);
-                                    }
-                                }
-                            }
-
-                            #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-                            {
-                                // For Windows and other platforms
+                            } else {
+                                // If not in an app bundle, use direct execution
                                 match std::process::Command::new(app_path)
                                     .arg("--safe-mode")
                                     .spawn()
@@ -656,40 +602,97 @@ pub fn run() {
                                 }
                             }
                         }
-                        "quit" => {
-                            let settings = services::global::settings_manager().get();
-                            if settings.close_servers_on_exit {
-                                services::global::server_manager().stop_all_servers();
-                            }
-                            if let Some(manager) = app.try_state::<std::sync::Arc<
-                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
-                            >>() {
-                                if let Ok(mut m) = manager.lock() {
-                                    m.disable_all_plugins_for_shutdown();
-                                }
-                            }
-                            app.exit(0);
-                        }
-                        _ => {}
-                    })
-                    .on_tray_icon_event(|tray, event| {
-                        if let TrayIconEvent::Click {
-                            button: MouseButton::Left,
-                            button_state: MouseButtonState::Up,
-                            ..
-                        } = event
+
+                        #[cfg(target_os = "linux")]
                         {
-                            if let Some(window) = tray.app_handle().get_webview_window("main") {
-                                // 先显示窗口（处理隐藏状态）
-                                let _ = window.show();
-                                // 恢复窗口（处理最小化状态）
-                                let _ = window.unminimize();
-                                // 设置焦点
-                                let _ = window.set_focus();
+                            // On Linux, check execute permissions
+                            use std::fs::Permissions;
+                            use std::os::unix::fs::PermissionsExt;
+
+                            if let Ok(metadata) = app_path.metadata() {
+                                let perms = metadata.permissions();
+                                if (perms.mode() & 0o111) == 0 {
+                                    // Try to add execute permissions
+                                    if let Ok(()) = std::fs::set_permissions(
+                                        &app_path,
+                                        Permissions::from_mode(perms.mode() | 0o111),
+                                    ) {
+                                        eprintln!(
+                                            "Added execute permissions to {}",
+                                            app_path.display()
+                                        );
+                                    } else {
+                                        eprintln!(
+                                            "Warning: No execute permissions on {}",
+                                            app_path.display()
+                                        );
+                                    }
+                                }
+                            }
+
+                            match std::process::Command::new(app_path)
+                                .arg("--safe-mode")
+                                .spawn()
+                            {
+                                Ok(_) => app.exit(0),
+                                Err(e) => {
+                                    eprintln!("Failed to restart in safe mode: {}", e);
+                                    app.exit(1);
+                                }
                             }
                         }
-                    })
-                    .build(app)?;
+
+                        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+                        {
+                            // For Windows and other platforms
+                            match std::process::Command::new(app_path)
+                                .arg("--safe-mode")
+                                .spawn()
+                            {
+                                Ok(_) => app.exit(0),
+                                Err(e) => {
+                                    eprintln!("Failed to restart in safe mode: {}", e);
+                                    app.exit(1);
+                                }
+                            }
+                        }
+                    }
+                    "quit" => {
+                        let settings = services::global::settings_manager().get();
+                        if settings.close_servers_on_exit {
+                            services::global::server_manager().stop_all_servers();
+                        }
+                        if let Some(manager) =
+                            app.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>()
+                        {
+                            if let Ok(mut m) = manager.lock() {
+                                m.disable_all_plugins_for_shutdown();
+                            }
+                        }
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        if let Some(window) = tray.app_handle().get_webview_window("main") {
+                            // 先显示窗口（处理隐藏状态）
+                            let _ = window.show();
+                            // 恢复窗口（处理最小化状态）
+                            let _ = window.unminimize();
+                            // 设置焦点
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
 
             Ok(())
         })
