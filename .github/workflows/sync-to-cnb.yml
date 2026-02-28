@@ -1,0 +1,71 @@
+name: 同步 Release 到 CNB
+
+# 两个触发条件：
+# 1. 当有新的 Release 发布时自动触发同步
+# - 此时自动同步最新的release到CNB
+# 2. 手动触发
+# - 此时要求手动指定tag，发布特定release到CNB
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要同步的发布标签（例如：v1.0.1）"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-release-to-cnb
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 设置 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+
+      - name: 克隆 release-sync
+        run: git clone https://github.com/SeaLantern-Studio/release-sync.git
+
+      - name: 下载依赖
+        working-directory: release-sync
+        run: go mod download
+
+      - name: 同步最新发布（release 事件）
+        if: github.event_name == 'release'
+        working-directory: release-sync
+        env:
+          PLUGIN_SOURCE_URL: https://github.com
+          PLUGIN_SOURCE_PLATFORM: github
+          PLUGIN_SOURCE_REPO: SeaLantern-Studio/SeaLantern
+          PLUGIN_CNB_ROOT_ORGANIZATION: SeaLantern-studio
+          PLUGIN_MIGRATE_ORGANIZATION_MAPPING_LEVEL: "2"
+          PLUGIN_MIGRATE_RELEASE: "true"
+          PLUGIN_CNB_URL: https://cnb.cool
+          PLUGIN_SOURCE_TOKEN: ${{ secrets.SOURCE_GITHUB_TOKEN }}
+          PLUGIN_CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+        run: go run .
+
+      - name: 同步指定标签（手动触发）
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: release-sync
+        env:
+          PLUGIN_SOURCE_URL: https://github.com
+          PLUGIN_SOURCE_PLATFORM: github
+          PLUGIN_SOURCE_REPO: SeaLantern-Studio/SeaLantern
+          PLUGIN_CNB_ROOT_ORGANIZATION: SeaLantern-studio
+          PLUGIN_MIGRATE_ORGANIZATION_MAPPING_LEVEL: "2"
+          PLUGIN_MIGRATE_RELEASE: "true"
+          PLUGIN_MIGRATE_RELEASE_TAG: ${{ inputs.tag }}
+          PLUGIN_CNB_URL: https://cnb.cool
+          PLUGIN_SOURCE_TOKEN: ${{ secrets.SOURCE_GITHUB_TOKEN }}
+          PLUGIN_CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+        run: go run .
