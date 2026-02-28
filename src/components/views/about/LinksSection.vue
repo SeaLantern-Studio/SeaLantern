@@ -18,6 +18,9 @@ const { openLink } = useAboutLinks();
     >
       {{ i18n.t("about.github_repo") }}
     </SLButton>
+    <SLButton variant="primary" size="lg" @click="openLink('https://ideaflash.cn/')">
+      {{ i18n.t("about.official_site") }}
+    </SLButton>
     <SLButton
       variant="secondary"
       size="lg"
