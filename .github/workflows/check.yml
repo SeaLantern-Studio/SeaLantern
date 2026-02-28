@@ -61,7 +61,7 @@ jobs:
         if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
 
       - name: 安装 Rust 工具链
         if: ${{ needs.changes.outputs.backend == 'true' }}
