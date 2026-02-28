@@ -491,13 +491,19 @@ pub fn run() {
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
-            let safe_mode_item = if safe_mode {
-                MenuItem::with_id(app, "quit", "退出安全模式并退出程序", true, None::<&str>)?
-            } else {
-                MenuItem::with_id(app, "restart-safe-mode", "以安全模式重启", true, None::<&str>)?
-            };
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &safe_mode_item, &quit_item])?;
+            let menu = if safe_mode {
+                Menu::with_items(app, &[&show_item, &quit_item])?
+            } else {
+                let safe_mode_item = MenuItem::with_id(
+                    app,
+                    "restart-safe-mode",
+                    "以安全模式重启",
+                    true,
+                    None::<&str>,
+                )?;
+                Menu::with_items(app, &[&show_item, &safe_mode_item, &quit_item])?
+            };
 
             let icon_bytes = include_bytes!("../icons/icon.png");
             let img = image::load_from_memory(icon_bytes)
