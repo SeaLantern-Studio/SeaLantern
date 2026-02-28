@@ -14,7 +14,7 @@ language/
 ├── ko-KR.json    # 韩语
 ├── de-DE.json    # 德语
 ├── es-ES.json    # 西班牙语
-├── fr-FA.json    # 法语
+├── fr-FR.json    # 法语
 ├── ru-RU.json    # 俄语
 ├── vi-VN.json    # 越南语
 ├── README.md     # 本文档
