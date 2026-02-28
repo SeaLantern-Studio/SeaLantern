@@ -106,4 +106,10 @@ export const systemApi = {
   async openFolder(path: string): Promise<void> {
     return tauriInvoke("open_folder", { path });
   },
+
+  async startFrpTunnel(provider: string, token: string, tunnelId: string): Promise<void> {
+    return tauriInvoke("start_frp_tunnel", { provider, token, tunnelId });
+  },
 };
+
+export const { getSystemInfo, pickJarFile, pickStartupFile, pickServerExecutable, pickJavaFile, pickFolder, pickImageFile, openFile, openFolder, startFrpTunnel } = systemApi;

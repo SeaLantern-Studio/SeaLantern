@@ -61,6 +61,12 @@ const routes = [
     meta: { title: "关于", icon: "info" },
   },
   {
+    path: "/frp",
+    name: "frp",
+    component: () => import("@views/FRPView.vue"),
+    meta: { title: "FRP", icon: "server" },
+  },
+  {
     path: "/plugin/:pluginId",
     name: "plugin-page",
     component: () => import("@views/PluginPageView.vue"),

@@ -104,6 +104,7 @@ pub fn run() {
             system_commands::pick_image_file,
             system_commands::open_file,
             system_commands::open_folder,
+            system_commands::start_frp_tunnel,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
