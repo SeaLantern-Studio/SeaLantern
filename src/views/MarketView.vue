@@ -104,8 +104,8 @@ const allTags = computed(() => {
 function resolveI18n(val: Record<string, string> | string | undefined): string {
   if (!val) return "";
   if (typeof val === "string") return val;
-  const lang = navigator.language || "zh-CN";
-  const key = lang.startsWith("zh") ? "zh-CN" : "en-US";
+  const locale = i18n.getLocale();
+  const key = locale.startsWith("zh") ? "zh-CN" : "en-US";
   return val[key] || val["zh-CN"] || Object.values(val)[0] || "";
 }
 
@@ -147,8 +147,8 @@ function getPermissionDesc(perm: string): string {
 }
 
 function getCategoryLabel(key: string): string {
-  const lang = navigator.language || "zh-CN";
-  const langKey = lang.startsWith("zh") ? "zh-CN" : "en-US";
+  const locale = i18n.getLocale();
+  const langKey = locale.startsWith("zh") ? "zh-CN" : "en-US";
   const cat = categories.value[key];
   if (!cat) return key;
   if (typeof cat === "string") return cat;

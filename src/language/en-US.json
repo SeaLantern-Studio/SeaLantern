@@ -908,6 +908,7 @@
     "loading": "Loading...",
     "error_title": "Cannot connect to plugin market",
     "retry": "Retry",
+    "refresh": "Refresh",
     "no_plugins": "No plugins found",
     "installing": "Installing...",
     "running_need_disable": "Running (disable first)",
