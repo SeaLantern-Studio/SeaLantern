@@ -18,6 +18,12 @@ export const TIME = {
   ERROR_MESSAGE_DURATION: 3000,
 } as const;
 
+// ==================== 链接相关 ====================
+export const URLS = {
+  /** 官方网站（About 页面使用） */
+  OFFICIAL_SITE: "https://ideaflash.cn/",
+} as const;
+
 // ==================== 限制相关 ====================
 export const LIMITS = {
   /** 最大日志行数 */
