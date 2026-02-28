@@ -9,6 +9,10 @@ edition = "2021"
 name = "sea_lantern_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
+[[bin]]
+name = "docker-entry"
+path = "src/bin/docker-entry.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -42,6 +46,10 @@ tauri-plugin-window-state = "2"
 window-vibrancy = "0.5"
 font-kit = "0.14"
 sysinfo = "0.32"
+axum = { version = "0.8", features = ["multipart"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["fs", "cors"] }
+mime_guess = "2.0"
 regex = "1.10"
 futures = "0.3.32"
 sha2 = "0.10"

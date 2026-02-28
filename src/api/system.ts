@@ -1,4 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
+import { isUploadSupported } from "@api/upload";
 
 export interface CpuInfo {
   name: string;
@@ -72,18 +73,30 @@ export const systemApi = {
   },
 
   async pickJarFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+    }
     return tauriInvoke("pick_jar_file");
   },
 
   async pickArchiveFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+    }
     return tauriInvoke("pick_archive_file");
   },
 
   async pickStartupFile(mode: "jar" | "bat" | "sh"): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+    }
     return tauriInvoke("pick_startup_file", { mode });
   },
 
   async pickServerExecutable(): Promise<{ path: string; mode: "jar" | "bat" | "sh" } | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+    }
     const result = await tauriInvoke<[string, string] | null>("pick_server_executable");
     if (result) {
       return { path: result[0], mode: result[1] as "jar" | "bat" | "sh" };
@@ -92,18 +105,30 @@ export const systemApi = {
   },
 
   async pickJavaFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+    }
     return tauriInvoke("pick_java_file");
   },
 
   async pickSaveFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+    }
     return tauriInvoke("pick_save_file");
   },
 
   async pickFolder(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+    }
     return tauriInvoke("pick_folder");
   },
 
   async pickImageFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+    }
     return tauriInvoke("pick_image_file");
   },
 

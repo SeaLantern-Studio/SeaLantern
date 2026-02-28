@@ -1,0 +1,68 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*.zed
+*~
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Rust
+target
+**/target/
+# Cargo.lock 保留用于 Docker 构建
+
+# Tauri
+src-tauri/target
+src-tauri/Cargo.lock
+src-tauri/gen
+
+# Build outputs
+dist
+build
+out
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Assets
+src-tauri/icons/android
+src-tauri/icons/ios
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__
+coverage
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Config (optional, can be mounted as volumes)
+# .env
+# *.local
