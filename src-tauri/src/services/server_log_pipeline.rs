@@ -99,6 +99,7 @@ pub fn set_server_log_event_handler(handler: ServerLogEventHandler) -> Result<()
         .map_err(|_| "server log event handler already set".to_string())
 }
 
+#[allow(dead_code)]
 pub fn add_server_log_processor(processor: ServerLogProcessor) -> Result<(), String> {
     let processors = server_log_processors();
     let mut guard = processors
@@ -108,6 +109,7 @@ pub fn add_server_log_processor(processor: ServerLogProcessor) -> Result<(), Str
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn clear_server_log_processors() -> Result<(), String> {
     let processors = server_log_processors();
     let mut guard = processors

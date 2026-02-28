@@ -557,6 +557,7 @@ pub fn emit_i18n_event(
     }
 }
 
+#[allow(dead_code)] // fuck the format
 pub fn register_server_log_processor(processor: ServerLogProcessor) -> Result<(), String> {
     add_server_log_processor(processor)
 }

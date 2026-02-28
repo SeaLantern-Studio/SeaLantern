@@ -1,30 +1,50 @@
 use super::helpers::validate_server_path;
 use super::PluginRuntime;
-use crate::services::global::i18n_service;
+use crate::services::global::{i18n_service, server_manager};
 use mlua::Table;
+use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 impl PluginRuntime {
-    pub(super) fn setup_server_namespace(&self, sl: &Table) -> Result<(), String> {
-        use crate::services::global::server_manager;
+    fn check_server_permission(perms: &[String]) -> Result<(), mlua::Error> {
+        if !perms.iter().any(|p| p == "server") {
+            return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
+        }
+        Ok(())
+    }
 
+    fn find_server(server_id: &str) -> Result<crate::models::server::ServerInstance, mlua::Error> {
+        let servers = server_manager().get_server_list();
+        servers
+            .into_iter()
+            .find(|s| s.id == server_id)
+            .ok_or_else(|| {
+                mlua::Error::runtime(i18n_service().t_with_options(
+                    "server.server_not_found",
+                    &crate::plugins::runtime::console::i18n_arg("0", server_id),
+                ))
+            })
+    }
+
+    fn map_lua_err(key: &str, e: mlua::Error) -> String {
+        format!("{}: {}", i18n_service().t(key), e)
+    }
+
+    pub(super) fn setup_server_namespace(&self, sl: &Table) -> Result<(), String> {
         let server_table = self
             .lua
             .create_table()
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.create_table_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.create_table_failed", e))?;
 
-        const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
-        let permissions = self.permissions.clone();
+        /// 最大文件大小：128 MiB
+        const MAX_FILE_SIZE: u64 = 128 * 1024 * 1024;
 
-        let perms = permissions.clone();
+        let perms = self.permissions.clone();
         let list_fn = self
             .lua
             .create_function(move |lua, ()| {
-                if !perms.iter().any(|p| p == "server") {
-                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
-                }
+                Self::check_server_permission(&perms)?;
                 let servers = server_manager().get_server_list();
                 let result = lua.create_table()?;
                 for (i, server) in servers.iter().enumerate() {
@@ -38,48 +58,32 @@ impl PluginRuntime {
                 }
                 Ok(result)
             })
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.create_list_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.create_list_failed", e))?;
         server_table
             .set("list", list_fn)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_list_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_list_failed", e))?;
 
-        let perms = permissions.clone();
+        let perms = self.permissions.clone();
         let get_path_fn = self
             .lua
             .create_function(move |_, server_id: String| {
-                if !perms.iter().any(|p| p == "server") {
-                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
-                }
-                let servers = server_manager().get_server_list();
-                let server = servers.iter().find(|s| s.id == server_id).ok_or_else(|| {
-                    mlua::Error::runtime(i18n_service().t_with_options(
-                        "server.server_not_found",
-                        &crate::plugins::runtime::console::i18n_arg("0", &server_id),
-                    ))
-                })?;
-                Ok(server.path.clone())
+                Self::check_server_permission(&perms)?;
+                let server = Self::find_server(&server_id)?;
+                Ok(server.path)
             })
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.create_get_path_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.create_get_path_failed", e))?;
         server_table
             .set("get_path", get_path_fn)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_get_path_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_get_path_failed", e))?;
 
-        let perms = permissions.clone();
+        let perms = self.permissions.clone();
         let read_file_fn = self
             .lua
             .create_function(move |_, (server_id, relative_path): (String, String)| {
-                if !perms.iter().any(|p| p == "server") {
-                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
-                }
-                let servers = server_manager().get_server_list();
-                let server = servers.iter().find(|s| s.id == server_id).ok_or_else(|| {
-                    mlua::Error::runtime(i18n_service().t_with_options(
-                        "server.server_not_found",
-                        &crate::plugins::runtime::console::i18n_arg("0", &server_id),
-                    ))
-                })?;
+                Self::check_server_permission(&perms)?;
+                let server = Self::find_server(&server_id)?;
 
-                let server_dir = PathBuf::from(&server.path);
+                let server_dir = PathBuf::from(server.path);
                 let full_path = validate_server_path(&server_dir, &relative_path)?;
 
                 let metadata = fs::metadata(&full_path).map_err(|e| {
@@ -99,30 +103,18 @@ impl PluginRuntime {
                     ))
                 })
             })
-            .map_err(|e| {
-                format!("{}: {}", i18n_service().t("server.create_read_file_failed"), e)
-            })?;
+            .map_err(|e| Self::map_lua_err("server.create_read_file_failed", e))?;
         server_table
             .set("read_file", read_file_fn)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_read_file_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_read_file_failed", e))?;
 
-        let perms = permissions.clone();
+        let perms = self.permissions.clone();
         let write_file_fn = self
             .lua
             .create_function(
                 move |_, (server_id, relative_path, content): (String, String, String)| {
-                    if !perms.iter().any(|p| p == "server") {
-                        return Err(mlua::Error::runtime(
-                            i18n_service().t("server.permission_denied"),
-                        ));
-                    }
-                    let servers = server_manager().get_server_list();
-                    let server = servers.iter().find(|s| s.id == server_id).ok_or_else(|| {
-                        mlua::Error::runtime(i18n_service().t_with_options(
-                            "server.server_not_found",
-                            &crate::plugins::runtime::console::i18n_arg("0", &server_id),
-                        ))
-                    })?;
+                    Self::check_server_permission(&perms)?;
+                    let server = Self::find_server(&server_id)?;
 
                     let server_dir = PathBuf::from(&server.path);
                     let full_path = validate_server_path(&server_dir, &relative_path)?;
@@ -145,29 +137,19 @@ impl PluginRuntime {
                     Ok(true)
                 },
             )
-            .map_err(|e| {
-                format!("{}: {}", i18n_service().t("server.create_write_file_failed"), e)
-            })?;
+            .map_err(|e| Self::map_lua_err("server.create_write_file_failed", e))?;
         server_table
             .set("write_file", write_file_fn)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_write_file_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_write_file_failed", e))?;
 
-        let perms = permissions.clone();
+        let perms = self.permissions.clone();
         let list_dir_fn = self
             .lua
             .create_function(move |lua, (server_id, relative_path): (String, String)| {
-                if !perms.iter().any(|p| p == "server") {
-                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
-                }
-                let servers = server_manager().get_server_list();
-                let server = servers.iter().find(|s| s.id == server_id).ok_or_else(|| {
-                    mlua::Error::runtime(i18n_service().t_with_options(
-                        "server.server_not_found",
-                        &crate::plugins::runtime::console::i18n_arg("0", &server_id),
-                    ))
-                })?;
+                Self::check_server_permission(&perms)?;
+                let server = Self::find_server(&server_id)?;
 
-                let server_dir = PathBuf::from(&server.path);
+                let server_dir = PathBuf::from(server.path);
                 let full_path = validate_server_path(&server_dir, &relative_path)?;
 
                 if !full_path.is_dir() {
@@ -184,8 +166,7 @@ impl PluginRuntime {
                 })?;
 
                 let result = lua.create_table()?;
-                let mut i = 1;
-                for entry in entries {
+                for (i, entry) in entries.enumerate() {
                     let entry = entry.map_err(|e| {
                         mlua::Error::runtime(i18n_service().t_with_options(
                             "server.failed_to_read_entry",
@@ -203,60 +184,43 @@ impl PluginRuntime {
                     item.set("name", entry.file_name().to_string_lossy().to_string())?;
                     item.set("is_dir", metadata.is_dir())?;
                     item.set("size", metadata.len())?;
-                    result.set(i, item)?;
-                    i += 1;
+                    result.set(i + 1, item)?;
                 }
                 Ok(result)
             })
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.create_list_dir_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.create_list_dir_failed", e))?;
         server_table
             .set("list_dir", list_dir_fn)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_list_dir_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_list_dir_failed", e))?;
 
-        let perms = permissions.clone();
+        let perms = self.permissions.clone();
         let exists_fn = self
             .lua
             .create_function(move |_, (server_id, relative_path): (String, String)| {
-                if !perms.iter().any(|p| p == "server") {
-                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
-                }
-                let servers = server_manager().get_server_list();
-                let server = servers.iter().find(|s| s.id == server_id).ok_or_else(|| {
-                    mlua::Error::runtime(i18n_service().t_with_options(
-                        "server.server_not_found",
-                        &crate::plugins::runtime::console::i18n_arg("0", &server_id),
-                    ))
-                })?;
+                Self::check_server_permission(&perms)?;
+                let server = Self::find_server(&server_id)?;
 
-                let server_dir = PathBuf::from(&server.path);
+                let server_dir = PathBuf::from(server.path);
                 let full_path = validate_server_path(&server_dir, &relative_path)?;
 
                 Ok(full_path.exists())
             })
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.create_exists_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.create_exists_failed", e))?;
         server_table
             .set("exists", exists_fn)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_exists_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_exists_failed", e))?;
 
-        let perms = permissions.clone();
-        let logs_table = self.lua.create_table().map_err(|e| {
-            format!("{}: {}", i18n_service().t("server.create_logs_table_failed"), e)
-        })?;
+        let perms = self.permissions.clone();
+        let logs_table = self
+            .lua
+            .create_table()
+            .map_err(|e| Self::map_lua_err("server.create_logs_table_failed", e))?;
 
         let get_logs_fn = self
             .lua
             .create_function(move |lua, (server_id, count): (String, Option<usize>)| {
-                if !perms.iter().any(|p| p == "server") {
-                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
-                }
-
-                let servers = server_manager().get_server_list();
-                if !servers.iter().any(|s| s.id == server_id) {
-                    return Err(mlua::Error::runtime(i18n_service().t_with_options(
-                        "server.server_not_found",
-                        &crate::plugins::runtime::console::i18n_arg("0", &server_id),
-                    )));
-                }
+                Self::check_server_permission(&perms)?;
+                Self::find_server(&server_id)?;
 
                 let count = count.unwrap_or(100).min(1000);
                 let all_logs = crate::services::server_log_pipeline::get_logs(&server_id, 0, None);
@@ -274,97 +238,61 @@ impl PluginRuntime {
                 }
                 Ok(result)
             })
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.create_logs_get_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.create_logs_get_failed", e))?;
         logs_table
             .set("get", get_logs_fn)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_logs_get_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_logs_get_failed", e))?;
 
-        let perms = permissions.clone();
+        let perms = self.permissions.clone();
         let get_all_logs_fn = self
             .lua
             .create_function(move |lua, count: Option<usize>| {
-                if !perms.iter().any(|p| p == "server") {
-                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
-                }
+                Self::check_server_permission(&perms)?;
 
                 let count = count.unwrap_or(100).min(1000);
 
                 let running_ids = server_manager().get_running_server_ids();
-                let logs_map = crate::services::server_log_pipeline::get_all_logs();
+                let running_set: HashSet<String> = running_ids.into_iter().collect();
+                let logs_pairs = crate::services::server_log_pipeline::get_all_logs();
 
                 let result = lua.create_table()?;
                 let mut i = 1;
-                for (server_id, logs) in logs_map {
-                    if !running_ids.contains(&server_id) {
-                        continue;
+                for (server_id, logs) in logs_pairs {
+                    if running_set.contains(&server_id) {
+                        let start = if logs.len() > count {
+                            logs.len() - count
+                        } else {
+                            0
+                        };
+                        let slice = &logs[start..];
+
+                        let entry = lua.create_table()?;
+                        entry.set("server_id", server_id)?;
+
+                        let lines_table = lua.create_table()?;
+                        for (j, line) in slice.iter().enumerate() {
+                            lines_table.set(j + 1, line.clone())?;
+                        }
+                        entry.set("logs", lines_table)?;
+
+                        result.set(i, entry)?;
+                        i += 1;
                     }
-
-                    let start = if logs.len() > count {
-                        logs.len() - count
-                    } else {
-                        0
-                    };
-                    let slice = &logs[start..];
-
-                    let entry = lua.create_table()?;
-                    entry.set("server_id", server_id)?;
-
-                    let lines_table = lua.create_table()?;
-                    for (j, line) in slice.iter().enumerate() {
-                        lines_table.set(j + 1, line.clone())?;
-                    }
-                    entry.set("logs", lines_table)?;
-
-                    result.set(i, entry)?;
-                    i += 1;
                 }
 
                 Ok(result)
             })
-            .map_err(|e| {
-                format!("{}: {}", i18n_service().t("server.create_logs_getall_failed"), e)
-            })?;
+            .map_err(|e| Self::map_lua_err("server.create_logs_getall_failed", e))?;
         logs_table
             .set("getAll", get_all_logs_fn)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_logs_getall_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_logs_getall_failed", e))?;
 
         server_table
             .set("logs", logs_table)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_logs_failed"), e))?;
-
-        let perms = permissions.clone();
-        let register_log_processor_fn = self
-            .lua
-            .create_function(move |_lua, callback: mlua::Function| {
-                if !perms.iter().any(|p| p == "server") {
-                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
-                }
-
-                let processor = Arc::new(move |server_id: &str, line: &str| {
-                    let result = callback.call::<String>((server_id.to_string(), line.to_string()));
-                    result.unwrap_or_else(|_| line.to_string())
-                });
-
-                crate::plugins::api::register_server_log_processor(processor)
-                    .map_err(|e| mlua::Error::runtime(e))?;
-
-                Ok(true)
-            })
-            .map_err(|e| {
-                format!(
-                    "{}: {}",
-                    i18n_service().t("server.create_register_log_processor_failed"),
-                    e
-                )
-            })?;
-        server_table
-            .set("register_log_processor", register_log_processor_fn)
-            .map_err(|e| {
-                format!("{}: {}", i18n_service().t("server.set_register_log_processor_failed"), e)
-            })?;
+            .map_err(|e| Self::map_lua_err("server.set_logs_failed", e))?;
 
         sl.set("server", server_table)
-            .map_err(|e| format!("{}: {}", i18n_service().t("server.set_server_failed"), e))?;
+            .map_err(|e| Self::map_lua_err("server.set_server_failed", e))?;
 
         Ok(())
     }
