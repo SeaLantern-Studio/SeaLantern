@@ -1,5 +1,6 @@
 use super::helpers::{json_value_from_lua, lua_value_from_json};
 use super::PluginRuntime;
+use crate::services::global::i18n_service;
 use mlua::{Table, Value};
 use serde_json::{Map, Value as JsonValue};
 use std::fs;
@@ -11,7 +12,7 @@ impl PluginRuntime {
         let storage = self
             .lua
             .create_table()
-            .map_err(|e| format!("Failed to create storage table: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.create_table_failed"), e))?;
 
         let storage_path = self.data_dir.join("storage.json");
         let storage_lock = Arc::new(self.storage_lock.clone());
@@ -28,10 +29,10 @@ impl PluginRuntime {
                     None => Ok(Value::Nil),
                 }
             })
-            .map_err(|e| format!("Failed to create storage.get: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.create_get_failed"), e))?;
         storage
             .set("get", get_fn)
-            .map_err(|e| format!("Failed to set storage.get: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.set_get_failed"), e))?;
 
         let path = storage_path.clone();
         let lock = storage_lock.clone();
@@ -39,7 +40,7 @@ impl PluginRuntime {
             .lua
             .create_function(move |_, (key, value): (String, Value)| {
                 if key.len() > 256 {
-                    return Err(mlua::Error::runtime("Storage key exceeds 256 bytes limit"));
+                    return Err(mlua::Error::runtime(i18n_service().t("storage.key_too_long")));
                 }
                 let _guard = lock.lock().unwrap();
                 let mut data = read_storage(&path);
@@ -48,14 +49,14 @@ impl PluginRuntime {
                 let value_str = serde_json::to_string(&json_value)
                     .map_err(|e| mlua::Error::runtime(e.to_string()))?;
                 if value_str.len() > 1_048_576 {
-                    return Err(mlua::Error::runtime("Storage value exceeds 1MB limit"));
+                    return Err(mlua::Error::runtime(i18n_service().t("storage.value_too_large")));
                 }
                 data.insert(key, json_value);
 
                 let total_str = serde_json::to_string(&data)
                     .map_err(|e| mlua::Error::runtime(e.to_string()))?;
                 if total_str.len() > 10_485_760 {
-                    return Err(mlua::Error::runtime("Storage total size exceeds 10MB limit"));
+                    return Err(mlua::Error::runtime(i18n_service().t("storage.total_too_large")));
                 }
                 if let Err(e) = write_storage(&path, &data) {
                     eprintln!("Storage write error: {}", e);
@@ -63,10 +64,10 @@ impl PluginRuntime {
                 }
                 Ok(())
             })
-            .map_err(|e| format!("Failed to create storage.set: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.create_set_failed"), e))?;
         storage
             .set("set", set_fn)
-            .map_err(|e| format!("Failed to set storage.set: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.create_get_failed"), e))?;
 
         let path = storage_path.clone();
         let lock = storage_lock.clone();
@@ -82,10 +83,10 @@ impl PluginRuntime {
                 }
                 Ok(())
             })
-            .map_err(|e| format!("Failed to create storage.remove: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.create_remove_failed"), e))?;
         storage
             .set("remove", remove_fn)
-            .map_err(|e| format!("Failed to set storage.remove: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.set_remove_failed"), e))?;
 
         let path = storage_path.clone();
         let lock = storage_lock.clone();
@@ -101,13 +102,13 @@ impl PluginRuntime {
                 }
                 Ok(table)
             })
-            .map_err(|e| format!("Failed to create storage.keys: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.create_keys_failed"), e))?;
         storage
             .set("keys", keys_fn)
-            .map_err(|e| format!("Failed to set storage.keys: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.create_set_failed"), e))?;
 
         sl.set("storage", storage)
-            .map_err(|e| format!("Failed to set sl.storage: {}", e))?;
+            .map_err(|e| format!("{}: {}", i18n_service().t("storage.set_storage_failed"), e))?;
 
         Ok(())
     }
