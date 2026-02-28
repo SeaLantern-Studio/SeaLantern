@@ -482,7 +482,7 @@ pub async fn run() {
                     },
                 ));
             }
-            
+
             app.manage(manager);
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;

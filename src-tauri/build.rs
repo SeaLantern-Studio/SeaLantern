@@ -3,7 +3,10 @@ use std::env;
 use std::path::Path;
 
 fn main() {
-    load_asm();
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        load_asm();
+    }
     tauri_build::build()
 }
 
