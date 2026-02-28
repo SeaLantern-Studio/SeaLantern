@@ -1,7 +1,9 @@
 use tauri::{command, AppHandle};
 
 #[cfg(target_os = "linux")]
+#[allow(unused_imports)]
 use crate::commands::update_arch;
+#[allow(unused_imports)]
 use crate::commands::{
     update_cnb, update_download, update_install,
     update_types::{PendingUpdate, UpdateInfo},
