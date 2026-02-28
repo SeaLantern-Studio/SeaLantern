@@ -47,8 +47,6 @@ fn is_private_ip(addr: IpAddr) -> bool {
 }
 
 fn is_private_ipv4(ipv4: std::net::Ipv4Addr) -> bool {
-    let addr = Ipv4Net::new(ipv4, 32).expect("Invalid IPv4 address with prefix length 32");
-
     let private_ranges = [
         Ipv4Net::new(std::net::Ipv4Addr::new(127, 0, 0, 0), 8)
             .expect("Invalid IPv4 loopback address range"),
@@ -60,14 +58,10 @@ fn is_private_ipv4(ipv4: std::net::Ipv4Addr) -> bool {
             .expect("Invalid IPv4 private network 192.168.0.0/16"),
     ];
 
-    private_ranges
-        .iter()
-        .any(|range| addr.supernet() == Some(*range))
+    private_ranges.iter().any(|range| range.contains(&ipv4))
 }
 
 fn is_private_ipv6(ipv6: std::net::Ipv6Addr) -> bool {
-    let addr = Ipv6Net::new(ipv6, 128).expect("Invalid IPv6 address with prefix length 128");
-
     let private_ranges = [
         Ipv6Net::new(std::net::Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 0), 7)
             .expect("Invalid IPv6 unique local address range"), // 唯一本地地址范围
@@ -75,9 +69,7 @@ fn is_private_ipv6(ipv6: std::net::Ipv6Addr) -> bool {
             .expect("Invalid IPv6 link-local address range"), // 链路本地地址范围
     ];
 
-    private_ranges
-        .iter()
-        .any(|range| addr.supernet() == Some(*range))
+    private_ranges.iter().any(|range| range.contains(&ipv6))
 }
 
 fn lua_error(lua: &Lua, msg: &str) -> LuaResult<MultiValue> {
