@@ -126,7 +126,7 @@ cargo fmt --all
 - 本地 `commit-msg`：强制提交信息符合 Conventional Commits
 - CI：在 PR/推送时再次校验提交信息与代码质量
 
-允许的提交类型：`feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`chore`、`revert`、`security`  
+允许的提交类型：`build`、`ci`、`feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`types`、`chore`、`revert`、`security`、`i18n`  
 示例：`feat(plugin): 增加插件下载重试机制`
 
 ## 技术栈
