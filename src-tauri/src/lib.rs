@@ -242,9 +242,6 @@ pub fn run() {
                 eprintln!("Failed to scan plugins: {}", e);
             }
 
-            // 自动启用上启用的插件
-            plugin_manager.auto_enable_plugins();
-
             let shared_runtimes = plugin_manager.get_shared_runtimes();
             let shared_runtimes_for_server_ready = Arc::clone(&shared_runtimes);
             let api_registry = plugin_manager.get_api_registry();
@@ -483,7 +480,11 @@ pub fn run() {
                 ));
             }
 
-            app.manage(manager);
+            app.manage(manager.clone());
+
+            if let Ok(mut m) = manager.lock() {
+                m.auto_enable_plugins();
+            }
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
