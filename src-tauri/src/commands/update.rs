@@ -9,7 +9,7 @@ use crate::commands::{
     update_types::{PendingUpdate, UpdateInfo},
 };
 
-#[cfg(all(not(debug_assertions), target_os = "linux"))]
+#[cfg(not(debug_assertions))]
 use crate::commands::{update_github, update_types::get_github_config};
 
 #[cfg(all(not(debug_assertions), target_os = "linux"))]
@@ -63,24 +63,8 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
                 println!("检测到 Arch Linux，使用 AUR 更新检查");
                 return update_arch::check_aur_update(current_version).await;
             }
-        }
 
-        #[cfg(not(target_os = "linux"))]
-        {
-            println!("不是 Linux 系统，使用 GitHub 更新检查");
-            println!("使用 GitHub 更新检查");
-            let client = reqwest::Client::builder()
-                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                .build()
-                .map_err(|e| format!("HTTP client init failed: {}", e))?;
-
-            let config = get_github_config();
-            return update_github::fetch_release(&client, &config, current_version).await;
-        }
-
-        // Linux 非 Arch 系统使用 CNB + GitHub 更新检查
-        #[cfg(target_os = "linux")]
-        {
+            // Linux 非 Arch 系统使用 CNB + GitHub 更新检查
             println!("使用 CNB + GitHub 更新检查");
             let client = reqwest::Client::builder()
                 .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
@@ -97,7 +81,17 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
         }
 
         #[cfg(not(target_os = "linux"))]
-        unreachable!()
+        {
+            println!("不是 Linux 系统，使用 GitHub 更新检查");
+            println!("使用 GitHub 更新检查");
+            let client = reqwest::Client::builder()
+                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .build()
+                .map_err(|e| format!("HTTP client init failed: {}", e))?;
+
+            let config = get_github_config();
+            update_github::fetch_release(&client, &config, current_version).await
+        }
     }
 }
 
