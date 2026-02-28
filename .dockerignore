@@ -8,6 +8,7 @@
 .vscode
 *.swp
 *.swo
+*.zed
 *~
 
 # Node
