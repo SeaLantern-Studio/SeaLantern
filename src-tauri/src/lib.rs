@@ -34,7 +34,7 @@ pub async fn run() {
 
     #[cfg(target_os = "linux")]
     {
-        let handle = tokio::spawn(async {
+        let _handle = tokio::spawn(async {
             services::panic_report::panic_report().await;
             println!("panic_report 注册完成");
         });

@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[repr(C, align(64))]
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
 struct Regs {
     rax: u64,
     rbx: u64,
@@ -36,17 +37,22 @@ struct Regs {
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
 extern "C" {
     fn getregs(regs: *mut Regs);
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
 static START_TIME: OnceLock<SystemTime> = OnceLock::new();
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
 static PANIC_HOOK_RUNNING: AtomicBool = AtomicBool::new(false);
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
+#[allow(deprecated)]
 pub async fn panic_report() {
     START_TIME.set(SystemTime::now()).unwrap();
     std::panic::set_hook(Box::new(|panic_info| {
@@ -201,6 +207,7 @@ pub async fn panic_report() {
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
 fn format_time(t: SystemTime) -> String {
     let since_epoch = t.duration_since(UNIX_EPOCH).unwrap_or_default();
     let millis = since_epoch.as_millis();
@@ -208,6 +215,7 @@ fn format_time(t: SystemTime) -> String {
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
 fn get_stack_range() -> Option<(u64, u64)> {
     for line in fs::read_to_string("/proc/self/maps").ok()?.lines() {
         if line.contains("[stack]") {
@@ -226,6 +234,7 @@ fn get_stack_range() -> Option<(u64, u64)> {
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
 fn get_cpu_temperature() -> String {
     if let Ok(entries) = fs::read_dir("/sys/class/thermal") {
         for entry in entries.flatten() {
@@ -244,6 +253,7 @@ fn get_cpu_temperature() -> String {
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[allow(clippy::all)]
 fn get_memory_load() -> f64 {
     if let Ok(meminfo) = fs::read_to_string("/proc/meminfo") {
         let mut total = 0u64;
