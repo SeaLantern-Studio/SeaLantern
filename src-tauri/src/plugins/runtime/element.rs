@@ -6,6 +6,10 @@ use std::time::Duration;
 
 const ELEMENT_GET_TIMEOUT_MS: u64 = 500;
 
+fn convert_lua_string(s: &mlua::String) -> String {
+    String::from_utf8_lossy(&s.as_bytes()).into_owned()
+}
+
 fn wait_for_element_response(
     lua: &mlua::Lua,
     rx: Receiver<String>,
@@ -34,7 +38,7 @@ impl PluginRuntime {
         let get_text_fn = self
             .lua
             .create_function(move |lua, selector: mlua::String| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.get_text", &selector);
 
                 let (req_id, rx) = element_response_create();
@@ -61,7 +65,7 @@ impl PluginRuntime {
         let get_value_fn = self
             .lua
             .create_function(move |lua, selector: mlua::String| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.get_value", &selector);
 
                 let (req_id, rx) = element_response_create();
@@ -88,8 +92,8 @@ impl PluginRuntime {
         let get_attribute_fn = self
             .lua
             .create_function(move |lua, (selector, attr): (mlua::String, mlua::String)| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-                let attr = String::from_utf8_lossy(&attr.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
+                let attr = convert_lua_string(&attr);
                 let _ = emit_permission_log(
                     &pid,
                     "api_call",
@@ -123,7 +127,7 @@ impl PluginRuntime {
         let get_attributes_fn = self
             .lua
             .create_function(move |lua, selector: mlua::String| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
                 let _ =
                     emit_permission_log(&pid, "api_call", "sl.element.get_attributes", &selector);
 
@@ -153,7 +157,7 @@ impl PluginRuntime {
         let click_fn = self
             .lua
             .create_function(move |_, selector: mlua::String| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.click", &selector);
                 let data = serde_json::json!({}).to_string();
                 match emit_ui_event(&pid, "element_click", &selector, &data) {
@@ -187,8 +191,8 @@ impl PluginRuntime {
         let set_value_fn = self
             .lua
             .create_function(move |_, (selector, value): (mlua::String, mlua::String)| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-                let value = String::from_utf8_lossy(&value.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
+                let value = convert_lua_string(&value);
                 let _ = emit_permission_log(
                     &pid,
                     "api_call",
@@ -227,7 +231,7 @@ impl PluginRuntime {
         let check_fn = self
             .lua
             .create_function(move |_, (selector, checked): (mlua::String, bool)| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
                 let _ = emit_permission_log(
                     &pid,
                     "api_call",
@@ -266,8 +270,8 @@ impl PluginRuntime {
         let select_fn = self
             .lua
             .create_function(move |_, (selector, value): (mlua::String, mlua::String)| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
-                let value = String::from_utf8_lossy(&value.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
+                let value = convert_lua_string(&value);
                 let _ = emit_permission_log(
                     &pid,
                     "api_call",
@@ -306,7 +310,7 @@ impl PluginRuntime {
         let focus_fn = self
             .lua
             .create_function(move |_, selector: mlua::String| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.focus", &selector);
                 let data = serde_json::json!({}).to_string();
                 match emit_ui_event(&pid, "element_focus", &selector, &data) {
@@ -340,7 +344,7 @@ impl PluginRuntime {
         let blur_fn = self
             .lua
             .create_function(move |_, selector: mlua::String| {
-                let selector = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
+                let selector = convert_lua_string(&selector);
                 let _ = emit_permission_log(&pid, "api_call", "sl.element.blur", &selector);
                 let data = serde_json::json!({}).to_string();
                 match emit_ui_event(&pid, "element_blur", &selector, &data) {
@@ -375,7 +379,7 @@ impl PluginRuntime {
         let on_change_fn = self
             .lua
             .create_function(move |_, (selector, callback): (mlua::String, mlua::Function)| {
-                let selector_str = String::from_utf8_lossy(&selector.as_bytes()).into_owned();
+                let selector_str = convert_lua_string(&selector);
                 let _ =
                     emit_permission_log(&pid, "api_call", "sl.element.on_change", &selector_str);
 

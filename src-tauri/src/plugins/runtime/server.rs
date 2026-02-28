@@ -4,6 +4,7 @@ use crate::services::global::i18n_service;
 use mlua::Table;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 impl PluginRuntime {
     pub(super) fn setup_server_namespace(&self, sl: &Table) -> Result<(), String> {
@@ -330,6 +331,37 @@ impl PluginRuntime {
         server_table
             .set("logs", logs_table)
             .map_err(|e| format!("{}: {}", i18n_service().t("server.set_logs_failed"), e))?;
+
+        let perms = permissions.clone();
+        let register_log_processor_fn = self
+            .lua
+            .create_function(move |_lua, callback: mlua::Function| {
+                if !perms.iter().any(|p| p == "server") {
+                    return Err(mlua::Error::runtime(i18n_service().t("server.permission_denied")));
+                }
+
+                let processor = Arc::new(move |server_id: &str, line: &str| {
+                    let result = callback.call::<String>((server_id.to_string(), line.to_string()));
+                    result.unwrap_or_else(|_| line.to_string())
+                });
+
+                crate::plugins::api::register_server_log_processor(processor)
+                    .map_err(|e| mlua::Error::runtime(e))?;
+
+                Ok(true)
+            })
+            .map_err(|e| {
+                format!(
+                    "{}: {}",
+                    i18n_service().t("server.create_register_log_processor_failed"),
+                    e
+                )
+            })?;
+        server_table
+            .set("register_log_processor", register_log_processor_fn)
+            .map_err(|e| {
+                format!("{}: {}", i18n_service().t("server.set_register_log_processor_failed"), e)
+            })?;
 
         sl.set("server", server_table)
             .map_err(|e| format!("{}: {}", i18n_service().t("server.set_server_failed"), e))?;

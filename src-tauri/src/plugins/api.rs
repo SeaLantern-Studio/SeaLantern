@@ -1,3 +1,4 @@
+use crate::services::server_log_pipeline::{add_server_log_processor, ServerLogProcessor};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -554,6 +555,10 @@ pub fn emit_i18n_event(
         Some(h) => h(plugin_id, action, locale, payload),
         None => Ok(()),
     }
+}
+
+pub fn register_server_log_processor(processor: ServerLogProcessor) -> Result<(), String> {
+    add_server_log_processor(processor)
 }
 
 pub type ApiRegistry = Arc<Mutex<HashMap<String, HashMap<String, String>>>>;
