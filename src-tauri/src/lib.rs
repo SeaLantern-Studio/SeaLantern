@@ -26,17 +26,21 @@ use tauri::{
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub async fn run() {
+pub fn run() {
     // Fix white screen issue on Wayland desktop environments (tested on Arch Linux + KDE Plasma)
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
     }
 
+    // Linux 平台在独立线程中初始化 panic_report，避免阻塞主线程
     #[cfg(target_os = "linux")]
     {
-        let _handle = tokio::spawn(async {
-            services::panic_report::panic_report().await;
-            println!("panic_report 注册完成");
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+            rt.block_on(async {
+                services::panic_report::panic_report().await;
+                println!("panic_report 注册完成");
+            });
         });
     }
 
