@@ -3,18 +3,14 @@ use tauri::{command, AppHandle};
 #[cfg(target_os = "linux")]
 use crate::commands::update_arch;
 use crate::commands::{
-    update_download, update_install,
+    update_cnb, update_download, update_install,
     update_types::{PendingUpdate, UpdateInfo},
 };
 
-#[cfg(all(not(debug_assertions), not(target_os = "linux")))]
+#[cfg(all(not(debug_assertions), target_os = "linux"))]
 use crate::commands::{update_github, update_types::get_github_config};
 
-// 检查更新
-    update_cnb, update_download, update_github, update_install,
-    update_types::{get_github_config, PendingUpdate, UpdateInfo},
-};
-
+#[cfg(all(not(debug_assertions), target_os = "linux"))]
 fn select_update_result(
     cnb_result: Result<UpdateInfo, String>,
     github_result: Result<UpdateInfo, String>,
@@ -80,29 +76,27 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
             return update_github::fetch_release(&client, &config, current_version).await;
         }
 
-        Ok(UpdateInfo {
-            has_update: false,
-            latest_version: current_version.to_string(),
-            current_version: current_version.to_string(),
-            download_url: None,
-            release_notes: None,
-            published_at: None,
-            source: None,
-            sha256: None,
-        })
+        // Linux 非 Arch 系统使用 CNB + GitHub 更新检查
+        #[cfg(target_os = "linux")]
+        {
+            println!("使用 CNB + GitHub 更新检查");
+            let client = reqwest::Client::builder()
+                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .build()
+                .map_err(|e| format!("HTTP client init failed: {}", e))?;
+
+            let cnb_result = update_cnb::fetch_release(&client, current_version).await;
+
+            let config = get_github_config();
+            let github_result =
+                update_github::fetch_release(&client, &config, current_version).await;
+
+            return select_update_result(cnb_result, github_result);
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        unreachable!()
     }
-    println!("使用 CNB + GitHub 更新检查");
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-        .build()
-        .map_err(|e| format!("HTTP client init failed: {}", e))?;
-
-    let cnb_result = update_cnb::fetch_release(&client, current_version).await;
-
-    let config = get_github_config();
-    let github_result = update_github::fetch_release(&client, &config, current_version).await;
-
-    select_update_result(cnb_result, github_result)
 }
 
 /// 打开下载链接

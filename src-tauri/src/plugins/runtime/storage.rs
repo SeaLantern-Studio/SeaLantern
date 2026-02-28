@@ -77,7 +77,9 @@ impl PluginRuntime {
                     let total_str = serde_json::to_string(&data)
                         .map_err(|e| mlua::Error::runtime(e.to_string()))?;
                     if total_str.len() > MAX_TOTAL_SIZE {
-                        return Err(mlua::Error::runtime(i18n_service().t("storage.total_too_large")));
+                        return Err(mlua::Error::runtime(
+                            i18n_service().t("storage.total_too_large"),
+                        ));
                     }
 
                     write_storage(&path, &data).map_err(mlua::Error::runtime)?;
