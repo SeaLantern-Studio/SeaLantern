@@ -26,10 +26,18 @@ use tauri::{
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub async fn run() {
     // Fix white screen issue on Wayland desktop environments (tested on Arch Linux + KDE Plasma)
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let _handle = tokio::spawn(async {
+            services::panic_report::panic_report().await;
+            println!("panic_report 注册完成");
+        });
     }
 
     let download_manager = DownloadManager::new();
