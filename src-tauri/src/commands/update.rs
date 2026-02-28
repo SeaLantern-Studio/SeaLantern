@@ -14,10 +14,7 @@ fn select_update_result(
     match (cnb_result, github_result) {
         (_, Ok(github_info)) if github_info.has_update => Ok(github_info),
         (Ok(cnb_info), _) => Ok(cnb_info),
-        (Err(cnb_err), Ok(_)) => Err(format!(
-            "CNB 检查失败: {}; GitHub 可访问但未发现更新，按规则无法回退到 CNB 结果",
-            cnb_err
-        )),
+        (Err(_), Ok(github_info)) => Ok(github_info),
         (Err(cnb_err), Err(github_err)) => {
             Err(format!("CNB 检查失败: {}; GitHub 检查失败: {}", cnb_err, github_err))
         }
