@@ -5,24 +5,55 @@ use crate::commands::update_version::normalize_release_tag_version;
 /// 查找适合当前平台的资源文件
 #[allow(dead_code)]
 pub fn find_suitable_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
-    let target_suffixes: &[&str] = if cfg!(target_os = "windows") {
-        &[".msi", ".exe"]
-    } else if cfg!(target_os = "macos") {
-        &[".dmg", ".app", ".tar.gz"]
-    } else {
-        &[".appimage", ".deb", ".rpm", ".tar.gz"]
-    };
+    let os = std::env::consts::OS;
+    let arch = std::env::consts::ARCH;
+
+    let (target_suffixes, arch_keywords) = get_platform_info(os, arch);
 
     for suffix in target_suffixes {
-        if let Some(asset) = assets.iter().find(|a| {
-            let name = a.name.to_ascii_lowercase();
-            name.ends_with(suffix)
-        }) {
-            return Some(asset);
+        let matching_assets: Vec<&ReleaseAsset> = assets
+            .iter()
+            .filter(|a| {
+                let name = a.name.to_ascii_lowercase();
+                name.ends_with(suffix)
+            })
+            .collect();
+
+        if matching_assets.is_empty() {
+            continue;
         }
+
+        for arch_keyword in &arch_keywords {
+            if let Some(asset) = matching_assets.iter().find(|a| {
+                let name = a.name.to_ascii_lowercase();
+                name.contains(arch_keyword)
+            }) {
+                return Some(asset);
+            }
+        }
+
+        return matching_assets.into_iter().next();
     }
 
     None
+}
+
+// 查询平台信息
+// 注意, 这里的arch是指cpu架构, 不是指系统架构, 不要和arch系统混淆了
+fn get_platform_info(os: &str, arch: &str) -> (Vec<&'static str>, Vec<&'static str>) {
+    let target_suffixes: Vec<&'static str> = match os {
+        "windows" => vec![".msi", ".exe"],
+        "macos" => vec![".dmg", ".app", ".tar.gz"],
+        _ => vec![".appimage", ".deb", ".rpm", ".tar.gz"],
+    };
+
+    let arch_keywords: Vec<&'static str> = match arch {
+        "x86_64" | "x64" | "amd64" => vec!["x86_64", "x64", "amd64"],
+        "aarch64" | "arm64" | "arm" => vec!["aarch64", "arm64", "arm"],
+        _ => vec![],
+    };
+
+    (target_suffixes, arch_keywords)
 }
 
 /// 获取 GitHub 最新发布版本
