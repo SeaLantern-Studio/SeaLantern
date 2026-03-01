@@ -794,6 +794,8 @@
     },
     "update_available": "Update available",
     "settings_title": "{{name}} Settings",
+    "safe_mode_disabled": "Disabled in safe mode",
+    "safe_mode": "Safe Mode",
     "permissions": "Permissions",
     "dependencies": "Dependencies",
     "optional_dependencies": "Optional Dependencies",
