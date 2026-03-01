@@ -161,7 +161,7 @@ pub fn run() {
             download_commands::download_file,
             download_commands::poll_task,
             download_commands::poll_all_downloads,
-            download_commands::remove_download_task,
+            download_commands::cancel_download_task,
             plugin_commands::list_plugins,
             plugin_commands::scan_plugins,
             plugin_commands::enable_plugin,

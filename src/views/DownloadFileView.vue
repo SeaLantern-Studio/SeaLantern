@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { useRouter } from "vue-router";
+// import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
@@ -11,7 +11,7 @@ import { systemApi } from "@src/api";
 import { downloadApi } from "@api/downloader.ts";
 import { SLProgress } from "@src/components";
 
-const router = useRouter();
+// const router = useRouter();
 const { error: errorMsg, showError, clearError } = useMessage();
 const { loading: submitting, start: startLoading, stop: stopLoading } = useLoading();
 
@@ -74,6 +74,21 @@ const statusLabel = computed(() => {
   if (taskInfo.isFinished) return i18n.t("download-file.completed");
   return i18n.t("download-file.downloading");
 });
+
+async function cancelDownload() {
+  try {
+    if (taskInfo.id) {
+      await downloadApi.cancelDownloadTask(taskInfo.id);
+    }
+
+    stop();
+    resetTask();
+  } catch (e) {
+    showError(String(e));
+  } finally {
+    stopLoading();
+  }
+}
 
 async function handleDownload() {
   if (combinedLoading.value) return;
@@ -158,7 +173,7 @@ watch(taskError, (newError) => {
     </SLCard>
 
     <div class="create-actions">
-      <SLButton variant="secondary" size="lg" @click="router.push('/')">
+      <SLButton variant="secondary" size="lg" @click="cancelDownload">
         {{ i18n.t("download-file.cancel") }}
       </SLButton>
       <SLButton
