@@ -408,7 +408,7 @@
       "level-name": "世界名称",
       "level-seed": "世界种子",
       "level-type": "世界类型",
-      "view-distance": "视距",
+      "view-distance": "渲染距离",
       "simulation-distance": "模拟距离",
       "max-tick-time": "最大tick时间(ms)，-1为禁用",
       "network-compression-threshold": "网络压缩阈值",
@@ -570,8 +570,8 @@
     "edit_colorplan_options": {
       "light": "浅色",
       "dark": "深色",
-      "light_acrylic": "浅色毛玻璃",
-      "dark_acrylic": "深色毛玻璃"
+      "light_acrylic": "浅色亚克力",
+      "dark_acrylic": "深色亚克力"
     },
     "theme_options": {
       "auto": "跟随系统",
