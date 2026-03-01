@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check-linked-issue:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: 必须关联 accepted Issue
         uses: actions/github-script@v7
