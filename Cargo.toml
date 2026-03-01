@@ -7,5 +7,4 @@ resolver = "2"
 opt-level = "z" # 优化二进制大小
 lto = true # 启用链接时优化
 codegen-units = 1 # 更好的优化，但编译较慢
-panic = "abort" # 减少二进制大小
 strip = true # 移除调试符号

@@ -24,6 +24,7 @@ import SLDropzone from "@components/common/SLDropzone.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
+import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import type { PluginState, PluginInfo, MissingDependency, BatchInstallResult } from "@type/plugin";
 import {
@@ -51,6 +52,7 @@ const pluginStore = usePluginStore();
 const isDragging = ref(false);
 const searchQuery = ref("");
 const chooserOpen = ref(false);
+const safeMode = ref(false);
 
 const filteredPlugins = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
@@ -132,6 +134,13 @@ function closeAlertDialog() {
 }
 
 onMounted(async () => {
+  // Check safe mode status
+  try {
+    safeMode.value = await systemApi.getSafeModeStatus();
+  } catch (e) {
+    console.error("Failed to check safe mode status:", e);
+  }
+
   if (pluginStore.plugins.length === 0 && !pluginStore.loading) {
     pluginStore.loadPlugins();
   }
@@ -1050,6 +1059,7 @@ function goToMarket() {
                   <Settings :size="16" />
                 </SLButton>
                 <SLSwitch
+                  v-if="!safeMode"
                   :modelValue="isPluginEnabled(plugin.state)"
                   :disabled="
                     hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
@@ -1064,6 +1074,9 @@ function goToMarket() {
                   "
                   size="sm"
                 />
+                <span v-else class="safe-mode-label">{{
+                  i18n.t("plugins.safe_mode_disabled")
+                }}</span>
               </div>
             </div>
           </div>
@@ -1413,6 +1426,16 @@ function goToMarket() {
   gap: var(--sl-space-md);
   min-height: 100%;
   flex: 1;
+}
+
+.safe-mode-label {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  background-color: var(--sl-surface);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--sl-radius-sm);
+  border: 1px solid var(--sl-border-light);
+  align-self: center;
 }
 
 .plugins-toolbar {

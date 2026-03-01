@@ -144,16 +144,20 @@ Co-Authored-By: 贡献者名 <email>
 
 其中 `type` 必须是小写，并且只能使用：
 
+- `build`: 构建系统或依赖相关（例如 Docker、CI 配置）
+- `ci`: 持续集成配置或脚本变更
 - `feat`: 新功能
 - `fix`: Bug 修复
 - `docs`: 文档更新
-- `style`: 代码格式（不影响功能）
-- `refactor`: 重构
+- `style`: 代码格式或空白，不影响功能
+- `refactor`: 重构（既不是修复也不是添加功能）
 - `perf`: 性能优化
 - `test`: 测试相关
-- `chore`: 构建/工具链相关
-- `revert`: 回滚提交
-- `security`: 安全修复
+- `types`: 类型定义或声明修改
+- `i18n`: 国际化/本地化内容变更
+- `chore`: 其他杂务（构建、工具链、包升级等）
+- `revert`: 回滚以前的提交
+- `security`: 解决安全问题
 
 提交前会自动执行以下检查：
 
@@ -164,8 +168,13 @@ Co-Authored-By: 贡献者名 <email>
 **示例（符合规范）**：
 
 ```
+build(deps): 升级 webpack 到 5.0
+ci(pipelines): 添加 Windows build agent
 feat(plugin): 增加插件下载重试机制
 fix(server): 修复开服路径识别异常
+perf(ui): 优化列表渲染速度
+types(api): 更新返回类型
+i18n(zh-CN): 翻译新增界面文本
 chore(ci): 调整工作流缓存策略
 docs(contributing): 更新提交规范说明
 ```

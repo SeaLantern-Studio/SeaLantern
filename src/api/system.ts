@@ -118,4 +118,8 @@ export const systemApi = {
   async getDefaultRunPath(): Promise<string> {
     return tauriInvoke("get_default_run_path");
   },
+
+  async getSafeModeStatus(): Promise<boolean> {
+    return tauriInvoke("get_safe_mode_status");
+  },
 };
