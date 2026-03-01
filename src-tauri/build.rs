@@ -1,7 +1,3 @@
-use nasm_rs::compile_library_args;
-use std::env;
-use std::path::Path;
-
 fn main() {
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {

@@ -18,12 +18,18 @@ use commands::update as update_commands;
 use crate::services::download_manager::DownloadManager;
 use plugins::manager::PluginManager;
 
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Listener, Manager,
 };
+
+// 标志位：标记是否正在正常关闭，用于区分正常关闭和异常崩溃
+static APP_CLOSING: AtomicBool = AtomicBool::new(false);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -200,22 +206,20 @@ pub fn run() {
             mcs_plugin_commands::m_install_plugin,
             mcs_plugin_commands::m_get_plugin_config_files
         ])
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
                 let settings = services::global::settings_manager().get();
 
                 match settings.close_action.as_str() {
                     "minimize" => {
-                        // 最小化到托盘
                         api.prevent_close();
                         let _ = window.hide();
                     }
                     "close" => {
-                        // 直接关闭
+                        APP_CLOSING.store(true, Ordering::SeqCst);
                         if settings.close_servers_on_exit {
                             services::global::server_manager().stop_all_servers();
                         }
-                        // 关闭时禁用插件
                         if let Some(manager) =
                             window.app_handle().try_state::<std::sync::Arc<
                                 std::sync::Mutex<crate::plugins::manager::PluginManager>,
@@ -227,12 +231,30 @@ pub fn run() {
                         }
                     }
                     _ => {
-                        // 显示对话框（ask 或其他值）
                         api.prevent_close();
                         let _ = window.emit("close-requested", ());
                     }
                 }
             }
+            tauri::WindowEvent::Destroyed => {
+                if !APP_CLOSING.load(Ordering::SeqCst) {
+                    eprintln!("[ERROR] Window destroyed unexpectedly (WebView may have crashed)");
+                    let settings = services::global::settings_manager().get();
+                    if settings.close_servers_on_exit {
+                        services::global::server_manager().stop_all_servers();
+                    }
+                    if let Some(manager) =
+                        window.app_handle().try_state::<std::sync::Arc<
+                            std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                        >>()
+                    {
+                        if let Ok(mut m) = manager.lock() {
+                            m.disable_all_plugins_for_shutdown();
+                        }
+                    }
+                }
+            }
+            _ => {}
         })
         .setup(|app| {
             // 初始化插件管理
@@ -714,6 +736,18 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Sea Lantern");
+        .build(tauri::generate_context!())
+        .expect("error while building Sea Lantern")
+        .run(|_app_handle, event| {
+            if let tauri::RunEvent::WebviewEvent { label, event, .. } = event {
+                if label == "main" {
+                    match event {
+                        tauri::WebviewEvent::DragDrop(_) => {}
+                        _ => {
+                            eprintln!("[WARN] Main webview received unexpected event: {:?}", event);
+                        }
+                    }
+                }
+            }
+        })
 }
