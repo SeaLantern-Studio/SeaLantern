@@ -22,6 +22,7 @@
     "settings": "Ajustes",
     "personalize": "Personalizar",
     "about": "Acerca de",
+    "download-file": "Descargar archivo",
     "loading": "Cargando...",
     "select_server": "Seleccionar servidor",
     "open_folder": "Abrir carpeta",
@@ -229,8 +230,7 @@
     "java_env": "Entorno Java",
     "java_scan": "Escanear todos los discos en busca de Java",
     "java_manual": "Seleccionar ruta manualmente",
-    "java_path": "Ruta de Java",
-    "file_hint": "Después de hacer clic en 「Seleccionar y Crear」, elija el archivo de inicio del servidor (soporta formatos .jar, .bat o .sh). El sistema detectará automáticamente el tipo de archivo"
+    "java_path": "Ruta de Java"
   },
   "console": {
     "title": "Consola",
@@ -245,6 +245,7 @@
     "enter_command_content": "Introduce el contenido",
     "cancel": "Cancelar",
     "delete": "Eliminar",
+    "save": "Guardar",
     "add": "Añadir",
     "update": "Actualizar",
     "back_to_bottom": "Ir al final",
@@ -254,7 +255,10 @@
     "running": "En ejecución",
     "starting": "Iniciando",
     "stopping": "Deteniendo",
-    "stopped": "Detenido"
+    "stopped": "Detenido",
+    "no_server": "Sin servidores",
+    "create_server_first": "Por favor, crea y selecciona un servidor primero",
+    "suggestion_hint": "Tab autocompletar / Up Down seleccionar"
   },
   "config": {
     "title": "Editar configuración",
@@ -276,10 +280,10 @@
     "delete": "Eliminar",
     "refresh_list": "Actualizar lista",
     "reload_plugins": "Recargar plugins",
-    "reload_plugins_warning": "Recargar plugins puede causar problemas en el servidor, algunos plugins pueden no admitirlo",
+    "reload_plugins_warning": "Recargar plugins puede causar lag en el servidor, por favor ten cuidado",
     "empty_config_folder": "Carpeta de configuración vacía",
+    "has_config_folder": "Configuración presente",
     "no_config_files": "Sin configuración",
-    "has_config_folder": "Tiene configuración",
     "config_files_count": "configuraciones",
     "config_files": "Archivos de configuración",
     "open": "Abrir",
@@ -443,9 +447,11 @@
     "font_size_desc": "Ajusta el tamaño del texto",
     "font_family": "Fuente",
     "font_family_desc": "Selecciona la fuente. Algunas requieren instalación previa",
+    "console_font_family_desc": "Selecciona la fuente usada por la consola. Algunas requieren instalación previa",
+    "console_letter_spacing": "Espaciado de caracteres en consola (px)",
+    "console_letter_spacing_desc": "Ajusta el espacio entre caracteres en la consola. Valor por defecto 0; valores negativos lo compactan",
     "acrylic": "Efecto acrílico",
-    "acrylic_desc": "Activar efecto de cristal acrílico de Windows. Compatible con imágenes de fondo",
-    "acrylic_not_supported": "El sistema no soporta efecto acrílico",
+    "acrylic_desc": "Activar efecto de desenfoque gaussiano suave, compatible con todas las plataformas e imágenes de fondo",
     "background": "Imagen de fondo",
     "background_desc": "Sube una imagen como fondo. Compatible con PNG, JPG, WEBP",
     "opacity": "Opacidad",
@@ -617,6 +623,33 @@
     "show": "Mostrar",
     "quit": "Salir"
   },
-
-  "delete_server": "Eliminar servidor"
+  "delete_server": "Eliminar servidor",
+  "download-file": {
+    "title": "Descargar archivo usando descargador multihilo",
+    "url": "URL de descarga",
+    "save_folder": "Guardar en",
+    "filename": "Nombre del archivo",
+    "thread_count": "Número de hilos",
+    "thread_count_empty": "El número de hilos no puede estar vacío",
+    "thread_count_invalid": "Carácter no válido",
+    "thread_count_positive": "El número de hilos debe ser un número entero positivo",
+    "cancel": "Cancelar",
+    "download": "Descargar",
+    "browse": "Examinar",
+    "downloading": "Descargando recurso...",
+    "status-finished": "Descarga finalizada",
+    "failed": "Descarga fallida",
+    "completed": "Completado"
+  },
+  "dropzone": {
+    "placeholder": "Arrastra un archivo aquí o haz clic para seleccionar",
+    "support_both": "Soporta archivos y carpetas",
+    "support_files": "Soporta archivos",
+    "support_folders": "Soporta carpetas",
+    "error_no_path": "No se pudo obtener la ruta del archivo arrastrado",
+    "error_unsupported_type": "Tipo de archivo no soportado"
+  },
+  "downloader": {
+    "connection_lost": "Conexión de tarea perdida"
+  }
 }

@@ -22,6 +22,7 @@
     "settings": "Paramètres",
     "personalize": "Personnaliser",
     "about": "À propos",
+    "download-file": "Télécharger le fichier",
     "loading": "Chargement...",
     "select_server": "Sélectionner un serveur",
     "open_folder": "Ouvrir le dossier",
@@ -229,8 +230,7 @@
     "java_env": "Environnement Java",
     "java_scan": "Scanner tous les disques pour trouver des installations Java",
     "java_manual": "Sélection manuelle du chemin Java",
-    "java_path": "Chemin Java",
-    "file_hint": "Après avoir cliqué sur 「Sélectionner et Créer」, veuillez choisir le fichier de démarrage du serveur (formats .jar, .bat ou .sh supportés). Le système détectera automatiquement le type de fichier"
+    "java_path": "Chemin Java"
   },
   "console": {
     "title": "Console",
@@ -255,7 +255,10 @@
     "running": "En cours",
     "starting": "Démarrage",
     "stopping": "Arrêt en cours",
-    "stopped": "Arrêté"
+    "stopped": "Arrêté",
+    "no_server": "Aucun serveur",
+    "create_server_first": "Veuillez d'abord créer et sélectionner un serveur",
+    "suggestion_hint": "Tab complétion / Up Down sélection"
   },
   "config": {
     "title": "Édition de configuration",
@@ -277,10 +280,10 @@
     "delete": "Supprimer",
     "refresh_list": "Rafraîchir la liste",
     "reload_plugins": "Recharger les plugins",
-    "reload_plugins_warning": "Le rechargement des plugins peut causer des problèmes serveur, certains plugins peuvent ne pas le supporter",
+    "reload_plugins_warning": "Recharger les plugins peut causer des ralentissements sur le serveur, veuillez faire attention",
     "empty_config_folder": "Dossier de configuration vide",
+    "has_config_folder": "Configuration présente",
     "no_config_files": "Aucune configuration",
-    "has_config_folder": "A configuration",
     "config_files_count": "configurations",
     "config_files": "Fichiers de configuration",
     "open": "Ouvrir",
@@ -461,9 +464,11 @@
     "font_size_desc": "Ajuster la taille du texte de l'interface",
     "font_family": "Police",
     "font_family_desc": "Choisissez la police de l'interface. Certaines polices doivent être installées sur le système",
+    "console_font_family_desc": "Choisissez la police de l'interface de console. Certaines polices doivent être installées sur le système",
+    "console_letter_spacing": "Espacement des caractères console (px)",
+    "console_letter_spacing_desc": "Ajuste l'espacement entre les caractères de la console, 0 par défaut ; des valeurs négatives resserrent le texte",
     "acrylic": "Effet acrylique",
-    "acrylic_desc": "Activer l'effet de flou acrylique (Windows uniquement). Compatible avec l'image d'arrière-plan",
-    "acrylic_not_supported": "Votre système ne supporte pas l'effet acrylique",
+    "acrylic_desc": "Activer l'effet de flou gaussien doux, supporté sur toutes les plateformes, compatible avec l'image d'arrière-plan",
     "background": "Image d'arrière-plan",
     "background_desc": "Téléchargez une image d'arrière-plan. Formats supportés : PNG, JPG, WEBP",
     "opacity": "Opacité",
@@ -635,6 +640,33 @@
     "show": "Afficher",
     "quit": "Quitter"
   },
-
-  "delete_server": "Supprimer le serveur"
+  "delete_server": "Supprimer le serveur",
+  "download-file": {
+    "title": "Télécharger le fichier avec le téléchargeur multi-thread",
+    "url": "URL de téléchargement",
+    "save_folder": "Enregistrer dans",
+    "filename": "Nom du fichier",
+    "thread_count": "Nombre de threads",
+    "thread_count_empty": "Le nombre de threads ne peut pas être vide",
+    "thread_count_invalid": "Caractère invalide",
+    "thread_count_positive": "Le nombre de threads doit être un entier positif",
+    "cancel": "Annuler",
+    "download": "Télécharger",
+    "browse": "Parcourir",
+    "downloading": "Téléchargement de la ressource...",
+    "status-finished": "Téléchargement terminé",
+    "failed": "Échec du téléchargement",
+    "completed": "Terminé"
+  },
+  "dropzone": {
+    "placeholder": "Déposez un fichier ici ou cliquez pour sélectionner",
+    "support_both": "Prend en charge fichiers et dossiers",
+    "support_files": "Prend en charge les fichiers",
+    "support_folders": "Prend en charge les dossiers",
+    "error_no_path": "Impossible d'obtenir le chemin du fichier déposé",
+    "error_unsupported_type": "Type de fichier non pris en charge"
+  },
+  "downloader": {
+    "connection_lost": "Connexion à la tâche perdue"
+  }
 }

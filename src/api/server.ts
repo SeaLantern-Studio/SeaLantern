@@ -1,11 +1,67 @@
 import { tauriInvoke } from "@api/tauri";
 import type { ServerInstance } from "@type/server";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface ServerStatusInfo {
   id: string;
   status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
   pid: number | null;
   uptime: number | null;
+}
+
+export interface ParsedServerCoreInfo {
+  coreType: string;
+  mainClass: string | null;
+  jarPath: string | null;
+}
+
+export interface ServerLogLineEvent {
+  server_id: string;
+  line: string;
+}
+
+export interface StartupCandidateItem {
+  id: string;
+  mode: "starter" | "jar" | "bat" | "sh" | "ps1";
+  label: string;
+  detail: string;
+  path: string;
+  recommended: number;
+}
+
+export interface StartupScanResult {
+  parsedCore: ParsedServerCoreInfo;
+  candidates: StartupCandidateItem[];
+  detectedCoreTypeKey: string | null;
+  coreTypeOptions: string[];
+  mcVersionOptions: string[];
+  detectedMcVersion: string | null;
+  mcVersionDetectionFailed: boolean;
+}
+
+interface ParsedServerCoreInfoRaw {
+  core_type: string;
+  main_class: string | null;
+  jar_path: string | null;
+}
+
+interface StartupCandidateItemRaw {
+  id: string;
+  mode: string;
+  label: string;
+  detail: string;
+  path: string;
+  recommended: number;
+}
+
+interface StartupScanResultRaw {
+  parsed_core: ParsedServerCoreInfoRaw;
+  candidates: StartupCandidateItemRaw[];
+  detected_core_type_key: string | null;
+  core_type_options: string[];
+  mc_version_options: string[];
+  detected_mc_version: string | null;
+  mc_version_detection_failed: boolean;
 }
 
 export const serverApi = {
@@ -18,7 +74,7 @@ export const serverApi = {
     port: number;
     javaPath: string;
     jarPath: string;
-    startupMode?: "jar" | "bat" | "sh";
+    startupMode?: "jar" | "bat" | "sh" | "ps1";
   }): Promise<ServerInstance> {
     return tauriInvoke("create_server", {
       name: params.name,
@@ -36,7 +92,7 @@ export const serverApi = {
   async importServer(params: {
     name: string;
     jarPath: string;
-    startupMode: "jar" | "bat" | "sh";
+    startupMode: "jar" | "bat" | "sh" | "ps1";
     javaPath: string;
     maxMemory: number;
     minMemory: number;
@@ -62,6 +118,13 @@ export const serverApi = {
     maxMemory: number;
     minMemory: number;
     port: number;
+    startupMode: "starter" | "jar" | "bat" | "sh" | "ps1" | "custom";
+    onlineMode: boolean;
+    customCommand?: string;
+    runPath: string;
+    startupFilePath?: string;
+    coreType?: string;
+    mcVersion?: string;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_modpack", {
       name: params.name,
@@ -70,7 +133,64 @@ export const serverApi = {
       maxMemory: params.maxMemory,
       minMemory: params.minMemory,
       port: params.port,
+      startupMode: params.startupMode,
+      onlineMode: params.onlineMode,
+      customCommand: params.customCommand,
+      runPath: params.runPath,
+      startupFilePath: params.startupFilePath,
+      coreType: params.coreType,
+      mcVersion: params.mcVersion,
     });
+  },
+
+  async parseServerCoreType(sourcePath: string): Promise<ParsedServerCoreInfo> {
+    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", {
+      sourcePath,
+    });
+    return {
+      coreType: result.core_type,
+      mainClass: result.main_class,
+      jarPath: result.jar_path,
+    };
+  },
+
+  async scanStartupCandidates(
+    sourcePath: string,
+    sourceType: "archive" | "folder",
+  ): Promise<StartupScanResult> {
+    const result = await tauriInvoke<StartupScanResultRaw>("scan_startup_candidates", {
+      sourcePath,
+      sourceType,
+    });
+
+    return {
+      parsedCore: {
+        coreType: result.parsed_core.core_type,
+        mainClass: result.parsed_core.main_class,
+        jarPath: result.parsed_core.jar_path,
+      },
+      candidates: result.candidates.map((item) => ({
+        id: item.id,
+        mode: (item.mode as StartupCandidateItem["mode"]) ?? "jar",
+        label: item.label,
+        detail: item.detail,
+        path: item.path,
+        recommended: item.recommended,
+      })),
+      detectedCoreTypeKey: result.detected_core_type_key,
+      coreTypeOptions: result.core_type_options,
+      mcVersionOptions: result.mc_version_options,
+      detectedMcVersion: result.detected_mc_version,
+      mcVersionDetectionFailed: result.mc_version_detection_failed,
+    };
+  },
+
+  async collectCopyConflicts(sourceDir: string, targetDir: string): Promise<string[]> {
+    return tauriInvoke("collect_copy_conflicts", { sourceDir, targetDir });
+  },
+
+  async copyDirectoryContents(sourceDir: string, targetDir: string): Promise<void> {
+    return tauriInvoke("copy_directory_contents", { sourceDir, targetDir });
   },
 
   async addExistingServer(params: {
@@ -80,7 +200,7 @@ export const serverApi = {
     maxMemory: number;
     minMemory: number;
     port: number;
-    startupMode: "jar" | "bat" | "sh";
+    startupMode: "jar" | "bat" | "sh" | "ps1";
     executablePath?: string;
   }): Promise<ServerInstance> {
     return tauriInvoke("add_existing_server", {
@@ -119,8 +239,14 @@ export const serverApi = {
     return tauriInvoke("delete_server", { id });
   },
 
-  async getLogs(id: string, since: number): Promise<string[]> {
-    return tauriInvoke("get_server_logs", { id, since });
+  async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
+    return tauriInvoke("get_server_logs", { id, since, maxLines });
+  },
+
+  onLogLine(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
+    return listen<ServerLogLineEvent>("server-log-line", (event) => {
+      callback(event.payload);
+    });
   },
 
   async updateServerName(id: string, name: string): Promise<void> {

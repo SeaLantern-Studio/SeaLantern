@@ -40,34 +40,53 @@
 
 ### 摘要
 
-一句话概括本次变更
+<!-- 一句话概括本次变更 -->
 
 ### 动机/背景
 
 > 提示：可引用 Issue 作为背景说明
 
-为什么需要这个变更？解决了什么问题？
+<!--为什么需要这个变更？解决了什么问题？-->
 
 ### 具体改动
 
-技术实现细节，以及关键说明
+<!--技术实现细节，以及关键说明-->
 
 ### 界面变动（如适用）
 
-截图/GIF，前后对比
+<!--截图/GIF，前后对比-->
 
 ## 关联 Issue
 
 > 如果不存在关联，此项请忽略
 
-- fix：#`填写 Issue 编号`
+- Fix #`填写 Issue 编号`
 
-示例:
+<details><summary>示例:</summary>
 
 ```markdown
-- close #114514
-  关闭 Issue #114514
+- Close #123
+  关闭 Issue #123
 ```
+
+| 常见关键词                          | 示例           |
+| ----------------------------------- | -------------- |
+| `close` / `closes` / `closed`       | `Close #123`   |
+| `fix` / `fixes` / `fixed`           | `Fixes #123`   |
+| `resolve` / `resolves` / `resolved` | `Resolve #123` |
+
+| 其他前缀                      | 用途                | 示例              |
+| ----------------------------- | ------------------- | ----------------- |
+| `ref` / `references` / `refs` | 引用关联，不关闭    | `Ref #123`        |
+| `related` / `relates to`      | 表明相关            | `Related to #123` |
+| `part of`                     | 表明是其中一部分    | `Part of #123`    |
+| `see` / `see also`            | 参考其他 Issue      | `See #123`        |
+| `re`                          | 关于/回复某个 Issue | `Re #123`         |
+| `addresses`                   | 涉及但未完全解决    | `Addresses #123`  |
+| `implements`                  | 实现某个功能请求    | `Implements #123` |
+| `merges`                      | 合并相关            | `Merges #123`     |
+
+</details>
 
 ---
 

@@ -37,6 +37,12 @@ pub struct AppSettings {
     #[serde(default = "default_console_font")]
     pub console_font_size: u32,
 
+    #[serde(default = "default_console_font_family")]
+    pub console_font_family: String,
+
+    #[serde(default = "default_console_letter_spacing")]
+    pub console_letter_spacing: i32,
+
     #[serde(default = "default_log_lines")]
     pub max_log_lines: u32,
 
@@ -100,6 +106,14 @@ pub struct AppSettings {
     // 关闭行为: "ask", "minimize", "close"，默认 "ask"
     #[serde(default = "default_close_action")]
     pub close_action: String,
+
+    // 上次选择的开服路径
+    #[serde(default)]
+    pub last_run_path: String,
+
+    // 极简模式：关闭所有动效和特效
+    #[serde(default)]
+    pub minimal_mode: bool,
 }
 
 fn default_true() -> bool {
@@ -120,6 +134,12 @@ fn default_port() -> u16 {
 }
 fn default_console_font() -> u32 {
     13
+}
+fn default_console_font_family() -> String {
+    String::new()
+}
+fn default_console_letter_spacing() -> i32 {
+    0
 }
 fn default_log_lines() -> u32 {
     5000
@@ -187,6 +207,8 @@ impl AppSettings {
         }
 
         if self.console_font_size != other.console_font_size
+            || self.console_font_family != other.console_font_family
+            || self.console_letter_spacing != other.console_letter_spacing
             || self.max_log_lines != other.max_log_lines
         {
             changed.push(SettingsGroup::Console);
@@ -202,6 +224,7 @@ impl AppSettings {
             || self.color != other.color
             || self.font_size != other.font_size
             || self.font_family != other.font_family
+            || self.minimal_mode != other.minimal_mode
         {
             changed.push(SettingsGroup::Appearance);
         }
@@ -246,6 +269,12 @@ impl AppSettings {
         }
         if let Some(v) = partial.console_font_size {
             self.console_font_size = v;
+        }
+        if let Some(ref v) = partial.console_font_family {
+            self.console_font_family = v.clone();
+        }
+        if let Some(v) = partial.console_letter_spacing {
+            self.console_letter_spacing = v;
         }
         if let Some(v) = partial.max_log_lines {
             self.max_log_lines = v;
@@ -307,6 +336,12 @@ impl AppSettings {
         if let Some(ref v) = partial.close_action {
             self.close_action = v.clone();
         }
+        if let Some(ref v) = partial.last_run_path {
+            self.last_run_path = v.clone();
+        }
+        if let Some(v) = partial.minimal_mode {
+            self.minimal_mode = v;
+        }
     }
 }
 
@@ -328,6 +363,10 @@ pub struct PartialSettings {
     pub default_jvm_args: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub console_font_size: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub console_font_family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub console_letter_spacing: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_log_lines: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -368,6 +407,10 @@ pub struct PartialSettings {
     pub developer_mode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub close_action: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_run_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimal_mode: Option<bool>,
 }
 
 impl Default for AppSettings {
@@ -381,6 +424,8 @@ impl Default for AppSettings {
             default_java_path: String::new(),
             default_jvm_args: String::new(),
             console_font_size: 13,
+            console_font_family: String::new(),
+            console_letter_spacing: 0,
             max_log_lines: 5000,
             cached_java_list: Vec::new(),
             background_image: String::new(),
@@ -401,6 +446,8 @@ impl Default for AppSettings {
             language: "zh-CN".to_string(),
             developer_mode: false,
             close_action: "ask".to_string(),
+            last_run_path: String::new(),
+            minimal_mode: false,
         }
     }
 }

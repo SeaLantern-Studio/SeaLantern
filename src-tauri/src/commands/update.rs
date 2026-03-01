@@ -3,9 +3,23 @@ use tauri::{command, AppHandle};
 #[cfg(target_os = "linux")]
 use crate::commands::update_arch;
 use crate::commands::{
-    update_download, update_github, update_install,
+    update_cnb, update_download, update_github, update_install,
     update_types::{get_github_config, PendingUpdate, UpdateInfo},
 };
+
+fn select_update_result(
+    cnb_result: Result<UpdateInfo, String>,
+    github_result: Result<UpdateInfo, String>,
+) -> Result<UpdateInfo, String> {
+    match (cnb_result, github_result) {
+        (_, Ok(github_info)) if github_info.has_update => Ok(github_info),
+        (Ok(cnb_info), _) => Ok(cnb_info),
+        (Err(_), Ok(github_info)) => Ok(github_info),
+        (Err(cnb_err), Err(github_err)) => {
+            Err(format!("CNB 检查失败: {}; GitHub 检查失败: {}", cnb_err, github_err))
+        }
+    }
+}
 
 /// 检查更新
 #[command]
@@ -34,14 +48,18 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
         println!("不是 Linux 系统，使用 GitHub 更新检查");
     }
 
-    println!("使用 GitHub 更新检查");
+    println!("使用 CNB + GitHub 更新检查");
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         .build()
         .map_err(|e| format!("HTTP client init failed: {}", e))?;
 
+    let cnb_result = update_cnb::fetch_release(&client, current_version).await;
+
     let config = get_github_config();
-    update_github::fetch_release(&client, &config, current_version).await
+    let github_result = update_github::fetch_release(&client, &config, current_version).await;
+
+    select_update_result(cnb_result, github_result)
 }
 
 /// 打开下载链接
@@ -57,9 +75,53 @@ pub async fn download_update(
     app: AppHandle,
     url: String,
     expected_hash: Option<String>,
+    version: Option<String>,
 ) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .build()
+        .map_err(|e| format!("HTTP client init failed: {}", e))?;
+
     let cache_dir = update_install::get_update_cache_dir();
-    update_download::download_update_file(app, url, expected_hash, cache_dir).await
+    let mut candidates: Vec<(String, Option<String>, &'static str)> = Vec::new();
+
+    if let Some(v) = version.as_deref() {
+        if let Ok(Some((cnb_url, cnb_hash))) =
+            update_cnb::resolve_download_candidate_by_version(&client, v).await
+        {
+            candidates.push((cnb_url, cnb_hash, "CNB"));
+        }
+    }
+
+    candidates.push((url, expected_hash, "GitHub"));
+
+    let mut deduped: Vec<(String, Option<String>, &'static str)> = Vec::new();
+    for (candidate_url, candidate_hash, source_name) in candidates {
+        if deduped
+            .iter()
+            .any(|(seen_url, _, _)| seen_url == &candidate_url)
+        {
+            continue;
+        }
+        deduped.push((candidate_url, candidate_hash, source_name));
+    }
+
+    let mut errors: Vec<String> = Vec::new();
+    for (candidate_url, candidate_hash, source_name) in deduped {
+        match update_download::download_update_file(
+            app.clone(),
+            candidate_url,
+            candidate_hash,
+            cache_dir.clone(),
+        )
+        .await
+        {
+            Ok(path) => return Ok(path),
+            Err(error) => errors.push(format!("{} 下载失败: {}", source_name, error)),
+        }
+    }
+
+    Err(errors.join("; "))
 }
 
 /// 安装更新
@@ -94,7 +156,7 @@ pub async fn restart_and_install(app: AppHandle) -> Result<(), String> {
 #[command]
 #[allow(dead_code)]
 pub async fn download_update_from_debug_url(app: AppHandle, url: String) -> Result<String, String> {
-    download_update(app, url, None).await
+    download_update(app, url, None, None).await
 }
 
 #[cfg(test)]

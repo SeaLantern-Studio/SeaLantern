@@ -75,6 +75,10 @@ export const systemApi = {
     return tauriInvoke("pick_jar_file");
   },
 
+  async pickArchiveFile(): Promise<string | null> {
+    return tauriInvoke("pick_archive_file");
+  },
+
   async pickStartupFile(mode: "jar" | "bat" | "sh"): Promise<string | null> {
     return tauriInvoke("pick_startup_file", { mode });
   },
@@ -89,6 +93,10 @@ export const systemApi = {
 
   async pickJavaFile(): Promise<string | null> {
     return tauriInvoke("pick_java_file");
+  },
+
+  async pickSaveFile(): Promise<string | null> {
+    return tauriInvoke("pick_save_file");
   },
 
   async pickFolder(): Promise<string | null> {
@@ -109,6 +117,12 @@ export const systemApi = {
 
   async startFrpTunnel(provider: string, token: string, tunnelId: string): Promise<void> {
     return tauriInvoke("start_frp_tunnel", { provider, token, tunnelId });
+  async getDefaultRunPath(): Promise<string> {
+    return tauriInvoke("get_default_run_path");
+  },
+
+  async getSafeModeStatus(): Promise<boolean> {
+    return tauriInvoke("get_safe_mode_status");
   },
 };
 

@@ -22,6 +22,7 @@
     "settings": "설정",
     "personalize": "개인 설정",
     "about": "정보",
+    "download-file": "파일 다운로드",
     "loading": "로딩 중...",
     "select_server": "서버 선택",
     "open_folder": "폴더 열기",
@@ -229,8 +230,7 @@
     "java_env": "Java 환경",
     "java_scan": "시스템의 모든 디스크에서 Java 설치 스캔",
     "java_manual": "Java 경로 수동 선택",
-    "java_path": "Java 경로",
-    "file_hint": "「선택 및 생성」 버튼을 클릭한 후 서버 시작 파일을 선택하세요 (.jar, .bat 또는 .sh 형식 지원). 시스템이 자동으로 파일 유형을 감지합니다"
+    "java_path": "Java 경로"
   },
   "console": {
     "title": "콘솔",
@@ -255,7 +255,10 @@
     "running": "실행 중",
     "starting": "시작 중",
     "stopping": "중지 중",
-    "stopped": "중지됨"
+    "stopped": "중지됨",
+    "no_server": "서버 없음",
+    "create_server_first": "먼저 서버를 생성하고 선택하세요",
+    "suggestion_hint": "Tab 자동완성 / Up Down 선택"
   },
   "config": {
     "title": "설정 편집",
@@ -277,10 +280,10 @@
     "delete": "삭제",
     "refresh_list": "목록 새로고침",
     "reload_plugins": "플러그인 다시 로드",
-    "reload_plugins_warning": "플러그인을 다시 로드하면 서버에 문제가 발생할 수 있으며 일부 플러그인은 지원하지 않을 수 있습니다",
+    "reload_plugins_warning": "플러그인을 다시 로드하면 서버가 느려질 수 있으니 주의하세요",
     "empty_config_folder": "설정 폴더가 비어 있습니다",
-    "no_config_files": "설정 없음",
     "has_config_folder": "설정 있음",
+    "no_config_files": "설정 없음",
     "config_files_count": "개 설정",
     "config_files": "설정 파일",
     "open": "열기",
@@ -461,9 +464,11 @@
     "font_size_desc": "인터페이스 텍스트 크기 조정",
     "font_family": "글꼴",
     "font_family_desc": "인터페이스에 사용할 글꼴을 선택합니다. 일부 글꼴은 시스템에 설치되어 있거나 네트워크에서 로드해야 합니다",
+    "console_font_family_desc": "콘솔 인터페이스에 사용할 글꼴을 선택합니다. 일부 글꼴은 시스템에 설치되어 있거나 네트워크에서 로드해야 합니다",
+    "console_letter_spacing": "콘솔 글자 간격 (px)",
+    "console_letter_spacing_desc": "콘솔 글자 사이 간격을 조정합니다. 기본값은 0이며 음수로 더 촘촘하게 설정할 수 있습니다",
     "acrylic": "아크릴 효과 (모서리 흐림)",
-    "acrylic_desc": "Windows 시스템 아크릴 효과를 활성화합니다. 배경 이미지와 함께 사용 가능합니다",
-    "acrylic_not_supported": "현재 시스템은 아크릴 효과를 지원하지 않습니다",
+    "acrylic_desc": "소프트 가우시안 블러 효과를 활성화합니다. 모든 플랫폼 지원, 배경 이미지와 함께 사용 가능",
     "background": "배경 이미지",
     "background_desc": "소프트웨어 배경으로 사용할 이미지를 업로드합니다. PNG, JPG, WEBP 등을 지원합니다",
     "opacity": "불투명도",
@@ -635,6 +640,33 @@
     "show": "표시",
     "quit": "종료"
   },
-
-  "delete_server": "서버 삭제"
+  "delete_server": "서버 삭제",
+  "download-file": {
+    "title": "멀티스레드 다운로더를 사용하여 파일 다운로드",
+    "url": "다운로드 주소",
+    "save_folder": "저장 위치",
+    "filename": "파일 이름",
+    "thread_count": "스레드 수",
+    "thread_count_empty": "스레드 수를 입력하세요",
+    "thread_count_invalid": "잘못된 문자입니다",
+    "thread_count_positive": "스레드 수는 양의 정수여야 합니다",
+    "cancel": "취소",
+    "download": "다운로드",
+    "browse": "찾아보기",
+    "downloading": "리소스 다운로드 중...",
+    "status-finished": "다운로드 완료",
+    "failed": "다운로드 실패",
+    "completed": "완료"
+  },
+  "dropzone": {
+    "placeholder": "파일을 여기에 끌어다 놓거나 클릭하여 선택",
+    "support_both": "파일 및 폴더 지원",
+    "support_files": "파일 지원",
+    "support_folders": "폴더 지원",
+    "error_no_path": "드래그한 파일 경로를 가져올 수 없습니다",
+    "error_unsupported_type": "지원하지 않는 파일 형식입니다"
+  },
+  "downloader": {
+    "connection_lost": "작업 연결이 끊어졌습니다"
+  }
 }

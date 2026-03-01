@@ -1,0 +1,50 @@
+name: 重构请求
+description: 请求重构内容
+title: "[Refactor] "
+labels: ["improvement", "pending"]
+assignees: []
+body:
+  - type: textarea
+    id: content
+    attributes:
+      label: 内容描述
+      description: 重构什么内容？
+      placeholder: 重构什么内容？
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 理由
+      description: 说明你为什么想要重构这个内容
+      placeholder: 说明你为什么想要重构这个内容
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影响
+      description: 可选 - 是否对现有内容存在一定影响？
+      placeholder: 是否对现有内容存在一定影响？
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 可选 - 什么样的情况下才算是重构成功？
+      placeholder: 什么样的情况下才算是重构成功？
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 附加内容
+      description: 可选 - 例如界面的草图
+      placeholder: 例如界面的草图
+    validations:
+      required: false

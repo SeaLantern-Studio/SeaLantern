@@ -22,6 +22,7 @@
     "settings": "Cài đặt",
     "personalize": "Cá nhân hóa",
     "about": "Giới thiệu",
+    "download-file": "Tải tập tin",
     "loading": "Đang tải...",
     "select_server": "Chọn máy chủ",
     "open_folder": "Mở thư mục",
@@ -229,8 +230,7 @@
     "java_env": "Môi trường Java",
     "java_scan": "Quét tất cả ổ đĩa trong hệ thống để tìm Java",
     "java_manual": "Chọn đường dẫn Java thủ công",
-    "java_path": "Đường dẫn Java",
-    "file_hint": "Sau khi nhấn 「Chọn và Tạo」, vui lòng chọn file khởi động máy chủ (hỗ trợ .jar, .bat hoặc .sh), hệ thống sẽ tự động nhận diện loại file"
+    "java_path": "Đường dẫn Java"
   },
   "console": {
     "title": "Bảng điều khiển",
@@ -245,6 +245,7 @@
     "enter_command_content": "Nhập nội dung lệnh",
     "cancel": "Hủy",
     "delete": "Xóa",
+    "save": "Lưu",
     "add": "Thêm",
     "update": "Cập nhật",
     "back_to_bottom": "Về cuối",
@@ -254,7 +255,10 @@
     "running": "Đang chạy",
     "starting": "Đang khởi động",
     "stopping": "Đang dừng",
-    "stopped": "Đã dừng"
+    "stopped": "Đã dừng",
+    "no_server": "Không có máy chủ",
+    "create_server_first": "Vui lòng tạo và chọn một máy chủ trước",
+    "suggestion_hint": "Tab tự động hoàn thành / Up Down chọn"
   },
   "config": {
     "title": "Chỉnh sửa cấu hình",
@@ -276,10 +280,10 @@
     "delete": "Xóa",
     "refresh_list": "Làm mới danh sách",
     "reload_plugins": "Tải lại trình bổ sung",
-    "reload_plugins_warning": "Tải lại trình bổ sung có thể gây ra sự cố máy chủ, một số trình bổ sung có thể không hỗ trợ",
+    "reload_plugins_warning": "Tải lại trình bổ sung có thể gây lag máy chủ, hãy thận trọng",
     "empty_config_folder": "Thư mục cấu hình trống",
-    "no_config_files": "Không có cấu hình",
     "has_config_folder": "Có cấu hình",
+    "no_config_files": "Không có cấu hình",
     "config_files_count": "cấu hình",
     "config_files": "Tệp cấu hình",
     "open": "Mở",
@@ -458,9 +462,11 @@
     "font_size_desc": "Điều chỉnh kích thước chữ",
     "font_family": "Phông chữ",
     "font_family_desc": "Chọn phông chữ, một số cần cài đặt sẵn",
+    "console_font_family_desc": "Chọn phông chữ dùng cho giao diện console, một số cần cài đặt sẵn",
+    "console_letter_spacing": "Khoảng cách ký tự console (px)",
+    "console_letter_spacing_desc": "Điều chỉnh khoảng cách giữa các ký tự console, mặc định 0; giá trị âm sẽ làm chữ sát hơn",
     "acrylic": "Hiệu ứng mờ",
-    "acrylic_desc": "Bật hiệu ứng mờ của Windows, tương thích với ảnh nền",
-    "acrylic_not_supported": "Hệ thống không hỗ trợ hiệu ứng mờ",
+    "acrylic_desc": "Bật hiệu ứng mờ Gaussian mềm, hỗ trợ mọi nền tảng, tương thích với ảnh nền",
     "background": "Ảnh nền",
     "background_desc": "Tải ảnh lên làm nền, hỗ trợ PNG, JPG, WEBP...",
     "opacity": "Độ trong suốt",
@@ -632,6 +638,33 @@
     "show": "Hiện",
     "quit": "Thoát"
   },
-
-  "delete_server": "Xóa máy chủ"
+  "delete_server": "Xóa máy chủ",
+  "download-file": {
+    "title": "Tải tập tin bằng trình tải xuống đa luồng",
+    "url": "URL tải xuống",
+    "save_folder": "Lưu vào",
+    "filename": "Tên tập tin",
+    "thread_count": "Số luồng",
+    "thread_count_empty": "Số luồng không được để trống",
+    "thread_count_invalid": "Ký tự không hợp lệ",
+    "thread_count_positive": "Số luồng phải là số nguyên dương",
+    "cancel": "Hủy",
+    "download": "Tải xuống",
+    "browse": "Duyệt",
+    "downloading": "Đang tải xuống tài nguyên...",
+    "status-finished": "Tải xuống hoàn tất",
+    "failed": "Tải xuống thất bại",
+    "completed": "Đã hoàn thành"
+  },
+  "dropzone": {
+    "placeholder": "Kéo tệp vào đây hoặc nhấp để chọn",
+    "support_both": "Hỗ trợ tệp và thư mục",
+    "support_files": "Hỗ trợ tệp",
+    "support_folders": "Hỗ trợ thư mục",
+    "error_no_path": "Không thể lấy đường dẫn tệp đã kéo",
+    "error_unsupported_type": "Loại tệp không được hỗ trợ"
+  },
+  "downloader": {
+    "connection_lost": "Mất kết nối tác vụ"
+  }
 }

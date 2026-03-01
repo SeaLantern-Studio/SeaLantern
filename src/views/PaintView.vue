@@ -3,16 +3,11 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import ErrorBanner from "@components/views/paint/ErrorBanner.vue";
 import ColorThemeCard from "@components/views/paint/ColorThemeCard.vue";
 import AppearanceCard from "@components/views/paint/AppearanceCard.vue";
+import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.vue";
 import SettingsActions from "@components/views/paint/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/paint/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/paint/ResetConfirmModal.vue";
-import {
-  settingsApi,
-  checkAcrylicSupport,
-  applyAcrylic,
-  getSystemFonts,
-  type AppSettings,
-} from "@api/settings";
+import { settingsApi, getSystemFonts, type AppSettings } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { usePluginStore } from "@stores/pluginStore";
@@ -27,7 +22,6 @@ const loading = ref(true);
 const fontsLoading = ref(false);
 const error = ref<string | null>(null);
 
-const acrylicSupported = ref(true);
 const pluginStore = usePluginStore();
 
 const themeProxyPlugin = computed(() => {
@@ -41,6 +35,9 @@ const themeProxyPluginName = computed(() => themeProxyPlugin.value?.manifest.nam
 
 const fontSize = ref("14");
 const consoleFontSize = ref("13");
+const consoleFontFamily = ref("");
+const consoleLetterSpacing = ref("0");
+const maxLogLines = ref("5000");
 const bgOpacity = ref("0.3");
 const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
@@ -56,11 +53,6 @@ const bgSettingsExpanded = ref(false);
 onMounted(async () => {
   await loadSettings();
   await loadSystemFonts();
-  try {
-    acrylicSupported.value = await checkAcrylicSupport();
-  } catch {
-    acrylicSupported.value = false;
-  }
 
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
@@ -82,6 +74,9 @@ function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
 function syncLocalValues(s: AppSettings) {
   fontSize.value = String(s.font_size);
   consoleFontSize.value = String(s.console_font_size);
+  consoleFontFamily.value = s.console_font_family || "";
+  consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+  maxLogLines.value = String(s.max_log_lines);
   bgOpacity.value = String(s.background_opacity);
   bgBlur.value = String(s.background_blur);
   bgBrightness.value = String(s.background_brightness);
@@ -110,6 +105,9 @@ async function loadSettings() {
     settings.value = s;
     fontSize.value = String(s.font_size);
     consoleFontSize.value = String(s.console_font_size);
+    consoleFontFamily.value = s.console_font_family || "";
+    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+    maxLogLines.value = String(s.max_log_lines);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -180,41 +178,30 @@ function handleFontFamilyChange() {
   }
 }
 
-async function handleAcrylicChange(enabled: boolean) {
+function handleAcrylicChange(enabled: boolean) {
   markChanged();
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
-
-  if (!acrylicSupported.value) {
-    return;
-  }
-
-  try {
-    const theme = settings.value?.theme || "auto";
-    const isDark = getEffectiveTheme(theme) === "dark";
-    await applyAcrylic(enabled, isDark);
-  } catch (e) {
-    error.value = String(e);
-  }
 }
 
-async function handleThemeChange() {
+function handleMinimalModeChange(enabled: boolean) {
+  markChanged();
+  document.documentElement.setAttribute("data-minimal", enabled ? "true" : "false");
+}
+
+function handleThemeChange() {
   markChanged();
   if (!settings.value) return;
 
-  const effectiveTheme = applyTheme(settings.value.theme);
-
-  if (settings.value.acrylic_enabled && acrylicSupported.value) {
-    try {
-      const isDark = effectiveTheme === "dark";
-      await applyAcrylic(true, isDark);
-    } catch {}
-  }
+  applyTheme(settings.value.theme);
 }
 
 async function saveSettings() {
   if (!settings.value) return;
 
   settings.value.console_font_size = parseInt(consoleFontSize.value) || 13;
+  settings.value.console_font_family = consoleFontFamily.value;
+  settings.value.console_letter_spacing = parseInt(consoleLetterSpacing.value) || 0;
+  settings.value.max_log_lines = parseInt(maxLogLines.value) || 5000;
   settings.value.background_opacity = parseFloat(bgOpacity.value) || 0.3;
   settings.value.background_blur = parseInt(bgBlur.value) || 0;
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
@@ -236,13 +223,6 @@ async function saveSettings() {
     if (result.changed_groups.includes("Appearance")) {
       applyTheme(settings.value.theme);
       applyFontSize(settings.value.font_size);
-
-      if (acrylicSupported.value) {
-        try {
-          const isDark = getEffectiveTheme(settings.value.theme) === "dark";
-          await applyAcrylic(settings.value.acrylic_enabled, isDark);
-        } catch {}
-      }
     }
 
     dispatchSettingsUpdate(result.changed_groups, result.settings);
@@ -257,6 +237,9 @@ async function resetSettings() {
     settings.value = s;
     fontSize.value = String(s.font_size);
     consoleFontSize.value = String(s.console_font_size);
+    consoleFontFamily.value = s.console_font_family || "";
+    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+    maxLogLines.value = String(s.max_log_lines);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -289,6 +272,9 @@ async function handleImport(json: string) {
     settings.value = s;
     fontSize.value = String(s.font_size);
     consoleFontSize.value = String(s.console_font_size);
+    consoleFontFamily.value = s.console_font_family || "";
+    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+    maxLogLines.value = String(s.max_log_lines);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -348,7 +334,6 @@ function clearBackgroundImage() {
         :font-family-options="fontFamilyOptions"
         :fonts-loading="fontsLoading"
         :acrylic-enabled="settings.acrylic_enabled"
-        :acrylic-supported="acrylicSupported"
         :is-theme-proxied="isThemeProxied"
         :theme-proxy-plugin-name="themeProxyPluginName"
         :background-image="settings.background_image"
@@ -357,6 +342,7 @@ function clearBackgroundImage() {
         :bg-brightness="bgBrightness"
         :background-size="settings.background_size"
         :bg-settings-expanded="bgSettingsExpanded"
+        :minimal-mode="settings.minimal_mode"
         @update:theme="settings.theme = $event"
         @update:font-size="fontSize = $event"
         @update:font-family="settings.font_family = $event"
@@ -366,12 +352,24 @@ function clearBackgroundImage() {
         @update:bg-blur="bgBlur = $event"
         @update:bg-brightness="bgBrightness = $event"
         @update:background-size="settings.background_size = $event"
+        @update:minimal-mode="settings.minimal_mode = $event"
         @theme-change="handleThemeChange"
         @font-size-change="handleFontSizeChange"
         @font-family-change="handleFontFamilyChange"
         @acrylic-change="handleAcrylicChange"
+        @minimal-mode-change="handleMinimalModeChange"
         @pick-image="pickBackgroundImage"
         @clear-image="clearBackgroundImage"
+        @change="markChanged"
+      />
+
+      <ConsoleSettingsCard
+        v-model:consoleFontSize="consoleFontSize"
+        v-model:consoleFontFamily="consoleFontFamily"
+        v-model:consoleLetterSpacing="consoleLetterSpacing"
+        v-model:maxLogLines="maxLogLines"
+        :fontFamilyOptions="fontFamilyOptions"
+        :fontsLoading="fontsLoading"
         @change="markChanged"
       />
 

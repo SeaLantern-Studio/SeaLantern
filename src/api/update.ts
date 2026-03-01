@@ -6,6 +6,7 @@ export interface UpdateInfo {
   latest_version: string;
   current_version: string;
   download_url?: string;
+  sha256?: string;
   release_notes?: string;
   published_at?: string;
   source?: string;
@@ -31,8 +32,12 @@ export async function checkUpdate(): Promise<UpdateInfo | null> {
   }
 }
 
-export async function downloadUpdate(url: string, expectedHash?: string): Promise<string> {
-  return tauriInvoke<string>("download_update", { url, expectedHash });
+export async function downloadUpdate(
+  url: string,
+  expectedHash?: string,
+  version?: string,
+): Promise<string> {
+  return tauriInvoke<string>("download_update", { url, expectedHash, version });
 }
 
 export async function installUpdate(filePath: string, version: string): Promise<void> {

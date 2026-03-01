@@ -219,7 +219,7 @@ impl PluginRuntime {
                 }
 
                 let count = count.unwrap_or(100).min(1000);
-                let all_logs = server_manager().get_logs(&server_id, 0);
+                let all_logs = crate::services::server_log_pipeline::get_logs(&server_id, 0, None);
 
                 let start = if all_logs.len() > count {
                     all_logs.len() - count
@@ -252,7 +252,7 @@ impl PluginRuntime {
                 let count = count.unwrap_or(100).min(1000);
 
                 let running_ids = server_manager().get_running_server_ids();
-                let logs_map = server_manager().get_all_logs();
+                let logs_map = crate::services::server_log_pipeline::get_all_logs();
 
                 let result = lua.create_table()?;
                 let mut i = 1;

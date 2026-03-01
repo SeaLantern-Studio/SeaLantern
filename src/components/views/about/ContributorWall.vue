@@ -18,6 +18,13 @@ const displayedContributors = computed(() => {
   return contributors.value.slice(0, currentPage.value * PAGE_SIZE);
 });
 
+const joinCardSpan = computed(() => {
+  const count = displayedContributors.value.length;
+  // 假设每行最多显示3个卡片
+  const remainder = count % 3;
+  return remainder === 0 ? 3 : 3 - remainder;
+});
+
 const hasMore = computed(() => {
   return displayedContributors.value.length < contributors.value.length;
 });
@@ -151,7 +158,10 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
       </div>
 
       <!-- Join Card -->
-      <div class="contributor-card glass-card join-card">
+      <div
+        class="contributor-card glass-card join-card"
+        :style="{ 'grid-column-end': `span ${joinCardSpan}` }"
+      >
         <div class="join-icon">
           <Plus :size="40" :stroke-width="1.5" />
         </div>
@@ -197,7 +207,7 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
 
 .contributor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sl-space-md);
 }
 
@@ -368,7 +378,21 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
 
 @media (max-width: 768px) {
   .contributor-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .join-card {
+    grid-column-end: span 2 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .contributor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .join-card {
+    grid-column-end: span 1 !important;
   }
 }
 </style>

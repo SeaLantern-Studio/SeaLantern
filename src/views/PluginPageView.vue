@@ -3,6 +3,9 @@ import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
+import SLSwitch from "@components/common/SLSwitch.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import type { PluginInfo } from "@type/plugin";
@@ -171,10 +174,10 @@ watch(
 <template>
   <div class="plugin-page-view">
     <div class="page-header">
-      <button class="back-btn" @click="goBack">
+      <SLButton variant="ghost" @click="goBack">
         <ArrowLeft :size="20" />
         <span>{{ i18n.t("plugins.back") }}</span>
-      </button>
+      </SLButton>
       <h1 class="page-title" v-if="plugin">{{ plugin.manifest.name }}</h1>
     </div>
 
@@ -214,14 +217,15 @@ watch(
       <SLCard v-if="isThemeProvider && pluginPresets" class="presets-card">
         <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
         <div class="presets-grid">
-          <button
+          <SLButton
             v-for="(presetData, presetKey) in pluginPresets"
             :key="presetKey"
+            variant="secondary"
             class="preset-btn"
             @click="applyPreset(String(presetKey))"
           >
             <span class="preset-name">{{ (presetData as any).name ?? presetKey }}</span>
-          </button>
+          </SLButton>
         </div>
       </SLCard>
 
@@ -235,23 +239,20 @@ watch(
                 <span v-if="field.description" class="field-desc">{{ field.description }}</span>
               </label>
               <template v-if="field.type === 'string'">
-                <input type="text" class="field-input" v-model="settingsForm[field.key]" />
+                <SLInput v-model="settingsForm[field.key]" />
               </template>
               <template v-else-if="field.type === 'number'">
-                <input type="number" class="field-input" v-model.number="settingsForm[field.key]" />
+                <SLInput type="number" v-model="settingsForm[field.key]" />
               </template>
               <template v-else-if="field.type === 'boolean'">
-                <label class="toggle">
-                  <input type="checkbox" v-model="settingsForm[field.key]" />
-                  <span class="toggle-slider"></span>
-                </label>
+                <SLSwitch
+                  :modelValue="Boolean(settingsForm[field.key])"
+                  @update:modelValue="settingsForm[field.key] = $event"
+                  size="sm"
+                />
               </template>
               <template v-else-if="field.type === 'select'">
-                <select class="field-select" v-model="settingsForm[field.key]">
-                  <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                <SLSelect v-model="settingsForm[field.key]" :options="field.options" />
               </template>
             </div>
           </div>
@@ -278,37 +279,28 @@ watch(
                 <span v-if="field.description" class="field-desc">{{ field.description }}</span>
               </label>
               <template v-if="field.type === 'string'">
-                <input
-                  type="text"
-                  class="field-input"
-                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                />
+                <SLInput v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]" />
               </template>
               <template v-else-if="field.type === 'number'">
-                <input
+                <SLInput
                   type="number"
-                  class="field-input"
-                  v-model.number="dependentSettingsForms[depPlugin.manifest.id][field.key]"
+                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
                 />
               </template>
               <template v-else-if="field.type === 'boolean'">
-                <label class="toggle">
-                  <input
-                    type="checkbox"
-                    v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                  />
-                  <span class="toggle-slider"></span>
-                </label>
+                <SLSwitch
+                  :modelValue="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])"
+                  @update:modelValue="
+                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
+                  "
+                  size="sm"
+                />
               </template>
               <template v-else-if="field.type === 'select'">
-                <select
-                  class="field-select"
+                <SLSelect
                   v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                >
-                  <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                  :options="field.options"
+                />
               </template>
             </div>
           </div>
@@ -361,7 +353,7 @@ watch(
 }
 
 .page-title {
-  font-size: 1.5rem;
+  font-size: var(--sl-font-size-3xl);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -433,21 +425,21 @@ watch(
 
 .plugin-details h2 {
   margin: 0 0 8px;
-  font-size: 1.25rem;
+  font-size: var(--sl-font-size-2xl);
   color: var(--text-primary);
 }
 
 .plugin-details .description {
   margin: 0 0 12px;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
   line-height: 1.5;
 }
 
 .plugin-details .meta {
   display: flex;
   gap: 12px;
-  font-size: 0.8rem;
+  font-size: var(--sl-font-size-sm);
 }
 
 .plugin-details .version {
@@ -463,7 +455,7 @@ watch(
 
 .section-title {
   margin: 0 0 16px;
-  font-size: 1rem;
+  font-size: var(--sl-font-size-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -514,7 +506,7 @@ watch(
 }
 
 .preset-name {
-  font-size: 0.8rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--text-primary);
 }
 
@@ -538,7 +530,7 @@ watch(
 }
 
 .color-label {
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
   color: var(--text-primary);
 }
 
@@ -556,7 +548,7 @@ watch(
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: monospace;
-  font-size: 0.85rem;
+  font-size: var(--sl-font-size-sm);
 }
 
 .color-text:focus {
@@ -604,7 +596,7 @@ watch(
 }
 
 .effect-label {
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
   color: var(--text-primary);
 }
 
@@ -620,7 +612,7 @@ watch(
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--sl-font-size-sm);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -653,7 +645,7 @@ watch(
 }
 
 .field-label {
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
@@ -661,7 +653,7 @@ watch(
 }
 
 .field-desc {
-  font-size: 0.8rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--text-secondary);
   font-weight: normal;
 }
@@ -673,55 +665,13 @@ watch(
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .field-input:focus,
 .field-select:focus {
   outline: none;
   border-color: var(--accent-primary);
-}
-
-.toggle {
-  position: relative;
-  width: 48px;
-  height: 24px;
-  cursor: pointer;
-}
-
-.toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  inset: 0;
-  background: var(--bg-tertiary);
-  border-radius: 12px;
-  transition: 0.2s;
-}
-
-.toggle-slider::before {
-  content: "";
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  left: 3px;
-  top: 3px;
-  background: var(--text-secondary);
-  border-radius: 50%;
-  transition: 0.2s;
-}
-
-.toggle input:checked + .toggle-slider {
-  background: var(--accent-primary);
-}
-
-.toggle input:checked + .toggle-slider::before {
-  transform: translateX(24px);
-  background: white;
 }
 
 .import-export-card {
@@ -777,61 +727,6 @@ watch(
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin: -8px 0 16px 0;
-}
-
-.dependent-settings .toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 44px;
-  height: 24px;
-  cursor: pointer;
-}
-
-.dependent-settings .toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-
-.dependent-settings .toggle-slider {
-  position: absolute;
-  inset: 0;
-  width: 44px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  transition: all 0.3s ease;
-}
-
-.dependent-settings .toggle-slider::before {
-  content: "";
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  left: 3px;
-  top: 3px;
-  background: white;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.dependent-settings .toggle input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-}
-
-.dependent-settings .toggle input:checked + .toggle-slider::before {
-  transform: translateX(20px);
-}
-
-.dependent-settings .toggle:hover .toggle-slider {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.dependent-settings .toggle:hover input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
 }
 
 .dependent-settings .field-select {

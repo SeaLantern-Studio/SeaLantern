@@ -1,4 +1,5 @@
 pub mod config;
+pub mod downloader;
 pub mod java;
 pub mod mcs_plugin;
 pub mod player;
@@ -11,6 +12,7 @@ pub mod update;
 // 更新功能子模块
 mod update_arch;
 mod update_checksum;
+mod update_cnb;
 mod update_download;
 mod update_github;
 mod update_install;

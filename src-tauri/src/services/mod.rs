@@ -1,5 +1,6 @@
 pub mod async_loader;
 pub mod config_parser;
+pub mod download_manager;
 pub mod global;
 pub mod i18n;
 pub mod java_detector;
@@ -7,7 +8,12 @@ pub mod java_installer;
 pub mod join_manager;
 pub mod mcs_plugin_manager;
 pub mod mod_manager;
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+pub mod panic_report;
 pub mod player_manager;
 pub mod server_id_manager;
+pub mod server_installer;
+pub mod server_log_pipeline;
 pub mod server_manager;
 pub mod settings_manager;
+pub mod starter_installer_links;

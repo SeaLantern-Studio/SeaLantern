@@ -18,6 +18,8 @@ export interface AppSettings {
   default_java_path: string;
   default_jvm_args: string;
   console_font_size: number;
+  console_font_family: string;
+  console_letter_spacing: number;
   max_log_lines: number;
   cached_java_list: JavaInfo[];
   background_image: string;
@@ -39,6 +41,8 @@ export interface AppSettings {
   locales_base_url?: string;
   developer_mode: boolean;
   close_action: string;
+  last_run_path: string;
+  minimal_mode: boolean;
 }
 
 export interface PartialSettings {
@@ -50,6 +54,8 @@ export interface PartialSettings {
   default_java_path?: string;
   default_jvm_args?: string;
   console_font_size?: number;
+  console_font_family?: string;
+  console_letter_spacing?: number;
   max_log_lines?: number;
   cached_java_list?: JavaInfo[];
   background_image?: string;
@@ -70,6 +76,8 @@ export interface PartialSettings {
   language?: string;
   developer_mode?: boolean;
   close_action?: string;
+  last_run_path?: string;
+  minimal_mode?: boolean;
 }
 
 export interface UpdateSettingsResult {
@@ -100,14 +108,6 @@ export const settingsApi = {
     return tauriInvoke("import_settings", { json });
   },
 };
-
-export async function checkAcrylicSupport(): Promise<boolean> {
-  return tauriInvoke<boolean>("check_acrylic_support");
-}
-
-export async function applyAcrylic(enabled: boolean, darkMode: boolean): Promise<void> {
-  return tauriInvoke<void>("apply_acrylic", { enabled, darkMode });
-}
 
 export async function getSystemFonts(): Promise<string[]> {
   return tauriInvoke<string[]>("get_system_fonts");

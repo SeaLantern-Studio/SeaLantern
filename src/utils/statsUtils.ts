@@ -21,13 +21,13 @@ const CSS_VAR_CACHE_TTL = 100;
 
 const getCssVar = (varName: string, defaultValue: string): string => {
   if (typeof window === "undefined") return defaultValue;
-  
+
   const now = Date.now();
   const cached = cssVarCache.get(varName);
   if (cached && now - cached.timestamp < CSS_VAR_CACHE_TTL) {
     return cached.value || defaultValue;
   }
-  
+
   const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
   cssVarCache.set(varName, { value, timestamp: now });
   return value || defaultValue;

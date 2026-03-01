@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
-import { useToast } from "@composables/useToast";
 import {
   fetchMarketPlugins,
   fetchMarketPluginDetail,
@@ -20,9 +19,12 @@ const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market";
 const MARKET_URL_KEY = "sealantern_market_url";
 
 const pluginStore = usePluginStore();
-const toast = useToast();
 const loading = ref(true);
 const error = ref<string | null>(null);
+const installFeedback = ref<{
+  type: "success" | "warning" | "error";
+  message: string;
+} | null>(null);
 const marketPlugins = ref<MarketPlugin[]>([]);
 const categories = ref<Record<string, Record<string, string> | string>>({});
 const searchQuery = ref("");
@@ -36,6 +38,25 @@ const customMarketUrl = ref(localStorage.getItem(MARKET_URL_KEY) || "");
 const urlInput = ref(customMarketUrl.value);
 
 const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
+const marketErrorHint = computed<string>(() => {
+  if (!error.value) return "";
+  return resolveMarketNetworkHint(error.value);
+});
+
+function showInstallFeedback(
+  type: "success" | "warning" | "error",
+  message: string,
+  duration = 6000,
+) {
+  installFeedback.value = { type, message };
+  if (duration > 0) {
+    setTimeout(() => {
+      if (installFeedback.value?.message === message) {
+        installFeedback.value = null;
+      }
+    }, duration);
+  }
+}
 
 function saveMarketUrl() {
   const url = urlInput.value.trim();
@@ -140,6 +161,46 @@ function getIconUrl(plugin: MarketPlugin): string | null {
   return `${activeMarketUrl.value.trim().replace(/\/$/, "")}/${dir}/${plugin.icon_url}`;
 }
 
+function normalizeErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "string") return err;
+  return String(err);
+}
+
+function resolveMarketNetworkHint(message: string): string {
+  const text = message.toLowerCase();
+  const looksLikeNetworkIssue =
+    text.includes("download") ||
+    text.includes("fetch") ||
+    text.includes("network") ||
+    text.includes("timeout") ||
+    text.includes("proxy") ||
+    text.includes("连接") ||
+    text.includes("请求") ||
+    text.includes("下载");
+
+  if (!looksLikeNetworkIssue) {
+    return "";
+  }
+
+  const isProxyRefused =
+    text.includes("127.0.0.1:9") ||
+    text.includes("actively refused") ||
+    text.includes("connection refused") ||
+    text.includes("proxyconnect") ||
+    text.includes("proxy connect") ||
+    text.includes("无法连接") ||
+    text.includes("积极拒绝");
+
+  if (isProxyRefused) {
+    return i18n.t("market.network_hint_proxy");
+  }
+  if (text.includes("timed out") || text.includes("timeout") || text.includes("超时")) {
+    return i18n.t("market.network_hint_timeout");
+  }
+  return i18n.t("market.network_hint_check");
+}
+
 async function loadMarket() {
   loading.value = true;
   error.value = null;
@@ -152,7 +213,7 @@ async function loadMarket() {
     marketPlugins.value = plugins;
     categories.value = cats;
   } catch (e: any) {
-    error.value = e.message || "Failed to load market";
+    error.value = normalizeErrorMessage(e);
   } finally {
     loading.value = false;
   }
@@ -188,12 +249,19 @@ async function handleInstall(plugin: MarketPlugin) {
     });
     await pluginStore.loadPlugins();
     if (result?.untrusted_url) {
-      toast.warning(i18n.t("market.untrusted_download_warning"));
+      showInstallFeedback("warning", i18n.t("market.untrusted_download_warning"));
     } else {
-      toast.success(i18n.t("market.install_success"));
+      showInstallFeedback("success", i18n.t("market.install_success"));
     }
   } catch (e: any) {
-    toast.error(i18n.t("market.install_failed") + ": " + (e.message || e));
+    const errorMessage = normalizeErrorMessage(e);
+    const hint = resolveMarketNetworkHint(errorMessage);
+    const extraHint = hint ? `\n${hint}` : "";
+    showInstallFeedback(
+      "error",
+      `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`,
+      0,
+    );
   } finally {
     installing.value = null;
   }
@@ -211,6 +279,14 @@ onMounted(() => {
 
 <template>
   <div class="market-view animate-fade-in-up">
+    <div
+      v-if="installFeedback"
+      :class="['install-feedback', `install-feedback--${installFeedback.type}`]"
+    >
+      <span>{{ installFeedback.message }}</span>
+      <button class="install-feedback-close" @click="installFeedback = null">x</button>
+    </div>
+
     <div v-if="showUrlEditor" class="url-editor glass">
       <span class="url-editor-label">{{ i18n.t("market.source_url") }}</span>
       <input
@@ -236,7 +312,7 @@ onMounted(() => {
       v-if="allTags.length"
       v-model="selectedTag"
       :tabs="[
-        { key: null, label: '全部' },
+        { key: null, label: i18n.t('config.categories.all') },
         ...allTags.map((tag) => ({ key: tag, label: getCategoryLabel(tag) })),
       ]"
       :level="2"
@@ -276,6 +352,7 @@ onMounted(() => {
       <AlertCircle :size="48" :stroke-width="1.5" />
       <p class="error-title">{{ i18n.t("market.error_title") }}</p>
       <p class="error-detail">{{ error }}</p>
+      <p v-if="marketErrorHint" class="error-hint">{{ marketErrorHint }}</p>
       <button class="retry-btn" @click="loadMarket">
         {{ i18n.t("market.retry") }}
       </button>
@@ -422,6 +499,46 @@ onMounted(() => {
   flex: 1;
 }
 
+.install-feedback {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--sl-radius-md);
+  border: 1px solid transparent;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+.install-feedback--success {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
+  border-color: rgba(46, 125, 50, 0.28);
+}
+
+.install-feedback--warning {
+  color: #8a6d00;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.install-feedback--error {
+  color: var(--sl-error);
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.install-feedback-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .market-search {
   padding: 6px 12px;
   border-radius: var(--sl-radius-sm);
@@ -495,6 +612,13 @@ onMounted(() => {
   padding: var(--sl-space-2xl);
   text-align: center;
   color: var(--sl-text-tertiary);
+}
+
+.error-hint {
+  margin-top: 8px;
+  color: var(--sl-text-secondary);
+  max-width: 640px;
+  line-height: 1.5;
 }
 
 .loading-spinner {

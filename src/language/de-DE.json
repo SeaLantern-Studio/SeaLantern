@@ -22,6 +22,7 @@
     "settings": "Einstellungen",
     "personalize": "Personalisieren",
     "about": "Über",
+    "download-file": "Datei herunterladen",
     "loading": "Laden...",
     "select_server": "Server auswählen",
     "open_folder": "Ordner öffnen",
@@ -229,8 +230,7 @@
     "java_env": "Java-Umgebung",
     "java_scan": "Alle Laufwerke nach Java-Installationen durchsuchen",
     "java_manual": "Java-Pfad manuell auswählen",
-    "java_path": "Java-Pfad",
-    "file_hint": "Nach dem Klicken auf 「Auswählen und Erstellen」 wählen Sie bitte die Server-Startdatei (unterstützt .jar, .bat oder .sh Formate). Das System erkennt den Dateityp automatisch"
+    "java_path": "Java-Pfad"
   },
   "console": {
     "title": "Konsole",
@@ -245,6 +245,7 @@
     "enter_command_content": "Befehlsinhalt eingeben",
     "cancel": "Abbrechen",
     "delete": "Löschen",
+    "save": "Speichern",
     "add": "Hinzufügen",
     "update": "Aktualisieren",
     "back_to_bottom": "Zum Ende",
@@ -254,7 +255,10 @@
     "running": "Läuft",
     "starting": "Starte",
     "stopping": "Stoppe",
-    "stopped": "Gestoppt"
+    "stopped": "Gestoppt",
+    "no_server": "Keine Server",
+    "create_server_first": "Bitte erstellen und wählen Sie zuerst einen Server",
+    "suggestion_hint": "Tab Vervollständigung / Up Down Auswahl"
   },
   "config": {
     "title": "Konfiguration bearbeiten",
@@ -276,10 +280,10 @@
     "delete": "Löschen",
     "refresh_list": "Liste aktualisieren",
     "reload_plugins": "Plugins neu laden",
-    "reload_plugins_warning": "Das Neuladen von Plugins kann Serverprobleme verursachen, einige Plugins unterstützen dies möglicherweise nicht",
+    "reload_plugins_warning": "Das Neuladen von Plugins kann zu Serververzögerungen führen, bitte seien Sie vorsichtig",
     "empty_config_folder": "Konfigurationsordner ist leer",
+    "has_config_folder": "Konfiguration vorhanden",
     "no_config_files": "Keine Konfiguration",
-    "has_config_folder": "Hat Konfiguration",
     "config_files_count": "Konfigurationen",
     "config_files": "Konfigurationsdateien",
     "open": "Öffnen",
@@ -458,9 +462,11 @@
     "font_size_desc": "Größe des Oberflächentexts anpassen",
     "font_family": "Schriftart",
     "font_family_desc": "Wähle die Schriftart für die Oberfläche. Einige Schriftarten müssen auf dem System installiert sein",
+    "console_font_family_desc": "Wähle die Schriftart für die Konsolenoberfläche. Einige Schriftarten müssen auf dem System installiert sein",
+    "console_letter_spacing": "Zeichenabstand der Konsole (px)",
+    "console_letter_spacing_desc": "Passt den Abstand zwischen Konsolenzeichen an, Standard 0; negative Werte machen den Text enger",
     "acrylic": "Acryl-Effekt",
-    "acrylic_desc": "Aktiviere den Windows-System-Acrylglaseffekt, kompatibel mit Hintergrundbildern",
-    "acrylic_not_supported": "Acryl-Effekt wird auf diesem System nicht unterstützt",
+    "acrylic_desc": "Aktiviere den weichen Gaußschen Weichzeichnereffekt, unterstützt auf allen Plattformen, kompatibel mit Hintergrundbildern",
     "background": "Hintergrundbild",
     "background_desc": "Lade ein Bild als Software-Hintergrund hoch. Unterstützt PNG, JPG, WEBP und andere Formate",
     "opacity": "Deckkraft",
@@ -632,6 +638,33 @@
     "show": "Anzeigen",
     "quit": "Beenden"
   },
-
-  "delete_server": "Server löschen"
+  "delete_server": "Server löschen",
+  "download-file": {
+    "title": "Datei mit Multi-Thread-Downloader herunterladen",
+    "url": "Download-URL",
+    "save_folder": "Speichern unter",
+    "filename": "Dateiname",
+    "thread_count": "Thread-Anzahl",
+    "thread_count_empty": "Thread-Anzahl darf nicht leer sein",
+    "thread_count_invalid": "Ungültiges Zeichen",
+    "thread_count_positive": "Thread-Anzahl muss eine positive ganze Zahl sein",
+    "cancel": "Abbrechen",
+    "download": "Herunterladen",
+    "browse": "Durchsuchen",
+    "downloading": "Ressource wird heruntergeladen...",
+    "status-finished": "Download abgeschlossen",
+    "failed": "Download fehlgeschlagen",
+    "completed": "Fertiggestellt"
+  },
+  "dropzone": {
+    "placeholder": "Datei hier ablegen oder klicken zum Auswählen",
+    "support_both": "Unterstützt Dateien und Ordner",
+    "support_files": "Unterstützt Dateien",
+    "support_folders": "Unterstützt Ordner",
+    "error_no_path": "Pfad der abgelegten Datei konnte nicht ermittelt werden",
+    "error_unsupported_type": "Nicht unterstützter Dateityp"
+  },
+  "downloader": {
+    "connection_lost": "Verbindung zum Task verloren"
+  }
 }
