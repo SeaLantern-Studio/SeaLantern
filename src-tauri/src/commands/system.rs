@@ -14,7 +14,7 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
     let cpu_usage = sys.global_cpu_usage();
     let cpu_count = sys.cpus().len();
     let cpu_name = sys
-        .cpus()
+        .cpus() 
         .first()
         .map(|c| c.brand().to_string())
         .unwrap_or_else(|| "Unknown".to_string());
@@ -521,7 +521,7 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
     {
         // 在Linux上使用xterm或gnome-terminal打开新窗口
         let terminal = if std::process::Command::new("xterm").arg("-version").output().is_ok() {
-            "xterm"
+            "xterm" 
         } else if std::process::Command::new("gnome-terminal").arg("--version").output().is_ok() {
             "gnome-terminal"
         } else {
