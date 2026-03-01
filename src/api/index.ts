@@ -36,3 +36,4 @@ export type {
 export * from "@api/update";
 export * from "@api/plugin";
 export * from "@api/remoteLocales";
+export * from "@api/logging";

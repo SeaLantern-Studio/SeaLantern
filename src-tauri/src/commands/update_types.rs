@@ -31,6 +31,7 @@ pub struct PendingUpdate {
 
 /// 发布响应结构体
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct ReleaseResponse {
     pub tag_name: String,
     pub body: Option<String>,
@@ -41,12 +42,14 @@ pub struct ReleaseResponse {
 
 /// 发布资源结构体
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct ReleaseAsset {
     pub name: String,
     pub browser_download_url: String,
 }
 
 /// 仓库配置结构体
+#[allow(dead_code)]
 pub struct RepoConfig {
     pub owner: &'static str,
     pub repo: &'static str,
@@ -54,12 +57,14 @@ pub struct RepoConfig {
 }
 
 impl RepoConfig {
+    #[allow(dead_code)]
     pub fn api_url(&self) -> String {
         format!("{}/{}/{}/releases/latest", self.api_base, self.owner, self.repo)
     }
 }
 
 /// 获取 GitHub 仓库配置
+#[allow(dead_code)]
 pub fn get_github_config() -> RepoConfig {
     RepoConfig {
         owner: "SeaLantern-Studio",

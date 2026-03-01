@@ -7,6 +7,7 @@ mod utils;
 use commands::config as config_commands;
 use commands::downloader as download_commands;
 use commands::java as java_commands;
+use commands::logging as logging_commands;
 use commands::mcs_plugin as mcs_plugin_commands;
 use commands::player as player_commands;
 use commands::plugin as plugin_commands;
@@ -151,6 +152,8 @@ pub fn run() {
             settings_commands::export_settings,
             settings_commands::import_settings,
             settings_commands::get_system_fonts,
+            settings_commands::get_plugin_commands,
+            settings_commands::update_plugin_commands,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,
@@ -195,11 +198,16 @@ pub fn run() {
             plugin_commands::get_plugin_ui_snapshot,
             plugin_commands::get_plugin_sidebar_snapshot,
             plugin_commands::get_plugin_context_menu_snapshot,
+            plugin_commands::get_permission_list,
+            plugin_commands::get_plugin_permissions,
             mcs_plugin_commands::m_get_plugins,
             mcs_plugin_commands::m_toggle_plugin,
             mcs_plugin_commands::m_delete_plugin,
             mcs_plugin_commands::m_install_plugin,
-            mcs_plugin_commands::m_get_plugin_config_files
+            mcs_plugin_commands::m_get_plugin_config_files,
+            logging_commands::get_logs,
+            logging_commands::clear_logs,
+            logging_commands::check_developer_mode
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -498,7 +506,11 @@ pub fn run() {
                 ));
             }
 
-            app.manage(manager);
+            app.manage(manager.clone());
+
+            if let Ok(mut m) = manager.lock() {
+                m.auto_enable_plugins();
+            }
 
             // Check if currently in safe mode
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");

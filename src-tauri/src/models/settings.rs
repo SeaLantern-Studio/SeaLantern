@@ -9,6 +9,7 @@ pub enum SettingsGroup {
     Appearance,
     Window,
     Developer,
+    PluginCommands,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,6 +115,13 @@ pub struct AppSettings {
     // 极简模式：关闭所有动效和特效
     #[serde(default)]
     pub minimal_mode: bool,
+
+    // 插件命令设置
+    #[serde(default = "default_allowed_commands")]
+    pub plugin_allowed_commands: Vec<String>,
+
+    #[serde(default = "default_blocked_commands")]
+    pub plugin_blocked_commands: Vec<String>,
 }
 
 fn default_true() -> bool {
@@ -242,6 +250,12 @@ impl AppSettings {
             changed.push(SettingsGroup::Developer);
         }
 
+        if self.plugin_allowed_commands != other.plugin_allowed_commands
+            || self.plugin_blocked_commands != other.plugin_blocked_commands
+        {
+            changed.push(SettingsGroup::PluginCommands);
+        }
+
         changed
     }
 
@@ -342,6 +356,12 @@ impl AppSettings {
         if let Some(v) = partial.minimal_mode {
             self.minimal_mode = v;
         }
+        if let Some(ref v) = partial.plugin_allowed_commands {
+            self.plugin_allowed_commands = v.clone();
+        }
+        if let Some(ref v) = partial.plugin_blocked_commands {
+            self.plugin_blocked_commands = v.clone();
+        }
     }
 }
 
@@ -411,6 +431,10 @@ pub struct PartialSettings {
     pub last_run_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimal_mode: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugin_allowed_commands: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugin_blocked_commands: Option<Vec<String>>,
 }
 
 impl Default for AppSettings {
@@ -448,6 +472,62 @@ impl Default for AppSettings {
             close_action: "ask".to_string(),
             last_run_path: String::new(),
             minimal_mode: false,
+            plugin_allowed_commands: default_allowed_commands(),
+            plugin_blocked_commands: default_blocked_commands(),
         }
     }
+}
+
+fn default_allowed_commands() -> Vec<String> {
+    vec![
+        "tell".to_string(),
+        "msg".to_string(),
+        "w".to_string(),
+        "say".to_string(),
+        "teammsg".to_string(),
+        "me".to_string(),
+        "give".to_string(),
+        "clear".to_string(),
+        "xp".to_string(),
+        "experience".to_string(),
+        "kick".to_string(),
+        "ban".to_string(),
+        "pardon".to_string(),
+        "banlist".to_string(),
+        "whitelist".to_string(),
+        "op".to_string(),
+        "deop".to_string(),
+        "effect".to_string(),
+        "enchant".to_string(),
+        "time".to_string(),
+        "weather".to_string(),
+        "gamerule".to_string(),
+        "difficulty".to_string(),
+        "gamemode".to_string(),
+        "spawnpoint".to_string(),
+        "tp".to_string(),
+        "teleport".to_string(),
+        "spreadplayers".to_string(),
+        "particle".to_string(),
+        "playsound".to_string(),
+        "title".to_string(),
+    ]
+}
+
+fn default_blocked_commands() -> Vec<String> {
+    vec![
+        "stop".to_string(),
+        "reload".to_string(),
+        "restart".to_string(),
+        "plugins".to_string(),
+        "plugin".to_string(),
+        "version".to_string(),
+        "debug".to_string(),
+        "save-all".to_string(),
+        "save-off".to_string(),
+        "save-on".to_string(),
+        "timings".to_string(),
+        "perworldinventory".to_string(),
+        "pwi".to_string(),
+    ]
 }

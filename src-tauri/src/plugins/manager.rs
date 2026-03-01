@@ -57,12 +57,16 @@ impl PluginManager {
     }
 
     pub fn scan_plugins(&mut self) -> Result<Vec<PluginInfo>, String> {
+        println!("[PluginManager] 开始扫描插件目录: {}", self.plugins_dir.display());
+
         {
             let mut runtimes = self.runtimes.write().unwrap_or_else(|e| {
                 eprintln!("[WARN] RwLock poisoned, recovering: {}", e);
                 e.into_inner()
             });
+            println!("[PluginManager] 清理旧的运行时，共 {} 个", runtimes.len());
             for (id, runtime) in runtimes.drain() {
+                println!("[PluginManager] 停止插件 '{}' 的运行时", id);
                 kill_all_processes(&runtime.process_registry);
                 if let Err(e) = runtime.call_lifecycle("onDisable") {
                     eprintln!(
@@ -82,14 +86,24 @@ impl PluginManager {
         self.plugins.clear();
 
         let plugin_dirs = PluginLoader::discover_plugins(&self.plugins_dir)?;
+        println!("[PluginManager] 发现 {} 个插件目录", plugin_dirs.len());
 
         for plugin_dir in &plugin_dirs {
+            println!("[PluginManager] 正在加载插件: {}", plugin_dir.display());
             match PluginLoader::load_manifest(plugin_dir) {
                 Ok(manifest) => {
+                    println!(
+                        "[PluginManager] 插件 '{}' (ID: {}) 版本 {}",
+                        manifest.name, manifest.id, manifest.version
+                    );
+
                     let state = match PluginLoader::validate_manifest(&manifest) {
-                        Ok(()) => PluginState::Loaded,
+                        Ok(()) => {
+                            println!("[PluginManager] 插件 '{}' 验证通过", manifest.id);
+                            PluginState::Loaded
+                        }
                         Err(e) => {
-                            eprintln!("Invalid manifest in {}: {}", plugin_dir.display(), e);
+                            println!("[PluginManager] 插件 '{}' 验证失败: {}", manifest.id, e);
                             PluginState::Error(e)
                         }
                     };
@@ -102,14 +116,20 @@ impl PluginManager {
                     };
 
                     self.plugins.insert(manifest.id.clone(), plugin_info);
+                    println!("[PluginManager] 插件 '{}' 已添加到管理器", manifest.id);
                 }
                 Err(e) => {
-                    eprintln!("Failed to load manifest from {}: {}", plugin_dir.display(), e);
+                    println!(
+                        "[PluginManager] 从 {} 加载 manifest 失败: {}",
+                        plugin_dir.display(),
+                        e
+                    );
                 }
             }
         }
 
         self.update_all_missing_dependencies();
+        println!("[PluginManager] 插件扫描完成，共加载 {} 个插件", self.plugins.len());
 
         Ok(self.plugins.values().cloned().collect())
     }
@@ -130,6 +150,8 @@ impl PluginManager {
     }
 
     pub fn enable_plugin(&mut self, plugin_id: &str) -> Result<(), String> {
+        println!("[PluginManager] 正在启用插件: {}", plugin_id);
+
         let plugin_info = self
             .plugins
             .get(plugin_id)
@@ -137,6 +159,7 @@ impl PluginManager {
             .clone();
 
         if matches!(plugin_info.state, PluginState::Enabled) {
+            println!("[PluginManager] 插件 '{}' 已经启用，跳过", plugin_id);
             return Ok(());
         }
 
@@ -151,8 +174,8 @@ impl PluginManager {
 
         let missing_optional = self.check_dependencies(&plugin_info.manifest.optional_dependencies);
         if !missing_optional.is_empty() {
-            eprintln!(
-                "[插件] '{}' 的可选依赖未满足：{}（部分功能可能受限）",
+            println!(
+                "[PluginManager] 插件 '{}' 的可选依赖未满足：{}（部分功能可能受限）",
                 plugin_info.manifest.name,
                 missing_optional.join(", ")
             );
@@ -160,8 +183,10 @@ impl PluginManager {
 
         let plugin_dir = PathBuf::from(&plugin_info.path);
         let plugin_data_dir = self.data_dir.join(plugin_id);
+        println!("[PluginManager] 插件数据目录: {}", plugin_data_dir.display());
 
         if !plugin_info.manifest.include.is_empty() {
+            println!("[PluginManager] 正在复制包含的资源: {:?}", plugin_info.manifest.include);
             Self::copy_included_resources(
                 &plugin_dir,
                 &plugin_data_dir,
@@ -170,18 +195,29 @@ impl PluginManager {
         }
 
         let permissions = plugin_info.manifest.permissions.clone();
+        println!("[PluginManager] 插件权限: {:?}", permissions);
 
+        let app_data_dir =
+            std::path::PathBuf::from(crate::utils::path::get_or_create_app_data_dir());
+        let server_dir = app_data_dir.join("servers");
+        let global_dir = app_data_dir;
+
+        println!("[PluginManager] 正在创建运行时...");
         let runtime = PluginRuntime::new(
             plugin_id,
             &plugin_dir,
             &plugin_data_dir,
+            &server_dir,
+            &global_dir,
             Arc::clone(&self.api_registry),
             permissions,
         )?;
 
         let main_file = plugin_dir.join(&plugin_info.manifest.main);
+        println!("[PluginManager] 正在加载主文件: {}", main_file.display());
         runtime.load_file(&main_file)?;
 
+        println!("[PluginManager] 正在调用 onLoad 生命周期...");
         runtime.call_lifecycle("onLoad")?;
 
         {
@@ -189,6 +225,7 @@ impl PluginManager {
                 eprintln!("[WARN] RwLock poisoned, recovering: {}", e);
                 e.into_inner()
             });
+            println!("[PluginManager] 运行时已插入到管理器");
             runtimes.insert(plugin_id.to_string(), runtime);
         }
 
@@ -199,6 +236,7 @@ impl PluginManager {
             });
 
             if let Some(r) = runtimes.get(plugin_id) {
+                println!("[PluginManager] 正在调用 onEnable 生命周期...");
                 r.call_lifecycle("onEnable")
             } else {
                 Err("Runtime not found after insertion".to_string())
