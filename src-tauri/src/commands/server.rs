@@ -148,6 +148,7 @@ fn unknown_parsed_core_info() -> ParsedServerCoreInfo {
         core_type: "Unknown".to_string(),
         main_class: None,
         jar_path: None,
+        version_id: None,
     }
 }
 
@@ -265,7 +266,11 @@ fn scan_startup_candidates_blocking(
         }
 
         let (detected_mc_version, mc_version_detection_failed) =
-            crate::services::server_installer::detect_mc_version_from_mods(&inspect_root);
+            if let Some(ver) = parsed.version_id.clone() {
+                (Some(ver), false)
+            } else {
+                crate::services::server_installer::detect_mc_version(&inspect_root)
+            };
         let detected_core_type_key =
             crate::services::server_installer::CoreType::normalize_to_api_core_key(
                 &parsed.core_type,
@@ -342,6 +347,7 @@ fn scan_startup_candidates_blocking(
                     core_type: "Unknown".to_string(),
                     main_class: None,
                     jar_path: Some(full_path.clone()),
+                    version_id: None,
                 });
 
             let is_starter = parsed
@@ -375,6 +381,7 @@ fn scan_startup_candidates_blocking(
                 core_type: parsed.core_type.clone(),
                 main_class: parsed.main_class.clone(),
                 jar_path: Some(full_path.clone()),
+                version_id: parsed.version_id.clone(),
             };
             if detected_core
                 .as_ref()
@@ -425,7 +432,11 @@ fn scan_startup_candidates_blocking(
             &parsed_core.core_type,
         );
     let (detected_mc_version, mc_version_detection_failed) =
-        crate::services::server_installer::detect_mc_version_from_mods(source);
+        if let Some(ver) = parsed_core.version_id.clone() {
+            (Some(ver), false)
+        } else {
+            crate::services::server_installer::detect_mc_version(source)
+        };
 
     Ok(StartupScanResult {
         parsed_core,

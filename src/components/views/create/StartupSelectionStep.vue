@@ -179,12 +179,12 @@ function getStartupIcon(mode: StartupMode) {
         />
       </div>
 
-      <div v-if="starterSelected" class="startup-extra-item">
+      <div class="startup-extra-item">
         <p class="startup-extra-label">{{ i18n.t("create.startup_mc_version_label") }}</p>
         <p class="startup-step-hint" v-if="detectedMcVersion">
           {{ i18n.t("create.startup_mc_version_detected", { version: detectedMcVersion }) }}
         </p>
-        <p class="startup-step-warning" v-if="mcVersionDetectionFailed">
+        <p class="startup-step-warning" v-else>
           {{ i18n.t("create.startup_mc_version_detection_failed") }}
         </p>
         <SLSelect

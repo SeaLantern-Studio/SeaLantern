@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use anyhow::{Context, Result};
 use flate2::read::GzDecoder;
+use serde_json::Value;
 use tar::Archive;
 use zip::ZipArchive;
 
@@ -442,7 +445,7 @@ pub const STARTER_MC_VERSION_OPTIONS: [&str; 161] = [
     "25w02a",
 ];
 
-pub fn detect_mc_version_from_mods(root_dir: &Path) -> (Option<String>, bool) {
+pub fn detect_mc_version(root_dir: &Path) -> (Option<String>, bool) {
     let mods_dir = root_dir.join("mods");
     if !mods_dir.exists() || !mods_dir.is_dir() {
         return (None, true);
@@ -584,18 +587,25 @@ pub fn parse_server_core_type(source_path: &str) -> Result<ParsedServerCoreInfo,
     };
 
     let result = if let Some(jar_path) = detected_jar {
-        let jar_text = jar_path.to_string_lossy().to_string();
-        let (core_type, main_class) = detect_core_type_with_main_class(&jar_text);
-        ParsedServerCoreInfo {
-            core_type,
-            main_class,
-            jar_path: Some(jar_text),
+        // 调用新的 metadata 函数
+        match detect_core_type_with_metadata(&jar_path) {
+            Ok(info) => info,
+            Err(e) => {
+                eprintln!("读取 JAR 元数据失败: {}", e); // 可记录日志
+                ParsedServerCoreInfo {
+                    core_type: CoreType::Unknown.to_string(),
+                    main_class: None,
+                    jar_path: Some(jar_path.to_string_lossy().to_string()),
+                    version_id: None,
+                }
+            }
         }
     } else {
         ParsedServerCoreInfo {
             core_type: CoreType::Unknown.to_string(),
             main_class: None,
             jar_path: None,
+            version_id: None,
         }
     };
 
@@ -723,14 +733,25 @@ pub fn find_server_jar(modpack_path: &Path) -> Result<String, String> {
     Ok(jar_files[0].to_string_lossy().to_string())
 }
 
-fn detect_core_type_with_main_class(input: &str) -> (String, Option<String>) {
-    let main_class = read_jar_main_class(input);
-    if let Some(ref class_name) = main_class {
-        if let Some(core_type) = core_type_from_main_class(class_name) {
-            return (core_type.to_string(), Some(class_name.clone()));
+fn detect_core_type_with_metadata(jar_path: &Path) -> Result<ParsedServerCoreInfo> {
+    let (main_class, version_id) = read_jar_metadata(jar_path)?;
+
+    let core_type = if let Some(ref class) = main_class {
+        if let Some(ct) = core_type_from_main_class(class) {
+            ct.to_string()
+        } else {
+            detect_core_type(jar_path.to_str().unwrap_or(""))
         }
-    }
-    (detect_core_type(input), main_class)
+    } else {
+        detect_core_type(jar_path.to_str().unwrap_or(""))
+    };
+
+    Ok(ParsedServerCoreInfo {
+        core_type,
+        main_class,
+        jar_path: Some(jar_path.to_string_lossy().to_string()),
+        version_id,
+    })
 }
 
 fn core_type_from_main_class(main_class: &str) -> Option<CoreType> {
@@ -761,16 +782,31 @@ fn core_type_from_main_class(main_class: &str) -> Option<CoreType> {
     }
 }
 
-fn read_jar_main_class(jar_path: &str) -> Option<String> {
-    let file = std::fs::File::open(jar_path).ok()?;
-    let mut archive = ZipArchive::new(file).ok()?;
-    let mut manifest = archive.by_name("META-INF/MANIFEST.MF").ok()?;
+fn read_jar_metadata(jar_path: &Path) -> Result<(Option<String>, Option<String>)> {
+    let file = File::open(jar_path)
+        .with_context(|| format!("无法打开 JAR 文件: {}", jar_path.display()))?;
+    let mut archive = ZipArchive::new(file).context("无法解析 JAR 文件作为 ZIP 归档")?;
 
-    let mut bytes = Vec::new();
-    manifest.read_to_end(&mut bytes).ok()?;
-    let content = String::from_utf8_lossy(&bytes).to_string();
+    // 读取 MANIFEST.MF 获取主类（原函数逻辑）
+    let main_class = archive
+        .by_name("META-INF/MANIFEST.MF")
+        .ok()
+        .and_then(|mut f| {
+            let mut bytes = Vec::new();
+            f.read_to_end(&mut bytes).ok()?;
+            let content = String::from_utf8_lossy(&bytes);
+            find_manifest_main_class(&content)
+        });
 
-    find_manifest_main_class(&content)
+    // 读取 version.json 获取 id
+    let version_id = archive.by_name("version.json").ok().and_then(|mut f| {
+        let mut content = String::new();
+        f.read_to_string(&mut content).ok()?;
+        let json: Value = serde_json::from_str(&content).ok()?;
+        json.get("id")?.as_str().map(String::from)
+    });
+
+    Ok((main_class, version_id))
 }
 
 fn find_manifest_main_class(manifest_content: &str) -> Option<String> {

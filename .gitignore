@@ -19,3 +19,4 @@ changelog/
 .review/
 plugin-market/
 plugins-demo/
+.vite/
