@@ -59,6 +59,55 @@ static LOG_WRITERS: OnceLock<Mutex<HashMap<String, ServerLogWriter>>> = OnceLock
 const LOG_BATCH_SIZE: usize = 128;
 const LOG_FLUSH_INTERVAL_MS: u64 = 50;
 
+/// 固定大小的环形缓冲区，用于日志批处理收集
+struct LogRingBuffer {
+    buffer: [Option<LogWriteEntry>; LOG_BATCH_SIZE],
+    head: usize,
+    tail: usize,
+    len: usize,
+}
+
+impl LogRingBuffer {
+    fn new() -> Self {
+        Self {
+            buffer: [const { None }; LOG_BATCH_SIZE],
+            head: 0,
+            tail: 0,
+            len: 0,
+        }
+    }
+
+    fn push(&mut self, entry: LogWriteEntry) -> bool {
+        if self.len >= LOG_BATCH_SIZE {
+            return false;
+        }
+        self.buffer[self.tail] = Some(entry);
+        self.tail = (self.tail + 1) % LOG_BATCH_SIZE;
+        self.len += 1;
+        true
+    }
+
+    fn is_full(&self) -> bool {
+        self.len >= LOG_BATCH_SIZE
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    fn drain(&mut self) -> Vec<LogWriteEntry> {
+        let mut result = Vec::with_capacity(self.len);
+        while self.len > 0 {
+            if let Some(entry) = self.buffer[self.head].take() {
+                result.push(entry);
+            }
+            self.head = (self.head + 1) % LOG_BATCH_SIZE;
+            self.len -= 1;
+        }
+        result
+    }
+}
+
 #[derive(Clone)]
 struct LogWriteEntry {
     timestamp: i64,
@@ -196,10 +245,10 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
     };
 
     let flush_interval = Duration::from_millis(LOG_FLUSH_INTERVAL_MS);
-    let mut batch = Vec::<LogWriteEntry>::with_capacity(LOG_BATCH_SIZE);
+    let mut batch = LogRingBuffer::new();
 
     // Writer 主循环：
-    // - 至少取到一条日志后再进入“时间窗口聚合”，减少空转
+    // - 至少取到一条日志后再进入"时间窗口聚合"，减少空转
     // - 到达批大小上限，或时间窗口耗尽，就立刻 flush
     // - 收到 Shutdown/断连时确保尽力刷盘后退出
     loop {
@@ -207,7 +256,8 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
             Ok(cmd) => cmd,
             Err(_) => {
                 if !batch.is_empty() {
-                    let _ = flush_batch(&mut conn, &batch);
+                    let entries = batch.drain();
+                    let _ = flush_batch(&mut conn, &entries);
                 }
                 break;
             }
@@ -217,26 +267,29 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
             WriterCommand::Append(entry) => {
                 batch.push(entry);
                 let deadline = Instant::now() + flush_interval;
-                while batch.len() < LOG_BATCH_SIZE {
+                while !batch.is_full() {
                     let remain = deadline.saturating_duration_since(Instant::now());
                     if remain.is_zero() {
                         break;
                     }
                     match rx.recv_timeout(remain) {
-                        Ok(WriterCommand::Append(entry)) => batch.push(entry),
+                        Ok(WriterCommand::Append(entry)) => { batch.push(entry); }
                         Ok(WriterCommand::Shutdown) => {
-                            let _ = flush_batch(&mut conn, &batch);
+                            let entries = batch.drain();
+                            let _ = flush_batch(&mut conn, &entries);
                             return;
                         }
                         Err(mpsc::RecvTimeoutError::Timeout) => break,
                         Err(mpsc::RecvTimeoutError::Disconnected) => {
-                            let _ = flush_batch(&mut conn, &batch);
+                            let entries = batch.drain();
+                            let _ = flush_batch(&mut conn, &entries);
                             return;
                         }
                     }
                 }
 
-                if let Err(err) = flush_batch(&mut conn, &batch) {
+                let entries = batch.drain();
+                if let Err(err) = flush_batch(&mut conn, &entries) {
                     eprintln!(
                         "[server_log_pipeline] flush batch failed id={} path={} err={}",
                         server_id,
@@ -244,11 +297,11 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
                         err
                     );
                 }
-                batch.clear();
             }
             WriterCommand::Shutdown => {
                 if !batch.is_empty() {
-                    let _ = flush_batch(&mut conn, &batch);
+                    let entries = batch.drain();
+                    let _ = flush_batch(&mut conn, &entries);
                 }
                 break;
             }

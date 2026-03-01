@@ -11,9 +11,6 @@ use serde::{Deserialize, Serialize};
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
-
-/// 验证服务器名称，防止路径遍历攻击
-/// 返回清理后的名称或错误信息
 fn validate_server_name(name: &str) -> Result<String, String> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
@@ -22,18 +19,18 @@ fn validate_server_name(name: &str) -> Result<String, String> {
     if trimmed.len() > 64 {
         return Err("服务器名称不能超过64个字符".to_string());
     }
-    // 禁止的字符：路径分隔符和Windows保留字符
+
     let forbidden_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'];
     for c in forbidden_chars {
         if trimmed.contains(c) {
             return Err(format!("服务器名称包含非法字符: '{}'", c));
         }
     }
-    // 禁止以点开头（防止隐藏文件）或以空格/点结尾
+
     if trimmed.starts_with('.') || trimmed.ends_with('.') || trimmed.ends_with(' ') {
         return Err("服务器名称不能以点开头或结尾，也不能以空格结尾".to_string());
     }
-    // 禁止Windows保留名称
+
     let reserved = [
         "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
         "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
@@ -42,6 +39,24 @@ fn validate_server_name(name: &str) -> Result<String, String> {
     for r in reserved {
         if upper == r || upper.starts_with(&format!("{}.", r)) {
             return Err(format!("服务器名称不能使用系统保留名称: {}", r));
+        }
+    }
+    Ok(trimmed.to_string())
+}
+
+fn validate_custom_command(cmd: &str) -> Result<String, String> {
+    let trimmed = cmd.trim();
+    if trimmed.is_empty() {
+        return Err("自定义启动命令不能为空".to_string());
+    }
+    if trimmed.len() > 8192 {
+        return Err("自定义启动命令长度超出限制".to_string());
+    }
+
+    let dangerous_patterns = ["&&", "||", ";", "|", "`", "$(", ">>"];
+    for pattern in dangerous_patterns {
+        if trimmed.contains(pattern) {
+            return Err(format!("自定义启动命令包含危险操作符: {}", pattern));
         }
     }
     Ok(trimmed.to_string())
@@ -429,8 +444,8 @@ impl ServerManager {
         let custom_command = req
             .custom_command
             .as_ref()
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
+            .map(|value| validate_custom_command(value))
+            .transpose()?;
         let selected_core_type = req
             .core_type
             .as_ref()
@@ -585,9 +600,8 @@ impl ServerManager {
             let command = req
                 .custom_command
                 .as_ref()
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty())
-                .ok_or_else(|| "自定义启动命令不能为空".to_string())?;
+                .map(|value| validate_custom_command(value))
+                .ok_or_else(|| "自定义启动命令不能为空".to_string())??;
             (String::new(), requested_mode, Some(command))
         } else if let Some(ref exec_path) = req.executable_path {
             let path = std::path::Path::new(exec_path);
@@ -1170,12 +1184,20 @@ impl ServerManager {
     }
 
     pub fn send_command(&self, id: &str, command: &str) -> Result<(), String> {
+        let trimmed = command.trim();
+        if trimmed.is_empty() {
+            return Err("命令不能为空".to_string());
+        }
+        if trimmed.len() > 4096 {
+            return Err("命令长度超出限制".to_string());
+        }
+
         let mut procs = self.processes.lock().expect("processes lock poisoned");
         let child = procs
             .get_mut(id)
             .ok_or_else(|| "服务器未运行".to_string())?;
         if let Some(ref mut stdin) = child.stdin {
-            writeln!(stdin, "{}", command).map_err(|e| format!("发送失败: {}", e))?;
+            writeln!(stdin, "{}", trimmed).map_err(|e| format!("发送失败: {}", e))?;
             stdin.flush().map_err(|e| format!("发送失败: {}", e))?;
         }
         Ok(())
