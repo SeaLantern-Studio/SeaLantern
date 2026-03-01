@@ -34,7 +34,7 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
         (used_swap as f64 / total_swap as f64 * 100.0) as f32
     } else {
         0.0
-    };
+    }; 
 
     let disks = Disks::new_with_refreshed_list();
     let disk_info: Vec<serde_json::Value> = disks
