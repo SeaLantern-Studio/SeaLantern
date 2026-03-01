@@ -512,7 +512,7 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
         // 在macOS上使用open命令打开新窗口
         let mut cmd = std::process::Command::new("open");
         cmd.arg("-a").arg("Terminal").arg(&frpc_path);
-        for arg in command.get_args().skip(1) {
+        for arg in command.get_args() {
             cmd.arg(arg);
         }
         cmd.spawn().map_err(|e| format!("无法启动FRP隧道: {}", e))?;
