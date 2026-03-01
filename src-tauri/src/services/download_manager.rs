@@ -250,7 +250,9 @@ impl DownloadManager {
             self.tasks.write().await.remove(&id);
 
             // 删除临时下载的文件
-            tokio::fs::remove_file(&file_path).await.map_err(|e| format!("删除临时文件失败: {}", e))?;
+            tokio::fs::remove_file(&file_path)
+                .await
+                .map_err(|e| format!("删除临时文件失败: {}", e))?;
 
             Ok(())
         } else {
