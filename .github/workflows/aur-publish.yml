@@ -10,7 +10,7 @@ permissions:
 jobs:
   aur-publish:
     name: 发布到 AUR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container:
       image: archlinux:latest
       options: --user root

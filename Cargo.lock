@@ -521,8 +521,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fac4744fb15ae8337dc853fee7fb3f4e48c0fbaa23d0afe49c447b4fab126118"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link 0.2.1",
 ]
 
@@ -2717,6 +2719,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nasm-rs"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "706bf8a5e8c8ddb99128c3291d31bd21f4bcde17f0f4c20ec678d85c74faa149"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4276,16 +4287,20 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "sea-lantern"
-version = "1.0.0"
+version = "1.0.2"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "dirs-next",
  "encoding_rs",
  "flate2",
  "font-kit",
  "futures",
  "image",
+ "ipnet",
+ "lazy_static",
  "mlua",
+ "nasm-rs",
  "once_cell",
  "opener",
  "regex",
@@ -4295,6 +4310,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sha2",
+ "shlex",
  "sysinfo",
  "tar",
  "tauri",

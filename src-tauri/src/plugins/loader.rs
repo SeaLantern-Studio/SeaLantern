@@ -79,6 +79,9 @@ impl PluginLoader {
         let valid_permissions = [
             "log",
             "fs",
+            "fs.data",
+            "fs.server",
+            "fs.global",
             "api",
             "storage",
             "network",

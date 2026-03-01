@@ -7,6 +7,7 @@ mod utils;
 use commands::config as config_commands;
 use commands::downloader as download_commands;
 use commands::java as java_commands;
+use commands::logging as logging_commands;
 use commands::mcs_plugin as mcs_plugin_commands;
 use commands::player as player_commands;
 use commands::plugin as plugin_commands;
@@ -30,6 +31,18 @@ pub fn run() {
     // Fix white screen issue on Wayland desktop environments (tested on Arch Linux + KDE Plasma)
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+    }
+
+    // Linux 平台在独立线程中初始化 panic_report，避免阻塞主线程
+    #[cfg(target_os = "linux")]
+    {
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+            rt.block_on(async {
+                services::panic_report::panic_report().await;
+                println!("panic_report 注册完成");
+            });
+        });
     }
 
     let download_manager = DownloadManager::new();
@@ -118,6 +131,7 @@ pub fn run() {
             system_commands::open_file,
             system_commands::open_folder,
             system_commands::get_default_run_path,
+            system_commands::get_safe_mode_status,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -137,6 +151,8 @@ pub fn run() {
             settings_commands::export_settings,
             settings_commands::import_settings,
             settings_commands::get_system_fonts,
+            settings_commands::get_plugin_commands,
+            settings_commands::update_plugin_commands,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,
@@ -181,11 +197,16 @@ pub fn run() {
             plugin_commands::get_plugin_ui_snapshot,
             plugin_commands::get_plugin_sidebar_snapshot,
             plugin_commands::get_plugin_context_menu_snapshot,
+            plugin_commands::get_permission_list,
+            plugin_commands::get_plugin_permissions,
             mcs_plugin_commands::m_get_plugins,
             mcs_plugin_commands::m_toggle_plugin,
             mcs_plugin_commands::m_delete_plugin,
             mcs_plugin_commands::m_install_plugin,
-            mcs_plugin_commands::m_get_plugin_config_files
+            mcs_plugin_commands::m_get_plugin_config_files,
+            logging_commands::get_logs,
+            logging_commands::clear_logs,
+            logging_commands::check_developer_mode
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -230,12 +251,21 @@ pub fn run() {
 
             let mut plugin_manager = PluginManager::new(plugins_dir, data_dir);
 
+            // Check for safe mode
+            let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
+
+            // Always scan plugins to load the list, even in safe mode
             if let Err(e) = plugin_manager.scan_plugins() {
                 eprintln!("Failed to scan plugins: {}", e);
             }
 
-            // 自动启用上启用的插件
-            plugin_manager.auto_enable_plugins();
+            if safe_mode {
+                eprintln!("Safe mode enabled: plugins will be disabled");
+                // In safe mode, don't enable any plugins
+            } else {
+                // 自动启用上启用的插件
+                plugin_manager.auto_enable_plugins();
+            }
 
             let shared_runtimes = plugin_manager.get_shared_runtimes();
             let shared_runtimes_for_server_ready = Arc::clone(&shared_runtimes);
@@ -475,11 +505,29 @@ pub fn run() {
                 ));
             }
 
-            app.manage(manager);
+            app.manage(manager.clone());
+
+            if let Ok(mut m) = manager.lock() {
+                m.auto_enable_plugins();
+            }
+
+            // Check if currently in safe mode
+            let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let menu = if safe_mode {
+                Menu::with_items(app, &[&show_item, &quit_item])?
+            } else {
+                let safe_mode_item = MenuItem::with_id(
+                    app,
+                    "restart-safe-mode",
+                    "以安全模式重启",
+                    true,
+                    None::<&str>,
+                )?;
+                Menu::with_items(app, &[&show_item, &safe_mode_item, &quit_item])?
+            };
 
             let icon_bytes = include_bytes!("../icons/icon.png");
             let img = image::load_from_memory(icon_bytes)
@@ -488,56 +536,193 @@ pub fn run() {
             let (width, height) = img.dimensions();
             let icon = tauri::image::Image::new_owned(img.into_raw(), width, height);
 
-            let _tray =
-                TrayIconBuilder::new()
-                    .icon(icon)
-                    .menu(&menu)
-                    .tooltip("Sea Lantern")
-                    .on_menu_event(|app, event| match event.id.as_ref() {
-                        "show" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                // 先显示窗口（处理隐藏状态）
-                                let _ = window.show();
-                                // 恢复窗口（处理最小化状态）
-                                let _ = window.unminimize();
-                                // 设置焦点
-                                let _ = window.set_focus();
+            let _tray = TrayIconBuilder::new()
+                .icon(icon)
+                .menu(&menu)
+                .tooltip("Sea Lantern")
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            // 先显示窗口（处理隐藏状态）
+                            let _ = window.show();
+                            // 恢复窗口（处理最小化状态）
+                            let _ = window.unminimize();
+                            // 设置焦点
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "restart-safe-mode" => {
+                        // Restart in safe mode
+                        let settings = services::global::settings_manager().get();
+                        if settings.close_servers_on_exit {
+                            services::global::server_manager().stop_all_servers();
+                        }
+                        if let Some(manager) =
+                            app.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>()
+                        {
+                            if let Ok(mut m) = manager.lock() {
+                                m.disable_all_plugins_for_shutdown();
                             }
                         }
-                        "quit" => {
-                            let settings = services::global::settings_manager().get();
-                            if settings.close_servers_on_exit {
-                                services::global::server_manager().stop_all_servers();
-                            }
-                            if let Some(manager) = app.try_state::<std::sync::Arc<
-                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
-                            >>() {
-                                if let Ok(mut m) = manager.lock() {
-                                    m.disable_all_plugins_for_shutdown();
+
+                        // Restart with --safe-mode flag
+                        let default_name = if cfg!(windows) {
+                            "SeaLantern.exe"
+                        } else {
+                            "SeaLantern"
+                        };
+                        let app_path = std::env::current_exe()
+                            .or_else(|_| {
+                                std::env::args().next().map(std::path::PathBuf::from).ok_or(
+                                    std::io::Error::new(
+                                        std::io::ErrorKind::NotFound,
+                                        "Executable path not found",
+                                    ),
+                                )
+                            })
+                            .unwrap_or_else(|_| std::path::PathBuf::from(default_name));
+
+                        // Handle platform-specific restart logic
+                        #[cfg(target_os = "macos")]
+                        {
+                            // On macOS, try to find the .app bundle and use open command
+                            if let Some(app_bundle_path) = app_path
+                                .ancestors()
+                                .find(|p| p.extension().map_or(false, |ext| ext == "app"))
+                            {
+                                match std::process::Command::new("open")
+                                        .arg("-n") // Open a new instance
+                                        .arg(app_bundle_path)
+                                        .arg("--args")
+                                        .arg("--safe-mode")
+                                        .spawn()
+                                {
+                                    Ok(_) => app.exit(0),
+                                    Err(e) => {
+                                        eprintln!(
+                                            "Failed to restart in safe mode using open command: {}",
+                                            e
+                                        );
+                                        // Fallback to direct execution if open command fails
+                                        match std::process::Command::new(app_path)
+                                            .arg("--safe-mode")
+                                            .spawn()
+                                        {
+                                            Ok(_) => app.exit(0),
+                                            Err(e) => {
+                                                eprintln!("Failed to restart in safe mode: {}", e);
+                                                app.exit(1);
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // If not in an app bundle, use direct execution
+                                match std::process::Command::new(app_path)
+                                    .arg("--safe-mode")
+                                    .spawn()
+                                {
+                                    Ok(_) => app.exit(0),
+                                    Err(e) => {
+                                        eprintln!("Failed to restart in safe mode: {}", e);
+                                        app.exit(1);
+                                    }
                                 }
                             }
-                            app.exit(0);
                         }
-                        _ => {}
-                    })
-                    .on_tray_icon_event(|tray, event| {
-                        if let TrayIconEvent::Click {
-                            button: MouseButton::Left,
-                            button_state: MouseButtonState::Up,
-                            ..
-                        } = event
+
+                        #[cfg(target_os = "linux")]
                         {
-                            if let Some(window) = tray.app_handle().get_webview_window("main") {
-                                // 先显示窗口（处理隐藏状态）
-                                let _ = window.show();
-                                // 恢复窗口（处理最小化状态）
-                                let _ = window.unminimize();
-                                // 设置焦点
-                                let _ = window.set_focus();
+                            // On Linux, check execute permissions
+                            use std::fs::Permissions;
+                            use std::os::unix::fs::PermissionsExt;
+
+                            if let Ok(metadata) = app_path.metadata() {
+                                let perms = metadata.permissions();
+                                if (perms.mode() & 0o111) == 0 {
+                                    // Try to add execute permissions
+                                    if let Ok(()) = std::fs::set_permissions(
+                                        &app_path,
+                                        Permissions::from_mode(perms.mode() | 0o111),
+                                    ) {
+                                        eprintln!(
+                                            "Added execute permissions to {}",
+                                            app_path.display()
+                                        );
+                                    } else {
+                                        eprintln!(
+                                            "Warning: No execute permissions on {}",
+                                            app_path.display()
+                                        );
+                                    }
+                                }
+                            }
+
+                            match std::process::Command::new(app_path)
+                                .arg("--safe-mode")
+                                .spawn()
+                            {
+                                Ok(_) => app.exit(0),
+                                Err(e) => {
+                                    eprintln!("Failed to restart in safe mode: {}", e);
+                                    app.exit(1);
+                                }
                             }
                         }
-                    })
-                    .build(app)?;
+
+                        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+                        {
+                            // For Windows and other platforms
+                            match std::process::Command::new(app_path)
+                                .arg("--safe-mode")
+                                .spawn()
+                            {
+                                Ok(_) => app.exit(0),
+                                Err(e) => {
+                                    eprintln!("Failed to restart in safe mode: {}", e);
+                                    app.exit(1);
+                                }
+                            }
+                        }
+                    }
+                    "quit" => {
+                        let settings = services::global::settings_manager().get();
+                        if settings.close_servers_on_exit {
+                            services::global::server_manager().stop_all_servers();
+                        }
+                        if let Some(manager) =
+                            app.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>()
+                        {
+                            if let Ok(mut m) = manager.lock() {
+                                m.disable_all_plugins_for_shutdown();
+                            }
+                        }
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        if let Some(window) = tray.app_handle().get_webview_window("main") {
+                            // 先显示窗口（处理隐藏状态）
+                            let _ = window.show();
+                            // 恢复窗口（处理最小化状态）
+                            let _ = window.unminimize();
+                            // 设置焦点
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
 
             Ok(())
         })

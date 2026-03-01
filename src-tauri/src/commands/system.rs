@@ -385,3 +385,9 @@ pub fn get_default_run_path() -> Result<String, String> {
 
     Ok(minecraft_servers_dir.to_string_lossy().to_string())
 }
+
+#[tauri::command]
+pub fn get_safe_mode_status() -> Result<bool, String> {
+    let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
+    Ok(safe_mode)
+}
