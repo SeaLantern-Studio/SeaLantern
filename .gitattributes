@@ -1,2 +1,2 @@
 * text=auto eol=lf
-*.asm text eol=lf
+*.asm linguist-language=Assembly
