@@ -14,7 +14,7 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
     let cpu_usage = sys.global_cpu_usage();
     let cpu_count = sys.cpus().len();
     let cpu_name = sys
-        .cpus() 
+        .cpus()
         .first()
         .map(|c| c.brand().to_string())
         .unwrap_or_else(|| "Unknown".to_string());
@@ -34,7 +34,7 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
         (used_swap as f64 / total_swap as f64 * 100.0) as f32
     } else {
         0.0
-    }; 
+    };
 
     let disks = Disks::new_with_refreshed_list();
     let disk_info: Vec<serde_json::Value> = disks
@@ -383,7 +383,7 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
     // 确定系统和架构
     let os = std::env::consts::OS;
     let arch = std::env::consts::ARCH;
-    
+
     // 映射系统名称
     let os_name = match os {
         "windows" => "windows",
@@ -391,7 +391,7 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
         "linux" => "linux",
         _ => return Err(format!("不支持的操作系统: {}", os)),
     };
-    
+
     // 映射架构名称
     let arch_name = match arch {
         "x86_64" => "amd64",
@@ -399,13 +399,13 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
         "arm" => "arm",
         _ => return Err(format!("不支持的架构: {}", arch)),
     };
-    
+
     // 获取应用程序目录
-    let exe_path = std::env::current_exe()
-        .map_err(|e| format!("无法获取应用程序路径: {}", e))?;
-    let app_dir = exe_path.parent()
+    let exe_path = std::env::current_exe().map_err(|e| format!("无法获取应用程序路径: {}", e))?;
+    let app_dir = exe_path
+        .parent()
         .ok_or_else(|| "无法获取应用程序目录".to_string())?;
-    
+
     // 尝试在应用程序目录中查找frpc
     let mut frpc_path = match provider.as_str() {
         "chmlfrp" => {
@@ -413,72 +413,75 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
             let frpc_dir = format!("frpc/{}/{}-{}", provider, os_name, arch_name);
             let frpc_exe = if os == "windows" { "frpc.exe" } else { "frpc" };
             app_dir.join(&frpc_dir).join(frpc_exe)
-        },
+        }
         "openfrp" | "sakurafrp" => {
             // openfrp/sakurafrp: frpc/openfrp/linux-amd64
             let suffix = if os == "windows" { ".exe" } else { "" };
             let frpc_path_str = format!("frpc/{}/{}-{}{}", provider, os_name, arch_name, suffix);
             app_dir.join(&frpc_path_str)
-        }, 
+        }
         _ => {
             return Err(format!("不支持的FRP提供商: {}", provider));
         }
     };
-    
+
     // 如果在应用程序目录中找不到，尝试在项目根目录中查找（开发环境）
     if !frpc_path.exists() {
         // 尝试向上查找，直到找到frpc文件夹或根目录
         let mut current_dir = app_dir;
-        for _ in 0..5 { // 最多向上查找5级目录
+        for _ in 0..5 {
+            // 最多向上查找5级目录
             let parent_dir = current_dir.parent().unwrap_or(current_dir);
-            if parent_dir == current_dir { // 已经到达根目录
+            if parent_dir == current_dir {
+                // 已经到达根目录
                 break;
             }
-            
+
             let candidate_path = match provider.as_str() {
                 "chmlfrp" => {
                     let frpc_dir = format!("frpc/{}/{}-{}", provider, os_name, arch_name);
                     let frpc_exe = if os == "windows" { "frpc.exe" } else { "frpc" };
                     parent_dir.join(&frpc_dir).join(frpc_exe)
-                },
+                }
                 "openfrp" | "sakurafrp" => {
                     let suffix = if os == "windows" { ".exe" } else { "" };
-                    let frpc_path_str = format!("frpc/{}/{}-{}{}", provider, os_name, arch_name, suffix);
+                    let frpc_path_str =
+                        format!("frpc/{}/{}-{}{}", provider, os_name, arch_name, suffix);
                     parent_dir.join(&frpc_path_str)
-                },
+                }
                 _ => {
                     return Err(format!("不支持的FRP提供商: {}", provider));
                 }
             };
-            
+
             if candidate_path.exists() {
                 frpc_path = candidate_path;
                 break;
             }
-            
+
             current_dir = parent_dir;
         }
     }
-    
+
     if !frpc_path.exists() {
         return Err(format!("frpc可执行文件不存在: {}", frpc_path.display()));
     }
-    
+
     // 构建命令
     let mut command = std::process::Command::new(&frpc_path);
-    
+
     match provider.as_str() {
         "chmlfrp" | "openfrp" => {
             command.arg("-u").arg(&token).arg("-p").arg(&tunnel_id);
-        },
+        }
         "sakurafrp" => {
             command.arg("-f").arg(format!("{}:{}", token, tunnel_id));
-        },
+        }
         _ => {
             return Err(format!("不支持的FRP提供商: {}", provider));
         }
     }
-    
+
     // 执行命令，在独立窗口中运行
     #[cfg(target_os = "windows")]
     {
@@ -497,10 +500,10 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
         match provider.as_str() {
             "chmlfrp" | "openfrp" => {
                 cmd.arg("-u").arg(&token).arg("-p").arg(&tunnel_id);
-            },
+            }
             "sakurafrp" => {
                 cmd.arg("-f").arg(format!("{}:{}", token, tunnel_id));
-            },
+            }
             _ => {
                 return Err(format!("不支持的FRP提供商: {}", provider));
             }
@@ -520,14 +523,22 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
     #[cfg(target_os = "linux")]
     {
         // 在Linux上使用xterm或gnome-terminal打开新窗口
-        let terminal = if std::process::Command::new("xterm").arg("-version").output().is_ok() {
-            "xterm" 
-        } else if std::process::Command::new("gnome-terminal").arg("--version").output().is_ok() {
+        let terminal = if std::process::Command::new("xterm")
+            .arg("-version")
+            .output()
+            .is_ok()
+        {
+            "xterm"
+        } else if std::process::Command::new("gnome-terminal")
+            .arg("--version")
+            .output()
+            .is_ok()
+        {
             "gnome-terminal"
         } else {
             return Err("无法找到终端模拟器".to_string());
         };
-        
+
         let mut cmd = std::process::Command::new(terminal);
         if terminal == "xterm" {
             cmd.arg("-e");
@@ -540,7 +551,7 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
         }
         cmd.spawn().map_err(|e| format!("无法启动FRP隧道: {}", e))?;
     }
-    
+
     Ok(())
 }
 pub fn get_default_run_path() -> Result<String, String> {
