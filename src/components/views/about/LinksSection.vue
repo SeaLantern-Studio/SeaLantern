@@ -2,6 +2,7 @@
 import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 import { useAboutLinks } from "@composables/useAboutLinks";
+import { URLS } from "@utils/constants";
 
 const { openLink } = useAboutLinks();
 </script>
@@ -17,6 +18,9 @@ const { openLink } = useAboutLinks();
       @click="openLink('https://github.com/SeaLantern-Studio/SeaLantern')"
     >
       {{ i18n.t("about.github_repo") }}
+    </SLButton>
+    <SLButton variant="primary" size="lg" @click="openLink(URLS.OFFICIAL_SITE)">
+      {{ i18n.t("about.official_site") }}
     </SLButton>
     <SLButton
       variant="secondary"

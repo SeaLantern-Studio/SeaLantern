@@ -45,6 +45,9 @@ export function containsIoRedirection(command: string): boolean {
 }
 
 export function sortStartupCandidates(candidates: StartupCandidate[]): StartupCandidate[] {
+  // avoid mutating original array and support environments that lack
+  // Array.prototype.toSorted (introduced in newer JS runtimes)
+  return [...candidates].sort((a, b) => {
   return [...candidates].toSorted((a, b) => {
     if (a.recommended !== b.recommended) {
       return a.recommended - b.recommended;
