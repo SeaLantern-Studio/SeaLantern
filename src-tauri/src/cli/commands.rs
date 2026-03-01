@@ -463,7 +463,7 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
                 println!("即将删除服务器: {} ({})", server.name, server.id);
                 println!("路径: {}", server.path);
                 print!("确认删除? (y/N): ");
-                use std::io::{self, BufRead, Write};
+                use std::io::{self, BufRead};
                 let stdin = io::stdin();
                 let mut input = String::new();
                 stdin.lock().read_line(&mut input).ok();
@@ -494,7 +494,7 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 print!("确认停止所有? (y/N): ");
-                use std::io::{self, BufRead, Write};
+                use std::io::{self, BufRead};
                 let stdin = io::stdin();
                 let mut input = String::new();
                 stdin.lock().read_line(&mut input).ok();

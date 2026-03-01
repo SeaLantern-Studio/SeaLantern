@@ -221,23 +221,56 @@ const LOG_FLUSH_INTERVAL_MS: u64 = 50;       // 50ms 批处理窗口
 
 程序启动时通过 `--cli` 参数判断运行模式：
 
+```rust
+// main.rs
+let args: Vec<String> = std::env::args().collect();
+if args.iter().any(|arg| arg == "--cli") {
+    // 进入 CLI 模式，解析命令并执行
+    run_cli_mode(args);
+} else {
+    // 启动 Tauri GUI 应用
+    tauri::Builder::default().run(tauri::generate_context!()).unwrap();
+}
+```
+
 ### 参数解析
 
 使用 `clap` crate 进行参数解析，支持子命令和全局选项：
+
+```rust
+#[derive(Parser)]
+#[command(name = "sea-lantern")]
+#[command(about = "Minecraft 服务器管理器", long_about = None)]
+struct Cli {
+    /// 输出格式 (text/json)
+    #[arg(short, long, global = true, default_value = "text")]
+    format: String,
+    
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    List { /* ... */ },
+    Start { /* ... */ },
+    // ... 其他命令
+}
+```
+
 ### 参数过滤技巧
 
 由于 `--cli` 是模式切换标志而非 clap 参数，需要在解析前过滤：
-## 依赖版本
 
-| 依赖 | 版本 | 用途 |
-| tauri | 2.x | 桌面应用框架 |
-| clap | 4.x | CLI 参数解析 |
-| serde | 1.x | 序列化/反序列化 |
-| serde_json | 1.x | JSON 处理 |
-| rusqlite | 0.x | SQLite 数据库 |
-| tokio | 1.x | 异步运行时 |
-| chrono | 0.4 | 时间处理 |
-| uuid | 1.x | UUID 生成 |
+```rust
+// 过滤掉 --cli 标志，避免 clap 报错
+let filtered_args: Vec<String> = std::env::args()
+    .filter(|arg| arg != "--cli")
+    .collect();
+let cli = Cli::parse_from(filtered_args);
+```
+
+---
 ## 已知问题
 
 1. **create/import 命令**: CLI 版创建和导入服务器功能正在开发中（lan）

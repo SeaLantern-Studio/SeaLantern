@@ -97,16 +97,21 @@ impl LogRingBuffer {
         self.len == 0
     }
 
-    fn drain(&mut self) -> Vec<LogWriteEntry> {
-        let mut result = Vec::with_capacity(self.len);
+    /// 将缓冲区内容 drain 到调用方提供的 Vec 中，避免重复分配。
+    /// 调用方负责在调用前确保 Vec 有足够的容量，或在调用后清理 Vec。
+    fn drain_into(&mut self, out: &mut Vec<LogWriteEntry>) {
+        let needed = self.len.saturating_sub(out.capacity().saturating_sub(out.len()));
+        if needed > 0 {
+            out.reserve(needed);
+        }
+
         while self.len > 0 {
             if let Some(entry) = self.buffer[self.head].take() {
-                result.push(entry);
+                out.push(entry);
             }
             self.head = (self.head + 1) % LOG_BATCH_SIZE;
             self.len -= 1;
         }
-        result
     }
 }
 
@@ -272,6 +277,8 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
 
     let flush_interval = Duration::from_millis(LOG_FLUSH_INTERVAL_MS);
     let mut batch = LogRingBuffer::new();
+    // 复用 Vec 分配，避免每次 flush 都分配新内存
+    let mut flush_buffer = Vec::with_capacity(LOG_BATCH_SIZE);
 
     // Writer 主循环：
     // - 至少取到一条日志后再进入"时间窗口聚合"，减少空转
@@ -282,8 +289,9 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
             Ok(cmd) => cmd,
             Err(_) => {
                 if !batch.is_empty() {
-                    let entries = batch.drain();
-                    let _ = flush_batch(&mut conn, &entries);
+                    flush_buffer.clear();
+                    batch.drain_into(&mut flush_buffer);
+                    let _ = flush_batch(&mut conn, &flush_buffer);
                 }
                 break;
             }
@@ -301,21 +309,24 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
                     match rx.recv_timeout(remain) {
                         Ok(WriterCommand::Append(entry)) => { batch.push(entry); }
                         Ok(WriterCommand::Shutdown) => {
-                            let entries = batch.drain();
-                            let _ = flush_batch(&mut conn, &entries);
+                            flush_buffer.clear();
+                            batch.drain_into(&mut flush_buffer);
+                            let _ = flush_batch(&mut conn, &flush_buffer);
                             return;
                         }
                         Err(mpsc::RecvTimeoutError::Timeout) => break,
                         Err(mpsc::RecvTimeoutError::Disconnected) => {
-                            let entries = batch.drain();
-                            let _ = flush_batch(&mut conn, &entries);
+                            flush_buffer.clear();
+                            batch.drain_into(&mut flush_buffer);
+                            let _ = flush_batch(&mut conn, &flush_buffer);
                             return;
                         }
                     }
                 }
 
-                let entries = batch.drain();
-                if let Err(err) = flush_batch(&mut conn, &entries) {
+                flush_buffer.clear();
+                batch.drain_into(&mut flush_buffer);
+                if let Err(err) = flush_batch(&mut conn, &flush_buffer) {
                     eprintln!(
                         "[server_log_pipeline] flush batch failed id={} path={} err={}",
                         server_id,
@@ -326,8 +337,9 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
             }
             WriterCommand::Shutdown => {
                 if !batch.is_empty() {
-                    let entries = batch.drain();
-                    let _ = flush_batch(&mut conn, &entries);
+                    flush_buffer.clear();
+                    batch.drain_into(&mut flush_buffer);
+                    let _ = flush_batch(&mut conn, &flush_buffer);
                 }
                 break;
             }

@@ -597,11 +597,11 @@ impl ServerManager {
 
         let requested_mode = normalize_startup_mode(&req.startup_mode).to_string();
         let (jar_path, startup_mode, custom_command) = if requested_mode == "custom" {
-            let command = req
+            let raw_command = req
                 .custom_command
                 .as_ref()
-                .map(|value| validate_custom_command(value))
-                .ok_or_else(|| "自定义启动命令不能为空".to_string())??;
+                .ok_or_else(|| "自定义启动命令不能为空".to_string())?;
+            let command = validate_custom_command(raw_command)?;
             (String::new(), requested_mode, Some(command))
         } else if let Some(ref exec_path) = req.executable_path {
             let path = std::path::Path::new(exec_path);
