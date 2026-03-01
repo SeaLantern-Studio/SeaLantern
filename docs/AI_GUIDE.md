@@ -7,9 +7,9 @@
 **项目名称**: 海晶灯 (Sea Lantern)
 **项目类型**: Minecraft 服务器管理工具
 **技术栈**: Tauri 2 + Rust + Vue 3 + TypeScript + Pinia
-**当前版本**: 0.6.5
-**Gitee仓库**: https://gitee.com/fps_z/SeaLantern (master 分支)
-**Github仓库**: https://github.com/FPSZ/SeaLantern (main 分支)
+**当前版本**: 1.0.0
+**Gitee仓库**: https://gitee.com/fps_z/SeaLantern
+**Github仓库**: https://github.com/SeaLantern-Studio/SeaLantern
 
 ### 核心特点
 

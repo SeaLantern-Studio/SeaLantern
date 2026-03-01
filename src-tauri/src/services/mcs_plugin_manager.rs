@@ -1,9 +1,48 @@
 use crate::models::mcs_plugin::*;
 use std::fs;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 use zip::ZipArchive;
+
+fn validate_safe_leaf_path(value: &str, field_name: &str) -> Result<(), String> {
+    if value.trim().is_empty() {
+        return Err(format!("{} 不能为空", field_name));
+    }
+    if value.contains('\0') {
+        return Err(format!("{} 包含非法字符", field_name));
+    }
+
+    let mut components = Path::new(value).components();
+    match (components.next(), components.next()) {
+        (Some(Component::Normal(_)), None) => Ok(()),
+        _ => Err(format!("{} 不能包含路径分隔符或相对路径", field_name)),
+    }
+}
+
+fn normalize_plugin_file_name(file_name: &str) -> Result<String, String> {
+    validate_safe_leaf_path(file_name, "插件文件名")?;
+
+    let base_file_name = if file_name.ends_with(".jar.disabled") {
+        file_name.replace(".disabled", "")
+    } else if file_name.ends_with(".jar") {
+        file_name.to_string()
+    } else {
+        format!("{}.jar", file_name)
+    };
+
+    validate_safe_leaf_path(&base_file_name, "插件文件名")?;
+    if !base_file_name.ends_with(".jar") {
+        return Err("插件文件名必须以 .jar 结尾".to_string());
+    }
+
+    Ok(base_file_name)
+}
+
+fn plugin_config_folder_path(plugins_dir: &Path, plugin_name: &str) -> Result<PathBuf, String> {
+    validate_safe_leaf_path(plugin_name, "插件配置目录名")?;
+    Ok(plugins_dir.join(plugin_name))
+}
 
 #[allow(non_camel_case_types)]
 pub struct m_PluginManager {
@@ -56,8 +95,14 @@ impl m_PluginManager {
                                 .name
                                 .clone()
                                 .unwrap_or_else(|| base_file_name.replace(".jar", ""));
-                            let config_folder_path = plugins_dir.join(&plugin_name);
-                            let has_config_folder = config_folder_path.exists();
+                            let has_config_folder =
+                                if let Ok(config_folder_path) =
+                                    plugin_config_folder_path(&plugins_dir, &plugin_name)
+                                {
+                                    config_folder_path.exists()
+                                } else {
+                                    false
+                                };
 
                             // 暂时不扫描配置文件，只在需要时扫描
                             let config_files = vec![];
@@ -117,7 +162,7 @@ impl m_PluginManager {
         plugin_name: &str,
     ) -> Result<Vec<m_PluginConfigFile>, String> {
         let plugins_dir = Path::new(server_path).join("plugins");
-        let config_folder_path = plugins_dir.join(plugin_name);
+        let config_folder_path = plugin_config_folder_path(&plugins_dir, plugin_name)?;
 
         if config_folder_path.exists() {
             Ok(self.m_scan_plugin_config_files(&config_folder_path))
@@ -133,15 +178,7 @@ impl m_PluginManager {
         enabled: bool,
     ) -> Result<(), String> {
         let plugins_dir = Path::new(server_path).join("plugins");
-
-        // 规范化文件名，确保它是 .jar 文件
-        let base_file_name = if file_name.ends_with(".jar.disabled") {
-            file_name.replace(".disabled", "")
-        } else if file_name.ends_with(".jar") {
-            file_name.to_string()
-        } else {
-            format!("{}.jar", file_name)
-        };
+        let base_file_name = normalize_plugin_file_name(file_name)?;
 
         let current_path = if enabled {
             plugins_dir.join(format!("{}.disabled", base_file_name))
@@ -165,15 +202,7 @@ impl m_PluginManager {
 
     pub fn m_delete_plugin(&self, server_path: &str, file_name: &str) -> Result<(), String> {
         let plugins_dir = Path::new(server_path).join("plugins");
-
-        // 规范化文件名，确保它是 .jar 文件
-        let base_file_name = if file_name.ends_with(".jar.disabled") {
-            file_name.replace(".disabled", "")
-        } else if file_name.ends_with(".jar") {
-            file_name.to_string()
-        } else {
-            format!("{}.jar", file_name)
-        };
+        let base_file_name = normalize_plugin_file_name(file_name)?;
 
         let enabled_path = plugins_dir.join(&base_file_name);
         let disabled_path = plugins_dir.join(format!("{}.disabled", base_file_name));
@@ -202,7 +231,8 @@ impl m_PluginManager {
                 .map_err(|e| format!("Failed to create plugins directory: {}", e))?;
         }
 
-        let plugin_path = plugins_dir.join(file_name);
+        let base_file_name = normalize_plugin_file_name(file_name)?;
+        let plugin_path = plugins_dir.join(base_file_name);
 
         let mut file = tokio::fs::File::create(&plugin_path)
             .await
