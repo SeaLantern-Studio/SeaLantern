@@ -419,7 +419,7 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
             let suffix = if os == "windows" { ".exe" } else { "" };
             let frpc_path_str = format!("frpc/{}/{}-{}{}", provider, os_name, arch_name, suffix);
             app_dir.join(&frpc_path_str)
-        },
+        }, 
         _ => {
             return Err(format!("不支持的FRP提供商: {}", provider));
         }
