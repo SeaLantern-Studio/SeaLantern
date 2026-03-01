@@ -3,7 +3,7 @@ import { tauriInvoke } from "@api/tauri";
 export interface CpuInfo {
   name: string;
   count: number;
-  usage: number;
+  usage: number; 
 }
 
 export interface MemoryInfo {
