@@ -117,6 +117,7 @@ export const systemApi = {
 
   async startFrpTunnel(provider: string, token: string, tunnelId: string): Promise<void> {
     return tauriInvoke("start_frp_tunnel", { provider, token, tunnelId });
+  },
   async getDefaultRunPath(): Promise<string> {
     return tauriInvoke("get_default_run_path");
   },
