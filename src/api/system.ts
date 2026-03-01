@@ -17,7 +17,7 @@ export interface SwapInfo {
   total: number;
   used: number;
   usage: number;
-}
+} 
 
 export interface DiskDetail {
   name: string;
