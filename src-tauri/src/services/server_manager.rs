@@ -1147,7 +1147,7 @@ impl ServerManager {
     }
     pub fn get_running_server_ids(&self) -> Vec<String> {
         let procs = self.processes.lock().expect("processes lock poisoned");
-        procs.keys().cloned().collect()
+        procs.keys().cloned().collect::<Vec<String>>()
     }
     pub fn update_server_name(&self, id: &str, new_name: &str) -> Result<(), String> {
         let validated_name = validate_server_name(new_name)?;
@@ -1169,15 +1169,20 @@ impl ServerManager {
         drop(proc_map);
         // 跑着的话就停 等停完
         if is_proc_running {
-            let _ = self.request_stop_server(id);
-            // 等状态变 循环查
-            loop {
-                if !self.is_stopping(id) {
-                    break;
-                }
-                std::thread::sleep(std::time::Duration::from_millis(100));
-            }
+    self.request_stop_server(id)?; // 移除错误忽略，失败直接返回
+    let mut wait_count = 0;
+    loop {
+        if !self.is_stopping(id) {
+            break;
         }
+        wait_count += 1;
+        if wait_count >= 300 {
+            return Err("服务器停服超时，配置更新失败".to_string());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+}
+
         // 找服务器 改配置
         let mut servers = self.servers.lock().expect("servers lock poisoned");
         let target_server = servers.iter_mut().find(|s| s.id == id);
@@ -1195,12 +1200,13 @@ impl ServerManager {
     }
     pub fn stop_all_servers(&self) {
         let ids: Vec<String> = self
-            .processes
-            .lock()
-            .expect("processes lock poisoned")
-            .keys()
-            .cloned()
-            .collect();
+    .processes
+    .lock()
+    .expect("processes lock poisoned")
+    .keys()
+    .cloned()
+    .collect::<Vec<String>>();
+
         for id in ids {
             let _ = self.stop_server(&id);
         }
