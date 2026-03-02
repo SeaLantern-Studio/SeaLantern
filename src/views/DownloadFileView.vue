@@ -3,13 +3,13 @@ import { ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { systemApi } from "@api/system";
 import { downloadApi } from "@api/downloader";
-import { SLProgress } from "@src/components";
+import DownloadForm from "@components/views/download/DownloadForm.vue";
+import DownloadProgress from "@components/views/download/DownloadProgress.vue";
 
 const router = useRouter();
 const { error: errorMsg, showError, clearError } = useMessage();
@@ -31,19 +31,28 @@ const isDownloading = computed(() => taskInfo.id !== "" && !taskInfo.isFinished)
 const combinedLoading = computed(() => submitting.value || isDownloading.value);
 
 const canDownload = computed(() => {
-  return (
-    !isDownloading.value &&
-    url.value.trim() !== "" &&
-    savePath.value.trim() !== "" &&
-    filename.value.trim() !== "" &&
-    threadCount.value.trim() !== ""
-  );
+  if (
+    isDownloading.value ||
+    url.value.trim() === "" ||
+    savePath.value.trim() === "" ||
+    filename.value.trim() === "" ||
+    threadCount.value.trim() === ""
+  ) {
+    return false;
+  }
+
+  // 验证URL格式
+  try {
+    new URL(url.value.trim());
+    return true;
+  } catch {
+    return false;
+  }
 });
 
-function checkUrl(event: { target: { value: any } }) {
-  const url = event.target.value;
+function checkUrl() {
   try {
-    const urlObj = new URL(url);
+    const urlObj = new URL(url.value);
     const pathName = urlObj.pathname;
     const segments = pathName.split("/");
     if (segments.length > 1) {
@@ -54,8 +63,7 @@ function checkUrl(event: { target: { value: any } }) {
   }
 }
 
-function checkFilename(event: { target: { value: any } }) {
-  const filename = event.target.value;
+function checkFilename() {
   // 文件名输入时不需要特殊处理
 }
 
@@ -67,14 +75,6 @@ async function pickFloder() {
     console.error("Pick file error:", e);
   }
 }
-
-const formatSize = (bytes: number) => {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-};
 
 const statusLabel = computed(() => {
   if (taskError.value) return i18n.t("download-file.failed");
@@ -132,36 +132,20 @@ watch(taskError, (newError) => {
     </div>
 
     <SLCard :title="i18n.t('download-file.title')">
-      <div class="form-grid">
-        <SLInput
-          :label="i18n.t('download-file.url')"
-          v-model="url"
-          :disabled="isDownloading"
-          @input="checkUrl"
-        />
-        <SLInput
-          :label="i18n.t('download-file.save_folder')"
-          v-model="savePath"
-          :disabled="isDownloading"
-        >
-          <template #suffix>
-            <button class="sl-input-action" @click="pickFloder" :disabled="isDownloading">
-              {{ i18n.t("download-file.browse") }}
-            </button>
-          </template>
-        </SLInput>
-        <SLInput
-          :label="i18n.t('download-file.filename')"
-          v-model="filename"
-          :disabled="isDownloading"
-          @input="checkFilename"
-        />
-        <SLInput
-          :label="i18n.t('download-file.thread_count')"
-          v-model="threadCount"
-          :disabled="isDownloading"
-        />
-      </div>
+      <DownloadForm
+        :url="url"
+        :savePath="savePath"
+        :filename="filename"
+        :threadCount="threadCount"
+        :isDownloading="isDownloading"
+        @update:url="url = $event"
+        @update:savePath="savePath = $event"
+        @update:filename="filename = $event"
+        @update:threadCount="threadCount = $event"
+        @checkUrl="checkUrl()"
+        @checkFilename="checkFilename()"
+        @pickFolder="pickFloder"
+      />
     </SLCard>
 
     <div class="create-actions">
@@ -181,19 +165,7 @@ watch(taskError, (newError) => {
 
     <Transition name="fade">
       <div v-if="taskInfo.id" class="bottom-progress-area">
-        <div class="progress-wrapper">
-          <SLProgress
-            :value="taskInfo.progress"
-            :variant="taskError ? 'error' : taskInfo.isFinished ? 'success' : 'primary'"
-            :label="statusLabel"
-          />
-          <div class="progress-footer">
-            <span class="size-text"
-              >{{ formatSize(taskInfo.downloaded) }} / {{ formatSize(taskInfo.totalSize) }}</span
-            >
-            <span class="percent-text">{{ taskInfo.progress.toFixed(1) }}%</span>
-          </div>
-        </div>
+        <DownloadProgress :taskInfo="taskInfo" :taskError="taskError" :statusLabel="statusLabel" />
       </div>
     </Transition>
   </div>
@@ -228,12 +200,6 @@ watch(taskError, (newError) => {
   border: none;
 }
 
-.form-grid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-md);
-}
-
 .create-actions {
   display: flex;
   justify-content: center;
@@ -261,24 +227,6 @@ watch(taskError, (newError) => {
   display: flex;
   justify-content: center;
   width: 100%;
-}
-
-.progress-wrapper {
-  width: 100%;
-  max-width: 560px;
-  background: var(--sl-bg-secondary, #f9f9f9);
-  padding: var(--sl-space-md);
-  border-radius: var(--sl-radius-md);
-  border: 1px solid var(--sl-border-light, #eee);
-}
-
-.progress-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
-  font-size: var(--sl-font-size-xs);
-  color: var(--sl-text-secondary);
-  font-family: var(--sl-font-mono, monospace), serif;
 }
 
 .fade-enter-active,

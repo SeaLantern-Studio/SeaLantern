@@ -64,25 +64,4 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: var(--sl-space-md);
 }
-
-.sl-input-action {
-  padding: 0 12px;
-  height: 32px;
-  font-size: 0.75rem;
-  background: var(--sl-bg-secondary);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-  cursor: pointer;
-  transition: all var(--sl-transition-fast);
-}
-
-.sl-input-action:hover:not(:disabled) {
-  background: var(--sl-bg-tertiary);
-  border-color: var(--sl-border-light);
-}
-
-.sl-input-action:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 </style>

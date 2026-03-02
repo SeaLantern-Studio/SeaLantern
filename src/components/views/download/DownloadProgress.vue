@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { SLProgress } from "@components/common";
 import { i18n } from "@language";
+import { formatBytes } from "@utils/serverUtils";
 
 const props = defineProps<{
   taskInfo: {
@@ -12,14 +13,6 @@ const props = defineProps<{
   taskError: string | null;
   statusLabel: string;
 }>();
-
-const formatSize = (bytes: number) => {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-};
 </script>
 
 <template>
@@ -31,7 +24,7 @@ const formatSize = (bytes: number) => {
     />
     <div class="progress-footer">
       <span class="size-text"
-        >{{ formatSize(taskInfo.downloaded) }} / {{ formatSize(taskInfo.totalSize) }}</span
+        >{{ formatBytes(taskInfo.downloaded) }} / {{ formatBytes(taskInfo.totalSize) }}</span
       >
       <span class="percent-text">{{ taskInfo.progress.toFixed(1) }}%</span>
     </div>
