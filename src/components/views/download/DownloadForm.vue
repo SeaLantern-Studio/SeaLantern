@@ -28,7 +28,7 @@ const emit = defineEmits<{
       :model-value="url"
       @update:model-value="$emit('update:url', $event)"
       :disabled="isDownloading"
-      @input="checkUrl"
+      @input="$emit('checkUrl', $event)"
     />
     <SLInput
       :label="i18n.t('download-file.save_folder')"
@@ -47,7 +47,7 @@ const emit = defineEmits<{
       :model-value="filename"
       @update:model-value="$emit('update:filename', $event)"
       :disabled="isDownloading"
-      @input="checkFilename"
+      @input="$emit('checkFilename', $event)"
     />
     <SLInput
       :label="i18n.t('download-file.thread_count')"
