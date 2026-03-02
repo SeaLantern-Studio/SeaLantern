@@ -21,7 +21,7 @@ jobs:
           set -euo pipefail
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Syu --noconfirm base-devel git sudo openssh dpkg
+          pacman -Syu --noconfirm base-devel git sudo openssh dpkg nasm
 
           useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
