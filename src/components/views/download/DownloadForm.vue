@@ -8,7 +8,6 @@ const props = defineProps<{
   filename: string;
   threadCount: string;
   isDownloading: boolean;
-  isUrlValid: boolean;
 }>();
 
 const emit = defineEmits<{
