@@ -7,8 +7,8 @@ import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
-import { systemApi } from "@src/api";
-import { downloadApi } from "@api/downloader.ts";
+import { systemApi } from "@api/system";
+import { downloadApi } from "@api/downloader";
 import { SLProgress } from "@src/components";
 
 const router = useRouter();
@@ -27,10 +27,18 @@ const savePath = ref("");
 const filename = ref("");
 const threadCount = ref("32");
 
-const isUrlValid = ref(false);
-
 const isDownloading = computed(() => taskInfo.id !== "" && !taskInfo.isFinished);
 const combinedLoading = computed(() => submitting.value || isDownloading.value);
+
+const canDownload = computed(() => {
+  return (
+    !isDownloading.value &&
+    url.value.trim() !== "" &&
+    savePath.value.trim() !== "" &&
+    filename.value.trim() !== "" &&
+    threadCount.value.trim() !== ""
+  );
+});
 
 function checkUrl(event: { target: { value: any } }) {
   const url = event.target.value;
@@ -40,16 +48,15 @@ function checkUrl(event: { target: { value: any } }) {
     const segments = pathName.split("/");
     if (segments.length > 1) {
       filename.value = segments[segments.length - 1];
-      isUrlValid.value = filename.value.length > 0;
     }
   } catch {
-    isUrlValid.value = false;
+    // 当URL无效时，不重置filename，因为用户可能手动输入了文件名
   }
 }
 
 function checkFilename(event: { target: { value: any } }) {
   const filename = event.target.value;
-  isUrlValid.value = filename.length > 0;
+  // 文件名输入时不需要特殊处理
 }
 
 async function pickFloder() {
@@ -121,7 +128,7 @@ watch(taskError, (newError) => {
   <div class="download-view animate-fade-in-up">
     <div v-if="errorMsg" class="error-banner">
       <span>{{ errorMsg }}</span>
-      <button class="error-close" @click="clearError()">x</button>
+      <button class="error-close" @click="clearError">x</button>
     </div>
 
     <SLCard :title="i18n.t('download-file.title')">
@@ -166,7 +173,7 @@ watch(taskError, (newError) => {
         size="lg"
         :loading="combinedLoading"
         @click="handleDownload"
-        :disabled="isDownloading || !isUrlValid"
+        :disabled="!canDownload"
       >
         {{ isDownloading ? i18n.t("download-file.downloading") : i18n.t("download-file.download") }}
       </SLButton>
@@ -200,6 +207,7 @@ watch(taskError, (newError) => {
   max-width: 640px;
   margin: 0 auto;
 }
+
 .error-banner {
   display: flex;
   align-items: center;
@@ -211,6 +219,7 @@ watch(taskError, (newError) => {
   color: var(--sl-error);
   font-size: var(--sl-font-size-base);
 }
+
 .error-close {
   color: var(--sl-error);
   font-weight: 600;
@@ -218,20 +227,24 @@ watch(taskError, (newError) => {
   background: none;
   border: none;
 }
+
 .form-grid {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
 }
+
 .create-actions {
   display: flex;
   justify-content: center;
   gap: var(--sl-space-md);
   margin-top: var(--sl-space-md);
 }
+
 .animate-fade-in-up {
   animation: fadeInUp 0.4s ease-out;
 }
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -246,14 +259,14 @@ watch(taskError, (newError) => {
 .bottom-progress-area {
   margin-top: var(--sl-space-lg);
   display: flex;
-  justify-content: center; /* 居中 */
+  justify-content: center;
   width: 100%;
 }
 
 .progress-wrapper {
   width: 100%;
-  max-width: 560px; /* 略窄于卡片，更有层次感 */
-  background: var(--sl-bg-secondary, #f9f9f9); /* 可选：给个淡淡的底色背景 */
+  max-width: 560px;
+  background: var(--sl-bg-secondary, #f9f9f9);
   padding: var(--sl-space-md);
   border-radius: var(--sl-radius-md);
   border: 1px solid var(--sl-border-light, #eee);
@@ -266,5 +279,15 @@ watch(taskError, (newError) => {
   font-size: var(--sl-font-size-xs);
   color: var(--sl-text-secondary);
   font-family: var(--sl-font-mono, monospace), serif;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
