@@ -1,4 +1,4 @@
-import { tauriInvoke } from "./tauri";
+import { tauriInvoke } from "@api/tauri";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface UpdateInfo {
@@ -6,21 +6,20 @@ export interface UpdateInfo {
   latest_version: string;
   current_version: string;
   download_url?: string;
+  sha256?: string;
   release_notes?: string;
   published_at?: string;
   source?: string;
-  sha256?: string;
+}
+
+export interface PendingUpdate {
+  version: string;
+  date: string;
 }
 
 export interface DownloadProgress {
   downloaded: number;
   total: number;
-  percent: number;
-}
-
-export interface PendingUpdate {
-  file_path: string;
-  version: string;
 }
 
 export async function checkUpdate(): Promise<UpdateInfo | null> {
@@ -33,8 +32,12 @@ export async function checkUpdate(): Promise<UpdateInfo | null> {
   }
 }
 
-export async function downloadUpdate(url: string, expectedHash?: string): Promise<string> {
-  return tauriInvoke<string>("download_update", { url, expectedHash });
+export async function downloadUpdate(
+  url: string,
+  expectedHash?: string,
+  version?: string,
+): Promise<string> {
+  return tauriInvoke<string>("download_update", { url, expectedHash, version });
 }
 
 export async function installUpdate(filePath: string, version: string): Promise<void> {

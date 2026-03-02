@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { Check, ChevronDown, Loader2, Search } from "lucide-vue-next";
-import { i18n } from "../../language";
+import { i18n } from "@language";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
 
 interface Option {
   label: string;
@@ -19,6 +20,7 @@ interface Props {
   loading?: boolean;
   maxHeight?: string;
   previewFont?: boolean;
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,6 +30,18 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   maxHeight: "280px",
   previewFont: false,
+});
+
+const _selectId = props.componentId ?? `sl-select-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(_selectId, {
+  type: "SLSelect",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", value as string | number);
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => containerRef.value,
 });
 
 const emit = defineEmits<{
@@ -42,6 +56,14 @@ const inputRef = ref<HTMLInputElement | null>(null);
 const highlightedIndex = ref(-1);
 
 const dropdownStyle = ref<Record<string, string>>({});
+
+const optionsMaxHeight = computed(() => {
+  let maxHeight = parseInt(props.maxHeight) || 280;
+  if (props.searchable) {
+    maxHeight = Math.max(50, maxHeight - 50);
+  }
+  return `${maxHeight}px`;
+});
 
 const getFontStyle = (value: string | number) => {
   if (!props.previewFont || !value) return {};
@@ -248,7 +270,11 @@ onUnmounted(() => {
       :aria-expanded="isOpen"
       :aria-disabled="disabled"
       :aria-owns="isOpen ? 'sl-select-listbox' : undefined"
-      :aria-activedescendant="isOpen && highlightedIndex >= 0 ? `option-${filteredOptions[highlightedIndex].value}` : undefined"
+      :aria-activedescendant="
+        isOpen && highlightedIndex >= 0
+          ? `option-${filteredOptions[highlightedIndex].value}`
+          : undefined
+      "
     >
       <span v-if="loading" class="sl-select-loading" aria-live="polite">
         <Loader2 class="spinner" :size="16" aria-hidden="true" />
@@ -275,11 +301,7 @@ onUnmounted(() => {
       <Transition name="dropdown">
         <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef" :style="dropdownStyle">
           <div v-if="searchable" class="sl-select-search">
-            <Search
-              class="search-icon"
-              :size="16"
-              aria-hidden="true"
-            />
+            <Search class="search-icon" :size="16" aria-hidden="true" />
             <input
               ref="inputRef"
               v-model="searchQuery"
@@ -291,7 +313,17 @@ onUnmounted(() => {
             />
           </div>
 
-          <div id="sl-select-listbox" class="sl-select-options" :style="{ maxHeight }" role="listbox" :aria-activedescendant="highlightedIndex >= 0 ? `option-${filteredOptions[highlightedIndex].value}` : undefined">
+          <div
+            id="sl-select-listbox"
+            class="sl-select-options"
+            :style="{ maxHeight: optionsMaxHeight }"
+            role="listbox"
+            :aria-activedescendant="
+              highlightedIndex >= 0
+                ? `option-${filteredOptions[highlightedIndex].value}`
+                : undefined
+            "
+          >
             <div v-if="filteredOptions.length === 0" class="sl-select-empty" role="presentation">
               {{ i18n.t("common.no_match") }}
             </div>
@@ -337,7 +369,7 @@ onUnmounted(() => {
 
 .sl-select-label {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   font-weight: 500;
   color: var(--sl-text-secondary);
   margin-bottom: var(--sl-space-xs);
@@ -349,7 +381,7 @@ onUnmounted(() => {
   justify-content: space-between;
   width: 100%;
   padding: 8px 12px;
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
@@ -429,24 +461,40 @@ onUnmounted(() => {
 <style>
 /* 下拉框样式 - 非 scoped，因为使用 Teleport 渲染到 body */
 .sl-select-dropdown {
-  background: var(--sl-surface, #1e2130);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
+  border-radius: var(--sl-radius-lg, 12px);
   box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
-  backdrop-filter: blur(20px);
-  will-change: transform, opacity;
+  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   color: var(--sl-text-primary);
+  transform-origin: top center;
 }
 
-
-
-:root[data-acrylic="true"][data-theme="dark"] .sl-select-dropdown {
-  background: rgba(30, 33, 48, 0.95);
+[data-theme="dark"] .sl-select-dropdown {
+  --sl-glass-bg: rgba(15, 17, 23, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
 }
 
-:root[data-acrylic="true"][data-theme="light"] .sl-select-dropdown {
-  background: rgba(255, 255, 255, 0.95);
+[data-acrylic="true"] .sl-select-dropdown {
+  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
+}
+
+[data-theme="dark"][data-acrylic="true"] .sl-select-dropdown {
+  --sl-glass-bg: rgba(15, 17, 23, 0.65);
+}
+
+[data-acrylic="false"] .sl-select-dropdown {
+  background: var(--sl-surface, #ffffff);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 .sl-select-dropdown .sl-select-search {
@@ -466,7 +514,7 @@ onUnmounted(() => {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   color: var(--sl-text-primary);
   outline: none;
   width: 100%;
@@ -482,28 +530,11 @@ onUnmounted(() => {
   -webkit-overflow-scrolling: touch;
 }
 
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb {
-  background: var(--sl-border);
-  border-radius: 3px;
-}
-
-.sl-select-dropdown .sl-select-options::-webkit-scrollbar-thumb:hover {
-  background: var(--sl-text-tertiary);
-}
-
 .sl-select-dropdown .sl-select-empty {
   padding: 16px;
   text-align: center;
   color: var(--sl-text-tertiary);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .sl-select-dropdown .sl-select-option {
@@ -512,8 +543,30 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 10px 12px;
   cursor: pointer;
-  transition: background var(--sl-transition-fast);
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.sl-select-dropdown .sl-select-option::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sl-primary, #0ea5e9);
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  border-radius: inherit;
+}
+
+.sl-select-dropdown .sl-select-option:active:not(.selected)::before {
+  opacity: 0.1;
+  transform: scale(1);
 }
 
 .sl-select-dropdown .sl-select-option:hover,
@@ -542,7 +595,7 @@ onUnmounted(() => {
 }
 
 .sl-select-dropdown .sl-select-option .option-sublabel {
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-tertiary);
   font-family: var(--sl-font-mono);
   overflow: hidden;
@@ -554,18 +607,89 @@ onUnmounted(() => {
   color: var(--sl-primary);
   flex-shrink: 0;
   margin-left: 8px;
+  animation: check-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.dropdown-enter-active,
+@keyframes check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-45deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.dropdown-enter-active {
+  animation: dropdown-enter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 .dropdown-leave-active {
-  transition: all 0.15s ease;
-  will-change: transform, opacity;
+  animation: dropdown-leave 0.15s ease;
 }
 
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
+@keyframes dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/* Option stagger animation */
+.sl-select-option {
+  animation: option-fade-in 0.2s ease backwards;
+}
+
+.sl-select-option:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.sl-select-option:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.sl-select-option:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.sl-select-option:nth-child(4) {
+  animation-delay: 0.08s;
+}
+.sl-select-option:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.sl-select-option:nth-child(6) {
+  animation-delay: 0.12s;
+}
+.sl-select-option:nth-child(7) {
+  animation-delay: 0.14s;
+}
+.sl-select-option:nth-child(8) {
+  animation-delay: 0.16s;
+}
+
+@keyframes option-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @media (max-width: 768px) {

@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { handleError } from "../utils/errorHandler";
+import { handleError } from "@utils/errorHandler";
 
 /**
  * 异步操作状态

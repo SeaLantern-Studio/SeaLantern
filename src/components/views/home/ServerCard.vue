@@ -1,0 +1,522 @@
+<script setup lang="ts">
+import { Pencil, FolderOpen, Check, X } from "lucide-vue-next";
+import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
+import type { ServerInstance } from "@type/server";
+import { i18n } from "@language";
+import { systemApi } from "@api/system";
+import { useRouter } from "vue-router";
+import {
+  actionLoading,
+  editingServerId,
+  editName,
+  editLoading,
+  formatServerPath,
+  getStatusText,
+  handleStart,
+  handleStop,
+  startEditServerName,
+  saveServerName,
+  cancelEdit,
+  showDeleteConfirmInput,
+} from "@utils/serverUtils";
+import { useServerStore } from "@stores/serverStore";
+
+const props = defineProps<{
+  server: ServerInstance;
+}>();
+
+const store = useServerStore();
+const router = useRouter();
+
+async function handlePathClick(path: string) {
+  try {
+    await systemApi.openFolder(path);
+  } catch (e) {
+    console.error("打开文件夹失败:", e);
+  }
+}
+
+function handleConsole() {
+  store.setCurrentServer(props.server.id);
+  router.push("/console/" + props.server.id);
+}
+
+function handleConfig() {
+  store.setCurrentServer(props.server.id);
+  router.push("/config/" + props.server.id);
+}
+
+function getStatusClass(status: string | undefined): string {
+  return status === "Running"
+    ? "running"
+    : status === "Starting"
+      ? "starting"
+      : status === "Stopping"
+        ? "stopping"
+        : "stopped";
+}
+</script>
+
+<template>
+  <SLCard variant="glass" hoverable class="server-card">
+    <div class="status-badge-container">
+      <div class="status-indicator" :class="getStatusClass(store.statuses[server.id]?.status)">
+        <span class="status-dot"></span>
+        <span class="status-label">{{ getStatusText(store.statuses[server.id]?.status) }}</span>
+      </div>
+    </div>
+
+    <div class="server-card-header">
+      <div class="server-name-container">
+        <template v-if="editingServerId === server.id">
+          <div class="inline-edit">
+            <input
+              type="text"
+              v-model="editName"
+              class="server-name-input"
+              @keyup.enter="saveServerName(server.id)"
+              @keyup.esc="cancelEdit"
+              @blur="saveServerName(server.id)"
+            />
+            <div class="inline-edit-actions">
+              <button
+                class="inline-edit-btn save"
+                @click="saveServerName(server.id)"
+                :disabled="!editName.trim() || editLoading"
+                :class="{ loading: editLoading }"
+              >
+                <Check :size="16" />
+              </button>
+              <button class="inline-edit-btn cancel" @click="cancelEdit" :disabled="editLoading">
+                <X :size="16" />
+              </button>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <h4 class="server-name">{{ server.name }}</h4>
+          <button
+            class="edit-server-name"
+            @click="startEditServerName(server)"
+            :title="i18n.t('common.edit_server_name')"
+          >
+            <Pencil :size="16" />
+          </button>
+        </template>
+      </div>
+      <div class="server-meta">
+        <span class="meta-tag core-type">{{ server.core_type }}</span>
+        <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
+        <span class="meta-tag">{{ server.max_memory }}MB</span>
+      </div>
+    </div>
+
+    <div class="server-card-content">
+      <div
+        class="server-card-path text-mono text-caption"
+        :title="server.path"
+        @click="handlePathClick(server.path)"
+      >
+        <span class="server-path-text">{{ formatServerPath(server.path) }}</span>
+        <FolderOpen class="folder-icon" :size="16" />
+      </div>
+    </div>
+
+    <div class="server-card-actions">
+      <div class="action-group primary-actions">
+        <SLButton
+          v-if="
+            store.statuses[server.id]?.status === 'Stopped' ||
+            store.statuses[server.id]?.status === 'Error' ||
+            !store.statuses[server.id]?.status
+          "
+          variant="primary"
+          size="sm"
+          :loading="actionLoading[server.id]"
+          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
+          @click="handleStart(server.id)"
+          >{{ i18n.t("home.start") }}</SLButton
+        >
+        <SLButton
+          v-else
+          variant="danger"
+          size="sm"
+          :loading="actionLoading[server.id]"
+          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
+          @click="handleStop(server.id)"
+          >{{ i18n.t("home.stop") }}</SLButton
+        >
+      </div>
+      <div class="action-group secondary-actions">
+        <SLButton variant="ghost" size="sm" @click="handleConsole">
+          {{ i18n.t("common.console") }}
+        </SLButton>
+        <SLButton variant="ghost" size="sm" @click="handleConfig">
+          {{ i18n.t("common.config_edit") }}
+        </SLButton>
+        <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
+          {{ i18n.t("home.delete") }}
+        </SLButton>
+      </div>
+    </div>
+  </SLCard>
+</template>
+
+<style scoped>
+.server-card {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  height: 100%;
+  min-height: 200px;
+}
+
+.status-badge-container {
+  position: absolute;
+  top: var(--sl-space-sm);
+  right: var(--sl-space-sm);
+  z-index: 10;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  padding: 4px 12px;
+  border-radius: var(--sl-radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-indicator.running {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--sl-success);
+}
+
+.status-indicator.running .status-dot {
+  background: var(--sl-success);
+}
+
+.status-indicator.stopped {
+  background: var(--sl-bg-tertiary);
+  color: var(--sl-text-tertiary);
+}
+
+.status-indicator.stopped .status-dot {
+  background: var(--sl-text-tertiary);
+}
+
+.status-indicator.starting,
+.status-indicator.stopping {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--sl-warning);
+}
+
+.status-indicator.starting .status-dot,
+.status-indicator.stopping .status-dot {
+  background: var(--sl-warning);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.server-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sl-primary), var(--sl-secondary));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+  z-index: 1;
+}
+
+.server-card:hover::before {
+  transform: scaleX(1);
+}
+
+.server-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+  padding-right: 100px;
+}
+
+.server-name-container {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+}
+
+.server-name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--sl-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-server-name {
+  opacity: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px;
+  border-radius: var(--sl-radius-sm);
+  flex-shrink: 0;
+  color: var(--sl-text-secondary);
+}
+
+.server-card:hover .edit-server-name {
+  opacity: 1;
+}
+
+.edit-server-name:hover {
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+}
+
+.inline-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.server-name-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--sl-primary);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.server-name-input:focus {
+  box-shadow: 0 0 0 2px var(--sl-primary-bg);
+}
+
+.inline-edit-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.inline-edit-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--sl-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.inline-edit-btn.save {
+  background: var(--sl-primary);
+  color: white;
+}
+
+.inline-edit-btn.save:hover:not(:disabled) {
+  background: var(--sl-primary-dark);
+}
+
+.inline-edit-btn.cancel {
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-secondary);
+  border-color: var(--sl-border);
+}
+
+.inline-edit-btn.cancel:hover:not(:disabled) {
+  background: var(--sl-bg-tertiary);
+}
+
+.inline-edit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inline-edit-btn.loading {
+  opacity: 0.8;
+}
+
+.server-meta {
+  font-size: 0.75rem;
+  color: var(--sl-text-tertiary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-xs);
+}
+
+.meta-tag {
+  background: var(--sl-bg-tertiary);
+  padding: 4px 10px;
+  border-radius: var(--sl-radius-full);
+  white-space: nowrap;
+  border: 1px solid var(--sl-border);
+  transition: all 0.2s ease;
+}
+
+.meta-tag:hover {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-primary-light);
+}
+
+.meta-tag.core-type {
+  background: var(--sl-primary-bg);
+  border-color: var(--sl-primary-light);
+  color: var(--sl-primary);
+  font-weight: 500;
+}
+
+.meta-tag.core-type:hover {
+  background: var(--sl-primary);
+  color: white;
+}
+
+.server-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--sl-space-sm) 0;
+}
+
+.server-card-path {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-sm);
+  font-size: 0.75rem;
+  color: var(--sl-text-secondary);
+  background: var(--sl-bg-tertiary);
+  padding: 8px var(--sl-space-sm);
+  border-radius: var(--sl-radius-md);
+  border: 1px solid var(--sl-border);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.server-path-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.folder-icon {
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  color: var(--sl-text-secondary);
+}
+
+.server-card-path:hover {
+  background: var(--sl-bg-secondary);
+  border-color: var(--sl-primary-light);
+  color: var(--sl-text-primary);
+}
+
+.server-card-path:hover .folder-icon {
+  opacity: 1;
+  color: var(--sl-text-primary);
+}
+
+.server-card-actions {
+  display: flex;
+  gap: var(--sl-space-sm);
+  padding-top: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.action-group {
+  display: flex;
+  gap: var(--sl-space-xs);
+  align-items: center;
+}
+
+.primary-actions :deep(.sl-button) {
+  min-width: 72px;
+  border-radius: var(--sl-radius-md);
+  transition: all 0.2s ease;
+}
+
+.secondary-actions :deep(.sl-button) {
+  border-radius: var(--sl-radius-md);
+  transition: all 0.2s ease;
+}
+
+.server-card-actions :deep(.sl-button:hover) {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .server-card-actions {
+    flex-wrap: wrap;
+  }
+
+  .action-group {
+    flex: 1;
+  }
+
+  .primary-actions {
+    flex: 0 0 auto;
+  }
+
+  .secondary-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .server-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .action-group :deep(.sl-button) {
+    flex: 1;
+  }
+}
+</style>

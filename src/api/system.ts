@@ -1,4 +1,4 @@
-import { tauriInvoke } from "./tauri";
+import { tauriInvoke } from "@api/tauri";
 
 export interface CpuInfo {
   name: string;
@@ -75,12 +75,28 @@ export const systemApi = {
     return tauriInvoke("pick_jar_file");
   },
 
+  async pickArchiveFile(): Promise<string | null> {
+    return tauriInvoke("pick_archive_file");
+  },
+
   async pickStartupFile(mode: "jar" | "bat" | "sh"): Promise<string | null> {
     return tauriInvoke("pick_startup_file", { mode });
   },
 
+  async pickServerExecutable(): Promise<{ path: string; mode: "jar" | "bat" | "sh" } | null> {
+    const result = await tauriInvoke<[string, string] | null>("pick_server_executable");
+    if (result) {
+      return { path: result[0], mode: result[1] as "jar" | "bat" | "sh" };
+    }
+    return null;
+  },
+
   async pickJavaFile(): Promise<string | null> {
     return tauriInvoke("pick_java_file");
+  },
+
+  async pickSaveFile(): Promise<string | null> {
+    return tauriInvoke("pick_save_file");
   },
 
   async pickFolder(): Promise<string | null> {
@@ -91,7 +107,19 @@ export const systemApi = {
     return tauriInvoke("pick_image_file");
   },
 
+  async openFile(path: string): Promise<void> {
+    return tauriInvoke("open_file", { path });
+  },
+
   async openFolder(path: string): Promise<void> {
     return tauriInvoke("open_folder", { path });
+  },
+
+  async getDefaultRunPath(): Promise<string> {
+    return tauriInvoke("get_default_run_path");
+  },
+
+  async getSafeModeStatus(): Promise<boolean> {
+    return tauriInvoke("get_safe_mode_status");
   },
 };

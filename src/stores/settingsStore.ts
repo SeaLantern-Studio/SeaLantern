@@ -1,6 +1,11 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { settingsApi, checkAcrylicSupport, applyAcrylic, type AppSettings } from "../api/settings";
+import {
+  settingsApi,
+  type AppSettings,
+  type PartialSettings,
+  type SettingsGroup,
+} from "@api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 const THEME_CACHE_KEY = "sl_theme_cache";
@@ -11,14 +16,14 @@ function getThemeCache(): { theme: string; fontSize: number } | null {
     if (cached) {
       return JSON.parse(cached);
     }
-  } catch (e) { }
+  } catch (e) {}
   return null;
 }
 
 function saveThemeCache(theme: string, fontSize: number): void {
   try {
     localStorage.setItem(THEME_CACHE_KEY, JSON.stringify({ theme, fontSize }));
-  } catch (e) { }
+  } catch (e) {}
 }
 
 export function getInitialTheme(): string {
@@ -46,6 +51,8 @@ const defaultSettings: AppSettings = {
   default_java_path: "",
   default_jvm_args: "",
   console_font_size: 12,
+  console_font_family: "",
+  console_letter_spacing: 0,
   max_log_lines: 1000,
   cached_java_list: [],
   background_image: "",
@@ -61,19 +68,39 @@ const defaultSettings: AppSettings = {
   language: "zh-CN",
   developer_mode: false,
   close_action: "ask",
+  last_run_path: "",
+  minimal_mode: false,
 };
+
+export interface SettingsUpdateEvent {
+  changedGroups: SettingsGroup[];
+  settings: AppSettings;
+}
+
+export const SETTINGS_UPDATE_EVENT = "settings-updated-v2";
+
+export function dispatchSettingsUpdate(
+  changedGroups: SettingsGroup[],
+  settings: AppSettings,
+): void {
+  window.dispatchEvent(
+    new CustomEvent<SettingsUpdateEvent>(SETTINGS_UPDATE_EVENT, {
+      detail: { changedGroups, settings },
+    }),
+  );
+}
 
 export const useSettingsStore = defineStore("settings", () => {
   const settings = ref<AppSettings>(defaultSettings);
   const isLoaded = ref(false);
   const isLoading = ref(false);
   const loadError = ref<string | null>(null);
-  const acrylicSupported = ref(false);
 
   const theme = computed(() => settings.value.theme || "auto");
   const fontSize = computed(() => settings.value.font_size || 14);
   const acrylicEnabled = computed(() => settings.value.acrylic_enabled);
   const colorScheme = computed(() => settings.value.color || "default");
+  const minimalMode = computed(() => settings.value.minimal_mode || false);
   const backgroundImage = computed(() =>
     settings.value.background_image ? convertFileSrc(settings.value.background_image) : "",
   );
@@ -89,13 +116,9 @@ export const useSettingsStore = defineStore("settings", () => {
     loadError.value = null;
 
     try {
-      const [loadedSettings, supported] = await Promise.all([
-        settingsApi.get(),
-        checkAcrylicSupport().catch(() => false),
-      ]);
+      const loadedSettings = await settingsApi.get();
 
       settings.value = loadedSettings;
-      acrylicSupported.value = supported;
       isLoaded.value = true;
       saveThemeCache(loadedSettings.theme || "auto", loadedSettings.font_size || 14);
     } catch (e) {
@@ -114,6 +137,22 @@ export const useSettingsStore = defineStore("settings", () => {
     saveThemeCache(newSettings.theme || "auto", newSettings.font_size || 14);
   }
 
+  async function saveSettingsWithDiff(newSettings: AppSettings): Promise<SettingsGroup[]> {
+    const result = await settingsApi.saveWithDiff(newSettings);
+    settings.value = result.settings;
+    saveThemeCache(result.settings.theme || "auto", result.settings.font_size || 14);
+    return result.changed_groups;
+  }
+
+  async function updatePartial(partial: PartialSettings): Promise<SettingsGroup[]> {
+    const result = await settingsApi.updatePartial(partial);
+    settings.value = result.settings;
+    if (partial.theme || partial.font_size) {
+      saveThemeCache(result.settings.theme || "auto", result.settings.font_size || 14);
+    }
+    return result.changed_groups;
+  }
+
   async function resetSettings(): Promise<void> {
     const defaultSettingsResult = await settingsApi.reset();
     settings.value = defaultSettingsResult;
@@ -122,19 +161,6 @@ export const useSettingsStore = defineStore("settings", () => {
 
   function updateSettings(partial: Partial<AppSettings>): void {
     settings.value = { ...settings.value, ...partial };
-  }
-
-  async function applyAcrylicEffect(enabled: boolean): Promise<void> {
-    if (!acrylicSupported.value) return;
-
-    const effectiveTheme = getEffectiveTheme();
-    const isDark = effectiveTheme === "dark";
-
-    try {
-      await applyAcrylic(enabled, isDark);
-    } catch (e) {
-      console.error("Failed to apply acrylic:", e);
-    }
   }
 
   function getEffectiveTheme(): "light" | "dark" {
@@ -150,11 +176,11 @@ export const useSettingsStore = defineStore("settings", () => {
     isLoaded,
     isLoading,
     loadError,
-    acrylicSupported,
     theme,
     fontSize,
     acrylicEnabled,
     colorScheme,
+    minimalMode,
     backgroundImage,
     backgroundOpacity,
     backgroundBlur,
@@ -162,9 +188,10 @@ export const useSettingsStore = defineStore("settings", () => {
     backgroundSize,
     loadSettings,
     saveSettings,
+    saveSettingsWithDiff,
+    updatePartial,
     resetSettings,
     updateSettings,
-    applyAcrylicEffect,
     getEffectiveTheme,
   };
 });

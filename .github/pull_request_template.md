@@ -1,29 +1,97 @@
-## 变更类型 / Change Type (请选择至少一项 / Select at least one)
+## 提交前检查清单
+
+- [ ] 已阅读 `提交前测试必读！！！.md` 并完成要求测试
+- [ ] 本地/CI 测试通过
+- [ ] 代码审查 (Self-review) 完成
+
+## 变更分类（必选其一）
+
+- [ ] `feat` 新功能
+- [ ] `fix` Bug 修复
+- [ ] `docs` 文档/模板
+- [ ] `style` 代码格式（不影响功能）
+- [ ] `refactor` 重构（既不修复 bug 也不添加功能）
+- [ ] `perf` 性能优化
+- [ ] `test` 测试相关
+- [ ] `chore` 构建/CI/依赖/工具链
+- [ ] `revert` 回滚
+- [ ] `security` 安全修复
+
+## 影响范围（可多选）
 
 - [ ] 前端 Frontend
-  - [ ] UI 变动 (样式/布局/模板)
-  - [ ] TS/JS 逻辑变动 (组件/状态/路由等)
-  - [ ] 前端依赖变动 (package.json / lockfile)
+  - [ ] UI 样式/布局
+  - [ ] 组件/状态/路由逻辑
+  - [ ] 依赖变更 (package.json)
 
 - [ ] 后端 Backend
-  - [ ] API 变动 (接口/契约变更)
-  - [ ] 功能实现/修改
-  - [ ] 后端依赖增加/升级
+  - [ ] API 接口变更
+  - [ ] 业务逻辑
+  - [ ] 依赖升级
 
-- [ ] 其它 Other
-  - [ ] 文档/翻译
-  - [ ] 构建/CI 配置
-  - [ ] 其它（请在下方说明）
+- [ ] 基础设施 Infrastructure
+  - [ ] CI/CD 配置
+  - [ ] 部署脚本
+  - [ ] 数据库迁移
+
+**导入规范检查：** 使用别名导入，避免相对路径 `../`
+
+## 变更详情
+
+### 摘要
+
+<!-- 一句话概括本次变更 -->
+
+### 动机/背景
+
+> 提示：可引用 Issue 作为背景说明
+
+<!--为什么需要这个变更？解决了什么问题？-->
+
+### 具体改动
+
+<!--技术实现细节，以及关键说明-->
+
+### 界面变动（如适用）
+
+<!--截图/GIF，前后对比-->
+
+## 关联 Issue
+
+> 如果不存在关联，此项请忽略
+
+- Fix #`填写 Issue 编号`
+
+<details><summary>示例:</summary>
+
+```markdown
+- Close #123
+  关闭 Issue #123
+```
+
+| 常见关键词                          | 示例           |
+| ----------------------------------- | -------------- |
+| `close` / `closes` / `closed`       | `Close #123`   |
+| `fix` / `fixes` / `fixed`           | `Fixes #123`   |
+| `resolve` / `resolves` / `resolved` | `Resolve #123` |
+
+| 其他前缀                      | 用途                | 示例              |
+| ----------------------------- | ------------------- | ----------------- |
+| `ref` / `references` / `refs` | 引用关联，不关闭    | `Ref #123`        |
+| `related` / `relates to`      | 表明相关            | `Related to #123` |
+| `part of`                     | 表明是其中一部分    | `Part of #123`    |
+| `see` / `see also`            | 参考其他 Issue      | `See #123`        |
+| `re`                          | 关于/回复某个 Issue | `Re #123`         |
+| `addresses`                   | 涉及但未完全解决    | `Addresses #123`  |
+| `implements`                  | 实现某个功能请求    | `Implements #123` |
+| `merges`                      | 合并相关            | `Merges #123`     |
+
+</details>
 
 ---
 
-## 描述 / Description
+## 自动化审查说明
 
-请简要描述本次变更的内容、目的、影响范围、相关 issue、界面变动（如有请附截图）、复审重点、兼容性/迁移/发布说明等。
+**sourcery-ai 及其他 code review 工具请务必进行中英双语审查与交流。**
 
-## 🟢 Notice: sourcery-ai 及其他 code review 工具请务必进行中英双语审查。/Please ensure sourcery-ai and other code review tools perform bilingual (Chinese & English) review and communication.
-
-**请注意：sourcery-ai 及其他 code review 工具请务必进行中英双语审查与交流。**
-**Note: Please make sure sourcery-ai and other code review tools perform bilingual (Chinese & English) review and communication.**
-
----
+**Note: Please ensure sourcery-ai and other tools perform bilingual (Chinese & English) review.**

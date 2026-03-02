@@ -61,33 +61,8 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
         })
         .collect();
 
-    // 针对不同平台计算磁盘空间
-    let (total_disk_space, total_disk_available): (u64, u64) = {
-        #[cfg(any(target_os = "macos", target_os = "linux"))]
-        {
-            // 在 macOS 和 Linux 上，只计算根目录 (/) 的磁盘空间
-            if let Some(root_disk) = disks
-                .iter()
-                .find(|d| d.mount_point().to_string_lossy() == "/")
-            {
-                (root_disk.total_space(), root_disk.available_space())
-            } else {
-                // 如果找不到根目录，回退到计算所有磁盘
-                (
-                    disks.iter().map(|d| d.total_space()).sum(),
-                    disks.iter().map(|d| d.available_space()).sum(),
-                )
-            }
-        }
-        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-        {
-            // 在其他平台，继续计算所有磁盘空间
-            (
-                disks.iter().map(|d| d.total_space()).sum(),
-                disks.iter().map(|d| d.available_space()).sum(),
-            )
-        }
-    };
+    let total_disk_space: u64 = disks.iter().map(|d| d.total_space()).sum();
+    let total_disk_available: u64 = disks.iter().map(|d| d.available_space()).sum();
     let total_disk_used = total_disk_space.saturating_sub(total_disk_available);
     let total_disk_usage = if total_disk_space > 0 {
         (total_disk_used as f64 / total_disk_space as f64 * 100.0) as f32
@@ -177,6 +152,27 @@ pub async fn pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, Stri
 }
 
 #[tauri::command]
+pub async fn pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    app.dialog()
+        .file()
+        .set_title("Select server file")
+        .add_filter("Server Files", &["jar", "zip", "tar", "tgz", "gz"])
+        .add_filter("JAR Files", &["jar"])
+        .add_filter("ZIP Files", &["zip"])
+        .add_filter("TAR Files", &["tar"])
+        .add_filter("Compressed TAR", &["tgz", "gz"])
+        .add_filter("All Files", &["*"])
+        .pick_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
 pub async fn pick_startup_file(
     app: tauri::AppHandle,
     mode: String,
@@ -214,8 +210,43 @@ pub async fn pick_startup_file(
 }
 
 #[tauri::command]
-pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+pub async fn pick_server_executable(
+    app: tauri::AppHandle,
+) -> Result<Option<(String, String)>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
+
+    app.dialog()
+        .file()
+        .set_title("Select server executable file")
+        .add_filter("Server Files", &["jar", "bat", "sh"])
+        .add_filter("JAR Files", &["jar"])
+        .add_filter("BAT Files", &["bat"])
+        .add_filter("Shell Scripts", &["sh"])
+        .add_filter("All Files", &["*"])
+        .pick_file(move |path| {
+            let result = path.map(|p| {
+                let path_str = p.to_string();
+                let ext = std::path::Path::new(&path_str)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.to_ascii_lowercase())
+                    .unwrap_or_default();
+                let mode = match ext.as_str() {
+                    "bat" => "bat",
+                    "sh" => "sh",
+                    _ => "jar",
+                };
+                (path_str, mode.to_string())
+            });
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
+pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
 
     app.dialog()
         .file()
@@ -227,17 +258,16 @@ pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, Str
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.await.map_err(|e| format!("Dialog error: {}", e))
 }
 
 #[tauri::command]
-pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
-
     app.dialog()
         .file()
-        .set_title("Select modpack folder")
-        .pick_folder(move |path| {
+        .set_title("Save")
+        .save_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
@@ -246,8 +276,23 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String
 }
 
 #[tauri::command]
+pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+
+    app.dialog()
+        .file()
+        .set_title("Select folder")
+        .pick_folder(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.await.map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
 pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = tokio::sync::oneshot::channel();
 
     app.dialog()
         .file()
@@ -259,49 +304,90 @@ pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, St
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.await.map_err(|e| format!("Dialog error: {}", e))
+}
+
+#[tauri::command]
+pub fn open_file(path: String) -> Result<(), String> {
+    let path = std::path::Path::new(&path);
+    if !path.exists() {
+        return Err(format!("文件不存在: {}", path.display()));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        Command::new("explorer.exe")
+            .arg("/select,")
+            .arg(path)
+            .spawn()
+            .map_err(|e| format!("无法打开文件: {}", e))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        Command::new("open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| format!("无法打开文件: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        Command::new("xdg-open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| format!("无法打开文件: {}", e))?;
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
 pub fn open_folder(path: String) -> Result<(), String> {
-    use std::process::Command;
+    let path = std::path::Path::new(&path);
+    if !path.exists() {
+        return Err(format!("文件夹不存在: {}", path.display()));
+    }
 
     #[cfg(target_os = "windows")]
     {
-        let status = Command::new("explorer")
+        use std::process::Command;
+        Command::new("explorer.exe")
             .arg(path)
-            .status()
-            .map_err(|e| format!("Failed to open folder: {}", e))?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err("Failed to open folder".to_string())
-        }
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
     }
-
     #[cfg(target_os = "macos")]
     {
-        let status = Command::new("open")
+        use std::process::Command;
+        Command::new("open")
             .arg(path)
-            .status()
-            .map_err(|e| format!("Failed to open folder: {}", e))?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err("Failed to open folder".to_string())
-        }
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
     }
-
     #[cfg(target_os = "linux")]
     {
-        let status = Command::new("xdg-open")
+        use std::process::Command;
+        Command::new("xdg-open")
             .arg(path)
-            .status()
-            .map_err(|e| format!("Failed to open folder: {}", e))?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err("Failed to open folder".to_string())
-        }
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
     }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_default_run_path() -> Result<String, String> {
+    let documents_dir = dirs_next::document_dir().ok_or_else(|| "无法获取文档目录".to_string())?;
+    let minecraft_servers_dir = documents_dir.join("Minecraft Servers");
+
+    Ok(minecraft_servers_dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn get_safe_mode_status() -> Result<bool, String> {
+    let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
+    Ok(safe_mode)
 }

@@ -58,8 +58,8 @@ img {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: var(--sl-scrollbar-width);
+  height: var(--sl-scrollbar-width);
 }
 
 ::-webkit-scrollbar-track {
@@ -67,10 +67,10 @@ img {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--sl-border);
-  border-radius: var(--sl-radius-full);
+  background: var(--sl-scrollbar-thumb-bg);
+  border-radius: var(--sl-scrollbar-thumb-radius);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--sl-text-tertiary);
+  background: var(--sl-scrollbar-thumb-hover-bg);
 }

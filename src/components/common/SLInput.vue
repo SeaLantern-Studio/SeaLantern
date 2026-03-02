@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
+
 interface Props {
   modelValue?: string;
   placeholder?: string;
@@ -6,9 +9,10 @@ interface Props {
   type?: string;
   disabled?: boolean;
   maxlength?: number;
+  componentId?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   modelValue: "",
   placeholder: "",
   type: "text",
@@ -22,10 +26,23 @@ const emit = defineEmits<{
 const handleInput = (e: Event) => {
   emit("update:modelValue", (e.target as HTMLInputElement).value);
 };
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-input-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLInput",
+  get: (prop) => (prop === "value" ? props.modelValue : undefined),
+  set: (prop, value) => {
+    if (prop === "value") emit("update:modelValue", String(value ?? ""));
+  },
+  call: () => undefined,
+  on: () => () => {},
+  el: () => elRef.value,
+});
 </script>
 
 <template>
-  <div class="sl-input-wrapper">
+  <div ref="elRef" class="sl-input-wrapper">
     <label v-if="label" class="sl-input-label">{{ label }}</label>
     <div class="sl-input-container">
       <div v-if="$slots.prefix" class="sl-input-prefix">
@@ -65,7 +82,7 @@ const handleInput = (e: Event) => {
   align-items: center;
   background: var(--sl-surface, #fff);
   border: 1px solid var(--sl-border, #ddd);
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   transition:
     border-color var(--sl-transition-fast),
     box-shadow var(--sl-transition-fast);
@@ -117,5 +134,28 @@ const handleInput = (e: Event) => {
   align-items: center;
   padding: 0 8px;
   color: var(--sl-text-tertiary);
+}
+
+/* 统一的输入框内嵌操作按钮样式 */
+:deep(.sl-input-action) {
+  padding: 4px 10px;
+  border-radius: var(--sl-radius-sm);
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  font-size: var(--sl-font-size-sm);
+  cursor: pointer;
+  border: none;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+:deep(.sl-input-action:hover) {
+  background: color-mix(in srgb, var(--sl-primary) 15%, var(--sl-primary-bg));
+}
+
+:deep(.sl-input-action:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 </style>

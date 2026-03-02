@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+if ! pnpm exec commitlint --version >/dev/null 2>&1; then
+  echo "缺少 commitlint 依赖，请先执行：pnpm install"
+  exit 1
+fi
+
+if ! pnpm exec commitlint --edit "$1" --quiet; then
+  first_line="$(sed -n '1p' "$1" | tr -d '\r')"
+  echo ""
+  echo "提交信息不符合规范。格式应为：<type>: <描述> 或 <type>(scope): <描述>"
+  echo "允许 type：feat|fix|docs|style|refactor|perf|test|chore|revert|security"
+  echo "示例：feat(plugin): 增加插件下载重试机制"
+  echo "你的输入：${first_line:-<空>}"
+  exit 1
+fi

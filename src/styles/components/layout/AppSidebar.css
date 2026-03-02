@@ -1,0 +1,212 @@
+/* AppSidebar 组件样式 */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--sl-sidebar-width);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  border-right: 1px solid var(--sl-border-light);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+[data-acrylic="true"] .sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"][data-acrylic="true"] .sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.sidebar.collapsed {
+  width: var(--sl-sidebar-collapsed-width);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-md);
+  height: 60px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.logo-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-text {
+  font-size: 1.125rem;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--sl-space-sm);
+  position: relative;
+}
+
+.nav-group {
+  margin-bottom: var(--sl-space-sm);
+}
+
+.nav-group-label {
+  padding: var(--sl-space-xs) var(--sl-space-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--sl-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--sl-border);
+  margin-bottom: var(--sl-space-xs);
+}
+
+.server-selector {
+  padding: var(--sl-space-sm);
+  margin-bottom: var(--sl-space-sm);
+}
+
+.sidebar.collapsed .server-selector {
+  padding: 1px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sl-space-sm);
+  padding: 8px 12px;
+  border-radius: var(--sl-radius-md);
+  cursor: pointer;
+  color: var(--sl-text-secondary);
+  transition:
+    background-color var(--sl-transition-fast),
+    color var(--sl-transition-fast),
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  white-space: nowrap;
+  margin-top: 5px;
+  min-height: 36px;
+}
+
+.nav-item:hover {
+  background-color: var(--sl-primary-bg);
+  color: var(--sl-primary);
+}
+
+.nav-item.active {
+  background-color: var(--sl-primary-bg);
+  color: var(--sl-primary);
+  font-weight: 500;
+}
+
+.nav-active-indicator {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 3px;
+  height: 16px;
+  background-color: var(--sl-primary);
+  border-radius: var(--sl-radius-full);
+  transition: top 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  will-change: top;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.nav-icon {
+  flex-shrink: 0;
+  transition: transform var(--sl-transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.nav-plugin-icon {
+  border-radius: var(--sl-radius-xs);
+  object-fit: cover;
+  display: block;
+}
+
+.nav-children {
+  margin-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding-left: 4px;
+}
+
+.nav-child-item {
+  padding-left: 12px !important;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.nav-child-item:hover {
+  opacity: 1;
+}
+
+.nav-label {
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.sidebar-footer {
+  flex-shrink: 0;
+  padding: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: 8px 4px;
+}
+
+.sidebar.collapsed .nav-item {
+  padding: 8px;
+  padding-left: 10px;
+}
+
+.sidebar.collapsed .nav-label {
+  visibility: hidden;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .nav-group-label {
+  visibility: hidden;
+  opacity: 0;
+  height: 0;
+  padding: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--sl-border);
+}
+
+.sidebar.collapsed .nav-children {
+  display: none;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

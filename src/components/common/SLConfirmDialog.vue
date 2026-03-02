@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from "vue";
-import SLButton from "./SLButton.vue";
-import SLInput from "./SLInput.vue";
+import { X } from "lucide-vue-next";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import { i18n } from "@language";
 
 interface Props {
   visible: boolean;
@@ -18,10 +20,10 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: "确认操作",
+  title: () => i18n.t("common.confirm_action"),
   message: "",
-  confirmText: "确认",
-  cancelText: "取消",
+  confirmText: () => i18n.t("common.confirm"),
+  cancelText: () => i18n.t("common.cancel"),
   confirmVariant: "primary",
   requireInput: false,
   inputPlaceholder: "",
@@ -72,6 +74,10 @@ function handleCancel(): void {
   emit("close");
 }
 
+function handleClose(): void {
+  emit("close");
+}
+
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape") {
     handleCancel();
@@ -102,6 +108,13 @@ onUnmounted(() => {
         <div class="confirm-dialog" :class="{ 'confirm-dialog--danger': dangerous }" @click.stop>
           <div class="confirm-header">
             <h3 class="confirm-title">{{ title }}</h3>
+            <button
+              class="confirm-close"
+              @click="handleClose"
+              :aria-label="i18n.t('common.close_modal')"
+            >
+              <X :size="18" />
+            </button>
           </div>
 
           <div class="confirm-body">
@@ -168,6 +181,9 @@ onUnmounted(() => {
 }
 
 .confirm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: var(--sl-space-md) var(--sl-space-lg);
   border-bottom: 1px solid var(--sl-border-light);
 }
@@ -177,6 +193,52 @@ onUnmounted(() => {
   font-weight: 600;
   color: var(--sl-text-primary);
   margin: 0;
+}
+
+.confirm-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--sl-radius-md);
+  border: none;
+  background: transparent;
+  color: var(--sl-text-tertiary);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.confirm-close::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sl-error);
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.confirm-close:hover {
+  color: var(--sl-error);
+  transform: rotate(90deg);
+}
+
+.confirm-close:hover::before {
+  opacity: 0.1;
+  transform: scale(1);
+}
+
+.confirm-close:active {
+  transform: rotate(90deg) scale(0.9);
 }
 
 .confirm-body {

@@ -39,7 +39,7 @@ const handleInput = (e: Event) => {
       @input="handleInput"
     />
     <span v-if="maxlength" class="sl-textarea-count">
-      {{ (modelValue ?? '').length }} / {{ maxlength }}
+      {{ (modelValue ?? "").length }} / {{ maxlength }}
     </span>
   </div>
 </template>

@@ -1,165 +1,169 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
-import { useRoute } from "vue-router";
-import { useServerStore } from "../stores/serverStore";
-import { useConsoleStore } from "../stores/consoleStore";
-import { serverApi } from "../api/server";
-import { settingsApi } from "../api/settings";
-import { i18n } from "../language";
-import type { ServerCommand } from "../types/server";
-import { getStatusClass, getStatusText } from "../utils/serverStatus";
-import { useLoading } from "../composables/useAsync";
+import { ref, onMounted, onUnmounted, onActivated, nextTick, computed, watch } from "vue";
+import SLButton from "@components/common/SLButton.vue";
+import ConsoleInput from "@components/console/ConsoleInput.vue";
+import CommandModal from "@components/console/CommandModal.vue";
+import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import { useServerStore } from "@stores/serverStore";
+import { serverApi } from "@api/server";
+import { settingsApi } from "@api/settings";
+import { i18n } from "@language";
+import { useLoading } from "@composables/useAsync";
+import { SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "@stores/settingsStore";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 
-import ConsoleToolbar from "../components/console/ConsoleToolbar.vue";
-import ConsoleCommands from "../components/console/ConsoleCommands.vue";
-import ConsoleOutput from "../components/console/ConsoleOutput.vue";
-import ConsoleInput from "../components/console/ConsoleInput.vue";
-import CommandModal from "../components/console/CommandModal.vue";
-
-const route = useRoute();
 const serverStore = useServerStore();
-const consoleStore = useConsoleStore();
 
+interface ConsoleOutputExpose {
+  doScroll: () => void;
+  appendLines: (lines: string[]) => void;
+  clear: () => void;
+  getAllPlainText: () => string;
+}
+
+const commandInput = ref("");
+const consoleOutputRef = ref<ConsoleOutputExpose | null>(null);
 const userScrolledUp = ref(false);
+const commandHistory = ref<string[]>([]);
+const historyIndex = ref(-1);
 const consoleFontSize = ref(13);
+const consoleFontFamily = ref("");
+const consoleLetterSpacing = ref(0);
+const maxLogLines = ref(5000);
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
-const { loading: commandLoading, start: startCommandLoading, stop: stopCommandLoading } = useLoading();
-const isPolling = ref(false);
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let unlistenLogLine: UnlistenFn | null = null;
 
 const showCommandModal = ref(false);
-const editingCommand = ref<ServerCommand | null>(null);
+const commandModalTitle = ref("");
+const editingCommand = ref<import("@type/server").ServerCommand | null>(null);
 const commandName = ref("");
 const commandText = ref("");
-const commandModalTitle = ref("");
+const commandLoading = ref(false);
 
-const serverId = computed(() => {
-  return (
-    serverStore.currentServerId || consoleStore.activeServerId || (route.params.id as string) || ""
-  );
-});
+const quickCommands = computed(() => [
+  { label: i18n.t("common.command_day"), cmd: "time set day" },
+  { label: i18n.t("common.command_night"), cmd: "time set night" },
+  { label: i18n.t("common.command_clear"), cmd: "weather clear" },
+  { label: i18n.t("common.command_rain"), cmd: "weather rain" },
+  { label: i18n.t("common.command_save"), cmd: "save-all" },
+  { label: i18n.t("common.command_list"), cmd: "list" },
+  { label: "TPS", cmd: "tps" },
+  { label: i18n.t("common.command_keep_inventory_on"), cmd: "gamerule keepInventory true" },
+  { label: i18n.t("common.command_keep_inventory_off"), cmd: "gamerule keepInventory false" },
+  { label: i18n.t("common.command_mob_griefing_off"), cmd: "gamerule mobGriefing false" },
+]);
 
-const currentLogs = computed(() => consoleStore.logs[serverId.value] || []);
+const serverId = computed(() => serverStore.currentServerId || "");
 
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
 const isRunning = computed(() => serverStatus.value === "Running");
-const isStopped = computed(() => serverStatus.value === "Stopped");
+const isStopped = computed(
+  () => serverStatus.value === "Stopped" || serverStatus.value === "Error" || !serverStatus.value,
+);
 const isStopping = computed(() => serverStatus.value === "Stopping");
-
-const currentServerCommands = computed(() => {
-  const server = serverStore.servers.find((s) => s.id === serverId.value);
-  return server?.commands || [];
-});
-
-const serverName = computed(() => {
-  return serverStore.servers.find((s) => s.id === serverId.value)?.name || "";
-});
-
-watch(
-  () => serverId.value,
-  async (newServerId, oldServerId) => {
-    if (newServerId && newServerId !== oldServerId) {
-      // 确保consoleStore与serverStore保持同步
-      consoleStore.setActiveServer(newServerId);
-      // 同时更新serverStore的当前服务器，确保双向同步
-      if (newServerId !== serverStore.currentServerId) {
-        serverStore.setCurrentServer(newServerId);
-      }
-      await serverStore.refreshStatus(newServerId);
-      userScrolledUp.value = false;
-      nextTick(() => doScroll());
-    }
-  },
-);
-
-// 直接监听serverStore.currentServerId的变化，确保侧栏选择能立即同步到控制台
-watch(
-  () => serverStore.currentServerId,
-  async (newServerId) => {
-    if (newServerId && newServerId !== consoleStore.activeServerId) {
-      consoleStore.setActiveServer(newServerId);
-      await serverStore.refreshStatus(newServerId);
-      userScrolledUp.value = false;
-      nextTick(() => doScroll());
-    }
-  },
-);
+const isStarting = computed(() => serverStatus.value === "Starting");
 
 onMounted(async () => {
-  // Load console font size from settings
-  try {
-    const settings = await settingsApi.get();
-    consoleFontSize.value = settings.console_font_size;
-  } catch (e) {
-    console.error("Failed to load settings:", e);
-  }
+  await loadConsoleSettings();
+  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
 
   await serverStore.refreshList();
-  if (serverId.value) {
-    consoleStore.setActiveServer(serverId.value);
-    serverStore.setCurrentServer(serverId.value);
-    await serverStore.refreshStatus(serverId.value);
+  // 如果没有当前服务器但有服务器列表，选择第一个
+  if (!serverStore.currentServerId && serverStore.servers.length > 0) {
+    serverStore.setCurrentServer(serverStore.servers[0].id);
   }
-  startPolling();
+  if (serverId.value) {
+    await serverStore.refreshStatus(serverId.value);
+    await syncLogsOnce(serverId.value);
+  }
+  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
+    const sid = serverId.value;
+    if (!sid || server_id !== sid) return;
+    consoleOutputRef.value?.appendLines([line]);
+  });
   nextTick(() => doScroll());
 });
 
 onUnmounted(() => {
-  stopPolling();
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
+  if (unlistenLogLine) {
+    unlistenLogLine();
+    unlistenLogLine = null;
+  }
 });
 
-function startPolling() {
-  stopPolling();
-  pollTimer = setInterval(async () => {
-    // 防止并发执行
-    if (isPolling.value) return;
-    isPolling.value = true;
+onActivated(async () => {
+  await loadConsoleSettings();
+});
 
-    try {
-      const sid = serverId.value;
-      if (!sid) return;
-      const cursor = consoleStore.getLogCursor(sid);
-      try {
-        const newLines = await serverApi.getLogs(sid, cursor);
-        if (newLines.length > 0) {
-          consoleStore.appendLogs(sid, newLines);
-          consoleStore.setLogCursor(sid, cursor + newLines.length);
-        }
-      } catch (_e) {}
-      await serverStore.refreshStatus(sid);
-    } finally {
-      isPolling.value = false;
-    }
-  }, 800);
+watch(
+  () => serverId.value,
+  async (sid) => {
+    if (!sid) return;
+    await serverStore.refreshStatus(sid);
+    await syncLogsOnce(sid);
+    userScrolledUp.value = false;
+    nextTick(() => doScroll());
+  },
+);
+
+async function syncLogsOnce(sid: string) {
+  consoleOutputRef.value?.clear();
+  try {
+    const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
+    consoleOutputRef.value?.appendLines(lines);
+  } catch (_e) {}
 }
 
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
+async function loadConsoleSettings() {
+  try {
+    const settings = await settingsApi.get();
+    applyConsoleSettings(settings);
+  } catch (e) {
+    console.error("Failed to load settings:", e);
   }
 }
 
-async function sendCommand(cmd: string) {
-  const command = cmd.trim();
+function applyConsoleSettings(settings: {
+  console_font_size: number;
+  console_font_family: string;
+  console_letter_spacing: number;
+  max_log_lines: number;
+}) {
+  consoleFontSize.value = settings.console_font_size;
+  consoleFontFamily.value = settings.console_font_family || "";
+  consoleLetterSpacing.value = settings.console_letter_spacing || 0;
+  maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
+}
+
+function handleSettingsUpdate(event: CustomEvent<SettingsUpdateEvent>) {
+  applyConsoleSettings(event.detail.settings);
+}
+
+async function sendCommand(cmd?: string) {
+  const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
-  consoleStore.appendLocal(sid, "> " + command);
+  consoleOutputRef.value?.appendLines(["> " + command]);
+  commandHistory.value.push(command);
+  if (commandHistory.value.length > 500) {
+    commandHistory.value.splice(0, commandHistory.value.length - 500);
+  }
+  historyIndex.value = -1;
   try {
     await serverApi.sendCommand(sid, command);
   } catch (e) {
-    consoleStore.appendLocal(sid, "[ERROR] " + String(e));
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
   }
+  commandInput.value = "";
   userScrolledUp.value = false;
   doScroll();
 }
 
 function doScroll() {
-  nextTick(() => {
-    // 滚动逻辑已移至ConsoleOutput组件
-  });
+  consoleOutputRef.value?.doScroll();
 }
 
 async function handleStart() {
@@ -170,7 +174,7 @@ async function handleStart() {
     await serverApi.start(sid);
     await serverStore.refreshStatus(sid);
   } catch (e) {
-    consoleStore.appendLocal(sid, "[ERROR] " + String(e));
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
   } finally {
     stopStartLoading();
   }
@@ -184,138 +188,145 @@ async function handleStop() {
     await serverApi.stop(sid);
     await serverStore.refreshStatus(sid);
   } catch (e) {
-    consoleStore.appendLocal(sid, "[ERROR] " + String(e));
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
   } finally {
     stopStopLoading();
   }
 }
 
 async function exportLogs() {
-  const logs = currentLogs.value;
-  if (logs.length === 0) return;
-  const text = logs.join("\n");
+  const text = consoleOutputRef.value?.getAllPlainText() || "";
+  if (!text.trim()) return;
+  const lineCount = text.split("\n").length;
   try {
     await navigator.clipboard.writeText(text);
-    consoleStore.appendLocal(
-      serverId.value,
-      "[Sea Lantern] Logs copied to clipboard (" + logs.length + " lines)",
-    );
+    consoleOutputRef.value?.appendLines([
+      "[Sea Lantern] 日志已复制到剪贴板（" + lineCount + " 行）",
+    ]);
   } catch (_e) {
-    consoleStore.appendLocal(serverId.value, "[Sea Lantern] Failed to copy logs");
+    consoleOutputRef.value?.appendLines(["[Sea Lantern] 复制日志到剪贴板失败"]);
   }
 }
 
-function getServerStatusClass(): string {
-  return getStatusClass(serverStore.statuses[serverId.value]?.status);
+function getStatusClass(): string {
+  const s = serverStore.statuses[serverId.value]?.status;
+  return s === "Running"
+    ? "running"
+    : s === "Starting"
+      ? "starting"
+      : s === "Stopping"
+        ? "stopping"
+        : "stopped";
 }
 
-function getServerStatusText(): string {
-  return getStatusText(serverStore.statuses[serverId.value]?.status);
+function getStatusText(): string {
+  const s = serverStore.statuses[serverId.value]?.status;
+  switch (s) {
+    case "Running":
+      return i18n.t("common.server_status_running");
+    case "Starting":
+      return i18n.t("common.server_status_starting");
+    case "Stopping":
+      return i18n.t("common.server_status_stopping");
+    case "Error":
+      return i18n.t("common.server_status_error");
+    default:
+      return i18n.t("common.server_status_stopped");
+  }
 }
 
 function handleClearLogs() {
-  const sid = serverId.value;
-  if (!sid) return;
-  consoleStore.clearLogs(sid);
+  consoleOutputRef.value?.clear();
   userScrolledUp.value = false;
 }
 
-function openAddCommandModal() {
-  editingCommand.value = null;
-  commandName.value = "";
-  commandText.value = "";
-  commandModalTitle.value = i18n.t("console.add_custom_command");
-  showCommandModal.value = true;
+function saveCommand() {
+  console.warn("saveCommand not implemented");
+  showCommandModal.value = false;
 }
 
-function openEditCommandModal(cmd: ServerCommand) {
-  editingCommand.value = cmd;
-  commandName.value = cmd.name;
-  commandText.value = cmd.command;
-  commandModalTitle.value = i18n.t("console.edit_custom_command");
-  showCommandModal.value = true;
-}
-
-async function saveCommand() {
-  const sid = serverId.value;
-  if (!sid || !commandName.value.trim() || !commandText.value.trim()) return;
-
-  startCommandLoading();
-  try {
-    if (editingCommand.value) {
-      await serverApi.updateServerCommand(
-        sid,
-        editingCommand.value.id,
-        commandName.value.trim(),
-        commandText.value.trim(),
-      );
-    } else {
-      await serverApi.addServerCommand(sid, commandName.value.trim(), commandText.value.trim());
-    }
-    await serverStore.refreshList();
-    showCommandModal.value = false;
-  } catch (e) {
-    console.error("保存指令失败:", e);
-    consoleStore.appendLocal(sid, "[ERROR] 保存自定义指令失败: " + String(e));
-  } finally {
-    stopCommandLoading();
-  }
-}
-
-async function deleteCommand(cmd: ServerCommand) {
-  const sid = serverId.value;
-  if (!sid) return;
-
-  try {
-    await serverApi.deleteServerCommand(sid, cmd.id);
-    // 刷新服务器列表以获取更新的指令
-    await serverStore.refreshList();
-    // 关闭模态框
-    showCommandModal.value = false;
-  } catch (e) {
-    console.error("删除指令失败:", e);
-    consoleStore.appendLocal(sid, "[ERROR] 删除自定义指令失败: " + String(e));
-  }
+function deleteCommand(_cmd: import("@type/server").ServerCommand) {
+  console.warn("deleteCommand not implemented");
+  showCommandModal.value = false;
 }
 </script>
 
 <template>
   <div class="console-view animate-fade-in-up">
-    <!-- 工具栏 -->
-    <ConsoleToolbar
-      :serverId="serverId"
-      :serverName="serverName"
-      :statusClass="getServerStatusClass()"
-      :statusText="getServerStatusText()"
-      :isRunning="isRunning"
-      :isStopped="isStopped"
-      :isStopping="isStopping"
-      :startLoading="startLoading"
-      :stopLoading="stopLoading"
-      @start="handleStart"
-      @stop="handleStop"
-      @export="exportLogs"
-      @clear="handleClearLogs"
-    />
+    <div class="console-toolbar">
+      <div class="toolbar-left">
+        <div v-if="serverId" class="server-name-display">
+          {{
+            serverStore.servers.find((s) => s.id === serverId)?.name || i18n.t("console.no_server")
+          }}
+        </div>
+        <div v-else class="server-name-display">{{ i18n.t("console.no_server") }}</div>
+        <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
+          <span class="status-dot"></span>
+          <span class="status-label">{{ getStatusText() }}</span>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="action-group primary-actions">
+          <SLButton
+            v-if="isRunning || isStarting"
+            variant="danger"
+            size="sm"
+            :loading="stopLoading"
+            :disabled="isStopping || stopLoading"
+            @click="handleStop"
+          >
+            {{ isStarting ? i18n.t("home.stop") : i18n.t("home.stop") }}
+          </SLButton>
+          <SLButton
+            v-else
+            variant="primary"
+            size="sm"
+            :loading="startLoading"
+            :disabled="isStopping || startLoading"
+            @click="handleStart"
+          >
+            {{ i18n.t("home.start") }}
+          </SLButton>
+        </div>
+        <div class="action-group secondary-actions">
+          <SLButton variant="secondary" size="sm" @click="exportLogs">{{
+            i18n.t("console.copy_log")
+          }}</SLButton>
+          <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
+            i18n.t("console.clear_log")
+          }}</SLButton>
+        </div>
+      </div>
+    </div>
 
     <div v-if="!serverId" class="no-server">
-      <p class="text-body">{{ i18n.t("home.no_servers") }}</p>
+      <p class="text-body">{{ i18n.t("console.create_server_first") }}</p>
     </div>
 
     <template v-else>
-      <!-- 快捷指令和自定义指令部分 -->
-      <ConsoleCommands
-        :serverId="serverId"
-        :currentServerCommands="currentServerCommands"
-        @sendCommand="sendCommand"
-        @openAddCommandModal="openAddCommandModal"
-        @openEditCommandModal="openEditCommandModal"
-      />
+      <div class="quick-commands">
+        <span class="quick-label">{{ i18n.t("console.quick") }}</span>
+        <div class="quick-groups">
+          <div
+            v-for="cmd in quickCommands"
+            :key="cmd.cmd"
+            class="quick-btn"
+            @click="sendCommand(cmd.cmd)"
+            :title="cmd.cmd"
+          >
+            {{ cmd.label }}
+          </div>
+        </div>
+      </div>
 
       <!-- 控制台输出部分 -->
       <ConsoleOutput
-        :logs="currentLogs"
+        ref="consoleOutputRef"
         :consoleFontSize="consoleFontSize"
+        :consoleFontFamily="consoleFontFamily"
+        :consoleLetterSpacing="consoleLetterSpacing"
+        :maxLogLines="maxLogLines"
         :userScrolledUp="userScrolledUp"
         @scroll="(value) => (userScrolledUp = value)"
         @scrollToBottom="
@@ -345,19 +356,4 @@ async function deleteCommand(cmd: ServerCommand) {
   </div>
 </template>
 
-<style scoped>
-.console-view {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - var(--sl-header-height) - var(--sl-space-lg) * 2);
-  gap: var(--sl-space-sm);
-  position: relative;
-}
-
-.no-server {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-</style>
+<style src="@styles/views/ConsoleView.css" scoped></style>

@@ -16,10 +16,7 @@ withDefaults(defineProps<Props>(), {
 <template>
   <div
     class="sl-form-field"
-    :class="[
-      `sl-form-field--${labelPosition}`,
-      { 'sl-form-field--error': error },
-    ]"
+    :class="[`sl-form-field--${labelPosition}`, { 'sl-form-field--error': error }]"
   >
     <label v-if="label" class="sl-form-field__label">
       {{ label }}

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import SLButton from "../common/SLButton.vue";
-import SLInput from "../common/SLInput.vue";
-import SLModal from "../common/SLModal.vue";
-import { i18n } from "../../language";
-import type { ServerCommand } from "../../types/server";
+import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
+import SLModal from "@components/common/SLModal.vue";
+import { i18n } from "@language";
+import type { ServerCommand } from "@type/server";
 
 interface Props {
   visible: boolean;

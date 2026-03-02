@@ -1,3 +1,9 @@
+/* ============================================
+   Typography System - 文字排版系统
+   分为：正文(text-body) 和 描述(text-desc)
+   ============================================ */
+
+/* -- Headings -- */
 h1,
 h2,
 h3,
@@ -6,60 +12,165 @@ h5,
 h6 {
   font-family: var(--sl-font-display);
   font-weight: 600;
-  line-height: 1.3;
+  line-height: var(--sl-line-height-tight);
   color: var(--sl-text-primary);
 }
 
 h1 {
-  font-size: 2rem;
-}
-h2 {
-  font-size: 1.5rem;
-}
-h3 {
-  font-size: 1.25rem;
-}
-h4 {
-  font-size: 1.125rem;
-}
-h5 {
-  font-size: 1rem;
-}
-h6 {
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-4xl);
 }
 
-.text-display {
-  font-size: 2.5rem;
+h2 {
+  font-size: var(--sl-font-size-3xl);
+}
+
+h3 {
+  font-size: var(--sl-font-size-2xl);
+}
+
+h4 {
+  font-size: var(--sl-font-size-xl);
+}
+
+h5 {
+  font-size: var(--sl-font-size-lg);
+}
+
+h6 {
+  font-size: var(--sl-font-size-base);
+}
+
+/* -- 正文样式 (Body Text) -- */
+.text-body {
+  font-size: var(--sl-font-size-base);
+  line-height: var(--sl-line-height-normal);
+  color: var(--sl-text-primary);
+}
+
+.text-body-sm {
+  font-size: var(--sl-font-size-sm);
+  line-height: var(--sl-line-height-normal);
+  color: var(--sl-text-primary);
+}
+
+.text-body-lg {
+  font-size: var(--sl-font-size-lg);
+  line-height: var(--sl-line-height-relaxed);
+  color: var(--sl-text-primary);
+}
+
+/* -- 描述样式 (Description Text) -- */
+.text-desc {
+  font-size: var(--sl-font-size-sm);
+  line-height: var(--sl-line-height-normal);
+  color: var(--sl-text-secondary);
+}
+
+.text-desc-sm {
+  font-size: var(--sl-font-size-xs);
+  line-height: var(--sl-line-height-normal);
+  color: var(--sl-text-tertiary);
+}
+
+/* -- 标题样式 -- */
+.text-heading {
+  font-family: var(--sl-font-display);
+  font-weight: 600;
+  line-height: var(--sl-line-height-tight);
+  color: var(--sl-text-primary);
+}
+
+.text-heading-xl {
+  font-size: var(--sl-font-size-4xl);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.text-body {
-  font-size: 0.9375rem;
-  line-height: 1.6;
+.text-heading-lg {
+  font-size: var(--sl-font-size-3xl);
+}
+
+.text-heading-md {
+  font-size: var(--sl-font-size-2xl);
+}
+
+.text-heading-sm {
+  font-size: var(--sl-font-size-xl);
+}
+
+/* -- 标签/徽章样式 -- */
+.text-label {
+  font-size: var(--sl-font-size-xs);
+  font-weight: 500;
+  line-height: var(--sl-line-height-tight);
   color: var(--sl-text-secondary);
 }
 
-.text-caption {
-  font-size: 0.8125rem;
+/* -- 等宽字体 -- */
+.text-mono {
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-font-size-base);
+}
+
+.text-mono-sm {
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-font-size-sm);
+}
+
+/* -- 颜色工具类 -- */
+.text-primary {
+  color: var(--sl-text-primary);
+}
+
+.text-secondary {
+  color: var(--sl-text-secondary);
+}
+
+.text-tertiary {
   color: var(--sl-text-tertiary);
 }
 
-.text-mono {
-  font-family: var(--sl-font-mono);
-  font-size: 0.875rem;
-}
-
-.text-primary {
+.text-accent {
   color: var(--sl-primary);
 }
+
 .text-success {
   color: var(--sl-success);
 }
+
 .text-warning {
   color: var(--sl-warning);
 }
+
 .text-error {
   color: var(--sl-error);
+}
+
+/* -- 字重工具类 -- */
+.font-normal {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* -- 已废弃：保留向后兼容 -- */
+.text-display {
+  font-size: var(--sl-font-size-4xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.text-caption {
+  font-size: var(--sl-font-size-sm);
+  color: var(--sl-text-tertiary);
 }

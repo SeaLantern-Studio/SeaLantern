@@ -1,134 +1,138 @@
 <template>
-  <div class="w-full">
-    <div class="flex items-center justify-between py-1">
+  <div class="java-downloader-container">
+    <div class="java-downloader-header">
       <!-- Left Side: Label & Desc -->
-      <div class="flex flex-col gap-1 min-w-0 pr-4">
-        <span class="text-[0.9375rem] font-medium text-[var(--sl-text-primary)]">
-          {{ i18n.t('settings.java_download') }}
+      <div class="sl-setting-info">
+        <span class="sl-setting-label">
+          {{ i18n.t("settings.java_download") }}
         </span>
-        <span class="text-[0.8125rem] text-[var(--sl-text-tertiary)] leading-snug">
-          {{ i18n.t('settings.java_download_desc') }}
+        <span class="sl-setting-desc">
+          {{ i18n.t("settings.java_download_desc") }}
         </span>
       </div>
 
       <!-- Right Side: Interaction Area -->
-      <div class="flex items-center gap-3 flex-shrink-0 whitespace-nowrap">
+      <div class="java-downloader-actions">
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
-          <div class="w-36 flex-shrink-0">
+          <div class="download-setting-div">
             <SLSelect
               v-model="selectedVersion"
               :options="versionOptions"
               :disabled="loadingUrl"
               size="sm"
             />
+            <SLButton
+              variant="primary"
+              class="download-button"
+              :loading="loadingUrl"
+              @click="startDownload"
+            >
+              {{ downloadButtonText }}
+            </SLButton>
           </div>
-          <SLButton
-            variant="primary"
-            size="sm"
-            :loading="loadingUrl"
-            @click="startDownload"
-          >
-            {{ i18n.t('settings.java_download_btn') }}
-          </SLButton>
         </template>
 
         <!-- Downloading State -->
         <template v-else-if="isDownloading || isExtracting">
-          <div class="flex items-center gap-3">
-             <div class="flex flex-col items-end gap-1 w-40">
-               <div class="flex items-center gap-2 text-xs text-[var(--sl-text-primary)]">
-                 <span>{{ statusMessage }}</span>
-                 <span class="font-mono opacity-70">{{ isExtracting ? '' : `${progress.toFixed(0)}%` }}</span>
-               </div>
-               <div class="w-full h-1.5 bg-[var(--sl-border)] rounded-full overflow-hidden">
-                  <div
-                    class="h-full bg-[var(--sl-primary)] transition-all duration-300 ease-out"
-                    :class="{ 'indeterminate-progress': isExtracting }"
-                    :style="{ width: isExtracting ? '100%' : `${progress}%` }"
-                  ></div>
-               </div>
-             </div>
-             <SLButton
-               size="sm"
-               variant="ghost"
-               class="!p-1.5 text-[var(--sl-text-tertiary)] hover:text-[var(--sl-error)]"
-               title="Cancel"
-               @click="cancelDownload"
-             >
-               <X :size="16" />
-             </SLButton>
+          <div class="downloading-state">
+            <div class="progress-container">
+              <div class="status-text">
+                <span>{{ statusMessage }}</span>
+                <span class="progress-percentage">{{
+                  isExtracting ? "" : `${progress.toFixed(0)}%`
+                }}</span>
+              </div>
+              <div class="progress-bar-container">
+                <div
+                  class="progress-bar"
+                  :class="{ 'indeterminate-progress': isExtracting }"
+                  :style="{ width: isExtracting ? '100%' : `${progress}%` }"
+                ></div>
+              </div>
+            </div>
+            <SLButton
+              size="sm"
+              variant="ghost"
+              class="cancel-button"
+              title="Cancel"
+              @click="cancelDownload"
+            >
+              <X :size="16" :stroke-width="2" />
+            </SLButton>
           </div>
         </template>
 
         <!-- Success State -->
         <template v-else-if="successMessage">
-          <div class="flex items-center gap-3 animate-fade-in">
-             <div class="flex items-center gap-1.5 text-[var(--sl-success)] text-sm font-medium">
-               <CheckCircle :size="16" fill="currentColor" />
-               <span>{{ i18n.t('settings.java_install_success').replace(':', '') }}</span>
-             </div>
-             <SLButton size="sm" variant="ghost" @click="resetState">OK</SLButton>
+          <div class="success-state">
+            <div class="success-message">
+              <CheckCircle :size="16" />
+              <span>{{ i18n.t("settings.java_install_success").replace(":", "") }}</span>
+            </div>
+            <SLButton size="sm" variant="ghost" @click="resetState">OK</SLButton>
           </div>
         </template>
       </div>
     </div>
 
     <!-- Error Message (Full Width below) -->
-    <div v-if="errorMessage" class="mt-2 p-3 bg-red-50 dark:bg-red-900/20 text-[var(--sl-error)] text-sm rounded border border-red-200 dark:border-red-800 flex items-center justify-between animate-fade-in">
-      <div class="flex items-center gap-2">
-        <Info :size="16" class="flex-shrink-0" fill="currentColor" />
+    <div v-if="errorMessage" class="error-message">
+      <div class="error-content">
+        <AlertCircle class="error-icon" :size="16" />
         <span>{{ errorMessage }}</span>
       </div>
       <SLButton size="sm" variant="ghost" @click="resetState">
-        {{ i18n.t('common.close_notification') }}
+        {{ i18n.t("common.close_notification") }}
       </SLButton>
     </div>
   </div>
 </template>
 
-
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue';
-import { i18n } from '../language';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import { javaApi } from '../api/java';
-import SLButton from './common/SLButton.vue';
-import SLSelect from './common/SLSelect.vue';
-import { X, CheckCircle, Info } from 'lucide-vue-next';
+import { ref, computed, onUnmounted } from "vue";
+import { i18n } from "@language";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { javaApi } from "@api/java";
+import SLButton from "@components/common/SLButton.vue";
+import SLSelect from "@components/common/SLSelect.vue";
+import { X, CheckCircle, AlertCircle } from "lucide-vue-next";
 
-const emit = defineEmits(['installed']);
+const emit = defineEmits(["installed"]);
 
-const selectedVersion = ref('17');
+const selectedVersion = ref("17");
 const isDownloading = ref(false);
 const isExtracting = ref(false);
 const loadingUrl = ref(false);
 const progress = ref(0);
-const statusMessage = ref('');
-const errorMessage = ref('');
-const successMessage = ref('');
-const installedPath = ref('');
+const statusMessage = ref("");
+const errorMessage = ref("");
+const successMessage = ref("");
+const installedPath = ref("");
 const unlistenProgress = ref<UnlistenFn | null>(null);
 
 const versionOptions = computed(() => [
-  { label: 'Java 8 (LTS)', value: '8' },
-  { label: 'Java 17 (LTS)', value: '17' },
-  { label: 'Java 21 (LTS)', value: '21' },
-  { label: 'Java 25 (LTS)', value: '25' }
+  { label: "Java 8 (LTS)", value: "8" },
+  { label: "Java 17 (LTS)", value: "17" },
+  { label: "Java 21 (LTS)", value: "21" },
+  { label: "Java 25 (LTS)", value: "25" },
 ]);
 
+const downloadButtonText = computed(() => {
+  return i18n.t("settings.java_download_btn", { version: selectedVersion.value });
+});
+
 const resetState = () => {
-  errorMessage.value = '';
-  successMessage.value = '';
+  errorMessage.value = "";
+  successMessage.value = "";
   isDownloading.value = false;
   isExtracting.value = false;
   progress.value = 0;
 };
 
-const getDownloadUrl = async (version: string): Promise<string> => {
+const getDownloadUrl = (version: string): string => {
   // Construct URL for Adoptium API
   const baseUrl = "https://api.adoptium.net/v3/binary/latest";
-  const featureVersion = version;
   const releaseType = "ga";
 
   // Detect OS and Arch
@@ -138,9 +142,10 @@ const getDownloadUrl = async (version: string): Promise<string> => {
   if (navigator.userAgent.indexOf("Linux") !== -1) os = "linux";
 
   let arch = "x64";
-  if (navigator.userAgent.indexOf("aarch64") !== -1 || navigator.userAgent.indexOf("arm64") !== -1) arch = "aarch64";
+  if (navigator.userAgent.indexOf("aarch64") !== -1 || navigator.userAgent.indexOf("arm64") !== -1)
+    arch = "aarch64";
 
-  return `${baseUrl}/${featureVersion}/${releaseType}/${os}/${arch}/jdk/hotspot/normal/eclipse`;
+  return `${baseUrl}/${version}/${releaseType}/${os}/${arch}/jdk/hotspot/normal/eclipse`;
 };
 
 const cancelDownload = async () => {
@@ -151,7 +156,7 @@ const cancelDownload = async () => {
     isExtracting.value = false;
     loadingUrl.value = false;
     progress.value = 0;
-    statusMessage.value = '';
+    statusMessage.value = "";
 
     if (unlistenProgress.value) {
       unlistenProgress.value();
@@ -167,43 +172,49 @@ const startDownload = async () => {
   loadingUrl.value = true;
 
   try {
-    const url = await getDownloadUrl(selectedVersion.value);
+    const url = getDownloadUrl(selectedVersion.value);
+    const versionName = `jdk-${selectedVersion.value}`;
     loadingUrl.value = false;
     isDownloading.value = true;
     progress.value = 0;
-    statusMessage.value = i18n.t('settings.java_installing');
+    statusMessage.value = i18n.t("settings.java_installing");
 
     if (unlistenProgress.value) unlistenProgress.value();
 
-    unlistenProgress.value = await listen('java-install-progress', (event: any) => {
-      const payload = event.payload as { state: string, progress: number, total: number, message: string };
+    unlistenProgress.value = await listen("java-install-progress", (event: any) => {
+      const payload = event.payload as {
+        state: string;
+        progress: number;
+        total: number;
+        message: string;
+      };
       statusMessage.value = payload.message;
 
-      if (payload.state === 'extracting') {
+      if (payload.state === "extracting") {
         isExtracting.value = true;
         progress.value = 100; // Force full bar or let indeterminate animation take over
-      } else if (payload.state === 'downloading') {
+      } else if (payload.state === "downloading") {
         isExtracting.value = false;
         if (payload.total > 0) {
           progress.value = (payload.progress / payload.total) * 100;
         }
-      } else if (payload.state === 'finished') {
+      } else if (payload.state === "finished") {
         progress.value = 100;
         isExtracting.value = false;
       }
     });
 
-    const resultPath = await javaApi.installJava(url, `jdk-${selectedVersion.value}`);
+    const resultPath = await javaApi.installJava(url, versionName);
 
     installedPath.value = resultPath;
-    successMessage.value = 'Success'; // Just a flag, text is in template
-    emit('installed', resultPath);
-
+    successMessage.value = "Success"; // Just a flag, text is in template
+    emit("installed", resultPath);
   } catch (e: any) {
     console.error(e);
     isDownloading.value = false;
     isExtracting.value = false;
-    errorMessage.value = i18n.t('settings.java_install_failed') + (typeof e === 'string' ? e : e.message);
+    errorMessage.value =
+      i18n.t("settings.java_install_failed") + (typeof e === "string" ? e : e.message);
   } finally {
     isDownloading.value = false;
     isExtracting.value = false;
@@ -220,9 +231,83 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.download-button {
+  padding: 0.5rem 2rem;
+}
+
+.java-downloader-container {
+  width: 100%;
+}
+
+.java-downloader-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+}
+
+.java-downloader-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.download-setting-div {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.downloading-state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  width: 10rem;
+}
+
+.status-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--sl-text-primary);
+}
+
+.progress-percentage {
+  font-family: var(--sl-font-mono);
+  opacity: 0.7;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 0.375rem;
+  background-color: var(--sl-border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--sl-primary);
+  transition: all 0.3s ease-out;
+}
+
 @keyframes indeterminate {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .indeterminate-progress {
@@ -231,7 +316,7 @@ onUnmounted(() => {
 }
 
 .indeterminate-progress::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -239,5 +324,70 @@ onUnmounted(() => {
   width: 50%;
   background: rgba(255, 255, 255, 0.3);
   animation: indeterminate 1.5s infinite linear;
+}
+
+.cancel-button {
+  padding: 0.375rem !important;
+  color: var(--sl-text-tertiary);
+}
+
+.cancel-button:hover {
+  color: var(--sl-error);
+}
+
+.success-state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: fade-in 0.3s ease;
+}
+
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--sl-success);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.error-message {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: #fef2f2;
+  color: var(--sl-error);
+  font-size: 0.875rem;
+  border-radius: var(--sl-radius-md);
+  border: 1px solid #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: fade-in 0.3s ease;
+}
+
+[data-theme="dark"] .error-message {
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.error-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-icon {
+  flex-shrink: 0;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

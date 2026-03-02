@@ -1,6 +1,7 @@
 use crate::services::global;
 use std::io::{self, Write};
 
+#[allow(dead_code)]
 pub fn handle_cli() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -88,6 +89,7 @@ pub fn handle_cli() {
     }
 }
 
+#[allow(dead_code)]
 fn print_help() {
     println!("Sea Lantern - Minecraft Server Manager (CLI Mode)");
     println!("\n用法:");
@@ -103,6 +105,7 @@ fn print_help() {
     println!("  help             显示帮助信息");
 }
 
+#[allow(dead_code)]
 fn list_servers() {
     let manager = global::server_manager();
     let servers = manager.get_server_list();
@@ -117,6 +120,7 @@ fn list_servers() {
     }
 }
 
+#[allow(dead_code)]
 fn start_server(id: &str) {
     let manager = global::server_manager();
     match manager.start_server(id) {
@@ -125,6 +129,7 @@ fn start_server(id: &str) {
     }
 }
 
+#[allow(dead_code)]
 fn stop_server(id: &str) {
     let manager = global::server_manager();
     match manager.stop_server(id) {
@@ -133,6 +138,7 @@ fn stop_server(id: &str) {
     }
 }
 
+#[allow(dead_code)]
 fn search_mods(query: &str, version: &str, loader: &str) {
     println!("正在搜索 Modrinth: {} (版本: {}, 加载器: {})...", query, version, loader);
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -155,6 +161,7 @@ fn search_mods(query: &str, version: &str, loader: &str) {
     });
 }
 
+#[allow(dead_code)]
 fn join_server(id: &str) {
     println!("正在解析服务器 ID: {}...", id);
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -171,6 +178,7 @@ fn join_server(id: &str) {
     });
 }
 
+#[allow(dead_code)]
 fn create_server_id(id: &str, name: &str, address: &str, port: &str) {
     println!("正在创建服务器 ID: {}...", id);
     let port_num: u16 = port.parse().unwrap_or(25565);
@@ -197,6 +205,7 @@ fn create_server_id(id: &str, name: &str, address: &str, port: &str) {
     });
 }
 
+#[allow(dead_code)]
 fn list_server_ids() {
     println!("正在列出所有服务器 ID...");
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -218,6 +227,7 @@ fn list_server_ids() {
     });
 }
 
+#[allow(dead_code)]
 fn resolve_server_id(id: &str) {
     println!("正在解析服务器 ID: {}...", id);
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -233,6 +243,7 @@ fn resolve_server_id(id: &str) {
     });
 }
 
+#[allow(dead_code)]
 fn run_interactive_cli() {
     println!("欢迎使用 Sea Lantern 交互式命令行模式！输入 'help' 查看命令。");
     loop {

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
+import logo from "@assets/logo.svg";
+import { i18n } from "@language";
 
 const props = defineProps<{
   loading?: boolean;
@@ -44,12 +46,12 @@ watch(
   <div class="splash-screen">
     <div class="splash-content">
       <div class="splash-logo" :style="{ transform: `scale(${logoScale})` }">
-        <img src="../../assets/logo.svg" alt="Sea Lantern" width="120" height="120" />
+        <img :src="logo" alt="Sea Lantern" width="120" height="120" />
       </div>
 
       <div class="splash-text" :style="{ opacity: textOpacity }">
         <h1 class="splash-title">Sea Lantern</h1>
-        <p class="splash-subtitle">Minecraft 服务器管理工具</p>
+        <p class="splash-subtitle">{{ i18n.t("about.subtitle") }}</p>
       </div>
 
       <div class="splash-loader" :style="{ opacity: textOpacity }">
