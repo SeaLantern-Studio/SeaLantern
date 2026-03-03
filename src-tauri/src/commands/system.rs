@@ -486,17 +486,24 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
     #[cfg(target_os = "windows")]
     {
         // 在Windows上使用start命令打开新窗口
-        let frpc_path_str = frpc_path.to_str().unwrap();
-        // 转换为Windows风格的路径
-        let windows_path = frpc_path_str.replace('/', "\\");
-        // 构建命令参数
+        let frpc_path_str = frpc_path
+            .to_str()
+            .ok_or_else(|| "无法获取FRP可执行文件路径".to_string())?;
+        // 获取frpc所在目录
+        let frpc_dir = frpc_path
+            .parent()
+            .ok_or_else(|| "无法获取FRP目录".to_string())?;
+
+        // 直接在frpc所在目录执行命令
         let mut cmd = std::process::Command::new("cmd.exe");
+        cmd.current_dir(frpc_dir);
         cmd.arg("/c");
         cmd.arg("start");
         cmd.arg("cmd.exe");
         cmd.arg("/k");
-        cmd.arg(windows_path);
-        // 根据提供商重新构建参数
+        cmd.arg(r".\frpc.exe");
+
+        // 根据提供商添加参数
         match provider.as_str() {
             "chmlfrp" | "openfrp" => {
                 cmd.arg("-u").arg(&token).arg("-p").arg(&tunnel_id);
@@ -508,16 +515,23 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
                 return Err(format!("不支持的FRP提供商: {}", provider));
             }
         }
+
         cmd.spawn().map_err(|e| format!("无法启动FRP隧道: {}", e))?;
     }
     #[cfg(target_os = "macos")]
     {
         // 在macOS上使用open命令打开新窗口
+        // 获取frpc所在目录
+        let frpc_dir = frpc_path
+            .parent()
+            .ok_or_else(|| "无法获取FRP目录".to_string())?;
         let mut cmd = std::process::Command::new("open");
         cmd.arg("-a").arg("Terminal").arg(&frpc_path);
         for arg in command.get_args() {
             cmd.arg(arg);
         }
+        // 设置工作目录
+        cmd.current_dir(frpc_dir);
         cmd.spawn().map_err(|e| format!("无法启动FRP隧道: {}", e))?;
     }
     #[cfg(target_os = "linux")]
@@ -539,6 +553,10 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
             return Err("无法找到终端模拟器".to_string());
         };
 
+        // 获取frpc所在目录
+        let frpc_dir = frpc_path
+            .parent()
+            .ok_or_else(|| "无法获取FRP目录".to_string())?;
         let mut cmd = std::process::Command::new(terminal);
         if terminal == "xterm" {
             cmd.arg("-e");
@@ -549,6 +567,8 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
         for arg in command.get_args().skip(1) {
             cmd.arg(arg);
         }
+        // 设置工作目录
+        cmd.current_dir(frpc_dir);
         cmd.spawn().map_err(|e| format!("无法启动FRP隧道: {}", e))?;
     }
 
