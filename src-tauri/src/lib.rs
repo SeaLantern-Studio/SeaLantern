@@ -507,12 +507,14 @@ pub fn run() {
 
             app.manage(manager.clone());
 
-            if let Ok(mut m) = manager.lock() {
-                m.auto_enable_plugins();
-            }
-
             // Check if currently in safe mode
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
+
+            if let Ok(mut m) = manager.lock() {
+                if !safe_mode {
+                    m.auto_enable_plugins();
+                }
+            }
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
