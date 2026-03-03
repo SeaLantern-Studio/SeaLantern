@@ -60,9 +60,29 @@
   background: var(--sl-text-tertiary);
 }
 
-.status-dot.online {
+.status-dot.green {
   background: var(--sl-success);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 6px var(--sl-success-bg);
+}
+
+.status-dot.yellow {
+  background: var(--sl-yellow);
+  box-shadow: 0 0 6px var(--sl-yellow-bg);
+}
+
+.status-dot.orange {
+  background: var(--sl-warning);
+  box-shadow: 0 0 6px var(--sl-warning-bg);
+}
+
+.status-dot.red {
+  background: var(--sl-error);
+  box-shadow: 0 0 6px var(--sl-error-bg);
+}
+
+.status-dot.gray {
+  background: var(--sl-warning);
+  box-shadow: 0 0 6px var(--sl-warning-bg);
 }
 
 .status-text {

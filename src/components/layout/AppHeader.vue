@@ -10,6 +10,7 @@ import SLButton from "@components/common/SLButton.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
+import { NetworkStatus, STATUS_LIST, getNetworkStatus } from "@utils/checkNetwork";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -135,7 +136,16 @@ const currentLanguageText = computed(() => {
   return labelKey ? i18n.t(labelKey) : i18n.t("header.english");
 });
 
+async function setNetworkStatus() {
+  const status = await getNetworkStatus();
+  console.log("检查网络状态");
+  document.getElementsByClassName("status-dot")[0].classList.remove(...STATUS_LIST);
+  document.getElementsByClassName("status-dot")[0].classList.add(status as string);
+  setTimeout(setNetworkStatus, 20000);
+}
+
 onMounted(async () => {
+  setNetworkStatus();
   await loadSettings();
 
   // 初始化最大化状态
