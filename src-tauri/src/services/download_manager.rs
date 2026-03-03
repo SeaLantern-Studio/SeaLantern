@@ -249,10 +249,14 @@ impl DownloadManager {
             // 从管理器中移除任务
             self.tasks.write().await.remove(&id);
 
-            // 删除临时下载的文件
-            tokio::fs::remove_file(&file_path)
-                .await
-                .map_err(|e| format!("删除临时文件失败: {}", e))?;
+            // 删除临时下载的文件，但忽略文件不存在的错误
+            if let Err(e) = tokio::fs::remove_file(&file_path).await {
+                // 只记录非 "NotFound" 的错误
+                if e.kind() != std::io::ErrorKind::NotFound {
+                    return Err(format!("删除临时文件失败: {}", e));
+                }
+                // 如果是 NotFound 错误，则忽略它
+            }
 
             Ok(())
         } else {
