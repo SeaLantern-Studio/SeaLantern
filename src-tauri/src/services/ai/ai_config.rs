@@ -1,11 +1,11 @@
 //! AI 配置优化服务
-//! 
+//!
 //! 提供智能配置分析和优化建议
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{AIConfig, AIConfigSuggestion, AIMessage, AIProvider, ai_provider::get_provider};
+use super::{ai_provider::get_provider, AIConfig, AIConfigSuggestion, AIMessage, AIProvider};
 
 /// 配置分析选项
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,8 +26,8 @@ pub struct ConfigAnalysisOptions {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ConfigAnalysisType {
-    /// JVM 参数优化
-    JVM,
+    /// Jvm 参数优化
+    Jvm,
     /// server.properties 优化
     ServerProperties,
     /// 性能优化
@@ -53,12 +53,12 @@ pub struct HardwareInfo {
     pub os: String,
 }
 
-/// JVM 参数分析结果
+/// Jvm 参数分析结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JVMAnalysis {
-    /// 当前 JVM 参数
+    /// 当前 Jvm 参数
     pub current_args: Vec<String>,
-    /// 建议的 JVM 参数
+    /// 建议的 Jvm 参数
     pub suggested_args: Vec<String>,
     /// 内存配置建议
     pub memory_suggestion: MemorySuggestion,
@@ -126,7 +126,7 @@ impl AIConfigService {
         suggestions
     }
 
-    /// 分析 JVM 参数
+    /// 分析 Jvm 参数
     pub async fn analyze_jvm(
         &self,
         current_args: &[String],
@@ -271,24 +271,36 @@ impl AIConfigService {
     }
 
     /// 分析 Spigot 配置
-    fn analyze_spigot_config(&self, _content: &str, _options: &ConfigAnalysisOptions) -> Vec<AIConfigSuggestion> {
+    fn analyze_spigot_config(
+        &self,
+        _content: &str,
+        _options: &ConfigAnalysisOptions,
+    ) -> Vec<AIConfigSuggestion> {
         // Spigot 配置分析实现
         Vec::new()
     }
 
     /// 分析 Paper 配置
-    fn analyze_paper_config(&self, _content: &str, _options: &ConfigAnalysisOptions) -> Vec<AIConfigSuggestion> {
+    fn analyze_paper_config(
+        &self,
+        _content: &str,
+        _options: &ConfigAnalysisOptions,
+    ) -> Vec<AIConfigSuggestion> {
         // Paper 配置分析实现
         Vec::new()
     }
 
     /// 分析 Bukkit 配置
-    fn analyze_bukkit_config(&self, _content: &str, _options: &ConfigAnalysisOptions) -> Vec<AIConfigSuggestion> {
+    fn analyze_bukkit_config(
+        &self,
+        _content: &str,
+        _options: &ConfigAnalysisOptions,
+    ) -> Vec<AIConfigSuggestion> {
         // Bukkit 配置分析实现
         Vec::new()
     }
 
-    /// 本地 JVM 分析
+    /// 本地 Jvm 分析
     fn local_jvm_analysis(
         &self,
         current_args: &[String],
@@ -302,11 +314,9 @@ impl AIConfigService {
         // 确定最佳 GC
         let gc_suggestion = self.recommend_gc(hardware);
 
-        // 构建建议的 JVM 参数
-        let mut suggested_args = vec![
-            format!("-Xms{}M", recommended_heap),
-            format!("-Xmx{}M", recommended_heap),
-        ];
+        // 构建建议的 Jvm 参数
+        let mut suggested_args =
+            vec![format!("-Xms{}M", recommended_heap), format!("-Xmx{}M", recommended_heap)];
 
         // 添加 GC 参数
         suggested_args.extend(gc_suggestion.gc_args.clone());
@@ -351,7 +361,7 @@ impl AIConfigService {
             suggested_args,
             memory_suggestion,
             gc_suggestion,
-            explanation: "基于硬件配置和预期负载的 JVM 优化建议".to_string(),
+            explanation: "基于硬件配置和预期负载的 Jvm 优化建议".to_string(),
         }
     }
 
@@ -428,8 +438,16 @@ impl AIConfigService {
 }}
 "#,
             config_type,
-            options.hardware_info.as_ref().map(|h| h.cpu_cores).unwrap_or(4),
-            options.hardware_info.as_ref().map(|h| h.total_memory_gb).unwrap_or(8.0),
+            options
+                .hardware_info
+                .as_ref()
+                .map(|h| h.cpu_cores)
+                .unwrap_or(4),
+            options
+                .hardware_info
+                .as_ref()
+                .map(|h| h.total_memory_gb)
+                .unwrap_or(8.0),
             options.expected_players.unwrap_or(20),
             options.server_type.as_deref().unwrap_or("vanilla")
         );
@@ -471,13 +489,13 @@ impl AIConfigService {
         let messages = vec![
             AIMessage {
                 role: "system".to_string(),
-                content: "你是一个 JVM 性能调优专家，专注于 Minecraft 服务器优化。".to_string(),
+                content: "你是一个 Jvm 性能调优专家，专注于 Minecraft 服务器优化。".to_string(),
                 timestamp: chrono::Utc::now().timestamp(),
             },
             AIMessage {
                 role: "user".to_string(),
                 content: format!(
-                    "请优化以下 JVM 配置：\n当前参数：{:?}\n硬件：{}核CPU，{}GB内存\n预期玩家：{}\n请返回优化后的 JVM 参数列表。",
+                    "请优化以下 Jvm 配置：\n当前参数：{:?}\n硬件：{}核CPU，{}GB内存\n预期玩家：{}\n请返回优化后的 Jvm 参数列表。",
                     base_analysis.current_args,
                     hardware.cpu_cores,
                     hardware.total_memory_gb,
@@ -519,18 +537,14 @@ impl AIConfigService {
     }
 
     /// 生成完整的启动脚本
-    pub fn generate_startup_script(
-        &self,
-        jvm_analysis: &JVMAnalysis,
-        server_jar: &str,
-    ) -> String {
+    pub fn generate_startup_script(&self, jvm_analysis: &JVMAnalysis, server_jar: &str) -> String {
         let jvm_args = jvm_analysis.suggested_args.join(" ");
 
         format!(
             r#"#!/bin/bash
 # SeaLantern AI 生成的启动脚本
 
-# JVM 参数
+# Jvm 参数
 JVM_ARGS="{}"
 
 # 服务器 JAR
@@ -594,7 +608,7 @@ online-mode=true
     #[test]
     fn test_calculate_recommended_heap() {
         let service = AIConfigService::new();
-        
+
         // 小内存系统
         let heap = service.calculate_recommended_heap(4, 10);
         assert!(heap >= 1024 && heap <= 2048);

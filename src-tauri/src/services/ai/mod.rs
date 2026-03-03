@@ -1,30 +1,45 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(clippy::all)]
+
+#![allow(unused_imports)]
+#![allow(clippy::await_holding_lock)]
+
 //! AI 服务模块
-//! 
+//!
 //! 提供各种 AI 功能服务，包括日志分析、命令转换、配置优化、翻译和内容生成
 
-pub mod ai_provider;
-pub mod ai_console;
+pub mod ai_anticheat;
 pub mod ai_command;
 pub mod ai_config;
-pub mod ai_translator;
+pub mod ai_console;
 pub mod ai_content;
-pub mod ai_anticheat;
+pub mod ai_provider;
+pub mod ai_translator;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // 重导出主要类型
-pub use ai_provider::{AIProvider, get_provider, get_supported_providers, AIProviderType};
-pub use ai_console::{AIConsoleService, LogAnalysisOptions, AnalysisType, LogPattern, get_predefined_patterns};
-pub use ai_command::{AICommandService, CommandGenerationOptions, CommandType};
-pub use ai_config::{AIConfigService, ConfigAnalysisOptions, ConfigAnalysisType, HardwareInfo, JVMAnalysis};
-pub use ai_translator::{AITranslatorService, TranslationOptions, TranslationContext, Language, get_supported_languages};
-pub use ai_content::{AIContentService, ContentType, ContentGenerationOptions, ContentStyle, ContentLength};
 pub use ai_anticheat::{
-    MCAntiCheatService, DetectionType, DetectionCategory, Severity,
-    DetectionRecord, DetectionStatus, DetectionRule, PunishmentAction, PunishmentConfig,
-    PlayerProfile, PlayerStatus, AntiCheatStatistics,
-    PlayerBehaviorData, ModInfo,
+    AntiCheatStatistics, DetectionCategory, DetectionRecord, DetectionRule, DetectionStatus,
+    DetectionType, MCAntiCheatService, ModInfo, PlayerBehaviorData, PlayerProfile, PlayerStatus,
+    PunishmentAction, PunishmentConfig, Severity,
+};
+pub use ai_command::{AICommandService, CommandGenerationOptions, CommandType};
+pub use ai_config::{
+    AIConfigService, ConfigAnalysisOptions, ConfigAnalysisType, HardwareInfo, JVMAnalysis,
+};
+pub use ai_console::{
+    get_predefined_patterns, AIConsoleService, AnalysisType, LogAnalysisOptions, LogPattern,
+};
+pub use ai_content::{
+    AIContentService, ContentGenerationOptions, ContentLength, ContentStyle, ContentType,
+};
+pub use ai_provider::{get_provider, get_supported_providers, AIProvider, AIProviderType};
+pub use ai_translator::{
+    get_supported_languages, AITranslatorService, Language, TranslationContext, TranslationOptions,
 };
 
 /// AI 配置
@@ -235,12 +250,16 @@ impl AIService {
         logs: &[String],
         options: &LogAnalysisOptions,
     ) -> Vec<AIAnalysisResult> {
-        self.console_service.analyze_logs(logs, options, &self.config).await
+        self.console_service
+            .analyze_logs(logs, options, &self.config)
+            .await
     }
 
     /// 解释日志行
     pub async fn explain_log(&self, log_line: &str) -> Option<String> {
-        self.console_service.explain_log_line(log_line, &self.config).await
+        self.console_service
+            .explain_log_line(log_line, &self.config)
+            .await
     }
 
     /// 生成命令
@@ -249,17 +268,23 @@ impl AIService {
         natural_language: &str,
         options: &CommandGenerationOptions,
     ) -> Option<AICommandSuggestion> {
-        self.command_service.generate_command(natural_language, options, &self.config).await
+        self.command_service
+            .generate_command(natural_language, options, &self.config)
+            .await
     }
 
     /// 解释命令
     pub async fn explain_command(&self, command: &str) -> Option<String> {
-        self.command_service.explain_command(command, &self.config).await
+        self.command_service
+            .explain_command(command, &self.config)
+            .await
     }
 
     /// 获取命令建议
     pub async fn get_command_suggestions(&self, partial: &str) -> Vec<AICommandSuggestion> {
-        self.command_service.get_command_suggestions(partial, &self.config).await
+        self.command_service
+            .get_command_suggestions(partial, &self.config)
+            .await
     }
 
     /// 分析配置
@@ -269,7 +294,9 @@ impl AIService {
         config_type: &str,
         options: &ConfigAnalysisOptions,
     ) -> Vec<AIConfigSuggestion> {
-        self.config_service.analyze_config(config_content, config_type, options, &self.config).await
+        self.config_service
+            .analyze_config(config_content, config_type, options, &self.config)
+            .await
     }
 
     /// 分析 JVM 参数
@@ -279,7 +306,9 @@ impl AIService {
         hardware: &HardwareInfo,
         expected_players: u32,
     ) -> JVMAnalysis {
-        self.config_service.analyze_jvm(current_args, hardware, expected_players, &self.config).await
+        self.config_service
+            .analyze_jvm(current_args, hardware, expected_players, &self.config)
+            .await
     }
 
     /// 翻译文本
@@ -288,12 +317,16 @@ impl AIService {
         text: &str,
         options: &TranslationOptions,
     ) -> AITranslationResult {
-        self.translator_service.translate(text, options, &self.config).await
+        self.translator_service
+            .translate(text, options, &self.config)
+            .await
     }
 
     /// 检测语言
     pub async fn detect_language(&self, text: &str) -> Option<Language> {
-        self.translator_service.detect_language(text, &self.config).await
+        self.translator_service
+            .detect_language(text, &self.config)
+            .await
     }
 
     /// 生成内容
@@ -301,7 +334,9 @@ impl AIService {
         &self,
         options: &ContentGenerationOptions,
     ) -> AIContentGeneration {
-        self.content_service.generate_content(options, &self.config).await
+        self.content_service
+            .generate_content(options, &self.config)
+            .await
     }
 
     /// 生成服务器公告
@@ -311,16 +346,16 @@ impl AIService {
         topic: &str,
         details: Option<&str>,
     ) -> Option<String> {
-        self.content_service.generate_announcement(server_name, topic, details, &self.config).await
+        self.content_service
+            .generate_announcement(server_name, topic, details, &self.config)
+            .await
     }
 
     /// 生成服务器规则
-    pub async fn generate_rules(
-        &self,
-        server_name: &str,
-        server_type: &str,
-    ) -> Option<String> {
-        self.content_service.generate_rules(server_name, server_type, &self.config).await
+    pub async fn generate_rules(&self, server_name: &str, server_type: &str) -> Option<String> {
+        self.content_service
+            .generate_rules(server_name, server_type, &self.config)
+            .await
     }
 
     /// 生成欢迎消息
@@ -329,12 +364,16 @@ impl AIService {
         server_name: &str,
         player_name: Option<&str>,
     ) -> Option<String> {
-        self.content_service.generate_welcome(server_name, player_name, &self.config).await
+        self.content_service
+            .generate_welcome(server_name, player_name, &self.config)
+            .await
     }
 
     /// 获取问题解决方案
     pub async fn get_solution(&self, problem: &str) -> Option<String> {
-        self.console_service.get_solution(problem, &self.config).await
+        self.console_service
+            .get_solution(problem, &self.config)
+            .await
     }
     /// 清空翻译缓存
     pub fn clear_translation_cache(&mut self) {

@@ -2,25 +2,20 @@
   <div class="ai-chat-box">
     <!-- 消息列表 -->
     <div class="message-list" ref="messageListRef">
-      <div
-        v-for="(message, index) in messages"
-        :key="index"
-        class="message"
-        :class="message.role"
-      >
+      <div v-for="(message, index) in messages" :key="index" class="message" :class="message.role">
         <div class="message-avatar">
           <BotIcon v-if="message.role === 'assistant'" />
           <UserIcon v-else />
         </div>
         <div class="message-content">
           <div class="message-header">
-            <span class="message-role">{{ message.role === 'assistant' ? 'AI' : '你' }}</span>
+            <span class="message-role">{{ message.role === "assistant" ? "AI" : "你" }}</span>
             <span class="message-time">{{ formatTime(message.timestamp) }}</span>
           </div>
           <div class="message-text" v-html="formatMessage(message.content)"></div>
         </div>
       </div>
-      
+
       <!-- 加载中 -->
       <div v-if="loading" class="message assistant">
         <div class="message-avatar">
@@ -47,11 +42,7 @@
         rows="1"
         ref="inputRef"
       ></textarea>
-      <button
-        class="send-btn"
-        :disabled="loading || !inputText.trim()"
-        @click="sendMessage"
-      >
+      <button class="send-btn" :disabled="loading || !inputText.trim()" @click="sendMessage">
         <SendIcon />
       </button>
     </div>
@@ -71,11 +62,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch } from 'vue';
-import { Bot as BotIcon, User as UserIcon, Send as SendIcon } from 'lucide-vue-next';
+import { ref, nextTick, watch } from "vue";
+import { Bot as BotIcon, User as UserIcon, Send as SendIcon } from "lucide-vue-next";
 
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
 }
@@ -95,53 +86,53 @@ const props = withDefaults(
   }>(),
   {
     loading: false,
-    placeholder: '输入消息...',
+    placeholder: "输入消息...",
     quickActions: () => [],
-  }
+  },
 );
 
 const emit = defineEmits<{
-  (e: 'send', message: string): void;
-  (e: 'quickAction', action: QuickAction): void;
+  (e: "send", message: string): void;
+  (e: "quickAction", action: QuickAction): void;
 }>();
 
-const inputText = ref('');
+const inputText = ref("");
 const messageListRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
 // 发送消息
 function sendMessage() {
   if (!inputText.value.trim() || props.loading) return;
-  
-  emit('send', inputText.value.trim());
-  inputText.value = '';
-  
+
+  emit("send", inputText.value.trim());
+  inputText.value = "";
+
   // 自动调整高度
   if (inputRef.value) {
-    inputRef.value.style.height = 'auto';
+    inputRef.value.style.height = "auto";
   }
 }
 
 // 处理快捷操作
 function handleQuickAction(action: QuickAction) {
-  emit('quickAction', action);
-  emit('send', action.prompt);
+  emit("quickAction", action);
+  emit("send", action.prompt);
 }
 
 // 格式化时间
 function formatTime(timestamp: number): string {
   const date = new Date(timestamp * 1000);
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
 }
 
 // 格式化消息 (简单的 Markdown 支持)
 function formatMessage(content: string): string {
   return content
     .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/\n/g, '<br>');
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/\n/g, "<br>");
 }
 
 // 自动滚动到底部
@@ -153,14 +144,14 @@ watch(
         messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
       }
     });
-  }
+  },
 );
 
 // 自动调整输入框高度
 watch(inputText, () => {
   if (inputRef.value) {
-    inputRef.value.style.height = 'auto';
-    inputRef.value.style.height = Math.min(inputRef.value.scrollHeight, 150) + 'px';
+    inputRef.value.style.height = "auto";
+    inputRef.value.style.height = Math.min(inputRef.value.scrollHeight, 150) + "px";
   }
 });
 </script>
@@ -285,12 +276,22 @@ watch(inputText, () => {
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
-.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
-.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+.loading-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.loading-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
 
 @keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
 }
 
 .input-area {

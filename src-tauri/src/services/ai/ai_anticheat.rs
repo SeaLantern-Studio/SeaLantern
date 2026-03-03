@@ -1,5 +1,5 @@
 //! MCP 反作弊服务
-//! 
+//!
 //! 提供智能检测违规客户端模组和外挂的功能
 //! 支持自动封禁、可疑程度评估、危害等级判断
 
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use super::{AIConfig, AIMessage, AIProvider, ai_provider::get_provider};
+use super::{ai_provider::get_provider, AIConfig, AIMessage, AIProvider};
 
 // ==================== 数据模型 ====================
 
@@ -67,9 +67,15 @@ impl DetectionType {
 
     pub fn category(&self) -> DetectionCategory {
         match self {
-            DetectionType::SpeedHack | DetectionType::FlyHack | DetectionType::KillAura 
-            | DetectionType::XRay | DetectionType::AutoClicker | DetectionType::ReachHack
-            | DetectionType::NoFall | DetectionType::NoKnockback | DetectionType::Scaffold
+            DetectionType::SpeedHack
+            | DetectionType::FlyHack
+            | DetectionType::KillAura
+            | DetectionType::XRay
+            | DetectionType::AutoClicker
+            | DetectionType::ReachHack
+            | DetectionType::NoFall
+            | DetectionType::NoKnockback
+            | DetectionType::Scaffold
             | DetectionType::Baritone => DetectionCategory::Hack,
             DetectionType::IllegalMod => DetectionCategory::Mod,
             DetectionType::DupeExploit => DetectionCategory::Exploit,
@@ -80,10 +86,17 @@ impl DetectionType {
 
     pub fn default_severity(&self) -> Severity {
         match self {
-            DetectionType::KillAura | DetectionType::XRay | DetectionType::DupeExploit => Severity::Critical,
-            DetectionType::SpeedHack | DetectionType::FlyHack | DetectionType::ReachHack 
-            | DetectionType::Scaffold | DetectionType::Baritone => Severity::High,
-            DetectionType::AutoClicker | DetectionType::NoFall | DetectionType::NoKnockback => Severity::Medium,
+            DetectionType::KillAura | DetectionType::XRay | DetectionType::DupeExploit => {
+                Severity::Critical
+            }
+            DetectionType::SpeedHack
+            | DetectionType::FlyHack
+            | DetectionType::ReachHack
+            | DetectionType::Scaffold
+            | DetectionType::Baritone => Severity::High,
+            DetectionType::AutoClicker | DetectionType::NoFall | DetectionType::NoKnockback => {
+                Severity::Medium
+            }
             DetectionType::IllegalMod => Severity::Medium,
             DetectionType::AbnormalBehavior => Severity::Low,
             DetectionType::Custom(_) => Severity::Medium,
@@ -196,13 +209,13 @@ impl DetectionRecord {
     ) -> Self {
         let category = detection_type.category();
         let severity = detection_type.default_severity();
-        
+
         // 计算可疑程度
         let suspicion_score = Self::calculate_suspicion_score(confidence, &detection_type);
-        
+
         // 计算危害程度
         let danger_score = Self::calculate_danger_score(&severity, &category);
-        
+
         // 综合风险评分
         let risk_score = (suspicion_score as f32 * 0.6 + danger_score as f32 * 0.4) as u32;
 
@@ -230,7 +243,7 @@ impl DetectionRecord {
     /// 计算可疑程度评分
     fn calculate_suspicion_score(confidence: f32, detection_type: &DetectionType) -> u32 {
         let base_score = (confidence * 70.0) as u32;
-        
+
         // 根据检测类型调整
         let type_modifier = match detection_type {
             DetectionType::KillAura | DetectionType::XRay => 20,
@@ -639,13 +652,16 @@ impl MCAntiCheatService {
         config: &AIConfig,
     ) -> Option<DetectionRecord> {
         // 本地规则检测
-        if let Some(detection) = self.local_behavior_check(player_name, player_uuid, behavior_data) {
+        if let Some(detection) = self.local_behavior_check(player_name, player_uuid, behavior_data)
+        {
             return Some(detection);
         }
 
         // AI 增强检测
         if config.enabled {
-            return self.ai_behavior_analysis(player_name, player_uuid, behavior_data, config).await;
+            return self
+                .ai_behavior_analysis(player_name, player_uuid, behavior_data, config)
+                .await;
         }
 
         None
@@ -750,7 +766,10 @@ impl MCAntiCheatService {
             format!("是否飞行: {}", behavior_data.is_flying),
             format!("点击速度: {} CPS", behavior_data.clicks_per_second),
             format!("攻击距离: {:.2} blocks", behavior_data.attack_reach),
-            format!("挖矿统计: {} 普通 / {} 稀有", behavior_data.blocks_broken_normal, behavior_data.blocks_broken_rare),
+            format!(
+                "挖矿统计: {} 普通 / {} 稀有",
+                behavior_data.blocks_broken_normal, behavior_data.blocks_broken_rare
+            ),
             format!("攻击目标数: {}", behavior_data.targets_attacked),
             format!("摔落伤害豁免次数: {}", behavior_data.no_fall_count),
             format!("击退豁免次数: {}", behavior_data.no_knockback_count),
@@ -773,7 +792,12 @@ impl MCAntiCheatService {
 
         if response.success {
             if let Some(content) = response.content {
-                return self.parse_ai_detection(&content, player_name, player_uuid, &behavior_data.server_id);
+                return self.parse_ai_detection(
+                    &content,
+                    player_name,
+                    player_uuid,
+                    &behavior_data.server_id,
+                );
             }
         }
 
@@ -809,7 +833,8 @@ impl MCAntiCheatService {
                     return None;
                 }
 
-                let detection_type = result.detection_type
+                let detection_type = result
+                    .detection_type
                     .and_then(|t| match t.as_str() {
                         "speed_hack" => Some(DetectionType::SpeedHack),
                         "fly_hack" => Some(DetectionType::FlyHack),
@@ -829,7 +854,9 @@ impl MCAntiCheatService {
                     player_uuid.to_string(),
                     detection_type,
                     result.confidence.unwrap_or(0.7),
-                    result.details.unwrap_or_else(|| "AI 检测到异常行为".to_string()),
+                    result
+                        .details
+                        .unwrap_or_else(|| "AI 检测到异常行为".to_string()),
                     server_id.to_string(),
                 ));
             }
@@ -865,7 +892,10 @@ impl MCAntiCheatService {
 
         // AI 增强模组分析
         if config.enabled && !mods.is_empty() {
-            if let Some(detection) = self.ai_mod_analysis(player_name, player_uuid, mods, config).await {
+            if let Some(detection) = self
+                .ai_mod_analysis(player_name, player_uuid, mods, config)
+                .await
+            {
                 detections.push(detection);
             }
         }
@@ -883,7 +913,10 @@ impl MCAntiCheatService {
     ) -> Option<DetectionRecord> {
         let provider = get_provider(&config.provider);
 
-        let mod_list: Vec<String> = mods.iter().map(|m| format!("{} ({})", m.name, m.mod_id)).collect();
+        let mod_list: Vec<String> = mods
+            .iter()
+            .map(|m| format!("{} ({})", m.name, m.mod_id))
+            .collect();
 
         let system_prompt = r#"你是一个 Minecraft 模组安全专家。分析模组列表，识别可能的作弊模组或违规模组。
 
@@ -931,7 +964,12 @@ impl MCAntiCheatService {
 
         if response.success {
             if let Some(content) = response.content {
-                return self.parse_ai_mod_detection(&content, player_name, player_uuid, &mods.first().unwrap().server_id);
+                return self.parse_ai_mod_detection(
+                    &content,
+                    player_name,
+                    player_uuid,
+                    &mods.first().unwrap().server_id,
+                );
             }
         }
 
@@ -971,7 +1009,9 @@ impl MCAntiCheatService {
                     player_uuid.to_string(),
                     DetectionType::IllegalMod,
                     result.confidence.unwrap_or(0.7),
-                    result.reason.unwrap_or_else(|| format!("检测到违规模组: {}", result.mod_name.unwrap_or_default())),
+                    result.reason.unwrap_or_else(|| {
+                        format!("检测到违规模组: {}", result.mod_name.unwrap_or_default())
+                    }),
                     server_id.to_string(),
                 ));
             }
@@ -1013,23 +1053,27 @@ impl MCAntiCheatService {
     /// 添加检测记录
     pub fn add_detection(&mut self, detection: DetectionRecord) {
         // 更新玩家档案
-        let profile = self.player_profiles
+        let profile = self
+            .player_profiles
             .entry(detection.player_uuid.clone())
-            .or_insert_with(|| PlayerProfile::new(detection.player_name.clone(), detection.player_uuid.clone()));
+            .or_insert_with(|| {
+                PlayerProfile::new(detection.player_name.clone(), detection.player_uuid.clone())
+            });
         profile.add_detection(&detection);
 
         // 更新统计
         self.statistics.detections_today += 1;
         self.statistics.total_detections += 1;
-        
+
         let type_key = format!("{:?}", detection.detection_type);
         *self.statistics.by_type.entry(type_key).or_insert(0) += 1;
-        
+
         let severity_key = format!("{:?}", detection.severity);
         *self.statistics.by_severity.entry(severity_key).or_insert(0) += 1;
 
         // 保存记录
-        self.detection_records.insert(detection.id.clone(), detection);
+        self.detection_records
+            .insert(detection.id.clone(), detection);
     }
 
     /// 执行处罚
@@ -1204,10 +1248,13 @@ fn get_mod_blacklist() -> HashMap<String, BlacklistedMod> {
     ];
 
     for (id, name) in cheat_clients {
-        blacklist.insert(id.to_string(), BlacklistedMod {
-            confidence: 0.95,
-            reason: format!("已知作弊客户端: {}", name),
-        });
+        blacklist.insert(
+            id.to_string(),
+            BlacklistedMod {
+                confidence: 0.95,
+                reason: format!("已知作弊客户端: {}", name),
+            },
+        );
     }
 
     // 作弊模组
@@ -1248,10 +1295,13 @@ fn get_mod_blacklist() -> HashMap<String, BlacklistedMod> {
     ];
 
     for (id, name) in cheat_mods {
-        blacklist.insert(id.to_string(), BlacklistedMod {
-            confidence: 0.85,
-            reason: format!("违规作弊模组: {}", name),
-        });
+        blacklist.insert(
+            id.to_string(),
+            BlacklistedMod {
+                confidence: 0.85,
+                reason: format!("违规作弊模组: {}", name),
+            },
+        );
     }
 
     blacklist
@@ -1315,7 +1365,7 @@ mod tests {
     #[test]
     fn test_player_profile() {
         let mut profile = PlayerProfile::new("TestPlayer".to_string(), "uuid-1234".to_string());
-        
+
         let detection = DetectionRecord::new(
             "TestPlayer".to_string(),
             "uuid-1234".to_string(),
@@ -1326,7 +1376,7 @@ mod tests {
         );
 
         profile.add_detection(&detection);
-        
+
         assert_eq!(profile.violation_count, 1);
         assert!(profile.total_risk_score > 0);
         assert_eq!(profile.status, PlayerStatus::Watched);
@@ -1335,7 +1385,7 @@ mod tests {
     #[test]
     fn test_punishment_determination() {
         let service = MCAntiCheatService::new();
-        
+
         let low_risk = DetectionRecord::new(
             "Player".to_string(),
             "uuid".to_string(),
@@ -1344,7 +1394,7 @@ mod tests {
             "低风险".to_string(),
             "server".to_string(),
         );
-        
+
         let action = service.determine_punishment(&low_risk);
         assert_eq!(action, PunishmentAction::Monitor);
     }

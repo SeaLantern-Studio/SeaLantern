@@ -1,11 +1,11 @@
 //! AI 翻译服务
-//! 
+//!
 //! 提供多语言翻译功能，支持聊天消息、公告等内容翻译
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{AIConfig, AIMessage, AITranslationResult, AIProvider, ai_provider::get_provider};
+use super::{ai_provider::get_provider, AIConfig, AIMessage, AIProvider, AITranslationResult};
 
 /// 支持的语言
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -135,10 +135,7 @@ pub struct TranslationCache {
 
 impl TranslationCache {
     pub fn new(max_size: usize) -> Self {
-        Self {
-            cache: HashMap::new(),
-            max_size,
-        }
+        Self { cache: HashMap::new(), max_size }
     }
 
     /// 生成缓存键
@@ -147,13 +144,24 @@ impl TranslationCache {
     }
 
     /// 获取缓存
-    pub fn get(&self, text: &str, source: &Language, target: &Language) -> Option<&AITranslationResult> {
+    pub fn get(
+        &self,
+        text: &str,
+        source: &Language,
+        target: &Language,
+    ) -> Option<&AITranslationResult> {
         let key = Self::cache_key(text, source, target);
         self.cache.get(&key)
     }
 
     /// 设置缓存
-    pub fn set(&mut self, text: &str, source: &Language, target: &Language, result: AITranslationResult) {
+    pub fn set(
+        &mut self,
+        text: &str,
+        source: &Language,
+        target: &Language,
+        result: AITranslationResult,
+    ) {
         if self.cache.len() >= self.max_size {
             // 简单的 LRU：移除第一个条目
             if let Some(first_key) = self.cache.keys().next().cloned() {
@@ -179,9 +187,7 @@ pub struct AITranslatorService {
 impl AITranslatorService {
     /// 创建新的翻译服务
     pub fn new() -> Self {
-        Self {
-            cache: TranslationCache::new(500),
-        }
+        Self { cache: TranslationCache::new(500) }
     }
 
     /// 翻译文本
@@ -192,7 +198,10 @@ impl AITranslatorService {
         config: &AIConfig,
     ) -> AITranslationResult {
         // 检查缓存
-        if let Some(cached) = self.cache.get(text, &options.source_language, &options.target_language) {
+        if let Some(cached) =
+            self.cache
+                .get(text, &options.source_language, &options.target_language)
+        {
             return cached.clone();
         }
 
@@ -205,7 +214,12 @@ impl AITranslatorService {
 
         // 缓存结果
         if result.confidence > 0.8 {
-            self.cache.set(text, &options.source_language, &options.target_language, result.clone());
+            self.cache.set(
+                text,
+                &options.source_language,
+                &options.target_language,
+                result.clone(),
+            );
         }
 
         result
@@ -361,7 +375,9 @@ impl AITranslatorService {
     fn local_detect_language(&self, text: &str) -> Option<Language> {
         // 简单的字符范围检测
         let has_chinese = text.chars().any(|c| ('\u{4E00}'..='\u{9FFF}').contains(&c));
-        let has_japanese = text.chars().any(|c| ('\u{3040}'..='\u{309F}').contains(&c) || ('\u{30A0}'..='\u{30FF}').contains(&c));
+        let has_japanese = text.chars().any(|c| {
+            ('\u{3040}'..='\u{309F}').contains(&c) || ('\u{30A0}'..='\u{30FF}').contains(&c)
+        });
         let has_korean = text.chars().any(|c| ('\u{AC00}'..='\u{D7AF}').contains(&c));
         let has_arabic = text.chars().any(|c| ('\u{0600}'..='\u{06FF}').contains(&c));
         let has_cyrillic = text.chars().any(|c| ('\u{0400}'..='\u{04FF}').contains(&c));
@@ -477,7 +493,7 @@ mod tests {
     #[test]
     fn test_local_detect_language() {
         let service = AITranslatorService::new();
-        
+
         assert_eq!(service.local_detect_language("你好世界"), Some(Language::ChineseSimplified));
         assert_eq!(service.local_detect_language("Hello World"), Some(Language::English));
         assert_eq!(service.local_detect_language("こんにちは"), Some(Language::Japanese));
@@ -486,7 +502,7 @@ mod tests {
     #[test]
     fn test_translation_cache() {
         let mut cache = TranslationCache::new(10);
-        
+
         let result = AITranslationResult {
             original_text: "Hello".to_string(),
             source_language: "en".to_string(),
@@ -496,7 +512,7 @@ mod tests {
         };
 
         cache.set("Hello", &Language::English, &Language::ChineseSimplified, result.clone());
-        
+
         let cached = cache.get("Hello", &Language::English, &Language::ChineseSimplified);
         assert!(cached.is_some());
     }

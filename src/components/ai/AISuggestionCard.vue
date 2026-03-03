@@ -2,7 +2,7 @@
   <div class="ai-suggestion-card" :class="[severity, { compact }]">
     <!-- 严重程度指示器 -->
     <div class="severity-indicator" :class="severity"></div>
-    
+
     <!-- 卡片内容 -->
     <div class="card-content">
       <!-- 标题区域 -->
@@ -20,10 +20,10 @@
           </span>
         </div>
       </div>
-      
+
       <!-- 描述 -->
       <p class="card-description" v-if="description">{{ description }}</p>
-      
+
       <!-- 建议列表 -->
       <div class="suggestions-section" v-if="suggestions.length > 0">
         <h6 class="section-title">
@@ -41,10 +41,10 @@
           class="show-more-btn"
           @click="expanded = !expanded"
         >
-          {{ expanded ? '收起' : `展开全部 (${suggestions.length})` }}
+          {{ expanded ? "收起" : `展开全部 (${suggestions.length})` }}
         </button>
       </div>
-      
+
       <!-- 操作按钮 -->
       <div class="card-actions" v-if="actions.length > 0">
         <button
@@ -57,19 +57,19 @@
           {{ action.label }}
         </button>
       </div>
-      
+
       <!-- 详情展开区 -->
       <div class="details-section" v-if="details && showDetails">
         <button class="details-toggle" @click="detailsExpanded = !detailsExpanded">
           <ChevronDownIcon :class="{ rotated: detailsExpanded }" />
-          {{ detailsExpanded ? '收起详情' : '查看详情' }}
+          {{ detailsExpanded ? "收起详情" : "查看详情" }}
         </button>
         <div class="details-content" v-if="detailsExpanded">
           <pre>{{ details }}</pre>
         </div>
       </div>
     </div>
-    
+
     <!-- 关闭按钮 -->
     <button class="close-btn" v-if="dismissible" @click="emit('dismiss')">
       <XIcon />
@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed } from "vue";
 import {
   AlertTriangle as WarningIcon,
   AlertCircle as ErrorIcon,
@@ -88,12 +88,12 @@ import {
   Check as CheckIcon,
   ChevronDown as ChevronDownIcon,
   X as XIcon,
-} from 'lucide-vue-next';
+} from "lucide-vue-next";
 
 export interface CardAction {
   id: string;
   label: string;
-  type?: 'primary' | 'secondary' | 'danger';
+  type?: "primary" | "secondary" | "danger";
   icon?: any;
   handler?: () => void;
 }
@@ -102,7 +102,7 @@ const props = withDefaults(
   defineProps<{
     title: string;
     description?: string;
-    severity?: 'critical' | 'error' | 'warning' | 'info';
+    severity?: "critical" | "error" | "warning" | "info";
     confidence?: number;
     suggestions?: string[];
     actions?: CardAction[];
@@ -116,7 +116,7 @@ const props = withDefaults(
     maxSuggestions?: number;
   }>(),
   {
-    severity: 'info',
+    severity: "info",
     confidence: 0.8,
     suggestions: () => [],
     actions: () => [],
@@ -127,12 +127,12 @@ const props = withDefaults(
     compact: false,
     dismissible: false,
     maxSuggestions: 3,
-  }
+  },
 );
 
 const emit = defineEmits<{
-  (e: 'action', action: CardAction): void;
-  (e: 'dismiss'): void;
+  (e: "action", action: CardAction): void;
+  (e: "dismiss"): void;
 }>();
 
 const expanded = ref(false);
@@ -141,19 +141,23 @@ const detailsExpanded = ref(false);
 // 计算属性
 const severityIcon = computed(() => {
   switch (props.severity) {
-    case 'critical': return CriticalIcon;
-    case 'error': return ErrorIcon;
-    case 'warning': return WarningIcon;
-    default: return InfoIcon;
+    case "critical":
+      return CriticalIcon;
+    case "error":
+      return ErrorIcon;
+    case "warning":
+      return WarningIcon;
+    default:
+      return InfoIcon;
   }
 });
 
 const severityLabel = computed(() => {
   const labels: Record<string, string> = {
-    critical: '严重',
-    error: '错误',
-    warning: '警告',
-    info: '信息',
+    critical: "严重",
+    error: "错误",
+    warning: "警告",
+    info: "信息",
   };
   return labels[props.severity] || props.severity;
 });
@@ -170,7 +174,7 @@ function handleAction(action: CardAction) {
   if (action.handler) {
     action.handler();
   }
-  emit('action', action);
+  emit("action", action);
 }
 </script>
 
@@ -197,10 +201,18 @@ function handleAction(action: CardAction) {
   flex-shrink: 0;
 }
 
-.severity-indicator.critical { background: #ff4d4f; }
-.severity-indicator.error { background: #ff7a45; }
-.severity-indicator.warning { background: #faad14; }
-.severity-indicator.info { background: #1890ff; }
+.severity-indicator.critical {
+  background: #ff4d4f;
+}
+.severity-indicator.error {
+  background: #ff7a45;
+}
+.severity-indicator.warning {
+  background: #faad14;
+}
+.severity-indicator.info {
+  background: #1890ff;
+}
 
 .card-content {
   flex: 1;
@@ -232,13 +244,21 @@ function handleAction(action: CardAction) {
 }
 
 .severity-icon.critical,
-.ai-suggestion-card.critical .severity-icon { color: #ff4d4f; }
+.ai-suggestion-card.critical .severity-icon {
+  color: #ff4d4f;
+}
 .severity-icon.error,
-.ai-suggestion-card.error .severity-icon { color: #ff7a45; }
+.ai-suggestion-card.error .severity-icon {
+  color: #ff7a45;
+}
 .severity-icon.warning,
-.ai-suggestion-card.warning .severity-icon { color: #faad14; }
+.ai-suggestion-card.warning .severity-icon {
+  color: #faad14;
+}
 .severity-icon.info,
-.ai-suggestion-card.info .severity-icon { color: #1890ff; }
+.ai-suggestion-card.info .severity-icon {
+  color: #1890ff;
+}
 
 .card-title {
   margin: 0;
@@ -260,10 +280,22 @@ function handleAction(action: CardAction) {
   font-weight: 500;
 }
 
-.severity-badge.critical { background: #ff4d4f20; color: #ff4d4f; }
-.severity-badge.error { background: #ff7a4520; color: #ff7a45; }
-.severity-badge.warning { background: #faad1420; color: #faad14; }
-.severity-badge.info { background: #1890ff20; color: #1890ff; }
+.severity-badge.critical {
+  background: #ff4d4f20;
+  color: #ff4d4f;
+}
+.severity-badge.error {
+  background: #ff7a4520;
+  color: #ff7a45;
+}
+.severity-badge.warning {
+  background: #faad1420;
+  color: #faad14;
+}
+.severity-badge.info {
+  background: #1890ff20;
+  color: #1890ff;
+}
 
 .confidence-badge {
   padding: 2px 6px;

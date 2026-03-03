@@ -15,14 +15,14 @@
           </button>
         </div>
       </div>
-      
+
       <textarea
         v-model="logInput"
         :placeholder="placeholder"
         rows="8"
         class="log-textarea"
       ></textarea>
-      
+
       <div class="log-stats" v-if="logs.length">
         <span>{{ logs.length }} 行日志</span>
         <span>{{ estimatedSize }}</span>
@@ -39,7 +39,7 @@
           </option>
         </select>
       </div>
-      
+
       <div class="option-group">
         <label>最大行数</label>
         <input type="number" v-model="maxLines" min="10" max="1000" />
@@ -47,14 +47,10 @@
     </div>
 
     <!-- 分析按钮 -->
-    <button
-      class="analyze-btn"
-      :disabled="analyzing || !logInput.trim()"
-      @click="handleAnalyze"
-    >
+    <button class="analyze-btn" :disabled="analyzing || !logInput.trim()" @click="handleAnalyze">
       <LoadingIcon v-if="analyzing" class="spinning" />
       <SearchIcon v-else />
-      {{ analyzing ? '分析中...' : '开始分析' }}
+      {{ analyzing ? "分析中..." : "开始分析" }}
     </button>
 
     <!-- 分析结果 -->
@@ -73,7 +69,7 @@
           </button>
         </div>
       </div>
-      
+
       <div class="results-list">
         <div
           v-for="(result, index) in filteredResults"
@@ -85,14 +81,12 @@
             <span class="severity-badge" :class="result.severity">
               {{ getSeverityLabel(result.severity) }}
             </span>
-            <span class="confidence">
-              置信度: {{ (result.confidence * 100).toFixed(0) }}%
-            </span>
+            <span class="confidence"> 置信度: {{ (result.confidence * 100).toFixed(0) }}% </span>
           </div>
-          
+
           <h5 class="result-title">{{ result.title }}</h5>
           <p class="result-description">{{ result.description }}</p>
-          
+
           <div v-if="result.suggestions.length > 0" class="suggestions">
             <h6>建议措施</h6>
             <ul>
@@ -101,7 +95,7 @@
               </li>
             </ul>
           </div>
-          
+
           <div v-if="result.related_logs.length > 0 && showRelatedLogs" class="related-logs">
             <h6>相关日志</h6>
             <pre v-for="(log, idx) in result.related_logs.slice(0, 3)" :key="idx">{{ log }}</pre>
@@ -110,7 +104,9 @@
               class="show-more-btn"
               @click="toggleExpand(index)"
             >
-              {{ expandedItems.includes(index) ? '收起' : `展开全部 (${result.related_logs.length})` }}
+              {{
+                expandedItems.includes(index) ? "收起" : `展开全部 (${result.related_logs.length})`
+              }}
             </button>
           </div>
         </div>
@@ -126,18 +122,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed } from "vue";
 import {
   Search as SearchIcon,
   Trash2 as TrashIcon,
   ClipboardPaste as ClipboardIcon,
   Loader2 as LoadingIcon,
   CheckCircle as CheckCircleIcon,
-} from 'lucide-vue-next';
+} from "lucide-vue-next";
 
 export interface AnalysisResult {
   analysis_type: string;
-  severity: 'critical' | 'error' | 'warning' | 'info';
+  severity: "critical" | "error" | "warning" | "info";
   title: string;
   description: string;
   suggestions: string[];
@@ -154,47 +150,47 @@ const props = withDefaults(
     analysisTypes?: { value: string; label: string }[];
   }>(),
   {
-    title: '日志分析',
-    placeholder: '粘贴服务器日志内容...',
+    title: "日志分析",
+    placeholder: "粘贴服务器日志内容...",
     showOptions: true,
     showRelatedLogs: true,
     analysisTypes: () => [
-      { value: 'full', label: '全面分析' },
-      { value: 'error', label: '错误检测' },
-      { value: 'performance', label: '性能分析' },
-      { value: 'security', label: '安全检查' },
-      { value: 'plugin', label: '插件冲突' },
+      { value: "full", label: "全面分析" },
+      { value: "error", label: "错误检测" },
+      { value: "performance", label: "性能分析" },
+      { value: "security", label: "安全检查" },
+      { value: "plugin", label: "插件冲突" },
     ],
-  }
+  },
 );
 
 const emit = defineEmits<{
-  (e: 'analyze', logs: string[], options: { type: string; maxLines: number }): void;
-  (e: 'clear'): void;
+  (e: "analyze", logs: string[], options: { type: string; maxLines: number }): void;
+  (e: "clear"): void;
 }>();
 
-const logInput = ref('');
-const selectedType = ref('full');
+const logInput = ref("");
+const selectedType = ref("full");
 const maxLines = ref(100);
 const analyzing = ref(false);
 const hasAnalyzed = ref(false);
 const results = ref<AnalysisResult[]>([]);
-const activeFilter = ref('all');
+const activeFilter = ref("all");
 const expandedItems = ref<number[]>([]);
 
 const defaultSeverityFilters = [
-  { value: 'all', label: '全部' },
-  { value: 'critical', label: '严重' },
-  { value: 'error', label: '错误' },
-  { value: 'warning', label: '警告' },
-  { value: 'info', label: '信息' },
+  { value: "all", label: "全部" },
+  { value: "critical", label: "严重" },
+  { value: "error", label: "错误" },
+  { value: "warning", label: "警告" },
+  { value: "info", label: "信息" },
 ];
 
 const severityFilters = defaultSeverityFilters;
 
 // 计算属性
 const logs = computed(() => {
-  return logInput.value.split('\n').filter((l) => l.trim());
+  return logInput.value.split("\n").filter((l) => l.trim());
 });
 
 const estimatedSize = computed(() => {
@@ -205,34 +201,34 @@ const estimatedSize = computed(() => {
 });
 
 const filteredResults = computed(() => {
-  if (activeFilter.value === 'all') return results.value;
+  if (activeFilter.value === "all") return results.value;
   return results.value.filter((r) => r.severity === activeFilter.value);
 });
 
 // 方法
 function getSeverityCount(severity: string): number {
-  if (severity === 'all') return results.value.length;
+  if (severity === "all") return results.value.length;
   return results.value.filter((r) => r.severity === severity).length;
 }
 
 function getSeverityLabel(severity: string): string {
   const labels: Record<string, string> = {
-    critical: '严重',
-    error: '错误',
-    warning: '警告',
-    info: '信息',
+    critical: "严重",
+    error: "错误",
+    warning: "警告",
+    info: "信息",
   };
   return labels[severity] || severity;
 }
 
 async function handleAnalyze() {
   if (!logInput.value.trim() || analyzing.value) return;
-  
+
   analyzing.value = true;
   hasAnalyzed.value = false;
-  
+
   try {
-    emit('analyze', logs.value, {
+    emit("analyze", logs.value, {
       type: selectedType.value,
       maxLines: maxLines.value,
     });
@@ -244,10 +240,10 @@ async function handleAnalyze() {
 }
 
 function clearLogs() {
-  logInput.value = '';
+  logInput.value = "";
   results.value = [];
   hasAnalyzed.value = false;
-  emit('clear');
+  emit("clear");
 }
 
 async function pasteFromClipboard() {
@@ -255,7 +251,7 @@ async function pasteFromClipboard() {
     const text = await navigator.clipboard.readText();
     logInput.value = text;
   } catch (err) {
-    console.error('Failed to paste:', err);
+    console.error("Failed to paste:", err);
   }
 }
 
@@ -416,8 +412,12 @@ defineExpose({
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .analysis-results {
@@ -472,10 +472,18 @@ defineExpose({
   color: var(--sl-text);
 }
 
-.filter-btn.critical { border-color: #ff4d4f; }
-.filter-btn.error { border-color: #ff7a45; }
-.filter-btn.warning { border-color: #faad14; }
-.filter-btn.info { border-color: #1890ff; }
+.filter-btn.critical {
+  border-color: #ff4d4f;
+}
+.filter-btn.error {
+  border-color: #ff7a45;
+}
+.filter-btn.warning {
+  border-color: #faad14;
+}
+.filter-btn.info {
+  border-color: #1890ff;
+}
 
 .results-list {
   display: flex;
@@ -490,10 +498,18 @@ defineExpose({
   border-left: 3px solid var(--sl-border);
 }
 
-.result-item.critical { border-left-color: #ff4d4f; }
-.result-item.error { border-left-color: #ff7a45; }
-.result-item.warning { border-left-color: #faad14; }
-.result-item.info { border-left-color: #1890ff; }
+.result-item.critical {
+  border-left-color: #ff4d4f;
+}
+.result-item.error {
+  border-left-color: #ff7a45;
+}
+.result-item.warning {
+  border-left-color: #faad14;
+}
+.result-item.info {
+  border-left-color: #1890ff;
+}
 
 .result-header {
   display: flex;
@@ -509,10 +525,22 @@ defineExpose({
   font-weight: 500;
 }
 
-.severity-badge.critical { background: #ff4d4f20; color: #ff4d4f; }
-.severity-badge.error { background: #ff7a4520; color: #ff7a45; }
-.severity-badge.warning { background: #faad1420; color: #faad14; }
-.severity-badge.info { background: #1890ff20; color: #1890ff; }
+.severity-badge.critical {
+  background: #ff4d4f20;
+  color: #ff4d4f;
+}
+.severity-badge.error {
+  background: #ff7a4520;
+  color: #ff7a45;
+}
+.severity-badge.warning {
+  background: #faad1420;
+  color: #faad14;
+}
+.severity-badge.info {
+  background: #1890ff20;
+  color: #1890ff;
+}
 
 .confidence {
   font-size: 12px;

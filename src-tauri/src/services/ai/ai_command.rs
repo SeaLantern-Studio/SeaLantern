@@ -1,11 +1,14 @@
 //! AI 命令助手服务
-//! 
+//!
 //! 提供自然语言转 Minecraft 命令的功能
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{AICommandSuggestion, AIConfig, AIMessage, AIResponse, AIProvider, CommandParameter, ai_provider::get_provider};
+use super::{
+    ai_provider::get_provider, AICommandSuggestion, AIConfig, AIMessage, AIProvider, AIResponse,
+    CommandParameter,
+};
 
 /// 命令类型
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -121,11 +124,7 @@ impl AICommandService {
     }
 
     /// 解释命令
-    pub async fn explain_command(
-        &self,
-        command: &str,
-        config: &AIConfig,
-    ) -> Option<String> {
+    pub async fn explain_command(&self, command: &str, config: &AIConfig) -> Option<String> {
         if !config.enabled {
             return self.local_command_explain(command);
         }
@@ -164,7 +163,8 @@ impl AICommandService {
         let messages = vec![
             AIMessage {
                 role: "system".to_string(),
-                content: "你是一个 Minecraft 命令助手，帮助用户补全命令。返回 JSON 数组格式。".to_string(),
+                content: "你是一个 Minecraft 命令助手，帮助用户补全命令。返回 JSON 数组格式。"
+                    .to_string(),
                 timestamp: chrono::Utc::now().timestamp(),
             },
             AIMessage {
@@ -344,7 +344,7 @@ impl AICommandService {
     fn apply_pattern(&self, input: &str, pattern: &CommandPattern) -> String {
         // 简单的实现，实际应用中可以更复杂
         let mut command = pattern.template.clone();
-        
+
         // 尝试提取数字
         if let Some(num) = input.split_whitespace().find_map(|w| w.parse::<i32>().ok()) {
             command = command.replace("{number}", &num.to_string());
@@ -429,7 +429,12 @@ fn get_command_patterns() -> Vec<CommandPattern> {
             related_commands: vec!["/spreadplayers".to_string()],
         },
         CommandPattern {
-            keywords: vec!["游戏模式".to_string(), "创造".to_string(), "生存".to_string(), "gamemode".to_string()],
+            keywords: vec![
+                "游戏模式".to_string(),
+                "创造".to_string(),
+                "生存".to_string(),
+                "gamemode".to_string(),
+            ],
             template: "/gamemode creative @p".to_string(),
             description: "设置游戏模式".to_string(),
             parameters: vec![CommandParameter {
@@ -439,7 +444,10 @@ fn get_command_patterns() -> Vec<CommandPattern> {
                 default_value: Some("survival".to_string()),
                 description: "游戏模式: survival, creative, adventure, spectator".to_string(),
             }],
-            examples: vec!["/gamemode creative".to_string(), "/gamemode survival Steve".to_string()],
+            examples: vec![
+                "/gamemode creative".to_string(),
+                "/gamemode survival Steve".to_string(),
+            ],
             related_commands: vec!["/defaultgamemode".to_string()],
         },
         CommandPattern {
@@ -466,7 +474,12 @@ fn get_command_patterns() -> Vec<CommandPattern> {
             related_commands: vec!["/clear".to_string()],
         },
         CommandPattern {
-            keywords: vec!["时间".to_string(), "白天".to_string(), "黑夜".to_string(), "time".to_string()],
+            keywords: vec![
+                "时间".to_string(),
+                "白天".to_string(),
+                "黑夜".to_string(),
+                "time".to_string(),
+            ],
             template: "/time set day".to_string(),
             description: "设置游戏时间".to_string(),
             parameters: vec![CommandParameter {
@@ -480,7 +493,12 @@ fn get_command_patterns() -> Vec<CommandPattern> {
             related_commands: vec!["/gamerule doDaylightCycle".to_string()],
         },
         CommandPattern {
-            keywords: vec!["天气".to_string(), "下雨".to_string(), "晴天".to_string(), "weather".to_string()],
+            keywords: vec![
+                "天气".to_string(),
+                "下雨".to_string(),
+                "晴天".to_string(),
+                "weather".to_string(),
+            ],
             template: "/weather clear".to_string(),
             description: "设置天气".to_string(),
             parameters: vec![CommandParameter {
@@ -499,7 +517,7 @@ fn get_command_patterns() -> Vec<CommandPattern> {
 /// 获取命令解释
 fn get_command_explanations() -> HashMap<String, String> {
     let mut map = HashMap::new();
-    
+
     map.insert("tp".to_string(), "传送实体到指定位置或实体".to_string());
     map.insert("gamemode".to_string(), "设置玩家的游戏模式".to_string());
     map.insert("give".to_string(), "给予玩家物品".to_string());
@@ -530,7 +548,7 @@ fn get_command_explanations() -> HashMap<String, String> {
     map.insert("stopsound".to_string(), "停止音效".to_string());
     map.insert("data".to_string(), "操作实体/方块数据".to_string());
     map.insert("item".to_string(), "操作物品".to_string());
-    
+
     map
 }
 

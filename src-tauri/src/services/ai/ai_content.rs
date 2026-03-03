@@ -1,11 +1,11 @@
 //! AI 内容生成服务
-//! 
+//!
 //! 提供服务器公告、规则文档、活动策划等内容生成功能
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{AIConfig, AIContentGeneration, AIMessage, AIProvider, ai_provider::get_provider};
+use super::{ai_provider::get_provider, AIConfig, AIContentGeneration, AIMessage, AIProvider};
 
 /// 内容生成类型
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -100,14 +100,15 @@ impl AIContentService {
         }
 
         // 回退到本地模板
-        self.local_template_generate(options).unwrap_or_else(|| AIContentGeneration {
-            content: "无法生成内容，请检查 AI 配置或提供更多信息。".to_string(),
-            content_type: format!("{:?}", options.content_type),
-            style: None,
-            generated_at: chrono::Utc::now().to_rfc3339(),
-            confidence: 0.0,
-            suggestions: vec!["请启用 AI 功能以获得更好的生成效果".to_string()],
-        })
+        self.local_template_generate(options)
+            .unwrap_or_else(|| AIContentGeneration {
+                content: "无法生成内容，请检查 AI 配置或提供更多信息。".to_string(),
+                content_type: format!("{:?}", options.content_type),
+                style: None,
+                generated_at: chrono::Utc::now().to_rfc3339(),
+                confidence: 0.0,
+                suggestions: vec!["请启用 AI 功能以获得更好的生成效果".to_string()],
+            })
     }
 
     /// 生成服务器公告
@@ -127,7 +128,8 @@ impl AIContentService {
         let messages = vec![
             AIMessage {
                 role: "system".to_string(),
-                content: "你是一个专业的 Minecraft 服务器管理员，擅长撰写简洁明了的服务器公告。".to_string(),
+                content: "你是一个专业的 Minecraft 服务器管理员，擅长撰写简洁明了的服务器公告。"
+                    .to_string(),
                 timestamp: chrono::Utc::now().timestamp(),
             },
             AIMessage {
@@ -228,12 +230,15 @@ impl AIContentService {
 
         let provider = get_provider(&config.provider);
 
-        let player_info = player_name.map(|n| format!("玩家名称：{}", n)).unwrap_or_default();
+        let player_info = player_name
+            .map(|n| format!("玩家名称：{}", n))
+            .unwrap_or_default();
 
         let messages = vec![
             AIMessage {
                 role: "system".to_string(),
-                content: "你是一个友好的 Minecraft 服务器欢迎助手，擅长生成热情的欢迎消息。".to_string(),
+                content: "你是一个友好的 Minecraft 服务器欢迎助手，擅长生成热情的欢迎消息。"
+                    .to_string(),
                 timestamp: chrono::Utc::now().timestamp(),
             },
             AIMessage {
@@ -371,10 +376,8 @@ impl AIContentService {
 
     /// 构建用户消息
     fn build_content_user_message(&self, options: &ContentGenerationOptions) -> String {
-        let mut message = format!(
-            "服务器名称：{}\n内容类型：{:?}",
-            options.server_name, options.content_type
-        );
+        let mut message =
+            format!("服务器名称：{}\n内容类型：{:?}", options.server_name, options.content_type);
 
         if !options.server_features.is_empty() {
             message.push_str(&format!("\n服务器特色：{}", options.server_features.join(", ")));
@@ -398,20 +401,15 @@ impl AIContentService {
     }
 
     /// 本地模板生成
-    fn local_template_generate(&self, options: &ContentGenerationOptions) -> Option<AIContentGeneration> {
+    fn local_template_generate(
+        &self,
+        options: &ContentGenerationOptions,
+    ) -> Option<AIContentGeneration> {
         match options.content_type {
-            ContentType::Announcement => {
-                Some(self.local_announcement_content(options))
-            }
-            ContentType::ServerRules => {
-                Some(self.local_rules_content(options))
-            }
-            ContentType::Welcome => {
-                Some(self.local_welcome_content(options))
-            }
-            ContentType::Event => {
-                Some(self.local_event_content(options))
-            }
+            ContentType::Announcement => Some(self.local_announcement_content(options)),
+            ContentType::ServerRules => Some(self.local_rules_content(options)),
+            ContentType::Welcome => Some(self.local_welcome_content(options)),
+            ContentType::Event => Some(self.local_event_content(options)),
             _ => None,
         }
     }
@@ -425,7 +423,10 @@ impl AIContentService {
     }
 
     /// 本地公告内容
-    fn local_announcement_content(&self, options: &ContentGenerationOptions) -> AIContentGeneration {
+    fn local_announcement_content(
+        &self,
+        options: &ContentGenerationOptions,
+    ) -> AIContentGeneration {
         AIContentGeneration {
             content: format!(
                 "【{} 公告】\n\n欢迎来到 {}！\n{}\n\n感谢各位玩家的支持！",
@@ -583,7 +584,8 @@ fn get_help_topics() -> HashMap<String, String> {
 - /help - 查看帮助
 - /rules - 查看规则
 - /list - 在线玩家列表
-"#.to_string()
+"#
+        .to_string(),
     );
 
     topics.insert(
@@ -606,7 +608,8 @@ fn get_help_topics() -> HashMap<String, String> {
 - use - 使用
 - container - 容器
 - move - 移动
-"#.to_string()
+"#
+        .to_string(),
     );
 
     topics

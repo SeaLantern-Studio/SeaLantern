@@ -1,10 +1,10 @@
 /**
  * AI 功能 API
- * 
+ *
  * 提供 AI 功能的前端调用接口
  */
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from "@tauri-apps/api/core";
 
 // ==================== 类型定义 ====================
 
@@ -24,7 +24,7 @@ export interface AIConfig {
 /** AI 分析结果 */
 export interface AIAnalysisResult {
   analysis_type: string;
-  severity: 'critical' | 'error' | 'warning' | 'info';
+  severity: "critical" | "error" | "warning" | "info";
   title: string;
   description: string;
   suggestions: string[];
@@ -139,28 +139,28 @@ export interface HardwareInfo {
  * 获取 AI 配置
  */
 export async function getAIConfig(): Promise<AIConfig> {
-  return invoke<AIConfig>('get_ai_config');
+  return invoke<AIConfig>("get_ai_config");
 }
 
 /**
  * 更新 AI 配置
  */
 export async function updateAIConfig(config: AIConfig): Promise<void> {
-  return invoke('update_ai_config', { config });
+  return invoke("update_ai_config", { config });
 }
 
 /**
  * 检查 AI 是否可用
  */
 export async function checkAIAvailable(): Promise<boolean> {
-  return invoke<boolean>('check_ai_available');
+  return invoke<boolean>("check_ai_available");
 }
 
 /**
  * 获取支持的提供商列表
  */
 export async function getAIProviders(): Promise<ProviderInfo[]> {
-  return invoke<ProviderInfo[]>('get_ai_providers');
+  return invoke<ProviderInfo[]>("get_ai_providers");
 }
 
 // ==================== 日志分析 ====================
@@ -168,7 +168,7 @@ export async function getAIProviders(): Promise<ProviderInfo[]> {
 /** 分析日志选项 */
 export interface AnalyzeLogsOptions {
   logs: string[];
-  analysis_type?: 'error' | 'performance' | 'security' | 'plugin' | 'full';
+  analysis_type?: "error" | "performance" | "security" | "plugin" | "full";
   include_suggestions?: boolean;
   max_lines?: number;
 }
@@ -177,10 +177,10 @@ export interface AnalyzeLogsOptions {
  * 分析日志
  */
 export async function analyzeLogs(options: AnalyzeLogsOptions): Promise<AIAnalysisResult[]> {
-  return invoke<AIAnalysisResult[]>('analyze_logs', {
+  return invoke<AIAnalysisResult[]>("analyze_logs", {
     request: {
       logs: options.logs,
-      analysis_type: options.analysis_type || 'full',
+      analysis_type: options.analysis_type || "full",
       include_suggestions: options.include_suggestions ?? true,
       max_lines: options.max_lines,
     },
@@ -191,21 +191,21 @@ export async function analyzeLogs(options: AnalyzeLogsOptions): Promise<AIAnalys
  * 解释日志行
  */
 export async function explainLogLine(logLine: string): Promise<string | null> {
-  return invoke<string | null>('explain_log_line', { logLine });
+  return invoke<string | null>("explain_log_line", { logLine });
 }
 
 /**
  * 获取问题解决方案
  */
 export async function getSolution(problem: string): Promise<string | null> {
-  return invoke<string | null>('get_solution', { problem });
+  return invoke<string | null>("get_solution", { problem });
 }
 
 /**
  * 获取预定义的日志模式
  */
 export async function getLogPatterns(): Promise<LogPatternInfo[]> {
-  return invoke<LogPatternInfo[]>('get_log_patterns');
+  return invoke<LogPatternInfo[]>("get_log_patterns");
 }
 
 // ==================== 命令助手 ====================
@@ -222,8 +222,10 @@ export interface GenerateCommandOptions {
 /**
  * 生成命令
  */
-export async function generateCommand(options: GenerateCommandOptions): Promise<AICommandSuggestion | null> {
-  return invoke<AICommandSuggestion | null>('generate_command', {
+export async function generateCommand(
+  options: GenerateCommandOptions,
+): Promise<AICommandSuggestion | null> {
+  return invoke<AICommandSuggestion | null>("generate_command", {
     request: {
       natural_language: options.natural_language,
       command_type: options.command_type,
@@ -238,14 +240,16 @@ export async function generateCommand(options: GenerateCommandOptions): Promise<
  * 解释命令
  */
 export async function explainCommand(command: string): Promise<string | null> {
-  return invoke<string | null>('explain_command', { command });
+  return invoke<string | null>("explain_command", { command });
 }
 
 /**
  * 获取命令建议
  */
-export async function getCommandSuggestions(partialCommand: string): Promise<AICommandSuggestion[]> {
-  return invoke<AICommandSuggestion[]>('get_command_suggestions', { partialCommand });
+export async function getCommandSuggestions(
+  partialCommand: string,
+): Promise<AICommandSuggestion[]> {
+  return invoke<AICommandSuggestion[]>("get_command_suggestions", { partialCommand });
 }
 
 // ==================== 配置优化 ====================
@@ -254,7 +258,7 @@ export async function getCommandSuggestions(partialCommand: string): Promise<AIC
 export interface AnalyzeConfigOptions {
   config_content: string;
   config_type: string;
-  analysis_type?: 'jvm' | 'server' | 'performance' | 'security' | 'full';
+  analysis_type?: "jvm" | "server" | "performance" | "security" | "full";
   hardware_info?: HardwareInfo;
   expected_players?: number;
   server_type?: string;
@@ -265,11 +269,11 @@ export interface AnalyzeConfigOptions {
  * 分析配置
  */
 export async function analyzeConfig(options: AnalyzeConfigOptions): Promise<AIConfigSuggestion[]> {
-  return invoke<AIConfigSuggestion[]>('analyze_config', {
+  return invoke<AIConfigSuggestion[]>("analyze_config", {
     request: {
       config_content: options.config_content,
       config_type: options.config_type,
-      analysis_type: options.analysis_type || 'full',
+      analysis_type: options.analysis_type || "full",
       hardware_info: options.hardware_info,
       expected_players: options.expected_players,
       server_type: options.server_type,
@@ -289,14 +293,14 @@ export interface AnalyzeJVMOptions {
  * 分析 JVM 参数
  */
 export async function analyzeJVM(options: AnalyzeJVMOptions): Promise<JVMAnalysisResult> {
-  return invoke<JVMAnalysisResult>('analyze_jvm', { request: options });
+  return invoke<JVMAnalysisResult>("analyze_jvm", { request: options });
 }
 
 /**
  * 生成启动脚本
  */
 export async function generateStartupScript(jvmArgs: string[], serverJar: string): Promise<string> {
-  return invoke<string>('generate_startup_script', { jvmArgs, serverJar });
+  return invoke<string>("generate_startup_script", { jvmArgs, serverJar });
 }
 
 // ==================== 翻译 ====================
@@ -306,7 +310,7 @@ export interface TranslateOptions {
   text: string;
   source_language: string;
   target_language: string;
-  context?: 'chat' | 'announcement' | 'rules' | 'help' | 'item' | 'ui' | 'general';
+  context?: "chat" | "announcement" | "rules" | "help" | "item" | "ui" | "general";
   preserve_formatting?: boolean;
 }
 
@@ -314,7 +318,7 @@ export interface TranslateOptions {
  * 翻译文本
  */
 export async function translateText(options: TranslateOptions): Promise<AITranslationResult> {
-  return invoke<AITranslationResult>('translate_text', {
+  return invoke<AITranslationResult>("translate_text", {
     request: {
       text: options.text,
       source_language: options.source_language,
@@ -329,42 +333,44 @@ export async function translateText(options: TranslateOptions): Promise<AITransl
  * 检测语言
  */
 export async function detectLanguage(text: string): Promise<string | null> {
-  return invoke<string | null>('detect_language', { text });
+  return invoke<string | null>("detect_language", { text });
 }
 
 /**
  * 获取支持的语言列表
  */
 export async function getSupportedLanguages(): Promise<LanguageInfo[]> {
-  return invoke<LanguageInfo[]>('get_supported_languages');
+  return invoke<LanguageInfo[]>("get_supported_languages");
 }
 
 /**
  * 清空翻译缓存
  */
 export async function clearTranslationCache(): Promise<void> {
-  return invoke('clear_translation_cache');
+  return invoke("clear_translation_cache");
 }
 
 // ==================== 内容生成 ====================
 
 /** 生成内容选项 */
 export interface GenerateContentOptions {
-  content_type: 'announcement' | 'rules' | 'event' | 'welcome' | 'help' | 'news' | 'advertisement';
+  content_type: "announcement" | "rules" | "event" | "welcome" | "help" | "news" | "advertisement";
   server_name: string;
   server_features: string[];
   target_audience?: string;
   language?: string;
-  style?: 'formal' | 'casual' | 'friendly' | 'professional' | 'humorous' | 'dramatic';
-  length?: 'short' | 'medium' | 'long' | 'detailed';
+  style?: "formal" | "casual" | "friendly" | "professional" | "humorous" | "dramatic";
+  length?: "short" | "medium" | "long" | "detailed";
   extra_requirements?: string;
 }
 
 /**
  * 生成内容
  */
-export async function generateContent(options: GenerateContentOptions): Promise<AIContentGeneration> {
-  return invoke<AIContentGeneration>('generate_content', { request: options });
+export async function generateContent(
+  options: GenerateContentOptions,
+): Promise<AIContentGeneration> {
+  return invoke<AIContentGeneration>("generate_content", { request: options });
 }
 
 /**
@@ -373,9 +379,9 @@ export async function generateContent(options: GenerateContentOptions): Promise<
 export async function generateAnnouncement(
   serverName: string,
   topic: string,
-  details?: string
+  details?: string,
 ): Promise<string | null> {
-  return invoke<string | null>('generate_announcement', {
+  return invoke<string | null>("generate_announcement", {
     request: {
       server_name: serverName,
       topic,
@@ -387,15 +393,21 @@ export async function generateAnnouncement(
 /**
  * 生成规则
  */
-export async function generateRules(serverName: string, serverType: string): Promise<string | null> {
-  return invoke<string | null>('generate_rules', { serverName, serverType });
+export async function generateRules(
+  serverName: string,
+  serverType: string,
+): Promise<string | null> {
+  return invoke<string | null>("generate_rules", { serverName, serverType });
 }
 
 /**
  * 生成欢迎消息
  */
-export async function generateWelcome(serverName: string, playerName?: string): Promise<string | null> {
-  return invoke<string | null>('generate_welcome', { serverName, playerName });
+export async function generateWelcome(
+  serverName: string,
+  playerName?: string,
+): Promise<string | null> {
+  return invoke<string | null>("generate_welcome", { serverName, playerName });
 }
 
 // ==================== 工具函数 ====================
@@ -405,29 +417,32 @@ export async function generateWelcome(serverName: string, playerName?: string): 
  */
 export function formatSeverity(severity: string): { text: string; color: string } {
   switch (severity) {
-    case 'critical':
-      return { text: '严重', color: '#ff4d4f' };
-    case 'error':
-      return { text: '错误', color: '#ff7a45' };
-    case 'warning':
-      return { text: '警告', color: '#faad14' };
-    case 'info':
-      return { text: '信息', color: '#1890ff' };
+    case "critical":
+      return { text: "严重", color: "#ff4d4f" };
+    case "error":
+      return { text: "错误", color: "#ff7a45" };
+    case "warning":
+      return { text: "警告", color: "#faad14" };
+    case "info":
+      return { text: "信息", color: "#1890ff" };
     default:
-      return { text: severity, color: '#666' };
+      return { text: severity, color: "#666" };
   }
 }
 
 /**
  * 格式化置信度显示
  */
-export function formatConfidence(confidence: number): { text: string; level: 'high' | 'medium' | 'low' } {
+export function formatConfidence(confidence: number): {
+  text: string;
+  level: "high" | "medium" | "low";
+} {
   if (confidence >= 0.8) {
-    return { text: '高', level: 'high' };
+    return { text: "高", level: "high" };
   } else if (confidence >= 0.5) {
-    return { text: '中', level: 'medium' };
+    return { text: "中", level: "medium" };
   } else {
-    return { text: '低', level: 'low' };
+    return { text: "低", level: "low" };
   }
 }
 
@@ -440,10 +455,10 @@ export function validateAPIKey(provider: string, key: string): boolean {
   }
 
   switch (provider) {
-    case 'openai':
-      return key.startsWith('sk-');
-    case 'anthropic':
-      return key.startsWith('sk-ant-');
+    case "openai":
+      return key.startsWith("sk-");
+    case "anthropic":
+      return key.startsWith("sk-ant-");
     default:
       return key.length >= 10;
   }
@@ -454,14 +469,14 @@ export function validateAPIKey(provider: string, key: string): boolean {
  */
 export function getDefaultModel(provider: string): string {
   switch (provider) {
-    case 'openai':
-      return 'gpt-4o-mini';
-    case 'anthropic':
-      return 'claude-3-5-haiku-20241022';
-    case 'local':
-      return 'llama3.2';
+    case "openai":
+      return "gpt-4o-mini";
+    case "anthropic":
+      return "claude-3-5-haiku-20241022";
+    case "local":
+      return "llama3.2";
     default:
-      return '';
+      return "";
   }
 }
 
@@ -470,12 +485,12 @@ export function getDefaultModel(provider: string): string {
  */
 export function getProviderDisplayName(provider: string): string {
   switch (provider) {
-    case 'openai':
-      return 'OpenAI';
-    case 'anthropic':
-      return 'Anthropic (Claude)';
-    case 'local':
-      return '本地模型 (Ollama)';
+    case "openai":
+      return "OpenAI";
+    case "anthropic":
+      return "Anthropic (Claude)";
+    case "local":
+      return "本地模型 (Ollama)";
     default:
       return provider;
   }
@@ -488,35 +503,35 @@ export default {
   updateAIConfig,
   checkAIAvailable,
   getAIProviders,
-  
+
   // 日志分析
   analyzeLogs,
   explainLogLine,
   getSolution,
   getLogPatterns,
-  
+
   // 命令助手
   generateCommand,
   explainCommand,
   getCommandSuggestions,
-  
+
   // 配置优化
   analyzeConfig,
   analyzeJVM,
   generateStartupScript,
-  
+
   // 翻译
   translateText,
   detectLanguage,
   getSupportedLanguages,
   clearTranslationCache,
-  
+
   // 内容生成
   generateContent,
   generateAnnouncement,
   generateRules,
   generateWelcome,
-  
+
   // 工具函数
   formatSeverity,
   formatConfidence,
