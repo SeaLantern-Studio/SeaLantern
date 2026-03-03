@@ -1,0 +1,261 @@
+{
+  "ai": {
+    "assistant": {
+      "title": "AI Assistant",
+      "description": "Intelligent Minecraft Server Management Assistant"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "connecting": "Connecting...",
+      "error": "Connection Failed"
+    },
+    "tabs": {
+      "log_analysis": "Log Analysis",
+      "command": "Command Helper",
+      "config": "Config Optimization",
+      "translate": "Translate",
+      "content": "Content Generator",
+      "anticheat": "Anti-Cheat"
+    },
+    "log_analysis": {
+      "title": "Intelligent Log Analysis",
+      "analysis_type": "Analysis Type",
+      "type_full": "Full Analysis",
+      "type_error": "Error Detection",
+      "type_performance": "Performance Analysis",
+      "type_security": "Security Check",
+      "type_plugin": "Plugin Conflict",
+      "max_lines": "Max Lines",
+      "input_placeholder": "Paste server log content here...\nSupports latest.log or console output",
+      "analyze": "Analyze",
+      "analyzing": "Analyzing...",
+      "results": "Analysis Results",
+      "no_issues": "Analysis complete, no issues found"
+    },
+    "command": {
+      "title": "Command Helper",
+      "input_placeholder": "Describe what you want in natural language, e.g.: give player Steve 64 diamonds",
+      "server_type": "Server Type",
+      "generate": "Generate Command",
+      "generating": "Generating...",
+      "parameters": "Parameters",
+      "required": "Required",
+      "examples": "Examples",
+      "quick_commands": "Quick Commands",
+      "copy": "Copy Command",
+      "copied": "Copied"
+    },
+    "quick_commands": {
+      "gamemode": "Game Mode",
+      "tp": "Teleport",
+      "give": "Give Items",
+      "time": "Set Time",
+      "weather": "Set Weather"
+    },
+    "config": {
+      "title": "Configuration Optimization",
+      "config_type": "Config Type",
+      "hardware_info": "Hardware Info",
+      "cpu_cores": "CPU Cores",
+      "total_memory": "Total Memory",
+      "available_memory": "Available Memory",
+      "expected_players": "Expected Players",
+      "analyze": "Analyze Config",
+      "analyzing": "Analyzing...",
+      "analyze_jvm": "Analyze JVM Args",
+      "input_placeholder": "Paste config file content here...\nSupports server.properties, spigot.yml, paper.yml, etc.",
+      "jvm_result": "JVM Analysis Result",
+      "memory_suggestion": "Memory Suggestion",
+      "gc_suggestion": "GC Suggestion",
+      "recommended_args": "Recommended JVM Args",
+      "suggestions": "Optimization Suggestions",
+      "priority": "Priority",
+      "current": "Current",
+      "suggested": "Suggested"
+    },
+    "translate": {
+      "title": "Smart Translation",
+      "source": "Source Language",
+      "target": "Target Language",
+      "auto_detect": "Auto Detect",
+      "input_placeholder": "Enter text to translate...",
+      "translate": "Translate",
+      "translating": "Translating...",
+      "result": "Translation Result",
+      "detected": "Detected Language",
+      "swap": "Swap Languages"
+    },
+    "content": {
+      "title": "Content Generator",
+      "type": "Content Type",
+      "type_announcement": "Server Announcement",
+      "type_rules": "Server Rules",
+      "type_event": "Event Planning",
+      "type_welcome": "Welcome Message",
+      "style": "Style",
+      "style_formal": "Formal",
+      "style_casual": "Casual",
+      "style_friendly": "Friendly",
+      "server_name": "Server Name",
+      "server_name_placeholder": "e.g.: My Minecraft Server",
+      "topic": "Announcement Topic",
+      "topic_placeholder": "e.g.: Server Maintenance Notice",
+      "features": "Server Features",
+      "features_placeholder": "One feature per line, e.g.:\nSurvival Mode\nEconomy System\nLand Protection",
+      "generate": "Generate Content",
+      "generating": "Generating...",
+      "result": "Generated Content"
+    },
+    "anticheat": {
+      "title": "MCP Anti-Cheat System",
+      "subtitle": "Intelligent Detection of Illegal Client Mods and Hacks",
+      "status": {
+        "enabled": "Monitoring",
+        "disabled": "Disabled",
+        "monitoring": "Real-time Monitoring"
+      },
+      "tabs": {
+        "dashboard": "Dashboard",
+        "detection": "Detection Records",
+        "rules": "Detection Rules",
+        "punishment": "Auto Punishment",
+        "settings": "Settings"
+      },
+      "dashboard": {
+        "title": "Monitoring Dashboard",
+        "online_players": "Online Players",
+        "detections_today": "Detections Today",
+        "bans_today": "Bans Today",
+        "active_threats": "Active Threats",
+        "recent_detections": "Recent Detections",
+        "threat_level": "Threat Level",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "detection": {
+        "title": "Detection Records",
+        "player": "Player",
+        "type": "Type",
+        "category": "Category",
+        "severity": "Severity",
+        "confidence": "Confidence",
+        "time": "Time",
+        "action": "Action",
+        "categories": {
+          "hack": "Hack",
+          "mod": "Illegal Mod",
+          "exploit": "Exploit",
+          "behavior": "Abnormal Behavior"
+        },
+        "details": "Details",
+        "view_logs": "View Logs",
+        "manual_ban": "Manual Ban",
+        "dismiss": "Dismiss"
+      },
+      "rules": {
+        "title": "Detection Rules",
+        "add_rule": "Add Rule",
+        "edit_rule": "Edit Rule",
+        "delete_rule": "Delete Rule",
+        "rule_name": "Rule Name",
+        "rule_type": "Rule Type",
+        "severity": "Severity",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "threshold": "Threshold",
+        "description": "Description"
+      },
+      "punishment": {
+        "title": "Auto Punishment Settings",
+        "enable_auto_ban": "Enable Auto Ban",
+        "ban_threshold": "Ban Threshold",
+        "ban_duration": "Ban Duration",
+        "warning_threshold": "Warning Threshold",
+        "kick_threshold": "Kick Threshold",
+        "escalation": "Escalation",
+        "first_offense": "First Offense",
+        "second_offense": "Second Offense",
+        "third_offense": "Third Offense",
+        "permanent": "Permanent Ban",
+        "duration_options": {
+          "1h": "1 Hour",
+          "24h": "24 Hours",
+          "7d": "7 Days",
+          "30d": "30 Days",
+          "permanent": "Permanent"
+        }
+      },
+      "settings": {
+        "title": "System Settings",
+        "general": "General Settings",
+        "detection": "Detection Settings",
+        "notification": "Notification Settings",
+        "enable_detection": "Enable Detection",
+        "log_all": "Log All Detections",
+        "notify_on_detect": "Notify on Detection",
+        "notify_on_ban": "Notify on Ban",
+        "webhook_url": "Webhook URL",
+        "check_interval": "Check Interval (seconds)"
+      },
+      "types": {
+        "speed_hack": "Speed Hack",
+        "fly_hack": "Fly Hack",
+        "kill_aura": "Kill Aura",
+        "xray": "X-Ray",
+        "auto_clicker": "Auto Clicker",
+        "reach_hack": "Reach Hack",
+        "no_fall": "No Fall Damage",
+        "no_knockback": "No Knockback",
+        "scaffold": "Scaffold",
+        "baritone": "Baritone/Auto Walk",
+        "illegal_mod": "Illegal Mod",
+        "dupe_exploit": "Dupe Exploit"
+      },
+      "actions": {
+        "ban": "Ban",
+        "kick": "Kick",
+        "warn": "Warn",
+        "monitor": "Monitor",
+        "ignore": "Ignore"
+      }
+    },
+    "severity": {
+      "critical": "Critical",
+      "error": "Error",
+      "warning": "Warning",
+      "info": "Info"
+    },
+    "confidence": "Confidence",
+    "suggestions": "Suggestions",
+    "related_logs": "Related Logs",
+    "common": {
+      "auto": "Auto",
+      "copy": "Copy",
+      "copied": "Copied",
+      "save": "Save",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "delete": "Delete",
+      "edit": "Edit",
+      "add": "Add",
+      "search": "Search",
+      "filter": "Filter",
+      "all": "All",
+      "none": "None",
+      "loading": "Loading...",
+      "error": "Error",
+      "success": "Success",
+      "warning": "Warning"
+    },
+    "errors": {
+      "not_configured": "AI not configured, please set API key first",
+      "api_error": "AI service request failed",
+      "rate_limit": "Too many requests, please try again later",
+      "timeout": "Request timeout",
+      "invalid_response": "Invalid AI response"
+    }
+  }
+}

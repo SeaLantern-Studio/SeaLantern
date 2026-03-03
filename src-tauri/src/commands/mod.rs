@@ -19,3 +19,5 @@ mod update_github;
 mod update_install;
 mod update_types;
 mod update_version;
+
+pub mod ai;

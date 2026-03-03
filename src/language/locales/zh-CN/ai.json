@@ -1,0 +1,261 @@
+{
+  "ai": {
+    "assistant": {
+      "title": "AI 助手",
+      "description": "智能 Minecraft 服务器管理助手"
+    },
+    "status": {
+      "enabled": "已启用",
+      "disabled": "未启用",
+      "connecting": "连接中...",
+      "error": "连接失败"
+    },
+    "tabs": {
+      "log_analysis": "日志分析",
+      "command": "命令助手",
+      "config": "配置优化",
+      "translate": "翻译",
+      "content": "内容生成",
+      "anticheat": "反作弊"
+    },
+    "log_analysis": {
+      "title": "日志智能分析",
+      "analysis_type": "分析类型",
+      "type_full": "全面分析",
+      "type_error": "错误检测",
+      "type_performance": "性能分析",
+      "type_security": "安全检查",
+      "type_plugin": "插件冲突",
+      "max_lines": "最大分析行数",
+      "input_placeholder": "粘贴服务器日志内容...\n支持 latest.log 或控制台输出",
+      "analyze": "开始分析",
+      "analyzing": "分析中...",
+      "results": "分析结果",
+      "no_issues": "分析完成，未发现问题"
+    },
+    "command": {
+      "title": "命令助手",
+      "input_placeholder": "用自然语言描述你想要的操作，例如：给玩家Steve 64个钻石",
+      "server_type": "服务器类型",
+      "generate": "生成命令",
+      "generating": "生成中...",
+      "parameters": "参数说明",
+      "required": "必填",
+      "examples": "使用示例",
+      "quick_commands": "快捷命令",
+      "copy": "复制命令",
+      "copied": "已复制"
+    },
+    "quick_commands": {
+      "gamemode": "切换游戏模式",
+      "tp": "传送",
+      "give": "给予物品",
+      "time": "设置时间",
+      "weather": "设置天气"
+    },
+    "config": {
+      "title": "配置优化",
+      "config_type": "配置类型",
+      "hardware_info": "硬件信息",
+      "cpu_cores": "CPU 核心数",
+      "total_memory": "总内存",
+      "available_memory": "可用内存",
+      "expected_players": "预期玩家数",
+      "analyze": "分析配置",
+      "analyzing": "分析中...",
+      "analyze_jvm": "分析 JVM 参数",
+      "input_placeholder": "粘贴配置文件内容...\n支持 server.properties, spigot.yml, paper.yml 等",
+      "jvm_result": "JVM 分析结果",
+      "memory_suggestion": "内存配置建议",
+      "gc_suggestion": "GC 配置建议",
+      "recommended_args": "推荐 JVM 参数",
+      "suggestions": "优化建议",
+      "priority": "优先级",
+      "current": "当前值",
+      "suggested": "建议值"
+    },
+    "translate": {
+      "title": "智能翻译",
+      "source": "源语言",
+      "target": "目标语言",
+      "auto_detect": "自动检测",
+      "input_placeholder": "输入需要翻译的文本...",
+      "translate": "翻译",
+      "translating": "翻译中...",
+      "result": "翻译结果",
+      "detected": "检测语言",
+      "swap": "交换语言"
+    },
+    "content": {
+      "title": "内容生成",
+      "type": "内容类型",
+      "type_announcement": "服务器公告",
+      "type_rules": "服务器规则",
+      "type_event": "活动策划",
+      "type_welcome": "欢迎消息",
+      "style": "风格",
+      "style_formal": "正式",
+      "style_casual": "轻松",
+      "style_friendly": "亲切",
+      "server_name": "服务器名称",
+      "server_name_placeholder": "例如：我的世界服务器",
+      "topic": "公告主题",
+      "topic_placeholder": "例如：服务器维护通知",
+      "features": "服务器特色",
+      "features_placeholder": "每行一个特色，例如：\n生存模式\n经济系统\n领地保护",
+      "generate": "生成内容",
+      "generating": "生成中...",
+      "result": "生成结果"
+    },
+    "anticheat": {
+      "title": "MCP 反作弊系统",
+      "subtitle": "智能检测违规客户端模组和外挂",
+      "status": {
+        "enabled": "监控中",
+        "disabled": "已禁用",
+        "monitoring": "实时监控"
+      },
+      "tabs": {
+        "dashboard": "监控面板",
+        "detection": "检测记录",
+        "rules": "检测规则",
+        "punishment": "自动处罚",
+        "settings": "设置"
+      },
+      "dashboard": {
+        "title": "监控面板",
+        "online_players": "在线玩家",
+        "detections_today": "今日检测",
+        "bans_today": "今日封禁",
+        "active_threats": "活跃威胁",
+        "recent_detections": "最近检测",
+        "threat_level": "威胁等级",
+        "low": "低",
+        "medium": "中",
+        "high": "高",
+        "critical": "严重"
+      },
+      "detection": {
+        "title": "检测记录",
+        "player": "玩家",
+        "type": "类型",
+        "category": "分类",
+        "severity": "严重程度",
+        "confidence": "置信度",
+        "time": "时间",
+        "action": "操作",
+        "categories": {
+          "hack": "外挂",
+          "mod": "违规模组",
+          "exploit": "漏洞利用",
+          "behavior": "异常行为"
+        },
+        "details": "详情",
+        "view_logs": "查看日志",
+        "manual_ban": "手动封禁",
+        "dismiss": "忽略"
+      },
+      "rules": {
+        "title": "检测规则",
+        "add_rule": "添加规则",
+        "edit_rule": "编辑规则",
+        "delete_rule": "删除规则",
+        "rule_name": "规则名称",
+        "rule_type": "规则类型",
+        "severity": "严重程度",
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "threshold": "触发阈值",
+        "description": "描述"
+      },
+      "punishment": {
+        "title": "自动处罚设置",
+        "enable_auto_ban": "启用自动封禁",
+        "ban_threshold": "封禁阈值",
+        "ban_duration": "封禁时长",
+        "warning_threshold": "警告阈值",
+        "kick_threshold": "踢出阈值",
+        "escalation": "递增处罚",
+        "first_offense": "首次违规",
+        "second_offense": "二次违规",
+        "third_offense": "三次违规",
+        "permanent": "永久封禁",
+        "duration_options": {
+          "1h": "1小时",
+          "24h": "24小时",
+          "7d": "7天",
+          "30d": "30天",
+          "permanent": "永久"
+        }
+      },
+      "settings": {
+        "title": "系统设置",
+        "general": "常规设置",
+        "detection": "检测设置",
+        "notification": "通知设置",
+        "enable_detection": "启用检测",
+        "log_all": "记录所有检测",
+        "notify_on_detect": "检测时通知",
+        "notify_on_ban": "封禁时通知",
+        "webhook_url": "Webhook URL",
+        "check_interval": "检查间隔(秒)"
+      },
+      "types": {
+        "speed_hack": "加速外挂",
+        "fly_hack": "飞行外挂",
+        "kill_aura": "杀戮光环",
+        "xray": "透视外挂",
+        "auto_clicker": "自动点击",
+        "reach_hack": "攻击距离扩展",
+        "no_fall": "无摔落伤害",
+        "no_knockback": "无击退",
+        "scaffold": "自动搭路",
+        "baritone": "自动行走",
+        "illegal_mod": "违规模组",
+        "dupe_exploit": "复制漏洞利用"
+      },
+      "actions": {
+        "ban": "封禁",
+        "kick": "踢出",
+        "warn": "警告",
+        "monitor": "监控",
+        "ignore": "忽略"
+      }
+    },
+    "severity": {
+      "critical": "严重",
+      "error": "错误",
+      "warning": "警告",
+      "info": "信息"
+    },
+    "confidence": "置信度",
+    "suggestions": "建议措施",
+    "related_logs": "相关日志",
+    "common": {
+      "auto": "自动",
+      "copy": "复制",
+      "copied": "已复制",
+      "save": "保存",
+      "cancel": "取消",
+      "confirm": "确认",
+      "delete": "删除",
+      "edit": "编辑",
+      "add": "添加",
+      "search": "搜索",
+      "filter": "筛选",
+      "all": "全部",
+      "none": "无",
+      "loading": "加载中...",
+      "error": "出错了",
+      "success": "成功",
+      "warning": "警告"
+    },
+    "errors": {
+      "not_configured": "AI 功能未配置，请先设置 API 密钥",
+      "api_error": "AI 服务请求失败",
+      "rate_limit": "请求过于频繁，请稍后再试",
+      "timeout": "请求超时",
+      "invalid_response": "AI 返回无效响应"
+    }
+  }
+}
