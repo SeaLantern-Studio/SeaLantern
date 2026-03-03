@@ -2,6 +2,8 @@
  * 应用常量定义
  */
 
+import { i18n } from "@language";
+
 // ==================== 时间相关 ====================
 export const TIME = {
   /** 轮询间隔（毫秒） */
@@ -49,13 +51,16 @@ export const SERVER_STATUS = {
   ERROR: "Error",
 } as const;
 
-export const SERVER_STATUS_TEXT = {
-  [SERVER_STATUS.STOPPED]: "已停止",
-  [SERVER_STATUS.STARTING]: "启动中",
-  [SERVER_STATUS.RUNNING]: "运行中",
-  [SERVER_STATUS.STOPPING]: "停止中",
-  [SERVER_STATUS.ERROR]: "错误",
-} as const;
+export function getServerStatusText(status: string): string {
+  const statusMap: Record<string, string> = {
+    [SERVER_STATUS.STOPPED]: i18n.t("common.server_status_stopped"),
+    [SERVER_STATUS.STARTING]: i18n.t("common.server_status_starting"),
+    [SERVER_STATUS.RUNNING]: i18n.t("common.server_status_running"),
+    [SERVER_STATUS.STOPPING]: i18n.t("common.server_status_stopping"),
+    [SERVER_STATUS.ERROR]: i18n.t("common.server_status_error"),
+  };
+  return statusMap[status] || status;
+}
 
 // ==================== 日志前缀 ====================
 export const LOG_PREFIX = {
@@ -69,33 +74,37 @@ export const LOG_PREFIX = {
 export const MESSAGES = {
   // 成功消息
   SUCCESS: {
-    SERVER_STARTED: "服务器已启动",
-    SERVER_STOPPED: "服务器已停止",
-    COMMAND_SENT: "命令已发送",
-    WHITELIST_ADDED: "已添加到白名单",
-    WHITELIST_REMOVED: "已从白名单移除",
-    PLAYER_BANNED: "玩家已被封禁",
-    PLAYER_UNBANNED: "玩家已被解封",
-    OP_ADDED: "已添加管理员权限",
-    OP_REMOVED: "已移除管理员权限",
-    PLAYER_KICKED: "玩家已被踢出",
+    SERVER_STARTED: "common.message_server_started",
+    SERVER_STOPPED: "common.message_server_stopped",
+    COMMAND_SENT: "common.message_command_sent",
+    WHITELIST_ADDED: "common.message_whitelist_added",
+    WHITELIST_REMOVED: "common.message_whitelist_removed",
+    PLAYER_BANNED: "common.message_player_banned",
+    PLAYER_UNBANNED: "common.message_player_unbanned",
+    OP_ADDED: "common.message_op_added",
+    OP_REMOVED: "common.message_op_removed",
+    PLAYER_KICKED: "common.message_player_kicked",
   },
   // 错误消息
   ERROR: {
-    SERVER_NOT_RUNNING: "服务器未运行",
-    SERVER_ALREADY_RUNNING: "服务器已在运行中",
-    SERVER_NOT_FOUND: "未找到服务器",
-    INVALID_PLAYER_NAME: "无效的玩家名称",
-    NETWORK_ERROR: "网络错误",
-    UNKNOWN_ERROR: "未知错误",
+    SERVER_NOT_RUNNING: "common.message_server_not_running",
+    SERVER_ALREADY_RUNNING: "common.message_server_already_running",
+    SERVER_NOT_FOUND: "common.message_server_not_found",
+    INVALID_PLAYER_NAME: "common.message_invalid_player_name",
+    NETWORK_ERROR: "common.message_network_error",
+    UNKNOWN_ERROR: "common.message_unknown_error",
   },
   // 提示消息
   HINT: {
-    SELECT_SERVER: "请选择一个服务器",
-    SERVER_REQUIRED: "需要服务器运行中才能操作",
-    ENTER_PLAYER_NAME: "请输入玩家名",
+    SELECT_SERVER: "common.message_select_server",
+    SERVER_REQUIRED: "common.message_server_required",
+    ENTER_PLAYER_NAME: "common.message_enter_player_name",
   },
 } as const;
+
+export function getMessage(key: string): string {
+  return i18n.t(key);
+}
 
 // ==================== 正则表达式 ====================
 export const REGEX = {

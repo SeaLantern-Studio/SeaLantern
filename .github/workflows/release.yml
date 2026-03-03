@@ -1,16 +1,55 @@
 name: "发布"
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - release
+    tags:
+      - "v*"
+      - "sea-lantern-v*"
 
 permissions:
   contents: write
 
 jobs:
+  validate-tag:
+    name: 校验 Tag 来源并提取版本
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 校验 Tag 指向 main 分支提交
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "❌ 当前 tag (${GITHUB_REF_NAME}) 对应提交不在 main 分支上"
+            exit 1
+          fi
+          echo "✅ Tag 来源校验通过"
+
+      - name: 提取版本信息
+        id: meta
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="$(echo "$TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
+          if [ -z "$VERSION" ]; then
+            echo "❌ 无法从 tag 提取版本号: $TAG"
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "✅ 发布版本: $VERSION"
+
   publish-tauri:
+    name: 构建并发布桌面端
+    needs: validate-tag
     permissions:
       contents: write
     strategy:
@@ -21,10 +60,10 @@ jobs:
             args: "--target aarch64-apple-darwin"
           - platform: "macos-latest"
             args: "--target x86_64-apple-darwin"
-          - platform: "ubuntu-24.04"
+          - platform: "ubuntu-22.04"
             args: ""
             arch: "amd64"
-          - platform: "ubuntu-24.04-arm"
+          - platform: "ubuntu-22.04-arm"
             args: ""
             arch: "arm64"
           - platform: "windows-latest"
@@ -40,10 +79,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 安装系统依赖 (Ubuntu 专用)
-        if: matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm'
+        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils nasm
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
@@ -51,13 +90,17 @@ jobs:
           node-version: "lts/*"
 
       - name: Enable Corepack
-        run: |
-          corepack enable
+        run: corepack enable
 
-      - name: 安装 Rust 工具链
+      - name: 安装 Rust 工具链 (默认目标)
+        if: ${{ matrix.args == '' }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 安装 Rust 工具链 (macOS 目标)
+        if: ${{ matrix.args != '' }}
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: 缓存 Rust 编译产物
         uses: swatinem/rust-cache@v2
@@ -66,33 +109,30 @@ jobs:
 
       - name: 安装前端依赖 (pnpm)
         run: |
-          corepack enable
           corepack prepare pnpm@9.15.9 --activate
           pnpm install --frozen-lockfile
 
-      # 保存当前工作目录
       - name: 保存工作目录路径
         id: workspace
-        run: echo "path=$(pwd)" >> $GITHUB_OUTPUT
+        run: echo "path=$(pwd)" >> "$GITHUB_OUTPUT"
 
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: sea-lantern-v__VERSION__
-          releaseName: "Sea Lantern v__VERSION__"
+          tagName: ${{ needs.validate-tag.outputs.tag }}
+          releaseName: "Sea Lantern v${{ needs.validate-tag.outputs.version }}"
           releaseBody: |
-            ## 🎉 发布 Sea Lantern v__VERSION__
+            ## 发布 Sea Lantern v${{ needs.validate-tag.outputs.version }}
 
-            请在此处添加发布说明。
+            自动发布构建产物。
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
 
-      # 修复：使用正确的路径查找 deb 文件
-      - name: 上传 Ubuntu x64 构建产物 (用于 AUR 构建)
-        if: matrix.platform == 'ubuntu-24.04'
+      - name: 上传 Ubuntu x64 构建产物 (用于 Arch 打包)
+        if: matrix.platform == 'ubuntu-22.04'
         uses: actions/upload-artifact@v4
         with:
           name: ubuntu-build-x64
@@ -101,49 +141,107 @@ jobs:
             ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
-  # Arch Linux 打包任务 - 修复文件名不匹配问题
   build-arch-package:
-    needs: publish-tauri
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    name: 构建 Arch 包并上传 Release
+    needs: [validate-tag, publish-tauri]
+    runs-on: ubuntu-22.04
+    container:
+      image: archlinux:latest
+      options: --user root
+    defaults:
+      run:
+        shell: bash
 
     steps:
+      - name: 安装构建依赖
+        run: |
+          set -euo pipefail
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Syu --noconfirm \
+            base-devel \
+            git \
+            sudo \
+            dpkg \
+            binutils \
+            file \
+            findutils \
+            grep \
+            sed \
+            gawk \
+            cairo \
+            gdk-pixbuf2 \
+            glib2 \
+            gtk3 \
+            pango \
+            atk \
+            libgl \
+            webkit2gtk \
+            libsoup \
+            hicolor-icon-theme \
+            adwaita-icon-theme \
+            desktop-file-utils \
+            shared-mime-info \
+            libxss \
+            nss \
+            nspr \
+            libayatana-appindicator \
+            libappindicator-gtk3 \
+            curl \
+            wget \
+            openssl \
+            ca-certificates \
+            gnutls \
+            libx11 \
+            libxcb \
+            libxcomposite \
+            libxcursor \
+            libxdamage \
+            libxext \
+            libxfixes \
+            libxi \
+            libxrandr \
+            libxrender \
+            libxtst \
+            fontconfig \
+            freetype2 \
+            alsa-lib \
+            libpulse \
+            sqlite3 \
+            zlib \
+            bzip2 \
+            xz \
+            expat \
+            libffi \
+            pcre \
+            pcre2 \
+            libgcrypt \
+            libgpg-error \
+            libdatrie \
+            libthai \
+            libice \
+            libsm \
+            util-linux \
+            util-linux-libs
+
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
       - name: 检出代码
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: 获取版本号
-        id: get_version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "✅ 版本号: $VERSION"
-
-      - name: 下载 Ubuntu x64 构建产物 (用于 AUR 构建)
+      - name: 下载 Ubuntu x64 构建产物 (用于 Arch 打包)
         uses: actions/download-artifact@v4
         with:
           name: ubuntu-build-x64
           path: ./downloads
-        continue-on-error: true
 
       - name: 查找 x64 deb 包
-        id: find_deb
         run: |
-          echo "当前目录内容:"
-          ls -la
-
-          if [ -d "./downloads" ]; then
-            echo "downloads 目录内容:"
-            ls -la ./downloads
-            DEB_FILE=$(find ./downloads -name "*_amd64.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
-          fi
-
-          if [ -z "$DEB_FILE" ]; then
-            echo "在根目录查找 deb 文件..."
-            DEB_FILE=$(find . -name "*_amd64.deb" -type f -print0 | head -z -n 1 | xargs -0 echo)
-          fi
-
+          set -euo pipefail
+          DEB_FILE="$(find ./downloads -name '*_amd64.deb' -type f | head -n 1)"
           if [ -z "$DEB_FILE" ]; then
             echo "❌ 未找到 x64 deb 包文件"
             exit 1
@@ -151,140 +249,26 @@ jobs:
 
           echo "✅ 找到 x64 deb 包: $DEB_FILE"
           cp "$DEB_FILE" ./sealantern.deb
-          echo "DEB_FILE=$DEB_FILE" >> $GITHUB_OUTPUT
-
-      - name: 设置 Arch Linux 容器并安装完整依赖
-        run: |
-          docker run --name arch-builder -d \
-            -v $PWD:/workspace \
-            archlinux:latest \
-            sleep infinity
-
-          docker exec arch-builder bash -c "
-            useradd -m builder
-          "
-
-          docker exec arch-builder bash -c "
-            pacman -Syu --noconfirm && \
-            pacman -S --noconfirm \
-              base-devel \
-              binutils \
-              file \
-              findutils \
-              grep \
-              sed \
-              gawk \
-              dpkg \
-              cairo \
-              gdk-pixbuf2 \
-              glib2 \
-              gtk3 \
-              pango \
-              atk \
-              libgl \
-              webkit2gtk \
-              libsoup \
-              hicolor-icon-theme \
-              adwaita-icon-theme \
-              desktop-file-utils \
-              shared-mime-info \
-              libxss \
-              nss \
-              nspr \
-              libayatana-appindicator \
-              libappindicator-gtk3 \
-              curl \
-              wget \
-              openssl \
-              ca-certificates \
-              gnutls \
-              libx11 \
-              libxcb \
-              libxcomposite \
-              libxcursor \
-              libxdamage \
-              libxext \
-              libxfixes \
-              libxi \
-              libxrandr \
-              libxrender \
-              libxtst \
-              fontconfig \
-              freetype2 \
-              alsa-lib \
-              libpulse \
-              sqlite3 \
-              zlib \
-              bzip2 \
-              xz \
-              expat \
-              libffi \
-              pcre \
-              pcre2 \
-              libgcrypt \
-              libgpg-error \
-              libdatrie \
-              libthai \
-              libice \
-              libsm \
-              util-linux \
-              util-linux-libs
-          "
-          echo "✅ Arch Linux 容器依赖安装完成"
 
       - name: 使用 PKGBUILD 构建 Arch 包
         run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          set -euo pipefail
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+          WORKDIR="$(pwd)"
 
-          docker cp sealantern.deb arch-builder:/workspace/
-          docker cp PKGBUILD arch-builder:/workspace/
-          [ -f "sealantern.install" ] && docker cp sealantern.install arch-builder:/workspace/
+          sed -i 's|^source=.*|source=("sealantern.deb")|' PKGBUILD
+          sed -i 's|^sha256sums=.*|sha256sums=("SKIP")|' PKGBUILD
+          sed -i 's|Sea\.Lantern_\${pkgver}_amd64\.deb|sealantern.deb|g' PKGBUILD
+          sed -i 's/^pkgver=.*/pkgver='"$VERSION"'/' PKGBUILD
+          sed -i 's/^pkgrel=.*/pkgrel=1/' PKGBUILD
 
-          docker exec arch-builder bash -c "
-            cd /workspace && \
-
-            # 修改 PKGBUILD，使用本地文件
-            sed -i 's|^source=.*|source=(\"sealantern.deb\")|' PKGBUILD && \
-            sed -i 's|^sha256sums=.*|sha256sums=(\"SKIP\")|' PKGBUILD && \
-
-            # 修改 package() 函数中的文件名
-            sed -i 's|Sea\.Lantern_\${pkgver}_amd64\.deb|sealantern.deb|g' PKGBUILD && \
-
-            # 更新版本号
-            sed -i 's/^pkgver=.*/pkgver=$VERSION/' PKGBUILD && \
-            sed -i 's/^pkgrel=.*/pkgrel=1/' PKGBUILD && \
-
-            echo '=== 修改后的 PKGBUILD 内容 ==='
-            cat PKGBUILD
-            echo '============================='
-
-            chown -R builder:builder /workspace
-            su - builder -c 'cd /workspace && makepkg -f --noconfirm'
-          "
-
-      - name: 从容器中获取构建产物
-        run: |
-          docker cp arch-builder:/workspace/*.pkg.tar.* . || true
-
-          if ls *.pkg.tar.* 1> /dev/null 2>&1; then
-            echo "✅ Arch 包生成成功"
-            ls -la *.pkg.tar.*
-          else
-            echo "❌ Arch 包生成失败"
-            exit 1
-          fi
-
-      - name: 停止并删除容器
-        if: always()
-        run: |
-          docker stop arch-builder || true
-          docker rm arch-builder || true
+          chown -R builder:builder "$WORKDIR"
+          su - builder -c "cd \"$WORKDIR\" && makepkg -f --noconfirm"
 
       - name: 上传 Arch 包到 Release
         uses: softprops/action-gh-release@v2
-        if: success()
         with:
-          tag_name: sea-lantern-v${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ needs.validate-tag.outputs.tag }}
           files: |
             *.pkg.tar.*
           draft: true
@@ -298,3 +282,4 @@ jobs:
           name: arch-package
           path: |
             *.pkg.tar.*
+          if-no-files-found: error

@@ -1,4 +1,5 @@
 import { getVersion } from "@tauri-apps/api/app";
+import { i18n } from "@language";
 
 /**
  * 应用版本号管理
@@ -24,17 +25,17 @@ export async function getAppVersion(): Promise<string> {
     cachedVersion = await getVersion();
     return cachedVersion;
   } catch (error) {
-    console.error("获取版本号失败:", error);
+    console.error(i18n.t("about.update_check_failed"), error);
     return "0.0.0";
   }
 }
 
 /**
  * 同步获取版本号（用于模板中）
- * 注意：首次调用时可能返回 '加载中...'，需要配合 onMounted 使用
+ * 注意：首次调用时可能返回加载中状态，需要配合 onMounted 使用
  */
 export function getAppVersionSync(): string {
-  return cachedVersion || "加载中...";
+  return cachedVersion || i18n.t("common.loading");
 }
 
 export const BUILD_YEAR = "2026";

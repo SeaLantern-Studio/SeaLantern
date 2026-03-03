@@ -8,8 +8,9 @@ import {
   DialogRoot,
   DialogTitle,
 } from "reka-ui";
-import { File, Folder } from "lucide-vue-next";
+import { File, Folder, Plus, X } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
+import SLDropzone from "@components/common/SLDropzone.vue";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 
@@ -33,7 +34,6 @@ const emit = defineEmits<{
 }>();
 
 const chooserOpen = ref(false);
-const dragging = ref(false);
 
 const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz", ".jar"];
 
@@ -63,55 +63,24 @@ function setSource(path: string, type: SourceType) {
   emit("update:sourceType", type);
 }
 
-function clearSource(event?: Event) {
-  event?.stopPropagation();
+function handleDrop(path: string) {
+  if (hasArchiveExtension(path)) {
+    setSource(path, "archive");
+  } else {
+    setSource(path, "folder");
+  }
+}
+
+function handleError(message: string) {
+  emit("error", message);
+}
+
+function handleClear() {
   setSource("", "");
 }
 
-function extractPathFromDrop(event: DragEvent): string | null {
-  const file = event.dataTransfer?.files?.[0];
-  if (!file) {
-    return null;
-  }
-
-  const fileWithPath = file as File & { path?: string; webkitRelativePath?: string };
-  if (fileWithPath.path && fileWithPath.path.length > 0) {
-    return fileWithPath.path;
-  }
-
-  if (fileWithPath.webkitRelativePath && fileWithPath.webkitRelativePath.length > 0) {
-    return fileWithPath.webkitRelativePath;
-  }
-
-  return null;
-}
-
-function handleDrop(event: DragEvent) {
-  event.preventDefault();
-  if (props.disabled) {
-    dragging.value = false;
-    return;
-  }
-
-  dragging.value = false;
-  const droppedPath = extractPathFromDrop(event);
-  if (!droppedPath) {
-    emit("error", i18n.t("create.source_drop_unavailable"));
-    return;
-  }
-
-  if (hasArchiveExtension(droppedPath)) {
-    setSource(droppedPath, "archive");
-    return;
-  }
-
-  setSource(droppedPath, "folder");
-}
-
 function openChooser() {
-  if (props.disabled) {
-    return;
-  }
+  if (props.disabled) return;
   chooserOpen.value = true;
 }
 
@@ -134,41 +103,39 @@ async function pickFolder() {
 
 <template>
   <div class="source-intake-step">
-    <button
-      type="button"
-      class="source-intake-dropzone"
-      :class="{ dragging, selected: !!sourcePath, disabled }"
+    <SLDropzone
+      :model-value="sourcePath"
+      :label="selectedName"
+      :badge="sourceTypeText"
       :disabled="disabled"
+      :file-extensions="archiveExtensions"
+      :placeholder="i18n.t('create.source_drop_or_click')"
       @click="openChooser"
-      @dragenter.prevent="dragging = true"
-      @dragover.prevent="dragging = true"
-      @dragleave.prevent="dragging = false"
       @drop="handleDrop"
+      @clear="handleClear"
+      @error="handleError"
     >
-      <div class="source-intake-icon">+</div>
-      <div class="source-intake-main">
-        <p class="source-intake-title" :class="{ selected: !!sourcePath }">
-          {{ sourcePath ? selectedName : i18n.t("create.source_drop_or_click") }}
-        </p>
-        <p v-if="!sourcePath" class="source-intake-subtitle">
-          {{ i18n.t("create.source_accept_hint_file") }}
-        </p>
-      </div>
-      <div class="source-intake-meta">
-        <span class="source-intake-badge">{{ sourceTypeText }}</span>
-        <SLButton v-if="sourcePath" variant="ghost" size="sm" @click="clearSource($event)">
-          {{ i18n.t("create.source_clear") }}
-        </SLButton>
-      </div>
-    </button>
+      <template #icon>
+        <Plus :size="20" stroke-width="2.5" />
+      </template>
+    </SLDropzone>
 
     <DialogRoot v-model:open="chooserOpen">
       <DialogPortal>
         <DialogOverlay class="source-chooser-overlay" />
         <DialogContent class="source-chooser-content">
-          <DialogTitle class="source-chooser-title">{{
-            i18n.t("create.source_choose_title")
-          }}</DialogTitle>
+          <div class="source-chooser-header">
+            <DialogTitle class="source-chooser-title">{{
+              i18n.t("create.source_choose_title")
+            }}</DialogTitle>
+            <button
+              class="source-chooser-close"
+              @click="chooserOpen = false"
+              :aria-label="i18n.t('common.close_modal')"
+            >
+              <X :size="18" />
+            </button>
+          </div>
           <DialogDescription class="source-chooser-description">
             {{ i18n.t("create.source_choose_description_file") }}
           </DialogDescription>

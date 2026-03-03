@@ -353,7 +353,7 @@ watch(
 }
 
 .page-title {
-  font-size: 1.5rem;
+  font-size: var(--sl-font-size-3xl);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -425,21 +425,21 @@ watch(
 
 .plugin-details h2 {
   margin: 0 0 8px;
-  font-size: 1.25rem;
+  font-size: var(--sl-font-size-2xl);
   color: var(--text-primary);
 }
 
 .plugin-details .description {
   margin: 0 0 12px;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
   line-height: 1.5;
 }
 
 .plugin-details .meta {
   display: flex;
   gap: 12px;
-  font-size: 0.8rem;
+  font-size: var(--sl-font-size-sm);
 }
 
 .plugin-details .version {
@@ -455,7 +455,7 @@ watch(
 
 .section-title {
   margin: 0 0 16px;
-  font-size: 1rem;
+  font-size: var(--sl-font-size-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -506,7 +506,7 @@ watch(
 }
 
 .preset-name {
-  font-size: 0.8rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--text-primary);
 }
 
@@ -530,7 +530,7 @@ watch(
 }
 
 .color-label {
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
   color: var(--text-primary);
 }
 
@@ -548,7 +548,7 @@ watch(
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: monospace;
-  font-size: 0.85rem;
+  font-size: var(--sl-font-size-sm);
 }
 
 .color-text:focus {
@@ -596,7 +596,7 @@ watch(
 }
 
 .effect-label {
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
   color: var(--text-primary);
 }
 
@@ -612,7 +612,7 @@ watch(
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--sl-font-size-sm);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -645,7 +645,7 @@ watch(
 }
 
 .field-label {
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
@@ -653,7 +653,7 @@ watch(
 }
 
 .field-desc {
-  font-size: 0.8rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--text-secondary);
   font-weight: normal;
 }
@@ -665,7 +665,7 @@ watch(
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .field-input:focus,

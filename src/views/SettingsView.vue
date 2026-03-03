@@ -3,18 +3,12 @@ import { ref, onMounted, onUnmounted } from "vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
 import ServerDefaultsCard from "@components/views/settings/ServerDefaultsCard.vue";
-import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.vue";
 import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue";
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue";
-import {
-  settingsApi,
-  checkAcrylicSupport,
-  applyAcrylic,
-  type AppSettings,
-  type SettingsGroup,
-} from "@api/settings";
+import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
+import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
@@ -25,24 +19,16 @@ const { loading, start: startLoading, stop: stopLoading } = useLoading();
 
 const settings = ref<AppSettings | null>(null);
 
-const acrylicSupported = ref(true);
-
 const maxMem = ref("2048");
 const minMem = ref("512");
 const port = ref("25565");
-const fontSize = ref("13");
-const logLines = ref("5000");
+const defaultRunPath = ref("");
 
 const showImportModal = ref(false);
 const showResetConfirm = ref(false);
 
 onMounted(async () => {
   await loadSettings();
-  try {
-    acrylicSupported.value = await checkAcrylicSupport();
-  } catch {
-    acrylicSupported.value = false;
-  }
 
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
@@ -67,8 +53,7 @@ function syncLocalValues(s: AppSettings) {
   maxMem.value = String(s.default_max_memory);
   minMem.value = String(s.default_min_memory);
   port.value = String(s.default_port);
-  fontSize.value = String(s.console_font_size);
-  logLines.value = String(s.max_log_lines);
+  defaultRunPath.value = s.last_run_path || "";
 }
 
 async function loadSettings() {
@@ -80,8 +65,7 @@ async function loadSettings() {
     maxMem.value = String(s.default_max_memory);
     minMem.value = String(s.default_min_memory);
     port.value = String(s.default_port);
-    fontSize.value = String(s.console_font_size);
-    logLines.value = String(s.max_log_lines);
+    defaultRunPath.value = s.last_run_path || "";
     settings.value.color = s.color || "default";
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -142,8 +126,7 @@ async function saveSettings() {
   settings.value.default_max_memory = parseInt(maxMem.value) || 2048;
   settings.value.default_min_memory = parseInt(minMem.value) || 512;
   settings.value.default_port = parseInt(port.value) || 25565;
-  settings.value.console_font_size = parseInt(fontSize.value) || 13;
-  settings.value.max_log_lines = parseInt(logLines.value) || 5000;
+  settings.value.last_run_path = defaultRunPath.value;
   settings.value.color = settings.value.color || "default";
   settings.value.developer_mode = settings.value.developer_mode || false;
 
@@ -163,13 +146,6 @@ async function saveSettings() {
       applyTheme(settings.value.theme);
       applyFontSize(settings.value.font_size);
       applyFontFamily(settings.value.font_family);
-
-      if (acrylicSupported.value) {
-        try {
-          const isDark = getEffectiveTheme(settings.value.theme) === "dark";
-          await applyAcrylic(settings.value.acrylic_enabled, isDark);
-        } catch {}
-      }
     }
 
     dispatchSettingsUpdate(result.changed_groups, result.settings);
@@ -185,8 +161,7 @@ async function resetSettings() {
     maxMem.value = String(s.default_max_memory);
     minMem.value = String(s.default_min_memory);
     port.value = String(s.default_port);
-    fontSize.value = String(s.console_font_size);
-    logLines.value = String(s.max_log_lines);
+    defaultRunPath.value = s.last_run_path || "";
     showResetConfirm.value = false;
     settings.value.color = "default";
 
@@ -226,8 +201,6 @@ async function handleImport(json: string) {
     maxMem.value = String(s.default_max_memory);
     minMem.value = String(s.default_min_memory);
     port.value = String(s.default_port);
-    fontSize.value = String(s.console_font_size);
-    logLines.value = String(s.max_log_lines);
     showImportModal.value = false;
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -240,6 +213,22 @@ async function handleImport(json: string) {
 function handleJavaInstalled(path: string) {
   if (settings.value) {
     settings.value.default_java_path = path;
+    markChanged();
+  }
+}
+
+async function handleBrowseJavaPath() {
+  const selected = await systemApi.pickJavaFile();
+  if (selected) {
+    settings.value.default_java_path = selected;
+    markChanged();
+  }
+}
+
+async function handleBrowseRunPath() {
+  const selected = await systemApi.pickFolder();
+  if (selected) {
+    defaultRunPath.value = selected;
     markChanged();
   }
 }
@@ -271,14 +260,11 @@ function handleJavaInstalled(path: string) {
         v-model:port="port"
         v-model:defaultJavaPath="settings.default_java_path"
         v-model:defaultJvmArgs="settings.default_jvm_args"
+        v-model:defaultRunPath="defaultRunPath"
         @change="markChanged"
         @javaInstalled="handleJavaInstalled"
-      />
-
-      <ConsoleSettingsCard
-        v-model:consoleFontSize="fontSize"
-        v-model:maxLogLines="logLines"
-        @change="markChanged"
+        @browseJavaPath="handleBrowseJavaPath"
+        @browseRunPath="handleBrowseRunPath"
       />
 
       <DeveloperModeCard v-model:developerMode="settings.developer_mode" @change="markChanged" />
@@ -312,7 +298,7 @@ function handleJavaInstalled(path: string) {
   justify-content: space-between;
   padding: 10px 16px;
   border-radius: var(--sl-radius-md);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
 }
 
 .error-banner {

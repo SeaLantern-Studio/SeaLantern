@@ -2,8 +2,6 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import {
   settingsApi,
-  checkAcrylicSupport,
-  applyAcrylic,
   type AppSettings,
   type PartialSettings,
   type SettingsGroup,
@@ -53,6 +51,8 @@ const defaultSettings: AppSettings = {
   default_java_path: "",
   default_jvm_args: "",
   console_font_size: 12,
+  console_font_family: "",
+  console_letter_spacing: 0,
   max_log_lines: 1000,
   cached_java_list: [],
   background_image: "",
@@ -95,7 +95,6 @@ export const useSettingsStore = defineStore("settings", () => {
   const isLoaded = ref(false);
   const isLoading = ref(false);
   const loadError = ref<string | null>(null);
-  const acrylicSupported = ref(false);
 
   const theme = computed(() => settings.value.theme || "auto");
   const fontSize = computed(() => settings.value.font_size || 14);
@@ -117,13 +116,9 @@ export const useSettingsStore = defineStore("settings", () => {
     loadError.value = null;
 
     try {
-      const [loadedSettings, supported] = await Promise.all([
-        settingsApi.get(),
-        checkAcrylicSupport().catch(() => false),
-      ]);
+      const loadedSettings = await settingsApi.get();
 
       settings.value = loadedSettings;
-      acrylicSupported.value = supported;
       isLoaded.value = true;
       saveThemeCache(loadedSettings.theme || "auto", loadedSettings.font_size || 14);
     } catch (e) {
@@ -168,19 +163,6 @@ export const useSettingsStore = defineStore("settings", () => {
     settings.value = { ...settings.value, ...partial };
   }
 
-  async function applyAcrylicEffect(enabled: boolean): Promise<void> {
-    if (!acrylicSupported.value) return;
-
-    const effectiveTheme = getEffectiveTheme();
-    const isDark = effectiveTheme === "dark";
-
-    try {
-      await applyAcrylic(enabled, isDark);
-    } catch (e) {
-      console.error("Failed to apply acrylic:", e);
-    }
-  }
-
   function getEffectiveTheme(): "light" | "dark" {
     const t = settings.value.theme || "auto";
     if (t === "auto") {
@@ -194,7 +176,6 @@ export const useSettingsStore = defineStore("settings", () => {
     isLoaded,
     isLoading,
     loadError,
-    acrylicSupported,
     theme,
     fontSize,
     acrylicEnabled,
@@ -211,7 +192,6 @@ export const useSettingsStore = defineStore("settings", () => {
     updatePartial,
     resetSettings,
     updateSettings,
-    applyAcrylicEffect,
     getEffectiveTheme,
   };
 });

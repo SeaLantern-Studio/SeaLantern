@@ -508,7 +508,7 @@ watch(
 }
 
 .header-info h1 {
-  font-size: 1.5rem;
+  font-size: var(--sl-font-size-3xl);
   font-weight: 600;
   color: var(--sl-text-primary);
   margin: 0 0 4px 0;
@@ -516,7 +516,7 @@ watch(
 
 .header-desc {
   color: var(--sl-text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   margin: 0;
 }
 
@@ -525,7 +525,7 @@ watch(
 }
 
 .section-title {
-  font-size: 1rem;
+  font-size: var(--sl-font-size-lg);
   font-weight: 600;
   color: var(--sl-text-primary);
   margin: 0 0 16px 0;
@@ -547,7 +547,7 @@ watch(
 }
 
 .color-row-value {
-  font-size: 13px;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-secondary);
   font-family: monospace;
 }
@@ -570,14 +570,14 @@ watch(
 }
 
 .dependent-section-header h2 {
-  font-size: 1.125rem;
+  font-size: var(--sl-font-size-xl);
   font-weight: 600;
   color: var(--sl-text-primary);
   margin: 0 0 4px 0;
 }
 
 .dependent-section-header p {
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   color: var(--sl-text-secondary);
   margin: 0;
 }
@@ -603,14 +603,14 @@ watch(
 }
 
 .dependent-info h3 {
-  font-size: 0.9375rem;
+  font-size: var(--sl-font-size-base);
   font-weight: 600;
   color: var(--sl-text-primary);
   margin: 0;
 }
 
 .dependent-version {
-  font-size: 0.75rem;
+  font-size: var(--sl-font-size-xs);
   color: var(--sl-text-secondary);
 }
 
@@ -625,7 +625,7 @@ watch(
 }
 
 .auto-save-hint {
-  font-size: 13px;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-secondary);
   opacity: 0.7;
 }
@@ -680,7 +680,7 @@ watch(
 }
 
 .preset-name {
-  font-size: 12px;
+  font-size: var(--sl-font-size-xs);
 }
 
 .color-rows {

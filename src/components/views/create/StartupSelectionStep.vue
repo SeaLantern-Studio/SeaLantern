@@ -96,7 +96,12 @@ function getStartupIcon(mode: StartupMode) {
   <div class="startup-step-block">
     <div class="startup-step-header">
       <span class="startup-step-title">{{ i18n.t("create.startup_title") }}</span>
-      <button type="button" class="startup-step-rescan" :disabled="disabled" @click="emit('rescan')">
+      <button
+        type="button"
+        class="startup-step-rescan"
+        :disabled="disabled"
+        @click="emit('rescan')"
+      >
         <RefreshCw :size="14" />
         {{ i18n.t("create.rescan") }}
       </button>
@@ -193,7 +198,6 @@ function getStartupIcon(mode: StartupMode) {
         />
       </div>
     </div>
-
   </div>
 </template>
 

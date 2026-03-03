@@ -8,14 +8,12 @@ import {
   SETTINGS_UPDATE_EVENT,
   type SettingsUpdateEvent,
 } from "@stores/settingsStore";
-import { applyAcrylic, type SettingsGroup } from "@api/settings";
 import {
   applyTheme,
   applyFontFamily,
   applyFontSize,
   applyColors,
   applyDeveloperMode,
-  getEffectiveTheme,
   isThemeProviderActive,
 } from "@utils/theme";
 
@@ -30,36 +28,14 @@ const backgroundSize = computed(() => settingsStore.backgroundSize);
 
 let systemThemeQuery: MediaQueryList | null = null;
 
-async function applyAcrylicEffect(enabled: boolean, theme: string): Promise<void> {
+function applyAcrylicEffect(enabled: boolean): void {
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
-
-  if (!settingsStore.acrylicSupported) {
-    return;
-  }
-
-  if (enabled) {
-    const isDark = getEffectiveTheme(theme) === "dark";
-    try {
-      await applyAcrylic(true, isDark);
-    } catch (e) {
-      console.error("Failed to apply acrylic:", e);
-    }
-  } else {
-    try {
-      await applyAcrylic(false, false);
-    } catch (e) {
-      console.error("Failed to clear acrylic:", e);
-    }
-  }
 }
 
 function handleSystemThemeChange(): void {
   const settings = settingsStore.settings;
   if (settings.theme === "auto") {
     applyTheme("auto");
-    if (settings.acrylic_enabled && settingsStore.acrylicSupported) {
-      applyAcrylicEffect(true, "auto");
-    }
     if (!isThemeProviderActive()) {
       applyColors(settings);
     }
@@ -73,11 +49,7 @@ async function applyAppearanceSettings(): Promise<void> {
   applyFontSize(settings.font_size || 14);
   applyFontFamily(settings.font_family || "");
 
-  if (settingsStore.acrylicSupported) {
-    await applyAcrylicEffect(settings.acrylic_enabled, settings.theme || "auto");
-  } else {
-    document.documentElement.setAttribute("data-acrylic", "false");
-  }
+  applyAcrylicEffect(settings.acrylic_enabled);
 
   if (!isThemeProviderActive()) {
     applyColors(settings);

@@ -4,6 +4,7 @@ export { default as SLCard } from "@components/common/SLCard.vue";
 export { default as SLCheckbox } from "@components/common/SLCheckbox.vue";
 export { default as SLConfirmDialog } from "@components/common/SLConfirmDialog.vue";
 export { default as SLContextMenu } from "@components/common/SLContextMenu.vue";
+export { default as SLDropzone } from "@components/common/SLDropzone.vue";
 export { default as SLFormField } from "@components/common/SLFormField.vue";
 export { default as SLInput } from "@components/common/SLInput.vue";
 export { default as SLModal } from "@components/common/SLModal.vue";

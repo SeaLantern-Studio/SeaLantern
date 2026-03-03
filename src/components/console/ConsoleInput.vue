@@ -341,7 +341,7 @@ function onInputChange() {
       >
         {{ sug }}
       </div>
-      <div class="suggestion-hint">Tab 补全 / Up Down 选择</div>
+      <div class="suggestion-hint">{{ i18n.t("console.suggestion_hint") }}</div>
     </div>
     <div class="console-input-bar">
       <span class="input-prefix">&gt;</span>

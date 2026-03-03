@@ -12,13 +12,15 @@ const router = useRouter();
 const activeTab = ref<"plugins" | "market">("plugins");
 
 const tabs = computed(() => [
-  { key: "plugins" as const, label: "插件管理" },
-  { key: "market" as const, label: i18n.t("common.market") || "插件市场" },
+  { key: "plugins" as const, label: i18n.t("plugins.title") },
+  { key: "market" as const, label: i18n.t("market.title") },
 ]);
 
-function handleTabChange(tab: string) {
-  activeTab.value = tab as "plugins" | "market";
-  router.replace({ query: { tab } });
+function handleTabChange(tab: string | null) {
+  if (tab) {
+    activeTab.value = tab as "plugins" | "market";
+    router.replace({ query: { tab } });
+  }
 }
 
 onMounted(() => {

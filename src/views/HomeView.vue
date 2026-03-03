@@ -17,7 +17,6 @@ import {
   confirmDelete,
   cancelDelete,
   closeDeleteConfirm,
-  handleClickOutside,
 } from "@utils/serverUtils";
 import { i18n } from "@language";
 
@@ -49,7 +48,6 @@ onMounted(() => {
     await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
   }, 3000);
 
-  document.addEventListener("click", handleClickOutside);
   startThemeObserver();
 });
 
@@ -58,7 +56,6 @@ onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer);
   cleanupQuoteResources();
   cleanupStatsResources();
-  document.removeEventListener("click", handleClickOutside);
 });
 
 function handleCreate() {

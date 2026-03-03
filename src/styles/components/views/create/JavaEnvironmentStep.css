@@ -17,7 +17,7 @@
 .java-step-label {
   flex-shrink: 0;
   min-width: 80px;
-  font-size: 0.875rem;
+  font-size: var(--sl-font-size-base);
   font-weight: 600;
   color: var(--sl-text-primary);
 }
@@ -48,13 +48,13 @@
   background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-sm);
   padding: 4px 10px;
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   cursor: pointer;
 }
 
 .java-step-loading,
 .java-step-empty {
-  font-size: 0.8125rem;
+  font-size: var(--sl-font-size-sm);
   color: var(--sl-text-secondary);
 }
 
@@ -68,15 +68,6 @@
 .java-step-row-manual {
   padding-top: var(--sl-space-sm);
   border-top: 1px solid var(--sl-border-light);
-}
-
-.java-step-pick {
-  padding: 4px 10px;
-  border-radius: var(--sl-radius-sm);
-  color: var(--sl-primary);
-  background: var(--sl-primary-bg);
-  font-size: 0.8125rem;
-  cursor: pointer;
 }
 
 @media (max-width: 768px) {

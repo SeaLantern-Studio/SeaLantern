@@ -18,8 +18,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 <kbd>[简体中文](README.md)</kbd> <kbd>English</kbd>
 
-Any questions? Try→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
----
+## Any questions? Try→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
 </div>
 
@@ -34,6 +33,7 @@ Any questions? Try→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://d
 - Check for and download updates in one click
 
 ## Quick Start
+
 (Tips:Actually, we already have a documentation site!There you can view all kinds of documents more intuitively and conveniently.You can click here to go to the docs site.)
 
 [Jump to SL Official Doc Site](https://docs.ideaflash.cn/en/intro)
@@ -120,6 +120,15 @@ cargo fmt --all
 </details>
 
 CI automated checks are set up to ensure that all submitted code meets the standards.
+
+### Commit Gatekeeping (Enabled)
+
+- Local `pre-commit`: auto-formats staged frontend files via `lint-staged` + `oxfmt`
+- Local `commit-msg`: enforces Conventional Commits format
+- CI: re-validates commit messages and code quality on PR/push
+
+Allowed commit types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `revert`, `security`  
+Example: `feat(plugin): add retry logic for plugin downloads`
 
 ## Tech Stack
 

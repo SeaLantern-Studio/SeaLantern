@@ -109,7 +109,8 @@ const emit = defineEmits<{
 }
 
 @keyframes quoteLoading {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
   }
   50% {
