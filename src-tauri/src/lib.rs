@@ -33,8 +33,8 @@ pub fn run() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
     }
 
-    // Linux 平台在独立线程中初始化 panic_report，避免阻塞主线程
-    #[cfg(target_os = "linux")]
+    // Linux x86_64 平台在独立线程中初始化 panic_report，避免阻塞主线程
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
         std::thread::spawn(|| {
             let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
