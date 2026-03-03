@@ -1,12 +1,19 @@
 use crate::models::settings::{AppSettings, PartialSettings};
 use crate::services::global;
 use font_kit::source::SystemSource;
+use serde::Deserialize;
 use std::collections::HashSet;
 
 #[derive(serde::Serialize)]
 pub struct UpdateSettingsResult {
     pub settings: AppSettings,
     pub changed_groups: Vec<String>,
+}
+
+#[derive(serde::Serialize, Deserialize)]
+pub struct PluginCommands {
+    pub allowed: Vec<String>,
+    pub blocked: Vec<String>,
 }
 
 #[tauri::command]
@@ -79,4 +86,31 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
     sorted_fonts.sort_by_key(|a| a.to_lowercase());
 
     Ok(sorted_fonts)
+}
+
+#[tauri::command]
+pub fn get_plugin_commands() -> PluginCommands {
+    let settings = global::settings_manager().get();
+    PluginCommands {
+        allowed: settings.plugin_allowed_commands,
+        blocked: settings.plugin_blocked_commands,
+    }
+}
+
+#[tauri::command]
+pub fn update_plugin_commands(commands: PluginCommands) -> Result<UpdateSettingsResult, String> {
+    let partial = PartialSettings {
+        plugin_allowed_commands: Some(commands.allowed),
+        plugin_blocked_commands: Some(commands.blocked),
+        ..Default::default()
+    };
+    let result = global::settings_manager().update_partial(partial)?;
+    Ok(UpdateSettingsResult {
+        settings: result.settings,
+        changed_groups: result
+            .changed_groups
+            .into_iter()
+            .map(|g| format!("{:?}", g))
+            .collect(),
+    })
 }

@@ -49,6 +49,7 @@ struct CnbReleaseListData {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 struct CnbRelease {
     #[serde(rename = "tagRef")]
     tag_ref: String,
@@ -77,6 +78,7 @@ fn normalize_tag_ref(tag_ref: &str) -> String {
     normalize_release_tag_version(tag)
 }
 
+#[allow(dead_code)]
 fn release_time_key(release: &CnbRelease) -> String {
     release
         .published_at
@@ -153,6 +155,7 @@ async fn fetch_releases(client: &reqwest::Client) -> Result<Vec<CnbRelease>, Str
         .unwrap_or_default())
 }
 
+#[allow(dead_code)]
 pub async fn fetch_release(
     client: &reqwest::Client,
     current_version: &str,

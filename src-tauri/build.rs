@@ -1,7 +1,3 @@
-use nasm_rs::compile_library_args;
-use std::env;
-use std::path::Path;
-
 fn main() {
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
@@ -12,6 +8,10 @@ fn main() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 fn load_asm() {
+    use nasm_rs::compile_library_args;
+    use std::env;
+    use std::path::Path;
+
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let asm_path =
         Path::new(&manifest_dir).join("src/assemblies/panic_report/getregs/x64_linux.asm");
