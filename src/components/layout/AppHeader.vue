@@ -318,8 +318,8 @@ function computeOverallProgress() {
       </Menu>
 
       <div class="header-status">
-        <span class="status-dot online"></span>
-        <span class="status-text">{{ i18n.t("common.app_name") }}</span>
+        <span class="status-dot gray"></span>
+        <span class="status-text">{{ i18n.t("common.network_status") }}</span>
       </div>
 
       <div class="window-controls">

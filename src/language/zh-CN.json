@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "network_status": "网络状态",
     "home": "首页",
     "create_server": "创建服务器",
     "console": "控制台",
