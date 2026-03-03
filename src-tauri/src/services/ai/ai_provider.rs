@@ -1,14 +1,14 @@
 //! AI 提供商服务
-//!
+//! 
 //! 支持多种 AI 提供商的统一接口
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::time::Instant;
 
 use super::{AIConfig, AIMessage, AIResponse};
+use async_trait::async_trait;
 
 /// AI 提供商类型
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -21,15 +21,14 @@ pub enum AIProviderType {
 }
 
 /// AI 提供商 trait
-
 #[async_trait]
 pub trait AIProvider: Send + Sync {
     /// 发送聊天请求
     async fn chat(&self, messages: &[AIMessage], config: &AIConfig) -> AIResponse;
-
+    
     /// 获取提供商名称
     fn provider_name(&self) -> &str;
-
+    
     /// 获取支持的模型列表
     fn get_supported_models(&self) -> Vec<String>;
 }
@@ -41,7 +40,9 @@ pub struct OpenAIProvider {
 
 impl OpenAIProvider {
     pub fn new() -> Self {
-        Self { client: reqwest::Client::new() }
+        Self {
+            client: reqwest::Client::new(),
+        }
     }
 }
 
@@ -55,7 +56,7 @@ impl Default for OpenAIProvider {
 impl AIProvider for OpenAIProvider {
     async fn chat(&self, messages: &[AIMessage], config: &AIConfig) -> AIResponse {
         let start_time = Instant::now();
-
+        
         let api_key = match &config.api_key {
             Some(key) => key,
             None => {
@@ -69,10 +70,7 @@ impl AIProvider for OpenAIProvider {
             }
         };
 
-        let base_url = config
-            .base_url
-            .as_deref()
-            .unwrap_or("https://api.openai.com/v1");
+        let base_url = config.base_url.as_deref().unwrap_or("https://api.openai.com/v1");
         let url = format!("{}/chat/completions", base_url);
 
         let messages_json: Vec<Value> = messages
@@ -92,12 +90,15 @@ impl AIProvider for OpenAIProvider {
             "temperature": config.temperature,
         });
 
-        match self
-            .client
+        // 设置超时时间
+        let timeout = std::time::Duration::from_secs(config.timeout_seconds as u64);
+
+        match self.client
             .post(&url)
             .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
             .json(&body)
+            .timeout(timeout)
             .send()
             .await
         {
@@ -108,8 +109,9 @@ impl AIProvider for OpenAIProvider {
                             let content = json["choices"][0]["message"]["content"]
                                 .as_str()
                                 .map(|s| s.to_string());
-                            let tokens_used =
-                                json["usage"]["total_tokens"].as_u64().map(|t| t as u32);
+                            let tokens_used = json["usage"]["total_tokens"]
+                                .as_u64()
+                                .map(|t| t as u32);
 
                             AIResponse {
                                 success: true,
@@ -128,10 +130,7 @@ impl AIProvider for OpenAIProvider {
                         },
                     }
                 } else {
-                    let error_text = response
-                        .text()
-                        .await
-                        .unwrap_or_else(|_| "Unknown error".to_string());
+                    let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
                     AIResponse {
                         success: false,
                         content: None,
@@ -173,7 +172,9 @@ pub struct AnthropicProvider {
 
 impl AnthropicProvider {
     pub fn new() -> Self {
-        Self { client: reqwest::Client::new() }
+        Self {
+            client: reqwest::Client::new(),
+        }
     }
 }
 
@@ -187,7 +188,7 @@ impl Default for AnthropicProvider {
 impl AIProvider for AnthropicProvider {
     async fn chat(&self, messages: &[AIMessage], config: &AIConfig) -> AIResponse {
         let start_time = Instant::now();
-
+        
         let api_key = match &config.api_key {
             Some(key) => key,
             None => {
@@ -201,10 +202,7 @@ impl AIProvider for AnthropicProvider {
             }
         };
 
-        let base_url = config
-            .base_url
-            .as_deref()
-            .unwrap_or("https://api.anthropic.com/v1");
+        let base_url = config.base_url.as_deref().unwrap_or("https://api.anthropic.com/v1");
         let url = format!("{}/messages", base_url);
 
         // 将消息转换为 Anthropic 格式
@@ -229,13 +227,16 @@ impl AIProvider for AnthropicProvider {
             "messages": anthropic_messages,
         });
 
-        match self
-            .client
+        // 设置超时时间
+        let timeout = std::time::Duration::from_secs(config.timeout_seconds as u64);
+
+        match self.client
             .post(&url)
             .header("x-api-key", api_key)
             .header("anthropic-version", "2023-06-01")
             .header("Content-Type", "application/json")
             .json(&body)
+            .timeout(timeout)
             .send()
             .await
         {
@@ -243,14 +244,13 @@ impl AIProvider for AnthropicProvider {
                 if response.status().is_success() {
                     match response.json::<Value>().await {
                         Ok(json) => {
-                            let content =
-                                json["content"][0]["text"].as_str().map(|s| s.to_string());
+                            let content = json["content"][0]["text"]
+                                .as_str()
+                                .map(|s| s.to_string());
                             let tokens_used = json["usage"]["input_tokens"]
                                 .as_u64()
                                 .and_then(|input| {
-                                    json["usage"]["output_tokens"]
-                                        .as_u64()
-                                        .map(|output| input + output)
+                                    json["usage"]["output_tokens"].as_u64().map(|output| input + output)
                                 })
                                 .map(|t| t as u32);
 
@@ -271,10 +271,7 @@ impl AIProvider for AnthropicProvider {
                         },
                     }
                 } else {
-                    let error_text = response
-                        .text()
-                        .await
-                        .unwrap_or_else(|_| "Unknown error".to_string());
+                    let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
                     AIResponse {
                         success: false,
                         content: None,
@@ -314,7 +311,9 @@ pub struct LocalProvider {
 
 impl LocalProvider {
     pub fn new() -> Self {
-        Self { client: reqwest::Client::new() }
+        Self {
+            client: reqwest::Client::new(),
+        }
     }
 }
 
@@ -328,11 +327,8 @@ impl Default for LocalProvider {
 impl AIProvider for LocalProvider {
     async fn chat(&self, messages: &[AIMessage], config: &AIConfig) -> AIResponse {
         let start_time = Instant::now();
-
-        let base_url = config
-            .base_url
-            .as_deref()
-            .unwrap_or("http://localhost:11434");
+        
+        let base_url = config.base_url.as_deref().unwrap_or("http://localhost:11434");
         let url = format!("{}/api/chat", base_url);
 
         let messages_json: Vec<Value> = messages
@@ -355,8 +351,7 @@ impl AIProvider for LocalProvider {
             }
         });
 
-        match self
-            .client
+        match self.client
             .post(&url)
             .header("Content-Type", "application/json")
             .json(&body)
@@ -367,9 +362,12 @@ impl AIProvider for LocalProvider {
                 if response.status().is_success() {
                     match response.json::<Value>().await {
                         Ok(json) => {
-                            let content =
-                                json["message"]["content"].as_str().map(|s| s.to_string());
-                            let tokens_used = json["eval_count"].as_u64().map(|t| t as u32);
+                            let content = json["message"]["content"]
+                                .as_str()
+                                .map(|s| s.to_string());
+                            let tokens_used = json["eval_count"]
+                                .as_u64()
+                                .map(|t| t as u32);
 
                             AIResponse {
                                 success: true,
@@ -388,10 +386,7 @@ impl AIProvider for LocalProvider {
                         },
                     }
                 } else {
-                    let error_text = response
-                        .text()
-                        .await
-                        .unwrap_or_else(|_| "Unknown error".to_string());
+                    let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
                     AIResponse {
                         success: false,
                         content: None,
@@ -439,11 +434,20 @@ pub fn get_provider(provider_type: &str) -> Box<dyn AIProvider> {
 /// 获取所有支持的提供商
 pub fn get_supported_providers() -> HashMap<String, Vec<String>> {
     let mut providers = HashMap::new();
-
-    providers.insert("openai".to_string(), OpenAIProvider::new().get_supported_models());
-    providers.insert("anthropic".to_string(), AnthropicProvider::new().get_supported_models());
-    providers.insert("local".to_string(), LocalProvider::new().get_supported_models());
-
+    
+    providers.insert(
+        "openai".to_string(),
+        OpenAIProvider::new().get_supported_models(),
+    );
+    providers.insert(
+        "anthropic".to_string(),
+        AnthropicProvider::new().get_supported_models(),
+    );
+    providers.insert(
+        "local".to_string(),
+        LocalProvider::new().get_supported_models(),
+    );
+    
     providers
 }
 

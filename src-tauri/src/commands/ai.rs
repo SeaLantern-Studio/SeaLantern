@@ -1,11 +1,5 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-#![allow(clippy::all)]
-#![allow(clippy::await_holding_lock)]
-
 //! AI 功能 Tauri 命令
-//!
+//! 
 //! 提供 AI 功能的前端调用接口
 
 use serde::{Deserialize, Serialize};
@@ -13,11 +7,13 @@ use std::sync::Mutex;
 use tauri::State;
 
 use crate::services::ai::{
-    AIAnalysisResult, AICommandSuggestion, AIConfig, AIConfigSuggestion, AIContentGeneration,
-    AIService, AITranslationResult, AnalysisType, CommandGenerationOptions, CommandType,
-    ConfigAnalysisOptions, ConfigAnalysisType, ContentGenerationOptions, ContentLength,
-    ContentStyle, ContentType, HardwareInfo, Language, LogAnalysisOptions, TranslationContext,
-    TranslationOptions,
+    AIConfig, AIAnalysisResult, AICommandSuggestion, AIConfigSuggestion, 
+    AITranslationResult, AIContentGeneration, AIService,
+    LogAnalysisOptions, AnalysisType,
+    CommandGenerationOptions, CommandType,
+    ConfigAnalysisOptions, ConfigAnalysisType, HardwareInfo,
+    TranslationOptions, TranslationContext, Language,
+    ContentGenerationOptions, ContentType, ContentStyle, ContentLength,
 };
 
 /// AI 服务状态
@@ -73,7 +69,7 @@ pub fn check_ai_available(state: State<AIState>) -> bool {
 #[tauri::command]
 pub fn get_ai_providers() -> Vec<ProviderInfo> {
     use crate::services::ai::get_supported_providers;
-
+    
     let providers = get_supported_providers();
     providers
         .into_iter()
@@ -99,8 +95,7 @@ fn get_provider_display_name(name: &str) -> String {
         "anthropic" => "Anthropic (Claude)",
         "local" => "本地模型 (Ollama)",
         _ => name,
-    }
-    .to_string()
+    }.to_string()
 }
 
 // ==================== 日志分析 ====================
@@ -139,8 +134,15 @@ pub async fn analyze_logs(
         max_lines: request.max_lines,
     };
 
-    let service = state.service.lock().unwrap();
-    let results = service.analyze_logs(&request.logs, &options).await;
+    // 获取配置后立即释放锁，避免跨 await 持有
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    // 使用独立的控制台服务进行分析
+    let console_service = crate::services::ai::AIConsoleService::new();
+    let results = console_service.analyze_logs(&request.logs, &options, &config).await;
     Ok(results)
 }
 
@@ -150,8 +152,14 @@ pub async fn explain_log_line(
     state: State<'_, AIState>,
     log_line: String,
 ) -> Result<Option<String>, String> {
-    let service = state.service.lock().unwrap();
-    let result = service.explain_log(&log_line).await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let console_service = crate::services::ai::AIConsoleService::new();
+    let result = console_service.explain_log_line(&log_line, &config).await;
     Ok(result)
 }
 
@@ -161,8 +169,14 @@ pub async fn get_solution(
     state: State<'_, AIState>,
     problem: String,
 ) -> Result<Option<String>, String> {
-    let service = state.service.lock().unwrap();
-    let result = service.get_solution(&problem).await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let console_service = crate::services::ai::AIConsoleService::new();
+    let result = console_service.get_solution(&problem, &config).await;
     Ok(result)
 }
 
@@ -209,10 +223,14 @@ pub async fn generate_command(
         server_type: request.server_type,
     };
 
-    let service = state.service.lock().unwrap();
-    let result = service
-        .generate_command(&request.natural_language, &options)
-        .await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let command_service = crate::services::ai::AICommandService::new();
+    let result = command_service.generate_command(&request.natural_language, &options, &config).await;
     Ok(result)
 }
 
@@ -222,8 +240,14 @@ pub async fn explain_command(
     state: State<'_, AIState>,
     command: String,
 ) -> Result<Option<String>, String> {
-    let service = state.service.lock().unwrap();
-    let result = service.explain_command(&command).await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let command_service = crate::services::ai::AICommandService::new();
+    let result = command_service.explain_command(&command, &config).await;
     Ok(result)
 }
 
@@ -233,8 +257,14 @@ pub async fn get_command_suggestions(
     state: State<'_, AIState>,
     partial_command: String,
 ) -> Result<Vec<AICommandSuggestion>, String> {
-    let service = state.service.lock().unwrap();
-    let results = service.get_command_suggestions(&partial_command).await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let command_service = crate::services::ai::AICommandService::new();
+    let results = command_service.get_command_suggestions(&partial_command, &config).await;
     Ok(results)
 }
 
@@ -299,10 +329,14 @@ pub async fn analyze_config(
         mc_version: request.mc_version,
     };
 
-    let service = state.service.lock().unwrap();
-    let results = service
-        .analyze_config(&request.config_content, &request.config_type, &options)
-        .await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let config_service = crate::services::ai::AIConfigService::new();
+    let results = config_service.analyze_config(&request.config_content, &request.config_type, &options, &config).await;
     Ok(results)
 }
 
@@ -331,10 +365,14 @@ pub async fn analyze_jvm(
         os: request.hardware.os,
     };
 
-    let service = state.service.lock().unwrap();
-    let analysis = service
-        .analyze_jvm(&request.current_args, &hardware, request.expected_players)
-        .await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let config_service = crate::services::ai::AIConfigService::new();
+    let analysis = config_service.analyze_jvm(&request.current_args, &hardware, request.expected_players, &config).await;
 
     Ok(JVMAnalysisResult {
         current_args: analysis.current_args,
@@ -383,7 +421,10 @@ pub struct GCSuggestionResult {
 
 /// 生成启动脚本
 #[tauri::command]
-pub fn generate_startup_script(jvm_args: Vec<String>, server_jar: String) -> String {
+pub fn generate_startup_script(
+    jvm_args: Vec<String>,
+    server_jar: String,
+) -> String {
     let jvm_args_str = jvm_args.join(" ");
     format!(
         r#"#!/bin/bash
@@ -421,10 +462,11 @@ pub async fn translate_text(
     state: State<'_, AIState>,
     request: TranslateRequest,
 ) -> Result<AITranslationResult, String> {
-    let source_language = Language::from_code(&request.source_language).unwrap_or(Language::Auto);
-
-    let target_language =
-        Language::from_code(&request.target_language).unwrap_or(Language::English);
+    let source_language = Language::from_code(&request.source_language)
+        .unwrap_or(Language::Auto);
+    
+    let target_language = Language::from_code(&request.target_language)
+        .unwrap_or(Language::English);
 
     let context = request.context.and_then(|c| match c.as_str() {
         "chat" => Some(TranslationContext::Chat),
@@ -443,8 +485,14 @@ pub async fn translate_text(
         preserve_formatting: request.preserve_formatting,
     };
 
-    let mut service = state.service.lock().unwrap();
-    let result = service.translate(&request.text, &options).await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let mut translator_service = crate::services::ai::AITranslatorService::new();
+    let result = translator_service.translate(&request.text, &options, &config).await;
     Ok(result)
 }
 
@@ -454,8 +502,14 @@ pub async fn detect_language(
     state: State<'_, AIState>,
     text: String,
 ) -> Result<Option<String>, String> {
-    let service = state.service.lock().unwrap();
-    let result = service.detect_language(&text).await;
+    // 获取配置后立即释放锁
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let translator_service = crate::services::ai::AITranslatorService::new();
+    let result = translator_service.detect_language(&text, &config).await;
     Ok(result.map(|l| l.code().to_string()))
 }
 
@@ -463,7 +517,7 @@ pub async fn detect_language(
 #[tauri::command]
 pub fn get_supported_languages() -> Vec<LanguageInfo> {
     use crate::services::ai::get_supported_languages;
-
+    
     get_supported_languages()
         .into_iter()
         .map(|l| LanguageInfo {
@@ -549,8 +603,14 @@ pub async fn generate_content(
         extra_requirements: request.extra_requirements,
     };
 
-    let service = state.service.lock().unwrap();
-    let result = service.generate_content(&options).await;
+    // 获取配置后立即释放锁，避免跨 await 持有
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let content_service = crate::services::ai::AIContentService::new();
+    let result = content_service.generate_content(&options, &config).await;
     Ok(result)
 }
 
@@ -568,9 +628,15 @@ pub async fn generate_announcement(
     state: State<'_, AIState>,
     request: GenerateAnnouncementRequest,
 ) -> Result<Option<String>, String> {
-    let service = state.service.lock().unwrap();
-    let result = service
-        .generate_announcement(&request.server_name, &request.topic, request.details.as_deref())
+    // 获取配置后立即释放锁，避免跨 await 持有
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let content_service = crate::services::ai::AIContentService::new();
+    let result = content_service
+        .generate_announcement(&request.server_name, &request.topic, request.details.as_deref(), &config)
         .await;
     Ok(result)
 }
@@ -582,8 +648,14 @@ pub async fn generate_rules(
     server_name: String,
     server_type: String,
 ) -> Result<Option<String>, String> {
-    let service = state.service.lock().unwrap();
-    let result = service.generate_rules(&server_name, &server_type).await;
+    // 获取配置后立即释放锁，避免跨 await 持有
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let content_service = crate::services::ai::AIContentService::new();
+    let result = content_service.generate_rules(&server_name, &server_type, &config).await;
     Ok(result)
 }
 
@@ -594,10 +666,14 @@ pub async fn generate_welcome(
     server_name: String,
     player_name: Option<String>,
 ) -> Result<Option<String>, String> {
-    let service = state.service.lock().unwrap();
-    let result = service
-        .generate_welcome(&server_name, player_name.as_deref())
-        .await;
+    // 获取配置后立即释放锁，避免跨 await 持有
+    let config = {
+        let service = state.service.lock().unwrap();
+        service.get_config().clone()
+    };
+
+    let content_service = crate::services::ai::AIContentService::new();
+    let result = content_service.generate_welcome(&server_name, player_name.as_deref(), &config).await;
     Ok(result)
 }
 
@@ -615,7 +691,7 @@ pub fn clear_translation_cache(state: State<AIState>) -> Result<(), String> {
 #[tauri::command]
 pub fn get_log_patterns() -> Vec<LogPatternInfo> {
     use crate::services::ai::get_predefined_patterns;
-
+    
     get_predefined_patterns()
         .into_iter()
         .map(|p| LogPatternInfo {
@@ -639,9 +715,9 @@ pub struct LogPatternInfo {
 // ==================== MCP 反作弊 ====================
 
 use crate::services::ai::{
-    AntiCheatStatistics, DetectionCategory, DetectionRecord, DetectionRule, DetectionStatus,
-    DetectionType, MCAntiCheatService, ModInfo, PlayerBehaviorData, PlayerProfile, PlayerStatus,
-    PunishmentAction, PunishmentConfig, Severity,
+    MCAntiCheatService, DetectionType, DetectionCategory, Severity,
+    DetectionRecord, DetectionStatus, DetectionRule, PunishmentAction, PunishmentConfig,
+    PlayerProfile, PlayerStatus, AntiCheatStatistics, PlayerBehaviorData, ModInfo,
 };
 
 /// 反作弊服务状态
@@ -696,14 +772,12 @@ pub async fn analyze_player_behavior(
     };
 
     let service = anticheat_state.service.lock().unwrap();
-    let result = service
-        .analyze_player_behavior(
-            &request.player_name,
-            &request.player_uuid,
-            &behavior_data,
-            &ai_config,
-        )
-        .await;
+    let result = service.analyze_player_behavior(
+        &request.player_name,
+        &request.player_uuid,
+        &behavior_data,
+        &ai_config,
+    ).await;
 
     Ok(result)
 }
@@ -738,21 +812,20 @@ pub async fn analyze_client_mods(
         service.get_config().clone()
     };
 
-    let mods: Vec<ModInfo> = request
-        .mods
-        .into_iter()
-        .map(|m| ModInfo {
-            mod_id: m.mod_id,
-            name: m.name,
-            version: m.version,
-            server_id: request.server_id.clone(),
-        })
-        .collect();
+    let mods: Vec<ModInfo> = request.mods.into_iter().map(|m| ModInfo {
+        mod_id: m.mod_id,
+        name: m.name,
+        version: m.version,
+        server_id: request.server_id.clone(),
+    }).collect();
 
     let service = anticheat_state.service.lock().unwrap();
-    let results = service
-        .analyze_client_mods(&request.player_name, &request.player_uuid, &mods, &ai_config)
-        .await;
+    let results = service.analyze_client_mods(
+        &request.player_name,
+        &request.player_uuid,
+        &mods,
+        &ai_config,
+    ).await;
 
     Ok(results)
 }
@@ -793,34 +866,29 @@ pub fn get_detections(
 ) -> Result<Vec<DetectionRecord>, String> {
     let service = anticheat_state.service.lock().unwrap();
     let detections = service.get_detections();
-
+    
     let filtered = if let Some(f) = filter {
-        detections
-            .into_iter()
-            .filter(|d| {
-                let mut match_type = true;
-                let mut match_severity = true;
-                let mut match_status = true;
-                let mut match_player = true;
+        detections.into_iter().filter(|d| {
+            let mut match_type = true;
+            let mut match_severity = true;
+            let mut match_status = true;
+            let mut match_player = true;
 
-                if let Some(ref t) = f.detection_type {
-                    match_type =
-                        format!("{:?}", d.detection_type).to_lowercase() == t.to_lowercase();
-                }
-                if let Some(ref s) = f.severity {
-                    match_severity = format!("{:?}", d.severity).to_lowercase() == s.to_lowercase();
-                }
-                if let Some(ref s) = f.status {
-                    match_status = format!("{:?}", d.status).to_lowercase() == s.to_lowercase();
-                }
-                if let Some(ref p) = f.player_name {
-                    match_player = d.player_name.to_lowercase().contains(&p.to_lowercase());
-                }
+            if let Some(ref t) = f.detection_type {
+                match_type = format!("{:?}", d.detection_type).to_lowercase() == t.to_lowercase();
+            }
+            if let Some(ref s) = f.severity {
+                match_severity = format!("{:?}", d.severity).to_lowercase() == s.to_lowercase();
+            }
+            if let Some(ref s) = f.status {
+                match_status = format!("{:?}", d.status).to_lowercase() == s.to_lowercase();
+            }
+            if let Some(ref p) = f.player_name {
+                match_player = d.player_name.to_lowercase().contains(&p.to_lowercase());
+            }
 
-                match_type && match_severity && match_status && match_player
-            })
-            .cloned()
-            .collect()
+            match_type && match_severity && match_status && match_player
+        }).cloned().collect()
     } else {
         detections.into_iter().cloned().collect()
     };
@@ -837,6 +905,26 @@ pub struct DetectionFilter {
     pub player_name: Option<String>,
 }
 
+/// 更新检测状态
+#[tauri::command]
+pub fn update_detection_status(
+    anticheat_state: State<AntiCheatState>,
+    detection_id: String,
+    status: String,
+) -> Result<bool, String> {
+    // 解析状态字符串
+    let detection_status = match status.to_lowercase().as_str() {
+        "pending" => DetectionStatus::Pending,
+        "processed" => DetectionStatus::Processed,
+        "ignored" => DetectionStatus::Ignored,
+        "false_positive" => DetectionStatus::FalsePositive,
+        _ => return Err(format!("Invalid detection status: {}", status)),
+    };
+
+    let mut service = anticheat_state.service.lock().unwrap();
+    Ok(service.update_detection_status(&detection_id, detection_status))
+}
+
 /// 确定处罚动作
 #[tauri::command]
 pub fn determine_punishment(
@@ -844,12 +932,8 @@ pub fn determine_punishment(
     detection_id: String,
 ) -> Result<PunishmentAction, String> {
     let service = anticheat_state.service.lock().unwrap();
-
-    if let Some(detection) = service
-        .get_detections()
-        .iter()
-        .find(|d| d.id == detection_id)
-    {
+    
+    if let Some(detection) = service.get_detections().iter().find(|d| d.id == detection_id) {
         let action = service.determine_punishment(detection);
         return Ok(action);
     }
@@ -947,7 +1031,9 @@ pub fn get_anticheat_statistics(
 
 /// 重置每日统计
 #[tauri::command]
-pub fn reset_daily_statistics(anticheat_state: State<AntiCheatState>) -> Result<(), String> {
+pub fn reset_daily_statistics(
+    anticheat_state: State<AntiCheatState>,
+) -> Result<(), String> {
     let mut service = anticheat_state.service.lock().unwrap();
     service.reset_daily_stats();
     Ok(())
@@ -959,71 +1045,19 @@ pub fn reset_daily_statistics(anticheat_state: State<AntiCheatState>) -> Result<
 #[tauri::command]
 pub fn get_detection_types() -> Vec<DetectionTypeInfo> {
     vec![
-        DetectionTypeInfo {
-            id: "speed_hack".to_string(),
-            name: "加速外挂".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "fly_hack".to_string(),
-            name: "飞行外挂".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "kill_aura".to_string(),
-            name: "杀戮光环".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "xray".to_string(),
-            name: "透视外挂".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "auto_clicker".to_string(),
-            name: "自动点击".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "reach_hack".to_string(),
-            name: "攻击距离扩展".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "no_fall".to_string(),
-            name: "无摔落伤害".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "no_knockback".to_string(),
-            name: "无击退".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "scaffold".to_string(),
-            name: "自动搭路".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "baritone".to_string(),
-            name: "自动行走".to_string(),
-            category: "hack".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "illegal_mod".to_string(),
-            name: "违规模组".to_string(),
-            category: "mod".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "dupe_exploit".to_string(),
-            name: "复制漏洞利用".to_string(),
-            category: "exploit".to_string(),
-        },
-        DetectionTypeInfo {
-            id: "abnormal_behavior".to_string(),
-            name: "异常行为".to_string(),
-            category: "behavior".to_string(),
-        },
+        DetectionTypeInfo { id: "speed_hack".to_string(), name: "加速外挂".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "fly_hack".to_string(), name: "飞行外挂".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "kill_aura".to_string(), name: "杀戮光环".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "xray".to_string(), name: "透视外挂".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "auto_clicker".to_string(), name: "自动点击".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "reach_hack".to_string(), name: "攻击距离扩展".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "no_fall".to_string(), name: "无摔落伤害".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "no_knockback".to_string(), name: "无击退".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "scaffold".to_string(), name: "自动搭路".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "baritone".to_string(), name: "自动行走".to_string(), category: "hack".to_string() },
+        DetectionTypeInfo { id: "illegal_mod".to_string(), name: "违规模组".to_string(), category: "mod".to_string() },
+        DetectionTypeInfo { id: "dupe_exploit".to_string(), name: "复制漏洞利用".to_string(), category: "exploit".to_string() },
+        DetectionTypeInfo { id: "abnormal_behavior".to_string(), name: "异常行为".to_string(), category: "behavior".to_string() },
     ]
 }
 

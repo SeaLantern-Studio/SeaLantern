@@ -4,36 +4,39 @@
     <div class="ai-header">
       <div class="ai-title">
         <Brain class="ai-icon" />
-        <h2>{{ t("ai.assistant.title") }}</h2>
+        <h2>{{ t('ai.assistant.title') }}</h2>
       </div>
       <div class="ai-status" :class="{ enabled: aiEnabled }">
         <span class="status-dot"></span>
-        {{ aiEnabled ? t("ai.status.enabled") : t("ai.status.disabled") }}
+        {{ aiEnabled ? t('ai.status.enabled') : t('ai.status.disabled') }}
       </div>
     </div>
 
     <!-- Tab 切换 -->
-    <SLTabBar :tabs="tabs" v-model="activeTab" />
+    <SLTabBar
+      :tabs="tabs"
+      v-model="activeTab"
+    />
 
     <!-- 日志分析 Tab -->
     <div v-if="activeTab === 'log'" class="tab-content">
       <div class="section-card">
-        <h3>{{ t("ai.log_analysis.title") }}</h3>
-
+        <h3>{{ t('ai.log_analysis.title') }}</h3>
+        
         <div class="analysis-options">
           <div class="option-group">
-            <label>{{ t("ai.log_analysis.analysis_type") }}</label>
+            <label>{{ t('ai.log_analysis.analysis_type') }}</label>
             <select v-model="logAnalysisType">
-              <option value="full">{{ t("ai.log_analysis.type_full") }}</option>
-              <option value="error">{{ t("ai.log_analysis.type_error") }}</option>
-              <option value="performance">{{ t("ai.log_analysis.type_performance") }}</option>
-              <option value="security">{{ t("ai.log_analysis.type_security") }}</option>
-              <option value="plugin">{{ t("ai.log_analysis.type_plugin") }}</option>
+              <option value="full">{{ t('ai.log_analysis.type_full') }}</option>
+              <option value="error">{{ t('ai.log_analysis.type_error') }}</option>
+              <option value="performance">{{ t('ai.log_analysis.type_performance') }}</option>
+              <option value="security">{{ t('ai.log_analysis.type_security') }}</option>
+              <option value="plugin">{{ t('ai.log_analysis.type_plugin') }}</option>
             </select>
           </div>
-
+          
           <div class="option-group">
-            <label>{{ t("ai.log_analysis.max_lines") }}</label>
+            <label>{{ t('ai.log_analysis.max_lines') }}</label>
             <input type="number" v-model="maxLines" min="10" max="1000" />
           </div>
         </div>
@@ -46,15 +49,15 @@
           ></textarea>
         </div>
 
-        <button class="analyze-btn" @click="analyzeLogs" :disabled="analyzing || !logInput.trim()">
+        <button class="analyze-btn" @click="handleAnalyzeLogs" :disabled="analyzing || !logInput.trim()">
           <LoadingIcon v-if="analyzing" class="spinning" />
           <SearchIcon v-else />
-          {{ analyzing ? t("ai.log_analysis.analyzing") : t("ai.log_analysis.analyze") }}
+          {{ analyzing ? t('ai.log_analysis.analyzing') : t('ai.log_analysis.analyze') }}
         </button>
 
         <!-- 分析结果 -->
         <div v-if="analysisResults.length > 0" class="analysis-results">
-          <h4>{{ t("ai.log_analysis.results") }}</h4>
+          <h4>{{ t('ai.log_analysis.results') }}</h4>
           <div
             v-for="(result, index) in analysisResults"
             :key="index"
@@ -65,15 +68,13 @@
               <span class="severity-badge" :class="result.severity">
                 {{ getSeverityText(result.severity) }}
               </span>
-              <span class="confidence"
-                >{{ t("ai.confidence") }}: {{ (result.confidence * 100).toFixed(0) }}%</span
-              >
+              <span class="confidence">{{ t('ai.confidence') }}: {{ (result.confidence * 100).toFixed(0) }}%</span>
             </div>
             <h5 class="result-title">{{ result.title }}</h5>
             <p class="result-description">{{ result.description }}</p>
-
+            
             <div v-if="result.suggestions.length > 0" class="suggestions">
-              <h6>{{ t("ai.suggestions") }}</h6>
+              <h6>{{ t('ai.suggestions') }}</h6>
               <ul>
                 <li v-for="(suggestion, idx) in result.suggestions" :key="idx">
                   {{ suggestion }}
@@ -82,7 +83,7 @@
             </div>
 
             <div v-if="result.related_logs.length > 0" class="related-logs">
-              <h6>{{ t("ai.related_logs") }}</h6>
+              <h6>{{ t('ai.related_logs') }}</h6>
               <pre v-for="(log, idx) in result.related_logs" :key="idx">{{ log }}</pre>
             </div>
           </div>
@@ -93,15 +94,15 @@
     <!-- 命令助手 Tab -->
     <div v-if="activeTab === 'command'" class="tab-content">
       <div class="section-card">
-        <h3>{{ t("ai.command.title") }}</h3>
-
+        <h3>{{ t('ai.command.title') }}</h3>
+        
         <div class="command-input">
           <input
             v-model="naturalLanguageInput"
             :placeholder="t('ai.command.input_placeholder')"
-            @keyup.enter="generateCommand"
+            @keyup.enter="handleGenerateCommand"
           />
-          <button @click="generateCommand" :disabled="generating || !naturalLanguageInput.trim()">
+          <button @click="handleGenerateCommand" :disabled="generating || !naturalLanguageInput.trim()">
             <LoadingIcon v-if="generating" class="spinning" />
             <SendIcon v-else />
           </button>
@@ -109,9 +110,9 @@
 
         <div class="command-options">
           <div class="option-group">
-            <label>{{ t("ai.command.server_type") }}</label>
+            <label>{{ t('ai.command.server_type') }}</label>
             <select v-model="commandServerType">
-              <option value="">{{ t("common.auto") }}</option>
+              <option value="">{{ t('common.auto') }}</option>
               <option value="vanilla">Vanilla</option>
               <option value="spigot">Spigot</option>
               <option value="paper">Paper</option>
@@ -130,44 +131,33 @@
             </button>
           </div>
           <p class="command-description">{{ commandSuggestion.description }}</p>
-
+          
           <div v-if="commandSuggestion.parameters.length > 0" class="parameters">
-            <h6>{{ t("ai.command.parameters") }}</h6>
+            <h6>{{ t('ai.command.parameters') }}</h6>
             <div class="param-list">
-              <div
-                v-for="param in commandSuggestion.parameters"
-                :key="param.name"
-                class="param-item"
-              >
+              <div v-for="param in commandSuggestion.parameters" :key="param.name" class="param-item">
                 <span class="param-name">{{ param.name }}</span>
                 <span class="param-type">{{ param.param_type }}</span>
-                <span v-if="param.required" class="param-required">{{
-                  t("ai.command.required")
-                }}</span>
+                <span v-if="param.required" class="param-required">{{ t('ai.command.required') }}</span>
                 <span class="param-desc">{{ param.description }}</span>
               </div>
             </div>
           </div>
 
           <div v-if="commandSuggestion.examples.length > 0" class="examples">
-            <h6>{{ t("ai.command.examples") }}</h6>
-            <code v-for="(example, idx) in commandSuggestion.examples" :key="idx">{{
-              example
-            }}</code>
+            <h6>{{ t('ai.command.examples') }}</h6>
+            <code v-for="(example, idx) in commandSuggestion.examples" :key="idx">{{ example }}</code>
           </div>
         </div>
 
         <!-- 快捷命令 -->
         <div class="quick-commands">
-          <h6>{{ t("ai.command.quick_commands") }}</h6>
+          <h6>{{ t('ai.command.quick_commands') }}</h6>
           <div class="quick-command-list">
             <button
               v-for="cmd in quickCommands"
               :key="cmd.text"
-              @click="
-                naturalLanguageInput = cmd.text;
-                generateCommand();
-              "
+              @click="naturalLanguageInput = cmd.text; handleGenerateCommand()"
             >
               {{ cmd.label }}
             </button>
@@ -179,11 +169,11 @@
     <!-- 配置优化 Tab -->
     <div v-if="activeTab === 'config'" class="tab-content">
       <div class="section-card">
-        <h3>{{ t("ai.config.title") }}</h3>
-
+        <h3>{{ t('ai.config.title') }}</h3>
+        
         <div class="config-options">
           <div class="option-group">
-            <label>{{ t("ai.config.config_type") }}</label>
+            <label>{{ t('ai.config.config_type') }}</label>
             <select v-model="configType">
               <option value="server.properties">server.properties</option>
               <option value="jvm">JVM 参数</option>
@@ -194,30 +184,30 @@
         </div>
 
         <div v-if="configType === 'jvm'" class="jvm-config">
-          <h6>{{ t("ai.config.hardware_info") }}</h6>
+          <h6>{{ t('ai.config.hardware_info') }}</h6>
           <div class="hardware-form">
             <div class="form-row">
               <div class="form-group">
-                <label>{{ t("ai.config.cpu_cores") }}</label>
+                <label>{{ t('ai.config.cpu_cores') }}</label>
                 <input type="number" v-model="hardwareInfo.cpu_cores" min="1" />
               </div>
               <div class="form-group">
-                <label>{{ t("ai.config.total_memory") }} (GB)</label>
+                <label>{{ t('ai.config.total_memory') }} (GB)</label>
                 <input type="number" v-model="hardwareInfo.total_memory_gb" min="1" step="0.5" />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>{{ t("ai.config.expected_players") }}</label>
+                <label>{{ t('ai.config.expected_players') }}</label>
                 <input type="number" v-model="expectedPlayers" min="1" />
               </div>
             </div>
           </div>
-
-          <button class="analyze-btn" @click="analyzeJVM" :disabled="analyzingConfig">
+          
+          <button class="analyze-btn" @click="handleAnalyzeJVM" :disabled="analyzingConfig">
             <LoadingIcon v-if="analyzingConfig" class="spinning" />
             <SettingsIcon v-else />
-            {{ analyzingConfig ? t("ai.config.analyzing") : t("ai.config.analyze_jvm") }}
+            {{ analyzingConfig ? t('ai.config.analyzing') : t('ai.config.analyze_jvm') }}
           </button>
         </div>
 
@@ -227,23 +217,19 @@
             :placeholder="t('ai.config.input_placeholder')"
             rows="15"
           ></textarea>
-          <button
-            class="analyze-btn"
-            @click="analyzeConfig"
-            :disabled="analyzingConfig || !configInput.trim()"
-          >
+          <button class="analyze-btn" @click="handleAnalyzeConfig" :disabled="analyzingConfig || !configInput.trim()">
             <LoadingIcon v-if="analyzingConfig" class="spinning" />
             <SettingsIcon v-else />
-            {{ analyzingConfig ? t("ai.config.analyzing") : t("ai.config.analyze") }}
+            {{ analyzingConfig ? t('ai.config.analyzing') : t('ai.config.analyze') }}
           </button>
         </div>
 
         <!-- JVM 分析结果 -->
         <div v-if="jvmAnalysis" class="jvm-result">
-          <h4>{{ t("ai.config.jvm_result") }}</h4>
-
+          <h4>{{ t('ai.config.jvm_result') }}</h4>
+          
           <div class="memory-suggestion">
-            <h6>{{ t("ai.config.memory_suggestion") }}</h6>
+            <h6>{{ t('ai.config.memory_suggestion') }}</h6>
             <p>{{ jvmAnalysis.memory_suggestion.explanation }}</p>
             <div class="memory-values">
               <span>-Xms{{ jvmAnalysis.memory_suggestion.min_heap_mb }}M</span>
@@ -252,29 +238,25 @@
           </div>
 
           <div class="gc-suggestion">
-            <h6>{{ t("ai.config.gc_suggestion") }}</h6>
+            <h6>{{ t('ai.config.gc_suggestion') }}</h6>
             <p>{{ jvmAnalysis.gc_suggestion.explanation }}</p>
             <code>{{ jvmAnalysis.gc_suggestion.gc_type }}</code>
           </div>
 
           <div class="jvm-args">
-            <h6>{{ t("ai.config.recommended_args") }}</h6>
-            <pre>{{
-              jvmAnalysis.suggested_args.join(
-                " \
-  ",
-              )
-            }}</pre>
+            <h6>{{ t('ai.config.recommended_args') }}</h6>
+            <pre>{{ jvmAnalysis.suggested_args.join(' \
+  ') }}</pre>
             <button class="copy-btn" @click="copyJVMArgs">
               <CopyIcon />
-              {{ t("common.copy") }}
+              {{ t('common.copy') }}
             </button>
           </div>
         </div>
 
         <!-- 配置建议 -->
         <div v-if="configSuggestions.length > 0" class="config-suggestions">
-          <h4>{{ t("ai.config.suggestions") }}</h4>
+          <h4>{{ t('ai.config.suggestions') }}</h4>
           <div
             v-for="(suggestion, index) in configSuggestions"
             :key="index"
@@ -283,16 +265,12 @@
           >
             <div class="suggestion-header">
               <span class="config-key">{{ suggestion.config_key }}</span>
-              <span class="priority">{{ t("ai.config.priority") }}: {{ suggestion.priority }}</span>
+              <span class="priority">{{ t('ai.config.priority') }}: {{ suggestion.priority }}</span>
             </div>
             <div class="suggestion-values">
-              <span class="current"
-                >{{ t("ai.config.current") }}: {{ suggestion.current_value }}</span
-              >
+              <span class="current">{{ t('ai.config.current') }}: {{ suggestion.current_value }}</span>
               <ArrowRightIcon class="arrow" />
-              <span class="suggested"
-                >{{ t("ai.config.suggested") }}: {{ suggestion.suggested_value }}</span
-              >
+              <span class="suggested">{{ t('ai.config.suggested') }}: {{ suggestion.suggested_value }}</span>
             </div>
             <p class="suggestion-reason">{{ suggestion.reason }}</p>
             <p class="suggestion-effect">{{ suggestion.expected_effect }}</p>
@@ -304,13 +282,13 @@
     <!-- 翻译 Tab -->
     <div v-if="activeTab === 'translate'" class="tab-content">
       <div class="section-card">
-        <h3>{{ t("ai.translate.title") }}</h3>
-
+        <h3>{{ t('ai.translate.title') }}</h3>
+        
         <div class="translate-options">
           <div class="option-group">
-            <label>{{ t("ai.translate.source") }}</label>
+            <label>{{ t('ai.translate.source') }}</label>
             <select v-model="translateOptions.source_language">
-              <option value="auto">{{ t("ai.translate.auto_detect") }}</option>
+              <option value="auto">{{ t('ai.translate.auto_detect') }}</option>
               <option v-for="lang in supportedLanguages" :key="lang.code" :value="lang.code">
                 {{ lang.display_name }}
               </option>
@@ -320,7 +298,7 @@
             <ArrowLeftRightIcon />
           </button>
           <div class="option-group">
-            <label>{{ t("ai.translate.target") }}</label>
+            <label>{{ t('ai.translate.target') }}</label>
             <select v-model="translateOptions.target_language">
               <option v-for="lang in supportedLanguages" :key="lang.code" :value="lang.code">
                 {{ lang.display_name }}
@@ -337,28 +315,22 @@
           ></textarea>
         </div>
 
-        <button
-          class="translate-btn"
-          @click="translateText"
-          :disabled="translating || !translateInput.trim()"
-        >
+        <button class="translate-btn" @click="handleTranslateText" :disabled="translating || !translateInput.trim()">
           <LoadingIcon v-if="translating" class="spinning" />
           <LanguagesIcon v-else />
-          {{ translating ? t("ai.translate.translating") : t("ai.translate.translate") }}
+          {{ translating ? t('ai.translate.translating') : t('ai.translate.translate') }}
         </button>
 
         <div v-if="translateResult" class="translate-result">
-          <h6>{{ t("ai.translate.result") }}</h6>
+          <h6>{{ t('ai.translate.result') }}</h6>
           <p class="translated-text">{{ translateResult.translated_text }}</p>
           <div class="translate-meta">
-            <span>{{ t("ai.translate.detected") }}: {{ translateResult.source_language }}</span>
-            <span
-              >{{ t("ai.confidence") }}: {{ (translateResult.confidence * 100).toFixed(0) }}%</span
-            >
+            <span>{{ t('ai.translate.detected') }}: {{ translateResult.source_language }}</span>
+            <span>{{ t('ai.confidence') }}: {{ (translateResult.confidence * 100).toFixed(0) }}%</span>
           </div>
           <button class="copy-btn" @click="copyTranslation">
             <CopyIcon />
-            {{ t("common.copy") }}
+            {{ t('common.copy') }}
           </button>
         </div>
       </div>
@@ -367,46 +339,43 @@
     <!-- 内容生成 Tab -->
     <div v-if="activeTab === 'content'" class="tab-content">
       <div class="section-card">
-        <h3>{{ t("ai.content.title") }}</h3>
-
+        <h3>{{ t('ai.content.title') }}</h3>
+        
         <div class="content-options">
           <div class="option-group">
-            <label>{{ t("ai.content.type") }}</label>
+            <label>{{ t('ai.content.type') }}</label>
             <select v-model="contentType">
-              <option value="announcement">{{ t("ai.content.type_announcement") }}</option>
-              <option value="rules">{{ t("ai.content.type_rules") }}</option>
-              <option value="event">{{ t("ai.content.type_event") }}</option>
-              <option value="welcome">{{ t("ai.content.type_welcome") }}</option>
+              <option value="announcement">{{ t('ai.content.type_announcement') }}</option>
+              <option value="rules">{{ t('ai.content.type_rules') }}</option>
+              <option value="event">{{ t('ai.content.type_event') }}</option>
+              <option value="welcome">{{ t('ai.content.type_welcome') }}</option>
             </select>
           </div>
-
+          
           <div class="option-group">
-            <label>{{ t("ai.content.style") }}</label>
+            <label>{{ t('ai.content.style') }}</label>
             <select v-model="contentStyle">
-              <option value="">{{ t("common.auto") }}</option>
-              <option value="formal">{{ t("ai.content.style_formal") }}</option>
-              <option value="casual">{{ t("ai.content.style_casual") }}</option>
-              <option value="friendly">{{ t("ai.content.style_friendly") }}</option>
+              <option value="">{{ t('common.auto') }}</option>
+              <option value="formal">{{ t('ai.content.style_formal') }}</option>
+              <option value="casual">{{ t('ai.content.style_casual') }}</option>
+              <option value="friendly">{{ t('ai.content.style_friendly') }}</option>
             </select>
           </div>
         </div>
 
         <div class="content-form">
           <div class="form-group">
-            <label>{{ t("ai.content.server_name") }}</label>
-            <input
-              v-model="contentServerName"
-              :placeholder="t('ai.content.server_name_placeholder')"
-            />
+            <label>{{ t('ai.content.server_name') }}</label>
+            <input v-model="contentServerName" :placeholder="t('ai.content.server_name_placeholder')" />
           </div>
-
+          
           <div v-if="contentType === 'announcement'" class="form-group">
-            <label>{{ t("ai.content.topic") }}</label>
+            <label>{{ t('ai.content.topic') }}</label>
             <input v-model="contentTopic" :placeholder="t('ai.content.topic_placeholder')" />
           </div>
 
           <div class="form-group">
-            <label>{{ t("ai.content.features") }}</label>
+            <label>{{ t('ai.content.features') }}</label>
             <textarea
               v-model="contentFeatures"
               :placeholder="t('ai.content.features_placeholder')"
@@ -415,24 +384,22 @@
           </div>
         </div>
 
-        <button class="generate-btn" @click="generateContent" :disabled="generatingContent">
+        <button class="generate-btn" @click="handleGenerateContent" :disabled="generatingContent">
           <LoadingIcon v-if="generatingContent" class="spinning" />
           <SparklesIcon v-else />
-          {{ generatingContent ? t("ai.content.generating") : t("ai.content.generate") }}
+          {{ generatingContent ? t('ai.content.generating') : t('ai.content.generate') }}
         </button>
 
         <div v-if="generatedContent" class="generated-content">
-          <h6>{{ t("ai.content.result") }}</h6>
+          <h6>{{ t('ai.content.result') }}</h6>
           <pre>{{ generatedContent.content }}</pre>
           <div class="content-meta">
-            <span>{{ t("ai.content.type") }}: {{ generatedContent.content_type }}</span>
-            <span
-              >{{ t("ai.confidence") }}: {{ (generatedContent.confidence * 100).toFixed(0) }}%</span
-            >
+            <span>{{ t('ai.content.type') }}: {{ generatedContent.content_type }}</span>
+            <span>{{ t('ai.confidence') }}: {{ (generatedContent.confidence * 100).toFixed(0) }}%</span>
           </div>
           <button class="copy-btn" @click="copyContent">
             <CopyIcon />
-            {{ t("common.copy") }}
+            {{ t('common.copy') }}
           </button>
         </div>
       </div>
@@ -441,8 +408,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import { useI18n } from "vue-i18n";
+import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   Brain,
   Search as SearchIcon,
@@ -454,18 +421,17 @@ import {
   ArrowRight as ArrowRightIcon,
   ArrowLeftRight as ArrowLeftRightIcon,
   Loader2 as LoadingIcon,
-} from "lucide-vue-next";
+} from 'lucide-vue-next';
 
-import SLTabBar from "@components/SLTabBar.vue";
+import SLTabBar from '@components/SLTabBar.vue';
 
 import {
-  analyzeLogs,
-  generateCommand,
-  analyzeJVM,
-  analyzeConfig,
-  translateText,
-  generateContent,
-  generateAnnouncement,
+  analyzeLogs as apiAnalyzeLogs,
+  generateCommand as apiGenerateCommand,
+  analyzeJVM as apiAnalyzeJVM,
+  analyzeConfig as apiAnalyzeConfig,
+  translateText as apiTranslateText,
+  generateContent as apiGenerateContent,
   getSupportedLanguages,
   checkAIAvailable,
   type AIAnalysisResult,
@@ -476,7 +442,7 @@ import {
   type AIContentGeneration,
   type LanguageInfo,
   type HardwareInfo,
-} from "@api/ai";
+} from '@api/ai';
 
 const { t } = useI18n();
 
@@ -484,35 +450,35 @@ const { t } = useI18n();
 const aiEnabled = ref(false);
 
 // Tab 管理
-const activeTab = ref("log");
+const activeTab = ref('log');
 const tabs = [
-  { id: "log", label: computed(() => t("ai.tabs.log_analysis")) },
-  { id: "command", label: computed(() => t("ai.tabs.command")) },
-  { id: "config", label: computed(() => t("ai.tabs.config")) },
-  { id: "translate", label: computed(() => t("ai.tabs.translate")) },
-  { id: "content", label: computed(() => t("ai.tabs.content")) },
+  { id: 'log', label: computed(() => t('ai.tabs.log_analysis')) },
+  { id: 'command', label: computed(() => t('ai.tabs.command')) },
+  { id: 'config', label: computed(() => t('ai.tabs.config')) },
+  { id: 'translate', label: computed(() => t('ai.tabs.translate')) },
+  { id: 'content', label: computed(() => t('ai.tabs.content')) },
 ];
 
 // ==================== 日志分析 ====================
-const logInput = ref("");
-const logAnalysisType = ref("full");
+const logInput = ref('');
+const logAnalysisType = ref('full');
 const maxLines = ref(100);
 const analyzing = ref(false);
 const analysisResults = ref<AIAnalysisResult[]>([]);
 
 async function handleAnalyzeLogs() {
   if (!logInput.value.trim()) return;
-
+  
   analyzing.value = true;
   try {
-    const logs = logInput.value.split("\n").filter((l) => l.trim());
-    analysisResults.value = await analyzeLogs({
+    const logs = logInput.value.split('\n').filter(l => l.trim());
+    analysisResults.value = await apiAnalyzeLogs({
       logs,
       analysis_type: logAnalysisType.value as any,
       max_lines: maxLines.value,
     });
   } catch (error) {
-    console.error("Failed to analyze logs:", error);
+    console.error('Failed to analyze logs:', error);
   } finally {
     analyzing.value = false;
   }
@@ -520,39 +486,39 @@ async function handleAnalyzeLogs() {
 
 function getSeverityText(severity: string): string {
   const map: Record<string, string> = {
-    critical: t("ai.severity.critical"),
-    error: t("ai.severity.error"),
-    warning: t("ai.severity.warning"),
-    info: t("ai.severity.info"),
+    critical: t('ai.severity.critical'),
+    error: t('ai.severity.error'),
+    warning: t('ai.severity.warning'),
+    info: t('ai.severity.info'),
   };
   return map[severity] || severity;
 }
 
 // ==================== 命令助手 ====================
-const naturalLanguageInput = ref("");
-const commandServerType = ref("");
+const naturalLanguageInput = ref('');
+const commandServerType = ref('');
 const generating = ref(false);
 const commandSuggestion = ref<AICommandSuggestion | null>(null);
 
 const quickCommands = [
-  { label: t("ai.quick_commands.gamemode"), text: "设置玩家游戏模式为创造模式" },
-  { label: t("ai.quick_commands.tp"), text: "传送到出生点" },
-  { label: t("ai.quick_commands.give"), text: "给予玩家64个钻石" },
-  { label: t("ai.quick_commands.time"), text: "设置时间为白天" },
-  { label: t("ai.quick_commands.weather"), text: "设置天气为晴天" },
+  { label: t('ai.quick_commands.gamemode'), text: '设置玩家游戏模式为创造模式' },
+  { label: t('ai.quick_commands.tp'), text: '传送到出生点' },
+  { label: t('ai.quick_commands.give'), text: '给予玩家64个钻石' },
+  { label: t('ai.quick_commands.time'), text: '设置时间为白天' },
+  { label: t('ai.quick_commands.weather'), text: '设置天气为晴天' },
 ];
 
 async function handleGenerateCommand() {
   if (!naturalLanguageInput.value.trim()) return;
-
+  
   generating.value = true;
   try {
-    commandSuggestion.value = await generateCommand({
+    commandSuggestion.value = await apiGenerateCommand({
       natural_language: naturalLanguageInput.value,
       server_type: commandServerType.value || undefined,
     });
   } catch (error) {
-    console.error("Failed to generate command:", error);
+    console.error('Failed to generate command:', error);
   } finally {
     generating.value = false;
   }
@@ -565,8 +531,8 @@ async function copyCommand() {
 }
 
 // ==================== 配置优化 ====================
-const configType = ref("server.properties");
-const configInput = ref("");
+const configType = ref('server.properties');
+const configInput = ref('');
 const analyzingConfig = ref(false);
 const configSuggestions = ref<AIConfigSuggestion[]>([]);
 const jvmAnalysis = ref<JVMAnalysisResult | null>(null);
@@ -576,20 +542,20 @@ const hardwareInfo = ref<HardwareInfo>({
   total_memory_gb: 8,
   available_memory_gb: 6,
   is_ssd: true,
-  os: "Windows",
+  os: 'Windows',
 });
 const expectedPlayers = ref(20);
 
 async function handleAnalyzeJVM() {
   analyzingConfig.value = true;
   try {
-    jvmAnalysis.value = await analyzeJVM({
+    jvmAnalysis.value = await apiAnalyzeJVM({
       current_args: [],
       hardware: hardwareInfo.value,
       expected_players: expectedPlayers.value,
     });
   } catch (error) {
-    console.error("Failed to analyze JVM:", error);
+    console.error('Failed to analyze JVM:', error);
   } finally {
     analyzingConfig.value = false;
   }
@@ -597,15 +563,15 @@ async function handleAnalyzeJVM() {
 
 async function handleAnalyzeConfig() {
   if (!configInput.value.trim()) return;
-
+  
   analyzingConfig.value = true;
   try {
-    configSuggestions.value = await analyzeConfig({
+    configSuggestions.value = await apiAnalyzeConfig({
       config_content: configInput.value,
       config_type: configType.value,
     });
   } catch (error) {
-    console.error("Failed to analyze config:", error);
+    console.error('Failed to analyze config:', error);
   } finally {
     analyzingConfig.value = false;
   }
@@ -613,40 +579,40 @@ async function handleAnalyzeConfig() {
 
 async function copyJVMArgs() {
   if (jvmAnalysis.value) {
-    await navigator.clipboard.writeText(jvmAnalysis.value.suggested_args.join(" "));
+    await navigator.clipboard.writeText(jvmAnalysis.value.suggested_args.join(' '));
   }
 }
 
 // ==================== 翻译 ====================
-const translateInput = ref("");
+const translateInput = ref('');
 const translating = ref(false);
 const translateResult = ref<AITranslationResult | null>(null);
 const supportedLanguages = ref<LanguageInfo[]>([]);
 
 const translateOptions = ref({
-  source_language: "auto",
-  target_language: "zh-CN",
+  source_language: 'auto',
+  target_language: 'zh-CN',
 });
 
-async function handleTranslate() {
+async function handleTranslateText() {
   if (!translateInput.value.trim()) return;
-
+  
   translating.value = true;
   try {
-    translateResult.value = await translateText({
+    translateResult.value = await apiTranslateText({
       text: translateInput.value,
       source_language: translateOptions.value.source_language,
       target_language: translateOptions.value.target_language,
     });
   } catch (error) {
-    console.error("Failed to translate:", error);
+    console.error('Failed to translate:', error);
   } finally {
     translating.value = false;
   }
 }
 
 function swapLanguages() {
-  if (translateOptions.value.source_language !== "auto") {
+  if (translateOptions.value.source_language !== 'auto') {
     const temp = translateOptions.value.source_language;
     translateOptions.value.source_language = translateOptions.value.target_language;
     translateOptions.value.target_language = temp;
@@ -660,27 +626,27 @@ async function copyTranslation() {
 }
 
 // ==================== 内容生成 ====================
-const contentType = ref("announcement");
-const contentStyle = ref("");
-const contentServerName = ref("");
-const contentTopic = ref("");
-const contentFeatures = ref("");
+const contentType = ref('announcement');
+const contentStyle = ref('');
+const contentServerName = ref('');
+const contentTopic = ref('');
+const contentFeatures = ref('');
 const generatingContent = ref(false);
 const generatedContent = ref<AIContentGeneration | null>(null);
 
 async function handleGenerateContent() {
   if (!contentServerName.value.trim()) return;
-
+  
   generatingContent.value = true;
   try {
-    generatedContent.value = await generateContent({
+    generatedContent.value = await apiGenerateContent({
       content_type: contentType.value as any,
       server_name: contentServerName.value,
-      server_features: contentFeatures.value.split("\n").filter((f) => f.trim()),
-      style: (contentStyle.value as any) || undefined,
+      server_features: contentFeatures.value.split('\n').filter(f => f.trim()),
+      style: contentStyle.value as any || undefined,
     });
   } catch (error) {
-    console.error("Failed to generate content:", error);
+    console.error('Failed to generate content:', error);
   } finally {
     generatingContent.value = false;
   }
@@ -852,12 +818,8 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* 分析结果 */
@@ -883,18 +845,10 @@ onMounted(async () => {
   border-left: 3px solid var(--sl-border);
 }
 
-.result-card.critical {
-  border-left-color: #ff4d4f;
-}
-.result-card.error {
-  border-left-color: #ff7a45;
-}
-.result-card.warning {
-  border-left-color: #faad14;
-}
-.result-card.info {
-  border-left-color: #1890ff;
-}
+.result-card.critical { border-left-color: #ff4d4f; }
+.result-card.error { border-left-color: #ff7a45; }
+.result-card.warning { border-left-color: #faad14; }
+.result-card.info { border-left-color: #1890ff; }
 
 .result-header {
   display: flex;
@@ -910,22 +864,10 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-.severity-badge.critical {
-  background: #ff4d4f20;
-  color: #ff4d4f;
-}
-.severity-badge.error {
-  background: #ff7a4520;
-  color: #ff7a45;
-}
-.severity-badge.warning {
-  background: #faad1420;
-  color: #faad14;
-}
-.severity-badge.info {
-  background: #1890ff20;
-  color: #1890ff;
-}
+.severity-badge.critical { background: #ff4d4f20; color: #ff4d4f; }
+.severity-badge.error { background: #ff7a4520; color: #ff7a45; }
+.severity-badge.warning { background: #faad1420; color: #faad14; }
+.severity-badge.info { background: #1890ff20; color: #1890ff; }
 
 .confidence {
   font-size: 12px;
@@ -1204,21 +1146,11 @@ onMounted(async () => {
   border-left: 3px solid var(--sl-border);
 }
 
-.suggestion-item.priority-5 {
-  border-left-color: #ff4d4f;
-}
-.suggestion-item.priority-4 {
-  border-left-color: #ff7a45;
-}
-.suggestion-item.priority-3 {
-  border-left-color: #faad14;
-}
-.suggestion-item.priority-2 {
-  border-left-color: #1890ff;
-}
-.suggestion-item.priority-1 {
-  border-left-color: #52c41a;
-}
+.suggestion-item.priority-5 { border-left-color: #ff4d4f; }
+.suggestion-item.priority-4 { border-left-color: #ff7a45; }
+.suggestion-item.priority-3 { border-left-color: #faad14; }
+.suggestion-item.priority-2 { border-left-color: #1890ff; }
+.suggestion-item.priority-1 { border-left-color: #52c41a; }
 
 .suggestion-header {
   display: flex;
