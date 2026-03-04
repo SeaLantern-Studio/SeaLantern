@@ -26,6 +26,7 @@ const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
 const isMaximized = ref(false);
+let networkStatusNow = ref<NetworkStatus>("green");
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -139,9 +140,27 @@ const currentLanguageText = computed(() => {
 async function setNetworkStatus() {
   const status = await getNetworkStatus();
   console.log("检查网络状态");
-  document.getElementsByClassName("status-dot")[0].classList.remove(...STATUS_LIST);
-  document.getElementsByClassName("status-dot")[0].classList.add(status as string);
+  networkStatusNow.value = status as NetworkStatus;
   setTimeout(setNetworkStatus, 20000);
+}
+
+function getNetworkStatusClass(status: NetworkStatus = networkStatusNow.value) {
+  switch (status) {
+    case "red" as NetworkStatus:
+      return "red";
+    case "yellow" as NetworkStatus:
+      return "yellow";
+    case "green" as NetworkStatus:
+      return "green";
+    case "error" as NetworkStatus:
+      return "red";
+    default:
+      return "";
+  }
+}
+
+function getNetworkStatusText(status: string = getNetworkStatusClass()) {
+  return i18n.t(`common.network_status.${status}`);
 }
 
 onMounted(async () => {
@@ -318,8 +337,8 @@ function computeOverallProgress() {
       </Menu>
 
       <div class="header-status">
-        <span class="status-dot gray"></span>
-        <span class="status-text">{{ i18n.t("common.network_status") }}</span>
+        <span class="status-dot" :class="getNetworkStatusClass(networkStatusNow)"></span>
+        <span class="status-text">{{ getNetworkStatusText(networkStatusNow) }}</span>
       </div>
 
       <div class="window-controls">

@@ -393,50 +393,56 @@ pub fn get_safe_mode_status() -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub async fn ping_host(host: &str) -> Result<f64, String> {
+pub async fn ping_host(host: &str, timeout: u64) -> Result<f64, String> {
     use std::process::Command;
 
-    // 使用系统的 ping 命令
-    let output = Command::new(if cfg!(target_os = "windows") {
-        "ping"
-    } else {
-        "ping"
-    })
-    .arg(if cfg!(target_os = "windows") {
-        "-n"
-    } else {
-        "-c"
-    })
-    .arg("1")
-    .arg(if cfg!(target_os = "windows") {
-        "-w"
-    } else {
-        "-W"
-    })
-    .arg("3")
-    .arg(host)
-    .output()
-    .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "windows")]
+    {
+        // Windows 平台
+        let output = Command::new("ping")
+            .arg("-n")
+            .arg("1")
+            .arg("-w")
+            .arg(&timeout.to_string())
+            .arg(host)
+            .output()
+            .map_err(|e| e.to_string())?;
 
-    // 检查命令是否成功执行
-    if output.status.success() {
-        // 解析输出，提取延迟时间
-        let output_str = String::from_utf8_lossy(&output.stdout);
+        if output.status.success() {
+            let output_str = String::from_utf8_lossy(&output.stdout);
 
-        // 不同系统的输出格式不同，需要分别处理
-        if cfg!(target_os = "windows") {
-            // Windows 格式: 平均 = 10ms
-            if let Some(captures) = regex::Regex::new(r"平均 = (\d+)ms")
-                .unwrap()
-                .captures(&output_str)
-            {
+            // 查找所有包含 ms 的数字，取第一个作为延迟
+            if let Some(captures) = regex::Regex::new(r"(\d+)ms").unwrap().captures(&output_str) {
                 if let Some(delay_str) = captures.get(1) {
                     if let Ok(delay) = delay_str.as_str().parse::<f64>() {
                         return Ok(delay);
                     }
                 }
             }
+
+            // 如果解析失败，返回默认延迟
+            Ok(50.0)
         } else {
+            // ping 失败，返回超时
+            Ok(timeout as f64)
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Linux/macOS 平台
+        let output = Command::new("ping")
+            .arg("-c")
+            .arg("1")
+            .arg("-W")
+            .arg(&(timeout / 1000).to_string()) // 转换为秒
+            .arg(host)
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+
             // Linux/macOS 格式: rtt min/avg/max/mdev = 10.000/10.000/10.000/0.000 ms
             if let Some(captures) = regex::Regex::new(r"rtt min/avg/max/mdev = .*?/(.*?)/.*? ms")
                 .unwrap()
@@ -448,12 +454,12 @@ pub async fn ping_host(host: &str) -> Result<f64, String> {
                     }
                 }
             }
-        }
 
-        // 如果解析失败，返回默认延迟
-        Ok(50.0)
-    } else {
-        // ping 失败，返回超时
-        Ok(3000.0)
+            // 如果解析失败，返回默认延迟
+            Ok(50.0)
+        } else {
+            // ping 失败，返回超时
+            Ok(timeout as f64)
+        }
     }
 }

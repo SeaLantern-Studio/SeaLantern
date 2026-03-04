@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  padding: 4px 8px;
+  padding: 4px 12px;
   background: var(--sl-bg-secondary);
   border-radius: var(--sl-radius-full);
 }
@@ -66,11 +66,6 @@
 }
 
 .status-dot.yellow {
-  background: var(--sl-yellow);
-  box-shadow: 0 0 6px var(--sl-yellow-bg);
-}
-
-.status-dot.orange {
   background: var(--sl-warning);
   box-shadow: 0 0 6px var(--sl-warning-bg);
 }
@@ -78,11 +73,6 @@
 .status-dot.red {
   background: var(--sl-error);
   box-shadow: 0 0 6px var(--sl-error-bg);
-}
-
-.status-dot.gray {
-  background: var(--sl-warning);
-  box-shadow: 0 0 6px var(--sl-warning-bg);
 }
 
 .status-text {
