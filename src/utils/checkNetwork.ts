@@ -44,8 +44,8 @@ export async function getNetworkStatus() {
   if (!navigator.onLine) {
     return "error" as NetworkStatus;
   }
-  for (const ip of IPS) {
-    const delay = await ping(ip);
+  const delays = await Promise.all(IPS.map((ip) => ping(ip)));
+  for (const delay of delays) {
     if (delay >= 3000) {
       lostCount++;
     } else {

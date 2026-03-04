@@ -27,6 +27,7 @@ const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
 const isMaximized = ref(false);
 let networkStatusNow = ref<NetworkStatus>("green");
+let networkStatusTimer: ReturnType<typeof setTimeout> | null = null;
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -141,7 +142,7 @@ async function setNetworkStatus() {
   const status = await getNetworkStatus();
   console.log("检查网络状态");
   networkStatusNow.value = status as NetworkStatus;
-  setTimeout(setNetworkStatus, 20000);
+  networkStatusTimer = setTimeout(setNetworkStatus, 20000);
 }
 
 function getNetworkStatusClass(status: NetworkStatus = networkStatusNow.value) {
@@ -153,7 +154,7 @@ function getNetworkStatusClass(status: NetworkStatus = networkStatusNow.value) {
     case "green" as NetworkStatus:
       return "green";
     case "error" as NetworkStatus:
-      return "red";
+      return "error";
     default:
       return "";
   }
@@ -179,6 +180,10 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  if (networkStatusTimer !== null) {
+    clearTimeout(networkStatusTimer);
+    networkStatusTimer = null;
+  }
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (unlistenResize) {
     unlistenResize();

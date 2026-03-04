@@ -75,6 +75,11 @@
   box-shadow: 0 0 6px var(--sl-error-bg);
 }
 
+.status-dot.error {
+  background: var(--sl-error);
+  box-shadow: 0 0 6px var(--sl-error-bg);
+}
+
 .status-text {
   font-size: var(--sl-font-size-sm);
   color: var(--sl-text-secondary);

@@ -444,13 +444,31 @@ pub async fn ping_host(host: &str, timeout: u64) -> Result<f64, String> {
             let output_str = String::from_utf8_lossy(&output.stdout);
 
             // Linux/macOS 格式: rtt min/avg/max/mdev = 10.000/10.000/10.000/0.000 ms
-            if let Some(captures) = regex::Regex::new(r"rtt min/avg/max/mdev = .*?/(.*?)/.*? ms")
-                .unwrap()
-                .captures(&output_str)
+            #[cfg(target_os = "linux")]
             {
-                if let Some(delay_str) = captures.get(1) {
-                    if let Ok(delay) = delay_str.as_str().parse::<f64>() {
-                        return Ok(delay);
+                if let Some(captures) =
+                    regex::Regex::new(r"rtt min/avg/max/mdev = .*?/(.*?)/.*? ms")
+                        .unwrap()
+                        .captures(&output_str)
+                {
+                    if let Some(delay_str) = captures.get(1) {
+                        if let Ok(delay) = delay_str.as_str().parse::<f64>() {
+                            return Ok(delay);
+                        }
+                    }
+                }
+            }
+            #[cfg(target_os = "macos")]
+            {
+                if let Some(captures) =
+                    regex::Regex::new(r"round-trip min/avg/max/stddev = .*?/(.*?)/.*? ms")
+                        .unwrap()
+                        .captures(&output_str)
+                {
+                    if let Some(delay_str) = captures.get(1) {
+                        if let Ok(delay) = delay_str.as_str().parse::<f64>() {
+                            return Ok(delay);
+                        }
                     }
                 }
             }
