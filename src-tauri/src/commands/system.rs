@@ -436,7 +436,7 @@ pub fn ping_host(host: &str, timeout: u64) -> Result<f64, String> {
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
     {
         // Linux/macOS 平台
         // 向上取整，避免亚秒级数值截断为 0
@@ -453,8 +453,7 @@ pub fn ping_host(host: &str, timeout: u64) -> Result<f64, String> {
         if output.status.success() {
             let output_str = String::from_utf8_lossy(&output.stdout);
 
-            // Linux/macOS 格式: rtt min/avg/max/mdev = 10.000/10.000/10.000/0.000 ms
-            #[cfg(target_os = "linux")]
+            // Linux 格式: rtt min/avg/max/mdev = 10.000/10.000/10.000/0.000 ms
             {
                 if let Some(captures) = LINUX_PING_REGEX.captures(&output_str) {
                     if let Some(delay_str) = captures.get(1) {
@@ -464,7 +463,31 @@ pub fn ping_host(host: &str, timeout: u64) -> Result<f64, String> {
                     }
                 }
             }
-            #[cfg(target_os = "macos")]
+
+            // 如果解析失败，返回默认延迟
+            Ok(50.0)
+        } else {
+            // ping 失败，返回超时
+            Ok(timeout as f64)
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS 平台
+        let output = Command::new("ping")
+            .arg("-c")
+            .arg("1")
+            .arg("-W")
+            .arg(&timeout.to_string())
+            .arg(host)
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+
+            // macOS 格式: round-trip min/avg/max/stddev = 10.000/10.000/10.000/0.000 ms
             {
                 if let Some(captures) = MACOS_PING_REGEX.captures(&output_str) {
                     if let Some(delay_str) = captures.get(1) {
