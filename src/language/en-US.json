@@ -14,7 +14,12 @@
   },
   "common": {
     "app_name": "Sea Lantern",
-    "network_status": "Network Status",
+    "network_status": {
+      "green": "Excellent network",
+      "yellow": "Good network",
+      "red": "Poor network",
+      "error": "Network abnormal"
+    },
     "home": "Home",
     "create_server": "Create Server",
     "console": "Console",

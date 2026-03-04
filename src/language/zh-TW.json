@@ -14,7 +14,12 @@
   },
   "common": {
     "app_name": "Sea Lantern",
-    "network_status": "網絡狀態",
+    "network_status": {
+      "green": "網路優秀",
+      "yellow": "網路良好",
+      "red": "網路較差",
+      "error": "網路異常"
+    },
     "home": "首頁",
     "create_server": "建立伺服器",
     "console": "控制台",
