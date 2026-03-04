@@ -343,13 +343,13 @@ impl MultiThreadDownloader {
 async fn test_multi_thread_download() -> Result<(), String> {
     let downloader = MultiThreadDownloader::new("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0"); //下载的线程数, User-agent
 
-    let url = "https://httpbin.org/bytes/1024"; // 使用一个较小的测试文件
+    let url = "https://files.mcjars.app/mohist/1.12.2/1.12.2-17e3fd09/server.jar"; // 使用一个较小的测试文件
     let save_path = "./target/multi_thread_download_test.bin";
 
     // 创建目标目录
     std::fs::create_dir_all("./target").map_err(|e| e.to_string())?;
 
-    match downloader.download(url, save_path, 4).await {
+    match downloader.download(url, save_path, 32).await {
         Ok(status_handle) => {
             println!("Downloaded to {:?}", save_path);
             loop {
