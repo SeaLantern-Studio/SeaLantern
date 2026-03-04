@@ -3,8 +3,8 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { i18n } from "@language";
 import { SLTabBar } from "@components/common";
-import PluginsView from "@views/PluginsView.vue";
-import MarketView from "@views/MarketView.vue";
+import PluginsView from "@components/views/plugins/PluginsView.vue";
+import MarketView from "@components/views/plugins/MarketView.vue";
 
 const route = useRoute();
 const router = useRouter();
