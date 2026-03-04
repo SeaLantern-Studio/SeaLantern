@@ -35,7 +35,7 @@ const routes = [
   {
     path: "/plugins",
     name: "plugins",
-    component: () => import("@views/PluginsPageView.vue"),
+    component: () => import("@views/PluginsView.vue"),
     meta: { titleKey: "common.plugins", icon: "puzzle" },
   },
   {
