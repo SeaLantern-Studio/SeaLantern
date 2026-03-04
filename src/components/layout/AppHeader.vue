@@ -28,6 +28,7 @@ const rememberChoice = ref(false);
 const isMaximized = ref(false);
 let networkStatusNow = ref<NetworkStatus>("green");
 let networkStatusTimer: ReturnType<typeof setTimeout> | null = null;
+let isCheckingNetwork = false;
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -139,10 +140,22 @@ const currentLanguageText = computed(() => {
 });
 
 async function setNetworkStatus() {
-  const status = await getNetworkStatus();
-  console.log("检查网络状态");
-  networkStatusNow.value = status as NetworkStatus;
-  networkStatusTimer = setTimeout(setNetworkStatus, 20000);
+  // 防止并发调用
+  if (isCheckingNetwork) {
+    return;
+  }
+
+  isCheckingNetwork = true;
+  try {
+    const status = await getNetworkStatus();
+    console.log("检查网络状态");
+    networkStatusNow.value = status as NetworkStatus;
+  } catch (error) {
+    console.error("网络状态检查失败:", error);
+  } finally {
+    isCheckingNetwork = false;
+    networkStatusTimer = setTimeout(setNetworkStatus, 20000);
+  }
 }
 
 function getNetworkStatusClass(status: NetworkStatus = networkStatusNow.value) {

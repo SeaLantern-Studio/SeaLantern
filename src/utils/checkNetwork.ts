@@ -9,7 +9,7 @@ const IPS = [
   "1.0.0.1",
   "8.8.4.4",
 ] as const;
-export const STATUS_LIST = ["green", "yellow", "red", "error"] as const;
+export const STATUS_LIST = ["green", "yellow", "red"] as const;
 const conditions = {
   green: {
     lossrate: 20,
@@ -20,10 +20,6 @@ const conditions = {
     delay: 1500,
   },
   red: {
-    lossrate: 100,
-    delay: 60000,
-  },
-  error: {
     lossrate: 100,
     delay: 60000,
   },
@@ -44,20 +40,25 @@ export async function getNetworkStatus() {
   if (!navigator.onLine) {
     return "error" as NetworkStatus;
   }
-  const delays = await Promise.all(IPS.map((ip) => ping(ip)));
-  for (const delay of delays) {
-    if (delay >= 3000) {
-      lostCount++;
-    } else {
-      maxDelay = Math.max(maxDelay, delay);
+  try {
+    const delays = await Promise.all(IPS.map((ip) => ping(ip)));
+    for (const delay of delays) {
+      if (delay >= 3000) {
+        lostCount++;
+      } else {
+        maxDelay = Math.max(maxDelay, delay);
+      }
     }
-  }
-  const lossrate = (lostCount / IPS.length) * 100;
-  for (const status of STATUS_LIST) {
-    if (lossrate > conditions[status].lossrate || maxDelay > conditions[status].delay) {
-      continue;
+    const lossrate = (lostCount / IPS.length) * 100;
+    for (const status of STATUS_LIST) {
+      if (lossrate <= conditions[status].lossrate && maxDelay <= conditions[status].delay) {
+        return status as NetworkStatus;
+      }
     }
-    return status as NetworkStatus;
+    // 如果没有匹配到任何状态，返回 error
+    return "error" as NetworkStatus;
+  } catch (error) {
+    console.error("Error checking network status:", error);
+    return "error" as NetworkStatus;
   }
-  return "error" as NetworkStatus;
 }
