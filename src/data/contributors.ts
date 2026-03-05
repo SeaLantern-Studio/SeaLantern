@@ -5,7 +5,7 @@
  * 无论是代码、设计、建议、文档还是推广，你的名字都值得被记住。
  */
 
-export type SocialPlatform = "gitee" | "github" | "bilibili" | "qq";
+export type SocialPlatform = "gitee" | "github" | "bilibili" | "qq" | "tiktok";
 
 export interface SocialLinks {
   [key: string]: string | undefined;
@@ -223,9 +223,6 @@ export const contributors: Contributor[] = [
 
   // ============================================
   // 在这里添加更多贡献者！
-  // 没有正版怎么办？
-  // 选择皮肤，使用其名字
-  // https://www.mcgodx.com/skins/
   // 没有正版怎么办？
   // 选择皮肤，使用其名字
   // https://www.mcgodx.com/skins/

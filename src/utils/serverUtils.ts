@@ -192,7 +192,7 @@ async function confirmDelete() {
   try {
     await serverApi.deleteServer(serverIdToDelete);
     closeDeleteConfirm();
-    await store.refreshList();
+    await store.reloadServers();
   } catch (e) {
     actionError.value = String(e);
   }

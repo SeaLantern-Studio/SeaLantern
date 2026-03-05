@@ -19,6 +19,7 @@ import {
   closeDeleteConfirm,
 } from "@utils/serverUtils";
 import { i18n } from "@language";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const router = useRouter();
 const store = useServerStore();
@@ -26,17 +27,22 @@ const store = useServerStore();
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
+async function loadServers() {
+  try {
+    await store.reloadServers();
+    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
+  } catch (e) {
+    console.error("Failed to load servers:", e);
+  }
+}
+
+// 窗口获得焦点时重新扫描服务器列表
+async function handleFocus() {
+  await loadServers();
+}
+
 onMounted(() => {
   initQuote();
-
-  const loadServers = async () => {
-    try {
-      await store.refreshList();
-      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
-    } catch (e) {
-      console.error("Failed to load servers:", e);
-    }
-  };
 
   loadServers();
   fetchSystemInfo();
@@ -49,6 +55,14 @@ onMounted(() => {
   }, 3000);
 
   startThemeObserver();
+
+  // 监听窗口焦点事件
+  const appWindow = getCurrentWindow();
+  appWindow.onFocusChanged(({ payload: focused }) => {
+    if (focused) {
+      loadServers();
+    }
+  });
 });
 
 onUnmounted(() => {

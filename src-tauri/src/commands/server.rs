@@ -539,6 +539,11 @@ pub fn get_server_list() -> Vec<ServerInstance> {
 }
 
 #[tauri::command]
+pub fn reload_servers() {
+    manager().reload_servers()
+}
+
+#[tauri::command]
 pub fn get_server_status(id: String) -> ServerStatusInfo {
     manager().get_server_status(&id)
 }

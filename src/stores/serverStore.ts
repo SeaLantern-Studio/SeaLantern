@@ -51,6 +51,21 @@ export const useServerStore = defineStore("server", () => {
   }
 
   /**
+   * 重新加载服务器列表（扫描 last_run_path 下的配置文件）
+   */
+  async function reloadServers() {
+    error.value = null;
+    try {
+      await serverApi.reloadServers();
+      servers.value = await withLoading(() => serverApi.getList());
+      await scanServerPorts();
+    } catch (e) {
+      error.value = String(e);
+      throw e;
+    }
+  }
+
+  /**
    * 扫描所有服务器的端口信息
    */
   async function scanServerPorts() {
@@ -140,6 +155,7 @@ export const useServerStore = defineStore("server", () => {
     error,
     serverActions,
     refreshList,
+    reloadServers,
     refreshStatus,
     refreshAllStatuses,
     setCurrentServer,

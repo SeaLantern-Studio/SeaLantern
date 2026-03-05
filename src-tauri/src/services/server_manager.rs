@@ -9,7 +9,8 @@ use crate::models::server::*;
 use crate::services::server_log_pipeline;
 use serde::{Deserialize, Serialize};
 
-const DATA_FILE: &str = "sea_lantern_servers.json";
+const DATA_FILE_LEGACY: &str = "sea_lantern_servers.json";
+const SERVER_CONFIG_FILE: &str = "SeaLanter_Server.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
 
 /// 验证服务器名称，防止路径遍历攻击
@@ -95,7 +96,8 @@ pub struct ServerManager {
 impl ServerManager {
     pub fn new() -> Self {
         let data_dir = get_data_dir();
-        let servers = load_servers(&data_dir);
+        let settings = super::global::settings_manager().get();
+        let servers = load_servers(&data_dir, &settings.last_run_path);
         ServerManager {
             servers: Mutex::new(servers),
             processes: Mutex::new(HashMap::new()),
@@ -1185,6 +1187,18 @@ impl ServerManager {
         self.servers.lock().expect("servers lock poisoned").clone()
     }
 
+    /// 重新加载服务器列表（扫描 last_run_path 下的配置文件）
+    pub fn reload_servers(&self) {
+        let data_dir = self
+            .data_dir
+            .lock()
+            .expect("data_dir lock poisoned")
+            .clone();
+        let settings = super::global::settings_manager().get();
+        let servers = load_servers(&data_dir, &settings.last_run_path);
+        *self.servers.lock().expect("servers lock poisoned") = servers;
+    }
+
     pub fn get_server_status(&self, id: &str) -> ServerStatusInfo {
         let mut procs = self.processes.lock().expect("processes lock poisoned");
         let is_running = if let Some(child) = procs.get_mut(id) {
@@ -1635,20 +1649,111 @@ fn remove_run_path_mapping(dir: &str, server_id: &str) {
     let _ = save_run_path_mappings(dir, &mappings);
 }
 
-fn load_servers(dir: &str) -> Vec<ServerInstance> {
-    let p = std::path::Path::new(dir).join(DATA_FILE);
-    if !p.exists() {
-        return Vec::new();
+fn load_servers(dir: &str, last_run_path: &str) -> Vec<ServerInstance> {
+    let mut servers = Vec::new();
+    let mut loaded_ids = std::collections::HashSet::new();
+
+    // 尝试从旧格式迁移数据
+    let legacy_path = std::path::Path::new(dir).join(DATA_FILE_LEGACY);
+    if legacy_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&legacy_path) {
+            if let Ok(legacy_servers) = serde_json::from_str::<Vec<ServerInstance>>(&content) {
+                for server in legacy_servers {
+                    let server_path = std::path::Path::new(&server.path);
+                    if server_path.exists() {
+                        let config_path = server_path.join(SERVER_CONFIG_FILE);
+                        if let Ok(json) = serde_json::to_string_pretty(&server) {
+                            let _ = std::fs::write(&config_path, json);
+                        }
+                        loaded_ids.insert(server.id.clone());
+                        servers.push(server);
+                    }
+                }
+                // 迁移完成后删除旧文件
+                let _ = std::fs::remove_file(&legacy_path);
+                println!("已迁移 {} 个服务器配置到新格式", servers.len());
+            }
+        }
+        return servers;
     }
-    std::fs::read_to_string(&p)
-        .ok()
-        .and_then(|c| serde_json::from_str(&c).ok())
-        .unwrap_or_default()
+
+    // 从应用管理的 servers 目录加载配置
+    let managed_servers_dir = std::path::Path::new(dir).join("servers");
+    if managed_servers_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&managed_servers_dir) {
+            for entry in entries.flatten() {
+                let config_path = entry.path().join(SERVER_CONFIG_FILE);
+                if config_path.exists() {
+                    if let Ok(content) = std::fs::read_to_string(&config_path) {
+                        if let Ok(instance) = serde_json::from_str::<ServerInstance>(&content) {
+                            loaded_ids.insert(instance.id.clone());
+                            servers.push(instance);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 从运行路径映射加载其他服务器配置
+    let mappings = load_run_path_mappings(dir);
+    for mapping in mappings {
+        let server_path = std::path::Path::new(&mapping.run_path);
+        if server_path.exists() {
+            let config_path = server_path.join(SERVER_CONFIG_FILE);
+            if config_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&config_path) {
+                    if let Ok(instance) = serde_json::from_str::<ServerInstance>(&content) {
+                        if loaded_ids.insert(instance.id.clone()) {
+                            servers.push(instance);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 扫描设置中的 last_run_path 路径下的服务器配置
+    if !last_run_path.is_empty() {
+        let run_path = std::path::Path::new(last_run_path);
+        if run_path.exists() && run_path.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(run_path) {
+                for entry in entries.flatten() {
+                    let sub_dir = entry.path();
+                    if sub_dir.is_dir() {
+                        let config_path = sub_dir.join(SERVER_CONFIG_FILE);
+                        if config_path.exists() {
+                            if let Ok(content) = std::fs::read_to_string(&config_path) {
+                                if let Ok(instance) =
+                                    serde_json::from_str::<ServerInstance>(&content)
+                                {
+                                    if loaded_ids.insert(instance.id.clone()) {
+                                        servers.push(instance);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    servers
 }
-fn save_servers(dir: &str, servers: &[ServerInstance]) {
-    let p = std::path::Path::new(dir).join(DATA_FILE);
-    if let Ok(j) = serde_json::to_string_pretty(servers) {
-        let _ = std::fs::write(&p, j);
+
+fn save_server_config(server: &ServerInstance) {
+    let server_path = std::path::Path::new(&server.path);
+    let config_path = server_path.join(SERVER_CONFIG_FILE);
+    if let Ok(json) = serde_json::to_string_pretty(server) {
+        let _ = std::fs::write(&config_path, json);
+    }
+}
+
+fn save_servers(_dir: &str, servers: &[ServerInstance]) {
+    // 保存到各个服务器目录下的 SeaLanter_Server.json
+    for server in servers {
+        save_server_config(server);
     }
 }
 

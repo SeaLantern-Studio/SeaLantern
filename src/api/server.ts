@@ -231,6 +231,10 @@ export const serverApi = {
     return tauriInvoke("get_server_list");
   },
 
+  async reloadServers(): Promise<void> {
+    return tauriInvoke("reload_servers");
+  },
+
   async getStatus(id: string): Promise<ServerStatusInfo> {
     return tauriInvoke("get_server_status", { id });
   },

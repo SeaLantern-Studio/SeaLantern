@@ -107,6 +107,7 @@ pub fn run() {
             server_commands::stop_server,
             server_commands::send_command,
             server_commands::get_server_list,
+            server_commands::reload_servers,
             server_commands::get_server_status,
             server_commands::delete_server,
             server_commands::get_server_logs,

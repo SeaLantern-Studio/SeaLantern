@@ -345,6 +345,13 @@ export function useCreateServerPage() {
     }
 
     runPath.value = nextPath;
+
+    // 保存手动输入的开服路径
+    if (targetPath) {
+      settingsApi.updatePartial({ last_run_path: targetPath }).catch((error) => {
+        console.error("Failed to save last run path:", error);
+      });
+    }
   }
 
   async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
@@ -525,7 +532,7 @@ export function useCreateServerPage() {
         mcVersion: resolvedMcVersion || undefined,
       });
 
-      await store.refreshList();
+      await store.reloadServers();
       router.push("/");
     } catch (error) {
       showError(String(error));
