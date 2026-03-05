@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import ErrorBanner from "@components/views/paint/ErrorBanner.vue";
 import ColorThemeCard from "@components/views/paint/ColorThemeCard.vue";
 import AppearanceCard from "@components/views/paint/AppearanceCard.vue";
+import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.vue";
 import SettingsActions from "@components/views/paint/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/paint/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/paint/ResetConfirmModal.vue";
@@ -34,6 +35,9 @@ const themeProxyPluginName = computed(() => themeProxyPlugin.value?.manifest.nam
 
 const fontSize = ref("14");
 const consoleFontSize = ref("13");
+const consoleFontFamily = ref("");
+const consoleLetterSpacing = ref("0");
+const maxLogLines = ref("5000");
 const bgOpacity = ref("0.3");
 const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
@@ -70,6 +74,9 @@ function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
 function syncLocalValues(s: AppSettings) {
   fontSize.value = String(s.font_size);
   consoleFontSize.value = String(s.console_font_size);
+  consoleFontFamily.value = s.console_font_family || "";
+  consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+  maxLogLines.value = String(s.max_log_lines);
   bgOpacity.value = String(s.background_opacity);
   bgBlur.value = String(s.background_blur);
   bgBrightness.value = String(s.background_brightness);
@@ -98,6 +105,9 @@ async function loadSettings() {
     settings.value = s;
     fontSize.value = String(s.font_size);
     consoleFontSize.value = String(s.console_font_size);
+    consoleFontFamily.value = s.console_font_family || "";
+    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+    maxLogLines.value = String(s.max_log_lines);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -189,6 +199,9 @@ async function saveSettings() {
   if (!settings.value) return;
 
   settings.value.console_font_size = parseInt(consoleFontSize.value) || 13;
+  settings.value.console_font_family = consoleFontFamily.value;
+  settings.value.console_letter_spacing = parseInt(consoleLetterSpacing.value) || 0;
+  settings.value.max_log_lines = parseInt(maxLogLines.value) || 5000;
   settings.value.background_opacity = parseFloat(bgOpacity.value) || 0.3;
   settings.value.background_blur = parseInt(bgBlur.value) || 0;
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
@@ -224,6 +237,9 @@ async function resetSettings() {
     settings.value = s;
     fontSize.value = String(s.font_size);
     consoleFontSize.value = String(s.console_font_size);
+    consoleFontFamily.value = s.console_font_family || "";
+    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+    maxLogLines.value = String(s.max_log_lines);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -256,6 +272,9 @@ async function handleImport(json: string) {
     settings.value = s;
     fontSize.value = String(s.font_size);
     consoleFontSize.value = String(s.console_font_size);
+    consoleFontFamily.value = s.console_font_family || "";
+    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+    maxLogLines.value = String(s.max_log_lines);
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -341,6 +360,16 @@ function clearBackgroundImage() {
         @minimal-mode-change="handleMinimalModeChange"
         @pick-image="pickBackgroundImage"
         @clear-image="clearBackgroundImage"
+        @change="markChanged"
+      />
+
+      <ConsoleSettingsCard
+        v-model:consoleFontSize="consoleFontSize"
+        v-model:consoleFontFamily="consoleFontFamily"
+        v-model:consoleLetterSpacing="consoleLetterSpacing"
+        v-model:maxLogLines="maxLogLines"
+        :fontFamilyOptions="fontFamilyOptions"
+        :fontsLoading="fontsLoading"
         @change="markChanged"
       />
 

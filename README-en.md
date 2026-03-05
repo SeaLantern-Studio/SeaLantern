@@ -121,6 +121,15 @@ cargo fmt --all
 
 CI automated checks are set up to ensure that all submitted code meets the standards.
 
+### Commit Gatekeeping (Enabled)
+
+- Local `pre-commit`: auto-formats staged frontend files via `lint-staged` + `oxfmt`
+- Local `commit-msg`: enforces Conventional Commits format
+- CI: re-validates commit messages and code quality on PR/push
+
+Allowed commit types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `revert`, `security`  
+Example: `feat(plugin): add retry logic for plugin downloads`
+
 ## Tech Stack
 
 - **Frontend**: Vue 3 + TypeScript + Vite + Pinia
