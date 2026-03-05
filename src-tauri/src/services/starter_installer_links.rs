@@ -9,7 +9,7 @@ use serde::Deserialize;
 // 1) 24 小时缓存读取/刷新 jar_lfs_links.json
 // 2) 解析 CNB 分层 JSON（types -> core -> version -> file/url）
 // 3) 按固定优先级选择安装器下载 URL
-const STARTER_INSTALLER_LINKS_URL: &str = "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/releases/download/26.02.27/jar_lfs_links.json";
+pub const STARTER_INSTALLER_LINKS_URL: &str = "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/releases/download/26.02.27/jar_lfs_links.json";
 const STARTER_INSTALLER_LINKS_FILE: &str = "jar_lfs_links.json";
 const STARTER_INSTALLER_LINKS_CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 

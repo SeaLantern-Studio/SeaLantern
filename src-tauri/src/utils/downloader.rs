@@ -196,70 +196,44 @@ impl MultiThreadDownloader {
         Ok(())
     }
 }
-//
-// ///单线程下载
-// pub struct SingleThreadDownloader {
-//     client: Client,
-// }
-//
-// ///单线程下载实现
-// impl SingleThreadDownloader {
-//     pub fn new(user_agent: &str) -> Self {
-//         Self {
-//             client: Client::builder()
-//                 .timeout(Duration::from_secs(30))
-//                 .user_agent(user_agent)
-//                 .build()
-//                 .unwrap(),
-//         }
-//     }
-//
-//     pub async fn download(&self, url: &str, output_path: &str) -> Result<(), String> {
-//         let response = self
-//             .client
-//             .get(url)
-//             .send()
-//             .await
-//             .map_err(|e| e.to_string())?;
-//
-//         let total_size = response
-//             .content_length()
-//             .ok_or("Failed to get content length")?;
-//
-//         let pb = ProgressBar::new(total_size);
-//         pb.set_style(
-//             ProgressStyle::with_template(
-//                 "[{elapsed_precise}] {bar:40.green/white} {bytes}/{total_bytes} ({eta}) {msg}",
-//             )
-//             .unwrap()
-//             .progress_chars("##-"),
-//         );
-//         pb.set_message("Downloading...");
-//
-//         let mut file = OpenOptions::new()
-//             .create(true)
-//             .write(true)
-//             .truncate(true)
-//             .open(output_path)
-//             .await
-//             .map_err(|e| e.to_string())?;
-//
-//         let mut downloaded: u64 = 0;
-//         let mut stream = response.bytes_stream();
-//
-//         while let Some(item) = stream.next().await {
-//             let chunk = item.map_err(|e| e.to_string())?;
-//             file.write_all(&chunk).await.map_err(|e| e.to_string())?;
-//
-//             let new = std::cmp::min(downloaded + (chunk.len() as u64), total_size);
-//             downloaded = new;
-//             pb.set_position(new);
-//         }
-//
-//         pb.finish_with_message("Download complete");
-//         Ok(())
-//     }
-// }
+
+///单线程下载
+pub struct SingleThreadDownloader {
+    client: Client,
+}
+
+///单线程下载实现
+impl SingleThreadDownloader {
+    pub fn new(user_agent: &str) -> Self {
+        Self {
+            client: Client::builder()
+                .timeout(Duration::from_secs(30))
+                .user_agent(user_agent)
+                .build()
+                .unwrap(),
+        }
+    }
+
+    pub async fn read_to_string(&self, url: &str) -> Result<String, String> {
+        let response = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| format!("请求失败: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(format!("服务器返回错误状态码: {}", response.status()));
+        }
+
+        let content = response
+            .text()
+            .await
+            .map_err(|e| format!("解析文本失败: {}", e))?;
+
+        Ok(content)
+    }
+}
 
 ///测试函数：多线程下载
 #[tokio::test]
@@ -299,31 +273,3 @@ async fn test_multi_thread_download() -> Result<(), String> {
         }
     }
 }
-
-// ///测试函数：单线程下载
-// #[tokio::test]
-// async fn test_simple_thread_download() -> Result<(), String> {
-//     let downloader = SingleThreadDownloader::new("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0"); //下载的线程数, User-agent
-//
-//     let url = "https://files.mcjars.app/mohist/1.12.2/1.12.2-17e3fd09/server.jar.CHECKSUMS.txt"; // 一个大文件
-//     let save_path =
-//         "D:\\Projects\\MinecraftLuncher\\SeaLantern\\target\\simple_thread_download.bin";
-//
-//     match downloader.download(url, save_path).await {
-//         Ok(_) => {
-//             println!("\n 下载成功！文件已保存至: {}", save_path);
-//             Ok(())
-//         }
-//         Err(e) => {
-//             // 这里会捕获到具体的错误原因，比如 404、网络断开或权限不足
-//             eprintln!("\n 下载中止: {}", e);
-//
-//             // 可以在这里清理未下载完的残留文件
-//             if std::path::Path::new(save_path).exists() {
-//                 let _ = std::fs::remove_file(save_path);
-//                 println!("已清理不完整的文件。");
-//             }
-//             Err(e.to_string())
-//         }
-//     }
-// }

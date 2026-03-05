@@ -1,5 +1,6 @@
 use crate::models::download::TaskProgressResponse;
 use crate::services::download_manager::DownloadManager;
+use std::sync::LazyLock;
 use tauri::State;
 use uuid::Uuid;
 
@@ -48,3 +49,6 @@ pub async fn remove_download_task(
     manager.remove_task(id).await;
     Ok(())
 }
+
+/* 服务器核心下载 */
+
