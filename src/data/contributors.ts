@@ -220,7 +220,14 @@ export const contributors: Contributor[] = [
     role: "必火推荐！",
     avatar: "https://api.rms.net.cn/head/NIUNIU3303",
   },
-
+  {
+    name:"没有名字",
+    role:"一点点点文档小改动",
+    avatar:"https://mc-heads.net/avatar/Steve/64",
+    url:{
+      github:"https://github.com/Hou-Tianqi",
+    },
+  }
   // ============================================
   // 在这里添加更多贡献者！
   // 没有正版怎么办？
