@@ -10,7 +10,7 @@ permissions:
 jobs:
   aur-publish:
     name: 发布到 AUR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container:
       image: archlinux:latest
       options: --user root
@@ -21,7 +21,7 @@ jobs:
           set -euo pipefail
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Syu --noconfirm base-devel git sudo openssh dpkg
+          pacman -Syu --noconfirm base-devel git sudo openssh dpkg nasm
 
           useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers

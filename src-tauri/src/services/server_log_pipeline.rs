@@ -52,8 +52,10 @@ use rusqlite::{params, Connection, TransactionBehavior};
 const LATEST_LOG_DB_FILE: &str = "latest_log.db";
 
 pub type ServerLogEventHandler = Arc<dyn Fn(&str, &str) -> Result<(), String> + Send + Sync>;
+pub type ServerLogProcessor = Arc<dyn Fn(&str, &str) -> String + Send + Sync>;
 
 static SERVER_LOG_EVENT_HANDLER: OnceLock<ServerLogEventHandler> = OnceLock::new();
+static SERVER_LOG_PROCESSORS: OnceLock<Arc<Mutex<Vec<ServerLogProcessor>>>> = OnceLock::new();
 static LOG_WRITERS: OnceLock<Mutex<HashMap<String, ServerLogWriter>>> = OnceLock::new();
 
 const LOG_BATCH_SIZE: usize = 128;
@@ -95,6 +97,30 @@ pub fn set_server_log_event_handler(handler: ServerLogEventHandler) -> Result<()
     SERVER_LOG_EVENT_HANDLER
         .set(handler)
         .map_err(|_| "server log event handler already set".to_string())
+}
+
+#[allow(dead_code)]
+pub fn add_server_log_processor(processor: ServerLogProcessor) -> Result<(), String> {
+    let processors = server_log_processors();
+    let mut guard = processors
+        .lock()
+        .map_err(|_| "server log processors lock poisoned".to_string())?;
+    guard.push(processor);
+    Ok(())
+}
+
+#[allow(dead_code)]
+pub fn clear_server_log_processors() -> Result<(), String> {
+    let processors = server_log_processors();
+    let mut guard = processors
+        .lock()
+        .map_err(|_| "server log processors lock poisoned".to_string())?;
+    guard.clear();
+    Ok(())
+}
+
+fn server_log_processors() -> &'static Arc<Mutex<Vec<ServerLogProcessor>>> {
+    SERVER_LOG_PROCESSORS.get_or_init(|| Arc::new(Mutex::new(Vec::new())))
 }
 
 pub fn init_db(server_path: &Path) -> Result<(), String> {
@@ -385,9 +411,23 @@ where
 }
 
 fn emit_server_log_line(server_id: &str, line: &str) {
+    let processed_line = process_log_line(server_id, line);
     if let Some(handler) = SERVER_LOG_EVENT_HANDLER.get() {
-        let _ = handler(server_id, line);
+        let _ = handler(server_id, &processed_line);
     }
+}
+
+fn process_log_line(server_id: &str, line: &str) -> String {
+    let processors = server_log_processors();
+    let guard = processors
+        .lock()
+        .expect("server log processors lock poisoned");
+
+    let mut processed_line = line.to_string();
+    for processor in &*guard {
+        processed_line = processor(server_id, &processed_line);
+    }
+    processed_line
 }
 
 fn open_or_create_log_db(server_path: &Path) -> Result<Connection, String> {

@@ -1,12 +1,40 @@
-use mlua::{Lua, Result as LuaResult, Value};
+use mlua::{Lua, Result as LuaResult, Table, Value};
 use serde_json::Value as JsonValue;
 use std::path::{Path, PathBuf};
 
-pub(crate) const MAX_RECURSION_DEPTH: usize = 64;
+// 错误信息用英文, 中文容易出编码问题
 
+// 最大循环深度, 后来的改的别太大, 可以调
+pub(crate) const DEFAULT_MAX_RECURSION_DEPTH: usize = 64;
+// 上边的常量的结构体实现
+pub(crate) struct ConversionConfig {
+    pub max_recursion_depth: usize,
+}
+
+impl Default for ConversionConfig {
+    fn default() -> Self {
+        Self {
+            max_recursion_depth: DEFAULT_MAX_RECURSION_DEPTH,
+        }
+    }
+}
+
+// 从 Lua 值转换为 JSON 值, 递归深度默认值
 pub(crate) fn json_value_from_lua(value: &Value, depth: usize) -> Result<JsonValue, mlua::Error> {
-    if depth > MAX_RECURSION_DEPTH {
-        return Err(mlua::Error::runtime("Maximum recursion depth exceeded (64)"));
+    json_value_from_lua_with_config(value, depth, &ConversionConfig::default())
+}
+
+// 从 Lua 值转换为 JSON 值, 递归深度可配置
+pub(crate) fn json_value_from_lua_with_config(
+    value: &Value,
+    depth: usize,
+    config: &ConversionConfig,
+) -> Result<JsonValue, mlua::Error> {
+    if depth > config.max_recursion_depth {
+        return Err(mlua::Error::runtime(format!(
+            "Maximum recursion depth exceeded ({})",
+            config.max_recursion_depth
+        )));
     }
 
     match value {
@@ -19,45 +47,79 @@ pub(crate) fn json_value_from_lua(value: &Value, depth: usize) -> Result<JsonVal
         Value::String(s) => {
             Ok(JsonValue::String(s.to_str().map(|s| s.to_string()).unwrap_or_default()))
         }
-        Value::Table(t) => {
-            let mut is_array = true;
-            let mut max_index = 0;
-            for (k, _) in t.clone().pairs::<Value, Value>().flatten() {
-                if let Value::Integer(i) = k {
-                    if i > 0 {
-                        max_index = max_index.max(i as usize);
-                        continue;
-                    }
-                }
-                is_array = false;
-                break;
-            }
 
-            if is_array && max_index > 0 {
-                let mut arr = Vec::with_capacity(max_index);
-                for i in 1..=max_index {
-                    if let Ok(v) = t.get::<Value>(i) {
-                        arr.push(json_value_from_lua(&v, depth + 1)?);
-                    } else {
-                        arr.push(JsonValue::Null);
+        // 处理数组和对象(后来的仔细看,别被绕进去了)
+        Value::Table(t) => {
+            let table_type = classify_table(t);
+            match table_type {
+                TableType::Array(max_index) => {
+                    let mut arr = Vec::with_capacity(max_index);
+                    for i in 1..=max_index {
+                        if let Ok(v) = t.get::<Value>(i) {
+                            arr.push(json_value_from_lua_with_config(&v, depth + 1, config)?);
+                        } else {
+                            arr.push(JsonValue::Null);
+                        }
                     }
+                    Ok(JsonValue::Array(arr))
                 }
-                Ok(JsonValue::Array(arr))
-            } else {
-                let mut map = serde_json::Map::new();
-                for (k, v) in t.clone().pairs::<String, Value>().flatten() {
-                    map.insert(k, json_value_from_lua(&v, depth + 1)?);
+                TableType::Object => {
+                    let mut map = serde_json::Map::new();
+                    for (k, v) in t.pairs::<String, Value>().flatten() {
+                        map.insert(k, json_value_from_lua_with_config(&v, depth + 1, config)?);
+                    }
+                    Ok(JsonValue::Object(map))
                 }
-                Ok(JsonValue::Object(map))
             }
         }
         _ => Ok(JsonValue::Null),
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum TableType {
+    Array(usize),
+    Object,
+}
+
+fn classify_table(t: &Table) -> TableType {
+    let mut max_index: usize = 0;
+    let mut is_array = true;
+
+    for (k, _) in t.pairs::<Value, Value>().flatten() {
+        match k {
+            Value::Integer(i) if i > 0 => {
+                max_index = max_index.max(i as usize);
+            }
+            _ => {
+                is_array = false;
+                break;
+            }
+        }
+    }
+
+    if is_array && max_index > 0 {
+        TableType::Array(max_index)
+    } else {
+        TableType::Object
+    }
+}
+
 pub(crate) fn lua_value_from_json(lua: &Lua, value: &JsonValue, depth: usize) -> LuaResult<Value> {
-    if depth > MAX_RECURSION_DEPTH {
-        return Err(mlua::Error::runtime("Maximum recursion depth exceeded (64)"));
+    lua_value_from_json_with_config(lua, value, depth, &ConversionConfig::default())
+}
+
+pub(crate) fn lua_value_from_json_with_config(
+    lua: &Lua,
+    value: &JsonValue,
+    depth: usize,
+    config: &ConversionConfig,
+) -> LuaResult<Value> {
+    if depth > config.max_recursion_depth {
+        return Err(mlua::Error::runtime(format!(
+            "Maximum recursion depth exceeded ({})",
+            config.max_recursion_depth
+        )));
     }
 
     match value {
@@ -74,16 +136,17 @@ pub(crate) fn lua_value_from_json(lua: &Lua, value: &JsonValue, depth: usize) ->
         }
         JsonValue::String(s) => Ok(Value::String(lua.create_string(s)?)),
         JsonValue::Array(arr) => {
-            let table = lua.create_table()?;
+            let table = lua.create_table_with_capacity(arr.len(), 0)?;
             for (i, v) in arr.iter().enumerate() {
-                table.set(i + 1, lua_value_from_json(lua, v, depth + 1)?)?;
+                table.set(i + 1, lua_value_from_json_with_config(lua, v, depth + 1, config)?)?;
             }
             Ok(Value::Table(table))
         }
         JsonValue::Object(obj) => {
-            let table = lua.create_table()?;
+            let table = lua.create_table_with_capacity(0, obj.len())?;
             for (k, v) in obj.iter() {
-                table.set(k.clone(), lua_value_from_json(lua, v, depth + 1)?)?;
+                table
+                    .set(k.clone(), lua_value_from_json_with_config(lua, v, depth + 1, config)?)?;
             }
             Ok(Value::Table(table))
         }
@@ -96,14 +159,14 @@ pub(crate) fn safe_canonicalize_check(
 ) -> Result<PathBuf, String> {
     let canonical_base = base_dir
         .canonicalize()
-        .map_err(|e| format!("无法解析基准目录: {}", e))?;
+        .map_err(|e| format!("Failed to resolve base directory: {}", e))?;
 
     if full_path.exists() {
         let canonical = full_path
             .canonicalize()
-            .map_err(|e| format!("无法解析路径: {}", e))?;
+            .map_err(|e| format!("Failed to resolve path: {}", e))?;
         if !canonical.starts_with(&canonical_base) {
-            return Err("路径必须在允许的目录内".to_string());
+            return Err("Path must be within allowed directory".to_string());
         }
         Ok(canonical)
     } else {
@@ -120,17 +183,17 @@ pub(crate) fn safe_canonicalize_check(
                     existing_ancestor.pop();
                 }
                 None => {
-                    return Err("无法找到存在的祖先目录".to_string());
+                    return Err("Cannot find existing ancestor directory".to_string());
                 }
             }
         }
 
         let canonical_ancestor = existing_ancestor
             .canonicalize()
-            .map_err(|e| format!("无法解析祖先目录: {}", e))?;
+            .map_err(|e| format!("Failed to resolve ancestor directory: {}", e))?;
 
         if !canonical_ancestor.starts_with(&canonical_base) {
-            return Err("路径必须在允许的目录内".to_string());
+            return Err("Path must be within allowed directory".to_string());
         }
 
         let mut result = canonical_ancestor;
@@ -145,38 +208,29 @@ pub(super) fn validate_path_static(
     plugin_dir: &Path,
     relative_path: &str,
 ) -> Result<PathBuf, mlua::Error> {
-    let path = PathBuf::from(relative_path);
-
-    if path.is_absolute() {
-        return Err(mlua::Error::runtime("Absolute paths are not allowed"));
-    }
-
-    for component in path.components() {
-        if let std::path::Component::ParentDir = component {
-            return Err(mlua::Error::runtime("Path cannot contain '..'"));
-        }
-    }
-
-    let full_path = plugin_dir.join(&path);
-    safe_canonicalize_check(plugin_dir, &full_path).map_err(mlua::Error::runtime)
+    validate_path(plugin_dir, relative_path)
 }
 
 pub(super) fn validate_server_path(
     server_dir: &Path,
     relative_path: &str,
 ) -> Result<PathBuf, mlua::Error> {
+    validate_path(server_dir, relative_path)
+}
+
+fn validate_path(base_dir: &Path, relative_path: &str) -> Result<PathBuf, mlua::Error> {
     let path = PathBuf::from(relative_path);
 
     if path.is_absolute() {
-        return Err(mlua::Error::runtime("不允许使用绝对路径"));
+        return Err(mlua::Error::runtime("Absolute paths are not allowed".to_string()));
     }
 
     for component in path.components() {
         if let std::path::Component::ParentDir = component {
-            return Err(mlua::Error::runtime("路径不能包含 '..'"));
+            return Err(mlua::Error::runtime("Path cannot contain '..'".to_string()));
         }
     }
 
-    let full_path = server_dir.join(&path);
-    safe_canonicalize_check(server_dir, &full_path).map_err(mlua::Error::runtime)
+    let full_path = base_dir.join(&path);
+    safe_canonicalize_check(base_dir, &full_path).map_err(mlua::Error::runtime)
 }

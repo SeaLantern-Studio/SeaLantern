@@ -7,6 +7,7 @@ mod utils;
 use commands::config as config_commands;
 use commands::downloader as download_commands;
 use commands::java as java_commands;
+use commands::logging as logging_commands;
 use commands::mcs_plugin as mcs_plugin_commands;
 use commands::player as player_commands;
 use commands::plugin as plugin_commands;
@@ -32,8 +33,8 @@ pub fn run() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
     }
 
-    // Linux 平台在独立线程中初始化 panic_report，避免阻塞主线程
-    #[cfg(target_os = "linux")]
+    // Linux x86_64 平台在独立线程中初始化 panic_report，避免阻塞主线程
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
         std::thread::spawn(|| {
             let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
@@ -150,6 +151,8 @@ pub fn run() {
             settings_commands::export_settings,
             settings_commands::import_settings,
             settings_commands::get_system_fonts,
+            settings_commands::get_plugin_commands,
+            settings_commands::update_plugin_commands,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,
@@ -194,11 +197,16 @@ pub fn run() {
             plugin_commands::get_plugin_ui_snapshot,
             plugin_commands::get_plugin_sidebar_snapshot,
             plugin_commands::get_plugin_context_menu_snapshot,
+            plugin_commands::get_permission_list,
+            plugin_commands::get_plugin_permissions,
             mcs_plugin_commands::m_get_plugins,
             mcs_plugin_commands::m_toggle_plugin,
             mcs_plugin_commands::m_delete_plugin,
             mcs_plugin_commands::m_install_plugin,
-            mcs_plugin_commands::m_get_plugin_config_files
+            mcs_plugin_commands::m_get_plugin_config_files,
+            logging_commands::get_logs,
+            logging_commands::clear_logs,
+            logging_commands::check_developer_mode
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -497,10 +505,16 @@ pub fn run() {
                 ));
             }
 
-            app.manage(manager);
+            app.manage(manager.clone());
 
             // Check if currently in safe mode
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
+
+            if let Ok(mut m) = manager.lock() {
+                if !safe_mode {
+                    m.auto_enable_plugins();
+                }
+            }
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
