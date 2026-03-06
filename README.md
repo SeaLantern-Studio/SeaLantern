@@ -217,7 +217,13 @@ Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英�
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=Date)](https://star-history.com/#SeaLantern-Studio/SeaLantern&Date)
+<a href="https://www.star-history.com/#SeaLantern-Studio/SeaLantern&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## 贡献者
 
