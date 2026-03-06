@@ -143,7 +143,7 @@ No Electron, no Node backend, no Webpack. Launch fast, size small, RAM saved.
 
 ### Project Structure
 
-See [Project Structure](docs/STRUCTURE-en.md).
+See [Project Structure](docs/STRUCTURE.md).
 
 ## Planned Features
 
@@ -157,7 +157,7 @@ skeletons—waiting for your contributions:
 
 ## Contributing
 
-Contributions are welcome! Before you start, please read the [Contributing Guidelines](docs/CONTRIBUTING-en.md) to understand code standards and development workflows.
+Contributions are welcome! Before you start, please read the [Contributing Guidelines](docs/CONTRIBUTING.md) to understand code standards and development workflows.
 
 GUI modifications are also OK!
 

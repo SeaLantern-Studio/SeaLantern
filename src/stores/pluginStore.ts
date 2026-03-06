@@ -5,6 +5,7 @@ import { registerPluginLocale, addPluginTranslations, removePluginTranslations }
 import { useComponentRegistry } from "@composables/useComponentRegistry";
 import { useToast } from "@composables/useToast";
 import DOMPurify from "dompurify";
+import router from "@router";
 import * as pluginApi from "@api/plugin";
 import type { BufferedComponentEvent } from "@api/plugin";
 import { setThemeProviderOverrides } from "@utils/theme";
@@ -266,7 +267,7 @@ export const usePluginStore = defineStore("plugin", () => {
         );
         await loadNavItems();
 
-        const currentPath = window.location.hash.replace(/^#/, "") || "/";
+        const currentPath = router.currentRoute.value.path || "/";
         await pluginApi.onPageChanged(currentPath);
         await replayUiSnapshot();
         setTimeout(() => replayUiSnapshot(), 300);
