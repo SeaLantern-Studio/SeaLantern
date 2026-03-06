@@ -30,6 +30,6 @@ const tabs = computed(() => [
     :modelValue="modelValue"
     :tabs="tabs"
     :level="1"
-    @update:modelValue="emit('update:modelValue', $event)"
+    @update:modelValue="emit('update:modelValue', $event as PlayerTab)"
   />
 </template>
