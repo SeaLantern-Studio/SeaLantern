@@ -3,7 +3,7 @@ import { tauriInvoke } from "@api/tauri";
 export interface CpuInfo {
   name: string;
   count: number;
-  usage: number;
+  usage: number; 
 }
 
 export interface MemoryInfo {
@@ -17,7 +17,7 @@ export interface SwapInfo {
   total: number;
   used: number;
   usage: number;
-}
+} 
 
 export interface DiskDetail {
   name: string;
@@ -115,6 +115,9 @@ export const systemApi = {
     return tauriInvoke("open_folder", { path });
   },
 
+  async startFrpTunnel(provider: string, token: string, tunnelId: string): Promise<void> {
+    return tauriInvoke("start_frp_tunnel", { provider, token, tunnelId });
+  },
   async getDefaultRunPath(): Promise<string> {
     return tauriInvoke("get_default_run_path");
   },
@@ -123,3 +126,5 @@ export const systemApi = {
     return tauriInvoke("get_safe_mode_status");
   },
 };
+
+export const { getSystemInfo, pickJarFile, pickStartupFile, pickServerExecutable, pickJavaFile, pickFolder, pickImageFile, openFile, openFolder, startFrpTunnel } = systemApi;

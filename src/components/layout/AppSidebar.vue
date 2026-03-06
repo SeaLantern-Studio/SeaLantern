@@ -128,6 +128,14 @@ const staticNavItems: NavItem[] = [
     label: i18n.t("common.plugins"),
     group: "system",
   },
+  {
+    name: "frp",
+    path: "/frp",
+    icon: "server",
+    labelKey: "FRP",
+    label: "FRP",
+    group: "system",
+  },
 
   {
     name: "settings",

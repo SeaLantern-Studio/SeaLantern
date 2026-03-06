@@ -130,6 +130,7 @@ pub fn run() {
             system_commands::pick_image_file,
             system_commands::open_file,
             system_commands::open_folder,
+            system_commands::start_frp_tunnel,
             system_commands::get_default_run_path,
             system_commands::get_safe_mode_status,
             player_commands::get_whitelist,

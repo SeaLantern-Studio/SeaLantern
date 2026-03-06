@@ -220,6 +220,18 @@ export const contributors: Contributor[] = [
     role: "必火推荐！",
     avatar: "https://api.rms.net.cn/head/NIUNIU3303",
   },
+  {
+    name: "星辰大海",
+    role: "添加了FRP功能，喵~",
+    avatar:
+      "https://foruda.gitee.com/avatar/1770556735738139126/16067224_star-and-sea_tech-team_1770556735.png",
+    url: {
+      gitee: "https://gitee.com/Star-and-Sea_Tech-Team",
+      github: "https://github.com/Socialism-tech",
+      bilibili: "https://space.bilibili.com/3546960399174615/upload/video",
+      url: "http://tech-team.fayui.xyz",
+    },
+  },
 
   // ============================================
   // 在这里添加更多贡献者！
