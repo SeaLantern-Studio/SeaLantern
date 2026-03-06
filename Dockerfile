@@ -28,9 +28,9 @@ FROM docker.m.daocloud.io/debian:bookworm-slim AS backend-builder
 
 # 安装 Rust 工具链
 RUN { \
-    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
-    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
-    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
+    # unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
+    # sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    # sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
     apt-get update && apt-get install -y \
     curl \
     build-essential \
@@ -46,7 +46,7 @@ WORKDIR /app
 
 # 安装系统依赖 (使用阿里云 HTTP 镜像源，避免证书问题)
 RUN { \
-    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
+    # unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
     sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
     sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
     apt-get update && apt-get install -y \
@@ -59,6 +59,7 @@ RUN { \
     libayatana-appindicator3-dev \
     librsvg2-dev \
     libxdo-dev \
+    nasm \
     && rm -rf /var/lib/apt/lists/*; \
 }
 
@@ -80,6 +81,23 @@ RUN cargo build --release --lib --bins
 FROM docker.m.daocloud.io/debian:bookworm-slim
 
 WORKDIR /app
+
+# 1. 关键修改：配置 Cargo 国内镜像源
+RUN mkdir -p $HOME/.cargo && \
+    echo '[source.crates-io]\n\
+replace-with = "rsproxy"\n\
+\n\
+[source.rsproxy]\n\
+registry = "https://rsproxy.cn/crates.io-index"\n\
+\n\
+[source.rsproxy-sparse]\n\
+registry = "sparse+https://rsproxy.cn/index/"\n\
+\n\
+[registries.rsproxy]\n\
+index = "https://rsproxy.cn/crates.io-index"\n\
+\n\
+[net]\n\
+git-fetch-with-cli = true' > $HOME/.cargo/config.toml
 
 # 安装运行时依赖 (使用阿里云 HTTP 镜像源，避免证书问题)
 RUN { \
