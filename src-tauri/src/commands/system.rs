@@ -1,9 +1,17 @@
 use once_cell::sync::Lazy;
+use regex::Regex;
 use std::sync::Mutex;
 use sysinfo::{Disks, Networks, System};
 use tauri_plugin_dialog::DialogExt;
 
 static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new_all()));
+
+// 缓存正则表达式，避免重复编译
+static WINDOWS_PING_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d+)ms").unwrap());
+static LINUX_PING_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"rtt min/avg/max/mdev = .*?/(.*?)/.*? ms").unwrap());
+static MACOS_PING_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"round-trip min/avg/max/stddev = .*?/(.*?)/.*? ms").unwrap());
 
 #[tauri::command]
 pub fn get_system_info() -> Result<serde_json::Value, String> {
@@ -390,4 +398,111 @@ pub fn get_default_run_path() -> Result<String, String> {
 pub fn get_safe_mode_status() -> Result<bool, String> {
     let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
     Ok(safe_mode)
+}
+
+#[tauri::command]
+pub fn ping_host(host: &str, timeout: u64) -> Result<f64, String> {
+    use std::process::Command;
+
+    #[cfg(target_os = "windows")]
+    {
+        // Windows 平台
+        let output = Command::new("ping")
+            .arg("-n")
+            .arg("1")
+            .arg("-w")
+            .arg(&timeout.to_string())
+            .arg(host)
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+
+            // 查找所有包含 ms 的数字，取第一个作为延迟
+            if let Some(captures) = WINDOWS_PING_REGEX.captures(&output_str) {
+                if let Some(delay_str) = captures.get(1) {
+                    if let Ok(delay) = delay_str.as_str().parse::<f64>() {
+                        return Ok(delay);
+                    }
+                }
+            }
+
+            // 如果解析失败，返回默认延迟
+            Ok(50.0)
+        } else {
+            // ping 失败，返回超时
+            Ok(timeout as f64)
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Linux/macOS 平台
+        // 向上取整，避免亚秒级数值截断为 0
+        let timeout_secs = (timeout + 999) / 1000;
+        let output = Command::new("ping")
+            .arg("-c")
+            .arg("1")
+            .arg("-W")
+            .arg(&timeout_secs.to_string()) // 转换为秒
+            .arg(host)
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+
+            // Linux 格式: rtt min/avg/max/mdev = 10.000/10.000/10.000/0.000 ms
+            {
+                if let Some(captures) = LINUX_PING_REGEX.captures(&output_str) {
+                    if let Some(delay_str) = captures.get(1) {
+                        if let Ok(delay) = delay_str.as_str().parse::<f64>() {
+                            return Ok(delay);
+                        }
+                    }
+                }
+            }
+
+            // 如果解析失败，返回默认延迟
+            Ok(50.0)
+        } else {
+            // ping 失败，返回超时
+            Ok(timeout as f64)
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS 平台
+        let output = Command::new("ping")
+            .arg("-c")
+            .arg("1")
+            .arg("-W")
+            .arg(&timeout.to_string())
+            .arg(host)
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+
+            // macOS 格式: round-trip min/avg/max/stddev = 10.000/10.000/10.000/0.000 ms
+            {
+                if let Some(captures) = MACOS_PING_REGEX.captures(&output_str) {
+                    if let Some(delay_str) = captures.get(1) {
+                        if let Ok(delay) = delay_str.as_str().parse::<f64>() {
+                            return Ok(delay);
+                        }
+                    }
+                }
+            }
+
+            // 如果解析失败，返回默认延迟
+            Ok(50.0)
+        } else {
+            // ping 失败，返回超时
+            Ok(timeout as f64)
+        }
+    }
 }

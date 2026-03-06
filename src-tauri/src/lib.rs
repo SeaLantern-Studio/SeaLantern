@@ -132,6 +132,7 @@ pub fn run() {
             system_commands::open_folder,
             system_commands::get_default_run_path,
             system_commands::get_safe_mode_status,
+            system_commands::ping_host,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,

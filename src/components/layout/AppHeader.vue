@@ -10,6 +10,7 @@ import SLButton from "@components/common/SLButton.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
+import { NetworkStatus, STATUS_LIST, getNetworkStatus } from "@utils/checkNetwork";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -25,6 +26,9 @@ const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
 const isMaximized = ref(false);
+let networkStatusNow = ref<NetworkStatus>("green");
+let networkStatusTimer: ReturnType<typeof setTimeout> | null = null;
+let isCheckingNetwork = false;
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -135,7 +139,46 @@ const currentLanguageText = computed(() => {
   return labelKey ? i18n.t(labelKey) : i18n.t("header.english");
 });
 
+async function setNetworkStatus() {
+  // 防止并发调用
+  if (isCheckingNetwork) {
+    return;
+  }
+
+  isCheckingNetwork = true;
+  try {
+    const status = await getNetworkStatus();
+    console.log("检查网络状态");
+    networkStatusNow.value = status as NetworkStatus;
+  } catch (error) {
+    console.error("网络状态检查失败:", error);
+  } finally {
+    isCheckingNetwork = false;
+    networkStatusTimer = setTimeout(setNetworkStatus, 20000);
+  }
+}
+
+function getNetworkStatusClass(status: NetworkStatus = networkStatusNow.value) {
+  switch (status) {
+    case "red" as NetworkStatus:
+      return "red";
+    case "yellow" as NetworkStatus:
+      return "yellow";
+    case "green" as NetworkStatus:
+      return "green";
+    case "error" as NetworkStatus:
+      return "error";
+    default:
+      return "";
+  }
+}
+
+function getNetworkStatusText(status: string = getNetworkStatusClass()) {
+  return i18n.t(`common.network_status.${status}`);
+}
+
 onMounted(async () => {
+  setNetworkStatus();
   await loadSettings();
 
   // 初始化最大化状态
@@ -150,6 +193,10 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  if (networkStatusTimer !== null) {
+    clearTimeout(networkStatusTimer);
+    networkStatusTimer = null;
+  }
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (unlistenResize) {
     unlistenResize();
@@ -308,8 +355,8 @@ function computeOverallProgress() {
       </Menu>
 
       <div class="header-status">
-        <span class="status-dot online"></span>
-        <span class="status-text">{{ i18n.t("common.app_name") }}</span>
+        <span class="status-dot" :class="getNetworkStatusClass(networkStatusNow)"></span>
+        <span class="status-text">{{ getNetworkStatusText(networkStatusNow) }}</span>
       </div>
 
       <div class="window-controls">
