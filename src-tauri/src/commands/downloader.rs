@@ -1,6 +1,5 @@
-use crate::models::download::TaskProgressResponse;
+use crate::models::download::{DownloadLink, LinkManager, TaskProgressResponse};
 use crate::services::download_manager::DownloadManager;
-use std::sync::LazyLock;
 use tauri::State;
 use uuid::Uuid;
 
@@ -52,3 +51,20 @@ pub async fn remove_download_task(
 
 /* 服务器核心下载 */
 
+#[tauri::command]
+pub async fn get_server_types() -> Result<Vec<String>, String> {
+    LinkManager::get_server_types().await
+}
+
+#[tauri::command]
+pub async fn get_versions_by_type(server_type: String) -> Result<Vec<String>, String> {
+    LinkManager::get_versions_by_type(&server_type).await
+}
+
+#[tauri::command]
+pub async fn get_download_info(server_type: String, version: String) -> Result<DownloadLink, String> {
+    let type_group = LinkManager::get_type_by_name(&server_type).await?;
+    type_group.get_link_by_version(&version)
+        .cloned()
+        .ok_or_else(|| format!("Version {} not found", version))
+}

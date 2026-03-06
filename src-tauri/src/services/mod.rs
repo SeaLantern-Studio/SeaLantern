@@ -17,3 +17,4 @@ pub mod server_log_pipeline;
 pub mod server_manager;
 pub mod settings_manager;
 pub mod starter_installer_links;
+pub mod server_downloader;
