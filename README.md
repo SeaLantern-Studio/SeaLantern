@@ -23,7 +23,7 @@
 
 </div>
 
-![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
+
 
 ## 能干什么
 
