@@ -1,6 +1,6 @@
 {
   "name": "sea-lantern",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,9 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "commitlint": "commitlint",
-    "prepare": "husky"
+    "prepare": "husky",
+    "sv": "node ./scripts/version.mjs show",
+    "cv": "node ./scripts/version.mjs change"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",

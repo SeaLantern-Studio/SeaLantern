@@ -6,7 +6,7 @@ export * from "@components/layout";
 
 export * from "@components/plugin";
 
-export type { TabItem } from "@components/common/SLTabs.vue";
+export type { TabBarItem } from "@components/common/SLTabBar.vue";
 
 import {
   SLBadge,
@@ -21,7 +21,7 @@ import {
   SLSelect,
   SLSpinner,
   SLSwitch,
-  SLTabs,
+  SLTabBar,
   SLTextarea,
 } from "@components/common";
 
@@ -40,7 +40,7 @@ const components: Record<string, ReturnType<typeof import("vue").defineComponent
   SLSelect,
   SLSpinner,
   SLSwitch,
-  SLTabs,
+  SLTabBar,
   SLTextarea,
   AppHeader,
   AppLayout,
