@@ -409,10 +409,10 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
     // 尝试在应用程序目录中查找frpc
     let mut frpc_path = match provider.as_str() {
         "chmlfrp" => {
-            // chmlfrp: frpc/chmlfrp/linux-amd64/frpc
-            let frpc_dir = format!("frpc/{}/{}-{}", provider, os_name, arch_name);
-            let frpc_exe = if os == "windows" { "frpc.exe" } else { "frpc" };
-            app_dir.join(&frpc_dir).join(frpc_exe)
+            // chmlfrp: frpc/chmlfrp/windows-amd64.exe
+            let suffix = if os == "windows" { ".exe" } else { "" };
+            let frpc_path_str = format!("frpc/{}/{}-{}{}", provider, os_name, arch_name, suffix);
+            app_dir.join(&frpc_path_str)
         }
         "openfrp" | "sakurafrp" => {
             // openfrp/sakurafrp: frpc/openfrp/linux-amd64
@@ -439,9 +439,11 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
 
             let candidate_path = match provider.as_str() {
                 "chmlfrp" => {
-                    let frpc_dir = format!("frpc/{}/{}-{}", provider, os_name, arch_name);
-                    let frpc_exe = if os == "windows" { "frpc.exe" } else { "frpc" };
-                    parent_dir.join(&frpc_dir).join(frpc_exe)
+                    // chmlfrp: frpc/chmlfrp/windows-amd64.exe
+                    let suffix = if os == "windows" { ".exe" } else { "" };
+                    let frpc_path_str =
+                        format!("frpc/{}/{}-{}{}", provider, os_name, arch_name, suffix);
+                    parent_dir.join(&frpc_path_str)
                 }
                 "openfrp" | "sakurafrp" => {
                     let suffix = if os == "windows" { ".exe" } else { "" };
@@ -485,10 +487,6 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
     // 执行命令，在独立窗口中运行
     #[cfg(target_os = "windows")]
     {
-        // 在Windows上使用start命令打开新窗口
-        let frpc_path_str = frpc_path
-            .to_str()
-            .ok_or_else(|| "无法获取FRP可执行文件路径".to_string())?;
         // 获取frpc所在目录
         let frpc_dir = frpc_path
             .parent()
@@ -501,7 +499,12 @@ pub fn start_frp_tunnel(provider: String, token: String, tunnel_id: String) -> R
         cmd.arg("start");
         cmd.arg("cmd.exe");
         cmd.arg("/k");
-        cmd.arg(r".\frpc.exe");
+        // 直接使用可执行文件名，因为已经在正确的目录中
+        cmd.arg(
+            frpc_path
+                .file_name()
+                .ok_or_else(|| "无法获取可执行文件名".to_string())?,
+        );
 
         // 根据提供商添加参数
         match provider.as_str() {
