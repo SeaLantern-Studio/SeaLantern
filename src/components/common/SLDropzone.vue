@@ -2,6 +2,7 @@
 import { ref, computed, watch } from "vue";
 import { X, FileUp, Loader2 } from "lucide-vue-next";
 import { i18n } from "@language";
+import { isUploadSupported, uploadFromDropEvent } from "@api/upload";
 
 export interface DropzoneProps {
   modelValue?: string;
@@ -130,12 +131,48 @@ function handleDragLeave(event: DragEvent) {
   internalDragging.value = false;
 }
 
-function handleDrop(event: DragEvent) {
+async function handleDrop(event: DragEvent) {
   event.preventDefault();
   internalDragging.value = false;
 
   if (props.disabled || props.loading) return;
 
+  // Docker/浏览器环境：通过HTTP上传文件
+  if (isUploadSupported()) {
+    try {
+      const uploadedFiles = await uploadFromDropEvent(event);
+      if (uploadedFiles.length === 0) {
+        emit("error", i18n.t("dropzone.error_no_path"));
+        return;
+      }
+
+      const validPaths = uploadedFiles
+        .filter((f) => {
+          const isFile = hasAcceptedExtension(f.saved_path);
+          if (isFile && !props.acceptFiles) return false;
+          if (!isFile && !props.acceptFolders) return false;
+          return true;
+        })
+        .map((f) => f.saved_path);
+
+      if (validPaths.length === 0) {
+        emit("error", i18n.t("dropzone.error_unsupported_type"));
+        return;
+      }
+
+      if (props.multiple && validPaths.length > 1) {
+        emit("dropMultiple", validPaths);
+      } else {
+        emit("update:modelValue", validPaths[0]);
+        emit("drop", validPaths[0]);
+      }
+    } catch (err) {
+      emit("error", err instanceof Error ? err.message : "Upload failed");
+    }
+    return;
+  }
+
+  // Tauri环境：直接使用文件路径
   const droppedPaths = extractPathsFromDrop(event);
   if (droppedPaths.length === 0) {
     emit("error", i18n.t("dropzone.error_no_path"));
