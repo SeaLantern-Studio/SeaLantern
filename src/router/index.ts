@@ -80,6 +80,12 @@ const routes = [
     component: () => import("../views/DownloadFileView.vue"),
     meta: { titleKey: "common.download-file", icon: "info" },
   },
+  {
+    path: "/download-server",
+    name: "download-server",
+    component: () => import("../views/DownloadServerView.vue"),
+    meta: { titleKey: "common.download-server", icon: "info" },
+  },
 ];
 const router = createRouter({
   history: createWebHistory(),
