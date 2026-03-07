@@ -62,9 +62,13 @@ pub async fn get_versions_by_type(server_type: String) -> Result<Vec<String>, St
 }
 
 #[tauri::command]
-pub async fn get_download_info(server_type: String, version: String) -> Result<DownloadLink, String> {
+pub async fn get_download_info(
+    server_type: String,
+    version: String,
+) -> Result<DownloadLink, String> {
     let type_group = LinkManager::get_type_by_name(&server_type).await?;
-    type_group.get_link_by_version(&version)
+    type_group
+        .get_link_by_version(&version)
         .cloned()
         .ok_or_else(|| format!("Version {} not found", version))
 }

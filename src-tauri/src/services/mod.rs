@@ -11,10 +11,10 @@ pub mod mod_manager;
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 pub mod panic_report;
 pub mod player_manager;
+pub mod server_downloader;
 pub mod server_id_manager;
 pub mod server_installer;
 pub mod server_log_pipeline;
 pub mod server_manager;
 pub mod settings_manager;
 pub mod starter_installer_links;
-pub mod server_downloader;

@@ -33,7 +33,7 @@ pub struct BaseDownloadLinks {
 pub struct TypeDownloadLinks {
     pub server_type: String,
     pub versions: Vec<String>,
-    pub links: Vec<DownloadLink>
+    pub links: Vec<DownloadLink>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

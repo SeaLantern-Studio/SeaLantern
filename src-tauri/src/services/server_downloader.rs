@@ -1,16 +1,18 @@
+pub(crate) use crate::models::download::{
+    BaseDownloadLinks, DownloadLink, LinkManager, TypeDownloadLinks,
+};
+use crate::utils::downloader::{SingleThreadDownloader, USER_AGENT_EXAMPLE};
 use serde_json::Value;
 use tokio::sync::OnceCell;
-pub(crate) use crate::models::download::{BaseDownloadLinks, DownloadLink, LinkManager, TypeDownloadLinks};
-use crate::utils::downloader::{SingleThreadDownloader, USER_AGENT_EXAMPLE};
 
 const DOWNLOAD_LINK_LIST_URL: &str = super::starter_installer_links::STARTER_INSTALLER_LINKS_URL;
 static DOWNLOAD_LINKS: OnceCell<BaseDownloadLinks> = OnceCell::const_new();
 
 impl LinkManager {
     pub async fn get() -> Result<&'static BaseDownloadLinks, String> {
-        DOWNLOAD_LINKS.get_or_init(|| async {
-            Self::init().await.expect("Initialization failed")
-        }).await;
+        DOWNLOAD_LINKS
+            .get_or_init(|| async { Self::init().await.expect("Initialization failed") })
+            .await;
         Ok(DOWNLOAD_LINKS.get().unwrap())
     }
 
@@ -18,8 +20,8 @@ impl LinkManager {
         let downloader = SingleThreadDownloader::new(USER_AGENT_EXAMPLE);
         let response_body = downloader.read_to_string(DOWNLOAD_LINK_LIST_URL).await?;
 
-        let root_json: Value = serde_json::from_str(&response_body)
-            .map_err(|e| format!("解析下载配置失败: {}", e))?;
+        let root_json: Value =
+            serde_json::from_str(&response_body).map_err(|e| format!("解析下载配置失败: {}", e))?;
 
         let mut all_server_types = Vec::new();
         let mut type_download_groups = Vec::new();
@@ -33,12 +35,18 @@ impl LinkManager {
                     let mut mc_versions_under_type = Vec::new();
                     let mut download_links_under_type = Vec::new();
 
-                    if let Some(version_list_node) = type_detail_data.get("versions").and_then(|v| v.as_array()) {
+                    if let Some(version_list_node) =
+                        type_detail_data.get("versions").and_then(|v| v.as_array())
+                    {
                         for version_node in version_list_node {
-                            let mc_version_str = version_node.as_str().unwrap_or_default().to_string();
+                            let mc_version_str =
+                                version_node.as_str().unwrap_or_default().to_string();
                             mc_versions_under_type.push(mc_version_str.clone());
 
-                            if let Some(file_mapping) = type_detail_data.get(&mc_version_str).and_then(|f| f.as_object()) {
+                            if let Some(file_mapping) = type_detail_data
+                                .get(&mc_version_str)
+                                .and_then(|f| f.as_object())
+                            {
                                 for (file_key_name, file_url_value) in file_mapping {
                                     let download_entry = DownloadLink::new(
                                         mc_version_str.clone(),
@@ -69,7 +77,11 @@ impl LinkManager {
     }
 
     pub async fn get_type_by_name(name: &str) -> Result<TypeDownloadLinks, String> {
-        Ok(Self::get().await?.get_type_by_name(name).unwrap_or_else(|| panic!("Type {} not found", name)).clone())
+        Ok(Self::get()
+            .await?
+            .get_type_by_name(name)
+            .unwrap_or_else(|| panic!("Type {} not found", name))
+            .clone())
     }
 
     pub async fn get_versions_by_type(type_name: &str) -> Result<Vec<String>, String> {
