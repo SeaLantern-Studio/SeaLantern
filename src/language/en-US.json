@@ -130,6 +130,7 @@
     "stop": "Stop",
     "edit": "Edit",
     "delete": "Delete",
+    "delete_server": "Delete Server",
     "status": "Status",
     "running": "Running",
     "stopped": "Stopped",
@@ -350,6 +351,7 @@
     "loading": "Loading config...",
     "no_config": "No config file found. Please start the server once to generate server.properties",
     "saved": "Config saved",
+    "default": "Default Value",
     "server_properties": "Server Properties",
     "server_plugins": "Server Plugins",
     "loading_plugins": "Loading plugins...",
@@ -793,6 +795,7 @@
       "delete": "Delete Plugin"
     },
     "update_available": "Update available",
+    "settings": "Plugin Settings",
     "settings_title": "{{name}} Settings",
     "safe_mode_disabled": "Disabled in safe mode",
     "safe_mode": "Safe Mode",
