@@ -45,8 +45,6 @@ pub async fn cancel_download_task(
     manager: State<'_, DownloadManager>,
 ) -> Result<(), String> {
     let id = Uuid::parse_str(&id_str).map_err(|e| e.to_string())?;
-    // manager.remove_task(id).await;
-    // Ok(())
     manager.cancel_task(id).await?;
     Ok(())
 }
