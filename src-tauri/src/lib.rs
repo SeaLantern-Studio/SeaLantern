@@ -4,6 +4,10 @@ mod plugins;
 mod services;
 mod utils;
 
+// 仅在 debug 构建下导入调试命令模块（发布包中不包含）
+#[cfg(debug_assertions)]
+use commands::debug as debug_commands;
+
 use commands::config as config_commands;
 use commands::downloader as download_commands;
 use commands::java as java_commands;
@@ -200,7 +204,11 @@ pub fn run() {
             mcs_plugin_commands::m_get_plugin_config_files,
             logging_commands::get_logs,
             logging_commands::clear_logs,
-            logging_commands::check_developer_mode
+            logging_commands::check_developer_mode,
+            // 仅在 debug 构建（pnpm run tauri dev）下注册调试命令
+            // 发布包（pnpm run tauri build）中此命令不存在，不会暴露给最终用户
+            #[cfg(debug_assertions)]
+            debug_commands::debug_panic
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
