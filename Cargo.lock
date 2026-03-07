@@ -4323,6 +4323,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-window-state",
  "tokio",
+ "tokio-util",
  "trash",
  "url",
  "uuid",
