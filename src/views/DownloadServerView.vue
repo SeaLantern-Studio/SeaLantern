@@ -401,16 +401,6 @@ onMounted(() => {
   width: 100%;
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;
