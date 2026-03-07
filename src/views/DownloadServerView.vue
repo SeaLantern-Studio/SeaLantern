@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import DownloadProgress from "@components/views/download/DownloadProgress.vue";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
@@ -27,6 +28,12 @@ const versions = ref<string[]>([]);
 
 const selectedType = ref("");
 const selectedVersion = ref("");
+
+const serverTypeOptions = computed(() =>
+  serverTypes.value.map((type) => ({ label: type, value: type })),
+);
+
+const versionOptions = computed(() => versions.value.map((v) => ({ label: v, value: v })));
 
 const info = ref<DownloadLink | null>(null);
 
@@ -54,6 +61,13 @@ const canDownload = computed(() => {
   if (!info.value?.url) return false;
   if (!saveDir.value.trim() || !filename.value.trim()) return false;
   return /^[1-9]\d*$/.test(threadCount.value.trim());
+});
+
+const canGoCreate = computed(() => {
+  console.log(taskInfo.isFinished);
+  console.log(!taskError.value);
+  console.log("===========");
+  return taskInfo.isFinished && !taskError.value;
 });
 
 const savePathPreview = computed(() => {
@@ -143,18 +157,21 @@ async function handleDownload() {
   resetTask();
   startLoading();
 
+  const targetPath = buildSavePath();
+
   try {
     await startTask({
       url: info.value.url,
-      savePath: buildSavePath(),
+      savePath: targetPath,
       threadCount: parseInt(threadCount.value, 10),
     });
 
-    if (taskError.value) showError(taskError.value);
+    if (taskError.value) {
+      showError(taskError.value);
+    }
   } catch (e) {
     showError(String(e));
   } finally {
-    gotoCreatePage(buildSavePath());
     stopLoading();
   }
 }
@@ -190,30 +207,27 @@ onMounted(() => {
         <div class="field">
           <div class="label-row">
             <label>类别</label>
-            <span v-if="loadingTypes" class="loading-text">加载中...</span>
           </div>
-          <select v-model="selectedType" :disabled="loadingTypes || isDownloading">
-            <option value="" disabled>请选择类别</option>
-            <option v-for="type in serverTypes" :key="type" :value="type">
-              {{ type }}
-            </option>
-          </select>
+          <SLSelect
+            v-model="selectedType"
+            :options="serverTypeOptions"
+            placeholder="请选择类别"
+            :disabled="loadingTypes || isDownloading"
+            :loading="loadingTypes"
+          />
         </div>
 
         <div class="field">
           <div class="label-row">
             <label>版本</label>
-            <span v-if="loadingVersions" class="loading-text">加载中...</span>
           </div>
-          <select
+          <SLSelect
             v-model="selectedVersion"
+            :options="versionOptions"
+            placeholder="请选择版本"
             :disabled="loadingVersions || !selectedType || isDownloading"
-          >
-            <option value="" disabled>请选择版本</option>
-            <option v-for="v in versions" :key="v" :value="v">
-              {{ v }}
-            </option>
-          </select>
+            :loading="loadingVersions"
+          />
         </div>
 
         <div class="field field-full">
@@ -272,6 +286,14 @@ onMounted(() => {
         @click="handleDownload"
       >
         {{ isDownloading ? "下载中" : "开始下载" }}
+      </SLButton>
+      <SLButton
+        variant="primary"
+        size="lg"
+        :disabled="!canGoCreate"
+        @click="gotoCreatePage(buildSavePath())"
+      >
+        前往 CreatePage
       </SLButton>
     </div>
 

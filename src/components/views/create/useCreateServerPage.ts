@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
@@ -167,6 +167,10 @@ export function useCreateServerPage() {
     () => step4Completed.value && !startupSyncPending.value && !startupDetecting.value,
   );
 
+  onActivated(() => {
+    loadFromDraft();
+  });
+
   onMounted(async () => {
     await loadDefaultSettings();
   });
@@ -287,13 +291,6 @@ export function useCreateServerPage() {
         }
       }
 
-      let store = useCreateServerDraftStore();
-      let draft = store.consumeDraft();
-      if (draft !== null) {
-        sourcePath.value = draft.sourcePath;
-        sourceType.value = draft.sourceType;
-      }
-
       if (settings.cached_java_list && settings.cached_java_list.length > 0) {
         javaList.value = settings.cached_java_list;
         if (settings.default_java_path) {
@@ -308,6 +305,16 @@ export function useCreateServerPage() {
     } catch (error) {
       console.error("Failed to load default settings:", error);
     }
+  }
+
+  function loadFromDraft() {
+    let store = useCreateServerDraftStore();
+    let draft = store.consumeDraft();
+    if (draft !== null) {
+      sourcePath.value = draft.sourcePath;
+      sourceType.value = draft.sourceType;
+    }
+    console.log(draft);
   }
 
   async function detectJava() {
