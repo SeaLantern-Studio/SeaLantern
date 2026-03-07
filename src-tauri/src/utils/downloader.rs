@@ -1,4 +1,4 @@
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -132,19 +132,38 @@ impl MultiThreadDownloader {
         if thread_count == 0 {
             return Err("Thread count must be positive".to_string());
         }
-        let res = self
+        let probe = self
             .client
-            .head(url)
+            .get(url)
+            .header(reqwest::header::RANGE, "bytes=0-0")
             .send()
             .await
-            .map_err(|e| format!("HEAD 请求失败: {}", e))?;
+            .map_err(|e| format!("探测请求失败: {}", e))?;
 
-        let total_size = res
-            .headers()
-            .get(reqwest::header::CONTENT_LENGTH)
-            .and_then(|ct| ct.to_str().ok())
-            .and_then(|ct| ct.parse::<u64>().ok())
-            .ok_or("服务器未返回 Content-Length")?;
+        if !probe.status().is_success() && probe.status() != StatusCode::PARTIAL_CONTENT {
+            return Err(format!("探测失败，状态码: {}", probe.status()));
+        }
+
+        let supports_range = probe.status() == StatusCode::PARTIAL_CONTENT;
+
+        let total_size = if supports_range {
+            probe
+                .headers()
+                .get(reqwest::header::CONTENT_RANGE)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.rsplit('/').next())
+                .and_then(|n| n.parse::<u64>().ok())
+                .ok_or("服务器返回 206，但缺少有效 Content-Range")?
+        } else {
+            probe
+                .headers()
+                .get(reqwest::header::CONTENT_LENGTH)
+                .and_then(|ct| ct.to_str().ok())
+                .and_then(|ct| ct.parse::<u64>().ok())
+                .ok_or("服务器未返回 Content-Length")?
+        };
+
+        let actual_thread_count = if supports_range { thread_count } else { 1 };
 
         let file = tokio::fs::File::create(output_path)
             .await
@@ -152,14 +171,14 @@ impl MultiThreadDownloader {
         file.set_len(total_size).await.map_err(|e| e.to_string())?;
 
         let status = Arc::new(DownloadStatus::new(total_size));
-        let chunk_size = total_size / thread_count as u64;
+        let chunk_size = total_size / actual_thread_count as u64;
         let client = Arc::new(self.client.clone());
 
         let mut tasks = Vec::new();
 
-        for i in 0..thread_count {
+        for i in 0..actual_thread_count {
             let start = i as u64 * chunk_size;
-            let end = if i == thread_count - 1 {
+            let end = if i == actual_thread_count - 1 {
                 total_size - 1
             } else {
                 start + chunk_size - 1
@@ -214,10 +233,23 @@ impl MultiThreadDownloader {
         tokio::select! {
             result = async{
                 let range = format!("bytes={}-{}", start, end);
-        // 使用 map_err 包装可能的请求错误
-        let mut response = client.get(&url).header("Range", range).send().await?;
+                let mut response = client.get(&url).header("Range", range).send().await?;
 
-        let file = OpenOptions::new().write(true).open(&path).await?;
+                if start > 0 && response.status() != StatusCode::PARTIAL_CONTENT {
+                    return Err(DownloadError::Cancelled(format!(
+                        "服务器未按 Range 返回 206，状态码: {}",
+                        response.status()
+                    )));
+                }
+
+                if !response.status().is_success() && response.status() != StatusCode::PARTIAL_CONTENT {
+                    return Err(DownloadError::Cancelled(format!(
+                        "下载失败，状态码: {}",
+                        response.status()
+                    )));
+                }
+
+                let file = OpenOptions::new().write(true).open(&path).await?;
         let mut writer = BufWriter::with_capacity(128 * 1024, file);
         writer.seek(SeekFrom::Start(start)).await?;
 
@@ -317,7 +349,7 @@ impl SingleThreadDownloader {
 async fn test_multi_thread_download() -> Result<(), String> {
     let downloader = MultiThreadDownloader::new("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0"); //下载的线程数, User-agent
 
-    let url = "https://files.mcjars.app/mohist/1.12.2/1.12.2-17e3fd09/server.jar"; // 使用一个较小的测试文件
+    let url = "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/lfs/7f717a1fe4e30ee53671540f09142808efced1ef19f5d68219afa458e048ebf5?name=arclight-fabric-1.20.4-1.0.4-80ec5df.jar"; // 使用一个较小的测试文件
     let save_path = "./target/multi_thread_download_test.bin";
 
     // 创建目标目录
