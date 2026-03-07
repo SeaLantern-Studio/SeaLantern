@@ -1,23 +1,24 @@
 //! panic_report.rs
-//! 负责在程序崩溃（panic）时收集系统信息并生成崩溃报告。
+//! 负责在程序崩溃（panic）时收集系统信息并生成崩溃日志。
 //!
 //! 通过 Rust 标准库的 `std::panic::set_hook` 注册全局 panic 回调，
 //! 无需汇编或 unsafe 代码，跨平台兼容。
 //! Linux 平台可读取 /proc、/sys 等虚拟文件系统获取更详细的硬件信息；
 //! 其他平台则使用通用回退值。
 //!
-//! 报告输出目录：可执行文件同级的 `panic-log/` 文件夹。
+//! 报告输出目录：项目根目录（dev 模式）或可执行文件同级的 `panic-log/` 文件夹。
 //! 报告文件名格式：`panic_<YYYYMMDD_HHMMSS_mmm>.log`，以崩溃时间戳命名，不会覆盖旧报告。
 
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
-use std::time::{SystemTime, UNIX_EPOCH};
 
-/// 记录程序启动时间，用于在崩溃报告中计算运行时长。
+use chrono::Utc;
+
+/// 记录程序启动时间，用于在崩溃日志中展示运行时长。
 /// 使用 OnceLock 保证只初始化一次，线程安全。
-static START_TIME: OnceLock<SystemTime> = OnceLock::new();
+static START_TIME: OnceLock<chrono::DateTime<Utc>> = OnceLock::new();
 
 /// 防止 panic hook 重入的标志。
 /// 若 panic hook 自身触发了新的 panic，此标志可避免无限递归。
@@ -26,17 +27,17 @@ static PANIC_HOOK_RUNNING: AtomicBool = AtomicBool::new(false);
 /// 注册全局 panic hook。
 ///
 /// 应在程序启动时尽早调用（早于任何可能 panic 的代码），
-/// 以确保所有 panic 都能被捕获并生成报告。
+/// 以确保所有 panic 都能被捕获并生成日志。
 ///
 /// hook 触发时会：
 /// 1. 收集崩溃时刻、启动时刻、OS 信息、CPU 温度、内存占用、文件句柄数、CPU 核心数；
 /// 2. 获取 panic 发生的源码位置（文件名、行号、列号）及错误消息；
-/// 3. 将报告写入可执行文件同级 `panic-log/` 目录下，文件名为 `panic_<时间戳>.log`；
-/// 4. 同时将报告输出到 stderr；
+/// 3. 将日志写入 `panic-log/` 目录下，文件名为 `panic_<时间戳>.log`；
+/// 4. 同时将日志内容输出到 stderr；
 /// 5. 以退出码 0xFFFF 终止进程。
-pub fn panic_report() {
+pub fn init_panic_hook() {
     // 记录程序启动时间；若已初始化则忽略（幂等）
-    START_TIME.get_or_init(SystemTime::now);
+    START_TIME.get_or_init(Utc::now);
 
     std::panic::set_hook(Box::new(|panic_info| {
         // 使用原子交换防止 hook 重入：若已有一个 hook 正在运行则直接返回
@@ -44,9 +45,12 @@ pub fn panic_report() {
             return;
         }
 
-        // 格式化启动时间与崩溃时间
-        let start_time = format_time(*START_TIME.get().expect("start time not set"));
-        let crash_time = format_time(SystemTime::now());
+        let crash_time = Utc::now();
+        let start_time = *START_TIME.get().expect("start time not set");
+
+        // 用 chrono 格式化时间，输出为 ISO 8601 / RFC 3339 格式，易于阅读与解析
+        let crash_time_str = crash_time.format("%Y-%m-%d %H:%M:%S%.3f UTC").to_string();
+        let start_time_str = start_time.format("%Y-%m-%d %H:%M:%S%.3f UTC").to_string();
 
         // 获取 panic 的完整消息字符串
         let panic_message = panic_info.to_string();
@@ -66,12 +70,12 @@ pub fn panic_report() {
             .map(|n| n.get())
             .unwrap_or(1);
 
-        // 拼装崩溃报告正文
+        // 拼装崩溃日志正文
         let report = format!(
             "============!Panicked!============\n\
              ===============Info===============\n\
-             Panic Time  : {crash_time}\n\
-             Start Time  : {start_time}\n\
+             Panic Time  : {crash_time_str}\n\
+             Start Time  : {start_time_str}\n\
              OS          : {os_info}\n\
              CPU Temp    : {cpu_temp}\n\
              Loaded Mem  : {mem_load:.2}%\n\
@@ -83,15 +87,14 @@ pub fn panic_report() {
              ============ReportEnds============\n",
         );
 
-        // 将报告写入 panic-log/ 目录下以时间戳命名的文件
-        // 时间戳取自 UNIX 毫秒数，同时格式化为 YYYYMMDD_HHMMSS_mmm 便于排序与阅读
-        let report_path = build_report_path();
+        // 将日志写入 panic-log/ 目录下以时间戳命名的文件
+        let report_path = build_report_path(&crash_time);
         match report_path {
             Ok(path) => {
                 if let Err(e) = fs::write(&path, &report) {
-                    eprintln!("Failed to write panic report to '{}': {e}", path.display());
+                    eprintln!("Failed to write panic log to '{}': {e}", path.display());
                 } else {
-                    println!("Panic report written to '{}'", path.display());
+                    println!("Panic log written to '{}'", path.display());
                 }
             }
             Err(e) => {
@@ -100,7 +103,7 @@ pub fn panic_report() {
             }
         }
 
-        // 同时将报告输出到 stderr，方便终端或日志系统捕获
+        // 同时将日志输出到 stderr，方便终端或日志系统捕获
         eprintln!("{report}");
         eprintln!("Sea Lantern PANICKED!!");
 
@@ -112,19 +115,19 @@ pub fn panic_report() {
     }));
 }
 
-/// 构造崩溃报告的完整输出路径。
+/// 构造崩溃日志的完整输出路径。
 ///
-/// 目标路径：`<项目根目录>/panic-log/panic_<YYYYMMDD_HHMMSS_mmm>.log`
+/// 目标路径：`<基准目录>/panic-log/panic_<YYYYMMDD_HHMMSS_mmm>.log`
 ///
 /// 基准目录的选取策略（按优先级）：
 /// 1. **dev 模式**：Cargo 编译时注入的 `CARGO_MANIFEST_DIR`（即 `src-tauri/`）的父目录，
-///    也就是项目根目录，报告会落在仓库根的 `panic-log/` 下；
+///    也就是项目根目录，日志会落在仓库根的 `panic-log/` 下；
 /// 2. **发布模式**：可执行文件所在目录（安装目录）旁的 `panic-log/`；
 /// 3. **兜底**：当前工作目录下的 `panic-log/`。
 ///
 /// - 若 `panic-log/` 目录不存在则自动创建（含所有父目录）；
 /// - 返回 `Err` 仅在目录创建失败时出现。
-fn build_report_path() -> std::io::Result<PathBuf> {
+fn build_report_path(now: &chrono::DateTime<Utc>) -> std::io::Result<PathBuf> {
     // dev 模式：CARGO_MANIFEST_DIR 指向 src-tauri/，取其父目录即项目根
     // 发布模式：该环境变量不存在，回退到可执行文件所在目录，再回退到当前工作目录
     let base_dir = option_env!("CARGO_MANIFEST_DIR")
@@ -141,89 +144,11 @@ fn build_report_path() -> std::io::Result<PathBuf> {
     // 目录不存在时递归创建，已存在则忽略错误
     fs::create_dir_all(&log_dir)?;
 
-    // 用崩溃时刻的 UNIX 毫秒时间戳构造唯一文件名
-    let ts_millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis();
-
-    // 同时将毫秒时间戳转换为 YYYYMMDD_HHMMSS_mmm 格式，便于人工识别
-    let ts_secs = (ts_millis / 1000) as u64;
-    let ms_part = (ts_millis % 1000) as u32;
-    let ss = ts_secs % 60;
-    let mm = (ts_secs / 60) % 60;
-    let hh = (ts_secs / 3600) % 24;
-    // 计算日期（以 1970-01-01 为基准的简单推算）
-    let days_since_epoch = ts_secs / 86400;
-    let (year, month, day) = days_to_ymd(days_since_epoch);
-
-    let file_name = format!(
-        "panic_{:04}{:02}{:02}_{:02}{:02}{:02}_{:03}.log",
-        year, month, day, hh, mm, ss, ms_part
-    );
+    // 使用 chrono 格式化时间戳作为文件名，避免手写日历逻辑
+    // 格式：panic_YYYYMMDD_HHMMSS_mmm.log，其中 mmm 为毫秒
+    let file_name = now.format("panic_%Y%m%d_%H%M%S_%3f.log").to_string();
 
     Ok(log_dir.join(file_name))
-}
-
-/// 将从 UNIX epoch 起的天数转换为 (年, 月, 日)。
-///
-/// 使用 Gregorian 历法推算，无需外部 crate。
-fn days_to_ymd(mut days: u64) -> (u32, u32, u32) {
-    // 以 400 年为一个循环（146097 天）
-    let year_400 = days / 146097;
-    days %= 146097;
-
-    let year_100 = (days / 36524).min(3);
-    days -= year_100 * 36524;
-
-    let year_4 = days / 1461;
-    days %= 1461;
-
-    let year_1 = (days / 365).min(3);
-    days -= year_1 * 365;
-
-    let year = (year_400 * 400 + year_100 * 100 + year_4 * 4 + year_1 + 1970) as u32;
-
-    // 判断是否为闰年
-    let leap = (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400);
-    let days_in_month = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-    let mut month = 1u32;
-    let mut remaining = days as u32;
-    for dim in &days_in_month {
-        if remaining < *dim {
-            break;
-        }
-        remaining -= dim;
-        month += 1;
-    }
-
-    (year, month, remaining + 1)
-}
-
-/// 将 `SystemTime` 格式化为人类可读的字符串。
-///
-/// 输出格式：`epoch+<天>d HH:MM:SS.mmm (<毫秒数> ms since epoch)`
-fn format_time(t: SystemTime) -> String {
-    let since_epoch = t.duration_since(UNIX_EPOCH).unwrap_or_default();
-    let secs = since_epoch.as_secs();
-    let millis = since_epoch.subsec_millis();
-
-    // 将总秒数拆分为天、时、分、秒
-    let s = secs % 60;
-    let m = (secs / 60) % 60;
-    let h = (secs / 3600) % 24;
-    let days = secs / 86400;
-
-    format!(
-        "epoch+{}d {:02}:{:02}:{:02}.{:03} ({} ms since epoch)",
-        days,
-        h,
-        m,
-        s,
-        millis,
-        since_epoch.as_millis()
-    )
 }
 
 /// 获取操作系统信息字符串。

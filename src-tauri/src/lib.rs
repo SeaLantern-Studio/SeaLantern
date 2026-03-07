@@ -39,9 +39,9 @@ pub fn run() {
 
     // 尽早注册全局 panic hook，确保此后所有线程发生的 panic 都能被捕获。
     // hook 触发时会收集系统信息（OS、CPU 温度、内存占用等）、
-    // panic 源码位置及错误消息，写入 Panic_Report 文件并输出到 stderr，
+    // panic 源码位置及错误消息，写入 panic-log/ 目录下的日志文件并输出到 stderr，
     // 最终以退出码 0xFFFF 终止进程。
-    services::panic_report::panic_report();
+    services::panic_report::init_panic_hook();
 
     let download_manager = DownloadManager::new();
 
