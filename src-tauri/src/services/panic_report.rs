@@ -114,16 +114,26 @@ pub fn panic_report() {
 
 /// 构造崩溃报告的完整输出路径。
 ///
-/// 目标路径：`<可执行文件目录>/panic-log/panic_<YYYYMMDD_HHMMSS_mmm>.log`
+/// 目标路径：`<项目根目录>/panic-log/panic_<YYYYMMDD_HHMMSS_mmm>.log`
+///
+/// 基准目录的选取策略（按优先级）：
+/// 1. **dev 模式**：Cargo 编译时注入的 `CARGO_MANIFEST_DIR`（即 `src-tauri/`）的父目录，
+///    也就是项目根目录，报告会落在仓库根的 `panic-log/` 下；
+/// 2. **发布模式**：可执行文件所在目录（安装目录）旁的 `panic-log/`；
+/// 3. **兜底**：当前工作目录下的 `panic-log/`。
 ///
 /// - 若 `panic-log/` 目录不存在则自动创建（含所有父目录）；
-/// - 若无法获取可执行文件路径则回退到当前工作目录；
 /// - 返回 `Err` 仅在目录创建失败时出现。
 fn build_report_path() -> std::io::Result<PathBuf> {
-    // 优先使用可执行文件所在目录，获取失败时回退到当前工作目录
-    let base_dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+    // dev 模式：CARGO_MANIFEST_DIR 指向 src-tauri/，取其父目录即项目根
+    // 发布模式：该环境变量不存在，回退到可执行文件所在目录，再回退到当前工作目录
+    let base_dir = option_env!("CARGO_MANIFEST_DIR")
+        .and_then(|manifest| PathBuf::from(manifest).parent().map(|p| p.to_path_buf()))
+        .or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        })
         .unwrap_or_else(|| PathBuf::from("."));
 
     let log_dir = base_dir.join("panic-log");
