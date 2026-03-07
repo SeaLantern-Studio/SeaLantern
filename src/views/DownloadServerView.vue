@@ -8,7 +8,9 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { downloadApi, downloadServerApi, type DownloadLink } from "@api/downloader";
 import { systemApi } from "@api/system";
+import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 
+const createServerDraftStore = useCreateServerDraftStore();
 const router = useRouter();
 const { error: errorMsg, showError, clearError } = useMessage();
 const { loading: submitting, start: startLoading, stop: stopLoading } = useLoading();
@@ -126,6 +128,14 @@ function buildSavePath() {
   return `${dir}/${file}`;
 }
 
+function gotoCreatePage(sourcePath: string) {
+  createServerDraftStore.setDraft({
+    sourcePath: sourcePath,
+    sourceType: "archive",
+  });
+  router.push("/create");
+}
+
 async function handleDownload() {
   if (!canDownload.value || !info.value) return;
 
@@ -144,6 +154,7 @@ async function handleDownload() {
   } catch (e) {
     showError(String(e));
   } finally {
+    gotoCreatePage(buildSavePath());
     stopLoading();
   }
 }

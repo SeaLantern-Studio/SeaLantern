@@ -17,6 +17,7 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
+import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 
 type SourceType = "archive" | "folder" | "";
 
@@ -280,11 +281,17 @@ export function useCreateServerPage() {
       } else {
         // 如果没有上次的路径，获取默认路径
         try {
-          const defaultPath = await systemApi.getDefaultRunPath();
-          runPath.value = defaultPath;
+          runPath.value = await systemApi.getDefaultRunPath();
         } catch (error) {
           console.error("Failed to get default run path:", error);
         }
+      }
+
+      let store = useCreateServerDraftStore();
+      let draft = store.consumeDraft();
+      if (draft !== null) {
+        sourcePath.value = draft.sourcePath;
+        sourceType.value = draft.sourceType;
       }
 
       if (settings.cached_java_list && settings.cached_java_list.length > 0) {
