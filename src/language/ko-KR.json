@@ -1,16 +1,16 @@
 {
   "languageName": "한국어",
   "header": {
-    "chinese": "간체 중국어",
-    "english": "영어",
-    "chinese_tw": "번체 중국어",
-    "deutsch": "독일어",
-    "spanish": "스페인어",
-    "japanese": "일본어",
-    "russian": "러시아어",
-    "vietnamese": "베트남어",
+    "chinese": "簡體中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "deutsch": "Deutsch",
+    "spanish": "Español",
+    "japanese": "日本語",
+    "russian": "Русский",
+    "vietnamese": "Tiếng Việt",
     "korean": "한국어",
-    "french": "프랑스어"
+    "french": "Français"
   },
   "common": {
     "app_name": "Sea Lantern",
