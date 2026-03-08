@@ -59,7 +59,6 @@ RUN { \
     libayatana-appindicator3-dev \
     librsvg2-dev \
     libxdo-dev \
-    nasm \
     && rm -rf /var/lib/apt/lists/*; \
 }
 
