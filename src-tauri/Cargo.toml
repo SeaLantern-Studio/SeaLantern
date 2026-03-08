@@ -4,6 +4,7 @@ version = "1.0.2"
 description = "Minecraft Server Manager"
 authors = ["FPS_Z"]
 edition = "2021"
+default-run = "sea-lantern"
 
 [lib]
 name = "sea_lantern_lib"
