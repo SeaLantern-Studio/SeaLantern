@@ -1,0 +1,64 @@
+name: "Docker 镜像发布"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - release
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload-docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 获取版本号
+        id: version
+        run: |
+          VERSION=$(grep '"version"' src-tauri/tauri.conf.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: 构建 Docker 镜像
+        run: |
+          docker build -t sealantern:latest .
+
+      - name: 导出 Docker 镜像
+        run: |
+          docker save sealantern:latest | gzip > sealantern-docker-v${{ steps.version.outputs.version }}.tar.gz
+
+      - name: 获取 Release ID
+        id: get_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 查找匹配版本的 Release
+          RELEASE_ID=$(gh release list --limit 10 --search "v${{ steps.version.outputs.version }}" --json id,name --jq '.[] | select(.name | contains("${{ steps.version.outputs.version }}")) | .id' | head -1)
+
+          if [ -z "$RELEASE_ID" ]; then
+            echo "未找到匹配的 Release，可能需要先创建 Release"
+            echo "release_id=" >> $GITHUB_OUTPUT
+          else
+            echo "找到 Release ID: $RELEASE_ID"
+            echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 上传到 Release
+        if: steps.get_release.outputs.release_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ steps.get_release.outputs.release_id }} sealantern-docker-v${{ steps.version.outputs.version }}.tar.gz
+
+      - name: 上传到 Release（通过标签）
+        if: steps.get_release.outputs.release_id == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload sea-lantern-v${{ steps.version.outputs.version }} sealantern-docker-v${{ steps.version.outputs.version }}.tar.gz || echo "Release 可能还未创建，请稍后手动上传"

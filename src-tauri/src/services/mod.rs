@@ -2,6 +2,8 @@ pub mod async_loader;
 pub mod config_parser;
 pub mod download_manager;
 pub mod global;
+pub mod http_command_handlers;
+pub mod http_server;
 pub mod i18n;
 pub mod java_detector;
 pub mod java_installer;

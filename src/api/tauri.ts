@@ -1,5 +1,57 @@
-import { invoke } from "@tauri-apps/api/core";
 import { handleError, AppError, ErrorType } from "@utils/errorHandler";
+
+// Tauri 全局类型声明
+declare global {
+  interface Window {
+    __TAURI__?: any;
+  }
+}
+
+// 环境检测：判断是否在浏览器环境（Docker 模式）
+export const isBrowserEnv = (): boolean => {
+  return typeof window !== "undefined" && !window.__TAURI__;
+};
+
+// HTTP API 基础 URL（Docker 模式下使用）
+// 使用相对路径，这样在 Docker 环境下浏览器会自动使用当前页面的域名
+export const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+/**
+ * 通过 HTTP API 调用命令（Docker/浏览器模式）
+ */
+async function httpInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  const url = `${HTTP_API_BASE}/api/${command}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ params: args || {} }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HTTP ${response.status}: ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || "Unknown error");
+  }
+
+  return result.data as T;
+}
+
+/**
+ * 通过 Tauri invoke 调用命令（原生应用模式）
+ */
+async function tauriInvokeNative<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  // 动态导入，避免在浏览器环境下加载 @tauri-apps/api/core 导致报错
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<T>(command, args);
+}
 
 /**
  * Tauri 命令调用选项
@@ -16,29 +68,35 @@ export interface InvokeOptions {
 /**
  * 增强的 Tauri 命令调用函数
  * 提供统一的错误处理和日志记录
+ * 自动检测环境，在浏览器模式下使用 HTTP API，在 Tauri 模式下使用 invoke
  */
 export async function tauriInvoke<T>(
   command: string,
   args?: Record<string, unknown>,
   options: InvokeOptions = {},
 ): Promise<T> {
+  const isHttp = isBrowserEnv();
+
   try {
-    const result = await invoke<T>(command, args);
+    // 根据环境选择调用方式
+    const result = isHttp
+      ? await httpInvoke<T>(command, args)
+      : await tauriInvokeNative<T>(command, args);
 
     if (import.meta.env.DEV) {
-      console.debug(`[Tauri] Command "${command}" succeeded`);
+      console.debug(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" succeeded`);
     }
 
     return result;
   } catch (error) {
     const errorMessage = handleError(error, options.context || command);
 
-    if (!options.silent) {
-      throw new AppError(errorMessage, ErrorType.SERVER, options.context);
+    if (import.meta.env.DEV) {
+      console.warn(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" failed:`, errorMessage);
     }
 
-    if (import.meta.env.DEV) {
-      console.warn(`[Tauri] Command "${command}" failed (silent):`, errorMessage);
+    if (!options.silent) {
+      throw new AppError(errorMessage, ErrorType.SERVER, options.context);
     }
 
     return options.defaultValue as T;
@@ -47,7 +105,6 @@ export async function tauriInvoke<T>(
 
 /**
  * 批量 Tauri 命令调用
- * 并行执行多个命令，返回结果数组
  */
 export async function tauriInvokeAll(
   commands: Array<{
@@ -78,7 +135,6 @@ export async function tauriInvokeAll(
 
 /**
  * 创建带缓存的 Tauri 调用包装器
- * 用于避免重复调用相同的命令
  */
 export function createCachedInvoke<T>(command: string, cacheTime: number = 5000) {
   let cache: { data: T; timestamp: number } | null = null;
