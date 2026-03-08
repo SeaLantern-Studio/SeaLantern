@@ -21,7 +21,7 @@ export interface DownloadOptions {
 
 export interface DownloadLink {
   version: string; // 版本号
-  file_name: string; // 文件名
+  fileName: string; // 文件名
   url: string; // 下载URL
 }
 

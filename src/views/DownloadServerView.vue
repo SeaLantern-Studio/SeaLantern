@@ -38,7 +38,7 @@ const versionOptions = computed(() => versions.value.map((v) => ({ label: v, val
 const info = ref<DownloadLink | null>(null);
 
 const saveDir = ref("");
-const filename = ref("");
+const filename = ref("server.jar");
 const threadCount = ref("32");
 
 const loadingTypes = ref(false);
@@ -64,9 +64,6 @@ const canDownload = computed(() => {
 });
 
 const canGoCreate = computed(() => {
-  console.log(taskInfo.isFinished);
-  console.log(!taskError.value);
-  console.log("===========");
   return taskInfo.isFinished && !taskError.value;
 });
 
@@ -96,7 +93,6 @@ async function loadVersionsByType(serverType: string) {
   versions.value = [];
   selectedVersion.value = "";
   info.value = null;
-  filename.value = "";
 
   try {
     const list = await downloadServerApi.getVersionsByType(serverType);
@@ -114,12 +110,12 @@ async function loadDownloadInfo(serverType: string, version: string) {
   loadingInfo.value = true;
   clearError();
   info.value = null;
-  filename.value = "";
+  filename.value = "server.jar";
 
   try {
     const result = await downloadServerApi.getDownloadInfo(serverType, version);
     info.value = result;
-    filename.value = result.file_name;
+    filename.value = result.fileName;
   } catch (e) {
     showError(String(e));
   } finally {
@@ -253,7 +249,6 @@ onMounted(() => {
               选择目录
             </SLButton>
           </div>
-          <p v-if="savePathPreview" class="path-preview">将保存到：{{ savePathPreview }}</p>
         </div>
 
         <div class="field">
@@ -262,16 +257,8 @@ onMounted(() => {
         </div>
 
         <div class="field">
-          <div class="label-row">
-            <label>下载链接</label>
-            <span v-if="loadingInfo" class="loading-text">获取中...</span>
-          </div>
-          <input
-            :value="info?.url || ''"
-            type="text"
-            readonly
-            placeholder="选择类别和版本后自动获取"
-          />
+          <p v-if="savePathPreview" class="preview">将保存到：{{ savePathPreview }}</p>
+          <p v-if="info?.url" class="preview">下载地址：{{ info.url }}</p>
         </div>
       </div>
     </SLCard>
@@ -336,7 +323,6 @@ onMounted(() => {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sl-space-md);
 }
 
@@ -398,8 +384,8 @@ onMounted(() => {
   gap: var(--sl-space-sm);
 }
 
-.path-preview {
-  margin: 2px 0 0;
+.preview {
+  margin: 0;
   font-size: 12px;
   color: var(--sl-text-tertiary);
   word-break: break-all;
