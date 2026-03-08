@@ -25,13 +25,16 @@ jobs:
           VERSION=$(grep '"version"' src-tauri/tauri.conf.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: 构建 Docker 镜像
+      - name: 构建 Docker 镜像（启用 docker feature）
         run: |
-          docker build -t sealantern:latest .
+          # 构建镜像时通过 build-arg 传入 cargo 特性标志，以启用 docker-only 依赖
+          # 输出两个 tag：按版本号的 tag 以及 latest
+          docker build --build-arg CARGO_FEATURES=docker -t sealantern:${{ steps.version.outputs.version }} -t sealantern:latest .
 
       - name: 导出 Docker 镜像
         run: |
-          docker save sealantern:latest | gzip > sealantern-docker-v${{ steps.version.outputs.version }}.tar.gz
+          # 导出按版本 tag 的镜像为归档，便于上传到 Release
+          docker save sealantern:${{ steps.version.outputs.version }} | gzip > sealantern-docker-v${{ steps.version.outputs.version }}.tar.gz
 
       - name: 获取 Release ID
         id: get_release
