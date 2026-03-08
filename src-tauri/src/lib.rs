@@ -1,6 +1,6 @@
 mod commands;
 mod models;
-mod plugins;
+pub mod plugins;
 mod services;
 mod utils;
 

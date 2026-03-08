@@ -1,5 +1,6 @@
 use super::helpers::validate_path_static;
 use super::PluginRuntime;
+use crate::utils::logger::log_error;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use mlua::Table;
 use std::fs;
@@ -73,7 +74,7 @@ impl PluginRuntime {
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.read", &path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
 
                 fs::read_to_string(&full_path)
@@ -102,7 +103,7 @@ impl PluginRuntime {
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.read_binary", &path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
 
                 let bytes = fs::read(&full_path)
@@ -132,7 +133,7 @@ impl PluginRuntime {
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.write", &path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
 
                 if let Some(parent) = full_path.parent() {
@@ -166,7 +167,7 @@ impl PluginRuntime {
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.exists", &path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
                 Ok(full_path.exists())
             })
@@ -193,7 +194,7 @@ impl PluginRuntime {
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.list", &path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
                 let entries = fs::read_dir(&full_path).map_err(|e| {
                     mlua::Error::runtime(format!("Failed to read directory: {}", e))
@@ -232,7 +233,7 @@ impl PluginRuntime {
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.mkdir", &path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
                 fs::create_dir_all(&full_path)
                     .map_err(|e| mlua::Error::runtime(format!("Failed to create directory: {}", e)))
@@ -260,7 +261,7 @@ impl PluginRuntime {
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.remove", &path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
                 if full_path.is_dir() {
                     fs::remove_dir_all(&full_path).map_err(|e| {
@@ -294,7 +295,7 @@ impl PluginRuntime {
                 let full_path = validate_fs_path(&base_dir, &path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.info", &path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
                 let metadata = fs::metadata(&full_path).map_err(|e| {
                     mlua::Error::runtime(format!("Failed to get file metadata: {}", e))
@@ -336,7 +337,7 @@ impl PluginRuntime {
                 let dst_path = validate_fs_path(&base_dir, &dst)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.copy", &src) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
 
                 if src_path.is_dir() {
@@ -373,7 +374,7 @@ impl PluginRuntime {
                 let dst_path = validate_fs_path(&base_dir, &dst)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.move", &src) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
 
                 fs::rename(&src_path, &dst_path).map_err(|e| {
@@ -404,7 +405,7 @@ impl PluginRuntime {
                 let new_full_path = validate_fs_path(&base_dir, &new_path)?;
 
                 if let Err(e) = emit_permission_log(&pid, "api_call", "sl.fs.rename", &old_path) {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
 
                 fs::rename(&old_full_path, &new_full_path).map_err(|e| {
@@ -446,7 +447,7 @@ impl PluginRuntime {
 
                 if let Err(e) = emit_permission_log(&pid_get, "api_call", "sl.fs.get_path", &scope)
                 {
-                    eprintln!("Failed to emit permission log: {}", e);
+                    log_error(&format!("Failed to emit permission log: {}", e));
                 }
 
                 Ok(path)

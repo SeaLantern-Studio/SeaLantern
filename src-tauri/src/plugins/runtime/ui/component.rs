@@ -6,7 +6,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
     let component_table = runtime
         .lua
         .create_table()
-        .map_err(|e| format!("Failed to create ui.component table: {}", e))?;
+        .map_err(|e| format!("创建 ui.component 表失败: {}", e))?;
 
     register_list(runtime, &component_table)?;
     register_get(runtime, &component_table)?;
@@ -17,7 +17,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
 
     ui_table
         .set("component", component_table)
-        .map_err(|e| format!("Failed to set ui.component: {}", e))?;
+        .map_err(|e| format!("设置 ui.component 失败: {}", e))?;
 
     Ok(())
 }
@@ -37,11 +37,11 @@ fn register_list(runtime: &PluginRuntime, component_table: &Table) -> Result<(),
             }
             Ok(result)
         })
-        .map_err(|e| format!("Failed to create ui.component.list: {}", e))?;
+        .map_err(|e| format!("创建 ui.component.list 失败: {}", e))?;
 
     component_table
         .set("list", list_fn)
-        .map_err(|e| format!("Failed to set ui.component.list: {}", e))?;
+        .map_err(|e| format!("设置 ui.component.list 失败: {}", e))?;
 
     Ok(())
 }
@@ -62,11 +62,11 @@ fn register_get(runtime: &PluginRuntime, component_table: &Table) -> Result<(), 
             let _ = emit_component_event(&pid, &payload.to_string());
             Ok(Value::Nil)
         })
-        .map_err(|e| format!("Failed to create ui.component.get: {}", e))?;
+        .map_err(|e| format!("创建 ui.component.get 失败: {}", e))?;
 
     component_table
         .set("get", get_fn)
-        .map_err(|e| format!("Failed to set ui.component.get: {}", e))?;
+        .map_err(|e| format!("设置 ui.component.get 失败: {}", e))?;
 
     Ok(())
 }
@@ -97,11 +97,11 @@ fn register_set(runtime: &PluginRuntime, component_table: &Table) -> Result<(), 
             let _ = emit_component_event(&pid, &payload.to_string());
             Ok(true)
         })
-        .map_err(|e| format!("Failed to create ui.component.set: {}", e))?;
+        .map_err(|e| format!("创建 ui.component.set 失败: {}", e))?;
 
     component_table
         .set("set", set_fn)
-        .map_err(|e| format!("Failed to set ui.component.set: {}", e))?;
+        .map_err(|e| format!("设置 ui.component.set 失败: {}", e))?;
 
     Ok(())
 }
@@ -122,11 +122,11 @@ fn register_call(runtime: &PluginRuntime, component_table: &Table) -> Result<(),
             let _ = emit_component_event(&pid, &payload.to_string());
             Ok(Value::Nil)
         })
-        .map_err(|e| format!("Failed to create ui.component.call: {}", e))?;
+        .map_err(|e| format!("创建 ui.component.call 失败: {}", e))?;
 
     component_table
         .set("call", call_fn)
-        .map_err(|e| format!("Failed to set ui.component.call: {}", e))?;
+        .map_err(|e| format!("设置 ui.component.call 失败: {}", e))?;
 
     Ok(())
 }
@@ -147,11 +147,11 @@ fn register_on(runtime: &PluginRuntime, component_table: &Table) -> Result<(), S
             let _ = emit_component_event(&pid, &payload.to_string());
             Ok(true)
         })
-        .map_err(|e| format!("Failed to create ui.component.on: {}", e))?;
+        .map_err(|e| format!("创建 ui.component.on 失败: {}", e))?;
 
     component_table
         .set("on", on_fn)
-        .map_err(|e| format!("Failed to set ui.component.on: {}", e))?;
+        .map_err(|e| format!("设置 ui.component.on 失败: {}", e))?;
 
     Ok(())
 }
@@ -197,11 +197,11 @@ fn register_create(runtime: &PluginRuntime, component_table: &Table) -> Result<(
                 Ok(true)
             },
         )
-        .map_err(|e| format!("Failed to create ui.component.create: {}", e))?;
+        .map_err(|e| format!("创建 ui.component.create 失败: {}", e))?;
 
     component_table
         .set("create", create_fn)
-        .map_err(|e| format!("Failed to set ui.component.create: {}", e))?;
+        .map_err(|e| format!("设置 ui.component.create 失败: {}", e))?;
 
     Ok(())
 }
