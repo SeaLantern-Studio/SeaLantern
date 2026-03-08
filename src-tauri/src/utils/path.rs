@@ -19,6 +19,7 @@ fn is_msi_installation() -> bool {
 /// 获取应用程序数据目录
 ///
 /// 根据不同平台和安装方式返回合适的存储路径：
+/// - Docker 环境：./data
 /// - Windows MSI 安装：%AppData%\Sea Lantern
 /// - Windows 便携版：程序所在目录
 /// - macOS: ~/Library/Application Support/Sea Lantern
@@ -26,6 +27,11 @@ fn is_msi_installation() -> bool {
 ///
 /// 这个函数确保 MSI 安装的应用将数据存储在用户目录而非安装目录
 pub fn get_app_data_dir() -> PathBuf {
+    // Docker 环境检测 - 优先返回容器内数据目录
+    if std::path::Path::new("/.dockerenv").exists() {
+        return PathBuf::from("./data");
+    }
+
     #[cfg(target_os = "windows")]
     {
         // Windows: 检查是否为 MSI 安装
