@@ -81,10 +81,12 @@ pub mod mcs_plugin_manager;
 pub mod mod_manager;
 pub mod panic_report;
 pub mod player_manager;
+pub mod server;
 pub mod server_downloader;
 pub mod server_id_manager;
-pub mod server_installer;
-pub mod server_log_pipeline;
-pub mod server_manager;
 pub mod settings_manager;
 pub mod starter_installer_links;
+
+pub use server::installer as server_installer;
+pub use server::log_pipeline as server_log_pipeline;
+pub use server::manager as server_manager;

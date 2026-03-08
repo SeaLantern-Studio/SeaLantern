@@ -1,7 +1,4 @@
-//! Common helpers for ui submodules
-//! - lua_str: mlua::String -> String with UTF-8 lossy fallback
-//! - emit_result: map infra Result<(), String> -> Lua boolean, with centralized logging and optional strict error mode
-//! - map_create_err/map_set_err: unify error wrapping for create_function/set
+// 公共助手函数
 
 use crate::utils::logger::log_error;
 
