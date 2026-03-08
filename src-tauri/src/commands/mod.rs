@@ -1,3 +1,7 @@
+// 仅在 debug 构建下编译调试命令模块（发布包中不包含）
+#[cfg(debug_assertions)]
+pub mod debug;
+
 pub mod config;
 pub mod downloader;
 pub mod java;

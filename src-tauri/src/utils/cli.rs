@@ -141,7 +141,14 @@ fn stop_server(id: &str) {
 #[allow(dead_code)]
 fn search_mods(query: &str, version: &str, loader: &str) {
     println!("正在搜索 Modrinth: {} (版本: {}, 加载器: {})...", query, version, loader);
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("Failed to create Tokio runtime: {}", e);
+            eprintln!("This may be due to system resource limits.");
+            std::process::exit(1);
+        }
+    };
     rt.block_on(async {
         let mod_manager = global::mod_manager();
         match mod_manager.search_modrinth(query, version, loader).await {
@@ -164,7 +171,14 @@ fn search_mods(query: &str, version: &str, loader: &str) {
 #[allow(dead_code)]
 fn join_server(id: &str) {
     println!("正在解析服务器 ID: {}...", id);
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("Failed to create Tokio runtime: {}", e);
+            eprintln!("This may be due to system resource limits.");
+            std::process::exit(1);
+        }
+    };
     rt.block_on(async {
         let join_manager = global::join_manager();
         match join_manager.resolve_id(id).await {
@@ -182,7 +196,14 @@ fn join_server(id: &str) {
 fn create_server_id(id: &str, name: &str, address: &str, port: &str) {
     println!("正在创建服务器 ID: {}...", id);
     let port_num: u16 = port.parse().unwrap_or(25565);
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("Failed to create Tokio runtime: {}", e);
+            eprintln!("This may be due to system resource limits.");
+            std::process::exit(1);
+        }
+    };
     rt.block_on(async {
         let id_manager = global::server_id_manager();
         let req = crate::services::server_id_manager::CreateServerIdRequest {
@@ -208,7 +229,14 @@ fn create_server_id(id: &str, name: &str, address: &str, port: &str) {
 #[allow(dead_code)]
 fn list_server_ids() {
     println!("正在列出所有服务器 ID...");
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("Failed to create Tokio runtime: {}", e);
+            eprintln!("This may be due to system resource limits.");
+            std::process::exit(1);
+        }
+    };
     rt.block_on(async {
         let id_manager = global::server_id_manager();
         let ids = id_manager.list_ids().await;
@@ -230,7 +258,14 @@ fn list_server_ids() {
 #[allow(dead_code)]
 fn resolve_server_id(id: &str) {
     println!("正在解析服务器 ID: {}...", id);
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("Failed to create Tokio runtime: {}", e);
+            eprintln!("This may be due to system resource limits.");
+            std::process::exit(1);
+        }
+    };
     rt.block_on(async {
         let id_manager = global::server_id_manager();
         match id_manager.resolve_id(id).await {
