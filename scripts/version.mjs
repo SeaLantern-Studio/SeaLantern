@@ -19,6 +19,16 @@ function isValidVersion(version) {
   return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version);
 }
 
+// 解析版本号为数组
+function parseVersions(version) {
+  return version.split(".").map(Number);
+}
+
+// 生成版本号字符串
+function formatVersion(parts) {
+  return parts.join(".");
+}
+
 // 判断指定路径的文件是否存在且可访问。
 async function exists(filePath) {
   try {
@@ -182,6 +192,39 @@ async function main() {
     }
 
     await updateVersion(value);
+    const versions = await readVersions();
+    console.log("");
+    printVersions(versions);
+    return;
+  }
+
+  if (command === "update") {
+    const versionsNow = (await readVersions())["package.json"];
+    const [major, minor, patch] = parseVersions(versionsNow);
+    let newVersion;
+    if (value === "patch") {
+      newVersion = formatVersion([major, minor, patch + 1]);
+    } else if (value === "minor") {
+      newVersion = formatVersion([major, minor + 1, 0]);
+    } else if (value === "major") {
+      newVersion = formatVersion([major + 1, 0, 0]);
+    } else {
+      throw new Error(`未知更新类型：${value}`);
+    }
+    await updateVersion(newVersion);
+    const versions = await readVersions();
+    console.log("");
+    printVersions(versions);
+  }
+
+  if (command === "dec") {
+    const versionsNow = (await readVersions())["package.json"];
+    const [major, minor, patch] = parseVersions(versionsNow);
+    if (patch === 0) {
+      throw new Error("当前版本号不能按Patch降级，请手动使用cv命令更新版本号");
+    }
+    const newVersion = formatVersion([major, minor, patch - 1]);
+    await updateVersion(newVersion);
     const versions = await readVersions();
     console.log("");
     printVersions(versions);
