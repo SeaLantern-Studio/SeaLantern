@@ -682,5 +682,36 @@
   },
   "downloader": {
     "connection_lost": "任務連線遺失"
+  },
+  "downloadServerView": {
+    "title": "下載伺服器端",
+    "status": {
+      "failed": "下載失敗",
+      "finished": "下載完成",
+      "downloading": "下載中"
+    },
+    "form": {
+      "type": "類別",
+      "typePlaceholder": "請選擇類別",
+      "version": "版本",
+      "versionPlaceholder": "請選擇版本",
+      "fileName": "檔案名稱",
+      "fileNamePlaceholder": "下載後的檔案名稱",
+      "saveDir": "儲存目錄",
+      "saveDirPlaceholder": "請選擇儲存目錄",
+      "threadCount": "執行緒數",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "將儲存至：",
+      "url": "下載位址："
+    },
+    "actions": {
+      "pickFolder": "選擇目錄",
+      "cancel": "取消",
+      "startDownload": "開始下載",
+      "downloading": "下載中",
+      "goCreatePage": "前往 CreatePage"
+    }
   }
 }

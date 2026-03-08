@@ -1020,5 +1020,36 @@
   },
   "downloader": {
     "connection_lost": "Task connection lost"
+  },
+  "downloadServerView": {
+    "title": "Download Server",
+    "status": {
+      "failed": "Download failed",
+      "finished": "Download finished",
+      "downloading": "Downloading"
+    },
+    "form": {
+      "type": "Category",
+      "typePlaceholder": "Please select a category",
+      "version": "Version",
+      "versionPlaceholder": "Please select a version",
+      "fileName": "File name",
+      "fileNamePlaceholder": "File name after download",
+      "saveDir": "Save directory",
+      "saveDirPlaceholder": "Please select a save directory",
+      "threadCount": "Thread count",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Save to:",
+      "url": "Download URL:"
+    },
+    "actions": {
+      "pickFolder": "Choose folder",
+      "cancel": "Cancel",
+      "startDownload": "Start download",
+      "downloading": "Downloading",
+      "goCreatePage": "Go to CreatePage"
+    }
   }
 }

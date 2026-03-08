@@ -682,5 +682,36 @@
   },
   "downloader": {
     "connection_lost": "タスク接続が失われました"
+  },
+  "downloadServerView": {
+    "title": "サーバーのダウンロード",
+    "status": {
+      "failed": "ダウンロードに失敗しました",
+      "finished": "ダウンロードが完了しました",
+      "downloading": "ダウンロード中"
+    },
+    "form": {
+      "type": "カテゴリ",
+      "typePlaceholder": "カテゴリを選択してください",
+      "version": "バージョン",
+      "versionPlaceholder": "バージョンを選択してください",
+      "fileName": "ファイル名",
+      "fileNamePlaceholder": "ダウンロード後のファイル名",
+      "saveDir": "保存先",
+      "saveDirPlaceholder": "保存先を選択してください",
+      "threadCount": "スレッド数",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "保存先：",
+      "url": "ダウンロードURL："
+    },
+    "actions": {
+      "pickFolder": "フォルダを選択",
+      "cancel": "キャンセル",
+      "startDownload": "ダウンロード開始",
+      "downloading": "ダウンロード中",
+      "goCreatePage": "CreatePageへ"
+    }
   }
 }

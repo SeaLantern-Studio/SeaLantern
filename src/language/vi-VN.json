@@ -681,5 +681,36 @@
   },
   "downloader": {
     "connection_lost": "Mất kết nối tác vụ"
+  },
+  "downloadServerView": {
+    "title": "Tải xuống máy chủ",
+    "status": {
+      "failed": "Tải xuống thất bại",
+      "finished": "Tải xuống hoàn tất",
+      "downloading": "Đang tải xuống"
+    },
+    "form": {
+      "type": "Danh mục",
+      "typePlaceholder": "Vui lòng chọn danh mục",
+      "version": "Phiên bản",
+      "versionPlaceholder": "Vui lòng chọn phiên bản",
+      "fileName": "Tên tệp",
+      "fileNamePlaceholder": "Tên tệp sau khi tải xuống",
+      "saveDir": "Thư mục lưu",
+      "saveDirPlaceholder": "Vui lòng chọn thư mục lưu",
+      "threadCount": "Số luồng",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Lưu vào:",
+      "url": "URL tải xuống:"
+    },
+    "actions": {
+      "pickFolder": "Chọn thư mục",
+      "cancel": "Hủy",
+      "startDownload": "Bắt đầu tải xuống",
+      "downloading": "Đang tải xuống",
+      "goCreatePage": "Đi tới CreatePage"
+    }
   }
 }

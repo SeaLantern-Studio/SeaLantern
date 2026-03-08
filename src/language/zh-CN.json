@@ -985,5 +985,36 @@
   },
   "downloader": {
     "connection_lost": "任务连接丢失"
+  },
+  "downloadServerView": {
+    "title": "下载服务端",
+    "status": {
+      "failed": "下载失败",
+      "finished": "下载完成",
+      "downloading": "下载中"
+    },
+    "form": {
+      "type": "类别",
+      "typePlaceholder": "请选择类别",
+      "version": "版本",
+      "versionPlaceholder": "请选择版本",
+      "fileName": "文件名",
+      "fileNamePlaceholder": "下载后的文件名",
+      "saveDir": "保存目录",
+      "saveDirPlaceholder": "请选择保存目录",
+      "threadCount": "线程数",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "将保存到：",
+      "url": "下载地址："
+    },
+    "actions": {
+      "pickFolder": "选择目录",
+      "cancel": "取消",
+      "startDownload": "开始下载",
+      "downloading": "下载中",
+      "goCreatePage": "前往 CreatePage"
+    }
   }
 }

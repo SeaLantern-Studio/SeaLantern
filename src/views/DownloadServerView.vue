@@ -10,6 +10,7 @@ import { useLoading } from "@composables/useAsync";
 import { downloadApi, downloadServerApi, type DownloadLink } from "@api/downloader";
 import { systemApi } from "@api/system";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
+import { i18n } from "@language";
 
 const createServerDraftStore = useCreateServerDraftStore();
 const router = useRouter();
@@ -50,9 +51,9 @@ const loadingAny = computed(() => loadingTypes.value || loadingVersions.value ||
 const combinedLoading = computed(() => submitting.value || isDownloading.value || loadingAny.value);
 
 const statusLabel = computed(() => {
-  if (taskError.value) return "下载失败";
-  if (taskInfo.isFinished) return "下载完成";
-  return "下载中";
+  if (taskError.value) return i18n.t("downloadServerView.status.failed");
+  if (taskInfo.isFinished) return i18n.t("downloadServerView.status.finished");
+  return i18n.t("downloadServerView.status.downloading");
 });
 
 const canDownload = computed(() => {
@@ -198,16 +199,16 @@ onMounted(() => {
       <button class="error-close" @click="clearError">x</button>
     </div>
 
-    <SLCard title="下载服务端">
+    <SLCard :title="i18n.t('downloadServerView.title')">
       <div class="form-grid">
         <div class="field">
           <div class="label-row">
-            <label>类别</label>
+            <label>{{ i18n.t("downloadServerView.form.type") }}</label>
           </div>
           <SLSelect
             v-model="selectedType"
             :options="serverTypeOptions"
-            placeholder="请选择类别"
+            :placeholder="i18n.t('downloadServerView.form.typePlaceholder')"
             :disabled="loadingTypes || isDownloading"
             :loading="loadingTypes"
           />
@@ -215,64 +216,73 @@ onMounted(() => {
 
         <div class="field">
           <div class="label-row">
-            <label>版本</label>
+            <label>{{ i18n.t("downloadServerView.form.version") }}</label>
           </div>
           <SLSelect
             v-model="selectedVersion"
             :options="versionOptions"
-            placeholder="请选择版本"
+            :placeholder="i18n.t('downloadServerView.form.versionPlaceholder')"
             :disabled="loadingVersions || !selectedType || isDownloading"
             :loading="loadingVersions"
           />
         </div>
 
         <div class="field field-full">
-          <label>文件名</label>
+          <label>{{ i18n.t("downloadServerView.form.fileName") }}</label>
           <input
             v-model="filename"
             type="text"
-            placeholder="下载后的文件名"
+            :placeholder="i18n.t('downloadServerView.form.fileNamePlaceholder')"
             :disabled="isDownloading"
           />
         </div>
 
         <div class="field field-full">
-          <label>保存目录</label>
+          <label>{{ i18n.t("downloadServerView.form.saveDir") }}</label>
           <div class="path-row">
             <input
               v-model="saveDir"
               type="text"
-              placeholder="请选择保存目录"
+              :placeholder="i18n.t('downloadServerView.form.saveDirPlaceholder')"
               :disabled="isDownloading"
             />
             <SLButton variant="secondary" size="md" @click="pickFolder" :disabled="isDownloading">
-              选择目录
+              {{ i18n.t("downloadServerView.actions.pickFolder") }}
             </SLButton>
           </div>
         </div>
 
         <div class="field">
-          <label>线程数</label>
-          <input v-model="threadCount" type="text" placeholder="32" :disabled="isDownloading" />
+          <label>{{ i18n.t("downloadServerView.form.threadCount") }}</label>
+          <input
+            v-model="threadCount"
+            type="text"
+            :placeholder="i18n.t('downloadServerView.form.threadCountPlaceholder')"
+            :disabled="isDownloading"
+          />
         </div>
 
         <div class="field">
-          <p v-if="savePathPreview" class="preview">将保存到：{{ savePathPreview }}</p>
-          <p v-if="info?.url" class="preview">下载地址：{{ info.url }}</p>
+          <p v-if="savePathPreview" class="preview">
+            {{ i18n.t("downloadServerView.preview.saveTo") }}{{ savePathPreview }}
+          </p>
+          <p v-if="info?.url" class="preview">
+            {{ i18n.t("downloadServerView.preview.url") }}{{ info.url }}
+          </p>
         </div>
       </div>
     </SLCard>
 
     <div class="create-actions">
-      <SLButton variant="secondary" size="lg" @click="router.push('/')">取消</SLButton>
-      <SLButton
-        variant="primary"
-        size="lg"
-        :loading="combinedLoading"
-        :disabled="!canDownload"
-        @click="handleDownload"
-      >
-        {{ isDownloading ? "下载中" : "开始下载" }}
+      <SLButton variant="secondary" size="lg" @click="router.push('/')">
+        {{ i18n.t("downloadServerView.actions.cancel") }}
+      </SLButton>
+      <SLButton variant="primary" size="lg" :disabled="!canDownload" @click="handleDownload">
+        {{
+          isDownloading
+            ? i18n.t("downloadServerView.actions.downloading")
+            : i18n.t("downloadServerView.actions.startDownload")
+        }}
       </SLButton>
       <SLButton
         variant="primary"
@@ -280,7 +290,7 @@ onMounted(() => {
         :disabled="!canGoCreate"
         @click="gotoCreatePage(buildSavePath())"
       >
-        前往 CreatePage
+        {{ i18n.t("downloadServerView.actions.goCreatePage") }}
       </SLButton>
     </div>
 

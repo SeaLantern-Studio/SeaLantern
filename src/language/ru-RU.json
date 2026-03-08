@@ -681,5 +681,36 @@
   },
   "downloader": {
     "connection_lost": "Соединение с задачей потеряно"
+  },
+  "downloadServerView": {
+    "title": "Скачать сервер",
+    "status": {
+      "failed": "Ошибка загрузки",
+      "finished": "Загрузка завершена",
+      "downloading": "Загрузка"
+    },
+    "form": {
+      "type": "Категория",
+      "typePlaceholder": "Выберите категорию",
+      "version": "Версия",
+      "versionPlaceholder": "Выберите версию",
+      "fileName": "Имя файла",
+      "fileNamePlaceholder": "Имя файла после загрузки",
+      "saveDir": "Папка сохранения",
+      "saveDirPlaceholder": "Выберите папку для сохранения",
+      "threadCount": "Количество потоков",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Сохранить в:",
+      "url": "Ссылка для скачивания:"
+    },
+    "actions": {
+      "pickFolder": "Выбрать папку",
+      "cancel": "Отмена",
+      "startDownload": "Начать загрузку",
+      "downloading": "Загрузка",
+      "goCreatePage": "Перейти на CreatePage"
+    }
   }
 }

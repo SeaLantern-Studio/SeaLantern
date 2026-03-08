@@ -681,5 +681,36 @@
   },
   "downloader": {
     "connection_lost": "Verbindung zum Task verloren"
+  },
+  "downloadServerView": {
+    "title": "Server herunterladen",
+    "status": {
+      "failed": "Download fehlgeschlagen",
+      "finished": "Download abgeschlossen",
+      "downloading": "Wird heruntergeladen"
+    },
+    "form": {
+      "type": "Kategorie",
+      "typePlaceholder": "Kategorie auswählen",
+      "version": "Version",
+      "versionPlaceholder": "Version auswählen",
+      "fileName": "Dateiname",
+      "fileNamePlaceholder": "Dateiname nach Download",
+      "saveDir": "Speicherort",
+      "saveDirPlaceholder": "Speicherort auswählen",
+      "threadCount": "Threads",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Speicherort:",
+      "url": "Download-URL:"
+    },
+    "actions": {
+      "pickFolder": "Ordner auswählen",
+      "cancel": "Abbrechen",
+      "startDownload": "Download starten",
+      "downloading": "Wird heruntergeladen",
+      "goCreatePage": "Zur CreatePage"
+    }
   }
 }

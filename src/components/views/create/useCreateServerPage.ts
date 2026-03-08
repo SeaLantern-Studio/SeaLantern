@@ -340,7 +340,6 @@ export function useCreateServerPage() {
       sourcePath.value = draft.sourcePath;
       sourceType.value = draft.sourceType;
     }
-    console.log(draft);
   }
 
   async function detectJava() {

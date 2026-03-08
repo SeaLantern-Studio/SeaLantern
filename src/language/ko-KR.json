@@ -683,5 +683,36 @@
   },
   "downloader": {
     "connection_lost": "작업 연결이 끊어졌습니다"
+  },
+  "downloadServerView": {
+    "title": "서버 다운로드",
+    "status": {
+      "failed": "다운로드 실패",
+      "finished": "다운로드 완료",
+      "downloading": "다운로드 중"
+    },
+    "form": {
+      "type": "카테고리",
+      "typePlaceholder": "카테고리를 선택하세요",
+      "version": "버전",
+      "versionPlaceholder": "버전을 선택하세요",
+      "fileName": "파일 이름",
+      "fileNamePlaceholder": "다운로드 후 파일 이름",
+      "saveDir": "저장 폴더",
+      "saveDirPlaceholder": "저장 폴더를 선택하세요",
+      "threadCount": "스레드 수",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "저장 위치:",
+      "url": "다운로드 URL:"
+    },
+    "actions": {
+      "pickFolder": "폴더 선택",
+      "cancel": "취소",
+      "startDownload": "다운로드 시작",
+      "downloading": "다운로드 중",
+      "goCreatePage": "CreatePage로 이동"
+    }
   }
 }
