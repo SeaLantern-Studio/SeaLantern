@@ -234,7 +234,6 @@ async function main() {
 
   if (command === "dec") {
     const versionsNow = (await readVersions())["package.json"];
-    const [major, minor, patch] = parseVersions(versionsNow);
     if (!isValidVersion(versionsNow)) {
       throw new Error(
         `当前版本号${versionsNow}不是语义化版本，不能降级版本号，请手动使用cv命令更新版本号`,
@@ -245,6 +244,7 @@ async function main() {
         `当前版本号${versionsNow}不是正式版本，不能降级版本号，请手动使用cv命令更新版本号`,
       );
     }
+    const [major, minor, patch] = parseVersions(versionsNow);
     if (patch === 0) {
       throw new Error(
         `当前版本号${versionsNow}的Patch版本为0，不能按Patch降级到负数版本，请手动使用cv命令更新版本号`,
