@@ -4,6 +4,10 @@ mod plugins;
 mod services;
 mod utils;
 
+// 仅在 debug 构建下导入调试命令模块（发布包中不包含）
+#[cfg(debug_assertions)]
+use commands::debug as debug_commands;
+
 use commands::config as config_commands;
 use commands::downloader as download_commands;
 use commands::java as java_commands;
@@ -33,17 +37,11 @@ pub fn run() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
     }
 
-    // Linux x86_64 平台在独立线程中初始化 panic_report，避免阻塞主线程
-    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-    {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
-            rt.block_on(async {
-                services::panic_report::panic_report().await;
-                println!("panic_report 注册完成");
-            });
-        });
-    }
+    // 尽早注册全局 panic hook，确保此后所有线程发生的 panic 都能被捕获。
+    // hook 触发时会收集系统信息（OS、CPU 温度、内存占用等）、
+    // panic 源码位置及错误消息，写入 panic-log/ 目录下的日志文件并输出到 stderr，
+    // 最终以退出码 0xFFFF 终止进程。
+    services::panic_report::init_panic_hook();
 
     let download_manager = DownloadManager::new();
 
@@ -206,7 +204,11 @@ pub fn run() {
             mcs_plugin_commands::m_get_plugin_config_files,
             logging_commands::get_logs,
             logging_commands::clear_logs,
-            logging_commands::check_developer_mode
+            logging_commands::check_developer_mode,
+            // 仅在 debug 构建（pnpm run tauri dev）下注册调试命令
+            // 发布包（pnpm run tauri build）中此命令不存在，不会暴露给最终用户
+            #[cfg(debug_assertions)]
+            debug_commands::debug_panic //在前端使用  await window.__invoke("debug_panic") 来触发
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
