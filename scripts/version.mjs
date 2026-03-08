@@ -19,6 +19,10 @@ function isValidVersion(version) {
   return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version);
 }
 
+function isOfficialVersion(version) {
+  return /^\d+\.\d+\.\d+$/.test(version);
+}
+
 // 解析版本号为数组
 function parseVersions(version) {
   return version.split(".").map(Number);
@@ -200,6 +204,16 @@ async function main() {
 
   if (command === "update") {
     const versionsNow = (await readVersions())["package.json"];
+    if (!isValidVersion(versionsNow)) {
+      throw new Error(
+        `当前版本号${versionsNow}不是语义化版本，不能更新版本号，请手动使用cv命令更新版本号`,
+      );
+    }
+    if (!isOfficialVersion(versionsNow)) {
+      throw new Error(
+        `当前版本号${versionsNow}不是正式版本，不能更新版本号，请手动使用cv命令更新版本号`,
+      );
+    }
     const [major, minor, patch] = parseVersions(versionsNow);
     let newVersion;
     if (value === "patch") {
@@ -215,13 +229,26 @@ async function main() {
     const versions = await readVersions();
     console.log("");
     printVersions(versions);
+    return;
   }
 
   if (command === "dec") {
     const versionsNow = (await readVersions())["package.json"];
     const [major, minor, patch] = parseVersions(versionsNow);
+    if (!isValidVersion(versionsNow)) {
+      throw new Error(
+        `当前版本号${versionsNow}不是语义化版本，不能降级版本号，请手动使用cv命令更新版本号`,
+      );
+    }
+    if (!isOfficialVersion(versionsNow)) {
+      throw new Error(
+        `当前版本号${versionsNow}不是正式版本，不能降级版本号，请手动使用cv命令更新版本号`,
+      );
+    }
     if (patch === 0) {
-      throw new Error("当前版本号不能按Patch降级，请手动使用cv命令更新版本号");
+      throw new Error(
+        `当前版本号${versionsNow}的Patch版本为0，不能按Patch降级到负数版本，请手动使用cv命令更新版本号`,
+      );
     }
     const newVersion = formatVersion([major, minor, patch - 1]);
     await updateVersion(newVersion);
