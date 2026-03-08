@@ -45,7 +45,7 @@ export function containsIoRedirection(command: string): boolean {
 }
 
 export function sortStartupCandidates(candidates: StartupCandidate[]): StartupCandidate[] {
-  return [...candidates].sort((a, b) => {
+  return [...candidates].toSorted((a, b) => {
     if (a.recommended !== b.recommended) {
       return a.recommended - b.recommended;
     }

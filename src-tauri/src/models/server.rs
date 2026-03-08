@@ -13,6 +13,18 @@ pub enum ServerStatus {
     Error,
 }
 
+impl ServerStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ServerStatus::Stopped => "stopped",
+            ServerStatus::Starting => "starting",
+            ServerStatus::Running => "running",
+            ServerStatus::Stopping => "stopping",
+            ServerStatus::Error => "error",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerInstance {
     pub id: String,

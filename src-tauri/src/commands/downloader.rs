@@ -40,11 +40,13 @@ pub async fn poll_all_downloads(
 
 /// 单个任务手动清理
 #[tauri::command]
-pub async fn remove_download_task(
+pub async fn cancel_download_task(
     id_str: String,
     manager: State<'_, DownloadManager>,
 ) -> Result<(), String> {
     let id = Uuid::parse_str(&id_str).map_err(|e| e.to_string())?;
-    manager.remove_task(id).await;
+    // manager.remove_task(id).await;
+    // Ok(())
+    manager.cancel_task(id).await?;
     Ok(())
 }

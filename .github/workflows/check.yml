@@ -8,7 +8,7 @@ on:
 jobs:
   commit_message:
     name: 提交信息检查 (Commitlint)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
           configFile: commitlint.config.cjs
 
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -48,7 +48,7 @@ jobs:
   backend:
     name: 后端检查 (Rust)
     needs: changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - name: 后端变更检测
         run: echo "backend changed=${{ needs.changes.outputs.backend }}"
@@ -61,7 +61,7 @@ jobs:
         if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
 
       - name: 安装 Rust 工具链
         if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -96,7 +96,7 @@ jobs:
   frontend:
     name: 前端检查 (Node)
     needs: changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - name: 前端变更检测
         run: echo "frontend changed=${{ needs.changes.outputs.frontend }}"

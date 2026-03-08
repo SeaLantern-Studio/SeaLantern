@@ -113,6 +113,7 @@ pub fn parse_version(input: &str) -> ParsedVersion {
 }
 
 /// 规范化发布标签版本号
+#[allow(dead_code)]
 pub fn normalize_release_tag_version(tag_name: &str) -> String {
     let trimmed = tag_name.trim();
     if let Some(extracted) = extract_semver_from_text(trimmed) {
@@ -123,6 +124,7 @@ pub fn normalize_release_tag_version(tag_name: &str) -> String {
 }
 
 /// 从文本中提取语义化版本号
+#[allow(dead_code)]
 fn extract_semver_from_text(input: &str) -> Option<String> {
     let regex =
         Regex::new(r"(?i)\bv?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)\b").ok()?;
