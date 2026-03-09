@@ -23,6 +23,7 @@
     "personalize": "Персонализация",
     "about": "О программе",
     "download-file": "Скачать файл",
+    "download-server": "Скачать сервер",
     "loading": "Загрузка...",
     "select_server": "Выбрать сервер",
     "open_folder": "Открыть папку",
@@ -129,6 +130,7 @@
     "stop": "Остановить",
     "edit": "Редактировать",
     "delete": "Удалить",
+    "delete_server": "Удалить сервер",
     "status": "Статус",
     "running": "Работает",
     "stopped": "Остановлен",
@@ -445,6 +447,8 @@
     "min_memory_desc": "Рекомендуется 1/4 - 1/2 от максимальной",
     "default_java": "Путь к Java по умолч.",
     "default_java_desc": "Оставьте пустым для автоопределения",
+    "default_run_path": "Путь сервера по умолчанию",
+    "default_run_path_desc": "Путь хранения по умолчанию при создании серверов",
     "jvm_args_desc": "Эти параметры будут добавлены при запуске любого сервера. Подходят для оптимизации GC",
     "port_desc": "Порт Minecraft по умолчанию 25565. Для нескольких серверов нужны разные порты",
     "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
@@ -525,6 +529,7 @@
     "server_name_placeholder": "Введите имя",
     "color_theme": "Цветовая тема",
     "color_theme_desc": "Настройка цветов",
+    "theme_proxied_by": "Управляется плагином {plugin}",
     "use_preset_colortheme": "Пресет",
     "use_preset_colortheme_desc": "Выберите готовую тему или настройте вручную",
     "color_editing": "Редактор цвета",
@@ -562,6 +567,8 @@
     "developer_mode_desc": "Расширенные функции и отладка",
     "developer_mode_toggle": "Включить",
     "developer_mode_toggle_desc": "Включить расширенные возможности",
+    "minimal_mode": "Минимальный режим",
+    "minimal_mode_desc": "Отключает все анимации и эффекты, оставляя только базовую отрисовку и взаимодействия",
     "color_options": {
       "custom": "Пользовательский"
     }
@@ -639,15 +646,23 @@
     "quit": "Выход"
   },
   "delete_server": "Удалить сервер",
+  "plugins": {
+    "settings": "Настройки плагина"
+  },
   "download-file": {
     "title": "Скачать файл с помощью многопоточного загрузчика",
     "url": "URL скачивания",
+    "url_placeholder": "Введите URL для скачивания (http/https)",
     "save_folder": "Сохранить в",
+    "save_path": "Путь сохранения",
+    "select_folder": "Выберите папку",
+    "pick_folder": "Выбрать папку",
     "filename": "Имя файла",
     "thread_count": "Количество потоков",
     "thread_count_empty": "Количество потоков не может быть пустым",
     "thread_count_invalid": "Недопустимый символ",
     "thread_count_positive": "Количество потоков должно быть положительным целым числом",
+    "thread_count_too_big": "Количество потоков не может превышать 256",
     "cancel": "Отмена",
     "download": "Скачать",
     "browse": "Обзор",
@@ -666,5 +681,36 @@
   },
   "downloader": {
     "connection_lost": "Соединение с задачей потеряно"
+  },
+  "downloadServerView": {
+    "title": "Скачать сервер",
+    "status": {
+      "failed": "Ошибка загрузки",
+      "finished": "Загрузка завершена",
+      "downloading": "Загрузка"
+    },
+    "form": {
+      "type": "Категория",
+      "typePlaceholder": "Выберите категорию",
+      "version": "Версия",
+      "versionPlaceholder": "Выберите версию",
+      "fileName": "Имя файла",
+      "fileNamePlaceholder": "Имя файла после загрузки",
+      "saveDir": "Папка сохранения",
+      "saveDirPlaceholder": "Выберите папку для сохранения",
+      "threadCount": "Количество потоков",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Сохранить в:",
+      "url": "Ссылка для скачивания:"
+    },
+    "actions": {
+      "pickFolder": "Выбрать папку",
+      "cancel": "Отмена",
+      "startDownload": "Начать загрузку",
+      "downloading": "Загрузка",
+      "goCreatePage": "Перейти на CreatePage"
+    }
   }
 }

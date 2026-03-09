@@ -1082,6 +1082,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "docker-entry"
+version = "1.0.2"
+dependencies = [
+ "sea-lantern",
+]
+
+[[package]]
 name = "document-features"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"

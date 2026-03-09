@@ -81,6 +81,7 @@ pub mod mcs_plugin_manager;
 pub mod mod_manager;
 pub mod panic_report;
 pub mod player_manager;
+pub mod server_downloader;
 pub mod server_id_manager;
 pub mod server_installer;
 pub mod server_log_pipeline;

@@ -156,10 +156,6 @@ impl DownloadManager {
         Some(resp)
     }
 
-    /// 显式清理任务
-    // pub async fn remove_task(&self, id: Uuid) {
-    //     self.tasks.write().await.remove(&id);
-    // }
     /// 批量获取所有任务进度，并清理已完成的任务
     pub async fn get_all_progress(&self) -> Vec<TaskProgressResponse> {
         let mut results = Vec::new();

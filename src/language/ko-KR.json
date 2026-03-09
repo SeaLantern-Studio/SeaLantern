@@ -23,6 +23,7 @@
     "personalize": "개인 설정",
     "about": "정보",
     "download-file": "파일 다운로드",
+    "download-server": "서버 다운로드",
     "loading": "로딩 중...",
     "select_server": "서버 선택",
     "open_folder": "폴더 열기",
@@ -129,6 +130,7 @@
     "stop": "중지",
     "edit": "편집",
     "delete": "삭제",
+    "delete_server": "서버 삭제",
     "status": "상태",
     "running": "실행 중",
     "stopped": "중지됨",
@@ -447,6 +449,8 @@
     "min_memory_desc": "최대 메모리의 1/4에서 1/2 정도를 권장합니다",
     "default_java": "기본 Java 경로",
     "default_java_desc": "비워두면 서버 생성 시 가장 적합한 Java를 자동 감지합니다",
+    "default_run_path": "기본 서버 경로",
+    "default_run_path_desc": "서버 생성 시 기본 저장 경로",
     "jvm_args_desc": "모든 서버 시작 시 추가될 인수입니다. GC 최적화 등을 설정할 수 있습니다",
     "port_desc": "Minecraft 기본 포트는 25565입니다. 여러 서버는 다른 포트가 필요합니다",
     "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
@@ -527,6 +531,7 @@
     "server_name_placeholder": "이름 입력",
     "color_theme": "색상 테마",
     "color_theme_desc": "소프트웨어 색상 테마 사용자 정의",
+    "theme_proxied_by": "{plugin} 플러그인에서 관리",
     "use_preset_colortheme": "프리셋 사용",
     "use_preset_colortheme_desc": "미리 정의된 색상 테마를 선택하거나 직접 색상을 사용자 정의합니다",
     "color_editing": "색상 편집",
@@ -564,6 +569,8 @@
     "developer_mode_desc": "고급 기능 및 디버그 옵션 활성화",
     "developer_mode_toggle": "개발자 모드 활성화",
     "developer_mode_toggle_desc": "활성화하면 개발자 모드에서 디버그 도구를 사용할 수 있습니다",
+    "minimal_mode": "미니멀 모드",
+    "minimal_mode_desc": "모든 애니메이션과 효과를 끄고 기본 렌더링과 상호작용만 유지합니다",
     "color_options": {
       "custom": "사용자 정의"
     }
@@ -641,15 +648,23 @@
     "quit": "종료"
   },
   "delete_server": "서버 삭제",
+  "plugins": {
+    "settings": "플러그인 설정"
+  },
   "download-file": {
     "title": "멀티스레드 다운로더를 사용하여 파일 다운로드",
     "url": "다운로드 주소",
+    "url_placeholder": "다운로드 URL을 입력하세요 (http/https)",
     "save_folder": "저장 위치",
+    "save_path": "저장 경로",
+    "select_folder": "폴더를 선택하세요",
+    "pick_folder": "폴더 선택",
     "filename": "파일 이름",
     "thread_count": "스레드 수",
     "thread_count_empty": "스레드 수를 입력하세요",
     "thread_count_invalid": "잘못된 문자입니다",
     "thread_count_positive": "스레드 수는 양의 정수여야 합니다",
+    "thread_count_too_big": "스레드 수는 256을 초과할 수 없습니다",
     "cancel": "취소",
     "download": "다운로드",
     "browse": "찾아보기",
@@ -668,5 +683,36 @@
   },
   "downloader": {
     "connection_lost": "작업 연결이 끊어졌습니다"
+  },
+  "downloadServerView": {
+    "title": "서버 다운로드",
+    "status": {
+      "failed": "다운로드 실패",
+      "finished": "다운로드 완료",
+      "downloading": "다운로드 중"
+    },
+    "form": {
+      "type": "카테고리",
+      "typePlaceholder": "카테고리를 선택하세요",
+      "version": "버전",
+      "versionPlaceholder": "버전을 선택하세요",
+      "fileName": "파일 이름",
+      "fileNamePlaceholder": "다운로드 후 파일 이름",
+      "saveDir": "저장 폴더",
+      "saveDirPlaceholder": "저장 폴더를 선택하세요",
+      "threadCount": "스레드 수",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "저장 위치:",
+      "url": "다운로드 URL:"
+    },
+    "actions": {
+      "pickFolder": "폴더 선택",
+      "cancel": "취소",
+      "startDownload": "다운로드 시작",
+      "downloading": "다운로드 중",
+      "goCreatePage": "CreatePage로 이동"
+    }
   }
 }

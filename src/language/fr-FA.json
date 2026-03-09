@@ -23,6 +23,7 @@
     "personalize": "Personnaliser",
     "about": "À propos",
     "download-file": "Télécharger le fichier",
+    "download-server": "Télécharger le serveur",
     "loading": "Chargement...",
     "select_server": "Sélectionner un serveur",
     "open_folder": "Ouvrir le dossier",
@@ -129,6 +130,7 @@
     "stop": "Arrêter",
     "edit": "Modifier",
     "delete": "Supprimer",
+    "delete_server": "Supprimer le serveur",
     "status": "État",
     "running": "En cours",
     "stopped": "Arrêté",
@@ -447,6 +449,8 @@
     "min_memory_desc": "Recommandé : 1/4 à 1/2 de la mémoire max",
     "default_java": "Chemin Java par défaut",
     "default_java_desc": "Laissez vide pour détection automatique",
+    "default_run_path": "Chemin serveur par défaut",
+    "default_run_path_desc": "Chemin de stockage par défaut lors de la création des serveurs",
     "jvm_args_desc": "Arguments supplémentaires pour tous les serveurs. Utile pour optimiser le GC",
     "port_desc": "Port Minecraft par défaut : 25565. Plusieurs serveurs nécessitent des ports différents",
     "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
@@ -527,6 +531,7 @@
     "server_name_placeholder": "Entrez le nom",
     "color_theme": "Thème de couleurs",
     "color_theme_desc": "Personnaliser le thème de couleurs",
+    "theme_proxied_by": "Géré par le plugin {plugin}",
     "use_preset_colortheme": "Utiliser un préréglage",
     "use_preset_colortheme_desc": "Choisir un thème prédéfini ou personnaliser les couleurs",
     "color_editing": "Édition des couleurs",
@@ -564,6 +569,8 @@
     "developer_mode_desc": "Activer les fonctionnalités avancées et les options de débogage",
     "developer_mode_toggle": "Activer le mode développeur",
     "developer_mode_toggle_desc": "Permet d'utiliser les outils de débogage",
+    "minimal_mode": "Mode minimal",
+    "minimal_mode_desc": "Désactive toutes les animations et effets, en conservant uniquement le rendu et les interactions de base",
     "color_options": {
       "custom": "Personnalisé"
     }
@@ -641,15 +648,23 @@
     "quit": "Quitter"
   },
   "delete_server": "Supprimer le serveur",
+  "plugins": {
+    "settings": "Paramètres du plugin"
+  },
   "download-file": {
     "title": "Télécharger le fichier avec le téléchargeur multi-thread",
     "url": "URL de téléchargement",
+    "url_placeholder": "Veuillez saisir l’URL de téléchargement (http/https)",
     "save_folder": "Enregistrer dans",
+    "save_path": "Chemin d'enregistrement",
+    "select_folder": "Veuillez sélectionner un dossier",
+    "pick_folder": "Choisir un dossier",
     "filename": "Nom du fichier",
     "thread_count": "Nombre de threads",
     "thread_count_empty": "Le nombre de threads ne peut pas être vide",
     "thread_count_invalid": "Caractère invalide",
     "thread_count_positive": "Le nombre de threads doit être un entier positif",
+    "thread_count_too_big": "Le nombre de threads ne peut pas dépasser 256",
     "cancel": "Annuler",
     "download": "Télécharger",
     "browse": "Parcourir",
@@ -668,5 +683,36 @@
   },
   "downloader": {
     "connection_lost": "Connexion à la tâche perdue"
+  },
+  "downloadServerView": {
+    "title": "Télécharger le serveur",
+    "status": {
+      "failed": "Échec du téléchargement",
+      "finished": "Téléchargement terminé",
+      "downloading": "Téléchargement en cours"
+    },
+    "form": {
+      "type": "Catégorie",
+      "typePlaceholder": "Veuillez choisir une catégorie",
+      "version": "Version",
+      "versionPlaceholder": "Veuillez choisir une version",
+      "fileName": "Nom du fichier",
+      "fileNamePlaceholder": "Nom du fichier après téléchargement",
+      "saveDir": "Dossier de destination",
+      "saveDirPlaceholder": "Veuillez choisir un dossier de destination",
+      "threadCount": "Nombre de threads",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Enregistrer dans :",
+      "url": "URL de téléchargement :"
+    },
+    "actions": {
+      "pickFolder": "Choisir un dossier",
+      "cancel": "Annuler",
+      "startDownload": "Démarrer le téléchargement",
+      "downloading": "Téléchargement en cours",
+      "goCreatePage": "Aller à CreatePage"
+    }
   }
 }

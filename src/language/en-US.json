@@ -23,6 +23,7 @@
     "personalize": "Personalize",
     "about": "About",
     "download-file": "Download File",
+    "download-server": "Download Server",
     "loading": "Loading...",
     "select_server": "Select Server",
     "open_folder": "Open Folder",
@@ -130,6 +131,7 @@
     "stop": "Stop",
     "edit": "Edit",
     "delete": "Delete",
+    "delete_server": "Delete Server",
     "status": "Status",
     "running": "Running",
     "stopped": "Stopped",
@@ -758,6 +760,7 @@
     "title": "Plugin Management",
     "plugin_count": "{{count}} plugins",
     "search_placeholder": "Search plugins...",
+    "settings": "Plugin Settings",
     "check_update": "Check Update",
     "check_updates": "Check All Updates",
     "checking": "Checking...",
@@ -988,12 +991,17 @@
   "download-file": {
     "title": "Download File Using Multi-threaded Downloader",
     "url": "Download URL",
+    "url_placeholder": "Please enter download URL (http/https)",
     "save_folder": "Save to",
+    "save_path": "Save Path",
+    "select_folder": "Please select a folder",
+    "pick_folder": "Pick Folder",
     "filename": "File Name",
     "thread_count": "Thread Count",
     "thread_count_empty": "Thread count cannot be empty",
     "thread_count_invalid": "Invalid character",
     "thread_count_positive": "Thread count must be a positive integer",
+    "thread_count_too_big": "Thread count cannot exceed 256",
     "cancel": "Cancel",
     "download": "Download",
     "browse": "Browse",
@@ -1012,5 +1020,36 @@
   },
   "downloader": {
     "connection_lost": "Task connection lost"
+  },
+  "downloadServerView": {
+    "title": "Download Server",
+    "status": {
+      "failed": "Download failed",
+      "finished": "Download finished",
+      "downloading": "Downloading"
+    },
+    "form": {
+      "type": "Category",
+      "typePlaceholder": "Please select a category",
+      "version": "Version",
+      "versionPlaceholder": "Please select a version",
+      "fileName": "File name",
+      "fileNamePlaceholder": "File name after download",
+      "saveDir": "Save directory",
+      "saveDirPlaceholder": "Please select a save directory",
+      "threadCount": "Thread count",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Save to:",
+      "url": "Download URL:"
+    },
+    "actions": {
+      "pickFolder": "Choose folder",
+      "cancel": "Cancel",
+      "startDownload": "Start download",
+      "downloading": "Downloading",
+      "goCreatePage": "Go to CreatePage"
+    }
   }
 }

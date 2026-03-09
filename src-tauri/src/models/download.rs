@@ -20,3 +20,28 @@ pub struct TaskProgressResponse {
     pub status: TaskStatus,
     pub is_finished: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BaseDownloadLinks {
+    pub server_types: Vec<String>,
+    pub links: Vec<TypeDownloadLinks>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TypeDownloadLinks {
+    pub server_type: String,
+    pub versions: Vec<String>,
+    pub links: Vec<DownloadLink>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadLink {
+    pub version: String,
+    pub file_name: String,
+    pub url: String,
+}
+
+pub struct LinkManager;

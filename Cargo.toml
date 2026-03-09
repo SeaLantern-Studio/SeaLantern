@@ -1,5 +1,5 @@
 [workspace]
-members = ["src-tauri"]
+members = ["src-tauri", "docker-entry"]
 resolver = "2"
 
 # 优化配置（从 src-tauri/Cargo.toml 移到这里统一管理）

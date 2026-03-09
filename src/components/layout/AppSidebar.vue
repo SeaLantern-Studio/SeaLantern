@@ -89,6 +89,14 @@ const staticNavItems: NavItem[] = [
     group: "main",
   },
   {
+    name: "download-server",
+    path: "/download-server",
+    icon: "download",
+    labelKey: "common.download-server",
+    label: i18n.t("common.download-server"),
+    group: "main",
+  },
+  {
     name: "console",
     path: "/console",
     icon: "terminal",

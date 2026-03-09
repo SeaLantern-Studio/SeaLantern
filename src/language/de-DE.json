@@ -23,6 +23,7 @@
     "personalize": "Personalisieren",
     "about": "Über",
     "download-file": "Datei herunterladen",
+    "download-server": "Serverdatei herunterladen",
     "loading": "Laden...",
     "select_server": "Server auswählen",
     "open_folder": "Ordner öffnen",
@@ -129,6 +130,7 @@
     "stop": "Stoppen",
     "edit": "Bearbeiten",
     "delete": "Löschen",
+    "delete_server": "Server löschen",
     "status": "Status",
     "running": "Läuft",
     "stopped": "Gestoppt",
@@ -445,6 +447,8 @@
     "min_memory_desc": "Empfohlen wird 1/4 bis 1/2 des maximalen Arbeitsspeichers",
     "default_java": "Standard-Java-Pfad",
     "default_java_desc": "Leer lassen, um jedes Mal automatisch das am besten geeignete Java zu erkennen",
+    "default_run_path": "Standard-Serverpfad",
+    "default_run_path_desc": "Standard-Speicherpfad beim Erstellen von Servern",
     "jvm_args_desc": "Diese Parameter werden allen Serverstarts hinzugefügt. Geeignet für GC-Optimierungsparameter",
     "port_desc": "Der Minecraft-Standardport ist 25565. Mehrere Server benötigen unterschiedliche Ports",
     "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
@@ -525,6 +529,7 @@
     "server_name_placeholder": "Namen eingeben",
     "color_theme": "Farbthema",
     "color_theme_desc": "Farbthema der Software anpassen",
+    "theme_proxied_by": "Durch Plugin {plugin} verwaltet",
     "use_preset_colortheme": "Voreinstellung verwenden",
     "use_preset_colortheme_desc": "Wähle ein voreingestelltes Farbthema oder passe es an",
     "color_editing": "Farbbearbeitung",
@@ -562,6 +567,8 @@
     "developer_mode_desc": "Erweiterte Funktionen und Debugging-Optionen aktivieren",
     "developer_mode_toggle": "Entwicklermodus aktivieren",
     "developer_mode_toggle_desc": "Ermöglicht die Verwendung von Debug-Tools",
+    "minimal_mode": "Minimalmodus",
+    "minimal_mode_desc": "Alle Animationen und Effekte deaktivieren; nur grundlegendes Rendering und Interaktionen beibehalten",
     "color_options": {
       "custom": "Benutzerdefiniert"
     }
@@ -639,15 +646,23 @@
     "quit": "Beenden"
   },
   "delete_server": "Server löschen",
+  "plugins": {
+    "settings": "Plugin-Einstellungen"
+  },
   "download-file": {
     "title": "Datei mit Multi-Thread-Downloader herunterladen",
     "url": "Download-URL",
+    "url_placeholder": "Bitte Download-URL eingeben (http/https)",
     "save_folder": "Speichern unter",
+    "save_path": "Speicherpfad",
+    "select_folder": "Bitte Ordner auswählen",
+    "pick_folder": "Ordner auswählen",
     "filename": "Dateiname",
     "thread_count": "Thread-Anzahl",
     "thread_count_empty": "Thread-Anzahl darf nicht leer sein",
     "thread_count_invalid": "Ungültiges Zeichen",
     "thread_count_positive": "Thread-Anzahl muss eine positive ganze Zahl sein",
+    "thread_count_too_big": "Die Anzahl der Threads darf 256 nicht überschreiten",
     "cancel": "Abbrechen",
     "download": "Herunterladen",
     "browse": "Durchsuchen",
@@ -666,5 +681,36 @@
   },
   "downloader": {
     "connection_lost": "Verbindung zum Task verloren"
+  },
+  "downloadServerView": {
+    "title": "Server herunterladen",
+    "status": {
+      "failed": "Download fehlgeschlagen",
+      "finished": "Download abgeschlossen",
+      "downloading": "Wird heruntergeladen"
+    },
+    "form": {
+      "type": "Kategorie",
+      "typePlaceholder": "Kategorie auswählen",
+      "version": "Version",
+      "versionPlaceholder": "Version auswählen",
+      "fileName": "Dateiname",
+      "fileNamePlaceholder": "Dateiname nach Download",
+      "saveDir": "Speicherort",
+      "saveDirPlaceholder": "Speicherort auswählen",
+      "threadCount": "Threads",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Speicherort:",
+      "url": "Download-URL:"
+    },
+    "actions": {
+      "pickFolder": "Ordner auswählen",
+      "cancel": "Abbrechen",
+      "startDownload": "Download starten",
+      "downloading": "Wird heruntergeladen",
+      "goCreatePage": "Zur CreatePage"
+    }
   }
 }

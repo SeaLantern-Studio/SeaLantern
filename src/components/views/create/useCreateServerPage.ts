@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
@@ -17,6 +17,7 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
+import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { isBrowserEnv } from "@api/tauri";
 
 // UUID 生成函数（用于前端备用方案）
@@ -176,6 +177,10 @@ export function useCreateServerPage() {
     () => step4Completed.value && !startupSyncPending.value && !startupDetecting.value,
   );
 
+  onActivated(() => {
+    loadFromDraft();
+  });
+
   onMounted(async () => {
     await loadDefaultSettings();
   });
@@ -325,6 +330,15 @@ export function useCreateServerPage() {
       }
     } catch (error) {
       console.error("Failed to load default settings:", error);
+    }
+  }
+
+  function loadFromDraft() {
+    let store = useCreateServerDraftStore();
+    let draft = store.consumeDraft();
+    if (draft !== null) {
+      sourcePath.value = draft.sourcePath;
+      sourceType.value = draft.sourceType;
     }
   }
 

@@ -65,16 +65,16 @@ RUN { \
 # 复制 Cargo 文件（src-tauri 使用顶层 Cargo.lock）
 COPY Cargo.toml Cargo.lock ./
 COPY src-tauri/Cargo.toml ./src-tauri/
+COPY docker-entry/Cargo.toml ./docker-entry/
 
 # 复制源代码（cargo fetch 需要 src 目录）
 COPY . .
 
 # 预下载依赖（利用 Docker 缓存）
-RUN cd src-tauri && cargo fetch
+RUN cargo fetch
 
-# 构建 Release 版本 (库和二进制)
-WORKDIR /app/src-tauri
-RUN cargo build --release --lib --bins
+# 构建 docker-entry 二进制
+RUN cargo build --release -p docker-entry
 
 # ---------- 阶段 3: 精简运行镜像 ----------
 FROM docker.m.daocloud.io/debian:bookworm-slim

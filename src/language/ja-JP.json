@@ -23,6 +23,7 @@
     "personalize": "パーソナライズ",
     "about": "このソフトについて",
     "download-file": "ファイルをダウンロード",
+    "download-server": "サーバーをダウンロード",
     "loading": "読み込み中...",
     "select_server": "サーバーを選択",
     "open_folder": "フォルダを開く",
@@ -129,6 +130,7 @@
     "stop": "停止",
     "edit": "編集",
     "delete": "削除",
+    "delete_server": "サーバーを削除",
     "status": "状態",
     "running": "実行中",
     "stopped": "停止済み",
@@ -446,6 +448,8 @@
     "min_memory_desc": "最大メモリの1/4〜1/2を推奨",
     "default_java": "デフォルトJavaパス",
     "default_java_desc": "空欄にすると毎回自動で最適なJavaを検出",
+    "default_run_path": "デフォルトのサーバーパス",
+    "default_run_path_desc": "サーバー作成時のデフォルト保存先",
     "jvm_args_desc": "すべてのサーバー起動時に追加される引数。GC最適化などに使用",
     "port_desc": "Minecraftデフォルトポートは25565。複数サーバーには別々のポートが必要",
     "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
@@ -526,6 +530,7 @@
     "server_name_placeholder": "名前を入力",
     "color_theme": "カラーテーマ",
     "color_theme_desc": "ソフトウェアのカラーテーマをカスタマイズ",
+    "theme_proxied_by": "{plugin} プラグインにより管理されています",
     "use_preset_colortheme": "プリセットを使用",
     "use_preset_colortheme_desc": "プリセットカラーテーマを選択、またはカスタム設定",
     "color_editing": "カラー編集",
@@ -563,6 +568,8 @@
     "developer_mode_desc": "高度な機能とデバッグオプションを有効化",
     "developer_mode_toggle": "開発者モードを有効化",
     "developer_mode_toggle_desc": "有効にするとデバッグツールが使用可能になります",
+    "minimal_mode": "ミニマルモード",
+    "minimal_mode_desc": "すべてのアニメーションと効果を無効にし、基本的な描画と操作のみを保持します",
     "color_options": {
       "custom": "カスタム"
     }
@@ -640,15 +647,23 @@
     "quit": "終了"
   },
   "delete_server": "サーバーを削除",
+  "plugins": {
+    "settings": "プラグイン設定"
+  },
   "download-file": {
     "title": "マルチスレッドダウンローダーでファイルをダウンロード",
     "url": "ダウンロードURL",
+    "url_placeholder": "ダウンロードURLを入力してください（http/https）",
     "save_folder": "保存先",
+    "save_path": "保存先パス",
+    "select_folder": "フォルダを選択してください",
+    "pick_folder": "フォルダを選択",
     "filename": "ファイル名",
     "thread_count": "スレッド数",
     "thread_count_empty": "スレッド数を入力してください",
     "thread_count_invalid": "無効な文字です",
     "thread_count_positive": "スレッド数は正の整数で入力してください",
+    "thread_count_too_big": "スレッド数は256を超えることはできません",
     "cancel": "キャンセル",
     "download": "ダウンロード",
     "browse": "参照",
@@ -667,5 +682,36 @@
   },
   "downloader": {
     "connection_lost": "タスク接続が失われました"
+  },
+  "downloadServerView": {
+    "title": "サーバーのダウンロード",
+    "status": {
+      "failed": "ダウンロードに失敗しました",
+      "finished": "ダウンロードが完了しました",
+      "downloading": "ダウンロード中"
+    },
+    "form": {
+      "type": "カテゴリ",
+      "typePlaceholder": "カテゴリを選択してください",
+      "version": "バージョン",
+      "versionPlaceholder": "バージョンを選択してください",
+      "fileName": "ファイル名",
+      "fileNamePlaceholder": "ダウンロード後のファイル名",
+      "saveDir": "保存先",
+      "saveDirPlaceholder": "保存先を選択してください",
+      "threadCount": "スレッド数",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "保存先：",
+      "url": "ダウンロードURL："
+    },
+    "actions": {
+      "pickFolder": "フォルダを選択",
+      "cancel": "キャンセル",
+      "startDownload": "ダウンロード開始",
+      "downloading": "ダウンロード中",
+      "goCreatePage": "CreatePageへ"
+    }
   }
 }

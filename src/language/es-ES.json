@@ -23,6 +23,7 @@
     "personalize": "Personalizar",
     "about": "Acerca de",
     "download-file": "Descargar archivo",
+    "download-server": "Descargar servidor",
     "loading": "Cargando...",
     "select_server": "Seleccionar servidor",
     "open_folder": "Abrir carpeta",
@@ -129,6 +130,7 @@
     "stop": "Detener",
     "edit": "Editar",
     "delete": "Eliminar",
+    "delete_server": "Eliminar servidor",
     "status": "Estado",
     "running": "En ejecución",
     "stopped": "Detenido",
@@ -430,6 +432,8 @@
     "min_memory_desc": "Se recomienda entre 1/4 y 1/2 de la memoria máxima",
     "default_java": "Ruta de Java por defecto",
     "default_java_desc": "Dejar vacío para detectar automáticamente el Java más adecuado",
+    "default_run_path": "Ruta predeterminada del servidor",
+    "default_run_path_desc": "Ruta de almacenamiento predeterminada al crear servidores",
     "jvm_args_desc": "Estos argumentos se añadirán a todos los servidores. Útiles para optimización de GC",
     "port_desc": "El puerto por defecto de Minecraft es 25565. Servidores múltiples necesitan puertos diferentes",
     "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
@@ -510,6 +514,7 @@
     "server_name_placeholder": "Introduce el nombre",
     "color_theme": "Tema de color",
     "color_theme_desc": "Personalizar colores",
+    "theme_proxied_by": "Gestionado por el plugin {plugin}",
     "use_preset_colortheme": "Usar preestablecido",
     "use_preset_colortheme_desc": "Elige un tema preestablecido o personaliza",
     "color_editing": "Edición de color",
@@ -547,6 +552,8 @@
     "developer_mode_desc": "Activar funciones avanzadas y depuración",
     "developer_mode_toggle": "Activar modo desarrollador",
     "developer_mode_toggle_desc": "Al activarlo, se habilitan herramientas de depuración",
+    "minimal_mode": "Modo minimalista",
+    "minimal_mode_desc": "Desactiva todas las animaciones y efectos, manteniendo solo el renderizado e interacciones básicos",
     "color_options": {
       "custom": "Personalizado"
     }
@@ -618,6 +625,9 @@
     "update_download_failed": "Error al descargar",
     "github_repo": "Repositorio GitHub"
   },
+  "plugins": {
+    "settings": "Configuración del plugin"
+  },
   "tray": {
     "minimize": "Minimizar a bandeja",
     "show": "Mostrar",
@@ -627,12 +637,17 @@
   "download-file": {
     "title": "Descargar archivo usando descargador multihilo",
     "url": "URL de descarga",
+    "url_placeholder": "Introduce la URL de descarga (http/https)",
     "save_folder": "Guardar en",
+    "save_path": "Ruta de guardado",
+    "select_folder": "Selecciona una carpeta",
+    "pick_folder": "Elegir carpeta",
     "filename": "Nombre del archivo",
     "thread_count": "Número de hilos",
     "thread_count_empty": "El número de hilos no puede estar vacío",
     "thread_count_invalid": "Carácter no válido",
     "thread_count_positive": "El número de hilos debe ser un número entero positivo",
+    "thread_count_too_big": "El número de hilos no puede superar 256",
     "cancel": "Cancelar",
     "download": "Descargar",
     "browse": "Examinar",
@@ -651,5 +666,36 @@
   },
   "downloader": {
     "connection_lost": "Conexión de tarea perdida"
+  },
+  "downloadServerView": {
+    "title": "Descargar servidor",
+    "status": {
+      "failed": "Error en la descarga",
+      "finished": "Descarga completada",
+      "downloading": "Descargando"
+    },
+    "form": {
+      "type": "Categoría",
+      "typePlaceholder": "Seleccione una categoría",
+      "version": "Versión",
+      "versionPlaceholder": "Seleccione una versión",
+      "fileName": "Nombre del archivo",
+      "fileNamePlaceholder": "Nombre del archivo después de la descarga",
+      "saveDir": "Directorio de guardado",
+      "saveDirPlaceholder": "Seleccione un directorio de guardado",
+      "threadCount": "Número de hilos",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Guardar en:",
+      "url": "URL de descarga:"
+    },
+    "actions": {
+      "pickFolder": "Seleccionar carpeta",
+      "cancel": "Cancelar",
+      "startDownload": "Iniciar descarga",
+      "downloading": "Descargando",
+      "goCreatePage": "Ir a CreatePage"
+    }
   }
 }

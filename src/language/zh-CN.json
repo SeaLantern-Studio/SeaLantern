@@ -23,6 +23,7 @@
     "personalize": "个性化",
     "about": "关于",
     "download-file": "文件下载",
+    "download-server": "服务端下载",
     "loading": "加载中...",
     "select_server": "选择服务器",
     "open_folder": "打开文件夹",
@@ -954,12 +955,18 @@
   "download-file": {
     "title": "使用多线程下载器下载文件",
     "url": "下载地址",
+    "url_placeholder": "请输入下载地址（http/https）",
     "save_folder": "保存到",
+    "save_path": "保存路径",
+    "select_folder": "请选择目录",
+    "pick_folder": "选择目录",
     "filename": "文件名",
+    "filename_placeholder": "请输入文件名（如 server.jar）",
     "thread_count": "线程数",
     "thread_count_empty": "线程数不能为空",
     "thread_count_invalid": "字符不合法",
     "thread_count_positive": "线程数必须是一个正整数",
+    "thread_count_too_big": "线程数不能超过 256",
     "cancel": "取消",
     "download": "下载",
     "browse": "浏览",
@@ -978,5 +985,36 @@
   },
   "downloader": {
     "connection_lost": "任务连接丢失"
+  },
+  "downloadServerView": {
+    "title": "下载服务端",
+    "status": {
+      "failed": "下载失败",
+      "finished": "下载完成",
+      "downloading": "下载中"
+    },
+    "form": {
+      "type": "类别",
+      "typePlaceholder": "请选择类别",
+      "version": "版本",
+      "versionPlaceholder": "请选择版本",
+      "fileName": "文件名",
+      "fileNamePlaceholder": "下载后的文件名",
+      "saveDir": "保存目录",
+      "saveDirPlaceholder": "请选择保存目录",
+      "threadCount": "线程数",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "将保存到：",
+      "url": "下载地址："
+    },
+    "actions": {
+      "pickFolder": "选择目录",
+      "cancel": "取消",
+      "startDownload": "开始下载",
+      "downloading": "下载中",
+      "goCreatePage": "前往 CreatePage"
+    }
   }
 }

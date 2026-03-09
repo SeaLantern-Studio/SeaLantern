@@ -10,11 +10,6 @@ default-run = "sea-lantern"
 name = "sea_lantern_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
-[[bin]]
-name = "docker-entry"
-path = "src/bin/docker-entry.rs"
-required-features = ["docker"]
-
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

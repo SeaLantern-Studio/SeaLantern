@@ -41,13 +41,19 @@ const canDownload = computed(() => {
     return false;
   }
 
+  // 验证线程数
+  if (!checkThreadCount()) {
+    return false;
+  }
+
   // 验证URL格式
   try {
     new URL(url.value.trim());
-    return true;
   } catch {
     return false;
   }
+
+  return true;
 });
 
 function checkUrl() {
@@ -74,6 +80,26 @@ async function pickFloder() {
   } catch (e) {
     console.error("Pick file error:", e);
   }
+}
+
+function checkThreadCount() {
+  const threadCountValue = threadCount.value;
+  if (threadCountValue == "") {
+    return false;
+  }
+  if (!/^-?\d+$/.test(threadCountValue)) {
+    showError(i18n.t("download-file.thread_count_invalid"));
+    return false;
+  }
+  if (!/^[1-9]\d*$/.test(threadCountValue)) {
+    showError(i18n.t("download-file.thread_count_positive"));
+    return false;
+  }
+  if (parseInt(threadCountValue, 10) > 256) {
+    showError(i18n.t("download-file.thread_count_too_big"));
+    return false;
+  }
+  return true;
 }
 
 const statusLabel = computed(() => {
@@ -160,6 +186,7 @@ watch(taskError, (newError) => {
         @checkUrl="checkUrl()"
         @checkFilename="checkFilename()"
         @pickFolder="pickFloder"
+        @checkThreadCount="checkThreadCount"
       />
     </SLCard>
 
@@ -242,15 +269,5 @@ watch(taskError, (newError) => {
   display: flex;
   justify-content: center;
   width: 100%;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 </style>

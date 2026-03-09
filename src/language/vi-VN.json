@@ -23,6 +23,7 @@
     "personalize": "Cá nhân hóa",
     "about": "Giới thiệu",
     "download-file": "Tải tập tin",
+    "download-server": "Tải máy chủ",
     "loading": "Đang tải...",
     "select_server": "Chọn máy chủ",
     "open_folder": "Mở thư mục",
@@ -129,6 +130,7 @@
     "stop": "Dừng",
     "edit": "Sửa",
     "delete": "Xóa",
+    "delete_server": "Xóa máy chủ",
     "status": "Trạng thái",
     "running": "Đang chạy",
     "stopped": "Đã dừng",
@@ -445,6 +447,8 @@
     "min_memory_desc": "Khuyến nghị đặt từ 1/4 đến 1/2 bộ nhớ tối đa",
     "default_java": "Đường dẫn Java mặc định",
     "default_java_desc": "Để trống để tự động phát hiện Java phù hợp nhất mỗi lần",
+    "default_run_path": "Đường dẫn máy chủ mặc định",
+    "default_run_path_desc": "Đường dẫn lưu mặc định khi tạo máy chủ",
     "jvm_args_desc": "Các tham số này sẽ được thêm vào khi khởi động tất cả máy chủ. Thích hợp để tối ưu GC",
     "port_desc": "Cổng mặc định của Minecraft là 25565. Nhiều máy chủ cần cổng khác nhau",
     "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
@@ -525,6 +529,7 @@
     "server_name_placeholder": "Nhập tên",
     "color_theme": "Chủ đề màu",
     "color_theme_desc": "Tùy chỉnh màu sắc",
+    "theme_proxied_by": "Được quản lý bởi plugin {plugin}",
     "use_preset_colortheme": "Dùng mẫu có sẵn",
     "use_preset_colortheme_desc": "Chọn mẫu màu có sẵn hoặc tự tùy chỉnh",
     "color_editing": "Chỉnh sửa màu",
@@ -562,6 +567,8 @@
     "developer_mode_desc": "Bật tính năng nâng cao và tùy chọn gỡ lỗi",
     "developer_mode_toggle": "Bật chế độ nhà phát triển",
     "developer_mode_toggle_desc": "Bật để sử dụng công cụ gỡ lỗi",
+    "minimal_mode": "Chế độ tối giản",
+    "minimal_mode_desc": "Tắt toàn bộ hiệu ứng và hoạt ảnh, chỉ giữ lại hiển thị và tương tác cơ bản",
     "color_options": {
       "custom": "Tùy chỉnh"
     }
@@ -633,6 +640,9 @@
     "update_download_failed": "Tải xuống thất bại",
     "github_repo": "Kho GitHub"
   },
+  "plugins": {
+    "settings": "Cài đặt plugin"
+  },
   "tray": {
     "minimize": "Thu vào khay",
     "show": "Hiện",
@@ -642,12 +652,17 @@
   "download-file": {
     "title": "Tải tập tin bằng trình tải xuống đa luồng",
     "url": "URL tải xuống",
+    "url_placeholder": "Vui lòng nhập URL tải xuống (http/https)",
     "save_folder": "Lưu vào",
+    "save_path": "Đường dẫn lưu",
+    "select_folder": "Vui lòng chọn thư mục",
+    "pick_folder": "Chọn thư mục",
     "filename": "Tên tập tin",
     "thread_count": "Số luồng",
     "thread_count_empty": "Số luồng không được để trống",
     "thread_count_invalid": "Ký tự không hợp lệ",
     "thread_count_positive": "Số luồng phải là số nguyên dương",
+    "thread_count_too_big": "Số luồng không được vượt quá 256",
     "cancel": "Hủy",
     "download": "Tải xuống",
     "browse": "Duyệt",
@@ -666,5 +681,36 @@
   },
   "downloader": {
     "connection_lost": "Mất kết nối tác vụ"
+  },
+  "downloadServerView": {
+    "title": "Tải xuống máy chủ",
+    "status": {
+      "failed": "Tải xuống thất bại",
+      "finished": "Tải xuống hoàn tất",
+      "downloading": "Đang tải xuống"
+    },
+    "form": {
+      "type": "Danh mục",
+      "typePlaceholder": "Vui lòng chọn danh mục",
+      "version": "Phiên bản",
+      "versionPlaceholder": "Vui lòng chọn phiên bản",
+      "fileName": "Tên tệp",
+      "fileNamePlaceholder": "Tên tệp sau khi tải xuống",
+      "saveDir": "Thư mục lưu",
+      "saveDirPlaceholder": "Vui lòng chọn thư mục lưu",
+      "threadCount": "Số luồng",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Lưu vào:",
+      "url": "URL tải xuống:"
+    },
+    "actions": {
+      "pickFolder": "Chọn thư mục",
+      "cancel": "Hủy",
+      "startDownload": "Bắt đầu tải xuống",
+      "downloading": "Đang tải xuống",
+      "goCreatePage": "Đi tới CreatePage"
+    }
   }
 }

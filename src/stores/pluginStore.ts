@@ -8,6 +8,7 @@ import DOMPurify from "dompurify";
 import * as pluginApi from "@api/plugin";
 import type { BufferedComponentEvent } from "@api/plugin";
 import { setThemeProviderOverrides } from "@utils/theme";
+import { useContextMenuStore } from "@stores/contextMenuStore";
 import type {
   PluginInfo,
   PluginNavItem,
@@ -1587,7 +1588,6 @@ export const usePluginStore = defineStore("plugin", () => {
         console.log(
           `[ContextMenu] Replaying ${contextMenuSnapshot.length} buffered context menu events`,
         );
-        const { useContextMenuStore } = await import("@stores/contextMenuStore");
         const contextMenuStore = useContextMenuStore();
         for (const event of contextMenuSnapshot) {
           contextMenuStore.handleContextMenuEvent({
