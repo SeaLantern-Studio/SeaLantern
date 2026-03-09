@@ -701,7 +701,7 @@ impl ServerManager {
             servers
                 .iter()
                 .find(|s| s.id == id)
-                .ok_or_else(|| "未找到服务器".to_string())?
+                .ok_or_else(|| format!("未找到服务器: {}", id))?
                 .clone()
         };
 
@@ -718,7 +718,7 @@ impl ServerManager {
                         procs.remove(id);
                         server_log_pipeline::shutdown_writer(id);
                     }
-                    Ok(None) => return Err("服务器已在运行中".to_string()),
+                    Ok(None) => return Err(format!("服务器已在运行中: {}", id)),
                     Err(_) => {
                         procs.remove(id);
                         server_log_pipeline::shutdown_writer(id);
@@ -1082,7 +1082,9 @@ impl ServerManager {
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let mut child = cmd.spawn().map_err(|e| format!("启动失败: {}", e))?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("启动失败（id={}, path={}）: {}", id, server.path, e))?;
         println!("Java进程已启动，PID: {:?}", child.id());
 
         let stdout = child.stdout.take();
@@ -1204,10 +1206,12 @@ impl ServerManager {
         let mut procs = self.lock_processes()?;
         let child = procs
             .get_mut(id)
-            .ok_or_else(|| "服务器未运行".to_string())?;
+            .ok_or_else(|| format!("服务器未运行: {}", id))?;
         if let Some(ref mut stdin) = child.stdin {
-            writeln!(stdin, "{}", command).map_err(|e| format!("发送失败: {}", e))?;
-            stdin.flush().map_err(|e| format!("发送失败: {}", e))?;
+            writeln!(stdin, "{}", command).map_err(|e| format!("发送失败（id={}）: {}", id, e))?;
+            stdin
+                .flush()
+                .map_err(|e| format!("发送失败（id={}）: {}", id, e))?;
         }
         Ok(())
     }

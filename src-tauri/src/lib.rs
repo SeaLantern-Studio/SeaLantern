@@ -40,7 +40,9 @@ pub fn run() {
             Ok(rt) => rt,
             Err(e) => {
                 eprintln!("SeaLantern: Failed to create Tokio runtime for HTTP server: {}", e);
-                eprintln!("SeaLantern: This may be due to container resource limits (memory, threads, etc.)");
+                eprintln!(
+                    "SeaLantern: This may be due to container resource limits (memory, threads, etc.)"
+                );
                 std::process::exit(1);
             }
         };
@@ -52,7 +54,7 @@ pub fn run() {
                 .exists()
                 .then_some(static_dir);
 
-            services::http_server::run_http_server("0.0.0.0:3000", static_dir_opt).await;
+            services::http::run_http_server("0.0.0.0:3000", static_dir_opt).await;
         });
         return;
     }
