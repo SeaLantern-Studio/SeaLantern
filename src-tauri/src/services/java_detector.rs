@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -16,20 +17,16 @@ use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
 
-// 常见 Java 目录别名
-#[allow(dead_code)] // 我实在绷不住了, 本地clippy能过但是github action上会报错 fuck the linter
+// 常见 Java 目录别名（仅 Windows 使用）
+#[cfg(target_os = "windows")]
 const JAVA_PATH_ALIASES: &[&str] = &[
     "java", "jdk", "jre", "graalvm", "corretto", "temurin", "zulu", "openjdk", "gvl", "ojdk",
 ];
 
-#[cfg(target_os = "windows")]
 const ENV_VARS: &[&str] = &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"];
 
 #[cfg(target_os = "windows")]
 const PROGRAM_FILES_JAVA_DIRS: &[&str] = &["Java", "Zulu", "Eclipse Adoptium", "BellSoft"];
-
-#[cfg(not(target_os = "windows"))]
-const ENV_VARS: &[&str] = &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"];
 
 #[cfg(not(target_os = "windows"))]
 const COMMON_JAVA_DIRS: &[&str] =
@@ -49,6 +46,12 @@ pub struct JavaInfo {
     pub is_64bit: bool,
     pub major_version: u32,
 }
+
+// 究竟是谁在每次调用时都new一个Regex
+static VERSION_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?i)(?:java|openjdk) version "\s*(?P<version>[^"\s]+)\s*""#).unwrap()
+    // unwrap是安全的, 因为正则表达式是固定的, 瞎改出毛病了然后就会panic方便修
+});
 
 pub fn detect_java_installations() -> Vec<JavaInfo> {
     let mut results = Vec::new();
@@ -190,16 +193,16 @@ fn check_java(path: &str) -> Option<JavaInfo> {
         return None;
     }
 
-    let re = Regex::new(r#"(?i)(?:java|openjdk) version "\s*(?P<version>[^"\s]+)\s*""#).ok()?;
-    let caps = re.captures(&combined)?;
+    let caps = VERSION_RE.captures(&combined)?;
     let version = caps["version"].to_string();
 
     let major_version = parse_major_version(&version);
-    let is_64bit = combined.contains("64-Bit") || combined.contains("64-bit");
+    let combined_lower = combined.to_lowercase();
+    let is_64bit = combined_lower.contains("64-bit");
 
-    let vendor = if combined.to_lowercase().contains("zulu") {
+    let vendor = if combined_lower.contains("zulu") {
         "Zulu".to_string()
-    } else if combined.to_lowercase().contains("openjdk") {
+    } else if combined_lower.contains("openjdk") {
         "OpenJDK".to_string()
     } else {
         "Oracle".to_string()
