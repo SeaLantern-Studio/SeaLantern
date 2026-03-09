@@ -21,6 +21,7 @@ use winreg::RegKey;
 #[cfg(target_os = "windows")]
 const JAVA_PATH_ALIASES: &[&str] = &[
     "java", "jdk", "jre", "graalvm", "corretto", "temurin", "zulu", "openjdk", "gvl", "ojdk",
+    "bin", "j",
 ];
 
 const ENV_VARS: &[&str] = &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"];
