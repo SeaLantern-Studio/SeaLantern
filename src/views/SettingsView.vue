@@ -249,6 +249,7 @@ async function handleBrowseRunPath() {
     <template v-else-if="settings">
       <GeneralSettingsCard
         v-model:closeServersOnExit="settings.close_servers_on_exit"
+        v-model:closeServersOnUpdate="settings.close_servers_on_update"
         v-model:autoAcceptEula="settings.auto_accept_eula"
         v-model:closeAction="settings.close_action"
         @change="markChanged"
