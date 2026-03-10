@@ -1,6 +1,6 @@
 # Maintainer: xuezhajv <liaozecheng123@163.com>  qq群：293748695
 # Contributor: github.com/FPSZ <
-pkgname=sealantern
+pkgname=sealantern-bin
 pkgver=1.0.2
 pkgrel=1
 pkgdesc="A lightweight Minecraft server management tool based on Tauri 2 + Rust + Vue 3        一个轻量化的 Minecraft 服务器管理工具 ，基于 Tauri 2 + Rust + Vue 3"
@@ -114,7 +114,7 @@ optdepends=(
 )
 
 options=('!strip' '!emptydirs')
-install=${pkgname}.install
+install=sealantern.install
 
 source=("https://github.com/SeaLantern-Studio/SeaLantern/releases/download/sea-lantern-v$pkgver/Sea.Lantern_${pkgver}_amd64.deb")
 sha256sums=('SKIP')
