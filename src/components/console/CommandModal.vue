@@ -32,8 +32,8 @@ const emit = defineEmits<{
         <label for="command-name">{{ i18n.t("console.command_name") }}</label>
         <SLInput
           id="command-name"
-          :value="commandName"
-          @input="emit('updateName', $event.target.value)"
+          :modelValue="commandName"
+          @update:modelValue="emit('updateName', $event)"
           :placeholder="i18n.t('console.enter_command_name')"
           :disabled="loading"
         />
@@ -42,8 +42,8 @@ const emit = defineEmits<{
         <label for="command-text">{{ i18n.t("console.command_content") }}</label>
         <SLInput
           id="command-text"
-          :value="commandText"
-          @input="emit('updateText', $event.target.value)"
+          :modelValue="commandText"
+          @update:modelValue="emit('updateText', $event)"
           :placeholder="i18n.t('console.enter_command_content')"
           :disabled="loading"
         />
