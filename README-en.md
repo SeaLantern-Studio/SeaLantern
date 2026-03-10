@@ -43,6 +43,12 @@ Download the software from [Releases](https://github.com/SeaLantern-Studio/SeaLa
 
 Import a server .jar, choose a Java version, then click Start. It's that simple.
 
+## FAQ
+
+### App launches but the window is blank (proxy related)
+
+Because Tauri relies on the system network stack, transparent proxies set via environment variables (such as `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`) can cause severe issues, including a blank window. If you need a proxy, configure it inside the app.
+
 ## Development
 
 You'll need Node.js 20+ and Rust 1.70+.

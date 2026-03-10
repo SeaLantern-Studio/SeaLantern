@@ -42,6 +42,12 @@
 
 下载 [release](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest) 版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
 
+## 常见问题
+
+### 应用程序启动但无法显示窗口（代理相关）
+
+由于 Tauri 框架特性需要使用网络栈，通过环境变量设置的透明代理会导致包括应用程序无法显示在内的各种严重问题。如要使用代理，请在应用程序内的代理设置中配置。
+
 ## 开发
 
 你需要 `Node.js 20+` 和 `Rust 1.70+`。
