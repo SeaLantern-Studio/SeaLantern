@@ -82,3 +82,5 @@ pkgbase = sealantern-bin
 	sha256sums = SKIP
 
 pkgname = sealantern-bin
+	provides = sealantern
+	conflicts = sealantern
