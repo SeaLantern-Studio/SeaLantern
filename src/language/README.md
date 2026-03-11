@@ -14,7 +14,7 @@ language/
 ├── ko-KR.json    # 韩语
 ├── de-DE.json    # 德语
 ├── es-ES.json    # 西班牙语
-├── fr-FA.json    # 波斯语
+├── fr-FA.json    # 法语
 ├── ru-RU.json    # 俄语
 ├── vi-VN.json    # 越南语
 ├── README.md     # 本文档
@@ -92,7 +92,9 @@ const t = (key: string) => i18n.t(key);
 | ko-KR | 韩语     |
 | de-DE | 德语     |
 | es-ES | 西班牙语 |
+| fr-FA | 法语     |
 | ru-RU | 俄语     |
+| vi-VN | 越南语   |
 
 ## 文件结构
 

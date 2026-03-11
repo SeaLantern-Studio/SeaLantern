@@ -14,7 +14,7 @@ language/
 ├── ko-KR.json    # Korean
 ├── de-DE.json    # German
 ├── es-ES.json    # Spanish
-├── fr-FR.json    # French
+├── fr-FA.json    # French
 ├── ru-RU.json    # Russian
 ├── vi-VN.json    # Vietnamese
 ├── README.md     # Simplified Chinese version of this document
@@ -92,7 +92,9 @@ Follows ISO 639-1 standard, format is `language-region`:
 | ko-KR | Korean              |
 | de-DE | German              |
 | es-ES | Spanish             |
+| fr-FA | French              |
 | ru-RU | Russian             |
+| vi-VN | Vietnamese          |
 
 ## File Structure
 
