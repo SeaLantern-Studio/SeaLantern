@@ -17,6 +17,10 @@ pub struct AppSettings {
     #[serde(default = "default_true")]
     pub close_servers_on_exit: bool,
 
+    /// 是否在应用更新/安装前自动关闭所有服务器
+    #[serde(default = "default_true")]
+    pub close_servers_on_update: bool,
+
     #[serde(default = "default_true")]
     pub auto_accept_eula: bool,
 
@@ -198,6 +202,7 @@ impl AppSettings {
         let mut changed = Vec::new();
 
         if self.close_servers_on_exit != other.close_servers_on_exit
+            || self.close_servers_on_update != other.close_servers_on_update
             || self.auto_accept_eula != other.auto_accept_eula
             || self.close_action != other.close_action
         {
@@ -262,6 +267,9 @@ impl AppSettings {
     pub fn merge_from(&mut self, partial: &PartialSettings) {
         if let Some(v) = partial.close_servers_on_exit {
             self.close_servers_on_exit = v;
+        }
+        if let Some(v) = partial.close_servers_on_update {
+            self.close_servers_on_update = v;
         }
         if let Some(v) = partial.auto_accept_eula {
             self.auto_accept_eula = v;
@@ -370,6 +378,8 @@ pub struct PartialSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub close_servers_on_exit: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub close_servers_on_update: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_accept_eula: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_max_memory: Option<u32>,
@@ -441,6 +451,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         AppSettings {
             close_servers_on_exit: true,
+            close_servers_on_update: true,
             auto_accept_eula: true,
             default_max_memory: 2048,
             default_min_memory: 512,

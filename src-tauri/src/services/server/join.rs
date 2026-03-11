@@ -28,16 +28,20 @@ impl JoinManager {
     pub async fn resolve_id(&self, id: &str) -> Result<ServerAddress, String> {
         // 1. 检查本地已有的服务器 ID
         let server_manager = global::server_manager();
-        let servers = server_manager.servers.lock().unwrap();
-        if let Some(server) = servers.iter().find(|s| s.id == id || s.name == id) {
-            return Ok(ServerAddress {
-                host: "127.0.0.1".to_string(),
-                port: server.port,
-            });
+        if let Ok(servers) = server_manager.servers.lock() {
+            if let Some(server) = servers.iter().find(|s| s.id == id || s.name == id) {
+                return Ok(ServerAddress {
+                    host: "127.0.0.1".to_string(),
+                    port: server.port,
+                });
+            }
         }
 
         // 2. 检查手动添加的映射
-        let map = self.id_map.lock().unwrap();
+        let map = self
+            .id_map
+            .lock()
+            .map_err(|_| "join_manager id_map lock poisoned".to_string())?;
         if let Some(addr) = map.get(id) {
             return Ok(addr.clone());
         }

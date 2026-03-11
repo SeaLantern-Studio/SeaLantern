@@ -128,10 +128,10 @@ pub fn init_db(server_path: &Path) -> Result<(), String> {
 }
 
 pub fn shutdown_writer(server_id: &str) {
-    let writer = {
-        let mut writers = log_writers().lock().expect("log writers lock poisoned");
-        writers.remove(server_id)
-    };
+    let writer = log_writers()
+        .lock()
+        .ok()
+        .and_then(|mut writers| writers.remove(server_id));
 
     if let Some(writer) = writer {
         let _ = writer.sender.send(WriterCommand::Shutdown);
@@ -155,16 +155,11 @@ pub fn get_logs(server_id: &str, since: usize, recent_limit: Option<usize>) -> V
 }
 
 pub fn get_all_logs() -> Vec<(String, Vec<String>)> {
-    let server_ids = super::global::server_manager()
-        .servers
-        .lock()
-        .map(|servers| {
-            servers
-                .iter()
-                .map(|server| server.id.clone())
-                .collect::<Vec<String>>()
-        })
-        .unwrap_or_default();
+    let server_ids = crate::services::global::server_manager()
+        .get_server_list()
+        .into_iter()
+        .map(|server| server.id)
+        .collect::<Vec<String>>();
 
     let mut result = Vec::with_capacity(server_ids.len());
     for server_id in server_ids {
@@ -182,7 +177,9 @@ fn get_or_create_writer(
     server_path: &Path,
 ) -> Result<mpsc::Sender<WriterCommand>, String> {
     {
-        let writers = log_writers().lock().expect("log writers lock poisoned");
+        let writers = log_writers()
+            .lock()
+            .map_err(|_| "log writers lock poisoned".to_string())?;
         if let Some(writer) = writers.get(server_id) {
             return Ok(writer.sender.clone());
         }
@@ -195,7 +192,9 @@ fn get_or_create_writer(
     let sid = server_id.to_string();
     let worker = thread::spawn(move || run_log_writer(sid, path, rx));
 
-    let mut writers = log_writers().lock().expect("log writers lock poisoned");
+    let mut writers = log_writers()
+        .lock()
+        .map_err(|_| "log writers lock poisoned".to_string())?;
     if let Some(existing) = writers.get(server_id) {
         let _ = tx.send(WriterCommand::Shutdown);
         let _ = worker.join();
@@ -314,7 +313,7 @@ pub fn append_log(
 ) -> Result<(), String> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
+        .map_err(|e| format!("获取日志时间戳失败: {}", e))?
         .as_millis() as i64;
     let entry = LogWriteEntry {
         timestamp,
@@ -400,7 +399,7 @@ where
                     let _ = append_server_log(&server_id, &line);
 
                     if line.contains("Done (") && line.contains(")! For help") {
-                        super::global::server_manager().clear_starting(&server_id);
+                        crate::services::global::server_manager().clear_starting(&server_id);
                         let _ = crate::plugins::api::emit_server_ready(&server_id);
                     }
                 }
@@ -419,9 +418,10 @@ fn emit_server_log_line(server_id: &str, line: &str) {
 
 fn process_log_line(server_id: &str, line: &str) -> String {
     let processors = server_log_processors();
-    let guard = processors
-        .lock()
-        .expect("server log processors lock poisoned");
+    let guard = match processors.lock() {
+        Ok(guard) => guard,
+        Err(_) => return line.to_string(),
+    };
 
     let mut processed_line = line.to_string();
     for processor in &*guard {
@@ -499,11 +499,8 @@ fn table_has_column(conn: &Connection, table: &str, column: &str) -> Result<bool
 }
 
 fn resolve_server_path(server_id: &str) -> Result<PathBuf, String> {
-    let manager = super::global::server_manager();
-    let servers = manager
-        .servers
-        .lock()
-        .map_err(|_| "servers lock poisoned".to_string())?;
+    let manager = crate::services::global::server_manager();
+    let servers = manager.get_server_list();
     servers
         .iter()
         .find(|server| server.id == server_id)
