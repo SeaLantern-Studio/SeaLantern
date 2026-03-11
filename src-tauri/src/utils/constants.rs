@@ -30,7 +30,7 @@ pub const MAX_SCAN_DEPTH: u32 = 5;
 #[cfg(not(target_os = "windows"))]
 pub const MAX_SCAN_DEPTH: u32 = 4;
 
-/// services/i8n.rs
+/// services/i18n.rs
 pub const SUPPORTED_LOCALES: &[&str] = &["zh-CN", "en-US"];
 
 /// services/server/downloader.rs + services/download/starter_installer_links.rs
@@ -42,7 +42,7 @@ pub const STARTER_INSTALLER_LINKS_URL: &str = DOWNLOAD_LINK_LIST_URL;
 pub const JAVA_DOWNLOAD_TIMEOUT_SECS: u64 = 60;
 pub const JAVA_DOWNLOAD_RETRY_LIMIT: usize = 3;
 
-/// services/server/log_pipline.rs
+/// services/server/log_pipeline.rs
 pub const LATEST_LOG_DB_FILE: &str = "latest_log.db";
 pub const LOG_BATCH_SIZE: usize = 128;
 pub const LOG_FLUSH_INTERVAL_MS: u64 = 50;

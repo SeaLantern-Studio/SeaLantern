@@ -7,7 +7,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-// 此处常量见 utils/costants.rs
+// 此处常量见 utils/constants.rs
 // 常量定义
 use crate::utils::constants::{ENV_VARS, MAX_SCAN_DEPTH};
 

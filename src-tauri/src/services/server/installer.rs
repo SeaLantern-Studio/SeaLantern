@@ -278,7 +278,7 @@ pub fn detect_core_type(input: &str) -> String {
     CoreType::detect_from_filename(&target_file).to_string()
 }
 
-///此处常量见 utils/costants.rs
+///此处常量见 utils/constants.rs
 use crate::utils::constants::STARTER_MC_VERSION_OPTIONS;
 
 pub fn detect_mc_version_from_mods(root_dir: &Path) -> (Option<String>, bool) {

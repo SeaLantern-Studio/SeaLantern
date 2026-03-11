@@ -49,7 +49,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection, TransactionBehavior};
 
-///此处常量见 utils/costants.rs
+///此处常量见 utils/constants.rs
 use crate::utils::constants::{LATEST_LOG_DB_FILE, LOG_BATCH_SIZE, LOG_FLUSH_INTERVAL_MS};
 
 pub type ServerLogEventHandler = Arc<dyn Fn(&str, &str) -> Result<(), String> + Send + Sync>;

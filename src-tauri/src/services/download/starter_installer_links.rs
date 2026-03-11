@@ -10,7 +10,7 @@ use serde::Deserialize;
 // 2) 解析 CNB 分层 JSON（types -> core -> version -> file/url）
 // 3) 按固定优先级选择安装器下载 URL
 
-///此处常量见 utils/costants.rs
+///此处常量见 utils/constants.rs
 use crate::utils::constants::{STARTER_INSTALLER_LINKS_FILE, STARTER_INSTALLER_LINKS_URL};
 const STARTER_INSTALLER_LINKS_CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const STARTER_INSTALLER_FETCH_RETRY_LIMIT: usize = 3;

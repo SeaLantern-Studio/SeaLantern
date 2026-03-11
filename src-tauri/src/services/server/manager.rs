@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use super::installer;
 use super::log_pipeline as server_log_pipeline;
 
-///此处常量见 utils/costants.rs
+///此处常量见 utils/constants.rs
 use crate::utils::constants::{DATA_FILE, RUN_PATH_MAP_FILE};
 
 /// 验证服务器名称，防止路径遍历攻击

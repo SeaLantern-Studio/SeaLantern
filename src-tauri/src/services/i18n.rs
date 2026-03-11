@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-///此处常量见 utils/costants.rs
+///此处常量见 utils/constants.rs
 use crate::utils::constants::SUPPORTED_LOCALES;
 
 // 类型别名，简化复杂类型定义

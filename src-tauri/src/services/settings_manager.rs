@@ -1,7 +1,7 @@
 use crate::models::settings::{AppSettings, PartialSettings, SettingsGroup};
 use std::sync::Mutex;
 
-///此处常量见 utils/costants.rs
+///此处常量见 utils/constants.rs
 use crate::utils::constants::SETTINGS_FILE;
 
 pub struct SettingsManager {
