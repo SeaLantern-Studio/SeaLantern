@@ -5,8 +5,9 @@ use crate::utils::downloader::{SingleThreadDownloader, USER_AGENT_EXAMPLE};
 use serde_json::Value;
 use tokio::sync::OnceCell;
 
-const DOWNLOAD_LINK_LIST_URL: &str =
-    crate::services::starter_installer_links::STARTER_INSTALLER_LINKS_URL;
+///此处常量见 utils/costants.rs
+use crate::utils::constants::DOWNLOAD_LINK_LIST_URL;
+
 static DOWNLOAD_LINKS: OnceCell<BaseDownloadLinks> = OnceCell::const_new();
 
 impl LinkManager {
