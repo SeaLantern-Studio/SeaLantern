@@ -170,6 +170,22 @@ mod windows {
         value.replace('\'', "''")
     }
 
+    fn decode_powershell_output(bytes: &[u8]) -> String {
+        if bytes.is_empty() {
+            return String::new();
+        }
+
+        if bytes.len() % 2 == 0 && bytes.iter().any(|b| *b == 0) {
+            let utf16 = bytes
+                .chunks_exact(2)
+                .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+                .collect::<Vec<u16>>();
+            return String::from_utf16_lossy(&utf16).trim().to_string();
+        }
+
+        String::from_utf8_lossy(bytes).trim().to_string()
+    }
+
     /// 构建隐藏的 PowerShell 命令
     #[allow(dead_code)]
     pub fn build_hidden_powershell_command(command: &str) -> std::process::Command {
@@ -267,7 +283,7 @@ mod windows {
             .map_err(|e| format!("Failed to request administrator privileges: {}", e))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let stderr = decode_powershell_output(&output.stderr);
             return Err(if stderr.is_empty() {
                 "Administrator permission was denied or installer failed to launch".to_string()
             } else {
@@ -278,7 +294,7 @@ mod windows {
             });
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stdout = decode_powershell_output(&output.stdout);
         let installer_pid = stdout
             .lines()
             .rev()
