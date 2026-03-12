@@ -134,7 +134,7 @@ async function pickFolder() {
 }
 
 function buildSavePath() {
-  const dir = saveDir.value.replace(/[\\/]+$/, "");
+  const dir = saveDir.value.replace(/[\\/]+$/, "").replace("\\", "/");
   const file = filename.value.replace(/^[\\/]+/, "");
   return `${dir}/${file}`;
 }
@@ -355,11 +355,6 @@ onMounted(() => {
 
 .field label {
   font-size: 0.85rem;
-  color: var(--sl-text-tertiary);
-}
-
-.loading-text {
-  font-size: 0.75rem;
   color: var(--sl-text-tertiary);
 }
 
