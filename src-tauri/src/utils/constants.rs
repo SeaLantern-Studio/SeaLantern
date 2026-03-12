@@ -2,6 +2,9 @@
 //! 为了便于快捷修改常量，在此处抽取了一部分后端使用的常量
 //! 插件相关常量未抽取
 
+///一个基本的User-agent
+pub const USER_AGENT_EXAMPLE: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0";
+
 /// services/settings_manager.rs
 pub const SETTINGS_FILE: &str = "sea_lantern_settings.json";
 
