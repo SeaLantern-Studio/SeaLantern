@@ -5,15 +5,22 @@ use crate::utils::downloader::{SingleThreadDownloader, USER_AGENT_EXAMPLE};
 use serde_json::Value;
 use tokio::sync::OnceCell;
 
-const DOWNLOAD_LINK_LIST_URL: &str = super::starter_installer_links::STARTER_INSTALLER_LINKS_URL;
+const DOWNLOAD_LINK_LIST_URL: &str =
+    crate::services::starter_installer_links::STARTER_INSTALLER_LINKS_URL;
 static DOWNLOAD_LINKS: OnceCell<BaseDownloadLinks> = OnceCell::const_new();
 
 impl LinkManager {
     pub async fn get() -> Result<&'static BaseDownloadLinks, String> {
+        if DOWNLOAD_LINKS.get().is_none() {
+            let links = Self::init().await?;
+            DOWNLOAD_LINKS
+                .set(links)
+                .map_err(|_| "download links already initialized".to_string())?;
+        }
+
         DOWNLOAD_LINKS
-            .get_or_init(|| async { Self::init().await.expect("Initialization failed") })
-            .await;
-        Ok(DOWNLOAD_LINKS.get().unwrap())
+            .get()
+            .ok_or_else(|| "download links not initialized".to_string())
     }
 
     pub async fn init() -> Result<BaseDownloadLinks, String> {
@@ -77,11 +84,11 @@ impl LinkManager {
     }
 
     pub async fn get_type_by_name(name: &str) -> Result<TypeDownloadLinks, String> {
-        Ok(Self::get()
-            .await?
+        let links = Self::get().await?;
+        links
             .get_type_by_name(name)
-            .unwrap_or_else(|| panic!("Type {} not found", name))
-            .clone())
+            .cloned()
+            .ok_or_else(|| format!("Type {} not found", name))
     }
 
     pub async fn get_versions_by_type(type_name: &str) -> Result<Vec<String>, String> {
