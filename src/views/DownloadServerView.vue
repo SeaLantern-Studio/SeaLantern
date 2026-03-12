@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { FolderOpen, FileText, Cpu } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLSelect from "@components/common/SLSelect.vue";
@@ -229,24 +230,40 @@ onMounted(() => {
 
         <div class="field field-full">
           <label>{{ i18n.t("downloadServerView.form.fileName") }}</label>
-          <input
-            v-model="filename"
-            type="text"
-            :placeholder="i18n.t('downloadServerView.form.fileNamePlaceholder')"
-            :disabled="isDownloading"
-          />
+          <div class="input-wrap">
+            <FileText :size="16" class="input-icon" />
+            <input
+              v-model="filename"
+              type="text"
+              :placeholder="i18n.t('downloadServerView.form.fileNamePlaceholder')"
+              :disabled="isDownloading"
+            />
+          </div>
         </div>
 
         <div class="field field-full">
           <label>{{ i18n.t("downloadServerView.form.saveDir") }}</label>
-          <div class="path-row">
-            <input
-              v-model="saveDir"
-              type="text"
-              :placeholder="i18n.t('downloadServerView.form.saveDirPlaceholder')"
+          <div
+            class="path-picker"
+            :class="{ disabled: isDownloading }"
+            role="button"
+            tabindex="0"
+            @click="pickFolder"
+            @keydown.enter.prevent="pickFolder"
+          >
+            <FolderOpen :size="18" class="path-icon" />
+            <div class="path-content">
+              <div class="path-title">{{ i18n.t("downloadServerView.form.saveDir") }}</div>
+              <div class="path-value" :class="{ empty: !saveDir }">
+                {{ saveDir || i18n.t("downloadServerView.form.saveDirPlaceholder") }}
+              </div>
+            </div>
+            <SLButton
+              variant="secondary"
+              size="sm"
               :disabled="isDownloading"
-            />
-            <SLButton variant="secondary" size="md" @click="pickFolder" :disabled="isDownloading">
+              @click.stop="pickFolder"
+            >
               {{ i18n.t("downloadServerView.actions.pickFolder") }}
             </SLButton>
           </div>
@@ -254,12 +271,15 @@ onMounted(() => {
 
         <div class="field">
           <label>{{ i18n.t("downloadServerView.form.threadCount") }}</label>
-          <input
-            v-model="threadCount"
-            type="text"
-            :placeholder="i18n.t('downloadServerView.form.threadCountPlaceholder')"
-            :disabled="isDownloading"
-          />
+          <div class="input-wrap">
+            <Cpu :size="16" class="input-icon" />
+            <input
+              v-model="threadCount"
+              type="text"
+              :placeholder="i18n.t('downloadServerView.form.threadCountPlaceholder')"
+              :disabled="isDownloading"
+            />
+          </div>
         </div>
 
         <div class="field">
@@ -277,7 +297,13 @@ onMounted(() => {
       <SLButton variant="secondary" size="lg" @click="router.push('/')">
         {{ i18n.t("downloadServerView.actions.cancel") }}
       </SLButton>
-      <SLButton variant="primary" size="lg" :disabled="!canDownload" @click="handleDownload">
+      <SLButton
+        variant="primary"
+        size="lg"
+        :disabled="!canDownload"
+        @click="handleDownload"
+        :loading="combinedLoading"
+      >
         {{
           isDownloading
             ? i18n.t("downloadServerView.actions.downloading")
@@ -354,8 +380,9 @@ onMounted(() => {
 }
 
 .field label {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--sl-text-tertiary);
+  font-weight: 500;
 }
 
 .loading-text {
@@ -388,10 +415,82 @@ onMounted(() => {
   opacity: 0.9;
 }
 
-.path-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--sl-text-tertiary);
+  pointer-events: none;
+}
+
+.input-wrap input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-surface);
+  color: var(--sl-text-primary);
+  padding: 0 12px 0 34px;
+  outline: none;
+}
+
+.input-wrap input:focus {
+  border-color: var(--sl-primary);
+}
+
+.path-picker {
+  display: flex;
+  align-items: center;
   gap: var(--sl-space-sm);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  padding: 10px 12px;
+  background: var(--sl-surface);
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+.path-picker:hover {
+  border-color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+}
+
+.path-picker.disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.path-icon {
+  color: var(--sl-primary);
+  flex-shrink: 0;
+}
+
+.path-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.path-title {
+  font-size: 0.72rem;
+  color: var(--sl-text-tertiary);
+  margin-bottom: 2px;
+}
+
+.path-value {
+  font-size: 0.86rem;
+  color: var(--sl-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.path-value.empty {
+  color: var(--sl-text-tertiary);
 }
 
 .preview {
