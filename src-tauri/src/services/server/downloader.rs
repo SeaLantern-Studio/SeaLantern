@@ -1,8 +1,8 @@
 pub(crate) use crate::models::download::{
     BaseDownloadLinks, DownloadLink, LinkManager, TypeDownloadLinks,
 };
-use crate::utils::downloader::{SingleThreadDownloader};
 use crate::utils::constants::USER_AGENT_EXAMPLE;
+use crate::utils::downloader::SingleThreadDownloader;
 use serde_json::Value;
 use tokio::sync::OnceCell;
 

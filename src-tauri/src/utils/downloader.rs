@@ -38,7 +38,6 @@ impl From<std::io::Error> for DownloadError {
     }
 }
 
-
 /// 实时进度快照
 #[derive(Debug, Clone, serde::Serialize)] // 如果需要返回给前端，可以加 Serialize
 pub struct DownloadSnapshot {
