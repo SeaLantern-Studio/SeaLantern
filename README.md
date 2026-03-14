@@ -23,8 +23,6 @@
 
 </div>
 
-![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
-
 ## 能干什么
 
 - 下载安装服务器核心
