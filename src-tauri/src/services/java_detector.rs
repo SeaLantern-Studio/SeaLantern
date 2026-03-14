@@ -7,37 +7,23 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-// 静默执行命令
+// 此处常量见 utils/constants.rs
+// 常量定义
+use crate::utils::constants::{ENV_VARS, MAX_SCAN_DEPTH};
+
+// 常量定义（Windows）
 #[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x08000000;
+use crate::utils::constants::{CREATE_NO_WINDOW, JAVA_PATH_ALIASES, PROGRAM_FILES_JAVA_DIRS};
+
+// 常量定义（非Windows）
+#[cfg(not(target_os = "windows"))]
+use crate::utils::constants::COMMON_JAVA_DIRS;
 
 // 获取 win 注册表内容
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
-
-// 常见 Java 目录别名（仅 Windows 使用）
-#[cfg(target_os = "windows")]
-const JAVA_PATH_ALIASES: &[&str] = &[
-    "java", "jdk", "jre", "graalvm", "corretto", "temurin", "zulu", "openjdk", "gvl", "ojdk",
-    "bin", "j",
-];
-
-const ENV_VARS: &[&str] = &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"];
-
-#[cfg(target_os = "windows")]
-const PROGRAM_FILES_JAVA_DIRS: &[&str] = &["Java", "Zulu", "Eclipse Adoptium", "BellSoft"];
-
-#[cfg(not(target_os = "windows"))]
-const COMMON_JAVA_DIRS: &[&str] =
-    &["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];
-
-#[cfg(target_os = "windows")]
-const MAX_SCAN_DEPTH: u32 = 5;
-
-#[cfg(not(target_os = "windows"))]
-const MAX_SCAN_DEPTH: u32 = 4;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct JavaInfo {

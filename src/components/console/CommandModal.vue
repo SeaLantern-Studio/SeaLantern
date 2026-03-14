@@ -4,6 +4,7 @@ import SLInput from "@components/common/SLInput.vue";
 import SLModal from "@components/common/SLModal.vue";
 import { i18n } from "@language";
 import type { ServerCommand } from "@type/server";
+import { computed } from "vue";
 
 interface Props {
   visible: boolean;
@@ -14,7 +15,7 @@ interface Props {
   loading: boolean;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: "close"): void;
@@ -23,6 +24,16 @@ const emit = defineEmits<{
   (e: "updateName", value: string): void;
   (e: "updateText", value: string): void;
 }>();
+
+const commandNameModel = computed({
+  get: () => props.commandName,
+  set: (value: string) => emit("updateName", value),
+});
+
+const commandTextModel = computed({
+  get: () => props.commandText,
+  set: (value: string) => emit("updateText", value),
+});
 </script>
 
 <template>
@@ -32,8 +43,7 @@ const emit = defineEmits<{
         <label for="command-name">{{ i18n.t("console.command_name") }}</label>
         <SLInput
           id="command-name"
-          :value="commandName"
-          @input="emit('updateName', $event.target.value)"
+          v-model="commandNameModel"
           :placeholder="i18n.t('console.enter_command_name')"
           :disabled="loading"
         />
@@ -42,8 +52,7 @@ const emit = defineEmits<{
         <label for="command-text">{{ i18n.t("console.command_content") }}</label>
         <SLInput
           id="command-text"
-          :value="commandText"
-          @input="emit('updateText', $event.target.value)"
+          v-model="commandTextModel"
           :placeholder="i18n.t('console.enter_command_content')"
           :disabled="loading"
         />

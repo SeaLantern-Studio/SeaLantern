@@ -181,7 +181,7 @@ fn scan_startup_candidates_blocking(
         .iter()
         .map(|value| value.to_string())
         .collect::<Vec<String>>();
-    let mc_version_options = crate::services::server_installer::STARTER_MC_VERSION_OPTIONS
+    let mc_version_options = crate::utils::constants::STARTER_MC_VERSION_OPTIONS
         .iter()
         .map(|value| value.to_string())
         .collect::<Vec<String>>();

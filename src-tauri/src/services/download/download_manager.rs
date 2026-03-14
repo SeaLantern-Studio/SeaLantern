@@ -25,7 +25,7 @@ impl DownloadManager {
         Self {
             tasks: Arc::new(RwLock::new(HashMap::new())),
             downloader: Arc::new(MultiThreadDownloader::new(
-                crate::utils::downloader::USER_AGENT_EXAMPLE,
+                crate::utils::constants::USER_AGENT_EXAMPLE,
             )),
         }
     }
