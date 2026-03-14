@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crate::services;
+
 #[cfg(target_os = "linux")]
 use crate::commands::update_arch::{get_aur_helper, is_arch_linux};
 use crate::commands::update_types::PendingUpdate;
@@ -50,6 +52,12 @@ pub async fn execute_install(file_path: String, version: String) -> Result<(), S
                     helper
                 ));
             }
+        }
+
+        // 根据设置决定是否在更新前关闭所有服务器
+        let settings = services::global::settings_manager().get();
+        if settings.close_servers_on_update {
+            services::global::server_manager().stop_all_servers();
         }
 
         let pending_file = get_pending_update_file();

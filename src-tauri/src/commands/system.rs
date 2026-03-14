@@ -1,3 +1,4 @@
+use crate::services;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use sysinfo::{Disks, Networks, System};
@@ -395,4 +396,9 @@ pub fn get_default_run_path() -> Result<String, String> {
 pub fn get_safe_mode_status() -> Result<bool, String> {
     let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
     Ok(safe_mode)
+}
+
+#[tauri::command]
+pub fn frontend_heartbeat() {
+    services::global::update_frontend_heartbeat();
 }
