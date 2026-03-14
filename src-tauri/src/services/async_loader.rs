@@ -1,3 +1,7 @@
+//! 应用启动阶段的异步加载任务工具（可选模块）。
+//!
+//! 提供 `AsyncLoader` 及一组 `report_*` 辅助函数，封装 `tokio::mpsc` 与 `JoinHandle`，
+//! 用于在不引入复杂依赖的前提下简化启动期进度上报逻辑。
 use std::future::Future;
 use std::pin::Pin;
 use tokio::sync::mpsc;

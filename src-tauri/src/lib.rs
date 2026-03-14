@@ -1,6 +1,6 @@
 mod commands;
 mod models;
-mod plugins;
+pub mod plugins;
 mod services;
 mod utils;
 
@@ -40,7 +40,9 @@ pub fn run() {
             Ok(rt) => rt,
             Err(e) => {
                 eprintln!("SeaLantern: Failed to create Tokio runtime for HTTP server: {}", e);
-                eprintln!("SeaLantern: This may be due to container resource limits (memory, threads, etc.)");
+                eprintln!(
+                    "SeaLantern: This may be due to container resource limits (memory, threads, etc.)"
+                );
                 std::process::exit(1);
             }
         };
@@ -52,7 +54,7 @@ pub fn run() {
                 .exists()
                 .then_some(static_dir);
 
-            services::http_server::run_http_server("0.0.0.0:3000", static_dir_opt).await;
+            services::http::run_http_server("0.0.0.0:3000", static_dir_opt).await;
         });
         return;
     }
@@ -155,6 +157,7 @@ pub fn run() {
             system_commands::open_folder,
             system_commands::get_default_run_path,
             system_commands::get_safe_mode_status,
+            system_commands::frontend_heartbeat,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -263,6 +266,8 @@ pub fn run() {
                                 m.disable_all_plugins_for_shutdown();
                             }
                         }
+                        // 显式退出整个应用进程，避免后端继续驻留
+                        window.app_handle().exit(0);
                     }
                     _ => {
                         // 显示对话框（ask 或其他值）
@@ -536,6 +541,52 @@ pub fn run() {
             }
 
             app.manage(manager.clone());
+
+            // 前端心跳看门狗：若长时间未收到心跳则自动退出进程
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+                    use tokio::time::sleep;
+
+                    loop {
+                        sleep(Duration::from_secs(5)).await;
+
+                        let last = crate::services::global::last_frontend_heartbeat();
+                        if last == 0 {
+                            // 尚未收到任何心跳，继续等待
+                            continue;
+                        }
+
+                        let now = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+
+                        if now.saturating_sub(last) > 30 {
+                            eprintln!(
+                                "[Watchdog] frontend heartbeat lost, shutting down Sea Lantern",
+                            );
+
+                            let settings = crate::services::global::settings_manager().get();
+                            if settings.close_servers_on_exit {
+                                crate::services::global::server_manager().stop_all_servers();
+                            }
+
+                            if let Some(manager) = app_handle.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>() {
+                                if let Ok(mut m) = manager.lock() {
+                                    m.disable_all_plugins_for_shutdown();
+                                }
+                            }
+
+                            app_handle.exit(0);
+                            break;
+                        }
+                    }
+                });
+            }
 
             // Check if currently in safe mode
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
