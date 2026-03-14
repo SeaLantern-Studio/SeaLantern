@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "首頁",
     "create_server": "建立伺服器",
     "console": "控制台",
@@ -22,6 +23,7 @@
     "settings": "設定",
     "personalize": "個人化",
     "about": "關於",
+    "download": "下載",
     "download-file": "檔案下載",
     "download-server": "伺服端下載",
     "loading": "載入中...",
@@ -651,7 +653,7 @@
   },
   "delete_server": "刪除伺服器",
   "download-file": {
-    "title": "使用多線程下載器下載檔案",
+    "title": "自訂下載",
     "url": "下載位址",
     "url_placeholder": "請輸入下載位址（http/https）",
     "save_folder": "儲存到",

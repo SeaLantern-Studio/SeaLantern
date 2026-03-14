@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "Главная",
     "create_server": "Создать сервер",
     "console": "Консоль",
@@ -22,6 +23,7 @@
     "settings": "Настройки",
     "personalize": "Персонализация",
     "about": "О программе",
+    "download": "Скачать",
     "download-file": "Скачать файл",
     "download-server": "Скачать сервер",
     "loading": "Загрузка...",

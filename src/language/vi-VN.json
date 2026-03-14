@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "Trang chủ",
     "create_server": "Tạo máy chủ",
     "console": "Bảng điều khiển",
@@ -22,6 +23,7 @@
     "settings": "Cài đặt",
     "personalize": "Cá nhân hóa",
     "about": "Giới thiệu",
+    "download": "Tải xuống",
     "download-file": "Tải tập tin",
     "download-server": "Tải máy chủ",
     "loading": "Đang tải...",
@@ -650,7 +652,7 @@
   },
   "delete_server": "Xóa máy chủ",
   "download-file": {
-    "title": "Tải tập tin bằng trình tải xuống đa luồng",
+    "title": "Tải tùy chỉnh",
     "url": "URL tải xuống",
     "url_placeholder": "Vui lòng nhập URL tải xuống (http/https)",
     "save_folder": "Lưu vào",
