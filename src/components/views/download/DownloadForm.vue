@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { FolderOpen, Link, FileText, Cpu } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
+import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
 
 interface Props {
@@ -34,17 +36,18 @@ function handlePickFolder() {
   <div class="download-form">
     <div class="field">
       <label>{{ i18n.t("download-file.url") }}</label>
-      <div class="input-wrap">
-        <Link :size="16" class="input-icon" />
-        <input
-          :value="url"
-          type="text"
-          :placeholder="i18n.t('download-file.url_placeholder')"
-          :disabled="isDownloading"
-          @input="emit('update:url', ($event.target as HTMLInputElement).value)"
-          @blur="emit('checkUrl')"
-        />
-      </div>
+      <SLInput
+        :model-value="url"
+        type="text"
+        :placeholder="i18n.t('download-file.url_placeholder')"
+        :disabled="isDownloading"
+        @update:modelValue="emit('update:url', $event)"
+        @blur="emit('checkUrl')"
+      >
+        <template #prefix>
+          <Link :size="16" class="input-icon" />
+        </template>
+      </SLInput>
     </div>
 
     <div class="field">
@@ -61,7 +64,7 @@ function handlePickFolder() {
         <div class="path-content">
           <div class="path-title">{{ i18n.t("download-file.save_path") }}</div>
           <div class="path-value" :class="{ empty: !savePath }">
-            {{ savePath || i18n.t("download-file.select_folder") }}
+            {{ savePath.replace(/\\/g, "/") || i18n.t("download-file.select_folder") }}
           </div>
         </div>
         <SLButton
@@ -77,32 +80,34 @@ function handlePickFolder() {
 
     <div class="field">
       <label>{{ i18n.t("download-file.filename") }}</label>
-      <div class="input-wrap">
-        <FileText :size="16" class="input-icon" />
-        <input
-          :value="filename"
-          type="text"
-          :placeholder="i18n.t('download-file.filename_placeholder')"
-          :disabled="isDownloading"
-          @input="emit('update:filename', ($event.target as HTMLInputElement).value)"
-          @blur="emit('checkFilename')"
-        />
-      </div>
+      <SLInput
+        :model-value="filename"
+        type="text"
+        :placeholder="i18n.t('download-file.filename_placeholder')"
+        :disabled="isDownloading"
+        @update:modelValue="emit('update:filename', $event)"
+        @blur="emit('checkFilename')"
+      >
+        <template #prefix>
+          <FileText :size="16" class="input-icon" />
+        </template>
+      </SLInput>
     </div>
 
     <div class="field">
       <label>{{ i18n.t("download-file.thread_count") }}</label>
-      <div class="input-wrap">
-        <Cpu :size="16" class="input-icon" />
-        <input
-          :value="threadCount"
-          type="text"
-          placeholder="32"
-          :disabled="isDownloading"
-          @input="emit('update:threadCount', ($event.target as HTMLInputElement).value)"
-          @blur="emit('checkThreadCount')"
-        />
-      </div>
+      <SLInput
+        :model-value="threadCount"
+        type="text"
+        placeholder="32"
+        :disabled="isDownloading"
+        @update:modelValue="emit('update:threadCount', $event)"
+        @blur="emit('checkThreadCount')"
+      >
+        <template #prefix>
+          <Cpu :size="16" class="input-icon" />
+        </template>
+      </SLInput>
     </div>
   </div>
 </template>
@@ -125,32 +130,9 @@ function handlePickFolder() {
   font-weight: 500;
 }
 
-.input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
 .input-icon {
-  position: absolute;
-  left: 10px;
   color: var(--sl-text-tertiary);
   pointer-events: none;
-}
-
-.input-wrap input {
-  width: 100%;
-  height: 40px;
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-md);
-  background: var(--sl-surface);
-  color: var(--sl-text-primary);
-  padding: 0 12px 0 34px;
-  outline: none;
-}
-
-.input-wrap input:focus {
-  border-color: var(--sl-primary);
 }
 
 .path-picker {

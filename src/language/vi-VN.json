@@ -1,19 +1,20 @@
 {
   "languageName": "Tiếng Việt",
   "header": {
-    "chinese": "Tiếng Trung giản thể",
-    "english": "Tiếng Anh",
-    "chinese_tw": "Tiếng Trung phồn thể",
-    "deutsch": "Tiếng Đức",
-    "spanish": "Tiếng Tây Ban Nha",
-    "japanese": "Tiếng Nhật",
-    "russian": "Tiếng Nga",
+    "chinese": "簡體中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "deutsch": "Deutsch",
+    "spanish": "Español",
+    "japanese": "日本語",
+    "russian": "Русский",
     "vietnamese": "Tiếng Việt",
-    "korean": "Tiếng Hàn",
-    "french": "Tiếng Pháp"
+    "korean": "한국어",
+    "french": "Français"
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "Trang chủ",
     "create_server": "Tạo máy chủ",
     "console": "Bảng điều khiển",
@@ -22,6 +23,7 @@
     "settings": "Cài đặt",
     "personalize": "Cá nhân hóa",
     "about": "Giới thiệu",
+    "download": "Tải xuống",
     "download-file": "Tải tập tin",
     "download-server": "Tải máy chủ",
     "loading": "Đang tải...",
@@ -650,7 +652,7 @@
   },
   "delete_server": "Xóa máy chủ",
   "download-file": {
-    "title": "Tải tập tin bằng trình tải xuống đa luồng",
+    "title": "Tải tùy chỉnh",
     "url": "URL tải xuống",
     "url_placeholder": "Vui lòng nhập URL tải xuống (http/https)",
     "save_folder": "Lưu vào",

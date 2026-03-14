@@ -1,19 +1,20 @@
 {
   "languageName": "日本語",
   "header": {
-    "chinese": "簡体字中国語",
-    "english": "英語",
-    "chinese_tw": "繁体字中国語",
-    "deutsch": "ドイツ語",
-    "spanish": "スペイン語",
+    "chinese": "簡體中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "deutsch": "Deutsch",
+    "spanish": "Español",
     "japanese": "日本語",
-    "russian": "ロシア語",
-    "vietnamese": "ベトナム語",
-    "korean": "韓国語",
-    "french": "フランス語"
+    "russian": "Русский",
+    "vietnamese": "Tiếng Việt",
+    "korean": "한국어",
+    "french": "Français"
   },
   "common": {
     "app_name": "シーランタン",
+    "easter_name": "クソランタン",
     "home": "ホーム",
     "create_server": "サーバー作成",
     "console": "コンソール",
@@ -22,6 +23,7 @@
     "settings": "設定",
     "personalize": "パーソナライズ",
     "about": "このソフトについて",
+    "download": "ダウンロード",
     "download-file": "ファイルをダウンロード",
     "download-server": "サーバーをダウンロード",
     "loading": "読み込み中...",
@@ -651,7 +653,7 @@
     "settings": "プラグイン設定"
   },
   "download-file": {
-    "title": "マルチスレッドダウンローダーでファイルをダウンロード",
+    "title": "カスタムダウンロード",
     "url": "ダウンロードURL",
     "url_placeholder": "ダウンロードURLを入力してください（http/https）",
     "save_folder": "保存先",

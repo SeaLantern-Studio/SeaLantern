@@ -75,16 +75,10 @@ const routes = [
     meta: { titleKey: "plugins.plugin_category", icon: "folder" },
   },
   {
-    path: "/download-file",
-    name: "download-file",
-    component: () => import("../views/DownloadFileView.vue"),
-    meta: { titleKey: "common.download-file", icon: "info" },
-  },
-  {
-    path: "/download-server",
-    name: "download-server",
-    component: () => import("../views/DownloadServerView.vue"),
-    meta: { titleKey: "common.download-server", icon: "info" },
+    path: "/download",
+    name: "download",
+    component: () => import("../views/DownloadView.vue"),
+    meta: { titleKey: "common.download", icon: "download" },
   },
 ];
 const router = createRouter({

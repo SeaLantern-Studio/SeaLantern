@@ -1,19 +1,20 @@
 {
   "languageName": "Español",
   "header": {
-    "chinese": "Chino simplificado",
-    "english": "Inglés",
-    "chinese_tw": "Chino tradicional",
-    "deutsch": "Alemán",
+    "chinese": "簡體中文",
+    "english": "English",
+    "chinese_tw": "繁體中文",
+    "deutsch": "Deutsch",
     "spanish": "Español",
-    "japanese": "Japonés",
-    "russian": "Ruso",
-    "vietnamese": "Vietnamita",
-    "korean": "Coreano",
-    "french": "Francés"
+    "japanese": "日本語",
+    "russian": "Русский",
+    "vietnamese": "Tiếng Việt",
+    "korean": "한국어",
+    "french": "Français"
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "Inicio",
     "create_server": "Crear servidor",
     "console": "Consola",
@@ -22,6 +23,7 @@
     "settings": "Ajustes",
     "personalize": "Personalizar",
     "about": "Acerca de",
+    "download": "Descargar",
     "download-file": "Descargar archivo",
     "download-server": "Descargar servidor",
     "loading": "Cargando...",
@@ -635,7 +637,7 @@
   },
   "delete_server": "Eliminar servidor",
   "download-file": {
-    "title": "Descargar archivo usando descargador multihilo",
+    "title": "Descarga personalizada",
     "url": "URL de descarga",
     "url_placeholder": "Introduce la URL de descarga (http/https)",
     "save_folder": "Guardar en",
