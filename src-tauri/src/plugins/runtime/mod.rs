@@ -49,6 +49,9 @@ pub struct PluginRuntime {
 }
 
 impl PluginRuntime {
+    pub fn lua(&self) -> &mlua::Lua {
+        &self.lua
+    }
     pub fn new(
         plugin_id: &str,
         plugin_dir: &Path,
@@ -101,7 +104,15 @@ impl PluginRuntime {
         self.loaded.load(Ordering::SeqCst)
     }
 
-    #[allow(dead_code)]
+    // test要用, 别删
+    pub fn lua_eval<T>(&self, code: &str) -> mlua::Result<T>
+    where
+        T: mlua::FromLuaMulti,
+    {
+        self.lua.load(code).eval()
+    }
+
+    #[allow(dead_code)] // fu*k fmt
     pub(super) fn check_permission(&self, permission: &str) -> mlua::Result<()> {
         if self.permissions.iter().any(|p| p == permission) {
             Ok(())
