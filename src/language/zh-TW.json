@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "首頁",
     "create_server": "建立伺服器",
     "console": "控制台",
@@ -22,7 +23,9 @@
     "settings": "設定",
     "personalize": "個人化",
     "about": "關於",
+    "download": "下載",
     "download-file": "檔案下載",
+    "download-server": "伺服端下載",
     "loading": "載入中...",
     "select_server": "選擇伺服器",
     "open_folder": "開啟資料夾",
@@ -129,6 +132,7 @@
     "stop": "停止",
     "edit": "編輯",
     "delete": "刪除",
+    "delete_server": "刪除伺服器",
     "status": "狀態",
     "running": "執行中",
     "stopped": "已停止",
@@ -222,13 +226,13 @@
     "online_mode_on": "已開啟",
     "online_mode_off": "已關閉",
     "cancel": "取消",
-    "scanning": "正在掃描所有磁碟...",
+    "scanning": "正在搜尋 Java 安裝...",
     "no_java": "未偵測到 Java，請點擊下方按鈕掃描",
     "java_found": "找到 {{count}} 個 Java",
     "rescan": "重新掃描",
     "default_port_placeholder": "預設 25565",
     "java_env": "Java 環境",
-    "java_scan": "掃描系統中所有磁碟的 Java 安裝",
+    "java_scan": "在系統中搜尋 Java 安裝",
     "java_manual": "手動選擇 Java 路徑",
     "java_path": "Java 路徑"
   },
@@ -523,11 +527,12 @@
     "no_json": "請貼上 JSON",
     "import_title": "匯入設定",
     "reset_title": "確認恢復預設",
-    "browse_java": "點擊瀏覽選擇 java.exe",
+    "browse_java": "點擊瀏覽選擇 Java 可執行檔",
     "browse_jar": "點擊瀏覽選擇 .jar 檔案",
     "server_name_placeholder": "輸入名稱",
     "color_theme": "顏色主題",
     "color_theme_desc": "自訂軟體顏色主題",
+    "theme_proxied_by": "由 {plugin} 外掛代理",
     "use_preset_colortheme": "使用預設",
     "use_preset_colortheme_desc": "選擇預設的顏色主題，或自訂顏色",
     "color_editing": "顏色編輯",
@@ -565,6 +570,8 @@
     "developer_mode_desc": "啟動進階功能和除錯選項",
     "developer_mode_toggle": "啟動開發者模式",
     "developer_mode_toggle_desc": "啟用後將允許使用除錯工具",
+    "minimal_mode": "極簡模式",
+    "minimal_mode_desc": "關閉所有動畫與特效，僅保留最基本的渲染與互動",
     "color_options": {
       "custom": "自訂"
     }
@@ -636,6 +643,9 @@
     "update_download_failed": "下載失敗",
     "github_repo": "GitHub 倉庫"
   },
+  "plugins": {
+    "settings": "外掛設定"
+  },
   "tray": {
     "minimize": "最小化到系統匣",
     "show": "顯示",
@@ -643,14 +653,19 @@
   },
   "delete_server": "刪除伺服器",
   "download-file": {
-    "title": "使用多線程下載器下載檔案",
+    "title": "自訂下載",
     "url": "下載位址",
+    "url_placeholder": "請輸入下載位址（http/https）",
     "save_folder": "儲存到",
+    "save_path": "儲存路徑",
+    "select_folder": "請選擇資料夾",
+    "pick_folder": "選擇資料夾",
     "filename": "檔案名稱",
     "thread_count": "線程數",
     "thread_count_empty": "線程數不能為空",
     "thread_count_invalid": "字符不合法",
     "thread_count_positive": "線程數必須是一個正整數",
+    "thread_count_too_big": "執行緒數不能超過 256",
     "cancel": "取消",
     "download": "下載",
     "browse": "瀏覽",
@@ -669,5 +684,36 @@
   },
   "downloader": {
     "connection_lost": "任務連線遺失"
+  },
+  "downloadServerView": {
+    "title": "下載伺服器端",
+    "status": {
+      "failed": "下載失敗",
+      "finished": "下載完成",
+      "downloading": "下載中"
+    },
+    "form": {
+      "type": "類別",
+      "typePlaceholder": "請選擇類別",
+      "version": "版本",
+      "versionPlaceholder": "請選擇版本",
+      "fileName": "檔案名稱",
+      "fileNamePlaceholder": "下載後的檔案名稱",
+      "saveDir": "儲存目錄",
+      "saveDirPlaceholder": "請選擇儲存目錄",
+      "threadCount": "執行緒數",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "將儲存至：",
+      "url": "下載位址："
+    },
+    "actions": {
+      "pickFolder": "選擇目錄",
+      "cancel": "取消",
+      "startDownload": "開始下載",
+      "downloading": "下載中",
+      "goCreatePage": "前往 CreatePage"
+    }
   }
 }

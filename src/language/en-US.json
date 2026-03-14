@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "Home",
     "create_server": "Create Server",
     "console": "Console",
@@ -22,7 +23,9 @@
     "settings": "Settings",
     "personalize": "Personalize",
     "about": "About",
+    "download": "Download",
     "download-file": "Download File",
+    "download-server": "Download Server",
     "loading": "Loading...",
     "select_server": "Select Server",
     "open_folder": "Open Folder",
@@ -130,6 +133,7 @@
     "stop": "Stop",
     "edit": "Edit",
     "delete": "Delete",
+    "delete_server": "Delete Server",
     "status": "Status",
     "running": "Running",
     "stopped": "Stopped",
@@ -223,13 +227,13 @@
     "online_mode_on": "Enabled",
     "online_mode_off": "Disabled",
     "cancel": "Cancel",
-    "scanning": "Scanning all disks...",
+    "scanning": "Searching for Java installations...",
     "no_java": "No Java detected, please click the button below to scan",
     "java_found": "Found {{count}} Java installations",
     "rescan": "Rescan",
     "default_port_placeholder": "Default 25565",
     "java_env": "Java Environment",
-    "java_scan": "Scan all disks for Java installations",
+    "java_scan": "Search the system for Java installations",
     "java_manual": "Manually select Java path",
     "java_path": "Java Path",
     "file_hint": "After clicking 「Select and Create」, please choose the server startup file (supports .jar, .bat, or .sh formats). The system will automatically detect the file type",
@@ -607,7 +611,7 @@
     "no_json": "Please paste JSON",
     "import_title": "Import Settings",
     "reset_title": "Confirm Restore Defaults",
-    "browse_java": "Browse for java.exe",
+    "browse_java": "Browse for Java executable",
     "browse_jar": "Browse for .jar file",
     "java_version_select": "Select Version",
     "java_installing": "Downloading...",
@@ -758,6 +762,7 @@
     "title": "Plugin Management",
     "plugin_count": "{{count}} plugins",
     "search_placeholder": "Search plugins...",
+    "settings": "Plugin Settings",
     "check_update": "Check Update",
     "check_updates": "Check All Updates",
     "checking": "Checking...",
@@ -986,14 +991,19 @@
     }
   },
   "download-file": {
-    "title": "Download File Using Multi-threaded Downloader",
+    "title": "Custom Download",
     "url": "Download URL",
+    "url_placeholder": "Please enter download URL (http/https)",
     "save_folder": "Save to",
+    "save_path": "Save Path",
+    "select_folder": "Please select a folder",
+    "pick_folder": "Pick Folder",
     "filename": "File Name",
     "thread_count": "Thread Count",
     "thread_count_empty": "Thread count cannot be empty",
     "thread_count_invalid": "Invalid character",
     "thread_count_positive": "Thread count must be a positive integer",
+    "thread_count_too_big": "Thread count cannot exceed 256",
     "cancel": "Cancel",
     "download": "Download",
     "browse": "Browse",
@@ -1012,5 +1022,36 @@
   },
   "downloader": {
     "connection_lost": "Task connection lost"
+  },
+  "downloadServerView": {
+    "title": "Download Server",
+    "status": {
+      "failed": "Download failed",
+      "finished": "Download finished",
+      "downloading": "Downloading"
+    },
+    "form": {
+      "type": "Category",
+      "typePlaceholder": "Please select a category",
+      "version": "Version",
+      "versionPlaceholder": "Please select a version",
+      "fileName": "File name",
+      "fileNamePlaceholder": "File name after download",
+      "saveDir": "Save directory",
+      "saveDirPlaceholder": "Please select a save directory",
+      "threadCount": "Thread count",
+      "threadCountPlaceholder": "32"
+    },
+    "preview": {
+      "saveTo": "Save to:",
+      "url": "Download URL:"
+    },
+    "actions": {
+      "pickFolder": "Choose folder",
+      "cancel": "Cancel",
+      "startDownload": "Start download",
+      "downloading": "Downloading",
+      "goCreatePage": "Go to CreatePage"
+    }
   }
 }

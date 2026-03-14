@@ -17,8 +17,8 @@
     "prepare": "husky",
     "sv": "node ./scripts/version.mjs show",
     "cv": "node ./scripts/version.mjs change",
-    "tauri:docker:dev": "pnpm run dev & cargo run --features docker --bin docker-entry",
-    "tauri:docker:build": "cargo build --release --features docker && docker build -t sealantern:docker -f Dockerfile ."
+    "docker:dev": "cargo run -p docker-entry",
+    "docker:build": "docker build -t sealantern:docker ."
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",

@@ -22,7 +22,7 @@ import {
   LayoutDashboard,
   BarChart2,
   Sparkles,
-  DownloadCloudIcon,
+  DownloadIcon,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
@@ -42,7 +42,7 @@ const iconMap: Record<string, LucideIcon> = {
   "layout-dashboard": LayoutDashboard,
   chart: BarChart2,
   sparkles: Sparkles,
-  download: DownloadCloudIcon,
+  download: DownloadIcon,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -86,6 +86,14 @@ const staticNavItems: NavItem[] = [
     icon: "plus",
     labelKey: "common.create_server",
     label: i18n.t("common.create_server"),
+    group: "main",
+  },
+  {
+    name: "download",
+    path: "/download",
+    icon: "download",
+    labelKey: "common.download",
+    label: i18n.t("common.download"),
     group: "main",
   },
   {
@@ -136,14 +144,6 @@ const staticNavItems: NavItem[] = [
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
     group: "system",
-  },
-  {
-    name: "download-file",
-    path: "/download-file",
-    icon: "download",
-    labelKey: "common.download-file",
-    label: i18n.t("common.download-file"),
-    group: "tools",
   },
 ];
 
@@ -377,6 +377,15 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
   return groups;
 });
 
+// 彩蛋
+function getAppName() {
+  const now = new Date();
+  if (now.getMonth() == 3 && now.getDate() == 1) {
+    return i18n.t("common.easter_name");
+  }
+  return i18n.t("common.app_name");
+}
+
 // 图标已按需导入，模板中直接使用组件标签替代映射表
 </script>
 
@@ -387,7 +396,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
         <img :src="logoSvg" width="28" height="28" :alt="i18n.t('common.app_name')" />
       </div>
       <transition name="fade">
-        <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t("common.app_name") }}</span>
+        <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ getAppName() }}</span>
       </transition>
     </div>
     <nav class="sidebar-nav">
@@ -482,7 +491,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
       </template>
 
       <!-- 关于按钮 -->
-      <div class="nav-group">
+      <div class="nav-group lower-side">
         <div
           class="nav-item"
           :class="{ active: isActive('/about') }"

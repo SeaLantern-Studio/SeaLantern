@@ -19,6 +19,25 @@ export interface DownloadOptions {
   threadCount?: number;
 }
 
+export interface DownloadLink {
+  version: string; // 版本号
+  fileName: string; // 文件名
+  url: string; // 下载URL
+}
+
+// 类型下载链接集合
+export interface TypeDownloadLinks {
+  server_type: string; // 服务器类型名称
+  versions: string[]; // 可用版本列表
+  links: DownloadLink[]; // 下载链接列表
+}
+
+// 基础下载链接数据
+export interface BaseDownloadLinks {
+  server_types: string[]; // 所有服务器类型
+  links: TypeDownloadLinks[]; // 各类型的详细链接
+}
+
 export const downloadApi = {
   /**
    * 基础 API：创建下载任务
@@ -120,5 +139,22 @@ export const downloadApi = {
     onUnmounted(stop);
 
     return { taskInfo, start, stop, reset, errorMessage, isSuccess };
+  },
+};
+
+export const downloadServerApi = {
+  async getServerTypes(): Promise<string[]> {
+    return tauriInvoke<string[]>("get_server_types");
+  },
+
+  async getVersionsByType(serverType: string): Promise<string[]> {
+    return tauriInvoke<string[]>("get_versions_by_type", { serverType });
+  },
+
+  async getDownloadInfo(serverType: string, version: string): Promise<DownloadLink> {
+    return tauriInvoke<DownloadLink>("get_download_info", {
+      serverType,
+      version,
+    });
   },
 };

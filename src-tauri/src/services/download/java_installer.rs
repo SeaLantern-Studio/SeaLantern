@@ -1,13 +1,15 @@
 #[cfg(not(target_os = "windows"))]
 use flate2::read::GzDecoder;
 use std::fs;
-use std::io::Cursor;
+use std::io::{BufReader, Read};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 #[cfg(not(target_os = "windows"))]
 use tar::Archive;
 use tauri::{Emitter, Window};
+use tokio::io::AsyncWriteExt;
 #[cfg(target_os = "windows")]
 use zip::ZipArchive;
 
@@ -18,6 +20,9 @@ struct DownloadProgress {
     total: u64,
     message: String,
 }
+
+const JAVA_DOWNLOAD_TIMEOUT_SECS: u64 = 60;
+const JAVA_DOWNLOAD_RETRY_LIMIT: usize = 3;
 
 pub async fn download_and_install_java<R: tauri::Runtime>(
     url: String,
@@ -56,27 +61,60 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
         },
     );
 
-    let client = reqwest::Client::new();
-    let res = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("下载请求失败：{}", e))?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(JAVA_DOWNLOAD_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| format!("创建下载客户端失败：{}", e))?;
+
+    let mut attempt: usize = 0;
+
+    let res = loop {
+        if cancel_flag.load(Ordering::Relaxed) {
+            return Err("用户取消下载".to_string());
+        }
+
+        attempt += 1;
+        match client.get(&url).send().await {
+            Ok(response) => break response,
+            Err(e) => {
+                if attempt >= JAVA_DOWNLOAD_RETRY_LIMIT {
+                    return Err(format!("下载请求失败（第 {} 次尝试）：{}", attempt, e));
+                }
+            }
+        }
+    };
 
     let total_size = res.content_length().unwrap_or(0);
     // Use bytes_stream to process chunks
     use futures::StreamExt;
     let mut stream = res.bytes_stream();
     let mut downloaded: u64 = 0;
-    let mut data = Vec::new();
     let mut last_emit = std::time::Instant::now();
+
+    // 预先准备临时目录和临时文件，边下边写入磁盘，避免大文件全部驻留内存
+    // 如果出现 error decoding response body 错误, 那不用看这里, 是reqwest的问题, 不是我们的问题
+    let temp_dir = runtimes_dir.join(format!("temp_{}", version_name));
+    if temp_dir.exists() {
+        fs::remove_dir_all(&temp_dir).map_err(|e| format!("无法清理临时目录：{}", e))?;
+    }
+    fs::create_dir_all(&temp_dir).map_err(|e| format!("无法创建临时目录：{}", e))?;
+
+    let temp_file_path = temp_dir.join("java_download.tmp");
+    let mut temp_file = tokio::fs::File::create(&temp_file_path)
+        .await
+        .map_err(|e| format!("无法创建临时下载文件：{}", e))?;
 
     while let Some(chunk) = stream.next().await {
         if cancel_flag.load(Ordering::Relaxed) {
             return Err("用户取消下载".to_string());
         }
         let chunk = chunk.map_err(|e| format!("下载流错误：{}", e))?;
-        data.extend_from_slice(&chunk);
+
+        temp_file
+            .write_all(&chunk)
+            .await
+            .map_err(|e| format!("写入临时文件失败：{}", e))?;
+
         downloaded += chunk.len() as u64;
 
         if total_size > 0 && last_emit.elapsed().as_millis() > 100 {
@@ -96,6 +134,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
             last_emit = std::time::Instant::now();
         }
     }
+
     // Final progress emit
     let _ = window.emit(
         "java-install-progress",
@@ -122,17 +161,19 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
         },
     );
 
-    let temp_dir = runtimes_dir.join(format!("temp_{}", version_name));
-    if temp_dir.exists() {
-        fs::remove_dir_all(&temp_dir).map_err(|e| format!("无法清理临时目录：{}", e))?;
-    }
-    fs::create_dir_all(&temp_dir).map_err(|e| format!("无法创建临时目录：{}", e))?;
+    // Check file signature (Magic Numbers)，根据文件头判断格式
+    let mut magic = [0u8; 2];
+    let mut magic_file =
+        fs::File::open(&temp_file_path).map_err(|e| format!("无法打开临时下载文件：{}", e))?;
+    let read_len = magic_file
+        .read(&mut magic)
+        .map_err(|e| format!("读取临时文件头失败：{}", e))?;
+    drop(magic_file);
 
-    // Check file signature (Magic Numbers)
     #[cfg(target_os = "windows")]
     {
-        if data.len() > 2 && &data[0..2] == b"PK" {
-            extract_zip(&data, &temp_dir, &cancel_flag)?;
+        if read_len >= 2 && &magic == b"PK" {
+            extract_zip(&temp_file_path, &temp_dir, &cancel_flag)?;
         } else {
             return Err("下载的文件不是有效的 ZIP 格式".to_string());
         }
@@ -141,8 +182,8 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
     #[cfg(not(target_os = "windows"))]
     {
         // Gzip header is usually 1F 8B
-        if data.len() > 2 && data[0] == 0x1f && data[1] == 0x8b {
-            extract_tar_gz(&data, &temp_dir, &cancel_flag)?;
+        if read_len >= 2 && magic[0] == 0x1f && magic[1] == 0x8b {
+            extract_tar_gz(&temp_file_path, &temp_dir, &cancel_flag)?;
         } else {
             return Err("下载的文件不是有效的 tar.gz 格式".to_string());
         }
@@ -219,9 +260,10 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
 }
 
 #[cfg(target_os = "windows")]
-fn extract_zip(data: &[u8], target_dir: &Path, cancel_flag: &AtomicBool) -> Result<(), String> {
-    let cursor = Cursor::new(data);
-    let mut archive = ZipArchive::new(cursor).map_err(|e| format!("ZIP 解析失败：{}", e))?;
+fn extract_zip(zip_path: &Path, target_dir: &Path, cancel_flag: &AtomicBool) -> Result<(), String> {
+    let file = fs::File::open(zip_path).map_err(|e| format!("打开 ZIP 文件失败：{}", e))?;
+    let reader = BufReader::new(file);
+    let mut archive = ZipArchive::new(reader).map_err(|e| format!("ZIP 解析失败：{}", e))?;
 
     for i in 0..archive.len() {
         if cancel_flag.load(Ordering::Relaxed) {
@@ -249,14 +291,16 @@ fn extract_zip(data: &[u8], target_dir: &Path, cancel_flag: &AtomicBool) -> Resu
 }
 
 #[cfg(not(target_os = "windows"))]
-fn extract_tar_gz(data: &[u8], target_dir: &Path, cancel_flag: &AtomicBool) -> Result<(), String> {
-    let cursor = Cursor::new(data);
-    let tar = GzDecoder::new(cursor);
+fn extract_tar_gz(
+    archive_path: &Path,
+    target_dir: &Path,
+    cancel_flag: &AtomicBool,
+) -> Result<(), String> {
+    let file = fs::File::open(archive_path).map_err(|e| format!("打开压缩文件失败：{}", e))?;
+    let buf_reader = BufReader::new(file);
+    let tar = GzDecoder::new(buf_reader);
     let mut archive = Archive::new(tar);
 
-    // tar archive unpacking is usually one-shot, but we can check if there's a way to iterate.
-    // The `unpack` method is convenient but not cancellable per-entry easily without manual iteration.
-    // For now, check flag before. Note: unpacking fully is usually fast on modern SSDs unless huge.
     if cancel_flag.load(Ordering::Relaxed) {
         return Err("用户取消解压".to_string());
     }
