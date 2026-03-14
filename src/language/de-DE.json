@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "Startseite",
     "create_server": "Server erstellen",
     "console": "Konsole",
@@ -22,6 +23,7 @@
     "settings": "Einstellungen",
     "personalize": "Personalisieren",
     "about": "Über",
+    "download": "Download",
     "download-file": "Datei herunterladen",
     "download-server": "Serverdatei herunterladen",
     "loading": "Laden...",
@@ -650,7 +652,7 @@
     "settings": "Plugin-Einstellungen"
   },
   "download-file": {
-    "title": "Datei mit Multi-Thread-Downloader herunterladen",
+    "title": "Benutzerdefinierter Download",
     "url": "Download-URL",
     "url_placeholder": "Bitte Download-URL eingeben (http/https)",
     "save_folder": "Speichern unter",

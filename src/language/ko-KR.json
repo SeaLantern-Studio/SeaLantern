@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "홈",
     "create_server": "서버 생성",
     "console": "콘솔",
@@ -22,6 +23,7 @@
     "settings": "설정",
     "personalize": "개인 설정",
     "about": "정보",
+    "download": "다운로드",
     "download-file": "파일 다운로드",
     "download-server": "서버 다운로드",
     "loading": "로딩 중...",
@@ -652,7 +654,7 @@
     "settings": "플러그인 설정"
   },
   "download-file": {
-    "title": "멀티스레드 다운로더를 사용하여 파일 다운로드",
+    "title": "사용자 정의 다운로드",
     "url": "다운로드 주소",
     "url_placeholder": "다운로드 URL을 입력하세요 (http/https)",
     "save_folder": "저장 위치",
