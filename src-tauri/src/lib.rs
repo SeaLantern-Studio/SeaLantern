@@ -1,6 +1,6 @@
 mod commands;
 mod models;
-mod plugins;
+pub mod plugins;
 mod services;
 mod utils;
 
@@ -32,6 +32,33 @@ use tauri::{
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Docker 无头模式检测
+    if std::path::Path::new("/.dockerenv").exists() {
+        eprintln!("SeaLantern: Running in Docker, headless mode with HTTP server enabled");
+        // 在 Docker 中启动 HTTP 服务器
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                eprintln!("SeaLantern: Failed to create Tokio runtime for HTTP server: {}", e);
+                eprintln!(
+                    "SeaLantern: This may be due to container resource limits (memory, threads, etc.)"
+                );
+                std::process::exit(1);
+            }
+        };
+        rt.block_on(async {
+            // 尝试从环境变量获取静态文件目录，默认为 /app/dist
+            let static_dir =
+                std::env::var("STATIC_DIR").unwrap_or_else(|_| "/app/dist".to_string());
+            let static_dir_opt = std::path::Path::new(&static_dir)
+                .exists()
+                .then_some(static_dir);
+
+            services::http::run_http_server("0.0.0.0:3000", static_dir_opt).await;
+        });
+        return;
+    }
+
     // Fix white screen issue on Wayland desktop environments (tested on Arch Linux + KDE Plasma)
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
@@ -130,6 +157,7 @@ pub fn run() {
             system_commands::open_folder,
             system_commands::get_default_run_path,
             system_commands::get_safe_mode_status,
+            system_commands::frontend_heartbeat,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -162,6 +190,9 @@ pub fn run() {
             download_commands::download_file,
             download_commands::poll_task,
             download_commands::poll_all_downloads,
+            download_commands::get_server_types,
+            download_commands::get_versions_by_type,
+            download_commands::get_download_info,
             download_commands::cancel_download_task,
             plugin_commands::list_plugins,
             plugin_commands::scan_plugins,
@@ -235,6 +266,8 @@ pub fn run() {
                                 m.disable_all_plugins_for_shutdown();
                             }
                         }
+                        // 显式退出整个应用进程，避免后端继续驻留
+                        window.app_handle().exit(0);
                     }
                     _ => {
                         // 显示对话框（ask 或其他值）
@@ -508,6 +541,52 @@ pub fn run() {
             }
 
             app.manage(manager.clone());
+
+            // 前端心跳看门狗：若长时间未收到心跳则自动退出进程
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+                    use tokio::time::sleep;
+
+                    loop {
+                        sleep(Duration::from_secs(5)).await;
+
+                        let last = crate::services::global::last_frontend_heartbeat();
+                        if last == 0 {
+                            // 尚未收到任何心跳，继续等待
+                            continue;
+                        }
+
+                        let now = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+
+                        if now.saturating_sub(last) > 30 {
+                            eprintln!(
+                                "[Watchdog] frontend heartbeat lost, shutting down Sea Lantern",
+                            );
+
+                            let settings = crate::services::global::settings_manager().get();
+                            if settings.close_servers_on_exit {
+                                crate::services::global::server_manager().stop_all_servers();
+                            }
+
+                            if let Some(manager) = app_handle.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>() {
+                                if let Ok(mut m) = manager.lock() {
+                                    m.disable_all_plugins_for_shutdown();
+                                }
+                            }
+
+                            app_handle.exit(0);
+                            break;
+                        }
+                    }
+                });
+            }
 
             // Check if currently in safe mode
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");

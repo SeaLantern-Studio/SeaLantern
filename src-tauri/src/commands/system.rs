@@ -1,3 +1,4 @@
+use crate::services;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use sysinfo::{Disks, Networks, System};
@@ -380,6 +381,11 @@ pub fn open_folder(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn get_default_run_path() -> Result<String, String> {
+    // Docker 环境检测 - 优先返回容器内数据目录
+    if std::path::Path::new("/.dockerenv").exists() {
+        return Ok("./data".to_string());
+    }
+
     let documents_dir = dirs_next::document_dir().ok_or_else(|| "无法获取文档目录".to_string())?;
     let minecraft_servers_dir = documents_dir.join("Minecraft Servers");
 
@@ -390,4 +396,9 @@ pub fn get_default_run_path() -> Result<String, String> {
 pub fn get_safe_mode_status() -> Result<bool, String> {
     let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
     Ok(safe_mode)
+}
+
+#[tauri::command]
+pub fn frontend_heartbeat() {
+    services::global::update_frontend_heartbeat();
 }

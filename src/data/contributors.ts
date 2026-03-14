@@ -117,10 +117,11 @@ export const contributors: Contributor[] = [
   },
   {
     name: "皓天是条龙",
-    role: "增加了一点新功能",
+    role: "SeaLantern掌管下载的神",
     avatar: "https://api.rms.net.cn/head/zhu_hao_tian",
     url: {
       github: "https://github.com/zhu1h1t1",
+      bilibili: "https://space.bilibili.com/3461582583498915",
     },
   },
   {

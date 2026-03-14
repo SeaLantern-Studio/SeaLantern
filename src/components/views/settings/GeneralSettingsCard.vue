@@ -7,6 +7,7 @@ import { i18n } from "@language";
 
 const props = defineProps<{
   closeServersOnExit: boolean;
+  closeServersOnUpdate: boolean;
   autoAcceptEula: boolean;
   closeAction: "ask" | "minimize" | "close";
 }>();
@@ -15,6 +16,7 @@ type CloseAction = "ask" | "minimize" | "close";
 
 const emit = defineEmits<{
   (e: "update:closeServersOnExit", value: boolean): void;
+  (e: "update:closeServersOnUpdate", value: boolean): void;
   (e: "update:autoAcceptEula", value: boolean): void;
   (e: "update:closeAction", value: CloseAction): void;
   (e: "change"): void;
@@ -45,6 +47,26 @@ const closeActionOptions = computed(() => [
           @update:model-value="
             (v) => {
               emit('update:closeServersOnExit', v);
+              emit('change');
+            }
+          "
+        />
+      </div>
+
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">
+            {{ i18n.t("settings.update_auto_stop") }}
+          </span>
+          <span class="sl-setting-desc">
+            {{ i18n.t("settings.update_auto_stop_desc") }}
+          </span>
+        </div>
+        <SLSwitch
+          :model-value="closeServersOnUpdate"
+          @update:model-value="
+            (v) => {
+              emit('update:closeServersOnUpdate', v);
               emit('change');
             }
           "

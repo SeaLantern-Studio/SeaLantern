@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
@@ -17,6 +17,17 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
+import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
+import { isBrowserEnv } from "@api/tauri";
+
+// UUID 生成函数（用于前端备用方案）
+function generateUUID(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 type SourceType = "archive" | "folder" | "";
 
@@ -166,6 +177,10 @@ export function useCreateServerPage() {
     () => step4Completed.value && !startupSyncPending.value && !startupDetecting.value,
   );
 
+  onActivated(() => {
+    loadFromDraft();
+  });
+
   onMounted(async () => {
     await loadDefaultSettings();
   });
@@ -274,16 +289,31 @@ export function useCreateServerPage() {
       minMemory.value = String(settings.default_min_memory);
       port.value = String(settings.default_port);
 
-      // 加载上次选择的开服路径
-      if (settings.last_run_path) {
-        runPath.value = settings.last_run_path;
-      } else {
-        // 如果没有上次的路径，获取默认路径
+      // Docker 环境下强制使用默认路径，忽略已保存的路径设置
+      if (isBrowserEnv()) {
         try {
           const defaultPath = await systemApi.getDefaultRunPath();
-          runPath.value = defaultPath;
+          // 在Docker环境下，生成UUID并显示完整路径
+          const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
+          runPath.value = `${defaultPath}/${uuid}`;
         } catch (error) {
           console.error("Failed to get default run path:", error);
+          // 即使API调用失败，也设置一个合理的默认值
+          const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
+          runPath.value = `./data/${uuid}`;
+        }
+      } else {
+        // 非 Docker 环境下加载上次选择的开服路径
+        if (settings.last_run_path) {
+          runPath.value = settings.last_run_path;
+        } else {
+          // 如果没有上次的路径，获取默认路径
+          try {
+            const defaultPath = await systemApi.getDefaultRunPath();
+            runPath.value = defaultPath;
+          } catch (error) {
+            console.error("Failed to get default run path:", error);
+          }
         }
       }
 
@@ -300,6 +330,15 @@ export function useCreateServerPage() {
       }
     } catch (error) {
       console.error("Failed to load default settings:", error);
+    }
+  }
+
+  function loadFromDraft() {
+    let store = useCreateServerDraftStore();
+    let draft = store.consumeDraft();
+    if (draft !== null) {
+      sourcePath.value = draft.sourcePath;
+      sourceType.value = draft.sourceType;
     }
   }
 
@@ -325,6 +364,29 @@ export function useCreateServerPage() {
   }
 
   async function pickRunPath() {
+    // Docker 环境下禁用文件选择器，使用默认路径
+    if (isBrowserEnv()) {
+      try {
+        const defaultPath = await systemApi.getDefaultRunPath();
+        // 在Docker环境下，生成UUID并显示完整路径
+        const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
+        const fullPath = `${defaultPath}/${uuid}`;
+        updateRunPath(fullPath);
+        // 保存选择的开服路径
+        try {
+          await settingsApi.updatePartial({ last_run_path: fullPath });
+        } catch (error) {
+          console.error("Failed to save last run path:", error);
+        }
+      } catch (error) {
+        console.error("Failed to get default run path:", error);
+        // 即使API调用失败，也设置一个合理的默认值（包含UUID）
+        const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
+        updateRunPath(`./data/${uuid}`);
+      }
+      return;
+    }
+
     const selected = await systemApi.pickFolder();
     if (selected) {
       updateRunPath(selected);

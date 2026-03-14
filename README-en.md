@@ -22,10 +22,9 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 </div>
 
-![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
-
 ## What can it do?
 
+- Download and install server core
 - Logs and load at the control panel in real time; send commands to the server directly
 - Edit server.properties graphically, without browsing directories
 - Manage whitelists, bans and OPs in switches

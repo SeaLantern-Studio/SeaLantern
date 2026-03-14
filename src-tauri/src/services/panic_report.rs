@@ -47,7 +47,7 @@ pub fn init_panic_hook() {
         }
 
         let crash_time = Utc::now();
-        let start_time = *START_TIME.get().expect("start time not set");
+        let start_time = *START_TIME.get().unwrap_or(&crash_time);
 
         // 用 chrono 格式化时间，输出为易于阅读与解析的格式
         let crash_time_str = crash_time.format("%Y-%m-%d %H:%M:%S%.3f UTC").to_string();

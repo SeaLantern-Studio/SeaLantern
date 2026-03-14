@@ -1,3 +1,7 @@
+//! i18n 服务：集中管理内置与插件的多语言文案。
+//!
+//! 内部使用 `std::sync::RwLock` 维护当前语言与翻译表，目前通过 `unwrap()` 处理锁毒化，
+//! 若后续需要进一步去 panic 化，可以改为显式错误返回或回退到默认语言。
 use std::collections::HashMap;
 use std::sync::RwLock;
 

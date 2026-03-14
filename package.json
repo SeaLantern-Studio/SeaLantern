@@ -16,7 +16,9 @@
     "commitlint": "commitlint",
     "prepare": "husky",
     "sv": "node ./scripts/version.mjs show",
-    "cv": "node ./scripts/version.mjs change"
+    "cv": "node ./scripts/version.mjs change",
+    "docker:dev": "cargo run -p docker-entry",
+    "docker:build": "docker build -t sealantern:docker ."
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",

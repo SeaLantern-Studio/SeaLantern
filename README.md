@@ -23,10 +23,9 @@
 
 </div>
 
-![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
-
 ## 能干什么
 
+- 下载安装服务器核心
 - 控制台实时看日志，直接输命令
 - server.properties 图形化编辑，不用手改文件
 - 白名单、封禁、OP 一键管理

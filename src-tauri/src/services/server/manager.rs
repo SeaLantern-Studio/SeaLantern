@@ -6,8 +6,10 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::*;
-use crate::services::server_log_pipeline;
 use serde::{Deserialize, Serialize};
+
+use super::installer;
+use super::log_pipeline as server_log_pipeline;
 
 const DATA_FILE: &str = "sea_lantern_servers.json";
 const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
@@ -151,7 +153,7 @@ impl ServerManager {
         self.mark_stopping(id);
         let sid = id.to_string();
         std::thread::spawn(move || {
-            let manager = super::global::server_manager();
+            let manager = crate::services::global::server_manager();
             if let Err(err) = manager.stop_server(&sid) {
                 let _ = server_log_pipeline::append_sealantern_log(
                     &sid,
@@ -164,14 +166,34 @@ impl ServerManager {
         Ok(())
     }
 
-    fn save(&self) {
-        let servers = self.servers.lock().expect("servers lock poisoned");
-        let data_dir = self.data_dir.lock().expect("data_dir lock poisoned");
+    fn save(&self) -> Result<(), String> {
+        let servers = self.lock_servers()?;
+        let data_dir = self.data_dir_value()?;
         save_servers(&data_dir, &servers);
+        Ok(())
     }
 
     fn get_app_settings(&self) -> crate::models::settings::AppSettings {
-        super::global::settings_manager().get()
+        crate::services::global::settings_manager().get()
+    }
+
+    fn lock_servers(&self) -> Result<std::sync::MutexGuard<'_, Vec<ServerInstance>>, String> {
+        self.servers
+            .lock()
+            .map_err(|_| "servers lock poisoned".to_string())
+    }
+
+    fn lock_processes(&self) -> Result<std::sync::MutexGuard<'_, HashMap<String, Child>>, String> {
+        self.processes
+            .lock()
+            .map_err(|_| "processes lock poisoned".to_string())
+    }
+
+    fn data_dir_value(&self) -> Result<String, String> {
+        self.data_dir
+            .lock()
+            .map(|dir| dir.clone())
+            .map_err(|_| "data_dir lock poisoned".to_string())
     }
 
     fn build_managed_jvm_args(
@@ -221,7 +243,7 @@ impl ServerManager {
         let id = uuid::Uuid::new_v4().to_string();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("time went backwards")
+            .map_err(|e| format!("获取当前时间失败: {}", e))?
             .as_secs();
         let jar_path_obj = std::path::Path::new(&req.jar_path);
         let server_dir = jar_path_obj
@@ -247,11 +269,8 @@ impl ServerManager {
             created_at: now,
             last_started_at: None,
         };
-        self.servers
-            .lock()
-            .expect("servers lock poisoned")
-            .push(server.clone());
-        self.save();
+        self.lock_servers()?.push(server.clone());
+        self.save()?;
         Ok(server)
     }
 
@@ -264,11 +283,7 @@ impl ServerManager {
         }
 
         let id = uuid::Uuid::new_v4().to_string();
-        let data_dir = self
-            .data_dir
-            .lock()
-            .expect("data_dir lock poisoned")
-            .clone();
+        let data_dir = self.data_dir_value()?;
         let servers_dir = std::path::Path::new(&data_dir).join("servers");
         let server_dir = servers_dir.join(&id);
 
@@ -328,11 +343,11 @@ impl ServerManager {
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("time went backwards")
+            .map_err(|e| format!("获取当前时间失败: {}", e))?
             .as_secs();
 
         // 检测核心类型
-        let core_type = super::server_installer::detect_core_type(&dest_startup.to_string_lossy());
+        let core_type = installer::detect_core_type(&dest_startup.to_string_lossy());
         println!("检测到核心类型: {}", core_type);
 
         let server = ServerInstance {
@@ -354,11 +369,8 @@ impl ServerManager {
             last_started_at: None,
         };
 
-        self.servers
-            .lock()
-            .expect("servers lock poisoned")
-            .push(server.clone());
-        self.save();
+        self.lock_servers()?.push(server.clone());
+        self.save()?;
         Ok(server)
     }
 
@@ -375,10 +387,45 @@ impl ServerManager {
             return Err("运行目录不能为空，请选择开服路径".to_string());
         }
 
-        // 使用 UUID 前30位作为文件夹名称，确保唯一性
+        // 如果路径已经包含UUID（长度超过基础路径），直接使用该路径
+        // 否则生成UUID子目录（兼容非Docker环境或旧逻辑）
         let server_name = validate_server_name(&req.name)?;
-        let folder_name = uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
-        let run_dir = PathBuf::from(&base_path).join(&folder_name);
+        let run_dir = if base_path.contains("/") || base_path.contains("\\") {
+            // 路径包含分隔符，可能已经包含UUID子目录
+            let path = PathBuf::from(&base_path);
+            // 检查路径的最后一级是否是UUID格式（32位十六进制字符）
+            if let Some(last_comp) = path.components().next_back() {
+                let comp_str = last_comp.as_os_str().to_string_lossy();
+                // UUID格式：32位十六进制字符（包含或不包含连字符）
+                if comp_str.len() == 32 && comp_str.chars().all(|c| c.is_ascii_hexdigit()) {
+                    // 已经是UUID路径，直接使用
+                    path
+                } else if comp_str.len() == 36
+                    && comp_str.chars().take(32).all(|c| c.is_ascii_hexdigit())
+                    && comp_str.chars().nth(8) == Some('-')
+                    && comp_str.chars().nth(13) == Some('-')
+                    && comp_str.chars().nth(18) == Some('-')
+                    && comp_str.chars().nth(23) == Some('-')
+                {
+                    // 带连字符的UUID格式
+                    path
+                } else {
+                    // 生成UUID子目录
+                    let folder_name =
+                        uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
+                    PathBuf::from(&base_path).join(&folder_name)
+                }
+            } else {
+                // 生成UUID子目录
+                let folder_name =
+                    uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
+                PathBuf::from(&base_path).join(&folder_name)
+            }
+        } else {
+            // 生成UUID子目录
+            let folder_name = uuid::Uuid::new_v4().to_string().replace("-", "")[..30].to_string();
+            PathBuf::from(&base_path).join(&folder_name)
+        };
 
         // 检查目标目录是否已存在
         if run_dir.exists() {
@@ -409,7 +456,7 @@ impl ServerManager {
                     .map_err(|e| format!("复制 JAR 文件失败: {}", e))?;
             } else {
                 // 其他压缩包解压
-                super::server_installer::extract_modpack_archive(source_path, &run_dir)?;
+                installer::extract_modpack_archive(source_path, &run_dir)?;
             }
         } else if source_path.is_dir() {
             if !paths_equal(source_path, &run_dir) {
@@ -463,11 +510,7 @@ impl ServerManager {
             return Err("自定义启动命令不能为空".to_string());
         }
 
-        let data_dir = self
-            .data_dir
-            .lock()
-            .expect("data_dir lock poisoned")
-            .clone();
+        let data_dir = self.data_dir_value()?;
 
         upsert_run_path_mapping(
             &data_dir,
@@ -481,7 +524,7 @@ impl ServerManager {
                 source_modpack_path: req.modpack_path.clone(),
                 updated_at: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .expect("time went backwards")
+                    .map_err(|e| format!("获取当前时间失败: {}", e))?
                     .as_secs(),
             },
         )?;
@@ -516,12 +559,12 @@ impl ServerManager {
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("time went backwards")
+            .map_err(|e| format!("获取当前时间失败: {}", e))?
             .as_secs();
         let detected_core_type = if startup_mode == "custom" {
             "modpack".to_string()
         } else {
-            super::server_installer::detect_core_type(&startup_path)
+            installer::detect_core_type(&startup_path)
         };
         let core_type = selected_core_type.unwrap_or(detected_core_type);
         let mc_version = selected_mc_version.unwrap_or_else(|| "unknown".to_string());
@@ -550,11 +593,8 @@ impl ServerManager {
             server.id, server.path, server.jar_path
         );
 
-        self.servers
-            .lock()
-            .expect("servers lock poisoned")
-            .push(server.clone());
-        self.save();
+        self.lock_servers()?.push(server.clone());
+        self.save()?;
         Ok(server)
     }
 
@@ -620,13 +660,13 @@ impl ServerManager {
         let core_type = if startup_mode == "custom" {
             "Unknown".to_string()
         } else {
-            super::server_installer::detect_core_type(&jar_path)
+            installer::detect_core_type(&jar_path)
         };
         println!("检测到核心类型: {}", core_type);
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("time went backwards")
+            .map_err(|e| format!("获取当前时间失败: {}", e))?
             .as_secs();
 
         let id = uuid::Uuid::new_v4().to_string();
@@ -650,21 +690,18 @@ impl ServerManager {
             last_started_at: None,
         };
 
-        self.servers
-            .lock()
-            .expect("servers lock poisoned")
-            .push(server.clone());
-        self.save();
+        self.lock_servers()?.push(server.clone());
+        self.save()?;
         Ok(server)
     }
 
     pub fn start_server(&self, id: &str) -> Result<(), String> {
         let server = {
-            let servers = self.servers.lock().expect("servers lock poisoned");
+            let servers = self.lock_servers()?;
             servers
                 .iter()
                 .find(|s| s.id == id)
-                .ok_or_else(|| "未找到服务器".to_string())?
+                .ok_or_else(|| format!("未找到服务器: {}", id))?
                 .clone()
         };
 
@@ -674,14 +711,14 @@ impl ServerManager {
         );
 
         {
-            let mut procs = self.processes.lock().expect("processes lock poisoned");
+            let mut procs = self.lock_processes()?;
             if let Some(child) = procs.get_mut(id) {
                 match child.try_wait() {
                     Ok(Some(_)) => {
                         procs.remove(id);
                         server_log_pipeline::shutdown_writer(id);
-                    } // Dead process, clean up
-                    Ok(None) => return Err("服务器已在运行中".to_string()),
+                    }
+                    Ok(None) => return Err(format!("服务器已在运行中: {}", id)),
                     Err(_) => {
                         procs.remove(id);
                         server_log_pipeline::shutdown_writer(id);
@@ -837,24 +874,19 @@ impl ServerManager {
             .unwrap_or_else(|| server.jar_path.clone());
 
         let starter_installer_url = if startup_mode == "starter" {
-            let detected_core_type = super::server_installer::detect_core_type(&server.jar_path);
-            let core_key =
-                super::server_installer::CoreType::normalize_to_api_core_key(&server.core_type)
-                    .or_else(|| {
-                        super::server_installer::CoreType::normalize_to_api_core_key(
-                            &detected_core_type,
-                        )
-                    })
-                    .ok_or_else(|| {
-                        format!(
-                            "无法识别 Starter 核心类型：{}",
-                            if server.core_type.trim().is_empty() {
-                                detected_core_type
-                            } else {
-                                server.core_type.clone()
-                            }
-                        )
-                    })?;
+            let detected_core_type = installer::detect_core_type(&server.jar_path);
+            let core_key = installer::CoreType::normalize_to_api_core_key(&server.core_type)
+                .or_else(|| installer::CoreType::normalize_to_api_core_key(&detected_core_type))
+                .ok_or_else(|| {
+                    format!(
+                        "无法识别 Starter 核心类型：{}",
+                        if server.core_type.trim().is_empty() {
+                            detected_core_type
+                        } else {
+                            server.core_type.clone()
+                        }
+                    )
+                })?;
 
             let mc_version = server.mc_version.trim();
             if mc_version.is_empty() || mc_version.eq_ignore_ascii_case("unknown") {
@@ -862,7 +894,9 @@ impl ServerManager {
             }
 
             let (installer_url, installer_sha256) =
-                super::starter_installer_links::fetch_starter_installer_url(&core_key, mc_version)?;
+                crate::services::starter_installer_links::fetch_starter_installer_url(
+                    &core_key, mc_version,
+                )?;
             if let Some(sha256) = installer_sha256 {
                 let _ = server_log_pipeline::append_sealantern_log(
                     id,
@@ -1048,30 +1082,29 @@ impl ServerManager {
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let mut child = cmd.spawn().map_err(|e| format!("启动失败: {}", e))?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("启动失败（id={}, path={}）: {}", id, server.path, e))?;
         println!("Java进程已启动，PID: {:?}", child.id());
 
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
 
-        self.processes
-            .lock()
-            .expect("processes lock poisoned")
-            .insert(id.to_string(), child);
+        self.lock_processes()?.insert(id.to_string(), child);
         self.mark_starting(id);
 
         {
-            let mut servers = self.servers.lock().expect("servers lock poisoned");
+            let mut servers = self.lock_servers()?;
             if let Some(s) = servers.iter_mut().find(|s| s.id == id) {
                 s.last_started_at = Some(
                     SystemTime::now()
                         .duration_since(UNIX_EPOCH)
-                        .expect("time went backwards")
+                        .map_err(|e| format!("获取当前时间失败: {}", e))?
                         .as_secs(),
                 );
             }
         }
-        self.save();
+        self.save()?;
         let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器启动中...");
 
         if let Some(stdout) = stdout {
@@ -1093,7 +1126,7 @@ impl ServerManager {
         // 3) 所有 return 分支都要覆盖 shutdown_writer，避免异常路径漏清理。
         // Check if actually running first
         let is_running = {
-            let mut procs = self.processes.lock().expect("processes lock poisoned");
+            let mut procs = self.lock_processes()?;
             if let Some(child) = procs.get_mut(id) {
                 match child.try_wait() {
                     Ok(Some(_)) => {
@@ -1125,7 +1158,7 @@ impl ServerManager {
 
         for _ in 0..20 {
             std::thread::sleep(std::time::Duration::from_millis(500));
-            let mut procs = self.processes.lock().expect("processes lock poisoned");
+            let mut procs = self.lock_processes()?;
             if let Some(child) = procs.get_mut(id) {
                 match child.try_wait() {
                     Ok(Some(_)) => {
@@ -1155,7 +1188,7 @@ impl ServerManager {
             }
         }
 
-        let mut procs = self.processes.lock().expect("processes lock poisoned");
+        let mut procs = self.lock_processes()?;
         if let Some(mut child) = procs.remove(id) {
             let _ = child.kill();
             let _ = child.wait();
@@ -1170,42 +1203,51 @@ impl ServerManager {
     }
 
     pub fn send_command(&self, id: &str, command: &str) -> Result<(), String> {
-        let mut procs = self.processes.lock().expect("processes lock poisoned");
+        let mut procs = self.lock_processes()?;
         let child = procs
             .get_mut(id)
-            .ok_or_else(|| "服务器未运行".to_string())?;
+            .ok_or_else(|| format!("服务器未运行: {}", id))?;
         if let Some(ref mut stdin) = child.stdin {
-            writeln!(stdin, "{}", command).map_err(|e| format!("发送失败: {}", e))?;
-            stdin.flush().map_err(|e| format!("发送失败: {}", e))?;
+            writeln!(stdin, "{}", command).map_err(|e| format!("发送失败（id={}）: {}", id, e))?;
+            stdin
+                .flush()
+                .map_err(|e| format!("发送失败（id={}）: {}", id, e))?;
         }
         Ok(())
     }
 
     pub fn get_server_list(&self) -> Vec<ServerInstance> {
-        self.servers.lock().expect("servers lock poisoned").clone()
+        self.lock_servers()
+            .map(|servers| servers.clone())
+            .unwrap_or_default()
     }
 
     pub fn get_server_status(&self, id: &str) -> ServerStatusInfo {
-        let mut procs = self.processes.lock().expect("processes lock poisoned");
-        let is_running = if let Some(child) = procs.get_mut(id) {
-            match child.try_wait() {
-                Ok(Some(_)) => {
-                    procs.remove(id);
-                    server_log_pipeline::shutdown_writer(id);
-                    self.clear_starting(id);
+        let is_running = self
+            .lock_processes()
+            .ok()
+            .map(|mut procs| {
+                if let Some(child) = procs.get_mut(id) {
+                    match child.try_wait() {
+                        Ok(Some(_)) => {
+                            procs.remove(id);
+                            server_log_pipeline::shutdown_writer(id);
+                            self.clear_starting(id);
+                            false
+                        }
+                        Ok(None) => true,
+                        Err(_) => {
+                            procs.remove(id);
+                            server_log_pipeline::shutdown_writer(id);
+                            self.clear_starting(id);
+                            false
+                        }
+                    }
+                } else {
                     false
                 }
-                Ok(None) => true,
-                Err(_) => {
-                    procs.remove(id);
-                    server_log_pipeline::shutdown_writer(id);
-                    self.clear_starting(id);
-                    false
-                }
-            }
-        } else {
-            false
-        };
+            })
+            .unwrap_or(false);
         ServerStatusInfo {
             id: id.to_string(),
             status: if self.is_stopping(id) {
@@ -1224,7 +1266,7 @@ impl ServerManager {
 
     pub fn delete_server(&self, id: &str) -> Result<(), String> {
         {
-            let procs = self.processes.lock().expect("processes lock poisoned");
+            let procs = self.lock_processes()?;
             if procs.contains_key(id) {
                 drop(procs);
                 let _ = self.stop_server(id);
@@ -1234,7 +1276,7 @@ impl ServerManager {
         server_log_pipeline::shutdown_writer(id);
 
         let server_path = {
-            let servers = self.servers.lock().expect("servers lock poisoned");
+            let servers = self.lock_servers()?;
             servers.iter().find(|s| s.id == id).map(|s| s.path.clone())
         };
         if let Some(path) = server_path {
@@ -1244,32 +1286,26 @@ impl ServerManager {
             }
         }
 
-        self.servers
-            .lock()
-            .expect("servers lock poisoned")
-            .retain(|s| s.id != id);
-        let data_dir = self
-            .data_dir
-            .lock()
-            .expect("data_dir lock poisoned")
-            .clone();
+        self.lock_servers()?.retain(|s| s.id != id);
+        let data_dir = self.data_dir_value()?;
         remove_run_path_mapping(&data_dir, id);
-        self.save();
+        self.save()?;
         Ok(())
     }
 
     pub fn get_running_server_ids(&self) -> Vec<String> {
-        let procs = self.processes.lock().expect("processes lock poisoned");
-        procs.keys().cloned().collect()
+        self.lock_processes()
+            .map(|procs| procs.keys().cloned().collect())
+            .unwrap_or_default()
     }
 
     pub fn update_server_name(&self, id: &str, new_name: &str) -> Result<(), String> {
         let validated_name = validate_server_name(new_name)?;
-        let mut servers = self.servers.lock().expect("servers lock poisoned");
+        let mut servers = self.lock_servers()?;
         if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
             server.name = validated_name;
             drop(servers);
-            self.save();
+            self.save()?;
             Ok(())
         } else {
             Err("未找到服务器".to_string())
@@ -1278,12 +1314,9 @@ impl ServerManager {
 
     pub fn stop_all_servers(&self) {
         let ids: Vec<String> = self
-            .processes
-            .lock()
-            .expect("processes lock poisoned")
-            .keys()
-            .cloned()
-            .collect();
+            .lock_processes()
+            .map(|procs| procs.keys().cloned().collect())
+            .unwrap_or_default();
         for id in ids {
             let _ = self.stop_server(&id);
         }
@@ -1362,7 +1395,7 @@ fn find_server_executable(server_path: &Path) -> Result<(String, String), String
         }
     }
 
-    if let Ok(jar_path) = super::server_installer::find_server_jar(server_path) {
+    if let Ok(jar_path) = installer::find_server_jar(server_path) {
         return Ok((jar_path, "jar".to_string()));
     }
 
