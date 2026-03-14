@@ -12,6 +12,8 @@ use serde::Deserialize;
 pub const STARTER_INSTALLER_LINKS_URL: &str = "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/releases/download/26.02.27/jar_lfs_links.json";
 const STARTER_INSTALLER_LINKS_FILE: &str = "jar_lfs_links.json";
 const STARTER_INSTALLER_LINKS_CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+const STARTER_INSTALLER_FETCH_RETRY_LIMIT: usize = 3;
+const STARTER_INSTALLER_FETCH_RETRY_DELAY: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Deserialize)]
 struct StarterLinksPayload {
@@ -122,23 +124,51 @@ fn fetch_and_cache_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>,
         .timeout(Duration::from_secs(15))
         .build()
         .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
-    let response = client
-        .get(STARTER_INSTALLER_LINKS_URL)
-        .send()
-        .map_err(|e| format!("请求 Starter 下载信息失败: {}", e))?;
 
-    let status = response.status();
-    if !status.is_success() {
-        return Err(format!(
-            "Starter 下载接口返回异常状态: {} ({})",
-            status, STARTER_INSTALLER_LINKS_URL
-        ));
-    }
+    let mut attempt: usize = 0;
 
-    let body = response
-        .bytes()
-        .map_err(|e| format!("读取 Starter 下载信息失败: {}", e))?
-        .to_vec();
+    let body = loop {
+        attempt += 1;
+
+        let response = match client.get(STARTER_INSTALLER_LINKS_URL).send() {
+            Ok(response) => response,
+            Err(e) => {
+                if attempt >= STARTER_INSTALLER_FETCH_RETRY_LIMIT {
+                    return Err(format!(
+                        "请求 Starter 下载信息失败（第 {} 次尝试）: {}",
+                        attempt, e
+                    ));
+                }
+                std::thread::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY);
+                continue;
+            }
+        };
+
+        let status = response.status();
+        if !status.is_success() {
+            if attempt >= STARTER_INSTALLER_FETCH_RETRY_LIMIT {
+                return Err(format!(
+                    "Starter 下载接口返回异常状态（第 {} 次尝试）: {} ({})",
+                    attempt, status, STARTER_INSTALLER_LINKS_URL
+                ));
+            }
+            std::thread::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY);
+            continue;
+        }
+
+        match response.bytes() {
+            Ok(bytes) => break bytes.to_vec(),
+            Err(e) => {
+                if attempt >= STARTER_INSTALLER_FETCH_RETRY_LIMIT {
+                    return Err(format!(
+                        "读取 Starter 下载信息失败（第 {} 次尝试）: {}",
+                        attempt, e
+                    ));
+                }
+                std::thread::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY);
+            }
+        }
+    };
 
     validate_starter_links_json(&body)
         .map_err(|e| format!("远端 Starter 下载信息校验失败: {}", e))?;

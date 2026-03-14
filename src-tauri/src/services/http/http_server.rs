@@ -9,6 +9,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::fs;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
@@ -85,12 +86,22 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
         eprintln!("Failed to create upload directory: {}", e);
     }
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = match tokio::net::TcpListener::bind(addr).await {
+        Ok(listener) => listener,
+        Err(e) => {
+            eprintln!("SeaLantern HTTP server failed to bind at {}: {}", addr, e);
+            return;
+        }
+    };
+
     println!("SeaLantern HTTP server listening on {}", addr);
     println!("API endpoints available at http://{}/api/<command>", addr);
     println!("Health check at http://{}/health", addr);
     println!("File upload available at http://{}/upload", addr);
-    axum::serve(listener, app).await.unwrap();
+
+    if let Err(e) = axum::serve(listener, app).await {
+        eprintln!("SeaLantern HTTP server error on {}: {}", addr, e);
+    }
 }
 
 /// 处理文件上传请求
@@ -119,10 +130,13 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
         };
 
         // 生成唯一文件名
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let timestamp = match SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(duration) => duration.as_secs(),
+            Err(e) => {
+                eprintln!("[Upload] Failed to get system time: {}", e);
+                0
+            }
+        };
         let unique_filename = format!("{}-{}", timestamp, file_name);
         let file_path = format!("{}/{}", upload_dir, unique_filename);
 
