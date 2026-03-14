@@ -65,7 +65,7 @@
 }
 
 .status-indicator.running {
-  background: rgba(34, 197, 94, 0.1);
+  background: var(--sl-success-bg);
   color: var(--sl-success);
 }
 
@@ -84,7 +84,7 @@
 
 .status-indicator.starting,
 .status-indicator.stopping {
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--sl-warning-bg);
   color: var(--sl-warning);
 }
 
@@ -133,25 +133,12 @@
 
 .quick-groups {
   display: flex;
-  gap: 4px;
+  gap: var(--sl-space-xs);
 }
 
 .quick-btn {
-  padding: 3px 10px;
-  border-radius: var(--sl-radius-sm);
-  font-size: var(--sl-font-size-xs);
-  cursor: pointer;
-  border: 1px solid var(--sl-border);
-  color: var(--sl-text-secondary);
-  background: var(--sl-bg-secondary);
+  min-height: 28px;
   white-space: nowrap;
-  transition: all var(--sl-transition-fast);
-}
-
-.quick-btn:hover {
-  border-color: var(--sl-primary);
-  color: var(--sl-primary);
-  background: var(--sl-primary-bg);
 }
 
 .console-output {

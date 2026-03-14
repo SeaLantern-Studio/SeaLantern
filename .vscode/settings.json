@@ -2,6 +2,7 @@
   "editor.detectIndentation": false,
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "oxc.oxc-vscode",
+  "sqlite.sqlite3": "C:\\Users\\18236\\AppData\\Local\\Microsoft\\WinGet\\Links\\sqlite3.exe",
   "[typescript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
     "editor.formatOnSave": true

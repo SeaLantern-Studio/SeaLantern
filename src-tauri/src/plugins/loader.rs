@@ -247,4 +247,13 @@ mod tests {
         let err = PluginLoader::validate_manifest(&manifest).unwrap_err();
         assert!(err.contains("id"));
     }
+
+    #[test]
+    fn test_debug_manifest_load() {
+        let path = std::path::Path::new("i:/files/SeaLantern/target/debug/plugins/sealantern-adapter");
+        let manifest = PluginLoader::load_manifest(path).unwrap();
+        println!("Load SUCCESS: {:?}", manifest);
+        PluginLoader::validate_manifest(&manifest).unwrap();
+        println!("Validate SUCCESS");
+    }
 }

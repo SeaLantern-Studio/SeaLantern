@@ -41,6 +41,7 @@ const commandName = ref("");
 const commandText = ref("");
 const commandLoading = ref(false);
 
+// Frequently used one-click operations for server administration.
 const quickCommands = computed(() => [
   { label: i18n.t("common.command_day"), cmd: "time set day" },
   { label: i18n.t("common.command_night"), cmd: "time set night" },
@@ -110,6 +111,7 @@ watch(
 );
 
 async function syncLogsOnce(sid: string) {
+  // Rebuild the viewport from backend snapshot to avoid mixed logs when switching servers.
   consoleOutputRef.value?.clear();
   try {
     const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
@@ -132,6 +134,7 @@ function applyConsoleSettings(settings: {
   console_letter_spacing: number;
   max_log_lines: number;
 }) {
+  // Defensive fallback values keep UI readable even with malformed persisted settings.
   consoleFontSize.value = settings.console_font_size;
   consoleFontFamily.value = settings.console_font_family || "";
   consoleLetterSpacing.value = settings.console_letter_spacing || 0;
@@ -199,6 +202,7 @@ async function exportLogs() {
   if (!text.trim()) return;
   const lineCount = text.split("\n").length;
   try {
+    // Clipboard export is used for issue reporting and quick troubleshooting.
     await navigator.clipboard.writeText(text);
     consoleOutputRef.value?.appendLines([
       "[Sea Lantern] 日志已复制到剪贴板（" + lineCount + " 行）",
@@ -308,19 +312,22 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
       <div class="quick-commands">
         <span class="quick-label">{{ i18n.t("console.quick") }}</span>
         <div class="quick-groups">
-          <div
+          <SLButton
             v-for="cmd in quickCommands"
             :key="cmd.cmd"
+            variant="ghost"
+            size="sm"
             class="quick-btn"
             @click="sendCommand(cmd.cmd)"
             :title="cmd.cmd"
           >
             {{ cmd.label }}
-          </div>
+          </SLButton>
         </div>
       </div>
 
       <!-- 控制台输出部分 -->
+      <!-- Main terminal viewport: receives incremental lines from backend events. -->
       <ConsoleOutput
         ref="consoleOutputRef"
         :consoleFontSize="consoleFontSize"
@@ -336,9 +343,11 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
       />
 
       <!-- 控制台输入部分 -->
+      <!-- Input area is separated from output to avoid accidental xterm re-mount. -->
       <ConsoleInput :consoleFontSize="consoleFontSize" @sendCommand="sendCommand" />
 
       <!-- 自定义指令模态框 -->
+      <!-- Modal placeholder for user-defined command templates (WIP). -->
       <CommandModal
         :visible="showCommandModal"
         :title="commandModalTitle"

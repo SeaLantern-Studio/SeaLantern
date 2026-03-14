@@ -89,6 +89,9 @@ const router = createRouter({
 let pageChangedTimers: number[] = [];
 
 router.afterEach((to) => {
+  // Route switch notifications are debounced via two delayed signals:
+  // - 250ms catches normal in-app navigation.
+  // - 900ms catches slower view/plugin mount paths.
   for (const t of pageChangedTimers) {
     clearTimeout(t);
   }

@@ -4,6 +4,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { ClipboardAddon } from "@xterm/addon-clipboard";
 import { SerializeAddon } from "@xterm/addon-serialize";
+import SLButton from "@components/common/SLButton.vue";
 import "@xterm/xterm/css/xterm.css";
 import { i18n } from "@language";
 
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 
 const terminalHost = ref<HTMLDivElement | null>(null);
 
+// Canonical Minecraft log pattern: [HH:mm:ss] [source/LEVEL]: message
 const LOG_REGEX = /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/;
 
 let terminal: Terminal | null = null;
@@ -134,6 +136,7 @@ function appendLines(lines: string[]) {
   if (!terminal) return;
   if (lines.length === 0) return;
 
+  // Avoid leading blank line when appending the first rendered log line.
   let isFirstLineInBuffer = !hasAnyLine;
   if (!hasAnyLine) {
     terminal.clear();
@@ -167,6 +170,7 @@ function clear() {
 
 function getAllPlainText(): string {
   if (!serializeAddon || !hasAnyLine) return "";
+  // Read from xterm buffer directly so exported text matches current viewport ordering.
   const serialized = serializeAddon.serialize({
     excludeAltBuffer: true,
     excludeModes: true,
@@ -198,6 +202,7 @@ function stripAnsi(text: string): string {
 
 function setupScrollTracking() {
   if (!terminal) return;
+  // "baseY - viewportY > 0" means user has scrolled up and auto-follow should pause.
   scrollDisposable = terminal.onScroll(() => {
     const buffer = terminal?.buffer.active;
     if (!buffer) return;
@@ -215,6 +220,7 @@ function doScroll() {
 onMounted(() => {
   if (!terminalHost.value || terminal) return;
 
+  // Keep terminal in display-only mode; command input is handled by a separate component.
   terminal = new Terminal({
     convertEol: true,
     allowTransparency: false,
@@ -336,9 +342,15 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
   <div class="console-output">
     <div ref="terminalHost" class="terminal-host"></div>
   </div>
-  <div v-if="userScrolledUp" class="scroll-btn" @click="emit('scrollToBottom')">
+  <SLButton
+    v-if="userScrolledUp"
+    variant="primary"
+    size="sm"
+    class="scroll-btn"
+    @click="emit('scrollToBottom')"
+  >
     {{ i18n.t("console.back_to_bottom") }}
-  </div>
+  </SLButton>
 </template>
 
 <style scoped>
@@ -365,13 +377,12 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
   bottom: 70px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 6px 16px;
-  background: var(--sl-primary);
-  color: white;
   border-radius: var(--sl-radius-full);
-  font-size: 0.75rem;
-  cursor: pointer;
-  box-shadow: var(--sl-shadow-md);
   z-index: 10;
+}
+
+.scroll-btn:hover,
+.scroll-btn:active {
+  transform: translateX(-50%) !important;
 }
 </style>

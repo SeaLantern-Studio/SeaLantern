@@ -248,6 +248,8 @@ pub fn run() {
             let app_data_dir = crate::utils::path::get_app_data_dir();
             let plugins_dir = app_data_dir.join("plugins");
             let data_dir = app_data_dir.join("plugin_data");
+            println!("APP DATA DIR IS: {:?}", app_data_dir);
+            println!("PLUGINS DIR IS: {:?}", plugins_dir);
 
             let mut plugin_manager = PluginManager::new(plugins_dir, data_dir);
 

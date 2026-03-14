@@ -38,16 +38,19 @@ async function handlePathClick(path: string) {
 }
 
 function handleConsole() {
+  // Persist selected server before navigation so ConsoleView reads the right context.
   store.setCurrentServer(props.server.id);
   router.push("/console/" + props.server.id);
 }
 
 function handleConfig() {
+  // Persist selected server before navigation so ConfigView reads the right context.
   store.setCurrentServer(props.server.id);
   router.push("/config/" + props.server.id);
 }
 
 function getStatusClass(status: string | undefined): string {
+  // These class names are mapped to badge colors in scoped CSS below.
   return status === "Running"
     ? "running"
     : status === "Starting"
@@ -196,7 +199,7 @@ function getStatusClass(status: string | undefined): string {
 }
 
 .status-indicator.running {
-  background: rgba(34, 197, 94, 0.1);
+  background: var(--sl-success-bg);
   color: var(--sl-success);
 }
 
@@ -215,7 +218,7 @@ function getStatusClass(status: string | undefined): string {
 
 .status-indicator.starting,
 .status-indicator.stopping {
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--sl-warning-bg);
   color: var(--sl-warning);
 }
 
@@ -345,7 +348,7 @@ function getStatusClass(status: string | undefined): string {
 
 .inline-edit-btn.save {
   background: var(--sl-primary);
-  color: white;
+  color: var(--sl-text-inverse);
 }
 
 .inline-edit-btn.save:hover:not(:disabled) {
@@ -402,7 +405,7 @@ function getStatusClass(status: string | undefined): string {
 
 .meta-tag.core-type:hover {
   background: var(--sl-primary);
-  color: white;
+  color: var(--sl-text-inverse);
 }
 
 .server-card-content {
