@@ -1,19 +1,20 @@
 {
   "languageName": "English",
   "header": {
-    "chinese": "Simplified Chinese",
+    "chinese": "簡體中文",
     "english": "English",
-    "chinese_tw": "Traditional Chinese",
-    "deutsch": "German",
-    "spanish": "Spanish",
-    "japanese": "Japanese",
-    "russian": "Russian",
-    "vietnamese": "Vietnamese",
-    "korean": "Korean",
-    "french": "French"
+    "chinese_tw": "繁體中文",
+    "deutsch": "Deutsch",
+    "spanish": "Español",
+    "japanese": "日本語",
+    "russian": "Русский",
+    "vietnamese": "Tiếng Việt",
+    "korean": "한국어",
+    "french": "Français"
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "Home",
     "create_server": "Create Server",
     "console": "Console",
@@ -22,6 +23,7 @@
     "settings": "Settings",
     "personalize": "Personalize",
     "about": "About",
+    "download": "Download",
     "download-file": "Download File",
     "download-server": "Download Server",
     "loading": "Loading...",
@@ -352,6 +354,7 @@
     "loading": "Loading config...",
     "no_config": "No config file found. Please start the server once to generate server.properties",
     "saved": "Config saved",
+    "default": "Default Value",
     "server_properties": "Server Properties",
     "server_plugins": "Server Plugins",
     "loading_plugins": "Loading plugins...",
@@ -796,6 +799,7 @@
       "delete": "Delete Plugin"
     },
     "update_available": "Update available",
+    "settings": "Plugin Settings",
     "settings_title": "{{name}} Settings",
     "safe_mode_disabled": "Disabled in safe mode",
     "safe_mode": "Safe Mode",
@@ -989,7 +993,7 @@
     }
   },
   "download-file": {
-    "title": "Download File Using Multi-threaded Downloader",
+    "title": "Custom Download",
     "url": "Download URL",
     "url_placeholder": "Please enter download URL (http/https)",
     "save_folder": "Save to",

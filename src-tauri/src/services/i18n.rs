@@ -5,7 +5,8 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-pub const SUPPORTED_LOCALES: &[&str] = &["zh-CN", "en-US"];
+///此处常量见 utils/constants.rs
+use crate::utils::constants::SUPPORTED_LOCALES;
 
 // 类型别名，简化复杂类型定义
 type LocaleCallback = Box<dyn Fn(&str, &str) + Send + Sync>;

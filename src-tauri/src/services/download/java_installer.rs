@@ -13,6 +13,9 @@ use tokio::io::AsyncWriteExt;
 #[cfg(target_os = "windows")]
 use zip::ZipArchive;
 
+///此处常量见 utils/constants.rs
+use crate::utils::constants::{JAVA_DOWNLOAD_RETRY_LIMIT, JAVA_DOWNLOAD_TIMEOUT_SECS};
+
 #[derive(Clone, serde::Serialize)]
 struct DownloadProgress {
     state: String,
@@ -20,9 +23,6 @@ struct DownloadProgress {
     total: u64,
     message: String,
 }
-
-const JAVA_DOWNLOAD_TIMEOUT_SECS: u64 = 60;
-const JAVA_DOWNLOAD_RETRY_LIMIT: usize = 3;
 
 pub async fn download_and_install_java<R: tauri::Runtime>(
     url: String,

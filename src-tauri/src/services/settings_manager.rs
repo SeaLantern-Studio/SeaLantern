@@ -1,7 +1,8 @@
 use crate::models::settings::{AppSettings, PartialSettings, SettingsGroup};
 use std::sync::Mutex;
 
-const SETTINGS_FILE: &str = "sea_lantern_settings.json";
+///此处常量见 utils/constants.rs
+use crate::utils::constants::SETTINGS_FILE;
 
 pub struct SettingsManager {
     pub settings: Mutex<AppSettings>,

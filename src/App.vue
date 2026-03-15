@@ -10,7 +10,14 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
-import { applyTheme, applyFontSize, applyFontFamily, applyMinimalMode } from "@utils/theme";
+import {
+  applyTheme,
+  applyFontSize,
+  applyFontFamily,
+  applyMinimalMode,
+  applyDeveloperMode,
+} from "@utils/theme";
+import { SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "@stores/settingsStore";
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
@@ -85,6 +92,8 @@ onMounted(async () => {
 
   await new Promise((resolve) => setTimeout(resolve, 500));
 
+  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
+
   try {
     await settingsStore.loadSettings();
     const settings = settingsStore.settings;
@@ -92,6 +101,7 @@ onMounted(async () => {
     applyFontSize(settings.font_size || 14);
     applyFontFamily(settings.font_family || "");
     applyMinimalMode(settings.minimal_mode || false);
+    applyDeveloperMode(settings.developer_mode || false);
 
     // 托盘图标已在 Rust 后端创建，前端不需要再创建
     // 相关代码在 src-tauri/src/lib.rs 的 .setup() 中
@@ -117,6 +127,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener("contextmenu", handleGlobalContextMenu);
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
   contextMenuStore.cleanupContextMenuListener();
 
   pluginStore.cleanupUiEventListener();
@@ -139,6 +150,11 @@ function handleSplashReady() {
 
 function handleUpdateModalClose() {
   updateStore.hideUpdateModal();
+}
+
+function handleSettingsUpdate(e: CustomEvent<SettingsUpdateEvent>) {
+  const { settings } = e.detail;
+  applyDeveloperMode(settings.developer_mode || false);
 }
 </script>
 

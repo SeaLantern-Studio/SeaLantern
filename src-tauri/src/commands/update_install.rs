@@ -178,6 +178,53 @@ mod windows {
         value.replace('\'', "''")
     }
 
+    fn decode_utf16(bytes: &[u8], little_endian: bool) -> String {
+        let utf16 = bytes
+            .chunks_exact(2)
+            .map(|chunk| {
+                if little_endian {
+                    u16::from_le_bytes([chunk[0], chunk[1]])
+                } else {
+                    u16::from_be_bytes([chunk[0], chunk[1]])
+                }
+            })
+            .collect::<Vec<u16>>();
+        String::from_utf16_lossy(&utf16).trim().to_string()
+    }
+
+    fn decode_powershell_output(bytes: &[u8]) -> String {
+        if bytes.is_empty() {
+            return String::new();
+        }
+
+        if bytes.len() >= 2 {
+            if bytes.starts_with(&[0xFF, 0xFE]) {
+                return decode_utf16(&bytes[2..], true);
+            }
+            if bytes.starts_with(&[0xFE, 0xFF]) {
+                return decode_utf16(&bytes[2..], false);
+            }
+        }
+
+        if bytes.len() % 2 == 0 && bytes.len() >= 4 {
+            let even_zeros = bytes.iter().step_by(2).filter(|b| **b == 0).count();
+            let odd_zeros = bytes.iter().skip(1).step_by(2).filter(|b| **b == 0).count();
+            let even_count = bytes.len() / 2;
+            let odd_count = bytes.len() / 2;
+            let even_ratio = even_zeros as f32 / even_count as f32;
+            let odd_ratio = odd_zeros as f32 / odd_count as f32;
+
+            if odd_ratio >= 0.6 && even_ratio <= 0.2 {
+                return decode_utf16(bytes, true);
+            }
+            if even_ratio >= 0.6 && odd_ratio <= 0.2 {
+                return decode_utf16(bytes, false);
+            }
+        }
+
+        String::from_utf8_lossy(bytes).trim().to_string()
+    }
+
     /// 构建隐藏的 PowerShell 命令
     #[allow(dead_code)]
     pub fn build_hidden_powershell_command(command: &str) -> std::process::Command {
@@ -275,7 +322,7 @@ mod windows {
             .map_err(|e| format!("Failed to request administrator privileges: {}", e))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let stderr = decode_powershell_output(&output.stderr);
             return Err(if stderr.is_empty() {
                 "Administrator permission was denied or installer failed to launch".to_string()
             } else {
@@ -286,7 +333,7 @@ mod windows {
             });
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stdout = decode_powershell_output(&output.stdout);
         let installer_pid = stdout
             .lines()
             .rev()

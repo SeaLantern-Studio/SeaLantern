@@ -28,29 +28,31 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
-    minify: "terser",
-    terserOptions: {
-      compress: {
-        drop_console: false,
-        drop_debugger: true,
-      },
-    },
+    minify: "oxc",
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vue-vendor": ["vue", "vue-router", "pinia"],
-          "tauri-vendor": [
-            "@tauri-apps/api",
-            "@tauri-apps/plugin-dialog",
-            "@tauri-apps/plugin-fs",
-            "@tauri-apps/plugin-http",
-            "@tauri-apps/plugin-opener",
-            "@tauri-apps/plugin-process",
-            "@tauri-apps/plugin-updater",
-          ],
-          "echarts-vendor": ["echarts", "vue-echarts"],
-          "ui-vendor": ["@headlessui/vue", "reka-ui"],
-          "utils-vendor": ["@vueuse/core", "dompurify", "lucide-vue-next"],
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("vue") || id.includes("vue-router") || id.includes("pinia")) {
+              return "vue-vendor";
+            }
+            if (id.includes("@tauri-apps")) {
+              return "tauri-vendor";
+            }
+            if (id.includes("echarts") || id.includes("vue-echarts")) {
+              return "echarts-vendor";
+            }
+            if (id.includes("@headlessui") || id.includes("reka-ui")) {
+              return "ui-vendor";
+            }
+            if (
+              id.includes("@vueuse") ||
+              id.includes("dompurify") ||
+              id.includes("lucide-vue-next")
+            ) {
+              return "utils-vendor";
+            }
+          }
         },
       },
     },
