@@ -1,5 +1,6 @@
 use crate::commands::config as config_commands;
 use crate::commands::java as java_commands;
+use crate::commands::logging as logging_commands;
 use crate::commands::player as player_commands;
 use crate::commands::server as server_commands;
 use crate::commands::settings as settings_commands;
@@ -117,6 +118,12 @@ impl CommandRegistry {
         );
         handlers.insert("apply_acrylic".to_string(), handle_apply_acrylic as CommandHandler);
         handlers.insert("get_system_fonts".to_string(), handle_get_system_fonts as CommandHandler);
+
+        // 注册 Logging 命令（Docker 模式下需要）
+        handlers.insert(
+            "check_developer_mode".to_string(),
+            handle_check_developer_mode as CommandHandler,
+        );
 
         // 注册 Update 命令
         handlers.insert("check_update".to_string(), handle_check_update as CommandHandler);
@@ -681,6 +688,17 @@ fn handle_get_system_fonts(
     Box::pin(async move {
         let result = settings_commands::get_system_fonts();
         serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+// ============ Logging 命令处理器 ============
+
+fn handle_check_developer_mode(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = logging_commands::check_developer_mode();
+        Ok(Value::Bool(result))
     })
 }
 
