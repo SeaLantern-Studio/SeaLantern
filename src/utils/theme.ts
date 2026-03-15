@@ -227,17 +227,22 @@ export function applyColors(settings: AppSettings): void {
   document.documentElement.style.setProperty("--sl-glass-border", glassBorder);
 }
 
+let _developerModeEnabled = false;
+
 /**
  * 应用开发者模式限制
  * @param enabled - 是否启用开发者模式
  */
 export function applyDeveloperMode(enabled: boolean): void {
+  if (enabled === _developerModeEnabled) return;
+  _developerModeEnabled = enabled;
+
   if (enabled) {
     document.removeEventListener("contextmenu", blockContextMenu);
     document.removeEventListener("keydown", blockDevTools);
   } else {
-    document.addEventListener("contextmenu", blockContextMenu);
-    document.addEventListener("keydown", blockDevTools);
+    document.addEventListener("contextmenu", blockContextMenu, { capture: true });
+    document.addEventListener("keydown", blockDevTools, { capture: true });
   }
 }
 
