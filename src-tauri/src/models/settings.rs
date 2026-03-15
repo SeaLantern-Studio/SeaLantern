@@ -126,6 +126,10 @@ pub struct AppSettings {
 
     #[serde(default = "default_blocked_commands")]
     pub plugin_blocked_commands: Vec<String>,
+
+    // 协议同意状态
+    #[serde(default = "default_false")]
+    pub agreed_to_terms: bool,
 }
 
 fn default_true() -> bool {
@@ -370,6 +374,9 @@ impl AppSettings {
         if let Some(ref v) = partial.plugin_blocked_commands {
             self.plugin_blocked_commands = v.clone();
         }
+        if let Some(v) = partial.agreed_to_terms {
+            self.agreed_to_terms = v;
+        }
     }
 }
 
@@ -445,6 +452,8 @@ pub struct PartialSettings {
     pub plugin_allowed_commands: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plugin_blocked_commands: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agreed_to_terms: Option<bool>,
 }
 
 impl Default for AppSettings {
@@ -485,6 +494,7 @@ impl Default for AppSettings {
             minimal_mode: false,
             plugin_allowed_commands: default_allowed_commands(),
             plugin_blocked_commands: default_blocked_commands(),
+            agreed_to_terms: false,
         }
     }
 }

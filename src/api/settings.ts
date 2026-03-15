@@ -44,6 +44,7 @@ export interface AppSettings {
   close_action: string;
   last_run_path: string;
   minimal_mode: boolean;
+  agreed_to_terms: boolean;
 }
 
 export interface PartialSettings {
@@ -80,6 +81,7 @@ export interface PartialSettings {
   close_action?: string;
   last_run_path?: string;
   minimal_mode?: boolean;
+  agreed_to_terms?: boolean;
 }
 
 export interface UpdateSettingsResult {

@@ -9,12 +9,14 @@ interface Props {
   width?: string;
   closeOnOverlay?: boolean;
   autoClose?: number;
+  showCloseButton?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   width: "480px",
   closeOnOverlay: true,
   autoClose: 0,
+  showCloseButton: true,
 });
 
 const emit = defineEmits<{
@@ -88,6 +90,7 @@ onUnmounted(() => {
         <div class="sl-modal-header">
           <h3 v-if="title" class="sl-modal-title">{{ title }}</h3>
           <button
+            v-if="showCloseButton"
             class="sl-modal-close"
             @click="handleClose"
             :aria-label="i18n.t('common.close_modal')"
