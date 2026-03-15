@@ -665,6 +665,12 @@
       "custom": "自定义"
     }
   },
+  "terms": {
+    "title": "隐私与服务协议",
+    "message": "使用 SeaLantern 前，请您阅读并同意我们的",
+    "link": "《隐私与服务协议》",
+    "agree": "同意"
+  },
   "about": {
     "title": "关于",
     "version": "版本",
@@ -752,7 +758,9 @@
     "copied": "已复制!",
     "personal_page": "个人主页",
     "load_more": "加载更多",
-    "go_download": "前往下载页面"
+    "go_download": "前往下载页面",
+    "docs": "文档",
+    "docs_link": "点击打开文档站"
   },
   "tray": {
     "minimize": "最小化到后台",

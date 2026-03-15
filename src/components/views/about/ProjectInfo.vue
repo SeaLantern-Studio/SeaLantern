@@ -7,6 +7,9 @@ import { checkUpdate, type UpdateInfo } from "@api/update";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { BUILD_YEAR } from "@utils/version";
 import { i18n } from "@language";
+import { useAboutLinks } from "@composables/useAboutLinks";
+
+const { openLink } = useAboutLinks();
 
 const props = defineProps<{
   version: string;
@@ -77,6 +80,12 @@ async function handleManualDownload() {
       <div class="info-item">
         <span class="info-label">{{ i18n.t("about.license") }}</span>
         <span class="info-value">GNU GPLv3</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">{{ i18n.t("about.docs") }}</span>
+        <span class="info-value link" @click="openLink('https://docs.ideaflash.cn/zh/intro')">{{
+          i18n.t("about.docs_link")
+        }}</span>
       </div>
     </div>
 
@@ -163,6 +172,11 @@ async function handleManualDownload() {
   font-weight: 500;
   color: var(--sl-text-primary);
   font-family: var(--sl-font-mono);
+}
+
+.link {
+  color: var(--sl-primary);
+  cursor: pointer;
 }
 
 .update-section {
