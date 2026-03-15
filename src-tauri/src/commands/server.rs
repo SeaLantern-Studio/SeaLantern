@@ -1,6 +1,7 @@
 use crate::models::server::*;
 use crate::services::global;
 use std::path::Path;
+use tauri::Emitter;
 
 fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
@@ -552,12 +553,16 @@ pub fn get_server_status(app: tauri::AppHandle, id: String) -> ServerStatusInfo 
             .map(|s| s.name.clone())
             .unwrap_or_else(|| id.clone());
 
+        // 发送系统通知（即使窗口最小化也能显示）
         let _ = app
             .notification()
             .builder()
             .title("Sea Lantern - 服务器错误")
             .body(format!("服务器「{}」{}", server_name, error_msg))
             .show();
+
+        // 发送事件到前端（用于播放提示音）
+        let _ = app.emit("server-error", ());
     }
 
     status

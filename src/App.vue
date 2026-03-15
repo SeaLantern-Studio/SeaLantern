@@ -18,6 +18,32 @@ import {
   applyDeveloperMode,
 } from "@utils/theme";
 import { SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "@stores/settingsStore";
+import { listen } from "@tauri-apps/api/event";
+
+// 播放提示音（使用 Web Audio API 生成）
+function playNotificationSound() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // 生成双音提示（类似系统通知声）
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+    oscillator.frequency.setValueAtTime(1100, audioContext.currentTime + 0.1); // C#6
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  } catch (e) {
+    console.warn("播放提示音失败:", e);
+  }
+}
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
@@ -80,6 +106,11 @@ async function handleGlobalContextMenu(event: MouseEvent) {
 }
 
 onMounted(async () => {
+  // 监听服务器错误事件并播放提示音
+  await listen("server-error", () => {
+    playNotificationSound();
+  });
+
   contextMenuStore.initContextMenuListener();
   document.addEventListener("contextmenu", handleGlobalContextMenu);
 
