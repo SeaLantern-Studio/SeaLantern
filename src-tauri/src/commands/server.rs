@@ -539,8 +539,28 @@ pub fn get_server_list() -> Vec<ServerInstance> {
 }
 
 #[tauri::command]
-pub fn get_server_status(id: String) -> ServerStatusInfo {
-    manager().get_server_status(&id)
+pub fn get_server_status(app: tauri::AppHandle, id: String) -> ServerStatusInfo {
+    let status = manager().get_server_status(&id);
+
+    if let Some(error_msg) = &status.error_message {
+        use tauri_plugin_notification::NotificationExt;
+
+        let server_name = manager()
+            .get_server_list()
+            .iter()
+            .find(|s| s.id == id)
+            .map(|s| s.name.clone())
+            .unwrap_or_else(|| id.clone());
+
+        let _ = app
+            .notification()
+            .builder()
+            .title("Sea Lantern - 服务器错误")
+            .body(format!("服务器「{}」{}", server_name, error_msg))
+            .show();
+    }
+
+    status
 }
 
 #[tauri::command]

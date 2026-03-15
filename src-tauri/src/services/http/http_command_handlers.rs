@@ -294,7 +294,8 @@ fn handle_get_server_status(
     Box::pin(async move {
         let req: GetServerStatusRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        let result = server_commands::get_server_status(req.id);
+        // HTTP 模式下不发送桌面通知，直接调用 manager
+        let result = crate::services::global::server_manager().get_server_status(&req.id);
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
