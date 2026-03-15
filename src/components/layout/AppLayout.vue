@@ -13,7 +13,6 @@ import {
   applyFontFamily,
   applyFontSize,
   applyColors,
-  applyDeveloperMode,
   isThemeProviderActive,
 } from "@utils/theme";
 
@@ -56,13 +55,8 @@ async function applyAppearanceSettings(): Promise<void> {
   }
 }
 
-function applyDeveloperSettings(): void {
-  applyDeveloperMode(settingsStore.settings.developer_mode || false);
-}
-
 async function applyAllSettings(): Promise<void> {
   await applyAppearanceSettings();
-  applyDeveloperSettings();
 }
 
 function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>): void {
@@ -71,9 +65,6 @@ function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>): void {
 
   if (changedGroups.includes("Appearance")) {
     applyAppearanceSettings();
-  }
-  if (changedGroups.includes("Developer")) {
-    applyDeveloperSettings();
   }
 }
 
