@@ -227,20 +227,21 @@ export function applyColors(settings: AppSettings): void {
   document.documentElement.style.setProperty("--sl-glass-border", glassBorder);
 }
 
-let _developerModeEnabled = false;
-
 /**
  * 应用开发者模式限制
  * @param enabled - 是否启用开发者模式
+ *
+ * 注意：此函数每次调用都会确保 DOM 状态与参数一致
+ * - enabled=true: 移除所有阻止监听器，允许右键和 F12
+ * - enabled=false: 添加阻止监听器，禁止右键和 F12
  */
 export function applyDeveloperMode(enabled: boolean): void {
-  if (enabled === _developerModeEnabled) return;
-  _developerModeEnabled = enabled;
+  // 先移除两种状态的监听器（清理旧状态）
+  document.removeEventListener("contextmenu", blockContextMenu);
+  document.removeEventListener("keydown", blockDevTools);
 
-  if (enabled) {
-    document.removeEventListener("contextmenu", blockContextMenu);
-    document.removeEventListener("keydown", blockDevTools);
-  } else {
+  if (!enabled) {
+    // 只在开发者模式禁用时添加阻止监听器
     document.addEventListener("contextmenu", blockContextMenu, { capture: true });
     document.addEventListener("keydown", blockDevTools, { capture: true });
   }
