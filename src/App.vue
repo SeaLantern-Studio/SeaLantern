@@ -18,7 +18,7 @@ import {
   applyDeveloperMode,
 } from "@utils/theme";
 import { SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "@stores/settingsStore";
-import { listen } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 // 播放提示音（使用 Web Audio API 生成）
 function playNotificationSound() {
@@ -105,9 +105,11 @@ async function handleGlobalContextMenu(event: MouseEvent) {
   contextMenuStore.showContextMenu(ctx, event.clientX, event.clientY, targetData);
 }
 
+let serverErrorUnlisten: UnlistenFn | null = null;
+
 onMounted(async () => {
   // 监听服务器错误事件并播放提示音
-  await listen("server-error", () => {
+  serverErrorUnlisten = await listen("server-error", () => {
     playNotificationSound();
   });
 
@@ -157,6 +159,12 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // 清理 server-error 事件监听器
+  if (serverErrorUnlisten) {
+    serverErrorUnlisten();
+    serverErrorUnlisten = null;
+  }
+
   document.removeEventListener("contextmenu", handleGlobalContextMenu);
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
   contextMenuStore.cleanupContextMenuListener();

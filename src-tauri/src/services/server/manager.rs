@@ -1234,7 +1234,6 @@ impl ServerManager {
                     match child.try_wait() {
                         Ok(Some(status)) => {
                             exit_code = status.code();
-                            println!("服务器已退出 (exit_code={:?})", exit_code);
                             // 根据退出码设置错误信息
                             match &exit_code {
                                 Some(0) => {
