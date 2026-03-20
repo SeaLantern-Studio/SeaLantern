@@ -1,5 +1,9 @@
 # ============================================
-# SeaLantern Dockerfile - 多阶段构建
+# SeaLantern Dockerfile - 多阶段构建 (优化版)
+# 优化点：
+# 1. 提取 rust-base 阶段，避免重复安装 Rust 环境
+# 2. 精准 COPY - 仅通过 Dockerfile 指令隔离前端和 Rust 构建
+# 3. Cargo 国内源配置移到构建阶段
 # ============================================
 
 # ---------- 阶段 1: 构建前端 ----------
@@ -10,20 +14,24 @@ WORKDIR /app
 # 安装 pnpm
 RUN npm install -g pnpm@9.15.9
 
-# 复制 package 文件
+# 复制前端依赖文件
 COPY package.json pnpm-lock.yaml ./
 
 # 安装依赖
 RUN pnpm install --frozen-lockfile
 
-# 复制前端源代码
-COPY . .
+# 复制前端构建所需文件（精准 COPY，只复制必要的文件）
+COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
+COPY src/ ./src/
+
+# 复制 Tauri 图标（前端构建需要引用）
+COPY src-tauri/icons/ ./src-tauri/icons/
 
 # 构建前端 (vite)
 RUN npm run build
 
-# ---------- 阶段 2: 准备构建环境 ----------
-FROM docker.m.daocloud.io/debian:bookworm-slim AS chef-preparer
+# ---------- 阶段 2: Rust 基础镜像 ----------
+FROM docker.m.daocloud.io/debian:bookworm-slim AS rust-base
 
 # 安装 Rust 工具链和 cargo-chef
 RUN { \
@@ -37,36 +45,32 @@ RUN { \
     && rm -rf /var/lib/apt/lists/*; \
 }
 
+# 注：如需国内镜像，可在此配置 Cargo 源
+# 当前使用默认 crates.io
+
 ENV PATH="/root/.cargo/bin:${PATH}"
+
+# ---------- 阶段 3: 准备 Rust 构建配方 ----------
+FROM rust-base AS chef-preparer
+
 WORKDIR /app
 
-# 使用 cargo-chef 准备构建
+# 只复制 Rust 项目相关文件（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
 COPY src-tauri/Cargo.toml ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
+
+# 使用 cargo-chef 准备构建配方
 RUN cargo chef prepare --recipe-path recipe.json
 
-# ---------- 阶段 3: 构建 Rust 后端 ----------
-FROM docker.m.daocloud.io/debian:bookworm-slim AS backend-builder
+# ---------- 阶段 4: 构建 Rust 后端 ----------
+FROM rust-base AS backend-builder
 
-# 安装 Rust 工具链和 cargo-chef
-RUN { \
-    apt-get update && apt-get install -y \
-    curl \
-    build-essential \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && . "$HOME/.cargo/env" \
-    && rustup default 1.93.1 \
-    && cargo install cargo-chef \
-    && rm -rf /var/lib/apt/lists/*; \
-}
-
-ENV PATH="/root/.cargo/bin:${PATH}"
 WORKDIR /app
 
-# 安装系统依赖
+# 安装系统依赖（包括 git，因为 Cargo 配置使用了 git-fetch-with-cli）
 RUN { \
     sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
     sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
@@ -80,42 +84,30 @@ RUN { \
     libayatana-appindicator3-dev \
     librsvg2-dev \
     libxdo-dev \
+    git \
     && rm -rf /var/lib/apt/lists/*; \
 }
 
 # 复制准备阶段的配方
 COPY --from=chef-preparer /app/recipe.json recipe.json
 
-# 使用 cargo-chef 进行烹饪（下载依赖）
+# 使用 cargo-chef 下载并编译依赖（这一层会被缓存）
 RUN cargo chef cook --release --recipe-path recipe.json
 
-# 复制源代码
-COPY . .
+# 只复制 Rust 源代码（精准 COPY，绝不复制前端文件）
+COPY Cargo.toml Cargo.lock ./
+COPY src-tauri/Cargo.toml ./src-tauri/
+COPY src-tauri/src/ ./src-tauri/src/
+COPY docker-entry/Cargo.toml ./docker-entry/
+COPY docker-entry/src/ ./docker-entry/src/
 
 # 构建 docker-entry 二进制
 RUN cargo build --release -p docker-entry
 
-# ---------- 阶段 4: 精简运行镜像 ----------
+# ---------- 阶段 5: 精简运行镜像 ----------
 FROM docker.m.daocloud.io/debian:bookworm-slim
 
 WORKDIR /app
-
-# 1. 关键修改：配置 Cargo 国内镜像源
-RUN mkdir -p $HOME/.cargo && \
-    echo '[source.crates-io]\n\
-replace-with = "rsproxy"\n\
-\n\
-[source.rsproxy]\n\
-registry = "https://rsproxy.cn/crates.io-index"\n\
-\n\
-[source.rsproxy-sparse]\n\
-registry = "sparse+https://rsproxy.cn/index/"\n\
-\n\
-[registries.rsproxy]\n\
-index = "https://rsproxy.cn/crates.io-index"\n\
-\n\
-[net]\n\
-git-fetch-with-cli = true' > $HOME/.cargo/config.toml
 
 # 安装运行时依赖 (使用阿里云 HTTP 镜像源，避免证书问题)
 RUN { \
