@@ -22,15 +22,35 @@ COPY . .
 # 构建前端 (vite)
 RUN npm run build
 
-# ---------- 阶段 2: 编译 Rust 后端 ----------
-# 使用与运行镜像相同的基础镜像，避免 GLIBC 版本不兼容
+# ---------- 阶段 2: 准备构建环境 ----------
+FROM docker.m.daocloud.io/debian:bookworm-slim AS chef-preparer
+
+# 安装 Rust 工具链和 cargo-chef
+RUN { \
+    apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && . "$HOME/.cargo/env" \
+    && rustup default 1.93.1 \
+    && cargo install cargo-chef \
+    && rm -rf /var/lib/apt/lists/*; \
+}
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+WORKDIR /app
+
+# 使用 cargo-chef 准备构建
+COPY Cargo.toml Cargo.lock ./
+COPY src-tauri/Cargo.toml ./src-tauri/
+COPY docker-entry/Cargo.toml ./docker-entry/
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ---------- 阶段 3: 构建 Rust 后端 ----------
 FROM docker.m.daocloud.io/debian:bookworm-slim AS backend-builder
 
 # 安装 Rust 工具链
 RUN { \
-    # unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
-    # sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
-    # sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
     apt-get update && apt-get install -y \
     curl \
     build-essential \
@@ -41,12 +61,10 @@ RUN { \
 }
 
 ENV PATH="/root/.cargo/bin:${PATH}"
-
 WORKDIR /app
 
-# 安装系统依赖 (使用阿里云 HTTP 镜像源，避免证书问题)
+# 安装系统依赖
 RUN { \
-    # unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY; \
     sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
     sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null || true; \
     apt-get update && apt-get install -y \
@@ -62,21 +80,19 @@ RUN { \
     && rm -rf /var/lib/apt/lists/*; \
 }
 
-# 复制 Cargo 文件（src-tauri 使用顶层 Cargo.lock）
-COPY Cargo.toml Cargo.lock ./
-COPY src-tauri/Cargo.toml ./src-tauri/
-COPY docker-entry/Cargo.toml ./docker-entry/
+# 复制准备阶段的配方
+COPY --from=chef-preparer /app/recipe.json recipe.json
 
-# 复制源代码（cargo fetch 需要 src 目录）
+# 使用 cargo-chef 进行烹饪（下载依赖）
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# 复制源代码
 COPY . .
-
-# 预下载依赖（利用 Docker 缓存）
-RUN cargo fetch
 
 # 构建 docker-entry 二进制
 RUN cargo build --release -p docker-entry
 
-# ---------- 阶段 3: 精简运行镜像 ----------
+# ---------- 阶段 4: 精简运行镜像 ----------
 FROM docker.m.daocloud.io/debian:bookworm-slim
 
 WORKDIR /app
