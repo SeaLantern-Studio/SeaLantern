@@ -43,13 +43,15 @@ WORKDIR /app
 # 使用 cargo-chef 准备构建
 COPY Cargo.toml Cargo.lock ./
 COPY src-tauri/Cargo.toml ./src-tauri/
+COPY src-tauri/src/ ./src-tauri/src/
 COPY docker-entry/Cargo.toml ./docker-entry/
+COPY docker-entry/src/ ./docker-entry/src/
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ---------- 阶段 3: 构建 Rust 后端 ----------
 FROM docker.m.daocloud.io/debian:bookworm-slim AS backend-builder
 
-# 安装 Rust 工具链
+# 安装 Rust 工具链和 cargo-chef
 RUN { \
     apt-get update && apt-get install -y \
     curl \
@@ -57,6 +59,7 @@ RUN { \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
     && . "$HOME/.cargo/env" \
     && rustup default 1.93.1 \
+    && cargo install cargo-chef \
     && rm -rf /var/lib/apt/lists/*; \
 }
 
