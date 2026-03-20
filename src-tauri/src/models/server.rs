@@ -53,6 +53,8 @@ pub struct ServerStatusInfo {
     pub status: ServerStatus,
     pub pid: Option<u32>,
     pub uptime: Option<u64>,
+    #[serde(default)]
+    pub error_message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
