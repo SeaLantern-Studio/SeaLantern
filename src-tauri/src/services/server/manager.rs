@@ -1171,7 +1171,7 @@ impl ServerManager {
                         server_log_pipeline::shutdown_writer(id);
                         return Ok(());
                     }
-                    Ok(None) => {} // Still running
+                    Ok(None) => {}
                     Err(_) => {
                         procs.remove(id);
                         self.clear_stopping(id);
@@ -1223,13 +1223,43 @@ impl ServerManager {
     }
 
     pub fn get_server_status(&self, id: &str) -> ServerStatusInfo {
+        let mut exit_code: Option<i32> = None;
+        let mut error_message: Option<String> = None;
+
         let is_running = self
             .lock_processes()
             .ok()
             .map(|mut procs| {
                 if let Some(child) = procs.get_mut(id) {
                     match child.try_wait() {
-                        Ok(Some(_)) => {
+                        Ok(Some(status)) => {
+                            exit_code = status.code();
+                            // 根据退出码设置错误信息
+                            match &exit_code {
+                                Some(0) => {
+                                    // 正常退出，记录日志
+                                    let _ = server_log_pipeline::append_sealantern_log(
+                                        id,
+                                        "[Sea Lantern] 服务器已正常退出",
+                                    );
+                                }
+                                Some(code) => {
+                                    error_message =
+                                        Some(format!("服务器异常退出 (退出码：{})", code));
+                                    let _ = server_log_pipeline::append_sealantern_log(
+                                        id,
+                                        &format!("[Sea Lantern] 服务器异常退出 (退出码：{})", code),
+                                    );
+                                }
+                                None => {
+                                    error_message = Some("服务器被强制终止".to_string());
+                                    let _ = server_log_pipeline::append_sealantern_log(
+                                        id,
+                                        "[Sea Lantern] 服务器被强制终止",
+                                    );
+                                }
+                            }
+
                             procs.remove(id);
                             server_log_pipeline::shutdown_writer(id);
                             self.clear_starting(id);
@@ -1237,6 +1267,11 @@ impl ServerManager {
                         }
                         Ok(None) => true,
                         Err(_) => {
+                            error_message = Some("获取服务器状态失败".to_string());
+                            let _ = server_log_pipeline::append_sealantern_log(
+                                id,
+                                "[Sea Lantern] 获取服务器状态失败",
+                            );
                             procs.remove(id);
                             server_log_pipeline::shutdown_writer(id);
                             self.clear_starting(id);
@@ -1248,6 +1283,7 @@ impl ServerManager {
                 }
             })
             .unwrap_or(false);
+
         ServerStatusInfo {
             id: id.to_string(),
             status: if self.is_stopping(id) {
@@ -1261,6 +1297,7 @@ impl ServerManager {
             },
             pid: None,
             uptime: None,
+            error_message,
         }
     }
 
