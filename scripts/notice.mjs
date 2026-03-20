@@ -36,8 +36,8 @@ async function generateLicenseJson() {
 
 async function readLicenseFile(licensePath) {
   try {
-    //排除md和spdx这些七七八八的内容
-    if (!licensePath.includes(".md") && !licensePath.includes(".spdx")) {
+    //排除README和spdx这些七七八八的内容
+    if (!licensePath.includes("README") && !licensePath.includes(".spdx")) {
       const fullPath = path.join(rootDir, licensePath);
       if (await exists(fullPath)) {
         return await readFile(fullPath, "utf8");
