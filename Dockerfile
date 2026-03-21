@@ -58,7 +58,10 @@ WORKDIR /app
 # 只复制 Rust 项目相关文件（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
 COPY src-tauri/Cargo.toml ./src-tauri/
+COPY src-tauri/build.rs ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
+COPY src-tauri/icons/ ./src-tauri/icons/
+COPY src-tauri/tauri.conf.json ./src-tauri/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
 
@@ -97,7 +100,10 @@ RUN cargo chef cook --release --recipe-path recipe.json
 # 只复制 Rust 源代码（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
 COPY src-tauri/Cargo.toml ./src-tauri/
+COPY src-tauri/build.rs ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
+COPY src-tauri/icons/ ./src-tauri/icons/
+COPY src-tauri/tauri.conf.json ./src-tauri/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
 
