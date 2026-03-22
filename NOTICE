@@ -17,47 +17,47 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 Third-party frontend dependencies:
 
-1. @headlessui/vue
+1. @headlessui/vue@1.7.23
 
 Source: https://github.com/tailwindlabs/headlessui
 License: MIT
 
-2. @tauri-apps/api
+2. @tauri-apps/api@2.10.1
 
 Source: https://github.com/tauri-apps/tauri
 License: Apache-2.0 OR MIT
 
-3. @tauri-apps/plugin-dialog
+3. @tauri-apps/plugin-dialog@2.6.0
 
 Source: https://github.com/tauri-apps/plugins-workspace
 License: MIT OR Apache-2.0
 
-4. @tauri-apps/plugin-fs
+4. @tauri-apps/plugin-fs@2.4.5
 
 Source: https://github.com/tauri-apps/plugins-workspace
 License: MIT OR Apache-2.0
 
-5. @tauri-apps/plugin-http
+5. @tauri-apps/plugin-http@2.5.7
 
 Source: https://github.com/tauri-apps/plugins-workspace
 License: MIT OR Apache-2.0
 
-6. @tauri-apps/plugin-opener
+6. @tauri-apps/plugin-opener@2.5.3
 
 Source: https://github.com/tauri-apps/plugins-workspace
 License: MIT OR Apache-2.0
 
-7. @tauri-apps/plugin-process
+7. @tauri-apps/plugin-process@2.3.1
 
 Source: https://github.com/tauri-apps/plugins-workspace
 License: MIT OR Apache-2.0
 
-8. @tauri-apps/plugin-updater
+8. @tauri-apps/plugin-updater@2.10.0
 
 Source: https://github.com/tauri-apps/plugins-workspace
 License: MIT OR Apache-2.0
 
-9. @vueuse/core
+9. @vueuse/core@14.2.1
 
 Copyright (c) Anthony Fu
 Source: https://github.com/vueuse/vueuse
@@ -85,7 +85,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-10. @xterm/addon-clipboard
+10. @xterm/addon-clipboard@0.2.0
 
 Copyright (c) The xterm.js authors
 Source: https://github.com/xtermjs/xterm.js.git#master
@@ -111,7 +111,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-11. @xterm/addon-fit
+11. @xterm/addon-fit@0.11.0
 
 Copyright (c) The xterm.js authors
 Source: https://github.com/xtermjs/xterm.js.git#master
@@ -137,13 +137,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-12. @xterm/addon-serialize
+12. @xterm/addon-serialize@0.14.0
 
 Copyright (c) The xterm.js authors
 Source: https://github.com/xtermjs/xterm.js.git#master
 License: MIT
 
-13. @xterm/xterm
+13. @xterm/xterm@6.0.0
 
 Source: https://github.com/xtermjs/xterm.js
 License: MIT

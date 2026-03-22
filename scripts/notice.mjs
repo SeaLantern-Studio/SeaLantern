@@ -209,7 +209,9 @@ async function generateNotice() {
   for (const [pkgKey, info] of sortedPackages) {
     if (pkgKey.startsWith(packageJson.name)) continue;
 
-    const [name, version] = pkgKey.split("@");
+    const atIndex = pkgKey.lastIndexOf("@");
+    const name = pkgKey.slice(0, atIndex);
+    const version = pkgKey.slice(atIndex + 1);
 
     noticeLines.push(formatFrontendDependency(name, version, info, id));
 
