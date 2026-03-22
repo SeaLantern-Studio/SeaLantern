@@ -3,15 +3,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+import { glob } from "glob";
+import { homedir } from "node:os";
 
 const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
+const cargoDir = path.join(rootDir, "src-tauri");
 
 const files = {
-  licenseJson: path.join(rootDir, "licenses.json"),
+  frontendLicenseJson: path.join(rootDir, "frontend-licenses.json"),
+  backendLicenseJson: path.join(rootDir, "backend-licenses.json"),
   noticeFile: path.join(rootDir, "NOTICE"),
   packageJson: path.join(rootDir, "package.json"),
 };
@@ -25,12 +29,44 @@ async function exists(filePath) {
   }
 }
 
-async function generateLicenseJson() {
+async function ensureCargoLicense() {
+  try {
+    // 检查 cargo-license 是否已安装
+    await execAsync("cargo license --version", { cwd: cargoDir });
+    return true;
+  } catch {
+    console.log("未找到 cargo-license，正在自动安装...");
+    try {
+      // 自动安装 cargo-license
+      await execAsync("cargo install cargo-license", {
+        cwd: cargoDir,
+        stdio: "inherit", // 显示安装进度
+      });
+      console.log("cargo-license 安装完成！");
+      return true;
+    } catch (installError) {
+      console.error("自动安装 cargo-license 失败，请手动执行：cargo install cargo-license");
+      return false;
+    }
+  }
+}
+
+async function generateFrontedLicenseJson() {
   const { stdout } = await execAsync(
     "npx license-checker-rseidelsohn --start . --json --production",
     { cwd: rootDir },
   );
-  await writeFile(files.licenseJson, stdout, "utf8");
+  await writeFile(files.frontendLicenseJson, stdout, "utf8");
+  return JSON.parse(stdout);
+}
+
+async function generateBackendLicenseJson() {
+  const hasLicense = await ensureCargoLicense();
+  if (!hasLicense) {
+    return [];
+  }
+  const { stdout } = await execAsync("cargo license --json", { cwd: cargoDir });
+  await writeFile(files.backendLicenseJson, stdout, "utf8");
   return JSON.parse(stdout);
 }
 
@@ -54,7 +90,31 @@ async function readLicenseFile(licensePath) {
   return null;
 }
 
-function formatDependency(name, version, info, id) {
+async function readBackendLicenseFile(crate) {
+  if (!crate.license_file) return null;
+
+  if (await exists(crate.license_file)) {
+    return await readFile(crate.license_file, "utf8");
+  }
+
+  const cargoHome = process.env.CARGO_HOME || path.join(homedir(), ".cargo");
+  const possiblePath = path.join(
+    cargoHome,
+    "registry/src",
+    "index.crates.io-*",
+    crate.name,
+    crate.version,
+    "LICENSE",
+  );
+
+  const files = await glob(possiblePath);
+  if (files.length > 0) {
+    return await readFile(files[0], "utf8");
+  }
+  return null;
+}
+
+function formatFrontendDependency(name, version, info, id) {
   const lines = [];
 
   lines.push(`${id}. ${name}@${version}`);
@@ -74,7 +134,38 @@ function formatDependency(name, version, info, id) {
   return lines.join("\n");
 }
 
-async function getLicenseText(info) {
+function formatBackendDependency(crate, id) {
+  const lines = [];
+
+  lines.push(`${id}. ${crate.name}@${crate.version}`);
+  lines.push("");
+
+  // 作者信息
+  if (crate.authors) {
+    let authors;
+    if (typeof crate.authors === "string") {
+      authors = [crate.authors];
+    } else {
+      authors = crate.authors;
+    }
+    if (authors.length > 0) {
+      lines.push(`Authors: ${authors.join(", ")}`);
+    }
+  }
+
+  // 仓库地址
+  if (crate.repository) {
+    lines.push(`Repository: ${crate.repository}`);
+  }
+
+  // 许可证
+  lines.push(`License: ${crate.license || "Unknown"}`);
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+async function getFrontendLicenseText(info) {
   if (info.licenseFile) {
     const licenseText = await readLicenseFile(info.licenseFile);
     if (licenseText) {
@@ -87,7 +178,8 @@ async function getLicenseText(info) {
 async function generateNotice() {
   const packageJson = JSON.parse(await readFile(files.packageJson, "utf8"));
 
-  const licenses = await generateLicenseJson();
+  const frontendLicenses = await generateFrontedLicenseJson();
+  const backendLicenses = await generateBackendLicenseJson();
 
   const noticeLines = [];
 
@@ -108,10 +200,10 @@ async function generateNotice() {
   noticeLines.push("");
   noticeLines.push("---");
   noticeLines.push("");
-  noticeLines.push("Third-party dependencies:");
+  noticeLines.push("Third-party frontend dependencies:");
   noticeLines.push("");
 
-  const sortedPackages = Object.entries(licenses).sort(([a], [b]) => a.localeCompare(b));
+  const sortedPackages = Object.entries(frontendLicenses).sort(([a], [b]) => a.localeCompare(b));
   let id = 1;
 
   for (const [pkgKey, info] of sortedPackages) {
@@ -119,9 +211,31 @@ async function generateNotice() {
 
     const [name, version] = pkgKey.split("@");
 
-    noticeLines.push(formatDependency(name, version, info, id));
+    noticeLines.push(formatFrontendDependency(name, version, info, id));
 
-    const licenseText = await getLicenseText(info);
+    const licenseText = await getFrontendLicenseText(info);
+    if (licenseText) {
+      noticeLines.push(licenseText);
+      noticeLines.push("");
+    }
+    id += 1;
+  }
+
+  noticeLines.push("");
+  noticeLines.push("---");
+  noticeLines.push("");
+  noticeLines.push("Third-party backend dependencies:");
+  noticeLines.push("");
+
+  const sortedBackend = [...backendLicenses]
+    .filter((crate) => crate.name !== "sea-lantern")
+    .sort((a, b) => `${a.name}@${a.version}`.localeCompare(`${b.name}@${b.version}`));
+
+  id = 1;
+  for (const crate of sortedBackend) {
+    noticeLines.push(formatBackendDependency(crate, id));
+
+    const licenseText = await readBackendLicenseFile(crate);
     if (licenseText) {
       noticeLines.push(licenseText);
       noticeLines.push("");
@@ -131,8 +245,12 @@ async function generateNotice() {
 
   await writeFile(files.noticeFile, noticeLines.join("\n"), "utf8");
 
-  if (await exists(files.licenseJson)) {
-    await unlink(files.licenseJson);
+  if (await exists(files.frontendLicenseJson)) {
+    await unlink(files.frontendLicenseJson);
+  }
+
+  if (await exists(files.backendLicenseJson)) {
+    await unlink(files.backendLicenseJson);
   }
 
   console.log("已生成NOTICE：");

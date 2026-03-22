@@ -51,6 +51,7 @@
     "@tauri-apps/cli": "^2.10.1",
     "@types/node": "^25.5.0",
     "@vitejs/plugin-vue": "^6.0.5",
+    "glob": "^13.0.0",
     "husky": "^9.1.7",
     "license-checker-rseidelsohn": "^4.0.0",
     "lint-staged": "^16.4.0",
