@@ -65,7 +65,7 @@ async function generateBackendLicenseJson() {
   if (!hasLicense) {
     return [];
   }
-  const { stdout } = await execAsync("cargo license --json", { cwd: cargoDir });
+  const { stdout } = await execAsync("cargo license --json --avoid-dev-deps", { cwd: cargoDir });
   await writeFile(files.backendLicenseJson, stdout, "utf8");
   return JSON.parse(stdout);
 }
