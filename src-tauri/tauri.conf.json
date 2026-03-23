@@ -43,6 +43,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": ["../LICENSE", "../NOTICE"],
     "windows": {
       "wix": {
         "language": "zh-CN"

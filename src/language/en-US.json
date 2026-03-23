@@ -752,7 +752,9 @@
     "copied": "Copied!",
     "personal_page": "Personal Page",
     "load_more": "Load More",
-    "go_download": "Go to Download Page"
+    "go_download": "Go to Download Page",
+    "docs": "Documents",
+    "docs_link": "Click to open the document site"
   },
   "tray": {
     "minimize": "Minimize to Tray",

@@ -1,0 +1,5287 @@
+Copyright (C) 2026 Sea Lantern Community
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Third-party frontend dependencies:
+
+1. @headlessui/vue@1.7.23
+
+Source: https://github.com/tailwindlabs/headlessui
+License: MIT
+
+2. @tauri-apps/api@2.10.1
+
+Source: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+3. @tauri-apps/plugin-dialog@2.6.0
+
+Source: https://github.com/tauri-apps/plugins-workspace
+License: MIT OR Apache-2.0
+
+4. @tauri-apps/plugin-fs@2.4.5
+
+Source: https://github.com/tauri-apps/plugins-workspace
+License: MIT OR Apache-2.0
+
+5. @tauri-apps/plugin-http@2.5.7
+
+Source: https://github.com/tauri-apps/plugins-workspace
+License: MIT OR Apache-2.0
+
+6. @tauri-apps/plugin-opener@2.5.3
+
+Source: https://github.com/tauri-apps/plugins-workspace
+License: MIT OR Apache-2.0
+
+7. @tauri-apps/plugin-process@2.3.1
+
+Source: https://github.com/tauri-apps/plugins-workspace
+License: MIT OR Apache-2.0
+
+8. @tauri-apps/plugin-updater@2.10.0
+
+Source: https://github.com/tauri-apps/plugins-workspace
+License: MIT OR Apache-2.0
+
+9. @vueuse/core@14.2.1
+
+Copyright (c) Anthony Fu
+Source: https://github.com/vueuse/vueuse
+License: MIT
+
+MIT License
+
+Copyright (c) 2019-PRESENT Anthony Fu<https://github.com/antfu>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+10. @xterm/addon-clipboard@0.2.0
+
+Copyright (c) The xterm.js authors
+Source: https://github.com/xtermjs/xterm.js.git#master
+License: MIT
+
+Copyright (c) 2023, The xterm.js authors (https://github.com/xtermjs/xterm.js)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+11. @xterm/addon-fit@0.11.0
+
+Copyright (c) The xterm.js authors
+Source: https://github.com/xtermjs/xterm.js.git#master
+License: MIT
+
+Copyright (c) 2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+12. @xterm/addon-serialize@0.14.0
+
+Copyright (c) The xterm.js authors
+Source: https://github.com/xtermjs/xterm.js.git#master
+License: MIT
+
+13. @xterm/xterm@6.0.0
+
+Source: https://github.com/xtermjs/xterm.js
+License: MIT
+
+Copyright (c) 2017-2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)
+Copyright (c) 2014-2016, SourceLair Private Company (https://www.sourcelair.com)
+Copyright (c) 2012-2013, Christopher Jeffrey (https://github.com/chjj/)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+14. dompurify@3.3.3
+
+Copyright (c) Dr.-Ing. Mario Heiderich, Cure53
+Source: https://github.com/cure53/DOMPurify
+License: (MPL-2.0 OR Apache-2.0)
+
+DOMPurify
+Copyright 2025 Dr.-Ing. Mario Heiderich, Cure53
+
+DOMPurify is free software; you can redistribute it and/or modify it under the
+terms of either:
+
+a) the Apache License Version 2.0, or
+b) the Mozilla Public License Version 2.0
+
+-----------------------------------------------------------------------------
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+-----------------------------------------------------------------------------
+Mozilla Public License, version 2.0
+
+1. Definitions
+
+1.1. “Contributor”
+
+     means each individual or legal entity that creates, contributes to the
+     creation of, or owns Covered Software.
+
+1.2. “Contributor Version”
+
+     means the combination of the Contributions of others (if any) used by a
+     Contributor and that particular Contributor’s Contribution.
+
+1.3. “Contribution”
+
+     means Covered Software of a particular Contributor.
+
+1.4. “Covered Software”
+
+     means Source Code Form to which the initial Contributor has attached the
+     notice in Exhibit A, the Executable Form of such Source Code Form, and
+     Modifications of such Source Code Form, in each case including portions
+     thereof.
+
+1.5. “Incompatible With Secondary Licenses”
+     means
+
+     a. that the initial Contributor has attached the notice described in
+        Exhibit B to the Covered Software; or
+
+     b. that the Covered Software was made available under the terms of version
+        1.1 or earlier of the License, but not also under the terms of a
+        Secondary License.
+
+1.6. “Executable Form”
+
+     means any form of the work other than Source Code Form.
+
+1.7. “Larger Work”
+
+     means a work that combines Covered Software with other material, in a separate
+     file or files, that is not Covered Software.
+
+1.8. “License”
+
+     means this document.
+
+1.9. “Licensable”
+
+     means having the right to grant, to the maximum extent possible, whether at the
+     time of the initial grant or subsequently, any and all of the rights conveyed by
+     this License.
+
+1.10. “Modifications”
+
+     means any of the following:
+
+     a. any file in Source Code Form that results from an addition to, deletion
+        from, or modification of the contents of Covered Software; or
+
+     b. any new file in Source Code Form that contains any Covered Software.
+
+1.11. “Patent Claims” of a Contributor
+
+      means any patent claim(s), including without limitation, method, process,
+      and apparatus claims, in any patent Licensable by such Contributor that
+      would be infringed, but for the grant of the License, by the making,
+      using, selling, offering for sale, having made, import, or transfer of
+      either its Contributions or its Contributor Version.
+
+1.12. “Secondary License”
+
+      means either the GNU General Public License, Version 2.0, the GNU Lesser
+      General Public License, Version 2.1, the GNU Affero General Public
+      License, Version 3.0, or any later versions of those licenses.
+
+1.13. “Source Code Form”
+
+      means the form of the work preferred for making modifications.
+
+1.14. “You” (or “Your”)
+
+      means an individual or a legal entity exercising rights under this
+      License. For legal entities, “You” includes any entity that controls, is
+      controlled by, or is under common control with You. For purposes of this
+      definition, “control” means (a) the power, direct or indirect, to cause
+      the direction or management of such entity, whether by contract or
+      otherwise, or (b) ownership of more than fifty percent (50%) of the
+      outstanding shares or beneficial ownership of such entity.
+
+
+2. License Grants and Conditions
+
+2.1. Grants
+
+     Each Contributor hereby grants You a world-wide, royalty-free,
+     non-exclusive license:
+
+     a. under intellectual property rights (other than patent or trademark)
+        Licensable by such Contributor to use, reproduce, make available,
+        modify, display, perform, distribute, and otherwise exploit its
+        Contributions, either on an unmodified basis, with Modifications, or as
+        part of a Larger Work; and
+
+     b. under Patent Claims of such Contributor to make, use, sell, offer for
+        sale, have made, import, and otherwise transfer either its Contributions
+        or its Contributor Version.
+
+2.2. Effective Date
+
+     The licenses granted in Section 2.1 with respect to any Contribution become
+     effective for each Contribution on the date the Contributor first distributes
+     such Contribution.
+
+2.3. Limitations on Grant Scope
+
+     The licenses granted in this Section 2 are the only rights granted under this
+     License. No additional rights or licenses will be implied from the distribution
+     or licensing of Covered Software under this License. Notwithstanding Section
+     2.1(b) above, no patent license is granted by a Contributor:
+
+     a. for any code that a Contributor has removed from Covered Software; or
+
+     b. for infringements caused by: (i) Your and any other third party’s
+        modifications of Covered Software, or (ii) the combination of its
+        Contributions with other software (except as part of its Contributor
+        Version); or
+
+     c. under Patent Claims infringed by Covered Software in the absence of its
+        Contributions.
+
+     This License does not grant any rights in the trademarks, service marks, or
+     logos of any Contributor (except as may be necessary to comply with the
+     notice requirements in Section 3.4).
+
+2.4. Subsequent Licenses
+
+     No Contributor makes additional grants as a result of Your choice to
+     distribute the Covered Software under a subsequent version of this License
+     (see Section 10.2) or under the terms of a Secondary License (if permitted
+     under the terms of Section 3.3).
+
+2.5. Representation
+
+     Each Contributor represents that the Contributor believes its Contributions
+     are its original creation(s) or it has sufficient rights to grant the
+     rights to its Contributions conveyed by this License.
+
+2.6. Fair Use
+
+     This License is not intended to limit any rights You have under applicable
+     copyright doctrines of fair use, fair dealing, or other equivalents.
+
+2.7. Conditions
+
+     Sections 3.1, 3.2, 3.3, and 3.4 are conditions of the licenses granted in
+     Section 2.1.
+
+
+3. Responsibilities
+
+3.1. Distribution of Source Form
+
+     All distribution of Covered Software in Source Code Form, including any
+     Modifications that You create or to which You contribute, must be under the
+     terms of this License. You must inform recipients that the Source Code Form
+     of the Covered Software is governed by the terms of this License, and how
+     they can obtain a copy of this License. You may not attempt to alter or
+     restrict the recipients’ rights in the Source Code Form.
+
+3.2. Distribution of Executable Form
+
+     If You distribute Covered Software in Executable Form then:
+
+     a. such Covered Software must also be made available in Source Code Form,
+        as described in Section 3.1, and You must inform recipients of the
+        Executable Form how they can obtain a copy of such Source Code Form by
+        reasonable means in a timely manner, at a charge no more than the cost
+        of distribution to the recipient; and
+
+     b. You may distribute such Executable Form under the terms of this License,
+        or sublicense it under different terms, provided that the license for
+        the Executable Form does not attempt to limit or alter the recipients’
+        rights in the Source Code Form under this License.
+
+3.3. Distribution of a Larger Work
+
+     You may create and distribute a Larger Work under terms of Your choice,
+     provided that You also comply with the requirements of this License for the
+     Covered Software. If the Larger Work is a combination of Covered Software
+     with a work governed by one or more Secondary Licenses, and the Covered
+     Software is not Incompatible With Secondary Licenses, this License permits
+     You to additionally distribute such Covered Software under the terms of
+     such Secondary License(s), so that the recipient of the Larger Work may, at
+     their option, further distribute the Covered Software under the terms of
+     either this License or such Secondary License(s).
+
+3.4. Notices
+
+     You may not remove or alter the substance of any license notices (including
+     copyright notices, patent notices, disclaimers of warranty, or limitations
+     of liability) contained within the Source Code Form of the Covered
+     Software, except that You may alter any license notices to the extent
+     required to remedy known factual inaccuracies.
+
+3.5. Application of Additional Terms
+
+     You may choose to offer, and to charge a fee for, warranty, support,
+     indemnity or liability obligations to one or more recipients of Covered
+     Software. However, You may do so only on Your own behalf, and not on behalf
+     of any Contributor. You must make it absolutely clear that any such
+     warranty, support, indemnity, or liability obligation is offered by You
+     alone, and You hereby agree to indemnify every Contributor for any
+     liability incurred by such Contributor as a result of warranty, support,
+     indemnity or liability terms You offer. You may include additional
+     disclaimers of warranty and limitations of liability specific to any
+     jurisdiction.
+
+4. Inability to Comply Due to Statute or Regulation
+
+   If it is impossible for You to comply with any of the terms of this License
+   with respect to some or all of the Covered Software due to statute, judicial
+   order, or regulation then You must: (a) comply with the terms of this License
+   to the maximum extent possible; and (b) describe the limitations and the code
+   they affect. Such description must be placed in a text file included with all
+   distributions of the Covered Software under this License. Except to the
+   extent prohibited by statute or regulation, such description must be
+   sufficiently detailed for a recipient of ordinary skill to be able to
+   understand it.
+
+5. Termination
+
+5.1. The rights granted under this License will terminate automatically if You
+     fail to comply with any of its terms. However, if You become compliant,
+     then the rights granted under this License from a particular Contributor
+     are reinstated (a) provisionally, unless and until such Contributor
+     explicitly and finally terminates Your grants, and (b) on an ongoing basis,
+     if such Contributor fails to notify You of the non-compliance by some
+     reasonable means prior to 60 days after You have come back into compliance.
+     Moreover, Your grants from a particular Contributor are reinstated on an
+     ongoing basis if such Contributor notifies You of the non-compliance by
+     some reasonable means, this is the first time You have received notice of
+     non-compliance with this License from such Contributor, and You become
+     compliant prior to 30 days after Your receipt of the notice.
+
+5.2. If You initiate litigation against any entity by asserting a patent
+     infringement claim (excluding declaratory judgment actions, counter-claims,
+     and cross-claims) alleging that a Contributor Version directly or
+     indirectly infringes any patent, then the rights granted to You by any and
+     all Contributors for the Covered Software under Section 2.1 of this License
+     shall terminate.
+
+5.3. In the event of termination under Sections 5.1 or 5.2 above, all end user
+     license agreements (excluding distributors and resellers) which have been
+     validly granted by You or Your distributors under this License prior to
+     termination shall survive termination.
+
+6. Disclaimer of Warranty
+
+   Covered Software is provided under this License on an “as is” basis, without
+   warranty of any kind, either expressed, implied, or statutory, including,
+   without limitation, warranties that the Covered Software is free of defects,
+   merchantable, fit for a particular purpose or non-infringing. The entire
+   risk as to the quality and performance of the Covered Software is with You.
+   Should any Covered Software prove defective in any respect, You (not any
+   Contributor) assume the cost of any necessary servicing, repair, or
+   correction. This disclaimer of warranty constitutes an essential part of this
+   License. No use of  any Covered Software is authorized under this License
+   except under this disclaimer.
+
+7. Limitation of Liability
+
+   Under no circumstances and under no legal theory, whether tort (including
+   negligence), contract, or otherwise, shall any Contributor, or anyone who
+   distributes Covered Software as permitted above, be liable to You for any
+   direct, indirect, special, incidental, or consequential damages of any
+   character including, without limitation, damages for lost profits, loss of
+   goodwill, work stoppage, computer failure or malfunction, or any and all
+   other commercial damages or losses, even if such party shall have been
+   informed of the possibility of such damages. This limitation of liability
+   shall not apply to liability for death or personal injury resulting from such
+   party’s negligence to the extent applicable law prohibits such limitation.
+   Some jurisdictions do not allow the exclusion or limitation of incidental or
+   consequential damages, so this exclusion and limitation may not apply to You.
+
+8. Litigation
+
+   Any litigation relating to this License may be brought only in the courts of
+   a jurisdiction where the defendant maintains its principal place of business
+   and such litigation shall be governed by laws of that jurisdiction, without
+   reference to its conflict-of-law provisions. Nothing in this Section shall
+   prevent a party’s ability to bring cross-claims or counter-claims.
+
+9. Miscellaneous
+
+   This License represents the complete agreement concerning the subject matter
+   hereof. If any provision of this License is held to be unenforceable, such
+   provision shall be reformed only to the extent necessary to make it
+   enforceable. Any law or regulation which provides that the language of a
+   contract shall be construed against the drafter shall not be used to construe
+   this License against a Contributor.
+
+
+10. Versions of the License
+
+10.1. New Versions
+
+      Mozilla Foundation is the license steward. Except as provided in Section
+      10.3, no one other than the license steward has the right to modify or
+      publish new versions of this License. Each version will be given a
+      distinguishing version number.
+
+10.2. Effect of New Versions
+
+      You may distribute the Covered Software under the terms of the version of
+      the License under which You originally received the Covered Software, or
+      under the terms of any subsequent version published by the license
+      steward.
+
+10.3. Modified Versions
+
+      If you create software not governed by this License, and you want to
+      create a new license for such software, you may create and use a modified
+      version of this License if you rename the license and remove any
+      references to the name of the license steward (except to note that such
+      modified license differs from this License).
+
+10.4. Distributing Source Code Form that is Incompatible With Secondary Licenses
+      If You choose to distribute Source Code Form that is Incompatible With
+      Secondary Licenses under the terms of this version of the License, the
+      notice described in Exhibit B of this License must be attached.
+
+Exhibit A - Source Code Form License Notice
+
+      This Source Code Form is subject to the
+      terms of the Mozilla Public License, v.
+      2.0. If a copy of the MPL was not
+      distributed with this file, You can
+      obtain one at
+      http://mozilla.org/MPL/2.0/.
+
+If it is not possible or desirable to put the notice in a particular file, then
+You may include the notice in a location (such as a LICENSE file in a relevant
+directory) where a recipient would be likely to look for such a notice.
+
+You may add additional accurate notices of copyright ownership.
+
+Exhibit B - “Incompatible With Secondary Licenses” Notice
+
+      This Source Code Form is “Incompatible
+      With Secondary Licenses”, as defined by
+      the Mozilla Public License, v. 2.0.
+
+15. echarts@6.0.0
+
+Source: https://github.com/apache/echarts
+License: Apache-2.0
+
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+
+
+
+
+========================================================================
+Apache ECharts Subcomponents:
+
+The Apache ECharts project contains subcomponents with separate copyright
+notices and license terms. Your use of the source code for these
+subcomponents is also subject to the terms and conditions of the following
+licenses.
+
+BSD 3-Clause (d3.js):
+The following files embed [d3.js](https://github.com/d3/d3) BSD 3-Clause:
+    `/src/chart/treemap/treemapLayout.ts`,
+    `/src/chart/tree/layoutHelper.ts`,
+    `/src/chart/graph/forceHelper.ts`,
+    `/src/util/number.ts`
+See `/licenses/LICENSE-d3` for details of the license.
+
+16. lucide-vue-next@0.574.0
+
+Copyright (c) Eric Fennis
+Source: https://github.com/lucide-icons/lucide
+License: ISC
+
+ISC License
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2026 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2026.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+---
+
+The MIT License (MIT) (for portions derived from Feather)
+
+Copyright (c) 2013-2026 Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+17. pinia@3.0.4
+
+Copyright (c) Eduardo San Martin Morote
+Source: https://github.com/vuejs/pinia
+License: MIT
+
+The MIT License (MIT)
+
+Copyright (c) 2019-present Eduardo San Martin Morote
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+18. reka-ui@2.9.2
+
+Copyright (c) UnoVue Contributors
+Source: https://github.com/unovue/reka-ui
+License: MIT
+
+MIT License
+
+Copyright (c) 2023 UnoVue <https://github.com/unovue>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+19. simple-icons@16.12.0
+
+Copyright (c) Simple Icons Collaborators
+Source: https://github.com/simple-icons/simple-icons
+License: CC0-1.0
+
+# CC0 1.0 Universal
+
+## Statement of Purpose
+
+The laws of most jurisdictions throughout the world automatically confer exclusive Copyright and Related Rights (defined below) upon the creator and subsequent owner(s) (each and all, an “owner”) of an original work of authorship and/or a database (each, a “Work”).
+
+Certain owners wish to permanently relinquish those rights to a Work for the purpose of contributing to a commons of creative, cultural and scientific works (“Commons”) that the public can reliably and without fear of later claims of infringement build upon, modify, incorporate in other works, reuse and redistribute as freely as possible in any form whatsoever and for any purposes, including without limitation commercial purposes. These owners may contribute to the Commons to promote the ideal of a free culture and the further production of creative, cultural and scientific works, or to gain reputation or greater distribution for their Work in part through the use and efforts of others.
+
+For these and/or other purposes and motivations, and without any expectation of additional consideration or compensation, the person associating CC0 with a Work (the “Affirmer”), to the extent that he or she is an owner of Copyright and Related Rights in the Work, voluntarily elects to apply CC0 to the Work and publicly distribute the Work under its terms, with knowledge of his or her Copyright and Related Rights in the Work and the meaning and intended legal effect of CC0 on those rights.
+
+1. Copyright and Related Rights. A Work made available under CC0 may be protected by copyright and related or neighboring rights (“Copyright and Related Rights”). Copyright and Related Rights include, but are not limited to, the following:
+    1. the right to reproduce, adapt, distribute, perform, display, communicate, and translate a Work;
+    2. moral rights retained by the original author(s) and/or performer(s);
+    3. publicity and privacy rights pertaining to a person’s image or likeness depicted in a Work;
+    4. rights protecting against unfair competition in regards to a Work, subject to the limitations in paragraph 4(i), below;
+    5. rights protecting the extraction, dissemination, use and reuse of data in a Work;
+    6. database rights (such as those arising under Directive 96/9/EC of the European Parliament and of the Council of 11 March 1996 on the legal protection of databases, and under any national implementation thereof, including any amended or successor version of such directive); and
+    7. other similar, equivalent or corresponding rights throughout the world based on applicable law or treaty, and any national implementations thereof.
+
+2. Waiver. To the greatest extent permitted by, but not in contravention of, applicable law, Affirmer hereby overtly, fully, permanently, irrevocably and unconditionally waives, abandons, and surrenders all of Affirmer’s Copyright and Related Rights and associated claims and causes of action, whether now known or unknown (including existing as well as future claims and causes of action), in the Work (i) in all territories worldwide, (ii) for the maximum duration provided by applicable law or treaty (including future time extensions), (iii) in any current or future medium and for any number of copies, and (iv) for any purpose whatsoever, including without limitation commercial, advertising or promotional purposes (the “Waiver”). Affirmer makes the Waiver for the benefit of each member of the public at large and to the detriment of Affirmer’s heirs and successors, fully intending that such Waiver shall not be subject to revocation, rescission, cancellation, termination, or any other legal or equitable action to disrupt the quiet enjoyment of the Work by the public as contemplated by Affirmer’s express Statement of Purpose.
+
+3. Public License Fallback. Should any part of the Waiver for any reason be judged legally invalid or ineffective under applicable law, then the Waiver shall be preserved to the maximum extent permitted taking into account Affirmer’s express Statement of Purpose. In addition, to the extent the Waiver is so judged Affirmer hereby grants to each affected person a royalty-free, non transferable, non sublicensable, non exclusive, irrevocable and unconditional license to exercise Affirmer’s Copyright and Related Rights in the Work (i) in all territories worldwide, (ii) for the maximum duration provided by applicable law or treaty (including future time extensions), (iii) in any current or future medium and for any number of copies, and (iv) for any purpose whatsoever, including without limitation commercial, advertising or promotional purposes (the “License”). The License shall be deemed effective as of the date CC0 was applied by Affirmer to the Work. Should any part of the License for any reason be judged legally invalid or ineffective under applicable law, such partial invalidity or ineffectiveness shall not invalidate the remainder of the License, and in such case Affirmer hereby affirms that he or she will not (i) exercise any of his or her remaining Copyright and Related Rights in the Work or (ii) assert any associated claims and causes of action with respect to the Work, in either case contrary to Affirmer’s express Statement of Purpose.
+
+4. Limitations and Disclaimers.
+    1. No trademark or patent rights held by Affirmer are waived, abandoned, surrendered, licensed or otherwise affected by this document.
+    2. Affirmer offers the Work as-is and makes no representations or warranties of any kind concerning the Work, express, implied, statutory or otherwise, including without limitation warranties of title, merchantability, fitness for a particular purpose, non infringement, or the absence of latent or other defects, accuracy, or the present or absence of errors, whether or not discoverable, all to the greatest extent permissible under applicable law.
+    3. Affirmer disclaims responsibility for clearing rights of other persons that may apply to the Work or any use thereof, including without limitation any person’s Copyright and Related Rights in the Work. Further, Affirmer disclaims responsibility for obtaining any necessary consents, permissions or other rights required for any use of the Work.
+    4. Affirmer understands and acknowledges that Creative Commons is not a party to this document and has no duty or obligation with respect to this CC0 or use of the Work.
+
+For more information, please see <https://creativecommons.org/publicdomain/zero/1.0>.
+
+20. vue-echarts@8.0.1
+
+Copyright (c) GU Yiling
+Source: https://github.com/ecomfe/vue-echarts
+License: MIT
+
+The MIT License (MIT)
+
+Copyright (c) 2016-present GU Yiling & ECOMFE
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+21. vue-router@5.0.3
+
+Copyright (c) Eduardo San Martin Morote
+Source: https://github.com/vuejs/router
+License: MIT
+
+The MIT License (MIT)
+
+Copyright (c) 2019-present Eduardo San Martin Morote
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+22. vue@3.5.30
+
+Copyright (c) Evan You
+Source: https://github.com/vuejs/core
+License: MIT
+
+The MIT License (MIT)
+
+Copyright (c) 2018-present, Yuxi (Evan) You
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+---
+
+Third-party backend dependencies:
+
+1. adler2@2.0.1
+
+Authors: Jonas Schievink <jonasschievink@gmail.com>|oyvindln <oyvindln@users.noreply.github.com>
+Repository: https://github.com/oyvindln/adler2
+License: 0BSD OR Apache-2.0 OR MIT
+
+2. aes@0.8.4
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/block-ciphers
+License: Apache-2.0 OR MIT
+
+3. ahash@0.8.12
+
+Authors: Tom Kaitchuck <Tom.Kaitchuck@gmail.com>
+Repository: https://github.com/tkaitchuck/ahash
+License: Apache-2.0 OR MIT
+
+4. aho-corasick@1.1.4
+
+Authors: Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/BurntSushi/aho-corasick
+License: MIT OR Unlicense
+
+5. alloc-no-stdlib@2.0.4
+
+Authors: Daniel Reiter Horn <danielrh@dropbox.com>
+Repository: https://github.com/dropbox/rust-alloc-no-stdlib
+License: BSD-3-Clause
+
+6. alloc-stdlib@0.2.2
+
+Authors: Daniel Reiter Horn <danielrh@dropbox.com>
+Repository: https://github.com/dropbox/rust-alloc-no-stdlib
+License: BSD-3-Clause
+
+7. android_system_properties@0.1.5
+
+Authors: Nicolas Silva <nical@fastmail.com>
+Repository: https://github.com/nical/android_system_properties
+License: Apache-2.0 OR MIT
+
+8. anyhow@1.0.102
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/anyhow
+License: Apache-2.0 OR MIT
+
+9. arbitrary@1.4.2
+
+Authors: The Rust-Fuzz Project Developers|Nick Fitzgerald <fitzgen@gmail.com>|Manish Goregaokar <manishsmail@gmail.com>|Simonas Kazlauskas <arbitrary@kazlauskas.me>|Brian L. Troutwine <brian@troutwine.us>|Corey Farwell <coreyf@rwell.org>
+Repository: https://github.com/rust-fuzz/arbitrary/
+License: Apache-2.0 OR MIT
+
+10. async-broadcast@0.7.2
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|Yoshua Wuyts <yoshuawuyts@gmail.com>|Zeeshan Ali Khan <zeeshanak@gnome.org>
+Repository: https://github.com/smol-rs/async-broadcast
+License: Apache-2.0 OR MIT
+
+11. async-channel@2.5.0
+
+Authors: Stjepan Glavina <stjepang@gmail.com>
+Repository: https://github.com/smol-rs/async-channel
+License: Apache-2.0 OR MIT
+
+12. async-executor@1.14.0
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|John Nunley <dev@notgull.net>
+Repository: https://github.com/smol-rs/async-executor
+License: Apache-2.0 OR MIT
+
+13. async-io@2.6.0
+
+Authors: Stjepan Glavina <stjepang@gmail.com>
+Repository: https://github.com/smol-rs/async-io
+License: Apache-2.0 OR MIT
+
+14. async-lock@3.4.2
+
+Authors: Stjepan Glavina <stjepang@gmail.com>
+Repository: https://github.com/smol-rs/async-lock
+License: Apache-2.0 OR MIT
+
+15. async-process@2.5.0
+
+Authors: Stjepan Glavina <stjepang@gmail.com>
+Repository: https://github.com/smol-rs/async-process
+License: Apache-2.0 OR MIT
+
+16. async-recursion@1.1.1
+
+Authors: Robert Usher <266585+dcchut@users.noreply.github.com>
+Repository: https://github.com/dcchut/async-recursion
+License: Apache-2.0 OR MIT
+
+17. async-signal@0.2.13
+
+Authors: John Nunley <dev@notgull.net>
+Repository: https://github.com/smol-rs/async-signal
+License: Apache-2.0 OR MIT
+
+18. async-task@4.7.1
+
+Authors: Stjepan Glavina <stjepang@gmail.com>
+Repository: https://github.com/smol-rs/async-task
+License: Apache-2.0 OR MIT
+
+19. async-trait@0.1.89
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/async-trait
+License: Apache-2.0 OR MIT
+
+20. atk-sys@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+21. atk@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+22. atomic-waker@1.1.2
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|Contributors to futures-rs
+Repository: https://github.com/smol-rs/atomic-waker
+License: Apache-2.0 OR MIT
+
+23. autocfg@1.5.0
+
+Authors: Josh Stone <cuviper@gmail.com>
+Repository: https://github.com/cuviper/autocfg
+License: Apache-2.0 OR MIT
+
+24. axum-core@0.5.6
+
+Repository: https://github.com/tokio-rs/axum
+License: MIT
+
+25. axum@0.8.8
+
+Repository: https://github.com/tokio-rs/axum
+License: MIT
+
+26. base64@0.21.7
+
+Authors: Alice Maz <alice@alicemaz.com>|Marshall Pierce <marshall@mpierce.org>
+Repository: https://github.com/marshallpierce/rust-base64
+License: Apache-2.0 OR MIT
+
+27. base64@0.22.1
+
+Authors: Marshall Pierce <marshall@mpierce.org>
+Repository: https://github.com/marshallpierce/rust-base64
+License: Apache-2.0 OR MIT
+
+28. bitflags@1.3.2
+
+Authors: The Rust Project Developers
+Repository: https://github.com/bitflags/bitflags
+License: Apache-2.0 OR MIT
+
+29. bitflags@2.11.0
+
+Authors: The Rust Project Developers
+Repository: https://github.com/bitflags/bitflags
+License: Apache-2.0 OR MIT
+
+30. block-buffer@0.10.4
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/utils
+License: Apache-2.0 OR MIT
+
+31. block2@0.5.1
+
+Authors: Steven Sheldon|Mads Marquart <mads@marquart.dk>
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+32. block2@0.6.2
+
+Authors: Mads Marquart <mads@marquart.dk>
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+33. blocking@1.6.2
+
+Authors: Stjepan Glavina <stjepang@gmail.com>
+Repository: https://github.com/smol-rs/blocking
+License: Apache-2.0 OR MIT
+
+34. brotli-decompressor@5.0.0
+
+Authors: Daniel Reiter Horn <danielrh@dropbox.com>|The Brotli Authors
+Repository: https://github.com/dropbox/rust-brotli-decompressor
+License: BSD-3-Clause OR MIT
+
+35. brotli@8.0.2
+
+Authors: Daniel Reiter Horn <danielrh@dropbox.com>|The Brotli Authors
+Repository: https://github.com/dropbox/rust-brotli
+License: BSD-3-Clause AND MIT
+
+36. bstr@1.12.1
+
+Authors: Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/BurntSushi/bstr
+License: Apache-2.0 OR MIT
+
+37. bumpalo@3.20.2
+
+Authors: Nick Fitzgerald <fitzgen@gmail.com>
+Repository: https://github.com/fitzgen/bumpalo
+License: Apache-2.0 OR MIT
+
+38. bytemuck@1.25.0
+
+Authors: Lokathor <zefria@gmail.com>
+Repository: https://github.com/Lokathor/bytemuck
+License: Apache-2.0 OR MIT OR Zlib
+
+39. byteorder-lite@0.1.0
+
+Repository: https://github.com/image-rs/byteorder-lite
+License: MIT OR Unlicense
+
+40. byteorder@1.5.0
+
+Authors: Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/BurntSushi/byteorder
+License: MIT OR Unlicense
+
+41. bytes@1.11.1
+
+Authors: Carl Lerche <me@carllerche.com>|Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/tokio-rs/bytes
+License: MIT
+
+42. bzip2-sys@0.1.13+1.0.8
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/alexcrichton/bzip2-rs
+License: Apache-2.0 OR MIT
+
+43. bzip2@0.5.2
+
+Repository: https://github.com/trifectatechfoundation/bzip2-rs
+License: Apache-2.0 OR MIT
+
+44. cairo-rs@0.18.5
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+45. cairo-sys-rs@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+46. camino@1.2.2
+
+Authors: Without Boats <saoirse@without.boats>|Ashley Williams <ashley666ashley@gmail.com>|Steve Klabnik <steve@steveklabnik.com>|Rain <rain@sunshowers.io>
+Repository: https://github.com/camino-rs/camino
+License: Apache-2.0 OR MIT
+
+47. cargo_metadata@0.19.2
+
+Authors: Oliver Schneider <git-spam-no-reply9815368754983@oli-obk.de>
+Repository: https://github.com/oli-obk/cargo_metadata
+License: MIT
+
+48. cargo_toml@0.22.3
+
+Authors: Kornel <kornel@geekhood.net>
+Repository: https://gitlab.com/lib.rs/cargo_toml
+License: Apache-2.0 OR MIT
+
+49. cargo-platform@0.1.9
+
+Repository: https://github.com/rust-lang/cargo
+License: Apache-2.0 OR MIT
+
+50. cc@1.2.56
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/rust-lang/cc-rs
+License: Apache-2.0 OR MIT
+
+51. cesu8@1.1.0
+
+Authors: Eric Kidd <git@randomhacks.net>
+Repository: https://github.com/emk/cesu8-rs
+License: Apache-2.0 OR MIT
+
+52. cfb@0.7.3
+
+Authors: Matthew D. Steele <mdsteele@alum.mit.edu>
+Repository: https://github.com/mdsteele/rust-cfb
+License: MIT
+
+53. cfg_aliases@0.2.1
+
+Authors: Zicklag <zicklag@katharostech.com>
+Repository: https://github.com/katharostech/cfg_aliases
+License: MIT
+
+54. cfg-expr@0.15.8
+
+Authors: Embark <opensource@embark-studios.com>|Jake Shadle <jake.shadle@embark-studios.com>
+Repository: https://github.com/EmbarkStudios/cfg-expr
+License: Apache-2.0 OR MIT
+
+55. cfg-if@1.0.4
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/rust-lang/cfg-if
+License: Apache-2.0 OR MIT
+
+56. chrono@0.4.44
+
+Repository: https://github.com/chronotope/chrono
+License: Apache-2.0 OR MIT
+
+57. cipher@0.4.4
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/traits
+License: Apache-2.0 OR MIT
+
+58. color_quant@1.1.0
+
+Authors: nwin <nwin@users.noreply.github.com>
+Repository: https://github.com/image-rs/color_quant.git
+License: MIT
+
+59. combine@4.6.7
+
+Authors: Markus Westerlind <marwes91@gmail.com>
+Repository: https://github.com/Marwes/combine
+License: MIT
+
+60. concurrent-queue@2.5.0
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|Taiki Endo <te316e89@gmail.com>|John Nunley <dev@notgull.net>
+Repository: https://github.com/smol-rs/concurrent-queue
+License: Apache-2.0 OR MIT
+
+61. constant_time_eq@0.3.1
+
+Authors: Cesar Eduardo Barros <cesarb@cesarb.eti.br>
+Repository: https://github.com/cesarb/constant_time_eq
+License: Apache-2.0 OR CC0-1.0 OR MIT-0
+
+62. convert_case@0.4.0
+
+Authors: David Purdum <purdum41@gmail.com>
+Repository: https://github.com/rutrum/convert-case
+License: MIT
+
+63. cookie_store@0.21.1
+
+Authors: Patrick Fernie <patrick.fernie@gmail.com>
+Repository: https://github.com/pfernie/cookie_store
+License: Apache-2.0 OR MIT
+
+64. cookie_store@0.22.1
+
+Authors: Patrick Fernie <patrick.fernie@gmail.com>
+Repository: https://github.com/pfernie/cookie_store
+License: Apache-2.0 OR MIT
+
+65. cookie@0.18.1
+
+Authors: Sergio Benitez <sb@sergio.bz>|Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/SergioBenitez/cookie-rs
+License: Apache-2.0 OR MIT
+
+66. core-foundation-sys@0.8.7
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/core-foundation-rs
+License: Apache-2.0 OR MIT
+
+67. core-foundation@0.10.1
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/core-foundation-rs
+License: Apache-2.0 OR MIT
+
+68. core-foundation@0.9.4
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/core-foundation-rs
+License: Apache-2.0 OR MIT
+
+69. core-graphics-types@0.1.3
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/core-foundation-rs
+License: Apache-2.0 OR MIT
+
+70. core-graphics-types@0.2.0
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/core-foundation-rs
+License: Apache-2.0 OR MIT
+
+71. core-graphics@0.23.2
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/core-foundation-rs
+License: Apache-2.0 OR MIT
+
+72. core-graphics@0.24.0
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/core-foundation-rs
+License: Apache-2.0 OR MIT
+
+73. core-text@20.1.0
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/core-foundation-rs
+License: Apache-2.0 OR MIT
+
+74. cpufeatures@0.2.17
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/utils
+License: Apache-2.0 OR MIT
+
+75. crc-catalog@2.4.0
+
+Authors: Akhil Velagapudi <akhilvelagapudi@gmail.com>
+Repository: https://github.com/akhilles/crc-catalog.git
+License: Apache-2.0 OR MIT
+
+76. crc@3.4.0
+
+Authors: Rui Hu <code@mrhooray.com>|Akhil Velagapudi <4@4khil.com>
+Repository: https://github.com/mrhooray/crc-rs.git
+License: Apache-2.0 OR MIT
+
+77. crc32fast@1.5.0
+
+Authors: Sam Rijs <srijs@airpost.net>|Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/srijs/rust-crc32fast
+License: Apache-2.0 OR MIT
+
+78. crossbeam-channel@0.5.15
+
+Repository: https://github.com/crossbeam-rs/crossbeam
+License: Apache-2.0 OR MIT
+
+79. crossbeam-deque@0.8.6
+
+Repository: https://github.com/crossbeam-rs/crossbeam
+License: Apache-2.0 OR MIT
+
+80. crossbeam-epoch@0.9.18
+
+Repository: https://github.com/crossbeam-rs/crossbeam
+License: Apache-2.0 OR MIT
+
+81. crossbeam-utils@0.8.21
+
+Repository: https://github.com/crossbeam-rs/crossbeam
+License: Apache-2.0 OR MIT
+
+82. crypto-common@0.1.7
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/traits
+License: Apache-2.0 OR MIT
+
+83. cssparser-macros@0.6.1
+
+Authors: Simon Sapin <simon.sapin@exyr.org>
+Repository: https://github.com/servo/rust-cssparser
+License: MPL-2.0
+
+84. cssparser@0.29.6
+
+Authors: Simon Sapin <simon.sapin@exyr.org>
+Repository: https://github.com/servo/rust-cssparser
+License: MPL-2.0
+
+85. ctor@0.2.9
+
+Authors: Matt Mastracci <matthew@mastracci.com>
+Repository: https://github.com/mmastrac/rust-ctor
+License: Apache-2.0 OR MIT
+
+86. darling_core@0.21.3
+
+Authors: Ted Driggs <ted.driggs@outlook.com>
+Repository: https://github.com/TedDriggs/darling
+License: MIT
+
+87. darling_macro@0.21.3
+
+Authors: Ted Driggs <ted.driggs@outlook.com>
+Repository: https://github.com/TedDriggs/darling
+License: MIT
+
+88. darling@0.21.3
+
+Authors: Ted Driggs <ted.driggs@outlook.com>
+Repository: https://github.com/TedDriggs/darling
+License: MIT
+
+89. data-url@0.3.2
+
+Authors: Simon Sapin <simon.sapin@exyr.org>
+Repository: https://github.com/servo/rust-url
+License: Apache-2.0 OR MIT
+
+90. dbus@0.9.10
+
+Authors: David Henningsson <diwic@ubuntu.com>
+Repository: https://github.com/diwic/dbus-rs
+License: Apache-2.0 OR MIT
+
+91. deflate64@0.1.10
+
+Authors: anatawa12 <anatawa12@icloud.com>
+Repository: https://github.com/anatawa12/deflate64-rs
+License: MIT
+
+92. deranged@0.5.8
+
+Authors: Jacob Pratt <jacob@jhpratt.dev>
+Repository: https://github.com/jhpratt/deranged
+License: Apache-2.0 OR MIT
+
+93. derive_arbitrary@1.4.2
+
+Authors: The Rust-Fuzz Project Developers|Nick Fitzgerald <fitzgen@gmail.com>|Manish Goregaokar <manishsmail@gmail.com>|Andre Bogus <bogusandre@gmail.com>|Corey Farwell <coreyf@rwell.org>
+Repository: https://github.com/rust-fuzz/arbitrary
+License: Apache-2.0 OR MIT
+
+94. derive_more@0.99.20
+
+Authors: Jelte Fennema <github-tech@jeltef.nl>
+Repository: https://github.com/JelteF/derive_more
+License: MIT
+
+95. digest@0.10.7
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/traits
+License: Apache-2.0 OR MIT
+
+96. dirs-next@2.0.0
+
+Authors: The @xdg-rs members
+Repository: https://github.com/xdg-rs/dirs
+License: Apache-2.0 OR MIT
+
+97. dirs-sys-next@0.1.2
+
+Authors: The @xdg-rs members
+Repository: https://github.com/xdg-rs/dirs/tree/master/dirs-sys
+License: Apache-2.0 OR MIT
+
+98. dirs-sys@0.5.0
+
+Authors: Simon Ochsenreither <simon@ochsenreither.de>
+Repository: https://github.com/dirs-dev/dirs-sys-rs
+License: Apache-2.0 OR MIT
+
+99. dirs@6.0.0
+
+Authors: Simon Ochsenreither <simon@ochsenreither.de>
+Repository: https://github.com/soc/dirs-rs
+License: Apache-2.0 OR MIT
+
+100. dispatch@0.2.0
+
+Authors: Steven Sheldon
+Repository: http://github.com/SSheldon/rust-dispatch
+License: MIT
+
+101. dispatch2@0.3.0
+
+Authors: Mads Marquart <mads@marquart.dk>|Mary <mary@mary.zone>
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+102. displaydoc@0.2.5
+
+Authors: Jane Lusby <jlusby@yaah.dev>
+Repository: https://github.com/yaahc/displaydoc
+License: Apache-2.0 OR MIT
+
+103. dlib@0.5.2
+
+Authors: Elinor Berger <elinor@safaradeg.net>
+Repository: https://github.com/elinorbgr/dlib
+License: MIT
+
+104. dlopen2_derive@0.4.3
+
+Authors: Szymon Wieloch <szymon.wieloch@gmail.com>|OpenByte <development.openbyte@gmail.com>
+Repository: https://github.com/OpenByteDev/dlopen2
+License: MIT
+
+105. dlopen2@0.8.2
+
+Authors: Szymon Wieloch <szymon.wieloch@gmail.com>|Ahmed Masud <ahmed.masud@saf.ai>|OpenByte <development.openbyte@gmail.com>
+Repository: https://github.com/OpenByteDev/dlopen2
+License: MIT
+
+106. document-features@0.2.12
+
+Authors: Slint Developers <info@slint.dev>
+Repository: https://github.com/slint-ui/document-features
+License: Apache-2.0 OR MIT
+
+107. dpi@0.1.2
+
+Repository: https://github.com/rust-windowing/winit
+License: Apache-2.0 AND MIT
+
+108. dtoa-short@0.3.5
+
+Authors: Xidorn Quan <me@upsuper.org>
+Repository: https://github.com/upsuper/dtoa-short
+License: MPL-2.0
+
+109. dtoa@1.0.11
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/dtoa
+License: Apache-2.0 OR MIT
+
+110. dunce@1.0.5
+
+Authors: Kornel <kornel@geekhood.net>
+Repository: https://gitlab.com/kornelski/dunce
+License: Apache-2.0 OR CC0-1.0 OR MIT-0
+
+111. dwrote@0.11.5
+
+Authors: The Servo Project Developers|Vladimir Vukicevic <vladimir@pobox.com>
+Repository: https://github.com/servo/dwrote-rs
+License: MPL-2.0
+
+112. dyn-clone@1.0.20
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/dyn-clone
+License: Apache-2.0 OR MIT
+
+113. either@1.15.0
+
+Authors: bluss
+Repository: https://github.com/rayon-rs/either
+License: Apache-2.0 OR MIT
+
+114. embed_plist@1.2.2
+
+Authors: Nikolai Vazquez <hello@nikolaivazquez.com>
+Repository: https://github.com/nvzqz/embed-plist-rs
+License: Apache-2.0 OR MIT
+
+115. embed-resource@3.0.6
+
+Authors: наб <nabijaczleweli@nabijaczleweli.xyz>|Cat Plus Plus <piotrlegnica@piotrl.pl>|Liigo <liigo@qq.com>|azyobuzin <azyobuzin@users.sourceforge.jp>|Peter Atashian <retep998@gmail.com>|pravic <ehysta@gmail.com>|Gabriel Majeri <gabriel.majeri6@gmail.com>|SonnyX|Johan Andersson <repi@repi.se>|Jordan Poles <jpdev.noreply@gmail.com>|MSxDOS <melcodos@gmail.com>|Jim McGrath <jimmc2@gmail.com>|roblabla <unfiltered@roblab.la>|Jasper Bekkers <jasper@traverseresearch.nl>|Richard Markiewicz <rmarkiewicz@devolutions.net>|Emerson de Freitas Barcelos <emersonfxbx@gmail.com>|Li Keqing <me@kaze.ai>|Alexis Bourget <alexis.bourget@gmail.com>|Michael Farrell <micolous+git@gmail.com>|Jacob Okamoto <oko@oko.io>|Marijn Suijten <marijn@traverseresearch.nl>|Lucas Nogueira <lucas@tauri.app>|CharlesChen0823 <yongchen0823@gmail.com>|Daniel Schaefer <dhs@frame.work>|Rene Leonhardt|ssrlive
+Repository: https://github.com/nabijaczleweli/rust-embed-resource
+License: MIT
+
+116. encoding_rs@0.8.35
+
+Authors: Henri Sivonen <hsivonen@hsivonen.fi>
+Repository: https://github.com/hsivonen/encoding_rs
+License: (Apache-2.0 OR MIT) AND BSD-3-Clause
+
+117. endi@1.1.1
+
+Authors: Zeeshan Ali Khan <zeenix@gmail.com>
+Repository: https://github.com/zeenix/endi
+License: MIT
+
+118. enumflags2_derive@0.7.12
+
+Authors: maik klein <maikklein@googlemail.com>|Maja Kądziołka <maya@compilercrim.es>
+Repository: https://github.com/meithecatte/enumflags2
+License: Apache-2.0 OR MIT
+
+119. enumflags2@0.7.12
+
+Authors: maik klein <maikklein@googlemail.com>|Maja Kądziołka <maya@compilercrim.es>
+Repository: https://github.com/meithecatte/enumflags2
+License: Apache-2.0 OR MIT
+
+120. env_home@0.1.0
+
+Authors: Peter Tripp <peter.tripp@gmail.com>
+Repository: https://github.com/notpeter/env-home
+License: Apache-2.0 OR MIT
+
+121. equivalent@1.0.2
+
+Repository: https://github.com/indexmap-rs/equivalent
+License: Apache-2.0 OR MIT
+
+122. erased-serde@0.4.9
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/erased-serde
+License: Apache-2.0 OR MIT
+
+123. errno@0.3.14
+
+Authors: Chris Wong <lambda.fairy@gmail.com>|Dan Gohman <dev@sunfishcode.online>
+Repository: https://github.com/lambda-fairy/rust-errno
+License: Apache-2.0 OR MIT
+
+124. event-listener-strategy@0.5.4
+
+Authors: John Nunley <dev@notgull.net>
+Repository: https://github.com/smol-rs/event-listener-strategy
+License: Apache-2.0 OR MIT
+
+125. event-listener@5.4.1
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|John Nunley <dev@notgull.net>
+Repository: https://github.com/smol-rs/event-listener
+License: Apache-2.0 OR MIT
+
+126. fallible-iterator@0.3.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-fallible-iterator
+License: Apache-2.0 OR MIT
+
+127. fallible-streaming-iterator@0.1.9
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/fallible-streaming-iterator
+License: Apache-2.0 OR MIT
+
+128. fastrand@2.3.0
+
+Authors: Stjepan Glavina <stjepang@gmail.com>
+Repository: https://github.com/smol-rs/fastrand
+License: Apache-2.0 OR MIT
+
+129. fdeflate@0.3.7
+
+Authors: The image-rs Developers
+Repository: https://github.com/image-rs/fdeflate
+License: Apache-2.0 OR MIT
+
+130. field-offset@0.3.6
+
+Authors: Diggory Blake <diggsey@googlemail.com>
+Repository: https://github.com/Diggsey/rust-field-offset
+License: Apache-2.0 OR MIT
+
+131. filetime@0.2.27
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/alexcrichton/filetime
+License: Apache-2.0 OR MIT
+
+132. find-msvc-tools@0.1.9
+
+Repository: https://github.com/rust-lang/cc-rs
+License: Apache-2.0 OR MIT
+
+133. flate2@1.1.9
+
+Authors: Alex Crichton <alex@alexcrichton.com>|Josh Triplett <josh@joshtriplett.org>
+Repository: https://github.com/rust-lang/flate2-rs
+License: Apache-2.0 OR MIT
+
+134. float-ord@0.3.2
+
+Authors: Michael Howell <michael@notriddle.com>
+Repository: https://github.com/notriddle/rust-float-ord
+License: Apache-2.0 OR MIT
+
+135. fnv@1.0.7
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/servo/rust-fnv
+License: Apache-2.0 OR MIT
+
+136. foldhash@0.1.5
+
+Authors: Orson Peters <orsonpeters@gmail.com>
+Repository: https://github.com/orlp/foldhash
+License: Zlib
+
+137. font-kit@0.14.3
+
+Authors: Patrick Walton <pcwalton@mimiga.net>
+Repository: https://github.com/servo/font-kit
+License: Apache-2.0 OR MIT
+
+138. foreign-types-macros@0.2.3
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/foreign-types
+License: Apache-2.0 OR MIT
+
+139. foreign-types-shared@0.1.1
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/foreign-types
+License: Apache-2.0 OR MIT
+
+140. foreign-types-shared@0.3.1
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/foreign-types
+License: Apache-2.0 OR MIT
+
+141. foreign-types@0.3.2
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/foreign-types
+License: Apache-2.0 OR MIT
+
+142. foreign-types@0.5.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/foreign-types
+License: Apache-2.0 OR MIT
+
+143. form_urlencoded@1.2.2
+
+Authors: The rust-url developers
+Repository: https://github.com/servo/rust-url
+License: Apache-2.0 OR MIT
+
+144. freetype-sys@0.20.1
+
+Authors: Coeuvre <coeuvre@gmail.com>
+Repository: https://github.com/PistonDevelopers/freetype-sys.git
+License: MIT
+
+145. futf@0.1.5
+
+Authors: Keegan McAllister <kmcallister@mozilla.com>
+Repository: https://github.com/servo/futf
+License: Apache-2.0 OR MIT
+
+146. futures-channel@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+147. futures-core@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+148. futures-executor@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+149. futures-io@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+150. futures-lite@2.6.1
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|Contributors to futures-rs
+Repository: https://github.com/smol-rs/futures-lite
+License: Apache-2.0 OR MIT
+
+151. futures-macro@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+152. futures-sink@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+153. futures-task@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+154. futures-util@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+155. futures@0.3.32
+
+Repository: https://github.com/rust-lang/futures-rs
+License: Apache-2.0 OR MIT
+
+156. fxhash@0.2.1
+
+Authors: cbreeden <github@u.breeden.cc>
+Repository: https://github.com/cbreeden/fxhash
+License: Apache-2.0 OR MIT
+
+157. gdk-pixbuf-sys@0.18.0
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+158. gdk-pixbuf@0.18.5
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+159. gdk-sys@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+160. gdk@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+161. gdkwayland-sys@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+162. gdkx11-sys@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+163. gdkx11@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+164. generic-array@0.14.7
+
+Authors: Bartłomiej Kamiński <fizyk20@gmail.com>|Aaron Trent <novacrazy@gmail.com>
+Repository: https://github.com/fizyk20/generic-array.git
+License: MIT
+
+165. getrandom@0.1.16
+
+Authors: The Rand Project Developers
+Repository: https://github.com/rust-random/getrandom
+License: Apache-2.0 OR MIT
+
+166. getrandom@0.2.17
+
+Authors: The Rand Project Developers
+Repository: https://github.com/rust-random/getrandom
+License: Apache-2.0 OR MIT
+
+167. getrandom@0.3.4
+
+Authors: The Rand Project Developers
+Repository: https://github.com/rust-random/getrandom
+License: Apache-2.0 OR MIT
+
+168. getrandom@0.4.1
+
+Authors: The Rand Project Developers
+Repository: https://github.com/rust-random/getrandom
+License: Apache-2.0 OR MIT
+
+169. gif@0.14.1
+
+Authors: The image-rs Developers
+Repository: https://github.com/image-rs/image-gif
+License: Apache-2.0 OR MIT
+
+170. gio-sys@0.18.1
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+171. gio@0.18.4
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+172. glib-macros@0.18.5
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+173. glib-sys@0.18.1
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+174. glib@0.18.5
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+175. glob@0.3.3
+
+Authors: The Rust Project Developers
+Repository: https://github.com/rust-lang/glob
+License: Apache-2.0 OR MIT
+
+176. gobject-sys@0.18.0
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+177. gtk-sys@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+178. gtk@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+179. gtk3-macros@0.18.2
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk3-rs
+License: MIT
+
+180. h2@0.4.13
+
+Authors: Carl Lerche <me@carllerche.com>|Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/hyperium/h2
+License: MIT
+
+181. hashbrown@0.12.3
+
+Authors: Amanieu d'Antras <amanieu@gmail.com>
+Repository: https://github.com/rust-lang/hashbrown
+License: Apache-2.0 OR MIT
+
+182. hashbrown@0.14.5
+
+Authors: Amanieu d'Antras <amanieu@gmail.com>
+Repository: https://github.com/rust-lang/hashbrown
+License: Apache-2.0 OR MIT
+
+183. hashbrown@0.15.5
+
+Authors: Amanieu d'Antras <amanieu@gmail.com>
+Repository: https://github.com/rust-lang/hashbrown
+License: Apache-2.0 OR MIT
+
+184. hashbrown@0.16.1
+
+Authors: Amanieu d'Antras <amanieu@gmail.com>
+Repository: https://github.com/rust-lang/hashbrown
+License: Apache-2.0 OR MIT
+
+185. hashlink@0.9.1
+
+Authors: kyren <kerriganw@gmail.com>
+Repository: https://github.com/kyren/hashlink
+License: Apache-2.0 OR MIT
+
+186. heck@0.4.1
+
+Authors: Without Boats <woboats@gmail.com>
+Repository: https://github.com/withoutboats/heck
+License: Apache-2.0 OR MIT
+
+187. heck@0.5.0
+
+Repository: https://github.com/withoutboats/heck
+License: Apache-2.0 OR MIT
+
+188. hermit-abi@0.5.2
+
+Authors: Stefan Lankes
+Repository: https://github.com/hermit-os/hermit-rs
+License: Apache-2.0 OR MIT
+
+189. hex@0.4.3
+
+Authors: KokaKiwi <kokakiwi@kokakiwi.net>
+Repository: https://github.com/KokaKiwi/rust-hex
+License: Apache-2.0 OR MIT
+
+190. hmac@0.12.1
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/MACs
+License: Apache-2.0 OR MIT
+
+191. html5ever@0.29.1
+
+Authors: The html5ever Project Developers
+Repository: https://github.com/servo/html5ever
+License: Apache-2.0 OR MIT
+
+192. http-body-util@0.1.3
+
+Authors: Carl Lerche <me@carllerche.com>|Lucio Franco <luciofranco14@gmail.com>|Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/hyperium/http-body
+License: MIT
+
+193. http-body@1.0.1
+
+Authors: Carl Lerche <me@carllerche.com>|Lucio Franco <luciofranco14@gmail.com>|Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/hyperium/http-body
+License: MIT
+
+194. http-range-header@0.4.2
+
+Repository: https://github.com/MarcusGrass/parse-range-headers
+License: MIT
+
+195. http-range@0.1.5
+
+Authors: Luka Zakrajšek <luka@bancek.net>
+Repository: https://github.com/bancek/rust-http-range.git
+License: MIT
+
+196. http@1.4.0
+
+Authors: Alex Crichton <alex@alexcrichton.com>|Carl Lerche <me@carllerche.com>|Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/hyperium/http
+License: Apache-2.0 OR MIT
+
+197. httparse@1.10.1
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/seanmonstar/httparse
+License: Apache-2.0 OR MIT
+
+198. httpdate@1.0.3
+
+Authors: Pyfisch <pyfisch@posteo.org>
+Repository: https://github.com/pyfisch/httpdate
+License: Apache-2.0 OR MIT
+
+199. hyper-rustls@0.27.7
+
+Repository: https://github.com/rustls/hyper-rustls
+License: Apache-2.0 OR ISC OR MIT
+
+200. hyper-tls@0.6.0
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/hyperium/hyper-tls
+License: Apache-2.0 OR MIT
+
+201. hyper-util@0.1.20
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/hyperium/hyper-util
+License: MIT
+
+202. hyper@1.8.1
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/hyperium/hyper
+License: MIT
+
+203. iana-time-zone-haiku@0.1.2
+
+Authors: René Kijewski <crates.io@k6i.de>
+Repository: https://github.com/strawlab/iana-time-zone
+License: Apache-2.0 OR MIT
+
+204. iana-time-zone@0.1.65
+
+Authors: Andrew Straw <strawman@astraw.com>|René Kijewski <rene.kijewski@fu-berlin.de>|Ryan Lopopolo <rjl@hyperbo.la>
+Repository: https://github.com/strawlab/iana-time-zone
+License: Apache-2.0 OR MIT
+
+205. ico@0.5.0
+
+Authors: Matthew D. Steele <mdsteele@alum.mit.edu>
+Repository: https://github.com/mdsteele/rust-ico
+License: MIT
+
+206. icu_collections@2.1.1
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+207. icu_locale_core@2.1.1
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+208. icu_normalizer_data@2.1.1
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+209. icu_normalizer@2.1.1
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+210. icu_properties_data@2.1.2
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+211. icu_properties@2.1.2
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+212. icu_provider@2.1.1
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+213. id-arena@2.3.0
+
+Authors: Nick Fitzgerald <fitzgen@gmail.com>|Aleksey Kladov <aleksey.kladov@gmail.com>
+Repository: https://github.com/fitzgen/id-arena
+License: Apache-2.0 OR MIT
+
+214. ident_case@1.0.1
+
+Authors: Ted Driggs <ted.driggs@outlook.com>
+Repository: https://github.com/TedDriggs/ident_case
+License: Apache-2.0 OR MIT
+
+215. idna_adapter@1.2.1
+
+Authors: The rust-url developers
+Repository: https://github.com/hsivonen/idna_adapter
+License: Apache-2.0 OR MIT
+
+216. idna@1.1.0
+
+Authors: The rust-url developers
+Repository: https://github.com/servo/rust-url/
+License: Apache-2.0 OR MIT
+
+217. image-webp@0.2.4
+
+Repository: https://github.com/image-rs/image-webp
+License: Apache-2.0 OR MIT
+
+218. image@0.25.9
+
+Authors: The image-rs Developers
+Repository: https://github.com/image-rs/image
+License: Apache-2.0 OR MIT
+
+219. indexmap@1.9.3
+
+Repository: https://github.com/bluss/indexmap
+License: Apache-2.0 OR MIT
+
+220. indexmap@2.13.0
+
+Repository: https://github.com/indexmap-rs/indexmap
+License: Apache-2.0 OR MIT
+
+221. infer@0.19.0
+
+Authors: Bojan <dbojan@gmail.com>
+Repository: https://github.com/bojand/infer
+License: MIT
+
+222. inout@0.1.4
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/utils
+License: Apache-2.0 OR MIT
+
+223. ipnet@2.11.0
+
+Authors: Kris Price <kris@krisprice.nz>
+Repository: https://github.com/krisprice/ipnet
+License: Apache-2.0 OR MIT
+
+224. iri-string@0.7.10
+
+Authors: YOSHIOKA Takuma <nop_thread@nops.red>
+Repository: https://github.com/lo48576/iri-string
+License: Apache-2.0 OR MIT
+
+225. is-docker@0.2.0
+
+Authors: Sean Larkin <TheLarkInn@users.noreply.github.com>
+Repository: https://github.com/TheLarkInn/is-docker
+License: MIT
+
+226. is-wsl@0.4.0
+
+Authors: Sean Larkin <TheLarkInn@users.noreply.github.com>
+Repository: https://github.com/TheLarkInn/is-wsl
+License: MIT
+
+227. itoa@1.0.17
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/itoa
+License: Apache-2.0 OR MIT
+
+228. javascriptcore-rs-sys@1.1.1
+
+Authors: The Gtk-rs Project Developers
+Repository: https://github.com/tauri-apps/javascriptcore-rs
+License: MIT
+
+229. javascriptcore-rs@1.1.2
+
+Repository: https://github.com/tauri-apps/javascriptcore-rs
+License: MIT
+
+230. jni-sys@0.3.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-jni-sys
+License: Apache-2.0 OR MIT
+
+231. jni@0.21.1
+
+Authors: Josh Chase <josh@prevoty.com>
+Repository: https://github.com/jni-rs/jni-rs
+License: Apache-2.0 OR MIT
+
+232. jobserver@0.1.34
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/rust-lang/jobserver-rs
+License: Apache-2.0 OR MIT
+
+233. js-sys@0.3.89
+
+Authors: The wasm-bindgen Developers
+Repository: https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys
+License: Apache-2.0 OR MIT
+
+234. json-patch@3.0.1
+
+Authors: Ivan Dubrov <dubrov.ivan@gmail.com>
+Repository: https://github.com/idubrov/json-patch
+License: Apache-2.0 OR MIT
+
+235. jsonptr@0.6.3
+
+Authors: chance dinkins|André Sá de Mello <codasm@pm.me>
+Repository: https://github.com/chanced/jsonptr
+License: Apache-2.0 OR MIT
+
+236. keyboard-types@0.7.0
+
+Authors: Pyfisch <pyfisch@posteo.org>
+Repository: https://github.com/pyfisch/keyboard-types
+License: Apache-2.0 OR MIT
+
+237. kuchikiki@0.8.8-speedreader
+
+Authors: Brave Authors|Ralph Giles <rgiles@brave.com>|Simon Sapin <simon.sapin@exyr.org>
+Repository: https://github.com/brave/kuchikiki
+License: MIT
+
+238. lazy_static@1.5.0
+
+Authors: Marvin Löbel <loebel.marvin@gmail.com>
+Repository: https://github.com/rust-lang-nursery/lazy-static.rs
+License: Apache-2.0 OR MIT
+
+239. leb128fmt@0.1.0
+
+Authors: Bryant Luk <code@bryantluk.com>
+Repository: https://github.com/bluk/leb128fmt
+License: Apache-2.0 OR MIT
+
+240. libappindicator-sys@0.9.0
+
+License: Apache-2.0 OR MIT
+
+241. libappindicator@0.9.0
+
+License: Apache-2.0 OR MIT
+
+242. libc@0.2.182
+
+Authors: The Rust Project Developers
+Repository: https://github.com/rust-lang/libc
+License: Apache-2.0 OR MIT
+
+243. libdbus-sys@0.2.7
+
+Authors: David Henningsson <diwic@ubuntu.com>
+Repository: https://github.com/diwic/dbus-rs
+License: Apache-2.0 OR MIT
+
+244. libloading@0.7.4
+
+Authors: Simonas Kazlauskas <libloading@kazlauskas.me>
+Repository: https://github.com/nagisa/rust_libloading/
+License: ISC
+
+245. libloading@0.8.9
+
+Authors: Simonas Kazlauskas <libloading@kazlauskas.me>
+Repository: https://github.com/nagisa/rust_libloading/
+License: ISC
+
+246. libredox@0.1.12
+
+Authors: 4lDO2 <4lDO2@protonmail.com>
+Repository: https://gitlab.redox-os.org/redox-os/libredox.git
+License: MIT
+
+247. libsqlite3-sys@0.30.1
+
+Authors: The rusqlite developers
+Repository: https://github.com/rusqlite/rusqlite
+License: MIT
+
+248. linux-raw-sys@0.12.1
+
+Authors: Dan Gohman <dev@sunfishcode.online>
+Repository: https://github.com/sunfishcode/linux-raw-sys
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+249. litemap@0.8.1
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+250. litrs@1.0.0
+
+Authors: Lukas Kalbertodt <lukas.kalbertodt@gmail.com>
+Repository: https://github.com/LukasKalbertodt/litrs
+License: Apache-2.0 OR MIT
+
+251. lock_api@0.4.14
+
+Authors: Amanieu d'Antras <amanieu@gmail.com>
+Repository: https://github.com/Amanieu/parking_lot
+License: Apache-2.0 OR MIT
+
+252. log@0.4.29
+
+Authors: The Rust Project Developers
+Repository: https://github.com/rust-lang/log
+License: Apache-2.0 OR MIT
+
+253. lru-slab@0.1.2
+
+Authors: Benjamin Saunders <ben.e.saunders@gmail.com>
+Repository: https://github.com/Ralith/lru-slab
+License: Apache-2.0 OR MIT OR Zlib
+
+254. lua-src@547.0.0
+
+Authors: Aleksandr Orlenko <zxteam@protonmail.com>
+Repository: https://github.com/khvzak/lua-src-rs
+License: MIT
+
+255. luajit-src@210.5.12+a4f56a4
+
+Authors: Aleksandr Orlenko <zxteam@protonmail.com>
+Repository: https://github.com/khvzak/luajit-src-rs
+License: MIT
+
+256. lzma-rs@0.3.0
+
+Authors: Guillaume Endignoux <ggendx@gmail.com>
+Repository: https://github.com/gendx/lzma-rs
+License: MIT
+
+257. lzma-sys@0.1.20
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/alexcrichton/xz2-rs
+License: Apache-2.0 OR MIT
+
+258. mac-notification-sys@0.6.12
+
+Authors: Felix Döring <development@felixdoering.com>|Hendrik Sollich <hendrik@hoodie.de>
+Repository: https://github.com/h4llow3En/mac-notification-sys
+License: Apache-2.0 OR MIT
+
+259. mac@0.1.1
+
+Authors: Jonathan Reem <jonathan.reem@gmail.com>
+Repository: https://github.com/reem/rust-mac.git
+License: Apache-2.0 OR MIT
+
+260. markup5ever@0.14.1
+
+Authors: The html5ever Project Developers
+Repository: https://github.com/servo/html5ever
+License: Apache-2.0 OR MIT
+
+261. match_token@0.1.0
+
+Repository: https://github.com/servo/html5ever
+License: Apache-2.0 OR MIT
+
+262. matches@0.1.10
+
+Repository: https://github.com/SimonSapin/rust-std-candidates
+License: MIT
+
+263. matchit@0.8.4
+
+Authors: Ibraheem Ahmed <ibraheem@ibraheem.ca>
+Repository: https://github.com/ibraheemdev/matchit
+License: BSD-3-Clause AND MIT
+
+264. memchr@2.8.0
+
+Authors: Andrew Gallant <jamslam@gmail.com>|bluss
+Repository: https://github.com/BurntSushi/memchr
+License: MIT OR Unlicense
+
+265. memoffset@0.9.1
+
+Authors: Gilad Naaman <gilad.naaman@gmail.com>
+Repository: https://github.com/Gilnaa/memoffset
+License: MIT
+
+266. mime_guess@2.0.5
+
+Authors: Austin Bonander <austin.bonander@gmail.com>
+Repository: https://github.com/abonander/mime_guess
+License: MIT
+
+267. mime@0.3.17
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/hyperium/mime
+License: Apache-2.0 OR MIT
+
+268. miniz_oxide@0.8.9
+
+Authors: Frommi <daniil.liferenko@gmail.com>|oyvindln <oyvindln@users.noreply.github.com>|Rich Geldreich richgel99@gmail.com
+Repository: https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide
+License: Apache-2.0 OR MIT OR Zlib
+
+269. mio@1.1.1
+
+Authors: Carl Lerche <me@carllerche.com>|Thomas de Zeeuw <thomasdezeeuw@gmail.com>|Tokio Contributors <team@tokio.rs>
+Repository: https://github.com/tokio-rs/mio
+License: MIT
+
+270. mlua-sys@0.6.8
+
+Authors: Aleksandr Orlenko <zxteam@pm.me>
+Repository: https://github.com/mlua-rs/mlua
+License: MIT
+
+271. mlua@0.10.5
+
+Authors: Aleksandr Orlenko <zxteam@pm.me>|kyren <catherine@kyju.org>
+Repository: https://github.com/mlua-rs/mlua
+License: MIT
+
+272. moxcms@0.7.11
+
+Authors: Radzivon Bartoshyk
+Repository: https://github.com/awxkee/moxcms.git
+License: Apache-2.0 OR BSD-3-Clause
+
+273. muda@0.17.1
+
+Repository: https://github.com/amrbashir/muda
+License: Apache-2.0 OR MIT
+
+274. multer@3.1.0
+
+Authors: Rousan Ali <hello@rousan.io>
+Repository: https://github.com/rwf2/multer
+License: MIT
+
+275. native-tls@0.2.18
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/rust-native-tls/rust-native-tls
+License: Apache-2.0 OR MIT
+
+276. ndk-context@0.1.1
+
+Authors: The Rust Windowing contributors
+Repository: https://github.com/rust-windowing/android-ndk-rs
+License: Apache-2.0 OR MIT
+
+277. ndk-sys@0.6.0+11769913
+
+Authors: The Rust Windowing contributors
+Repository: https://github.com/rust-mobile/ndk
+License: Apache-2.0 OR MIT
+
+278. ndk@0.9.0
+
+Authors: The Rust Mobile contributors
+Repository: https://github.com/rust-mobile/ndk
+License: Apache-2.0 OR MIT
+
+279. new_debug_unreachable@1.0.6
+
+Authors: Matt Brubeck <mbrubeck@limpet.net>|Jonathan Reem <jonathan.reem@gmail.com>
+Repository: https://github.com/mbrubeck/rust-debug-unreachable
+License: MIT
+
+280. nodrop@0.1.14
+
+Authors: bluss
+Repository: https://github.com/bluss/arrayvec
+License: Apache-2.0 OR MIT
+
+281. normpath@1.5.0
+
+Authors: dylni
+Repository: https://github.com/dylni/normpath
+License: Apache-2.0 OR MIT
+
+282. notify-rust@4.12.0
+
+Authors: Hendrik Sollich <hendrik@hoodie.de>
+Repository: https://github.com/hoodie/notify-rust
+License: Apache-2.0 OR MIT
+
+283. ntapi@0.4.3
+
+Authors: MSxDOS <melcodos@gmail.com>
+Repository: https://github.com/MSxDOS/ntapi
+License: Apache-2.0 OR MIT
+
+284. num_enum_derive@0.7.5
+
+Authors: Daniel Wagner-Hall <dawagner@gmail.com>|Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>|Vincent Esche <regexident@gmail.com>
+Repository: https://github.com/illicitonion/num_enum
+License: Apache-2.0 OR BSD-3-Clause OR MIT
+
+285. num_enum@0.7.5
+
+Authors: Daniel Wagner-Hall <dawagner@gmail.com>|Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>|Vincent Esche <regexident@gmail.com>
+Repository: https://github.com/illicitonion/num_enum
+License: Apache-2.0 OR BSD-3-Clause OR MIT
+
+286. num-conv@0.2.0
+
+Authors: Jacob Pratt <jacob@jhpratt.dev>
+Repository: https://github.com/jhpratt/num-conv
+License: Apache-2.0 OR MIT
+
+287. num-traits@0.2.19
+
+Authors: The Rust Project Developers
+Repository: https://github.com/rust-num/num-traits
+License: Apache-2.0 OR MIT
+
+288. objc-sys@0.3.5
+
+Authors: Mads Marquart <mads@marquart.dk>
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+289. objc2-app-kit@0.2.2
+
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+290. objc2-app-kit@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+291. objc2-cloud-kit@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+292. objc2-core-data@0.2.2
+
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+293. objc2-core-data@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+294. objc2-core-foundation@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+295. objc2-core-graphics@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+296. objc2-core-image@0.2.2
+
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+297. objc2-core-image@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+298. objc2-core-text@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+299. objc2-core-video@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+300. objc2-encode@4.1.0
+
+Authors: Mads Marquart <mads@marquart.dk>
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+301. objc2-exception-helper@0.1.1
+
+Authors: Mads Marquart <mads@marquart.dk>
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+302. objc2-foundation@0.2.2
+
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+303. objc2-foundation@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+304. objc2-io-surface@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+305. objc2-javascript-core@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+306. objc2-metal@0.2.2
+
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+307. objc2-quartz-core@0.2.2
+
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+308. objc2-quartz-core@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+309. objc2-security@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+310. objc2-ui-kit@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+311. objc2-web-kit@0.3.2
+
+Repository: https://github.com/madsmtm/objc2
+License: Apache-2.0 OR MIT OR Zlib
+
+312. objc2@0.5.2
+
+Authors: Steven Sheldon|Mads Marquart <mads@marquart.dk>
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+313. objc2@0.6.3
+
+Authors: Mads Marquart <mads@marquart.dk>
+Repository: https://github.com/madsmtm/objc2
+License: MIT
+
+314. once_cell@1.21.3
+
+Authors: Aleksey Kladov <aleksey.kladov@gmail.com>
+Repository: https://github.com/matklad/once_cell
+License: Apache-2.0 OR MIT
+
+315. open@5.3.3
+
+Authors: Sebastian Thiel <byronimo@gmail.com>
+Repository: https://github.com/Byron/open-rs
+License: MIT
+
+316. opener@0.7.2
+
+Authors: Brian Bowman <seeker14491@gmail.com>
+Repository: https://github.com/Seeker14491/opener
+License: Apache-2.0 OR MIT
+
+317. openssl-macros@0.1.1
+
+License: Apache-2.0 OR MIT
+
+318. openssl-probe@0.2.1
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/rustls/openssl-probe
+License: Apache-2.0 OR MIT
+
+319. openssl-sys@0.9.111
+
+Authors: Alex Crichton <alex@alexcrichton.com>|Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/rust-openssl/rust-openssl
+License: MIT
+
+320. openssl@0.10.75
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/rust-openssl/rust-openssl
+License: Apache-2.0
+
+321. option-ext@0.2.0
+
+Authors: Simon Ochsenreither <simon@ochsenreither.de>
+Repository: https://github.com/soc/option-ext.git
+License: MPL-2.0
+
+322. ordered-float@2.10.1
+
+Authors: Jonathan Reem <jonathan.reem@gmail.com>|Matt Brubeck <mbrubeck@limpet.net>
+Repository: https://github.com/reem/rust-ordered-float
+License: MIT
+
+323. ordered-stream@0.2.0
+
+Authors: Daniel De Graaf <code@danieldg.net>|Zeeshan Ali Khan <zeeshanak@gnome.org>
+Repository: https://github.com/danieldg/ordered-stream
+License: Apache-2.0 OR MIT
+
+324. pango-sys@0.18.0
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+325. pango@0.18.3
+
+Authors: The gtk-rs Project Developers
+Repository: https://github.com/gtk-rs/gtk-rs-core
+License: MIT
+
+326. parking_lot_core@0.9.12
+
+Authors: Amanieu d'Antras <amanieu@gmail.com>
+Repository: https://github.com/Amanieu/parking_lot
+License: Apache-2.0 OR MIT
+
+327. parking_lot@0.12.5
+
+Authors: Amanieu d'Antras <amanieu@gmail.com>
+Repository: https://github.com/Amanieu/parking_lot
+License: Apache-2.0 OR MIT
+
+328. parking@2.2.1
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|The Rust Project Developers
+Repository: https://github.com/smol-rs/parking
+License: Apache-2.0 OR MIT
+
+329. pathdiff@0.2.3
+
+Authors: Manish Goregaokar <manishsmail@gmail.com>
+Repository: https://github.com/Manishearth/pathdiff
+License: Apache-2.0 OR MIT
+
+330. pathfinder_geometry@0.5.1
+
+Authors: Patrick Walton <pcwalton@mimiga.net>
+Repository: https://github.com/servo/pathfinder
+License: Apache-2.0 OR MIT
+
+331. pathfinder_simd@0.5.5
+
+Authors: Patrick Walton <pcwalton@mimiga.net>
+Repository: https://github.com/servo/pathfinder
+License: Apache-2.0 OR MIT
+
+332. pbkdf2@0.12.2
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/password-hashes/tree/master/pbkdf2
+License: Apache-2.0 OR MIT
+
+333. percent-encoding@2.3.2
+
+Authors: The rust-url developers
+Repository: https://github.com/servo/rust-url/
+License: Apache-2.0 OR MIT
+
+334. phf_codegen@0.11.3
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/rust-phf/rust-phf
+License: MIT
+
+335. phf_codegen@0.8.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-phf
+License: MIT
+
+336. phf_generator@0.10.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-phf
+License: MIT
+
+337. phf_generator@0.11.3
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/rust-phf/rust-phf
+License: MIT
+
+338. phf_generator@0.8.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-phf
+License: MIT
+
+339. phf_macros@0.10.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-phf
+License: MIT
+
+340. phf_macros@0.11.3
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/rust-phf/rust-phf
+License: MIT
+
+341. phf_shared@0.10.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-phf
+License: MIT
+
+342. phf_shared@0.11.3
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/rust-phf/rust-phf
+License: MIT
+
+343. phf_shared@0.8.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-phf
+License: MIT
+
+344. phf@0.10.1
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-phf
+License: MIT
+
+345. phf@0.11.3
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/rust-phf/rust-phf
+License: MIT
+
+346. phf@0.8.0
+
+Authors: Steven Fackler <sfackler@gmail.com>
+Repository: https://github.com/sfackler/rust-phf
+License: MIT
+
+347. pin-project-lite@0.2.16
+
+Repository: https://github.com/taiki-e/pin-project-lite
+License: Apache-2.0 OR MIT
+
+348. pin-utils@0.1.0
+
+Authors: Josef Brandl <mail@josefbrandl.de>
+Repository: https://github.com/rust-lang-nursery/pin-utils
+License: Apache-2.0 OR MIT
+
+349. piper@0.2.4
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|John Nunley <dev@notgull.net>
+Repository: https://github.com/smol-rs/piper
+License: Apache-2.0 OR MIT
+
+350. pkg-config@0.3.32
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/rust-lang/pkg-config-rs
+License: Apache-2.0 OR MIT
+
+351. plist@1.8.0
+
+Authors: Ed Barnard <eabarnard@gmail.com>
+Repository: https://github.com/ebarnard/rust-plist/
+License: MIT
+
+352. png@0.17.16
+
+Authors: The image-rs Developers
+Repository: https://github.com/image-rs/image-png
+License: Apache-2.0 OR MIT
+
+353. png@0.18.1
+
+Authors: The image-rs Developers
+Repository: https://github.com/image-rs/image-png
+License: Apache-2.0 OR MIT
+
+354. polling@3.11.0
+
+Authors: Stjepan Glavina <stjepang@gmail.com>|John Nunley <dev@notgull.net>
+Repository: https://github.com/smol-rs/polling
+License: Apache-2.0 OR MIT
+
+355. potential_utf@0.1.4
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+356. powerfmt@0.2.0
+
+Authors: Jacob Pratt <jacob@jhpratt.dev>
+Repository: https://github.com/jhpratt/powerfmt
+License: Apache-2.0 OR MIT
+
+357. ppv-lite86@0.2.21
+
+Authors: The CryptoCorrosion Contributors
+Repository: https://github.com/cryptocorrosion/cryptocorrosion
+License: Apache-2.0 OR MIT
+
+358. precomputed-hash@0.1.1
+
+Authors: Emilio Cobos Álvarez <emilio@crisal.io>
+Repository: https://github.com/emilio/precomputed-hash
+License: MIT
+
+359. prettyplease@0.2.37
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/prettyplease
+License: Apache-2.0 OR MIT
+
+360. proc-macro-crate@1.3.1
+
+Authors: Bastian Köcher <git@kchr.de>
+Repository: https://github.com/bkchr/proc-macro-crate
+License: Apache-2.0 OR MIT
+
+361. proc-macro-crate@2.0.2
+
+Authors: Bastian Köcher <git@kchr.de>
+Repository: https://github.com/bkchr/proc-macro-crate
+License: Apache-2.0 OR MIT
+
+362. proc-macro-crate@3.4.0
+
+Authors: Bastian Köcher <git@kchr.de>
+Repository: https://github.com/bkchr/proc-macro-crate
+License: Apache-2.0 OR MIT
+
+363. proc-macro-error-attr@1.0.4
+
+Authors: CreepySkeleton <creepy-skeleton@yandex.ru>
+Repository: https://gitlab.com/CreepySkeleton/proc-macro-error
+License: Apache-2.0 OR MIT
+
+364. proc-macro-error@1.0.4
+
+Authors: CreepySkeleton <creepy-skeleton@yandex.ru>
+Repository: https://gitlab.com/CreepySkeleton/proc-macro-error
+License: Apache-2.0 OR MIT
+
+365. proc-macro-hack@0.5.20+deprecated
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/proc-macro-hack
+License: Apache-2.0 OR MIT
+
+366. proc-macro2@1.0.106
+
+Authors: David Tolnay <dtolnay@gmail.com>|Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/dtolnay/proc-macro2
+License: Apache-2.0 OR MIT
+
+367. psl-types@2.0.11
+
+Authors: rushmorem <rushmore@webenchanter.com>
+Repository: https://github.com/addr-rs/psl-types
+License: Apache-2.0 OR MIT
+
+368. publicsuffix@2.3.0
+
+Authors: rushmorem <rushmore@webenchanter.com>
+Repository: https://github.com/rushmorem/publicsuffix
+License: Apache-2.0 OR MIT
+
+369. pxfm@0.1.27
+
+Authors: Radzivon Bartoshyk
+Repository: https://github.com/awxkee/pxfm
+License: Apache-2.0 OR BSD-3-Clause
+
+370. quick-error@2.0.1
+
+Authors: Paul Colomiets <paul@colomiets.name>|Colin Kiegel <kiegel@gmx.de>
+Repository: http://github.com/tailhook/quick-error
+License: Apache-2.0 OR MIT
+
+371. quick-xml@0.37.5
+
+Repository: https://github.com/tafia/quick-xml
+License: MIT
+
+372. quick-xml@0.38.4
+
+Repository: https://github.com/tafia/quick-xml
+License: MIT
+
+373. quinn-proto@0.11.13
+
+Repository: https://github.com/quinn-rs/quinn
+License: Apache-2.0 OR MIT
+
+374. quinn-udp@0.5.14
+
+Repository: https://github.com/quinn-rs/quinn
+License: Apache-2.0 OR MIT
+
+375. quinn@0.11.9
+
+Repository: https://github.com/quinn-rs/quinn
+License: Apache-2.0 OR MIT
+
+376. quote@1.0.44
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/quote
+License: Apache-2.0 OR MIT
+
+377. r-efi@5.3.0
+
+Repository: https://github.com/r-efi/r-efi
+License: Apache-2.0 OR LGPL-2.1-or-later OR MIT
+
+378. rand_chacha@0.2.2
+
+Authors: The Rand Project Developers|The Rust Project Developers|The CryptoCorrosion Contributors
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+379. rand_chacha@0.3.1
+
+Authors: The Rand Project Developers|The Rust Project Developers|The CryptoCorrosion Contributors
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+380. rand_chacha@0.9.0
+
+Authors: The Rand Project Developers|The Rust Project Developers|The CryptoCorrosion Contributors
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+381. rand_core@0.5.1
+
+Authors: The Rand Project Developers|The Rust Project Developers
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+382. rand_core@0.6.4
+
+Authors: The Rand Project Developers|The Rust Project Developers
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+383. rand_core@0.9.5
+
+Authors: The Rand Project Developers|The Rust Project Developers
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+384. rand_hc@0.2.0
+
+Authors: The Rand Project Developers
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+385. rand_pcg@0.2.1
+
+Authors: The Rand Project Developers
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+386. rand@0.7.3
+
+Authors: The Rand Project Developers|The Rust Project Developers
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+387. rand@0.8.5
+
+Authors: The Rand Project Developers|The Rust Project Developers
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+388. rand@0.9.2
+
+Authors: The Rand Project Developers|The Rust Project Developers
+Repository: https://github.com/rust-random/rand
+License: Apache-2.0 OR MIT
+
+389. raw-window-handle@0.6.2
+
+Authors: Osspial <osspial@gmail.com>
+Repository: https://github.com/rust-windowing/raw-window-handle
+License: Apache-2.0 OR MIT OR Zlib
+
+390. rayon-core@1.13.0
+
+Repository: https://github.com/rayon-rs/rayon
+License: Apache-2.0 OR MIT
+
+391. rayon@1.11.0
+
+Repository: https://github.com/rayon-rs/rayon
+License: Apache-2.0 OR MIT
+
+392. redox_syscall@0.5.18
+
+Authors: Jeremy Soller <jackpot51@gmail.com>
+Repository: https://gitlab.redox-os.org/redox-os/syscall
+License: MIT
+
+393. redox_syscall@0.7.1
+
+Authors: Jeremy Soller <jackpot51@gmail.com>
+Repository: https://gitlab.redox-os.org/redox-os/syscall
+License: MIT
+
+394. redox_users@0.4.6
+
+Authors: Jose Narvaez <goyox86@gmail.com>|Wesley Hershberger <mggmugginsmc@gmail.com>
+Repository: https://gitlab.redox-os.org/redox-os/users
+License: MIT
+
+395. redox_users@0.5.2
+
+Authors: Jose Narvaez <goyox86@gmail.com>|Wesley Hershberger <mggmugginsmc@gmail.com>
+Repository: https://gitlab.redox-os.org/redox-os/users
+License: MIT
+
+396. ref-cast-impl@1.0.25
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/ref-cast
+License: Apache-2.0 OR MIT
+
+397. ref-cast@1.0.25
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/ref-cast
+License: Apache-2.0 OR MIT
+
+398. regex-automata@0.4.14
+
+Authors: The Rust Project Developers|Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/rust-lang/regex
+License: Apache-2.0 OR MIT
+
+399. regex-syntax@0.8.9
+
+Authors: The Rust Project Developers|Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/rust-lang/regex
+License: Apache-2.0 OR MIT
+
+400. regex@1.12.3
+
+Authors: The Rust Project Developers|Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/rust-lang/regex
+License: Apache-2.0 OR MIT
+
+401. reqwest@0.12.28
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/seanmonstar/reqwest
+License: Apache-2.0 OR MIT
+
+402. reqwest@0.13.2
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/seanmonstar/reqwest
+License: Apache-2.0 OR MIT
+
+403. rfd@0.16.0
+
+Authors: Poly <marynczak.bartlomiej@gmail.com>
+Repository: https://github.com/PolyMeilex/rfd
+License: MIT
+
+404. ring@0.17.14
+
+Repository: https://github.com/briansmith/ring
+License: Apache-2.0 AND ISC
+
+405. rusqlite@0.32.1
+
+Authors: The rusqlite developers
+Repository: https://github.com/rusqlite/rusqlite
+License: MIT
+
+406. rustc_version@0.4.1
+
+Repository: https://github.com/djc/rustc-version-rs
+License: Apache-2.0 OR MIT
+
+407. rustc-hash@2.1.1
+
+Authors: The Rust Project Developers
+Repository: https://github.com/rust-lang/rustc-hash
+License: Apache-2.0 OR MIT
+
+408. rustix@1.1.4
+
+Authors: Dan Gohman <dev@sunfishcode.online>|Jakub Konka <kubkon@jakubkonka.com>
+Repository: https://github.com/bytecodealliance/rustix
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+409. rustls-pki-types@1.14.0
+
+Repository: https://github.com/rustls/pki-types
+License: Apache-2.0 OR MIT
+
+410. rustls-webpki@0.103.9
+
+Repository: https://github.com/rustls/webpki
+License: ISC
+
+411. rustls@0.23.36
+
+Repository: https://github.com/rustls/rustls
+License: Apache-2.0 OR ISC OR MIT
+
+412. rustversion@1.0.22
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/rustversion
+License: Apache-2.0 OR MIT
+
+413. ryu@1.0.23
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/ryu
+License: Apache-2.0 OR BSL-1.0
+
+414. same-file@1.0.6
+
+Authors: Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/BurntSushi/same-file
+License: MIT OR Unlicense
+
+415. schannel@0.1.28
+
+Authors: Steven Fackler <sfackler@gmail.com>|Steffen Butzer <steffen.butzer@outlook.com>
+Repository: https://github.com/steffengy/schannel-rs
+License: MIT
+
+416. schemars_derive@0.8.22
+
+Authors: Graham Esau <gesau@hotmail.co.uk>
+Repository: https://github.com/GREsau/schemars
+License: MIT
+
+417. schemars@0.8.22
+
+Authors: Graham Esau <gesau@hotmail.co.uk>
+Repository: https://github.com/GREsau/schemars
+License: MIT
+
+418. schemars@0.9.0
+
+Authors: Graham Esau <gesau@hotmail.co.uk>
+Repository: https://github.com/GREsau/schemars
+License: MIT
+
+419. schemars@1.2.1
+
+Authors: Graham Esau <gesau@hotmail.co.uk>
+Repository: https://github.com/GREsau/schemars
+License: MIT
+
+420. scopeguard@1.2.0
+
+Authors: bluss
+Repository: https://github.com/bluss/scopeguard
+License: Apache-2.0 OR MIT
+
+421. security-framework-sys@2.17.0
+
+Authors: Steven Fackler <sfackler@gmail.com>|Kornel <kornel@geekhood.net>
+Repository: https://github.com/kornelski/rust-security-framework
+License: Apache-2.0 OR MIT
+
+422. security-framework@3.7.0
+
+Authors: Steven Fackler <sfackler@gmail.com>|Kornel <kornel@geekhood.net>
+Repository: https://github.com/kornelski/rust-security-framework
+License: Apache-2.0 OR MIT
+
+423. selectors@0.24.0
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/servo
+License: MPL-2.0
+
+424. semver@1.0.27
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/semver
+License: Apache-2.0 OR MIT
+
+425. serde_core@1.0.228
+
+Authors: Erick Tryzelaar <erick.tryzelaar@gmail.com>|David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/serde-rs/serde
+License: Apache-2.0 OR MIT
+
+426. serde_derive_internals@0.29.1
+
+Authors: Erick Tryzelaar <erick.tryzelaar@gmail.com>|David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/serde-rs/serde
+License: Apache-2.0 OR MIT
+
+427. serde_derive@1.0.228
+
+Authors: Erick Tryzelaar <erick.tryzelaar@gmail.com>|David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/serde-rs/serde
+License: Apache-2.0 OR MIT
+
+428. serde_json@1.0.149
+
+Authors: Erick Tryzelaar <erick.tryzelaar@gmail.com>|David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/serde-rs/json
+License: Apache-2.0 OR MIT
+
+429. serde_path_to_error@0.1.20
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/path-to-error
+License: Apache-2.0 OR MIT
+
+430. serde_repr@0.1.20
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/serde-repr
+License: Apache-2.0 OR MIT
+
+431. serde_spanned@0.6.9
+
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+432. serde_spanned@1.0.4
+
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+433. serde_urlencoded@0.7.1
+
+Authors: Anthony Ramine <n.oxyde@gmail.com>
+Repository: https://github.com/nox/serde_urlencoded
+License: Apache-2.0 OR MIT
+
+434. serde_with_macros@3.16.1
+
+Authors: Jonas Bushart
+Repository: https://github.com/jonasbb/serde_with/
+License: Apache-2.0 OR MIT
+
+435. serde_with@3.16.1
+
+Authors: Jonas Bushart|Marcin Kaźmierczak
+Repository: https://github.com/jonasbb/serde_with/
+License: Apache-2.0 OR MIT
+
+436. serde_yaml@0.9.34+deprecated
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/serde-yaml
+License: Apache-2.0 OR MIT
+
+437. serde-untagged@0.1.9
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/serde-untagged
+License: Apache-2.0 OR MIT
+
+438. serde-value@0.7.0
+
+Authors: arcnmx
+Repository: https://github.com/arcnmx/serde-value
+License: MIT
+
+439. serde@1.0.228
+
+Authors: Erick Tryzelaar <erick.tryzelaar@gmail.com>|David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/serde-rs/serde
+License: Apache-2.0 OR MIT
+
+440. serialize-to-javascript-impl@0.1.2
+
+Authors: Chip Reed <chip@chip.sh>
+Repository: https://github.com/chippers/serialize-to-javascript
+License: Apache-2.0 OR MIT
+
+441. serialize-to-javascript@0.1.2
+
+Authors: Chip Reed <chip@chip.sh>
+Repository: https://github.com/chippers/serialize-to-javascript
+License: Apache-2.0 OR MIT
+
+442. servo_arc@0.2.0
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/servo
+License: Apache-2.0 OR MIT
+
+443. sha1@0.10.6
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/hashes
+License: Apache-2.0 OR MIT
+
+444. sha2@0.10.9
+
+Authors: RustCrypto Developers
+Repository: https://github.com/RustCrypto/hashes
+License: Apache-2.0 OR MIT
+
+445. shlex@1.3.0
+
+Authors: comex <comexk@gmail.com>|Fenhl <fenhl@fenhl.net>|Adrian Taylor <adetaylor@chromium.org>|Alex Touchet <alextouchet@outlook.com>|Daniel Parks <dp+git@oxidized.org>|Garrett Berg <googberg@gmail.com>
+Repository: https://github.com/comex/rust-shlex
+License: Apache-2.0 OR MIT
+
+446. signal-hook-registry@1.4.8
+
+Authors: Michal 'vorner' Vaner <vorner@vorner.cz>|Masaki Hara <ackie.h.gmai@gmail.com>
+Repository: https://github.com/vorner/signal-hook
+License: Apache-2.0 OR MIT
+
+447. simd-adler32@0.3.8
+
+Authors: Marvin Countryman <me@maar.vin>
+Repository: https://github.com/mcountryman/simd-adler32
+License: MIT
+
+448. siphasher@0.3.11
+
+Authors: Frank Denis <github@pureftpd.org>
+Repository: https://github.com/jedisct1/rust-siphash
+License: Apache-2.0 OR MIT
+
+449. siphasher@1.0.2
+
+Authors: Frank Denis <github@pureftpd.org>
+Repository: https://github.com/jedisct1/rust-siphash
+License: Apache-2.0 OR MIT
+
+450. slab@0.4.12
+
+Authors: Carl Lerche <me@carllerche.com>
+Repository: https://github.com/tokio-rs/slab
+License: MIT
+
+451. smallvec@1.15.1
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/rust-smallvec
+License: Apache-2.0 OR MIT
+
+452. socket2@0.6.2
+
+Authors: Alex Crichton <alex@alexcrichton.com>|Thomas de Zeeuw <thomasdezeeuw@gmail.com>
+Repository: https://github.com/rust-lang/socket2
+License: Apache-2.0 OR MIT
+
+453. softbuffer@0.4.8
+
+Repository: https://github.com/rust-windowing/softbuffer
+License: Apache-2.0 OR MIT
+
+454. soup3-sys@0.5.0
+
+Authors: The Gtk-rs Project Developers
+Repository: https://gitlab.gnome.org/World/Rust/soup3-rs
+License: MIT
+
+455. soup3@0.5.0
+
+Repository: https://gitlab.gnome.org/World/Rust/soup3-rs
+License: MIT
+
+456. spin@0.9.8
+
+Authors: Mathijs van de Nes <git@mathijs.vd-nes.nl>|John Ericson <git@JohnEricson.me>|Joshua Barretto <joshua.s.barretto@gmail.com>
+Repository: https://github.com/mvdnes/spin-rs.git
+License: MIT
+
+457. stable_deref_trait@1.2.1
+
+Authors: Robert Grosse <n210241048576@gmail.com>
+Repository: https://github.com/storyyeller/stable_deref_trait
+License: Apache-2.0 OR MIT
+
+458. string_cache_codegen@0.5.4
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/string-cache
+License: Apache-2.0 OR MIT
+
+459. string_cache@0.8.9
+
+Authors: The Servo Project Developers
+Repository: https://github.com/servo/string-cache
+License: Apache-2.0 OR MIT
+
+460. strsim@0.11.1
+
+Authors: Danny Guo <danny@dannyguo.com>|maxbachmann <oss@maxbachmann.de>
+Repository: https://github.com/rapidfuzz/strsim-rs
+License: MIT
+
+461. subtle@2.6.1
+
+Authors: Isis Lovecruft <isis@patternsinthevoid.net>|Henry de Valence <hdevalence@hdevalence.ca>
+Repository: https://github.com/dalek-cryptography/subtle
+License: BSD-3-Clause
+
+462. swift-rs@1.0.7
+
+Authors: The swift-rs contributors
+Repository: https://github.com/Brendonovich/swift-rs
+License: Apache-2.0 OR MIT
+
+463. syn@1.0.109
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/syn
+License: Apache-2.0 OR MIT
+
+464. syn@2.0.117
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/syn
+License: Apache-2.0 OR MIT
+
+465. sync_wrapper@1.0.2
+
+Authors: Actyx AG <developer@actyx.io>
+Repository: https://github.com/Actyx/sync_wrapper
+License: Apache-2.0
+
+466. synstructure@0.13.2
+
+Authors: Nika Layzell <nika@thelayzells.com>
+Repository: https://github.com/mystor/synstructure
+License: MIT
+
+467. sysinfo@0.32.1
+
+Authors: Guillaume Gomez <guillaume1.gomez@gmail.com>
+Repository: https://github.com/GuillaumeGomez/sysinfo
+License: MIT
+
+468. system-configuration-sys@0.6.0
+
+Authors: Mullvad VPN
+Repository: https://github.com/mullvad/system-configuration-rs
+License: Apache-2.0 OR MIT
+
+469. system-configuration@0.7.0
+
+Authors: Mullvad VPN
+Repository: https://github.com/mullvad/system-configuration-rs
+License: Apache-2.0 OR MIT
+
+470. system-deps@6.2.2
+
+Authors: Guillaume Desmottes <guillaume.desmottes@collabora.com>|Josh Triplett <josh@joshtriplett.org>
+Repository: https://github.com/gdesmott/system-deps
+License: Apache-2.0 OR MIT
+
+471. tao-macros@0.1.3
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tao
+License: Apache-2.0 OR MIT
+
+472. tao@0.34.5
+
+Authors: Tauri Programme within The Commons Conservancy|The winit contributors
+Repository: https://github.com/tauri-apps/tao
+License: Apache-2.0
+
+473. tar@0.4.44
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/alexcrichton/tar-rs
+License: Apache-2.0 OR MIT
+
+474. target-lexicon@0.12.16
+
+Authors: Dan Gohman <sunfish@mozilla.com>
+Repository: https://github.com/bytecodealliance/target-lexicon
+License: Apache-2.0 WITH LLVM-exception
+
+475. tauri-build@2.5.5
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+476. tauri-codegen@2.5.4
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+477. tauri-macros@2.5.4
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+478. tauri-plugin-dialog@2.6.0
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/plugins-workspace
+License: Apache-2.0 OR MIT
+
+479. tauri-plugin-fs@2.4.5
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/plugins-workspace
+License: Apache-2.0 OR MIT
+
+480. tauri-plugin-http@2.5.7
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/plugins-workspace
+License: Apache-2.0 OR MIT
+
+481. tauri-plugin-notification@2.3.3
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/plugins-workspace
+License: Apache-2.0 OR MIT
+
+482. tauri-plugin-opener@2.5.3
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/plugins-workspace
+License: Apache-2.0 OR MIT
+
+483. tauri-plugin-process@2.3.1
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/plugins-workspace
+License: Apache-2.0 OR MIT
+
+484. tauri-plugin-single-instance@2.4.0
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/plugins-workspace
+License: Apache-2.0 OR MIT
+
+485. tauri-plugin-window-state@2.4.1
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/plugins-workspace
+License: Apache-2.0 OR MIT
+
+486. tauri-plugin@2.5.3
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+487. tauri-runtime-wry@2.10.0
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+488. tauri-runtime@2.10.0
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+489. tauri-utils@2.8.2
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+490. tauri-winres@0.3.5
+
+Authors: Tauri Programme within The Commons Conservancy|Max Resch <resch.max@gmail.com>
+Repository: https://github.com/tauri-apps/winres
+License: MIT
+
+491. tauri-winrt-notification@0.7.2
+
+Authors: allenbenz|Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/winrt-notification
+License: Apache-2.0 OR MIT
+
+492. tauri@2.10.2
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri
+License: Apache-2.0 OR MIT
+
+493. tempfile@3.26.0
+
+Authors: Steven Allen <steven@stebalien.com>|The Rust Project Developers|Ashley Mannix <ashleymannix@live.com.au>|Jason White <me@jasonwhite.io>
+Repository: https://github.com/Stebalien/tempfile
+License: Apache-2.0 OR MIT
+
+494. tendril@0.4.3
+
+Authors: Keegan McAllister <mcallister.keegan@gmail.com>|Simon Sapin <simon.sapin@exyr.org>|Chris Morgan <me@chrismorgan.info>
+Repository: https://github.com/servo/tendril
+License: Apache-2.0 OR MIT
+
+495. thiserror-impl@1.0.69
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/thiserror
+License: Apache-2.0 OR MIT
+
+496. thiserror-impl@2.0.18
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/thiserror
+License: Apache-2.0 OR MIT
+
+497. thiserror@1.0.69
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/thiserror
+License: Apache-2.0 OR MIT
+
+498. thiserror@2.0.18
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/thiserror
+License: Apache-2.0 OR MIT
+
+499. time-core@0.1.8
+
+Authors: Jacob Pratt <open-source@jhpratt.dev>|Time contributors
+Repository: https://github.com/time-rs/time
+License: Apache-2.0 OR MIT
+
+500. time-macros@0.2.27
+
+Authors: Jacob Pratt <open-source@jhpratt.dev>|Time contributors
+Repository: https://github.com/time-rs/time
+License: Apache-2.0 OR MIT
+
+501. time@0.3.47
+
+Authors: Jacob Pratt <open-source@jhpratt.dev>|Time contributors
+Repository: https://github.com/time-rs/time
+License: Apache-2.0 OR MIT
+
+502. tinystr@0.8.2
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+503. tinyvec_macros@0.1.1
+
+Authors: Soveu <marx.tomasz@gmail.com>
+Repository: https://github.com/Soveu/tinyvec_macros
+License: Apache-2.0 OR MIT OR Zlib
+
+504. tinyvec@1.10.0
+
+Authors: Lokathor <zefria@gmail.com>
+Repository: https://github.com/Lokathor/tinyvec
+License: Apache-2.0 OR MIT OR Zlib
+
+505. tokio-macros@2.6.0
+
+Authors: Tokio Contributors <team@tokio.rs>
+Repository: https://github.com/tokio-rs/tokio
+License: MIT
+
+506. tokio-native-tls@0.3.1
+
+Authors: Tokio Contributors <team@tokio.rs>
+Repository: https://github.com/tokio-rs/tls
+License: MIT
+
+507. tokio-rustls@0.26.4
+
+Repository: https://github.com/rustls/tokio-rustls
+License: Apache-2.0 OR MIT
+
+508. tokio-util@0.7.18
+
+Authors: Tokio Contributors <team@tokio.rs>
+Repository: https://github.com/tokio-rs/tokio
+License: MIT
+
+509. tokio@1.49.0
+
+Authors: Tokio Contributors <team@tokio.rs>
+Repository: https://github.com/tokio-rs/tokio
+License: MIT
+
+510. toml_datetime@0.6.3
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+511. toml_datetime@0.7.5+spec-1.1.0
+
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+512. toml_edit@0.19.15
+
+Authors: Andronik Ordian <write@reusable.software>|Ed Page <eopage@gmail.com>
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+513. toml_edit@0.20.2
+
+Authors: Andronik Ordian <write@reusable.software>|Ed Page <eopage@gmail.com>
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+514. toml_edit@0.23.10+spec-1.0.0
+
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+515. toml_parser@1.0.9+spec-1.1.0
+
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+516. toml_writer@1.0.6+spec-1.1.0
+
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+517. toml@0.8.2
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+518. toml@0.9.12+spec-1.1.0
+
+Repository: https://github.com/toml-rs/toml
+License: Apache-2.0 OR MIT
+
+519. tower-http@0.6.8
+
+Authors: Tower Maintainers <team@tower-rs.com>
+Repository: https://github.com/tower-rs/tower-http
+License: MIT
+
+520. tower-layer@0.3.3
+
+Authors: Tower Maintainers <team@tower-rs.com>
+Repository: https://github.com/tower-rs/tower
+License: MIT
+
+521. tower-service@0.3.3
+
+Authors: Tower Maintainers <team@tower-rs.com>
+Repository: https://github.com/tower-rs/tower
+License: MIT
+
+522. tower@0.5.3
+
+Authors: Tower Maintainers <team@tower-rs.com>
+Repository: https://github.com/tower-rs/tower
+License: MIT
+
+523. tracing-attributes@0.1.31
+
+Authors: Tokio Contributors <team@tokio.rs>|Eliza Weisman <eliza@buoyant.io>|David Barsky <dbarsky@amazon.com>
+Repository: https://github.com/tokio-rs/tracing
+License: MIT
+
+524. tracing-core@0.1.36
+
+Authors: Tokio Contributors <team@tokio.rs>
+Repository: https://github.com/tokio-rs/tracing
+License: MIT
+
+525. tracing@0.1.44
+
+Authors: Eliza Weisman <eliza@buoyant.io>|Tokio Contributors <team@tokio.rs>
+Repository: https://github.com/tokio-rs/tracing
+License: MIT
+
+526. trash@5.2.5
+
+Authors: Artur Kovacs <kovacs.artur.barnabas@gmail.com>
+Repository: https://github.com/ArturKovacs/trash
+License: MIT
+
+527. tray-icon@0.21.3
+
+Repository: https://github.com/tauri-apps/tray-icon
+License: Apache-2.0 OR MIT
+
+528. try-lock@0.2.5
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/seanmonstar/try-lock
+License: MIT
+
+529. typeid@1.0.3
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/typeid
+License: Apache-2.0 OR MIT
+
+530. typenum@1.19.0
+
+Authors: Paho Lurie-Gregg <paho@paholg.com>|Andre Bogus <bogusandre@gmail.com>
+Repository: https://github.com/paholg/typenum
+License: Apache-2.0 OR MIT
+
+531. uds_windows@1.1.0
+
+Authors: Azure IoT Edge Devs|Harald Hoyer <harald@redhat.com>
+Repository: https://github.com/haraldh/rust_uds_windows
+License: MIT
+
+532. unic-char-property@0.9.0
+
+Authors: The UNIC Project Developers
+Repository: https://github.com/open-i18n/rust-unic/
+License: Apache-2.0 OR MIT
+
+533. unic-char-range@0.9.0
+
+Authors: The UNIC Project Developers
+Repository: https://github.com/open-i18n/rust-unic/
+License: Apache-2.0 OR MIT
+
+534. unic-common@0.9.0
+
+Authors: The UNIC Project Developers
+Repository: https://github.com/open-i18n/rust-unic/
+License: Apache-2.0 OR MIT
+
+535. unic-ucd-ident@0.9.0
+
+Authors: The UNIC Project Developers
+Repository: https://github.com/open-i18n/rust-unic/
+License: Apache-2.0 OR MIT
+
+536. unic-ucd-version@0.9.0
+
+Authors: The UNIC Project Developers
+Repository: https://github.com/open-i18n/rust-unic/
+License: Apache-2.0 OR MIT
+
+537. unicase@2.9.0
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/seanmonstar/unicase
+License: Apache-2.0 OR MIT
+
+538. unicode-ident@1.0.24
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/unicode-ident
+License: (Apache-2.0 OR MIT) AND Unicode-3.0
+
+539. unicode-segmentation@1.12.0
+
+Authors: kwantam <kwantam@gmail.com>|Manish Goregaokar <manishsmail@gmail.com>
+Repository: https://github.com/unicode-rs/unicode-segmentation
+License: Apache-2.0 OR MIT
+
+540. unicode-xid@0.2.6
+
+Authors: erick.tryzelaar <erick.tryzelaar@gmail.com>|kwantam <kwantam@gmail.com>|Manish Goregaokar <manishsmail@gmail.com>
+Repository: https://github.com/unicode-rs/unicode-xid
+License: Apache-2.0 OR MIT
+
+541. unsafe-libyaml@0.2.11
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/unsafe-libyaml
+License: MIT
+
+542. untrusted@0.9.0
+
+Authors: Brian Smith <brian@briansmith.org>
+Repository: https://github.com/briansmith/untrusted
+License: ISC
+
+543. url@2.5.8
+
+Authors: The rust-url developers
+Repository: https://github.com/servo/rust-url
+License: Apache-2.0 OR MIT
+
+544. urlencoding@2.1.3
+
+Authors: Kornel <kornel@geekhood.net>|Bertram Truong <b@bertramtruong.com>
+Repository: https://github.com/kornelski/rust_urlencoding
+License: MIT
+
+545. urlpattern@0.3.0
+
+Authors: the Deno authors|crowlKats <crowlkats@toaxl.com>
+Repository: https://github.com/denoland/rust-urlpattern
+License: MIT
+
+546. utf-8@0.7.6
+
+Authors: Simon Sapin <simon.sapin@exyr.org>
+Repository: https://github.com/SimonSapin/rust-utf8
+License: Apache-2.0 OR MIT
+
+547. utf8_iter@1.0.4
+
+Authors: Henri Sivonen <hsivonen@hsivonen.fi>
+Repository: https://github.com/hsivonen/utf8_iter
+License: Apache-2.0 OR MIT
+
+548. uuid@1.21.0
+
+Authors: Ashley Mannix<ashleymannix@live.com.au>|Dylan DPC<dylan.dpc@gmail.com>|Hunar Roop Kahlon<hunar.roop@gmail.com>
+Repository: https://github.com/uuid-rs/uuid
+License: Apache-2.0 OR MIT
+
+549. vcpkg@0.2.15
+
+Authors: Jim McGrath <jimmc2@gmail.com>
+Repository: https://github.com/mcgoo/vcpkg-rs
+License: Apache-2.0 OR MIT
+
+550. version_check@0.9.5
+
+Authors: Sergio Benitez <sb@sergio.bz>
+Repository: https://github.com/SergioBenitez/version_check
+License: Apache-2.0 OR MIT
+
+551. version-compare@0.2.1
+
+Authors: Tim Visee <3a4fb3964f@sinenomine.email>
+Repository: https://gitlab.com/timvisee/version-compare
+License: MIT
+
+552. vswhom-sys@0.1.3
+
+Authors: наб <nabijaczleweli@nabijaczleweli.xyz>|forrestsmithfb <forrest.smith@fb.com>
+Repository: https://github.com/nabijaczleweli/vswhom-sys.rs
+License: MIT
+
+553. vswhom@0.1.0
+
+Authors: nabijaczleweli <nabijaczleweli@gmail.com>
+Repository: https://github.com/nabijaczleweli/vswhom.rs
+License: MIT
+
+554. walkdir@2.5.0
+
+Authors: Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/BurntSushi/walkdir
+License: MIT OR Unlicense
+
+555. want@0.3.1
+
+Authors: Sean McArthur <sean@seanmonstar.com>
+Repository: https://github.com/seanmonstar/want
+License: MIT
+
+556. wasi@0.11.1+wasi-snapshot-preview1
+
+Authors: The Cranelift Project Developers
+Repository: https://github.com/bytecodealliance/wasi
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+557. wasi@0.9.0+wasi-snapshot-preview1
+
+Authors: The Cranelift Project Developers
+Repository: https://github.com/bytecodealliance/wasi
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+558. wasip2@1.0.2+wasi-0.2.9
+
+Repository: https://github.com/bytecodealliance/wasi-rs
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+559. wasip3@0.4.0+wasi-0.3.0-rc-2026-01-06
+
+Repository: https://github.com/bytecodealliance/wasi-rs
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+560. wasm-bindgen-futures@0.4.62
+
+Authors: The wasm-bindgen Developers
+Repository: https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/futures
+License: Apache-2.0 OR MIT
+
+561. wasm-bindgen-macro-support@0.2.112
+
+Authors: The wasm-bindgen Developers
+Repository: https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro-support
+License: Apache-2.0 OR MIT
+
+562. wasm-bindgen-macro@0.2.112
+
+Authors: The wasm-bindgen Developers
+Repository: https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro
+License: Apache-2.0 OR MIT
+
+563. wasm-bindgen-shared@0.2.112
+
+Authors: The wasm-bindgen Developers
+Repository: https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/shared
+License: Apache-2.0 OR MIT
+
+564. wasm-bindgen@0.2.112
+
+Authors: The wasm-bindgen Developers
+Repository: https://github.com/wasm-bindgen/wasm-bindgen
+License: Apache-2.0 OR MIT
+
+565. wasm-encoder@0.244.0
+
+Authors: Nick Fitzgerald <fitzgen@gmail.com>
+Repository: https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-encoder
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+566. wasm-metadata@0.244.0
+
+Repository: https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-metadata
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+567. wasm-streams@0.4.2
+
+Authors: Mattias Buelens <mattias@buelens.com>
+Repository: https://github.com/MattiasBuelens/wasm-streams/
+License: Apache-2.0 OR MIT
+
+568. wasm-streams@0.5.0
+
+Authors: Mattias Buelens <mattias@buelens.com>
+Repository: https://github.com/MattiasBuelens/wasm-streams/
+License: Apache-2.0 OR MIT
+
+569. wasmparser@0.244.0
+
+Authors: Yury Delendik <ydelendik@mozilla.com>
+Repository: https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmparser
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+570. web-sys@0.3.89
+
+Authors: The wasm-bindgen Developers
+Repository: https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/web-sys
+License: Apache-2.0 OR MIT
+
+571. web-time@1.1.0
+
+Repository: https://github.com/daxpedda/web-time
+License: Apache-2.0 OR MIT
+
+572. webkit2gtk-sys@2.0.2
+
+Repository: https://github.com/tauri-apps/webkit2gtk-rs
+License: MIT
+
+573. webkit2gtk@2.0.2
+
+Repository: https://github.com/tauri-apps/webkit2gtk-rs
+License: MIT
+
+574. webpki-roots@1.0.6
+
+Repository: https://github.com/rustls/webpki-roots
+License: CDLA-Permissive-2.0
+
+575. webview2-com-macros@0.8.1
+
+Repository: https://github.com/wravery/webview2-rs
+License: MIT
+
+576. webview2-com-sys@0.38.2
+
+Repository: https://github.com/wravery/webview2-rs
+License: MIT
+
+577. webview2-com@0.38.2
+
+Repository: https://github.com/wravery/webview2-rs
+License: MIT
+
+578. weezl@0.1.12
+
+Authors: The image-rs Developers
+Repository: https://github.com/image-rs/weezl
+License: Apache-2.0 OR MIT
+
+579. which@7.0.3
+
+Authors: Harry Fei <tiziyuanfang@gmail.com>, Jacob Kiesel <jake@bitcrafters.co>
+Repository: https://github.com/harryfei/which-rs.git
+License: MIT
+
+580. winapi-i686-pc-windows-gnu@0.4.0
+
+Authors: Peter Atashian <retep998@gmail.com>
+Repository: https://github.com/retep998/winapi-rs
+License: Apache-2.0 OR MIT
+
+581. winapi-util@0.1.11
+
+Authors: Andrew Gallant <jamslam@gmail.com>
+Repository: https://github.com/BurntSushi/winapi-util
+License: MIT OR Unlicense
+
+582. winapi-x86_64-pc-windows-gnu@0.4.0
+
+Authors: Peter Atashian <retep998@gmail.com>
+Repository: https://github.com/retep998/winapi-rs
+License: Apache-2.0 OR MIT
+
+583. winapi@0.3.9
+
+Authors: Peter Atashian <retep998@gmail.com>
+Repository: https://github.com/retep998/winapi-rs
+License: Apache-2.0 OR MIT
+
+584. window-vibrancy@0.5.3
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri-plugin-vibrancy
+License: Apache-2.0 OR MIT
+
+585. window-vibrancy@0.6.0
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/tauri-plugin-vibrancy
+License: Apache-2.0 OR MIT
+
+586. windows_aarch64_gnullvm@0.42.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+587. windows_aarch64_gnullvm@0.48.5
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+588. windows_aarch64_gnullvm@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+589. windows_aarch64_gnullvm@0.53.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+590. windows_aarch64_msvc@0.42.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+591. windows_aarch64_msvc@0.48.5
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+592. windows_aarch64_msvc@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+593. windows_aarch64_msvc@0.53.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+594. windows_i686_gnu@0.42.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+595. windows_i686_gnu@0.48.5
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+596. windows_i686_gnu@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+597. windows_i686_gnu@0.53.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+598. windows_i686_gnullvm@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+599. windows_i686_gnullvm@0.53.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+600. windows_i686_msvc@0.42.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+601. windows_i686_msvc@0.48.5
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+602. windows_i686_msvc@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+603. windows_i686_msvc@0.53.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+604. windows_x86_64_gnu@0.42.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+605. windows_x86_64_gnu@0.48.5
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+606. windows_x86_64_gnu@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+607. windows_x86_64_gnu@0.53.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+608. windows_x86_64_gnullvm@0.42.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+609. windows_x86_64_gnullvm@0.48.5
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+610. windows_x86_64_gnullvm@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+611. windows_x86_64_gnullvm@0.53.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+612. windows_x86_64_msvc@0.42.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+613. windows_x86_64_msvc@0.48.5
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+614. windows_x86_64_msvc@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+615. windows_x86_64_msvc@0.53.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+616. windows-collections@0.2.0
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+617. windows-core@0.56.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+618. windows-core@0.57.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+619. windows-core@0.58.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+620. windows-core@0.61.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+621. windows-core@0.62.2
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+622. windows-future@0.2.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+623. windows-implement@0.56.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+624. windows-implement@0.57.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+625. windows-implement@0.58.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+626. windows-implement@0.60.2
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+627. windows-interface@0.56.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+628. windows-interface@0.57.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+629. windows-interface@0.58.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+630. windows-interface@0.59.3
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+631. windows-link@0.1.3
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+632. windows-link@0.2.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+633. windows-numerics@0.2.0
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+634. windows-registry@0.6.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+635. windows-result@0.1.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+636. windows-result@0.2.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+637. windows-result@0.3.4
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+638. windows-result@0.4.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+639. windows-strings@0.1.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+640. windows-strings@0.4.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+641. windows-strings@0.5.1
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+642. windows-sys@0.45.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+643. windows-sys@0.48.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+644. windows-sys@0.52.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+645. windows-sys@0.59.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+646. windows-sys@0.60.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+647. windows-sys@0.61.2
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+648. windows-targets@0.42.2
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+649. windows-targets@0.48.5
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+650. windows-targets@0.52.6
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+651. windows-targets@0.53.5
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+652. windows-threading@0.1.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+653. windows-version@0.1.7
+
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+654. windows@0.56.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+655. windows@0.57.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+656. windows@0.58.0
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+657. windows@0.61.3
+
+Authors: Microsoft
+Repository: https://github.com/microsoft/windows-rs
+License: Apache-2.0 OR MIT
+
+658. winnow@0.5.40
+
+Repository: https://github.com/winnow-rs/winnow
+License: MIT
+
+659. winnow@0.7.14
+
+Repository: https://github.com/winnow-rs/winnow
+License: MIT
+
+660. winreg@0.52.0
+
+Authors: Igor Shaula <gentoo90@gmail.com>
+Repository: https://github.com/gentoo90/winreg-rs
+License: MIT
+
+661. winreg@0.55.0
+
+Authors: Igor Shaula <gentoo90@gmail.com>
+Repository: https://github.com/gentoo90/winreg-rs
+License: MIT
+
+662. winsafe@0.0.19
+
+Authors: Rodrigo Cesar de Freitas Dias <rcesar@gmail.com>
+Repository: https://github.com/rodrigocfd/winsafe
+License: MIT
+
+663. wio@0.2.2
+
+Authors: Peter Atashian <retep998@gmail.com>
+Repository: https://github.com/retep998/wio-rs
+License: Apache-2.0 OR MIT
+
+664. wit-bindgen-core@0.51.0
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/bytecodealliance/wit-bindgen
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+665. wit-bindgen-rust-macro@0.51.0
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/bytecodealliance/wit-bindgen
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+666. wit-bindgen-rust@0.51.0
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/bytecodealliance/wit-bindgen
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+667. wit-bindgen@0.51.0
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/bytecodealliance/wit-bindgen
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+668. wit-component@0.244.0
+
+Authors: Peter Huene <peter@huene.dev>
+Repository: https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wit-component
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+669. wit-parser@0.244.0
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wit-parser
+License: Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT
+
+670. writeable@0.6.2
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+671. wry@0.54.2
+
+Authors: Tauri Programme within The Commons Conservancy
+Repository: https://github.com/tauri-apps/wry
+License: Apache-2.0 OR MIT
+
+672. x11-dl@2.21.0
+
+Authors: daggerbot <daggerbot@gmail.com>|Erle Pereira <erle@erlepereira.com>|AltF02 <contact@altf2.dev>
+Repository: https://github.com/AltF02/x11-rs.git
+License: MIT
+
+673. x11@2.21.0
+
+Authors: daggerbot <daggerbot@gmail.com>|Erle Pereira <erle@erlepereira.com>|AltF02 <contact@altf2.dev>
+Repository: https://github.com/AltF02/x11-rs.git
+License: MIT
+
+674. xattr@1.6.1
+
+Authors: Steven Allen <steven@stebalien.com>
+Repository: https://github.com/Stebalien/xattr
+License: Apache-2.0 OR MIT
+
+675. xz2@0.1.7
+
+Authors: Alex Crichton <alex@alexcrichton.com>
+Repository: https://github.com/alexcrichton/xz2-rs
+License: Apache-2.0 OR MIT
+
+676. yeslogic-fontconfig-sys@6.0.0
+
+Authors: Austin Bonander <austin.bonander@gmail.com>|The Servo Project Developers|YesLogic Pty. Ltd. <info@yeslogic.com>
+Repository: https://github.com/yeslogic/fontconfig-rs
+License: MIT
+
+677. yoke-derive@0.8.1
+
+Authors: Manish Goregaokar <manishsmail@gmail.com>
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+678. yoke@0.8.1
+
+Authors: Manish Goregaokar <manishsmail@gmail.com>
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+679. zbus_macros@5.14.0
+
+Authors: Marc-André Lureau <marcandre.lureau@redhat.com>|Zeeshan Ali Khan <zeeshanak@gnome.org>
+Repository: https://github.com/z-galaxy/zbus/
+License: MIT
+
+680. zbus_names@4.3.1
+
+Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>
+Repository: https://github.com/z-galaxy/zbus/
+License: MIT
+
+681. zbus@5.14.0
+
+Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>
+Repository: https://github.com/z-galaxy/zbus/
+License: MIT
+
+682. zerocopy-derive@0.8.39
+
+Authors: Joshua Liebow-Feeser <joshlf@google.com>|Jack Wrenn <jswrenn@amazon.com>
+Repository: https://github.com/google/zerocopy
+License: Apache-2.0 OR BSD-2-Clause OR MIT
+
+683. zerocopy@0.8.39
+
+Authors: Joshua Liebow-Feeser <joshlf@google.com>|Jack Wrenn <jswrenn@amazon.com>
+Repository: https://github.com/google/zerocopy
+License: Apache-2.0 OR BSD-2-Clause OR MIT
+
+684. zerofrom-derive@0.1.6
+
+Authors: Manish Goregaokar <manishsmail@gmail.com>
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+685. zerofrom@0.1.6
+
+Authors: Manish Goregaokar <manishsmail@gmail.com>
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+686. zeroize_derive@1.4.3
+
+Authors: The RustCrypto Project Developers
+Repository: https://github.com/RustCrypto/utils/tree/master/zeroize/derive
+License: Apache-2.0 OR MIT
+
+687. zeroize@1.8.2
+
+Authors: The RustCrypto Project Developers
+Repository: https://github.com/RustCrypto/utils
+License: Apache-2.0 OR MIT
+
+688. zerotrie@0.2.3
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+689. zerovec-derive@0.11.2
+
+Authors: Manish Goregaokar <manishsmail@gmail.com>
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+690. zerovec@0.11.5
+
+Authors: The ICU4X Project Developers
+Repository: https://github.com/unicode-org/icu4x
+License: Unicode-3.0
+
+691. zip@2.4.2
+
+Authors: Mathijs van de Nes <git@mathijs.vd-nes.nl>|Marli Frost <marli@frost.red>|Ryan Levick <ryan.levick@gmail.com>|Chris Hennick <hennickc@amazon.com>
+Repository: https://github.com/zip-rs/zip2.git
+License: MIT
+
+692. zmij@1.0.21
+
+Authors: David Tolnay <dtolnay@gmail.com>
+Repository: https://github.com/dtolnay/zmij
+License: MIT
+
+693. zopfli@0.8.3
+
+Repository: https://github.com/zopfli-rs/zopfli
+License: Apache-2.0
+
+694. zstd-safe@7.2.4
+
+Authors: Alexandre Bury <alexandre.bury@gmail.com>
+Repository: https://github.com/gyscos/zstd-rs
+License: Apache-2.0 OR MIT
+
+695. zstd-sys@2.0.16+zstd.1.5.7
+
+Authors: Alexandre Bury <alexandre.bury@gmail.com>
+Repository: https://github.com/gyscos/zstd-rs
+License: Apache-2.0 OR MIT
+
+696. zstd@0.13.3
+
+Authors: Alexandre Bury <alexandre.bury@gmail.com>
+Repository: https://github.com/gyscos/zstd-rs
+License: MIT
+
+697. zune-core@0.5.1
+
+Repository: https://github.com/etemesi254/zune-image
+License: Apache-2.0 OR MIT OR Zlib
+
+698. zune-jpeg@0.5.12
+
+Authors: caleb <etemesicaleb@gmail.com>
+Repository: https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpeg
+License: Apache-2.0 OR MIT OR Zlib
+
+699. zvariant_derive@5.10.0
+
+Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>
+Repository: https://github.com/z-galaxy/zbus/
+License: MIT
+
+700. zvariant_utils@3.3.0
+
+Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>|turbocooler <turbocooler@cocaine.ninja>
+Repository: https://github.com/z-galaxy/zbus/
+License: MIT
+
+701. zvariant@5.10.0
+
+Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>
+Repository: https://github.com/z-galaxy/zbus/
+License: MIT

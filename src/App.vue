@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import AppLayout from "@components/layout/AppLayout.vue";
 import SplashScreen from "@components/splash/SplashScreen.vue";
 import UpdateModal from "@components/common/UpdateModal.vue";
+import TermsDialog from "@components/common/TermsDialog.vue";
 import SLContextMenu from "@components/common/SLContextMenu.vue";
 import { PluginComponentRenderer } from "@components/plugin";
 import { useUpdateStore } from "@stores/updateStore";
@@ -47,6 +48,7 @@ function playNotificationSound() {
 
 const showSplash = ref(true);
 const isInitializing = ref(true);
+const showTermsDialog = ref(false);
 const updateStore = useUpdateStore();
 const settingsStore = useSettingsStore();
 const pluginStore = usePluginStore();
@@ -177,9 +179,24 @@ onUnmounted(() => {
   pluginStore.cleanupI18nEventListener();
 });
 
+async function handleAgreeTerms() {
+  try {
+    await settingsStore.updatePartial({ agreed_to_terms: true });
+    showTermsDialog.value = false;
+  } catch (error) {
+    console.error("Failed to save terms agreement:", error);
+  }
+}
+
 function handleSplashReady() {
   if (isInitializing.value) return;
   showSplash.value = false;
+
+  // 检查是否需要显示协议同意弹窗
+  const settings = settingsStore.settings;
+  if (!settings.agreed_to_terms) {
+    showTermsDialog.value = true;
+  }
 
   // Dev模式下跳过更新检查, 想要检查更新去关于页面检查
   if (!import.meta.env.DEV) {
@@ -208,6 +225,12 @@ function handleSettingsUpdate(e: CustomEvent<SettingsUpdateEvent>) {
     <UpdateModal
       v-if="updateStore.isUpdateModalVisible && updateStore.isUpdateAvailable"
       @close="handleUpdateModalClose"
+    />
+
+    <TermsDialog
+      :visible="showTermsDialog"
+      @agree="handleAgreeTerms"
+      @close="showTermsDialog = false"
     />
 
     <PluginComponentRenderer />

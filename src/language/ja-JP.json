@@ -641,7 +641,9 @@
     "open_link_failed": "リンクを開けませんでした",
     "update_check_failed": "更新確認に失敗しました",
     "update_download_failed": "ダウンロードに失敗しました",
-    "github_repo": "GitHubリポジトリ"
+    "github_repo": "GitHubリポジトリ",
+    "docs": "文書",
+    "docs_link": "クリックしてドキュメントサイトを開く"
   },
   "tray": {
     "minimize": "トレイに格納",
