@@ -80,7 +80,7 @@ fn ui_hide_returns_true_when_no_handler() {
     let res: LuaResult<bool> = runtime.lua_eval(r#"return sl.ui.hide("body")"#);
 
     assert!(res.is_ok());
-    assert_eq!(res.unwrap(), true);
+    assert!(res.unwrap());
 
     cleanup(&temp_dir);
 }
@@ -103,7 +103,7 @@ fn ui_infra_failure_compat_returns_false() {
     let res: LuaResult<bool> = runtime.lua_eval(r##"return sl.ui.hide("#x")"##);
 
     assert!(res.is_ok());
-    assert_eq!(res.unwrap(), false, "compat 模式下应返回 false");
+    assert!(!res.unwrap(), "compat 模式下应返回 false");
 
     cleanup(&temp_dir);
 

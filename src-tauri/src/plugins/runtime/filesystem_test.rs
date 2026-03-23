@@ -86,7 +86,7 @@ fn test_fs_exists() {
         .load(r#"return sl.fs.exists("test.txt")"#)
         .eval();
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), false);
+    assert!(!result.unwrap());
 
     runtime
         .lua
@@ -99,7 +99,7 @@ fn test_fs_exists() {
         .load(r#"return sl.fs.exists("test.txt")"#)
         .eval();
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -128,10 +128,8 @@ fn test_fs_mkdir_and_list() {
 
     let table = result.unwrap();
     let mut files = Vec::new();
-    for pair in table.pairs::<mlua::Integer, String>() {
-        if let Ok((_, file)) = pair {
-            files.push(file);
-        }
+    for (_, file) in table.pairs::<mlua::Integer, String>().flatten() {
+        files.push(file);
     }
     assert_eq!(files.len(), 2);
     assert!(files.contains(&"file1.txt".to_string()));
@@ -154,7 +152,7 @@ fn test_fs_remove_file() {
         .lua
         .load(r#"return sl.fs.exists("test.txt")"#)
         .eval();
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     let result: LuaResult<()> = runtime.lua.load(r#"sl.fs.remove("test.txt")"#).eval();
     assert!(result.is_ok());
@@ -163,7 +161,7 @@ fn test_fs_remove_file() {
         .lua
         .load(r#"return sl.fs.exists("test.txt")"#)
         .eval();
-    assert_eq!(result.unwrap(), false);
+    assert!(!result.unwrap());
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -187,7 +185,7 @@ fn test_fs_remove_directory() {
         .lua
         .load(r#"return sl.fs.exists("test_dir")"#)
         .eval();
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     let result: LuaResult<()> = runtime.lua.load(r#"sl.fs.remove("test_dir")"#).eval();
     assert!(result.is_ok());
@@ -196,7 +194,7 @@ fn test_fs_remove_directory() {
         .lua
         .load(r#"return sl.fs.exists("test_dir")"#)
         .eval();
-    assert_eq!(result.unwrap(), false);
+    assert!(!result.unwrap());
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -220,7 +218,7 @@ fn test_fs_info() {
     let is_dir: bool = info.get("is_dir").unwrap();
 
     assert_eq!(size, 13);
-    assert_eq!(is_dir, false);
+    assert!(!is_dir);
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -245,13 +243,13 @@ fn test_fs_copy_file() {
         .lua
         .load(r#"return sl.fs.exists("source.txt")"#)
         .eval();
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     let result: LuaResult<bool> = runtime
         .lua
         .load(r#"return sl.fs.exists("dest.txt")"#)
         .eval();
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("dest.txt")"#).eval();
     assert_eq!(result.unwrap(), "Content");
@@ -284,13 +282,13 @@ fn test_fs_copy_directory() {
         .lua
         .load(r#"return sl.fs.exists("source_dir")"#)
         .eval();
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     let result: LuaResult<bool> = runtime
         .lua
         .load(r#"return sl.fs.exists("dest_dir")"#)
         .eval();
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     let result: LuaResult<String> = runtime
         .lua
@@ -321,13 +319,13 @@ fn test_fs_move() {
         .lua
         .load(r#"return sl.fs.exists("source.txt")"#)
         .eval();
-    assert_eq!(result.unwrap(), false);
+    assert!(!result.unwrap());
 
     let result: LuaResult<bool> = runtime
         .lua
         .load(r#"return sl.fs.exists("dest.txt")"#)
         .eval();
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("dest.txt")"#).eval();
     assert_eq!(result.unwrap(), "Content");
@@ -355,13 +353,13 @@ fn test_fs_rename() {
         .lua
         .load(r#"return sl.fs.exists("old_name.txt")"#)
         .eval();
-    assert_eq!(result.unwrap(), false);
+    assert!(!result.unwrap());
 
     let result: LuaResult<bool> = runtime
         .lua
         .load(r#"return sl.fs.exists("new_name.txt")"#)
         .eval();
-    assert_eq!(result.unwrap(), true);
+    assert!(result.unwrap());
 
     let result: LuaResult<String> = runtime
         .lua
