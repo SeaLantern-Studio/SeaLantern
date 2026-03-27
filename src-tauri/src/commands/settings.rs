@@ -3,7 +3,9 @@ use crate::services::global;
 use font_kit::source::SystemSource;
 use serde::Deserialize;
 use std::collections::HashSet;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
+#[cfg(target_os = "macos")]
+use tauri::Manager;
 #[cfg(target_os = "macos")]
 use window_vibrancy::{
     apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
@@ -142,7 +144,7 @@ pub fn apply_acrylic(enabled: bool, app: AppHandle) -> Result<(), String> {
 
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = enabled;
+        let _ = (enabled, app);
     }
 
     Ok(())

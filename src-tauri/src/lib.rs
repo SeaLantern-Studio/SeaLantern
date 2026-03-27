@@ -27,8 +27,10 @@ use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager, TitleBarStyle,
+    Emitter, Listener, Manager,
 };
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
 #[cfg(target_os = "macos")]
 use window_vibrancy::{
     apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
