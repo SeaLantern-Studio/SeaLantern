@@ -256,6 +256,11 @@
   transform: translateX(2px) scale(0.98);
 }
 
+.language-item.active {
+  background: var(--sl-primary-bg);
+  color: var(--sl-primary);
+}
+
 .language-item-main {
   flex: 1;
 }

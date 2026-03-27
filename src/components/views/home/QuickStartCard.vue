@@ -24,7 +24,7 @@ const emit = defineEmits<{
     <div class="card-spacer"></div>
     <div class="quote-display" @click="updateQuote" :title="i18n.t('common.click_to_refresh')">
       <span v-if="displayText && !isTyping" class="quote-text">「{{ displayText }}」</span>
-      <span v-if="currentQuote && !isTyping" class="quote-author"
+      <span v-if="displayText && currentQuote && !isTyping" class="quote-author"
         >—— {{ currentQuote.author }}</span
       >
       <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>

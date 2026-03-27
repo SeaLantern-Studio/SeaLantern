@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, ChevronDown, ChevronUp, Copy } from "lucide-vue-next";
+import { Minus, Square, X, ChevronDown, ChevronUp, Copy, Check, Globe } from "lucide-vue-next";
 import { useI18nStore } from "@stores/i18nStore";
 import { i18n } from "@language";
 import SLModal from "@components/common/SLModal.vue";
@@ -253,6 +253,10 @@ async function handleLanguageClick(locale: string, close?: () => void) {
   }
 }
 
+function isActive(code: string) {
+  return i18nStore.currentLocale == code;
+}
+
 function computeOverallProgress() {
   const locales = Object.keys(perLocaleProgress);
   if (locales.length === 0) return 0;
@@ -267,20 +271,29 @@ function computeOverallProgress() {
 
 <template>
   <header class="app-header glass-strong">
+    <div class="header-left">
+      <h2 class="page-title">{{ pageTitle }}</h2>
+    </div>
+
     <div class="header-center" data-tauri-drag-region></div>
 
     <div class="header-right">
       <Menu as="div" class="language-selector">
         <MenuButton class="language-button">
-          <span class="language-text">{{ currentLanguageText }}</span>
+          <Globe class="language-text" :size="16" />
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
           <MenuItem v-for="option in primaryLanguages" :key="option.code" v-slot="{ close }">
-            <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
+            <div
+              class="language-item"
+              :class="{ active: isActive(option.code) }"
+              @click="() => handleLanguageClick(option.code, close)"
+            >
               <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
               </div>
+              <Check v-if="isActive(option.code)" :size="16" aria-hidden="true" />
             </div>
           </MenuItem>
 
@@ -297,10 +310,15 @@ function computeOverallProgress() {
           <!-- 其他语言（仅在展开时显示） -->
           <template v-if="showMoreLanguages">
             <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
-              <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
+              <div
+                class="language-item"
+                :class="{ active: isActive(option.code) }"
+                @click="() => handleLanguageClick(option.code, close)"
+              >
                 <div class="language-item-main">
                   <span class="language-label">{{ option.label }}</span>
                 </div>
+                <Check v-if="isActive(option.code)" :size="16" aria-hidden="true" />
               </div>
             </MenuItem>
           </template>
