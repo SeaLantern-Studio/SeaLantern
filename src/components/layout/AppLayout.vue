@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, computed, watch } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
+import { settingsApi } from "@api/settings";
 import { useUiStore } from "@stores/uiStore";
 import {
   useSettingsStore,
@@ -25,8 +26,10 @@ const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
 const backgroundBlur = computed(() => settingsStore.backgroundBlur);
 const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
 const backgroundSize = computed(() => settingsStore.backgroundSize);
+const isMacOS = /Macintosh|Mac OS X/i.test(navigator.userAgent);
 
 let systemThemeQuery: MediaQueryList | null = null;
+let lastNativeAcrylic: boolean | null = null;
 
 function applyAcrylicEffect(enabled: boolean): void {
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
@@ -50,6 +53,10 @@ async function applyAppearanceSettings(): Promise<void> {
   applyFontFamily(settings.font_family || "");
 
   applyAcrylicEffect(settings.acrylic_enabled);
+  if (lastNativeAcrylic !== settings.acrylic_enabled) {
+    lastNativeAcrylic = settings.acrylic_enabled;
+    await settingsApi.applyAcrylic(settings.acrylic_enabled);
+  }
 
   if (!isThemeProviderActive()) {
     applyColors(settings);
@@ -107,10 +114,13 @@ const backgroundStyle = computed(() => {
 </script>
 
 <template>
-  <div class="app-layout">
+  <div class="app-layout" :class="{ 'macos-native-vibrancy': isMacOS }">
     <div class="app-background" :style="backgroundStyle"></div>
     <AppSidebar />
-    <div class="app-main" :class="{ 'sidebar-collapsed': ui.sidebarCollapsed }">
+    <div
+      class="app-main"
+      :class="{ 'sidebar-collapsed': ui.sidebarCollapsed, 'macos-native-vibrancy': isMacOS }"
+    >
       <AppHeader />
       <main class="app-content">
         <router-view v-slot="{ Component }">

@@ -299,14 +299,14 @@ watch(
 
 .sl-server-selector.collapsed .server-selector-trigger {
   width: 40px;
-  height: 67px;
+  height: 40px;
   justify-content: center;
-  padding: 5px;
-  border: none;
-  background: transparent;
-  margin-top: 0px;
-  margin-left: left;
-  margin-right: left;
+  padding: 0;
+  border: 1px solid var(--sl-border);
+  background: var(--sl-surface);
+  margin-top: 5px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .sl-server-selector.collapsed .server-selector-trigger:hover {

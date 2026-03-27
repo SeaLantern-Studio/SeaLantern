@@ -35,10 +35,18 @@
   height: 60px;
   cursor: pointer;
   flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .sidebar.macos-overlay .sidebar-logo {
   margin-top: 16px;
+}
+
+.sidebar.macos-overlay {
+  background: var(--sl-bg);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .sidebar.macos-overlay .sidebar-nav {
@@ -61,6 +69,8 @@
   font-weight: 700;
   white-space: nowrap;
   letter-spacing: -0.01em;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .sidebar-nav {
@@ -95,7 +105,13 @@
 }
 
 .sidebar.collapsed .server-selector {
-  padding: 1px;
+  padding: var(--sl-space-xs);
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar.macos-overlay.collapsed .server-selector {
+  padding-top: 0;
 }
 
 .nav-item {

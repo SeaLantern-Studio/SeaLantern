@@ -29,6 +29,10 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Listener, Manager, TitleBarStyle,
 };
+#[cfg(target_os = "macos")]
+use window_vibrancy::{
+    apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -180,6 +184,7 @@ pub fn run() {
             settings_commands::get_system_fonts,
             settings_commands::get_plugin_commands,
             settings_commands::update_plugin_commands,
+            settings_commands::apply_acrylic,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,
@@ -279,6 +284,13 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            #[cfg(not(target_os = "macos"))]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.set_decorations(false) {
+                    eprintln!("Failed to disable native window decorations: {}", e);
+                }
+            }
+
             #[cfg(target_os = "macos")]
             if let Some(window) = app.get_webview_window("main") {
                 if let Err(e) = window.set_decorations(true) {
@@ -287,6 +299,26 @@ pub fn run() {
 
                 if let Err(e) = window.set_title_bar_style(TitleBarStyle::Overlay) {
                     eprintln!("Failed to set macOS title bar style to overlay: {}", e);
+                }
+
+                let acrylic_enabled = crate::services::global::settings_manager()
+                    .get()
+                    .acrylic_enabled;
+
+                let native_effect_result = if acrylic_enabled {
+                    apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::UnderWindowBackground,
+                        Some(NSVisualEffectState::Active),
+                        None,
+                    )
+                    .map(|_| ())
+                } else {
+                    clear_vibrancy(&window).map(|_| ())
+                };
+
+                if let Err(e) = native_effect_result {
+                    eprintln!("Failed to sync native macOS vibrancy effect: {}", e);
                 }
             }
 
