@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, watch } from "vue";
+import { onMounted, onUnmounted, computed } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
 import { settingsApi } from "@api/settings";
@@ -31,6 +31,7 @@ const isMacOS = isMacOSPlatform();
 
 let systemThemeQuery: MediaQueryList | null = null;
 let lastNativeAcrylic: boolean | null = null;
+let appearanceApplyQueue: Promise<void> = Promise.resolve();
 
 function applyAcrylicEffect(enabled: boolean): void {
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
@@ -64,12 +65,20 @@ async function applyAppearanceSettings(): Promise<void> {
   }
 }
 
+function enqueueAppearanceApply(): Promise<void> {
+  appearanceApplyQueue = appearanceApplyQueue.then(
+    () => applyAppearanceSettings(),
+    () => applyAppearanceSettings(),
+  );
+  return appearanceApplyQueue;
+}
+
 function applyDeveloperSettings(): void {
   applyDeveloperMode(settingsStore.settings.developer_mode || false);
 }
 
 async function applyAllSettings(): Promise<void> {
-  await applyAppearanceSettings();
+  await enqueueAppearanceApply();
   applyDeveloperSettings();
 }
 
@@ -78,7 +87,7 @@ function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>): void {
   settingsStore.settings = settings;
 
   if (changedGroups.includes("Appearance")) {
-    applyAppearanceSettings();
+    void enqueueAppearanceApply();
   }
   if (changedGroups.includes("Developer")) {
     applyDeveloperSettings();

@@ -66,6 +66,9 @@ const isDownloading = computed(() => taskInfo.id !== "" && !taskInfo.isFinished)
 const isTaskVisibleForCurrentTab = computed(
   () => taskInfo.id !== "" && taskOriginTab.value === activeTab.value,
 );
+const isDownloadingCurrentTab = computed(
+  () => isTaskVisibleForCurrentTab.value && !taskInfo.isFinished,
+);
 const isDownloadCompleted = computed(
   () => isTaskVisibleForCurrentTab.value && taskInfo.isFinished && !taskError.value,
 );
@@ -124,13 +127,13 @@ const canGoCreate = computed(() => {
 });
 
 const fileDownloadButtonLabel = computed(() => {
-  if (isDownloading.value) return i18n.t("download-file.downloading");
+  if (isDownloadingCurrentTab.value) return i18n.t("download-file.downloading");
   if (isDownloadCompleted.value) return i18n.t("downloadServerView.status.finished");
   return i18n.t("download-file.download");
 });
 
 const serverDownloadButtonLabel = computed(() => {
-  if (isDownloading.value) return i18n.t("downloadServerView.actions.downloading");
+  if (isDownloadingCurrentTab.value) return i18n.t("downloadServerView.actions.downloading");
   if (isDownloadCompleted.value) return i18n.t("downloadServerView.status.finished");
   return i18n.t("downloadServerView.actions.startDownload");
 });
@@ -152,10 +155,6 @@ function checkUrl() {
   } catch {
     // 当URL无效时，不重置filename，因为用户可能手动输入了文件名
   }
-}
-
-function checkFilename() {
-  // 文件名输入时不需要特殊处理
 }
 
 async function pickFileFolder() {
@@ -393,7 +392,6 @@ onMounted(() => {
         @update:filename="filename = $event"
         @update:threadCount="threadCount = $event"
         @checkUrl="checkUrl()"
-        @checkFilename="checkFilename()"
         @pickFolder="pickFileFolder"
         @checkThreadCount="checkThreadCount"
       />
@@ -434,7 +432,7 @@ onMounted(() => {
         size="lg"
         :disabled="!canFileDownload"
         @click="handleFileDownload"
-        :loading="combinedLoading"
+        :loading="isDownloadingCurrentTab"
       >
         {{ fileDownloadButtonLabel }}
       </SLButton>
@@ -444,7 +442,7 @@ onMounted(() => {
         size="lg"
         :disabled="!canServerDownload"
         @click="handleServerDownload"
-        :loading="combinedLoading"
+        :loading="isDownloadingCurrentTab"
       >
         {{ serverDownloadButtonLabel }}
       </SLButton>
