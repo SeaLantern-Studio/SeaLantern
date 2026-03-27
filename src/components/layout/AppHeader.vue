@@ -92,6 +92,7 @@ const otherLanguages = computed(() => {
 const showMoreLanguages = ref(false);
 let unlistenResize: (() => void) | null = null;
 let unlistenCloseRequested: UnlistenFn | null = null;
+let isUnmounted = false;
 
 function toggleMoreLanguages() {
   showMoreLanguages.value = !showMoreLanguages.value;
@@ -125,6 +126,7 @@ const currentLanguageText = computed(() => {
 });
 
 onMounted(async () => {
+  isUnmounted = false;
   await loadSettings();
 
   // 初始化最大化状态
@@ -135,14 +137,20 @@ onMounted(async () => {
     isMaximized.value = await appWindow.isMaximized();
   });
 
-  unlistenCloseRequested = await listen("close-requested", () => {
+  const unlisten = await listen("close-requested", () => {
     showCloseModal.value = true;
   });
+  if (isUnmounted) {
+    unlisten();
+  } else {
+    unlistenCloseRequested = unlisten;
+  }
 
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
+  isUnmounted = true;
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (unlistenResize) {
     unlistenResize();
