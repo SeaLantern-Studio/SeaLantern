@@ -81,6 +81,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .nav-group {
@@ -131,6 +133,8 @@
   white-space: nowrap;
   margin-top: 5px;
   min-height: 36px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .nav-item:hover {
