@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
+import { isMacOSPlatform } from "@utils/platform";
 
 const iconMap: Record<string, LucideIcon> = {
   home: Home,
@@ -55,6 +56,10 @@ const ui = useUiStore();
 const serverStore = useServerStore();
 const pluginStore = usePluginStore();
 const navIndicator = ref<HTMLElement | null>(null);
+const sidebarTransitioning = ref(false);
+const isMacOS = isMacOSPlatform();
+let indicatorSyncInterval: ReturnType<typeof setInterval> | null = null;
+let indicatorSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 interface NavItem {
   name: string;
@@ -266,13 +271,37 @@ function updateNavIndicator() {
   });
 }
 
+function startIndicatorSyncDuringSidebarTransition() {
+  if (indicatorSyncInterval) {
+    clearInterval(indicatorSyncInterval);
+    indicatorSyncInterval = null;
+  }
+  if (indicatorSyncTimeout) {
+    clearTimeout(indicatorSyncTimeout);
+    indicatorSyncTimeout = null;
+  }
+
+  sidebarTransitioning.value = true;
+  indicatorSyncInterval = setInterval(() => {
+    updateNavIndicator();
+  }, 16);
+
+  indicatorSyncTimeout = setTimeout(() => {
+    if (indicatorSyncInterval) {
+      clearInterval(indicatorSyncInterval);
+      indicatorSyncInterval = null;
+    }
+    sidebarTransitioning.value = false;
+    updateNavIndicator();
+  }, 360);
+}
+
 // 监听侧边栏折叠状态变化，更新指示器位置
 watch(
   () => ui.sidebarCollapsed,
   () => {
-    setTimeout(() => {
-      updateNavIndicator();
-    }, 350);
+    updateNavIndicator();
+    startIndicatorSyncDuringSidebarTransition();
   },
 );
 
@@ -338,6 +367,15 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (indicatorSyncInterval) {
+    clearInterval(indicatorSyncInterval);
+    indicatorSyncInterval = null;
+  }
+  if (indicatorSyncTimeout) {
+    clearTimeout(indicatorSyncTimeout);
+    indicatorSyncTimeout = null;
+  }
+
   window.removeEventListener("resize", updateNavIndicator);
 
   // 移除侧边栏滚动监听
@@ -390,7 +428,14 @@ function getAppName() {
 </script>
 
 <template>
-  <aside class="sidebar glass-strong" :class="{ collapsed: ui.sidebarCollapsed }">
+  <aside
+    class="sidebar glass-strong"
+    :class="{
+      collapsed: ui.sidebarCollapsed,
+      'macos-overlay': isMacOS,
+      'sidebar-transitioning': sidebarTransitioning,
+    }"
+  >
     <div class="sidebar-logo" @click="navigateTo('/')">
       <div class="logo-icon">
         <img :src="logoSvg" width="28" height="28" :alt="i18n.t('common.app_name')" />

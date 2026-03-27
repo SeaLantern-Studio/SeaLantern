@@ -50,6 +50,8 @@ function handlePickFolder() {
           :placeholder="i18n.t('downloadServerView.form.typePlaceholder')"
           :disabled="loadingTypes || isDownloading"
           :loading="loadingTypes"
+          searchable
+          maxHeight="240px"
           @update:modelValue="emit('update:selectedType', $event)"
         />
       </div>
@@ -64,6 +66,8 @@ function handlePickFolder() {
           :placeholder="i18n.t('downloadServerView.form.versionPlaceholder')"
           :disabled="loadingVersions || !selectedType || isDownloading"
           :loading="loadingVersions"
+          searchable
+          maxHeight="240px"
           @update:modelValue="emit('update:selectedVersion', $event)"
         />
       </div>
