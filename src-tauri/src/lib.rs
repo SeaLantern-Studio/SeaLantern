@@ -27,7 +27,7 @@ use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager,
+    Emitter, Listener, Manager, TitleBarStyle,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -279,6 +279,17 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.set_decorations(true) {
+                    eprintln!("Failed to enable native macOS window decorations: {}", e);
+                }
+
+                if let Err(e) = window.set_title_bar_style(TitleBarStyle::Overlay) {
+                    eprintln!("Failed to set macOS title bar style to overlay: {}", e);
+                }
+            }
+
             // 初始化插件管理
             // 插件目录与其他模块共用同一套数据目录选择规则
             let app_data_dir = crate::utils::path::get_app_data_dir();

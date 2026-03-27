@@ -37,6 +37,18 @@
   flex-shrink: 0;
 }
 
+.sidebar.macos-overlay .sidebar-logo {
+  margin-top: 16px;
+}
+
+.sidebar.macos-overlay .sidebar-nav {
+  padding-top: 0;
+}
+
+.sidebar.macos-overlay .server-selector {
+  padding-top: 0;
+}
+
 .logo-icon {
   flex-shrink: 0;
   display: flex;

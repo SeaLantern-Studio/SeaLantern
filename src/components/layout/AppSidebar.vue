@@ -55,6 +55,7 @@ const ui = useUiStore();
 const serverStore = useServerStore();
 const pluginStore = usePluginStore();
 const navIndicator = ref<HTMLElement | null>(null);
+const isMacOS = /Macintosh|Mac OS X/i.test(navigator.userAgent);
 
 interface NavItem {
   name: string;
@@ -390,7 +391,10 @@ function getAppName() {
 </script>
 
 <template>
-  <aside class="sidebar glass-strong" :class="{ collapsed: ui.sidebarCollapsed }">
+  <aside
+    class="sidebar glass-strong"
+    :class="{ collapsed: ui.sidebarCollapsed, 'macos-overlay': isMacOS }"
+  >
     <div class="sidebar-logo" @click="navigateTo('/')">
       <div class="logo-icon">
         <img :src="logoSvg" width="28" height="28" :alt="i18n.t('common.app_name')" />

@@ -25,6 +25,7 @@ const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
 const isMaximized = ref(false);
+const isMacOS = /Macintosh|Mac OS X/i.test(navigator.userAgent);
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -266,7 +267,11 @@ function computeOverallProgress() {
 </script>
 
 <template>
-  <header class="app-header glass-strong">
+  <header
+    class="app-header"
+    :class="{ 'macos-overlay': isMacOS, 'glass-strong': !isMacOS }"
+    data-tauri-drag-region
+  >
     <div class="header-center" data-tauri-drag-region></div>
 
     <div class="header-right">
@@ -312,7 +317,7 @@ function computeOverallProgress() {
         <span class="status-text">{{ i18n.t("common.app_name") }}</span>
       </div>
 
-      <div class="window-controls">
+      <div v-if="!isMacOS" class="window-controls">
         <button class="win-btn" @click="minimizeWindow" :title="i18n.t('common.minimize')">
           <Minus :size="12" />
         </button>
