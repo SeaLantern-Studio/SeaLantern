@@ -7,6 +7,7 @@ import { i18n } from "@language";
 import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 import { isMacOSPlatform } from "@utils/platform";
@@ -90,6 +91,7 @@ const otherLanguages = computed(() => {
 
 const showMoreLanguages = ref(false);
 let unlistenResize: (() => void) | null = null;
+let unlistenCloseRequested: UnlistenFn | null = null;
 
 function toggleMoreLanguages() {
   showMoreLanguages.value = !showMoreLanguages.value;
@@ -133,6 +135,10 @@ onMounted(async () => {
     isMaximized.value = await appWindow.isMaximized();
   });
 
+  unlistenCloseRequested = await listen("close-requested", () => {
+    showCloseModal.value = true;
+  });
+
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
@@ -140,6 +146,10 @@ onUnmounted(() => {
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (unlistenResize) {
     unlistenResize();
+  }
+  if (unlistenCloseRequested) {
+    unlistenCloseRequested();
+    unlistenCloseRequested = null;
   }
 });
 
