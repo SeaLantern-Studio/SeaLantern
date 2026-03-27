@@ -1083,7 +1083,7 @@ dependencies = [
 
 [[package]]
 name = "docker-entry"
-version = "1.0.2"
+version = "1.1.0"
 dependencies = [
  "sea-lantern",
 ]
@@ -4419,7 +4419,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "sea-lantern"
-version = "1.0.2"
+version = "1.1.0"
 dependencies = [
  "axum",
  "base64 0.22.1",

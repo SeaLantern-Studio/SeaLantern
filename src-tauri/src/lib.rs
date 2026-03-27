@@ -674,7 +674,7 @@ pub fn run() {
                             // On macOS, try to find the .app bundle and use open command
                             if let Some(app_bundle_path) = app_path
                                 .ancestors()
-                                .find(|p| p.extension().map_or(false, |ext| ext == "app"))
+                                .find(|p| p.extension().is_some_and(|ext| ext == "app"))
                             {
                                 match std::process::Command::new("open")
                                         .arg("-n") // Open a new instance
