@@ -24,13 +24,13 @@ use crate::services::download_manager::DownloadManager;
 use plugins::manager::PluginManager;
 
 use std::sync::{Arc, Mutex};
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Listener, Manager,
 };
-#[cfg(target_os = "macos")]
-use tauri::TitleBarStyle;
 #[cfg(target_os = "macos")]
 use window_vibrancy::{
     apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
