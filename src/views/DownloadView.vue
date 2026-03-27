@@ -21,6 +21,7 @@ const { loading: submitting, start: startLoading, stop: stopLoading } = useLoadi
 
 // Tab state
 const activeTab = ref<"file" | "server">("server");
+const taskOriginTab = ref<"file" | "server" | null>(null);
 
 const tabs = computed(() => [
   { key: "server" as const, label: i18n.t("downloadServerView.title") },
@@ -62,6 +63,12 @@ const {
 } = downloadApi.useDownload();
 
 const isDownloading = computed(() => taskInfo.id !== "" && !taskInfo.isFinished);
+const isTaskVisibleForCurrentTab = computed(
+  () => taskInfo.id !== "" && taskOriginTab.value === activeTab.value,
+);
+const isDownloadCompleted = computed(
+  () => isTaskVisibleForCurrentTab.value && taskInfo.isFinished && !taskError.value,
+);
 const loadingAny = computed(() => loadingTypes.value || loadingVersions.value || loadingInfo.value);
 const combinedLoading = computed(() => submitting.value || isDownloading.value || loadingAny.value);
 
@@ -108,7 +115,24 @@ const canServerDownload = computed(() => {
 });
 
 const canGoCreate = computed(() => {
-  return taskInfo.isFinished && !taskError.value;
+  return (
+    taskOriginTab.value === "server" &&
+    isTaskVisibleForCurrentTab.value &&
+    taskInfo.isFinished &&
+    !taskError.value
+  );
+});
+
+const fileDownloadButtonLabel = computed(() => {
+  if (isDownloading.value) return i18n.t("download-file.downloading");
+  if (isDownloadCompleted.value) return i18n.t("downloadServerView.status.finished");
+  return i18n.t("download-file.download");
+});
+
+const serverDownloadButtonLabel = computed(() => {
+  if (isDownloading.value) return i18n.t("downloadServerView.actions.downloading");
+  if (isDownloadCompleted.value) return i18n.t("downloadServerView.status.finished");
+  return i18n.t("downloadServerView.actions.startDownload");
 });
 
 const savePathPreview = computed(() => {
@@ -246,6 +270,7 @@ async function cancelDownload() {
     }
 
     resetTask();
+    taskOriginTab.value = null;
   } catch (e) {
     showError(String(e));
   } finally {
@@ -273,6 +298,7 @@ async function handleFileDownload() {
 
   clearError();
   resetTask();
+  taskOriginTab.value = "file";
   startLoading();
 
   try {
@@ -296,6 +322,7 @@ async function handleServerDownload() {
 
   clearError();
   resetTask();
+  taskOriginTab.value = "server";
   startLoading();
 
   const targetPath = buildServerSavePath();
@@ -319,7 +346,7 @@ async function handleServerDownload() {
 
 const statusLabel = computed(() => {
   if (taskError.value) return i18n.t("download-file.failed");
-  if (taskInfo.isFinished) return i18n.t("download-file.completed");
+  if (taskInfo.isFinished) return i18n.t("downloadServerView.status.finished");
   return i18n.t("download-file.downloading");
 });
 
@@ -403,27 +430,23 @@ onMounted(() => {
       </SLButton>
       <SLButton
         v-if="activeTab === 'file'"
-        variant="primary"
+        :variant="isDownloadCompleted ? 'success' : 'primary'"
         size="lg"
         :disabled="!canFileDownload"
         @click="handleFileDownload"
         :loading="combinedLoading"
       >
-        {{ isDownloading ? i18n.t("download-file.downloading") : i18n.t("download-file.download") }}
+        {{ fileDownloadButtonLabel }}
       </SLButton>
       <SLButton
         v-else-if="activeTab === 'server'"
-        variant="primary"
+        :variant="isDownloadCompleted ? 'success' : 'primary'"
         size="lg"
         :disabled="!canServerDownload"
         @click="handleServerDownload"
         :loading="combinedLoading"
       >
-        {{
-          isDownloading
-            ? i18n.t("downloadServerView.actions.downloading")
-            : i18n.t("downloadServerView.actions.startDownload")
-        }}
+        {{ serverDownloadButtonLabel }}
       </SLButton>
       <SLButton
         v-if="activeTab === 'server'"
@@ -438,7 +461,7 @@ onMounted(() => {
 
     <!-- Download progress -->
     <Transition name="fade">
-      <div v-if="taskInfo.id" class="bottom-progress-area">
+      <div v-if="isTaskVisibleForCurrentTab" class="bottom-progress-area">
         <DownloadProgress :taskInfo="taskInfo" :taskError="taskError" :statusLabel="statusLabel" />
       </div>
     </Transition>

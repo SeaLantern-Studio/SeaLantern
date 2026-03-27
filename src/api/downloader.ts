@@ -89,28 +89,42 @@ export const downloadApi = {
     const isSuccess = computed(() => taskInfo.status === "Completed");
 
     let timer: number | null = null;
+    let isPolling = false;
 
     const start = async (options: DownloadOptions) => {
       taskInfo.isFinished = false;
       taskInfo.progress = 0;
+      taskInfo.status = "Pending";
+      isPolling = false;
 
       try {
         const id = await this.downloadFile(options);
         taskInfo.id = id;
 
         timer = window.setInterval(async () => {
+          if (isPolling || taskInfo.id !== id || taskInfo.isFinished) {
+            return;
+          }
+
+          isPolling = true;
           try {
             const data = await this.pollTask(id);
+            if (taskInfo.id !== id) {
+              return;
+            }
+
             Object.assign(taskInfo, data);
             if (data.isFinished) {
-              data.progress = 100;
+              taskInfo.progress = 100;
               stop();
             }
           } catch (err) {
-            if (!taskInfo.isFinished) {
+            if (taskInfo.id === id && !taskInfo.isFinished) {
               taskInfo.status = { Error: i18n.t("downloader.connection_lost") };
             }
             stop();
+          } finally {
+            isPolling = false;
           }
         }, 800);
       } catch (err: any) {
@@ -124,6 +138,7 @@ export const downloadApi = {
         clearInterval(timer);
         timer = null;
       }
+      isPolling = false;
     };
 
     const reset = () => {
