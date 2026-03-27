@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
-import { useRoute } from "vue-router";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X, ChevronDown, ChevronUp, Copy } from "lucide-vue-next";
 import { useI18nStore } from "@stores/i18nStore";
@@ -8,35 +7,25 @@ import { i18n } from "@language";
 import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
-import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
+import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
+import { isMacOSPlatform } from "@utils/platform";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
   type SettingsUpdateEvent,
 } from "@stores/settingsStore";
 
-const route = useRoute();
 const appWindow = getCurrentWindow();
 const i18nStore = useI18nStore();
 const showCloseModal = ref(false);
-const perLocaleProgress = reactive<Record<string, { loaded: number; total: number | null }>>({});
 const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
 const isMaximized = ref(false);
-
-const pageTitle = computed(() => {
-  const titleKey = route.meta?.titleKey as string;
-  if (titleKey) {
-    return i18n.t(titleKey);
-  }
-  return i18n.t("common.app_name");
-});
+const isMacOS = isMacOSPlatform();
 
 const primaryLanguages = computed(() => {
-  // 为了确保语言切换时重新计算，我们使用 i18nStore.currentLocale 作为依赖
-  const currentLocale = i18nStore.currentLocale;
   const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
 
   return primaryCodes.map((code) => {
@@ -66,8 +55,6 @@ const primaryLanguages = computed(() => {
 });
 
 const otherLanguages = computed(() => {
-  // 为了确保语言切换时重新计算，我们使用 i18nStore.currentLocale 作为依赖
-  const currentLocale = i18nStore.currentLocale;
   const primaryCodes = new Set(["zh-CN", "zh-TW", "en-US", "ja-JP"]);
   const allLocales = i18n.getAvailableLocales();
 
@@ -252,21 +239,14 @@ async function handleLanguageClick(locale: string, close?: () => void) {
     isChangingLanguage.value = false;
   }
 }
-
-function computeOverallProgress() {
-  const locales = Object.keys(perLocaleProgress);
-  if (locales.length === 0) return 0;
-  const completed = locales.filter(
-    (k) =>
-      perLocaleProgress[k].total &&
-      perLocaleProgress[k].loaded >= (perLocaleProgress[k].total ?? 0),
-  ).length;
-  return Math.round((completed / locales.length) * 100);
-}
 </script>
 
 <template>
-  <header class="app-header glass-strong">
+  <header
+    class="app-header"
+    :class="{ 'macos-overlay': isMacOS, 'glass-strong': !isMacOS }"
+    data-tauri-drag-region
+  >
     <div class="header-center" data-tauri-drag-region></div>
 
     <div class="header-right">
@@ -312,7 +292,7 @@ function computeOverallProgress() {
         <span class="status-text">{{ i18n.t("common.app_name") }}</span>
       </div>
 
-      <div class="window-controls">
+      <div v-if="!isMacOS" class="window-controls">
         <button class="win-btn" @click="minimizeWindow" :title="i18n.t('common.minimize')">
           <Minus :size="12" />
         </button>

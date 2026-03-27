@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { FolderOpen, Link, FileText, Cpu } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
@@ -21,7 +20,6 @@ const emit = defineEmits<{
   (e: "update:filename", value: string): void;
   (e: "update:threadCount", value: string): void;
   (e: "checkUrl"): void;
-  (e: "checkFilename"): void;
   (e: "pickFolder"): void;
   (e: "checkThreadCount"): void;
 }>();
@@ -86,7 +84,6 @@ function handlePickFolder() {
         :placeholder="i18n.t('download-file.filename_placeholder')"
         :disabled="isDownloading"
         @update:modelValue="emit('update:filename', $event)"
-        @blur="emit('checkFilename')"
       >
         <template #prefix>
           <FileText :size="16" class="input-icon" />

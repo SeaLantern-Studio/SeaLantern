@@ -35,6 +35,26 @@
   height: 60px;
   cursor: pointer;
   flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sidebar.macos-overlay .sidebar-logo {
+  margin-top: 16px;
+}
+
+.sidebar.macos-overlay {
+  background: var(--sl-bg);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.sidebar.macos-overlay .sidebar-nav {
+  padding-top: 0;
+}
+
+.sidebar.macos-overlay .server-selector {
+  padding-top: 0;
 }
 
 .logo-icon {
@@ -49,6 +69,8 @@
   font-weight: 700;
   white-space: nowrap;
   letter-spacing: -0.01em;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .sidebar-nav {
@@ -59,6 +81,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .nav-group {
@@ -73,8 +97,21 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
-  border-bottom: 1px solid var(--sl-border);
+  border-bottom: none;
   margin-bottom: var(--sl-space-xs);
+  position: relative;
+}
+
+.nav-group-label::after {
+  content: "";
+  position: absolute;
+  left: var(--sl-space-sm);
+  right: var(--sl-space-sm);
+  bottom: 0;
+  height: 1px;
+  border-radius: var(--sl-radius-full);
+  background: var(--sl-border);
+  opacity: 0.75;
 }
 
 .server-selector {
@@ -83,7 +120,13 @@
 }
 
 .sidebar.collapsed .server-selector {
-  padding: 1px;
+  padding: var(--sl-space-sm);
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar.macos-overlay.collapsed .server-selector {
+  padding-top: 0;
 }
 
 .nav-item {
@@ -103,6 +146,8 @@
   white-space: nowrap;
   margin-top: 5px;
   min-height: 36px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .nav-item:hover {
@@ -195,12 +240,18 @@
 }
 
 .sidebar.collapsed .nav-group-label {
-  visibility: hidden;
-  opacity: 0;
-  height: 0;
-  padding: 0;
-  margin-bottom: 0;
-  border-bottom: 1px solid var(--sl-border);
+  visibility: visible;
+  opacity: 1;
+  padding: var(--sl-space-xs) var(--sl-space-sm);
+  margin-bottom: var(--sl-space-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.sidebar.sidebar-transitioning .nav-active-indicator {
+  transition: none;
 }
 
 .sidebar.collapsed .nav-children {

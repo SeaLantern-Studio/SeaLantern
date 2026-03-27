@@ -714,7 +714,7 @@
       "cancel": "취소",
       "startDownload": "다운로드 시작",
       "downloading": "다운로드 중",
-      "goCreatePage": "CreatePage로 이동"
+      "goCreatePage": "서버 생성으로 이동"
     }
   }
 }

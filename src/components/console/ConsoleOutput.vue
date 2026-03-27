@@ -226,12 +226,19 @@ onMounted(() => {
     letterSpacing: props.consoleLetterSpacing,
     lineHeight: 1,
     scrollback: Math.max(100, props.maxLogLines),
+    overviewRuler: {
+      width: 4,
+    },
     theme: {
       background: cssVar("--sl-bg-secondary", "#111827"),
       foreground: cssVar("--sl-text-primary", "#e5e7eb"),
       cursor: "transparent",
       cursorAccent: "transparent",
       selectionBackground: cssVar("--sl-primary-bg", "#1e3a8a"),
+      scrollbarSliderBackground: "rgba(94, 122, 145, 0.18)",
+      scrollbarSliderHoverBackground: "rgba(94, 122, 145, 0.34)",
+      scrollbarSliderActiveBackground: "rgba(94, 122, 145, 0.48)",
+      overviewRulerBorder: "rgba(0, 0, 0, 0)",
     },
   });
 
@@ -358,6 +365,22 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
 .terminal-host :deep(.xterm-viewport) {
   overflow-y: auto !important;
   background: var(--sl-bg-secondary);
+}
+
+.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar) {
+  background: transparent !important;
+}
+
+.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar.vertical) {
+  width: 4px !important;
+}
+
+.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar > .slider) {
+  border-radius: 999px;
+  border: none;
+  transition:
+    background-color 0.16s ease,
+    opacity 0.16s ease;
 }
 
 .scroll-btn {
