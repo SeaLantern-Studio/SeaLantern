@@ -17,6 +17,7 @@ import {
   applyDeveloperMode,
   isThemeProviderActive,
 } from "@utils/theme";
+import { isMacOSPlatform } from "@utils/platform";
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();
@@ -26,7 +27,7 @@ const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
 const backgroundBlur = computed(() => settingsStore.backgroundBlur);
 const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
 const backgroundSize = computed(() => settingsStore.backgroundSize);
-const isMacOS = /Macintosh|Mac OS X/i.test(navigator.userAgent);
+const isMacOS = isMacOSPlatform();
 
 let systemThemeQuery: MediaQueryList | null = null;
 let lastNativeAcrylic: boolean | null = null;

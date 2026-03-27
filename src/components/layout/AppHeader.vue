@@ -9,6 +9,7 @@ import SLButton from "@components/common/SLButton.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
+import { isMacOSPlatform } from "@utils/platform";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -22,7 +23,7 @@ const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
 const isMaximized = ref(false);
-const isMacOS = /Macintosh|Mac OS X/i.test(navigator.userAgent);
+const isMacOS = isMacOSPlatform();
 
 const primaryLanguages = computed(() => {
   const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];

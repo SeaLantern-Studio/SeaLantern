@@ -89,44 +89,62 @@ export const downloadApi = {
     const isSuccess = computed(() => taskInfo.status === "Completed");
 
     let timer: number | null = null;
-    let isPolling = false;
+    let activeSession = 0;
 
     const start = async (options: DownloadOptions) => {
+      stop();
+
+      const session = ++activeSession;
       taskInfo.isFinished = false;
       taskInfo.progress = 0;
       taskInfo.status = "Pending";
-      isPolling = false;
 
       try {
         const id = await this.downloadFile(options);
-        taskInfo.id = id;
+        if (session !== activeSession) return;
 
-        timer = window.setInterval(async () => {
-          if (isPolling || taskInfo.id !== id || taskInfo.isFinished) {
+        taskInfo.id = id;
+        let pollingInFlight = false;
+
+        const intervalId = window.setInterval(async () => {
+          if (session !== activeSession) {
+            clearInterval(intervalId);
+            if (timer === intervalId) timer = null;
             return;
           }
 
-          isPolling = true;
+          if (pollingInFlight || taskInfo.id !== id || taskInfo.isFinished) {
+            if (taskInfo.id !== id || taskInfo.isFinished) {
+              clearInterval(intervalId);
+              if (timer === intervalId) timer = null;
+            }
+            return;
+          }
+
+          pollingInFlight = true;
           try {
             const data = await this.pollTask(id);
-            if (taskInfo.id !== id) {
+            if (session !== activeSession || taskInfo.id !== id) {
               return;
             }
 
             Object.assign(taskInfo, data);
             if (data.isFinished) {
               taskInfo.progress = 100;
-              stop();
+              clearInterval(intervalId);
+              if (timer === intervalId) timer = null;
             }
           } catch (err) {
-            if (taskInfo.id === id && !taskInfo.isFinished) {
+            if (session === activeSession && taskInfo.id === id && !taskInfo.isFinished) {
               taskInfo.status = { Error: i18n.t("downloader.connection_lost") };
             }
-            stop();
+            clearInterval(intervalId);
+            if (timer === intervalId) timer = null;
           } finally {
-            isPolling = false;
+            pollingInFlight = false;
           }
         }, 800);
+        timer = intervalId;
       } catch (err: any) {
         taskInfo.status = { Error: err.toString() };
         taskInfo.isFinished = true;
@@ -134,11 +152,11 @@ export const downloadApi = {
     };
 
     const stop = () => {
+      activeSession += 1;
       if (timer) {
         clearInterval(timer);
         timer = null;
       }
-      isPolling = false;
     };
 
     const reset = () => {

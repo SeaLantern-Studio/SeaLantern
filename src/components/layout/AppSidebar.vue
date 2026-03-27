@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
+import { isMacOSPlatform } from "@utils/platform";
 
 const iconMap: Record<string, LucideIcon> = {
   home: Home,
@@ -56,7 +57,7 @@ const serverStore = useServerStore();
 const pluginStore = usePluginStore();
 const navIndicator = ref<HTMLElement | null>(null);
 const sidebarTransitioning = ref(false);
-const isMacOS = /Macintosh|Mac OS X/i.test(navigator.userAgent);
+const isMacOS = isMacOSPlatform();
 let indicatorSyncInterval: ReturnType<typeof setInterval> | null = null;
 let indicatorSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 
