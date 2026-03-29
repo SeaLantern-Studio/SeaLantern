@@ -279,11 +279,13 @@ function isActive(code: string) {
     :class="{ 'macos-overlay': isMacOS, 'glass-strong': !isMacOS }"
     data-tauri-drag-region
   >
-    <div class="header-left">
+    <div class="header-left" v-if="!isMacOS">
       <h2 class="page-title" data-tauri-drag-region>{{ pageTitle }}</h2>
     </div>
 
-    <div class="header-center"></div>
+    <div class="header-center">
+      <h2 class="page-title" v-if="isMacOS" data-tauri-drag-region>{{ pageTitle }}</h2>
+    </div>
 
     <div class="header-right">
       <Menu as="div" class="language-selector">
