@@ -256,12 +256,16 @@ function isActive(code: string) {
 </script>
 
 <template>
-  <header class="app-header" :class="{ 'macos-overlay': isMacOS, 'glass-strong': !isMacOS }">
+  <header
+    class="app-header"
+    :class="{ 'macos-overlay': isMacOS, 'glass-strong': !isMacOS }"
+    data-tauri-drag-region
+  >
     <div class="header-left">
-      <h2 class="page-title">{{ pageTitle }}</h2>
+      <h2 class="page-title" data-tauri-drag-region>{{ pageTitle }}</h2>
     </div>
 
-    <div class="header-center" data-tauri-drag-region></div>
+    <div class="header-center"></div>
 
     <div class="header-right">
       <Menu as="div" class="language-selector">
