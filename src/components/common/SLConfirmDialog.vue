@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from "vue";
-import { X } from "lucide-vue-next";
+import { ref, watch, computed } from "vue";
+import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
@@ -33,10 +33,10 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-  (e: "confirm"): void;
-  (e: "cancel"): void;
-  (e: "close"): void;
-  (e: "update:visible", value: boolean): void;
+  confirm: [];
+  cancel: [];
+  close: [];
+  "update:visible": [value: boolean];
 }>();
 
 const inputValue = ref("");
@@ -79,185 +79,71 @@ function handleClose(): void {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
-  if (event.key === "Escape") {
-    handleCancel();
-  } else if (event.key === "Enter" && !isConfirmDisabled.value) {
+  if (event.key === "Enter" && !isConfirmDisabled.value) {
     handleConfirm();
   }
 }
-
-function handleOverlayClick(event: MouseEvent): void {
-  if (event.target === event.currentTarget) {
-    handleCancel();
-  }
-}
-
-onMounted(() => {
-  document.addEventListener("keydown", handleKeydown);
-});
-
-onUnmounted(() => {
-  document.removeEventListener("keydown", handleKeydown);
-});
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="confirm-fade">
-      <div v-if="visible" class="confirm-overlay" @click="handleOverlayClick">
-        <div class="confirm-dialog" :class="{ 'confirm-dialog--danger': dangerous }" @click.stop>
-          <div class="confirm-header">
-            <h3 class="confirm-title">{{ title }}</h3>
-            <button
-              class="confirm-close"
-              @click="handleClose"
-              :aria-label="i18n.t('common.close_modal')"
-            >
-              <X :size="18" />
-            </button>
-          </div>
+  <SLModal :visible="visible" :title="title" width="420px" @close="handleClose">
+    <div
+      class="confirm-content"
+      :class="{ 'confirm-content--danger': dangerous }"
+      @keydown="handleKeydown"
+    >
+      <p v-if="message" class="confirm-message" v-html="message"></p>
 
-          <div class="confirm-body">
-            <p v-if="message" class="confirm-message" v-html="message"></p>
-
-            <div v-if="requireInput" class="confirm-input-group">
-              <SLInput
-                ref="inputRef"
-                v-model="inputValue"
-                :placeholder="inputPlaceholder"
-                @keyup.enter="handleConfirm"
-                @keyup.escape="handleCancel"
-              />
-              <p v-if="inputError" class="confirm-error">{{ inputError }}</p>
-            </div>
-          </div>
-
-          <div class="confirm-footer">
-            <SLButton variant="secondary" :disabled="loading" @click="handleCancel">
-              {{ cancelText }}
-            </SLButton>
-            <SLButton
-              :variant="confirmVariant"
-              :loading="loading"
-              :disabled="isConfirmDisabled"
-              @click="handleConfirm"
-            >
-              {{ confirmText }}
-            </SLButton>
-          </div>
-        </div>
+      <div v-if="requireInput" class="confirm-input-group">
+        <SLInput
+          ref="inputRef"
+          v-model="inputValue"
+          :placeholder="inputPlaceholder"
+          @keyup.enter="handleConfirm"
+          @keyup.escape="handleCancel"
+        />
+        <p v-if="inputError" class="confirm-error">{{ inputError }}</p>
       </div>
-    </Transition>
-  </Teleport>
+    </div>
+
+    <template #footer>
+      <div class="confirm-footer">
+        <SLButton variant="secondary" :disabled="loading" @click="handleCancel">
+          {{ cancelText }}
+        </SLButton>
+        <SLButton
+          :variant="confirmVariant"
+          :loading="loading"
+          :disabled="isConfirmDisabled"
+          @click="handleConfirm"
+        >
+          {{ confirmText }}
+        </SLButton>
+      </div>
+    </template>
+  </SLModal>
 </template>
 
 <style scoped>
-.confirm-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: var(--sl-space-md);
-}
-
-.confirm-dialog {
-  background: var(--sl-surface);
-  border-radius: var(--sl-radius-lg);
-  box-shadow: var(--sl-shadow-lg);
-  width: 100%;
-  max-width: 420px;
-  overflow: hidden;
-}
-
-.confirm-dialog--danger {
-  border: 1px solid var(--sl-error);
-}
-
-.confirm-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sl-space-md) var(--sl-space-lg);
-  border-bottom: 1px solid var(--sl-border-light);
-}
-
-.confirm-title {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin: 0;
-}
-
-.confirm-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--sl-radius-md);
-  border: none;
-  background: transparent;
-  color: var(--sl-text-tertiary);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.confirm-close::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--sl-error);
-  border-radius: inherit;
-  opacity: 0;
-  transform: scale(0.5);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-
-.confirm-close:hover {
-  color: var(--sl-error);
-  transform: rotate(90deg);
-}
-
-.confirm-close:hover::before {
-  opacity: 0.1;
-  transform: scale(1);
-}
-
-.confirm-close:active {
-  transform: rotate(90deg) scale(0.9);
-}
-
-.confirm-body {
+.confirm-content {
   padding: var(--sl-space-lg);
+}
+
+.confirm-content--danger {
+  border-left: 3px solid var(--sl-error);
+  margin-left: calc(-1 * var(--sl-space-lg));
+  padding-left: calc(var(--sl-space-lg) - 3px);
 }
 
 .confirm-message {
   font-size: 0.875rem;
   color: var(--sl-text-secondary);
   line-height: 1.6;
-  margin: 0 0 var(--sl-space-md) 0;
-}
-
-.confirm-message:last-child {
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .confirm-input-group {
-  margin-top: var(--sl-space-sm);
+  margin-top: var(--sl-space-md);
 }
 
 .confirm-error {
@@ -270,31 +156,5 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: var(--sl-space-sm);
-  padding: var(--sl-space-md) var(--sl-space-lg);
-  border-top: 1px solid var(--sl-border-light);
-  background: var(--sl-bg-secondary);
-}
-
-.confirm-fade-enter-active,
-.confirm-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.confirm-fade-enter-active .confirm-dialog,
-.confirm-fade-leave-active .confirm-dialog {
-  transition: transform 0.2s ease;
-}
-
-.confirm-fade-enter-from,
-.confirm-fade-leave-to {
-  opacity: 0;
-}
-
-.confirm-fade-enter-from .confirm-dialog {
-  transform: scale(0.95) translateY(-10px);
-}
-
-.confirm-fade-leave-to .confirm-dialog {
-  transform: scale(0.95) translateY(10px);
 }
 </style>
