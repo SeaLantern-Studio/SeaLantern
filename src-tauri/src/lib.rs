@@ -18,6 +18,7 @@ use commands::plugin as plugin_commands;
 use commands::server as server_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
+use commands::tunnel as tunnel_commands;
 use commands::update as update_commands;
 
 use crate::services::download_manager::DownloadManager;
@@ -189,6 +190,13 @@ pub fn run() {
             settings_commands::get_plugin_commands,
             settings_commands::update_plugin_commands,
             settings_commands::apply_acrylic,
+            tunnel_commands::tunnel_host,
+            tunnel_commands::tunnel_join,
+            tunnel_commands::tunnel_stop,
+            tunnel_commands::tunnel_status,
+            tunnel_commands::tunnel_copy_ticket,
+            tunnel_commands::tunnel_regenerate_ticket,
+            tunnel_commands::tunnel_generate_ticket,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,
