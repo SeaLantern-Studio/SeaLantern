@@ -8,6 +8,7 @@ pub mod async_loader;
 pub mod download;
 pub mod global;
 pub mod http;
+pub(crate) mod locale_json;
 pub mod i18n;
 pub mod java_detector;
 pub mod mcs_plugin_manager;
