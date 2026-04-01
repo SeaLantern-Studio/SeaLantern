@@ -192,6 +192,10 @@
   color: var(--sl-text-tertiary);
 }
 
+.tunnel-view :deep(.tunnel-logs-card .sl-card-header) {
+  margin-bottom: var(--sl-space-xs);
+}
+
 .tunnel-log-console {
   position: relative;
   min-height: 280px;
@@ -209,7 +213,7 @@
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
-  padding: 8px;
+  padding: 4px 6px;
 }
 
 .tunnel-log-console :deep(.scroll-btn) {

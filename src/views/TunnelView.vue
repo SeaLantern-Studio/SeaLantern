@@ -11,8 +11,11 @@ import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { Copy, Eye, EyeOff, RefreshCw, X } from "lucide-vue-next";
 
+const DEFAULT_HOST_PORT = 25565;
+const DEFAULT_JOIN_LOCAL_PORT = 30000;
+
 const { error, success, clearError, showError, showSuccess, clearAll } = useMessage();
-type PendingAction = "host" | "join" | "stop" | "generate-ticket" | "copy-ticket";
+type PendingAction = "host" | "join" | "stop" | "generate-ticket";
 const pendingAction = ref<PendingAction | null>(null);
 const status = ref<TunnelStatus | null>(null);
 
@@ -25,6 +28,7 @@ const joinTicket = ref("");
 const joinLocalPort = ref("");
 const joinPassword = ref("");
 const showJoinPassword = ref(false);
+const joinTicketAutoFillEnabled = ref(true);
 
 const running = computed(() => status.value?.running ?? false);
 const modeLabel = computed(() => {
@@ -43,7 +47,6 @@ const isIdle = computed(() => !running.value);
 const isBusy = computed(() => pendingAction.value !== null);
 const canCopyTicket = computed(() => hasTicket.value && !isBusy.value);
 const canGenerateTicket = computed(() => isIdle.value && !isBusy.value);
-const canResetTicket = computed(() => hasTicket.value);
 const canStartHost = computed(() => isIdle.value && !isBusy.value);
 const canStartJoin = computed(() => isIdle.value && !isBusy.value);
 const canStopTunnel = computed(() => running.value && !isBusy.value);
@@ -60,6 +63,10 @@ const generateTicketLoading = computed(() => pendingAction.value === "generate-t
 const canClearHostRelay = computed(() => canEditHostForm.value && hostRelayUrl.value.length > 0);
 const canClearJoinTicket = computed(() => canEditJoinForm.value && joinTicket.value.length > 0);
 
+const showConnections = computed(
+  () => running.value && (status.value?.mode === "host" || status.value?.mode === "join"),
+);
+
 interface ConsoleOutputExpose {
   doScroll: () => void;
   appendLines: (lines: string[]) => void;
@@ -74,7 +81,8 @@ const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
 let statusPollTimer: ReturnType<typeof setInterval> | null = null;
-let syncedLogs: string[] = [];
+const syncedLogs = ref<string[]>([]);
+const logsDisplayClearedByUser = ref(false);
 
 function beginAction(action: PendingAction): boolean {
   if (pendingAction.value !== null) return false;
@@ -98,22 +106,26 @@ function parsePort(value: string, fallback: number): number {
 function syncLogOutput(logs: string[]) {
   const output = tunnelOutputRef.value;
   if (!output) {
-    syncedLogs = logs.slice();
+    syncedLogs.value = logs.slice();
     return;
   }
 
-  const canAppend =
-    logs.length >= syncedLogs.length && syncedLogs.every((line, idx) => logs[idx] === line);
+  const prev = syncedLogs.value;
+  const canAppend = logs.length >= prev.length && prev.every((line, idx) => logs[idx] === line);
 
-  if (!canAppend) {
+  const missedInitialWrite =
+    logs.length > 0 && !output.getAllPlainText().trim() && !logsDisplayClearedByUser.value;
+
+  if (!canAppend || missedInitialWrite) {
+    logsDisplayClearedByUser.value = false;
     output.clear();
     if (logs.length > 0) output.appendLines(logs);
   } else {
-    const delta = logs.slice(syncedLogs.length);
+    const delta = logs.slice(prev.length);
     if (delta.length > 0) output.appendLines(delta);
   }
 
-  syncedLogs = logs.slice();
+  syncedLogs.value = logs.slice();
 }
 
 function applyStatus(next: TunnelStatus) {
@@ -122,7 +134,9 @@ function applyStatus(next: TunnelStatus) {
   if (!hostPort.value.trim()) hostPort.value = String(next.host_port);
   if (!joinLocalPort.value.trim()) joinLocalPort.value = String(next.join_port);
   if (!hostRelayUrl.value.trim() && next.relay_url) hostRelayUrl.value = next.relay_url;
-  if (!joinTicket.value.trim() && next.last_ticket) joinTicket.value = next.last_ticket;
+  if (joinTicketAutoFillEnabled.value && !joinTicket.value.trim() && next.last_ticket) {
+    joinTicket.value = next.last_ticket;
+  }
 }
 
 async function loadConsoleSettings() {
@@ -167,7 +181,7 @@ async function startHost() {
   try {
     applyStatus(
       await tunnelApi.host({
-        port: parsePort(hostPort.value, 25565),
+        port: parsePort(hostPort.value, DEFAULT_HOST_PORT),
         password: hostPassword.value.trim() || undefined,
         relayUrl: hostRelayUrl.value.trim() || undefined,
       }),
@@ -185,7 +199,7 @@ async function startJoin() {
     applyStatus(
       await tunnelApi.join({
         ticket: joinTicket.value,
-        localPort: parsePort(joinLocalPort.value, 30000),
+        localPort: parsePort(joinLocalPort.value, DEFAULT_JOIN_LOCAL_PORT),
         password: joinPassword.value.trim() || undefined,
       }),
     );
@@ -208,7 +222,7 @@ async function stopTunnel() {
 }
 
 async function copyTicket() {
-  if (!beginAction("copy-ticket")) return;
+  if (!canCopyTicket.value) return;
   try {
     const copied = await tunnelApi.copyTicket();
     if (copied) {
@@ -219,8 +233,6 @@ async function copyTicket() {
     }
   } catch (e) {
     showError(String(e));
-  } finally {
-    endAction("copy-ticket");
   }
 }
 
@@ -251,6 +263,7 @@ async function copyLogs() {
 function clearLogs() {
   tunnelOutputRef.value?.clear();
   userScrolledUp.value = false;
+  logsDisplayClearedByUser.value = true;
 }
 
 function clearHostRelay() {
@@ -261,6 +274,12 @@ function clearHostRelay() {
 function clearJoinTicket() {
   if (!canClearJoinTicket.value) return;
   joinTicket.value = "";
+  joinTicketAutoFillEnabled.value = false;
+}
+
+function handleJoinTicketInput(value: string) {
+  joinTicket.value = value;
+  joinTicketAutoFillEnabled.value = false;
 }
 
 onMounted(async () => {
@@ -271,6 +290,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopStatusPolling();
+  syncedLogs.value = [];
+  logsDisplayClearedByUser.value = false;
 });
 </script>
 
@@ -301,9 +322,8 @@ onUnmounted(() => {
         <span class="ticket-scroll">
           <span class="ticket-text">{{ status?.ticket || i18n.t("tunnel.no_ticket") }}</span>
         </span>
-        <span v-if="canCopyTicket || canResetTicket" class="ticket-actions">
+        <span v-if="hasTicket" class="ticket-actions">
           <button
-            v-if="canCopyTicket"
             class="ticket-icon-btn"
             :title="i18n.t('tunnel.copy_ticket')"
             :aria-label="i18n.t('tunnel.copy_ticket')"
@@ -313,7 +333,6 @@ onUnmounted(() => {
             <Copy :size="16" />
           </button>
           <button
-            v-if="canResetTicket"
             class="ticket-icon-btn"
             :title="i18n.t('tunnel.generate_ticket')"
             :aria-label="i18n.t('tunnel.generate_ticket')"
@@ -412,9 +431,10 @@ onUnmounted(() => {
       <SLCard :title="i18n.t('tunnel.join_title')" variant="solid" padding="md">
         <div class="form-grid">
           <SLInput
-            v-model="joinTicket"
+            :model-value="joinTicket"
             :label="i18n.t('tunnel.join_ticket')"
             :disabled="!canEditJoinForm"
+            @update:model-value="handleJoinTicketInput"
           >
             <template v-if="joinTicket.length > 0" #suffix>
               <button
@@ -472,7 +492,12 @@ onUnmounted(() => {
       </SLCard>
     </div>
 
-    <SLCard :title="i18n.t('tunnel.connections_title')" variant="solid" padding="md">
+    <SLCard
+      v-if="showConnections"
+      :title="i18n.t('tunnel.connections_title')"
+      variant="solid"
+      padding="md"
+    >
       <div v-if="!status?.connections?.length" class="empty-text">
         {{ i18n.t("tunnel.no_connections") }}
       </div>
@@ -504,7 +529,12 @@ onUnmounted(() => {
       </div>
     </SLCard>
 
-    <SLCard :title="i18n.t('tunnel.logs_title')" variant="solid" padding="md">
+    <SLCard
+      class="tunnel-logs-card"
+      :title="i18n.t('tunnel.logs_title')"
+      variant="solid"
+      padding="sm"
+    >
       <template #actions>
         <div class="log-actions">
           <SLButton variant="secondary" size="sm" @click="copyLogs">

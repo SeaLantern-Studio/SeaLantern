@@ -37,6 +37,7 @@ let resizeObserver: ResizeObserver | null = null;
 let scrollDisposable: { dispose: () => void } | null = null;
 let hasAnyLine = false;
 let terminalTextarea: HTMLTextAreaElement | null = null;
+let emptyStateRenderId = 0;
 
 async function handleCopyShortcut(event: KeyboardEvent) {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
@@ -125,14 +126,18 @@ function fitTerminal() {
   fitAddon?.fit();
 }
 
-function renderEmptyState() {
+function renderEmptyState(renderId = emptyStateRenderId) {
   if (!terminal) return;
-  terminal.write(`\x1b[2m${i18n.t("console.waiting_for_output")}\x1b[0m`);
+  terminal.write("", () => {
+    if (!terminal || hasAnyLine || renderId !== emptyStateRenderId) return;
+    terminal.write(`\x1b[2m${i18n.t("console.waiting_for_output")}\x1b[0m`);
+  });
 }
 
 function appendLines(lines: string[]) {
   if (!terminal) return;
   if (lines.length === 0) return;
+  emptyStateRenderId += 1;
 
   let isFirstLineInBuffer = !hasAnyLine;
   if (!hasAnyLine) {
@@ -158,10 +163,12 @@ function appendLines(lines: string[]) {
 
 function clear() {
   if (!terminal) return;
+  emptyStateRenderId += 1;
+  const renderId = emptyStateRenderId;
   terminal.clear();
   terminal.reset();
   hasAnyLine = false;
-  renderEmptyState();
+  renderEmptyState(renderId);
   emit("scroll", false);
 }
 
@@ -171,7 +178,7 @@ function getAllPlainText(): string {
     excludeAltBuffer: true,
     excludeModes: true,
   });
-  return stripAnsi(serialized).replaceAll("\r", "");
+  return stripAnsi(serialized).replace(/\r/g, "");
 }
 
 function stripAnsi(text: string): string {
@@ -249,7 +256,7 @@ onMounted(() => {
   terminal.loadAddon(clipboardAddon);
   terminal.loadAddon(serializeAddon);
   terminal.open(terminalHost.value);
-  terminalTextarea = terminal.textarea;
+  terminalTextarea = terminal.textarea ?? null;
   if (terminalTextarea) {
     terminalTextarea.tabIndex = -1;
     terminalTextarea.readOnly = true;
