@@ -1,7 +1,9 @@
+use crate::services::global::i18n_service;
 use sculk::persist::{generate_new_key, Profile};
 use sculk::tunnel::{ConnectionSnapshot, HostConfig, IrohTunnel, JoinConfig, Ticket, TunnelEvent};
 use sculk::types::{RelayUrl, SecretKey};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 use tauri::async_runtime::JoinHandle;
@@ -11,6 +13,31 @@ const MAX_LOG_LINES: usize = 200;
 const ONLINE_DIR: &str = "online";
 const PROFILE_FILE: &str = "profile.toml";
 const SECRET_KEY_FILE: &str = "secret.key";
+
+fn tunnel_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn tunnel_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn tunnel_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn tunnel_t3(key: &str, a: impl Into<String>, b: impl Into<String>, c: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    m.insert("2".to_string(), c.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TunnelMode {
@@ -119,15 +146,18 @@ fn load_existing_secret_key(path: &std::path::Path) -> Result<Option<SecretKey>,
             if e.kind() == std::io::ErrorKind::NotFound {
                 return Ok(None);
             }
-            return Err(format!("读取密钥失败: {e}"));
+            return Err(tunnel_t1("tunnel.err.read_key_failed", e.to_string()));
         }
     };
     if bytes.len() != 32 {
-        return Err(format!("密钥长度错误: expected 32, got {}", bytes.len()));
+        return Err(tunnel_t1(
+            "tunnel.err.key_length_invalid",
+            format!("{}", bytes.len()),
+        ));
     }
     let arr: [u8; 32] = bytes
         .try_into()
-        .map_err(|v: Vec<u8>| format!("密钥长度错误: expected 32, got {}", v.len()))?;
+        .map_err(|v: Vec<u8>| tunnel_t1("tunnel.err.key_length_invalid", format!("{}", v.len())))?;
     Ok(Some(SecretKey::from_bytes(&arr)))
 }
 
@@ -143,7 +173,7 @@ fn load_runtime_state() -> TunnelRuntimeState {
     let profile = match Profile::load_from(&profile_path) {
         Ok(p) => p,
         Err(e) => {
-            logs.push(format!("加载 sculk Profile 失败，使用默认值: {e}"));
+            logs.push(tunnel_t1("tunnel.log.load_profile_failed", e.to_string()));
             Profile::default()
         }
     };
@@ -151,7 +181,7 @@ fn load_runtime_state() -> TunnelRuntimeState {
     let secret_key = match load_existing_secret_key(&key_path) {
         Ok(key) => key,
         Err(e) => {
-            logs.push(format!("加载 sculk SecretKey 失败: {e}"));
+            logs.push(tunnel_t1("tunnel.log.load_secret_key_failed", e.to_string()));
             None
         }
     };
@@ -170,7 +200,7 @@ fn load_runtime_state() -> TunnelRuntimeState {
 
 fn save_profile_in_state(state: &mut TunnelRuntimeState) {
     if let Err(e) = state.profile.save_to(&tunnel_profile_path()) {
-        state.logs.push(format!("保存 sculk Profile 失败: {e}"));
+        state.logs.push(tunnel_t1("tunnel.log.save_profile_failed", e.to_string()));
     }
 }
 
@@ -191,7 +221,7 @@ fn parse_relay_url(value: Option<String>) -> Result<Option<RelayUrl>, String> {
     };
     raw.parse::<RelayUrl>()
         .map(Some)
-        .map_err(|e| format!("无效中继地址: {e}"))
+        .map_err(|e| tunnel_t1("tunnel.err.invalid_relay_url", e.to_string()))
 }
 
 fn apply_relay_preference(
@@ -226,20 +256,47 @@ fn map_connection(snapshot: ConnectionSnapshot) -> TunnelConnection {
 
 fn format_event(event: &TunnelEvent) -> String {
     match event {
-        TunnelEvent::PlayerJoined { id } => format!("玩家加入: {id}"),
-        TunnelEvent::PlayerLeft { id, reason } => format!("玩家离开: {id} ({reason})"),
-        TunnelEvent::Connected => "已连接到房主".to_string(),
-        TunnelEvent::Disconnected { reason } => format!("连接断开: {reason}"),
-        TunnelEvent::PathChanged { remote_id, is_relay, rtt_ms } => {
-            let route = if *is_relay { "relay" } else { "direct" };
-            format!("路径变化: {remote_id}, route={route}, rtt={rtt_ms}ms")
+        TunnelEvent::PlayerJoined { id } => tunnel_t1("tunnel.log.player_joined", format!("{id}")),
+        TunnelEvent::PlayerLeft { id, reason } => {
+            tunnel_t2(
+                "tunnel.log.player_left",
+                format!("{id}"),
+                format!("{reason}"),
+            )
         }
-        TunnelEvent::Reconnecting { attempt } => format!("重连中，第 {attempt} 次尝试"),
-        TunnelEvent::Reconnected => "重连成功".to_string(),
-        TunnelEvent::AuthFailed { id } => format!("认证失败: {id}"),
-        TunnelEvent::PlayerRejected { id, reason } => format!("连接被拒绝: {id} ({reason})"),
-        TunnelEvent::Error { message } => format!("错误: {message}"),
-        _ => format!("{event:?}"),
+        TunnelEvent::Connected => tunnel_t("tunnel.log.connected_host"),
+        TunnelEvent::Disconnected { reason } => {
+            tunnel_t1("tunnel.log.disconnected", format!("{reason}"))
+        }
+        TunnelEvent::PathChanged {
+            remote_id,
+            is_relay,
+            rtt_ms,
+        } => {
+            let route_label = if *is_relay {
+                tunnel_t("tunnel.log.route_relay")
+            } else {
+                tunnel_t("tunnel.log.route_direct")
+            };
+            tunnel_t3(
+                "tunnel.log.path_changed",
+                remote_id.to_string(),
+                route_label,
+                format!("{rtt_ms}"),
+            )
+        }
+        TunnelEvent::Reconnecting { attempt } => {
+            tunnel_t1("tunnel.log.reconnecting", format!("{attempt}"))
+        }
+        TunnelEvent::Reconnected => tunnel_t("tunnel.log.reconnected"),
+        TunnelEvent::AuthFailed { id } => tunnel_t1("tunnel.log.auth_failed", format!("{id}")),
+        TunnelEvent::PlayerRejected { id, reason } => tunnel_t2(
+            "tunnel.log.player_rejected",
+            format!("{id}"),
+            format!("{reason}"),
+        ),
+        TunnelEvent::Error { message } => tunnel_t1("tunnel.log.error_event", message.clone()),
+        _ => tunnel_t1("tunnel.log.event_unknown", format!("{event:?}")),
     }
 }
 
@@ -276,7 +333,7 @@ pub async fn host(
     relay_url: Option<String>,
 ) -> Result<TunnelStatus, String> {
     if port == 0 {
-        return Err("端口不能为 0".to_string());
+        return Err(tunnel_t("tunnel.err.port_zero_host"));
     }
 
     let relay = {
@@ -290,7 +347,7 @@ pub async fn host(
         let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
         if state.secret_key.is_none() {
             let key = generate_new_key(&tunnel_key_path())
-                .map_err(|e| format!("生成隧道密钥失败: {e}"))?;
+                .map_err(|e| tunnel_t1("tunnel.err.generate_key_failed", e.to_string()))?;
             state.secret_key = Some(key);
             state.ticket = derive_ticket_for_state(&state);
         }
@@ -306,7 +363,7 @@ pub async fn host(
 
     let (tunnel, ticket, events) = IrohTunnel::host(port, secret_key, relay, config)
         .await
-        .map_err(|e| format!("启动 Host 隧道失败: {e}"))?;
+        .map_err(|e| tunnel_t1("tunnel.err.host_start_failed", e.to_string()))?;
 
     let active = ActiveTunnel {
         mode: TunnelMode::Host,
@@ -324,12 +381,12 @@ pub async fn host(
         });
     }
     set_started(TunnelMode::Host, Some(ticket_str.clone()));
-    push_log(format!("Host 隧道已启动，端口={port}"));
-    push_log(format!("分享票据: {ticket_str}"));
+    push_log(tunnel_t1("tunnel.log.host_started", format!("{port}")));
+    push_log(tunnel_t1("tunnel.log.share_ticket", ticket_str.clone()));
     if sculk::clipboard::clipboard_copy(&ticket_str) {
-        push_log("票据已复制到系统剪贴板".to_string());
+        push_log(tunnel_t("tunnel.log.ticket_copied"));
     } else {
-        push_log("票据复制失败，请手动复制".to_string());
+        push_log(tunnel_t("tunnel.log.ticket_copy_failed_manual"));
     }
 
     Ok(status().await)
@@ -341,23 +398,23 @@ pub async fn join(
     password: Option<String>,
 ) -> Result<TunnelStatus, String> {
     if local_port == 0 {
-        return Err("本地端口不能为 0".to_string());
+        return Err(tunnel_t("tunnel.err.local_port_zero"));
     }
 
     let ticket_trimmed = ticket.trim().to_string();
     if ticket_trimmed.is_empty() {
-        return Err("票据不能为空".to_string());
+        return Err(tunnel_t("tunnel.err.ticket_empty"));
     }
     let parsed_ticket = ticket_trimmed
         .parse::<Ticket>()
-        .map_err(|e| format!("票据格式错误: {e}"))?;
+        .map_err(|e| tunnel_t1("tunnel.err.ticket_format", e.to_string()))?;
 
     stop_previous_for_restart().await;
 
     let config = JoinConfig::default().password(normalize_optional_string(password));
     let (tunnel, events) = IrohTunnel::join(&parsed_ticket, local_port, config)
         .await
-        .map_err(|e| format!("加入隧道失败: {e}"))?;
+        .map_err(|e| tunnel_t1("tunnel.err.join_failed", e.to_string()))?;
 
     let active = ActiveTunnel {
         mode: TunnelMode::Join,
@@ -373,7 +430,7 @@ pub async fn join(
         state.profile.join.last_ticket = Some(ticket_trimmed);
         save_profile_in_state(&mut state);
     }
-    push_log(format!("Join 隧道已启动，本地端口={local_port}"));
+    push_log(tunnel_t1("tunnel.log.join_started", format!("{local_port}")));
 
     Ok(status().await)
 }
@@ -382,24 +439,25 @@ pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
     let (port, relay, key, host_cfg) = {
         let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
         if state.mode != Some(TunnelMode::Host) {
-            return Err("当前不是建房模式，无法重新生成票据".to_string());
+            return Err(tunnel_t("tunnel.err.not_host_mode"));
         }
         let host_cfg = state
             .last_host_config
             .clone()
-            .ok_or_else(|| "缺少建房配置，无法重新生成票据".to_string())?;
+            .ok_or_else(|| tunnel_t("tunnel.err.missing_host_config"))?;
         let key_path = tunnel_key_path();
         if let Err(e) = std::fs::remove_file(&key_path) {
             if e.kind() != std::io::ErrorKind::NotFound {
-                return Err(format!("删除旧密钥失败: {e}"));
+                return Err(tunnel_t1("tunnel.err.delete_old_key_failed", e.to_string()));
             }
         }
-        let key = generate_new_key(&key_path).map_err(|e| format!("重新生成密钥失败: {e}"))?;
+        let key = generate_new_key(&key_path)
+            .map_err(|e| tunnel_t1("tunnel.err.regenerate_key_failed", e.to_string()))?;
         state.secret_key = Some(key.clone());
         let relay = state
             .profile
             .resolve_relay_url(None)
-            .map_err(|e| format!("解析中继地址失败: {e}"))?;
+            .map_err(|e| tunnel_t1("tunnel.err.resolve_relay_failed", e.to_string()))?;
         (state.profile.host.port, relay, key, host_cfg)
     };
 
@@ -410,7 +468,7 @@ pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
         .max_players(host_cfg.max_players);
     let (tunnel, ticket, events) = IrohTunnel::host(port, Some(key), relay, config)
         .await
-        .map_err(|e| format!("重新生成票据失败: {e}"))?;
+        .map_err(|e| tunnel_t1("tunnel.err.regenerate_ticket_failed", e.to_string()))?;
 
     let active = ActiveTunnel {
         mode: TunnelMode::Host,
@@ -421,10 +479,10 @@ pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
 
     replace_with_active_tunnel(active).await;
     set_started(TunnelMode::Host, Some(ticket_str.clone()));
-    push_log("票据已重新生成".to_string());
-    push_log(format!("新票据: {ticket_str}"));
+    push_log(tunnel_t("tunnel.log.ticket_regenerated"));
+    push_log(tunnel_t1("tunnel.log.new_ticket", ticket_str.clone()));
     if sculk::clipboard::clipboard_copy(&ticket_str) {
-        push_log("新票据已复制到系统剪贴板".to_string());
+        push_log(tunnel_t("tunnel.log.new_ticket_copied"));
     }
 
     Ok(status().await)
@@ -436,19 +494,19 @@ pub async fn generate_ticket() -> Result<TunnelStatus, String> {
         active.is_some()
     };
     if active_running {
-        return Err("隧道运行中，无法生成新票据".to_string());
+        return Err(tunnel_t("tunnel.err.tunnel_running_generate"));
     }
 
     {
         let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
         if state.secret_key.is_none() {
             let key = generate_new_key(&tunnel_key_path())
-                .map_err(|e| format!("生成隧道密钥失败: {e}"))?;
+                .map_err(|e| tunnel_t1("tunnel.err.generate_key_failed", e.to_string()))?;
             state.secret_key = Some(key);
         }
         state.ticket = derive_ticket_for_state(&state);
     }
-    push_log("票据已生成".to_string());
+    push_log(tunnel_t("tunnel.log.ticket_generated"));
 
     Ok(status().await)
 }
@@ -458,9 +516,9 @@ pub async fn stop() -> Result<TunnelStatus, String> {
         active.tunnel.close().await;
         active.event_task.abort();
         clear_running_state();
-        push_log("隧道已停止".to_string());
+        push_log(tunnel_t("tunnel.log.tunnel_stopped"));
     } else {
-        push_log("当前没有运行中的隧道".to_string());
+        push_log(tunnel_t("tunnel.log.no_tunnel_running"));
     }
 
     Ok(status().await)
@@ -472,13 +530,13 @@ pub async fn copy_ticket() -> Result<bool, String> {
         state.ticket.clone()
     };
     let Some(ticket) = ticket else {
-        return Err("当前没有可复制的票据".to_string());
+        return Err(tunnel_t("tunnel.err.no_ticket_to_copy"));
     };
     let copied = sculk::clipboard::clipboard_copy(&ticket);
     if copied {
-        push_log("票据已复制到系统剪贴板".to_string());
+        push_log(tunnel_t("tunnel.log.ticket_copied"));
     } else {
-        push_log("票据复制失败".to_string());
+        push_log(tunnel_t("tunnel.log.ticket_copy_failed_short"));
     }
     Ok(copied)
 }

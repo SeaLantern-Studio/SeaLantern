@@ -549,6 +549,114 @@ impl I18nService {
         );
         map.insert("system.set_system_failed".to_string(), "设置 sl.system 失败: {0}".to_string());
 
+        map.insert(
+            "tunnel.log.load_profile_failed".to_string(),
+            "加载 sculk Profile 失败，使用默认值: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.log.load_secret_key_failed".to_string(),
+            "加载 sculk SecretKey 失败: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.log.save_profile_failed".to_string(),
+            "保存 sculk Profile 失败: {0}".to_string(),
+        );
+        map.insert("tunnel.log.player_joined".to_string(), "玩家加入: {0}".to_string());
+        map.insert("tunnel.log.player_left".to_string(), "玩家离开: {0} ({1})".to_string());
+        map.insert("tunnel.log.connected_host".to_string(), "已连接到房主".to_string());
+        map.insert("tunnel.log.disconnected".to_string(), "连接断开: {0}".to_string());
+        map.insert(
+            "tunnel.log.path_changed".to_string(),
+            "路径变化: {0}, route={1}, rtt={2}ms".to_string(),
+        );
+        map.insert("tunnel.log.route_relay".to_string(), "relay".to_string());
+        map.insert("tunnel.log.route_direct".to_string(), "direct".to_string());
+        map.insert(
+            "tunnel.log.reconnecting".to_string(),
+            "重连中，第 {0} 次尝试".to_string(),
+        );
+        map.insert("tunnel.log.reconnected".to_string(), "重连成功".to_string());
+        map.insert("tunnel.log.auth_failed".to_string(), "认证失败: {0}".to_string());
+        map.insert(
+            "tunnel.log.player_rejected".to_string(),
+            "连接被拒绝: {0} ({1})".to_string(),
+        );
+        map.insert("tunnel.log.error_event".to_string(), "错误: {0}".to_string());
+        map.insert("tunnel.log.event_unknown".to_string(), "{0}".to_string());
+        map.insert(
+            "tunnel.log.host_started".to_string(),
+            "Host 隧道已启动，端口={0}".to_string(),
+        );
+        map.insert("tunnel.log.share_ticket".to_string(), "分享票据: {0}".to_string());
+        map.insert(
+            "tunnel.log.ticket_copied".to_string(),
+            "票据已复制到系统剪贴板".to_string(),
+        );
+        map.insert(
+            "tunnel.log.ticket_copy_failed_manual".to_string(),
+            "票据复制失败，请手动复制".to_string(),
+        );
+        map.insert(
+            "tunnel.log.join_started".to_string(),
+            "Join 隧道已启动，本地端口={0}".to_string(),
+        );
+        map.insert("tunnel.log.ticket_regenerated".to_string(), "票据已重新生成".to_string());
+        map.insert("tunnel.log.new_ticket".to_string(), "新票据: {0}".to_string());
+        map.insert(
+            "tunnel.log.new_ticket_copied".to_string(),
+            "新票据已复制到系统剪贴板".to_string(),
+        );
+        map.insert("tunnel.log.ticket_generated".to_string(), "票据已生成".to_string());
+        map.insert("tunnel.log.tunnel_stopped".to_string(), "隧道已停止".to_string());
+        map.insert(
+            "tunnel.log.no_tunnel_running".to_string(),
+            "当前没有运行中的隧道".to_string(),
+        );
+        map.insert("tunnel.log.ticket_copy_failed_short".to_string(), "票据复制失败".to_string());
+
+        map.insert("tunnel.err.port_zero_host".to_string(), "端口不能为 0".to_string());
+        map.insert("tunnel.err.generate_key_failed".to_string(), "生成隧道密钥失败: {0}".to_string());
+        map.insert("tunnel.err.host_start_failed".to_string(), "启动 Host 隧道失败: {0}".to_string());
+        map.insert("tunnel.err.local_port_zero".to_string(), "本地端口不能为 0".to_string());
+        map.insert("tunnel.err.ticket_empty".to_string(), "票据不能为空".to_string());
+        map.insert("tunnel.err.ticket_format".to_string(), "票据格式错误: {0}".to_string());
+        map.insert("tunnel.err.join_failed".to_string(), "加入隧道失败: {0}".to_string());
+        map.insert(
+            "tunnel.err.not_host_mode".to_string(),
+            "当前不是建房模式，无法重新生成票据".to_string(),
+        );
+        map.insert(
+            "tunnel.err.missing_host_config".to_string(),
+            "缺少建房配置，无法重新生成票据".to_string(),
+        );
+        map.insert("tunnel.err.delete_old_key_failed".to_string(), "删除旧密钥失败: {0}".to_string());
+        map.insert(
+            "tunnel.err.regenerate_key_failed".to_string(),
+            "重新生成密钥失败: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.resolve_relay_failed".to_string(),
+            "解析中继地址失败: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.regenerate_ticket_failed".to_string(),
+            "重新生成票据失败: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.tunnel_running_generate".to_string(),
+            "隧道运行中，无法生成新票据".to_string(),
+        );
+        map.insert(
+            "tunnel.err.no_ticket_to_copy".to_string(),
+            "当前没有可复制的票据".to_string(),
+        );
+        map.insert("tunnel.err.read_key_failed".to_string(), "读取密钥失败: {0}".to_string());
+        map.insert(
+            "tunnel.err.key_length_invalid".to_string(),
+            "密钥长度错误: expected 32, got {0}".to_string(),
+        );
+        map.insert("tunnel.err.invalid_relay_url".to_string(), "无效中继地址: {0}".to_string());
+
         map
     }
 
@@ -973,6 +1081,135 @@ impl I18nService {
         map.insert(
             "system.set_system_failed".to_string(),
             "Failed to set sl.system: {0}".to_string(),
+        );
+
+        map.insert(
+            "tunnel.log.load_profile_failed".to_string(),
+            "Failed to load sculk profile, using defaults: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.log.load_secret_key_failed".to_string(),
+            "Failed to load sculk secret key: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.log.save_profile_failed".to_string(),
+            "Failed to save sculk profile: {0}".to_string(),
+        );
+        map.insert("tunnel.log.player_joined".to_string(), "Player joined: {0}".to_string());
+        map.insert("tunnel.log.player_left".to_string(), "Player left: {0} ({1})".to_string());
+        map.insert("tunnel.log.connected_host".to_string(), "Connected to host".to_string());
+        map.insert("tunnel.log.disconnected".to_string(), "Disconnected: {0}".to_string());
+        map.insert(
+            "tunnel.log.path_changed".to_string(),
+            "Path changed: {0}, route={1}, rtt={2}ms".to_string(),
+        );
+        map.insert("tunnel.log.route_relay".to_string(), "relay".to_string());
+        map.insert("tunnel.log.route_direct".to_string(), "direct".to_string());
+        map.insert(
+            "tunnel.log.reconnecting".to_string(),
+            "Reconnecting, attempt {0}".to_string(),
+        );
+        map.insert("tunnel.log.reconnected".to_string(), "Reconnected".to_string());
+        map.insert("tunnel.log.auth_failed".to_string(), "Authentication failed: {0}".to_string());
+        map.insert(
+            "tunnel.log.player_rejected".to_string(),
+            "Connection rejected: {0} ({1})".to_string(),
+        );
+        map.insert("tunnel.log.error_event".to_string(), "Error: {0}".to_string());
+        map.insert("tunnel.log.event_unknown".to_string(), "{0}".to_string());
+        map.insert(
+            "tunnel.log.host_started".to_string(),
+            "Host tunnel started, port={0}".to_string(),
+        );
+        map.insert("tunnel.log.share_ticket".to_string(), "Share ticket: {0}".to_string());
+        map.insert(
+            "tunnel.log.ticket_copied".to_string(),
+            "Ticket copied to clipboard".to_string(),
+        );
+        map.insert(
+            "tunnel.log.ticket_copy_failed_manual".to_string(),
+            "Failed to copy ticket; copy manually".to_string(),
+        );
+        map.insert(
+            "tunnel.log.join_started".to_string(),
+            "Join tunnel started, local port={0}".to_string(),
+        );
+        map.insert(
+            "tunnel.log.ticket_regenerated".to_string(),
+            "Ticket regenerated".to_string(),
+        );
+        map.insert("tunnel.log.new_ticket".to_string(), "New ticket: {0}".to_string());
+        map.insert(
+            "tunnel.log.new_ticket_copied".to_string(),
+            "New ticket copied to clipboard".to_string(),
+        );
+        map.insert("tunnel.log.ticket_generated".to_string(), "Ticket generated".to_string());
+        map.insert("tunnel.log.tunnel_stopped".to_string(), "Tunnel stopped".to_string());
+        map.insert(
+            "tunnel.log.no_tunnel_running".to_string(),
+            "No tunnel is running".to_string(),
+        );
+        map.insert(
+            "tunnel.log.ticket_copy_failed_short".to_string(),
+            "Failed to copy ticket".to_string(),
+        );
+
+        map.insert("tunnel.err.port_zero_host".to_string(), "Port cannot be 0".to_string());
+        map.insert(
+            "tunnel.err.generate_key_failed".to_string(),
+            "Failed to generate tunnel key: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.host_start_failed".to_string(),
+            "Failed to start host tunnel: {0}".to_string(),
+        );
+        map.insert("tunnel.err.local_port_zero".to_string(), "Local port cannot be 0".to_string());
+        map.insert("tunnel.err.ticket_empty".to_string(), "Ticket cannot be empty".to_string());
+        map.insert("tunnel.err.ticket_format".to_string(), "Invalid ticket format: {0}".to_string());
+        map.insert("tunnel.err.join_failed".to_string(), "Failed to join tunnel: {0}".to_string());
+        map.insert(
+            "tunnel.err.not_host_mode".to_string(),
+            "Not in host mode; cannot regenerate ticket".to_string(),
+        );
+        map.insert(
+            "tunnel.err.missing_host_config".to_string(),
+            "Missing host configuration; cannot regenerate ticket".to_string(),
+        );
+        map.insert(
+            "tunnel.err.delete_old_key_failed".to_string(),
+            "Failed to delete old key: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.regenerate_key_failed".to_string(),
+            "Failed to regenerate key: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.resolve_relay_failed".to_string(),
+            "Failed to resolve relay URL: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.regenerate_ticket_failed".to_string(),
+            "Failed to regenerate ticket: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.tunnel_running_generate".to_string(),
+            "Tunnel is running; cannot generate a new ticket".to_string(),
+        );
+        map.insert(
+            "tunnel.err.no_ticket_to_copy".to_string(),
+            "No ticket available to copy".to_string(),
+        );
+        map.insert(
+            "tunnel.err.read_key_failed".to_string(),
+            "Failed to read key: {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.key_length_invalid".to_string(),
+            "Invalid key length: expected 32, got {0}".to_string(),
+        );
+        map.insert(
+            "tunnel.err.invalid_relay_url".to_string(),
+            "Invalid relay URL: {0}".to_string(),
         );
 
         map
