@@ -209,6 +209,7 @@
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
+  padding: 8px;
 }
 
 .tunnel-log-console :deep(.scroll-btn) {

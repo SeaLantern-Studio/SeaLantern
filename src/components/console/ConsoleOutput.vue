@@ -217,7 +217,7 @@ onMounted(() => {
 
   terminal = new Terminal({
     convertEol: true,
-    allowTransparency: false,
+    allowTransparency: true,
     disableStdin: true,
     cursorBlink: false,
     cursorInactiveStyle: "none",
@@ -230,7 +230,7 @@ onMounted(() => {
       width: 4,
     },
     theme: {
-      background: cssVar("--sl-bg-secondary", "#111827"),
+      background: "rgba(0, 0, 0, 0)",
       foreground: cssVar("--sl-text-primary", "#e5e7eb"),
       cursor: "transparent",
       cursorAccent: "transparent",
@@ -364,7 +364,7 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
 
 .terminal-host :deep(.xterm-viewport) {
   overflow-y: auto !important;
-  background: var(--sl-bg-secondary);
+  background: transparent !important;
 }
 
 .terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar) {

@@ -107,6 +107,7 @@
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
+  padding: 8px;
 }
 
 .log-line {
