@@ -107,7 +107,9 @@ const serverTypeOptions = computed(() =>
   serverTypes.value.map((type) => ({ label: type, value: type })),
 );
 
-const versionOptions = computed(() => versions.value.map((v) => ({ label: v, value: v })));
+const versionOptions = computed(() =>
+  [...versions.value].reverse().map((v) => ({ label: v, value: v })),
+);
 
 const canServerDownload = computed(() => {
   if (combinedLoading.value) return false;
@@ -212,7 +214,7 @@ async function loadVersionsByType(serverType: string) {
   try {
     const list = await downloadServerApi.getVersionsByType(serverType);
     versions.value = list;
-    if (list.length > 0) selectedVersion.value = list[0];
+    if (list.length > 0) selectedVersion.value = list[list.length - 1];
   } catch (e) {
     showError(String(e));
   } finally {

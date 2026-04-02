@@ -5,7 +5,7 @@ import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import SLServerSelector from "@components/common/SLServerSelector.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import {
   Home,
   Plus,
@@ -446,11 +446,15 @@ function getAppName() {
     </div>
     <nav class="sidebar-nav">
       <div class="nav-active-indicator" ref="navIndicator"></div>
-      <SLServerSelector
+      <SLSelect
         v-if="serverOptions.length > 0"
         v-model="currentServerRef"
         :options="serverOptions"
         :collapsed="ui.sidebarCollapsed"
+        :icon="Server"
+        :placeholder="i18n.t('common.select_server')"
+        variant="server"
+        dropdown-align="right"
         class="server-selector"
       />
 

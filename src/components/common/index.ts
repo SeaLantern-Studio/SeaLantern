@@ -7,6 +7,8 @@ export { default as SLContextMenu } from "@components/common/SLContextMenu.vue";
 export { default as SLDropzone } from "@components/common/SLDropzone.vue";
 export { default as SLFormField } from "@components/common/SLFormField.vue";
 export { default as SLInput } from "@components/common/SLInput.vue";
+export { default as SLMenu } from "@components/common/SLMenu.vue";
+export { default as SLMenuBase } from "@components/common/SLMenuBase.vue";
 export { default as SLModal } from "@components/common/SLModal.vue";
 export { default as SLProgress } from "@components/common/SLProgress.vue";
 export { default as SLSelect } from "@components/common/SLSelect.vue";
