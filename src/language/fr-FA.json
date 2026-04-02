@@ -763,6 +763,11 @@
     "no": "Non",
     "err_port_empty": "{{field}} ne peut pas être vide",
     "err_port_invalid": "{{field}} est invalide : {{value}}",
-    "err_port_out_of_range": "{{field}} doit être entre {{min}} et {{max}}"
+    "err_port_out_of_range": "{{field}} doit être entre {{min}} et {{max}}",
+    "log_copied": "Journaux copiés dans le presse-papiers ({{count}} lignes)",
+    "log_copy_failed": "Échec de la copie des journaux dans le presse-papiers",
+    "host_started": "Hôte démarré",
+    "join_started": "Rejoindre démarré",
+    "tunnel_stopped": "Tunnel arrêté"
   }
 }

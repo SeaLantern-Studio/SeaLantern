@@ -746,6 +746,11 @@
     "no": "No",
     "err_port_empty": "{{field}} no puede estar vacío",
     "err_port_invalid": "{{field}} no es válido: {{value}}",
-    "err_port_out_of_range": "{{field}} debe estar entre {{min}} y {{max}}"
+    "err_port_out_of_range": "{{field}} debe estar entre {{min}} y {{max}}",
+    "log_copied": "Registros copiados al portapapeles ({{count}} líneas)",
+    "log_copy_failed": "Error al copiar registros al portapapeles",
+    "host_started": "Anfitrión iniciado",
+    "join_started": "Unirse iniciado",
+    "tunnel_stopped": "Túnel detenido"
   }
 }

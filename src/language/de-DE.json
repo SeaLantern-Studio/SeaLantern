@@ -761,6 +761,11 @@
     "no": "Nein",
     "err_port_empty": "{{field}} darf nicht leer sein",
     "err_port_invalid": "{{field}} ist ungültig: {{value}}",
-    "err_port_out_of_range": "{{field}} muss zwischen {{min}} und {{max}} liegen"
+    "err_port_out_of_range": "{{field}} muss zwischen {{min}} und {{max}} liegen",
+    "log_copied": "Protokolle in die Zwischenablage kopiert ({{count}} Zeilen)",
+    "log_copy_failed": "Kopieren der Protokolle in die Zwischenablage fehlgeschlagen",
+    "host_started": "Host gestartet",
+    "join_started": "Beitritt gestartet",
+    "tunnel_stopped": "Tunnel gestoppt"
   }
 }

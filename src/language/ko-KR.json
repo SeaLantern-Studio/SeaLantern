@@ -763,6 +763,11 @@
     "no": "아니오",
     "err_port_empty": "{{field}}은(는) 비워둘 수 없습니다",
     "err_port_invalid": "{{field}}이(가) 유효하지 않습니다: {{value}}",
-    "err_port_out_of_range": "{{field}}은(는) {{min}}에서 {{max}} 사이여야 합니다"
+    "err_port_out_of_range": "{{field}}은(는) {{min}}에서 {{max}} 사이여야 합니다",
+    "log_copied": "로그가 클립보드에 복사되었습니다 ({{count}}줄)",
+    "log_copy_failed": "로그를 클립보드에 복사하지 못했습니다",
+    "host_started": "호스트가 시작되었습니다",
+    "join_started": "참여가 시작되었습니다",
+    "tunnel_stopped": "터널이 중지되었습니다"
   }
 }

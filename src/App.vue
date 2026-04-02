@@ -5,6 +5,7 @@ import SplashScreen from "@components/splash/SplashScreen.vue";
 import UpdateModal from "@components/common/UpdateModal.vue";
 import TermsDialog from "@components/common/TermsDialog.vue";
 import SLContextMenu from "@components/common/SLContextMenu.vue";
+import ToastContainer from "@components/common/ToastContainer.vue";
 import { PluginComponentRenderer } from "@components/plugin";
 import { useUpdateStore } from "@stores/updateStore";
 import { useSettingsStore } from "@stores/settingsStore";
@@ -242,6 +243,7 @@ function handleSettingsUpdate(e: CustomEvent<SettingsUpdateEvent>) {
     />
 
     <PluginComponentRenderer />
+    <ToastContainer />
   </template>
   <SLContextMenu />
 </template>

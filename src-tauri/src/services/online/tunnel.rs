@@ -85,7 +85,6 @@ struct TunnelRuntimeState {
     logs: Vec<String>,
     profile: Profile,
     secret_key: Option<SecretKey>,
-    last_host_config: Option<LastHostConfig>,
 }
 
 struct ActiveTunnel {
@@ -192,7 +191,6 @@ fn load_runtime_state() -> TunnelRuntimeState {
         logs,
         profile,
         secret_key,
-        last_host_config: None,
     };
     state.ticket = derive_ticket_for_state(&state);
     state
@@ -373,13 +371,6 @@ pub async fn host(
     let ticket_str = ticket.to_string();
 
     replace_with_active_tunnel(active).await;
-    {
-        let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
-        state.last_host_config = Some(LastHostConfig {
-            password: normalized_password,
-            max_players: normalized_max_players,
-        });
-    }
     set_started(TunnelMode::Host, Some(ticket_str.clone()));
     push_log(tunnel_t1("tunnel.log.host_started", format!("{port}")));
     push_log(tunnel_t1("tunnel.log.share_ticket", ticket_str.clone()));
@@ -436,55 +427,31 @@ pub async fn join(
 }
 
 pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
-    let (port, relay, key, host_cfg) = {
-        let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
-        if state.mode != Some(TunnelMode::Host) {
-            return Err(tunnel_t("tunnel.err.not_host_mode"));
-        }
-        let host_cfg = state
-            .last_host_config
-            .clone()
-            .ok_or_else(|| tunnel_t("tunnel.err.missing_host_config"))?;
-        let key_path = tunnel_key_path();
-        if let Err(e) = std::fs::remove_file(&key_path) {
-            if e.kind() != std::io::ErrorKind::NotFound {
-                return Err(tunnel_t1("tunnel.err.delete_old_key_failed", e.to_string()));
-            }
-        }
-        let key = generate_new_key(&key_path)
-            .map_err(|e| tunnel_t1("tunnel.err.regenerate_key_failed", e.to_string()))?;
-        state.secret_key = Some(key.clone());
-        let relay = state
-            .profile
-            .resolve_relay_url(None)
-            .map_err(|e| tunnel_t1("tunnel.err.resolve_relay_failed", e.to_string()))?;
-        (state.profile.host.port, relay, key, host_cfg)
+    let active_running = {
+        let active = active_tunnel().lock().await;
+        active.is_some()
     };
-
-    stop_previous_for_restart().await;
-
-    let config = HostConfig::default()
-        .password(host_cfg.password)
-        .max_players(host_cfg.max_players);
-    let (tunnel, ticket, events) = IrohTunnel::host(port, Some(key), relay, config)
-        .await
-        .map_err(|e| tunnel_t1("tunnel.err.regenerate_ticket_failed", e.to_string()))?;
-
-    let active = ActiveTunnel {
-        mode: TunnelMode::Host,
-        tunnel: Arc::new(tunnel),
-        event_task: spawn_event_task(events),
-    };
-    let ticket_str = ticket.to_string();
-
-    replace_with_active_tunnel(active).await;
-    set_started(TunnelMode::Host, Some(ticket_str.clone()));
-    push_log(tunnel_t("tunnel.log.ticket_regenerated"));
-    push_log(tunnel_t1("tunnel.log.new_ticket", ticket_str.clone()));
-    if sculk::clipboard::clipboard_copy(&ticket_str) {
-        push_log(tunnel_t("tunnel.log.new_ticket_copied"));
+    if active_running {
+        return Err(tunnel_t("tunnel.err.tunnel_running_generate"));
     }
 
+    let key_path = tunnel_key_path();
+    if let Err(e) = std::fs::remove_file(&key_path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            return Err(tunnel_t1("tunnel.err.delete_old_key_failed", e.to_string()));
+        }
+    }
+
+    let key = generate_new_key(&key_path)
+        .map_err(|e| tunnel_t1("tunnel.err.regenerate_key_failed", e.to_string()))?;
+
+    {
+        let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
+        state.secret_key = Some(key);
+        state.ticket = derive_ticket_for_state(&state);
+    }
+
+    push_log(tunnel_t("tunnel.log.ticket_regenerated"));
     Ok(status().await)
 }
 
@@ -584,11 +551,6 @@ pub async fn status() -> TunnelStatus {
         last_ticket,
         relay_url,
     }
-}
-#[derive(Debug, Clone)]
-struct LastHostConfig {
-    password: Option<String>,
-    max_players: Option<u32>,
 }
 
 #[cfg(test)]

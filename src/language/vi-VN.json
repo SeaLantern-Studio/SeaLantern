@@ -761,6 +761,11 @@
     "no": "Không",
     "err_port_empty": "{{field}} không thể để trống",
     "err_port_invalid": "{{field}} không hợp lệ: {{value}}",
-    "err_port_out_of_range": "{{field}} phải nằm trong khoảng {{min}} đến {{max}}"
+    "err_port_out_of_range": "{{field}} phải nằm trong khoảng {{min}} đến {{max}}",
+    "log_copied": "Nhật ký đã được sao chép vào clipboard ({{count}} dòng)",
+    "log_copy_failed": "Không thể sao chép nhật ký vào clipboard",
+    "host_started": "Máy chủ đã được bắt đầu",
+    "join_started": "Đã bắt đầu tham gia",
+    "tunnel_stopped": "Tunnel đã dừng"
   }
 }

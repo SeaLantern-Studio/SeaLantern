@@ -5,17 +5,16 @@ import SLCard from "@components/common/SLCard.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import SLInput from "@components/common/SLInput.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
-import ErrorBanner from "@components/views/paint/ErrorBanner.vue";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
-import { useMessage } from "@composables/useMessage";
+import { useGlobalMessage } from "@composables/useMessage";
 import { Copy, Eye, EyeOff, RefreshCw, X } from "lucide-vue-next";
 
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;
 
-const { error, success, clearError, showError, showSuccess, clearAll } = useMessage();
+const globalMessage = useGlobalMessage();
 type PendingAction = "host" | "join" | "stop" | "generate-ticket";
 const pendingAction = ref<PendingAction | null>(null);
 const status = ref<TunnelStatus | null>(null);
@@ -88,7 +87,6 @@ const logsDisplayClearedByUser = ref(false);
 function beginAction(action: PendingAction): boolean {
   if (pendingAction.value !== null) return false;
   pendingAction.value = action;
-  clearAll();
   return true;
 }
 
@@ -135,10 +133,14 @@ function syncLogOutput(logs: string[]) {
   if (!canAppend || missedInitialWrite) {
     logsDisplayClearedByUser.value = false;
     output.clear();
-    if (logs.length > 0) output.appendLines(logs);
+    if (logs.length > 0) {
+      output.appendLines(logs.filter((l) => !l.includes("host loop ended")));
+    }
   } else {
     const delta = logs.slice(prev.length);
-    if (delta.length > 0) output.appendLines(delta);
+    if (delta.length > 0) {
+      output.appendLines(delta.filter((l) => !l.includes("host loop ended")));
+    }
   }
 
   syncedLogs.value = logs.slice();
@@ -183,12 +185,11 @@ function stopStatusPolling() {
 
 async function refreshStatus(options?: { silent?: boolean }) {
   const silent = options?.silent ?? false;
-  if (!silent) clearAll();
   try {
     const next = await tunnelApi.status();
     applyStatus(next);
   } catch (e) {
-    if (!silent) showError(String(e));
+    if (!silent) globalMessage.error(String(e));
   }
 }
 
@@ -196,7 +197,7 @@ async function startHost() {
   if (!beginAction("host")) return;
   const portError = validatePort(hostPort.value, i18n.t("tunnel.host_port"));
   if (portError) {
-    showError(portError);
+    globalMessage.error(portError);
     endAction("host");
     return;
   }
@@ -208,8 +209,9 @@ async function startHost() {
         relayUrl: hostRelayUrl.value.trim() || undefined,
       }),
     );
+    globalMessage.success(i18n.t("tunnel.host_started"));
   } catch (e) {
-    showError(String(e));
+    globalMessage.error(String(e));
   } finally {
     endAction("host");
   }
@@ -219,7 +221,7 @@ async function startJoin() {
   if (!beginAction("join")) return;
   const portError = validatePort(joinLocalPort.value, i18n.t("tunnel.join_local_port"));
   if (portError) {
-    showError(portError);
+    globalMessage.error(portError);
     endAction("join");
     return;
   }
@@ -231,8 +233,9 @@ async function startJoin() {
         password: joinPassword.value.trim() || undefined,
       }),
     );
+    globalMessage.success(i18n.t("tunnel.join_started"));
   } catch (e) {
-    showError(String(e));
+    globalMessage.error(String(e));
   } finally {
     endAction("join");
   }
@@ -242,8 +245,9 @@ async function stopTunnel() {
   if (!beginAction("stop")) return;
   try {
     applyStatus(await tunnelApi.stop());
+    globalMessage.success(i18n.t("tunnel.tunnel_stopped"));
   } catch (e) {
-    showError(String(e));
+    globalMessage.error(String(e));
   } finally {
     endAction("stop");
   }
@@ -254,13 +258,13 @@ async function copyTicket() {
   try {
     const copied = await tunnelApi.copyTicket();
     if (copied) {
-      showSuccess(i18n.t("tunnel.ticket_copied"));
+      globalMessage.success(i18n.t("tunnel.ticket_copied"));
       applyStatus(await tunnelApi.status());
     } else {
-      showError(i18n.t("tunnel.ticket_copy_failed"));
+      globalMessage.error(i18n.t("tunnel.ticket_copy_failed"));
     }
   } catch (e) {
-    showError(String(e));
+    globalMessage.error(String(e));
   }
 }
 
@@ -268,9 +272,21 @@ async function generateTicket() {
   if (!beginAction("generate-ticket")) return;
   try {
     applyStatus(await tunnelApi.generateTicket());
-    showSuccess(i18n.t("tunnel.ticket_generated"));
+    globalMessage.success(i18n.t("tunnel.ticket_generated"));
   } catch (e) {
-    showError(String(e));
+    globalMessage.error(String(e));
+  } finally {
+    endAction("generate-ticket");
+  }
+}
+
+async function regenerateTicket() {
+  if (!beginAction("generate-ticket")) return;
+  try {
+    applyStatus(await tunnelApi.regenerateTicket());
+    globalMessage.success(i18n.t("tunnel.ticket_regenerated"));
+  } catch (e) {
+    globalMessage.error(String(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -280,11 +296,12 @@ async function copyLogs() {
   const text = tunnelOutputRef.value?.getAllPlainText() || "";
   if (!text.trim()) return;
 
+  const lineCount = text.split("\n").length;
   try {
     await navigator.clipboard.writeText(text);
-    showSuccess(i18n.t("common.copied"));
-  } catch (e) {
-    showError(String(e));
+    tunnelOutputRef.value?.appendLines([i18n.t("tunnel.log_copied", { count: lineCount })]);
+  } catch {
+    tunnelOutputRef.value?.appendLines([i18n.t("tunnel.log_copy_failed")]);
   }
 }
 
@@ -325,12 +342,6 @@ onUnmounted(() => {
 
 <template>
   <div class="tunnel-view animate-fade-in-up">
-    <ErrorBanner :message="error" @close="clearError" />
-    <div v-if="success" class="msg-banner success-banner">
-      <span>{{ success }}</span>
-      <button @click="clearAll">x</button>
-    </div>
-
     <SLCard :title="i18n.t('tunnel.status_title')" variant="solid" padding="md">
       <div class="status-line">
         <span class="status-pill">
@@ -359,10 +370,10 @@ onUnmounted(() => {
           </button>
           <button
             class="ticket-icon-btn"
-            :title="i18n.t('tunnel.generate_ticket')"
-            :aria-label="i18n.t('tunnel.generate_ticket')"
+            :title="i18n.t('tunnel.regenerate_ticket')"
+            :aria-label="i18n.t('tunnel.regenerate_ticket')"
             :disabled="!canGenerateTicket"
-            @click="generateTicket"
+            @click="regenerateTicket"
           >
             <RefreshCw :size="16" />
           </button>

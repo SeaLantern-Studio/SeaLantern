@@ -764,6 +764,11 @@
     "no": "いいえ",
     "err_port_empty": "{{field}} は空にできません",
     "err_port_invalid": "{{field}} が無効です：{{value}}",
-    "err_port_out_of_range": "{{field}} は {{min}} から {{max}} の間である必要があります"
+    "err_port_out_of_range": "{{field}} は {{min}} から {{max}} の間である必要があります",
+    "log_copied": "ログがクリップボードにコピーされました（{{count}} 行）",
+    "log_copy_failed": "ログのクリップボードへのコピーに失敗しました",
+    "host_started": "ホストが開始されました",
+    "join_started": "参加が開始されました",
+    "tunnel_stopped": "トンネルが停止されました"
   }
 }

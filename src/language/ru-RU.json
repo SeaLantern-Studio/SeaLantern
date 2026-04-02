@@ -761,6 +761,11 @@
     "no": "Нет",
     "err_port_empty": "{{field}} не может быть пустым",
     "err_port_invalid": "{{field}} недействителен: {{value}}",
-    "err_port_out_of_range": "{{field}} должен быть между {{min}} и {{max}}"
+    "err_port_out_of_range": "{{field}} должен быть между {{min}} и {{max}}",
+    "log_copied": "Журнал скопирован в буфер обмена ({{count}} строк)",
+    "log_copy_failed": "Не удалось скопировать журнал в буфер обмена",
+    "host_started": "Хост запущен",
+    "join_started": "Подключение начато",
+    "tunnel_stopped": "Туннель остановлен"
   }
 }

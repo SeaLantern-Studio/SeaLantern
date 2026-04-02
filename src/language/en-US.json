@@ -172,10 +172,10 @@
     "ticket": "Ticket",
     "copy_ticket": "Copy Ticket",
     "generate_ticket": "Generate Ticket",
-    "regenerate_ticket": "Regenerate Ticket",
+    "regenerate_ticket": "Regenerate ticket",
     "ticket_generated": "Ticket generated",
-    "ticket_copied": "Ticket copied to clipboard",
     "ticket_regenerated": "Ticket regenerated",
+    "ticket_copied": "Ticket copied to clipboard",
     "ticket_copy_failed": "Failed to copy ticket",
     "no_ticket": "No ticket",
     "stop": "Stop Tunnel",
@@ -209,7 +209,12 @@
     "no": "No",
     "err_port_empty": "{{field}} cannot be empty",
     "err_port_invalid": "{{field}} is invalid: {{value}}",
-    "err_port_out_of_range": "{{field}} must be between {{min}} and {{max}}"
+    "err_port_out_of_range": "{{field}} must be between {{min}} and {{max}}",
+    "log_copied": "Logs copied to clipboard ({{count}} lines)",
+    "log_copy_failed": "Failed to copy logs to clipboard",
+    "host_started": "Host started",
+    "join_started": "Join started",
+    "tunnel_stopped": "Tunnel stopped"
   },
   "add_existing": {
     "title": "Add Existing Server",

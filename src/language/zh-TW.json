@@ -764,6 +764,11 @@
     "no": "否",
     "err_port_empty": "{{field}} 不能為空",
     "err_port_invalid": "{{field}} 無效：{{value}}",
-    "err_port_out_of_range": "{{field}} 必須在 {{min}} 到 {{max}} 之間"
+    "err_port_out_of_range": "{{field}} 必須在 {{min}} 到 {{max}} 之間",
+    "log_copied": "日誌已複製到剪貼簿（{{count}} 行）",
+    "log_copy_failed": "複製日誌到剪貼簿失敗",
+    "host_started": "建房已啟動",
+    "join_started": "加入已啟動",
+    "tunnel_stopped": "隧道已停止"
   }
 }
