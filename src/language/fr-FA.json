@@ -760,6 +760,9 @@
     "route_relay": "Relais",
     "route_direct": "Direct",
     "yes": "Oui",
-    "no": "Non"
+    "no": "Non",
+    "err_port_empty": "{{field}} ne peut pas être vide",
+    "err_port_invalid": "{{field}} est invalide : {{value}}",
+    "err_port_out_of_range": "{{field}} doit être entre {{min}} et {{max}}"
   }
 }

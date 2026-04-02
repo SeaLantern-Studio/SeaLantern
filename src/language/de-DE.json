@@ -758,6 +758,9 @@
     "route_relay": "Relay",
     "route_direct": "Direkt",
     "yes": "Ja",
-    "no": "Nein"
+    "no": "Nein",
+    "err_port_empty": "{{field}} darf nicht leer sein",
+    "err_port_invalid": "{{field}} ist ungültig: {{value}}",
+    "err_port_out_of_range": "{{field}} muss zwischen {{min}} und {{max}} liegen"
   }
 }

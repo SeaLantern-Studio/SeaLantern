@@ -222,7 +222,10 @@
     "route_relay": "中继",
     "route_direct": "直连",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "err_port_empty": "{{field}} 不能为空",
+    "err_port_invalid": "{{field}} 无效：{{value}}",
+    "err_port_out_of_range": "{{field}} 必须在 {{min}} 到 {{max}} 之间"
   },
   "add_existing": {
     "title": "添加已有服务器",

@@ -206,7 +206,10 @@
     "route_relay": "Relay",
     "route_direct": "Direct",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "err_port_empty": "{{field}} cannot be empty",
+    "err_port_invalid": "{{field}} is invalid: {{value}}",
+    "err_port_out_of_range": "{{field}} must be between {{min}} and {{max}}"
   },
   "add_existing": {
     "title": "Add Existing Server",

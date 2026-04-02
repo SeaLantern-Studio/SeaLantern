@@ -743,6 +743,9 @@
     "route_relay": "Relé",
     "route_direct": "Directo",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "err_port_empty": "{{field}} no puede estar vacío",
+    "err_port_invalid": "{{field}} no es válido: {{value}}",
+    "err_port_out_of_range": "{{field}} debe estar entre {{min}} y {{max}}"
   }
 }

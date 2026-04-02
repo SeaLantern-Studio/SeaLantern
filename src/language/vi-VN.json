@@ -758,6 +758,9 @@
     "route_relay": "Relay",
     "route_direct": "Trực tiếp",
     "yes": "Có",
-    "no": "Không"
+    "no": "Không",
+    "err_port_empty": "{{field}} không thể để trống",
+    "err_port_invalid": "{{field}} không hợp lệ: {{value}}",
+    "err_port_out_of_range": "{{field}} phải nằm trong khoảng {{min}} đến {{max}}"
   }
 }

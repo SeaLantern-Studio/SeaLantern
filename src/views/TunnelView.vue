@@ -5,6 +5,7 @@ import SLCard from "@components/common/SLCard.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import SLInput from "@components/common/SLInput.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import ErrorBanner from "@components/views/paint/ErrorBanner.vue";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
@@ -103,6 +104,21 @@ function parsePort(value: string, fallback: number): number {
   return parsed;
 }
 
+function validatePort(value: string, fieldName: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return i18n.t("tunnel.err_port_empty", { field: fieldName });
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(parsed)) {
+    return i18n.t("tunnel.err_port_invalid", { field: fieldName, value: trimmed });
+  }
+  if (parsed <= 0 || parsed > 65535) {
+    return i18n.t("tunnel.err_port_out_of_range", { field: fieldName, min: 1, max: 65535 });
+  }
+  return null;
+}
+
 function syncLogOutput(logs: string[]) {
   const output = tunnelOutputRef.value;
   if (!output) {
@@ -178,6 +194,12 @@ async function refreshStatus(options?: { silent?: boolean }) {
 
 async function startHost() {
   if (!beginAction("host")) return;
+  const portError = validatePort(hostPort.value, i18n.t("tunnel.host_port"));
+  if (portError) {
+    showError(portError);
+    endAction("host");
+    return;
+  }
   try {
     applyStatus(
       await tunnelApi.host({
@@ -195,6 +217,12 @@ async function startHost() {
 
 async function startJoin() {
   if (!beginAction("join")) return;
+  const portError = validatePort(joinLocalPort.value, i18n.t("tunnel.join_local_port"));
+  if (portError) {
+    showError(portError);
+    endAction("join");
+    return;
+  }
   try {
     applyStatus(
       await tunnelApi.join({
@@ -297,10 +325,7 @@ onUnmounted(() => {
 
 <template>
   <div class="tunnel-view animate-fade-in-up">
-    <div v-if="error" class="msg-banner error-banner">
-      <span>{{ error }}</span>
-      <button @click="clearError">x</button>
-    </div>
+    <ErrorBanner :message="error" @close="clearError" />
     <div v-if="success" class="msg-banner success-banner">
       <span>{{ success }}</span>
       <button @click="clearAll">x</button>

@@ -761,6 +761,9 @@
     "route_relay": "リレー",
     "route_direct": "ダイレクト",
     "yes": "はい",
-    "no": "いいえ"
+    "no": "いいえ",
+    "err_port_empty": "{{field}} は空にできません",
+    "err_port_invalid": "{{field}} が無効です：{{value}}",
+    "err_port_out_of_range": "{{field}} は {{min}} から {{max}} の間である必要があります"
   }
 }
