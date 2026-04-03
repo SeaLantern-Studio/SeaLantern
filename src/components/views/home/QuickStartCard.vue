@@ -26,7 +26,7 @@ const emit = defineEmits<{
       <span v-else class="quote-loading">{{ i18n.t("common.loading") }}</span>
       <span
         class="quote-author"
-        :class="{ 'quote-author-hidden': isTyping || !currentQuote.author }"
+        :class="{ 'quote-author-hidden': !displayText || isTyping || !currentQuote.author }"
         >—— {{ currentQuote.author || " " }}</span
       >
     </div>

@@ -223,10 +223,6 @@
   border-top: 1px solid var(--sl-border-light);
 }
 
-.sidebar.collapsed .sidebar-footer {
-  padding: 8px 4px;
-}
-
 .sidebar.collapsed .nav-item {
   padding: 8px;
   padding-left: 10px;
