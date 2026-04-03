@@ -252,4 +252,38 @@ export const serverApi = {
   async updateServerName(id: string, name: string): Promise<void> {
     return tauriInvoke("update_server_name", { id, name });
   },
+
+  async validateServerPath(newPath: string): Promise<{
+    valid: boolean;
+    message: string;
+    jarPath: string | null;
+    startupMode: string | null;
+  }> {
+    const result = await tauriInvoke<{
+      valid: boolean;
+      message: string;
+      jar_path: string | null;
+      startup_mode: string | null;
+    }>("validate_server_path", { newPath });
+    return {
+      valid: result.valid,
+      message: result.message,
+      jarPath: result.jar_path,
+      startupMode: result.startup_mode,
+    };
+  },
+
+  async updateServerPath(
+    id: string,
+    newPath: string,
+    newJarPath?: string,
+    newStartupMode?: string,
+  ): Promise<ServerInstance> {
+    return tauriInvoke("update_server_path", {
+      id,
+      newPath,
+      newJarPath,
+      newStartupMode,
+    });
+  },
 };
