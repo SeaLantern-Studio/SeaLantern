@@ -108,7 +108,7 @@ const serverTypeOptions = computed(() =>
 );
 
 const versionOptions = computed(() =>
-  [...versions.value].reverse().map((v) => ({ label: v, value: v })),
+  [...versions.value].toReversed().map((v) => ({ label: v, value: v })),
 );
 
 const canServerDownload = computed(() => {

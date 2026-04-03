@@ -203,7 +203,9 @@ async function generateNotice() {
   noticeLines.push("Third-party frontend dependencies:");
   noticeLines.push("");
 
-  const sortedPackages = Object.entries(frontendLicenses).sort(([a], [b]) => a.localeCompare(b));
+  const sortedPackages = Object.entries(frontendLicenses).toSorted(([a], [b]) =>
+    a.localeCompare(b),
+  );
   let id = 1;
 
   for (const [pkgKey, info] of sortedPackages) {
@@ -231,7 +233,7 @@ async function generateNotice() {
 
   const sortedBackend = [...backendLicenses]
     .filter((crate) => crate.name !== "sea-lantern")
-    .sort((a, b) => `${a.name}@${a.version}`.localeCompare(`${b.name}@${b.version}`));
+    .toSorted((a, b) => `${a.name}@${a.version}`.localeCompare(`${b.name}@${b.version}`));
 
   id = 1;
   for (const crate of sortedBackend) {
