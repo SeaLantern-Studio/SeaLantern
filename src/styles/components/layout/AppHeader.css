@@ -36,7 +36,6 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-.header-left,
 .header-right {
   -webkit-app-region: no-drag;
 }
@@ -56,6 +55,10 @@
 
 .app-header.macos-overlay .header-center {
   min-height: var(--sl-header-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .header-right {
@@ -281,6 +284,11 @@
 
 .language-item:active {
   transform: translateX(2px) scale(0.98);
+}
+
+.language-item.active {
+  background: var(--sl-primary-bg);
+  color: var(--sl-primary);
 }
 
 .language-item-main {
