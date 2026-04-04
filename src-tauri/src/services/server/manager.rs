@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use super::installer;
 use super::log_pipeline as server_log_pipeline;
 
-const DATA_FILE: &str = "sea_lantern_servers.json";
-const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
+///此处常量见 utils/constants.rs
+use crate::utils::constants::{DATA_FILE, RUN_PATH_MAP_FILE};
 
 /// 验证服务器名称，防止路径遍历攻击
 /// 返回清理后的名称或错误信息
@@ -1171,7 +1171,7 @@ impl ServerManager {
                         server_log_pipeline::shutdown_writer(id);
                         return Ok(());
                     }
-                    Ok(None) => {} // Still running
+                    Ok(None) => {}
                     Err(_) => {
                         procs.remove(id);
                         self.clear_stopping(id);
@@ -1223,13 +1223,43 @@ impl ServerManager {
     }
 
     pub fn get_server_status(&self, id: &str) -> ServerStatusInfo {
+        let mut exit_code: Option<i32> = None;
+        let mut error_message: Option<String> = None;
+
         let is_running = self
             .lock_processes()
             .ok()
             .map(|mut procs| {
                 if let Some(child) = procs.get_mut(id) {
                     match child.try_wait() {
-                        Ok(Some(_)) => {
+                        Ok(Some(status)) => {
+                            exit_code = status.code();
+                            // 根据退出码设置错误信息
+                            match &exit_code {
+                                Some(0) => {
+                                    // 正常退出，记录日志
+                                    let _ = server_log_pipeline::append_sealantern_log(
+                                        id,
+                                        "[Sea Lantern] 服务器已正常退出",
+                                    );
+                                }
+                                Some(code) => {
+                                    error_message =
+                                        Some(format!("服务器异常退出 (退出码：{})", code));
+                                    let _ = server_log_pipeline::append_sealantern_log(
+                                        id,
+                                        &format!("[Sea Lantern] 服务器异常退出 (退出码：{})", code),
+                                    );
+                                }
+                                None => {
+                                    error_message = Some("服务器被强制终止".to_string());
+                                    let _ = server_log_pipeline::append_sealantern_log(
+                                        id,
+                                        "[Sea Lantern] 服务器被强制终止",
+                                    );
+                                }
+                            }
+
                             procs.remove(id);
                             server_log_pipeline::shutdown_writer(id);
                             self.clear_starting(id);
@@ -1237,6 +1267,11 @@ impl ServerManager {
                         }
                         Ok(None) => true,
                         Err(_) => {
+                            error_message = Some("获取服务器状态失败".to_string());
+                            let _ = server_log_pipeline::append_sealantern_log(
+                                id,
+                                "[Sea Lantern] 获取服务器状态失败",
+                            );
                             procs.remove(id);
                             server_log_pipeline::shutdown_writer(id);
                             self.clear_starting(id);
@@ -1248,6 +1283,7 @@ impl ServerManager {
                 }
             })
             .unwrap_or(false);
+
         ServerStatusInfo {
             id: id.to_string(),
             status: if self.is_stopping(id) {
@@ -1261,6 +1297,7 @@ impl ServerManager {
             },
             pid: None,
             uptime: None,
+            error_message,
         }
     }
 
@@ -1307,6 +1344,72 @@ impl ServerManager {
             drop(servers);
             self.save()?;
             Ok(())
+        } else {
+            Err("未找到服务器".to_string())
+        }
+    }
+
+    pub fn update_server_path(
+        &self,
+        id: &str,
+        new_path: &str,
+        new_jar_path: Option<&str>,
+        new_startup_mode: Option<&str>,
+    ) -> Result<ServerInstance, String> {
+        // 检查服务器是否正在运行
+        {
+            let procs = self.lock_processes()?;
+            if procs.contains_key(id) {
+                return Err("服务器正在运行中，请先停止服务器再修改路径".to_string());
+            }
+        }
+
+        let mut servers = self.lock_servers()?;
+        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
+            // 更新路径
+            server.path = new_path.to_string();
+
+            // 如果提供了新的 jar_path，则更新
+            if let Some(jar_path) = new_jar_path {
+                server.jar_path = jar_path.to_string();
+            }
+
+            // 如果提供了新的 startup_mode，则更新
+            if let Some(startup_mode) = new_startup_mode {
+                server.startup_mode = normalize_startup_mode(startup_mode).to_string();
+            }
+
+            // 尝试从新的路径检测核心类型
+            if server.startup_mode != "custom" {
+                let detected_core = installer::detect_core_type(&server.jar_path);
+                if !detected_core.is_empty() && detected_core != "Unknown" {
+                    server.core_type = detected_core;
+                }
+            }
+
+            // 尝试从 server.properties 读取端口
+            let server_properties_path = std::path::Path::new(new_path).join("server.properties");
+            if server_properties_path.exists() {
+                if let Ok(props) = crate::services::config_parser::read_properties(
+                    server_properties_path.to_str().unwrap_or_default(),
+                ) {
+                    if let Some(port_str) = props.get("server-port") {
+                        if let Ok(parsed_port) = port_str.parse::<u16>() {
+                            server.port = parsed_port;
+                        }
+                    }
+                }
+            }
+
+            let updated_server = server.clone();
+            drop(servers);
+            self.save()?;
+
+            // 更新运行路径映射
+            let data_dir = self.data_dir_value()?;
+            update_run_path_mapping(&data_dir, id, new_path);
+
+            Ok(updated_server)
         } else {
             Err("未找到服务器".to_string())
         }
@@ -1655,6 +1758,27 @@ fn upsert_run_path_mapping(dir: &str, mapping: RunPathServerMapping) -> Result<(
         .retain(|item| item.server_id != mapping.server_id && item.run_path != mapping.run_path);
     mappings.push(mapping);
     save_run_path_mappings(dir, &mappings)
+}
+
+fn update_run_path_mapping(dir: &str, server_id: &str, new_path: &str) {
+    let mut mappings = load_run_path_mappings(dir);
+    let mut found = false;
+
+    for mapping in mappings.iter_mut() {
+        if mapping.server_id == server_id {
+            mapping.run_path = new_path.to_string();
+            mapping.updated_at = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            found = true;
+            break;
+        }
+    }
+
+    if found {
+        let _ = save_run_path_mappings(dir, &mappings);
+    }
 }
 
 fn remove_run_path_mapping(dir: &str, server_id: &str) {

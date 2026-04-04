@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import SLMenuBase from "./SLMenuBase.vue";
 
 interface MenuItem {
   id: string | number;
@@ -77,7 +78,6 @@ const updatePosition = () => {
     position: "fixed",
     top: `${top}px`,
     left: `${left}px`,
-    minWidth: props.minWidth,
     zIndex: "99999",
   };
 };
@@ -202,27 +202,7 @@ defineExpose({ open, close, toggle });
           role="menu"
           @keydown="handleKeydown"
         >
-          <div class="sl-menu-content">
-            <template v-for="(item, index) in items" :key="item.id">
-              <div v-if="item.divider" class="sl-menu-divider" role="separator" />
-              <div
-                v-else
-                class="sl-menu-item"
-                :class="{
-                  disabled: item.disabled,
-                  danger: item.danger,
-                  highlighted: flattenedItems.indexOf(item) === highlightedIndex,
-                }"
-                role="menuitem"
-                :aria-disabled="item.disabled"
-                @click="handleItemClick(item)"
-                @mouseenter="highlightedIndex = flattenedItems.indexOf(item)"
-              >
-                <component v-if="item.icon" :is="item.icon" class="menu-icon" :size="16" />
-                <span class="menu-label">{{ item.label }}</span>
-              </div>
-            </template>
-          </div>
+          <SLMenuBase :items="items" :min-width="minWidth" @select="handleItemClick" />
         </div>
       </Transition>
     </Teleport>
@@ -245,134 +225,11 @@ defineExpose({ open, close, toggle });
 .sl-menu-trigger:focus-visible {
   box-shadow: 0 0 0 2px var(--sl-primary, #0ea5e9);
 }
-</style>
 
-<style>
 .sl-menu {
-  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
-  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
-  border-radius: var(--sl-radius-lg, 12px);
-  box-shadow: var(--sl-shadow-lg);
-  overflow: hidden;
-  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
-  will-change: backdrop-filter;
-  transform: translateZ(0);
-  backface-visibility: hidden;
+  animation: menu-enter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-[data-theme="dark"] .sl-menu {
-  --sl-glass-bg: rgba(15, 17, 23, 0.72);
-  --sl-glass-border: rgba(255, 255, 255, 0.08);
-}
-
-[data-acrylic="true"] .sl-menu {
-  --sl-glass-bg: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
-}
-
-[data-theme="dark"][data-acrylic="true"] .sl-menu {
-  --sl-glass-bg: rgba(15, 17, 23, 0.65);
-}
-
-[data-acrylic="false"] .sl-menu {
-  background: var(--sl-surface, #ffffff);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  will-change: auto;
-}
-
-.sl-menu-content {
-  padding: var(--sl-space-xs, 4px);
-}
-
-.sl-menu-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-sm, 8px);
-  padding: 10px 12px;
-  border-radius: var(--sl-radius-md, 8px);
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-  user-select: none;
-  position: relative;
-  overflow: hidden;
-}
-
-.sl-menu-item::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--sl-primary, #0ea5e9);
-  opacity: 0;
-  transform: scale(0.5);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-  border-radius: inherit;
-}
-
-.sl-menu-item:hover:not(.disabled),
-.sl-menu-item.highlighted:not(.disabled) {
-  background: var(--sl-surface-hover, #f1f5f9);
-}
-
-.sl-menu-item:active:not(.disabled)::before {
-  opacity: 0.1;
-  transform: scale(1);
-}
-
-[data-theme="dark"] .sl-menu-item:hover:not(.disabled),
-[data-theme="dark"] .sl-menu-item.highlighted:not(.disabled) {
-  background: var(--sl-surface-hover, rgba(255, 255, 255, 0.05));
-}
-
-.sl-menu-item.disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.sl-menu-item.danger {
-  color: var(--sl-error, #ef4444);
-}
-
-.sl-menu-item.danger:hover:not(.disabled) {
-  background: var(--sl-error-bg, rgba(239, 68, 68, 0.1));
-}
-
-.menu-icon {
-  flex-shrink: 0;
-  color: var(--sl-text-tertiary, #94a3b8);
-}
-
-.sl-menu-item.danger .menu-icon {
-  color: var(--sl-error, #ef4444);
-}
-
-.menu-label {
-  font-size: 0.875rem;
-  color: var(--sl-text-primary, #0f172a);
-  white-space: nowrap;
-}
-
-.sl-menu-item.danger .menu-label {
-  color: var(--sl-error, #ef4444);
-}
-
-.sl-menu-divider {
-  height: 1px;
-  background: var(--sl-border, #e2e8f0);
-  margin: var(--sl-space-xs, 4px) 0;
-}
-
-[data-theme="dark"] .sl-menu-divider {
-  background: var(--sl-border, rgba(255, 255, 255, 0.1));
-}
-
-/* Animation */
 .menu-enter-active {
   animation: menu-enter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -400,47 +257,6 @@ defineExpose({ open, close, toggle });
   to {
     opacity: 0;
     transform: translateY(-4px) scale(0.98);
-  }
-}
-
-/* Item stagger animation */
-.sl-menu-item {
-  animation: item-fade-in 0.2s ease backwards;
-}
-
-.sl-menu-item:nth-child(1) {
-  animation-delay: 0.02s;
-}
-.sl-menu-item:nth-child(2) {
-  animation-delay: 0.04s;
-}
-.sl-menu-item:nth-child(3) {
-  animation-delay: 0.06s;
-}
-.sl-menu-item:nth-child(4) {
-  animation-delay: 0.08s;
-}
-.sl-menu-item:nth-child(5) {
-  animation-delay: 0.1s;
-}
-.sl-menu-item:nth-child(6) {
-  animation-delay: 0.12s;
-}
-.sl-menu-item:nth-child(7) {
-  animation-delay: 0.14s;
-}
-.sl-menu-item:nth-child(8) {
-  animation-delay: 0.16s;
-}
-
-@keyframes item-fade-in {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
   }
 }
 </style>

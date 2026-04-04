@@ -1,4 +1,4 @@
-import { tauriInvoke } from "@api/tauri";
+import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import type { JavaInfo } from "@api/java";
 
 export type SettingsGroup =
@@ -44,6 +44,7 @@ export interface AppSettings {
   close_action: string;
   last_run_path: string;
   minimal_mode: boolean;
+  agreed_to_terms: boolean;
 }
 
 export interface PartialSettings {
@@ -80,6 +81,7 @@ export interface PartialSettings {
   close_action?: string;
   last_run_path?: string;
   minimal_mode?: boolean;
+  agreed_to_terms?: boolean;
 }
 
 export interface UpdateSettingsResult {
@@ -108,6 +110,10 @@ export const settingsApi = {
   },
   async importJson(json: string): Promise<AppSettings> {
     return tauriInvoke("import_settings", { json });
+  },
+  async applyAcrylic(enabled: boolean): Promise<void> {
+    if (isBrowserEnv()) return;
+    await tauriInvoke("apply_acrylic", { enabled }, { silent: true });
   },
 };
 

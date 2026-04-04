@@ -8,6 +8,10 @@
   overflow: hidden;
 }
 
+.app-layout.macos-native-vibrancy {
+  background-color: transparent;
+}
+
 .app-background {
   position: absolute;
   top: 0;
@@ -28,6 +32,10 @@
   margin-left: var(--sl-sidebar-width);
   transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 0;
+}
+
+.app-main.macos-native-vibrancy {
+  background: transparent;
 }
 
 .app-main.sidebar-collapsed {

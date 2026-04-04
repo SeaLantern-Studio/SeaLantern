@@ -24,10 +24,16 @@ use crate::services::download_manager::DownloadManager;
 use plugins::manager::PluginManager;
 
 use std::sync::{Arc, Mutex};
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Listener, Manager,
+};
+#[cfg(target_os = "macos")]
+use window_vibrancy::{
+    apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -80,6 +86,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 // 先显示窗口（处理隐藏状态）
@@ -136,6 +143,8 @@ pub fn run() {
             server_commands::delete_server,
             server_commands::get_server_logs,
             server_commands::update_server_name,
+            server_commands::validate_server_path,
+            server_commands::update_server_path,
             java_commands::detect_java,
             java_commands::validate_java_path,
             java_commands::install_java,
@@ -179,6 +188,7 @@ pub fn run() {
             settings_commands::get_system_fonts,
             settings_commands::get_plugin_commands,
             settings_commands::update_plugin_commands,
+            settings_commands::apply_acrylic,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,
@@ -278,6 +288,44 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            #[cfg(not(target_os = "macos"))]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.set_decorations(false) {
+                    eprintln!("Failed to disable native window decorations: {}", e);
+                }
+            }
+
+            #[cfg(target_os = "macos")]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.set_decorations(true) {
+                    eprintln!("Failed to enable native macOS window decorations: {}", e);
+                }
+
+                if let Err(e) = window.set_title_bar_style(TitleBarStyle::Overlay) {
+                    eprintln!("Failed to set macOS title bar style to overlay: {}", e);
+                }
+
+                let acrylic_enabled = crate::services::global::settings_manager()
+                    .get()
+                    .acrylic_enabled;
+
+                let native_effect_result = if acrylic_enabled {
+                    apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::UnderWindowBackground,
+                        Some(NSVisualEffectState::Active),
+                        None,
+                    )
+                    .map(|_| ())
+                } else {
+                    clear_vibrancy(&window).map(|_| ())
+                };
+
+                if let Err(e) = native_effect_result {
+                    eprintln!("Failed to sync native macOS vibrancy effect: {}", e);
+                }
+            }
+
             // 初始化插件管理
             // 插件目录与其他模块共用同一套数据目录选择规则
             let app_data_dir = crate::utils::path::get_app_data_dir();
@@ -673,7 +721,7 @@ pub fn run() {
                             // On macOS, try to find the .app bundle and use open command
                             if let Some(app_bundle_path) = app_path
                                 .ancestors()
-                                .find(|p| p.extension().map_or(false, |ext| ext == "app"))
+                                .find(|p| p.extension().is_some_and(|ext| ext == "app"))
                             {
                                 match std::process::Command::new("open")
                                         .arg("-n") // Open a new instance

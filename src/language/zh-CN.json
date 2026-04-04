@@ -14,6 +14,7 @@
   },
   "common": {
     "app_name": "Sea Lantern",
+    "easter_name": "Shit Lantern",
     "home": "首页",
     "create_server": "创建服务器",
     "console": "控制台",
@@ -22,6 +23,7 @@
     "settings": "设置",
     "personalize": "个性化",
     "about": "关于",
+    "download": "下载",
     "download-file": "文件下载",
     "download-server": "服务端下载",
     "loading": "加载中...",
@@ -64,6 +66,11 @@
     "background_size_fill": "拉伸 (Fill)",
     "background_size_auto": "原始大小 (Auto)",
     "color_default": "默认",
+    "color_custom": "自定义",
+    "edit_color_light": "浅色",
+    "edit_color_dark": "深色",
+    "edit_color_light_acrylic": "浅色毛玻璃",
+    "edit_color_dark_acrylic": "深色毛玻璃",
     "theme_auto": "跟随系统",
     "theme_light": "浅色",
     "theme_dark": "深色",
@@ -153,7 +160,23 @@
     "core": "核心",
     "port": "端口",
     "remaining": "剩余",
-    "add_existing_server": "添加已有服务器"
+    "add_existing_server": "添加已有服务器",
+    "change_path": "修改路径",
+    "change_path_title": "修改服务器路径",
+    "change_path_confirm": "确认修改",
+    "change_path_cancel": "取消",
+    "change_path_select_folder": "选择新文件夹",
+    "change_path_current": "当前路径",
+    "change_path_new": "新路径",
+    "change_path_warning": "警告：修改服务器路径后，原路径下的服务器文件不会被移动。请确保新路径包含完整的服务器文件。",
+    "change_path_success": "路径修改成功",
+    "change_path_error": "路径修改失败",
+    "change_path_validating": "正在验证路径...",
+    "change_path_invalid": "路径无效",
+    "change_path_not_found": "路径不存在",
+    "change_path_no_permission": "没有权限访问该路径",
+    "change_path_no_executable": "未找到可执行文件（.jar/.bat/.sh/.ps1）",
+    "change_path_server_running": "服务器正在运行，请先停止服务器"
   },
   "add_existing": {
     "title": "添加已有服务器",
@@ -587,6 +610,10 @@
     "java_download": "下载 Java",
     "java_download_desc": "如果系统中没有 Java 或需要更新版本，可以从这里下载",
     "java_download_btn": "下载 Java {{version}} (LTS)",
+    "java_version_select": "选择版本",
+    "java_installing": "下载中...",
+    "java_install_success": "安装完成：",
+    "java_install_failed": "安装失败：",
     "reset": "恢复默认",
     "import_settings": "导入设置",
     "import_desc": "粘贴之前导出的 JSON 数据",
@@ -610,6 +637,25 @@
     "server_name_placeholder": "输入名称",
     "color_theme": "颜色主题",
     "color_theme_desc": "自定义软件颜色主题",
+    "use_preset_colortheme": "使用预设",
+    "use_preset_colortheme_desc": "选择预设颜色主题或自定义颜色",
+    "color_editing": "颜色编辑",
+    "color_editing_desc": "设置自定义颜色值",
+    "current_edit_colorplan": "当前编辑方案",
+    "current_edit_colorplan_desc": "选择当前要编辑的颜色方案",
+    "color_plan": "颜色方案",
+    "color_plan_desc": "选择要编辑的颜色方案",
+    "primary_background_color": "主背景颜色",
+    "secondary_background_color": "次背景颜色",
+    "tertiary_background_color": "三级背景颜色",
+    "primary_color": "主强调色",
+    "secondary_color": "次强调色",
+    "text_primary_color": "主文字颜色",
+    "text_secondary_color": "次文字颜色",
+    "primary_text_color": "主文字颜色",
+    "secondary_text_color": "次文字颜色",
+    "border_color": "边框颜色",
+    "color_value": "颜色值",
     "theme_proxied_by": "由 {plugin} 插件代理",
     "search_font": "搜索字体",
     "loading_preview": "加载预览中...",
@@ -619,12 +665,27 @@
     "replace_image": "更换图片",
     "personalize_page_import_export": "请前往“设置”页面进行导入/导出操作。",
     "font_family_default": "系统默认",
+    "color_picker": "颜色选择器",
+    "input_color_placeholder": "输入颜色值",
+    "color_hue": "色相",
+    "color_saturation": "饱和度",
+    "color_lightness": "亮度",
+    "color_alpha": "透明度",
     "developer_mode": "开发者模式",
     "developer_mode_desc": "启动高级功能和调试选项",
     "developer_mode_toggle": "启动开发者模式",
     "developer_mode_toggle_desc": "启用后将允许使用调试工具",
     "minimal_mode": "极简模式",
-    "minimal_mode_desc": "关闭所有动效和特效，只保留最基本的渲染和互动"
+    "minimal_mode_desc": "关闭所有动效和特效，只保留最基本的渲染和互动",
+    "color_options": {
+      "custom": "自定义"
+    }
+  },
+  "terms": {
+    "title": "隐私与服务协议",
+    "message": "使用 SeaLantern 前，请您阅读并同意我们的",
+    "link": "《隐私与服务协议》",
+    "agree": "同意"
   },
   "about": {
     "title": "关于",
@@ -713,7 +774,9 @@
     "copied": "已复制!",
     "personal_page": "个人主页",
     "load_more": "加载更多",
-    "go_download": "前往下载页面"
+    "go_download": "前往下载页面",
+    "docs": "文档",
+    "docs_link": "点击打开文档站"
   },
   "tray": {
     "minimize": "最小化到后台",
@@ -953,7 +1016,7 @@
     }
   },
   "download-file": {
-    "title": "使用多线程下载器下载文件",
+    "title": "自定义下载",
     "url": "下载地址",
     "url_placeholder": "请输入下载地址（http/https）",
     "save_folder": "保存到",
@@ -1014,7 +1077,7 @@
       "cancel": "取消",
       "startDownload": "开始下载",
       "downloading": "下载中",
-      "goCreatePage": "前往 CreatePage"
+      "goCreatePage": "前往创建服务器"
     }
   }
 }

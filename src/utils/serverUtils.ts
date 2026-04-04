@@ -2,6 +2,7 @@ import { ref, computed } from "vue";
 import { useServerStore } from "@stores/serverStore";
 import { useConsoleStore } from "@stores/consoleStore";
 import { serverApi } from "@api/server";
+import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import type { ServerInstance } from "@type/server";
 
@@ -18,6 +19,18 @@ const deletingServerId = ref<string | null>(null);
 const deleteServerName = ref("");
 
 const showDeleteConfirm = ref(false);
+
+// 服务器路径修改相关
+const changingPathServerId = ref<string | null>(null);
+const changePathModalVisible = ref(false);
+const changePathLoading = ref(false);
+const changePathValidationResult = ref<{
+  valid: boolean;
+  message: string;
+  jarPath: string | null;
+  startupMode: string | null;
+} | null>(null);
+const selectedNewPath = ref("");
 
 // 存储
 const store = useServerStore();
@@ -237,6 +250,111 @@ function closeDeleteConfirm() {
   deleteServerName.value = "";
 }
 
+/**
+ * 显示修改路径对话框
+ * @param server 服务器实例
+ */
+function showChangePathModal(server: ServerInstance) {
+  // 检查服务器是否正在运行
+  const serverStore = useServerStore();
+  const status = serverStore.statuses[server.id]?.status;
+  if (status === "Running" || status === "Starting") {
+    actionError.value = i18n.t("home.change_path_server_running");
+    return;
+  }
+
+  changingPathServerId.value = server.id;
+  selectedNewPath.value = "";
+  changePathValidationResult.value = null;
+  changePathModalVisible.value = true;
+}
+
+/**
+ * 关闭修改路径对话框
+ */
+function closeChangePathModal() {
+  changePathModalVisible.value = false;
+  changingPathServerId.value = null;
+  selectedNewPath.value = "";
+  changePathValidationResult.value = null;
+}
+
+/**
+ * 选择新路径
+ */
+async function selectNewPath() {
+  try {
+    const path = await systemApi.pickFolder();
+    if (path) {
+      selectedNewPath.value = path;
+      // 自动验证路径
+      await validateNewPath();
+    }
+  } catch (e) {
+    actionError.value = String(e);
+  }
+}
+
+/**
+ * 验证新路径
+ */
+async function validateNewPath() {
+  if (!selectedNewPath.value) return;
+
+  changePathLoading.value = true;
+  changePathValidationResult.value = null;
+
+  try {
+    const result = await serverApi.validateServerPath(selectedNewPath.value);
+    changePathValidationResult.value = result;
+  } catch (e) {
+    changePathValidationResult.value = {
+      valid: false,
+      message: String(e),
+      jarPath: null,
+      startupMode: null,
+    };
+  } finally {
+    changePathLoading.value = false;
+  }
+}
+
+/**
+ * 确认修改路径
+ */
+async function confirmChangePath() {
+  if (!changingPathServerId.value || !selectedNewPath.value) return;
+
+  // 再次验证
+  if (!changePathValidationResult.value?.valid) {
+    await validateNewPath();
+    if (!changePathValidationResult.value?.valid) {
+      return;
+    }
+  }
+
+  changePathLoading.value = true;
+
+  try {
+    const result = changePathValidationResult.value;
+    await serverApi.updateServerPath(
+      changingPathServerId.value,
+      selectedNewPath.value,
+      result?.jarPath || undefined,
+      result?.startupMode || undefined,
+    );
+
+    // 刷新服务器列表
+    await store.refreshList();
+
+    closeChangePathModal();
+  } catch (e) {
+    actionError.value = String(e);
+  } finally {
+    changePathLoading.value = false;
+  }
+}
+
 export {
   // 响应式数据
   actionLoading,
@@ -269,4 +387,16 @@ export {
   confirmDelete,
   cancelDelete,
   closeDeleteConfirm,
+
+  // 服务器路径修改相关
+  changingPathServerId,
+  changePathModalVisible,
+  changePathLoading,
+  changePathValidationResult,
+  selectedNewPath,
+  showChangePathModal,
+  closeChangePathModal,
+  selectNewPath,
+  validateNewPath,
+  confirmChangePath,
 };

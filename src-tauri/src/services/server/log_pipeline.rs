@@ -49,7 +49,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection, TransactionBehavior};
 
-const LATEST_LOG_DB_FILE: &str = "latest_log.db";
+///此处常量见 utils/constants.rs
+use crate::utils::constants::{LATEST_LOG_DB_FILE, LOG_BATCH_SIZE, LOG_FLUSH_INTERVAL_MS};
 
 pub type ServerLogEventHandler = Arc<dyn Fn(&str, &str) -> Result<(), String> + Send + Sync>;
 pub type ServerLogProcessor = Arc<dyn Fn(&str, &str) -> String + Send + Sync>;
@@ -57,9 +58,6 @@ pub type ServerLogProcessor = Arc<dyn Fn(&str, &str) -> String + Send + Sync>;
 static SERVER_LOG_EVENT_HANDLER: OnceLock<ServerLogEventHandler> = OnceLock::new();
 static SERVER_LOG_PROCESSORS: OnceLock<Arc<Mutex<Vec<ServerLogProcessor>>>> = OnceLock::new();
 static LOG_WRITERS: OnceLock<Mutex<HashMap<String, ServerLogWriter>>> = OnceLock::new();
-
-const LOG_BATCH_SIZE: usize = 128;
-const LOG_FLUSH_INTERVAL_MS: u64 = 50;
 
 #[derive(Clone)]
 struct LogWriteEntry {

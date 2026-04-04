@@ -144,7 +144,6 @@ function toggleViewMode() {
 
 <style scoped>
 .stats-card {
-  height: 280px;
   display: flex;
   flex-direction: column;
 }
@@ -187,12 +186,12 @@ function toggleViewMode() {
   align-items: center;
   justify-content: center;
   gap: var(--sl-space-sm);
-  min-height: 240px;
+  min-height: 0;
   color: var(--sl-text-tertiary);
 }
 
 .gauge-view {
-  min-height: 240px;
+  min-height: 0;
 }
 
 .gauge-grid {
@@ -250,15 +249,15 @@ function toggleViewMode() {
 .stats-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--sl-space-sm);
-  padding: var(--sl-space-xs) 0;
-  min-height: 240px;
+  gap: var(--sl-space-xs);
+  padding: 0;
+  min-height: 0;
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .stat-header {
@@ -288,7 +287,7 @@ function toggleViewMode() {
 
 .mini-chart {
   width: 100%;
-  height: 30px;
+  height: 22px;
   background: var(--sl-bg-secondary);
   border-radius: var(--sl-radius-xs);
   overflow: hidden;

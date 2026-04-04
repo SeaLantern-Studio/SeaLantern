@@ -38,9 +38,6 @@ impl From<std::io::Error> for DownloadError {
     }
 }
 
-///一个基本的User-agent
-pub const USER_AGENT_EXAMPLE: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0";
-
 /// 实时进度快照
 #[derive(Debug, Clone, serde::Serialize)] // 如果需要返回给前端，可以加 Serialize
 pub struct DownloadSnapshot {

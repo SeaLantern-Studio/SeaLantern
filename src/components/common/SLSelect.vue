@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, type Component } from "vue";
 import { Check, ChevronDown, Loader2, Search } from "lucide-vue-next";
 import { i18n } from "@language";
 import { useRegisterComponent } from "@composables/useRegisterComponent";
@@ -21,6 +21,11 @@ interface Props {
   maxHeight?: string;
   previewFont?: boolean;
   componentId?: string;
+  icon?: Component;
+  collapsed?: boolean;
+  dropdownAlign?: "left" | "right";
+  dropdownWidth?: string;
+  variant?: "default" | "server";
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -30,6 +35,10 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   maxHeight: "280px",
   previewFont: false,
+  collapsed: false,
+  dropdownAlign: "left",
+  dropdownWidth: "200px",
+  variant: "default",
 });
 
 const _selectId = props.componentId ?? `sl-select-${Math.random().toString(36).slice(2, 8)}`;
@@ -87,32 +96,48 @@ const updateDropdownPosition = () => {
   if (!containerRef.value) return;
   const rect = containerRef.value.getBoundingClientRect();
   const viewportHeight = window.innerHeight;
+  const viewportWidth = window.innerWidth;
   const dropdownMaxHeight = parseInt(props.maxHeight) || 280;
+  const dropdownWidth = parseInt(props.dropdownWidth) || 200;
   const spaceBelow = viewportHeight - rect.bottom;
   const spaceAbove = rect.top;
   const gap = 4;
 
   const openUpward = spaceBelow < dropdownMaxHeight + gap && spaceAbove > spaceBelow;
 
-  if (openUpward) {
-    dropdownStyle.value = {
-      position: "fixed",
-      bottom: `${viewportHeight - rect.top + gap}px`,
-      left: `${rect.left}px`,
-      width: `${rect.width}px`,
-      zIndex: "99999",
-      maxHeight: `${Math.min(spaceAbove - gap, dropdownMaxHeight)}px`,
-    };
+  let top: number;
+  let left: number;
+
+  if (props.collapsed && props.dropdownAlign === "right") {
+    left = rect.right + gap;
+    top = rect.top;
   } else {
-    dropdownStyle.value = {
-      position: "fixed",
-      top: `${rect.bottom + gap}px`,
-      left: `${rect.left}px`,
-      width: `${rect.width}px`,
-      zIndex: "99999",
-      maxHeight: `${Math.min(spaceBelow - gap, dropdownMaxHeight)}px`,
-    };
+    left = props.dropdownAlign === "right" ? rect.right - dropdownWidth : rect.left;
+    top = openUpward ? rect.top - dropdownMaxHeight - gap : rect.bottom + gap;
   }
+
+  if (left + dropdownWidth > viewportWidth - gap) {
+    left = viewportWidth - dropdownWidth - gap;
+  }
+  if (left < gap) {
+    left = gap;
+  }
+
+  if (top + dropdownMaxHeight > viewportHeight - gap) {
+    top = viewportHeight - dropdownMaxHeight - gap;
+  }
+  if (top < gap) {
+    top = gap;
+  }
+
+  dropdownStyle.value = {
+    position: "fixed",
+    top: `${top}px`,
+    left: `${left}px`,
+    width: `${dropdownWidth}px`,
+    zIndex: "99999",
+    maxHeight: `${dropdownMaxHeight}px`,
+  };
 };
 
 const toggleDropdown = () => {
@@ -257,12 +282,24 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="sl-select" ref="containerRef">
-    <label v-if="label" class="sl-select-label">{{ label }}</label>
+  <div
+    class="sl-select"
+    :class="{
+      'sl-select--collapsed': collapsed,
+      'sl-select--server': variant === 'server',
+    }"
+    ref="containerRef"
+  >
+    <label v-if="label && !collapsed" class="sl-select-label">{{ label }}</label>
 
     <div
       class="sl-select-trigger"
-      :class="{ open: isOpen, disabled }"
+      :class="{
+        open: isOpen,
+        disabled,
+        'sl-select-trigger--collapsed': collapsed,
+        'sl-select-trigger--server': variant === 'server',
+      }"
       @click="toggleDropdown"
       @keydown="handleKeydown"
       tabindex="0"
@@ -270,31 +307,50 @@ onUnmounted(() => {
       :aria-expanded="isOpen"
       :aria-disabled="disabled"
       :aria-owns="isOpen ? 'sl-select-listbox' : undefined"
+      :aria-label="collapsed ? placeholder : undefined"
       :aria-activedescendant="
         isOpen && highlightedIndex >= 0
           ? `option-${filteredOptions[highlightedIndex].value}`
           : undefined
       "
     >
-      <span v-if="loading" class="sl-select-loading" aria-live="polite">
-        <Loader2 class="spinner" :size="16" aria-hidden="true" />
-        {{ i18n.t("common.loading") }}
-      </span>
-      <span
-        v-else-if="selectedOption"
-        class="sl-select-value"
-        :style="getFontStyle(selectedOption.value)"
-      >
-        {{ selectedOption.label }}
-      </span>
-      <span v-else class="sl-select-placeholder">{{ placeholder }}</span>
-
-      <ChevronDown
-        class="sl-select-arrow"
-        :class="{ open: isOpen }"
-        :size="16"
+      <component
+        v-if="icon"
+        :is="icon"
+        class="sl-select-icon"
+        :size="20"
+        :stroke-width="1.8"
         aria-hidden="true"
       />
+      <template v-if="!collapsed">
+        <span v-if="loading" class="sl-select-loading" aria-live="polite">
+          <Loader2 class="spinner" :size="16" aria-hidden="true" />
+          {{ i18n.t("common.loading") }}
+        </span>
+        <span
+          v-else-if="selectedOption"
+          class="sl-select-value"
+          :style="getFontStyle(selectedOption.value)"
+        >
+          {{ selectedOption.label }}
+        </span>
+        <span v-else class="sl-select-placeholder">{{ placeholder }}</span>
+
+        <ChevronDown
+          v-if="variant !== 'server'"
+          class="sl-select-arrow"
+          :class="{ open: isOpen }"
+          :size="16"
+          aria-hidden="true"
+        />
+        <ChevronDown
+          v-else
+          class="sl-select-arrow"
+          :class="{ open: isOpen }"
+          :size="14"
+          aria-hidden="true"
+        />
+      </template>
     </div>
 
     <Teleport to="body">
@@ -455,6 +511,84 @@ onUnmounted(() => {
 
 .sl-select-arrow.open {
   transform: rotate(180deg);
+}
+
+.sl-select-icon {
+  flex-shrink: 0;
+  color: var(--sl-text-secondary);
+  transition: color var(--sl-transition-fast);
+}
+
+.sl-select-trigger:hover:not(.disabled) .sl-select-icon {
+  color: var(--sl-primary);
+}
+
+.sl-select-trigger--collapsed {
+  width: 40px;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+  min-height: 40px;
+}
+
+.sl-select-trigger--collapsed:hover:not(.disabled) {
+  background: var(--sl-primary-bg);
+  border-color: var(--sl-primary-alpha);
+}
+
+.sl-select--collapsed {
+  width: auto;
+}
+
+/* Server variant styles */
+.sl-select--server {
+  width: 100%;
+}
+
+.sl-select-trigger--server {
+  gap: var(--sl-space-sm);
+  padding: 8px;
+  min-height: 40px;
+  margin-top: 5px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  color: var(--sl-text-secondary);
+}
+
+.sl-select-trigger--server:hover:not(.disabled) {
+  background: var(--sl-primary-bg);
+  color: var(--sl-primary);
+  border-color: var(--sl-primary-alpha);
+}
+
+.sl-select-trigger--server:hover:not(.disabled) .sl-select-icon {
+  color: var(--sl-primary);
+}
+
+.sl-select-trigger--server.open {
+  background: var(--sl-primary-bg);
+  border-color: var(--sl-primary-alpha);
+}
+
+.sl-select-trigger--server .sl-select-value {
+  text-align: left;
+}
+
+.sl-select-trigger--server .sl-select-placeholder {
+  text-align: left;
+}
+
+.sl-select--server.collapsed .sl-select-trigger--server {
+  width: 40px;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sl-select--server.collapsed .sl-select-trigger--server:hover:not(.disabled) {
+  background: var(--sl-primary-bg);
 }
 </style>
 

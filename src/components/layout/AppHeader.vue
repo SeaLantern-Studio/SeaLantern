@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, reactive } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, ChevronDown, ChevronUp, Copy } from "lucide-vue-next";
+import { Minus, Square, X, ChevronDown, ChevronUp, Copy, Check, Globe } from "lucide-vue-next";
 import { useI18nStore } from "@stores/i18nStore";
 import { i18n } from "@language";
 import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
-import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
+import { isMacOSPlatform } from "@utils/platform";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -20,11 +22,11 @@ const route = useRoute();
 const appWindow = getCurrentWindow();
 const i18nStore = useI18nStore();
 const showCloseModal = ref(false);
-const perLocaleProgress = reactive<Record<string, { loaded: number; total: number | null }>>({});
 const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
 const isMaximized = ref(false);
+const isMacOS = isMacOSPlatform();
 
 const pageTitle = computed(() => {
   const titleKey = route.meta?.titleKey as string;
@@ -35,8 +37,6 @@ const pageTitle = computed(() => {
 });
 
 const primaryLanguages = computed(() => {
-  // 为了确保语言切换时重新计算，我们使用 i18nStore.currentLocale 作为依赖
-  const currentLocale = i18nStore.currentLocale;
   const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
 
   return primaryCodes.map((code) => {
@@ -66,8 +66,6 @@ const primaryLanguages = computed(() => {
 });
 
 const otherLanguages = computed(() => {
-  // 为了确保语言切换时重新计算，我们使用 i18nStore.currentLocale 作为依赖
-  const currentLocale = i18nStore.currentLocale;
   const primaryCodes = new Set(["zh-CN", "zh-TW", "en-US", "ja-JP"]);
   const allLocales = i18n.getAvailableLocales();
 
@@ -103,6 +101,8 @@ const otherLanguages = computed(() => {
 
 const showMoreLanguages = ref(false);
 let unlistenResize: (() => void) | null = null;
+let unlistenCloseRequested: UnlistenFn | null = null;
+let isUnmounted = false;
 
 function toggleMoreLanguages() {
   showMoreLanguages.value = !showMoreLanguages.value;
@@ -136,6 +136,7 @@ const currentLanguageText = computed(() => {
 });
 
 onMounted(async () => {
+  isUnmounted = false;
   await loadSettings();
 
   // 初始化最大化状态
@@ -146,13 +147,27 @@ onMounted(async () => {
     isMaximized.value = await appWindow.isMaximized();
   });
 
+  const unlisten = await listen("close-requested", () => {
+    showCloseModal.value = true;
+  });
+  if (isUnmounted) {
+    unlisten();
+  } else {
+    unlistenCloseRequested = unlisten;
+  }
+
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
+  isUnmounted = true;
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (unlistenResize) {
     unlistenResize();
+  }
+  if (unlistenCloseRequested) {
+    unlistenCloseRequested();
+    unlistenCloseRequested = null;
   }
 });
 
@@ -253,34 +268,42 @@ async function handleLanguageClick(locale: string, close?: () => void) {
   }
 }
 
-function computeOverallProgress() {
-  const locales = Object.keys(perLocaleProgress);
-  if (locales.length === 0) return 0;
-  const completed = locales.filter(
-    (k) =>
-      perLocaleProgress[k].total &&
-      perLocaleProgress[k].loaded >= (perLocaleProgress[k].total ?? 0),
-  ).length;
-  return Math.round((completed / locales.length) * 100);
+function isActive(code: string) {
+  return i18nStore.currentLocale == code;
 }
 </script>
 
 <template>
-  <header class="app-header glass-strong">
-    <div class="header-center" data-tauri-drag-region></div>
+  <header
+    class="app-header"
+    :class="{ 'macos-overlay': isMacOS, 'glass-strong': !isMacOS }"
+    data-tauri-drag-region
+  >
+    <div class="header-left" v-if="!isMacOS">
+      <h2 class="page-title" data-tauri-drag-region>{{ pageTitle }}</h2>
+    </div>
+
+    <div class="header-center">
+      <h2 class="page-title" v-if="isMacOS" data-tauri-drag-region>{{ pageTitle }}</h2>
+    </div>
 
     <div class="header-right">
       <Menu as="div" class="language-selector">
         <MenuButton class="language-button">
-          <span class="language-text">{{ currentLanguageText }}</span>
+          <Globe class="language-text" :size="16" />
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
           <MenuItem v-for="option in primaryLanguages" :key="option.code" v-slot="{ close }">
-            <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
+            <div
+              class="language-item"
+              :class="{ active: isActive(option.code) }"
+              @click="() => handleLanguageClick(option.code, close)"
+            >
               <div class="language-item-main">
                 <span class="language-label">{{ option.label }}</span>
               </div>
+              <Check v-if="isActive(option.code)" :size="16" aria-hidden="true" />
             </div>
           </MenuItem>
 
@@ -297,10 +320,15 @@ function computeOverallProgress() {
           <!-- 其他语言（仅在展开时显示） -->
           <template v-if="showMoreLanguages">
             <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
-              <div class="language-item" @click="() => handleLanguageClick(option.code, close)">
+              <div
+                class="language-item"
+                :class="{ active: isActive(option.code) }"
+                @click="() => handleLanguageClick(option.code, close)"
+              >
                 <div class="language-item-main">
                   <span class="language-label">{{ option.label }}</span>
                 </div>
+                <Check v-if="isActive(option.code)" :size="16" aria-hidden="true" />
               </div>
             </MenuItem>
           </template>
@@ -312,7 +340,7 @@ function computeOverallProgress() {
         <span class="status-text">{{ i18n.t("common.app_name") }}</span>
       </div>
 
-      <div class="window-controls">
+      <div v-if="!isMacOS" class="window-controls">
         <button class="win-btn" @click="minimizeWindow" :title="i18n.t('common.minimize')">
           <Minus :size="12" />
         </button>

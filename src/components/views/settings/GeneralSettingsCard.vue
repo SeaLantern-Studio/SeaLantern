@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import SLSelect from "@components/common/SLSelect.vue";
@@ -26,11 +27,11 @@ function handleCloseActionChange(v: string | number) {
   emit("change");
 }
 
-const closeActionOptions = [
+const closeActionOptions = computed(() => [
   { label: i18n.t("settings.close_action_ask"), value: "ask" },
   { label: i18n.t("settings.close_action_minimize"), value: "minimize" },
   { label: i18n.t("settings.close_action_close"), value: "close" },
-];
+]);
 </script>
 
 <template>
