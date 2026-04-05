@@ -27,7 +27,6 @@ function handlePickFolder() {
   if (props.isDownloading) return;
   emit("pickFolder");
 }
-</script>
 
 <template>
   <div class="download-form">
