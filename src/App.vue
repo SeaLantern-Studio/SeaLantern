@@ -11,6 +11,7 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
+import { isBrowserEnv } from "@api/tauri";
 import {
   applyTheme,
   applyFontSize,
@@ -56,6 +57,11 @@ const contextMenuStore = useContextMenuStore();
 const serverStore = useServerStore();
 
 async function handleGlobalContextMenu(event: MouseEvent) {
+  // 在浏览器环境（Docker 模式）下，不阻止右键菜单，允许开发者工具
+  if (isBrowserEnv()) {
+    return;
+  }
+
   // 当开发者模式启用时，允许默认的右键菜单行为以打开开发者工具
   if (settingsStore.settings.developer_mode) {
     return;

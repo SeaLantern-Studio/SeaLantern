@@ -4,6 +4,7 @@
  */
 
 import type { AppSettings } from "@api/settings";
+import { isBrowserEnv } from "@api/tauri";
 import { getThemeColors, mapLegacyPlanName } from "@themes";
 
 let _themeProviderOverrides: string[] = [];
@@ -232,6 +233,13 @@ export function applyColors(settings: AppSettings): void {
  * @param enabled - 是否启用开发者模式
  */
 export function applyDeveloperMode(enabled: boolean): void {
+  // 在浏览器环境（Docker 模式）下，无法有效阻止开发者工具快捷键
+  // 浏览器不允许网页完全禁用开发者工具，因此跳过限制逻辑
+  // 这意味着 Docker 模式下开发者模式默认启用
+  if (isBrowserEnv()) {
+    return;
+  }
+
   if (enabled) {
     document.removeEventListener("contextmenu", blockContextMenu);
     document.removeEventListener("keydown", blockDevTools);
