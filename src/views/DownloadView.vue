@@ -92,7 +92,7 @@ const canFileDownload = computed(() => {
     return false;
   }
 
-  // 验证URL格式（修复 no-new 警告：赋值给变量）
+  // 验证URL格式(PDM:修复Warning其中之一  no-new)
   try {
     const validatedUrl = new URL(url.value.trim());
   } catch {
