@@ -1,4 +1,3 @@
-<script setup lang="ts">
 import { FolderOpen, Link, FileText, Cpu } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
