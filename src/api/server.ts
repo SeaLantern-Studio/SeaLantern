@@ -1,4 +1,4 @@
-import { tauriInvoke } from "@api/tauri";
+import { tauriInvoke, isBrowserEnv, HTTP_API_BASE } from "@api/tauri";
 import type { ServerInstance } from "@type/server";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -244,8 +244,47 @@ export const serverApi = {
   },
 
   onLogLine(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
+    // 浏览器环境使用 SSE
+    if (isBrowserEnv()) {
+      return this.subscribeLogStream(callback);
+    }
+    // Tauri 环境使用事件监听
     return listen<ServerLogLineEvent>("server-log-line", (event) => {
       callback(event.payload);
+    });
+  },
+
+  /**
+   * SSE 日志流订阅（浏览器/Docker 模式）
+   * 返回取消订阅函数
+   */
+  subscribeLogStream(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
+    return new Promise((resolve) => {
+      const url = `${HTTP_API_BASE}/api/logs/stream`;
+      const eventSource = new EventSource(url);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as ServerLogLineEvent;
+          callback(data);
+        } catch (e) {
+          console.warn("[SSE] Failed to parse log event:", e);
+        }
+      };
+
+      eventSource.onerror = (e) => {
+        console.warn("[SSE] Connection error, reconnecting...", e);
+        // 自动重连：关闭旧连接，延迟后创建新连接
+        eventSource.close();
+        setTimeout(() => {
+          this.subscribeLogStream(callback);
+        }, 3000);
+      };
+
+      // 返回取消订阅函数
+      resolve(() => {
+        eventSource.close();
+      });
     });
   },
 
