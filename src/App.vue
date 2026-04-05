@@ -116,10 +116,12 @@ async function handleGlobalContextMenu(event: MouseEvent) {
 let serverErrorUnlisten: UnlistenFn | null = null;
 
 onMounted(async () => {
-  // 监听服务器错误事件并播放提示音
-  serverErrorUnlisten = await listen("server-error", () => {
-    playNotificationSound();
-  });
+  // 监听服务器错误事件并播放提示音（仅 Tauri 环境）
+  if (!isBrowserEnv()) {
+    serverErrorUnlisten = await listen("server-error", () => {
+      playNotificationSound();
+    });
+  }
 
   contextMenuStore.initContextMenuListener();
   document.addEventListener("contextmenu", handleGlobalContextMenu);

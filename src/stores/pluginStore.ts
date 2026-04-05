@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
+import { isBrowserEnv } from "@api/tauri";
 import { registerPluginLocale, addPluginTranslations, removePluginTranslations } from "@language";
 import { useComponentRegistry } from "@composables/useComponentRegistry";
 import { useToast } from "@composables/useToast";
@@ -1166,6 +1167,11 @@ export const usePluginStore = defineStore("plugin", () => {
   let uiEventUnlisten: UnlistenFn | null = null;
 
   async function initUiEventListener() {
+    // 浏览器环境不支持 Tauri 事件系统
+    if (isBrowserEnv()) {
+      return;
+    }
+
     if (uiEventUnlisten) {
       return;
     }
@@ -1188,7 +1194,13 @@ export const usePluginStore = defineStore("plugin", () => {
     }
   }
 
+  let sidebarEventUnlisten: UnlistenFn | null = null;
+
   function initSidebarEventListener() {
+    // 浏览器环境不支持 Tauri 事件系统
+    if (isBrowserEnv()) {
+      return;
+    }
     console.log("[PluginSidebar] Event listener disabled");
   }
 
@@ -1253,6 +1265,11 @@ export const usePluginStore = defineStore("plugin", () => {
   }
 
   async function initPermissionLogListener() {
+    // 浏览器环境不支持 Tauri 事件系统
+    if (isBrowserEnv()) {
+      return;
+    }
+
     if (permissionLogUnlisten) {
       return;
     }
@@ -1282,6 +1299,11 @@ export const usePluginStore = defineStore("plugin", () => {
   let pluginLogUnlisten: UnlistenFn | null = null;
 
   async function initPluginLogListener() {
+    // 浏览器环境不支持 Tauri 事件系统
+    if (isBrowserEnv()) {
+      return;
+    }
+
     if (pluginLogUnlisten) {
       return;
     }
@@ -1431,6 +1453,11 @@ export const usePluginStore = defineStore("plugin", () => {
   let componentEventUnlisten: UnlistenFn | null = null;
 
   async function initComponentEventListener() {
+    // 浏览器环境不支持 Tauri 事件系统
+    if (isBrowserEnv()) {
+      return;
+    }
+
     if (componentEventUnlisten) return;
     try {
       componentEventUnlisten = await listen<PluginComponentEvent>("plugin:ui:component", (e) => {
@@ -1476,6 +1503,11 @@ export const usePluginStore = defineStore("plugin", () => {
   let i18nEventUnlisten: UnlistenFn | null = null;
 
   async function initI18nEventListener() {
+    // 浏览器环境不支持 Tauri 事件系统
+    if (isBrowserEnv()) {
+      return;
+    }
+
     if (i18nEventUnlisten) return;
     try {
       i18nEventUnlisten = await listen<{
