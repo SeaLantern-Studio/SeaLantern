@@ -107,6 +107,9 @@ COPY src-tauri/tauri.conf.json ./src-tauri/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
 
+# 复制 tauri.conf.json 中 bundle.resources 引用的文件
+COPY LICENSE NOTICE ./
+
 # 构建 docker-entry 二进制
 RUN cargo build --release -p docker-entry
 
