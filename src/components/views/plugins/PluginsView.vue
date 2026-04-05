@@ -1129,7 +1129,7 @@ function goToMarket() {
               <SLSelect
                 v-else-if="field.type === 'select'"
                 v-model="settingsForm[field.key]"
-                :options="field.options"
+                :options="field.options || []"
               />
             </div>
 
