@@ -21,6 +21,53 @@ impl I18nContext {
     }
 }
 
+pub(super) fn validate_locale(locale: &str) -> bool {
+    let parts: Vec<&str> = locale.split('-').collect();
+    if parts.is_empty() || parts.len() > 3 {
+        return false;
+    }
+
+    let is_alpha_segment = |segment: &str, min: usize, max: usize| {
+        !segment.is_empty()
+            && segment.len() >= min
+            && segment.len() <= max
+            && segment.chars().all(|ch| ch.is_ascii_alphabetic())
+    };
+
+    if !is_alpha_segment(parts[0], 2, 3) {
+        return false;
+    }
+
+    if let Some(region_or_script) = parts.get(1) {
+        let valid = (region_or_script.len() == 2
+            && region_or_script.chars().all(|ch| ch.is_ascii_alphabetic()))
+            || (region_or_script.len() == 4
+                && region_or_script.chars().all(|ch| ch.is_ascii_alphabetic()));
+        if !valid {
+            return false;
+        }
+    }
+
+    if let Some(region) = parts.get(2) {
+        let valid = (region.len() == 2 && region.chars().all(|ch| ch.is_ascii_alphabetic()))
+            || (region.len() == 3 && region.chars().all(|ch| ch.is_ascii_digit()));
+        if !valid {
+            return false;
+        }
+    }
+
+    true
+}
+
+pub(super) fn validate_translation_key(key: &str) -> bool {
+    key.chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '-' | '_' | ':'))
+}
+
+pub(super) fn plugin_i18n_namespace(plugin_id: &str, key: &str) -> String {
+    format!("plugins.{}.{}", plugin_id, key)
+}
+
 pub(super) fn create_i18n_table(lua: &Lua) -> Result<Table, String> {
     lua.create_table()
         .map_err(|e| format!("Failed to create i18n table: {}", e))

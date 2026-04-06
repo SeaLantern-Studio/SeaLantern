@@ -33,6 +33,24 @@ impl PluginRuntime {
 
         set_i18n_function(
             &i18n_table,
+            "hasTranslation",
+            self.lua
+                .create_function(query::has_translation)
+                .map_err(|e| format!("Failed to create i18n.hasTranslation: {}", e))?,
+            "hasTranslation",
+        )?;
+
+        set_i18n_function(
+            &i18n_table,
+            "tOrDefault",
+            self.lua
+                .create_function(query::t_or_default)
+                .map_err(|e| format!("Failed to create i18n.tOrDefault: {}", e))?,
+            "tOrDefault",
+        )?;
+
+        set_i18n_function(
+            &i18n_table,
             "onLocaleChange",
             self.lua
                 .create_function({
@@ -66,11 +84,29 @@ impl PluginRuntime {
 
         set_i18n_function(
             &i18n_table,
+            "getTranslations",
+            self.lua
+                .create_function(query::get_translations)
+                .map_err(|e| format!("Failed to create i18n.getTranslations: {}", e))?,
+            "getTranslations",
+        )?;
+
+        set_i18n_function(
+            &i18n_table,
             "getAvailableLocales",
             self.lua
                 .create_function(query::get_available_locales)
                 .map_err(|e| format!("Failed to create i18n.getAvailableLocales: {}", e))?,
             "getAvailableLocales",
+        )?;
+
+        set_i18n_function(
+            &i18n_table,
+            "tp",
+            self.lua
+                .create_function(query::translate_plugin)
+                .map_err(|e| format!("Failed to create i18n.tp: {}", e))?,
+            "tp",
         )?;
 
         set_i18n_function(

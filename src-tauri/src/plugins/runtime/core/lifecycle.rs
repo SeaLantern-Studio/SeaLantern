@@ -45,25 +45,21 @@ impl PluginRuntime {
         use crate::services::global::i18n_service;
         use crate::services::i18n::LocaleCallbackToken;
 
-        let registry_key = format!("_locale_callback_token_{}", self.plugin_id);
-        if let Ok(token_id) = self.lua.named_registry_value::<usize>(&registry_key) {
-            let i18n = i18n_service();
-            i18n.remove_locale_callback(&LocaleCallbackToken(token_id));
+        let callbacks_registry_key = format!("_locale_change_callbacks_{}", self.plugin_id);
+        let token_registry_key = format!("_locale_callback_token_{}", self.plugin_id);
+
+        if let Ok(token_id) = self.lua.named_registry_value::<usize>(&token_registry_key) {
+            i18n_service().remove_locale_callback(&LocaleCallbackToken(token_id));
         }
 
-        let _ = self.lua.set_named_registry_value(
-            &format!("_locale_change_callbacks_{}", self.plugin_id),
-            mlua::Value::Nil,
-        );
-        let _ = self.lua.set_named_registry_value(
-            &format!("_locale_callback_token_{}", self.plugin_id),
-            mlua::Value::Nil,
-        );
+        let _ = self
+            .lua
+            .set_named_registry_value(&callbacks_registry_key, mlua::Value::Nil);
+        let _ = self
+            .lua
+            .set_named_registry_value(&token_registry_key, mlua::Value::Nil);
 
-        {
-            let i18n = i18n_service();
-            i18n.remove_plugin_translations(&self.plugin_id);
-            let _ = emit_i18n_event(&self.plugin_id, "remove_translations", "", "");
-        }
+        i18n_service().remove_plugin_translations(&self.plugin_id);
+        let _ = emit_i18n_event(&self.plugin_id, "remove_translations", "", "");
     }
 }
