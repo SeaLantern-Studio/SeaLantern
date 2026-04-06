@@ -23,9 +23,7 @@ fn get(lua: &Lua, ctx: &ServerContext) -> Result<mlua::Function, String> {
         find_server(&server_id)?;
 
         let count = count.unwrap_or(100).min(1000);
-        let all_logs = crate::services::server_log_pipeline::get_logs(&server_id, 0, None);
-        let start = all_logs.len().saturating_sub(count);
-        let logs = &all_logs[start..];
+        let logs = crate::services::server_log_pipeline::get_logs(&server_id, 0, Some(count));
 
         let result = lua.create_table()?;
         for (i, line) in logs.iter().enumerate() {

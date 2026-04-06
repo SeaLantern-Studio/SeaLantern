@@ -87,16 +87,34 @@ pub(super) fn set_server_table(sl: &Table, server_table: Table) -> Result<(), St
         .map_err(|e| map_lua_err("server.set_server_failed", e))
 }
 
-pub(super) fn server_root(relative_server_path: String) -> PathBuf {
-    PathBuf::from(relative_server_path)
-}
-
 pub(super) fn validated_server_path(
     server: &ServerInstance,
     relative_path: &str,
 ) -> Result<PathBuf, mlua::Error> {
-    let server_dir = server_root(server.path.clone());
+    let server_dir = PathBuf::from(&server.path);
     validate_server_path(&server_dir, relative_path)
+}
+
+pub(super) fn with_server<T, F>(server_id: &str, f: F) -> Result<T, mlua::Error>
+where
+    F: FnOnce(&ServerInstance) -> Result<T, mlua::Error>,
+{
+    let server = find_server(server_id)?;
+    f(&server)
+}
+
+pub(super) fn with_server_path<T, F>(
+    server_id: &str,
+    relative_path: &str,
+    f: F,
+) -> Result<T, mlua::Error>
+where
+    F: FnOnce(&ServerInstance, PathBuf) -> Result<T, mlua::Error>,
+{
+    with_server(server_id, |server| {
+        let full_path = validated_server_path(server, relative_path)?;
+        f(server, full_path)
+    })
 }
 
 pub(super) fn create_server_entry(lua: &Lua, server: &ServerInstance) -> mlua::Result<Table> {
