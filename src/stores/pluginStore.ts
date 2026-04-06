@@ -158,6 +158,46 @@ export const usePluginStore = defineStore("plugin", () => {
     Array<{ element: Element; eventType: string; handler: EventListener }>
   >();
 
+  function setFormFieldValue(field: Element, value: unknown) {
+    if (field instanceof HTMLInputElement) {
+      const type = field.type.toLowerCase();
+      if (type === "checkbox") {
+        field.checked = Boolean(value);
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      }
+      if (type === "radio") {
+        const normalized = value == null ? "" : String(value);
+        if (field.value === normalized) {
+          field.checked = true;
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+          return true;
+        }
+        return false;
+      }
+
+      field.value = value == null ? "" : String(value);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }
+
+    if (field instanceof HTMLTextAreaElement) {
+      field.value = value == null ? "" : String(value);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }
+
+    if (field instanceof HTMLSelectElement) {
+      field.value = value == null ? "" : String(value);
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }
+
+    return false;
+  }
+
   const pendingComponentCreates = new Map<
     string,
     Array<{
@@ -927,6 +967,62 @@ export const usePluginStore = defineStore("plugin", () => {
         break;
       }
 
+      case "element_exists": {
+        if (!target) break;
+        try {
+          const parsed = JSON.parse(html || "{}");
+          const requestId = parsed.request_id;
+          const exists = document.querySelector(target) !== null;
+          emit("plugin-element-response", {
+            plugin_id,
+            request_id: requestId,
+            data: exists ? "true" : "false",
+          });
+        } catch (e) {
+          console.error("[PluginUI] element_exists error:", e);
+        }
+        break;
+      }
+
+      case "element_is_visible": {
+        if (!target) break;
+        try {
+          const parsed = JSON.parse(html || "{}");
+          const requestId = parsed.request_id;
+          const el = document.querySelector(target) as HTMLElement | null;
+          const isVisible =
+            !!el &&
+            el.isConnected &&
+            !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+          emit("plugin-element-response", {
+            plugin_id,
+            request_id: requestId,
+            data: isVisible ? "true" : "false",
+          });
+        } catch (e) {
+          console.error("[PluginUI] element_is_visible error:", e);
+        }
+        break;
+      }
+
+      case "element_is_enabled": {
+        if (!target) break;
+        try {
+          const parsed = JSON.parse(html || "{}");
+          const requestId = parsed.request_id;
+          const el = document.querySelector(target) as HTMLElement | null;
+          const isEnabled = !!el && !el.hasAttribute("disabled");
+          emit("plugin-element-response", {
+            plugin_id,
+            request_id: requestId,
+            data: isEnabled ? "true" : "false",
+          });
+        } catch (e) {
+          console.error("[PluginUI] element_is_enabled error:", e);
+        }
+        break;
+      }
+
       case "element_get_text": {
         if (!target) break;
         try {
@@ -1083,6 +1179,17 @@ export const usePluginStore = defineStore("plugin", () => {
         if (!target) break;
         const el = document.querySelector(target) as HTMLElement | null;
         if (el) {
+          const listeners = eventListenerRegistry.get(plugin_id) ?? [];
+          listeners
+            .filter((entry) => entry.eventType === "change" && entry.element === el)
+            .forEach((entry) => {
+              entry.element.removeEventListener(entry.eventType, entry.handler);
+            });
+
+          const nextListeners = listeners.filter(
+            (entry) => !(entry.eventType === "change" && entry.element === el),
+          );
+
           const handler = (e: Event) => {
             const value = (e.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)
               .value;
@@ -1095,10 +1202,81 @@ export const usePluginStore = defineStore("plugin", () => {
           };
           el.addEventListener("change", handler);
 
-          if (!eventListenerRegistry.has(plugin_id)) {
-            eventListenerRegistry.set(plugin_id, []);
+          nextListeners.push({ element: el, eventType: "change", handler });
+          eventListenerRegistry.set(plugin_id, nextListeners);
+        }
+        break;
+      }
+
+      case "element_off_change": {
+        if (!target) break;
+        const listeners = eventListenerRegistry.get(plugin_id);
+        if (!listeners) break;
+
+        const remaining = listeners.filter((entry) => {
+          const shouldRemove = entry.eventType === "change" && entry.element.matches(target);
+          if (shouldRemove) {
+            entry.element.removeEventListener(entry.eventType, entry.handler);
           }
-          eventListenerRegistry.get(plugin_id)!.push({ element: el, eventType: "change", handler });
+          return !shouldRemove;
+        });
+
+        if (remaining.length === 0) {
+          eventListenerRegistry.delete(plugin_id);
+        } else {
+          eventListenerRegistry.set(plugin_id, remaining);
+        }
+        break;
+      }
+
+      case "element_form_fill": {
+        if (!target) break;
+        try {
+          const payload = JSON.parse(html || "{}");
+          const form = document.querySelector(target);
+          const fields = payload.fields as Record<string, unknown> | undefined;
+          if (!form || !fields || typeof fields !== "object") {
+            break;
+          }
+
+          Object.entries(fields).forEach(([name, value]) => {
+            const cssApi = window as Window & { CSS?: { escape?: (input: string) => string } };
+            const escapedName = cssApi.CSS?.escape?.(name);
+            const selector = escapedName
+              ? `[name="${escapedName}"]`
+              : `[name="${name.replace(/"/g, '\\"')}"]`;
+            const matches = Array.from(form.querySelectorAll(selector));
+
+            if (matches.length === 0) {
+              return;
+            }
+
+            if (Array.isArray(value)) {
+              matches.forEach((field) => {
+                if (field instanceof HTMLInputElement && field.type.toLowerCase() === "checkbox") {
+                  field.checked = value.some((item) => String(item) === field.value);
+                  field.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+              });
+              return;
+            }
+
+            if (
+              matches.some(
+                (field) =>
+                  field instanceof HTMLInputElement && field.type.toLowerCase() === "radio",
+              )
+            ) {
+              matches.forEach((field) => {
+                setFormFieldValue(field, value);
+              });
+              return;
+            }
+
+            setFormFieldValue(matches[0], value);
+          });
+        } catch (e) {
+          console.error("[PluginUI] element_form_fill error:", e);
         }
         break;
       }
