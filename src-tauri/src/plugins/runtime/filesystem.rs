@@ -6,6 +6,7 @@ mod read;
 mod transfer;
 mod write;
 
+pub(crate) use common::has_any_fs_permission;
 use common::{create_fs_table, set_fs_function, set_fs_table, FsContext};
 
 impl PluginRuntime {

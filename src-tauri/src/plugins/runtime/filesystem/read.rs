@@ -1,5 +1,5 @@
 use super::common::{
-    check_fs_permission, emit_permission_log_api, get_base_dir_for_permission, validate_fs_path,
+    emit_permission_log_api, ensure_safe_path_for_access, resolve_scope_action, validate_fs_path,
     FsContext,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
@@ -8,17 +8,19 @@ use std::fs;
 
 pub(super) fn read(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |_, path: String| {
-        let (base_dir, perm) = get_base_dir_for_permission(
+    lua.create_function(move |_, (scope, path): (String, String)| {
+        let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
             &ctx.global_dir,
             &ctx.permissions,
+            &scope,
+            "read",
         )?;
-        check_fs_permission(&ctx.permissions, &perm)?;
         let full_path = validate_fs_path(&base_dir, &path)?;
+        ensure_safe_path_for_access(&full_path)?;
 
-        emit_permission_log_api(&ctx.plugin_id, "sl.fs.read", &path);
+        emit_permission_log_api(&ctx.plugin_id, "sl.fs.read", &format!("{}:{}", scope, path));
 
         fs::read_to_string(&full_path)
             .map_err(|e| mlua::Error::runtime(format!("Failed to read file: {}", e)))
@@ -28,17 +30,23 @@ pub(super) fn read(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
 pub(super) fn read_binary(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |_, path: String| {
-        let (base_dir, perm) = get_base_dir_for_permission(
+    lua.create_function(move |_, (scope, path): (String, String)| {
+        let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
             &ctx.global_dir,
             &ctx.permissions,
+            &scope,
+            "read",
         )?;
-        check_fs_permission(&ctx.permissions, &perm)?;
         let full_path = validate_fs_path(&base_dir, &path)?;
+        ensure_safe_path_for_access(&full_path)?;
 
-        emit_permission_log_api(&ctx.plugin_id, "sl.fs.read_binary", &path);
+        emit_permission_log_api(
+            &ctx.plugin_id,
+            "sl.fs.read_binary",
+            &format!("{}:{}", scope, path),
+        );
 
         let bytes = fs::read(&full_path)
             .map_err(|e| mlua::Error::runtime(format!("Failed to read file: {}", e)))?;
@@ -49,17 +57,19 @@ pub(super) fn read_binary(lua: &Lua, ctx: &FsContext) -> Result<Function, String
 
 pub(super) fn exists(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |_, path: String| {
-        let (base_dir, perm) = get_base_dir_for_permission(
+    lua.create_function(move |_, (scope, path): (String, String)| {
+        let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
             &ctx.global_dir,
             &ctx.permissions,
+            &scope,
+            "meta",
         )?;
-        check_fs_permission(&ctx.permissions, &perm)?;
         let full_path = validate_fs_path(&base_dir, &path)?;
+        ensure_safe_path_for_access(&full_path)?;
 
-        emit_permission_log_api(&ctx.plugin_id, "sl.fs.exists", &path);
+        emit_permission_log_api(&ctx.plugin_id, "sl.fs.exists", &format!("{}:{}", scope, path));
         Ok(full_path.exists())
     })
     .map_err(|e| format!("Failed to create fs.exists: {}", e))
@@ -67,17 +77,19 @@ pub(super) fn exists(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
 pub(super) fn list(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |lua, path: String| {
-        let (base_dir, perm) = get_base_dir_for_permission(
+    lua.create_function(move |lua, (scope, path): (String, String)| {
+        let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
             &ctx.global_dir,
             &ctx.permissions,
+            &scope,
+            "list",
         )?;
-        check_fs_permission(&ctx.permissions, &perm)?;
         let full_path = validate_fs_path(&base_dir, &path)?;
+        ensure_safe_path_for_access(&full_path)?;
 
-        emit_permission_log_api(&ctx.plugin_id, "sl.fs.list", &path);
+        emit_permission_log_api(&ctx.plugin_id, "sl.fs.list", &format!("{}:{}", scope, path));
 
         let entries = fs::read_dir(&full_path)
             .map_err(|e| mlua::Error::runtime(format!("Failed to read directory: {}", e)))?;
@@ -97,17 +109,19 @@ pub(super) fn list(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
 pub(super) fn info(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |lua, path: String| {
-        let (base_dir, perm) = get_base_dir_for_permission(
+    lua.create_function(move |lua, (scope, path): (String, String)| {
+        let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
             &ctx.global_dir,
             &ctx.permissions,
+            &scope,
+            "meta",
         )?;
-        check_fs_permission(&ctx.permissions, &perm)?;
         let full_path = validate_fs_path(&base_dir, &path)?;
+        ensure_safe_path_for_access(&full_path)?;
 
-        emit_permission_log_api(&ctx.plugin_id, "sl.fs.info", &path);
+        emit_permission_log_api(&ctx.plugin_id, "sl.fs.info", &format!("{}:{}", scope, path));
 
         let metadata = fs::metadata(&full_path)
             .map_err(|e| mlua::Error::runtime(format!("Failed to get file metadata: {}", e)))?;
@@ -130,24 +144,19 @@ pub(super) fn info(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 pub(super) fn get_path(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |_, scope: String| {
+        let (_, _) = resolve_scope_action(
+            &ctx.data_dir,
+            &ctx.server_dir,
+            &ctx.global_dir,
+            &ctx.permissions,
+            &scope,
+            "meta",
+        )?;
         let path = match scope.as_str() {
-            "data" => {
-                check_fs_permission(&ctx.permissions, "fs.data")?;
-                ctx.data_dir.to_string_lossy().to_string()
-            }
-            "server" => {
-                check_fs_permission(&ctx.permissions, "fs.server")?;
-                ctx.server_dir.to_string_lossy().to_string()
-            }
-            "global" => {
-                check_fs_permission(&ctx.permissions, "fs.global")?;
-                ctx.global_dir.to_string_lossy().to_string()
-            }
-            _ => {
-                return Err(mlua::Error::runtime(
-                    "Invalid scope. Must be 'data', 'server', or 'global'",
-                ))
-            }
+            "data" => "sandbox://data".to_string(),
+            "server" => "sandbox://server".to_string(),
+            "global" => "sandbox://global".to_string(),
+            _ => unreachable!(),
         };
 
         emit_permission_log_api(&ctx.plugin_id, "sl.fs.get_path", &scope);

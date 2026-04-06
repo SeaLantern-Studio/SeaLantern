@@ -1,4 +1,5 @@
 use super::runtime::PluginRuntime;
+use crate::plugins::runtime::filesystem::has_any_fs_permission;
 use mlua::Table;
 use std::path::Path;
 
@@ -28,7 +29,7 @@ impl PluginRuntime {
         let normalized_permissions = permissions
             .into_iter()
             .map(|p| if p == "fs" { "fs.data".to_string() } else { p })
-            .collect();
+            .collect::<Vec<_>>();
 
         let runtime = Self {
             lua,
@@ -70,11 +71,7 @@ impl PluginRuntime {
             self.setup_permission_denied_module(&sl, "storage")?;
         }
 
-        if self
-            .permissions
-            .iter()
-            .any(|p| matches!(p.as_str(), "fs.data" | "fs.server" | "fs.global"))
-        {
+        if has_any_fs_permission(&self.permissions) {
             self.setup_fs_namespace(&sl)?;
         } else {
             self.setup_permission_denied_module(&sl, "fs")?;
