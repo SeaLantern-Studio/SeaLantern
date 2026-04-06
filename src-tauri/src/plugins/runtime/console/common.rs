@@ -1,6 +1,6 @@
 use crate::services::global::{i18n_service, server_manager, settings_manager};
 use mlua::{Lua, Table};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 pub fn i18n_arg(key: &str, value: &str) -> HashMap<String, String> {
     HashMap::from([(key.to_string(), value.to_string())])
@@ -63,64 +63,68 @@ pub(super) fn validate_server_id(server_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub(super) fn with_valid_server<T, F>(server_id: &str, f: F) -> Result<T, mlua::Error>
-where
-    F: FnOnce() -> Result<T, mlua::Error>,
-{
+pub(super) fn get_server_status_checked(
+    server_id: &str,
+) -> Result<crate::models::server::ServerStatusInfo, mlua::Error> {
     validate_server_id(server_id).map_err(mlua::Error::runtime)?;
-    f()
+    Ok(server_manager().get_server_status(server_id))
+}
+
+pub(super) fn runtime_console_err(key: &str, err: impl std::fmt::Display) -> mlua::Error {
+    mlua::Error::runtime(map_console_err(key, err))
+}
+
+pub(super) fn runtime_console_msg(key: &str) -> mlua::Error {
+    mlua::Error::runtime(i18n_service().t(key))
 }
 
 pub(super) fn sanitize_command(command: &str) -> Result<String, String> {
-    const FORBIDDEN_CHARS: &[char] = &[
-        '|', ';', '\n', '\r', '&', '$', '`', '<', '>', '\t', '\\', '(', ')', '[', ']', '{', '}',
-    ];
-
-    if command.contains(FORBIDDEN_CHARS) {
-        return Err(i18n_service().t("console.command_has_forbidden_chars"));
-    }
-
     let trimmed = command.trim();
     if trimmed.is_empty() {
         return Err(i18n_service().t("console.empty_command"));
     }
 
+    if trimmed.contains(['\n', '\r']) {
+        return Err(i18n_service().t("console.command_has_forbidden_chars"));
+    }
+
     Ok(trimmed.to_string())
+}
+
+fn command_first_token(command: &str) -> &str {
+    command.split_whitespace().next().unwrap_or("")
+}
+
+fn normalized_command_list(commands: &[String]) -> Vec<String> {
+    commands
+        .iter()
+        .map(|cmd| cmd.trim())
+        .filter(|cmd| !cmd.is_empty())
+        .map(|cmd| cmd.to_ascii_lowercase())
+        .collect()
 }
 
 pub(super) fn is_command_allowed(command: &str) -> Result<String, String> {
     let sanitized = sanitize_command(command)?;
-    let cmd_lower = sanitized.to_lowercase();
-    let cmd_first = cmd_lower.split_whitespace().next().unwrap_or("");
+    let cmd_first = command_first_token(&sanitized).to_ascii_lowercase();
 
     let settings = settings_manager().get();
-    let allowed: HashSet<&str> = settings
-        .plugin_allowed_commands
-        .iter()
-        .map(|s| s.as_str())
-        .collect();
-    let blocked: HashSet<&str> = settings
-        .plugin_blocked_commands
-        .iter()
-        .map(|s| s.as_str())
-        .collect();
+    let allowed = normalized_command_list(&settings.plugin_allowed_commands);
+    let blocked = normalized_command_list(&settings.plugin_blocked_commands);
 
-    if blocked.contains(cmd_first) {
+    if blocked.iter().any(|cmd| cmd == &cmd_first) {
         return Err(
-            i18n_service().t_with_options("console.command_forbidden", &i18n_arg("0", command))
+            i18n_service().t_with_options("console.command_forbidden", &i18n_arg("0", &sanitized))
         );
     }
 
-    if allowed.contains(cmd_first) {
+    if allowed.iter().any(|cmd| cmd == &cmd_first) {
         return Ok(sanitized);
     }
 
     Err(i18n_service().t_with_options(
         "console.command_not_allowed",
-        &i18n_args(&[
-            ("0", command),
-            ("1", &allowed.iter().copied().collect::<Vec<_>>().join(", ")),
-        ]),
+        &i18n_args(&[("0", &sanitized), ("1", &settings.plugin_allowed_commands.join(", "))]),
     ))
 }
 
