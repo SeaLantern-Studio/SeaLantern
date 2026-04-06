@@ -2,7 +2,7 @@ use super::http_command_handlers::CommandRegistry;
 use axum::{
     extract::{DefaultBodyLimit, Multipart, Path, State},
     http::StatusCode,
-    response::{IntoResponse, sse::Event, Sse},
+    response::{sse::Event, IntoResponse, Sse},
     routing::{get, post},
     Json, Router,
 };
@@ -271,10 +271,9 @@ async fn handle_log_stream() -> impl IntoResponse {
             }
         }
     });
-    Sse::new(stream)
-        .keep_alive(
-            axum::response::sse::KeepAlive::new()
-                .interval(std::time::Duration::from_secs(15))
-                .text("ping"),
-        )
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(std::time::Duration::from_secs(15))
+            .text("ping"),
+    )
 }
