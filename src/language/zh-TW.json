@@ -20,6 +20,7 @@
     "console": "控制台",
     "config_edit": "設定編輯",
     "player_manage": "玩家管理",
+    "tunnel": "連線 (測試版)",
     "settings": "設定",
     "personalize": "個人化",
     "about": "關於",
@@ -769,6 +770,9 @@
     "log_copy_failed": "複製日誌到剪貼簿失敗",
     "host_started": "建房已啟動",
     "join_started": "加入已啟動",
-    "tunnel_stopped": "隧道已停止"
+    "tunnel_stopped": "隧道已停止",
+    "info_title": "關於連線功能",
+    "info_desc": "此連線功能基於 Sculk 專案實現，目前仍處於早期開發階段。P2P 連線對網路環境要求較高，可能出現連線不穩定的情況。如需更穩定的體驗，建議使用 FRP 方案。",
+    "info_github": "GitHub - 歡迎貢獻 PR"
   }
 }

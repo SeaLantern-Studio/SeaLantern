@@ -31,7 +31,12 @@ fn tunnel_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
     i18n_service().t_with_options(key, &m)
 }
 
-fn tunnel_t3(key: &str, a: impl Into<String>, b: impl Into<String>, c: impl Into<String>) -> String {
+fn tunnel_t3(
+    key: &str,
+    a: impl Into<String>,
+    b: impl Into<String>,
+    c: impl Into<String>,
+) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
     m.insert("1".to_string(), b.into());
@@ -149,10 +154,7 @@ fn load_existing_secret_key(path: &std::path::Path) -> Result<Option<SecretKey>,
         }
     };
     if bytes.len() != 32 {
-        return Err(tunnel_t1(
-            "tunnel.err.key_length_invalid",
-            format!("{}", bytes.len()),
-        ));
+        return Err(tunnel_t1("tunnel.err.key_length_invalid", format!("{}", bytes.len())));
     }
     let arr: [u8; 32] = bytes
         .try_into()
@@ -198,7 +200,9 @@ fn load_runtime_state() -> TunnelRuntimeState {
 
 fn save_profile_in_state(state: &mut TunnelRuntimeState) {
     if let Err(e) = state.profile.save_to(&tunnel_profile_path()) {
-        state.logs.push(tunnel_t1("tunnel.log.save_profile_failed", e.to_string()));
+        state
+            .logs
+            .push(tunnel_t1("tunnel.log.save_profile_failed", e.to_string()));
     }
 }
 
@@ -256,21 +260,13 @@ fn format_event(event: &TunnelEvent) -> String {
     match event {
         TunnelEvent::PlayerJoined { id } => tunnel_t1("tunnel.log.player_joined", format!("{id}")),
         TunnelEvent::PlayerLeft { id, reason } => {
-            tunnel_t2(
-                "tunnel.log.player_left",
-                format!("{id}"),
-                format!("{reason}"),
-            )
+            tunnel_t2("tunnel.log.player_left", format!("{id}"), format!("{reason}"))
         }
         TunnelEvent::Connected => tunnel_t("tunnel.log.connected_host"),
         TunnelEvent::Disconnected { reason } => {
             tunnel_t1("tunnel.log.disconnected", format!("{reason}"))
         }
-        TunnelEvent::PathChanged {
-            remote_id,
-            is_relay,
-            rtt_ms,
-        } => {
+        TunnelEvent::PathChanged { remote_id, is_relay, rtt_ms } => {
             let route_label = if *is_relay {
                 tunnel_t("tunnel.log.route_relay")
             } else {
@@ -288,11 +284,9 @@ fn format_event(event: &TunnelEvent) -> String {
         }
         TunnelEvent::Reconnected => tunnel_t("tunnel.log.reconnected"),
         TunnelEvent::AuthFailed { id } => tunnel_t1("tunnel.log.auth_failed", format!("{id}")),
-        TunnelEvent::PlayerRejected { id, reason } => tunnel_t2(
-            "tunnel.log.player_rejected",
-            format!("{id}"),
-            format!("{reason}"),
-        ),
+        TunnelEvent::PlayerRejected { id, reason } => {
+            tunnel_t2("tunnel.log.player_rejected", format!("{id}"), format!("{reason}"))
+        }
         TunnelEvent::Error { message } => tunnel_t1("tunnel.log.error_event", message.clone()),
         _ => tunnel_t1("tunnel.log.event_unknown", format!("{event:?}")),
     }

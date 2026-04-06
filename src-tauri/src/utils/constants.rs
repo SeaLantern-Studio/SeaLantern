@@ -35,16 +35,7 @@ pub const MAX_SCAN_DEPTH: u32 = 4;
 
 /// services/i18n.rs（与前端 `src/language/*.json` 语言代码一致）
 pub const SUPPORTED_LOCALES: &[&str] = &[
-    "zh-CN",
-    "en-US",
-    "zh-TW",
-    "de-DE",
-    "es-ES",
-    "fr-FA",
-    "ja-JP",
-    "ko-KR",
-    "ru-RU",
-    "vi-VN",
+    "zh-CN", "en-US", "zh-TW", "de-DE", "es-ES", "fr-FA", "ja-JP", "ko-KR", "ru-RU", "vi-VN",
 ];
 
 /// services/server/downloader.rs + services/download/starter_installer_links.rs

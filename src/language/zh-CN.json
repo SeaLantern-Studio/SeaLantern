@@ -20,7 +20,7 @@
     "console": "控制台",
     "config_edit": "配置编辑",
     "player_manage": "玩家管理",
-    "tunnel": "联机",
+    "tunnel": "联机 (测试版)",
     "settings": "设置",
     "personalize": "个性化",
     "about": "关于",
@@ -230,7 +230,10 @@
     "log_copy_failed": "复制日志到剪贴板失败",
     "host_started": "建房已启动",
     "join_started": "加入已启动",
-    "tunnel_stopped": "隧道已停止"
+    "tunnel_stopped": "隧道已停止",
+    "info_title": "关于联机功能",
+    "info_desc": "此联机功能基于 Sculk 项目实现，目前仍处于早期开发阶段。P2P 联机对网络环境要求较高，可能出现连接不稳定的情况。如需更稳定的体验，建议使用 FRP 方案。",
+    "info_github": "GitHub - 欢迎贡献 PR"
   },
   "add_existing": {
     "title": "添加已有服务器",

@@ -9,7 +9,9 @@ import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
 import { useGlobalMessage } from "@composables/useMessage";
-import { Copy, Eye, EyeOff, RefreshCw, X } from "lucide-vue-next";
+import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "lucide-vue-next";
+import SLModal from "@components/common/SLModal.vue";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;
@@ -29,6 +31,7 @@ const joinLocalPort = ref("");
 const joinPassword = ref("");
 const showJoinPassword = ref(false);
 const joinTicketAutoFillEnabled = ref(true);
+const showInfoModal = ref(false);
 
 const running = computed(() => status.value?.running ?? false);
 const modeLabel = computed(() => {
@@ -343,6 +346,16 @@ onUnmounted(() => {
 <template>
   <div class="tunnel-view animate-fade-in-up">
     <SLCard :title="i18n.t('tunnel.status_title')" variant="solid" padding="md">
+      <template #actions>
+        <button
+          class="ticket-icon-btn"
+          :title="i18n.t('tunnel.info_title')"
+          :aria-label="i18n.t('tunnel.info_title')"
+          @click="showInfoModal = true"
+        >
+          <Info :size="16" />
+        </button>
+      </template>
       <div class="status-line">
         <span class="status-pill">
           <span class="status-pill-label">{{ i18n.t("tunnel.running") }}:</span>
@@ -597,6 +610,21 @@ onUnmounted(() => {
         />
       </div>
     </SLCard>
+
+    <SLModal
+      :visible="showInfoModal"
+      :title="i18n.t('tunnel.info_title')"
+      width="420px"
+      @close="showInfoModal = false"
+    >
+      <div class="tunnel-info-content">
+        <p>{{ i18n.t("tunnel.info_desc") }}</p>
+        <button class="tunnel-info-github" @click="openUrl('https://github.com/KercyDing/sculk')">
+          <Github :size="16" />
+          <span>{{ i18n.t("tunnel.info_github") }}</span>
+        </button>
+      </div>
+    </SLModal>
   </div>
 </template>
 

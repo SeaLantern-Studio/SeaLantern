@@ -20,7 +20,7 @@
     "console": "Console",
     "config_edit": "Config Edit",
     "player_manage": "Player Manage",
-    "tunnel": "Online Tunnel",
+    "tunnel": "Online Tunnel (Beta)",
     "settings": "Settings",
     "personalize": "Personalize",
     "about": "About",
@@ -214,7 +214,10 @@
     "log_copy_failed": "Failed to copy logs to clipboard",
     "host_started": "Host started",
     "join_started": "Join started",
-    "tunnel_stopped": "Tunnel stopped"
+    "tunnel_stopped": "Tunnel stopped",
+    "info_title": "About Online Tunnel",
+    "info_desc": "This feature is powered by the Sculk project and is still in early development. P2P connectivity is sensitive to network conditions and may be unstable. For a more reliable experience, consider using FRP.",
+    "info_github": "GitHub - PRs Welcome"
   },
   "add_existing": {
     "title": "Add Existing Server",

@@ -20,6 +20,7 @@
     "console": "콘솔",
     "config_edit": "설정 편집",
     "player_manage": "플레이어 관리",
+    "tunnel": "온라인 (베타)",
     "settings": "설정",
     "personalize": "개인 설정",
     "about": "정보",
@@ -768,6 +769,9 @@
     "log_copy_failed": "로그를 클립보드에 복사하지 못했습니다",
     "host_started": "호스트가 시작되었습니다",
     "join_started": "참여가 시작되었습니다",
-    "tunnel_stopped": "터널이 중지되었습니다"
+    "tunnel_stopped": "터널이 중지되었습니다",
+    "info_title": "온라인 기능 정보",
+    "info_desc": "이 기능은 Sculk 프로젝트를 기반으로 하며 아직 초기 개발 단계입니다. P2P 연결은 네트워크 환경에 민감하여 불안정할 수 있습니다. 더 안정적인 환경을 원하시면 FRP 사용을 권장합니다.",
+    "info_github": "GitHub - PR 환영"
   }
 }

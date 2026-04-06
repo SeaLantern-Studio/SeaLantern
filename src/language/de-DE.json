@@ -20,6 +20,7 @@
     "console": "Konsole",
     "config_edit": "Konfiguration bearbeiten",
     "player_manage": "Spielerverwaltung",
+    "tunnel": "Online-Tunnel (Beta)",
     "settings": "Einstellungen",
     "personalize": "Personalisieren",
     "about": "Über",
@@ -766,6 +767,9 @@
     "log_copy_failed": "Kopieren der Protokolle in die Zwischenablage fehlgeschlagen",
     "host_started": "Host gestartet",
     "join_started": "Beitritt gestartet",
-    "tunnel_stopped": "Tunnel gestoppt"
+    "tunnel_stopped": "Tunnel gestoppt",
+    "info_title": "Über Online-Tunnel",
+    "info_desc": "Diese Funktion basiert auf dem Sculk-Projekt und befindet sich noch in der frühen Entwicklung. P2P-Verbindungen sind netzwerkabhängig und können instabil sein. Für eine stabilere Verbindung empfehlen wir FRP.",
+    "info_github": "GitHub - PRs willkommen"
   }
 }

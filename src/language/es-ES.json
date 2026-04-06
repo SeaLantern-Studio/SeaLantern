@@ -20,6 +20,7 @@
     "console": "Consola",
     "config_edit": "Editar configuración",
     "player_manage": "Gestionar jugadores",
+    "tunnel": "Túnel en línea (Beta)",
     "settings": "Ajustes",
     "personalize": "Personalizar",
     "about": "Acerca de",
@@ -751,6 +752,9 @@
     "log_copy_failed": "Error al copiar registros al portapapeles",
     "host_started": "Anfitrión iniciado",
     "join_started": "Unirse iniciado",
-    "tunnel_stopped": "Túnel detenido"
+    "tunnel_stopped": "Túnel detenido",
+    "info_title": "Acerca del túnel en línea",
+    "info_desc": "Esta función está basada en el proyecto Sculk y aún se encuentra en desarrollo temprano. La conexión P2P depende del entorno de red y puede ser inestable. Para una experiencia más estable, se recomienda usar FRP.",
+    "info_github": "GitHub - PRs bienvenidos"
   }
 }

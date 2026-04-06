@@ -124,10 +124,8 @@ impl CommandRegistry {
         handlers.insert("tunnel_join".to_string(), handle_tunnel_join as CommandHandler);
         handlers.insert("tunnel_stop".to_string(), handle_tunnel_stop as CommandHandler);
         handlers.insert("tunnel_status".to_string(), handle_tunnel_status as CommandHandler);
-        handlers.insert(
-            "tunnel_copy_ticket".to_string(),
-            handle_tunnel_copy_ticket as CommandHandler,
-        );
+        handlers
+            .insert("tunnel_copy_ticket".to_string(), handle_tunnel_copy_ticket as CommandHandler);
         handlers.insert(
             "tunnel_regenerate_ticket".to_string(),
             handle_tunnel_regenerate_ticket as CommandHandler,
@@ -706,9 +704,7 @@ fn handle_get_system_fonts(
 
 // ============ Update 命令处理器 ============
 
-fn handle_tunnel_host(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_tunnel_host(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: TunnelHostRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
@@ -719,9 +715,7 @@ fn handle_tunnel_host(
     })
 }
 
-fn handle_tunnel_join(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_tunnel_join(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: TunnelJoinRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;

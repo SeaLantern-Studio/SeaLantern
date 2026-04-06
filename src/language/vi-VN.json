@@ -20,6 +20,7 @@
     "console": "Bảng điều khiển",
     "config_edit": "Chỉnh sửa cấu hình",
     "player_manage": "Quản lý người chơi",
+    "tunnel": "Kết nối trực tuyến (Beta)",
     "settings": "Cài đặt",
     "personalize": "Cá nhân hóa",
     "about": "Giới thiệu",
@@ -766,6 +767,9 @@
     "log_copy_failed": "Không thể sao chép nhật ký vào clipboard",
     "host_started": "Máy chủ đã được bắt đầu",
     "join_started": "Đã bắt đầu tham gia",
-    "tunnel_stopped": "Tunnel đã dừng"
+    "tunnel_stopped": "Tunnel đã dừng",
+    "info_title": "Về tính năng kết nối",
+    "info_desc": "Tính năng này dựa trên dự án Sculk và vẫn đang trong giai đoạn phát triển sớm. Kết nối P2P phụ thuộc vào môi trường mạng và có thể không ổn định. Để có trải nghiệm ổn định hơn, khuyến nghị sử dụng FRP.",
+    "info_github": "GitHub - Hoan nghênh PR"
   }
 }

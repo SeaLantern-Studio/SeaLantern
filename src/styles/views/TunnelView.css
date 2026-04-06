@@ -247,3 +247,33 @@
     grid-template-columns: 1fr;
   }
 }
+
+.tunnel-info-content {
+  font-size: 0.875rem;
+  color: var(--sl-text-secondary);
+  line-height: 1.7;
+}
+
+.tunnel-info-content p {
+  margin: 0 0 var(--sl-space-sm) 0;
+}
+
+.tunnel-info-github {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-xs);
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--sl-text-primary);
+  font-size: inherit;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.tunnel-info-github:hover {
+  color: var(--sl-primary);
+}
