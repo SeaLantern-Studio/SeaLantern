@@ -9,6 +9,10 @@ interface Props {
   type?: string;
   disabled?: boolean;
   maxlength?: number;
+  min?: number | string;
+  max?: number | string;
+  step?: number | string;
+  hideNumberControls?: boolean;
   componentId?: string;
 }
 
@@ -17,6 +21,7 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: "",
   type: "text",
   disabled: false,
+  hideNumberControls: true,
 });
 
 const emit = defineEmits<{
@@ -50,11 +55,15 @@ useRegisterComponent(id, {
       </div>
       <input
         class="sl-input"
+        :class="{ 'sl-input--hide-number-controls': hideNumberControls }"
         :type="type"
         :value="modelValue"
         :placeholder="placeholder"
         :disabled="disabled"
         :maxlength="maxlength"
+        :min="min"
+        :max="max"
+        :step="step"
         @input="handleInput"
       />
       <div v-if="$slots.suffix" class="sl-input-suffix">
@@ -118,12 +127,12 @@ useRegisterComponent(id, {
 }
 
 /* 禁用数字输入框的上下箭头 */
-.sl-input[type="number"] {
+.sl-input--hide-number-controls[type="number"] {
   -moz-appearance: textfield;
 }
 
-.sl-input[type="number"]::-webkit-outer-spin-button,
-.sl-input[type="number"]::-webkit-inner-spin-button {
+.sl-input--hide-number-controls[type="number"]::-webkit-outer-spin-button,
+.sl-input--hide-number-controls[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }

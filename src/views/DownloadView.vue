@@ -94,7 +94,10 @@ const canFileDownload = computed(() => {
 
   // 验证URL格式
   try {
-    new URL(url.value.trim());
+    const parsedUrl = new URL(url.value.trim());
+    if (!parsedUrl) {
+      return false;
+    }
   } catch {
     return false;
   }
@@ -108,7 +111,7 @@ const serverTypeOptions = computed(() =>
 );
 
 const versionOptions = computed(() =>
-  [...versions.value].toReversed().map((v) => ({ label: v, value: v })),
+  [...versions.value].toReversed().map((v: string) => ({ label: v, value: v })),
 );
 
 const canServerDownload = computed(() => {

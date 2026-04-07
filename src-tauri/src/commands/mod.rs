@@ -12,6 +12,7 @@ pub mod plugin;
 pub mod server;
 pub mod settings;
 pub mod system;
+pub mod tunnel;
 pub mod update;
 
 // 更新功能子模块

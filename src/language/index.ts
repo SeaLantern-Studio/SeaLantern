@@ -127,7 +127,9 @@ class I18n {
     const currentLocaleValue = this.currentLocale.value;
 
     let resolved: string | undefined =
+      resolveNestedValue(translations[currentLocaleValue], ["sealantern"].concat(keys)) ??
       resolveNestedValue(translations[currentLocaleValue], keys) ??
+      resolveNestedValue(translations[this.fallbackLocale], ["sealantern"].concat(keys)) ??
       resolveNestedValue(translations[this.fallbackLocale], keys);
 
     if (resolved === undefined) {
@@ -151,7 +153,9 @@ class I18n {
     const keys = key.split(".");
     const currentLocaleValue = this.currentLocale.value;
     const resolved =
+      resolveNestedValue(translations[currentLocaleValue], ["sealantern"].concat(keys)) ??
       resolveNestedValue(translations[currentLocaleValue], keys) ??
+      resolveNestedValue(translations[this.fallbackLocale], ["sealantern"].concat(keys)) ??
       resolveNestedValue(translations[this.fallbackLocale], keys);
     return resolved !== undefined;
   }

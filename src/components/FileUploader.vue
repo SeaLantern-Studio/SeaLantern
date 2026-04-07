@@ -101,30 +101,33 @@ const uploadSelectedFiles = async (files: File[]) => {
   isUploading.value = true;
   uploadProgress.value = 0;
 
-  try {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-
-      // 检查文件大小
-      if (props.maxSize && file.size > props.maxSize) {
-        emit("error", `文件 ${file.name} 超过大小限制 (${props.maxSize} 字节)`);
-        continue;
-      }
-
-      // 检查文件类型
-      if (props.accept) {
-        const acceptedTypes = props.accept.split(",").map((t) => t.trim());
-        const fileExtension = `.${file.name.split(".").pop()}`;
-        if (!acceptedTypes.some((type) => file.name.includes(type) || fileExtension === type)) {
-          emit("error", `文件类型不支持: ${file.name}`);
-          continue;
-        }
-      }
-
-      const uploadedFile = await uploadFile(file);
-      emit("uploaded", uploadedFile);
-      uploadProgress.value = Math.round(((i + 1) / files.length) * 100);
+  const acceptedTypes = props.accept?.split(",").map((type) => type.trim()) ?? [];
+  const validFiles = files.filter((file) => {
+    if (props.maxSize && file.size > props.maxSize) {
+      emit("error", `文件 ${file.name} 超过大小限制 (${props.maxSize} 字节)`);
+      return false;
     }
+
+    if (acceptedTypes.length > 0) {
+      const fileExtension = `.${file.name.split(".").pop()}`;
+      const isAccepted = acceptedTypes.some(
+        (type) => file.name.includes(type) || fileExtension === type,
+      );
+      if (!isAccepted) {
+        emit("error", `文件类型不支持: ${file.name}`);
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  try {
+    const uploadedFiles = await Promise.all(validFiles.map((file) => uploadFile(file)));
+    uploadedFiles.forEach((uploadedFile) => {
+      emit("uploaded", uploadedFile);
+    });
+    uploadProgress.value = validFiles.length > 0 ? 100 : 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : "上传失败";
     emit("error", message);

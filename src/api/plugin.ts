@@ -5,6 +5,7 @@ import type {
   PluginInstallResult,
   BatchInstallResult,
   PluginUpdateInfo,
+  PluginPermissionLog,
 } from "@type/plugin";
 
 // 插件市场的信息
@@ -197,4 +198,8 @@ export interface BufferedComponentEvent {
 
 export async function getPluginComponentSnapshot(): Promise<BufferedComponentEvent[]> {
   return tauriInvoke("get_plugin_component_snapshot");
+}
+
+export async function getPluginPermissionLogs(pluginId: string): Promise<PluginPermissionLog[]> {
+  return tauriInvoke("get_plugin_permission_logs", { pluginId });
 }

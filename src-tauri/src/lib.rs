@@ -18,6 +18,7 @@ use commands::plugin as plugin_commands;
 use commands::server as server_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
+use commands::tunnel as tunnel_commands;
 use commands::update as update_commands;
 
 use crate::services::download_manager::DownloadManager;
@@ -189,6 +190,13 @@ pub fn run() {
             settings_commands::get_plugin_commands,
             settings_commands::update_plugin_commands,
             settings_commands::apply_acrylic,
+            tunnel_commands::tunnel_host,
+            tunnel_commands::tunnel_join,
+            tunnel_commands::tunnel_stop,
+            tunnel_commands::tunnel_status,
+            tunnel_commands::tunnel_copy_ticket,
+            tunnel_commands::tunnel_regenerate_ticket,
+            tunnel_commands::tunnel_generate_ticket,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,
@@ -236,6 +244,7 @@ pub fn run() {
             plugin_commands::get_plugin_ui_snapshot,
             plugin_commands::get_plugin_sidebar_snapshot,
             plugin_commands::get_plugin_context_menu_snapshot,
+            plugin_commands::get_plugin_permission_logs,
             plugin_commands::get_permission_list,
             plugin_commands::get_plugin_permissions,
             mcs_plugin_commands::m_get_plugins,
@@ -332,29 +341,44 @@ pub fn run() {
             let plugins_dir = app_data_dir.join("plugins");
             let data_dir = app_data_dir.join("plugin_data");
 
-            let mut plugin_manager = PluginManager::new(plugins_dir, data_dir);
+            let plugin_manager = PluginManager::new(plugins_dir, data_dir);
+            let shared_runtimes = plugin_manager.get_shared_runtimes();
+            let shared_runtimes_for_server_ready = Arc::clone(&shared_runtimes);
+            let api_registry = plugin_manager.get_api_registry();
+
+            let manager = Arc::new(Mutex::new(plugin_manager));
 
             // Check for safe mode
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
 
-            // Always scan plugins to load the list, even in safe mode
-            if let Err(e) = plugin_manager.scan_plugins() {
-                eprintln!("Failed to scan plugins: {}", e);
+            {
+                let mut plugin_manager = manager.lock().unwrap_or_else(|e| e.into_inner());
+
+                // Always scan plugins to load the list, even in safe mode
+                if let Err(e) = plugin_manager.scan_plugins() {
+                    eprintln!("Failed to scan plugins: {}", e);
+                }
             }
 
             if safe_mode {
                 eprintln!("Safe mode enabled: plugins will be disabled");
                 // In safe mode, don't enable any plugins
             } else {
-                // 自动启用上启用的插件
-                plugin_manager.auto_enable_plugins();
+                let manager_for_auto_enable = Arc::clone(&manager);
+                tauri::async_runtime::spawn(async move {
+                    let result = tauri::async_runtime::spawn_blocking(move || {
+                        let mut plugin_manager = manager_for_auto_enable
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner());
+                        plugin_manager.auto_enable_plugins();
+                    })
+                    .await;
+
+                    if let Err(e) = result {
+                        eprintln!("[WARN] Failed to auto-enable plugins in background: {}", e);
+                    }
+                });
             }
-
-            let shared_runtimes = plugin_manager.get_shared_runtimes();
-            let shared_runtimes_for_server_ready = Arc::clone(&shared_runtimes);
-            let api_registry = plugin_manager.get_api_registry();
-
-            let manager = Arc::new(Mutex::new(plugin_manager));
 
             plugins::api::set_api_call_handler(Arc::new(move |_source, target, api_name, args| {
                 use crate::plugins::api::ApiRegistryOps;

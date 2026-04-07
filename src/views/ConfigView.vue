@@ -250,8 +250,8 @@ function setupIntersectionObserver() {
   }
 
   observer.value = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
+    (intersectionEntries) => {
+      intersectionEntries.forEach((entry) => {
         if (entry.isIntersecting) {
           const pluginElement = entry.target as HTMLElement;
           const pluginFileName = pluginElement.getAttribute("data-plugin-file-name");
