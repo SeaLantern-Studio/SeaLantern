@@ -1,8 +1,8 @@
 use super::common::{
-    map_storage_err, read_storage, set_storage_function, storage_value_from_lua, with_storage_lock,
-    write_storage, StorageContext, MAX_KEY_LENGTH, MAX_TOTAL_SIZE, MAX_VALUE_SIZE,
+    map_storage_err, read_storage, set_storage_function, storage_runtime_err,
+    storage_value_from_lua, with_storage_lock, write_storage, StorageContext, MAX_KEY_LENGTH,
+    MAX_TOTAL_SIZE, MAX_VALUE_SIZE,
 };
-use crate::services::global::i18n_service;
 use mlua::{Function, Lua, Value};
 
 pub(super) fn register(
@@ -19,28 +19,32 @@ fn set(lua: &Lua, ctx: &StorageContext) -> Result<Function, String> {
     let path = ctx.storage_path.clone();
     let lock = ctx.storage_lock.clone();
     lua.create_function(move |_, (key, value): (String, Value)| {
+        let key = key.trim().to_string();
+        if key.is_empty() {
+            return Err(storage_runtime_err("storage.key_empty"));
+        }
         if key.len() > MAX_KEY_LENGTH {
-            return Err(mlua::Error::runtime(i18n_service().t("storage.key_too_long")));
+            return Err(storage_runtime_err("storage.key_too_long"));
         }
 
         let json_value = storage_value_from_lua(&value)?;
-        let value_str =
-            serde_json::to_string(&json_value).map_err(|e| mlua::Error::runtime(e.to_string()))?;
-        if value_str.len() > MAX_VALUE_SIZE {
-            return Err(mlua::Error::runtime(i18n_service().t("storage.value_too_large")));
+        let value_bytes =
+            serde_json::to_vec(&json_value).map_err(|e| mlua::Error::runtime(e.to_string()))?;
+        if value_bytes.len() > MAX_VALUE_SIZE {
+            return Err(storage_runtime_err("storage.value_too_large"));
         }
 
         with_storage_lock(&lock, || {
-            let mut data = read_storage(&path);
+            let mut data = read_storage(&path)?;
             data.insert(key, json_value);
 
-            let total_str =
-                serde_json::to_string(&data).map_err(|e| mlua::Error::runtime(e.to_string()))?;
-            if total_str.len() > MAX_TOTAL_SIZE {
-                return Err(mlua::Error::runtime(i18n_service().t("storage.total_too_large")));
+            let total_bytes =
+                serde_json::to_vec(&data).map_err(|e| mlua::Error::runtime(e.to_string()))?;
+            if total_bytes.len() > MAX_TOTAL_SIZE {
+                return Err(storage_runtime_err("storage.total_too_large"));
             }
 
-            write_storage(&path, &data).map_err(mlua::Error::runtime)?;
+            write_storage(&path, &data)?;
             Ok(())
         })
     })
@@ -51,10 +55,15 @@ fn remove(lua: &Lua, ctx: &StorageContext) -> Result<Function, String> {
     let path = ctx.storage_path.clone();
     let lock = ctx.storage_lock.clone();
     lua.create_function(move |_, key: String| {
+        let key = key.trim().to_string();
+        if key.is_empty() {
+            return Err(storage_runtime_err("storage.key_empty"));
+        }
+
         with_storage_lock(&lock, || {
-            let mut data = read_storage(&path);
+            let mut data = read_storage(&path)?;
             data.remove(&key);
-            write_storage(&path, &data).map_err(mlua::Error::runtime)?;
+            write_storage(&path, &data)?;
             Ok(())
         })
     })

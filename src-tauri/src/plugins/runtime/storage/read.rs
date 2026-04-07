@@ -2,7 +2,7 @@ use super::common::{
     lua_value_from_storage, map_storage_err, read_storage, set_storage_function, with_storage_lock,
     StorageContext,
 };
-use mlua::{Function, Lua, Value};
+use mlua::{Function, Lua, Table, Value};
 
 pub(super) fn register(
     lua: &Lua,
@@ -19,7 +19,7 @@ fn get(lua: &Lua, ctx: &StorageContext) -> Result<Function, String> {
     let lock = ctx.storage_lock.clone();
     lua.create_function(move |lua, key: String| {
         with_storage_lock(&lock, || {
-            let data = read_storage(&path);
+            let data = read_storage(&path)?;
             match data.get(&key) {
                 Some(value) => lua_value_from_storage(lua, value),
                 None => Ok(Value::Nil),
@@ -34,10 +34,12 @@ fn keys(lua: &Lua, ctx: &StorageContext) -> Result<Function, String> {
     let lock = ctx.storage_lock.clone();
     lua.create_function(move |lua, ()| {
         with_storage_lock(&lock, || {
-            let data = read_storage(&path);
-            let table = lua.create_table()?;
-            for (i, key) in data.keys().enumerate() {
-                table.set(i + 1, key.clone())?;
+            let data = read_storage(&path)?;
+            let table: Table = lua.create_table()?;
+            let mut keys: Vec<_> = data.keys().cloned().collect();
+            keys.sort_unstable();
+            for (i, key) in keys.into_iter().enumerate() {
+                table.set(i + 1, key)?;
             }
             Ok(table)
         })
