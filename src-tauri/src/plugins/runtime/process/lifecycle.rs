@@ -1,4 +1,4 @@
-use super::common::ProcessRegistry;
+use super::common::{is_process_owner, ProcessRegistry};
 use mlua::{Function, Lua, Table};
 use std::sync::Arc;
 
@@ -23,6 +23,10 @@ pub(super) fn kill(
         });
 
         if let Some(entry) = procs.get_mut(&target_pid) {
+            if !is_process_owner(entry, &pid) {
+                return Ok(false);
+            }
+
             match entry.child.kill() {
                 Ok(_) => {
                     procs.remove(&target_pid);

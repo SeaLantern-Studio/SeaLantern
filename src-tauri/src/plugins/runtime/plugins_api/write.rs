@@ -1,7 +1,8 @@
 use super::{
-    common::{emit_plugins_log, plugin_dir, PluginsContext},
-    fs, validate_path_static, MAX_FILE_SIZE,
+    common::{emit_plugins_log, resolve_plugin_path, PluginsContext},
+    fs, MAX_FILE_SIZE,
 };
+use crate::utils::logger::log_warn;
 use mlua::Lua;
 
 pub(super) fn write_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
@@ -17,19 +18,50 @@ pub(super) fn write_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Functi
             return Err(mlua::Error::runtime("Content too large (max 10MB)"));
         }
 
-        let target_dir = plugin_dir(&ctx.plugins_root, &target_id)?;
-        if !target_dir.exists() {
-            return Err(mlua::Error::runtime(format!("Plugin directory not found: {}", target_id)));
+        let full_path = resolve_plugin_path(&ctx.plugins_root, &target_id, &relative_path)?;
+        if relative_path.eq_ignore_ascii_case("manifest.json") {
+            return Err(mlua::Error::runtime("Writing manifest.json is not allowed"));
         }
 
-        let full_path = validate_path_static(&target_dir, &relative_path)?;
+        if full_path.exists() {
+            let metadata = fs::symlink_metadata(&full_path).map_err(|e| {
+                mlua::Error::runtime(format!("Failed to inspect destination: {}", e))
+            })?;
+            if metadata.file_type().is_symlink() {
+                return Err(mlua::Error::runtime("Writing to symlink is not allowed"));
+            }
+            if metadata.is_dir() {
+                return Err(mlua::Error::runtime("Cannot write to a directory path"));
+            }
+        }
+
         if let Some(parent) = full_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| mlua::Error::runtime(format!("Failed to create directory: {}", e)))?;
+            if parent.exists() {
+                let metadata = fs::symlink_metadata(parent).map_err(|e| {
+                    mlua::Error::runtime(format!("Failed to inspect parent directory: {}", e))
+                })?;
+                if metadata.file_type().is_symlink() {
+                    return Err(mlua::Error::runtime(
+                        "Writing through symlink directory is not allowed",
+                    ));
+                }
+                if !metadata.is_dir() {
+                    return Err(mlua::Error::runtime("Parent path is not a directory"));
+                }
+            } else {
+                fs::create_dir_all(parent).map_err(|e| {
+                    mlua::Error::runtime(format!("Failed to create directory: {}", e))
+                })?;
+            }
         }
 
         fs::write(&full_path, content)
             .map_err(|e| mlua::Error::runtime(format!("Failed to write file: {}", e)))?;
+
+        log_warn(&format!(
+            "[plugins.write_file] Plugin '{}' wrote file '{}' in plugin '{}'",
+            ctx.plugin_id, relative_path, target_id
+        ));
 
         Ok(true)
     })

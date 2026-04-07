@@ -4,10 +4,18 @@
 
 ## 目录
 
-- [Element API](#element-api)
-- [Server API](#server-api)
-- [Console API](#console-api)
-- [FileSystem API](#filesystem-api)
+- [插件 API 文档](#插件-api-文档)
+  - [目录](#目录)
+  - [Element API](#element-api)
+  - [Server API](#server-api)
+  - [Console API](#console-api)
+  - [Plugins API](#plugins-api)
+  - [权限说明](#权限说明)
+  - [FileSystem API](#filesystem-api)
+  - [示例](#示例)
+    - [发送命令到服务器](#发送命令到服务器)
+    - [获取服务器状态](#获取服务器状态)
+    - [文件系统操作](#文件系统操作)
 
 ## Element API
 
@@ -46,11 +54,27 @@
 | `sl.console.get_logs(server_id, count)` | `server_id: string` - 服务器 ID<br>`count: number` - 日志行数 (可选，默认 100) | `table` - 包含content字段的日志列表 | 获取指定服务器的日志 |
 | `sl.console.get_status(server_id)`      | `server_id: string` - 服务器 ID                                                | `string` - 服务器状态               | 获取指定服务器的状态 |
 
+## Plugins API
+
+| 方法名                                                     | 参数                                                                                                              | 返回值                                                            | 描述                                                                         |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `sl.plugins.list()`                                        | 无                                                                                                                | `table` - 插件列表                                                | 列出所有已安装且包含 `manifest.json` 的插件                                  |
+| `sl.plugins.get_manifest(target_id)`                       | `target_id: string` - 目标插件 ID                                                                                 | `table` 或 `nil` - 插件清单内容                                   | 获取指定插件的 `manifest.json` 内容                                          |
+| `sl.plugins.read_file(target_id, relative_path)`           | `target_id: string` - 目标插件 ID<br>`relative_path: string` - 插件目录内相对路径                                 | `string` 或 `nil` - 文件内容                                      | 读取目标插件目录内的文本文件                                                 |
+| `sl.plugins.file_exists(target_id, relative_path)`         | `target_id: string` - 目标插件 ID<br>`relative_path: string` - 插件目录内相对路径                                 | `boolean` - 文件是否存在                                          | 检查目标插件目录中的文件是否存在                                             |
+| `sl.plugins.list_files(target_id, relative_path)`          | `target_id: string` - 目标插件 ID<br>`relative_path: string` - 插件目录内相对路径                                 | `table` - 目录项列表，项包含 `name`/`is_dir`/`size`/`modified_at` | 列出目标插件目录中的文件与子目录，目录优先且按名称排序                       |
+| `sl.plugins.write_file(target_id, relative_path, content)` | `target_id: string` - 目标插件 ID<br>`relative_path: string` - 插件目录内相对路径<br>`content: string` - 文件内容 | `boolean` - 写入是否成功                                          | 写入目标插件目录内的文本文件，但禁止写入 `manifest.json`、目录路径和符号链接 |
+
 ## 权限说明
 
 - `sl.element` 相关 API：需要 `ui` 权限
 - `sl.server` 相关 API：需要 `server` 权限
 - `sl.console` 相关 API：需要 `console` 权限
+- `sl.plugins` 相关 API：需要 `plugin_folder_access` 权限
+  - 该权限会启用 `sl.plugins` 命名空间，对应运行时注册逻辑见 `setup_plugins_namespace`
+  - 访问范围限制在插件根目录下，且所有路径都会经过路径校验
+  - `sl.plugins.list_files` 返回结果会附带基础元数据，并按“目录优先、名称排序”输出
+  - `sl.plugins.write_file` 会拒绝写入 `manifest.json`、符号链接路径以及目录路径
 - `sl.fs` 相关 API：需要 `fs.data`、`fs.server` 或 `fs.global` 权限
   - `fs.data`：只能访问插件数据目录
   - `fs.server`：只能访问服务器目录

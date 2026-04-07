@@ -1,7 +1,10 @@
 use super::{
-    common::{emit_plugins_log, plugin_dir, PluginsContext},
-    fs, validate_path_static, MAX_FILE_SIZE,
+    common::{
+        emit_plugins_log, plugin_dir, read_manifest_json, resolve_plugin_path, PluginsContext,
+    },
+    fs, MAX_FILE_SIZE,
 };
+use crate::utils::logger::log_warn;
 use mlua::{Lua, Value};
 
 pub(super) fn list(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
@@ -19,25 +22,23 @@ pub(super) fn list(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, St
         for entry in entries {
             let entry = match entry {
                 Ok(e) => e,
-                Err(_) => continue,
+                Err(e) => {
+                    log_warn(&format!(
+                        "[plugins.list] Failed to read plugin entry in '{}': {}",
+                        ctx.plugins_root.display(),
+                        e
+                    ));
+                    continue;
+                }
             };
             let path = entry.path();
             if !path.is_dir() {
                 continue;
             }
 
-            let manifest_path = path.join("manifest.json");
-            if !manifest_path.exists() {
-                continue;
-            }
-
-            let content = match fs::read_to_string(&manifest_path) {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
-            let manifest: serde_json::Value = match serde_json::from_str(&content) {
-                Ok(v) => v,
-                Err(_) => continue,
+            let manifest = match read_manifest_json(&path, Some("plugins.list"))? {
+                Some(manifest) => manifest,
+                None => continue,
             };
 
             let item = lua.create_table()?;
@@ -50,7 +51,17 @@ pub(super) fn list(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, St
             if let Some(version) = manifest.get("version").and_then(|v| v.as_str()) {
                 item.set("version", version.to_string())?;
             }
+            if let Some(description) = manifest.get("description").and_then(|v| v.as_str()) {
+                item.set("description", description.to_string())?;
+            }
+            if let Some(author) = manifest.get("author").and_then(|v| v.as_str()) {
+                item.set("author", author.to_string())?;
+            }
+            if let Some(status) = manifest.get("status").and_then(|v| v.as_str()) {
+                item.set("status", status.to_string())?;
+            }
             item.set("installed", true)?;
+            item.set("has_manifest", true)?;
 
             result.set(i, item)?;
             i += 1;
@@ -67,17 +78,9 @@ pub(super) fn get_manifest(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Func
         emit_plugins_log(&ctx.plugin_id, "sl.plugins.get_manifest", &target_id);
 
         let target_dir = plugin_dir(&ctx.plugins_root, &target_id)?;
-        let manifest_path = target_dir.join("manifest.json");
-
-        if !manifest_path.exists() {
+        let Some(manifest) = read_manifest_json(&target_dir, None)? else {
             return Ok(Value::Nil);
-        }
-
-        let content = fs::read_to_string(&manifest_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to read manifest: {}", e)))?;
-
-        let manifest: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to parse manifest: {}", e)))?;
+        };
 
         crate::plugins::runtime::shared::lua_value_from_json(lua, &manifest, 0)
     })
@@ -93,12 +96,10 @@ pub(super) fn read_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Functio
             &format!("{}/{}", target_id, relative_path),
         );
 
-        let target_dir = plugin_dir(&ctx.plugins_root, &target_id)?;
-        if !target_dir.exists() {
-            return Ok(None);
-        }
-
-        let full_path = validate_path_static(&target_dir, &relative_path)?;
+        let full_path = match resolve_plugin_path(&ctx.plugins_root, &target_id, &relative_path) {
+            Ok(path) => path,
+            Err(_) => return Ok(None),
+        };
         if !full_path.exists() || full_path.is_dir() {
             return Ok(None);
         }
@@ -126,12 +127,7 @@ pub(super) fn file_exists(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Funct
             &format!("{}/{}", target_id, relative_path),
         );
 
-        let target_dir = ctx.plugins_root.join(&target_id);
-        if !target_dir.exists() {
-            return Ok(false);
-        }
-
-        match validate_path_static(&target_dir, &relative_path) {
+        match resolve_plugin_path(&ctx.plugins_root, &target_id, &relative_path) {
             Ok(full_path) => Ok(full_path.exists()),
             Err(_) => Ok(false),
         }
@@ -148,22 +144,47 @@ pub(super) fn list_files(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Functi
             &format!("{}/{}", target_id, relative_path),
         );
 
-        let target_dir = ctx.plugins_root.join(&target_id);
-        if !target_dir.exists() {
-            return Err(mlua::Error::runtime(format!("Plugin directory not found: {}", target_id)));
-        }
-
-        let full_path = validate_path_static(&target_dir, &relative_path)?;
+        let full_path = resolve_plugin_path(&ctx.plugins_root, &target_id, &relative_path)?;
         let entries = fs::read_dir(&full_path)
             .map_err(|e| mlua::Error::runtime(format!("Failed to read directory: {}", e)))?;
 
-        let table = lua.create_table()?;
-        let mut i = 1;
+        let mut items = Vec::new();
         for entry in entries.flatten() {
-            if let Some(name) = entry.file_name().to_str() {
-                table.set(i, name.to_string())?;
-                i += 1;
+            let metadata = match entry.metadata() {
+                Ok(metadata) => metadata,
+                Err(_) => continue,
+            };
+
+            let name = entry.file_name().to_string_lossy().to_string();
+            let is_dir = metadata.is_dir();
+            let size = metadata.len();
+            let modified_at = metadata
+                .modified()
+                .ok()
+                .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|duration| duration.as_secs());
+
+            items.push((name, is_dir, size, modified_at));
+        }
+
+        items.sort_by(|a, b| {
+            a.1.cmp(&b.1)
+                .reverse()
+                .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
+                .then_with(|| a.0.cmp(&b.0))
+        });
+
+        let table = lua.create_table()?;
+        for (i, (name, is_dir, size, modified_at)) in items.into_iter().enumerate() {
+            let item = lua.create_table()?;
+            item.set("name", name)?;
+            item.set("is_dir", is_dir)?;
+            item.set("size", size)?;
+            if let Some(modified_at) = modified_at {
+                item.set("modified_at", modified_at)?;
             }
+
+            table.set(i + 1, item)?;
         }
         Ok(table)
     })
