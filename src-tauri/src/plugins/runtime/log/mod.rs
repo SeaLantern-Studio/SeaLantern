@@ -16,30 +16,16 @@ impl PluginRuntime {
             create_log_table(&self.lua).map_err(|e| map_log_err("log.create_table_failed", e))?;
         let ctx = LogContext::new(self.plugin_id.clone(), self.lua.clone());
 
-        let debug_fn = if has_log_permission {
-            emit::create_log_function(&ctx, "debug")
-                .map_err(|e| map_log_err("log.create_debug_failed", e))?
-        } else {
-            emit::create_noop_log_function(&ctx)
-                .map_err(|e| map_log_err("log.create_debug_noop_failed", e))?
-        };
-        set_log_function(&log, "debug", debug_fn)
-            .map_err(|e| map_log_err("log.set_debug_failed", e))?;
-
-        let info_fn = emit::create_log_function(&ctx, "info")
-            .map_err(|e| map_log_err("log.create_info_failed", e))?;
-        set_log_function(&log, "info", info_fn)
-            .map_err(|e| map_log_err("log.set_info_failed", e))?;
-
-        let warn_fn = emit::create_log_function(&ctx, "warn")
-            .map_err(|e| map_log_err("log.create_warn_failed", e))?;
-        set_log_function(&log, "warn", warn_fn)
-            .map_err(|e| map_log_err("log.set_warn_failed", e))?;
-
-        let error_fn = emit::create_log_function(&ctx, "error")
-            .map_err(|e| map_log_err("log.create_error_failed", e))?;
-        set_log_function(&log, "error", error_fn)
-            .map_err(|e| map_log_err("log.set_error_failed", e))?;
+        for (name, enabled, create_key, set_key) in [
+            ("debug", has_log_permission, "log.create_debug_failed", "log.set_debug_failed"),
+            ("info", true, "log.create_info_failed", "log.set_info_failed"),
+            ("warn", true, "log.create_warn_failed", "log.set_warn_failed"),
+            ("error", true, "log.create_error_failed", "log.set_error_failed"),
+        ] {
+            let function = emit::create_log_function(&ctx, name, enabled)
+                .map_err(|e| map_log_err(create_key, e))?;
+            set_log_function(&log, name, function).map_err(|e| map_log_err(set_key, e))?;
+        }
 
         set_log_table(sl, log).map_err(|e| map_log_err("log.set_log_failed", e))
     }
