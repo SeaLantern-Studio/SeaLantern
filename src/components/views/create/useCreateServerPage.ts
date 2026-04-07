@@ -38,7 +38,7 @@ function parseNumber(value: string, fallbackValue: number): number {
 
 export function useCreateServerPage() {
   const router = useRouter();
-  const store = useServerStore();
+  const serverstore = useServerStore();
   const { error: errorMsg, showError, clearError } = useMessage();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
@@ -280,6 +280,11 @@ export function useCreateServerPage() {
     },
     { immediate: true },
   );
+
+  function parseNumber(value: string, fallbackValue: number): number {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? fallbackValue : parsed;
+  }
 
   async function loadDefaultSettings() {
     try {
@@ -587,7 +592,7 @@ export function useCreateServerPage() {
         mcVersion: resolvedMcVersion || undefined,
       });
 
-      await store.refreshList();
+      await serverstore.refreshList();
       router.push("/");
     } catch (error) {
       showError(String(error));

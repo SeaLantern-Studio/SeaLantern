@@ -114,6 +114,10 @@ function getPluginUiContainer(): HTMLElement {
   return container;
 }
 
+function initSidebarEventListener() {
+  console.log("[PluginSidebar] Event listener disabled");
+}
+
 function removePluginUiElements(pluginId: string) {
   const elements = document.querySelectorAll(`[data-plugin-id="${pluginId}"]`);
   console.log(`[PluginUI] Removing ${elements.length} UI elements for plugin: ${pluginId}`);
@@ -1343,6 +1347,7 @@ export const usePluginStore = defineStore("plugin", () => {
   }
 
   let uiEventUnlisten: UnlistenFn | null = null;
+  let sidebarEventUnlisten: UnlistenFn | null = null;
 
   async function initUiEventListener() {
     // 浏览器环境不支持 Tauri 事件系统
@@ -1372,20 +1377,9 @@ export const usePluginStore = defineStore("plugin", () => {
     }
   }
 
-  let sidebarEventUnlisten: UnlistenFn | null = null;
-
-  function initSidebarEventListener() {
-    // 浏览器环境不支持 Tauri 事件系统
-    if (isBrowserEnv()) {
-      return;
-    }
-    console.log("[PluginSidebar] Event listener disabled");
-  }
-
   function cleanupSidebarEventListener() {
     if (sidebarEventUnlisten) {
       sidebarEventUnlisten();
-      sidebarEventUnlisten = null;
     }
   }
 
