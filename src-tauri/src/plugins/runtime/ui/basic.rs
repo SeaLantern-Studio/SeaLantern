@@ -1,6 +1,5 @@
 use super::super::PluginRuntime;
-use super::common::{emit_result, lua_str, map_create_err, map_set_err};
-use crate::plugins::api::{emit_permission_log, emit_ui_event};
+use super::common::{emit_ui_action, lua_str, map_create_err, map_set_err, UiLogSpec};
 use mlua::Table;
 
 pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), String> {
@@ -12,12 +11,17 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
                 let element_id = lua_str(element_id);
                 let html = lua_str(html);
 
-                let _ = emit_permission_log(&pid, "api_call", "sl.ui.inject_html", &element_id);
-                emit_result(
+                emit_ui_action(
                     lua,
                     &pid,
                     "inject_html",
-                    emit_ui_event(&pid, "inject", &element_id, &html),
+                    "inject",
+                    &element_id,
+                    &html,
+                    Some(UiLogSpec {
+                        api_name: "sl.ui.inject_html",
+                        target: &element_id,
+                    }),
                 )
             },
         ),
@@ -33,12 +37,17 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
             .create_function(move |lua, element_id: mlua::String| {
                 let element_id = lua_str(element_id);
 
-                let _ = emit_permission_log(&pid, "api_call", "sl.ui.remove_html", &element_id);
-                emit_result(
+                emit_ui_action(
                     lua,
                     &pid,
                     "remove_html",
-                    emit_ui_event(&pid, "remove", &element_id, ""),
+                    "remove",
+                    &element_id,
+                    "",
+                    Some(UiLogSpec {
+                        api_name: "sl.ui.remove_html",
+                        target: &element_id,
+                    }),
                 )
             }),
         "ui.remove_html",
@@ -53,12 +62,17 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
                 let element_id = lua_str(element_id);
                 let html = lua_str(html);
 
-                let _ = emit_permission_log(&pid, "api_call", "sl.ui.update_html", &element_id);
-                emit_result(
+                emit_ui_action(
                     lua,
                     &pid,
                     "update_html",
-                    emit_ui_event(&pid, "update", &element_id, &html),
+                    "update",
+                    &element_id,
+                    &html,
+                    Some(UiLogSpec {
+                        api_name: "sl.ui.update_html",
+                        target: &element_id,
+                    }),
                 )
             },
         ),
@@ -73,7 +87,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
             .lua
             .create_function(move |lua, selector: mlua::String| {
                 let selector = lua_str(selector);
-                emit_result(lua, &pid, "query", emit_ui_event(&pid, "query", &selector, ""))
+                emit_ui_action(lua, &pid, "query", "query", &selector, "", None)
             }),
         "ui.query",
     )?;

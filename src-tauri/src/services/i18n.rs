@@ -84,43 +84,14 @@ impl I18nService {
     }
 
     pub fn t(&self, key: &str) -> String {
-        let locale = self.get_locale();
+        self.translate_for_locale(&self.get_locale(), key)
+            .unwrap_or_else(|| key.to_string())
+    }
 
-        if let Some(locale_translations) = self.translations.read().unwrap().get(&locale) {
-            if let Some(value) = locale_translations.get(key) {
-                return value.clone();
-            }
-        }
-
-        {
-            let plugin_trans = self.plugin_translations.read().unwrap();
-            for plugin_map in plugin_trans.values() {
-                if let Some(locale_map) = plugin_map.get(&locale) {
-                    if let Some(value) = locale_map.get(key) {
-                        return value.clone();
-                    }
-                }
-            }
-        }
-
-        if locale != "zh-CN" {
-            if let Some(zh_cn) = self.translations.read().unwrap().get("zh-CN") {
-                if let Some(value) = zh_cn.get(key) {
-                    return value.clone();
-                }
-            }
-
-            let plugin_trans = self.plugin_translations.read().unwrap();
-            for plugin_map in plugin_trans.values() {
-                if let Some(locale_map) = plugin_map.get("zh-CN") {
-                    if let Some(value) = locale_map.get(key) {
-                        return value.clone();
-                    }
-                }
-            }
-        }
-
-        key.to_string()
+    #[allow(dead_code)]
+    pub fn t_for_locale(&self, locale: &str, key: &str) -> String {
+        self.translate_for_locale(locale, key)
+            .unwrap_or_else(|| key.to_string())
     }
 
     pub fn t_with_options(&self, key: &str, options: &HashMap<String, String>) -> String {
@@ -131,19 +102,78 @@ impl I18nService {
         result
     }
 
+    #[allow(dead_code)]
+    pub fn t_with_options_for_locale(
+        &self,
+        locale: &str,
+        key: &str,
+        options: &HashMap<String, String>,
+    ) -> String {
+        let mut result = self.t_for_locale(locale, key);
+        for (k, v) in options {
+            result = result.replace(&format!("{{{}}}", k), v);
+        }
+        result
+    }
+
+    pub fn has_translation(&self, key: &str) -> bool {
+        self.has_translation_for_locale(&self.get_locale(), key)
+    }
+
+    pub fn has_translation_for_locale(&self, locale: &str, key: &str) -> bool {
+        self.translate_for_locale(locale, key).is_some()
+    }
+
     pub fn get_all_translations(&self) -> HashMap<String, String> {
-        let locale = self.get_locale();
+        self.get_translations_for_locale(&self.get_locale())
+    }
+
+    pub fn get_translations_for_locale(&self, locale: &str) -> HashMap<String, String> {
+        self.merge_translations_for_locale(locale)
+    }
+
+    fn translate_for_locale(&self, locale: &str, key: &str) -> Option<String> {
+        self.resolve_translation_for_locale(locale, key)
+            .or_else(|| {
+                if locale != "zh-CN" {
+                    self.resolve_translation_for_locale("zh-CN", key)
+                } else {
+                    None
+                }
+            })
+    }
+
+    fn resolve_translation_for_locale(&self, locale: &str, key: &str) -> Option<String> {
+        if let Some(locale_translations) = self.translations.read().unwrap().get(locale) {
+            if let Some(value) = locale_translations.get(key) {
+                return Some(value.clone());
+            }
+        }
+
+        let plugin_trans = self.plugin_translations.read().unwrap();
+        for plugin_map in plugin_trans.values() {
+            if let Some(locale_map) = plugin_map.get(locale) {
+                if let Some(value) = locale_map.get(key) {
+                    return Some(value.clone());
+                }
+            }
+        }
+
+        None
+    }
+
+    fn merge_translations_for_locale(&self, locale: &str) -> HashMap<String, String> {
         let mut merged = self
             .translations
             .read()
             .unwrap()
-            .get(&locale)
+            .get(locale)
             .cloned()
             .unwrap_or_default();
 
         let plugin_trans = self.plugin_translations.read().unwrap();
         for plugin_map in plugin_trans.values() {
-            if let Some(locale_map) = plugin_map.get(&locale) {
+            if let Some(locale_map) = plugin_map.get(locale) {
                 for (k, v) in locale_map {
                     merged.entry(k.clone()).or_insert_with(|| v.clone());
                 }
@@ -194,6 +224,15 @@ impl I18nService {
         let plugin_map = plugin_trans.entry(plugin_id.to_string()).or_default();
         let locale_map = plugin_map.entry(locale.to_string()).or_default();
         locale_map.extend(entries);
+    }
+
+    pub fn plugin_translation_entry_count(&self, plugin_id: &str) -> usize {
+        self.plugin_translations
+            .read()
+            .unwrap()
+            .get(plugin_id)
+            .map(|locale_map| locale_map.values().map(HashMap::len).sum())
+            .unwrap_or(0)
     }
 
     pub fn remove_plugin_translations(&self, plugin_id: &str) {

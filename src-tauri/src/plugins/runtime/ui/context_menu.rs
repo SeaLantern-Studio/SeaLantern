@@ -1,5 +1,7 @@
 use super::super::PluginRuntime;
-use super::common::{emit_result, map_create_err, map_set_err};
+use super::common::{
+    emit_result, map_create_err, map_set_err, register_callback, validate_context_menu_context,
+};
 use crate::plugins::api::emit_context_menu_event;
 use mlua::{Function, Table};
 
@@ -10,14 +12,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
         runtime
             .lua
             .create_function(move |lua, (context, items): (String, Table)| {
-                let valid_contexts =
-                    ["server-list", "console", "plugin-list", "player-list", "global"];
-                if !valid_contexts.contains(&context.as_str()) {
-                    return Err(mlua::Error::runtime(format!(
-                        "无效的上下文类型 '{}', 允许的值: {:?}",
-                        context, valid_contexts
-                    )));
-                }
+                validate_context_menu_context(&context)?;
 
                 let mut items_vec: Vec<serde_json::Value> = Vec::new();
                 for pair in items.pairs::<i64, Table>() {
@@ -66,13 +61,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
     let pid = runtime.plugin_id.clone();
     let unregister_context_menu_fn = map_create_err(
         runtime.lua.create_function(move |lua, context: String| {
-            let valid_contexts = ["server-list", "console", "plugin-list", "player-list", "global"];
-            if !valid_contexts.contains(&context.as_str()) {
-                return Err(mlua::Error::runtime(format!(
-                    "无效的上下文类型 '{}', 允许的值: {:?}",
-                    context, valid_contexts
-                )));
-            }
+            validate_context_menu_context(&context)?;
 
             emit_result(
                 lua,
@@ -94,10 +83,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
     let on_context_menu_click_fn = map_create_err(
         runtime.lua.create_function(move |_, callback: Function| {
             let registry_key = format!("_context_menu_callback_{}", pid);
-            lua_weak
-                .set_named_registry_value(&registry_key, callback)
-                .map_err(|e| mlua::Error::runtime(format!("存储回调函数失败: {}", e)))?;
-            Ok(true)
+            register_callback(&lua_weak, &registry_key, callback)
         }),
         "ui.on_context_menu_click",
     )?;
@@ -112,10 +98,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
     let on_context_menu_show_fn = map_create_err(
         runtime.lua.create_function(move |_, callback: Function| {
             let registry_key = format!("_context_menu_show_callback_{}", pid);
-            lua_weak
-                .set_named_registry_value(&registry_key, callback)
-                .map_err(|e| mlua::Error::runtime(format!("存储回调函数失败: {}", e)))?;
-            Ok(true)
+            register_callback(&lua_weak, &registry_key, callback)
         }),
         "ui.on_context_menu_show",
     )?;
@@ -130,10 +113,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
     let on_context_menu_hide_fn = map_create_err(
         runtime.lua.create_function(move |_, callback: Function| {
             let registry_key = format!("_context_menu_hide_callback_{}", pid);
-            lua_weak
-                .set_named_registry_value(&registry_key, callback)
-                .map_err(|e| mlua::Error::runtime(format!("存储回调函数失败: {}", e)))?;
-            Ok(true)
+            register_callback(&lua_weak, &registry_key, callback)
         }),
         "ui.on_context_menu_hide",
     )?;

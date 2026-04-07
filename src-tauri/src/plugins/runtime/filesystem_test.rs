@@ -46,11 +46,14 @@ fn test_fs_write_and_read() {
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Hello, World!")"#)
+        .load(r#"sl.fs.write("data", "test.txt", "Hello, World!")"#)
         .eval();
     assert!(result.is_ok());
 
-    let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("test.txt")"#).eval();
+    let result: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.read("data", "test.txt")"#)
+        .eval();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "Hello, World!");
 
@@ -63,13 +66,13 @@ fn test_fs_write_binary_and_read_binary() {
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.write("test.bin", "Binary Data")"#)
+        .load(r#"sl.fs.write("data", "test.bin", "Binary Data")"#)
         .eval();
     assert!(result.is_ok());
 
     let result: LuaResult<String> = runtime
         .lua
-        .load(r#"return sl.fs.read_binary("test.bin")"#)
+        .load(r#"return sl.fs.read_binary("data", "test.bin")"#)
         .eval();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "QmluYXJ5IERhdGE=");
@@ -83,20 +86,20 @@ fn test_fs_exists() {
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("test.txt")"#)
+        .load(r#"return sl.fs.exists("data", "test.txt")"#)
         .eval();
     assert!(result.is_ok());
     assert!(!result.unwrap());
 
     runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "test.txt", "Content")"#)
         .eval::<()>()
         .unwrap();
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("test.txt")"#)
+        .load(r#"return sl.fs.exists("data", "test.txt")"#)
         .eval();
     assert!(result.is_ok());
     assert!(result.unwrap());
@@ -108,22 +111,27 @@ fn test_fs_exists() {
 fn test_fs_mkdir_and_list() {
     let (runtime, temp_dir) = create_test_runtime_with_permissions(vec!["fs.data".to_string()]);
 
-    let result: LuaResult<()> = runtime.lua.load(r#"sl.fs.mkdir("test_dir")"#).eval();
+    let result: LuaResult<()> = runtime
+        .lua
+        .load(r#"sl.fs.mkdir("data", "test_dir")"#)
+        .eval();
     assert!(result.is_ok());
 
     runtime
         .lua
-        .load(r#"sl.fs.write("test_dir/file1.txt", "File 1")"#)
+        .load(r#"sl.fs.write("data", "test_dir/file1.txt", "File 1")"#)
         .eval::<()>()
         .unwrap();
     runtime
         .lua
-        .load(r#"sl.fs.write("test_dir/file2.txt", "File 2")"#)
+        .load(r#"sl.fs.write("data", "test_dir/file2.txt", "File 2")"#)
         .eval::<()>()
         .unwrap();
 
-    let result: LuaResult<mlua::Table> =
-        runtime.lua.load(r#"return sl.fs.list("test_dir")"#).eval();
+    let result: LuaResult<mlua::Table> = runtime
+        .lua
+        .load(r#"return sl.fs.list("data", "test_dir")"#)
+        .eval();
     assert!(result.is_ok());
 
     let table = result.unwrap();
@@ -144,22 +152,25 @@ fn test_fs_remove_file() {
 
     runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "test.txt", "Content")"#)
         .eval::<()>()
         .unwrap();
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("test.txt")"#)
+        .load(r#"return sl.fs.exists("data", "test.txt")"#)
         .eval();
     assert!(result.unwrap());
 
-    let result: LuaResult<()> = runtime.lua.load(r#"sl.fs.remove("test.txt")"#).eval();
+    let result: LuaResult<()> = runtime
+        .lua
+        .load(r#"sl.fs.remove("data", "test.txt")"#)
+        .eval();
     assert!(result.is_ok());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("test.txt")"#)
+        .load(r#"return sl.fs.exists("data", "test.txt")"#)
         .eval();
     assert!(!result.unwrap());
 
@@ -167,32 +178,45 @@ fn test_fs_remove_file() {
 }
 
 #[test]
-fn test_fs_remove_directory() {
+fn test_fs_remove_directory_requires_empty_dir() {
     let (runtime, temp_dir) = create_test_runtime_with_permissions(vec!["fs.data".to_string()]);
 
     runtime
         .lua
-        .load(r#"sl.fs.mkdir("test_dir")"#)
+        .load(r#"sl.fs.mkdir("data", "test_dir")"#)
         .eval::<()>()
         .unwrap();
     runtime
         .lua
-        .load(r#"sl.fs.write("test_dir/file.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "test_dir/file.txt", "Content")"#)
         .eval::<()>()
         .unwrap();
 
-    let result: LuaResult<bool> = runtime
+    let result: LuaResult<()> = runtime
         .lua
-        .load(r#"return sl.fs.exists("test_dir")"#)
+        .load(r#"sl.fs.remove("data", "test_dir")"#)
         .eval();
-    assert!(result.unwrap());
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Refusing to recursively remove a non-empty directory"));
 
-    let result: LuaResult<()> = runtime.lua.load(r#"sl.fs.remove("test_dir")"#).eval();
+    runtime
+        .lua
+        .load(r#"sl.fs.remove("data", "test_dir/file.txt")"#)
+        .eval::<()>()
+        .unwrap();
+
+    let result: LuaResult<()> = runtime
+        .lua
+        .load(r#"sl.fs.remove("data", "test_dir")"#)
+        .eval();
     assert!(result.is_ok());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("test_dir")"#)
+        .load(r#"return sl.fs.exists("data", "test_dir")"#)
         .eval();
     assert!(!result.unwrap());
 
@@ -205,12 +229,14 @@ fn test_fs_info() {
 
     runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Hello, World!")"#)
+        .load(r#"sl.fs.write("data", "test.txt", "Hello, World!")"#)
         .eval::<()>()
         .unwrap();
 
-    let result: LuaResult<mlua::Table> =
-        runtime.lua.load(r#"return sl.fs.info("test.txt")"#).eval();
+    let result: LuaResult<mlua::Table> = runtime
+        .lua
+        .load(r#"return sl.fs.info("data", "test.txt")"#)
+        .eval();
     assert!(result.is_ok());
 
     let info = result.unwrap();
@@ -229,29 +255,32 @@ fn test_fs_copy_file() {
 
     runtime
         .lua
-        .load(r#"sl.fs.write("source.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "source.txt", "Content")"#)
         .eval::<()>()
         .unwrap();
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.copy("source.txt", "dest.txt")"#)
+        .load(r#"sl.fs.copy("data", "source.txt", "dest.txt")"#)
         .eval();
     assert!(result.is_ok());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("source.txt")"#)
+        .load(r#"return sl.fs.exists("data", "source.txt")"#)
         .eval();
     assert!(result.unwrap());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("dest.txt")"#)
+        .load(r#"return sl.fs.exists("data", "dest.txt")"#)
         .eval();
     assert!(result.unwrap());
 
-    let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("dest.txt")"#).eval();
+    let result: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.read("data", "dest.txt")"#)
+        .eval();
     assert_eq!(result.unwrap(), "Content");
 
     cleanup_test_runtime(&temp_dir);
@@ -263,36 +292,36 @@ fn test_fs_copy_directory() {
 
     runtime
         .lua
-        .load(r#"sl.fs.mkdir("source_dir")"#)
+        .load(r#"sl.fs.mkdir("data", "source_dir")"#)
         .eval::<()>()
         .unwrap();
     runtime
         .lua
-        .load(r#"sl.fs.write("source_dir/file.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "source_dir/file.txt", "Content")"#)
         .eval::<()>()
         .unwrap();
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.copy("source_dir", "dest_dir")"#)
+        .load(r#"sl.fs.copy("data", "source_dir", "dest_dir")"#)
         .eval();
     assert!(result.is_ok());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("source_dir")"#)
+        .load(r#"return sl.fs.exists("data", "source_dir")"#)
         .eval();
     assert!(result.unwrap());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("dest_dir")"#)
+        .load(r#"return sl.fs.exists("data", "dest_dir")"#)
         .eval();
     assert!(result.unwrap());
 
     let result: LuaResult<String> = runtime
         .lua
-        .load(r#"return sl.fs.read("dest_dir/file.txt")"#)
+        .load(r#"return sl.fs.read("data", "dest_dir/file.txt")"#)
         .eval();
     assert_eq!(result.unwrap(), "Content");
 
@@ -305,29 +334,32 @@ fn test_fs_move() {
 
     runtime
         .lua
-        .load(r#"sl.fs.write("source.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "source.txt", "Content")"#)
         .eval::<()>()
         .unwrap();
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.move("source.txt", "dest.txt")"#)
+        .load(r#"sl.fs.move("data", "source.txt", "dest.txt")"#)
         .eval();
     assert!(result.is_ok());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("source.txt")"#)
+        .load(r#"return sl.fs.exists("data", "source.txt")"#)
         .eval();
     assert!(!result.unwrap());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("dest.txt")"#)
+        .load(r#"return sl.fs.exists("data", "dest.txt")"#)
         .eval();
     assert!(result.unwrap());
 
-    let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("dest.txt")"#).eval();
+    let result: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.read("data", "dest.txt")"#)
+        .eval();
     assert_eq!(result.unwrap(), "Content");
 
     cleanup_test_runtime(&temp_dir);
@@ -339,31 +371,31 @@ fn test_fs_rename() {
 
     runtime
         .lua
-        .load(r#"sl.fs.write("old_name.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "old_name.txt", "Content")"#)
         .eval::<()>()
         .unwrap();
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.rename("old_name.txt", "new_name.txt")"#)
+        .load(r#"sl.fs.rename("data", "old_name.txt", "new_name.txt")"#)
         .eval();
     assert!(result.is_ok());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("old_name.txt")"#)
+        .load(r#"return sl.fs.exists("data", "old_name.txt")"#)
         .eval();
     assert!(!result.unwrap());
 
     let result: LuaResult<bool> = runtime
         .lua
-        .load(r#"return sl.fs.exists("new_name.txt")"#)
+        .load(r#"return sl.fs.exists("data", "new_name.txt")"#)
         .eval();
     assert!(result.unwrap());
 
     let result: LuaResult<String> = runtime
         .lua
-        .load(r#"return sl.fs.read("new_name.txt")"#)
+        .load(r#"return sl.fs.read("data", "new_name.txt")"#)
         .eval();
     assert_eq!(result.unwrap(), "Content");
 
@@ -378,7 +410,7 @@ fn test_fs_get_path_data() {
     assert!(result.is_ok());
 
     let path = result.unwrap();
-    assert!(path.contains("data"));
+    assert_eq!(path, "sandbox://data");
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -394,7 +426,7 @@ fn test_fs_get_path_server() {
     assert!(result.is_ok());
 
     let path = result.unwrap();
-    assert!(path.contains("servers"));
+    assert_eq!(path, "sandbox://server");
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -410,7 +442,7 @@ fn test_fs_get_path_global() {
     assert!(result.is_ok());
 
     let path = result.unwrap();
-    assert!(path.contains("global"));
+    assert_eq!(path, "sandbox://global");
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -421,7 +453,7 @@ fn test_fs_permission_denied() {
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "test.txt", "Content")"#)
         .eval();
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
@@ -441,7 +473,7 @@ fn test_fs_data_permission_only() {
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Content")"#)
+        .load(r#"sl.fs.write("data", "test.txt", "Content")"#)
         .eval();
     assert!(result.is_ok());
 
@@ -454,7 +486,7 @@ fn test_fs_server_permission() {
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Content")"#)
+        .load(r#"sl.fs.write("server", "test.txt", "Content")"#)
         .eval();
     assert!(result.is_ok());
 
@@ -467,7 +499,7 @@ fn test_fs_global_permission() {
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Content")"#)
+        .load(r#"sl.fs.write("global", "test.txt", "Content")"#)
         .eval();
     assert!(result.is_ok());
 
@@ -494,13 +526,75 @@ fn test_fs_backward_compatibility() {
 
     let result: LuaResult<()> = runtime
         .lua
-        .load(r#"sl.fs.write("test.txt", "Hello from fs permission!")"#)
+        .load(r#"sl.fs.write("data", "test.txt", "Hello from fs permission!")"#)
         .eval();
     assert!(result.is_ok());
 
-    let result: LuaResult<String> = runtime.lua.load(r#"return sl.fs.read("test.txt")"#).eval();
+    let result: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.read("data", "test.txt")"#)
+        .eval();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "Hello from fs permission!");
+
+    cleanup_test_runtime(&temp_dir);
+}
+
+#[test]
+fn test_fs_action_permissions_allow_only_granted_actions() {
+    let (runtime, temp_dir) = create_test_runtime_with_permissions(vec![
+        "fs.data.read".to_string(),
+        "fs.data.write".to_string(),
+    ]);
+
+    let write_result: LuaResult<()> = runtime
+        .lua
+        .load(r#"sl.fs.write("data", "test.txt", "action-content")"#)
+        .eval();
+    assert!(write_result.is_ok());
+
+    let read_result: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.read("data", "test.txt")"#)
+        .eval();
+    assert_eq!(read_result.unwrap(), "action-content");
+
+    let list_result: LuaResult<mlua::Table> =
+        runtime.lua.load(r#"return sl.fs.list("data", ".")"#).eval();
+    assert!(list_result.is_err());
+    assert!(list_result
+        .unwrap_err()
+        .to_string()
+        .contains("fs.data.list"));
+
+    let delete_result: LuaResult<()> = runtime
+        .lua
+        .load(r#"sl.fs.remove("data", "test.txt")"#)
+        .eval();
+    assert!(delete_result.is_err());
+    assert!(delete_result
+        .unwrap_err()
+        .to_string()
+        .contains("fs.data.delete"));
+
+    cleanup_test_runtime(&temp_dir);
+}
+
+#[test]
+fn test_fs_action_permissions_enable_namespace_mount() {
+    let (runtime, temp_dir) =
+        create_test_runtime_with_permissions(vec!["fs.data.read".to_string()]);
+
+    let read_result: LuaResult<String> = runtime.lua.load(r#"return type(sl.fs.read)"#).eval();
+    assert_eq!(read_result.unwrap(), "function");
+
+    let get_path_result: LuaResult<String> =
+        runtime.lua.load(r#"return sl.fs.get_path("data")"#).eval();
+    assert!(get_path_result.is_err());
+    assert!(get_path_result
+        .unwrap_err()
+        .to_string()
+        .contains("fs.data.meta"));
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -532,16 +626,16 @@ fn test_fs_path_validation_edge_cases() {
 
     // 所有文件系统函数都应遵守相同的路径规则
     let functions = vec![
-        ("write", r#"sl.fs.write("{path}", "test-content")"#),
-        ("read", r#"sl.fs.read("{path}")"#),
-        ("read_binary", r#"sl.fs.read_binary("{path}")"#),
-        ("exists", r#"sl.fs.exists("{path}")"#),
-        ("list", r#"sl.fs.list("{path}")"#),
-        ("mkdir", r#"sl.fs.mkdir("{path}")"#),
-        ("remove", r#"sl.fs.remove("{path}")"#),
-        ("copy", r#"sl.fs.copy("{path}", "valid/target.txt")"#),
-        ("move", r#"sl.fs.move("{path}", "valid/target.txt")"#),
-        ("rename", r#"sl.fs.rename("{path}", "valid/target.txt")"#),
+        ("write", r#"sl.fs.write("{scope}", "{path}", "test-content")"#),
+        ("read", r#"sl.fs.read("{scope}", "{path}")"#),
+        ("read_binary", r#"sl.fs.read_binary("{scope}", "{path}")"#),
+        ("exists", r#"sl.fs.exists("{scope}", "{path}")"#),
+        ("list", r#"sl.fs.list("{scope}", "{path}")"#),
+        ("mkdir", r#"sl.fs.mkdir("{scope}", "{path}")"#),
+        ("remove", r#"sl.fs.remove("{scope}", "{path}")"#),
+        ("copy", r#"sl.fs.copy("{scope}", "{path}", "valid/target.txt")"#),
+        ("move", r#"sl.fs.move("{scope}", "{path}", "valid/target.txt")"#),
+        ("rename", r#"sl.fs.rename("{scope}", "{path}", "valid/target.txt")"#),
     ];
 
     for scope in scopes {
@@ -549,7 +643,9 @@ fn test_fs_path_validation_edge_cases() {
 
         for path in &invalid_paths {
             for (func_name, func_template) in &functions {
-                let lua_code = func_template.replace("{path}", path);
+                let lua_code = func_template
+                    .replace("{scope}", &scope.replace("fs.", ""))
+                    .replace("{path}", path);
 
                 let result: LuaResult<()> = runtime.lua.load(&lua_code).eval();
 
@@ -565,6 +661,7 @@ fn test_fs_path_validation_edge_cases() {
                 // 对于需要两个路径的函数，也测试目标路径
                 if func_name == &"copy" || func_name == &"move" || func_name == &"rename" {
                     let lua_code_dest = func_template
+                        .replace("{scope}", &scope.replace("fs.", ""))
                         .replace("{path}", "valid/source.txt")
                         .replace("valid/target.txt", path);
                     let result_dest: LuaResult<()> = runtime.lua.load(&lua_code_dest).eval();
@@ -582,4 +679,83 @@ fn test_fs_path_validation_edge_cases() {
 
         cleanup_test_runtime(&temp_dir);
     }
+}
+
+#[test]
+fn test_fs_multiple_scopes_work_with_explicit_scope() {
+    let (runtime, temp_dir) =
+        create_test_runtime_with_permissions(vec!["fs.data".to_string(), "fs.server".to_string()]);
+
+    runtime
+        .lua
+        .load(r#"sl.fs.write("data", "test.txt", "data-content")"#)
+        .eval::<()>()
+        .unwrap();
+    runtime
+        .lua
+        .load(r#"sl.fs.write("server", "test.txt", "server-content")"#)
+        .eval::<()>()
+        .unwrap();
+
+    let data_content: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.read("data", "test.txt")"#)
+        .eval();
+    let server_content: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.read("server", "test.txt")"#)
+        .eval();
+
+    assert_eq!(data_content.unwrap(), "data-content");
+    assert_eq!(server_content.unwrap(), "server-content");
+
+    cleanup_test_runtime(&temp_dir);
+}
+
+#[test]
+fn test_fs_copy_rejects_existing_destination() {
+    let (runtime, temp_dir) = create_test_runtime_with_permissions(vec!["fs.data".to_string()]);
+
+    runtime
+        .lua
+        .load(r#"sl.fs.write("data", "source.txt", "new")"#)
+        .eval::<()>()
+        .unwrap();
+    runtime
+        .lua
+        .load(r#"sl.fs.write("data", "dest.txt", "old")"#)
+        .eval::<()>()
+        .unwrap();
+
+    let result: LuaResult<()> = runtime
+        .lua
+        .load(r#"sl.fs.copy("data", "source.txt", "dest.txt")"#)
+        .eval();
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Destination already exists"));
+
+    let content: LuaResult<String> = runtime
+        .lua
+        .load(r#"return sl.fs.read("data", "dest.txt")"#)
+        .eval();
+    assert_eq!(content.unwrap(), "old");
+
+    cleanup_test_runtime(&temp_dir);
+}
+
+#[test]
+fn test_fs_remove_rejects_sandbox_root() {
+    let (runtime, temp_dir) = create_test_runtime_with_permissions(vec!["fs.data".to_string()]);
+
+    let result: LuaResult<()> = runtime.lua.load(r#"sl.fs.remove("data", ".")"#).eval();
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Refusing to remove filesystem sandbox root"));
+
+    cleanup_test_runtime(&temp_dir);
 }

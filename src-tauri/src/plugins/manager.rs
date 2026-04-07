@@ -12,9 +12,9 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-pub type SharedRuntimes = Arc<RwLock<HashMap<String, PluginRuntime>>>;
+pub(crate) type SharedRuntimes = Arc<RwLock<HashMap<String, PluginRuntime>>>;
 
-pub fn new_shared_runtimes() -> SharedRuntimes {
+pub(crate) fn new_shared_runtimes() -> SharedRuntimes {
     Arc::new(RwLock::new(HashMap::new()))
 }
 
@@ -48,7 +48,7 @@ impl PluginManager {
         }
     }
 
-    pub fn get_shared_runtimes(&self) -> SharedRuntimes {
+    pub(crate) fn get_shared_runtimes(&self) -> SharedRuntimes {
         Arc::clone(&self.runtimes)
     }
 

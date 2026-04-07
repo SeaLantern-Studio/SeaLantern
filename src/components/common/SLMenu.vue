@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import SLMenuBase from "./SLMenuBase.vue";
 
 interface MenuItem {
@@ -33,11 +33,38 @@ const isOpen = ref(false);
 const triggerRef = ref<HTMLElement | null>(null);
 const menuRef = ref<HTMLElement | null>(null);
 const highlightedIndex = ref(-1);
-const menuStyle = ref<Record<string, string>>({});
+const menuStyle = ref<Record<string, string>>({
+  position: "fixed",
+  top: "0px",
+  left: "0px",
+  zIndex: "99999",
+  visibility: "hidden",
+  pointerEvents: "none",
+});
+const isPositioned = ref(false);
+let positionFrameId: number | null = null;
 
 const flattenedItems = computed(() => {
   return props.items.filter((item) => !item.divider);
 });
+
+const resetMenuStyle = () => {
+  menuStyle.value = {
+    position: "fixed",
+    top: "0px",
+    left: "0px",
+    zIndex: "99999",
+    visibility: "hidden",
+    pointerEvents: "none",
+  };
+};
+
+const cancelScheduledPositioning = () => {
+  if (positionFrameId !== null) {
+    cancelAnimationFrame(positionFrameId);
+    positionFrameId = null;
+  }
+};
 
 const updatePosition = () => {
   if (!triggerRef.value || !menuRef.value) return;
@@ -74,25 +101,47 @@ const updatePosition = () => {
   if (top < 0) top = triggerRect.bottom + props.offset;
   if (top + menuRect.height > viewportHeight) top = viewportHeight - menuRect.height - 8;
 
+  if (top < 8) top = 8;
+  if (left < 8) left = 8;
+
   menuStyle.value = {
     position: "fixed",
     top: `${top}px`,
     left: `${left}px`,
     zIndex: "99999",
+    visibility: "visible",
+    pointerEvents: "auto",
   };
+  isPositioned.value = true;
+};
+
+const schedulePositionUpdate = () => {
+  cancelScheduledPositioning();
+  nextTick(() => {
+    if (!isOpen.value) return;
+    updatePosition();
+    positionFrameId = requestAnimationFrame(() => {
+      positionFrameId = null;
+      if (!isOpen.value) return;
+      updatePosition();
+    });
+  });
 };
 
 const open = () => {
   isOpen.value = true;
   highlightedIndex.value = -1;
-  nextTick(() => {
-    updatePosition();
-  });
+  isPositioned.value = false;
+  resetMenuStyle();
+  schedulePositionUpdate();
 };
 
 const close = () => {
   isOpen.value = false;
   highlightedIndex.value = -1;
+  isPositioned.value = false;
+  cancelScheduledPositioning();
+  resetMenuStyle();
 };
 
 const toggle = () => {
@@ -162,6 +211,16 @@ const handleScroll = () => {
   }
 };
 
+watch(
+  () => props.items,
+  () => {
+    if (isOpen.value) {
+      schedulePositionUpdate();
+    }
+  },
+  { deep: true },
+);
+
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
   window.addEventListener("scroll", handleScroll, true);
@@ -169,6 +228,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  cancelScheduledPositioning();
   document.removeEventListener("click", handleClickOutside);
   window.removeEventListener("scroll", handleScroll, true);
   window.removeEventListener("resize", handleScroll);
@@ -198,6 +258,7 @@ defineExpose({ open, close, toggle });
           v-if="isOpen"
           ref="menuRef"
           class="sl-menu"
+          :class="{ 'sl-menu-positioning': !isPositioned }"
           :style="menuStyle"
           role="menu"
           @keydown="handleKeydown"
@@ -228,6 +289,10 @@ defineExpose({ open, close, toggle });
 
 .sl-menu {
   animation: menu-enter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sl-menu-positioning {
+  opacity: 0;
 }
 
 .menu-enter-active {
