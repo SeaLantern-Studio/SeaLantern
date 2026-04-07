@@ -82,20 +82,20 @@
 
 ## FileSystem API
 
-| 方法名                             | 参数                                                       | 返回值                            | 描述                 |
-| ---------------------------------- | ---------------------------------------------------------- | --------------------------------- | -------------------- |
-| `sl.fs.read(path)`                 | `path: string` - 文件路径                                  | `string` - 文件内容               | 读取文件内容         |
-| `sl.fs.read_binary(path)`          | `path: string` - 文件路径                                  | `string` - Base64编码的二进制内容 | 读取二进制文件内容   |
-| `sl.fs.write(path, content)`       | `path: string` - 文件路径<br>`content: string` - 文件内容  | `nil`                             | 写入文件内容         |
-| `sl.fs.exists(path)`               | `path: string` - 文件路径                                  | `boolean` - 文件是否存在          | 检查文件是否存在     |
-| `sl.fs.list(path)`                 | `path: string` - 目录路径                                  | `table` - 文件名列表              | 列出目录内容         |
-| `sl.fs.mkdir(path)`                | `path: string` - 目录路径                                  | `nil`                             | 创建目录（递归）     |
-| `sl.fs.remove(path)`               | `path: string` - 文件或目录路径                            | `nil`                             | 删除文件或目录       |
-| `sl.fs.info(path)`                 | `path: string` - 文件或目录路径                            | `table` - 文件信息                | 获取文件信息         |
-| `sl.fs.copy(src, dst)`             | `src: string` - 源路径<br>`dst: string` - 目标路径         | `nil`                             | 复制文件或目录       |
-| `sl.fs.move(src, dst)`             | `src: string` - 源路径<br>`dst: string` - 目标路径         | `nil`                             | 移动文件或目录       |
-| `sl.fs.rename(old_path, new_path)` | `old_path: string` - 旧路径<br>`new_path: string` - 新路径 | `nil`                             | 重命名文件或目录     |
-| `sl.fs.get_path(scope)`            | `scope: string` - 作用域 (`data`, `server`, `global`)      | `string` - 路径                   | 获取指定作用域的路径 |
+| 方法名                                    | 参数                                                                                                                | 返回值                            | 描述                 |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------- |
+| `sl.fs.read(scope, path)`                 | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`path: string` - 文件路径                                  | `string` - 文件内容               | 读取文件内容         |
+| `sl.fs.read_binary(scope, path)`          | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`path: string` - 文件路径                                  | `string` - Base64编码的二进制内容 | 读取二进制文件内容   |
+| `sl.fs.write(scope, path, content)`       | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`path: string` - 文件路径<br>`content: string` - 文件内容  | `nil`                             | 写入文件内容         |
+| `sl.fs.exists(scope, path)`               | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`path: string` - 文件路径                                  | `boolean` - 文件是否存在          | 检查文件是否存在     |
+| `sl.fs.list(scope, path)`                 | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`path: string` - 目录路径                                  | `table` - 文件名列表              | 列出目录内容         |
+| `sl.fs.mkdir(scope, path)`                | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`path: string` - 目录路径                                  | `nil`                             | 创建目录（递归）     |
+| `sl.fs.remove(scope, path)`               | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`path: string` - 文件或目录路径                            | `nil`                             | 删除文件或目录       |
+| `sl.fs.info(scope, path)`                 | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`path: string` - 文件或目录路径                            | `table` - 文件信息                | 获取文件信息         |
+| `sl.fs.copy(scope, src, dst)`             | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`src: string` - 源路径<br>`dst: string` - 目标路径         | `nil`                             | 复制文件或目录       |
+| `sl.fs.move(scope, src, dst)`             | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`src: string` - 源路径<br>`dst: string` - 目标路径         | `nil`                             | 移动文件或目录       |
+| `sl.fs.rename(scope, old_path, new_path)` | `scope: string` - 作用域 (`data`, `server`, `global`)<br>`old_path: string` - 旧路径<br>`new_path: string` - 新路径 | `nil`                             | 重命名文件或目录     |
+| `sl.fs.get_path(scope)`                   | `scope: string` - 作用域 (`data`, `server`, `global`)                                                               | `string` - 路径                   | 获取指定作用域的路径 |
 
 ## 示例
 
@@ -121,18 +121,18 @@ print("Server status: " .. status)
 
 ```lua
 -- 读取文件
-local content = sl.fs.read("config.txt")
+local content = sl.fs.read("data", "config.txt")
 print("File content: " .. content)
 
 -- 写入文件
-sl.fs.write("output.txt", "Hello, world!")
+sl.fs.write("data", "output.txt", "Hello, world!")
 
 -- 检查文件是否存在
-local exists = sl.fs.exists("config.txt")
+local exists = sl.fs.exists("data", "config.txt")
 print("File exists: " .. tostring(exists))
 
 -- 列出目录内容
-local files = sl.fs.list("")
+local files = sl.fs.list("data", "")
 for i, file in ipairs(files) do
     print("File " .. i .. ": " .. file)
 end

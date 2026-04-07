@@ -8,7 +8,19 @@ use std::fs;
 
 pub(super) fn read(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |_, (scope, path): (String, String)| {
+    lua.create_function(move |lua, args: mlua::MultiValue| {
+        let (scope, path) = match args.len() {
+            1 => {
+                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
+                ("data".to_string(), path)
+            }
+            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
+            _ => {
+                return Err(mlua::Error::runtime(
+                    "sl.fs.read expects (path) or (scope, path)".to_string(),
+                ));
+            }
+        };
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -30,7 +42,19 @@ pub(super) fn read(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
 pub(super) fn read_binary(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |_, (scope, path): (String, String)| {
+    lua.create_function(move |lua, args: mlua::MultiValue| {
+        let (scope, path) = match args.len() {
+            1 => {
+                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
+                ("data".to_string(), path)
+            }
+            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
+            _ => {
+                return Err(mlua::Error::runtime(
+                    "sl.fs.read_binary expects (path) or (scope, path)".to_string(),
+                ));
+            }
+        };
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -57,7 +81,19 @@ pub(super) fn read_binary(lua: &Lua, ctx: &FsContext) -> Result<Function, String
 
 pub(super) fn exists(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |_, (scope, path): (String, String)| {
+    lua.create_function(move |lua, args: mlua::MultiValue| {
+        let (scope, path) = match args.len() {
+            1 => {
+                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
+                ("data".to_string(), path)
+            }
+            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
+            _ => {
+                return Err(mlua::Error::runtime(
+                    "sl.fs.exists expects (path) or (scope, path)".to_string(),
+                ));
+            }
+        };
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -77,7 +113,19 @@ pub(super) fn exists(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
 pub(super) fn list(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |lua, (scope, path): (String, String)| {
+    lua.create_function(move |lua, args: mlua::MultiValue| {
+        let (scope, path) = match args.len() {
+            1 => {
+                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
+                ("data".to_string(), path)
+            }
+            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
+            _ => {
+                return Err(mlua::Error::runtime(
+                    "sl.fs.list expects (path) or (scope, path)".to_string(),
+                ));
+            }
+        };
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -109,7 +157,19 @@ pub(super) fn list(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
 pub(super) fn info(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
-    lua.create_function(move |lua, (scope, path): (String, String)| {
+    lua.create_function(move |lua, args: mlua::MultiValue| {
+        let (scope, path) = match args.len() {
+            1 => {
+                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
+                ("data".to_string(), path)
+            }
+            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
+            _ => {
+                return Err(mlua::Error::runtime(
+                    "sl.fs.info expects (path) or (scope, path)".to_string(),
+                ));
+            }
+        };
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,

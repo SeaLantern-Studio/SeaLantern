@@ -1395,7 +1395,7 @@ export const usePluginStore = defineStore("plugin", () => {
     const logs = permissionLogs.value[log.plugin_id] || [];
     const newLogs = [...logs, log];
 
-    if (newLogs.length > 200) newLogs.shift();
+    if (newLogs.length > 500) newLogs.splice(0, newLogs.length - 500);
     permissionLogs.value = {
       ...permissionLogs.value,
       [log.plugin_id]: newLogs,
@@ -1810,6 +1810,28 @@ export const usePluginStore = defineStore("plugin", () => {
       }
     } catch (e) {
       console.error("[ContextMenu] Failed to replay context menu snapshot:", e);
+    }
+    try {
+      const permissionLogEntries = await Promise.all(
+        plugins.value.map(
+          async (plugin) =>
+            [
+              plugin.manifest.id,
+              await pluginApi.getPluginPermissionLogs(plugin.manifest.id),
+            ] as const,
+        ),
+      );
+
+      const nextPermissionLogs: Record<string, PluginPermissionLog[]> = {};
+      for (const [pluginId, logs] of permissionLogEntries) {
+        nextPermissionLogs[pluginId] = logs.slice(-500);
+      }
+      permissionLogs.value = {
+        ...permissionLogs.value,
+        ...nextPermissionLogs,
+      };
+    } catch (e) {
+      console.error("[PluginPermission] Failed to replay permission log snapshot:", e);
     }
   }
 

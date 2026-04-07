@@ -191,10 +191,17 @@ export type PluginUiAction =
 
 export interface PluginPermissionLog {
   plugin_id: string;
-  log_type: "command" | "api_call";
+  log_type: string;
   action: string;
   detail: string;
   timestamp: number;
+}
+
+export interface PluginPermissionLogGroup {
+  name: string;
+  count: number;
+  lastTimestamp: number;
+  details: string[];
 }
 
 export interface PluginLogEvent {
