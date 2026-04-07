@@ -1,12 +1,14 @@
 use super::common::{
-    is_process_owner, truncate_output, ProcessEntry, ProcessRegistry, MAX_ARGS_COUNT,
-    MAX_ARG_LENGTH, MAX_ENV_KEY_LENGTH, MAX_ENV_VALUE_LENGTH, MAX_ENV_VARS,
-    MAX_STDOUT_BUFFER_BYTES,
+    collect_finished_processes, is_process_owner, plugin_process_count, truncate_output,
+    ProcessEntry, ProcessRegistry, MAX_ARGS_COUNT, MAX_ARG_LENGTH,
+    MAX_BACKGROUND_PROCESSES_PER_PLUGIN, MAX_ENV_KEY_LENGTH, MAX_ENV_VALUE_LENGTH, MAX_ENV_VARS,
+    MAX_FOREGROUND_EXEC_DURATION, MAX_STDOUT_BUFFER_BYTES,
 };
 use crate::plugins::runtime::shared::validate_path_static;
 use mlua::{Function, Lua, Table, Value};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
+use std::time::Instant;
 
 fn emit_process_log(plugin_id: &str, action: &str, detail: &str) {
     let _ = crate::plugins::api::emit_permission_log(plugin_id, "api_call", action, detail);
@@ -164,7 +166,7 @@ pub(super) fn exec(
             cmd.args(&args)
                 .current_dir(&cwd)
                 .stdout(Stdio::piped())
-                .stderr(Stdio::null());
+                .stderr(Stdio::piped());
 
             for (k, v) in &env_vars {
                 cmd.env(k, v);
@@ -173,6 +175,19 @@ pub(super) fn exec(
             let result_table = lua.create_table()?;
 
             if background {
+                let mut procs = registry.lock().unwrap_or_else(|e| {
+                    eprintln!("[WARN] Process registry lock poisoned: {}", e);
+                    e.into_inner()
+                });
+                collect_finished_processes(&mut procs);
+
+                if plugin_process_count(&procs, &pid) >= MAX_BACKGROUND_PROCESSES_PER_PLUGIN {
+                    return Err(mlua::Error::runtime(format!(
+                        "Too many background processes: maximum {} allowed per plugin",
+                        MAX_BACKGROUND_PROCESSES_PER_PLUGIN
+                    )));
+                }
+
                 match cmd.spawn() {
                     Ok(child) => {
                         let child_pid = child.id();
@@ -184,12 +199,9 @@ pub(super) fn exec(
                             program: program.clone(),
                             child,
                             stdout_buf: Vec::new(),
+                            started_at: Instant::now(),
                         };
 
-                        let mut procs = registry.lock().unwrap_or_else(|e| {
-                            eprintln!("[WARN] Process registry lock poisoned: {}", e);
-                            e.into_inner()
-                        });
                         procs.insert(child_pid, entry);
                     }
                     Err(e) => {
@@ -199,19 +211,36 @@ pub(super) fn exec(
                     }
                 }
             } else {
-                match cmd.output() {
-                    Ok(output) => {
-                        let mut stdout = output.stdout;
-                        truncate_output(&mut stdout);
-                        result_table.set("pid", 0)?;
-                        result_table.set("success", output.status.success())?;
-                        result_table.set("exit_code", output.status.code().unwrap_or(-1))?;
-                        let stdout_text = String::from_utf8_lossy(&stdout).into_owned();
-                        result_table.set("stdout", lua.create_string(stdout_text.as_bytes())?)?;
-                        if stdout.len() >= MAX_STDOUT_BUFFER_BYTES {
-                            result_table.set("truncated", true)?;
+                let started_at = Instant::now();
+                match cmd.spawn() {
+                    Ok(child) => match child.wait_with_output() {
+                        Ok(output) => {
+                            let elapsed = started_at.elapsed();
+                            if elapsed > MAX_FOREGROUND_EXEC_DURATION {
+                                return Err(mlua::Error::runtime(format!(
+                                    "Process execution exceeded maximum duration of {} seconds",
+                                    MAX_FOREGROUND_EXEC_DURATION.as_secs()
+                                )));
+                            }
+
+                            let mut stdout = output.stdout;
+                            truncate_output(&mut stdout);
+                            result_table.set("pid", 0)?;
+                            result_table.set("success", output.status.success())?;
+                            result_table.set("exit_code", output.status.code().unwrap_or(-1))?;
+                            let stdout_text = String::from_utf8_lossy(&stdout).into_owned();
+                            result_table
+                                .set("stdout", lua.create_string(stdout_text.as_bytes())?)?;
+                            if stdout.len() >= MAX_STDOUT_BUFFER_BYTES {
+                                result_table.set("truncated", true)?;
+                            }
                         }
-                    }
+                        Err(e) => {
+                            result_table.set("pid", 0)?;
+                            result_table.set("success", false)?;
+                            result_table.set("error", format!("{}", e))?;
+                        }
+                    },
                     Err(e) => {
                         result_table.set("pid", 0)?;
                         result_table.set("success", false)?;
@@ -241,6 +270,7 @@ pub(super) fn get(
             eprintln!("[WARN] Process registry lock poisoned: {}", e);
             e.into_inner()
         });
+        collect_finished_processes(&mut procs);
 
         if let Some(entry) = procs.get_mut(&target_pid) {
             if !is_process_owner(entry, &pid) {
@@ -249,6 +279,8 @@ pub(super) fn get(
 
             let info = lua.create_table()?;
             info.set("pid", target_pid)?;
+            info.set("program", entry.program.clone())?;
+            info.set("uptime_ms", entry.started_at.elapsed().as_millis() as u64)?;
 
             match entry.child.try_wait() {
                 Ok(Some(status)) => {
@@ -286,6 +318,7 @@ pub(super) fn list(
             eprintln!("[WARN] Process registry lock poisoned: {}", e);
             e.into_inner()
         });
+        collect_finished_processes(&mut procs);
 
         let result = lua.create_table()?;
         let mut i = 1;
@@ -300,6 +333,7 @@ pub(super) fn list(
                 let item = lua.create_table()?;
                 item.set("pid", proc_pid)?;
                 item.set("program", entry.program.clone())?;
+                item.set("uptime_ms", entry.started_at.elapsed().as_millis() as u64)?;
 
                 let running = match entry.child.try_wait() {
                     Ok(Some(_)) => false,

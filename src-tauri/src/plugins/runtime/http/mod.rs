@@ -2,7 +2,7 @@ use super::shared::json_value_from_lua;
 use super::PluginRuntime;
 use mlua::{Lua, MultiValue, Result as LuaResult, Table};
 use reqwest::redirect::Policy;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
 use std::time::Duration;
 
 mod common;
@@ -18,30 +18,58 @@ const DEFAULT_TIMEOUT: u64 = 30;
 const MIN_TIMEOUT: u64 = 1;
 const MAX_TIMEOUT: u64 = 300;
 
-fn is_ssrf_url(url: &str) -> bool {
-    let parsed = match url::Url::parse(url) {
-        Ok(u) => u,
-        Err(_) => return true,
-    };
+fn is_blocked_host(host: &str) -> bool {
+    host.eq_ignore_ascii_case("localhost") || host.eq_ignore_ascii_case("localhost.")
+}
+
+pub(crate) fn validate_ssrf_url(url: &str) -> Result<(), mlua::Error> {
+    let parsed = url::Url::parse(url)
+        .map_err(|_| mlua::Error::runtime("SSRF: only valid HTTP(S) URLs are allowed"))?;
 
     if !matches!(parsed.scheme(), "http" | "https") {
-        return true;
+        return Err(mlua::Error::runtime("SSRF: Access to non-HTTP(S) addresses is not allowed"));
     }
 
-    let host = match parsed.host_str() {
-        Some(h) => h,
-        None => return true,
-    };
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| mlua::Error::runtime("SSRF: URL must contain a host"))?;
 
-    if host.eq_ignore_ascii_case("localhost") {
-        return true;
+    if is_blocked_host(host) {
+        return Err(mlua::Error::runtime("SSRF: Access to localhost is not allowed"));
     }
 
     if let Ok(addr) = host.parse::<IpAddr>() {
-        return is_private_ip(addr);
+        if is_private_ip(addr) {
+            return Err(mlua::Error::runtime(
+                "SSRF: Access to internal network addresses is not allowed",
+            ));
+        }
+        return Ok(());
     }
 
-    false
+    let port = parsed.port_or_known_default().ok_or_else(|| {
+        mlua::Error::runtime("SSRF: URL must use a known port for the selected scheme")
+    })?;
+
+    let addrs = (host, port)
+        .to_socket_addrs()
+        .map_err(|e| mlua::Error::runtime(format!("SSRF: failed to resolve host: {}", e)))?;
+
+    let mut resolved_any = false;
+    for socket_addr in addrs {
+        resolved_any = true;
+        if is_private_ip(socket_addr.ip()) {
+            return Err(mlua::Error::runtime(
+                "SSRF: Access to internal network addresses is not allowed",
+            ));
+        }
+    }
+
+    if !resolved_any {
+        return Err(mlua::Error::runtime("SSRF: host resolution returned no usable addresses"));
+    }
+
+    Ok(())
 }
 
 fn is_private_ip(addr: IpAddr) -> bool {
@@ -52,14 +80,23 @@ fn is_private_ip(addr: IpAddr) -> bool {
 }
 
 fn is_private_ipv4(ipv4: Ipv4Addr) -> bool {
-    ipv4.is_private() || ipv4.is_loopback() || ipv4.is_link_local() || ipv4.is_unspecified()
+    ipv4.is_private()
+        || ipv4.is_loopback()
+        || ipv4.is_link_local()
+        || ipv4.is_unspecified()
+        || ipv4.is_broadcast()
+        || ipv4.is_documentation()
 }
 
 fn is_private_ipv6(ipv6: Ipv6Addr) -> bool {
+    let segments = ipv6.segments();
+    let is_documentation = segments[0] == 0x2001 && segments[1] == 0x0db8;
+
     ipv6.is_loopback()
         || ipv6.is_unique_local()
         || ipv6.is_unicast_link_local()
         || ipv6.is_unspecified()
+        || is_documentation
 }
 
 fn create_http_client(timeout: u64) -> Result<reqwest::blocking::Client, mlua::Error> {
@@ -86,11 +123,7 @@ fn execute_http_request(
 
     let _ = crate::plugins::api::emit_permission_log(&ctx.plugin_id, "api_call", api_name, &url);
 
-    if is_ssrf_url(&url) {
-        return Err(mlua::Error::runtime(
-            "SSRF: Access to internal network, localhost, or non-HTTP(S) addresses is not allowed",
-        ));
-    }
+    validate_ssrf_url(&url)?;
 
     let options = request::parse_http_options(request::option_arg(method, &args_vec))?;
     let client = create_http_client(options.timeout)?;

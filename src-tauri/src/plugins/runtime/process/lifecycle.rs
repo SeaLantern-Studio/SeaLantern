@@ -22,14 +22,15 @@ pub(super) fn kill(
             e.into_inner()
         });
 
-        if let Some(entry) = procs.get_mut(&target_pid) {
-            if !is_process_owner(entry, &pid) {
+        if let Some(mut entry) = procs.remove(&target_pid) {
+            if !is_process_owner(&entry, &pid) {
+                procs.insert(target_pid, entry);
                 return Ok(false);
             }
 
             match entry.child.kill() {
                 Ok(_) => {
-                    procs.remove(&target_pid);
+                    let _ = entry.child.wait();
                     Ok(true)
                 }
                 Err(e) => Err(mlua::Error::runtime(format!(

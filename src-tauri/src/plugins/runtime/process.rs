@@ -6,7 +6,11 @@ mod common;
 mod lifecycle;
 
 use common::ProcessRegistry as InternalProcessRegistry;
-pub use common::{kill_all_processes, new_process_registry, ProcessRegistry};
+#[cfg(test)]
+pub(crate) use common::{collect_finished_processes, ProcessEntry};
+pub use common::{
+    kill_all_processes, kill_plugin_processes, new_process_registry, ProcessRegistry,
+};
 
 impl PluginRuntime {
     pub(super) fn setup_process_namespace(

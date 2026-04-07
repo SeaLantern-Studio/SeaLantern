@@ -42,6 +42,7 @@ impl PluginRuntime {
 
     pub fn cleanup(&self) {
         use crate::plugins::api::emit_i18n_event;
+        use crate::plugins::runtime::process::kill_plugin_processes;
         use crate::services::global::i18n_service;
         use crate::services::i18n::LocaleCallbackToken;
 
@@ -58,6 +59,8 @@ impl PluginRuntime {
         let _ = self
             .lua
             .set_named_registry_value(&token_registry_key, mlua::Value::Nil);
+
+        kill_plugin_processes(&self.process_registry, &self.plugin_id);
 
         i18n_service().remove_plugin_translations(&self.plugin_id);
         let _ = emit_i18n_event(&self.plugin_id, "remove_translations", "", "");

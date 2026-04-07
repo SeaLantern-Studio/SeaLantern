@@ -10,6 +10,8 @@ mod i18n;
 mod log;
 mod plugins_api;
 mod process;
+#[cfg(test)]
+mod security_test;
 mod server;
 pub(crate) mod shared;
 mod storage;

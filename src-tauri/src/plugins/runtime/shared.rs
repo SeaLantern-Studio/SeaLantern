@@ -26,6 +26,17 @@ pub(crate) fn json_value_from_lua(value: &Value, depth: usize) -> Result<JsonVal
     json_value_from_lua_with_config(value, depth, &ConversionConfig::default())
 }
 
+fn unsupported_lua_value_error(value: &Value) -> mlua::Error {
+    mlua::Error::runtime(format!(
+        "Unsupported Lua value for JSON conversion: {}",
+        value.type_name()
+    ))
+}
+
+fn invalid_json_number_error(n: f64) -> mlua::Error {
+    mlua::Error::runtime(format!("Invalid JSON number: {}", n))
+}
+
 // 从 Lua 值转换为 JSON 值, 递归深度可配置
 pub(crate) fn json_value_from_lua_with_config(
     value: &Value,
@@ -43,12 +54,14 @@ pub(crate) fn json_value_from_lua_with_config(
         Value::Nil => Ok(JsonValue::Null),
         Value::Boolean(b) => Ok(JsonValue::Bool(*b)),
         Value::Integer(i) => Ok(JsonValue::Number((*i).into())),
-        Value::Number(n) => Ok(serde_json::Number::from_f64(*n)
+        Value::Number(n) => serde_json::Number::from_f64(*n)
             .map(JsonValue::Number)
-            .unwrap_or(JsonValue::Null)),
-        Value::String(s) => {
-            Ok(JsonValue::String(s.to_str().map(|s| s.to_string()).unwrap_or_default()))
-        }
+            .ok_or_else(|| invalid_json_number_error(*n)),
+        Value::String(s) => Ok(JsonValue::String(
+            s.to_str()
+                .map(|s| s.to_string())
+                .map_err(|e| mlua::Error::runtime(format!("Invalid UTF-8 string: {}", e)))?,
+        )),
 
         // 处理数组和对象(后来的仔细看,别被绕进去了)
         Value::Table(t) => {
@@ -57,24 +70,34 @@ pub(crate) fn json_value_from_lua_with_config(
                 TableType::Array(max_index) => {
                     let mut arr = Vec::with_capacity(max_index);
                     for i in 1..=max_index {
-                        if let Ok(v) = t.get::<Value>(i) {
-                            arr.push(json_value_from_lua_with_config(&v, depth + 1, config)?);
-                        } else {
-                            arr.push(JsonValue::Null);
-                        }
+                        let v = t.get::<Value>(i)?;
+                        arr.push(json_value_from_lua_with_config(&v, depth + 1, config)?);
                     }
                     Ok(JsonValue::Array(arr))
                 }
                 TableType::Object => {
                     let mut map = serde_json::Map::new();
-                    for (k, v) in t.pairs::<String, Value>().flatten() {
-                        map.insert(k, json_value_from_lua_with_config(&v, depth + 1, config)?);
+                    for pair in t.pairs::<Value, Value>() {
+                        let (k, v) = pair?;
+                        let key = match k {
+                            Value::String(s) => s.to_str().map(|s| s.to_string()).map_err(|e| {
+                                mlua::Error::runtime(format!("Invalid UTF-8 object key: {}", e))
+                            })?,
+                            Value::Integer(i) => i.to_string(),
+                            Value::Number(n) if n.is_finite() => n.to_string(),
+                            _ => {
+                                return Err(mlua::Error::runtime(
+                                    "JSON object keys must be valid UTF-8 strings or finite numbers",
+                                ));
+                            }
+                        };
+                        map.insert(key, json_value_from_lua_with_config(&v, depth + 1, config)?);
                     }
                     Ok(JsonValue::Object(map))
                 }
             }
         }
-        _ => Ok(JsonValue::Null),
+        _ => Err(unsupported_lua_value_error(value)),
     }
 }
 
@@ -133,7 +156,7 @@ pub(crate) fn lua_value_from_json_with_config(
             } else if let Some(f) = n.as_f64() {
                 Ok(Value::Number(f))
             } else {
-                Ok(Value::Nil)
+                Err(mlua::Error::runtime("Unsupported JSON number representation".to_string()))
             }
         }
         JsonValue::String(s) => Ok(Value::String(lua.create_string(s)?)),
