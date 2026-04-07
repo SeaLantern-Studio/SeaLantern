@@ -106,7 +106,7 @@ const FS_ACTION_MAP: Record<string, string> = {
 };
 
 function uniqueSorted(values: string[]): string[] {
-  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+  return Array.from(new Set(values)).toSorted((a: string, b: string) => a.localeCompare(b));
 }
 
 function getPermissionLabel(permission: string): string {
@@ -310,7 +310,7 @@ const typeStats = computed<PermissionLogSummaryItem[]>(() => {
       sampleDetail: log.detail,
     });
   }
-  return Array.from(stats.values()).sort(
+  return Array.from(stats.values()).toSorted(
     (a: PermissionLogSummaryItem, b: PermissionLogSummaryItem) => b.count - a.count,
   );
 });
@@ -334,7 +334,7 @@ const actionStats = computed<PermissionLogSummaryItem[]>(() => {
       sampleDetail: log.detail,
     });
   }
-  return Array.from(stats.values()).sort(
+  return Array.from(stats.values()).toSorted(
     (a: PermissionLogSummaryItem, b: PermissionLogSummaryItem) => b.count - a.count,
   );
 });

@@ -31,6 +31,11 @@ function generateUUID(): string {
 
 type SourceType = "archive" | "folder" | "";
 
+function parseNumber(value: string, fallbackValue: number): number {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
+}
+
 export function useCreateServerPage() {
   const router = useRouter();
   const store = useServerStore();
@@ -276,11 +281,6 @@ export function useCreateServerPage() {
     { immediate: true },
   );
 
-  function parseNumber(value: string, fallbackValue: number): number {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
-  }
-
   async function loadDefaultSettings() {
     try {
       const settings = await settingsApi.get();
@@ -334,8 +334,8 @@ export function useCreateServerPage() {
   }
 
   function loadFromDraft() {
-    let store = useCreateServerDraftStore();
-    let draft = store.consumeDraft();
+    const draftStore = useCreateServerDraftStore();
+    const draft = draftStore.consumeDraft();
     if (draft !== null) {
       sourcePath.value = draft.sourcePath;
       sourceType.value = draft.sourceType;

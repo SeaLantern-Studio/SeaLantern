@@ -137,6 +137,46 @@ function removePluginUiElements(pluginId: string) {
   });
 }
 
+function setFormFieldValue(field: Element, value: unknown) {
+  if (field instanceof HTMLInputElement) {
+    const type = field.type.toLowerCase();
+    if (type === "checkbox") {
+      field.checked = Boolean(value);
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }
+    if (type === "radio") {
+      const normalized = value == null ? "" : String(value);
+      if (field.value === normalized) {
+        field.checked = true;
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      }
+      return false;
+    }
+
+    field.value = value == null ? "" : String(value);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  if (field instanceof HTMLTextAreaElement) {
+    field.value = value == null ? "" : String(value);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  if (field instanceof HTMLSelectElement) {
+    field.value = value == null ? "" : String(value);
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  return false;
+}
+
 export const usePluginStore = defineStore("plugin", () => {
   const plugins = ref<PluginInfo[]>([]);
   const navItems = ref<PluginNavItem[]>([]);
@@ -157,46 +197,6 @@ export const usePluginStore = defineStore("plugin", () => {
     string,
     Array<{ element: Element; eventType: string; handler: EventListener }>
   >();
-
-  function setFormFieldValue(field: Element, value: unknown) {
-    if (field instanceof HTMLInputElement) {
-      const type = field.type.toLowerCase();
-      if (type === "checkbox") {
-        field.checked = Boolean(value);
-        field.dispatchEvent(new Event("change", { bubbles: true }));
-        return true;
-      }
-      if (type === "radio") {
-        const normalized = value == null ? "" : String(value);
-        if (field.value === normalized) {
-          field.checked = true;
-          field.dispatchEvent(new Event("change", { bubbles: true }));
-          return true;
-        }
-        return false;
-      }
-
-      field.value = value == null ? "" : String(value);
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-      field.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    }
-
-    if (field instanceof HTMLTextAreaElement) {
-      field.value = value == null ? "" : String(value);
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-      field.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    }
-
-    if (field instanceof HTMLSelectElement) {
-      field.value = value == null ? "" : String(value);
-      field.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    }
-
-    return false;
-  }
 
   const pendingComponentCreates = new Map<
     string,
