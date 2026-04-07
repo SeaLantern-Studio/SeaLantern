@@ -1,8 +1,9 @@
 use super::shared::json_value_from_lua;
 use super::PluginRuntime;
-use ipnet::{Ipv4Net, Ipv6Net};
-use mlua::{Lua, MultiValue, Result as LuaResult, Table, Value};
-use std::net::IpAddr;
+use mlua::{Lua, MultiValue, Result as LuaResult, Table};
+use reqwest::redirect::Policy;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::time::Duration;
 
 mod common;
 mod request;
@@ -36,10 +37,6 @@ fn is_ssrf_url(url: &str) -> bool {
         return true;
     }
 
-    if host == "::1" || host == "[::1]" {
-        return true;
-    }
-
     if let Ok(addr) = host.parse::<IpAddr>() {
         return is_private_ip(addr);
     }
@@ -54,30 +51,23 @@ fn is_private_ip(addr: IpAddr) -> bool {
     }
 }
 
-fn is_private_ipv4(ipv4: std::net::Ipv4Addr) -> bool {
-    let private_ranges = [
-        Ipv4Net::new(std::net::Ipv4Addr::new(127, 0, 0, 0), 8)
-            .expect("Invalid IPv4 loopback address range"),
-        Ipv4Net::new(std::net::Ipv4Addr::new(10, 0, 0, 0), 8)
-            .expect("Invalid IPv4 private network 10.0.0.0/8"),
-        Ipv4Net::new(std::net::Ipv4Addr::new(172, 16, 0, 0), 12)
-            .expect("Invalid IPv4 private network 172.16.0.0/12"),
-        Ipv4Net::new(std::net::Ipv4Addr::new(192, 168, 0, 0), 16)
-            .expect("Invalid IPv4 private network 192.168.0.0/16"),
-    ];
-
-    private_ranges.iter().any(|range| range.contains(&ipv4))
+fn is_private_ipv4(ipv4: Ipv4Addr) -> bool {
+    ipv4.is_private() || ipv4.is_loopback() || ipv4.is_link_local() || ipv4.is_unspecified()
 }
 
-fn is_private_ipv6(ipv6: std::net::Ipv6Addr) -> bool {
-    let private_ranges = [
-        Ipv6Net::new(std::net::Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 0), 7)
-            .expect("Invalid IPv6 unique local address range"),
-        Ipv6Net::new(std::net::Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0), 10)
-            .expect("Invalid IPv6 link-local address range"),
-    ];
+fn is_private_ipv6(ipv6: Ipv6Addr) -> bool {
+    ipv6.is_loopback()
+        || ipv6.is_unique_local()
+        || ipv6.is_unicast_link_local()
+        || ipv6.is_unspecified()
+}
 
-    private_ranges.iter().any(|range| range.contains(&ipv6))
+fn create_http_client(timeout: u64) -> Result<reqwest::blocking::Client, mlua::Error> {
+    reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(timeout))
+        .redirect(Policy::none())
+        .build()
+        .map_err(|e| mlua::Error::runtime(format!("Failed to create HTTP client: {}", e)))
 }
 
 fn execute_http_request(
@@ -85,14 +75,14 @@ fn execute_http_request(
     ctx: &HttpContext,
     args: MultiValue,
     method: request::HttpMethod,
-    body_arg: Option<&Value>,
 ) -> LuaResult<MultiValue> {
     if !ctx.permissions.iter().any(|p| p == "network") {
         return Err(mlua::Error::runtime("Permission denied: 'network' permission required"));
     }
 
-    let url = request::extract_url(args.front())?;
-    let api_name = request::api_name(&method);
+    let args_vec: Vec<_> = args.into_vec();
+    let url = request::extract_url(args_vec.first())?;
+    let api_name = method.api_name();
 
     let _ = crate::plugins::api::emit_permission_log(&ctx.plugin_id, "api_call", api_name, &url);
 
@@ -102,42 +92,32 @@ fn execute_http_request(
         ));
     }
 
-    let (headers, timeout) = request::parse_http_options(match method {
-        request::HttpMethod::Get => args.get(1),
-        _ => args.get(2),
-    })?;
+    let options = request::parse_http_options(request::option_arg(method, &args_vec))?;
+    let client = create_http_client(options.timeout)?;
 
-    let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(timeout))
-        .build()
-        .map_err(|e| mlua::Error::runtime(format!("Failed to create HTTP client: {}", e)))?;
+    let result = if method.accepts_body() {
+        let body_arg = args_vec.get(1);
+        let (body_str, is_json) = request::lua_body_to_string(body_arg)?;
+        let headers = request::with_json_content_type(options.headers, is_json);
+        let request = match method {
+            request::HttpMethod::Post => client.post(&url),
+            request::HttpMethod::Put => client.put(&url),
+            _ => unreachable!("checked by accepts_body"),
+        }
+        .body(body_str);
 
-    let request = match method {
-        request::HttpMethod::Get => client.get(&url),
-        request::HttpMethod::Post => {
-            let (body_str, is_json) = request::lua_body_to_string(body_arg)?;
-            let headers = request::with_json_content_type(headers, is_json);
-            return response::send_request(
-                lua,
-                client.post(&url).body(body_str),
-                headers,
-                MAX_RESPONSE_SIZE,
-            );
-        }
-        request::HttpMethod::Put => {
-            let (body_str, is_json) = request::lua_body_to_string(body_arg)?;
-            let headers = request::with_json_content_type(headers, is_json);
-            return response::send_request(
-                lua,
-                client.put(&url).body(body_str),
-                headers,
-                MAX_RESPONSE_SIZE,
-            );
-        }
-        request::HttpMethod::Delete => client.delete(&url),
+        response::send_request(lua, request, headers, MAX_RESPONSE_SIZE)
+    } else {
+        let request = match method {
+            request::HttpMethod::Get => client.get(&url),
+            request::HttpMethod::Delete => client.delete(&url),
+            _ => unreachable!("non-body method branch"),
+        };
+
+        response::send_request(lua, request, options.headers, MAX_RESPONSE_SIZE)
     };
 
-    response::send_request(lua, request, headers, MAX_RESPONSE_SIZE)
+    result
 }
 
 impl PluginRuntime {
@@ -145,30 +125,19 @@ impl PluginRuntime {
         let http_table = create_http_table(&self.lua)?;
         let ctx = HttpContext::new(self.plugin_id.clone(), self.permissions.clone());
 
-        set_http_function(
-            &http_table,
-            "get",
-            create_http_function(&self.lua, &ctx, request::HttpMethod::Get)?,
-            "http.get",
-        )?;
-        set_http_function(
-            &http_table,
-            "post",
-            create_http_function(&self.lua, &ctx, request::HttpMethod::Post)?,
-            "http.post",
-        )?;
-        set_http_function(
-            &http_table,
-            "put",
-            create_http_function(&self.lua, &ctx, request::HttpMethod::Put)?,
-            "http.put",
-        )?;
-        set_http_function(
-            &http_table,
-            "delete",
-            create_http_function(&self.lua, &ctx, request::HttpMethod::Delete)?,
-            "http.delete",
-        )?;
+        for (name, method) in [
+            ("get", request::HttpMethod::Get),
+            ("post", request::HttpMethod::Post),
+            ("put", request::HttpMethod::Put),
+            ("delete", request::HttpMethod::Delete),
+        ] {
+            set_http_function(
+                &http_table,
+                name,
+                create_http_function(&self.lua, &ctx, method)?,
+                &format!("http.{}", name),
+            )?;
+        }
 
         set_http_table(sl, http_table)
     }

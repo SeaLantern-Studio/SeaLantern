@@ -1,6 +1,11 @@
 use super::{json_value_from_lua, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT};
 use mlua::Value;
 
+pub(super) struct HttpOptions {
+    pub(super) headers: Vec<(String, String)>,
+    pub(super) timeout: u64,
+}
+
 #[derive(Clone, Copy)]
 pub(super) enum HttpMethod {
     Get,
@@ -18,47 +23,88 @@ impl HttpMethod {
             Self::Delete => "delete",
         }
     }
-}
 
-pub(super) fn api_name(method: &HttpMethod) -> &'static str {
-    match method {
-        HttpMethod::Get => "sl.http.get",
-        HttpMethod::Post => "sl.http.post",
-        HttpMethod::Put => "sl.http.put",
-        HttpMethod::Delete => "sl.http.delete",
+    pub(super) fn api_name(self) -> &'static str {
+        match self {
+            Self::Get => "sl.http.get",
+            Self::Post => "sl.http.post",
+            Self::Put => "sl.http.put",
+            Self::Delete => "sl.http.delete",
+        }
+    }
+
+    pub(super) fn accepts_body(self) -> bool {
+        matches!(self, Self::Post | Self::Put)
     }
 }
 
 pub(super) fn extract_url(value: Option<&Value>) -> Result<String, mlua::Error> {
-    value
+    let url = value
         .and_then(|v| match v {
             Value::String(s) => s.to_str().ok().map(|s| s.to_string()),
             _ => None,
         })
-        .ok_or_else(|| mlua::Error::runtime("First argument must be a URL string"))
+        .ok_or_else(|| mlua::Error::runtime("First argument must be a URL string"))?;
+
+    url::Url::parse(&url).map_err(|e| mlua::Error::runtime(format!("Invalid URL: {}", e)))?;
+
+    Ok(url)
 }
 
-pub(super) fn parse_http_options(
-    options: Option<&Value>,
-) -> Result<(Vec<(String, String)>, u64), mlua::Error> {
+pub(super) fn option_arg(method: HttpMethod, args: &[Value]) -> Option<&Value> {
+    if method.accepts_body() {
+        args.get(2)
+    } else {
+        args.get(1)
+    }
+}
+
+pub(super) fn parse_http_options(options: Option<&Value>) -> Result<HttpOptions, mlua::Error> {
     let mut headers = Vec::new();
     let mut timeout = DEFAULT_TIMEOUT;
 
-    if let Some(Value::Table(opts)) = options {
-        if let Ok(Value::Table(h)) = opts.get::<Value>("headers") {
-            for (k, v) in h.pairs::<String, String>().flatten() {
-                headers.push((k, v));
+    let Some(options) = options else {
+        return Ok(HttpOptions { headers, timeout });
+    };
+
+    let Value::Table(opts) = options else {
+        return Err(mlua::Error::runtime("Options parameter must be a table when provided"));
+    };
+
+    match opts.get::<Value>("headers")? {
+        Value::Nil => {}
+        Value::Table(h) => {
+            for pair in h.pairs::<String, String>() {
+                let (key, value) = pair.map_err(|_| {
+                    mlua::Error::runtime(
+                        "Options.headers must be a table of string keys and string values",
+                    )
+                })?;
+                headers.push((key, value));
             }
         }
-
-        if let Ok(t) = opts.get::<u64>("timeout") {
-            if (MIN_TIMEOUT..=MAX_TIMEOUT).contains(&t) {
-                timeout = t;
-            }
+        _ => {
+            return Err(mlua::Error::runtime("Options.headers must be a table when provided"));
         }
     }
 
-    Ok((headers, timeout))
+    match opts.get::<Value>("timeout")? {
+        Value::Nil => {}
+        Value::Integer(t) if t >= MIN_TIMEOUT as i64 && t <= MAX_TIMEOUT as i64 => {
+            timeout = t as u64;
+        }
+        Value::Integer(_) | Value::Number(_) => {
+            return Err(mlua::Error::runtime(format!(
+                "Options.timeout must be an integer between {} and {} seconds",
+                MIN_TIMEOUT, MAX_TIMEOUT
+            )));
+        }
+        _ => {
+            return Err(mlua::Error::runtime("Options.timeout must be an integer when provided"));
+        }
+    }
+
+    Ok(HttpOptions { headers, timeout })
 }
 
 pub(super) fn lua_body_to_string(body: Option<&Value>) -> Result<(String, bool), mlua::Error> {
@@ -86,7 +132,7 @@ pub(super) fn with_json_content_type(
     if is_json
         && !headers
             .iter()
-            .any(|(k, _)| k.to_lowercase() == "content-type")
+            .any(|(k, _)| k.eq_ignore_ascii_case("content-type"))
     {
         headers.push(("Content-Type".to_string(), "application/json".to_string()));
     }

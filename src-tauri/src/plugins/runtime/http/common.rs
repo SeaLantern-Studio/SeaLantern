@@ -39,7 +39,7 @@ pub(super) fn lua_error(lua: &Lua, msg: &str) -> LuaResult<MultiValue> {
     Ok(MultiValue::from_vec(vec![Value::Nil, Value::String(lua.create_string(msg)?)]))
 }
 
-pub(super) fn lua_success(_lua: &Lua, table: Table) -> LuaResult<MultiValue> {
+pub(super) fn lua_success(table: Table) -> LuaResult<MultiValue> {
     Ok(MultiValue::from_vec(vec![Value::Table(table), Value::Nil]))
 }
 
@@ -50,12 +50,7 @@ pub(super) fn create_http_function(
 ) -> Result<mlua::Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, args: MultiValue| {
-        let args_clone = args.clone();
-        let body_arg = match method {
-            HttpMethod::Post | HttpMethod::Put => args_clone.get(1),
-            _ => None,
-        };
-        super::execute_http_request(lua, &ctx, args, method, body_arg)
+        super::execute_http_request(lua, &ctx, args, method)
     })
     .map_err(|e| format!("Failed to create http.{}: {}", method.as_str(), e))
 }
