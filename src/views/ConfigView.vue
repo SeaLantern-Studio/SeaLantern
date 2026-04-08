@@ -32,18 +32,53 @@ import "@styles/views/ConfigView.css";
 const route = useRoute();
 const store = useServerStore();
 
+interface CompareEntry {
+  key: string;
+  description: string;
+  category: string;
+  valueType: string;
+  defaultValue: string;
+  sourceValue: string;
+  targetValue: string;
+  different: boolean;
+  onlyInSource: boolean;
+  onlyInTarget: boolean;
+}
+
 const entries = ref<ConfigEntryType[]>([]);
 const editValues = ref<Record<string, string>>({});
 const loading = ref(false);
+const compareFilterOptions = computed(() => [
+  { label: i18n.t("config.compare.all_servers"), value: "all" },
+  ...compareServerOptions.value,
+]);
 const saving = ref(false);
 const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
 const searchQuery = ref("");
 const activeCategory = ref("all");
+const compareMode = ref(false);
+const compareTargetServerId = ref("");
+const compareEntries = ref<CompareEntry[]>([]);
+const compareTargetValues = ref<Record<string, string>>({});
+const compareLoading = ref(false);
+const compareSyncing = ref(false);
 const serverPath = computed(() => {
   const server = store.servers.find((s) => s.id === store.currentServerId);
   return server?.path || "";
 });
+const compareTargetServer = computed(
+  () => store.servers.find((s) => s.id === compareTargetServerId.value) || null,
+);
+const compareTargetPath = computed(() => compareTargetServer.value?.path || "");
+const compareServerOptions = computed(() =>
+  store.servers
+    .filter((server) => server.id !== currentServerId.value)
+    .map((server) => ({
+      label: server.name,
+      value: server.id,
+    })),
+);
 
 const plugins = ref<m_PluginInfo[]>([]);
 const pluginsLoading = ref(false);
@@ -89,6 +124,21 @@ const filteredEntries = computed(() => {
   });
 });
 
+const filteredCompareEntries = computed(() => {
+  return compareEntries.value.filter((entry) => {
+    const matchCat = activeCategory.value === "all" || entry.category === activeCategory.value;
+    const matchSearch =
+      !searchQuery.value ||
+      entry.key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      entry.description.toLowerCase().includes(searchQuery.value.toLowerCase());
+    return matchCat && matchSearch;
+  });
+});
+
+const compareDifferenceCount = computed(
+  () => compareEntries.value.filter((entry) => entry.different).length,
+);
+
 onMounted(async () => {
   await store.refreshList();
   const routeId = route.params.id as string;
@@ -115,6 +165,73 @@ watch(
   },
 );
 
+function buildCompareEntries(
+  sourceEntries: ConfigEntryType[],
+  sourceValues: Record<string, string>,
+  targetEntries: ConfigEntryType[],
+  targetValues: Record<string, string>,
+): CompareEntry[] {
+  const entryMap = new Map<string, ConfigEntryType>();
+  sourceEntries.forEach((entry) => entryMap.set(entry.key, entry));
+  targetEntries.forEach((entry) => {
+    if (!entryMap.has(entry.key)) {
+      entryMap.set(entry.key, entry);
+    }
+  });
+
+  return Array.from(
+    new Set([...Object.keys(sourceValues), ...Object.keys(targetValues), ...entryMap.keys()]),
+  )
+    .sort((a, b) => a.localeCompare(b))
+    .map((key) => {
+      const meta = entryMap.get(key);
+      const sourceValue = sourceValues[key] ?? "";
+      const targetValue = targetValues[key] ?? "";
+      return {
+        key,
+        description: meta?.description ?? "",
+        category: meta?.category ?? "other",
+        valueType: meta?.value_type ?? "string",
+        defaultValue: meta?.default_value ?? "",
+        sourceValue,
+        targetValue,
+        different: sourceValue !== targetValue,
+        onlyInSource: key in sourceValues && !(key in targetValues),
+        onlyInTarget: !(key in sourceValues) && key in targetValues,
+      };
+    });
+}
+
+async function loadCompareProperties() {
+  if (!compareMode.value || !serverPath.value || !compareTargetPath.value) {
+    compareEntries.value = [];
+    compareTargetValues.value = {};
+    return;
+  }
+
+  compareLoading.value = true;
+  error.value = null;
+  try {
+    const [sourceResult, targetResult] = await Promise.all([
+      configApi.readServerProperties(serverPath.value),
+      configApi.readServerProperties(compareTargetPath.value),
+    ]);
+    compareTargetValues.value = { ...targetResult.raw };
+    compareEntries.value = buildCompareEntries(
+      sourceResult.entries as ConfigEntryType[],
+      sourceResult.raw,
+      targetResult.entries as ConfigEntryType[],
+      targetResult.raw,
+    );
+  } catch (e) {
+    error.value = String(e);
+    compareEntries.value = [];
+    compareTargetValues.value = {};
+  } finally {
+    compareLoading.value = false;
+  }
+}
+
 async function loadProperties() {
   if (!serverPath.value) return;
 
@@ -128,10 +245,15 @@ async function loadProperties() {
     const result = await configApi.readServerProperties(serverPath.value);
     entries.value = result.entries as ConfigEntryType[];
     editValues.value = { ...result.raw };
+    if (compareMode.value && compareTargetServerId.value) {
+      await loadCompareProperties();
+    }
   } catch (e) {
     error.value = String(e);
     entries.value = [];
     editValues.value = {};
+    compareEntries.value = [];
+    compareTargetValues.value = {};
   } finally {
     isLoading.value = false;
   }
@@ -171,7 +293,7 @@ async function saveProperties() {
   }
 }
 
-function updateValue(key: string, value: string | boolean) {
+function updateValue(key: string, value: string | number | boolean) {
   editValues.value[key] = String(value);
 
   // 启动自动保存防抖
@@ -219,6 +341,63 @@ function handleCategoryChange(category: string) {
 
 function handleSearchUpdate(value: string) {
   searchQuery.value = value;
+}
+
+function handleCompareModeChange(value: boolean) {
+  compareMode.value = value;
+  if (!value) {
+    compareTargetServerId.value = "";
+    compareEntries.value = [];
+    compareTargetValues.value = {};
+    return;
+  }
+
+  if (!compareTargetServerId.value && compareServerOptions.value.length > 0) {
+    compareTargetServerId.value = String(compareServerOptions.value[0].value);
+  }
+  void loadCompareProperties();
+}
+
+async function syncCompareEntry(key: string) {
+  if (!compareTargetPath.value || compareSyncing.value) return;
+
+  compareSyncing.value = true;
+  error.value = null;
+  successMsg.value = null;
+  try {
+    const nextValues = {
+      ...compareTargetValues.value,
+      [key]: editValues.value[key] ?? "",
+    };
+    await configApi.writeServerProperties(compareTargetPath.value, nextValues);
+    compareTargetValues.value = nextValues;
+    successMsg.value = i18n.t("config.saved");
+    setTimeout(() => (successMsg.value = null), 3000);
+    await loadCompareProperties();
+  } catch (e) {
+    error.value = String(e);
+  } finally {
+    compareSyncing.value = false;
+  }
+}
+
+async function syncAllCompareEntries() {
+  if (!compareTargetPath.value || compareSyncing.value) return;
+
+  compareSyncing.value = true;
+  error.value = null;
+  successMsg.value = null;
+  try {
+    await configApi.writeServerProperties(compareTargetPath.value, { ...editValues.value });
+    compareTargetValues.value = { ...editValues.value };
+    successMsg.value = i18n.t("config.saved");
+    setTimeout(() => (successMsg.value = null), 3000);
+    await loadCompareProperties();
+  } catch (e) {
+    error.value = String(e);
+  } finally {
+    compareSyncing.value = false;
+  }
 }
 
 async function loadPlugins() {
@@ -300,9 +479,11 @@ async function togglePlugin(plugin: m_PluginInfo) {
 }
 
 async function deletePlugin(plugin: m_PluginInfo) {
-  if (!store.currentServerId) return;
+  const currentServerId = store.currentServerId;
+  if (!currentServerId) return;
+
   try {
-    const pluginElement = document.querySelector(
+    const pluginElement = document.querySelector<HTMLElement>(
       `.plugin-list-item[data-plugin-file-name="${plugin.file_name}"]`,
     );
     if (pluginElement) {
@@ -313,7 +494,7 @@ async function deletePlugin(plugin: m_PluginInfo) {
       pluginElement.classList.add("deleting");
 
       setTimeout(async () => {
-        await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
+        await m_pluginApi.m_deletePlugin(currentServerId, plugin.file_name);
         plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
         if (selectedPlugin.value?.file_name === plugin.file_name) {
           selectedPlugin.value = null;
@@ -321,7 +502,7 @@ async function deletePlugin(plugin: m_PluginInfo) {
       }, 500);
     } else {
       // 如果找不到元素，直接删除
-      await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
+      await m_pluginApi.m_deletePlugin(currentServerId, plugin.file_name);
       plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
       if (selectedPlugin.value?.file_name === plugin.file_name) {
         selectedPlugin.value = null;
@@ -343,13 +524,16 @@ async function reloadPlugins() {
 }
 
 async function handlePluginClick(plugin: m_PluginInfo) {
+  const currentServerId = store.currentServerId;
+  if (!currentServerId) return;
+
   if (selectedPlugin.value?.file_name === plugin.file_name) {
     selectedPlugin.value = null;
   } else {
     if (!plugin.config_files || (plugin.config_files.length === 0 && plugin.has_config_folder)) {
       try {
         const configFiles = await m_pluginApi.m_getPluginConfigFiles(
-          store.currentServerId,
+          currentServerId,
           plugin.file_name,
           plugin.name,
         );
@@ -403,10 +587,19 @@ function formatFileSize(bytes: number) {
 
 const currentServer = computed(() => store.servers.find((s) => s.id === store.currentServerId));
 
+watch(compareTargetServerId, async () => {
+  if (compareMode.value && compareTargetServerId.value) {
+    await loadCompareProperties();
+  }
+});
+
 watch(
   () => store.currentServerId,
   async () => {
     if (store.currentServerId) {
+      if (compareTargetServerId.value === store.currentServerId) {
+        compareTargetServerId.value = compareServerOptions.value[0]?.value?.toString() || "";
+      }
       await loadProperties();
       await loadPlugins();
     }
@@ -416,6 +609,9 @@ watch(
 onActivated(async () => {
   await loadProperties();
   await loadPlugins();
+  if (compareMode.value && compareTargetServerId.value) {
+    await loadCompareProperties();
+  }
 });
 </script>
 
@@ -449,6 +645,53 @@ onActivated(async () => {
       </div>
 
       <template v-if="activeTab === 'properties'">
+        <div class="compare-toolbar glass-card">
+          <div class="compare-toolbar-main">
+            <div class="compare-toolbar-title-group">
+              <span class="compare-toolbar-title">{{ i18n.t("config.compare.title") }}</span>
+              <span class="compare-toolbar-subtitle text-caption">
+                {{ i18n.t("config.compare.description") }}
+              </span>
+            </div>
+            <SLSwitch :modelValue="compareMode" @update:modelValue="handleCompareModeChange" />
+          </div>
+          <div v-if="compareMode" class="compare-toolbar-actions">
+            <div class="compare-target-select">
+              <span class="text-caption compare-target-label">
+                {{ i18n.t("config.compare.target_server") }}
+              </span>
+              <SLSelect
+                :modelValue="compareTargetServerId"
+                :options="compareServerOptions"
+                :disabled="compareServerOptions.length === 0 || compareSyncing"
+                @update:modelValue="compareTargetServerId = String($event)"
+                style="width: 240px"
+              />
+            </div>
+            <div class="compare-summary text-caption">
+              {{ i18n.t("config.compare.difference_count", { count: compareDifferenceCount }) }}
+            </div>
+            <SLButton
+              variant="secondary"
+              size="sm"
+              :loading="compareLoading"
+              :disabled="!compareTargetServerId || compareSyncing"
+              @click="loadCompareProperties"
+            >
+              <RotateCcw :size="16" />
+              {{ i18n.t("config.refresh_list") }}
+            </SLButton>
+            <SLButton
+              size="sm"
+              :loading="compareSyncing"
+              :disabled="!compareTargetServerId || compareDifferenceCount === 0"
+              @click="syncAllCompareEntries"
+            >
+              {{ i18n.t("config.compare.sync_all") }}
+            </SLButton>
+          </div>
+        </div>
+
         <ConfigCategories
           :categories="categories"
           :activeCategory="activeCategory"
@@ -457,9 +700,87 @@ onActivated(async () => {
           @updateSearch="handleSearchUpdate"
         />
 
-        <div v-if="loading" class="loading-state">
+        <div v-if="loading || compareLoading" class="loading-state">
           <SLSpinner size="lg" />
           <span>{{ i18n.t("config.loading") }}</span>
+        </div>
+
+        <div
+          v-else-if="compareMode && compareServerOptions.length === 0"
+          class="empty-state glass-card"
+        >
+          <p class="text-caption">{{ i18n.t("config.compare.no_target_servers") }}</p>
+        </div>
+
+        <div v-else-if="compareMode && compareTargetServerId" class="compare-entries">
+          <div class="compare-header glass-card">
+            <div class="compare-column-head compare-column-meta"></div>
+            <div class="compare-column-head">
+              <span class="text-caption">{{
+                currentServer?.name || i18n.t("config.compare.source_server")
+              }}</span>
+              <span class="compare-column-path text-mono text-caption">{{ serverPath }}</span>
+            </div>
+            <div class="compare-column-head">
+              <span class="text-caption">{{
+                compareTargetServer?.name || i18n.t("config.compare.target_server")
+              }}</span>
+              <span class="compare-column-path text-mono text-caption">{{
+                compareTargetPath
+              }}</span>
+            </div>
+            <div class="compare-column-head compare-column-actions"></div>
+          </div>
+
+          <div
+            v-for="entry in filteredCompareEntries"
+            :key="entry.key"
+            class="compare-entry glass-card"
+            :class="{
+              different: entry.different,
+              'only-source': entry.onlyInSource,
+              'only-target': entry.onlyInTarget,
+            }"
+          >
+            <div class="compare-meta">
+              <div class="entry-key-row">
+                <span class="entry-key text-mono">{{ entry.key }}</span>
+                <span v-if="entry.different" class="compare-diff-badge">
+                  {{ i18n.t("config.compare.different") }}
+                </span>
+              </div>
+              <p v-if="i18n.t(`config.properties.${entry.key}`)" class="entry-desc text-caption">
+                {{ i18n.t(`config.properties.${entry.key}`) }}
+              </p>
+            </div>
+            <div class="compare-value-block compare-source-block">
+              <span class="compare-value-label text-caption">{{
+                i18n.t("config.compare.source_value")
+              }}</span>
+              <code class="compare-value text-mono">{{ entry.sourceValue || "—" }}</code>
+            </div>
+            <div class="compare-value-block compare-target-block">
+              <span class="compare-value-label text-caption">{{
+                i18n.t("config.compare.target_value")
+              }}</span>
+              <code class="compare-value text-mono">{{ entry.targetValue || "—" }}</code>
+            </div>
+            <div class="compare-actions">
+              <SLButton
+                size="sm"
+                variant="secondary"
+                :loading="compareSyncing"
+                :disabled="!entry.different"
+                @click="syncCompareEntry(entry.key)"
+              >
+                {{ i18n.t("config.compare.sync_current") }}
+              </SLButton>
+            </div>
+          </div>
+
+          <div v-if="filteredCompareEntries.length === 0" class="empty-state glass-card">
+            <p class="text-caption">{{ i18n.t("config.compare.no_differences") }}</p>
+          </div>
         </div>
 
         <div v-else class="config-entries">
@@ -508,7 +829,8 @@ onActivated(async () => {
                   :placeholder="entry.default_value"
                   @input="
                     (e) => {
-                      const value = e.target.value;
+                      const target = e.target as HTMLInputElement | null;
+                      const value = target?.value ?? '';
                       if (value === '' || /^\d+$/.test(value)) {
                         updateValue(entry.key, value);
                       }
