@@ -276,23 +276,23 @@ export const serverApi = {
       const url = `${HTTP_API_BASE}/api/logs/stream`;
       const eventSource = new EventSource(url);
 
-      eventSource.onmessage = (event) => {
+      eventSource.addEventListener("message", (event) => {
         try {
           const data = JSON.parse(event.data) as ServerLogLineEvent;
           callback(data);
         } catch (e) {
           console.warn("[SSE] Failed to parse log event:", e);
         }
-      };
+      });
 
-      eventSource.onerror = (e) => {
+      eventSource.addEventListener("error", (e) => {
         console.warn("[SSE] Connection error, reconnecting...", e);
         // 自动重连：关闭旧连接，延迟后创建新连接
         eventSource.close();
         setTimeout(() => {
           this.subscribeLogStream(callback);
         }, 3000);
-      };
+      });
 
       // 返回取消订阅函数
       resolve(() => {

@@ -182,7 +182,7 @@ function buildCompareEntries(
   return Array.from(
     new Set([...Object.keys(sourceValues), ...Object.keys(targetValues), ...entryMap.keys()]),
   )
-    .sort((a, b) => a.localeCompare(b))
+    .toSorted((a, b) => a.localeCompare(b))
     .map((key) => {
       const meta = entryMap.get(key);
       const sourceValue = sourceValues[key] ?? "";
@@ -479,8 +479,8 @@ async function togglePlugin(plugin: m_PluginInfo) {
 }
 
 async function deletePlugin(plugin: m_PluginInfo) {
-  const currentServerId = store.currentServerId;
-  if (!currentServerId) return;
+  const activeServerId = store.currentServerId;
+  if (!activeServerId) return;
 
   try {
     const pluginElement = document.querySelector<HTMLElement>(
@@ -494,7 +494,7 @@ async function deletePlugin(plugin: m_PluginInfo) {
       pluginElement.classList.add("deleting");
 
       setTimeout(async () => {
-        await m_pluginApi.m_deletePlugin(currentServerId, plugin.file_name);
+        await m_pluginApi.m_deletePlugin(activeServerId, plugin.file_name);
         plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
         if (selectedPlugin.value?.file_name === plugin.file_name) {
           selectedPlugin.value = null;
@@ -502,7 +502,7 @@ async function deletePlugin(plugin: m_PluginInfo) {
       }, 500);
     } else {
       // 如果找不到元素，直接删除
-      await m_pluginApi.m_deletePlugin(currentServerId, plugin.file_name);
+      await m_pluginApi.m_deletePlugin(activeServerId, plugin.file_name);
       plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
       if (selectedPlugin.value?.file_name === plugin.file_name) {
         selectedPlugin.value = null;
@@ -524,8 +524,8 @@ async function reloadPlugins() {
 }
 
 async function handlePluginClick(plugin: m_PluginInfo) {
-  const currentServerId = store.currentServerId;
-  if (!currentServerId) return;
+  const activeServerId = store.currentServerId;
+  if (!activeServerId) return;
 
   if (selectedPlugin.value?.file_name === plugin.file_name) {
     selectedPlugin.value = null;
@@ -533,7 +533,7 @@ async function handlePluginClick(plugin: m_PluginInfo) {
     if (!plugin.config_files || (plugin.config_files.length === 0 && plugin.has_config_folder)) {
       try {
         const configFiles = await m_pluginApi.m_getPluginConfigFiles(
-          currentServerId,
+          activeServerId,
           plugin.file_name,
           plugin.name,
         );

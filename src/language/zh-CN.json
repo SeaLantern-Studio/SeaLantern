@@ -418,7 +418,9 @@
       "suggestion_hint": "Tab 补全 / Up Down 选择",
       "force_stop": "强制关停",
       "force_stop_confirm": "强制关停会立即杀死服务器进程，可能导致数据丢失。确定继续吗？",
-      "force_stop_requested": "已发送强制关停请求"
+      "force_stop_requested": "已发送强制关停请求",
+      "overview_title": "统一控制台",
+      "overview_subtitle": "支持在同一页面切换服务器并查看宿主机性能数据"
     },
     "config": {
       "title": "配置编辑",

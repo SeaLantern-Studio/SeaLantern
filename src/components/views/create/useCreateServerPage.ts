@@ -32,6 +32,20 @@ function generateUUID(): string {
 
 type SourceType = "archive" | "folder" | "";
 
+function inferSourceType(path: string): SourceType {
+  const lowerPath = path.toLowerCase();
+  if (
+    lowerPath.endsWith(".zip") ||
+    lowerPath.endsWith(".tar") ||
+    lowerPath.endsWith(".tar.gz") ||
+    lowerPath.endsWith(".tgz") ||
+    lowerPath.endsWith(".jar")
+  ) {
+    return "archive";
+  }
+  return "folder";
+}
+
 function parseNumber(value: string, fallbackValue: number): number {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
@@ -309,25 +323,6 @@ export function useCreateServerPage() {
     },
     { immediate: true },
   );
-
-  function inferSourceType(path: string): SourceType {
-    const lowerPath = path.toLowerCase();
-    if (
-      lowerPath.endsWith(".zip") ||
-      lowerPath.endsWith(".tar") ||
-      lowerPath.endsWith(".tar.gz") ||
-      lowerPath.endsWith(".tgz") ||
-      lowerPath.endsWith(".jar")
-    ) {
-      return "archive";
-    }
-    return "folder";
-  }
-
-  function parseNumber(value: string, fallbackValue: number): number {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isNaN(parsed) ? fallbackValue : parsed;
-  }
 
   async function loadDefaultSettings() {
     try {

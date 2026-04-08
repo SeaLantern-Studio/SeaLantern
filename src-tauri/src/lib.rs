@@ -157,6 +157,7 @@ pub fn run() {
             config_commands::read_server_properties,
             config_commands::write_server_properties,
             system_commands::get_system_info,
+            system_commands::get_server_resource_usage,
             system_commands::pick_jar_file,
             system_commands::pick_archive_file,
             system_commands::pick_startup_file,

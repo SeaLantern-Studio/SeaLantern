@@ -402,7 +402,9 @@
       "suggestion_hint": "Tab to complete / Up Down to select",
       "force_stop": "Force Stop",
       "force_stop_confirm": "Force stopping will kill the server process immediately and may cause data loss. Continue?",
-      "force_stop_requested": "Force stop requested"
+      "force_stop_requested": "Force stop requested",
+      "overview_title": "Unified Console",
+      "overview_subtitle": "Switch servers and view host performance data from one page"
     },
     "config": {
       "title": "Config Edit",

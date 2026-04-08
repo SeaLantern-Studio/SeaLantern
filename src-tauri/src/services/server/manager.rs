@@ -1381,6 +1381,25 @@ impl ServerManager {
             })
             .unwrap_or(false);
 
+        let pid = if is_running {
+            self.lock_processes()
+                .ok()
+                .and_then(|mut procs| procs.get_mut(id).map(|child| child.id()))
+        } else {
+            None
+        };
+
+        let uptime = self
+            .lock_servers()
+            .ok()
+            .and_then(|servers| {
+                servers
+                    .iter()
+                    .find(|s| s.id == id)
+                    .and_then(|s| s.last_started_at)
+            })
+            .and_then(|started_at| current_timestamp_secs().checked_sub(started_at));
+
         ServerStatusInfo {
             id: id.to_string(),
             status: if self.is_stopping(id) {
@@ -1392,8 +1411,8 @@ impl ServerManager {
             } else {
                 ServerStatus::Stopped
             },
-            pid: None,
-            uptime: None,
+            pid,
+            uptime,
             error_message,
         }
     }
