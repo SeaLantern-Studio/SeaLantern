@@ -1,10 +1,32 @@
 use crate::models::server::*;
 use crate::services::global;
+use serde::Serialize;
 use std::path::Path;
 use tauri::Emitter;
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForceStopPreparationResponse {
+    pub token: String,
+    pub expires_at: u64,
+}
+
 fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
+}
+
+#[tauri::command]
+pub fn prepare_force_stop_server(id: String) -> Result<ForceStopPreparationResponse, String> {
+    let preparation = manager().prepare_force_stop_server(&id)?;
+    Ok(ForceStopPreparationResponse {
+        token: preparation.token,
+        expires_at: preparation.expires_at,
+    })
+}
+
+#[tauri::command]
+pub fn force_stop_server(id: String, confirmation_token: String) -> Result<(), String> {
+    manager().force_stop_server(&id, &confirmation_token)
 }
 
 #[tauri::command]

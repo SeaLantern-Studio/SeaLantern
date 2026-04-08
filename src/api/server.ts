@@ -20,6 +20,11 @@ export interface ServerLogLineEvent {
   line: string;
 }
 
+export interface ForceStopPreparation {
+  token: string;
+  expiresAt: number;
+}
+
 export interface StartupCandidateItem {
   id: string;
   mode: "starter" | "jar" | "bat" | "sh" | "ps1";
@@ -221,6 +226,14 @@ export const serverApi = {
 
   async stop(id: string): Promise<void> {
     return tauriInvoke("stop_server", { id });
+  },
+
+  async prepareForceStop(id: string): Promise<ForceStopPreparation> {
+    return tauriInvoke("prepare_force_stop_server", { id });
+  },
+
+  async forceStop(id: string, confirmationToken: string): Promise<void> {
+    return tauriInvoke("force_stop_server", { id, confirmationToken });
   },
 
   async sendCommand(id: string, command: string): Promise<void> {

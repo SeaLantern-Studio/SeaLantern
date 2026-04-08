@@ -86,11 +86,18 @@ impl ManagedConsoleEncoding {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForceStopPreparation {
+    pub token: String,
+    pub expires_at: u64,
+}
+
 pub struct ServerManager {
     pub servers: Mutex<Vec<ServerInstance>>,
     pub processes: Mutex<HashMap<String, Child>>,
     pub stopping_servers: Mutex<HashSet<String>>,
     pub starting_servers: Mutex<HashSet<String>>,
+    pub pending_force_stop_tokens: Mutex<HashMap<String, (String, u64)>>,
     pub data_dir: Mutex<String>,
 }
 
@@ -103,6 +110,7 @@ impl ServerManager {
             processes: Mutex::new(HashMap::new()),
             stopping_servers: Mutex::new(HashSet::new()),
             starting_servers: Mutex::new(HashSet::new()),
+            pending_force_stop_tokens: Mutex::new(HashMap::new()),
             data_dir: Mutex::new(data_dir),
         }
     }
@@ -164,6 +172,95 @@ impl ServerManager {
         });
 
         Ok(())
+    }
+
+    pub fn prepare_force_stop_server(&self, id: &str) -> Result<ForceStopPreparation, String> {
+        let expires_at = current_timestamp_secs().saturating_add(15);
+        let token = format!("{}-{}", id, current_timestamp_millis());
+
+        let mut pending = self
+            .pending_force_stop_tokens
+            .lock()
+            .map_err(|_| "pending_force_stop_tokens lock poisoned".to_string())?;
+        pending.insert(id.to_string(), (token.clone(), expires_at));
+        drop(pending);
+
+        let _ = server_log_pipeline::append_sealantern_log(
+            id,
+            "[Sea Lantern] 已创建强制关停确认，会在确认后执行",
+        );
+
+        Ok(ForceStopPreparation { token, expires_at })
+    }
+
+    pub fn force_stop_server(&self, id: &str, confirmation_token: &str) -> Result<(), String> {
+        let mut pending = self
+            .pending_force_stop_tokens
+            .lock()
+            .map_err(|_| "pending_force_stop_tokens lock poisoned".to_string())?;
+
+        let Some((expected_token, expires_at)) = pending.get(id).cloned() else {
+            return Err("缺少强制关停确认，请重新发起操作".to_string());
+        };
+
+        let now = current_timestamp_secs();
+        if now > expires_at {
+            pending.remove(id);
+            return Err("强制关停确认已过期，请重新发起操作".to_string());
+        }
+
+        if expected_token != confirmation_token {
+            return Err("强制关停确认无效，已拒绝执行".to_string());
+        }
+
+        pending.remove(id);
+        drop(pending);
+
+        self.mark_stopping(id);
+
+        let mut procs = self.lock_processes()?;
+        let Some(mut child) = procs.remove(id) else {
+            self.clear_stopping(id);
+            let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器未运行");
+            server_log_pipeline::shutdown_writer(id);
+            return Ok(());
+        };
+
+        let kill_result = child.kill();
+        let wait_result = child.wait();
+        drop(procs);
+
+        self.clear_starting(id);
+        self.clear_stopping(id);
+
+        match (kill_result, wait_result) {
+            (Ok(_), Ok(_)) => {
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    "[Sea Lantern] 已按用户确认强制终止服务器进程",
+                );
+                server_log_pipeline::shutdown_writer(id);
+                Ok(())
+            }
+            (Err(err), _) => {
+                let message = format!("强制终止服务器失败: {}", err);
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    &format!("[Sea Lantern] {}", message),
+                );
+                server_log_pipeline::shutdown_writer(id);
+                Err(message)
+            }
+            (Ok(_), Err(err)) => {
+                let message = format!("等待服务器进程退出失败: {}", err);
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    &format!("[Sea Lantern] {}", message),
+                );
+                server_log_pipeline::shutdown_writer(id);
+                Err(message)
+            }
+        }
     }
 
     fn save(&self) -> Result<(), String> {
@@ -1444,6 +1541,20 @@ fn escape_cmd_arg(s: &str) -> String {
         }
     }
     out
+}
+
+fn current_timestamp_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0)
+}
+
+fn current_timestamp_millis() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0)
 }
 
 fn get_data_dir() -> String {

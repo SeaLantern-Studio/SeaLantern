@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted } from "vue";
+import { emit } from "@tauri-apps/api/event";
 import {
   StepperDescription,
   StepperIndicator,
@@ -8,6 +10,8 @@ import {
   StepperTitle,
   StepperTrigger,
 } from "reka-ui";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { useRouter } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
@@ -17,7 +21,10 @@ import ServerStartupConfigStep from "@components/views/create/ServerStartupConfi
 import SourceIntakeField from "@components/views/create/SourceIntakeField.vue";
 import StartupSelectionStep from "@components/views/create/StartupSelectionStep.vue";
 import { i18n } from "@language";
-import { useCreateServerPage } from "@components/views/create/useCreateServerPage";
+import {
+  CREATE_SERVER_SOURCE_DROP_EVENT,
+  useCreateServerPage,
+} from "@components/views/create/useCreateServerPage";
 
 const {
   errorMsg,
@@ -61,6 +68,42 @@ const {
 } = useCreateServerPage();
 
 const router = useRouter();
+let unlistenCreateViewDragDrop: UnlistenFn | null = null;
+
+onMounted(async () => {
+  console.warn("[CreateServerView] mounted", {
+    hasTauriInternals: !!window.__TAURI_INTERNALS__,
+  });
+
+  if (!window.__TAURI_INTERNALS__) {
+    console.warn("[CreateServerView] Running outside Tauri, skip native drag-drop listener");
+    return;
+  }
+
+  try {
+    const currentWindow = getCurrentWindow();
+    console.warn("[CreateServerView] Preparing native drag-drop listener");
+    unlistenCreateViewDragDrop = await currentWindow.onDragDropEvent((event) => {
+      console.warn("[CreateServerView] Native drag-drop event", event.payload);
+      if (event.payload.type === "drop") {
+        console.warn("[CreateServerView] Emitting source drop event", event.payload.paths);
+        void emit(CREATE_SERVER_SOURCE_DROP_EVENT, event.payload.paths).catch((error) => {
+          console.error("[CreateServerView] Failed to emit source drop event:", error);
+        });
+      }
+    });
+    console.warn("[CreateServerView] Native drag-drop listener registered");
+  } catch (error) {
+    console.error("[CreateServerView] Failed to register native drag-drop listener:", error);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (unlistenCreateViewDragDrop) {
+    unlistenCreateViewDragDrop();
+    unlistenCreateViewDragDrop = null;
+  }
+});
 </script>
 
 <template>

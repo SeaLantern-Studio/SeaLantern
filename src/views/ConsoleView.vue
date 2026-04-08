@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, onActivated, nextTick, computed, watch } from "vue";
 import SLButton from "@components/common/SLButton.vue";
+import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
@@ -33,7 +34,15 @@ const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
+const {
+  loading: forceStopLoading,
+  start: startForceStopLoading,
+  stop: stopForceStopLoading,
+} = useLoading();
 let unlistenLogLine: UnlistenFn | null = null;
+const forceStopConfirmVisible = ref(false);
+const pendingForceStopServerId = ref("");
+const pendingForceStopToken = ref("");
 
 const showCommandModal = ref(false);
 const commandModalTitle = ref("");
@@ -192,6 +201,54 @@ async function handleStop() {
   }
 }
 
+async function handleForceStop(event?: Event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+
+  const sid = serverId.value;
+  if (!sid || forceStopLoading.value) return;
+
+  try {
+    const preparation = await serverApi.prepareForceStop(sid);
+    pendingForceStopServerId.value = sid;
+    pendingForceStopToken.value = preparation.token;
+    forceStopConfirmVisible.value = true;
+  } catch (e) {
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
+  }
+}
+
+function handleForceStopCancel() {
+  forceStopConfirmVisible.value = false;
+  pendingForceStopServerId.value = "";
+  pendingForceStopToken.value = "";
+}
+
+async function confirmForceStop() {
+  const sid = pendingForceStopServerId.value;
+  const token = pendingForceStopToken.value;
+  if (!sid || !token || forceStopLoading.value) {
+    handleForceStopCancel();
+    return;
+  }
+
+  startForceStopLoading();
+  try {
+    await serverApi.forceStop(sid, token);
+    consoleOutputRef.value?.appendLines([
+      "[Sea Lantern] " + i18n.t("console.force_stop_requested"),
+    ]);
+    await serverStore.refreshStatus(sid);
+  } catch (e) {
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
+  } finally {
+    forceStopConfirmVisible.value = false;
+    pendingForceStopServerId.value = "";
+    pendingForceStopToken.value = "";
+    stopForceStopLoading();
+  }
+}
+
 async function exportLogs() {
   const text = consoleOutputRef.value?.getAllPlainText() || "";
   if (!text.trim()) return;
@@ -265,21 +322,34 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
         <div class="action-group primary-actions">
           <SLButton
             v-if="isRunning || isStarting"
+            type="button"
             variant="danger"
             size="sm"
             :loading="stopLoading"
-            :disabled="isStopping || stopLoading"
-            @click="handleStop"
+            :disabled="isStopping || stopLoading || forceStopLoading"
+            @click.stop.prevent="handleStop"
           >
             {{ isStarting ? i18n.t("home.stop") : i18n.t("home.stop") }}
           </SLButton>
           <SLButton
+            v-if="isRunning || isStarting || isStopping"
+            type="button"
+            variant="secondary"
+            size="sm"
+            :loading="forceStopLoading"
+            :disabled="forceStopLoading || stopLoading"
+            @click.stop.prevent="handleForceStop"
+          >
+            {{ i18n.t("console.force_stop") }}
+          </SLButton>
+          <SLButton
             v-else
+            type="button"
             variant="primary"
             size="sm"
             :loading="startLoading"
-            :disabled="isStopping || startLoading"
-            @click="handleStart"
+            :disabled="isStopping || startLoading || forceStopLoading"
+            @click.stop.prevent="handleStart"
           >
             {{ i18n.t("home.start") }}
           </SLButton>
@@ -346,6 +416,20 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
         @delete="deleteCommand"
         @updateName="(value) => (commandName = value)"
         @updateText="(value) => (commandText = value)"
+      />
+
+      <SLConfirmDialog
+        :visible="forceStopConfirmVisible"
+        :title="i18n.t('console.force_stop')"
+        :message="i18n.t('console.force_stop_confirm')"
+        :confirm-text="i18n.t('common.confirm')"
+        :cancel-text="i18n.t('common.cancel')"
+        confirm-variant="danger"
+        :dangerous="true"
+        :loading="forceStopLoading"
+        @confirm="confirmForceStop"
+        @cancel="handleForceStopCancel"
+        @close="handleForceStopCancel"
       />
     </template>
   </div>

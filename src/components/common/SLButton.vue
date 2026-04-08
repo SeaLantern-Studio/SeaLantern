@@ -6,6 +6,7 @@ import { useRegisterComponent } from "@composables/useRegisterComponent";
 interface Props {
   variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
   size?: "sm" | "md" | "lg";
+  type?: "button" | "submit" | "reset";
   disabled?: boolean;
   loading?: boolean;
   iconOnly?: boolean;
@@ -15,6 +16,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   variant: "primary",
   size: "md",
+  type: "button",
   disabled: false,
   loading: false,
   iconOnly: false,
@@ -48,6 +50,7 @@ const buttonClasses = computed(() => [
     ref="elRef"
     class="sl-button"
     :class="buttonClasses"
+    :type="type"
     :disabled="disabled || loading"
     :aria-busy="loading"
   >
