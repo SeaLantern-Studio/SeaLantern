@@ -9,6 +9,9 @@ import {
   StepperTrigger,
 } from "reka-ui";
 import { useRouter } from "vue-router";
+import { ref, onMounted, onUnmounted } from "vue";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { FileUp } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
@@ -18,6 +21,7 @@ import SourceIntakeField from "@components/views/create/SourceIntakeField.vue";
 import StartupSelectionStep from "@components/views/create/StartupSelectionStep.vue";
 import { i18n } from "@language";
 import { useCreateServerPage } from "@components/views/create/useCreateServerPage";
+import { isBrowserEnv } from "@api/tauri";
 
 const {
   errorMsg,
@@ -58,13 +62,50 @@ const {
   rescanStartupCandidates,
   detectJava,
   handleSubmit,
+  handleTauriDrop,
 } = useCreateServerPage();
 
 const router = useRouter();
+
+// Tauri 拖放状态
+const isDragging = ref(false);
+let unlistenDrag: UnlistenFn | null = null;
+let unlistenDrop: UnlistenFn | null = null;
+let unlistenDragCancelled: UnlistenFn | null = null;
+
+// 监听 Tauri 文件拖放事件（仅桌面环境）
+onMounted(async () => {
+  if (!isBrowserEnv()) {
+    unlistenDrag = await listen("tauri://drag", () => {
+      isDragging.value = true;
+    });
+    unlistenDrop = await listen<string[]>("tauri://drop", (event) => {
+      isDragging.value = false;
+      handleTauriDrop(event.payload);
+    });
+    unlistenDragCancelled = await listen("tauri://drag-cancelled", () => {
+      isDragging.value = false;
+    });
+  }
+});
+
+onUnmounted(() => {
+  unlistenDrag?.();
+  unlistenDrop?.();
+  unlistenDragCancelled?.();
+});
 </script>
 
 <template>
   <div class="create-view animate-fade-in-up">
+    <!-- 拖放提示遮罩 -->
+    <div v-if="isDragging" class="create-drop-overlay">
+      <div class="drop-hint">
+        <FileUp :size="48" />
+        <p>{{ i18n.t("create.drop_hint") }}</p>
+      </div>
+    </div>
+
     <div v-if="errorMsg" class="create-error-banner">
       <span>{{ errorMsg }}</span>
       <button class="create-error-close" @click="clearError">x</button>

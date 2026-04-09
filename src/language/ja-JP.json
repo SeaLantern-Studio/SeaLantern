@@ -235,7 +235,8 @@
     "java_env": "Java環境",
     "java_scan": "システム内の Java を検索",
     "java_manual": "手動でJavaのパスを選択",
-    "java_path": "Javaのパス"
+    "java_path": "Javaのパス",
+    "drop_hint": "ここにドラッグしてファイルまたはフォルダを追加"
   },
   "console": {
     "title": "コンソール",

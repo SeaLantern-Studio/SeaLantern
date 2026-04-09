@@ -33,7 +33,7 @@ type SourceType = "archive" | "folder" | "";
 
 function parseNumber(value: string, fallbackValue: number): number {
   const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
+  return Number.isNaN(parsed) ? fallbackValue : parsed;
 }
 
 export function useCreateServerPage() {
@@ -108,14 +108,11 @@ export function useCreateServerPage() {
     if (selectedStartup.value.mode === "custom") {
       return customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value;
     }
-    if (
+    return !(
       selectedStartup.value.mode === "starter" &&
       mcVersionDetectionFailed.value &&
       selectedMcVersion.value.trim().length === 0
-    ) {
-      return false;
-    }
-    return true;
+    );
   });
 
   const hasJava = computed(() => selectedJava.value.trim().length > 0);
@@ -281,11 +278,6 @@ export function useCreateServerPage() {
     { immediate: true },
   );
 
-  function parseNumber(value: string, fallbackValue: number): number {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isNaN(parsed) ? fallbackValue : parsed;
-  }
-
   async function loadDefaultSettings() {
     try {
       const settings = await settingsApi.get();
@@ -314,8 +306,7 @@ export function useCreateServerPage() {
         } else {
           // 如果没有上次的路径，获取默认路径
           try {
-            const defaultPath = await systemApi.getDefaultRunPath();
-            runPath.value = defaultPath;
+            runPath.value = await systemApi.getDefaultRunPath();
           } catch (error) {
             console.error("Failed to get default run path:", error);
           }
@@ -601,6 +592,30 @@ export function useCreateServerPage() {
     }
   }
 
+  /**
+   * 处理 Tauri 文件拖放事件
+   * 根据文件扩展名自动识别为压缩包或文件夹
+   */
+  function handleTauriDrop(paths: string[]) {
+    if (paths.length === 0) return;
+
+    const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz", ".jar"];
+
+    function hasArchiveExtension(path: string): boolean {
+      const lowerPath = path.toLowerCase();
+      return archiveExtensions.some((ext) => lowerPath.endsWith(ext));
+    }
+
+    const firstPath = paths[0];
+    if (hasArchiveExtension(firstPath)) {
+      sourcePath.value = firstPath;
+      sourceType.value = "archive";
+    } else {
+      sourcePath.value = firstPath;
+      sourceType.value = "folder";
+    }
+  }
+
   return {
     errorMsg,
     clearError,
@@ -642,5 +657,6 @@ export function useCreateServerPage() {
     rescanStartupCandidates,
     detectJava,
     handleSubmit,
+    handleTauriDrop,
   };
 }

@@ -235,7 +235,8 @@
     "java_env": "Environnement Java",
     "java_scan": "Rechercher des installations Java sur le système",
     "java_manual": "Sélection manuelle du chemin Java",
-    "java_path": "Chemin Java"
+    "java_path": "Chemin Java",
+    "drop_hint": "Déposez ici pour ajouter des fichiers ou dossiers"
   },
   "console": {
     "title": "Console",

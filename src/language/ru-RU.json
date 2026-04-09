@@ -235,7 +235,8 @@
     "java_env": "Окружение Java",
     "java_scan": "Искать установки Java в системе",
     "java_manual": "Указать путь вручную",
-    "java_path": "Путь к Java"
+    "java_path": "Путь к Java",
+    "drop_hint": "Перетащите сюда файлы или папки"
   },
   "console": {
     "title": "Консоль",
