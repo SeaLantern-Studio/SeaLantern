@@ -51,6 +51,16 @@ const emit = defineEmits<{
 const internalDragging = ref(false);
 const nativeDroppedPaths = ref<string[]>([]);
 let unlistenNativeDragDrop: UnlistenFn | null = null;
+const DROPZONE_DEBUG = import.meta.env.DEV;
+
+function logDropzone(message: string, payload?: unknown) {
+  if (!DROPZONE_DEBUG) return;
+  if (payload === undefined) {
+    console.debug(message);
+    return;
+  }
+  console.debug(message, payload);
+}
 
 const isDraggingState = computed(() => {
   if (props.isDragging !== undefined) {
@@ -102,14 +112,14 @@ function hasAcceptedExtension(path: string): boolean {
 function extractPathsFromDrop(event: DragEvent): string[] {
   const dataTransfer = event.dataTransfer;
   if (!dataTransfer) {
-    console.warn("[SLDropzone] Drop event missing dataTransfer");
+    logDropzone("[SLDropzone] Drop event missing dataTransfer");
     return [];
   }
 
   const paths: string[] = [];
 
   if (dataTransfer.files && dataTransfer.files.length > 0) {
-    console.debug("[SLDropzone] Inspecting dataTransfer.files", {
+    logDropzone("[SLDropzone] Inspecting dataTransfer.files", {
       count: dataTransfer.files.length,
     });
     for (let i = 0; i < dataTransfer.files.length; i++) {
@@ -117,7 +127,7 @@ function extractPathsFromDrop(event: DragEvent): string[] {
         path?: string;
         webkitRelativePath?: string;
       };
-      console.debug("[SLDropzone] dataTransfer.files item", {
+      logDropzone("[SLDropzone] dataTransfer.files item", {
         index: i,
         name: fileWithPath.name,
         path: fileWithPath.path,
@@ -132,18 +142,18 @@ function extractPathsFromDrop(event: DragEvent): string[] {
   }
 
   if (paths.length > 0) {
-    console.debug("[SLDropzone] Resolved drop paths from dataTransfer.files", paths);
+    logDropzone("[SLDropzone] Resolved drop paths from dataTransfer.files", paths);
     return paths;
   }
 
   if (dataTransfer.items && dataTransfer.items.length > 0) {
-    console.debug("[SLDropzone] Inspecting dataTransfer.items", {
+    logDropzone("[SLDropzone] Inspecting dataTransfer.items", {
       count: dataTransfer.items.length,
     });
     for (let i = 0; i < dataTransfer.items.length; i++) {
       const item = dataTransfer.items[i];
       if (item.kind !== "file") {
-        console.debug("[SLDropzone] Skipping non-file drop item", {
+        logDropzone("[SLDropzone] Skipping non-file drop item", {
           index: i,
           kind: item.kind,
           type: item.type,
@@ -154,7 +164,7 @@ function extractPathsFromDrop(event: DragEvent): string[] {
       const file = item.getAsFile() as
         | (File & { path?: string; webkitRelativePath?: string })
         | null;
-      console.debug("[SLDropzone] dataTransfer.items file", {
+      logDropzone("[SLDropzone] dataTransfer.items file", {
         index: i,
         name: file?.name,
         path: file?.path,
@@ -173,9 +183,9 @@ function extractPathsFromDrop(event: DragEvent): string[] {
   }
 
   if (paths.length > 0) {
-    console.debug("[SLDropzone] Resolved drop paths from dataTransfer.items", paths);
+    logDropzone("[SLDropzone] Resolved drop paths from dataTransfer.items", paths);
   } else {
-    console.warn("[SLDropzone] No usable paths resolved from DOM drop event");
+    logDropzone("[SLDropzone] No usable paths resolved from DOM drop event");
   }
 
   return paths;
@@ -188,7 +198,7 @@ function getDroppedPaths(event: DragEvent): string[] {
   }
 
   if (nativeDroppedPaths.value.length > 0) {
-    console.debug(
+    logDropzone(
       "[SLDropzone] Falling back to native Tauri drag-drop paths",
       nativeDroppedPaths.value,
     );
@@ -199,21 +209,21 @@ function getDroppedPaths(event: DragEvent): string[] {
 }
 
 onMounted(async () => {
-  console.warn("[SLDropzone] mounted", {
+  logDropzone("[SLDropzone] mounted", {
     hasTauriInternals: !!window.__TAURI_INTERNALS__,
     uploadSupported: isUploadSupported(),
   });
 
   if (isUploadSupported()) {
-    console.warn("[SLDropzone] Upload mode detected, skip native drag-drop listener");
+    logDropzone("[SLDropzone] Upload mode detected, skip native drag-drop listener");
     return;
   }
 
   try {
     const currentWindow = getCurrentWindow();
-    console.warn("[SLDropzone] Preparing native drag-drop listener");
+    logDropzone("[SLDropzone] Preparing native drag-drop listener");
     unlistenNativeDragDrop = await currentWindow.onDragDropEvent((event) => {
-      console.warn("[SLDropzone] Native Tauri drag-drop event", event.payload);
+      logDropzone("[SLDropzone] Native Tauri drag-drop event", event.payload);
       if (event.payload.type === "enter" || event.payload.type === "over") {
         internalDragging.value = true;
       } else if (event.payload.type === "drop") {
@@ -224,9 +234,9 @@ onMounted(async () => {
         nativeDroppedPaths.value = [];
       }
     });
-    console.warn("[SLDropzone] Native drag-drop listener registered");
+    logDropzone("[SLDropzone] Native drag-drop listener registered");
   } catch (error) {
-    console.error("[SLDropzone] Failed to register native drag-drop listener:", error);
+    logDropzone("[SLDropzone] Failed to register native drag-drop listener", error);
   }
 });
 
@@ -240,7 +250,7 @@ onBeforeUnmount(() => {
 function handleDragEnter(event: DragEvent) {
   event.preventDefault();
   if (props.disabled || props.loading) return;
-  console.debug("[SLDropzone] DOM dragenter", {
+  logDropzone("[SLDropzone] DOM dragenter", {
     fileCount: event.dataTransfer?.files?.length ?? 0,
     itemCount: event.dataTransfer?.items?.length ?? 0,
   });
@@ -255,7 +265,7 @@ function handleDragOver(event: DragEvent) {
 
 function handleDragLeave(event: DragEvent) {
   event.preventDefault();
-  console.debug("[SLDropzone] DOM dragleave");
+  logDropzone("[SLDropzone] DOM dragleave");
   internalDragging.value = false;
 }
 
@@ -266,7 +276,7 @@ async function handleDrop(event: DragEvent) {
 
   if (props.disabled || props.loading) return;
 
-  console.debug("[SLDropzone] handleDrop triggered", {
+  logDropzone("[SLDropzone] handleDrop triggered", {
     hasDataTransfer: !!event.dataTransfer,
     fileCount: event.dataTransfer?.files?.length ?? 0,
     itemCount: event.dataTransfer?.items?.length ?? 0,
@@ -278,7 +288,7 @@ async function handleDrop(event: DragEvent) {
     try {
       const uploadedFiles = await uploadFromDropEvent(event);
       if (uploadedFiles.length === 0) {
-        console.warn("[SLDropzone] Upload mode drop produced no uploaded files");
+        logDropzone("[SLDropzone] Upload mode drop produced no uploaded files");
         emit("error", i18n.t("dropzone.error_no_path"));
         return;
       }
@@ -309,16 +319,14 @@ async function handleDrop(event: DragEvent) {
     return;
   }
 
-  const domPaths = extractPathsFromDrop(event);
-  const droppedPaths = domPaths.length > 0 ? domPaths : [...nativeDroppedPaths.value];
-  console.debug("[SLDropzone] Final dropped paths for Tauri", {
-    domPaths,
+  const droppedPaths = getDroppedPaths(event);
+  logDropzone("[SLDropzone] Final dropped paths for Tauri", {
     nativeDroppedPaths: nativeDroppedPaths.value,
     chosenPaths: droppedPaths,
   });
   nativeDroppedPaths.value = [];
   if (droppedPaths.length === 0) {
-    console.warn("[SLDropzone] Tauri drop produced no usable paths");
+    logDropzone("[SLDropzone] Tauri drop produced no usable paths");
     emit("error", i18n.t("dropzone.error_no_path"));
     return;
   }
@@ -331,7 +339,7 @@ async function handleDrop(event: DragEvent) {
   });
 
   if (validPaths.length === 0) {
-    console.warn("[SLDropzone] All dropped paths were filtered out", {
+    logDropzone("[SLDropzone] All dropped paths were filtered out", {
       droppedPaths,
       acceptFiles: props.acceptFiles,
       acceptFolders: props.acceptFolders,
@@ -341,7 +349,7 @@ async function handleDrop(event: DragEvent) {
     return;
   }
 
-  console.debug("[SLDropzone] Accepted dropped paths", validPaths);
+  logDropzone("[SLDropzone] Accepted dropped paths", validPaths);
   if (props.multiple && validPaths.length > 1) {
     emit("dropMultiple", validPaths);
   } else {
@@ -352,7 +360,7 @@ async function handleDrop(event: DragEvent) {
 
 function handleClick() {
   if (props.disabled || props.loading) return;
-  console.debug("[SLDropzone] Click triggered chooser open");
+  logDropzone("[SLDropzone] Click triggered chooser open");
   emit("click");
 }
 

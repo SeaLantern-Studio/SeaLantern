@@ -69,32 +69,42 @@ const {
 
 const router = useRouter();
 let unlistenCreateViewDragDrop: UnlistenFn | null = null;
+const CREATE_SERVER_DEBUG = import.meta.env.DEV;
+
+function logCreateServer(message: string, payload?: unknown) {
+  if (!CREATE_SERVER_DEBUG) return;
+  if (payload === undefined) {
+    console.debug(message);
+    return;
+  }
+  console.debug(message, payload);
+}
 
 onMounted(async () => {
-  console.warn("[CreateServerView] mounted", {
+  logCreateServer("[CreateServerView] mounted", {
     hasTauriInternals: !!window.__TAURI_INTERNALS__,
   });
 
   if (!window.__TAURI_INTERNALS__) {
-    console.warn("[CreateServerView] Running outside Tauri, skip native drag-drop listener");
+    logCreateServer("[CreateServerView] Running outside Tauri, skip native drag-drop listener");
     return;
   }
 
   try {
     const currentWindow = getCurrentWindow();
-    console.warn("[CreateServerView] Preparing native drag-drop listener");
+    logCreateServer("[CreateServerView] Preparing native drag-drop listener");
     unlistenCreateViewDragDrop = await currentWindow.onDragDropEvent((event) => {
-      console.warn("[CreateServerView] Native drag-drop event", event.payload);
+      logCreateServer("[CreateServerView] Native drag-drop event", event.payload);
       if (event.payload.type === "drop") {
-        console.warn("[CreateServerView] Emitting source drop event", event.payload.paths);
+        logCreateServer("[CreateServerView] Emitting source drop event", event.payload.paths);
         void emit(CREATE_SERVER_SOURCE_DROP_EVENT, event.payload.paths).catch((error) => {
-          console.error("[CreateServerView] Failed to emit source drop event:", error);
+          logCreateServer("[CreateServerView] Failed to emit source drop event", error);
         });
       }
     });
-    console.warn("[CreateServerView] Native drag-drop listener registered");
+    logCreateServer("[CreateServerView] Native drag-drop listener registered");
   } catch (error) {
-    console.error("[CreateServerView] Failed to register native drag-drop listener:", error);
+    logCreateServer("[CreateServerView] Failed to register native drag-drop listener", error);
   }
 });
 

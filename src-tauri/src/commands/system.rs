@@ -1,11 +1,23 @@
 use crate::services;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use sysinfo::{Disks, Networks, Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use tauri_plugin_dialog::DialogExt;
 
 static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new_all()));
+static SERVER_DISK_USAGE_CACHE: Lazy<Mutex<HashMap<String, CachedDirectorySize>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+const PROCESS_CPU_SAMPLE_INTERVAL: Duration = Duration::from_millis(200);
+const SERVER_DISK_USAGE_CACHE_TTL: Duration = Duration::from_secs(30);
+
+struct CachedDirectorySize {
+    used: u64,
+    computed_at: Instant,
+}
 
 #[tauri::command]
 pub fn get_system_info() -> Result<serde_json::Value, String> {
@@ -152,35 +164,41 @@ pub fn get_server_resource_usage(server_id: String) -> Result<serde_json::Value,
     let mut pid: Option<u32> = None;
 
     if let Some(raw_pid) = status.pid {
-        let mut sys = System::new_all();
         let process_pid = Pid::from_u32(raw_pid);
-        sys.refresh_memory();
-        sys.refresh_cpu_all();
-        sys.refresh_processes_specifics(
-            ProcessesToUpdate::Some(&[process_pid]),
-            true,
-            ProcessRefreshKind::everything(),
-        );
-        std::thread::sleep(std::time::Duration::from_millis(300));
-        sys.refresh_cpu_all();
-        sys.refresh_processes_specifics(
-            ProcessesToUpdate::Some(&[process_pid]),
-            true,
-            ProcessRefreshKind::everything(),
-        );
+        pid = Some(raw_pid);
 
-        if let Some(process) = sys.process(process_pid) {
-            cpu_usage = process.cpu_usage();
-            memory_used = process.memory();
+        {
+            let mut sys = SYSTEM.lock().map_err(|e| e.to_string())?;
+            sys.refresh_memory();
+            sys.refresh_processes_specifics(
+                ProcessesToUpdate::Some(&[process_pid]),
+                true,
+                ProcessRefreshKind::new().with_cpu().with_memory(),
+            );
             memory_total = sys.total_memory();
-            pid = Some(raw_pid);
-        } else {
-            pid = Some(raw_pid);
+        }
+
+        std::thread::sleep(PROCESS_CPU_SAMPLE_INTERVAL);
+
+        {
+            let mut sys = SYSTEM.lock().map_err(|e| e.to_string())?;
+            sys.refresh_memory();
+            sys.refresh_processes_specifics(
+                ProcessesToUpdate::Some(&[process_pid]),
+                true,
+                ProcessRefreshKind::new().with_cpu().with_memory(),
+            );
+
+            if let Some(process) = sys.process(process_pid) {
+                cpu_usage = process.cpu_usage();
+                memory_used = process.memory();
+                memory_total = sys.total_memory();
+            }
         }
     }
 
     let disk_path = Path::new(&server.path);
-    let disk_used = calculate_directory_size(disk_path);
+    let disk_used = get_cached_directory_size(disk_path);
     let (disk_total, disk_available) = get_path_disk_capacity(disk_path);
     let disk_total_effective = if disk_total > 0 {
         disk_total
@@ -224,6 +242,33 @@ pub fn get_server_resource_usage(server_id: String) -> Result<serde_json::Value,
             "path": server.path,
         },
     }))
+}
+
+fn get_cached_directory_size(path: &Path) -> u64 {
+    let cache_key = path.to_string_lossy().into_owned();
+    let now = Instant::now();
+
+    if let Ok(cache) = SERVER_DISK_USAGE_CACHE.lock() {
+        if let Some(entry) = cache.get(&cache_key) {
+            if now.duration_since(entry.computed_at) < SERVER_DISK_USAGE_CACHE_TTL {
+                return entry.used;
+            }
+        }
+    }
+
+    let used = calculate_directory_size(path);
+
+    if let Ok(mut cache) = SERVER_DISK_USAGE_CACHE.lock() {
+        cache.insert(
+            cache_key,
+            CachedDirectorySize {
+                used,
+                computed_at: now,
+            },
+        );
+    }
+
+    used
 }
 
 fn calculate_directory_size(path: &Path) -> u64 {

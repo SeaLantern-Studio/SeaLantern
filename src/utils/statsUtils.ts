@@ -18,6 +18,7 @@ const serverMemHistory = ref<number[]>([]);
 const statsViewMode = ref<"detail" | "gauge">("gauge");
 const statsLoading = ref(true);
 const serverStatsLoading = ref(true);
+const serverStatsError = ref(false);
 
 const themeVersion = ref(0);
 
@@ -229,6 +230,7 @@ function applyServerStatsInfo(info: ServerResourceUsage) {
   serverDiskUsage.value = Math.min(100, Math.max(0, Math.round(info.disk.usage)));
   pushHistory(serverCpuHistory.value, serverCpuUsage.value);
   pushHistory(serverMemHistory.value, serverMemUsage.value);
+  serverStatsError.value = false;
   serverStatsLoading.value = false;
 }
 
@@ -248,10 +250,7 @@ async function fetchServerResourceUsage(serverId: string) {
     applyServerStatsInfo(info);
   } catch (e) {
     console.error("Failed to fetch server resource usage:", e);
-    serverCpuUsage.value = 0;
-    serverMemUsage.value = 0;
-    serverDiskUsage.value = 0;
-    serverSystemInfo.value = null;
+    serverStatsError.value = true;
     serverStatsLoading.value = false;
   }
 }
@@ -337,6 +336,7 @@ export {
   statsViewMode,
   statsLoading,
   serverStatsLoading,
+  serverStatsError,
   themeVersion,
   cpuGaugeOption,
   memGaugeOption,

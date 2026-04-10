@@ -27,6 +27,7 @@ import {
   serverDiskUsage,
   statsViewMode,
   serverStatsLoading,
+  serverStatsError,
   serverCpuGaugeOption,
   serverMemGaugeOption,
   serverDiskGaugeOption,
@@ -71,6 +72,7 @@ const {
 } = useLoading();
 let unlistenLogLine: UnlistenFn | null = null;
 let statsTimer: ReturnType<typeof setInterval> | null = null;
+const SERVER_STATS_POLL_INTERVAL_MS = 15000;
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
@@ -100,6 +102,7 @@ const currentServer = computed(
   () => serverStore.servers.find((server) => server.id === serverId.value) || null,
 );
 const serverProcessInfo = computed(() => serverSystemInfo.value);
+const serverStatsUnavailable = computed(() => serverStatsError.value && !serverProcessInfo.value);
 const serverPidText = computed(() =>
   serverProcessInfo.value?.pid ? `PID ${serverProcessInfo.value.pid}` : i18n.t("home.no_data"),
 );
@@ -128,7 +131,7 @@ const statsSummaryItems = computed(() => [
     key: "cpu",
     icon: Cpu,
     label: i18n.t("home.cpu"),
-    value: `${serverCpuUsage.value}%`,
+    value: serverStatsUnavailable.value ? "--" : `${serverCpuUsage.value}%`,
     detail: serverPidText.value,
     tone: "primary",
   },
@@ -136,7 +139,7 @@ const statsSummaryItems = computed(() => [
     key: "memory",
     icon: MemoryStick,
     label: i18n.t("home.memory"),
-    value: `${serverMemUsage.value}%`,
+    value: serverStatsUnavailable.value ? "--" : `${serverMemUsage.value}%`,
     detail: serverProcessInfo.value
       ? `${formatBytes(serverProcessInfo.value.memory.used)} / ${formatBytes(serverProcessInfo.value.memory.total)}`
       : "--",
@@ -146,7 +149,7 @@ const statsSummaryItems = computed(() => [
     key: "disk",
     icon: HardDrive,
     label: i18n.t("home.disk"),
-    value: `${serverDiskUsage.value}%`,
+    value: serverStatsUnavailable.value ? "--" : `${serverDiskUsage.value}%`,
     detail: serverProcessInfo.value
       ? `${formatBytes(serverProcessInfo.value.disk.used)} / ${formatBytes(serverProcessInfo.value.disk.total)}`
       : "--",
@@ -174,7 +177,7 @@ function startStatsPolling() {
   void refreshServerStats();
   statsTimer = setInterval(() => {
     void refreshServerStats();
-  }, 3000);
+  }, SERVER_STATS_POLL_INTERVAL_MS);
 }
 
 function stopStatsPolling() {
@@ -540,6 +543,9 @@ function deleteCommand() {}
 
           <div v-if="serverStatsLoading" class="console-stats-loading">
             {{ i18n.t("common.loading") }}
+          </div>
+          <div v-else-if="serverStatsUnavailable" class="console-stats-loading">
+            {{ i18n.t("home.no_data") }}
           </div>
           <div v-else-if="statsViewMode === 'gauge'" class="console-gauge-grid">
             <div class="console-gauge-item">
