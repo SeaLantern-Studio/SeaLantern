@@ -1,5 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
-import { isUploadSupported } from "@api/upload";
+import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 
 export interface CpuInfo {
   name: string;
@@ -74,28 +74,55 @@ export const systemApi = {
 
   async pickJarFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+      const file = await pickFileFromBrowser({ accept: ".jar" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
     }
     return tauriInvoke("pick_jar_file");
   },
 
   async pickArchiveFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+      const file = await pickFileFromBrowser({ accept: ".jar,.zip,.tar,.tgz,.gz" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
     }
     return tauriInvoke("pick_archive_file");
   },
 
   async pickStartupFile(mode: "jar" | "bat" | "sh"): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+      const acceptMap: Record<string, string> = {
+        jar: ".jar",
+        bat: ".bat",
+        sh: ".sh",
+      };
+      const file = await pickFileFromBrowser({ accept: acceptMap[mode] || ".jar" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
     }
     return tauriInvoke("pick_startup_file", { mode });
   },
 
   async pickServerExecutable(): Promise<{ path: string; mode: "jar" | "bat" | "sh" } | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+      const file = await pickFileFromBrowser({ accept: ".jar,.bat,.sh" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        const ext = file.name.split(".").pop()?.toLowerCase() || "jar";
+        const mode = ext === "bat" ? "bat" : ext === "sh" ? "sh" : "jar";
+        return { path: result.saved_path, mode };
+      }
+      return null;
     }
     const result = await tauriInvoke<[string, string] | null>("pick_server_executable");
     if (result) {
@@ -106,7 +133,12 @@ export const systemApi = {
 
   async pickJavaFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+      const file = await pickFileFromBrowser({ accept: ".exe" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
     }
     return tauriInvoke("pick_java_file");
   },
@@ -127,7 +159,12 @@ export const systemApi = {
 
   async pickImageFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+      const file = await pickFileFromBrowser({ accept: ".png,.jpg,.jpeg,.webp,.gif,.bmp" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
     }
     return tauriInvoke("pick_image_file");
   },
