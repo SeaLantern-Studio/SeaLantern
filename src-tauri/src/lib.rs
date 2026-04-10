@@ -268,7 +268,7 @@ pub fn run() {
             if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
                 let _ = window.emit("tauri://drop", paths);
             }
-            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Leave { .. }) = event {
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Leave) = event {
                 let _ = window.emit("tauri://drag-cancelled", ());
             }
 
