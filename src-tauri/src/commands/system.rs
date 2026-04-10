@@ -259,13 +259,7 @@ fn get_cached_directory_size(path: &Path) -> u64 {
     let used = calculate_directory_size(path);
 
     if let Ok(mut cache) = SERVER_DISK_USAGE_CACHE.lock() {
-        cache.insert(
-            cache_key,
-            CachedDirectorySize {
-                used,
-                computed_at: now,
-            },
-        );
+        cache.insert(cache_key, CachedDirectorySize { used, computed_at: now });
     }
 
     used

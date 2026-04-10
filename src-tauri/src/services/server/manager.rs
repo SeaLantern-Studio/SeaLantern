@@ -240,15 +240,14 @@ impl ServerManager {
             return Ok(());
         };
 
-        let kill_result = child.kill();
-        let wait_result = child.wait();
+        let kill_result = force_kill_process_tree(&mut child);
         drop(procs);
 
         self.clear_starting(id);
         self.clear_stopping(id);
 
-        match (kill_result, wait_result) {
-            (Ok(_), Ok(_)) => {
+        match kill_result {
+            Ok(_) => {
                 let _ = server_log_pipeline::append_sealantern_log(
                     id,
                     "[Sea Lantern] 已按用户确认强制终止服务器进程",
@@ -256,17 +255,8 @@ impl ServerManager {
                 server_log_pipeline::shutdown_writer(id);
                 Ok(())
             }
-            (Err(err), _) => {
+            Err(err) => {
                 let message = format!("强制终止服务器失败: {}", err);
-                let _ = server_log_pipeline::append_sealantern_log(
-                    id,
-                    &format!("[Sea Lantern] {}", message),
-                );
-                server_log_pipeline::shutdown_writer(id);
-                Err(message)
-            }
-            (Ok(_), Err(err)) => {
-                let message = format!("等待服务器进程退出失败: {}", err);
                 let _ = server_log_pipeline::append_sealantern_log(
                     id,
                     &format!("[Sea Lantern] {}", message),
@@ -1172,30 +1162,32 @@ impl ServerManager {
             }
         };
 
-        let spawn_command = |mut cmd: Command, phase: &str| -> Result<std::process::Child, String> {
-            let command_for_log = format_command_for_log(&cmd);
-            let _ = server_log_pipeline::append_sealantern_log(
-                id,
-                &format!("[Sea Lantern] {}启动命令: {}", phase, command_for_log),
-            );
+        let spawn_command =
+            |mut cmd: Command, phase: &str| -> Result<std::process::Child, String> {
+                let command_for_log = format_command_for_log(&cmd);
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    &format!("[Sea Lantern] {}启动命令: {}", phase, command_for_log),
+                );
 
-            cmd.current_dir(&server.path);
-            cmd.stdout(Stdio::piped());
-            cmd.stderr(Stdio::piped());
-            cmd.stdin(Stdio::piped());
+                cmd.current_dir(&server.path);
+                cmd.stdout(Stdio::piped());
+                cmd.stderr(Stdio::piped());
+                cmd.stdin(Stdio::piped());
 
-            #[cfg(target_os = "windows")]
-            {
-                use std::os::windows::process::CommandExt;
-                const CREATE_NO_WINDOW: u32 = 0x08000000;
-                cmd.creation_flags(CREATE_NO_WINDOW);
-            }
+                #[cfg(target_os = "windows")]
+                {
+                    use std::os::windows::process::CommandExt;
+                    const CREATE_NO_WINDOW: u32 = 0x08000000;
+                    cmd.creation_flags(CREATE_NO_WINDOW);
+                }
 
-            cmd.spawn()
-                .map_err(|e| format!("启动失败（id={}, path={}）: {}", id, server.path, e))
-        };
+                cmd.spawn()
+                    .map_err(|e| format!("启动失败（id={}, path={}）: {}", id, server.path, e))
+            };
 
-        let jar_preferred_mode = matches!(configured_mode.as_str(), "bat" | "sh" | "ps1" | "custom");
+        let jar_preferred_mode =
+            matches!(configured_mode.as_str(), "bat" | "sh" | "ps1" | "custom");
         let preferred_jar_path = if jar_preferred_mode {
             if startup_path_obj
                 .extension()
@@ -1215,14 +1207,19 @@ impl ServerManager {
             match spawn_command(build_direct_jar_command(&jar_path, None), "优先 JAR 直启") {
                 Ok(mut primary_child) => {
                     const PRIMARY_LAUNCH_PROBE_DELAY_MS: u64 = 800;
-                    std::thread::sleep(std::time::Duration::from_millis(PRIMARY_LAUNCH_PROBE_DELAY_MS));
+                    std::thread::sleep(std::time::Duration::from_millis(
+                        PRIMARY_LAUNCH_PROBE_DELAY_MS,
+                    ));
                     match primary_child.try_wait() {
                         Ok(None) => primary_child,
                         Ok(Some(status)) => {
                             let reason = format!("JAR 直启进程过早退出: {}", status);
                             let _ = server_log_pipeline::append_sealantern_log(
                                 id,
-                                &format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode),
+                                &format!(
+                                    "[Sea Lantern] {}，回退到 {} 启动",
+                                    reason, configured_mode
+                                ),
                             );
                             let fallback_cmd = build_configured_command()?;
                             let fallback_child = spawn_command(fallback_cmd, "回退脚本/配置模式")?;
@@ -1237,7 +1234,10 @@ impl ServerManager {
                             let reason = format!("JAR 直启状态检查失败: {}", error);
                             let _ = server_log_pipeline::append_sealantern_log(
                                 id,
-                                &format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode),
+                                &format!(
+                                    "[Sea Lantern] {}，回退到 {} 启动",
+                                    reason, configured_mode
+                                ),
                             );
                             let fallback_cmd = build_configured_command()?;
                             let fallback_child = spawn_command(fallback_cmd, "回退脚本/配置模式")?;
@@ -1257,8 +1257,9 @@ impl ServerManager {
                         &format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode),
                     );
                     let fallback_cmd = build_configured_command()?;
-                    let fallback_child = spawn_command(fallback_cmd, "回退脚本/配置模式")
-                        .map_err(|fallback_error| format!("{}；回退也失败：{}", reason, fallback_error))?;
+                    let fallback_child = spawn_command(fallback_cmd, "回退脚本/配置模式").map_err(
+                        |fallback_error| format!("{}；回退也失败：{}", reason, fallback_error),
+                    )?;
                     fallback_info = Some(StartFallbackInfo {
                         from_mode: "jar".to_string(),
                         to_mode: configured_mode.clone(),
@@ -1381,8 +1382,7 @@ impl ServerManager {
 
         let mut procs = self.lock_processes()?;
         if let Some(mut child) = procs.remove(id) {
-            let _ = child.kill();
-            let _ = child.wait();
+            let _ = force_kill_process_tree(&mut child);
             let _ = server_log_pipeline::append_sealantern_log(
                 id,
                 "[Sea Lantern] 服务器超时，已强制终止",
@@ -1810,6 +1810,102 @@ fn detect_java_major_version(java_path: &str) -> Option<u32> {
     }
 
     None
+}
+
+#[cfg(unix)]
+fn list_child_pids_unix(ppid: u32) -> Vec<u32> {
+    let output = Command::new("pgrep")
+        .arg("-P")
+        .arg(ppid.to_string())
+        .output();
+    let Ok(output) = output else {
+        return Vec::new();
+    };
+    if !output.status.success() || output.stdout.is_empty() {
+        return Vec::new();
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| line.trim().parse::<u32>().ok())
+        .collect()
+}
+
+#[cfg(unix)]
+fn collect_descendant_pids_unix(root_pid: u32) -> Vec<u32> {
+    let mut stack = vec![root_pid];
+    let mut seen = HashSet::new();
+    let mut descendants = Vec::new();
+
+    while let Some(parent) = stack.pop() {
+        for child in list_child_pids_unix(parent) {
+            if seen.insert(child) {
+                descendants.push(child);
+                stack.push(child);
+            }
+        }
+    }
+
+    descendants
+}
+
+#[cfg(unix)]
+fn is_process_alive_unix(pid: u32) -> bool {
+    Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(unix)]
+fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
+    let root_pid = child.id();
+    let mut pids = collect_descendant_pids_unix(root_pid);
+    pids.push(root_pid);
+    pids.sort_unstable();
+    pids.dedup();
+
+    for pid in pids.iter().rev() {
+        let _ = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .status();
+    }
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    for pid in pids.iter().rev() {
+        if is_process_alive_unix(*pid) {
+            let _ = Command::new("kill")
+                .args(["-KILL", &pid.to_string()])
+                .status();
+        }
+    }
+
+    let _ = child.wait();
+    Ok(())
+}
+
+#[cfg(windows)]
+fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
+    let pid_str = child.id().to_string();
+    let status = Command::new("taskkill")
+        .args(["/PID", &pid_str, "/T", "/F"])
+        .status()
+        .map_err(|e| format!("执行 taskkill 失败: {}", e))?;
+
+    if !status.success() {
+        let _ = child.kill();
+    }
+    let _ = child.wait();
+    Ok(())
+}
+
+#[cfg(not(any(unix, windows)))]
+fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
+    child.kill().map_err(|e| format!("终止进程失败: {}", e))?;
+    child
+        .wait()
+        .map(|_| ())
+        .map_err(|e| format!("等待进程退出失败: {}", e))
 }
 
 fn format_command_for_log(command: &Command) -> String {
