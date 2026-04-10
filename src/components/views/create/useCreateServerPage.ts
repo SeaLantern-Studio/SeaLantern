@@ -52,6 +52,16 @@ function parseNumber(value: string, fallbackValue: number): number {
 }
 
 export const CREATE_SERVER_SOURCE_DROP_EVENT = "create-server-source-drop";
+const CREATE_SERVER_DND_DEBUG = import.meta.env.DEV;
+
+function logCreateServerDnd(message: string, payload?: unknown) {
+  if (!CREATE_SERVER_DND_DEBUG) return;
+  if (payload === undefined) {
+    console.debug(message);
+    return;
+  }
+  console.debug(message, payload);
+}
 
 export function useCreateServerPage() {
   const router = useRouter();
@@ -213,7 +223,7 @@ export function useCreateServerPage() {
           CREATE_SERVER_SOURCE_DROP_EVENT,
           (event) => {
             const droppedPaths = Array.isArray(event.payload) ? event.payload : [];
-            console.warn("[useCreateServerPage] Received source drop event", droppedPaths);
+            logCreateServerDnd("[useCreateServerPage] Received source drop event", droppedPaths);
             if (droppedPaths.length === 0) {
               return;
             }
@@ -224,7 +234,7 @@ export function useCreateServerPage() {
           },
         );
       } catch (error) {
-        console.error("[useCreateServerPage] Failed to register source drop listener:", error);
+        logCreateServerDnd("[useCreateServerPage] Failed to register source drop listener", error);
       }
     }
   });
