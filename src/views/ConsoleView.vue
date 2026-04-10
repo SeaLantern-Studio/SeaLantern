@@ -103,8 +103,12 @@ const currentServer = computed(
 );
 const serverProcessInfo = computed(() => serverSystemInfo.value);
 const serverStatsUnavailable = computed(() => serverStatsError.value && !serverProcessInfo.value);
+const noDataText = computed(() => {
+  const text = i18n.t("home.no_data");
+  return text === "home.no_data" ? i18n.t("common.unknown") : text;
+});
 const serverPidText = computed(() =>
-  serverProcessInfo.value?.pid ? `PID ${serverProcessInfo.value.pid}` : i18n.t("home.no_data"),
+  serverProcessInfo.value?.pid ? `PID ${serverProcessInfo.value.pid}` : noDataText.value,
 );
 const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "stopped">(() => {
   if (isRunning.value) return "running";
@@ -140,9 +144,10 @@ const statsSummaryItems = computed(() => [
     icon: MemoryStick,
     label: i18n.t("home.memory"),
     value: serverStatsUnavailable.value ? "--" : `${serverMemUsage.value}%`,
-    detail: serverProcessInfo.value
-      ? `${formatBytes(serverProcessInfo.value.memory.used)} / ${formatBytes(serverProcessInfo.value.memory.total)}`
-      : "--",
+    detail:
+      serverProcessInfo.value && serverProcessInfo.value.memory.total > 0
+        ? `${formatBytes(serverProcessInfo.value.memory.used)} / ${formatBytes(serverProcessInfo.value.memory.total)}`
+        : noDataText.value,
     tone: "success",
   },
   {
@@ -545,7 +550,7 @@ function deleteCommand() {}
             {{ i18n.t("common.loading") }}
           </div>
           <div v-else-if="serverStatsUnavailable" class="console-stats-loading">
-            {{ i18n.t("home.no_data") }}
+            {{ noDataText }}
           </div>
           <div v-else-if="statsViewMode === 'gauge'" class="console-gauge-grid">
             <div class="console-gauge-item">
