@@ -661,8 +661,13 @@ fn handle_update_settings_partial(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        // 从 params 中提取 partial 字段
+        // 前端通过 tauriInvoke("update_settings_partial", { partial }) 调用
+        // HTTP 请求体为 { "params": { "partial": { ... } } }
+        // 所以 params = { "partial": { ... } }，需要提取其中的 partial 字段
+        let partial_value = params.get("partial").cloned().unwrap_or(params);
         let partial: PartialSettings =
-            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+            serde_json::from_value(partial_value).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = settings_commands::update_settings_partial(partial)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
