@@ -23,6 +23,7 @@ import {
   RotateCcw,
   FolderOpen,
   Edit,
+  Info,
 } from "lucide-vue-next";
 
 import ConfigCategories from "@components/config/ConfigCategories.vue";
@@ -31,7 +32,7 @@ import { systemApi } from "@api/system";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
 
-type DiffLineType = "context" | "addition" | "deletion";
+type DiffLineType = "context" | "addition" | "deletion" | "omitted";
 
 interface DiffLine {
   type: DiffLineType;
@@ -67,12 +68,32 @@ const serverPath = computed(() => {
   return server?.path || "";
 });
 
+const serverPropertiesPath = computed(() => {
+  const basePath = serverPath.value.replace(/[/\\]$/, "");
+  if (!basePath) {
+    return "server.properties";
+  }
+
+  const separator = basePath.includes("\\") ? "\\" : "/";
+  return `${basePath}${separator}server.properties`;
+});
+
 const plugins = ref<m_PluginInfo[]>([]);
 const pluginsLoading = ref(false);
 const selectedPlugin = ref<m_PluginInfo | null>(null);
 const loadedPlugins = ref<Set<string>>(new Set());
 const observer = ref<IntersectionObserver | null>(null);
 const activeTab = ref<"properties" | "plugins">("properties");
+
+const configTabs = computed(() => [
+  {
+    key: "properties",
+    label: i18n.t("config.server_properties"),
+    suffixIcon: activeTab.value === "properties" ? Info : undefined,
+    suffixTitle: activeTab.value === "properties" ? serverPropertiesPath.value : undefined,
+  },
+  { key: "plugins", label: i18n.t("config.server_plugins") },
+]);
 
 const currentServerId = computed(() => store.currentServerId);
 const sourceDiffOriginalText = computed(() => sourceDiffBaseText.value);
@@ -100,6 +121,8 @@ const saveStatusText = computed(() =>
 const sourceDiffLines = computed(() =>
   buildDiffLines(sourceDiffOriginalText.value, sourceDiffTargetText.value),
 );
+
+const sourceDiffDisplayLines = computed(() => buildContextDiffLines(sourceDiffLines.value, 3));
 
 const sourceDiffStats = computed(() => {
   let additions = 0;
@@ -253,6 +276,59 @@ function buildDiffLines(originalText: string, targetText: string): DiffLine[] {
   }
 
   return lines;
+}
+
+function buildContextDiffLines(lines: DiffLine[], contextRadius: number): DiffLine[] {
+  if (lines.length === 0) {
+    return lines;
+  }
+
+  const changedIndices: number[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.type === "addition" || line.type === "deletion") {
+      changedIndices.push(index);
+    }
+  }
+
+  if (changedIndices.length === 0) {
+    return lines;
+  }
+
+  const windows: Array<{ start: number; end: number }> = changedIndices.map((index) => ({
+    start: Math.max(0, index - contextRadius),
+    end: Math.min(lines.length - 1, index + contextRadius),
+  }));
+
+  const mergedWindows: Array<{ start: number; end: number }> = [];
+  for (const window of windows) {
+    const previous = mergedWindows[mergedWindows.length - 1];
+    if (!previous || window.start > previous.end + 1) {
+      mergedWindows.push({ ...window });
+      continue;
+    }
+
+    previous.end = Math.max(previous.end, window.end);
+  }
+
+  const visibleLines: DiffLine[] = [];
+
+  for (let index = 0; index < mergedWindows.length; index += 1) {
+    const window = mergedWindows[index];
+    visibleLines.push(...lines.slice(window.start, window.end + 1));
+
+    const nextWindow = mergedWindows[index + 1];
+    if (nextWindow) {
+      visibleLines.push({
+        type: "omitted",
+        leftNumber: null,
+        rightNumber: null,
+        text: "...",
+      });
+    }
+  }
+
+  return visibleLines;
 }
 
 function getTranslatedPropertyDescription(key: string) {
@@ -653,14 +729,7 @@ onActivated(async () => {
   <div class="config-view animate-fade-in">
     <div class="config-header">
       <div class="config-tabs-row">
-        <SLTabBar
-          v-model="activeTab"
-          :tabs="[
-            { key: 'properties', label: i18n.t('config.server_properties') },
-            { key: 'plugins', label: i18n.t('config.server_plugins') },
-          ]"
-          :level="1"
-        />
+        <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" />
         <SLTabBar
           v-if="activeTab === 'properties'"
           class="config-editor-mode-bar"
@@ -669,9 +738,6 @@ onActivated(async () => {
           :level="2"
           @update:modelValue="handleEditorModeChange"
         />
-      </div>
-      <div v-if="activeTab === 'properties'" class="server-path-display text-mono text-caption">
-        {{ serverPath }}/server.properties
       </div>
     </div>
 
@@ -947,7 +1013,7 @@ onActivated(async () => {
         </div>
         <div class="source-diff-list">
           <div
-            v-for="(line, index) in sourceDiffLines"
+            v-for="(line, index) in sourceDiffDisplayLines"
             :key="`${index}-${line.leftNumber}-${line.rightNumber}`"
             class="source-diff-line"
             :class="`source-diff-line--${line.type}`"
@@ -955,7 +1021,15 @@ onActivated(async () => {
             <span class="source-diff-gutter">{{ line.leftNumber ?? "" }}</span>
             <span class="source-diff-gutter">{{ line.rightNumber ?? "" }}</span>
             <span class="source-diff-marker">
-              {{ line.type === "addition" ? "+" : line.type === "deletion" ? "-" : " " }}
+              {{
+                line.type === "addition"
+                  ? "+"
+                  : line.type === "deletion"
+                    ? "-"
+                    : line.type === "omitted"
+                      ? "…"
+                      : " "
+              }}
             </span>
             <span class="source-diff-text">{{ line.text }}</span>
           </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, watch, type Component } from "vue";
 import { useTabIndicator } from "@composables/useTabIndicator";
 import { i18n } from "@language";
 
@@ -8,6 +8,8 @@ export interface TabBarItem<T = string | null> {
   label: string;
   count?: number;
   icon?: string;
+  suffixIcon?: Component;
+  suffixTitle?: string;
   disabled?: boolean;
 }
 
@@ -66,6 +68,9 @@ function selectTab(tab: TabBarItem<string | null>) {
       >
         <i v-if="tab.icon" :class="tab.icon" class="sl-tab-bar__icon" aria-hidden="true" />
         <span class="sl-tab-bar__label">{{ tab.label }}</span>
+        <span v-if="tab.suffixIcon" class="sl-tab-bar__suffix" :title="tab.suffixTitle">
+          <component :is="tab.suffixIcon" class="sl-tab-bar__suffix-icon" :size="12" />
+        </span>
         <span v-if="tab.count !== undefined" class="sl-tab-bar__count">{{ tab.count }}</span>
       </button>
       <div v-if="$slots.extra" class="sl-tab-bar__extra">
@@ -86,6 +91,9 @@ function selectTab(tab: TabBarItem<string | null>) {
           @click="selectTab(tab)"
         >
           <span class="sl-tab-bar__label">{{ tab.label }}</span>
+          <span v-if="tab.suffixIcon" class="sl-tab-bar__suffix" :title="tab.suffixTitle">
+            <component :is="tab.suffixIcon" class="sl-tab-bar__suffix-icon" :size="12" />
+          </span>
           <span v-if="tab.count !== undefined" class="sl-tab-bar__count">{{ tab.count }}</span>
         </button>
       </div>
@@ -178,6 +186,16 @@ function selectTab(tab: TabBarItem<string | null>) {
 .sl-tab-bar__icon {
   font-size: 1rem;
   transition: transform 0.2s ease;
+}
+
+.sl-tab-bar__suffix {
+  display: inline-flex;
+  align-items: center;
+  color: var(--sl-text-secondary);
+}
+
+.sl-tab-bar__suffix-icon {
+  opacity: 0.85;
 }
 
 .sl-tab-bar__tab:hover:not(:disabled) .sl-tab-bar__icon {

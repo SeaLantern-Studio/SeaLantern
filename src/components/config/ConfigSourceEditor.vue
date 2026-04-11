@@ -221,14 +221,14 @@ onMounted(() => {
           border: "1px solid var(--sl-border-light)",
           borderRadius: "var(--sl-radius-md)",
           backgroundColor: "var(--sl-surface)",
-          minHeight: "480px",
+          height: "480px",
           overflow: "hidden",
         },
         ".cm-scroller": {
           fontFamily: "var(--sl-font-mono)",
           fontSize: "var(--sl-font-size-sm)",
           lineHeight: "1.45",
-          padding: "8px 0",
+          padding: "0",
         },
         ".cm-gutters": {
           backgroundColor: "var(--sl-bg-secondary)",
