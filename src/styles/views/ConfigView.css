@@ -199,57 +199,6 @@
   background: rgba(239, 68, 68, 0.12);
 }
 
-.source-diff-list {
-  overflow: auto;
-  max-height: 62vh;
-  border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  background: var(--sl-bg-tertiary);
-}
-
-.source-diff-line {
-  display: grid;
-  grid-template-columns: 56px 56px 24px minmax(0, 1fr);
-  align-items: start;
-  font-family: var(--sl-font-mono);
-  font-size: var(--sl-font-size-xs);
-  line-height: 1.3;
-}
-
-.source-diff-line + .source-diff-line {
-  border-top: 1px solid rgba(148, 163, 184, 0.08);
-}
-
-.source-diff-line--addition {
-  background: rgba(34, 197, 94, 0.05);
-}
-
-.source-diff-line--deletion {
-  background: rgba(239, 68, 68, 0.05);
-}
-
-.source-diff-line--omitted {
-  background: color-mix(in srgb, var(--sl-bg-secondary) 82%, transparent);
-}
-
-.source-diff-gutter,
-.source-diff-marker,
-.source-diff-text {
-  padding: 4px 8px;
-}
-
-.source-diff-gutter,
-.source-diff-marker {
-  color: var(--sl-text-secondary);
-  user-select: none;
-}
-
-.source-diff-text {
-  color: var(--sl-text-primary);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 .source-cm-root .cm-scroller {
   padding-top: 0 !important;
   padding-bottom: 0 !important;

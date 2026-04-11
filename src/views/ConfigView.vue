@@ -23,10 +23,10 @@ import {
   RotateCcw,
   FolderOpen,
   Edit,
-  Info,
 } from "lucide-vue-next";
 
 import ConfigCategories from "@components/config/ConfigCategories.vue";
+import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
 import ConfigSourceEditor from "@components/config/ConfigSourceEditor.vue";
 import { systemApi } from "@api/system";
 import "@styles/plugin-list.css";
@@ -89,8 +89,8 @@ const configTabs = computed(() => [
   {
     key: "properties",
     label: i18n.t("config.server_properties"),
-    suffixIcon: activeTab.value === "properties" ? Info : undefined,
-    suffixTitle: activeTab.value === "properties" ? serverPropertiesPath.value : undefined,
+    count: "i",
+    countTitle: serverPropertiesPath.value,
   },
   { key: "plugins", label: i18n.t("config.server_plugins") },
 ]);
@@ -121,8 +121,6 @@ const saveStatusText = computed(() =>
 const sourceDiffLines = computed(() =>
   buildDiffLines(sourceDiffOriginalText.value, sourceDiffTargetText.value),
 );
-
-const sourceDiffDisplayLines = computed(() => buildContextDiffLines(sourceDiffLines.value, 3));
 
 const sourceDiffStats = computed(() => {
   let additions = 0;
@@ -276,59 +274,6 @@ function buildDiffLines(originalText: string, targetText: string): DiffLine[] {
   }
 
   return lines;
-}
-
-function buildContextDiffLines(lines: DiffLine[], contextRadius: number): DiffLine[] {
-  if (lines.length === 0) {
-    return lines;
-  }
-
-  const changedIndices: number[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    if (line.type === "addition" || line.type === "deletion") {
-      changedIndices.push(index);
-    }
-  }
-
-  if (changedIndices.length === 0) {
-    return lines;
-  }
-
-  const windows: Array<{ start: number; end: number }> = changedIndices.map((index) => ({
-    start: Math.max(0, index - contextRadius),
-    end: Math.min(lines.length - 1, index + contextRadius),
-  }));
-
-  const mergedWindows: Array<{ start: number; end: number }> = [];
-  for (const window of windows) {
-    const previous = mergedWindows[mergedWindows.length - 1];
-    if (!previous || window.start > previous.end + 1) {
-      mergedWindows.push({ ...window });
-      continue;
-    }
-
-    previous.end = Math.max(previous.end, window.end);
-  }
-
-  const visibleLines: DiffLine[] = [];
-
-  for (let index = 0; index < mergedWindows.length; index += 1) {
-    const window = mergedWindows[index];
-    visibleLines.push(...lines.slice(window.start, window.end + 1));
-
-    const nextWindow = mergedWindows[index + 1];
-    if (nextWindow) {
-      visibleLines.push({
-        type: "omitted",
-        leftNumber: null,
-        rightNumber: null,
-        text: "...",
-      });
-    }
-  }
-
-  return visibleLines;
 }
 
 function getTranslatedPropertyDescription(key: string) {
@@ -1002,7 +947,7 @@ onActivated(async () => {
       <SLModal
         :visible="showSaveDiffModal"
         :title="i18n.t('config.diff_modal_title')"
-        width="960px"
+        width="1040px"
         :close-on-overlay="!saving"
         @close="closeSaveDiffModal"
       >
@@ -1011,29 +956,7 @@ onActivated(async () => {
           <span class="diff-count diff-count-add">+{{ sourceDiffStats.additions }}</span>
           <span class="diff-count diff-count-del">-{{ sourceDiffStats.deletions }}</span>
         </div>
-        <div class="source-diff-list">
-          <div
-            v-for="(line, index) in sourceDiffDisplayLines"
-            :key="`${index}-${line.leftNumber}-${line.rightNumber}`"
-            class="source-diff-line"
-            :class="`source-diff-line--${line.type}`"
-          >
-            <span class="source-diff-gutter">{{ line.leftNumber ?? "" }}</span>
-            <span class="source-diff-gutter">{{ line.rightNumber ?? "" }}</span>
-            <span class="source-diff-marker">
-              {{
-                line.type === "addition"
-                  ? "+"
-                  : line.type === "deletion"
-                    ? "-"
-                    : line.type === "omitted"
-                      ? "…"
-                      : " "
-              }}
-            </span>
-            <span class="source-diff-text">{{ line.text }}</span>
-          </div>
-        </div>
+        <ConfigSourceDiffView :original="sourceDiffOriginalText" :modified="sourceDiffTargetText" />
         <template #footer>
           <div class="diff-modal-actions">
             <SLButton variant="secondary" :disabled="saving" @click="closeSaveDiffModal">
