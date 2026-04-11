@@ -652,17 +652,27 @@ onActivated(async () => {
 <template>
   <div class="config-view animate-fade-in">
     <div class="config-header">
-      <div class="server-path-display text-mono text-caption">
+      <div class="config-tabs-row">
+        <SLTabBar
+          v-model="activeTab"
+          :tabs="[
+            { key: 'properties', label: i18n.t('config.server_properties') },
+            { key: 'plugins', label: i18n.t('config.server_plugins') },
+          ]"
+          :level="1"
+        />
+        <div v-if="activeTab === 'properties'" class="config-editor-mode-bar glass-card">
+          <SLTabBar
+            :modelValue="editorMode"
+            :tabs="editorModeTabs"
+            :level="2"
+            @update:modelValue="handleEditorModeChange"
+          />
+        </div>
+      </div>
+      <div v-if="activeTab === 'properties'" class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
       </div>
-      <SLTabBar
-        v-model="activeTab"
-        :tabs="[
-          { key: 'properties', label: i18n.t('config.server_properties') },
-          { key: 'plugins', label: i18n.t('config.server_plugins') },
-        ]"
-        :level="1"
-      />
     </div>
 
     <div v-if="!currentServerId" class="empty-state">
@@ -679,15 +689,6 @@ onActivated(async () => {
       </div>
 
       <template v-if="activeTab === 'properties'">
-        <div class="config-editor-mode-bar glass-card">
-          <SLTabBar
-            :modelValue="editorMode"
-            :tabs="editorModeTabs"
-            :level="2"
-            @update:modelValue="handleEditorModeChange"
-          />
-        </div>
-
         <template v-if="editorMode === 'visual'">
           <ConfigCategories
             :categories="categories"

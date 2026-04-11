@@ -15,6 +15,13 @@
   gap: var(--sl-space-sm);
 }
 
+.config-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-sm);
+}
+
 .server-path-display {
   color: var(--sl-text-tertiary);
   font-size: var(--sl-font-size-xs);
