@@ -22,3 +22,6 @@ changelog/
 .review/
 plugin-market/
 plugins-demo/
+
+#docker test
+data/
