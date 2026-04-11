@@ -30,7 +30,7 @@ pub fn get_app_data_dir() -> PathBuf {
     // Docker 环境检测 - 优先返回容器内数据目录
     let is_docker = std::path::Path::new("/.dockerenv").exists();
     eprintln!("[DEBUG] path.rs: /.dockerenv exists = {}", is_docker);
-    
+
     if is_docker {
         let docker_path = PathBuf::from("./data");
         eprintln!("[DEBUG] path.rs: Docker mode, returning path: {:?}", docker_path);
@@ -43,12 +43,18 @@ pub fn get_app_data_dir() -> PathBuf {
         if is_msi_installation() {
             // MSI 安装：使用 %AppData%
             if let Some(data_dir) = dirs_next::data_dir() {
-                eprintln!("[DEBUG] path.rs: Windows MSI mode, returning path: {:?}", data_dir.join("Sea Lantern"));
+                eprintln!(
+                    "[DEBUG] path.rs: Windows MSI mode, returning path: {:?}",
+                    data_dir.join("Sea Lantern")
+                );
                 return data_dir.join("Sea Lantern");
             }
             // 回退到主目录
             if let Some(home_dir) = dirs_next::home_dir() {
-                eprintln!("[DEBUG] path.rs: Windows fallback to home, returning path: {:?}", home_dir.join(".sea-lantern"));
+                eprintln!(
+                    "[DEBUG] path.rs: Windows fallback to home, returning path: {:?}",
+                    home_dir.join(".sea-lantern")
+                );
                 return home_dir.join(".sea-lantern");
             }
         }
@@ -63,7 +69,10 @@ pub fn get_app_data_dir() -> PathBuf {
 
         // 最后的回退方案
         if let Some(home_dir) = dirs_next::home_dir() {
-            eprintln!("[DEBUG] path.rs: Windows final fallback, returning path: {:?}", home_dir.join(".sea-lantern"));
+            eprintln!(
+                "[DEBUG] path.rs: Windows final fallback, returning path: {:?}",
+                home_dir.join(".sea-lantern")
+            );
             return home_dir.join(".sea-lantern");
         }
         eprintln!("[DEBUG] path.rs: Windows ultimate fallback, returning path: .");
@@ -74,14 +83,20 @@ pub fn get_app_data_dir() -> PathBuf {
     {
         // macOS: ~/Library/Application Support/Sea Lantern
         if let Some(data_dir) = dirs_next::data_dir() {
-            eprintln!("[DEBUG] path.rs: macOS mode, returning path: {:?}", data_dir.join("Sea Lantern"));
+            eprintln!(
+                "[DEBUG] path.rs: macOS mode, returning path: {:?}",
+                data_dir.join("Sea Lantern")
+            );
             return data_dir.join("Sea Lantern");
         }
         if let Some(home_dir) = dirs_next::home_dir() {
-            eprintln!("[DEBUG] path.rs: macOS fallback, returning path: {:?}", home_dir
-                .join("Library")
-                .join("Application Support")
-                .join("Sea Lantern"));
+            eprintln!(
+                "[DEBUG] path.rs: macOS fallback, returning path: {:?}",
+                home_dir
+                    .join("Library")
+                    .join("Application Support")
+                    .join("Sea Lantern")
+            );
             return home_dir
                 .join("Library")
                 .join("Application Support")
@@ -95,11 +110,17 @@ pub fn get_app_data_dir() -> PathBuf {
     {
         // Linux: ~/.local/share/sea-lantern
         if let Some(data_dir) = dirs_next::data_dir() {
-            eprintln!("[DEBUG] path.rs: Linux mode, returning path: {:?}", data_dir.join("sea-lantern"));
+            eprintln!(
+                "[DEBUG] path.rs: Linux mode, returning path: {:?}",
+                data_dir.join("sea-lantern")
+            );
             return data_dir.join("sea-lantern");
         }
         if let Some(home_dir) = dirs_next::home_dir() {
-            eprintln!("[DEBUG] path.rs: Linux fallback, returning path: {:?}", home_dir.join(".sea-lantern"));
+            eprintln!(
+                "[DEBUG] path.rs: Linux fallback, returning path: {:?}",
+                home_dir.join(".sea-lantern")
+            );
             return home_dir.join(".sea-lantern");
         }
         eprintln!("[DEBUG] path.rs: Linux ultimate fallback, returning path: .");

@@ -109,8 +109,14 @@ impl CommandRegistry {
         // 注册 Settings 命令
         handlers.insert("get_settings".to_string(), handle_get_settings as CommandHandler);
         handlers.insert("save_settings".to_string(), handle_save_settings as CommandHandler);
-        handlers.insert("save_settings_with_diff".to_string(), handle_save_settings_with_diff as CommandHandler);
-        handlers.insert("update_settings_partial".to_string(), handle_update_settings_partial as CommandHandler);
+        handlers.insert(
+            "save_settings_with_diff".to_string(),
+            handle_save_settings_with_diff as CommandHandler,
+        );
+        handlers.insert(
+            "update_settings_partial".to_string(),
+            handle_update_settings_partial as CommandHandler,
+        );
         handlers.insert("reset_settings".to_string(), handle_reset_settings as CommandHandler);
         handlers.insert("export_settings".to_string(), handle_export_settings as CommandHandler);
         handlers.insert("import_settings".to_string(), handle_import_settings as CommandHandler);
@@ -666,8 +672,8 @@ fn handle_update_settings_partial(
         // HTTP 请求体为 { "params": { "partial": { ... } } }
         // 所以 params = { "partial": { ... } }，需要提取其中的 partial 字段
         let partial_value = params.get("partial").cloned().unwrap_or(params);
-        let partial: PartialSettings =
-            serde_json::from_value(partial_value).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let partial: PartialSettings = serde_json::from_value(partial_value)
+            .map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = settings_commands::update_settings_partial(partial)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
