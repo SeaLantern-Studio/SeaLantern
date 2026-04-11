@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, onActivated, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onActivated, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
+import SLTextarea from "@components/common/SLTextarea.vue";
+import SLModal from "@components/common/SLModal.vue";
+import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import { SLTabBar } from "@components/common";
 import { configApi } from "@api/config";
 import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "@api/mcs_plugins";
@@ -15,6 +18,7 @@ import { i18n } from "@language";
 import {
   Trash2,
   RefreshCw,
+  Save,
   Settings,
   FileText,
   RotateCcw,
@@ -22,24 +26,42 @@ import {
   Edit,
 } from "lucide-vue-next";
 
-import ConfigToolbar from "@components/config/ConfigToolbar.vue";
 import ConfigCategories from "@components/config/ConfigCategories.vue";
-import ConfigEntry from "@components/config/ConfigEntry.vue";
 import { systemApi } from "@api/system";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
+
+type DiffLineType = "context" | "addition" | "deletion";
+
+interface DiffLine {
+  type: DiffLineType;
+  leftNumber: number | null;
+  rightNumber: number | null;
+  text: string;
+}
 
 const route = useRoute();
 const store = useServerStore();
 
 const entries = ref<ConfigEntryType[]>([]);
 const editValues = ref<Record<string, string>>({});
+const loadedValues = ref<Record<string, string>>({});
 const loading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
 const searchQuery = ref("");
 const activeCategory = ref("all");
+const editorMode = ref<"visual" | "source">("visual");
+const sourceDraftText = ref("");
+const loadedSourceText = ref("");
+const visualDraftDirty = ref(false);
+const modeSwitching = ref(false);
+const sourceParseError = ref<string | null>(null);
+const showDiscardConfirm = ref(false);
+const showSaveDiffModal = ref(false);
+const sourceDiffBaseText = ref("");
+const pendingSaveSourceText = ref("");
 const serverPath = computed(() => {
   const server = store.servers.find((s) => s.id === store.currentServerId);
   return server?.path || "";
@@ -51,13 +73,45 @@ const selectedPlugin = ref<m_PluginInfo | null>(null);
 const loadedPlugins = ref<Set<string>>(new Set());
 const observer = ref<IntersectionObserver | null>(null);
 const activeTab = ref<"properties" | "plugins">("properties");
-const isLoading = ref(false);
-const loadingDebounceTimer = ref<number | null>(null);
-
-const autoSaveDebounceTimer = ref<number | null>(null);
-const AUTO_SAVE_DELAY = 1000;
 
 const currentServerId = computed(() => store.currentServerId);
+const sourceDiffOriginalText = computed(() => sourceDiffBaseText.value);
+const sourceDiffTargetText = computed(() => pendingSaveSourceText.value);
+
+const editorModeTabs = computed(() => [
+  { key: "visual", label: i18n.t("config.visual_mode") },
+  { key: "source", label: i18n.t("config.source_mode") },
+]);
+
+const hasUnsavedChanges = computed(() => {
+  if (editorMode.value === "source") {
+    return sourceDraftText.value !== loadedSourceText.value;
+  }
+
+  const sourceDirty = sourceDraftText.value !== loadedSourceText.value;
+  const visualDirty = !areMapValuesEqual(editValues.value, loadedValues.value);
+  return sourceDirty || visualDirty;
+});
+
+const saveStatusText = computed(() =>
+  hasUnsavedChanges.value ? i18n.t("config.status_unsaved") : i18n.t("config.status_loaded"),
+);
+
+const sourceDiffLines = computed(() =>
+  buildDiffLines(sourceDiffOriginalText.value, sourceDiffTargetText.value),
+);
+
+const sourceDiffStats = computed(() => {
+  let additions = 0;
+  let deletions = 0;
+
+  for (const line of sourceDiffLines.value) {
+    if (line.type === "addition") additions += 1;
+    if (line.type === "deletion") deletions += 1;
+  }
+
+  return { additions, deletions };
+});
 
 const categories = computed(() => {
   const cats = new Set(entries.value.map((e) => e.category));
@@ -89,6 +143,146 @@ const filteredEntries = computed(() => {
   });
 });
 
+function areMapValuesEqual(a: Record<string, string>, b: Record<string, string>) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getNormalizedLines(text: string) {
+  const normalized = text.replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+
+  if (lines.length > 0 && lines[lines.length - 1] === "") {
+    lines.pop();
+  }
+
+  return lines;
+}
+
+function buildDiffLines(originalText: string, targetText: string): DiffLine[] {
+  const originalLines = getNormalizedLines(originalText);
+  const targetLines = getNormalizedLines(targetText);
+  const dp = Array.from({ length: originalLines.length + 1 }, () =>
+    Array<number>(targetLines.length + 1).fill(0),
+  );
+
+  for (let i = originalLines.length - 1; i >= 0; i -= 1) {
+    for (let j = targetLines.length - 1; j >= 0; j -= 1) {
+      if (originalLines[i] === targetLines[j]) {
+        dp[i][j] = dp[i + 1][j + 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+  }
+
+  const lines: DiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  let leftNumber = 1;
+  let rightNumber = 1;
+
+  while (i < originalLines.length && j < targetLines.length) {
+    if (originalLines[i] === targetLines[j]) {
+      lines.push({
+        type: "context",
+        leftNumber,
+        rightNumber,
+        text: originalLines[i],
+      });
+      i += 1;
+      j += 1;
+      leftNumber += 1;
+      rightNumber += 1;
+      continue;
+    }
+
+    if (dp[i + 1][j] >= dp[i][j + 1]) {
+      lines.push({
+        type: "deletion",
+        leftNumber,
+        rightNumber: null,
+        text: originalLines[i],
+      });
+      i += 1;
+      leftNumber += 1;
+    } else {
+      lines.push({
+        type: "addition",
+        leftNumber: null,
+        rightNumber,
+        text: targetLines[j],
+      });
+      j += 1;
+      rightNumber += 1;
+    }
+  }
+
+  while (i < originalLines.length) {
+    lines.push({
+      type: "deletion",
+      leftNumber,
+      rightNumber: null,
+      text: originalLines[i],
+    });
+    i += 1;
+    leftNumber += 1;
+  }
+
+  while (j < targetLines.length) {
+    lines.push({
+      type: "addition",
+      leftNumber: null,
+      rightNumber,
+      text: targetLines[j],
+    });
+    j += 1;
+    rightNumber += 1;
+  }
+
+  return lines;
+}
+
+function getTranslatedPropertyDescription(key: string) {
+  const translationKey = `config.properties.${key}`;
+  const translated = i18n.t(translationKey);
+  return translated === translationKey ? "" : translated;
+}
+
+function applyParsedSourceState(sourceText: string, targetMode: "visual" | "source" = "visual") {
+  const parsed = configApi.parseServerPropertiesSource(sourceText);
+  return parsed.then((result) => {
+    entries.value = result.entries as ConfigEntryType[];
+    editValues.value = { ...result.raw };
+    loadedValues.value = { ...result.raw };
+    sourceDraftText.value = sourceText;
+    loadedSourceText.value = sourceText;
+    sourceDiffBaseText.value = sourceText;
+    sourceParseError.value = null;
+    visualDraftDirty.value = false;
+    editorMode.value = targetMode;
+
+    const port = result.raw["server-port"];
+    if (port) {
+      updateCurrentServerPort(port);
+    }
+
+    return result;
+  });
+}
+
 onMounted(async () => {
   await store.refreshList();
   const routeId = route.params.id as string;
@@ -98,12 +292,7 @@ onMounted(async () => {
     store.setCurrentServer(store.servers[0].id);
   }
   await loadProperties();
-});
-
-onUnmounted(() => {
-  if (autoSaveDebounceTimer.value) {
-    clearTimeout(autoSaveDebounceTimer.value);
-  }
+  await loadPlugins();
 });
 
 watch(
@@ -111,6 +300,7 @@ watch(
   async () => {
     if (store.currentServerId) {
       await loadProperties();
+      await loadPlugins();
     }
   },
 );
@@ -118,22 +308,21 @@ watch(
 async function loadProperties() {
   if (!serverPath.value) return;
 
-  if (loadingDebounceTimer.value) {
-    clearTimeout(loadingDebounceTimer.value);
-  }
-
-  isLoading.value = true;
+  loading.value = true;
   error.value = null;
   try {
-    const result = await configApi.readServerProperties(serverPath.value);
-    entries.value = result.entries as ConfigEntryType[];
-    editValues.value = { ...result.raw };
+    const sourceText = await configApi.readServerPropertiesSource(serverPath.value);
+    await applyParsedSourceState(sourceText, "visual");
   } catch (e) {
     error.value = String(e);
     entries.value = [];
     editValues.value = {};
+    loadedValues.value = {};
+    sourceDraftText.value = "";
+    loadedSourceText.value = "";
+    sourceDiffBaseText.value = "";
   } finally {
-    isLoading.value = false;
+    loading.value = false;
   }
 }
 
@@ -151,19 +340,94 @@ function updateCurrentServerPort(port: string) {
 }
 
 async function saveProperties() {
-  if (!serverPath.value) return;
+  if (!serverPath.value || !hasUnsavedChanges.value || saving.value) return;
+
+  error.value = null;
+
+  try {
+    const latestSourceText = await configApi.readServerPropertiesSource(serverPath.value);
+    sourceDiffBaseText.value = latestSourceText;
+
+    if (editorMode.value === "visual") {
+      pendingSaveSourceText.value = await configApi.previewServerPropertiesWrite(
+        serverPath.value,
+        editValues.value,
+      );
+    } else {
+      pendingSaveSourceText.value = sourceDraftText.value;
+    }
+
+    if (pendingSaveSourceText.value === latestSourceText) {
+      await applyParsedSourceState(latestSourceText, editorMode.value);
+      successMsg.value = i18n.t("config.no_changes_to_save");
+      setTimeout(() => (successMsg.value = null), 3000);
+      return;
+    }
+
+    showSaveDiffModal.value = true;
+  } catch (e) {
+    error.value = String(e);
+  }
+}
+
+function updateValue(key: string, value: string | boolean | number) {
+  editValues.value[key] = String(value);
+  visualDraftDirty.value = true;
+}
+
+function updateSourceDraft(value: string) {
+  sourceDraftText.value = value;
+  sourceParseError.value = null;
+}
+
+async function handleEditorModeChange(mode: string | null) {
+  const targetMode = mode === "source" ? "source" : "visual";
+  if (targetMode === editorMode.value || modeSwitching.value || !serverPath.value) return;
+
+  modeSwitching.value = true;
+  error.value = null;
+
+  try {
+    if (targetMode === "source") {
+      if (visualDraftDirty.value) {
+        sourceDraftText.value = await configApi.previewServerPropertiesWrite(
+          serverPath.value,
+          editValues.value,
+        );
+        visualDraftDirty.value = false;
+      }
+      sourceParseError.value = null;
+      editorMode.value = "source";
+      return;
+    }
+
+    const parsed = await configApi.parseServerPropertiesSource(sourceDraftText.value);
+    entries.value = parsed.entries as ConfigEntryType[];
+    editValues.value = { ...parsed.raw };
+    visualDraftDirty.value = false;
+    sourceParseError.value = null;
+    editorMode.value = "visual";
+  } catch (e) {
+    sourceParseError.value = i18n.t("config.source_parse_failed");
+    error.value = String(e);
+  } finally {
+    modeSwitching.value = false;
+  }
+}
+
+async function confirmSaveProperties() {
+  if (!serverPath.value || saving.value) return;
+
   saving.value = true;
   error.value = null;
   successMsg.value = null;
-  try {
-    await configApi.writeServerProperties(serverPath.value, editValues.value);
-    successMsg.value = i18n.t("config.saved");
-    setTimeout(() => (successMsg.value = null), 3000);
 
-    // 如果修改了服务器端口，更新服务器列表中的端口信息
-    if (editValues.value["server-port"]) {
-      updateCurrentServerPort(editValues.value["server-port"]);
-    }
+  try {
+    await configApi.writeServerPropertiesSource(serverPath.value, pendingSaveSourceText.value);
+    await applyParsedSourceState(pendingSaveSourceText.value, editorMode.value);
+    successMsg.value = i18n.t("config.saved");
+    showSaveDiffModal.value = false;
+    setTimeout(() => (successMsg.value = null), 3000);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -171,45 +435,23 @@ async function saveProperties() {
   }
 }
 
-function updateValue(key: string, value: string | boolean) {
-  editValues.value[key] = String(value);
-
-  // 启动自动保存防抖
-  if (autoSaveDebounceTimer.value) {
-    clearTimeout(autoSaveDebounceTimer.value);
-  }
-
-  autoSaveDebounceTimer.value = window.setTimeout(() => {
-    autoSaveProperties();
-  }, AUTO_SAVE_DELAY);
+function closeSaveDiffModal() {
+  if (saving.value) return;
+  showSaveDiffModal.value = false;
 }
 
-function autoSaveProperties() {
-  if (!serverPath.value) return;
+async function reloadPropertiesWithGuard() {
+  if (hasUnsavedChanges.value) {
+    showDiscardConfirm.value = true;
+    return;
+  }
 
-  saving.value = true;
-  error.value = null;
-  successMsg.value = null;
+  await loadProperties();
+}
 
-  configApi
-    .writeServerProperties(serverPath.value, editValues.value)
-    .then(() => {
-      successMsg.value = i18n.t("config.saved");
-      setTimeout(() => (successMsg.value = null), 3000);
-
-      // 如果修改了服务器端口，更新服务器列表中的端口信息
-      if (editValues.value["server-port"]) {
-        updateCurrentServerPort(editValues.value["server-port"]);
-      }
-      return Promise.resolve();
-    })
-    .catch((e) => {
-      error.value = String(e);
-      return Promise.resolve();
-    })
-    .finally(() => {
-      saving.value = false;
-    });
+async function confirmReloadDiscard() {
+  showDiscardConfirm.value = false;
+  await loadProperties();
 }
 
 function handleCategoryChange(category: string) {
@@ -223,10 +465,6 @@ function handleSearchUpdate(value: string) {
 
 async function loadPlugins() {
   if (!store.currentServerId) return;
-
-  if (loadingDebounceTimer.value) {
-    clearTimeout(loadingDebounceTimer.value);
-  }
 
   pluginsLoading.value = true;
   error.value = null;
@@ -268,7 +506,7 @@ function setupIntersectionObserver() {
   );
 
   nextTick(() => {
-    const pluginElements = document.querySelectorAll(".plugin-list-item");
+    const pluginElements = document.querySelectorAll<HTMLElement>(".plugin-list-item");
     pluginElements.forEach((element) => {
       observer.value?.observe(element);
     });
@@ -302,7 +540,7 @@ async function togglePlugin(plugin: m_PluginInfo) {
 async function deletePlugin(plugin: m_PluginInfo) {
   if (!store.currentServerId) return;
   try {
-    const pluginElement = document.querySelector(
+    const pluginElement = document.querySelector<HTMLElement>(
       `.plugin-list-item[data-plugin-file-name="${plugin.file_name}"]`,
     );
     if (pluginElement) {
@@ -313,7 +551,9 @@ async function deletePlugin(plugin: m_PluginInfo) {
       pluginElement.classList.add("deleting");
 
       setTimeout(async () => {
-        await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
+        const serverId = store.currentServerId;
+        if (!serverId) return;
+        await m_pluginApi.m_deletePlugin(serverId, plugin.file_name);
         plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
         if (selectedPlugin.value?.file_name === plugin.file_name) {
           selectedPlugin.value = null;
@@ -348,8 +588,10 @@ async function handlePluginClick(plugin: m_PluginInfo) {
   } else {
     if (!plugin.config_files || (plugin.config_files.length === 0 && plugin.has_config_folder)) {
       try {
+        const serverId = store.currentServerId;
+        if (!serverId) return;
         const configFiles = await m_pluginApi.m_getPluginConfigFiles(
-          store.currentServerId,
+          serverId,
           plugin.file_name,
           plugin.name,
         );
@@ -401,18 +643,6 @@ function formatFileSize(bytes: number) {
   return (bytes / (1024 * 1024)).toFixed(2) + " MB";
 }
 
-const currentServer = computed(() => store.servers.find((s) => s.id === store.currentServerId));
-
-watch(
-  () => store.currentServerId,
-  async () => {
-    if (store.currentServerId) {
-      await loadProperties();
-      await loadPlugins();
-    }
-  },
-);
-
 onActivated(async () => {
   await loadProperties();
   await loadPlugins();
@@ -420,7 +650,7 @@ onActivated(async () => {
 </script>
 
 <template>
-  <div class="config-view animate-fade-in-up">
+  <div class="config-view animate-fade-in">
     <div class="config-header">
       <div class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
@@ -449,78 +679,120 @@ onActivated(async () => {
       </div>
 
       <template v-if="activeTab === 'properties'">
-        <ConfigCategories
-          :categories="categories"
-          :activeCategory="activeCategory"
-          :searchQuery="searchQuery"
-          @updateCategory="handleCategoryChange"
-          @updateSearch="handleSearchUpdate"
-        />
-
-        <div v-if="loading" class="loading-state">
-          <SLSpinner size="lg" />
-          <span>{{ i18n.t("config.loading") }}</span>
+        <div class="config-editor-mode-bar glass-card">
+          <SLTabBar
+            :modelValue="editorMode"
+            :tabs="editorModeTabs"
+            :level="2"
+            @update:modelValue="handleEditorModeChange"
+          />
         </div>
 
-        <div v-else class="config-entries">
-          <div v-for="entry in filteredEntries" :key="entry.key" class="config-entry glass-card">
-            <div class="entry-header">
-              <div class="entry-key-row">
-                <span class="entry-key text-mono">{{ entry.key }}</span>
+        <template v-if="editorMode === 'visual'">
+          <ConfigCategories
+            :categories="categories"
+            :activeCategory="activeCategory"
+            :searchQuery="searchQuery"
+            @updateCategory="handleCategoryChange"
+            @updateSearch="handleSearchUpdate"
+          />
+
+          <div v-if="loading" class="loading-state">
+            <SLSpinner size="lg" />
+            <span>{{ i18n.t("config.loading") }}</span>
+          </div>
+
+          <div v-else class="config-entries">
+            <div v-for="entry in filteredEntries" :key="entry.key" class="config-entry glass-card">
+              <div class="entry-header">
+                <div class="entry-key-row">
+                  <span class="entry-key text-mono">{{ entry.key }}</span>
+                </div>
+                <p
+                  v-if="getTranslatedPropertyDescription(entry.key)"
+                  class="entry-desc text-caption"
+                >
+                  {{ getTranslatedPropertyDescription(entry.key) }}
+                </p>
               </div>
-              <p v-if="i18n.t(`config.properties.${entry.key}`)" class="entry-desc text-caption">
-                {{ i18n.t(`config.properties.${entry.key}`) }}
-              </p>
-            </div>
-            <div class="entry-control">
-              <template
-                v-if="
-                  entry.value_type === 'boolean' ||
-                  editValues[entry.key] === 'true' ||
-                  editValues[entry.key] === 'false'
-                "
-              >
-                <SLSwitch
-                  :modelValue="editValues[entry.key] === 'true'"
-                  @update:modelValue="updateValue(entry.key, $event)"
-                />
-              </template>
-              <template v-else-if="entry.key === 'gamemode'">
-                <SLSelect
-                  :modelValue="editValues[entry.key]"
-                  :options="gamemodeOptions"
-                  @update:modelValue="updateValue(entry.key, $event)"
-                  style="width: 200px"
-                />
-              </template>
-              <template v-else-if="entry.key === 'difficulty'">
-                <SLSelect
-                  :modelValue="editValues[entry.key]"
-                  :options="difficultyOptions"
-                  @update:modelValue="updateValue(entry.key, $event)"
-                  style="width: 200px"
-                />
-              </template>
-              <template v-else>
-                <input
-                  :value="editValues[entry.key]"
-                  type="text"
-                  :placeholder="entry.default_value"
-                  @input="
-                    (e) => {
-                      const value = e.target.value;
-                      if (value === '' || /^\d+$/.test(value)) {
-                        updateValue(entry.key, value);
-                      }
-                    }
+              <div class="entry-control">
+                <template
+                  v-if="
+                    entry.value_type === 'boolean' ||
+                    editValues[entry.key] === 'true' ||
+                    editValues[entry.key] === 'false'
                   "
-                  class="input integer-input"
-                />
-              </template>
+                >
+                  <SLSwitch
+                    :modelValue="editValues[entry.key] === 'true'"
+                    @update:modelValue="updateValue(entry.key, $event)"
+                  />
+                </template>
+                <template v-else-if="entry.key === 'gamemode'">
+                  <SLSelect
+                    :modelValue="editValues[entry.key]"
+                    :options="gamemodeOptions"
+                    @update:modelValue="updateValue(entry.key, $event)"
+                    style="width: 200px"
+                  />
+                </template>
+                <template v-else-if="entry.key === 'difficulty'">
+                  <SLSelect
+                    :modelValue="editValues[entry.key]"
+                    :options="difficultyOptions"
+                    @update:modelValue="updateValue(entry.key, $event)"
+                    style="width: 200px"
+                  />
+                </template>
+                <template v-else>
+                  <SLInput
+                    :modelValue="editValues[entry.key]"
+                    :placeholder="entry.default_value"
+                    @update:modelValue="updateValue(entry.key, $event)"
+                    style="width: 200px"
+                  />
+                </template>
+              </div>
+            </div>
+            <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
+              <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
             </div>
           </div>
-          <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
-            <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
+        </template>
+
+        <template v-else>
+          <div class="source-editor-wrap glass-card">
+            <SLTextarea
+              :modelValue="sourceDraftText"
+              :rows="22"
+              resize="vertical"
+              class="source-editor"
+              @update:modelValue="updateSourceDraft"
+            />
+            <p v-if="sourceParseError" class="source-parse-error">
+              {{ sourceParseError }}
+            </p>
+          </div>
+        </template>
+
+        <div class="config-floating-actions glass-strong">
+          <div class="floating-status text-caption">{{ saveStatusText }}</div>
+          <div class="floating-center">
+            <SLButton variant="secondary" size="sm" iconOnly @click="reloadPropertiesWithGuard">
+              <RefreshCw :size="16" />
+            </SLButton>
+          </div>
+          <div class="floating-right">
+            <SLButton
+              variant="primary"
+              size="sm"
+              iconOnly
+              :disabled="!hasUnsavedChanges"
+              :loading="saving"
+              @click="saveProperties"
+            >
+              <Save :size="16" />
+            </SLButton>
           </div>
         </div>
       </template>
@@ -651,6 +923,56 @@ onActivated(async () => {
           </div>
         </div>
       </template>
+
+      <SLConfirmDialog
+        :visible="showDiscardConfirm"
+        :title="i18n.t('config.discard_title')"
+        :message="i18n.t('config.discard_message')"
+        :confirmText="i18n.t('config.discard_confirm')"
+        :cancelText="i18n.t('common.cancel')"
+        confirmVariant="danger"
+        @confirm="confirmReloadDiscard"
+        @close="showDiscardConfirm = false"
+      />
+
+      <SLModal
+        :visible="showSaveDiffModal"
+        :title="i18n.t('config.diff_modal_title')"
+        width="960px"
+        :close-on-overlay="!saving"
+        @close="closeSaveDiffModal"
+      >
+        <div class="source-diff-summary text-caption">
+          <span>{{ i18n.t("config.diff_original") }} → {{ i18n.t("config.diff_after_save") }}</span>
+          <span class="diff-count diff-count-add">+{{ sourceDiffStats.additions }}</span>
+          <span class="diff-count diff-count-del">-{{ sourceDiffStats.deletions }}</span>
+        </div>
+        <div class="source-diff-list">
+          <div
+            v-for="(line, index) in sourceDiffLines"
+            :key="`${index}-${line.leftNumber}-${line.rightNumber}`"
+            class="source-diff-line"
+            :class="`source-diff-line--${line.type}`"
+          >
+            <span class="source-diff-gutter">{{ line.leftNumber ?? "" }}</span>
+            <span class="source-diff-gutter">{{ line.rightNumber ?? "" }}</span>
+            <span class="source-diff-marker">
+              {{ line.type === "addition" ? "+" : line.type === "deletion" ? "-" : " " }}
+            </span>
+            <span class="source-diff-text">{{ line.text }}</span>
+          </div>
+        </div>
+        <template #footer>
+          <div class="diff-modal-actions">
+            <SLButton variant="secondary" :disabled="saving" @click="closeSaveDiffModal">
+              {{ i18n.t("common.cancel") }}
+            </SLButton>
+            <SLButton variant="primary" :loading="saving" @click="confirmSaveProperties">
+              {{ i18n.t("config.confirm_save") }}
+            </SLButton>
+          </div>
+        </template>
+      </SLModal>
     </template>
   </div>
 </template>
