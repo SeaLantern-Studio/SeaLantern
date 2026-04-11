@@ -415,6 +415,8 @@
   "settings": {
     "title": "Ajustes",
     "auto_stop": "Detener servidores al cerrar",
+    "update_auto_stop": "Detener servidores al actualizar",
+    "update_auto_stop_desc": "Detener automáticamente todos los servidores en ejecución antes de actualizar Sea Lantern para evitar problemas durante el proceso de actualización",
     "auto_eula": "Aceptar EULA automáticamente",
     "close_action": "Acción al cerrar",
     "close_action_desc": "Comportamiento al hacer clic en cerrar",

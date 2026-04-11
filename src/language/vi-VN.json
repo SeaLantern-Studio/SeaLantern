@@ -430,6 +430,8 @@
   "settings": {
     "title": "Cài đặt ứng dụng",
     "auto_stop": "Tự động dừng máy chủ khi đóng",
+    "update_auto_stop": "Tự động dừng máy chủ khi cập nhật",
+    "update_auto_stop_desc": "Tự động dừng tất cả máy chủ đang chạy trước khi cập nhật Sea Lantern để tránh lỗi trong quá trình cập nhật",
     "auto_eula": "Tự động đồng ý EULA",
     "close_action": "Hành động khi đóng",
     "close_action_desc": "Chọn hành động mặc định khi nhấn nút đóng",

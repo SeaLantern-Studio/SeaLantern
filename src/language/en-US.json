@@ -571,6 +571,8 @@
     "settings": {
       "title": "Settings",
       "auto_stop": "Auto stop servers when closing",
+      "update_auto_stop": "Auto stop servers when updating",
+      "update_auto_stop_desc": "Automatically stop all running servers before Sea Lantern updates to prevent issues during the update process",
       "auto_eula": "Auto agree EULA",
       "close_action": "Close Behavior",
       "close_action_desc": "Select behavior when clicking close button",
