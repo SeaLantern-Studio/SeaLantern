@@ -1,6 +1,7 @@
 use crate::models::server::*;
 use crate::services::global;
 use std::path::Path;
+use tauri::Emitter;
 
 fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
@@ -181,7 +182,7 @@ fn scan_startup_candidates_blocking(
         .iter()
         .map(|value| value.to_string())
         .collect::<Vec<String>>();
-    let mc_version_options = crate::services::server_installer::STARTER_MC_VERSION_OPTIONS
+    let mc_version_options = crate::utils::constants::STARTER_MC_VERSION_OPTIONS
         .iter()
         .map(|value| value.to_string())
         .collect::<Vec<String>>();
@@ -539,8 +540,32 @@ pub fn get_server_list() -> Vec<ServerInstance> {
 }
 
 #[tauri::command]
-pub fn get_server_status(id: String) -> ServerStatusInfo {
-    manager().get_server_status(&id)
+pub fn get_server_status(app: tauri::AppHandle, id: String) -> ServerStatusInfo {
+    let status = manager().get_server_status(&id);
+
+    if let Some(error_msg) = &status.error_message {
+        use tauri_plugin_notification::NotificationExt;
+
+        let server_name = manager()
+            .get_server_list()
+            .iter()
+            .find(|s| s.id == id)
+            .map(|s| s.name.clone())
+            .unwrap_or_else(|| id.clone());
+
+        // 发送系统通知（即使窗口最小化也能显示）
+        let _ = app
+            .notification()
+            .builder()
+            .title("Sea Lantern - 服务器错误")
+            .body(format!("服务器「{}」{}", server_name, error_msg))
+            .show();
+
+        // 发送事件到前端（用于播放提示音）
+        let _ = app.emit("server-error", ());
+    }
+
+    status
 }
 
 #[tauri::command]
@@ -556,4 +581,121 @@ pub fn get_server_logs(id: String, since: usize, max_lines: Option<usize>) -> Ve
 #[tauri::command]
 pub fn update_server_name(id: String, name: String) -> Result<(), String> {
     manager().update_server_name(&id, &name)
+}
+
+#[tauri::command]
+pub fn validate_server_path(new_path: String) -> Result<ValidateServerPathResult, String> {
+    let path = std::path::Path::new(&new_path);
+
+    // 检查目录权限
+    let test_file = path.join(".sl_permission_test");
+    if std::fs::write(&test_file, "").is_err() {
+        return Ok(ValidateServerPathResult {
+            valid: false,
+            message: "无法写入服务器目录，请检查权限".to_string(),
+            jar_path: None,
+            startup_mode: None,
+        });
+    }
+    let _ = std::fs::remove_file(&test_file);
+
+    // 尝试查找可执行文件
+    let (jar_path, startup_mode) = match find_server_executable_for_validation(path) {
+        Ok((jar, mode)) => (Some(jar), Some(mode)),
+        Err(_) => (None, None),
+    };
+
+    let valid = jar_path.is_some();
+    let message = if valid {
+        "路径验证成功，找到可执行文件".to_string()
+    } else {
+        "未找到可执行文件（.jar/.bat/.sh/.ps1），请确保路径正确".to_string()
+    };
+
+    Ok(ValidateServerPathResult { valid, message, jar_path, startup_mode })
+}
+
+fn find_server_executable_for_validation(
+    server_path: &std::path::Path,
+) -> Result<(String, String), String> {
+    let preferred_scripts = [
+        "start.bat",
+        "run.bat",
+        "launch.bat",
+        "start.sh",
+        "run.sh",
+        "launch.sh",
+        "start.ps1",
+        "run.ps1",
+        "launch.ps1",
+    ];
+
+    for script in preferred_scripts {
+        let script_path = server_path.join(script);
+        if script_path.exists() {
+            let mode = detect_startup_mode_from_path(&script_path);
+            return Ok((script_path.to_string_lossy().to_string(), mode));
+        }
+    }
+
+    // 查找 server.jar
+    let server_jar = server_path.join("server.jar");
+    if server_jar.exists() {
+        return Ok((server_jar.to_string_lossy().to_string(), "jar".to_string()));
+    }
+
+    // 查找任何 jar 文件
+    let entries =
+        std::fs::read_dir(server_path).map_err(|e| format!("无法读取服务器目录: {}", e))?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let extension = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_ascii_lowercase())
+            .unwrap_or_default();
+
+        if extension == "jar" || extension == "bat" || extension == "sh" || extension == "ps1" {
+            let mode = detect_startup_mode_from_path(&path);
+            return Ok((path.to_string_lossy().to_string(), mode));
+        }
+    }
+
+    Err("未找到可用的启动文件".to_string())
+}
+
+fn detect_startup_mode_from_path(path: &std::path::Path) -> String {
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase())
+        .unwrap_or_default();
+
+    match extension.as_str() {
+        "bat" => "bat".to_string(),
+        "sh" => "sh".to_string(),
+        "ps1" => "ps1".to_string(),
+        _ => "jar".to_string(),
+    }
+}
+
+#[tauri::command]
+pub fn update_server_path(
+    id: String,
+    new_path: String,
+    new_jar_path: Option<String>,
+    new_startup_mode: Option<String>,
+) -> Result<ServerInstance, String> {
+    // 更新服务器路径
+    manager().update_server_path(
+        &id,
+        &new_path,
+        new_jar_path.as_deref(),
+        new_startup_mode.as_deref(),
+    )
 }

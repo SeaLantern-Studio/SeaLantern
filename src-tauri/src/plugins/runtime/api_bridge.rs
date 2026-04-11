@@ -1,4 +1,4 @@
-use super::helpers::{json_value_from_lua, lua_value_from_json};
+use super::shared::{json_value_from_lua, lua_value_from_json};
 use super::PluginRuntime;
 use crate::plugins::api::{call_api, ApiRegistryOps};
 use mlua::{Function, MultiValue, Table, Value};

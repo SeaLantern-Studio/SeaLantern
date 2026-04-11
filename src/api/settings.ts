@@ -1,4 +1,4 @@
-import { tauriInvoke } from "@api/tauri";
+import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import type { JavaInfo } from "@api/java";
 
 export type SettingsGroup =
@@ -11,6 +11,7 @@ export type SettingsGroup =
 
 export interface AppSettings {
   close_servers_on_exit: boolean;
+  close_servers_on_update: boolean;
   auto_accept_eula: boolean;
   default_max_memory: number;
   default_min_memory: number;
@@ -43,10 +44,12 @@ export interface AppSettings {
   close_action: string;
   last_run_path: string;
   minimal_mode: boolean;
+  agreed_to_terms: boolean;
 }
 
 export interface PartialSettings {
   close_servers_on_exit?: boolean;
+  close_servers_on_update?: boolean;
   auto_accept_eula?: boolean;
   default_max_memory?: number;
   default_min_memory?: number;
@@ -78,6 +81,7 @@ export interface PartialSettings {
   close_action?: string;
   last_run_path?: string;
   minimal_mode?: boolean;
+  agreed_to_terms?: boolean;
 }
 
 export interface UpdateSettingsResult {
@@ -106,6 +110,10 @@ export const settingsApi = {
   },
   async importJson(json: string): Promise<AppSettings> {
     return tauriInvoke("import_settings", { json });
+  },
+  async applyAcrylic(enabled: boolean): Promise<void> {
+    if (isBrowserEnv()) return;
+    await tauriInvoke("apply_acrylic", { enabled }, { silent: true });
   },
 };
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, onActivated, nextTick, computed, watch } from "vue";
 import SLButton from "@components/common/SLButton.vue";
+import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
@@ -59,9 +60,6 @@ const serverId = computed(() => serverStore.currentServerId || "");
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
 const isRunning = computed(() => serverStatus.value === "Running");
-const isStopped = computed(
-  () => serverStatus.value === "Stopped" || serverStatus.value === "Error" || !serverStatus.value,
-);
 const isStopping = computed(() => serverStatus.value === "Stopping");
 const isStarting = computed(() => serverStatus.value === "Starting");
 
@@ -208,7 +206,7 @@ async function exportLogs() {
   }
 }
 
-function getStatusClass(): string {
+function getStatusClass(): "running" | "starting" | "stopping" | "stopped" {
   const s = serverStore.statuses[serverId.value]?.status;
   return s === "Running"
     ? "running"
@@ -261,10 +259,7 @@ function deleteCommand(_cmd: import("@type/server").ServerCommand) {
           }}
         </div>
         <div v-else class="server-name-display">{{ i18n.t("console.no_server") }}</div>
-        <div v-if="serverId" class="status-indicator" :class="getStatusClass()">
-          <span class="status-dot"></span>
-          <span class="status-label">{{ getStatusText() }}</span>
-        </div>
+        <SLStatusIndicator v-if="serverId" :status="getStatusClass()" :label="getStatusText()" />
       </div>
       <div class="toolbar-right">
         <div class="action-group primary-actions">

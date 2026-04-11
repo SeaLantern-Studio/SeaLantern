@@ -33,9 +33,15 @@ const routes = [
     meta: { titleKey: "common.player_manage", icon: "users" },
   },
   {
+    path: "/tunnel",
+    name: "tunnel",
+    component: () => import("@views/TunnelView.vue"),
+    meta: { titleKey: "common.tunnel", icon: "link2" },
+  },
+  {
     path: "/plugins",
     name: "plugins",
-    component: () => import("@views/PluginsPageView.vue"),
+    component: () => import("@views/PluginsView.vue"),
     meta: { titleKey: "common.plugins", icon: "puzzle" },
   },
   {
@@ -75,10 +81,10 @@ const routes = [
     meta: { titleKey: "plugins.plugin_category", icon: "folder" },
   },
   {
-    path: "/download-file",
-    name: "download-file",
-    component: () => import("../views/DownloadFileView.vue"),
-    meta: { titleKey: "common.download-file", icon: "info" },
+    path: "/download",
+    name: "download",
+    component: () => import("../views/DownloadView.vue"),
+    meta: { titleKey: "common.download", icon: "download" },
   },
 ];
 const router = createRouter({

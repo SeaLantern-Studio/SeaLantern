@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, watch } from "vue";
+import { onMounted, onUnmounted, computed } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
+import { settingsApi } from "@api/settings";
 import { useUiStore } from "@stores/uiStore";
 import {
   useSettingsStore,
@@ -16,6 +17,7 @@ import {
   applyDeveloperMode,
   isThemeProviderActive,
 } from "@utils/theme";
+import { isMacOSPlatform } from "@utils/platform";
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();
@@ -25,8 +27,11 @@ const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
 const backgroundBlur = computed(() => settingsStore.backgroundBlur);
 const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
 const backgroundSize = computed(() => settingsStore.backgroundSize);
+const isMacOS = isMacOSPlatform();
 
 let systemThemeQuery: MediaQueryList | null = null;
+let lastNativeAcrylic: boolean | null = null;
+let appearanceApplyQueue: Promise<void> = Promise.resolve();
 
 function applyAcrylicEffect(enabled: boolean): void {
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
@@ -50,10 +55,22 @@ async function applyAppearanceSettings(): Promise<void> {
   applyFontFamily(settings.font_family || "");
 
   applyAcrylicEffect(settings.acrylic_enabled);
+  if (lastNativeAcrylic !== settings.acrylic_enabled) {
+    lastNativeAcrylic = settings.acrylic_enabled;
+    await settingsApi.applyAcrylic(settings.acrylic_enabled);
+  }
 
   if (!isThemeProviderActive()) {
     applyColors(settings);
   }
+}
+
+function enqueueAppearanceApply(): Promise<void> {
+  appearanceApplyQueue = appearanceApplyQueue.then(
+    () => applyAppearanceSettings(),
+    () => applyAppearanceSettings(),
+  );
+  return appearanceApplyQueue;
 }
 
 function applyDeveloperSettings(): void {
@@ -61,7 +78,7 @@ function applyDeveloperSettings(): void {
 }
 
 async function applyAllSettings(): Promise<void> {
-  await applyAppearanceSettings();
+  await enqueueAppearanceApply();
   applyDeveloperSettings();
 }
 
@@ -70,7 +87,7 @@ function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>): void {
   settingsStore.settings = settings;
 
   if (changedGroups.includes("Appearance")) {
-    applyAppearanceSettings();
+    void enqueueAppearanceApply();
   }
   if (changedGroups.includes("Developer")) {
     applyDeveloperSettings();
@@ -107,10 +124,13 @@ const backgroundStyle = computed(() => {
 </script>
 
 <template>
-  <div class="app-layout">
+  <div class="app-layout" :class="{ 'macos-native-vibrancy': isMacOS }">
     <div class="app-background" :style="backgroundStyle"></div>
     <AppSidebar />
-    <div class="app-main" :class="{ 'sidebar-collapsed': ui.sidebarCollapsed }">
+    <div
+      class="app-main"
+      :class="{ 'sidebar-collapsed': ui.sidebarCollapsed, 'macos-native-vibrancy': isMacOS }"
+    >
       <AppHeader />
       <main class="app-content">
         <router-view v-slot="{ Component }">

@@ -70,6 +70,7 @@ const defaultSettings: AppSettings = {
   close_action: "ask",
   last_run_path: "",
   minimal_mode: false,
+  agreed_to_terms: false,
 };
 
 export interface SettingsUpdateEvent {

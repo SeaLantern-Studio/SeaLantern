@@ -19,6 +19,7 @@ import {
   saveServerName,
   cancelEdit,
   showDeleteConfirmInput,
+  showChangePathModal,
 } from "@utils/serverUtils";
 import { useServerStore } from "@stores/serverStore";
 
@@ -154,6 +155,9 @@ function getStatusClass(status: string | undefined): string {
         </SLButton>
         <SLButton variant="ghost" size="sm" @click="handleConfig">
           {{ i18n.t("common.config_edit") }}
+        </SLButton>
+        <SLButton variant="ghost" size="sm" @click="showChangePathModal(server)">
+          {{ i18n.t("home.change_path") }}
         </SLButton>
         <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
           {{ i18n.t("home.delete") }}

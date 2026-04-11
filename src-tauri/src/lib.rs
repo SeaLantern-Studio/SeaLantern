@@ -1,8 +1,12 @@
 mod commands;
 mod models;
-mod plugins;
+pub mod plugins;
 mod services;
 mod utils;
+
+// 仅在 debug 构建下导入调试命令模块（发布包中不包含）
+#[cfg(debug_assertions)]
+use commands::debug as debug_commands;
 
 use commands::config as config_commands;
 use commands::downloader as download_commands;
@@ -14,36 +18,64 @@ use commands::plugin as plugin_commands;
 use commands::server as server_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
+use commands::tunnel as tunnel_commands;
 use commands::update as update_commands;
 
 use crate::services::download_manager::DownloadManager;
 use plugins::manager::PluginManager;
 
 use std::sync::{Arc, Mutex};
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Listener, Manager,
 };
+#[cfg(target_os = "macos")]
+use window_vibrancy::{
+    apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Docker 无头模式检测
+    if std::path::Path::new("/.dockerenv").exists() {
+        eprintln!("SeaLantern: Running in Docker, headless mode with HTTP server enabled");
+        // 在 Docker 中启动 HTTP 服务器
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                eprintln!("SeaLantern: Failed to create Tokio runtime for HTTP server: {}", e);
+                eprintln!(
+                    "SeaLantern: This may be due to container resource limits (memory, threads, etc.)"
+                );
+                std::process::exit(1);
+            }
+        };
+        rt.block_on(async {
+            // 尝试从环境变量获取静态文件目录，默认为 /app/dist
+            let static_dir =
+                std::env::var("STATIC_DIR").unwrap_or_else(|_| "/app/dist".to_string());
+            let static_dir_opt = std::path::Path::new(&static_dir)
+                .exists()
+                .then_some(static_dir);
+
+            services::http::run_http_server("0.0.0.0:3000", static_dir_opt).await;
+        });
+        return;
+    }
+
     // Fix white screen issue on Wayland desktop environments (tested on Arch Linux + KDE Plasma)
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
     }
 
-    // Linux 平台在独立线程中初始化 panic_report，避免阻塞主线程
-    #[cfg(target_os = "linux")]
-    {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
-            rt.block_on(async {
-                services::panic_report::panic_report().await;
-                println!("panic_report 注册完成");
-            });
-        });
-    }
+    // 尽早注册全局 panic hook，确保此后所有线程发生的 panic 都能被捕获。
+    // hook 触发时会收集系统信息（OS、CPU 温度、内存占用等）、
+    // panic 源码位置及错误消息，写入 panic-log/ 目录下的日志文件并输出到 stderr，
+    // 最终以退出码 0xFFFF 终止进程。
+    services::panic_report::init_panic_hook();
 
     let download_manager = DownloadManager::new();
 
@@ -55,6 +87,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 // 先显示窗口（处理隐藏状态）
@@ -111,6 +144,8 @@ pub fn run() {
             server_commands::delete_server,
             server_commands::get_server_logs,
             server_commands::update_server_name,
+            server_commands::validate_server_path,
+            server_commands::update_server_path,
             java_commands::detect_java,
             java_commands::validate_java_path,
             java_commands::install_java,
@@ -132,6 +167,7 @@ pub fn run() {
             system_commands::open_folder,
             system_commands::get_default_run_path,
             system_commands::get_safe_mode_status,
+            system_commands::frontend_heartbeat,
             player_commands::get_whitelist,
             player_commands::get_banned_players,
             player_commands::get_ops,
@@ -153,6 +189,14 @@ pub fn run() {
             settings_commands::get_system_fonts,
             settings_commands::get_plugin_commands,
             settings_commands::update_plugin_commands,
+            settings_commands::apply_acrylic,
+            tunnel_commands::tunnel_host,
+            tunnel_commands::tunnel_join,
+            tunnel_commands::tunnel_stop,
+            tunnel_commands::tunnel_status,
+            tunnel_commands::tunnel_copy_ticket,
+            tunnel_commands::tunnel_regenerate_ticket,
+            tunnel_commands::tunnel_generate_ticket,
             update_commands::check_update,
             update_commands::open_download_url,
             update_commands::download_update,
@@ -164,7 +208,10 @@ pub fn run() {
             download_commands::download_file,
             download_commands::poll_task,
             download_commands::poll_all_downloads,
-            download_commands::remove_download_task,
+            download_commands::get_server_types,
+            download_commands::get_versions_by_type,
+            download_commands::get_download_info,
+            download_commands::cancel_download_task,
             plugin_commands::list_plugins,
             plugin_commands::scan_plugins,
             plugin_commands::enable_plugin,
@@ -197,6 +244,7 @@ pub fn run() {
             plugin_commands::get_plugin_ui_snapshot,
             plugin_commands::get_plugin_sidebar_snapshot,
             plugin_commands::get_plugin_context_menu_snapshot,
+            plugin_commands::get_plugin_permission_logs,
             plugin_commands::get_permission_list,
             plugin_commands::get_plugin_permissions,
             mcs_plugin_commands::m_get_plugins,
@@ -206,7 +254,11 @@ pub fn run() {
             mcs_plugin_commands::m_get_plugin_config_files,
             logging_commands::get_logs,
             logging_commands::clear_logs,
-            logging_commands::check_developer_mode
+            logging_commands::check_developer_mode,
+            // 仅在 debug 构建（pnpm run tauri dev）下注册调试命令
+            // 发布包（pnpm run tauri build）中此命令不存在，不会暴露给最终用户
+            #[cfg(debug_assertions)]
+            debug_commands::debug_panic //在前端使用  await window.__invoke("debug_panic") 来触发
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -233,6 +285,8 @@ pub fn run() {
                                 m.disable_all_plugins_for_shutdown();
                             }
                         }
+                        // 显式退出整个应用进程，避免后端继续驻留
+                        window.app_handle().exit(0);
                     }
                     _ => {
                         // 显示对话框（ask 或其他值）
@@ -243,35 +297,88 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            #[cfg(not(target_os = "macos"))]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.set_decorations(false) {
+                    eprintln!("Failed to disable native window decorations: {}", e);
+                }
+            }
+
+            #[cfg(target_os = "macos")]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.set_decorations(true) {
+                    eprintln!("Failed to enable native macOS window decorations: {}", e);
+                }
+
+                if let Err(e) = window.set_title_bar_style(TitleBarStyle::Overlay) {
+                    eprintln!("Failed to set macOS title bar style to overlay: {}", e);
+                }
+
+                let acrylic_enabled = crate::services::global::settings_manager()
+                    .get()
+                    .acrylic_enabled;
+
+                let native_effect_result = if acrylic_enabled {
+                    apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::UnderWindowBackground,
+                        Some(NSVisualEffectState::Active),
+                        None,
+                    )
+                    .map(|_| ())
+                } else {
+                    clear_vibrancy(&window).map(|_| ())
+                };
+
+                if let Err(e) = native_effect_result {
+                    eprintln!("Failed to sync native macOS vibrancy effect: {}", e);
+                }
+            }
+
             // 初始化插件管理
             // 插件目录与其他模块共用同一套数据目录选择规则
             let app_data_dir = crate::utils::path::get_app_data_dir();
             let plugins_dir = app_data_dir.join("plugins");
             let data_dir = app_data_dir.join("plugin_data");
 
-            let mut plugin_manager = PluginManager::new(plugins_dir, data_dir);
+            let plugin_manager = PluginManager::new(plugins_dir, data_dir);
+            let shared_runtimes = plugin_manager.get_shared_runtimes();
+            let shared_runtimes_for_server_ready = Arc::clone(&shared_runtimes);
+            let api_registry = plugin_manager.get_api_registry();
+
+            let manager = Arc::new(Mutex::new(plugin_manager));
 
             // Check for safe mode
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
 
-            // Always scan plugins to load the list, even in safe mode
-            if let Err(e) = plugin_manager.scan_plugins() {
-                eprintln!("Failed to scan plugins: {}", e);
+            {
+                let mut plugin_manager = manager.lock().unwrap_or_else(|e| e.into_inner());
+
+                // Always scan plugins to load the list, even in safe mode
+                if let Err(e) = plugin_manager.scan_plugins() {
+                    eprintln!("Failed to scan plugins: {}", e);
+                }
             }
 
             if safe_mode {
                 eprintln!("Safe mode enabled: plugins will be disabled");
                 // In safe mode, don't enable any plugins
             } else {
-                // 自动启用上启用的插件
-                plugin_manager.auto_enable_plugins();
+                let manager_for_auto_enable = Arc::clone(&manager);
+                tauri::async_runtime::spawn(async move {
+                    let result = tauri::async_runtime::spawn_blocking(move || {
+                        let mut plugin_manager = manager_for_auto_enable
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner());
+                        plugin_manager.auto_enable_plugins();
+                    })
+                    .await;
+
+                    if let Err(e) = result {
+                        eprintln!("[WARN] Failed to auto-enable plugins in background: {}", e);
+                    }
+                });
             }
-
-            let shared_runtimes = plugin_manager.get_shared_runtimes();
-            let shared_runtimes_for_server_ready = Arc::clone(&shared_runtimes);
-            let api_registry = plugin_manager.get_api_registry();
-
-            let manager = Arc::new(Mutex::new(plugin_manager));
 
             plugins::api::set_api_call_handler(Arc::new(move |_source, target, api_name, args| {
                 use crate::plugins::api::ApiRegistryOps;
@@ -507,12 +614,60 @@ pub fn run() {
 
             app.manage(manager.clone());
 
-            if let Ok(mut m) = manager.lock() {
-                m.auto_enable_plugins();
+            // 前端心跳看门狗：若长时间未收到心跳则自动退出进程
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+                    use tokio::time::sleep;
+
+                    loop {
+                        sleep(Duration::from_secs(5)).await;
+
+                        let last = crate::services::global::last_frontend_heartbeat();
+                        if last == 0 {
+                            // 尚未收到任何心跳，继续等待
+                            continue;
+                        }
+
+                        let now = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+
+                        if now.saturating_sub(last) > 30 {
+                            eprintln!(
+                                "[Watchdog] frontend heartbeat lost, shutting down Sea Lantern",
+                            );
+
+                            let settings = crate::services::global::settings_manager().get();
+                            if settings.close_servers_on_exit {
+                                crate::services::global::server_manager().stop_all_servers();
+                            }
+
+                            if let Some(manager) = app_handle.try_state::<std::sync::Arc<
+                                std::sync::Mutex<crate::plugins::manager::PluginManager>,
+                            >>() {
+                                if let Ok(mut m) = manager.lock() {
+                                    m.disable_all_plugins_for_shutdown();
+                                }
+                            }
+
+                            app_handle.exit(0);
+                            break;
+                        }
+                    }
+                });
             }
 
             // Check if currently in safe mode
             let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
+
+            if let Ok(mut m) = manager.lock() {
+                if !safe_mode {
+                    m.auto_enable_plugins();
+                }
+            }
 
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
@@ -590,7 +745,7 @@ pub fn run() {
                             // On macOS, try to find the .app bundle and use open command
                             if let Some(app_bundle_path) = app_path
                                 .ancestors()
-                                .find(|p| p.extension().map_or(false, |ext| ext == "app"))
+                                .find(|p| p.extension().is_some_and(|ext| ext == "app"))
                             {
                                 match std::process::Command::new("open")
                                         .arg("-n") // Open a new instance

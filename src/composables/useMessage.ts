@@ -204,7 +204,7 @@ function clearMessageTimer(id: number) {
 /**
  * 添加消息到全局列表
  */
-function addMessage(type: MessageType, message: string, duration: number = 3000): number {
+function addMessage(type: MessageType, message: string, duration: number = 2000): number {
   const id = nextId++;
   messages.value.push({ id, type, message });
 

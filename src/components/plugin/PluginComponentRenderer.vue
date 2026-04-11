@@ -8,7 +8,7 @@ import SLCheckbox from "@components/common/SLCheckbox.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import SLProgress from "@components/common/SLProgress.vue";
 import SLSelect from "@components/common/SLSelect.vue";
-import SLTabs from "@components/common/SLTabs.vue";
+import SLTabBar from "@components/common/SLTabBar.vue";
 
 type PendingCreate = {
   component_type: string;
@@ -26,7 +26,8 @@ const componentMap: Record<string, any> = {
   SLSwitch,
   SLProgress,
   SLSelect,
-  SLTabs,
+  SLTabs: SLTabBar,
+  SLTabBar,
 };
 
 interface RenderedComponent {

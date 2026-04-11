@@ -3,6 +3,13 @@ use crate::services::global;
 use font_kit::source::SystemSource;
 use serde::Deserialize;
 use std::collections::HashSet;
+use tauri::AppHandle;
+#[cfg(target_os = "macos")]
+use tauri::Manager;
+#[cfg(target_os = "macos")]
+use window_vibrancy::{
+    apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
+};
 
 #[derive(serde::Serialize)]
 pub struct UpdateSettingsResult {
@@ -113,4 +120,32 @@ pub fn update_plugin_commands(commands: PluginCommands) -> Result<UpdateSettings
             .map(|g| format!("{:?}", g))
             .collect(),
     })
+}
+
+#[tauri::command]
+pub fn apply_acrylic(enabled: bool, app: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(window) = app.get_webview_window("main") {
+            if enabled {
+                apply_vibrancy(
+                    &window,
+                    NSVisualEffectMaterial::UnderWindowBackground,
+                    Some(NSVisualEffectState::Active),
+                    None,
+                )
+                .map_err(|e| format!("Failed to apply native macOS vibrancy effect: {}", e))?;
+            } else {
+                clear_vibrancy(&window)
+                    .map_err(|e| format!("Failed to clear native macOS vibrancy effect: {}", e))?;
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (enabled, app);
+    }
+
+    Ok(())
 }

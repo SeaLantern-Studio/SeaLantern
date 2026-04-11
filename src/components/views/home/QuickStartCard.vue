@@ -21,16 +21,14 @@ const emit = defineEmits<{
         {{ i18n.t("common.create_server") }}
       </SLButton>
     </div>
-    <div class="card-spacer"></div>
     <div class="quote-display" @click="updateQuote" :title="i18n.t('common.click_to_refresh')">
-      <span v-if="displayText && !isTyping" class="quote-text">「{{ displayText }}」</span>
-      <span v-if="currentQuote && !isTyping" class="quote-author"
-        >—— {{ currentQuote.author }}</span
+      <span v-if="displayText || isTyping" class="quote-text">「{{ displayText }}」</span>
+      <span v-else class="quote-loading">{{ i18n.t("common.loading") }}</span>
+      <span
+        class="quote-author"
+        :class="{ 'quote-author-hidden': !displayText || isTyping || !currentQuote.author }"
+        >—— {{ currentQuote.author || " " }}</span
       >
-      <span v-if="isTyping" class="quote-text">「{{ displayText }}」</span>
-      <span v-if="!displayText && !isTyping" class="quote-loading">{{
-        i18n.t("common.loading")
-      }}</span>
     </div>
   </SLCard>
 </template>
@@ -39,7 +37,11 @@ const emit = defineEmits<{
 .quick-start-card {
   display: flex;
   flex-direction: column;
-  height: 280px;
+}
+
+.quick-start-card :deep(.sl-card-body) {
+  display: flex;
+  flex-direction: column;
 }
 
 .quick-actions {
@@ -47,10 +49,6 @@ const emit = defineEmits<{
   gap: var(--sl-space-sm);
   margin-top: var(--sl-space-sm);
   flex-wrap: wrap;
-}
-
-.card-spacer {
-  flex-grow: 1;
 }
 
 .quote-display {
@@ -94,6 +92,10 @@ const emit = defineEmits<{
   color: var(--sl-text-tertiary);
   transition: all 0.3s ease;
   opacity: 1;
+}
+
+.quote-author-hidden {
+  visibility: hidden;
 }
 
 .quote-author.fading {

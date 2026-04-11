@@ -5,7 +5,7 @@ import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import SLServerSelector from "@components/common/SLServerSelector.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import {
   Home,
   Plus,
@@ -22,10 +22,12 @@ import {
   LayoutDashboard,
   BarChart2,
   Sparkles,
-  DownloadCloudIcon,
+  Link2,
+  DownloadIcon,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
+import { isMacOSPlatform } from "@utils/platform";
 
 const iconMap: Record<string, LucideIcon> = {
   home: Home,
@@ -42,7 +44,8 @@ const iconMap: Record<string, LucideIcon> = {
   "layout-dashboard": LayoutDashboard,
   chart: BarChart2,
   sparkles: Sparkles,
-  download: DownloadCloudIcon,
+  link2: Link2,
+  download: DownloadIcon,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -55,6 +58,10 @@ const ui = useUiStore();
 const serverStore = useServerStore();
 const pluginStore = usePluginStore();
 const navIndicator = ref<HTMLElement | null>(null);
+const sidebarTransitioning = ref(false);
+const isMacOS = isMacOSPlatform();
+let indicatorSyncInterval: ReturnType<typeof setInterval> | null = null;
+let indicatorSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 interface NavItem {
   name: string;
@@ -86,6 +93,22 @@ const staticNavItems: NavItem[] = [
     icon: "plus",
     labelKey: "common.create_server",
     label: i18n.t("common.create_server"),
+    group: "main",
+  },
+  {
+    name: "download",
+    path: "/download",
+    icon: "download",
+    labelKey: "common.download",
+    label: i18n.t("common.download"),
+    group: "main",
+  },
+  {
+    name: "tunnel",
+    path: "/tunnel",
+    icon: "link2",
+    labelKey: "common.tunnel",
+    label: i18n.t("common.tunnel"),
     group: "main",
   },
   {
@@ -136,14 +159,6 @@ const staticNavItems: NavItem[] = [
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
     group: "system",
-  },
-  {
-    name: "download-file",
-    path: "/download-file",
-    icon: "download",
-    labelKey: "common.download-file",
-    label: i18n.t("common.download-file"),
-    group: "tools",
   },
 ];
 
@@ -266,13 +281,37 @@ function updateNavIndicator() {
   });
 }
 
+function startIndicatorSyncDuringSidebarTransition() {
+  if (indicatorSyncInterval) {
+    clearInterval(indicatorSyncInterval);
+    indicatorSyncInterval = null;
+  }
+  if (indicatorSyncTimeout) {
+    clearTimeout(indicatorSyncTimeout);
+    indicatorSyncTimeout = null;
+  }
+
+  sidebarTransitioning.value = true;
+  indicatorSyncInterval = setInterval(() => {
+    updateNavIndicator();
+  }, 16);
+
+  indicatorSyncTimeout = setTimeout(() => {
+    if (indicatorSyncInterval) {
+      clearInterval(indicatorSyncInterval);
+      indicatorSyncInterval = null;
+    }
+    sidebarTransitioning.value = false;
+    updateNavIndicator();
+  }, 360);
+}
+
 // 监听侧边栏折叠状态变化，更新指示器位置
 watch(
   () => ui.sidebarCollapsed,
   () => {
-    setTimeout(() => {
-      updateNavIndicator();
-    }, 350);
+    updateNavIndicator();
+    startIndicatorSyncDuringSidebarTransition();
   },
 );
 
@@ -338,6 +377,15 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (indicatorSyncInterval) {
+    clearInterval(indicatorSyncInterval);
+    indicatorSyncInterval = null;
+  }
+  if (indicatorSyncTimeout) {
+    clearTimeout(indicatorSyncTimeout);
+    indicatorSyncTimeout = null;
+  }
+
   window.removeEventListener("resize", updateNavIndicator);
 
   // 移除侧边栏滚动监听
@@ -377,26 +425,46 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
   return groups;
 });
 
+// 彩蛋
+function getAppName() {
+  const now = new Date();
+  if (now.getMonth() == 3 && now.getDate() == 1) {
+    return i18n.t("common.easter_name");
+  }
+  return i18n.t("common.app_name");
+}
+
 // 图标已按需导入，模板中直接使用组件标签替代映射表
 </script>
 
 <template>
-  <aside class="sidebar glass-strong" :class="{ collapsed: ui.sidebarCollapsed }">
+  <aside
+    class="sidebar glass-strong"
+    :class="{
+      collapsed: ui.sidebarCollapsed,
+      'macos-overlay': isMacOS,
+      'sidebar-transitioning': sidebarTransitioning,
+    }"
+  >
     <div class="sidebar-logo" @click="navigateTo('/')">
       <div class="logo-icon">
         <img :src="logoSvg" width="28" height="28" :alt="i18n.t('common.app_name')" />
       </div>
       <transition name="fade">
-        <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ i18n.t("common.app_name") }}</span>
+        <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ getAppName() }}</span>
       </transition>
     </div>
     <nav class="sidebar-nav">
       <div class="nav-active-indicator" ref="navIndicator"></div>
-      <SLServerSelector
+      <SLSelect
         v-if="serverOptions.length > 0"
         v-model="currentServerRef"
         :options="serverOptions"
         :collapsed="ui.sidebarCollapsed"
+        :icon="Server"
+        :placeholder="i18n.t('common.select_server')"
+        variant="server"
+        dropdown-align="right"
         class="server-selector"
       />
 
@@ -482,7 +550,7 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
       </template>
 
       <!-- 关于按钮 -->
-      <div class="nav-group">
+      <div class="nav-group lower-side">
         <div
           class="nav-item"
           :class="{ active: isActive('/about') }"

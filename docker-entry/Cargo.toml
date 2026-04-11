@@ -1,0 +1,8 @@
+[package]
+name = "docker-entry"
+version = "1.1.0"
+description = "Docker 容器入口程序"
+edition = "2021"
+
+[dependencies]
+sea_lantern_lib = { package = "sea-lantern", path = "../src-tauri", features = ["docker"] }

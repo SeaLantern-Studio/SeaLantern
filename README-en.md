@@ -22,10 +22,9 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
 
 </div>
 
-![img](https://gitee.com/fps_z/markdown/raw/master/img/about2.png)
-
 ## What can it do?
 
+- Download and install server core
 - Logs and load at the control panel in real time; send commands to the server directly
 - Edit server.properties graphically, without browsing directories
 - Manage whitelists, bans and OPs in switches
@@ -221,7 +220,13 @@ If you want to add additional languages besides the commonly used ones, please c
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=Date)](https://star-history.com/#SeaLantern-Studio/SeaLantern&Date)
+<a href="https://www.star-history.com/#SeaLantern-Studio/SeaLantern&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## Contributors
 

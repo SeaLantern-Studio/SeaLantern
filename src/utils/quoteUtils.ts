@@ -86,24 +86,28 @@ function isQuoteInCache(quote: Quote): boolean {
  * 获取一句名言/引用
  * @returns 名言/引用对象
  */
+async function requestHitokoto(): Promise<Quote> {
+  const response = await fetch("https://v1.hitokoto.cn/?encode=json");
+  if (!response.ok) {
+    throw new Error("Failed to fetch hitokoto");
+  }
+  const data: HitokotoResponse = await response.json();
+  return {
+    text: data.hitokoto,
+    author: data.from_who || data.from || i18n.t("common.unknown"),
+  };
+}
+
 async function fetchHitokoto(): Promise<Quote> {
   if (quoteCache.value.length > 0) {
     const quote = quoteCache.value.shift();
-    replenishCache();
+    void replenishCache();
     return quote!;
   }
 
   try {
-    const response = await fetch("https://v1.hitokoto.cn/?encode=json");
-    if (!response.ok) {
-      throw new Error("Failed to fetch hitokoto");
-    }
-    const data: HitokotoResponse = await response.json();
-    const quote = {
-      text: data.hitokoto,
-      author: data.from_who || data.from || i18n.t("common.unknown"),
-    };
-    replenishCache();
+    const quote = await requestHitokoto();
+    void replenishCache();
     return quote;
   } catch (error) {
     console.error("Error fetching hitokoto:", error);
@@ -116,30 +120,27 @@ async function fetchHitokoto(): Promise<Quote> {
  * 补充引用缓存
  */
 async function replenishCache() {
-  let attempts = 0;
-  const maxAttempts = 10;
+  const needed = Math.max(0, 2 - quoteCache.value.length);
+  if (needed === 0) {
+    return;
+  }
 
-  while (quoteCache.value.length < 2 && attempts < maxAttempts) {
-    try {
-      const response = await fetch("https://v1.hitokoto.cn/?encode=json");
-      if (!response.ok) {
-        throw new Error("Failed to fetch hitokoto");
+  try {
+    const results = await Promise.allSettled(
+      Array.from({ length: needed }, () => requestHitokoto()),
+    );
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        if (!isQuoteInCache(result.value)) {
+          quoteCache.value.push(result.value);
+        }
+        continue;
       }
-      const data: HitokotoResponse = await response.json();
-      const newQuote = {
-        text: data.hitokoto,
-        author: data.from_who || data.from || i18n.t("common.unknown"),
-      };
 
-      if (!isQuoteInCache(newQuote)) {
-        quoteCache.value.push(newQuote);
-      } else {
-        attempts++;
-      }
-    } catch (error) {
-      console.error("Error replenishing quote cache:", error);
-      break;
+      console.error("Error replenishing quote cache:", result.reason);
     }
+  } catch (error) {
+    console.error("Error replenishing quote cache:", error);
   }
 }
 

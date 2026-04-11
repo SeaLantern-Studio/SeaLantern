@@ -37,6 +37,7 @@ let resizeObserver: ResizeObserver | null = null;
 let scrollDisposable: { dispose: () => void } | null = null;
 let hasAnyLine = false;
 let terminalTextarea: HTMLTextAreaElement | null = null;
+let emptyStateRenderId = 0;
 
 async function handleCopyShortcut(event: KeyboardEvent) {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
@@ -125,14 +126,18 @@ function fitTerminal() {
   fitAddon?.fit();
 }
 
-function renderEmptyState() {
+function renderEmptyState(renderId = emptyStateRenderId) {
   if (!terminal) return;
-  terminal.write(`\x1b[2m${i18n.t("console.waiting_for_output")}\x1b[0m`);
+  terminal.write("", () => {
+    if (!terminal || hasAnyLine || renderId !== emptyStateRenderId) return;
+    terminal.write(`\x1b[2m${i18n.t("console.waiting_for_output")}\x1b[0m`);
+  });
 }
 
 function appendLines(lines: string[]) {
   if (!terminal) return;
   if (lines.length === 0) return;
+  emptyStateRenderId += 1;
 
   let isFirstLineInBuffer = !hasAnyLine;
   if (!hasAnyLine) {
@@ -158,10 +163,12 @@ function appendLines(lines: string[]) {
 
 function clear() {
   if (!terminal) return;
+  emptyStateRenderId += 1;
+  const renderId = emptyStateRenderId;
   terminal.clear();
   terminal.reset();
   hasAnyLine = false;
-  renderEmptyState();
+  renderEmptyState(renderId);
   emit("scroll", false);
 }
 
@@ -171,7 +178,7 @@ function getAllPlainText(): string {
     excludeAltBuffer: true,
     excludeModes: true,
   });
-  return stripAnsi(serialized).replaceAll("\r", "");
+  return stripAnsi(serialized).replace(/\r/g, "");
 }
 
 function stripAnsi(text: string): string {
@@ -217,7 +224,7 @@ onMounted(() => {
 
   terminal = new Terminal({
     convertEol: true,
-    allowTransparency: false,
+    allowTransparency: true,
     disableStdin: true,
     cursorBlink: false,
     cursorInactiveStyle: "none",
@@ -226,12 +233,19 @@ onMounted(() => {
     letterSpacing: props.consoleLetterSpacing,
     lineHeight: 1,
     scrollback: Math.max(100, props.maxLogLines),
+    overviewRuler: {
+      width: 4,
+    },
     theme: {
-      background: cssVar("--sl-bg-secondary", "#111827"),
+      background: "rgba(0, 0, 0, 0)",
       foreground: cssVar("--sl-text-primary", "#e5e7eb"),
       cursor: "transparent",
       cursorAccent: "transparent",
       selectionBackground: cssVar("--sl-primary-bg", "#1e3a8a"),
+      scrollbarSliderBackground: "rgba(94, 122, 145, 0.18)",
+      scrollbarSliderHoverBackground: "rgba(94, 122, 145, 0.34)",
+      scrollbarSliderActiveBackground: "rgba(94, 122, 145, 0.48)",
+      overviewRulerBorder: "rgba(0, 0, 0, 0)",
     },
   });
 
@@ -242,7 +256,7 @@ onMounted(() => {
   terminal.loadAddon(clipboardAddon);
   terminal.loadAddon(serializeAddon);
   terminal.open(terminalHost.value);
-  terminalTextarea = terminal.textarea;
+  terminalTextarea = terminal.textarea ?? null;
   if (terminalTextarea) {
     terminalTextarea.tabIndex = -1;
     terminalTextarea.readOnly = true;
@@ -357,7 +371,23 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
 
 .terminal-host :deep(.xterm-viewport) {
   overflow-y: auto !important;
-  background: var(--sl-bg-secondary);
+  background: transparent !important;
+}
+
+.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar) {
+  background: transparent !important;
+}
+
+.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar.vertical) {
+  width: 4px !important;
+}
+
+.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar > .slider) {
+  border-radius: 999px;
+  border: none;
+  transition:
+    background-color 0.16s ease,
+    opacity 0.16s ease;
 }
 
 .scroll-btn {

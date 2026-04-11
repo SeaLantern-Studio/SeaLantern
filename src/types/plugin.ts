@@ -169,6 +169,9 @@ export type PluginUiAction =
   | "set_style"
   | "set_attribute"
   | "query"
+  | "element_exists"
+  | "element_is_visible"
+  | "element_is_enabled"
   | "element_get_text"
   | "element_get_value"
   | "element_get_attribute"
@@ -180,16 +183,25 @@ export type PluginUiAction =
   | "element_focus"
   | "element_blur"
   | "element_on_change"
+  | "element_off_change"
+  | "element_form_fill"
   | "inject_css"
   | "remove_css"
   | "toast";
 
 export interface PluginPermissionLog {
   plugin_id: string;
-  log_type: "command" | "api_call";
+  log_type: string;
   action: string;
   detail: string;
   timestamp: number;
+}
+
+export interface PluginPermissionLogGroup {
+  name: string;
+  count: number;
+  lastTimestamp: number;
+  details: string[];
 }
 
 export interface PluginLogEvent {

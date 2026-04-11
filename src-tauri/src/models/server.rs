@@ -53,6 +53,8 @@ pub struct ServerStatusInfo {
     pub status: ServerStatus,
     pub pid: Option<u32>,
     pub uptime: Option<u64>,
+    #[serde(default)]
+    pub error_message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,4 +152,12 @@ pub struct StartupCandidateItem {
     pub detail: String,
     pub path: String,
     pub recommended: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidateServerPathResult {
+    pub valid: bool,
+    pub message: String,
+    pub jar_path: Option<String>,
+    pub startup_mode: Option<String>,
 }

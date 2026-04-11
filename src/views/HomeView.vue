@@ -6,6 +6,7 @@ import QuickStartCard from "@components/views/home/QuickStartCard.vue";
 import SystemStatsCard from "@components/views/home/SystemStatsCard.vue";
 import ServerListSection from "@components/views/home/ServerListSection.vue";
 import AlertsSection from "@components/views/home/AlertsSection.vue";
+import ChangePathModal from "@components/views/home/ChangePathModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import { useServerStore } from "@stores/serverStore";
 import { initQuote, startQuoteTimer, cleanupQuoteResources } from "@utils/quoteUtils";
@@ -75,6 +76,8 @@ function handleCreate() {
     <ServerListSection :servers="store.servers" :loading="store.loading" />
 
     <AlertsSection />
+
+    <ChangePathModal />
 
     <SLConfirmDialog
       :visible="showDeleteConfirm"
