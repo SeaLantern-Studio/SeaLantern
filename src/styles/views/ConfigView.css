@@ -6,7 +6,7 @@
 }
 
 .config-editor-mode-bar {
-  padding: var(--sl-space-xs);
+  flex-shrink: 0;
 }
 
 .config-header {

@@ -661,14 +661,14 @@ onActivated(async () => {
           ]"
           :level="1"
         />
-        <div v-if="activeTab === 'properties'" class="config-editor-mode-bar glass-card">
-          <SLTabBar
-            :modelValue="editorMode"
-            :tabs="editorModeTabs"
-            :level="2"
-            @update:modelValue="handleEditorModeChange"
-          />
-        </div>
+        <SLTabBar
+          v-if="activeTab === 'properties'"
+          class="config-editor-mode-bar"
+          :modelValue="editorMode"
+          :tabs="editorModeTabs"
+          :level="2"
+          @update:modelValue="handleEditorModeChange"
+        />
       </div>
       <div v-if="activeTab === 'properties'" class="server-path-display text-mono text-caption">
         {{ serverPath }}/server.properties
@@ -689,7 +689,7 @@ onActivated(async () => {
       </div>
 
       <template v-if="activeTab === 'properties'">
-        <template v-if="editorMode === 'visual'">
+        <div v-show="editorMode === 'visual'">
           <ConfigCategories
             :categories="categories"
             :activeCategory="activeCategory"
@@ -759,9 +759,9 @@ onActivated(async () => {
               <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
             </div>
           </div>
-        </template>
+        </div>
 
-        <template v-else>
+        <div v-show="editorMode === 'source'">
           <div class="source-editor-wrap glass-card">
             <SLTextarea
               :modelValue="sourceDraftText"
@@ -774,7 +774,7 @@ onActivated(async () => {
               {{ sourceParseError }}
             </p>
           </div>
-        </template>
+        </div>
 
         <div class="config-floating-actions glass-strong">
           <div class="floating-status text-caption">{{ saveStatusText }}</div>
