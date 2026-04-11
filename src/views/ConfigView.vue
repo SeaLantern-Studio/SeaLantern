@@ -6,7 +6,6 @@ import SLSwitch from "@components/common/SLSwitch.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
-import SLTextarea from "@components/common/SLTextarea.vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import { SLTabBar } from "@components/common";
@@ -27,6 +26,7 @@ import {
 } from "lucide-vue-next";
 
 import ConfigCategories from "@components/config/ConfigCategories.vue";
+import ConfigSourceEditor from "@components/config/ConfigSourceEditor.vue";
 import { systemApi } from "@api/system";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
@@ -762,12 +762,9 @@ onActivated(async () => {
         </div>
 
         <div v-show="editorMode === 'source'">
-          <div class="source-editor-wrap glass-card">
-            <SLTextarea
+          <div class="source-editor-wrap">
+            <ConfigSourceEditor
               :modelValue="sourceDraftText"
-              :rows="22"
-              resize="vertical"
-              class="source-editor"
               @update:modelValue="updateSourceDraft"
             />
             <p v-if="sourceParseError" class="source-parse-error">

@@ -132,14 +132,9 @@
 }
 
 .source-editor-wrap {
-  padding: var(--sl-space-md);
-}
-
-.source-editor .sl-textarea {
-  min-height: 480px;
-  font-family: var(--sl-font-mono);
-  font-size: var(--sl-font-size-sm);
-  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
 }
 
 .source-parse-error {
