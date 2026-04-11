@@ -2,7 +2,8 @@ use crate::models::plugin::{
     BatchInstallError, BatchInstallResult, PluginInfo, PluginInstallResult, PluginUpdateInfo,
 };
 use crate::plugins::api::{
-    BufferedComponentEvent, BufferedContextMenuEvent, BufferedSidebarEvent, BufferedUiEvent,
+    BufferedComponentEvent, BufferedContextMenuEvent, BufferedPermissionLog, BufferedSidebarEvent,
+    BufferedUiEvent,
 };
 use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex};
@@ -859,6 +860,12 @@ pub fn get_plugin_sidebar_snapshot() -> Vec<BufferedSidebarEvent> {
 #[tauri::command]
 pub fn get_plugin_context_menu_snapshot() -> Vec<BufferedContextMenuEvent> {
     crate::plugins::api::take_context_menu_snapshot()
+}
+
+#[tauri::command]
+pub fn get_plugin_permission_logs(plugin_id: String) -> Result<Vec<BufferedPermissionLog>, String> {
+    validate_plugin_id(&plugin_id)?;
+    Ok(crate::plugins::api::get_plugin_permission_logs(&plugin_id))
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

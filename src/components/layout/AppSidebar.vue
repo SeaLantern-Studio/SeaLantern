@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   BarChart2,
   Sparkles,
+  Link2,
   DownloadIcon,
   type LucideIcon,
 } from "lucide-vue-next";
@@ -43,6 +44,7 @@ const iconMap: Record<string, LucideIcon> = {
   "layout-dashboard": LayoutDashboard,
   chart: BarChart2,
   sparkles: Sparkles,
+  link2: Link2,
   download: DownloadIcon,
 };
 
@@ -99,6 +101,14 @@ const staticNavItems: NavItem[] = [
     icon: "download",
     labelKey: "common.download",
     label: i18n.t("common.download"),
+    group: "main",
+  },
+  {
+    name: "tunnel",
+    path: "/tunnel",
+    icon: "link2",
+    labelKey: "common.tunnel",
+    label: i18n.t("common.tunnel"),
     group: "main",
   },
   {

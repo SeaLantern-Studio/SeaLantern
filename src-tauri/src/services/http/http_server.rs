@@ -2,7 +2,7 @@ use super::http_command_handlers::CommandRegistry;
 use axum::{
     extract::{DefaultBodyLimit, Multipart, Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{sse::Event, IntoResponse, Sse},
     routing::{get, post},
     Json, Router,
 };
@@ -11,8 +11,28 @@ use serde_json::Value;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::fs;
+use tokio_stream::StreamExt as _;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
+
+/// 日志事件数据
+#[derive(Clone, Serialize)]
+pub struct LogEvent {
+    pub server_id: String,
+    pub line: String,
+}
+
+/// 全局日志广播器
+static LOG_BROADCAST: once_cell::sync::Lazy<tokio::sync::broadcast::Sender<LogEvent>> =
+    once_cell::sync::Lazy::new(|| {
+        let (tx, _rx) = tokio::sync::broadcast::channel(1024);
+        tx
+    });
+
+/// 获取日志广播发送器
+pub fn get_log_sender() -> tokio::sync::broadcast::Sender<LogEvent> {
+    LOG_BROADCAST.clone()
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -68,6 +88,8 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
         .route("/health", get(|| async { "OK" }))
         .route("/api/list", get(list_api_endpoints))
         .route("/upload", post(handle_file_upload))
+        // SSE 实时日志推送端点
+        .route("/api/logs/stream", get(handle_log_stream))
         // 上传路由添加请求体大小限制（500MB）
         .layer(DefaultBodyLimit::max(500 * 1024 * 1024))
         .layer(cors)
@@ -231,4 +253,27 @@ async fn handle_api_command(
             (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::error(e))).into_response()
         }
     }
+}
+
+/// SSE 实时日志流处理
+async fn handle_log_stream() -> impl IntoResponse {
+    let receiver = LOG_BROADCAST.subscribe();
+    let stream = tokio_stream::wrappers::BroadcastStream::new(receiver).filter_map(|result| {
+        match result {
+            Ok(event) => {
+                // 将 LogEvent 序列化为 JSON
+                let json = serde_json::to_string(&event).ok()?;
+                Some(Ok::<_, String>(Event::default().data(json)))
+            }
+            Err(e) => {
+                eprintln!("[SSE] Broadcast error: {}", e);
+                None
+            }
+        }
+    });
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(std::time::Duration::from_secs(15))
+            .text("ping"),
+    )
 }

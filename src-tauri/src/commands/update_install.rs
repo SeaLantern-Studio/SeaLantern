@@ -206,7 +206,7 @@ mod windows {
             }
         }
 
-        if bytes.len() % 2 == 0 && bytes.len() >= 4 {
+        if bytes.len().is_multiple_of(2) && bytes.len() >= 4 {
             let even_zeros = bytes.iter().step_by(2).filter(|b| **b == 0).count();
             let odd_zeros = bytes.iter().skip(1).step_by(2).filter(|b| **b == 0).count();
             let even_count = bytes.len() / 2;

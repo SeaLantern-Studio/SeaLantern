@@ -4,6 +4,7 @@ use crate::commands::player as player_commands;
 use crate::commands::server as server_commands;
 use crate::commands::settings as settings_commands;
 use crate::commands::system as system_commands;
+use crate::commands::tunnel as tunnel_commands;
 use crate::commands::update as update_commands;
 use crate::models::settings::AppSettings;
 use serde::Deserialize;
@@ -117,6 +118,22 @@ impl CommandRegistry {
         );
         handlers.insert("apply_acrylic".to_string(), handle_apply_acrylic as CommandHandler);
         handlers.insert("get_system_fonts".to_string(), handle_get_system_fonts as CommandHandler);
+
+        // 注册 Tunnel 命令
+        handlers.insert("tunnel_host".to_string(), handle_tunnel_host as CommandHandler);
+        handlers.insert("tunnel_join".to_string(), handle_tunnel_join as CommandHandler);
+        handlers.insert("tunnel_stop".to_string(), handle_tunnel_stop as CommandHandler);
+        handlers.insert("tunnel_status".to_string(), handle_tunnel_status as CommandHandler);
+        handlers
+            .insert("tunnel_copy_ticket".to_string(), handle_tunnel_copy_ticket as CommandHandler);
+        handlers.insert(
+            "tunnel_regenerate_ticket".to_string(),
+            handle_tunnel_regenerate_ticket as CommandHandler,
+        );
+        handlers.insert(
+            "tunnel_generate_ticket".to_string(),
+            handle_tunnel_generate_ticket as CommandHandler,
+        );
 
         // 注册 Update 命令
         handlers.insert("check_update".to_string(), handle_check_update as CommandHandler);
@@ -687,6 +704,71 @@ fn handle_get_system_fonts(
 
 // ============ Update 命令处理器 ============
 
+fn handle_tunnel_host(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: TunnelHostRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result =
+            tunnel_commands::tunnel_host(req.port, req.password, req.max_players, req.relay_url)
+                .await?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_tunnel_join(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: TunnelJoinRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = tunnel_commands::tunnel_join(req.ticket, req.local_port, req.password).await?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_tunnel_stop(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = tunnel_commands::tunnel_stop().await?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_tunnel_status(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = tunnel_commands::tunnel_status().await?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_tunnel_copy_ticket(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let copied = tunnel_commands::tunnel_copy_ticket().await?;
+        serde_json::to_value(copied).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_tunnel_regenerate_ticket(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = tunnel_commands::tunnel_regenerate_ticket().await?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_tunnel_generate_ticket(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = tunnel_commands::tunnel_generate_ticket().await?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
 fn handle_check_update(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
@@ -830,6 +912,23 @@ struct AddExistingServerRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct TunnelHostRequest {
+    port: u16,
+    password: Option<String>,
+    max_players: Option<u32>,
+    relay_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TunnelJoinRequest {
+    ticket: String,
+    local_port: u16,
+    password: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ReadConfigRequest {
     server_path: String,
     path: String,
@@ -896,4 +995,23 @@ struct KickPlayerRequest {
 struct ExportLogsRequest {
     logs: Vec<String>,
     save_path: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn command_registry_includes_tunnel_commands() {
+        let registry = CommandRegistry::new();
+        let commands = registry.list_commands();
+
+        assert!(commands.contains(&"tunnel_host".to_string()));
+        assert!(commands.contains(&"tunnel_join".to_string()));
+        assert!(commands.contains(&"tunnel_stop".to_string()));
+        assert!(commands.contains(&"tunnel_status".to_string()));
+        assert!(commands.contains(&"tunnel_copy_ticket".to_string()));
+        assert!(commands.contains(&"tunnel_regenerate_ticket".to_string()));
+        assert!(commands.contains(&"tunnel_generate_ticket".to_string()));
+    }
 }

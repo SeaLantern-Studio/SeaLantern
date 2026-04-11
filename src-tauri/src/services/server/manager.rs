@@ -1349,6 +1349,72 @@ impl ServerManager {
         }
     }
 
+    pub fn update_server_path(
+        &self,
+        id: &str,
+        new_path: &str,
+        new_jar_path: Option<&str>,
+        new_startup_mode: Option<&str>,
+    ) -> Result<ServerInstance, String> {
+        // 检查服务器是否正在运行
+        {
+            let procs = self.lock_processes()?;
+            if procs.contains_key(id) {
+                return Err("服务器正在运行中，请先停止服务器再修改路径".to_string());
+            }
+        }
+
+        let mut servers = self.lock_servers()?;
+        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
+            // 更新路径
+            server.path = new_path.to_string();
+
+            // 如果提供了新的 jar_path，则更新
+            if let Some(jar_path) = new_jar_path {
+                server.jar_path = jar_path.to_string();
+            }
+
+            // 如果提供了新的 startup_mode，则更新
+            if let Some(startup_mode) = new_startup_mode {
+                server.startup_mode = normalize_startup_mode(startup_mode).to_string();
+            }
+
+            // 尝试从新的路径检测核心类型
+            if server.startup_mode != "custom" {
+                let detected_core = installer::detect_core_type(&server.jar_path);
+                if !detected_core.is_empty() && detected_core != "Unknown" {
+                    server.core_type = detected_core;
+                }
+            }
+
+            // 尝试从 server.properties 读取端口
+            let server_properties_path = std::path::Path::new(new_path).join("server.properties");
+            if server_properties_path.exists() {
+                if let Ok(props) = crate::services::config_parser::read_properties(
+                    server_properties_path.to_str().unwrap_or_default(),
+                ) {
+                    if let Some(port_str) = props.get("server-port") {
+                        if let Ok(parsed_port) = port_str.parse::<u16>() {
+                            server.port = parsed_port;
+                        }
+                    }
+                }
+            }
+
+            let updated_server = server.clone();
+            drop(servers);
+            self.save()?;
+
+            // 更新运行路径映射
+            let data_dir = self.data_dir_value()?;
+            update_run_path_mapping(&data_dir, id, new_path);
+
+            Ok(updated_server)
+        } else {
+            Err("未找到服务器".to_string())
+        }
+    }
+
     pub fn stop_all_servers(&self) {
         let ids: Vec<String> = self
             .lock_processes()
@@ -1692,6 +1758,27 @@ fn upsert_run_path_mapping(dir: &str, mapping: RunPathServerMapping) -> Result<(
         .retain(|item| item.server_id != mapping.server_id && item.run_path != mapping.run_path);
     mappings.push(mapping);
     save_run_path_mappings(dir, &mappings)
+}
+
+fn update_run_path_mapping(dir: &str, server_id: &str, new_path: &str) {
+    let mut mappings = load_run_path_mappings(dir);
+    let mut found = false;
+
+    for mapping in mappings.iter_mut() {
+        if mapping.server_id == server_id {
+            mapping.run_path = new_path.to_string();
+            mapping.updated_at = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            found = true;
+            break;
+        }
+    }
+
+    if found {
+        let _ = save_run_path_mappings(dir, &mappings);
+    }
 }
 
 fn remove_run_path_mapping(dir: &str, server_id: &str) {

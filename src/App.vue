@@ -5,12 +5,14 @@ import SplashScreen from "@components/splash/SplashScreen.vue";
 import UpdateModal from "@components/common/UpdateModal.vue";
 import TermsDialog from "@components/common/TermsDialog.vue";
 import SLContextMenu from "@components/common/SLContextMenu.vue";
+import ToastContainer from "@components/common/ToastContainer.vue";
 import { PluginComponentRenderer } from "@components/plugin";
 import { useUpdateStore } from "@stores/updateStore";
 import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
+import { isBrowserEnv } from "@api/tauri";
 import {
   applyTheme,
   applyFontSize,
@@ -56,6 +58,11 @@ const contextMenuStore = useContextMenuStore();
 const serverStore = useServerStore();
 
 async function handleGlobalContextMenu(event: MouseEvent) {
+  // 在浏览器环境（Docker 模式）下，不阻止右键菜单，允许开发者工具
+  if (isBrowserEnv()) {
+    return;
+  }
+
   // 当开发者模式启用时，允许默认的右键菜单行为以打开开发者工具
   if (settingsStore.settings.developer_mode) {
     return;
@@ -110,10 +117,12 @@ async function handleGlobalContextMenu(event: MouseEvent) {
 let serverErrorUnlisten: UnlistenFn | null = null;
 
 onMounted(async () => {
-  // 监听服务器错误事件并播放提示音
-  serverErrorUnlisten = await listen("server-error", () => {
-    playNotificationSound();
-  });
+  // 监听服务器错误事件并播放提示音（仅 Tauri 环境）
+  if (!isBrowserEnv()) {
+    serverErrorUnlisten = await listen("server-error", () => {
+      playNotificationSound();
+    });
+  }
 
   contextMenuStore.initContextMenuListener();
   document.addEventListener("contextmenu", handleGlobalContextMenu);
@@ -234,6 +243,7 @@ function handleSettingsUpdate(e: CustomEvent<SettingsUpdateEvent>) {
     />
 
     <PluginComponentRenderer />
+    <ToastContainer />
   </template>
   <SLContextMenu />
 </template>

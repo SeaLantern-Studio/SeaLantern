@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const cargoDir = path.join(rootDir, "src-tauri");
 
-const files = {
+const noticeFiles = {
   frontendLicenseJson: path.join(rootDir, "frontend-licenses.json"),
   backendLicenseJson: path.join(rootDir, "backend-licenses.json"),
   noticeFile: path.join(rootDir, "NOTICE"),
@@ -56,7 +56,7 @@ async function generateFrontedLicenseJson() {
     "npx license-checker-rseidelsohn --start . --json --production",
     { cwd: rootDir },
   );
-  await writeFile(files.frontendLicenseJson, stdout, "utf8");
+  await writeFile(noticeFiles.frontendLicenseJson, stdout, "utf8");
   return JSON.parse(stdout);
 }
 
@@ -66,7 +66,7 @@ async function generateBackendLicenseJson() {
     return [];
   }
   const { stdout } = await execAsync("cargo license --json --avoid-dev-deps", { cwd: cargoDir });
-  await writeFile(files.backendLicenseJson, stdout, "utf8");
+  await writeFile(noticeFiles.backendLicenseJson, stdout, "utf8");
   return JSON.parse(stdout);
 }
 
@@ -107,9 +107,9 @@ async function readBackendLicenseFile(crate) {
     "LICENSE",
   );
 
-  const files = await glob(possiblePath);
-  if (files.length > 0) {
-    return await readFile(files[0], "utf8");
+  const matchedFiles = await glob(possiblePath);
+  if (matchedFiles.length > 0) {
+    return await readFile(matchedFiles[0], "utf8");
   }
   return null;
 }
@@ -176,7 +176,7 @@ async function getFrontendLicenseText(info) {
 }
 
 async function generateNotice() {
-  const packageJson = JSON.parse(await readFile(files.packageJson, "utf8"));
+  const packageJson = JSON.parse(await readFile(noticeFiles.packageJson, "utf8"));
 
   const frontendLicenses = await generateFrontedLicenseJson();
   const backendLicenses = await generateBackendLicenseJson();
@@ -203,21 +203,40 @@ async function generateNotice() {
   noticeLines.push("Third-party frontend dependencies:");
   noticeLines.push("");
 
-  const sortedPackages = Object.entries(frontendLicenses).sort(([a], [b]) => a.localeCompare(b));
+  const sortedPackages = Object.entries(frontendLicenses).toSorted(([a], [b]) =>
+    a.localeCompare(b),
+  );
   let id = 1;
 
-  for (const [pkgKey, info] of sortedPackages) {
-    if (pkgKey.startsWith(packageJson.name)) continue;
+  const frontendSections = await Promise.all(
+    sortedPackages.map(async ([pkgKey, info]) => {
+      if (pkgKey.startsWith(packageJson.name)) {
+        return null;
+      }
 
-    const atIndex = pkgKey.lastIndexOf("@");
-    const name = pkgKey.slice(0, atIndex);
-    const version = pkgKey.slice(atIndex + 1);
+      const atIndex = pkgKey.lastIndexOf("@");
+      const name = pkgKey.slice(0, atIndex);
+      const version = pkgKey.slice(atIndex + 1);
+      const licenseText = await getFrontendLicenseText(info);
 
-    noticeLines.push(formatFrontendDependency(name, version, info, id));
+      return {
+        name,
+        version,
+        info,
+        licenseText,
+      };
+    }),
+  );
 
-    const licenseText = await getFrontendLicenseText(info);
-    if (licenseText) {
-      noticeLines.push(licenseText);
+  for (const section of frontendSections) {
+    if (!section) {
+      continue;
+    }
+
+    noticeLines.push(formatFrontendDependency(section.name, section.version, section.info, id));
+
+    if (section.licenseText) {
+      noticeLines.push(section.licenseText);
       noticeLines.push("");
     }
     id += 1;
@@ -231,32 +250,38 @@ async function generateNotice() {
 
   const sortedBackend = [...backendLicenses]
     .filter((crate) => crate.name !== "sea-lantern")
-    .sort((a, b) => `${a.name}@${a.version}`.localeCompare(`${b.name}@${b.version}`));
+    .toSorted((a, b) => `${a.name}@${a.version}`.localeCompare(`${b.name}@${b.version}`));
 
   id = 1;
-  for (const crate of sortedBackend) {
-    noticeLines.push(formatBackendDependency(crate, id));
+  const backendSections = await Promise.all(
+    sortedBackend.map(async (crate) => ({
+      crate,
+      licenseText: await readBackendLicenseFile(crate),
+    })),
+  );
 
-    const licenseText = await readBackendLicenseFile(crate);
-    if (licenseText) {
-      noticeLines.push(licenseText);
+  for (const section of backendSections) {
+    noticeLines.push(formatBackendDependency(section.crate, id));
+
+    if (section.licenseText) {
+      noticeLines.push(section.licenseText);
       noticeLines.push("");
     }
     id += 1;
   }
 
-  await writeFile(files.noticeFile, noticeLines.join("\n"), "utf8");
+  await writeFile(noticeFiles.noticeFile, noticeLines.join("\n"), "utf8");
 
-  if (await exists(files.frontendLicenseJson)) {
-    await unlink(files.frontendLicenseJson);
+  if (await exists(noticeFiles.frontendLicenseJson)) {
+    await unlink(noticeFiles.frontendLicenseJson);
   }
 
-  if (await exists(files.backendLicenseJson)) {
-    await unlink(files.backendLicenseJson);
+  if (await exists(noticeFiles.backendLicenseJson)) {
+    await unlink(noticeFiles.backendLicenseJson);
   }
 
   console.log("已生成NOTICE：");
-  console.log(files.noticeFile);
+  console.log(noticeFiles.noticeFile);
 }
 
 function printUsage() {

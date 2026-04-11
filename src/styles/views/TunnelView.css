@@ -1,0 +1,279 @@
+.tunnel-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
+
+.msg-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  border-radius: var(--sl-radius-md);
+  border: 1px solid var(--sl-border);
+}
+
+.error-banner {
+  color: var(--sl-danger);
+  background: color-mix(in srgb, var(--sl-danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--sl-danger) 30%, var(--sl-border));
+}
+
+.success-banner {
+  color: var(--sl-success);
+  background: color-mix(in srgb, var(--sl-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--sl-success) 30%, var(--sl-border));
+}
+
+.msg-banner button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.status-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-lg);
+  margin-bottom: var(--sl-space-sm);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+}
+
+.status-pill-label {
+  font-size: 0.82rem;
+  color: var(--sl-text-tertiary);
+  font-weight: 500;
+}
+
+.mode-text {
+  font-size: 0.86rem;
+  color: var(--sl-text-primary);
+  font-weight: 500;
+}
+
+.status-line--ticket {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.ticket-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  color: var(--sl-text-tertiary);
+  font-weight: 500;
+}
+
+.ticket-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+.ticket-text {
+  display: inline-block;
+  white-space: nowrap;
+  word-break: normal;
+  font-family: var(--sl-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.86rem;
+  color: var(--sl-text-primary);
+}
+
+.ticket-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  flex: 0 0 auto;
+}
+
+.ticket-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--sl-border);
+  border-radius: 6px;
+  background: var(--sl-surface);
+  color: var(--sl-text-secondary);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.ticket-icon-btn:hover {
+  color: var(--sl-primary);
+  border-color: var(--sl-primary);
+}
+
+.ticket-icon-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-actions {
+  display: flex;
+  gap: var(--sl-space-sm);
+  margin-top: var(--sl-space-sm);
+}
+
+.log-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+}
+
+.tunnel-view :deep(.sl-input-wrapper) {
+  gap: 6px;
+}
+
+.tunnel-view :deep(.sl-input-label) {
+  font-size: 0.82rem;
+  color: var(--sl-text-tertiary);
+  font-weight: 500;
+}
+
+.tunnel-form-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sl-space-md);
+  width: 100%;
+  align-items: stretch;
+}
+
+.tunnel-form-cards > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.form-grid {
+  display: grid;
+  gap: var(--sl-space-sm);
+}
+
+.form-grid :deep(.sl-input-wrapper),
+.form-grid :deep(.sl-input-container) {
+  width: 100%;
+  min-width: 0;
+}
+
+.tunnel-view :deep(.sl-input-suffix) {
+  gap: 6px;
+  padding-left: 6px;
+}
+
+.tunnel-view :deep(.tunnel-input-icon-btn) {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-actions {
+  margin-top: var(--sl-space-md);
+}
+
+.empty-text {
+  color: var(--sl-text-tertiary);
+}
+
+.tunnel-view :deep(.tunnel-logs-card .sl-card-header) {
+  margin-bottom: var(--sl-space-xs);
+}
+
+.tunnel-log-console {
+  position: relative;
+  min-height: 280px;
+  height: 320px;
+}
+
+.tunnel-log-console :deep(.console-output) {
+  height: 100%;
+  display: flex;
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  min-height: 0;
+  overflow: hidden;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+  padding: 4px 6px;
+}
+
+.tunnel-log-console :deep(.scroll-btn) {
+  bottom: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.conn-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.conn-table th,
+.conn-table td {
+  padding: var(--sl-space-xs) var(--sl-space-sm);
+  border-bottom: 1px solid var(--sl-border-light);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.conn-table th {
+  color: var(--sl-text-secondary);
+  font-weight: 600;
+}
+
+@media (max-width: 980px) {
+  .tunnel-form-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tunnel-info-content {
+  font-size: 0.875rem;
+  color: var(--sl-text-secondary);
+  line-height: 1.7;
+}
+
+.tunnel-info-content p {
+  margin: 0 0 var(--sl-space-sm) 0;
+}
+
+.tunnel-info-github {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-xs);
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--sl-text-primary);
+  font-size: inherit;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.tunnel-info-github:hover {
+  color: var(--sl-primary);
+}

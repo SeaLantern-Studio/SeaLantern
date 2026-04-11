@@ -33,6 +33,12 @@ const routes = [
     meta: { titleKey: "common.player_manage", icon: "users" },
   },
   {
+    path: "/tunnel",
+    name: "tunnel",
+    component: () => import("@views/TunnelView.vue"),
+    meta: { titleKey: "common.tunnel", icon: "link2" },
+  },
+  {
     path: "/plugins",
     name: "plugins",
     component: () => import("@views/PluginsView.vue"),

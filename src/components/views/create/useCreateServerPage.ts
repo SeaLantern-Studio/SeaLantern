@@ -31,9 +31,14 @@ function generateUUID(): string {
 
 type SourceType = "archive" | "folder" | "";
 
+function parseNumber(value: string, fallbackValue: number): number {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
+}
+
 export function useCreateServerPage() {
   const router = useRouter();
-  const store = useServerStore();
+  const serverstore = useServerStore();
   const { error: errorMsg, showError, clearError } = useMessage();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
@@ -278,7 +283,7 @@ export function useCreateServerPage() {
 
   function parseNumber(value: string, fallbackValue: number): number {
     const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
+    return Number.isNaN(parsed) ? fallbackValue : parsed;
   }
 
   async function loadDefaultSettings() {
@@ -334,8 +339,8 @@ export function useCreateServerPage() {
   }
 
   function loadFromDraft() {
-    let store = useCreateServerDraftStore();
-    let draft = store.consumeDraft();
+    const draftStore = useCreateServerDraftStore();
+    const draft = draftStore.consumeDraft();
     if (draft !== null) {
       sourcePath.value = draft.sourcePath;
       sourceType.value = draft.sourceType;
@@ -587,7 +592,7 @@ export function useCreateServerPage() {
         mcVersion: resolvedMcVersion || undefined,
       });
 
-      await store.refreshList();
+      await serverstore.refreshList();
       router.push("/");
     } catch (error) {
       showError(String(error));
