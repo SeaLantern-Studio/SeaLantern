@@ -13,7 +13,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::fs;
 use tokio_stream::StreamExt as _;
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 
 /// 日志事件数据
 #[derive(Clone, Serialize)]
@@ -95,11 +95,14 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
         .layer(cors)
         .with_state(state);
 
-    // 添加静态文件服务
+    // 添加静态文件服务（支持 SPA 路由回退）
     if let Some(dir) = static_dir {
-        let serve_dir = ServeDir::new(&dir).append_index_html_on_directories(true);
+        let index_path = format!("{}/index.html", dir);
+        let serve_dir = ServeDir::new(&dir)
+            .append_index_html_on_directories(true)
+            .fallback(ServeFile::new(&index_path));
         app = app.fallback_service(serve_dir);
-        println!("Serving static files from: {}", dir);
+        println!("Serving static files from: {} (SPA fallback enabled)", dir);
     }
 
     // 创建上传目录
