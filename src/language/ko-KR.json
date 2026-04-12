@@ -308,6 +308,7 @@
       "difference_badge": "{count}개 차이",
       "no_differences": "현재 필터에서 차이가 없습니다",
       "no_target_servers": "비교할 다른 서버가 없습니다",
+      "unsaved_target_changes": "비교 서버에 저장되지 않은 변경이 있습니다. 대상 변경 또는 비교 모드 종료 전에 먼저 저장하세요.",
       "all_servers": "모든 서버"
     },
     "server_plugins": "서버 플러그인",

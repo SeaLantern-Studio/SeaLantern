@@ -308,6 +308,7 @@
       "difference_badge": "{count}件の差分",
       "no_differences": "現在の条件では差分がありません",
       "no_target_servers": "比較可能な他のサーバーがありません",
+      "unsaved_target_changes": "比較先サーバーに未保存の変更があります。切り替えや比較モード終了の前に保存してください。",
       "all_servers": "すべてのサーバー"
     },
     "server_plugins": "サーバープラグイン",

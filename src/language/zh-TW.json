@@ -308,6 +308,7 @@
       "difference_badge": "{count}個不同",
       "no_differences": "目前篩選條件下沒有差異項",
       "no_target_servers": "沒有可用於對照的其他伺服器",
+      "unsaved_target_changes": "對照伺服器有未儲存修改，請先儲存後再切換或關閉對照模式。",
       "all_servers": "全部伺服器"
     },
     "server_plugins": "伺服器外掛",

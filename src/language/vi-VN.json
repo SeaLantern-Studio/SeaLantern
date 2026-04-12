@@ -308,6 +308,7 @@
       "difference_badge": "{count} khác biệt",
       "no_differences": "Không có khác biệt với bộ lọc hiện tại",
       "no_target_servers": "Không có máy chủ nào khác để đối chiếu",
+      "unsaved_target_changes": "Máy chủ đối chiếu có thay đổi chưa lưu. Hãy lưu trước khi đổi mục tiêu hoặc tắt chế độ đối chiếu.",
       "all_servers": "Tất cả máy chủ"
     },
     "server_plugins": "Trình bổ sung máy chủ",

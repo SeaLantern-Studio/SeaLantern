@@ -308,6 +308,7 @@
       "difference_badge": "{count} Unterschiede",
       "no_differences": "Keine Unterschiede unter den aktuellen Filtern",
       "no_target_servers": "Keine anderen Server für den Vergleich verfügbar",
+      "unsaved_target_changes": "Der Vergleichsserver hat ungespeicherte Änderungen. Bitte zuerst speichern, bevor Sie das Ziel wechseln oder den Vergleichsmodus beenden.",
       "all_servers": "Alle Server"
     },
     "server_plugins": "Server-Plugins",

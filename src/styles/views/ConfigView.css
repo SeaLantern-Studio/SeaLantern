@@ -156,6 +156,10 @@
   gap: 6px;
 }
 
+.compare-entry-control {
+  min-width: 0;
+}
+
 .compare-header .compare-column-head {
   justify-content: center;
   align-items: center;
@@ -414,6 +418,34 @@
   align-items: center;
   gap: var(--sl-space-sm);
   margin-bottom: var(--sl-space-sm);
+}
+
+.source-diff-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-xs);
+  margin-bottom: var(--sl-space-md);
+}
+
+.source-diff-block:last-of-type {
+  margin-bottom: 0;
+}
+
+.source-diff-file-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-sm);
+  color: var(--sl-text-secondary);
+}
+
+.source-diff-server {
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.source-diff-file-path {
+  color: var(--sl-text-tertiary);
 }
 
 .diff-count {

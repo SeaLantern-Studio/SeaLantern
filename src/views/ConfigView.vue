@@ -42,13 +42,21 @@ interface CompareEntry {
   key: string;
   description: string;
   category: string;
-  valueType: string;
-  defaultValue: string;
+  sourceEntry: ConfigEntryType | null;
+  targetEntry: ConfigEntryType | null;
   sourceValue: string;
   targetValue: string;
   different: boolean;
   onlyInSource: boolean;
   onlyInTarget: boolean;
+}
+
+interface PendingSaveItem {
+  serverId: string;
+  serverName: string;
+  filePath: string;
+  originalText: string;
+  modifiedText: string;
 }
 
 const entries = ref<ConfigEntryType[]>([]);
@@ -69,11 +77,12 @@ const modeSwitching = ref(false);
 const sourceParseError = ref<string | null>(null);
 const showDiscardConfirm = ref(false);
 const showSaveDiffModal = ref(false);
-const sourceDiffBaseText = ref("");
-const pendingSaveSourceText = ref("");
+const pendingSaveItems = ref<PendingSaveItem[]>([]);
 const compareMode = ref(false);
 const compareTargetServerId = ref("");
-const compareEntries = ref<CompareEntry[]>([]);
+const compareTargetEntries = ref<ConfigEntryType[]>([]);
+const compareTargetDraftValues = ref<Record<string, string>>({});
+const compareTargetLoadedValues = ref<Record<string, string>>({});
 const compareLoading = ref(false);
 const serverPath = computed(() => {
   const server = store.servers.find((s) => s.id === store.currentServerId);
@@ -120,8 +129,6 @@ const configTabs = computed(() => [
 ]);
 
 const currentServerId = computed(() => store.currentServerId);
-const sourceDiffOriginalText = computed(() => sourceDiffBaseText.value);
-const sourceDiffTargetText = computed(() => pendingSaveSourceText.value);
 
 const editorModeTabs = computed(() => [
   { key: "visual", label: i18n.t("config.visual_mode") },
@@ -129,13 +136,21 @@ const editorModeTabs = computed(() => [
 ]);
 
 const hasUnsavedChanges = computed(() => {
+  const targetDirty =
+    compareMode.value &&
+    !areMapValuesEqual(compareTargetDraftValues.value, compareTargetLoadedValues.value);
+
   if (editorMode.value === "source") {
-    return sourceDraftText.value !== loadedSourceText.value;
+    return sourceDraftText.value !== loadedSourceText.value || targetDirty;
   }
 
   const sourceDirty = sourceDraftText.value !== loadedSourceText.value;
   const visualDirty = !areMapValuesEqual(editValues.value, loadedValues.value);
-  return sourceDirty || visualDirty;
+  if (!compareMode.value) {
+    return sourceDirty || visualDirty;
+  }
+
+  return sourceDirty || visualDirty || targetDirty;
 });
 
 const saveStatusText = computed(() =>
@@ -148,21 +163,33 @@ const reloadCompareTooltipText = computed(
   () => `重新载入${compareTargetServer.value?.name || i18n.t("config.compare.target_server")}属性`,
 );
 
-const sourceDiffLines = computed(() =>
-  buildDiffLines(sourceDiffOriginalText.value, sourceDiffTargetText.value),
+const compareEntries = computed(() =>
+  buildCompareEntries(
+    entries.value,
+    editValues.value,
+    compareTargetEntries.value,
+    compareTargetDraftValues.value,
+  ),
 );
 
-const sourceDiffStats = computed(() => {
-  let additions = 0;
-  let deletions = 0;
+const pendingSaveItemsWithStats = computed(() =>
+  pendingSaveItems.value.map((item) => {
+    const diffLines = buildDiffLines(item.originalText, item.modifiedText);
+    let additions = 0;
+    let deletions = 0;
 
-  for (const line of sourceDiffLines.value) {
-    if (line.type === "addition") additions += 1;
-    if (line.type === "deletion") deletions += 1;
-  }
+    for (const line of diffLines) {
+      if (line.type === "addition") additions += 1;
+      if (line.type === "deletion") deletions += 1;
+    }
 
-  return { additions, deletions };
-});
+    return {
+      ...item,
+      additions,
+      deletions,
+    };
+  }),
+);
 
 const categories = computed(() => {
   const cats = new Set(entries.value.map((e) => e.category));
@@ -212,6 +239,11 @@ const hasCompareTargets = computed(() => compareServerOptions.value.length > 0);
 const compareDifferenceBadgeText = computed(() =>
   i18n.t("config.compare.difference_badge", { count: compareDifferenceCount.value }),
 );
+const hasCompareTargetUnsavedChanges = computed(
+  () =>
+    compareMode.value &&
+    !areMapValuesEqual(compareTargetDraftValues.value, compareTargetLoadedValues.value),
+);
 
 const numericFieldErrors = computed(() => {
   const errors: Record<string, string> = {};
@@ -231,6 +263,23 @@ const numericFieldErrors = computed(() => {
 });
 
 const hasInvalidNumericValues = computed(() => Object.keys(numericFieldErrors.value).length > 0);
+
+const compareTargetNumericFieldErrors = computed(() => {
+  const errors: Record<string, string> = {};
+
+  for (const entry of compareEntries.value) {
+    if (getCompareValueType(entry, "target") !== "number") {
+      continue;
+    }
+
+    const value = compareTargetDraftValues.value[entry.key]?.trim() ?? "";
+    if (value.length === 0 || !/^-?\d+$/.test(value)) {
+      errors[entry.key] = `${entry.key} 需要填写整数`;
+    }
+  }
+
+  return errors;
+});
 
 function areMapValuesEqual(a: Record<string, string>, b: Record<string, string>) {
   const aKeys = Object.keys(a);
@@ -256,13 +305,20 @@ function getTranslatedPropertyDescription(key: string) {
 }
 
 function getChangedPropertyValues() {
-  const changedValues: Record<string, string> = {};
   const baseValues =
     sourceDraftText.value !== loadedSourceText.value
       ? visualModeBaseValues.value
       : loadedValues.value;
+  return getChangedValues(editValues.value, baseValues);
+}
 
-  for (const [key, value] of Object.entries(editValues.value)) {
+function getChangedValues(
+  draftValues: Record<string, string>,
+  baseValues: Record<string, string>,
+): Record<string, string> {
+  const changedValues: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(draftValues)) {
     if (baseValues[key] !== value) {
       changedValues[key] = value;
     }
@@ -290,7 +346,6 @@ function applyParsedSourceState(sourceText: string, targetMode: "visual" | "sour
     visualModeBaseValues.value = { ...result.raw };
     sourceDraftText.value = sourceText;
     loadedSourceText.value = sourceText;
-    sourceDiffBaseText.value = sourceText;
     sourceParseError.value = null;
     visualDraftDirty.value = false;
     editorMode.value = targetMode;
@@ -304,34 +359,58 @@ function applyParsedSourceState(sourceText: string, targetMode: "visual" | "sour
   });
 }
 
+async function applyParsedCompareTargetState(sourceText: string) {
+  const parsed = await configApi.parseServerPropertiesSource(sourceText);
+  compareTargetEntries.value = parsed.entries as ConfigEntryType[];
+  compareTargetDraftValues.value = { ...parsed.raw };
+  compareTargetLoadedValues.value = { ...parsed.raw };
+}
+
+function isBooleanControl(valueType: string | undefined, value: string | undefined) {
+  return valueType === "boolean" || value === "true" || value === "false";
+}
+
+function getCompareValueType(entry: CompareEntry, side: "source" | "target") {
+  const primary = side === "source" ? entry.sourceEntry : entry.targetEntry;
+  const fallback = side === "source" ? entry.targetEntry : entry.sourceEntry;
+  return primary?.value_type ?? fallback?.value_type ?? "string";
+}
+
+function getCompareDefaultValue(entry: CompareEntry, side: "source" | "target") {
+  const primary = side === "source" ? entry.sourceEntry : entry.targetEntry;
+  const fallback = side === "source" ? entry.targetEntry : entry.sourceEntry;
+  return primary?.default_value ?? fallback?.default_value ?? "";
+}
+
 function buildCompareEntries(
   sourceEntries: ConfigEntryType[],
   sourceValues: Record<string, string>,
   targetEntries: ConfigEntryType[],
   targetValues: Record<string, string>,
 ): CompareEntry[] {
-  const entryMap = new Map<string, ConfigEntryType>();
-  sourceEntries.forEach((entry) => entryMap.set(entry.key, entry));
-  targetEntries.forEach((entry) => {
-    if (!entryMap.has(entry.key)) {
-      entryMap.set(entry.key, entry);
-    }
-  });
+  const sourceEntryMap = new Map(sourceEntries.map((entry) => [entry.key, entry]));
+  const targetEntryMap = new Map(targetEntries.map((entry) => [entry.key, entry]));
 
   return Array.from(
-    new Set([...Object.keys(sourceValues), ...Object.keys(targetValues), ...entryMap.keys()]),
+    new Set([
+      ...Object.keys(sourceValues),
+      ...Object.keys(targetValues),
+      ...sourceEntryMap.keys(),
+      ...targetEntryMap.keys(),
+    ]),
   )
     .toSorted((a, b) => a.localeCompare(b))
     .map((key) => {
-      const meta = entryMap.get(key);
+      const sourceEntry = sourceEntryMap.get(key) ?? null;
+      const targetEntry = targetEntryMap.get(key) ?? null;
       const sourceValue = sourceValues[key] ?? "";
       const targetValue = targetValues[key] ?? "";
       return {
         key,
-        description: meta?.description ?? "",
-        category: meta?.category ?? "other",
-        valueType: meta?.value_type ?? "string",
-        defaultValue: meta?.default_value ?? "",
+        description: sourceEntry?.description ?? targetEntry?.description ?? "",
+        category: sourceEntry?.category ?? targetEntry?.category ?? "other",
+        sourceEntry,
+        targetEntry,
         sourceValue,
         targetValue,
         different: sourceValue !== targetValue,
@@ -342,27 +421,25 @@ function buildCompareEntries(
 }
 
 async function loadCompareProperties() {
-  if (!compareMode.value || !serverPath.value || !compareTargetPath.value) {
-    compareEntries.value = [];
+  if (!compareMode.value || !compareTargetPath.value) {
+    compareTargetEntries.value = [];
+    compareTargetDraftValues.value = {};
+    compareTargetLoadedValues.value = {};
     return;
   }
 
   compareLoading.value = true;
   error.value = null;
   try {
-    const [sourceResult, targetResult] = await Promise.all([
-      configApi.readServerProperties(serverPath.value),
-      configApi.readServerProperties(compareTargetPath.value),
-    ]);
-    compareEntries.value = buildCompareEntries(
-      sourceResult.entries as ConfigEntryType[],
-      sourceResult.raw,
-      targetResult.entries as ConfigEntryType[],
-      targetResult.raw,
-    );
+    const targetResult = await configApi.readServerProperties(compareTargetPath.value);
+    compareTargetEntries.value = targetResult.entries as ConfigEntryType[];
+    compareTargetDraftValues.value = { ...targetResult.raw };
+    compareTargetLoadedValues.value = { ...targetResult.raw };
   } catch (e) {
     error.value = String(e);
-    compareEntries.value = [];
+    compareTargetEntries.value = [];
+    compareTargetDraftValues.value = {};
+    compareTargetLoadedValues.value = {};
   } finally {
     compareLoading.value = false;
   }
@@ -384,6 +461,11 @@ watch(
   () => store.currentServerId,
   async () => {
     if (store.currentServerId) {
+      if (hasCompareTargetUnsavedChanges.value) {
+        error.value = i18n.t("config.compare.unsaved_target_changes");
+        return;
+      }
+
       if (compareTargetServerId.value === store.currentServerId) {
         compareTargetServerId.value = compareServerOptions.value[0]?.value?.toString() || "";
       }
@@ -404,9 +486,16 @@ watch(hasCompareTargets, (hasTargets) => {
     return;
   }
 
+  if (hasCompareTargetUnsavedChanges.value) {
+    error.value = i18n.t("config.compare.unsaved_target_changes");
+    return;
+  }
+
   compareMode.value = false;
   compareTargetServerId.value = "";
-  compareEntries.value = [];
+  compareTargetEntries.value = [];
+  compareTargetDraftValues.value = {};
+  compareTargetLoadedValues.value = {};
 });
 
 async function loadProperties() {
@@ -427,8 +516,9 @@ async function loadProperties() {
     loadedValues.value = {};
     sourceDraftText.value = "";
     loadedSourceText.value = "";
-    sourceDiffBaseText.value = "";
-    compareEntries.value = [];
+    compareTargetEntries.value = [];
+    compareTargetDraftValues.value = {};
+    compareTargetLoadedValues.value = {};
   } finally {
     loading.value = false;
   }
@@ -451,6 +541,7 @@ async function saveProperties() {
   if (!serverPath.value || !hasUnsavedChanges.value || saving.value) return;
 
   error.value = null;
+  pendingSaveItems.value = [];
 
   try {
     if (editorMode.value === "visual" && hasInvalidNumericValues.value) {
@@ -459,17 +550,65 @@ async function saveProperties() {
       return;
     }
 
-    const latestSourceText = await configApi.readServerPropertiesSource(serverPath.value);
-    sourceDiffBaseText.value = latestSourceText;
-
-    if (editorMode.value === "visual") {
-      pendingSaveSourceText.value = await buildVisualPreviewSource();
-    } else {
-      pendingSaveSourceText.value = sourceDraftText.value;
+    if (compareMode.value && Object.keys(compareTargetNumericFieldErrors.value).length > 0) {
+      const invalidKeys = Object.keys(compareTargetNumericFieldErrors.value);
+      error.value = `以下字段需要填写整数：${invalidKeys.join("、")}`;
+      return;
     }
 
-    if (pendingSaveSourceText.value === latestSourceText) {
-      await applyParsedSourceState(latestSourceText, editorMode.value);
+    const pendingItems: PendingSaveItem[] = [];
+
+    const sourceChanged =
+      sourceDraftText.value !== loadedSourceText.value ||
+      !areMapValuesEqual(editValues.value, loadedValues.value);
+    if (sourceChanged) {
+      const latestSourceText = await configApi.readServerPropertiesSource(serverPath.value);
+      const nextSourceText =
+        editorMode.value === "visual" ? await buildVisualPreviewSource() : sourceDraftText.value;
+
+      if (nextSourceText !== latestSourceText) {
+        pendingItems.push({
+          serverId: currentServerId.value || "",
+          serverName: currentServer.value?.name || i18n.t("config.compare.source_server"),
+          filePath: serverPropertiesPath.value,
+          originalText: latestSourceText,
+          modifiedText: nextSourceText,
+        });
+      } else {
+        await applyParsedSourceState(latestSourceText, editorMode.value);
+      }
+    }
+
+    const targetDirty =
+      compareMode.value &&
+      !areMapValuesEqual(compareTargetDraftValues.value, compareTargetLoadedValues.value);
+    if (targetDirty && compareTargetPath.value) {
+      const latestTargetText = await configApi.readServerPropertiesSource(compareTargetPath.value);
+      const targetChangedValues = getChangedValues(
+        compareTargetDraftValues.value,
+        compareTargetLoadedValues.value,
+      );
+      const nextTargetText = await configApi.previewServerPropertiesWrite(
+        compareTargetPath.value,
+        targetChangedValues,
+      );
+
+      if (nextTargetText !== latestTargetText) {
+        pendingItems.push({
+          serverId: compareTargetServerId.value,
+          serverName: compareTargetServer.value?.name || i18n.t("config.compare.target_server"),
+          filePath: compareTargetPath.value,
+          originalText: latestTargetText,
+          modifiedText: nextTargetText,
+        });
+      } else {
+        await applyParsedCompareTargetState(latestTargetText);
+      }
+    }
+
+    pendingSaveItems.value = pendingItems;
+
+    if (pendingSaveItems.value.length === 0) {
       successMsg.value = i18n.t("config.no_changes_to_save");
       setTimeout(() => (successMsg.value = null), 3000);
       return;
@@ -484,6 +623,10 @@ async function saveProperties() {
 function updateValue(key: string, value: string | boolean | number) {
   editValues.value[key] = String(value);
   visualDraftDirty.value = true;
+}
+
+function updateCompareTargetValue(key: string, value: string | boolean | number) {
+  compareTargetDraftValues.value[key] = String(value);
 }
 
 function updateSourceDraft(value: string) {
@@ -525,15 +668,32 @@ async function handleEditorModeChange(mode: string | null) {
 }
 
 async function confirmSaveProperties() {
-  if (!serverPath.value || saving.value) return;
+  if (pendingSaveItems.value.length === 0 || saving.value) return;
 
   saving.value = true;
   error.value = null;
   successMsg.value = null;
 
   try {
-    await configApi.writeServerPropertiesSource(serverPath.value, pendingSaveSourceText.value);
-    await applyParsedSourceState(pendingSaveSourceText.value, editorMode.value);
+    for (const item of pendingSaveItems.value) {
+      await configApi.writeServerPropertiesSource(item.filePath, item.modifiedText);
+    }
+
+    const savedCurrent = pendingSaveItems.value.find(
+      (item) => item.serverId === currentServerId.value,
+    );
+    if (savedCurrent) {
+      await applyParsedSourceState(savedCurrent.modifiedText, editorMode.value);
+    }
+
+    const savedTarget = pendingSaveItems.value.find(
+      (item) => item.serverId === compareTargetServerId.value,
+    );
+    if (savedTarget) {
+      await applyParsedCompareTargetState(savedTarget.modifiedText);
+    }
+
+    pendingSaveItems.value = [];
     successMsg.value = i18n.t("config.saved");
     showSaveDiffModal.value = false;
     setTimeout(() => (successMsg.value = null), 3000);
@@ -546,6 +706,7 @@ async function confirmSaveProperties() {
 
 function closeSaveDiffModal() {
   if (saving.value) return;
+  pendingSaveItems.value = [];
   showSaveDiffModal.value = false;
 }
 
@@ -573,10 +734,17 @@ function handleSearchUpdate(value: string) {
 }
 
 function handleCompareModeChange(value: boolean) {
+  if (!value && hasCompareTargetUnsavedChanges.value) {
+    error.value = i18n.t("config.compare.unsaved_target_changes");
+    return;
+  }
+
   compareMode.value = value;
   if (!value) {
     compareTargetServerId.value = "";
-    compareEntries.value = [];
+    compareTargetEntries.value = [];
+    compareTargetDraftValues.value = {};
+    compareTargetLoadedValues.value = {};
     return;
   }
 
@@ -584,6 +752,20 @@ function handleCompareModeChange(value: boolean) {
     compareTargetServerId.value = String(compareServerOptions.value[0].value);
   }
   void loadCompareProperties();
+}
+
+function handleCompareTargetServerChange(value: string | number) {
+  const nextValue = String(value);
+  if (nextValue === compareTargetServerId.value) {
+    return;
+  }
+
+  if (hasCompareTargetUnsavedChanges.value) {
+    error.value = i18n.t("config.compare.unsaved_target_changes");
+    return;
+  }
+
+  compareTargetServerId.value = nextValue;
 }
 
 async function loadPlugins() {
@@ -845,7 +1027,7 @@ onActivated(async () => {
                     :modelValue="compareTargetServerId"
                     :options="compareServerOptions"
                     :disabled="!hasCompareTargets || compareLoading"
-                    @update:modelValue="compareTargetServerId = String($event)"
+                    @update:modelValue="handleCompareTargetServerChange"
                     style="width: 220px"
                   />
                 </div>
@@ -892,10 +1074,89 @@ onActivated(async () => {
                 </p>
               </div>
               <div class="compare-value-block compare-source-block">
-                <code class="compare-value text-mono">{{ entry.sourceValue || "—" }}</code>
+                <div class="entry-control compare-entry-control">
+                  <template
+                    v-if="isBooleanControl(getCompareValueType(entry, 'source'), entry.sourceValue)"
+                  >
+                    <SLSwitch
+                      :modelValue="entry.sourceValue === 'true'"
+                      @update:modelValue="updateValue(entry.key, $event)"
+                    />
+                  </template>
+                  <template v-else-if="entry.key === 'gamemode'">
+                    <SLSelect
+                      :modelValue="entry.sourceValue"
+                      :options="gamemodeOptions"
+                      @update:modelValue="updateValue(entry.key, $event)"
+                      style="width: 200px"
+                    />
+                  </template>
+                  <template v-else-if="entry.key === 'difficulty'">
+                    <SLSelect
+                      :modelValue="entry.sourceValue"
+                      :options="difficultyOptions"
+                      @update:modelValue="updateValue(entry.key, $event)"
+                      style="width: 200px"
+                    />
+                  </template>
+                  <template v-else>
+                    <SLInput
+                      :modelValue="entry.sourceValue"
+                      :placeholder="getCompareDefaultValue(entry, 'source')"
+                      :type="getCompareValueType(entry, 'source') === 'number' ? 'number' : 'text'"
+                      :step="getCompareValueType(entry, 'source') === 'number' ? 1 : undefined"
+                      @update:modelValue="updateValue(entry.key, $event)"
+                      style="width: 200px"
+                    />
+                    <p v-if="numericFieldErrors[entry.key]" class="entry-desc text-caption">
+                      {{ numericFieldErrors[entry.key] }}
+                    </p>
+                  </template>
+                </div>
               </div>
               <div class="compare-value-block compare-target-block">
-                <code class="compare-value text-mono">{{ entry.targetValue || "—" }}</code>
+                <div class="entry-control compare-entry-control">
+                  <template
+                    v-if="isBooleanControl(getCompareValueType(entry, 'target'), entry.targetValue)"
+                  >
+                    <SLSwitch
+                      :modelValue="entry.targetValue === 'true'"
+                      @update:modelValue="updateCompareTargetValue(entry.key, $event)"
+                    />
+                  </template>
+                  <template v-else-if="entry.key === 'gamemode'">
+                    <SLSelect
+                      :modelValue="entry.targetValue"
+                      :options="gamemodeOptions"
+                      @update:modelValue="updateCompareTargetValue(entry.key, $event)"
+                      style="width: 200px"
+                    />
+                  </template>
+                  <template v-else-if="entry.key === 'difficulty'">
+                    <SLSelect
+                      :modelValue="entry.targetValue"
+                      :options="difficultyOptions"
+                      @update:modelValue="updateCompareTargetValue(entry.key, $event)"
+                      style="width: 200px"
+                    />
+                  </template>
+                  <template v-else>
+                    <SLInput
+                      :modelValue="entry.targetValue"
+                      :placeholder="getCompareDefaultValue(entry, 'target')"
+                      :type="getCompareValueType(entry, 'target') === 'number' ? 'number' : 'text'"
+                      :step="getCompareValueType(entry, 'target') === 'number' ? 1 : undefined"
+                      @update:modelValue="updateCompareTargetValue(entry.key, $event)"
+                      style="width: 200px"
+                    />
+                    <p
+                      v-if="compareTargetNumericFieldErrors[entry.key]"
+                      class="entry-desc text-caption"
+                    >
+                      {{ compareTargetNumericFieldErrors[entry.key] }}
+                    </p>
+                  </template>
+                </div>
               </div>
             </div>
 
@@ -918,13 +1179,7 @@ onActivated(async () => {
                 </p>
               </div>
               <div class="entry-control">
-                <template
-                  v-if="
-                    entry.value_type === 'boolean' ||
-                    editValues[entry.key] === 'true' ||
-                    editValues[entry.key] === 'false'
-                  "
-                >
+                <template v-if="isBooleanControl(entry.value_type, editValues[entry.key])">
                   <SLSwitch
                     :modelValue="editValues[entry.key] === 'true'"
                     @update:modelValue="updateValue(entry.key, $event)"
@@ -1181,12 +1436,27 @@ onActivated(async () => {
         :close-on-overlay="!saving"
         @close="closeSaveDiffModal"
       >
-        <div class="source-diff-summary text-caption">
-          <span>{{ i18n.t("config.diff_original") }} → {{ i18n.t("config.diff_after_save") }}</span>
-          <span class="diff-count diff-count-add">+{{ sourceDiffStats.additions }}</span>
-          <span class="diff-count diff-count-del">-{{ sourceDiffStats.deletions }}</span>
+        <div
+          v-for="diffItem in pendingSaveItemsWithStats"
+          :key="`${diffItem.serverId}-${diffItem.filePath}`"
+          class="source-diff-block"
+        >
+          <div class="source-diff-file-label text-caption">
+            <span class="source-diff-server">{{ diffItem.serverName }}</span>
+            <span class="source-diff-file-path text-mono">{{ diffItem.filePath }}</span>
+          </div>
+          <div class="source-diff-summary text-caption">
+            <span
+              >{{ i18n.t("config.diff_original") }} → {{ i18n.t("config.diff_after_save") }}</span
+            >
+            <span class="diff-count diff-count-add">+{{ diffItem.additions }}</span>
+            <span class="diff-count diff-count-del">-{{ diffItem.deletions }}</span>
+          </div>
+          <ConfigSourceDiffView
+            :original="diffItem.originalText"
+            :modified="diffItem.modifiedText"
+          />
         </div>
-        <ConfigSourceDiffView :original="sourceDiffOriginalText" :modified="sourceDiffTargetText" />
         <template #footer>
           <div class="diff-modal-actions">
             <SLButton variant="secondary" :disabled="saving" @click="closeSaveDiffModal">
