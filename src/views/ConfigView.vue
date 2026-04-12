@@ -784,7 +784,10 @@ onActivated(async () => {
           </div>
         </div>
 
-        <div class="config-floating-actions glass-strong">
+        <div
+          class="config-floating-actions glass-strong"
+          :class="{ 'config-floating-actions--unsaved': hasUnsavedChanges }"
+        >
           <div class="floating-status text-caption">{{ saveStatusText }}</div>
           <div class="floating-center">
             <SLButton
