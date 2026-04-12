@@ -226,16 +226,24 @@ function handleSplashReady() {
   if (isInitializing.value) return;
   showSplash.value = false;
 
-  // 检查是否需要显示协议同意弹窗
-  const settings = settingsStore.settings;
-  if (!settings.agreed_to_terms) {
-    showTermsDialog.value = true;
-  }
+  // 等待设置加载完成后再检查协议同意状态
+  const checkTerms = () => {
+    if (settingsStore.isLoaded) {
+      const settings = settingsStore.settings;
+      if (!settings.agreed_to_terms) {
+        showTermsDialog.value = true;
+      }
+      // Dev模式下跳过更新检查, 想要检查更新去关于页面检查
+      if (!import.meta.env.DEV) {
+        updateStore.checkForUpdateOnStartup();
+      }
+    } else {
+      // 如果还没加载完，等待一小段时间后重试
+      setTimeout(checkTerms, 50);
+    }
+  };
 
-  // Dev模式下跳过更新检查, 想要检查更新去关于页面检查
-  if (!import.meta.env.DEV) {
-    updateStore.checkForUpdateOnStartup();
-  }
+  checkTerms();
 }
 
 function handleUpdateModalClose() {
