@@ -239,11 +239,6 @@ const hasCompareTargets = computed(() => compareServerOptions.value.length > 0);
 const compareDifferenceBadgeText = computed(() =>
   i18n.t("config.compare.difference_badge", { count: compareDifferenceCount.value }),
 );
-const hasCompareTargetUnsavedChanges = computed(
-  () =>
-    compareMode.value &&
-    !areMapValuesEqual(compareTargetDraftValues.value, compareTargetLoadedValues.value),
-);
 
 const numericFieldErrors = computed(() => {
   const errors: Record<string, string> = {};
@@ -390,34 +385,40 @@ function buildCompareEntries(
 ): CompareEntry[] {
   const sourceEntryMap = new Map(sourceEntries.map((entry) => [entry.key, entry]));
   const targetEntryMap = new Map(targetEntries.map((entry) => [entry.key, entry]));
+  const orderedKeys: string[] = [];
+  const seenKeys = new Set<string>();
 
-  return Array.from(
-    new Set([
-      ...Object.keys(sourceValues),
-      ...Object.keys(targetValues),
-      ...sourceEntryMap.keys(),
-      ...targetEntryMap.keys(),
-    ]),
-  )
-    .toSorted((a, b) => a.localeCompare(b))
-    .map((key) => {
-      const sourceEntry = sourceEntryMap.get(key) ?? null;
-      const targetEntry = targetEntryMap.get(key) ?? null;
-      const sourceValue = sourceValues[key] ?? "";
-      const targetValue = targetValues[key] ?? "";
-      return {
-        key,
-        description: sourceEntry?.description ?? targetEntry?.description ?? "",
-        category: sourceEntry?.category ?? targetEntry?.category ?? "other",
-        sourceEntry,
-        targetEntry,
-        sourceValue,
-        targetValue,
-        different: sourceValue !== targetValue,
-        onlyInSource: key in sourceValues && !(key in targetValues),
-        onlyInTarget: !(key in sourceValues) && key in targetValues,
-      };
-    });
+  const pushKey = (key: string) => {
+    if (seenKeys.has(key)) {
+      return;
+    }
+    seenKeys.add(key);
+    orderedKeys.push(key);
+  };
+
+  sourceEntries.forEach((entry) => pushKey(entry.key));
+  targetEntries.forEach((entry) => pushKey(entry.key));
+  Object.keys(sourceValues).forEach(pushKey);
+  Object.keys(targetValues).forEach(pushKey);
+
+  return orderedKeys.map((key) => {
+    const sourceEntry = sourceEntryMap.get(key) ?? null;
+    const targetEntry = targetEntryMap.get(key) ?? null;
+    const sourceValue = sourceValues[key] ?? "";
+    const targetValue = targetValues[key] ?? "";
+    return {
+      key,
+      description: sourceEntry?.description ?? targetEntry?.description ?? "",
+      category: sourceEntry?.category ?? targetEntry?.category ?? "other",
+      sourceEntry,
+      targetEntry,
+      sourceValue,
+      targetValue,
+      different: sourceValue !== targetValue,
+      onlyInSource: key in sourceValues && !(key in targetValues),
+      onlyInTarget: !(key in sourceValues) && key in targetValues,
+    };
+  });
 }
 
 async function loadCompareProperties() {
@@ -461,11 +462,7 @@ watch(
   () => store.currentServerId,
   async () => {
     if (store.currentServerId) {
-      if (hasCompareTargetUnsavedChanges.value) {
-        error.value = i18n.t("config.compare.unsaved_target_changes");
-        return;
-      }
-
+      // 这是刻意的设计：切换当前服务器时直接进入新的对照上下文，不保留旧的对照侧草稿。
       if (compareTargetServerId.value === store.currentServerId) {
         compareTargetServerId.value = compareServerOptions.value[0]?.value?.toString() || "";
       }
@@ -486,11 +483,7 @@ watch(hasCompareTargets, (hasTargets) => {
     return;
   }
 
-  if (hasCompareTargetUnsavedChanges.value) {
-    error.value = i18n.t("config.compare.unsaved_target_changes");
-    return;
-  }
-
+  // 这是刻意的设计：当没有可对照服务器时，直接退出对照模式并清空对照侧状态。
   compareMode.value = false;
   compareTargetServerId.value = "";
   compareTargetEntries.value = [];
@@ -734,13 +727,9 @@ function handleSearchUpdate(value: string) {
 }
 
 function handleCompareModeChange(value: boolean) {
-  if (!value && hasCompareTargetUnsavedChanges.value) {
-    error.value = i18n.t("config.compare.unsaved_target_changes");
-    return;
-  }
-
   compareMode.value = value;
   if (!value) {
+    // 这是刻意的设计：关闭对照模式时直接丢弃对照侧草稿，回到单列编辑体验。
     compareTargetServerId.value = "";
     compareTargetEntries.value = [];
     compareTargetDraftValues.value = {};
@@ -755,17 +744,8 @@ function handleCompareModeChange(value: boolean) {
 }
 
 function handleCompareTargetServerChange(value: string | number) {
-  const nextValue = String(value);
-  if (nextValue === compareTargetServerId.value) {
-    return;
-  }
-
-  if (hasCompareTargetUnsavedChanges.value) {
-    error.value = i18n.t("config.compare.unsaved_target_changes");
-    return;
-  }
-
-  compareTargetServerId.value = nextValue;
+  // 这是刻意的设计：切换对照服务器时直接加载新的对照侧内容，不保留旧的对照侧草稿。
+  compareTargetServerId.value = String(value);
 }
 
 async function loadPlugins() {
