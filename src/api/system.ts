@@ -36,7 +36,8 @@ export interface DiskInfo {
   used: number;
   available: number;
   usage: number;
-  disks: DiskDetail[];
+  disks?: DiskDetail[];
+  path?: string;
 }
 
 export interface NetworkInterface {
@@ -67,9 +68,23 @@ export interface SystemInfo {
   process_count: number;
 }
 
+export interface ServerResourceUsage {
+  server_id: string;
+  server_name: string;
+  status: string;
+  pid: number | null;
+  cpu: CpuInfo;
+  memory: MemoryInfo;
+  disk: DiskInfo;
+}
+
 export const systemApi = {
   async getSystemInfo(): Promise<SystemInfo> {
     return tauriInvoke("get_system_info");
+  },
+
+  async getServerResourceUsage(serverId: string): Promise<ServerResourceUsage> {
+    return tauriInvoke("get_server_resource_usage", { serverId });
   },
 
   async pickJarFile(): Promise<string | null> {

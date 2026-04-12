@@ -12,6 +12,7 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
+import { useGlobalMessage } from "@composables/useMessage";
 import { isBrowserEnv } from "@api/tauri";
 import {
   applyTheme,
@@ -56,6 +57,15 @@ const settingsStore = useSettingsStore();
 const pluginStore = usePluginStore();
 const contextMenuStore = useContextMenuStore();
 const serverStore = useServerStore();
+const globalMessage = useGlobalMessage();
+
+interface ServerStartFallbackEventPayload {
+  serverId: string;
+  serverName: string;
+  fromMode: string;
+  toMode: string;
+  reason: string;
+}
 
 async function handleGlobalContextMenu(event: MouseEvent) {
   // 在浏览器环境（Docker 模式）下，不阻止右键菜单，允许开发者工具
@@ -115,6 +125,7 @@ async function handleGlobalContextMenu(event: MouseEvent) {
 }
 
 let serverErrorUnlisten: UnlistenFn | null = null;
+let serverStartFallbackUnlisten: UnlistenFn | null = null;
 
 onMounted(async () => {
   // 监听服务器错误事件并播放提示音（仅 Tauri 环境）
@@ -122,6 +133,16 @@ onMounted(async () => {
     serverErrorUnlisten = await listen("server-error", () => {
       playNotificationSound();
     });
+    serverStartFallbackUnlisten = await listen<ServerStartFallbackEventPayload>(
+      "server-start-fallback",
+      ({ payload }) => {
+        const displayName = payload.serverName || payload.serverId;
+        globalMessage.warning(
+          `Server ${displayName} failed to start via JAR, automatically fell back to ${payload.toMode} mode (${payload.reason})`,
+          5000,
+        );
+      },
+    );
   }
 
   contextMenuStore.initContextMenuListener();
@@ -174,6 +195,10 @@ onUnmounted(() => {
   if (serverErrorUnlisten) {
     serverErrorUnlisten();
     serverErrorUnlisten = null;
+  }
+  if (serverStartFallbackUnlisten) {
+    serverStartFallbackUnlisten();
+    serverStartFallbackUnlisten = null;
   }
 
   document.removeEventListener("contextmenu", handleGlobalContextMenu);

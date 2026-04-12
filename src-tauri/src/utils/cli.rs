@@ -124,7 +124,15 @@ fn list_servers() {
 fn start_server(id: &str) {
     let manager = global::server_manager();
     match manager.start_server(id) {
-        Ok(_) => println!("服务器 {} 正在启动...", id),
+        Ok(report) => {
+            println!("服务器 {} 正在启动...", id);
+            if let Some(fallback) = report.fallback {
+                println!(
+                    "已触发启动回退: {} -> {} ({})",
+                    fallback.from_mode, fallback.to_mode, fallback.reason
+                );
+            }
+        }
         Err(e) => println!("启动失败: {}", e),
     }
 }
