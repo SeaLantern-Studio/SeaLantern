@@ -28,12 +28,16 @@ const editorRoot = ref<HTMLElement | null>(null);
 let editorView: EditorView | null = null;
 
 class LineNumberMarker extends GutterMarker {
-  constructor(private readonly value: number | null) {
+  constructor(
+    private readonly value: number | null,
+    private readonly type: DiffLineType,
+  ) {
     super();
   }
 
   toDOM() {
     const element = document.createElement("span");
+    element.className = `cm-diff-gutter-marker cm-diff-gutter-marker--${this.type}`;
     element.textContent = this.value === null ? "" : String(this.value);
     return element;
   }
@@ -212,14 +216,21 @@ function createLineDecorations(lines: DiffLine[]) {
 }
 
 function createLineNumberGutter(lines: DiffLine[], side: "old" | "new") {
+  const maxNumber = lines.reduce((max, line) => {
+    const candidate = side === "old" ? (line.leftNumber ?? 0) : (line.rightNumber ?? 0);
+    return Math.max(max, candidate);
+  }, 0);
+
   return gutter({
     class: `cm-diff-gutter cm-diff-gutter--${side}`,
     renderEmptyElements: true,
-    lineMarker(_view, line) {
-      const diffLine = lines[line.number - 1];
+    initialSpacer: () => new LineNumberMarker(maxNumber > 0 ? maxNumber : 1, "context"),
+    lineMarker(view, line) {
+      const lineNumber = view.state.doc.lineAt(line.from).number;
+      const diffLine = lines[lineNumber - 1];
       const value =
         side === "old" ? (diffLine?.leftNumber ?? null) : (diffLine?.rightNumber ?? null);
-      return new LineNumberMarker(value);
+      return new LineNumberMarker(value, diffLine?.type ?? "context");
     },
   });
 }
@@ -250,7 +261,6 @@ function createEditor() {
       createLineNumberGutter(lines, "new"),
       EditorView.theme({
         "&": {
-          height: "min(56vh, 560px)",
           border: "1px solid var(--sl-border-light)",
           borderRadius: "var(--sl-radius-md)",
           backgroundColor: "var(--sl-surface)",
@@ -261,9 +271,11 @@ function createEditor() {
           fontSize: "var(--sl-font-size-xl)",
           lineHeight: "1.55",
           padding: "0",
+          maxHeight: "min(56vh, 560px)",
+          overflowY: "auto",
         },
         ".cm-content": {
-          padding: "0 12px",
+          padding: "0",
         },
         ".cm-gutters": {
           backgroundColor: "var(--sl-bg-secondary)",
@@ -286,15 +298,37 @@ function createEditor() {
         ".cm-diff-line": {
           borderTop: "1px solid rgba(148, 163, 184, 0.08)",
         },
+        ".cm-line": {
+          padding: "0 12px",
+        },
         ".cm-diff-line--addition": {
-          backgroundColor: "rgba(34, 197, 94, 0.05)",
+          backgroundColor: "rgba(34, 197, 94, 0.12)",
+        },
+        ".cm-diff-gutter-marker": {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          width: "calc(100% + 22px)",
+          minHeight: "100%",
+          boxSizing: "border-box",
+          margin: "0 -10px 0 -12px",
+          padding: "0 10px 0 12px",
+        },
+        ".cm-diff-gutter-marker--addition": {
+          backgroundColor: "rgba(34, 197, 94, 0.12)",
         },
         ".cm-diff-line--deletion": {
-          backgroundColor: "rgba(239, 68, 68, 0.05)",
+          backgroundColor: "rgba(239, 68, 68, 0.12)",
+        },
+        ".cm-diff-gutter-marker--deletion": {
+          backgroundColor: "rgba(239, 68, 68, 0.12)",
         },
         ".cm-diff-line--omitted": {
           backgroundColor: "color-mix(in srgb, var(--sl-bg-secondary) 82%, transparent)",
           color: "var(--sl-text-tertiary)",
+        },
+        ".cm-diff-gutter-marker--omitted": {
+          backgroundColor: "color-mix(in srgb, var(--sl-bg-secondary) 82%, transparent)",
         },
         ".cm-activeLine": {
           backgroundColor: "transparent",
