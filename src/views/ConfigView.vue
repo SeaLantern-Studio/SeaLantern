@@ -8,6 +8,7 @@ import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
+import SLTooltip from "@components/common/SLTooltip.vue";
 import { SLTabBar } from "@components/common";
 import { configApi } from "@api/config";
 import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "@api/mcs_plugins";
@@ -139,6 +140,12 @@ const hasUnsavedChanges = computed(() => {
 
 const saveStatusText = computed(() =>
   hasUnsavedChanges.value ? i18n.t("config.status_unsaved") : i18n.t("config.status_loaded"),
+);
+const reloadCurrentTooltipText = computed(
+  () => `重新载入${currentServer.value?.name || i18n.t("config.current_server")}属性`,
+);
+const reloadCompareTooltipText = computed(
+  () => `重新载入${compareTargetServer.value?.name || i18n.t("config.compare.target_server")}属性`,
 );
 
 const sourceDiffLines = computed(() =>
@@ -979,30 +986,31 @@ onActivated(async () => {
           <div class="floating-status-wrap">
             <div class="floating-status text-caption">{{ saveStatusText }}</div>
           </div>
-          <div class="floating-center">
-            <SLButton
-              variant="secondary"
-              size="sm"
-              iconOnly
-              class="config-floating-icon-btn"
-              @click="reloadPropertiesWithGuard"
-            >
-              <RefreshCw :size="16" />
-            </SLButton>
-            <SLButton
-              v-if="compareMode"
-              variant="secondary"
-              size="sm"
-              iconOnly
-              class="config-floating-icon-btn"
-              :loading="compareLoading"
-              :disabled="!compareTargetServerId"
-              @click="loadCompareProperties"
-            >
-              <RotateCcw :size="16" />
-            </SLButton>
-          </div>
-          <div class="floating-right">
+          <div class="floating-actions-group">
+            <SLTooltip :content="reloadCurrentTooltipText">
+              <SLButton
+                variant="secondary"
+                size="sm"
+                iconOnly
+                class="config-floating-icon-btn"
+                @click="reloadPropertiesWithGuard"
+              >
+                <RefreshCw :size="16" />
+              </SLButton>
+            </SLTooltip>
+            <SLTooltip v-if="compareMode" :content="reloadCompareTooltipText">
+              <SLButton
+                variant="secondary"
+                size="sm"
+                iconOnly
+                class="config-floating-icon-btn"
+                :loading="compareLoading"
+                :disabled="!compareTargetServerId"
+                @click="loadCompareProperties"
+              >
+                <RefreshCw :size="16" />
+              </SLButton>
+            </SLTooltip>
             <SLButton
               variant="primary"
               size="sm"
