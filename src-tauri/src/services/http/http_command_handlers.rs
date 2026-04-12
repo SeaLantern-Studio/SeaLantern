@@ -279,7 +279,7 @@ fn handle_start_server(
     Box::pin(async move {
         let req: ServerIdRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        server_commands::start_server(req.id)?;
+        crate::services::global::server_manager().start_server(&req.id)?;
         Ok(Value::Null)
     })
 }

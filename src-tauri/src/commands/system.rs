@@ -1,10 +1,23 @@
 use crate::services;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Mutex;
-use sysinfo::{Disks, Networks, System};
+use std::time::{Duration, Instant};
+use sysinfo::{Disks, Networks, Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use tauri_plugin_dialog::DialogExt;
 
 static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new_all()));
+static SERVER_DISK_USAGE_CACHE: Lazy<Mutex<HashMap<String, CachedDirectorySize>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+const PROCESS_CPU_SAMPLE_INTERVAL: Duration = Duration::from_millis(200);
+const SERVER_DISK_USAGE_CACHE_TTL: Duration = Duration::from_secs(30);
+
+struct CachedDirectorySize {
+    used: u64,
+    computed_at: Instant,
+}
 
 #[tauri::command]
 pub fn get_system_info() -> Result<serde_json::Value, String> {
@@ -136,6 +149,177 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
+pub fn get_server_resource_usage(server_id: String) -> Result<serde_json::Value, String> {
+    let manager = services::global::server_manager();
+    let server = manager
+        .get_server_list()
+        .into_iter()
+        .find(|s| s.id == server_id)
+        .ok_or_else(|| format!("未找到服务器: {}", server_id))?;
+
+    let status = manager.get_server_status(&server.id);
+    let mut cpu_usage = 0.0_f32;
+    let mut memory_used = 0_u64;
+    let mut memory_total = 0_u64;
+    let mut pid: Option<u32> = None;
+
+    if let Some(raw_pid) = status.pid {
+        let process_pid = Pid::from_u32(raw_pid);
+        pid = Some(raw_pid);
+
+        {
+            let mut sys = SYSTEM.lock().map_err(|e| e.to_string())?;
+            sys.refresh_memory();
+            sys.refresh_processes_specifics(
+                ProcessesToUpdate::Some(&[process_pid]),
+                true,
+                ProcessRefreshKind::new().with_cpu().with_memory(),
+            );
+            memory_total = sys.total_memory();
+        }
+
+        std::thread::sleep(PROCESS_CPU_SAMPLE_INTERVAL);
+
+        {
+            let mut sys = SYSTEM.lock().map_err(|e| e.to_string())?;
+            sys.refresh_memory();
+            sys.refresh_processes_specifics(
+                ProcessesToUpdate::Some(&[process_pid]),
+                true,
+                ProcessRefreshKind::new().with_cpu().with_memory(),
+            );
+
+            if let Some(process) = sys.process(process_pid) {
+                cpu_usage = process.cpu_usage();
+                memory_used = process.memory();
+                memory_total = sys.total_memory();
+            }
+        }
+    }
+
+    let disk_path = Path::new(&server.path);
+    let disk_used = get_cached_directory_size(disk_path);
+    let (disk_total, disk_available) = get_path_disk_capacity(disk_path);
+    let disk_total_effective = if disk_total > 0 {
+        disk_total
+    } else {
+        disk_used.max(1)
+    };
+    let disk_usage = if disk_total_effective > 0 {
+        (disk_used as f64 / disk_total_effective as f64 * 100.0) as f32
+    } else {
+        0.0
+    };
+
+    let cpu_clamped = cpu_usage.clamp(0.0, 100.0);
+    let memory_usage = if memory_total > 0 {
+        (memory_used as f64 / memory_total as f64 * 100.0) as f32
+    } else {
+        0.0
+    };
+
+    Ok(serde_json::json!({
+        "server_id": server.id,
+        "server_name": server.name,
+        "status": status.status.as_str(),
+        "pid": pid,
+        "cpu": {
+            "name": "Server Process",
+            "count": 1,
+            "usage": cpu_clamped,
+        },
+        "memory": {
+            "total": memory_total,
+            "used": memory_used,
+            "available": memory_total.saturating_sub(memory_used),
+            "usage": memory_usage,
+        },
+        "disk": {
+            "total": disk_total_effective,
+            "used": disk_used,
+            "available": disk_available,
+            "usage": disk_usage.clamp(0.0, 100.0),
+            "path": server.path,
+        },
+    }))
+}
+
+fn get_cached_directory_size(path: &Path) -> u64 {
+    let cache_key = path.to_string_lossy().into_owned();
+    let now = Instant::now();
+
+    if let Ok(cache) = SERVER_DISK_USAGE_CACHE.lock() {
+        if let Some(entry) = cache.get(&cache_key) {
+            if now.duration_since(entry.computed_at) < SERVER_DISK_USAGE_CACHE_TTL {
+                return entry.used;
+            }
+        }
+    }
+
+    let used = calculate_directory_size(path);
+
+    if let Ok(mut cache) = SERVER_DISK_USAGE_CACHE.lock() {
+        cache.insert(cache_key, CachedDirectorySize { used, computed_at: now });
+    }
+
+    used
+}
+
+fn calculate_directory_size(path: &Path) -> u64 {
+    fn walk(path: &Path) -> u64 {
+        let Ok(metadata) = std::fs::symlink_metadata(path) else {
+            return 0;
+        };
+
+        if metadata.is_file() {
+            return metadata.len();
+        }
+
+        if !metadata.is_dir() {
+            return 0;
+        }
+
+        let Ok(entries) = std::fs::read_dir(path) else {
+            return 0;
+        };
+
+        entries
+            .filter_map(Result::ok)
+            .map(|entry| walk(&entry.path()))
+            .sum()
+    }
+
+    if !path.exists() {
+        return 0;
+    }
+
+    walk(path)
+}
+
+fn get_path_disk_capacity(path: &Path) -> (u64, u64) {
+    let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let disks = Disks::new_with_refreshed_list();
+
+    let mut best_match: Option<(usize, u64, u64)> = None;
+
+    for disk in disks.iter() {
+        let mount_point = disk.mount_point();
+        if canonical_path.starts_with(mount_point) {
+            let mount_len = mount_point.as_os_str().to_string_lossy().len();
+            let candidate = (mount_len, disk.total_space(), disk.available_space());
+            match best_match {
+                Some((best_len, _, _)) if best_len >= mount_len => {}
+                _ => best_match = Some(candidate),
+            }
+        }
+    }
+
+    best_match
+        .map(|(_, total, available)| (total, available))
+        .unwrap_or((0, 0))
+}
+
+#[tauri::command]
 pub async fn pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -218,20 +402,20 @@ pub async fn pick_server_executable(
 
     app.dialog()
         .file()
-        .set_title("Select server executable file")
+        .set_title("Select server executable")
         .add_filter("Server Files", &["jar", "bat", "sh"])
         .add_filter("JAR Files", &["jar"])
-        .add_filter("BAT Files", &["bat"])
+        .add_filter("Batch Files", &["bat"])
         .add_filter("Shell Scripts", &["sh"])
         .add_filter("All Files", &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| {
                 let path_str = p.to_string();
-                let ext = std::path::Path::new(&path_str)
+                let ext = Path::new(&path_str)
                     .extension()
-                    .and_then(|e| e.to_str())
-                    .map(|e| e.to_ascii_lowercase())
-                    .unwrap_or_default();
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .to_lowercase();
                 let mode = match ext.as_str() {
                     "bat" => "bat",
                     "sh" => "sh",
@@ -247,27 +431,35 @@ pub async fn pick_server_executable(
 
 #[tauri::command]
 pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = tokio::sync::oneshot::channel();
+    let (tx, rx) = std::sync::mpsc::channel();
 
     app.dialog()
         .file()
         .set_title("Select Java executable")
-        .add_filter("Executable", &["exe", ""])
+        .add_filter(
+            if cfg!(windows) {
+                "Java Executable"
+            } else {
+                "Java Binary"
+            },
+            if cfg!(windows) { &["exe"] } else { &[""] },
+        )
         .add_filter("All Files", &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.await.map_err(|e| format!("Dialog error: {}", e))
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
 }
 
 #[tauri::command]
 pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
+
     app.dialog()
         .file()
-        .set_title("Save")
+        .set_title("Save File")
         .save_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
@@ -278,7 +470,7 @@ pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 
 #[tauri::command]
 pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = tokio::sync::oneshot::channel();
+    let (tx, rx) = std::sync::mpsc::channel();
 
     app.dialog()
         .file()
@@ -288,117 +480,56 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String
             let _ = tx.send(result);
         });
 
-    rx.await.map_err(|e| format!("Dialog error: {}", e))
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
 }
 
 #[tauri::command]
 pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = tokio::sync::oneshot::channel();
+    let (tx, rx) = std::sync::mpsc::channel();
 
     app.dialog()
         .file()
-        .set_title("Select background image")
-        .add_filter("Image Files", &["png", "jpg", "jpeg", "webp", "gif", "bmp"])
+        .set_title("Select image")
+        .add_filter("Images", &["png", "jpg", "jpeg", "gif", "webp", "bmp"])
         .add_filter("All Files", &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.await.map_err(|e| format!("Dialog error: {}", e))
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
 }
 
 #[tauri::command]
 pub fn open_file(path: String) -> Result<(), String> {
-    let path = std::path::Path::new(&path);
-    if !path.exists() {
-        return Err(format!("文件不存在: {}", path.display()));
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        use std::process::Command;
-        Command::new("explorer.exe")
-            .arg("/select,")
-            .arg(path)
-            .spawn()
-            .map_err(|e| format!("无法打开文件: {}", e))?;
-    }
-    #[cfg(target_os = "macos")]
-    {
-        use std::process::Command;
-        Command::new("open")
-            .arg(path)
-            .spawn()
-            .map_err(|e| format!("无法打开文件: {}", e))?;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        use std::process::Command;
-        Command::new("xdg-open")
-            .arg(path)
-            .spawn()
-            .map_err(|e| format!("无法打开文件: {}", e))?;
-    }
-
-    Ok(())
+    opener::open(&path)
+        .map(|_| ())
+        .map_err(|e| format!("打开文件失败: {}", e))
 }
 
 #[tauri::command]
 pub fn open_folder(path: String) -> Result<(), String> {
-    let path = std::path::Path::new(&path);
-    if !path.exists() {
-        return Err(format!("文件夹不存在: {}", path.display()));
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        use std::process::Command;
-        Command::new("explorer.exe")
-            .arg(path)
-            .spawn()
-            .map_err(|e| format!("无法打开文件夹: {}", e))?;
-    }
-    #[cfg(target_os = "macos")]
-    {
-        use std::process::Command;
-        Command::new("open")
-            .arg(path)
-            .spawn()
-            .map_err(|e| format!("无法打开文件夹: {}", e))?;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        use std::process::Command;
-        Command::new("xdg-open")
-            .arg(path)
-            .spawn()
-            .map_err(|e| format!("无法打开文件夹: {}", e))?;
-    }
-
-    Ok(())
+    opener::open(&path)
+        .map(|_| ())
+        .map_err(|e| format!("打开文件夹失败: {}", e))
 }
 
 #[tauri::command]
 pub fn get_default_run_path() -> Result<String, String> {
-    // Docker 环境检测 - 优先返回容器内数据目录
-    if std::path::Path::new("/.dockerenv").exists() {
-        return Ok("./data".to_string());
-    }
+    let base = dirs_next::data_dir()
+        .or_else(dirs_next::document_dir)
+        .or_else(|| std::env::current_dir().ok())
+        .ok_or_else(|| "无法确定默认运行路径".to_string())?;
 
-    let documents_dir = dirs_next::document_dir().ok_or_else(|| "无法获取文档目录".to_string())?;
-    let minecraft_servers_dir = documents_dir.join("Minecraft Servers");
-
-    Ok(minecraft_servers_dir.to_string_lossy().to_string())
+    Ok(base.join("SeaLantern").to_string_lossy().to_string())
 }
 
 #[tauri::command]
 pub fn get_safe_mode_status() -> Result<bool, String> {
-    let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
-    Ok(safe_mode)
+    Ok(std::env::args().any(|arg| arg == "--safe-mode"))
 }
 
 #[tauri::command]
-pub fn frontend_heartbeat() {
-    services::global::update_frontend_heartbeat();
+pub fn frontend_heartbeat() -> Result<(), String> {
+    Ok(())
 }
