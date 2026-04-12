@@ -305,6 +305,7 @@
       "sync_all": "Đồng bộ tất cả",
       "different": "Khác nhau",
       "difference_count": "Số khác biệt: {count}",
+      "difference_badge": "{count} khác biệt",
       "no_differences": "Không có khác biệt với bộ lọc hiện tại",
       "no_target_servers": "Không có máy chủ nào khác để đối chiếu",
       "all_servers": "Tất cả máy chủ"

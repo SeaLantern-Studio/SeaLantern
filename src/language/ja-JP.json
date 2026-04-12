@@ -305,6 +305,7 @@
       "sync_all": "すべて同期",
       "different": "差分あり",
       "difference_count": "差分数: {count}",
+      "difference_badge": "{count}件の差分",
       "no_differences": "現在の条件では差分がありません",
       "no_target_servers": "比較可能な他のサーバーがありません",
       "all_servers": "すべてのサーバー"

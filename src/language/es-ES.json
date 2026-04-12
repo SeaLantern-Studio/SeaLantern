@@ -305,6 +305,7 @@
       "sync_all": "Sincronizar todo",
       "different": "Diferente",
       "difference_count": "Diferencias: {count}",
+      "difference_badge": "{count} diferencias",
       "no_differences": "No hay diferencias con los filtros actuales",
       "no_target_servers": "No hay otros servidores disponibles para comparar",
       "all_servers": "Todos los servidores"

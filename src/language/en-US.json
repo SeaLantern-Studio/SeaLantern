@@ -447,6 +447,7 @@
         "sync_all": "Sync All",
         "different": "Different",
         "difference_count": "Differences: {count}",
+        "difference_badge": "{count} different",
         "no_differences": "No differences under the current filters",
         "no_target_servers": "No other servers available for comparison",
         "all_servers": "All Servers"

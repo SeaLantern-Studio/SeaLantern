@@ -73,9 +73,7 @@ const pendingSaveSourceText = ref("");
 const compareMode = ref(false);
 const compareTargetServerId = ref("");
 const compareEntries = ref<CompareEntry[]>([]);
-const compareTargetValues = ref<Record<string, string>>({});
 const compareLoading = ref(false);
-const compareSyncing = ref(false);
 const serverPath = computed(() => {
   const server = store.servers.find((s) => s.id === store.currentServerId);
   return server?.path || "";
@@ -204,6 +202,9 @@ const compareDifferenceCount = computed(
   () => compareEntries.value.filter((entry) => entry.different).length,
 );
 const hasCompareTargets = computed(() => compareServerOptions.value.length > 0);
+const compareDifferenceBadgeText = computed(() =>
+  i18n.t("config.compare.difference_badge", { count: compareDifferenceCount.value }),
+);
 
 const numericFieldErrors = computed(() => {
   const errors: Record<string, string> = {};
@@ -336,7 +337,6 @@ function buildCompareEntries(
 async function loadCompareProperties() {
   if (!compareMode.value || !serverPath.value || !compareTargetPath.value) {
     compareEntries.value = [];
-    compareTargetValues.value = {};
     return;
   }
 
@@ -347,7 +347,6 @@ async function loadCompareProperties() {
       configApi.readServerProperties(serverPath.value),
       configApi.readServerProperties(compareTargetPath.value),
     ]);
-    compareTargetValues.value = { ...targetResult.raw };
     compareEntries.value = buildCompareEntries(
       sourceResult.entries as ConfigEntryType[],
       sourceResult.raw,
@@ -357,7 +356,6 @@ async function loadCompareProperties() {
   } catch (e) {
     error.value = String(e);
     compareEntries.value = [];
-    compareTargetValues.value = {};
   } finally {
     compareLoading.value = false;
   }
@@ -402,7 +400,6 @@ watch(hasCompareTargets, (hasTargets) => {
   compareMode.value = false;
   compareTargetServerId.value = "";
   compareEntries.value = [];
-  compareTargetValues.value = {};
 });
 
 async function loadProperties() {
@@ -425,7 +422,6 @@ async function loadProperties() {
     loadedSourceText.value = "";
     sourceDiffBaseText.value = "";
     compareEntries.value = [];
-    compareTargetValues.value = {};
   } finally {
     loading.value = false;
   }
@@ -574,7 +570,6 @@ function handleCompareModeChange(value: boolean) {
   if (!value) {
     compareTargetServerId.value = "";
     compareEntries.value = [];
-    compareTargetValues.value = {};
     return;
   }
 
@@ -582,48 +577,6 @@ function handleCompareModeChange(value: boolean) {
     compareTargetServerId.value = String(compareServerOptions.value[0].value);
   }
   void loadCompareProperties();
-}
-
-async function syncCompareEntry(key: string) {
-  if (!compareTargetPath.value || compareSyncing.value) return;
-
-  compareSyncing.value = true;
-  error.value = null;
-  successMsg.value = null;
-  try {
-    const nextValues = {
-      ...compareTargetValues.value,
-      [key]: editValues.value[key] ?? "",
-    };
-    await configApi.writeServerProperties(compareTargetPath.value, nextValues);
-    compareTargetValues.value = nextValues;
-    successMsg.value = i18n.t("config.saved");
-    setTimeout(() => (successMsg.value = null), 3000);
-    await loadCompareProperties();
-  } catch (e) {
-    error.value = String(e);
-  } finally {
-    compareSyncing.value = false;
-  }
-}
-
-async function syncAllCompareEntries() {
-  if (!compareTargetPath.value || compareSyncing.value) return;
-
-  compareSyncing.value = true;
-  error.value = null;
-  successMsg.value = null;
-  try {
-    await configApi.writeServerProperties(compareTargetPath.value, { ...editValues.value });
-    compareTargetValues.value = { ...editValues.value };
-    successMsg.value = i18n.t("config.saved");
-    setTimeout(() => (successMsg.value = null), 3000);
-    await loadCompareProperties();
-  } catch (e) {
-    error.value = String(e);
-  } finally {
-    compareSyncing.value = false;
-  }
 }
 
 async function loadPlugins() {
@@ -877,47 +830,34 @@ onActivated(async () => {
           </div>
 
           <div v-else-if="compareMode && compareTargetServerId" class="compare-entries">
-            <div class="compare-inline-actions glass-card">
-              <div class="compare-summary text-caption">
-                {{ i18n.t("config.compare.difference_count", { count: compareDifferenceCount }) }}
-              </div>
-              <SLButton
-                variant="secondary"
-                size="sm"
-                :loading="compareLoading"
-                :disabled="!compareTargetServerId || compareSyncing"
-                @click="loadCompareProperties"
-              >
-                <RotateCcw :size="16" />
-                {{ i18n.t("config.refresh_list") }}
-              </SLButton>
-              <SLButton
-                size="sm"
-                :loading="compareSyncing"
-                :disabled="!compareTargetServerId || compareDifferenceCount === 0"
-                @click="syncAllCompareEntries"
-              >
-                {{ i18n.t("config.compare.sync_all") }}
-              </SLButton>
-            </div>
-
             <div class="compare-header glass-card">
-              <div class="compare-column-head compare-column-meta"></div>
-              <div class="compare-column-head">
-                <span class="text-caption">{{
-                  currentServer?.name || i18n.t("config.compare.source_server")
-                }}</span>
-                <span class="compare-column-path text-mono text-caption">{{ serverPath }}</span>
+              <div class="compare-column-head compare-column-meta">
+                <div class="compare-header-control">
+                  <span class="text-caption">{{ i18n.t("config.compare.inline_label") }}</span>
+                  <SLSelect
+                    :modelValue="compareTargetServerId"
+                    :options="compareServerOptions"
+                    :disabled="!hasCompareTargets || compareLoading"
+                    @update:modelValue="compareTargetServerId = String($event)"
+                    style="width: 220px"
+                  />
+                </div>
               </div>
               <div class="compare-column-head">
-                <span class="text-caption">{{
-                  compareTargetServer?.name || i18n.t("config.compare.target_server")
-                }}</span>
-                <span class="compare-column-path text-mono text-caption">{{
-                  compareTargetPath
-                }}</span>
+                <div class="compare-server-heading">
+                  <span class="text-caption compare-server-title">{{
+                    currentServer?.name || i18n.t("config.compare.source_server")
+                  }}</span>
+                </div>
               </div>
-              <div class="compare-column-head compare-column-actions"></div>
+              <div class="compare-column-head">
+                <div class="compare-server-heading">
+                  <span class="text-caption compare-server-title">{{
+                    compareTargetServer?.name || i18n.t("config.compare.target_server")
+                  }}</span>
+                  <span class="compare-count-badge">{{ compareDifferenceBadgeText }}</span>
+                </div>
+              </div>
             </div>
 
             <div
@@ -945,27 +885,10 @@ onActivated(async () => {
                 </p>
               </div>
               <div class="compare-value-block compare-source-block">
-                <span class="compare-value-label text-caption">{{
-                  i18n.t("config.compare.source_value")
-                }}</span>
                 <code class="compare-value text-mono">{{ entry.sourceValue || "—" }}</code>
               </div>
               <div class="compare-value-block compare-target-block">
-                <span class="compare-value-label text-caption">{{
-                  i18n.t("config.compare.target_value")
-                }}</span>
                 <code class="compare-value text-mono">{{ entry.targetValue || "—" }}</code>
-              </div>
-              <div class="compare-actions">
-                <SLButton
-                  size="sm"
-                  variant="secondary"
-                  :loading="compareSyncing"
-                  :disabled="!entry.different"
-                  @click="syncCompareEntry(entry.key)"
-                >
-                  {{ i18n.t("config.compare.sync_current") }}
-                </SLButton>
               </div>
             </div>
 
@@ -1055,16 +978,6 @@ onActivated(async () => {
         >
           <div class="floating-status-wrap">
             <div class="floating-status text-caption">{{ saveStatusText }}</div>
-            <div v-if="compareMode && hasCompareTargets" class="floating-compare-target">
-              <span class="text-caption">{{ i18n.t("config.compare.inline_label") }}</span>
-              <SLSelect
-                :modelValue="compareTargetServerId"
-                :options="compareServerOptions"
-                :disabled="!hasCompareTargets || compareSyncing"
-                @update:modelValue="compareTargetServerId = String($event)"
-                style="width: 220px"
-              />
-            </div>
           </div>
           <div class="floating-center">
             <SLButton
@@ -1075,6 +988,18 @@ onActivated(async () => {
               @click="reloadPropertiesWithGuard"
             >
               <RefreshCw :size="16" />
+            </SLButton>
+            <SLButton
+              v-if="compareMode"
+              variant="secondary"
+              size="sm"
+              iconOnly
+              class="config-floating-icon-btn"
+              :loading="compareLoading"
+              :disabled="!compareTargetServerId"
+              @click="loadCompareProperties"
+            >
+              <RotateCcw :size="16" />
             </SLButton>
           </div>
           <div class="floating-right">

@@ -105,18 +105,7 @@
   gap: var(--sl-space-sm);
 }
 
-.compare-inline-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--sl-space-md);
-  flex-wrap: wrap;
-  padding: var(--sl-space-sm) var(--sl-space-md);
-}
-
 .compare-target-label,
-.compare-column-path,
-.compare-value-label,
 .compare-summary {
   color: var(--sl-text-tertiary);
 }
@@ -130,13 +119,21 @@
 .compare-header,
 .compare-entry {
   display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1.05fr) minmax(180px, 1fr) minmax(180px, 1fr);
   gap: var(--sl-space-md);
-  align-items: start;
-  padding: var(--sl-space-md);
   border: 1px solid var(--sl-border-light);
   background: var(--sl-surface);
   border-radius: var(--sl-radius-md);
+}
+
+.compare-header {
+  align-items: center;
+  padding: 6px var(--sl-space-md);
+}
+
+.compare-entry {
+  align-items: start;
+  padding: var(--sl-space-md);
 }
 
 .compare-entry.different {
@@ -153,17 +150,48 @@
 
 .compare-column-head,
 .compare-meta,
-.compare-value-block,
-.compare-actions {
+.compare-value-block {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.compare-column-actions,
-.compare-actions {
-  align-items: flex-end;
+.compare-header .compare-column-head {
   justify-content: center;
+  align-items: center;
+}
+
+.compare-header-control,
+.compare-server-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  min-height: 100%;
+}
+
+.compare-header-control {
+  flex-wrap: nowrap;
+}
+
+.compare-server-title {
+  color: var(--sl-text-primary);
+  font-weight: 500;
+}
+
+.compare-count-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--sl-primary-bg);
+  color: var(--sl-primary);
+  border-radius: var(--sl-radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  transform: scale(1.05);
 }
 
 .compare-diff-badge {
@@ -192,11 +220,6 @@
   .compare-header,
   .compare-entry {
     grid-template-columns: 1fr;
-  }
-
-  .compare-column-actions,
-  .compare-actions {
-    align-items: flex-start;
   }
 }
 
@@ -310,14 +333,10 @@
   min-width: 0;
 }
 
-.floating-compare-target {
+.floating-center {
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  flex-wrap: nowrap;
-}
-
-.floating-center {
   justify-self: center;
 }
 

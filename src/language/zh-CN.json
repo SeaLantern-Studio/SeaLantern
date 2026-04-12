@@ -462,6 +462,7 @@
         "sync_all": "全部同步",
         "different": "有差异",
         "difference_count": "差异项：{count}",
+        "difference_badge": "{count}个不同",
         "no_differences": "当前筛选条件下没有差异项",
         "no_target_servers": "没有可用于对照的其他服务器",
         "all_servers": "全部服务器"

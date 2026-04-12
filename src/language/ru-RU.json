@@ -305,6 +305,7 @@
       "sync_all": "Синхронизировать всё",
       "different": "Есть различия",
       "difference_count": "Различий: {count}",
+      "difference_badge": "{count} различий",
       "no_differences": "Нет различий при текущих фильтрах",
       "no_target_servers": "Нет других серверов для сравнения",
       "all_servers": "Все серверы"

@@ -305,6 +305,7 @@
       "sync_all": "전체 동기화",
       "different": "차이 있음",
       "difference_count": "차이 수: {count}",
+      "difference_badge": "{count}개 차이",
       "no_differences": "현재 필터에서 차이가 없습니다",
       "no_target_servers": "비교할 다른 서버가 없습니다",
       "all_servers": "모든 서버"
