@@ -272,27 +272,37 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: var(--sl-space-md);
   padding: var(--sl-space-xs);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
+  min-width: 0;
 }
 
 .toolbar-left {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--sl-space-sm);
 }
 
 .toolbar-right {
   display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--sl-space-sm);
 }
 
 .plugin-search {
-  width: 220px;
+  flex: 1 1 220px;
+  width: auto;
+  min-width: 0;
   padding: 6px 12px;
   border-radius: var(--sl-radius-sm);
   border: 1px solid var(--sl-border);
@@ -310,6 +320,8 @@ onBeforeUnmount(() => {
 .source-search-count {
   color: var(--sl-text-secondary);
   min-width: 64px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .source-cm-root :deep(.cm-editor) {
