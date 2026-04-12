@@ -95,6 +95,10 @@ impl CommandRegistry {
             "preview_server_properties_write".to_string(),
             handle_preview_server_properties_write as CommandHandler,
         );
+        handlers.insert(
+            "preview_server_properties_write_from_source".to_string(),
+            handle_preview_server_properties_write_from_source as CommandHandler,
+        );
 
         // 注册 System 命令
         handlers.insert("get_system_info".to_string(), handle_get_system_info as CommandHandler);
@@ -550,6 +554,18 @@ fn handle_preview_server_properties_write(
         let req: PreviewServerPropertiesWriteRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = config_commands::preview_server_properties_write(req.server_path, req.values)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_preview_server_properties_write_from_source(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: PreviewServerPropertiesWriteFromSourceRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result =
+            config_commands::preview_server_properties_write_from_source(req.source, req.values)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -1031,6 +1047,13 @@ struct PreviewServerPropertiesWriteRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct PreviewServerPropertiesWriteFromSourceRequest {
+    source: String,
+    values: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ValidateJavaPathRequest {
     path: String,
 }
@@ -1093,5 +1116,13 @@ mod tests {
         assert!(commands.contains(&"tunnel_copy_ticket".to_string()));
         assert!(commands.contains(&"tunnel_regenerate_ticket".to_string()));
         assert!(commands.contains(&"tunnel_generate_ticket".to_string()));
+    }
+
+    #[test]
+    fn command_registry_includes_preview_from_source_command() {
+        let registry = CommandRegistry::new();
+        let commands = registry.list_commands();
+
+        assert!(commands.contains(&"preview_server_properties_write_from_source".to_string()));
     }
 }
