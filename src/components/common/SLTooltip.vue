@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 
 interface Props {
   content: string;
@@ -70,12 +70,14 @@ function handleWindowChange() {
   }
 }
 
-if (typeof window !== "undefined") {
-  window.addEventListener("scroll", handleWindowChange, true);
-  window.addEventListener("resize", handleWindowChange);
-}
+onMounted(() => {
+  if (typeof window !== "undefined") {
+    window.addEventListener("scroll", handleWindowChange, true);
+    window.addEventListener("resize", handleWindowChange);
+  }
+});
 
-onBeforeUnmount(() => {
+onUnmounted(() => {
   if (typeof window !== "undefined") {
     window.removeEventListener("scroll", handleWindowChange, true);
     window.removeEventListener("resize", handleWindowChange);
