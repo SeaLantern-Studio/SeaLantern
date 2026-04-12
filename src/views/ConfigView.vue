@@ -48,6 +48,7 @@ const activeCategory = ref("all");
 const editorMode = ref<"visual" | "source">("visual");
 const sourceDraftText = ref("");
 const loadedSourceText = ref("");
+const visualModeBaseValues = ref<Record<string, string>>({});
 const visualDraftDirty = ref(false);
 const modeSwitching = ref(false);
 const sourceParseError = ref<string | null>(null);
@@ -156,6 +157,25 @@ const filteredEntries = computed(() => {
   });
 });
 
+const numericFieldErrors = computed(() => {
+  const errors: Record<string, string> = {};
+
+  for (const entry of entries.value) {
+    if (entry.value_type !== "number") {
+      continue;
+    }
+
+    const value = editValues.value[entry.key]?.trim() ?? "";
+    if (value.length === 0 || !/^-?\d+$/.test(value)) {
+      errors[entry.key] = `${entry.key} 需要填写整数`;
+    }
+  }
+
+  return errors;
+});
+
+const hasInvalidNumericValues = computed(() => Object.keys(numericFieldErrors.value).length > 0);
+
 function areMapValuesEqual(a: Record<string, string>, b: Record<string, string>) {
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
@@ -179,12 +199,39 @@ function getTranslatedPropertyDescription(key: string) {
   return translated === translationKey ? "" : translated;
 }
 
+function getChangedPropertyValues() {
+  const changedValues: Record<string, string> = {};
+  const baseValues =
+    sourceDraftText.value !== loadedSourceText.value
+      ? visualModeBaseValues.value
+      : loadedValues.value;
+
+  for (const [key, value] of Object.entries(editValues.value)) {
+    if (baseValues[key] !== value) {
+      changedValues[key] = value;
+    }
+  }
+
+  return changedValues;
+}
+
+async function buildVisualPreviewSource() {
+  const changedValues = getChangedPropertyValues();
+
+  if (sourceDraftText.value !== loadedSourceText.value) {
+    return configApi.previewServerPropertiesWriteFromSource(sourceDraftText.value, changedValues);
+  }
+
+  return configApi.previewServerPropertiesWrite(serverPath.value, changedValues);
+}
+
 function applyParsedSourceState(sourceText: string, targetMode: "visual" | "source" = "visual") {
   const parsed = configApi.parseServerPropertiesSource(sourceText);
   return parsed.then((result) => {
     entries.value = result.entries as ConfigEntryType[];
     editValues.value = { ...result.raw };
     loadedValues.value = { ...result.raw };
+    visualModeBaseValues.value = { ...result.raw };
     sourceDraftText.value = sourceText;
     loadedSourceText.value = sourceText;
     sourceDiffBaseText.value = sourceText;
@@ -263,14 +310,17 @@ async function saveProperties() {
   error.value = null;
 
   try {
+    if (editorMode.value === "visual" && hasInvalidNumericValues.value) {
+      const invalidKeys = Object.keys(numericFieldErrors.value);
+      error.value = `以下字段需要填写整数：${invalidKeys.join("、")}`;
+      return;
+    }
+
     const latestSourceText = await configApi.readServerPropertiesSource(serverPath.value);
     sourceDiffBaseText.value = latestSourceText;
 
     if (editorMode.value === "visual") {
-      pendingSaveSourceText.value = await configApi.previewServerPropertiesWrite(
-        serverPath.value,
-        editValues.value,
-      );
+      pendingSaveSourceText.value = await buildVisualPreviewSource();
     } else {
       pendingSaveSourceText.value = sourceDraftText.value;
     }
@@ -308,10 +358,7 @@ async function handleEditorModeChange(mode: string | null) {
   try {
     if (targetMode === "source") {
       if (visualDraftDirty.value) {
-        sourceDraftText.value = await configApi.previewServerPropertiesWrite(
-          serverPath.value,
-          editValues.value,
-        );
+        sourceDraftText.value = await buildVisualPreviewSource();
         visualDraftDirty.value = false;
       }
       sourceParseError.value = null;
@@ -322,6 +369,7 @@ async function handleEditorModeChange(mode: string | null) {
     const parsed = await configApi.parseServerPropertiesSource(sourceDraftText.value);
     entries.value = parsed.entries as ConfigEntryType[];
     editValues.value = { ...parsed.raw };
+    visualModeBaseValues.value = { ...parsed.raw };
     visualDraftDirty.value = false;
     sourceParseError.value = null;
     editorMode.value = "visual";
@@ -657,9 +705,14 @@ onActivated(async () => {
                   <SLInput
                     :modelValue="editValues[entry.key]"
                     :placeholder="entry.default_value"
+                    :type="entry.value_type === 'number' ? 'number' : 'text'"
+                    :step="entry.value_type === 'number' ? 1 : undefined"
                     @update:modelValue="updateValue(entry.key, $event)"
                     style="width: 200px"
                   />
+                  <p v-if="numericFieldErrors[entry.key]" class="entry-desc text-caption">
+                    {{ numericFieldErrors[entry.key] }}
+                  </p>
                 </template>
               </div>
             </div>
