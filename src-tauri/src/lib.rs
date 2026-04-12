@@ -158,6 +158,7 @@ pub fn run() {
             config_commands::write_server_properties_source,
             config_commands::parse_server_properties_source,
             config_commands::preview_server_properties_write,
+            config_commands::preview_server_properties_write_from_source,
             system_commands::get_system_info,
             system_commands::pick_jar_file,
             system_commands::pick_archive_file,

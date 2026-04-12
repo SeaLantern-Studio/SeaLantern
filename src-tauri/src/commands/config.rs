@@ -103,3 +103,11 @@ pub fn preview_server_properties_write(
     validate_path_within_server(&server_path, &props_path)?;
     config_parser::preview_properties_write(&props_path, &values)
 }
+
+#[tauri::command]
+pub fn preview_server_properties_write_from_source(
+    source: String,
+    values: HashMap<String, String>,
+) -> Result<String, String> {
+    config_parser::preview_properties_write_from_source(&source, &values)
+}

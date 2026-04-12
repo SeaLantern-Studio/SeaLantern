@@ -73,6 +73,13 @@ pub fn preview_properties_write(
     Ok(render_properties_content(&original, values))
 }
 
+pub fn preview_properties_write_from_source(
+    source: &str,
+    values: &HashMap<String, String>,
+) -> Result<String, String> {
+    Ok(render_properties_content(source, values))
+}
+
 /// Read a .properties file into a HashMap
 pub fn read_properties(file_path: &str) -> Result<HashMap<String, String>, String> {
     let content = read_raw_text(file_path)?;

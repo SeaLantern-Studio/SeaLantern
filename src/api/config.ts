@@ -85,6 +85,19 @@ export const configApi = {
   },
 
   /**
+   * 基于给定源码预览可视化配置写回后的最终文本
+   */
+  async previewServerPropertiesWriteFromSource(
+    source: string,
+    values: Record<string, string>,
+  ): Promise<string> {
+    return tauriInvoke("preview_server_properties_write_from_source", {
+      source,
+      values,
+    });
+  },
+
+  /**
    * 读取通用配置文件
    */
   async readConfig(serverPath: string, path: string): Promise<Record<string, string>> {
