@@ -39,6 +39,19 @@ let hasAnyLine = false;
 let terminalTextarea: HTMLTextAreaElement | null = null;
 let emptyStateRenderId = 0;
 
+function handleWheelScroll(event: WheelEvent) {
+  if (!terminal) return;
+  if (event.ctrlKey) return;
+
+  const deltaInLines =
+    event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY : event.deltaY / 40;
+  const lines = deltaInLines > 0 ? Math.ceil(deltaInLines) : Math.floor(deltaInLines);
+  if (lines === 0) return;
+
+  terminal.scrollLines(lines);
+  event.preventDefault();
+}
+
 async function handleCopyShortcut(event: KeyboardEvent) {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
   if (!terminal?.hasSelection()) return;
@@ -263,6 +276,7 @@ onMounted(() => {
     terminalTextarea.addEventListener("focus", keepDisplayOnlyFocus);
   }
   terminalHost.value.addEventListener("mousedown", keepDisplayOnlyFocus);
+  terminalHost.value.addEventListener("wheel", handleWheelScroll, { passive: false });
   fitTerminal();
   setupScrollTracking();
   clear();
@@ -283,6 +297,7 @@ onUnmounted(() => {
   window.removeEventListener("keydown", handleCopyShortcut);
   document.removeEventListener("copy", handleCopyEvent, true);
   terminalHost.value?.removeEventListener("mousedown", keepDisplayOnlyFocus);
+  terminalHost.value?.removeEventListener("wheel", handleWheelScroll);
   terminalTextarea?.removeEventListener("focus", keepDisplayOnlyFocus);
   terminalTextarea = null;
   resizeObserver?.disconnect();
@@ -370,24 +385,7 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
 }
 
 .terminal-host :deep(.xterm-viewport) {
-  overflow-y: auto !important;
   background: transparent !important;
-}
-
-.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar) {
-  background: transparent !important;
-}
-
-.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar.vertical) {
-  width: 4px !important;
-}
-
-.terminal-host :deep(.xterm .xterm-scrollable-element > .scrollbar > .slider) {
-  border-radius: 999px;
-  border: none;
-  transition:
-    background-color 0.16s ease,
-    opacity 0.16s ease;
 }
 
 .scroll-btn {

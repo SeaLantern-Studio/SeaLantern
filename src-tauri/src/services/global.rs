@@ -59,6 +59,7 @@ fn heartbeat_storage() -> &'static AtomicU64 {
 }
 
 /// 更新前端心跳时间为当前 Unix 秒时间戳。
+#[allow(dead_code)]
 pub fn update_frontend_heartbeat() {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)

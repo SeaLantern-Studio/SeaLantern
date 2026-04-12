@@ -41,7 +41,7 @@ function toggleViewMode() {
       </div>
     </template>
 
-    <div v-if="statsLoading" class="stats-loading">
+    <div v-if="statsLoading && !systemInfo" class="stats-loading">
       <div class="spinner"></div>
       <span>{{ i18n.t("common.loading") }}</span>
     </div>

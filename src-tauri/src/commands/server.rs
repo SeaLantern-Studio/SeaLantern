@@ -1,10 +1,42 @@
 use crate::models::server::*;
 use crate::services::global;
+use serde::Serialize;
 use std::path::Path;
 use tauri::Emitter;
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForceStopPreparationResponse {
+    pub token: String,
+    pub expires_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerStartFallbackEvent {
+    pub server_id: String,
+    pub server_name: String,
+    pub from_mode: String,
+    pub to_mode: String,
+    pub reason: String,
+}
+
 fn manager() -> &'static crate::services::server_manager::ServerManager {
     global::server_manager()
+}
+
+#[tauri::command]
+pub fn prepare_force_stop_server(id: String) -> Result<ForceStopPreparationResponse, String> {
+    let preparation = manager().prepare_force_stop_server(&id)?;
+    Ok(ForceStopPreparationResponse {
+        token: preparation.token,
+        expires_at: preparation.expires_at,
+    })
+}
+
+#[tauri::command]
+pub fn force_stop_server(id: String, confirmation_token: String) -> Result<(), String> {
+    manager().force_stop_server(&id, &confirmation_token)
 }
 
 #[tauri::command]
@@ -520,8 +552,21 @@ fn copy_directory_recursive(source: &Path, target: &Path) -> Result<(), std::io:
 }
 
 #[tauri::command]
-pub fn start_server(id: String) -> Result<(), String> {
-    manager().start_server(&id)
+pub fn start_server(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    let report = manager().start_server(&id)?;
+    if let Some(fallback) = report.fallback {
+        let _ = app.emit(
+            "server-start-fallback",
+            ServerStartFallbackEvent {
+                server_id: report.server_id,
+                server_name: report.server_name,
+                from_mode: fallback.from_mode,
+                to_mode: fallback.to_mode,
+                reason: fallback.reason,
+            },
+        );
+    }
+    Ok(())
 }
 
 #[tauri::command]
