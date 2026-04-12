@@ -23,6 +23,7 @@ import {
   RotateCcw,
   FolderOpen,
   Edit,
+  FileDiff,
 } from "lucide-vue-next";
 
 import ConfigCategories from "@components/config/ConfigCategories.vue";
@@ -202,6 +203,7 @@ const filteredCompareEntries = computed(() => {
 const compareDifferenceCount = computed(
   () => compareEntries.value.filter((entry) => entry.different).length,
 );
+const hasCompareTargets = computed(() => compareServerOptions.value.length > 0);
 
 const numericFieldErrors = computed(() => {
   const errors: Record<string, string> = {};
@@ -377,6 +379,9 @@ watch(
   () => store.currentServerId,
   async () => {
     if (store.currentServerId) {
+      if (compareTargetServerId.value === store.currentServerId) {
+        compareTargetServerId.value = compareServerOptions.value[0]?.value?.toString() || "";
+      }
       await loadProperties();
       await loadPlugins();
     }
@@ -387,6 +392,17 @@ watch(compareTargetServerId, async () => {
   if (compareMode.value && compareTargetServerId.value) {
     await loadCompareProperties();
   }
+});
+
+watch(hasCompareTargets, (hasTargets) => {
+  if (hasTargets) {
+    return;
+  }
+
+  compareMode.value = false;
+  compareTargetServerId.value = "";
+  compareEntries.value = [];
+  compareTargetValues.value = {};
 });
 
 async function loadProperties() {
@@ -806,14 +822,25 @@ onActivated(async () => {
     <div class="config-header">
       <div class="config-tabs-row">
         <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" />
-        <SLTabBar
-          v-if="activeTab === 'properties'"
-          class="config-editor-mode-bar"
-          :modelValue="editorMode"
-          :tabs="editorModeTabs"
-          :level="2"
-          @update:modelValue="handleEditorModeChange"
-        />
+        <div v-if="activeTab === 'properties'" class="config-properties-header-actions">
+          <SLButton
+            v-if="hasCompareTargets"
+            size="sm"
+            :variant="compareMode ? 'primary' : 'secondary'"
+            class="config-compare-toggle"
+            @click="handleCompareModeChange(!compareMode)"
+          >
+            <FileDiff :size="16" />
+            {{ i18n.t("config.compare.toggle") }}
+          </SLButton>
+          <SLTabBar
+            class="config-editor-mode-bar"
+            :modelValue="editorMode"
+            :tabs="editorModeTabs"
+            :level="2"
+            @update:modelValue="handleEditorModeChange"
+          />
+        </div>
       </div>
     </div>
 
@@ -831,53 +858,6 @@ onActivated(async () => {
       </div>
 
       <template v-if="activeTab === 'properties'">
-        <div class="compare-toolbar glass-card">
-          <div class="compare-toolbar-main">
-            <div class="compare-toolbar-title-group">
-              <span class="compare-toolbar-title">{{ i18n.t("config.compare.title") }}</span>
-              <span class="compare-toolbar-subtitle text-caption">
-                {{ i18n.t("config.compare.description") }}
-              </span>
-            </div>
-            <SLSwitch :modelValue="compareMode" @update:modelValue="handleCompareModeChange" />
-          </div>
-          <div v-if="compareMode" class="compare-toolbar-actions">
-            <div class="compare-target-select">
-              <span class="text-caption compare-target-label">
-                {{ i18n.t("config.compare.target_server") }}
-              </span>
-              <SLSelect
-                :modelValue="compareTargetServerId"
-                :options="compareServerOptions"
-                :disabled="compareServerOptions.length === 0 || compareSyncing"
-                @update:modelValue="compareTargetServerId = String($event)"
-                style="width: 240px"
-              />
-            </div>
-            <div class="compare-summary text-caption">
-              {{ i18n.t("config.compare.difference_count", { count: compareDifferenceCount }) }}
-            </div>
-            <SLButton
-              variant="secondary"
-              size="sm"
-              :loading="compareLoading"
-              :disabled="!compareTargetServerId || compareSyncing"
-              @click="loadCompareProperties"
-            >
-              <RotateCcw :size="16" />
-              {{ i18n.t("config.refresh_list") }}
-            </SLButton>
-            <SLButton
-              size="sm"
-              :loading="compareSyncing"
-              :disabled="!compareTargetServerId || compareDifferenceCount === 0"
-              @click="syncAllCompareEntries"
-            >
-              {{ i18n.t("config.compare.sync_all") }}
-            </SLButton>
-          </div>
-        </div>
-
         <div v-show="editorMode === 'visual'">
           <ConfigCategories
             :categories="categories"
@@ -892,14 +872,35 @@ onActivated(async () => {
             <span>{{ i18n.t("config.loading") }}</span>
           </div>
 
-          <div
-            v-else-if="compareMode && compareServerOptions.length === 0"
-            class="empty-state glass-card"
-          >
+          <div v-else-if="compareMode && !hasCompareTargets" class="empty-state glass-card">
             <p class="text-caption">{{ i18n.t("config.compare.no_target_servers") }}</p>
           </div>
 
           <div v-else-if="compareMode && compareTargetServerId" class="compare-entries">
+            <div class="compare-inline-actions glass-card">
+              <div class="compare-summary text-caption">
+                {{ i18n.t("config.compare.difference_count", { count: compareDifferenceCount }) }}
+              </div>
+              <SLButton
+                variant="secondary"
+                size="sm"
+                :loading="compareLoading"
+                :disabled="!compareTargetServerId || compareSyncing"
+                @click="loadCompareProperties"
+              >
+                <RotateCcw :size="16" />
+                {{ i18n.t("config.refresh_list") }}
+              </SLButton>
+              <SLButton
+                size="sm"
+                :loading="compareSyncing"
+                :disabled="!compareTargetServerId || compareDifferenceCount === 0"
+                @click="syncAllCompareEntries"
+              >
+                {{ i18n.t("config.compare.sync_all") }}
+              </SLButton>
+            </div>
+
             <div class="compare-header glass-card">
               <div class="compare-column-head compare-column-meta"></div>
               <div class="compare-column-head">
@@ -1052,7 +1053,19 @@ onActivated(async () => {
           class="config-floating-actions glass-strong"
           :class="{ 'config-floating-actions--unsaved': hasUnsavedChanges }"
         >
-          <div class="floating-status text-caption">{{ saveStatusText }}</div>
+          <div class="floating-status-wrap">
+            <div class="floating-status text-caption">{{ saveStatusText }}</div>
+            <div v-if="compareMode && hasCompareTargets" class="floating-compare-target">
+              <span class="text-caption">{{ i18n.t("config.compare.inline_label") }}</span>
+              <SLSelect
+                :modelValue="compareTargetServerId"
+                :options="compareServerOptions"
+                :disabled="!hasCompareTargets || compareSyncing"
+                @update:modelValue="compareTargetServerId = String($event)"
+                style="width: 220px"
+              />
+            </div>
+          </div>
           <div class="floating-center">
             <SLButton
               variant="secondary"

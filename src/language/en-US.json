@@ -436,6 +436,8 @@
       "server_properties": "Server Properties",
       "compare": {
         "title": "Config Compare",
+        "toggle": "Compare",
+        "inline_label": "Compare:",
         "description": "Select another server to compare the current server's server.properties values.",
         "target_server": "Target Server",
         "source_server": "Current Server",

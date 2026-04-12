@@ -451,6 +451,8 @@
       "server_properties": "服务器属性",
       "compare": {
         "title": "配置对照",
+        "toggle": "对照",
+        "inline_label": "对照：",
         "description": "选择另一台服务器，查看当前服务器与目标服务器的 server.properties 差异。",
         "target_server": "目标服务器",
         "source_server": "当前服务器",

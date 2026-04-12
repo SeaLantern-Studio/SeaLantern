@@ -9,6 +9,18 @@
   flex-shrink: 0;
 }
 
+.config-properties-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.config-compare-toggle {
+  flex-shrink: 0;
+}
+
 .config-header {
   display: flex;
   flex-direction: column;
@@ -20,6 +32,13 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sl-space-sm);
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.config-tabs-row > :first-child {
+  min-width: 0;
 }
 
 .empty-state {
@@ -68,7 +87,6 @@
   color: var(--sl-text-tertiary);
 }
 
-.compare-toolbar,
 .compare-header,
 .compare-entry,
 .config-entries {
@@ -77,45 +95,20 @@
   gap: var(--sl-space-sm);
 }
 
-.compare-toolbar {
-  padding: var(--sl-space-md);
-  border: 1px solid var(--sl-border-light);
-  background: var(--sl-surface);
-}
-
-.compare-toolbar-main,
-.compare-toolbar-actions {
+.compare-inline-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--sl-space-md);
   flex-wrap: wrap;
+  padding: var(--sl-space-sm) var(--sl-space-md);
 }
 
-.compare-toolbar-title-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.compare-toolbar-title {
-  font-size: var(--sl-font-size-base);
-  font-weight: 600;
-  color: var(--sl-text-primary);
-}
-
-.compare-toolbar-subtitle,
 .compare-target-label,
 .compare-column-path,
 .compare-value-label,
 .compare-summary {
   color: var(--sl-text-tertiary);
-}
-
-.compare-target-select {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-sm);
 }
 
 .compare-entries {
@@ -276,6 +269,7 @@
   gap: var(--sl-space-sm);
   align-items: center;
   z-index: 50;
+  overflow-x: auto;
   transition:
     border-color var(--sl-transition-normal),
     box-shadow var(--sl-transition-normal);
@@ -295,6 +289,22 @@
 
 .floating-status {
   color: var(--sl-text-secondary);
+}
+
+.floating-status-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-md);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.floating-compare-target {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  flex-wrap: nowrap;
 }
 
 .floating-center {
