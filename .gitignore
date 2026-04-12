@@ -23,3 +23,6 @@ changelog/
 plugin-market/
 plugins-demo/
 .opencode/
+
+#docker test
+data/

@@ -23,6 +23,9 @@ pub const ENV_VARS: &[&str] = &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"];
 #[cfg(target_os = "windows")]
 pub const PROGRAM_FILES_JAVA_DIRS: &[&str] = &["Java", "Zulu", "Eclipse Adoptium", "BellSoft"];
 
+#[cfg(target_os = "windows")]
+pub const USER_PROFILE_JAVA_DIRS: &[&str] = &["scoop\\apps\\jabba\\current\\jdk"];
+
 #[cfg(not(target_os = "windows"))]
 pub const COMMON_JAVA_DIRS: &[&str] =
     &["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];

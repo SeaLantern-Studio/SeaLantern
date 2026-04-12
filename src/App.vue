@@ -12,6 +12,7 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
+import { useGlobalMessage } from "@composables/useMessage";
 import { isBrowserEnv } from "@api/tauri";
 import {
   applyTheme,
@@ -56,6 +57,15 @@ const settingsStore = useSettingsStore();
 const pluginStore = usePluginStore();
 const contextMenuStore = useContextMenuStore();
 const serverStore = useServerStore();
+const globalMessage = useGlobalMessage();
+
+interface ServerStartFallbackEventPayload {
+  serverId: string;
+  serverName: string;
+  fromMode: string;
+  toMode: string;
+  reason: string;
+}
 
 async function handleGlobalContextMenu(event: MouseEvent) {
   // 在浏览器环境（Docker 模式）下，不阻止右键菜单，允许开发者工具
@@ -115,6 +125,7 @@ async function handleGlobalContextMenu(event: MouseEvent) {
 }
 
 let serverErrorUnlisten: UnlistenFn | null = null;
+let serverStartFallbackUnlisten: UnlistenFn | null = null;
 
 onMounted(async () => {
   // 监听服务器错误事件并播放提示音（仅 Tauri 环境）
@@ -122,6 +133,16 @@ onMounted(async () => {
     serverErrorUnlisten = await listen("server-error", () => {
       playNotificationSound();
     });
+    serverStartFallbackUnlisten = await listen<ServerStartFallbackEventPayload>(
+      "server-start-fallback",
+      ({ payload }) => {
+        const displayName = payload.serverName || payload.serverId;
+        globalMessage.warning(
+          `Server ${displayName} failed to start via JAR, automatically fell back to ${payload.toMode} mode (${payload.reason})`,
+          5000,
+        );
+      },
+    );
   }
 
   contextMenuStore.initContextMenuListener();
@@ -175,6 +196,10 @@ onUnmounted(() => {
     serverErrorUnlisten();
     serverErrorUnlisten = null;
   }
+  if (serverStartFallbackUnlisten) {
+    serverStartFallbackUnlisten();
+    serverStartFallbackUnlisten = null;
+  }
 
   document.removeEventListener("contextmenu", handleGlobalContextMenu);
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
@@ -201,16 +226,24 @@ function handleSplashReady() {
   if (isInitializing.value) return;
   showSplash.value = false;
 
-  // 检查是否需要显示协议同意弹窗
-  const settings = settingsStore.settings;
-  if (!settings.agreed_to_terms) {
-    showTermsDialog.value = true;
-  }
+  // 等待设置加载完成后再检查协议同意状态
+  const checkTerms = () => {
+    if (settingsStore.isLoaded) {
+      const settings = settingsStore.settings;
+      if (!settings.agreed_to_terms) {
+        showTermsDialog.value = true;
+      }
+      // Dev模式下跳过更新检查, 想要检查更新去关于页面检查
+      if (!import.meta.env.DEV) {
+        updateStore.checkForUpdateOnStartup();
+      }
+    } else {
+      // 如果还没加载完，等待一小段时间后重试
+      setTimeout(checkTerms, 50);
+    }
+  };
 
-  // Dev模式下跳过更新检查, 想要检查更新去关于页面检查
-  if (!import.meta.env.DEV) {
-    updateStore.checkForUpdateOnStartup();
-  }
+  checkTerms();
 }
 
 function handleUpdateModalClose() {

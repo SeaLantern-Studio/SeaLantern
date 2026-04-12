@@ -399,7 +399,12 @@
       "stopped": "Stopped",
       "no_server": "No servers",
       "create_server_first": "Please create and select a server first",
-      "suggestion_hint": "Tab to complete / Up Down to select"
+      "suggestion_hint": "Tab to complete / Up Down to select",
+      "force_stop": "Force Stop",
+      "force_stop_confirm": "Force stopping will kill the server process immediately and may cause data loss. Continue?",
+      "force_stop_requested": "Force stop requested",
+      "overview_title": "Unified Console",
+      "overview_subtitle": "Switch servers and view host performance data from one page"
     },
     "config": {
       "title": "Config Edit",
@@ -429,6 +434,21 @@
       "no_changes_to_save": "These edits do not produce any config changes.",
       "default": "Default Value",
       "server_properties": "Server Properties",
+      "compare": {
+        "title": "Config Compare",
+        "description": "Select another server to compare the current server's server.properties values.",
+        "target_server": "Target Server",
+        "source_server": "Current Server",
+        "source_value": "Current Value",
+        "target_value": "Target Value",
+        "sync_current": "Sync Item",
+        "sync_all": "Sync All",
+        "different": "Different",
+        "difference_count": "Differences: {count}",
+        "no_differences": "No differences under the current filters",
+        "no_target_servers": "No other servers available for comparison",
+        "all_servers": "All Servers"
+      },
       "server_plugins": "Server Plugins",
       "loading_plugins": "Loading plugins...",
       "no_plugins": "No plugins found",

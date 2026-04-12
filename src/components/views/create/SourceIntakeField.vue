@@ -64,9 +64,12 @@ function setSource(path: string, type: SourceType) {
 }
 
 function handleDrop(path: string) {
+  console.debug("[SourceIntakeField] handleDrop received path", path);
   if (hasArchiveExtension(path)) {
+    console.debug("[SourceIntakeField] Classified dropped path as archive");
     setSource(path, "archive");
   } else {
+    console.debug("[SourceIntakeField] Classified dropped path as folder");
     setSource(path, "folder");
   }
 }

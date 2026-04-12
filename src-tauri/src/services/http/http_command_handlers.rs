@@ -6,7 +6,7 @@ use crate::commands::settings as settings_commands;
 use crate::commands::system as system_commands;
 use crate::commands::tunnel as tunnel_commands;
 use crate::commands::update as update_commands;
-use crate::models::settings::AppSettings;
+use crate::models::settings::{AppSettings, PartialSettings};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -129,6 +129,14 @@ impl CommandRegistry {
         // 注册 Settings 命令
         handlers.insert("get_settings".to_string(), handle_get_settings as CommandHandler);
         handlers.insert("save_settings".to_string(), handle_save_settings as CommandHandler);
+        handlers.insert(
+            "save_settings_with_diff".to_string(),
+            handle_save_settings_with_diff as CommandHandler,
+        );
+        handlers.insert(
+            "update_settings_partial".to_string(),
+            handle_update_settings_partial as CommandHandler,
+        );
         handlers.insert("reset_settings".to_string(), handle_reset_settings as CommandHandler);
         handlers.insert("export_settings".to_string(), handle_export_settings as CommandHandler);
         handlers.insert("import_settings".to_string(), handle_import_settings as CommandHandler);
@@ -291,7 +299,7 @@ fn handle_start_server(
     Box::pin(async move {
         let req: ServerIdRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
-        server_commands::start_server(req.id)?;
+        crate::services::global::server_manager().start_server(&req.id)?;
         Ok(Value::Null)
     })
 }
@@ -717,6 +725,33 @@ fn handle_save_settings(
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         settings_commands::save_settings(settings)?;
         Ok(Value::Null)
+    })
+}
+
+fn handle_save_settings_with_diff(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let settings: AppSettings =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = settings_commands::save_settings_with_diff(settings)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_update_settings_partial(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        // 从 params 中提取 partial 字段
+        // 前端通过 tauriInvoke("update_settings_partial", { partial }) 调用
+        // HTTP 请求体为 { "params": { "partial": { ... } } }
+        // 所以 params = { "partial": { ... } }，需要提取其中的 partial 字段
+        let partial_value = params.get("partial").cloned().unwrap_or(params);
+        let partial: PartialSettings = serde_json::from_value(partial_value)
+            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = settings_commands::update_settings_partial(partial)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
 

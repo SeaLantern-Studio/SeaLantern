@@ -28,7 +28,8 @@
         },
         "resizable": true,
         "transparent": true,
-        "visible": true
+        "visible": true,
+        "dragDropEnabled": false
       }
     ],
     "macOSPrivateApi": true,

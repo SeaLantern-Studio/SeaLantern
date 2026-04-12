@@ -62,6 +62,7 @@ COPY src-tauri/build.rs ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
 COPY src-tauri/icons/ ./src-tauri/icons/
 COPY src-tauri/tauri.conf.json ./src-tauri/
+COPY src-tauri/locales/ ./src-tauri/locales/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
 
@@ -104,6 +105,7 @@ COPY src-tauri/build.rs ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
 COPY src-tauri/icons/ ./src-tauri/icons/
 COPY src-tauri/tauri.conf.json ./src-tauri/
+COPY src-tauri/locales/ ./src-tauri/locales/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
 

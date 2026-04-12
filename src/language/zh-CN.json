@@ -415,7 +415,12 @@
       "stopped": "已停止",
       "no_server": "暂无服务器",
       "create_server_first": "请先创建并选择一个服务器",
-      "suggestion_hint": "Tab 补全 / Up Down 选择"
+      "suggestion_hint": "Tab 补全 / Up Down 选择",
+      "force_stop": "强制关停",
+      "force_stop_confirm": "强制关停会立即杀死服务器进程，可能导致数据丢失。确定继续吗？",
+      "force_stop_requested": "已发送强制关停请求",
+      "overview_title": "统一控制台",
+      "overview_subtitle": "支持在同一页面切换服务器并查看宿主机性能数据"
     },
     "config": {
       "title": "配置编辑",
@@ -444,6 +449,21 @@
       "source_parse_failed": "源文件存在无法解析的内容，请修正后再切回可视化编辑。",
       "no_changes_to_save": "当前修改不会产生任何配置变更。",
       "server_properties": "服务器属性",
+      "compare": {
+        "title": "配置对照",
+        "description": "选择另一台服务器，查看当前服务器与目标服务器的 server.properties 差异。",
+        "target_server": "目标服务器",
+        "source_server": "当前服务器",
+        "source_value": "当前值",
+        "target_value": "目标值",
+        "sync_current": "同步此项",
+        "sync_all": "全部同步",
+        "different": "有差异",
+        "difference_count": "差异项：{count}",
+        "no_differences": "当前筛选条件下没有差异项",
+        "no_target_servers": "没有可用于对照的其他服务器",
+        "all_servers": "全部服务器"
+      },
       "server_plugins": "服务器插件",
       "loading_plugins": "加载插件中...",
       "no_plugins": "没有找到插件",
