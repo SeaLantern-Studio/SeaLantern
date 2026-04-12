@@ -787,7 +787,13 @@ onActivated(async () => {
         <div class="config-floating-actions glass-strong">
           <div class="floating-status text-caption">{{ saveStatusText }}</div>
           <div class="floating-center">
-            <SLButton variant="secondary" size="sm" iconOnly @click="reloadPropertiesWithGuard">
+            <SLButton
+              variant="secondary"
+              size="sm"
+              iconOnly
+              class="config-floating-icon-btn"
+              @click="reloadPropertiesWithGuard"
+            >
               <RefreshCw :size="16" />
             </SLButton>
           </div>
@@ -796,11 +802,22 @@ onActivated(async () => {
               variant="primary"
               size="sm"
               iconOnly
+              class="config-floating-icon-btn"
+              :class="
+                hasUnsavedChanges
+                  ? 'config-floating-icon-btn--unsaved'
+                  : 'config-floating-icon-btn--idle'
+              "
               :disabled="!hasUnsavedChanges"
               :loading="saving"
               @click="saveProperties"
             >
-              <Save :size="16" />
+              <span
+                class="save-icon-wrap"
+                :class="{ 'save-icon-wrap--unsaved': hasUnsavedChanges && !saving }"
+              >
+                <Save :size="16" />
+              </span>
             </SLButton>
           </div>
         </div>

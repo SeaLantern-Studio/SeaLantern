@@ -172,6 +172,51 @@
   justify-self: end;
 }
 
+.config-floating-actions .config-floating-icon-btn {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.config-floating-actions .config-floating-icon-btn:not(:hover):not(:active) {
+  transform: none;
+}
+
+.config-floating-actions .config-floating-icon-btn--idle:not(:hover):not(:active) {
+  color: var(--sl-text-tertiary);
+}
+
+.config-floating-actions .config-floating-icon-btn--unsaved:not(:hover):not(:active) {
+  color: var(--sl-text-primary);
+}
+
+.config-floating-actions .config-floating-icon-btn--idle:hover,
+.config-floating-actions .config-floating-icon-btn--idle:active {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--sl-text-tertiary);
+  transform: none;
+}
+
+.save-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-icon-wrap--unsaved::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sl-error);
+}
+
 .source-diff-summary {
   display: flex;
   align-items: center;
