@@ -3,9 +3,7 @@ import { ref, computed, watch, onMounted, onActivated, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import SLTooltip from "@components/common/SLTooltip.vue";
@@ -30,6 +28,8 @@ import {
 import ConfigCategories from "@components/config/ConfigCategories.vue";
 import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
 import ConfigSourceEditor from "@components/config/ConfigSourceEditor.vue";
+import ConfigPropertyEditorControl from "@components/config/ConfigPropertyEditorControl.vue";
+import ConfigComparePanel from "@components/config/ConfigComparePanel.vue";
 import { systemApi } from "@api/system";
 import { buildDiffLines } from "@utils/configDiff";
 import "@styles/plugin-list.css";
@@ -57,6 +57,24 @@ interface PendingSaveItem {
   filePath: string;
   originalText: string;
   modifiedText: string;
+}
+
+interface ComparePanelControlState {
+  key: string;
+  value: string;
+  valueType: string;
+  defaultValue: string;
+  numericError?: string;
+}
+
+interface ComparePanelRow {
+  key: string;
+  description: string;
+  different: boolean;
+  onlyInSource: boolean;
+  onlyInTarget: boolean;
+  source: ComparePanelControlState;
+  target: ComparePanelControlState;
 }
 
 const entries = ref<ConfigEntryType[]>([]);
@@ -271,6 +289,7 @@ const hasCompareTargets = computed(() => compareServerOptions.value.length > 0);
 const compareDifferenceBadgeText = computed(() =>
   i18n.t("config.compare.difference_badge", { count: compareDifferenceCount.value }),
 );
+const configSaveDiffModalWidth = "var(--sl-config-save-diff-modal-width)";
 
 const numericFieldErrors = computed(() => {
   const errors: Record<string, string> = {};
@@ -307,6 +326,30 @@ const compareTargetNumericFieldErrors = computed(() => {
 
   return errors;
 });
+
+const comparePanelRows = computed<ComparePanelRow[]>(() =>
+  filteredCompareEntries.value.map((entry) => ({
+    key: entry.key,
+    description: getTranslatedPropertyDescription(entry.key),
+    different: entry.different,
+    onlyInSource: entry.onlyInSource,
+    onlyInTarget: entry.onlyInTarget,
+    source: {
+      key: entry.key,
+      value: entry.sourceValue,
+      valueType: getCompareValueType(entry, "source"),
+      defaultValue: getCompareDefaultValue(entry, "source"),
+      numericError: numericFieldErrors.value[entry.key],
+    },
+    target: {
+      key: entry.key,
+      value: entry.targetValue,
+      valueType: getCompareValueType(entry, "target"),
+      defaultValue: getCompareDefaultValue(entry, "target"),
+      numericError: compareTargetNumericFieldErrors.value[entry.key],
+    },
+  })),
+);
 
 function areMapValuesEqual(a: Record<string, string>, b: Record<string, string>) {
   const aKeys = Object.keys(a);
@@ -391,10 +434,6 @@ async function applyParsedCompareTargetState(sourceText: string) {
   compareTargetEntries.value = parsed.entries as ConfigEntryType[];
   compareTargetDraftValues.value = { ...parsed.raw };
   compareTargetLoadedValues.value = { ...parsed.raw };
-}
-
-function isBooleanControl(valueType: string | undefined, value: string | undefined) {
-  return valueType === "boolean" || value === "true" || value === "false";
 }
 
 function getCompareValueType(entry: CompareEntry, side: "source" | "target") {
@@ -1072,152 +1111,25 @@ onActivated(async () => {
             <p class="text-caption">{{ i18n.t("config.compare.no_target_servers") }}</p>
           </div>
 
-          <div v-else-if="compareMode && compareTargetServerId" class="compare-entries">
-            <div class="compare-header glass-card">
-              <div class="compare-column-head compare-column-meta">
-                <div class="compare-header-control">
-                  <span class="text-caption">{{ i18n.t("config.compare.inline_label") }}</span>
-                  <SLSelect
-                    :modelValue="compareTargetServerId"
-                    :options="compareServerOptions"
-                    :disabled="!hasCompareTargets || compareLoading"
-                    @update:modelValue="handleCompareTargetServerChange"
-                    style="width: 220px"
-                  />
-                </div>
-              </div>
-              <div class="compare-column-head">
-                <div class="compare-server-heading">
-                  <span class="text-caption compare-server-title">{{
-                    currentServer?.name || i18n.t("config.compare.source_server")
-                  }}</span>
-                </div>
-              </div>
-              <div class="compare-column-head">
-                <div class="compare-server-heading">
-                  <span class="text-caption compare-server-title">{{
-                    compareTargetServer?.name || i18n.t("config.compare.target_server")
-                  }}</span>
-                  <span class="compare-count-badge">{{ compareDifferenceBadgeText }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div
-              v-for="entry in filteredCompareEntries"
-              :key="entry.key"
-              class="compare-entry glass-card"
-              :class="{
-                different: entry.different,
-                'only-source': entry.onlyInSource,
-                'only-target': entry.onlyInTarget,
-              }"
-            >
-              <div class="compare-meta">
-                <div class="entry-key-row">
-                  <span class="entry-key text-mono">{{ entry.key }}</span>
-                  <span v-if="entry.different" class="compare-diff-badge">
-                    {{ i18n.t("config.compare.different") }}
-                  </span>
-                </div>
-                <p
-                  v-if="getTranslatedPropertyDescription(entry.key)"
-                  class="entry-desc text-caption"
-                >
-                  {{ getTranslatedPropertyDescription(entry.key) }}
-                </p>
-              </div>
-              <div class="compare-value-block compare-source-block">
-                <div class="entry-control compare-entry-control">
-                  <template
-                    v-if="isBooleanControl(getCompareValueType(entry, 'source'), entry.sourceValue)"
-                  >
-                    <SLSwitch
-                      :modelValue="entry.sourceValue === 'true'"
-                      @update:modelValue="updateValue(entry.key, $event)"
-                    />
-                  </template>
-                  <template v-else-if="entry.key === 'gamemode'">
-                    <SLSelect
-                      :modelValue="entry.sourceValue"
-                      :options="gamemodeOptions"
-                      @update:modelValue="updateValue(entry.key, $event)"
-                      style="width: 200px"
-                    />
-                  </template>
-                  <template v-else-if="entry.key === 'difficulty'">
-                    <SLSelect
-                      :modelValue="entry.sourceValue"
-                      :options="difficultyOptions"
-                      @update:modelValue="updateValue(entry.key, $event)"
-                      style="width: 200px"
-                    />
-                  </template>
-                  <template v-else>
-                    <SLInput
-                      :modelValue="entry.sourceValue"
-                      :placeholder="getCompareDefaultValue(entry, 'source')"
-                      :type="getCompareValueType(entry, 'source') === 'number' ? 'number' : 'text'"
-                      :step="getCompareValueType(entry, 'source') === 'number' ? 1 : undefined"
-                      @update:modelValue="updateValue(entry.key, $event)"
-                      style="width: 200px"
-                    />
-                    <p v-if="numericFieldErrors[entry.key]" class="entry-desc text-caption">
-                      {{ numericFieldErrors[entry.key] }}
-                    </p>
-                  </template>
-                </div>
-              </div>
-              <div class="compare-value-block compare-target-block">
-                <div class="entry-control compare-entry-control">
-                  <template
-                    v-if="isBooleanControl(getCompareValueType(entry, 'target'), entry.targetValue)"
-                  >
-                    <SLSwitch
-                      :modelValue="entry.targetValue === 'true'"
-                      @update:modelValue="updateCompareTargetValue(entry.key, $event)"
-                    />
-                  </template>
-                  <template v-else-if="entry.key === 'gamemode'">
-                    <SLSelect
-                      :modelValue="entry.targetValue"
-                      :options="gamemodeOptions"
-                      @update:modelValue="updateCompareTargetValue(entry.key, $event)"
-                      style="width: 200px"
-                    />
-                  </template>
-                  <template v-else-if="entry.key === 'difficulty'">
-                    <SLSelect
-                      :modelValue="entry.targetValue"
-                      :options="difficultyOptions"
-                      @update:modelValue="updateCompareTargetValue(entry.key, $event)"
-                      style="width: 200px"
-                    />
-                  </template>
-                  <template v-else>
-                    <SLInput
-                      :modelValue="entry.targetValue"
-                      :placeholder="getCompareDefaultValue(entry, 'target')"
-                      :type="getCompareValueType(entry, 'target') === 'number' ? 'number' : 'text'"
-                      :step="getCompareValueType(entry, 'target') === 'number' ? 1 : undefined"
-                      @update:modelValue="updateCompareTargetValue(entry.key, $event)"
-                      style="width: 200px"
-                    />
-                    <p
-                      v-if="compareTargetNumericFieldErrors[entry.key]"
-                      class="entry-desc text-caption"
-                    >
-                      {{ compareTargetNumericFieldErrors[entry.key] }}
-                    </p>
-                  </template>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="filteredCompareEntries.length === 0" class="empty-state glass-card">
-              <p class="text-caption">{{ i18n.t("config.compare.no_differences") }}</p>
-            </div>
-          </div>
+          <ConfigComparePanel
+            v-else-if="compareMode && compareTargetServerId"
+            :compareTargetServerId="compareTargetServerId"
+            :compareServerOptions="compareServerOptions"
+            :hasCompareTargets="hasCompareTargets"
+            :compareLoading="compareLoading"
+            :inlineLabel="i18n.t('config.compare.inline_label')"
+            :sourceServerName="currentServer?.name || i18n.t('config.compare.source_server')"
+            :targetServerName="compareTargetServer?.name || i18n.t('config.compare.target_server')"
+            :differenceBadgeText="compareDifferenceBadgeText"
+            :differentLabel="i18n.t('config.compare.different')"
+            :noDifferencesText="i18n.t('config.compare.no_differences')"
+            :rows="comparePanelRows"
+            :gamemodeOptions="gamemodeOptions"
+            :difficultyOptions="difficultyOptions"
+            @updateCompareTargetServer="handleCompareTargetServerChange"
+            @updateSourceValue="updateValue($event.key, $event.value)"
+            @updateTargetValue="updateCompareTargetValue($event.key, $event.value)"
+          />
 
           <div v-else class="config-entries">
             <div v-for="entry in filteredEntries" :key="entry.key" class="config-entry glass-card">
@@ -1233,41 +1145,16 @@ onActivated(async () => {
                 </p>
               </div>
               <div class="entry-control">
-                <template v-if="isBooleanControl(entry.value_type, editValues[entry.key])">
-                  <SLSwitch
-                    :modelValue="editValues[entry.key] === 'true'"
-                    @update:modelValue="updateValue(entry.key, $event)"
-                  />
-                </template>
-                <template v-else-if="entry.key === 'gamemode'">
-                  <SLSelect
-                    :modelValue="editValues[entry.key]"
-                    :options="gamemodeOptions"
-                    @update:modelValue="updateValue(entry.key, $event)"
-                    style="width: 200px"
-                  />
-                </template>
-                <template v-else-if="entry.key === 'difficulty'">
-                  <SLSelect
-                    :modelValue="editValues[entry.key]"
-                    :options="difficultyOptions"
-                    @update:modelValue="updateValue(entry.key, $event)"
-                    style="width: 200px"
-                  />
-                </template>
-                <template v-else>
-                  <SLInput
-                    :modelValue="editValues[entry.key]"
-                    :placeholder="entry.default_value"
-                    :type="entry.value_type === 'number' ? 'number' : 'text'"
-                    :step="entry.value_type === 'number' ? 1 : undefined"
-                    @update:modelValue="updateValue(entry.key, $event)"
-                    style="width: 200px"
-                  />
-                  <p v-if="numericFieldErrors[entry.key]" class="entry-desc text-caption">
-                    {{ numericFieldErrors[entry.key] }}
-                  </p>
-                </template>
+                <ConfigPropertyEditorControl
+                  :propertyKey="entry.key"
+                  :modelValue="editValues[entry.key]"
+                  :valueType="entry.value_type"
+                  :defaultValue="entry.default_value"
+                  :numericError="numericFieldErrors[entry.key]"
+                  :gamemodeOptions="gamemodeOptions"
+                  :difficultyOptions="difficultyOptions"
+                  @update:modelValue="updateValue(entry.key, $event)"
+                />
               </div>
             </div>
             <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
@@ -1489,7 +1376,7 @@ onActivated(async () => {
       <SLModal
         :visible="showSaveDiffModal"
         :title="i18n.t('config.diff_modal_title')"
-        width="1040px"
+        :width="configSaveDiffModalWidth"
         :close-on-overlay="!saving"
         @close="closeSaveDiffModal"
       >
