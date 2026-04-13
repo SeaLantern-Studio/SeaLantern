@@ -1,6 +1,7 @@
 .config-view {
   --sl-config-compare-target-width: 220px;
   --sl-config-control-width: 200px;
+  --sl-config-entry-padding-block: 8px;
   --sl-config-floating-offset: 18px;
   --sl-config-badge-font-size: 0.6875rem;
   --sl-config-badge-padding-inline: 6px;
@@ -441,7 +442,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--sl-space-md);
+  padding: var(--sl-config-entry-padding-block) var(--sl-space-md);
   gap: var(--sl-space-lg);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
