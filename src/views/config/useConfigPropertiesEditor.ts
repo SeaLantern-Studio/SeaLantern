@@ -7,6 +7,7 @@ import { buildDiffLines } from "@utils/configDiff";
 export interface PendingSaveItem {
   serverId: string;
   serverName: string;
+  serverPath: string;
   filePath: string;
   originalText: string;
   modifiedText: string;
@@ -356,6 +357,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
           pendingItems.push({
             serverId: options.currentServerId.value || "",
             serverName: options.currentServerName.value || i18n.t("config.compare.source_server"),
+            serverPath: options.serverPath.value,
             filePath: options.serverPropertiesPath.value,
             originalText: latestSourceText,
             modifiedText: nextSourceText,
@@ -387,6 +389,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
             serverId: context.compareTargetServerId.value,
             serverName:
               context.compareTargetServerName.value || i18n.t("config.compare.target_server"),
+            serverPath: context.compareTargetPath.value,
             filePath: context.compareTargetServerPropertiesPath.value,
             originalText: latestTargetText,
             modifiedText: nextTargetText,
@@ -477,7 +480,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     try {
       await Promise.all(
         pendingSaveItems.value.map((item) =>
-          configApi.writeServerPropertiesSource(item.filePath, item.modifiedText),
+          configApi.writeServerPropertiesSource(item.serverPath, item.modifiedText),
         ),
       );
 
