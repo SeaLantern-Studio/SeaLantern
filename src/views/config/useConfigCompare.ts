@@ -57,12 +57,31 @@ function buildServerPropertiesPath(path: string) {
   return `${basePath}${separator}server.properties`;
 }
 
+function getChangedValues(
+  draftValues: Record<string, string>,
+  baseValues: Record<string, string>,
+): Record<string, string> {
+  const changedValues: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(draftValues)) {
+    if (baseValues[key] !== value) {
+      changedValues[key] = value;
+    }
+  }
+
+  return changedValues;
+}
+
 export function useConfigCompare(options: UseConfigCompareOptions) {
   const compareMode = ref(false);
   const compareTargetServerId = ref("");
   const compareTargetEntries = ref<ConfigEntryType[]>([]);
   const compareTargetDraftValues = ref<Record<string, string>>({});
   const compareTargetLoadedValues = ref<Record<string, string>>({});
+  const compareTargetSourceDraftText = ref("");
+  const compareTargetLoadedSourceText = ref("");
+  const compareTargetVisualModeBaseValues = ref<Record<string, string>>({});
+  const compareTargetVisualDraftDirty = ref(false);
   const compareLoading = ref(false);
   const compareLoadRequestId = ref(0);
 
@@ -157,6 +176,51 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     compareTargetEntries.value = parsed.entries as ConfigEntryType[];
     compareTargetDraftValues.value = { ...parsed.raw };
     compareTargetLoadedValues.value = { ...parsed.raw };
+    compareTargetVisualModeBaseValues.value = { ...parsed.raw };
+    compareTargetVisualDraftDirty.value = false;
+    compareTargetSourceDraftText.value = sourceText;
+    compareTargetLoadedSourceText.value = sourceText;
+  }
+
+  async function applyCompareTargetSourceDraftToVisualState(sourceText: string) {
+    const parsed = await configApi.parseServerPropertiesSource(sourceText);
+    compareTargetEntries.value = parsed.entries as ConfigEntryType[];
+    compareTargetDraftValues.value = { ...parsed.raw };
+    compareTargetVisualModeBaseValues.value = { ...parsed.raw };
+    compareTargetVisualDraftDirty.value = false;
+    compareTargetSourceDraftText.value = sourceText;
+  }
+
+  function getCompareTargetChangedValues() {
+    const baseValues =
+      compareTargetSourceDraftText.value !== compareTargetLoadedSourceText.value
+        ? compareTargetVisualModeBaseValues.value
+        : compareTargetLoadedValues.value;
+
+    return getChangedValues(compareTargetDraftValues.value, baseValues);
+  }
+
+  async function buildCompareTargetPreviewSource() {
+    const changedValues = getCompareTargetChangedValues();
+    if (compareTargetSourceDraftText.value !== compareTargetLoadedSourceText.value) {
+      return configApi.previewServerPropertiesWriteFromSource(
+        compareTargetSourceDraftText.value,
+        changedValues,
+      );
+    }
+
+    return configApi.previewServerPropertiesWrite(compareTargetPath.value, changedValues);
+  }
+
+  async function prepareCompareTargetSourceDraftForSourceMode() {
+    if (!compareTargetPath.value) {
+      return;
+    }
+
+    if (compareTargetVisualDraftDirty.value) {
+      compareTargetSourceDraftText.value = await buildCompareTargetPreviewSource();
+      compareTargetVisualDraftDirty.value = false;
+    }
   }
 
   async function loadCompareProperties() {
@@ -170,14 +234,12 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     compareLoading.value = true;
     options.setError(null);
     try {
-      const targetResult = await configApi.readServerProperties(compareTargetPath.value);
+      const sourceText = await configApi.readServerPropertiesSource(compareTargetPath.value);
       if (requestId !== compareLoadRequestId.value) {
         return;
       }
 
-      compareTargetEntries.value = targetResult.entries as ConfigEntryType[];
-      compareTargetDraftValues.value = { ...targetResult.raw };
-      compareTargetLoadedValues.value = { ...targetResult.raw };
+      await applyParsedCompareTargetState(sourceText);
     } catch (e) {
       if (requestId !== compareLoadRequestId.value) {
         return;
@@ -187,6 +249,10 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
       compareTargetEntries.value = [];
       compareTargetDraftValues.value = {};
       compareTargetLoadedValues.value = {};
+      compareTargetVisualModeBaseValues.value = {};
+      compareTargetVisualDraftDirty.value = false;
+      compareTargetSourceDraftText.value = "";
+      compareTargetLoadedSourceText.value = "";
     } finally {
       if (requestId === compareLoadRequestId.value) {
         compareLoading.value = false;
@@ -196,6 +262,11 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
 
   function updateCompareTargetValue(key: string, value: string | boolean | number) {
     compareTargetDraftValues.value[key] = String(value);
+    compareTargetVisualDraftDirty.value = true;
+  }
+
+  function updateCompareTargetSourceDraft(value: string) {
+    compareTargetSourceDraftText.value = value;
   }
 
   function handleCompareModeChange(value: boolean) {
@@ -231,6 +302,10 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     compareTargetEntries.value = [];
     compareTargetDraftValues.value = {};
     compareTargetLoadedValues.value = {};
+    compareTargetSourceDraftText.value = "";
+    compareTargetLoadedSourceText.value = "";
+    compareTargetVisualModeBaseValues.value = {};
+    compareTargetVisualDraftDirty.value = false;
   }
 
   return {
@@ -239,6 +314,8 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     compareTargetEntries,
     compareTargetDraftValues,
     compareTargetLoadedValues,
+    compareTargetSourceDraftText,
+    compareTargetLoadedSourceText,
     compareLoading,
     compareTargetServer,
     compareTargetPath,
@@ -250,7 +327,11 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     comparePanelRows,
     loadCompareProperties,
     applyParsedCompareTargetState,
+    applyCompareTargetSourceDraftToVisualState,
+    buildCompareTargetPreviewSource,
+    prepareCompareTargetSourceDraftForSourceMode,
     updateCompareTargetValue,
+    updateCompareTargetSourceDraft,
     handleCompareModeChange,
     handleCompareTargetServerChange,
     resetCompareState,

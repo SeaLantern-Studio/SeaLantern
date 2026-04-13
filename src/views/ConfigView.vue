@@ -95,9 +95,16 @@ propertiesEditor.bindCompareContext({
   compareTargetServerPropertiesPath: compare.compareTargetServerPropertiesPath,
   compareTargetDraftValues: compare.compareTargetDraftValues,
   compareTargetLoadedValues: compare.compareTargetLoadedValues,
+  compareTargetSourceDraftText: compare.compareTargetSourceDraftText,
+  compareTargetLoadedSourceText: compare.compareTargetLoadedSourceText,
   compareTargetNumericFieldErrors: compare.compareTargetNumericFieldErrors,
   loadCompareProperties: compare.loadCompareProperties,
   applyParsedCompareTargetState: compare.applyParsedCompareTargetState,
+  applyCompareTargetSourceDraftToVisualState: compare.applyCompareTargetSourceDraftToVisualState,
+  buildCompareTargetPreviewSource: compare.buildCompareTargetPreviewSource,
+  prepareCompareTargetSourceDraftForSourceMode:
+    compare.prepareCompareTargetSourceDraftForSourceMode,
+  updateCompareTargetSourceDraft: compare.updateCompareTargetSourceDraft,
 });
 
 const pluginsState = useConfigPlugins({
@@ -257,6 +264,7 @@ onActivated(async () => {
           :gamemodeOptions="gamemodeOptions"
           :difficultyOptions="difficultyOptions"
           :sourceDraftText="propertiesEditor.sourceDraftText.value"
+          :compareTargetSourceDraftText="compare.compareTargetSourceDraftText.value"
           :sourceParseError="propertiesEditor.sourceParseError.value"
           :hasUnsavedChanges="propertiesEditor.hasUnsavedChanges.value"
           :saveStatusText="propertiesEditor.saveStatusText.value"
@@ -266,6 +274,7 @@ onActivated(async () => {
           @updateCategory="propertiesEditor.handleCategoryChange"
           @updateSearch="propertiesEditor.handleSearchUpdate"
           @updateSourceDraft="propertiesEditor.updateSourceDraft"
+          @updateCompareTargetSourceDraft="propertiesEditor.updateCompareTargetSourceDraft"
           @updateValue="propertiesEditor.updateValue($event.key, $event.value)"
           @updateCompareTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
           @updateCompareTargetServer="compare.handleCompareTargetServerChange"

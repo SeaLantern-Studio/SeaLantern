@@ -21,9 +21,15 @@ interface CompareContext {
   compareTargetServerPropertiesPath: Ref<string>;
   compareTargetDraftValues: Ref<Record<string, string>>;
   compareTargetLoadedValues: Ref<Record<string, string>>;
+  compareTargetSourceDraftText: Ref<string>;
+  compareTargetLoadedSourceText: Ref<string>;
   compareTargetNumericFieldErrors: Ref<Record<string, string>>;
   loadCompareProperties: () => Promise<void>;
   applyParsedCompareTargetState: (sourceText: string) => Promise<void>;
+  applyCompareTargetSourceDraftToVisualState: (sourceText: string) => Promise<void>;
+  buildCompareTargetPreviewSource: () => Promise<string>;
+  prepareCompareTargetSourceDraftForSourceMode: () => Promise<void>;
+  updateCompareTargetSourceDraft: (value: string) => void;
 }
 
 interface UseConfigPropertiesEditorOptions {
@@ -112,10 +118,11 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     const context = compareContext.value;
     const targetDirty =
       !!context?.compareMode.value &&
-      !areMapValuesEqual(
-        context.compareTargetDraftValues.value,
-        context.compareTargetLoadedValues.value,
-      );
+      (context.compareTargetSourceDraftText.value !== context.compareTargetLoadedSourceText.value ||
+        !areMapValuesEqual(
+          context.compareTargetDraftValues.value,
+          context.compareTargetLoadedValues.value,
+        ));
 
     if (editorMode.value === "source") {
       return sourceDraftText.value !== loadedSourceText.value || targetDirty;
@@ -154,9 +161,12 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     if (!context) {
       return false;
     }
-    return !areMapValuesEqual(
-      context.compareTargetDraftValues.value,
-      context.compareTargetLoadedValues.value,
+    return (
+      context.compareTargetSourceDraftText.value !== context.compareTargetLoadedSourceText.value ||
+      !areMapValuesEqual(
+        context.compareTargetDraftValues.value,
+        context.compareTargetLoadedValues.value,
+      )
     );
   });
 
@@ -277,6 +287,8 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
         context.compareTargetEntries.value = [];
         context.compareTargetDraftValues.value = {};
         context.compareTargetLoadedValues.value = {};
+        context.compareTargetSourceDraftText.value = "";
+        context.compareTargetLoadedSourceText.value = "";
       }
     } finally {
       loading.value = false;
@@ -318,6 +330,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
       const context = compareContext.value;
       if (
+        editorMode.value === "visual" &&
         context &&
         context.compareMode.value &&
         Object.keys(context.compareTargetNumericFieldErrors.value).length > 0
@@ -354,22 +367,20 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
       const targetDirty =
         !!context?.compareMode.value &&
-        !areMapValuesEqual(
-          context.compareTargetDraftValues.value,
-          context.compareTargetLoadedValues.value,
-        );
+        (context.compareTargetSourceDraftText.value !==
+          context.compareTargetLoadedSourceText.value ||
+          !areMapValuesEqual(
+            context.compareTargetDraftValues.value,
+            context.compareTargetLoadedValues.value,
+          ));
       if (targetDirty && context?.compareTargetPath.value) {
         const latestTargetText = await configApi.readServerPropertiesSource(
           context.compareTargetPath.value,
         );
-        const targetChangedValues = getChangedValues(
-          context.compareTargetDraftValues.value,
-          context.compareTargetLoadedValues.value,
-        );
-        const nextTargetText = await configApi.previewServerPropertiesWrite(
-          context.compareTargetPath.value,
-          targetChangedValues,
-        );
+        const nextTargetText =
+          editorMode.value === "visual"
+            ? await context.buildCompareTargetPreviewSource()
+            : context.compareTargetSourceDraftText.value;
 
         if (nextTargetText !== latestTargetText) {
           pendingItems.push({
@@ -409,6 +420,11 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     sourceParseError.value = null;
   }
 
+  function updateCompareTargetSourceDraft(value: string) {
+    compareContext.value?.updateCompareTargetSourceDraft(value);
+    sourceParseError.value = null;
+  }
+
   async function handleEditorModeChange(mode: string | null) {
     const targetMode = mode === "source" ? "source" : "visual";
     if (targetMode === editorMode.value || modeSwitching.value || !options.serverPath.value) return;
@@ -422,6 +438,9 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
           sourceDraftText.value = await buildVisualPreviewSource();
           visualDraftDirty.value = false;
         }
+        if (compareContext.value?.compareMode.value) {
+          await compareContext.value.prepareCompareTargetSourceDraftForSourceMode();
+        }
         sourceParseError.value = null;
         editorMode.value = "source";
         return;
@@ -431,6 +450,12 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
       entries.value = parsed.entries as ConfigEntryType[];
       editValues.value = { ...parsed.raw };
       visualModeBaseValues.value = { ...parsed.raw };
+      const context = compareContext.value;
+      if (context?.compareMode.value) {
+        await context.applyCompareTargetSourceDraftToVisualState(
+          context.compareTargetSourceDraftText.value,
+        );
+      }
       visualDraftDirty.value = false;
       sourceParseError.value = null;
       editorMode.value = "visual";
@@ -568,6 +593,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     saveProperties,
     updateValue,
     updateSourceDraft,
+    updateCompareTargetSourceDraft,
     handleEditorModeChange,
     confirmSaveProperties,
     closeSaveDiffModal,
