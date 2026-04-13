@@ -192,6 +192,10 @@
   align-items: center;
 }
 
+.compare-header .compare-column-meta {
+  align-items: flex-start;
+}
+
 .compare-header-control,
 .compare-server-heading {
   display: flex;
@@ -202,6 +206,91 @@
 
 .compare-header-control {
   flex-wrap: nowrap;
+}
+
+.compare-server-heading {
+  min-width: 0;
+}
+
+.compare-side-switch-content {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  justify-self: center;
+}
+
+.compare-transition-stage {
+  display: grid;
+  width: 100%;
+}
+
+.compare-transition-stage--header {
+  width: 100%;
+  min-width: 0;
+  justify-items: center;
+}
+
+.compare-transition-stage > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.compare-transition-pane {
+  min-width: 0;
+}
+
+.compare-side-switch {
+  display: none;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  margin-left: var(--sl-space-xs);
+  min-width: 0;
+}
+
+.compare-side-switch-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.compare-side-switch-btn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-full);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.compare-side-switch-btn:hover {
+  border-color: var(--sl-primary);
+  color: var(--sl-primary);
+  background: color-mix(in srgb, var(--sl-primary) 10%, var(--sl-bg-secondary));
+}
+
+.compare-side-switch-btn:active {
+  transform: scale(0.96);
+}
+
+.compare-side-switch-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(var(--compare-switch-rotate, 0deg));
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .compare-server-title {
@@ -251,11 +340,101 @@
   word-break: break-word;
 }
 
-@media (max-width: 1100px) {
-  .compare-header,
-  .compare-entry {
+.compare-entries--compact .compare-header,
+.compare-entries--compact .compare-entry {
+  grid-template-columns: minmax(0, 1.05fr) minmax(180px, 1fr);
+}
+
+.compare-entries--compact .compare-header > .compare-column-head:nth-child(3) {
+  display: none;
+}
+
+.compare-entries--compact .compare-header-control {
+  width: auto;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.compare-entries--compact .compare-server-heading {
+  width: 100%;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+}
+
+.compare-entries--compact .compare-server-heading > .sl-tooltip {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.compare-entries--compact .compare-side-switch-btn {
+  position: static;
+}
+
+.compare-entries--compact .compare-target-select {
+  width: auto;
+  max-width: none;
+}
+
+.compare-entries--compact .compare-single-side-block {
+  min-width: 0;
+}
+
+.compare-entries--compact .compare-entry-control {
+  width: min(100%, var(--sl-config-control-width));
+}
+
+@media (max-width: 720px) {
+  .compare-entries--compact .compare-header,
+  .compare-entries--compact .compare-entry {
     grid-template-columns: 1fr;
   }
+
+  .compare-entries--compact .compare-single-side-block {
+    width: 100%;
+  }
+
+  .compare-entries--compact .compare-entry-control {
+    margin: 0;
+  }
+}
+
+.compare-shift-left-enter-active,
+.compare-shift-right-enter-active,
+.compare-shift-left-leave-active,
+.compare-shift-right-leave-active {
+  transition:
+    opacity 220ms ease,
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.compare-shift-left-enter-active,
+.compare-shift-right-enter-active {
+  z-index: 1;
+  transition-delay: 40ms;
+}
+
+.compare-shift-left-leave-active,
+.compare-shift-right-leave-active {
+  transition:
+    opacity 140ms ease,
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.compare-shift-left-enter-from,
+.compare-shift-right-leave-to {
+  opacity: 0;
+  transform: translateX(24px);
+}
+
+.compare-shift-left-leave-to,
+.compare-shift-right-enter-from {
+  opacity: 0;
+  transform: translateX(-24px);
 }
 
 .config-entry {
