@@ -76,6 +76,7 @@ const visualDraftDirty = ref(false);
 const modeSwitching = ref(false);
 const sourceParseError = ref<string | null>(null);
 const showDiscardConfirm = ref(false);
+const pendingReloadSide = ref<"current" | "compare" | null>(null);
 const showSaveDiffModal = ref(false);
 const pendingSaveItems = ref<PendingSaveItem[]>([]);
 const compareMode = ref(false);
@@ -101,15 +102,20 @@ const compareServerOptions = computed(() =>
     })),
 );
 
-const serverPropertiesPath = computed(() => {
-  const basePath = serverPath.value.replace(/[/\\]$/, "");
+function buildServerPropertiesPath(path: string) {
+  const basePath = path.replace(/[/\\]$/, "");
   if (!basePath) {
     return "server.properties";
   }
 
   const separator = basePath.includes("\\") ? "\\" : "/";
   return `${basePath}${separator}server.properties`;
-});
+}
+
+const serverPropertiesPath = computed(() => buildServerPropertiesPath(serverPath.value));
+const compareTargetServerPropertiesPath = computed(() =>
+  buildServerPropertiesPath(compareTargetPath.value),
+);
 
 const plugins = ref<m_PluginInfo[]>([]);
 const pluginsLoading = ref(false);
@@ -162,6 +168,32 @@ const reloadCurrentTooltipText = computed(
 const reloadCompareTooltipText = computed(
   () => `重新载入${compareTargetServer.value?.name || i18n.t("config.compare.target_server")}属性`,
 );
+const currentSideDirty = computed(
+  () =>
+    sourceDraftText.value !== loadedSourceText.value ||
+    !areMapValuesEqual(editValues.value, loadedValues.value),
+);
+const compareSideDirty = computed(
+  () => !areMapValuesEqual(compareTargetDraftValues.value, compareTargetLoadedValues.value),
+);
+const discardConfirmTitle = computed(() => {
+  if (pendingReloadSide.value === "compare") {
+    return "丢弃对照侧修改";
+  }
+  if (pendingReloadSide.value === "current") {
+    return "丢弃当前侧修改";
+  }
+  return i18n.t("config.discard_title");
+});
+const discardConfirmMessage = computed(() => {
+  if (pendingReloadSide.value === "compare") {
+    return `重新载入将丢弃 ${compareTargetServer.value?.name || i18n.t("config.compare.target_server")} 的未保存属性修改。`;
+  }
+  if (pendingReloadSide.value === "current") {
+    return `重新载入将丢弃 ${currentServer.value?.name || i18n.t("config.current_server")} 的未保存属性修改。`;
+  }
+  return i18n.t("config.discard_message");
+});
 
 const compareEntries = computed(() =>
   buildCompareEntries(
@@ -517,6 +549,26 @@ async function loadProperties() {
   }
 }
 
+async function loadCurrentPropertiesOnly() {
+  if (!serverPath.value) return;
+
+  loading.value = true;
+  error.value = null;
+  try {
+    const sourceText = await configApi.readServerPropertiesSource(serverPath.value);
+    await applyParsedSourceState(sourceText, "visual");
+  } catch (e) {
+    error.value = String(e);
+    entries.value = [];
+    editValues.value = {};
+    loadedValues.value = {};
+    sourceDraftText.value = "";
+    loadedSourceText.value = "";
+  } finally {
+    loading.value = false;
+  }
+}
+
 /**
  * 更新当前服务器的端口信息
  * @param port 端口号字符串
@@ -590,7 +642,7 @@ async function saveProperties() {
         pendingItems.push({
           serverId: compareTargetServerId.value,
           serverName: compareTargetServer.value?.name || i18n.t("config.compare.target_server"),
-          filePath: compareTargetPath.value,
+          filePath: compareTargetServerPropertiesPath.value,
           originalText: latestTargetText,
           modifiedText: nextTargetText,
         });
@@ -704,17 +756,39 @@ function closeSaveDiffModal() {
 }
 
 async function reloadPropertiesWithGuard() {
-  if (hasUnsavedChanges.value) {
+  pendingReloadSide.value = "current";
+  if (currentSideDirty.value) {
     showDiscardConfirm.value = true;
     return;
   }
 
-  await loadProperties();
+  await loadCurrentPropertiesOnly();
+  pendingReloadSide.value = null;
+}
+
+async function reloadComparePropertiesWithGuard() {
+  if (!compareMode.value) {
+    return;
+  }
+
+  pendingReloadSide.value = "compare";
+  if (compareSideDirty.value) {
+    showDiscardConfirm.value = true;
+    return;
+  }
+
+  await loadCompareProperties();
+  pendingReloadSide.value = null;
 }
 
 async function confirmReloadDiscard() {
   showDiscardConfirm.value = false;
-  await loadProperties();
+  if (pendingReloadSide.value === "compare") {
+    await loadCompareProperties();
+  } else {
+    await loadCurrentPropertiesOnly();
+  }
+  pendingReloadSide.value = null;
 }
 
 function handleCategoryChange(category: string) {
@@ -1241,7 +1315,7 @@ onActivated(async () => {
                 class="config-floating-icon-btn"
                 :loading="compareLoading"
                 :disabled="!compareTargetServerId"
-                @click="loadCompareProperties"
+                @click="reloadComparePropertiesWithGuard"
               >
                 <RefreshCw :size="16" />
               </SLButton>
@@ -1400,13 +1474,16 @@ onActivated(async () => {
 
       <SLConfirmDialog
         :visible="showDiscardConfirm"
-        :title="i18n.t('config.discard_title')"
-        :message="i18n.t('config.discard_message')"
+        :title="discardConfirmTitle"
+        :message="discardConfirmMessage"
         :confirmText="i18n.t('config.discard_confirm')"
         :cancelText="i18n.t('common.cancel')"
         confirmVariant="danger"
         @confirm="confirmReloadDiscard"
-        @close="showDiscardConfirm = false"
+        @close="
+          showDiscardConfirm = false;
+          pendingReloadSide = null;
+        "
       />
 
       <SLModal
@@ -1421,11 +1498,11 @@ onActivated(async () => {
           :key="`${diffItem.serverId}-${diffItem.filePath}`"
           class="source-diff-block"
         >
-          <div class="source-diff-file-label text-caption">
+          <div class="source-diff-title-row text-caption">
             <span class="source-diff-server">{{ diffItem.serverName }}</span>
-            <span class="source-diff-file-path text-mono">{{ diffItem.filePath }}</span>
-          </div>
-          <div class="source-diff-summary text-caption">
+            <SLTooltip :content="diffItem.filePath">
+              <span class="source-diff-path-hint">i</span>
+            </SLTooltip>
             <span
               >{{ i18n.t("config.diff_original") }} → {{ i18n.t("config.diff_after_save") }}</span
             >

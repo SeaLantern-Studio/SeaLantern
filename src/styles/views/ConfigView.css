@@ -132,8 +132,8 @@
 }
 
 .compare-entry {
-  align-items: start;
-  padding: var(--sl-space-md);
+  align-items: center;
+  padding: var(--sl-space-sm) var(--sl-space-md);
 }
 
 .compare-entry.different {
@@ -153,20 +153,23 @@
 .compare-value-block {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .compare-source-block,
 .compare-target-block {
   align-items: center;
+  justify-content: center;
 }
 
 .compare-entry-control {
   min-width: 0;
-  width: 100%;
+  width: 200px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: center;
+  margin: 0 auto;
 }
 
 .compare-header .compare-column-head {
@@ -422,13 +425,6 @@
   transform: scale(1);
 }
 
-.source-diff-summary {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-sm);
-  margin-bottom: var(--sl-space-sm);
-}
-
 .source-diff-block {
   display: flex;
   flex-direction: column;
@@ -440,11 +436,14 @@
   margin-bottom: 0;
 }
 
-.source-diff-file-label {
+.source-diff-title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sl-space-sm);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-x: auto;
+  margin-bottom: var(--sl-space-sm);
   color: var(--sl-text-secondary);
 }
 
@@ -453,8 +452,19 @@
   color: var(--sl-text-primary);
 }
 
-.source-diff-file-path {
-  color: var(--sl-text-tertiary);
+.source-diff-path-hint {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--sl-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(1.05);
 }
 
 .diff-count {
