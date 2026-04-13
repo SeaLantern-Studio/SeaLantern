@@ -12,6 +12,8 @@ import {
 
 interface Props {
   modelValue: string;
+  title?: string;
+  readOnly?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -141,6 +143,7 @@ onMounted(() => {
     extensions: [
       lineNumbers(),
       EditorView.lineWrapping,
+      EditorState.readOnly.of(!!props.readOnly),
       propertiesLanguage,
       propertiesSyntaxHighlighting,
       search({ top: false }),
@@ -233,6 +236,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="source-editor-panel">
+    <div v-if="title" class="source-editor-title text-caption">{{ title }}</div>
     <div class="plugins-toolbar source-search-toolbar">
       <div class="toolbar-left">
         <input
@@ -266,6 +270,11 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-sm);
+}
+
+.source-editor-title {
+  color: var(--sl-text-secondary);
+  font-weight: 600;
 }
 
 .source-search-toolbar {

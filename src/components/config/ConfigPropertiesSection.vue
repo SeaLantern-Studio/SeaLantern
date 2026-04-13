@@ -43,6 +43,7 @@ interface Props {
   gamemodeOptions: Option[];
   difficultyOptions: Option[];
   sourceDraftText: string;
+  compareTargetSourceDraftText: string;
   sourceParseError: string | null;
   hasUnsavedChanges: boolean;
   saveStatusText: string;
@@ -57,6 +58,7 @@ const emit = defineEmits<{
   updateCategory: [category: string];
   updateSearch: [query: string];
   updateSourceDraft: [value: string];
+  updateCompareTargetSourceDraft: [value: string];
   updateValue: [payload: UpdateValuePayload];
   updateCompareTargetValue: [payload: UpdateValuePayload];
   updateCompareTargetServer: [value: string | number];
@@ -135,8 +137,27 @@ const emit = defineEmits<{
   </div>
 
   <div v-show="editorMode === 'source'">
-    <div class="source-editor-wrap">
+    <div class="source-editor-wrap" :class="{ 'source-editor-wrap--compare': compareMode }">
+      <template v-if="compareMode && compareTargetServerId">
+        <div class="source-compare-grid">
+          <div class="source-compare-column">
+            <ConfigSourceEditor
+              :modelValue="sourceDraftText"
+              :title="sourceServerName"
+              @update:modelValue="emit('updateSourceDraft', $event)"
+            />
+          </div>
+          <div class="source-compare-column">
+            <ConfigSourceEditor
+              :modelValue="compareTargetSourceDraftText"
+              :title="targetServerName"
+              @update:modelValue="emit('updateCompareTargetSourceDraft', $event)"
+            />
+          </div>
+        </div>
+      </template>
       <ConfigSourceEditor
+        v-else
         :modelValue="sourceDraftText"
         @update:modelValue="emit('updateSourceDraft', $event)"
       />

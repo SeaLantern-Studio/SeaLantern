@@ -495,6 +495,20 @@
   gap: var(--sl-space-sm);
 }
 
+.source-editor-wrap--compare {
+  gap: var(--sl-space-md);
+}
+
+.source-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sl-space-md);
+}
+
+.source-compare-column {
+  min-width: 0;
+}
+
 .source-parse-error {
   margin: var(--sl-space-sm) 0 0;
   color: var(--sl-error);
@@ -765,4 +779,10 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .source-compare-grid {
+    grid-template-columns: 1fr;
+  }
 }
