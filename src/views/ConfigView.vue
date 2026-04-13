@@ -189,9 +189,6 @@ watch(compare.hasCompareTargets, (hasTargets) => {
 onActivated(async () => {
   await propertiesEditor.loadProperties();
   await pluginsState.loadPlugins();
-  if (compare.compareMode.value && compare.compareTargetServerId.value) {
-    await compare.loadCompareProperties();
-  }
 });
 </script>
 
@@ -288,6 +285,7 @@ onActivated(async () => {
           @pluginClick="pluginsState.handlePluginClick"
           @togglePlugin="pluginsState.togglePlugin"
           @deletePlugin="pluginsState.deletePlugin"
+          @registerPluginRow="pluginsState.registerPluginRow"
           @openPluginFolder="pluginsState.openPluginFolder"
           @openConfigFile="pluginsState.openConfigFile"
         />

@@ -64,6 +64,7 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
   const compareTargetDraftValues = ref<Record<string, string>>({});
   const compareTargetLoadedValues = ref<Record<string, string>>({});
   const compareLoading = ref(false);
+  const compareLoadRequestId = ref(0);
 
   const compareTargetServer = computed(
     () => options.servers.value.find((s) => s.id === compareTargetServerId.value) || null,
@@ -159,6 +160,8 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
   }
 
   async function loadCompareProperties() {
+    const requestId = ++compareLoadRequestId.value;
+
     if (!compareMode.value || !compareTargetPath.value) {
       resetCompareState(false);
       return;
@@ -168,16 +171,26 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     options.setError(null);
     try {
       const targetResult = await configApi.readServerProperties(compareTargetPath.value);
+      if (requestId !== compareLoadRequestId.value) {
+        return;
+      }
+
       compareTargetEntries.value = targetResult.entries as ConfigEntryType[];
       compareTargetDraftValues.value = { ...targetResult.raw };
       compareTargetLoadedValues.value = { ...targetResult.raw };
     } catch (e) {
+      if (requestId !== compareLoadRequestId.value) {
+        return;
+      }
+
       options.setError(String(e));
       compareTargetEntries.value = [];
       compareTargetDraftValues.value = {};
       compareTargetLoadedValues.value = {};
     } finally {
-      compareLoading.value = false;
+      if (requestId === compareLoadRequestId.value) {
+        compareLoading.value = false;
+      }
     }
   }
 
@@ -193,10 +206,13 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
       return;
     }
 
+    const hadTarget = !!compareTargetServerId.value;
     if (!compareTargetServerId.value && compareServerOptions.value.length > 0) {
       compareTargetServerId.value = String(compareServerOptions.value[0].value);
     }
-    void loadCompareProperties();
+    if (hadTarget) {
+      void loadCompareProperties();
+    }
   }
 
   function handleCompareTargetServerChange(value: string | number) {
@@ -205,6 +221,9 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
   }
 
   function resetCompareState(includeMode = true) {
+    compareLoadRequestId.value += 1;
+    compareLoading.value = false;
+
     if (includeMode) {
       compareMode.value = false;
     }
