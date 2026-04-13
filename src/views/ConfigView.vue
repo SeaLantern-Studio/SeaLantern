@@ -289,7 +289,7 @@ const hasCompareTargets = computed(() => compareServerOptions.value.length > 0);
 const compareDifferenceBadgeText = computed(() =>
   i18n.t("config.compare.difference_badge", { count: compareDifferenceCount.value }),
 );
-const configSaveDiffModalWidth = "var(--sl-config-save-diff-modal-width)";
+const configSaveDiffModalWidth = "1040px";
 
 const numericFieldErrors = computed(() => {
   const errors: Record<string, string> = {};

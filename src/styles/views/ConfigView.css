@@ -1,4 +1,12 @@
 .config-view {
+  --sl-config-compare-target-width: 220px;
+  --sl-config-control-width: 200px;
+  --sl-config-floating-offset: 18px;
+  --sl-config-badge-font-size: 0.6875rem;
+  --sl-config-badge-padding-inline: 6px;
+  --sl-config-diff-count-min-width: 42px;
+  --sl-config-status-dot-size: 6px;
+
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
