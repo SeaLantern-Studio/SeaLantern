@@ -414,6 +414,15 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   }
 
   function updateValue(key: string, value: string | boolean | number) {
+    if (!entries.value.some((entry) => entry.key === key)) {
+      const compareEntry = compareContext.value?.compareTargetEntries.value.find(
+        (entry) => entry.key === key,
+      );
+      if (compareEntry) {
+        entries.value = [...entries.value, { ...compareEntry }];
+      }
+    }
+
     editValues.value[key] = String(value);
     visualDraftDirty.value = true;
   }

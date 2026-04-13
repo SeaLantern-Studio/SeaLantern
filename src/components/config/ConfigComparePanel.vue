@@ -3,7 +3,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { ArrowLeft } from "lucide-vue-next";
 import SLTooltip from "@components/common/SLTooltip.vue";
 import SLSelect from "@components/common/SLSelect.vue";
+import SLButton from "@components/common/SLButton.vue";
 import ConfigPropertyEditorControl from "@components/config/ConfigPropertyEditorControl.vue";
+import { i18n } from "@language";
 
 interface Option {
   label: string;
@@ -24,6 +26,8 @@ interface ComparePanelRow {
   different: boolean;
   onlyInSource: boolean;
   onlyInTarget: boolean;
+  hasSourceValue: boolean;
+  hasTargetValue: boolean;
   source: CompareControlState;
   target: CompareControlState;
 }
@@ -111,7 +115,41 @@ const emit = defineEmits<{
   updateCompareTargetServer: [value: string | number];
   updateSourceValue: [payload: { key: string; value: string | boolean | number }];
   updateTargetValue: [payload: { key: string; value: string | boolean | number }];
+  addSourceValue: [payload: { key: string; value: string | boolean | number }];
+  addTargetValue: [payload: { key: string; value: string | boolean | number }];
 }>();
+
+const addPropertyButtonText = computed(() => {
+  const key = "config.compare.add_this_property";
+  const text = i18n.t(key);
+  return text === key ? i18n.t("common.add") : text;
+});
+
+function getAddedInitialValue(row: ComparePanelRow, side: "source" | "target") {
+  const control = side === "source" ? row.source : row.target;
+  const opposite = side === "source" ? row.target : row.source;
+  const oppositeHasValue = side === "source" ? row.hasTargetValue : row.hasSourceValue;
+
+  if (oppositeHasValue) {
+    return opposite.value;
+  }
+
+  if (control.valueType === "boolean") {
+    return control.defaultValue === "true" ? "true" : "false";
+  }
+
+  return control.defaultValue ?? "";
+}
+
+function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target") {
+  const value = getAddedInitialValue(row, side);
+  if (side === "source") {
+    emit("addSourceValue", { key: row.key, value });
+    return;
+  }
+
+  emit("addTargetValue", { key: row.key, value });
+}
 </script>
 
 <template>
@@ -207,7 +245,7 @@ const emit = defineEmits<{
           <Transition :name="compareTransitionName">
             <div :key="`${activeSide}-${row.key}`" class="compare-transition-pane">
               <ConfigPropertyEditorControl
-                v-if="activeSide === 'source'"
+                v-if="activeSide === 'source' && row.hasSourceValue"
                 :propertyKey="row.source.key"
                 :modelValue="row.source.value"
                 :valueType="row.source.valueType"
@@ -217,8 +255,17 @@ const emit = defineEmits<{
                 :difficultyOptions="difficultyOptions"
                 @update:modelValue="emit('updateSourceValue', { key: row.key, value: $event })"
               />
+              <SLButton
+                v-else-if="activeSide === 'source'"
+                variant="secondary"
+                size="sm"
+                class="compare-add-property-btn"
+                @click="handleAddMissingProperty(row, 'source')"
+              >
+                {{ addPropertyButtonText }}
+              </SLButton>
               <ConfigPropertyEditorControl
-                v-else
+                v-else-if="row.hasTargetValue"
                 :propertyKey="row.target.key"
                 :modelValue="row.target.value"
                 :valueType="row.target.valueType"
@@ -228,6 +275,15 @@ const emit = defineEmits<{
                 :difficultyOptions="difficultyOptions"
                 @update:modelValue="emit('updateTargetValue', { key: row.key, value: $event })"
               />
+              <SLButton
+                v-else
+                variant="secondary"
+                size="sm"
+                class="compare-add-property-btn"
+                @click="handleAddMissingProperty(row, 'target')"
+              >
+                {{ addPropertyButtonText }}
+              </SLButton>
             </div>
           </Transition>
         </div>
@@ -235,6 +291,7 @@ const emit = defineEmits<{
       <div v-if="!isCompactCompare" class="compare-value-block compare-source-block">
         <div class="entry-control compare-entry-control">
           <ConfigPropertyEditorControl
+            v-if="row.hasSourceValue"
             :propertyKey="row.source.key"
             :modelValue="row.source.value"
             :valueType="row.source.valueType"
@@ -244,11 +301,21 @@ const emit = defineEmits<{
             :difficultyOptions="difficultyOptions"
             @update:modelValue="emit('updateSourceValue', { key: row.key, value: $event })"
           />
+          <SLButton
+            v-else
+            variant="secondary"
+            size="sm"
+            class="compare-add-property-btn"
+            @click="handleAddMissingProperty(row, 'source')"
+          >
+            {{ addPropertyButtonText }}
+          </SLButton>
         </div>
       </div>
       <div v-if="!isCompactCompare" class="compare-value-block compare-target-block">
         <div class="entry-control compare-entry-control">
           <ConfigPropertyEditorControl
+            v-if="row.hasTargetValue"
             :propertyKey="row.target.key"
             :modelValue="row.target.value"
             :valueType="row.target.valueType"
@@ -258,6 +325,15 @@ const emit = defineEmits<{
             :difficultyOptions="difficultyOptions"
             @update:modelValue="emit('updateTargetValue', { key: row.key, value: $event })"
           />
+          <SLButton
+            v-else
+            variant="secondary"
+            size="sm"
+            class="compare-add-property-btn"
+            @click="handleAddMissingProperty(row, 'target')"
+          >
+            {{ addPropertyButtonText }}
+          </SLButton>
         </div>
       </div>
     </div>

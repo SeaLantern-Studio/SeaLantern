@@ -188,6 +188,21 @@
   margin: 0 auto;
 }
 
+.compare-add-property-btn {
+  width: 100%;
+  min-height: 38px;
+  border-radius: var(--sl-radius-md);
+  padding: 8px 12px;
+  color: var(--sl-text-tertiary);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--sl-bg-secondary) 75%, transparent);
+}
+
+.compare-add-property-btn:hover {
+  color: var(--sl-text-secondary);
+  border-color: var(--sl-border);
+}
+
 .compare-header .compare-column-head {
   justify-content: center;
   align-items: center;

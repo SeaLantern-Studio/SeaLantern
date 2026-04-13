@@ -31,6 +31,8 @@ export interface ComparePanelRow {
   different: boolean;
   onlyInSource: boolean;
   onlyInTarget: boolean;
+  hasSourceValue: boolean;
+  hasTargetValue: boolean;
   source: ComparePanelControlState;
   target: ComparePanelControlState;
 }
@@ -134,6 +136,10 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     const errors: Record<string, string> = {};
 
     for (const entry of compareEntries.value) {
+      if (!(entry.key in compareTargetDraftValues.value)) {
+        continue;
+      }
+
       if (getCompareValueType(entry, "target") !== "number") {
         continue;
       }
@@ -154,6 +160,8 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
       different: entry.different,
       onlyInSource: entry.onlyInSource,
       onlyInTarget: entry.onlyInTarget,
+      hasSourceValue: entry.key in options.sourceValues.value,
+      hasTargetValue: entry.key in compareTargetDraftValues.value,
       source: {
         key: entry.key,
         value: entry.sourceValue,

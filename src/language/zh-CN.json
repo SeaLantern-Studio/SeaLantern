@@ -463,6 +463,7 @@
         "different": "有差异",
         "difference_count": "差异项：{count}",
         "difference_badge": "{count}个不同",
+        "add_this_property": "添加此属性",
         "no_differences": "当前筛选条件下没有差异项",
         "no_target_servers": "没有可用于对照的其他服务器",
         "unsaved_target_changes": "对照服务器有未保存修改，请先保存后再切换或关闭对照模式。",

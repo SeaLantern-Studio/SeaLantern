@@ -61,6 +61,8 @@ const emit = defineEmits<{
   updateCompareTargetSourceDraft: [value: string];
   updateValue: [payload: UpdateValuePayload];
   updateCompareTargetValue: [payload: UpdateValuePayload];
+  addSourceValue: [payload: UpdateValuePayload];
+  addTargetValue: [payload: UpdateValuePayload];
   updateCompareTargetServer: [value: string | number];
   reloadCurrent: [];
   reloadCompare: [];
@@ -105,6 +107,8 @@ const emit = defineEmits<{
       @updateCompareTargetServer="emit('updateCompareTargetServer', $event)"
       @updateSourceValue="emit('updateValue', $event)"
       @updateTargetValue="emit('updateCompareTargetValue', $event)"
+      @addSourceValue="emit('addSourceValue', $event)"
+      @addTargetValue="emit('addTargetValue', $event)"
     />
 
     <div v-else class="config-entries">

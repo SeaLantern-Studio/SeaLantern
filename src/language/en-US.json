@@ -448,6 +448,7 @@
         "different": "Different",
         "difference_count": "Differences: {count}",
         "difference_badge": "{count} different",
+        "add_this_property": "Add this property",
         "no_differences": "No differences under the current filters",
         "no_target_servers": "No other servers available for comparison",
         "unsaved_target_changes": "The compare server has unsaved changes. Save them before switching target or turning compare mode off.",
