@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { ArrowLeft } from "lucide-vue-next";
+import SLTooltip from "@components/common/SLTooltip.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import ConfigPropertyEditorControl from "@components/config/ConfigPropertyEditorControl.vue";
 
@@ -41,7 +44,68 @@ interface Props {
   difficultyOptions: Option[];
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+type CompareSide = "source" | "target";
+type SwitchDirection = "to-source" | "to-target";
+
+const activeSide = ref<CompareSide>("source");
+const switchDirection = ref<SwitchDirection>("to-target");
+const switchIconRotation = ref(0);
+const isCompactCompare = ref(false);
+const compareEntriesRef = ref<HTMLElement | null>(null);
+let compareResizeObserver: ResizeObserver | null = null;
+
+const updateCompareLayoutMode = () => {
+  const compareWidth = compareEntriesRef.value?.clientWidth ?? 0;
+  isCompactCompare.value = compareWidth > 0 && compareWidth < 760;
+};
+
+const compareTransitionName = computed(() =>
+  switchDirection.value === "to-target" ? "compare-shift-left" : "compare-shift-right",
+);
+
+const switchButtonTitle = computed(() =>
+  activeSide.value === "source" ? "切换到对照服务器" : "切换回当前服务器",
+);
+
+const switchButtonStyle = computed(() => ({
+  "--compare-switch-rotate": `${switchIconRotation.value}deg`,
+}));
+
+const handleToggleSide = () => {
+  if (activeSide.value === "source") {
+    switchDirection.value = "to-target";
+    activeSide.value = "target";
+  } else {
+    switchDirection.value = "to-source";
+    activeSide.value = "source";
+  }
+
+  switchIconRotation.value -= 180;
+};
+
+onMounted(() => {
+  if (typeof window === "undefined" || typeof ResizeObserver === "undefined") {
+    return;
+  }
+
+  void nextTick(() => {
+    updateCompareLayoutMode();
+    if (!compareEntriesRef.value) {
+      return;
+    }
+
+    compareResizeObserver = new ResizeObserver(() => {
+      updateCompareLayoutMode();
+    });
+    compareResizeObserver.observe(compareEntriesRef.value);
+  });
+});
+
+onBeforeUnmount(() => {
+  compareResizeObserver?.disconnect();
+});
 
 const emit = defineEmits<{
   updateCompareTargetServer: [value: string | number];
@@ -51,7 +115,11 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="compare-entries">
+  <div
+    ref="compareEntriesRef"
+    class="compare-entries"
+    :class="{ 'compare-entries--compact': isCompactCompare }"
+  >
     <div class="compare-header glass-card">
       <div class="compare-column-head compare-column-meta">
         <div class="compare-header-control">
@@ -67,7 +135,42 @@ const emit = defineEmits<{
       </div>
       <div class="compare-column-head">
         <div class="compare-server-heading">
-          <span class="text-caption compare-server-title">{{ sourceServerName }}</span>
+          <template v-if="isCompactCompare">
+            <div class="compare-transition-stage compare-transition-stage--header">
+              <Transition :name="compareTransitionName">
+                <div
+                  :key="`header-${activeSide}`"
+                  class="compare-side-switch-content compare-transition-pane"
+                >
+                  <template v-if="activeSide === 'source'">
+                    <span class="text-caption compare-server-title compare-side-switch-label">{{
+                      sourceServerName
+                    }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-caption compare-server-title compare-side-switch-label">{{
+                      targetServerName
+                    }}</span>
+                    <span class="compare-count-badge">{{ differenceBadgeText }}</span>
+                  </template>
+                </div>
+              </Transition>
+            </div>
+            <SLTooltip :content="switchButtonTitle" :delay="500">
+              <button
+                type="button"
+                class="compare-side-switch-btn"
+                :aria-label="switchButtonTitle"
+                :style="switchButtonStyle"
+                @click="handleToggleSide"
+              >
+                <span class="compare-side-switch-icon">
+                  <ArrowLeft :size="14" />
+                </span>
+              </button>
+            </SLTooltip>
+          </template>
+          <span v-else class="text-caption compare-server-title">{{ sourceServerName }}</span>
         </div>
       </div>
       <div class="compare-column-head">
@@ -99,7 +202,37 @@ const emit = defineEmits<{
           {{ row.description }}
         </p>
       </div>
-      <div class="compare-value-block compare-source-block">
+      <div v-if="isCompactCompare" class="compare-value-block compare-single-side-block">
+        <div class="compare-transition-stage compare-entry-control">
+          <Transition :name="compareTransitionName">
+            <div :key="`${activeSide}-${row.key}`" class="compare-transition-pane">
+              <ConfigPropertyEditorControl
+                v-if="activeSide === 'source'"
+                :propertyKey="row.source.key"
+                :modelValue="row.source.value"
+                :valueType="row.source.valueType"
+                :defaultValue="row.source.defaultValue"
+                :numericError="row.source.numericError"
+                :gamemodeOptions="gamemodeOptions"
+                :difficultyOptions="difficultyOptions"
+                @update:modelValue="emit('updateSourceValue', { key: row.key, value: $event })"
+              />
+              <ConfigPropertyEditorControl
+                v-else
+                :propertyKey="row.target.key"
+                :modelValue="row.target.value"
+                :valueType="row.target.valueType"
+                :defaultValue="row.target.defaultValue"
+                :numericError="row.target.numericError"
+                :gamemodeOptions="gamemodeOptions"
+                :difficultyOptions="difficultyOptions"
+                @update:modelValue="emit('updateTargetValue', { key: row.key, value: $event })"
+              />
+            </div>
+          </Transition>
+        </div>
+      </div>
+      <div v-if="!isCompactCompare" class="compare-value-block compare-source-block">
         <div class="entry-control compare-entry-control">
           <ConfigPropertyEditorControl
             :propertyKey="row.source.key"
@@ -113,7 +246,7 @@ const emit = defineEmits<{
           />
         </div>
       </div>
-      <div class="compare-value-block compare-target-block">
+      <div v-if="!isCompactCompare" class="compare-value-block compare-target-block">
         <div class="entry-control compare-entry-control">
           <ConfigPropertyEditorControl
             :propertyKey="row.target.key"

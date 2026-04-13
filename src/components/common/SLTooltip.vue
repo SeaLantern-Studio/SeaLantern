@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 
 interface Props {
   content: string;
+  delay?: number;
 }
 
 const props = defineProps<Props>();
@@ -12,6 +13,7 @@ const triggerRef = ref<HTMLElement | null>(null);
 const tooltipRef = ref<HTMLElement | null>(null);
 const tooltipStyle = ref<Record<string, string>>({});
 const placement = ref<"top" | "bottom">("top");
+let showTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isInteractive = computed(() => Boolean(props.content));
 
@@ -55,12 +57,32 @@ async function show() {
     return;
   }
 
-  visible.value = true;
-  await nextTick();
-  updatePosition();
+  if (showTimer) {
+    clearTimeout(showTimer);
+  }
+
+  const openTooltip = async () => {
+    visible.value = true;
+    await nextTick();
+    updatePosition();
+  };
+
+  if (props.delay && props.delay > 0) {
+    showTimer = setTimeout(() => {
+      void openTooltip();
+      showTimer = null;
+    }, props.delay);
+    return;
+  }
+
+  await openTooltip();
 }
 
 function hide() {
+  if (showTimer) {
+    clearTimeout(showTimer);
+    showTimer = null;
+  }
   visible.value = false;
 }
 
@@ -78,6 +100,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (showTimer) {
+    clearTimeout(showTimer);
+  }
   if (typeof window !== "undefined") {
     window.removeEventListener("scroll", handleWindowChange, true);
     window.removeEventListener("resize", handleWindowChange);
