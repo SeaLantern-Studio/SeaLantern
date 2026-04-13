@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { i18n } from "@language";
 import SLButton from "@components/common/SLButton.vue";
+import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { SearchQuery, findNext, findPrevious, search, setSearchQuery } from "@codemirror/search";
 import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
@@ -14,6 +15,7 @@ interface Props {
   modelValue: string;
   title?: string;
   readOnly?: boolean;
+  iconNavOnly?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -248,17 +250,41 @@ onBeforeUnmount(() => {
         <span class="source-search-count text-caption">{{ matchCountText }}</span>
       </div>
       <div class="toolbar-right">
-        <SLButton
-          variant="secondary"
-          size="sm"
-          :disabled="!canNavigate"
-          @click="navigateToPrevious"
-        >
-          {{ i18n.t("config.source_search_prev") }}
-        </SLButton>
-        <SLButton variant="secondary" size="sm" :disabled="!canNavigate" @click="navigateToNext">
-          {{ i18n.t("config.source_search_next") }}
-        </SLButton>
+        <template v-if="props.iconNavOnly">
+          <SLButton
+            variant="secondary"
+            size="sm"
+            iconOnly
+            :disabled="!canNavigate"
+            :aria-label="i18n.t('config.source_search_prev')"
+            @click="navigateToPrevious"
+          >
+            <ChevronUp :size="14" />
+          </SLButton>
+          <SLButton
+            variant="secondary"
+            size="sm"
+            iconOnly
+            :disabled="!canNavigate"
+            :aria-label="i18n.t('config.source_search_next')"
+            @click="navigateToNext"
+          >
+            <ChevronDown :size="14" />
+          </SLButton>
+        </template>
+        <template v-else>
+          <SLButton
+            variant="secondary"
+            size="sm"
+            :disabled="!canNavigate"
+            @click="navigateToPrevious"
+          >
+            {{ i18n.t("config.source_search_prev") }}
+          </SLButton>
+          <SLButton variant="secondary" size="sm" :disabled="!canNavigate" @click="navigateToNext">
+            {{ i18n.t("config.source_search_next") }}
+          </SLButton>
+        </template>
       </div>
     </div>
     <div ref="editorRoot" class="source-cm-root"></div>

@@ -144,6 +144,7 @@ const emit = defineEmits<{
             <ConfigSourceEditor
               :modelValue="sourceDraftText"
               :title="sourceServerName"
+              iconNavOnly
               @update:modelValue="emit('updateSourceDraft', $event)"
             />
           </div>
@@ -151,6 +152,7 @@ const emit = defineEmits<{
             <ConfigSourceEditor
               :modelValue="compareTargetSourceDraftText"
               :title="targetServerName"
+              iconNavOnly
               @update:modelValue="emit('updateCompareTargetSourceDraft', $event)"
             />
           </div>
