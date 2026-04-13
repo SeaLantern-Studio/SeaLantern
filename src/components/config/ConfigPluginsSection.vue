@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from "vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import SLButton from "@components/common/SLButton.vue";
@@ -28,6 +29,7 @@ const emit = defineEmits<{
   pluginClick: [plugin: m_PluginInfo];
   togglePlugin: [plugin: m_PluginInfo];
   deletePlugin: [plugin: m_PluginInfo];
+  registerPluginRow: [payload: { pluginFileName: string; element: HTMLElement | null }];
   openPluginFolder: [plugin: m_PluginInfo];
   openConfigFile: [config: m_PluginConfigFile];
 }>();
@@ -36,6 +38,15 @@ function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function setPluginRowRef(pluginFileName: string) {
+  return (element: Element | ComponentPublicInstance | null) => {
+    emit("registerPluginRow", {
+      pluginFileName,
+      element: element instanceof HTMLElement ? element : null,
+    });
+  };
 }
 </script>
 
@@ -85,7 +96,7 @@ function formatFileSize(bytes: number) {
           disabled: !plugin.enabled,
           expanded: selectedPlugin?.file_name === plugin.file_name,
         }"
-        :data-plugin-file-name="plugin.file_name"
+        :ref="setPluginRowRef(plugin.file_name)"
         @click="emit('pluginClick', plugin)"
       >
         <div class="plugin-list-icon">

@@ -22,6 +22,16 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
   const selectedPlugin = ref<m_PluginInfo | null>(null);
   const loadedPlugins = ref<Set<string>>(new Set());
   const observer = ref<IntersectionObserver | null>(null);
+  const pluginRowElements = ref<Map<string, HTMLElement>>(new Map());
+
+  function removePluginFromState(pluginFileName: string) {
+    plugins.value = plugins.value.filter((p) => p.file_name !== pluginFileName);
+    if (selectedPlugin.value?.file_name === pluginFileName) {
+      selectedPlugin.value = null;
+    }
+    loadedPlugins.value.delete(pluginFileName);
+    pluginRowElements.value.delete(pluginFileName);
+  }
 
   async function loadPlugins() {
     if (!options.currentServerId.value) return;
@@ -52,7 +62,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
         intersectionEntries.forEach((entry) => {
           if (entry.isIntersecting) {
             const pluginElement = entry.target as HTMLElement;
-            const pluginFileName = pluginElement.getAttribute("data-plugin-file-name");
+            const pluginFileName = pluginElement.dataset.pluginFileName;
             if (pluginFileName) {
               void loadPluginDetails(pluginFileName);
             }
@@ -65,12 +75,27 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
       },
     );
 
-    nextTick(() => {
-      const pluginElements = document.querySelectorAll<HTMLElement>(".plugin-list-item");
-      pluginElements.forEach((element) => {
-        observer.value?.observe(element);
-      });
+    pluginRowElements.value.forEach((element) => {
+      observer.value?.observe(element);
     });
+  }
+
+  function registerPluginRow(payload: { pluginFileName: string; element: HTMLElement | null }) {
+    const { pluginFileName, element } = payload;
+    const previousElement = pluginRowElements.value.get(pluginFileName);
+
+    if (previousElement) {
+      observer.value?.unobserve(previousElement);
+    }
+
+    if (!element) {
+      pluginRowElements.value.delete(pluginFileName);
+      return;
+    }
+
+    element.dataset.pluginFileName = pluginFileName;
+    pluginRowElements.value.set(pluginFileName, element);
+    observer.value?.observe(element);
   }
 
   async function loadPluginDetails(pluginFileName: string) {
@@ -106,29 +131,22 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     if (!activeServerId) return;
 
     try {
-      const pluginElement = document.querySelector<HTMLElement>(
-        `.plugin-list-item[data-plugin-file-name="${plugin.file_name}"]`,
-      );
+      const pluginElement = pluginRowElements.value.get(plugin.file_name);
       if (pluginElement) {
         const originalHeight = pluginElement.offsetHeight;
         pluginElement.style.height = `${originalHeight}px`;
         pluginElement.style.flexShrink = "0";
+        pluginElement.dataset.pluginFileName = plugin.file_name;
 
         pluginElement.classList.add("deleting");
 
         setTimeout(async () => {
           await m_pluginApi.m_deletePlugin(activeServerId, plugin.file_name);
-          plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
-          if (selectedPlugin.value?.file_name === plugin.file_name) {
-            selectedPlugin.value = null;
-          }
+          removePluginFromState(plugin.file_name);
         }, 500);
       } else {
         await m_pluginApi.m_deletePlugin(activeServerId, plugin.file_name);
-        plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
-        if (selectedPlugin.value?.file_name === plugin.file_name) {
-          selectedPlugin.value = null;
-        }
+        removePluginFromState(plugin.file_name);
       }
     } catch (e) {
       options.setError(String(e));
@@ -212,6 +230,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     handlePluginClick,
     togglePlugin,
     deletePlugin,
+    registerPluginRow,
     openPluginFolder,
     openConfigFile,
     formatFileSize,
