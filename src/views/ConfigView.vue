@@ -105,6 +105,7 @@ propertiesEditor.bindCompareContext({
   prepareCompareTargetSourceDraftForSourceMode:
     compare.prepareCompareTargetSourceDraftForSourceMode,
   updateCompareTargetSourceDraft: compare.updateCompareTargetSourceDraft,
+  captureDifferenceCategorySnapshot: compare.captureDifferenceCategorySnapshot,
 });
 
 const pluginsState = useConfigPlugins({

@@ -49,6 +49,8 @@ interface UseConfigCompareOptions {
   setError: (message: string | null) => void;
 }
 
+export const COMPARE_DIFFERENCE_CATEGORY = "difference";
+
 function buildServerPropertiesPath(path: string) {
   const basePath = path.replace(/[/\\]$/, "");
   if (!basePath) {
@@ -86,6 +88,7 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
   const compareTargetVisualDraftDirty = ref(false);
   const compareLoading = ref(false);
   const compareLoadRequestId = ref(0);
+  const differenceCategorySnapshotKeys = ref<string[]>([]);
 
   const compareTargetServer = computed(
     () => options.servers.value.find((s) => s.id === compareTargetServerId.value) || null,
@@ -116,7 +119,11 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
   const filteredCompareEntries = computed(() => {
     return compareEntries.value.filter((entry) => {
       const matchCat =
-        options.activeCategory.value === "all" || entry.category === options.activeCategory.value;
+        options.activeCategory.value === "all"
+          ? true
+          : options.activeCategory.value === COMPARE_DIFFERENCE_CATEGORY
+            ? differenceCategorySnapshotKeys.value.includes(entry.key)
+            : entry.category === options.activeCategory.value;
       const matchSearch =
         !options.searchQuery.value ||
         entry.key.toLowerCase().includes(options.searchQuery.value.toLowerCase()) ||
@@ -280,6 +287,9 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
   function handleCompareModeChange(value: boolean) {
     compareMode.value = value;
     if (!value) {
+      if (options.activeCategory.value === COMPARE_DIFFERENCE_CATEGORY) {
+        options.activeCategory.value = "all";
+      }
       // 这是刻意的设计：关闭对照模式时直接丢弃对照侧草稿，回到单列编辑体验。
       resetCompareState(false);
       return;
@@ -306,6 +316,9 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     if (includeMode) {
       compareMode.value = false;
     }
+    if (options.activeCategory.value === COMPARE_DIFFERENCE_CATEGORY) {
+      options.activeCategory.value = "all";
+    }
     compareTargetServerId.value = "";
     compareTargetEntries.value = [];
     compareTargetDraftValues.value = {};
@@ -314,6 +327,13 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     compareTargetLoadedSourceText.value = "";
     compareTargetVisualModeBaseValues.value = {};
     compareTargetVisualDraftDirty.value = false;
+    differenceCategorySnapshotKeys.value = [];
+  }
+
+  function captureDifferenceCategorySnapshot() {
+    differenceCategorySnapshotKeys.value = compareEntries.value
+      .filter((entry) => entry.different || entry.onlyInSource || entry.onlyInTarget)
+      .map((entry) => entry.key);
   }
 
   return {
@@ -340,6 +360,7 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     prepareCompareTargetSourceDraftForSourceMode,
     updateCompareTargetValue,
     updateCompareTargetSourceDraft,
+    captureDifferenceCategorySnapshot,
     handleCompareModeChange,
     handleCompareTargetServerChange,
     resetCompareState,

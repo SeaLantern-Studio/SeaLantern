@@ -31,7 +31,10 @@ interface CompareContext {
   buildCompareTargetPreviewSource: () => Promise<string>;
   prepareCompareTargetSourceDraftForSourceMode: () => Promise<void>;
   updateCompareTargetSourceDraft: (value: string) => void;
+  captureDifferenceCategorySnapshot: () => void;
 }
+
+const COMPARE_DIFFERENCE_CATEGORY = "difference";
 
 interface UseConfigPropertiesEditorOptions {
   serverPath: Ref<string>;
@@ -82,7 +85,11 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
   const categories = computed(() => {
     const cats = new Set(entries.value.map((e) => e.category));
-    return ["all", ...Array.from(cats)];
+    const categoryList = ["all", ...Array.from(cats)];
+    if (compareContext.value?.compareMode.value) {
+      categoryList.push(COMPARE_DIFFERENCE_CATEGORY);
+    }
+    return categoryList;
   });
 
   const filteredEntries = computed(() => {
@@ -564,6 +571,13 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   }
 
   function handleCategoryChange(category: string) {
+    if (
+      category === COMPARE_DIFFERENCE_CATEGORY &&
+      activeCategory.value !== COMPARE_DIFFERENCE_CATEGORY
+    ) {
+      compareContext.value?.captureDifferenceCategorySnapshot();
+    }
+
     activeCategory.value = category;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
