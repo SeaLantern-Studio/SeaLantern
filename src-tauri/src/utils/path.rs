@@ -28,8 +28,13 @@ fn is_msi_installation() -> bool {
 /// 这个函数确保 MSI 安装的应用将数据存储在用户目录而非安装目录
 pub fn get_app_data_dir() -> PathBuf {
     // Docker 环境检测 - 优先返回容器内数据目录
-    if std::path::Path::new("/.dockerenv").exists() {
-        return PathBuf::from("./data");
+    let is_docker = std::path::Path::new("/.dockerenv").exists();
+    eprintln!("[DEBUG] path.rs: /.dockerenv exists = {}", is_docker);
+
+    if is_docker {
+        let docker_path = PathBuf::from("./data");
+        eprintln!("[DEBUG] path.rs: Docker mode, returning path: {:?}", docker_path);
+        return docker_path;
     }
 
     #[cfg(target_os = "windows")]
@@ -38,10 +43,18 @@ pub fn get_app_data_dir() -> PathBuf {
         if is_msi_installation() {
             // MSI 安装：使用 %AppData%
             if let Some(data_dir) = dirs_next::data_dir() {
+                eprintln!(
+                    "[DEBUG] path.rs: Windows MSI mode, returning path: {:?}",
+                    data_dir.join("Sea Lantern")
+                );
                 return data_dir.join("Sea Lantern");
             }
             // 回退到主目录
             if let Some(home_dir) = dirs_next::home_dir() {
+                eprintln!(
+                    "[DEBUG] path.rs: Windows fallback to home, returning path: {:?}",
+                    home_dir.join(".sea-lantern")
+                );
                 return home_dir.join(".sea-lantern");
             }
         }
@@ -49,14 +62,20 @@ pub fn get_app_data_dir() -> PathBuf {
         // 便携版或其他安装：使用程序所在目录
         if let Ok(exe_path) = std::env::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
+                eprintln!("[DEBUG] path.rs: Windows portable mode, returning path: {:?}", exe_dir);
                 return exe_dir.to_path_buf();
             }
         }
 
         // 最后的回退方案
         if let Some(home_dir) = dirs_next::home_dir() {
+            eprintln!(
+                "[DEBUG] path.rs: Windows final fallback, returning path: {:?}",
+                home_dir.join(".sea-lantern")
+            );
             return home_dir.join(".sea-lantern");
         }
+        eprintln!("[DEBUG] path.rs: Windows ultimate fallback, returning path: .");
         PathBuf::from(".")
     }
 
@@ -64,14 +83,26 @@ pub fn get_app_data_dir() -> PathBuf {
     {
         // macOS: ~/Library/Application Support/Sea Lantern
         if let Some(data_dir) = dirs_next::data_dir() {
+            eprintln!(
+                "[DEBUG] path.rs: macOS mode, returning path: {:?}",
+                data_dir.join("Sea Lantern")
+            );
             return data_dir.join("Sea Lantern");
         }
         if let Some(home_dir) = dirs_next::home_dir() {
+            eprintln!(
+                "[DEBUG] path.rs: macOS fallback, returning path: {:?}",
+                home_dir
+                    .join("Library")
+                    .join("Application Support")
+                    .join("Sea Lantern")
+            );
             return home_dir
                 .join("Library")
                 .join("Application Support")
                 .join("Sea Lantern");
         }
+        eprintln!("[DEBUG] path.rs: macOS ultimate fallback, returning path: .");
         PathBuf::from(".")
     }
 
@@ -79,11 +110,20 @@ pub fn get_app_data_dir() -> PathBuf {
     {
         // Linux: ~/.local/share/sea-lantern
         if let Some(data_dir) = dirs_next::data_dir() {
+            eprintln!(
+                "[DEBUG] path.rs: Linux mode, returning path: {:?}",
+                data_dir.join("sea-lantern")
+            );
             return data_dir.join("sea-lantern");
         }
         if let Some(home_dir) = dirs_next::home_dir() {
+            eprintln!(
+                "[DEBUG] path.rs: Linux fallback, returning path: {:?}",
+                home_dir.join(".sea-lantern")
+            );
             return home_dir.join(".sea-lantern");
         }
+        eprintln!("[DEBUG] path.rs: Linux ultimate fallback, returning path: .");
         PathBuf::from(".")
     }
 }
@@ -91,13 +131,18 @@ pub fn get_app_data_dir() -> PathBuf {
 /// 获取应用数据目录的字符串表示，如果目录不存在则创建
 pub fn get_or_create_app_data_dir() -> String {
     let data_dir = get_app_data_dir();
+    eprintln!("[DEBUG] path.rs: get_or_create_app_data_dir called, path: {:?}", data_dir);
 
     // 创建目录（如果不存在）
     if let Err(e) = std::fs::create_dir_all(&data_dir) {
         eprintln!("警告：无法创建数据目录：{}", e);
+    } else {
+        eprintln!("[DEBUG] path.rs: Directory created/verified successfully");
     }
 
-    data_dir.to_string_lossy().to_string()
+    let result = data_dir.to_string_lossy().to_string();
+    eprintln!("[DEBUG] path.rs: Returning data dir string: {}", result);
+    result
 }
 
 #[cfg(test)]

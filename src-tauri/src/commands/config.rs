@@ -71,3 +71,43 @@ pub fn write_server_properties(
     validate_path_within_server(&server_path, &props_path)?;
     config_parser::write_properties(&props_path, &values)
 }
+
+#[tauri::command]
+pub fn read_server_properties_source(server_path: String) -> Result<String, String> {
+    validate_config_path(&server_path)?;
+    let props_path = format!("{}/server.properties", server_path);
+    validate_path_within_server(&server_path, &props_path)?;
+    config_parser::read_raw_text(&props_path)
+}
+
+#[tauri::command]
+pub fn write_server_properties_source(server_path: String, source: String) -> Result<(), String> {
+    validate_config_path(&server_path)?;
+    let props_path = format!("{}/server.properties", server_path);
+    validate_path_within_server(&server_path, &props_path)?;
+    config_parser::write_raw_text(&props_path, &source)
+}
+
+#[tauri::command]
+pub fn parse_server_properties_source(source: String) -> Result<ServerProperties, String> {
+    config_parser::parse_server_properties_from_source(&source)
+}
+
+#[tauri::command]
+pub fn preview_server_properties_write(
+    server_path: String,
+    values: HashMap<String, String>,
+) -> Result<String, String> {
+    validate_config_path(&server_path)?;
+    let props_path = format!("{}/server.properties", server_path);
+    validate_path_within_server(&server_path, &props_path)?;
+    config_parser::preview_properties_write(&props_path, &values)
+}
+
+#[tauri::command]
+pub fn preview_server_properties_write_from_source(
+    source: String,
+    values: HashMap<String, String>,
+) -> Result<String, String> {
+    config_parser::preview_properties_write_from_source(&source, &values)
+}

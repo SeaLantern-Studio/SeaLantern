@@ -22,3 +22,8 @@ changelog/
 .review/
 plugin-market/
 plugins-demo/
+.opencode/
+.playwright-mcp/
+
+#docker test
+data/

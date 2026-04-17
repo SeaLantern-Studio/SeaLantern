@@ -22,7 +22,13 @@
     "docker:build": "docker build -t sealantern:docker ."
   },
   "dependencies": {
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/merge": "^6.12.1",
+    "@codemirror/search": "^6.6.0",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.41.0",
     "@headlessui/vue": "^1.7.23",
+    "@lezer/highlight": "^1.2.3",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
