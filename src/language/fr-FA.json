@@ -467,6 +467,8 @@
   "settings": {
     "title": "Paramètres de l'application",
     "auto_stop": "Arrêter automatiquement les serveurs à la fermeture",
+    "update_auto_stop": "Arrêter automatiquement les serveurs lors de la mise à jour",
+    "update_auto_stop_desc": "Arrêter automatiquement tous les serveurs en cours d'exécution avant la mise à jour de Sea Lantern pour éviter des problèmes pendant le processus de mise à jour",
     "auto_eula": "Accepter automatiquement l'EULA",
     "close_action": "Comportement de fermeture",
     "close_action_desc": "Action par défaut lors du clic sur le bouton de fermeture",

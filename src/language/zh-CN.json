@@ -628,6 +628,8 @@
     "settings": {
       "title": "应用设置",
       "auto_stop": "关闭软件时自动停止服务器",
+      "update_auto_stop": "更新时自动停止服务器",
+      "update_auto_stop_desc": "Sea Lantern 更新前自动停止所有运行中的服务器，防止更新过程中出现问题",
       "auto_eula": "自动同意 EULA",
       "close_action": "关闭行为",
       "close_action_desc": "选择点击关闭按钮时的默认行为",

@@ -466,6 +466,8 @@
   "settings": {
     "title": "アプリケーション設定",
     "auto_stop": "終了時にサーバーを自動停止",
+    "update_auto_stop": "更新時にサーバーを自動停止",
+    "update_auto_stop_desc": "Sea Lanternの更新前に、実行中のすべてのサーバーを自動停止し、更新プロセス中の問題を防ぐ",
     "auto_eula": "EULAに自動同意",
     "close_action": "閉じる動作",
     "close_action_desc": "閉じるボタンクリック時のデフォルト動作",

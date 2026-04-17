@@ -467,6 +467,8 @@
   "settings": {
     "title": "애플리케이션 설정",
     "auto_stop": "프로그램 종료 시 서버 자동 중지",
+    "update_auto_stop": "업데이트 시 서버 자동 중지",
+    "update_auto_stop_desc": "SeaLantern 업데이트 전에 실행 중인 모든 서버를 자동으로 중지하여 업데이트 과정 중 문제를 방지합니다",
     "auto_eula": "EULA 자동 동의",
     "close_action": "종료 동작",
     "close_action_desc": "닫기 버튼 클릭 시 기본 동작 선택",
