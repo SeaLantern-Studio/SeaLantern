@@ -307,31 +307,33 @@ function isActive(code: string) {
             </div>
           </MenuItem>
 
-          <!-- 更多语言选项 -->
+          <!-- 其他语言（仅在展开时显示） -->
+          <Transition name="language-toggle">
+            <div v-if="showMoreLanguages" class="language-more-list">
+              <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
+                <div
+                  class="language-item"
+                  :class="{ active: isActive(option.code) }"
+                  @click="() => handleLanguageClick(option.code, close)"
+                >
+                  <div class="language-item-main">
+                    <span class="language-label">{{ option.label }}</span>
+                  </div>
+                  <Check v-if="isActive(option.code)" :size="16" aria-hidden="true" />
+                </div>
+              </MenuItem>
+            </div>
+          </Transition>
+
+          <!-- 更多语言选项（固定在最底部） -->
           <div class="language-item-full-width">
             <div class="language-item language-item-arrow" @click="toggleMoreLanguages">
               <div class="language-item-main">
-                <ChevronDown v-if="!showMoreLanguages" :size="16" class="arrow-icon" />
-                <ChevronUp v-else :size="16" class="arrow-icon" />
+                <ChevronUp v-if="showMoreLanguages" :size="16" class="arrow-icon" />
+                <ChevronDown v-else :size="16" class="arrow-icon" />
               </div>
             </div>
           </div>
-
-          <!-- 其他语言（仅在展开时显示） -->
-          <template v-if="showMoreLanguages">
-            <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
-              <div
-                class="language-item"
-                :class="{ active: isActive(option.code) }"
-                @click="() => handleLanguageClick(option.code, close)"
-              >
-                <div class="language-item-main">
-                  <span class="language-label">{{ option.label }}</span>
-                </div>
-                <Check v-if="isActive(option.code)" :size="16" aria-hidden="true" />
-              </div>
-            </MenuItem>
-          </template>
         </MenuItems>
       </Menu>
 
