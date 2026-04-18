@@ -124,3 +124,55 @@ export function isUploadSupported(): boolean {
   // Tauri v2 默认不注入 window.__TAURI__，使用 __TAURI_INTERNALS__ 可靠判断
   return typeof window !== "undefined" && !window.__TAURI_INTERNALS__;
 }
+
+/**
+ * 浏览器文件选择器选项
+ */
+export interface BrowserFilePickerOptions {
+  /** 接受的文件类型，如 '.jar,.zip' */
+  accept?: string;
+  /** 是否允许多选 */
+  multiple?: boolean;
+}
+
+/**
+ * 使用浏览器原生文件选择器选择文件
+ * @param options 选择器选项
+ * @returns 选择的文件或文件数组，取消则返回 null
+ */
+export function pickFileFromBrowser(
+  options?: BrowserFilePickerOptions,
+): Promise<File | File[] | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.style.display = "none";
+    if (options?.accept) {
+      input.accept = options.accept;
+    }
+    if (options?.multiple) {
+      input.multiple = true;
+    }
+    input.onchange = () => {
+      const files = input.files;
+      if (!files || files.length === 0) {
+        resolve(null);
+        return;
+      }
+      // 清理 DOM
+      document.body.removeChild(input);
+      if (options?.multiple) {
+        resolve(Array.from(files));
+      } else {
+        resolve(files[0]);
+      }
+    };
+    // 处理用户取消的情况（某些浏览器支持）
+    input.oncancel = () => {
+      document.body.removeChild(input);
+      resolve(null);
+    };
+    document.body.appendChild(input);
+    input.click();
+  });
+}
