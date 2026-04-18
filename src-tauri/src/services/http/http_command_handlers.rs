@@ -79,6 +79,26 @@ impl CommandRegistry {
             "write_server_properties".to_string(),
             handle_write_server_properties as CommandHandler,
         );
+        handlers.insert(
+            "read_server_properties_source".to_string(),
+            handle_read_server_properties_source as CommandHandler,
+        );
+        handlers.insert(
+            "write_server_properties_source".to_string(),
+            handle_write_server_properties_source as CommandHandler,
+        );
+        handlers.insert(
+            "parse_server_properties_source".to_string(),
+            handle_parse_server_properties_source as CommandHandler,
+        );
+        handlers.insert(
+            "preview_server_properties_write".to_string(),
+            handle_preview_server_properties_write as CommandHandler,
+        );
+        handlers.insert(
+            "preview_server_properties_write_from_source".to_string(),
+            handle_preview_server_properties_write_from_source as CommandHandler,
+        );
 
         // 注册 System 命令
         handlers.insert("get_system_info".to_string(), handle_get_system_info as CommandHandler);
@@ -499,6 +519,62 @@ fn handle_write_server_properties(
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         config_commands::write_server_properties(req.server_path, req.values)?;
         Ok(Value::Null)
+    })
+}
+
+fn handle_read_server_properties_source(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ReadServerPropertiesRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = config_commands::read_server_properties_source(req.server_path)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_write_server_properties_source(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: WriteServerPropertiesSourceRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        config_commands::write_server_properties_source(req.server_path, req.source)?;
+        Ok(Value::Null)
+    })
+}
+
+fn handle_parse_server_properties_source(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ParseServerPropertiesSourceRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = config_commands::parse_server_properties_source(req.source)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_preview_server_properties_write(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: PreviewServerPropertiesWriteRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = config_commands::preview_server_properties_write(req.server_path, req.values)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_preview_server_properties_write_from_source(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: PreviewServerPropertiesWriteFromSourceRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result =
+            config_commands::preview_server_properties_write_from_source(req.source, req.values)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
 
@@ -986,6 +1062,33 @@ struct WriteServerPropertiesRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct WriteServerPropertiesSourceRequest {
+    server_path: String,
+    source: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ParseServerPropertiesSourceRequest {
+    source: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PreviewServerPropertiesWriteRequest {
+    server_path: String,
+    values: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PreviewServerPropertiesWriteFromSourceRequest {
+    source: String,
+    values: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ValidateJavaPathRequest {
     path: String,
 }
@@ -1048,5 +1151,13 @@ mod tests {
         assert!(commands.contains(&"tunnel_copy_ticket".to_string()));
         assert!(commands.contains(&"tunnel_regenerate_ticket".to_string()));
         assert!(commands.contains(&"tunnel_generate_ticket".to_string()));
+    }
+
+    #[test]
+    fn command_registry_includes_preview_from_source_command() {
+        let registry = CommandRegistry::new();
+        let commands = registry.list_commands();
+
+        assert!(commands.contains(&"preview_server_properties_write_from_source".to_string()));
     }
 }

@@ -26,6 +26,7 @@ const categoryLabels: Record<string, string> = {
   performance: i18n.t("common.config_performance"),
   display: i18n.t("common.config_display"),
   other: i18n.t("common.config_other"),
+  difference: i18n.t("config.compare.different"),
 };
 
 const tabs = computed(() =>

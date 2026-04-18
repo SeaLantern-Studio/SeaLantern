@@ -3,11 +3,7 @@ use std::fs;
 
 use crate::models::config::*;
 
-/// Read a .properties file into a HashMap
-pub fn read_properties(file_path: &str) -> Result<HashMap<String, String>, String> {
-    let content =
-        fs::read_to_string(file_path).map_err(|e| format!("Failed to read file: {}", e))?;
-
+fn parse_properties_content(content: &str) -> HashMap<String, String> {
     let mut map = HashMap::new();
 
     for line in content.lines() {
@@ -22,13 +18,10 @@ pub fn read_properties(file_path: &str) -> Result<HashMap<String, String>, Strin
         }
     }
 
-    Ok(map)
+    map
 }
 
-/// Write a HashMap to a .properties file, preserving comments
-pub fn write_properties(file_path: &str, values: &HashMap<String, String>) -> Result<(), String> {
-    let original = fs::read_to_string(file_path).unwrap_or_default();
-
+fn render_properties_content(original: &str, values: &HashMap<String, String>) -> String {
     let mut output = String::new();
     let mut written_keys: Vec<String> = Vec::new();
 
@@ -39,6 +32,7 @@ pub fn write_properties(file_path: &str, values: &HashMap<String, String>) -> Re
             output.push('\n');
             continue;
         }
+
         if let Some(eq_pos) = trimmed.find('=') {
             let key = trimmed[..eq_pos].trim();
             if let Some(new_value) = values.get(key) {
@@ -54,19 +48,58 @@ pub fn write_properties(file_path: &str, values: &HashMap<String, String>) -> Re
         }
     }
 
-    // Add new keys that weren't in the original file
     for (key, value) in values {
         if !written_keys.contains(key) {
             output.push_str(&format!("{}={}\n", key, value));
         }
     }
 
-    fs::write(file_path, output).map_err(|e| format!("Failed to write file: {}", e))
+    output
+}
+
+pub fn read_raw_text(file_path: &str) -> Result<String, String> {
+    fs::read_to_string(file_path).map_err(|e| format!("Failed to read file: {}", e))
+}
+
+pub fn write_raw_text(file_path: &str, content: &str) -> Result<(), String> {
+    fs::write(file_path, content).map_err(|e| format!("Failed to write file: {}", e))
+}
+
+pub fn preview_properties_write(
+    file_path: &str,
+    values: &HashMap<String, String>,
+) -> Result<String, String> {
+    let original = fs::read_to_string(file_path).unwrap_or_default();
+    Ok(render_properties_content(&original, values))
+}
+
+pub fn preview_properties_write_from_source(
+    source: &str,
+    values: &HashMap<String, String>,
+) -> Result<String, String> {
+    Ok(render_properties_content(source, values))
+}
+
+/// Read a .properties file into a HashMap
+pub fn read_properties(file_path: &str) -> Result<HashMap<String, String>, String> {
+    let content = read_raw_text(file_path)?;
+    Ok(parse_properties_content(&content))
+}
+
+/// Write a HashMap to a .properties file, preserving comments
+pub fn write_properties(file_path: &str, values: &HashMap<String, String>) -> Result<(), String> {
+    let output = preview_properties_write(file_path, values)?;
+    write_raw_text(file_path, &output)
 }
 
 /// Parse server.properties with descriptions
 pub fn parse_server_properties(file_path: &str) -> Result<ServerProperties, String> {
-    let raw = read_properties(file_path)?;
+    let content = read_raw_text(file_path)?;
+    parse_server_properties_from_source(&content)
+}
+
+pub fn parse_server_properties_from_source(source: &str) -> Result<ServerProperties, String> {
+    let raw = parse_properties_content(source);
     let mut entries = Vec::new();
 
     let descriptions = get_property_descriptions();
@@ -135,4 +168,29 @@ fn get_property_descriptions(
     m.insert("spawn-protection", ("出生点保护半径", "number", "16", "world"));
     m.insert("sync-chunk-writes", ("同步区块写入", "boolean", "true", "performance"));
     m
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_properties_content, render_properties_content};
+    use std::collections::HashMap;
+
+    #[test]
+    fn render_properties_content_updates_motd_as_plain_text() {
+        let original = "motd=Old Server\nmax-players=20\n";
+        let mut values = HashMap::new();
+        values.insert("motd".to_string(), "Hello Sea Lantern".to_string());
+        values.insert("max-players".to_string(), "20".to_string());
+
+        let rendered = render_properties_content(original, &values);
+
+        assert!(rendered.contains("motd=Hello Sea Lantern\n"));
+    }
+
+    #[test]
+    fn parse_properties_content_keeps_value_text_after_first_equals() {
+        let parsed = parse_properties_content("motd=hello=world\n");
+
+        assert_eq!(parsed.get("motd"), Some(&"hello=world".to_string()));
+    }
 }

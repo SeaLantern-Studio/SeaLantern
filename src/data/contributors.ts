@@ -156,10 +156,12 @@ export const contributors: Contributor[] = [
   },
   {
     name: "TNTXZ",
-    role: "诶嘿~",
+    role: "诶嘿~（项目i18n开创者）",
     avatar: "https://api.rms.net.cn/head/_TNTXZ_",
     url: {
       github: "https://github.com/TNTXZ",
+      bilibili: "https://space.bilibili.com/1515387402",
+      qq: "35266332",
     },
   },
   {
