@@ -309,7 +309,7 @@ function isActive(code: string) {
 
           <!-- 其他语言（仅在展开时显示） -->
           <Transition name="language-toggle">
-            <div v-if="showMoreLanguages" class="language-more-list">
+            <div v-if="showMoreLanguages" id="language-more-list" class="language-more-list">
               <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
                 <div
                   class="language-item"
@@ -327,7 +327,16 @@ function isActive(code: string) {
 
           <!-- 更多语言选项（固定在最底部） -->
           <div class="language-item-full-width">
-            <div class="language-item language-item-arrow" @click="toggleMoreLanguages">
+            <div
+              class="language-item language-item-arrow"
+              role="button"
+              tabindex="0"
+              :aria-expanded="showMoreLanguages"
+              aria-controls="language-more-list"
+              @click="toggleMoreLanguages"
+              @keydown.enter.prevent="toggleMoreLanguages"
+              @keydown.space.prevent="toggleMoreLanguages"
+            >
               <div class="language-item-main">
                 <ChevronUp v-if="showMoreLanguages" :size="16" class="arrow-icon" />
                 <ChevronDown v-else :size="16" class="arrow-icon" />
