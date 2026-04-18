@@ -79,6 +79,36 @@ export interface ServerResourceUsage {
 }
 
 export const systemApi = {
+  async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
+    if (!isUploadSupported()) {
+      throw new Error("仅在Docker/浏览器环境中支持该方法");
+    }
+
+    const input = document.createElement("input");
+    input.type = "file";
+    if (accept) {
+      input.accept = accept;
+    }
+
+    const selectedFile = await new Promise<File | null>((resolve) => {
+      input.addEventListener(
+        "change",
+        () => {
+          resolve(input.files?.[0] ?? null);
+        },
+        { once: true },
+      );
+      input.click();
+    });
+
+    if (!selectedFile) {
+      return null;
+    }
+
+    const uploaded = await uploadFile(selectedFile);
+    return uploaded.saved_path;
+  },
+
   async getSystemInfo(): Promise<SystemInfo> {
     return tauriInvoke("get_system_info");
   },
@@ -89,24 +119,14 @@ export const systemApi = {
 
   async pickJarFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      const file = await pickFileFromBrowser({ accept: ".jar" });
-      if (file && file instanceof File) {
-        const result = await uploadFile(file);
-        return result.saved_path;
-      }
-      return null;
+      return this.pickAndUploadBrowserFile(".jar");
     }
     return tauriInvoke("pick_jar_file");
   },
 
   async pickArchiveFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      const file = await pickFileFromBrowser({ accept: ".jar,.zip,.tar,.tgz,.gz" });
-      if (file && file instanceof File) {
-        const result = await uploadFile(file);
-        return result.saved_path;
-      }
-      return null;
+      return this.pickAndUploadBrowserFile(".zip,.tar,.tar.gz,.tgz,.jar");
     }
     return tauriInvoke("pick_archive_file");
   },

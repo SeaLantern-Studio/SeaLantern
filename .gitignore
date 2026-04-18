@@ -23,7 +23,7 @@ changelog/
 plugin-market/
 plugins-demo/
 
-# about Ai
+# About OpenCode
 .opencode/
 .playwright-mcp/
 
