@@ -23,5 +23,9 @@ changelog/
 plugin-market/
 plugins-demo/
 
+# about Ai
+.opencode/
+.playwright-mcp/
+
 #docker test
 data/

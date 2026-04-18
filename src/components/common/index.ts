@@ -16,5 +16,6 @@ export { default as SLSpinner } from "@components/common/SLSpinner.vue";
 export { default as SLSwitch } from "@components/common/SLSwitch.vue";
 export { default as SLTabBar, type TabBarItem } from "@components/common/SLTabBar.vue";
 export { default as SLTextarea } from "@components/common/SLTextarea.vue";
+export { default as SLTooltip } from "@components/common/SLTooltip.vue";
 export { default as UpdateModal } from "@components/common/UpdateModal.vue";
 export { default as BrandIcon } from "@components/common/BrandIcon.vue";

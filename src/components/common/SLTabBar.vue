@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, watch, type Component } from "vue";
 import { useTabIndicator } from "@composables/useTabIndicator";
 import { i18n } from "@language";
+import SLTooltip from "@components/common/SLTooltip.vue";
 
 export interface TabBarItem<T = string | null> {
   key: T;
   label: string;
-  count?: number;
+  count?: number | string;
+  countTitle?: string;
   icon?: string;
+  suffixIcon?: Component;
+  suffixTitle?: string;
   disabled?: boolean;
 }
 
@@ -66,7 +70,15 @@ function selectTab(tab: TabBarItem<string | null>) {
       >
         <i v-if="tab.icon" :class="tab.icon" class="sl-tab-bar__icon" aria-hidden="true" />
         <span class="sl-tab-bar__label">{{ tab.label }}</span>
-        <span v-if="tab.count !== undefined" class="sl-tab-bar__count">{{ tab.count }}</span>
+        <span v-if="tab.suffixIcon" class="sl-tab-bar__suffix" :title="tab.suffixTitle">
+          <component :is="tab.suffixIcon" class="sl-tab-bar__suffix-icon" :size="12" />
+        </span>
+        <SLTooltip v-if="tab.countTitle" :content="tab.countTitle">
+          <span class="sl-tab-bar__count sl-tab-bar__count--hint" @click.stop @mousedown.stop>
+            {{ tab.count }}
+          </span>
+        </SLTooltip>
+        <span v-else-if="tab.count !== undefined" class="sl-tab-bar__count">{{ tab.count }}</span>
       </button>
       <div v-if="$slots.extra" class="sl-tab-bar__extra">
         <slot name="extra"></slot>
@@ -86,7 +98,15 @@ function selectTab(tab: TabBarItem<string | null>) {
           @click="selectTab(tab)"
         >
           <span class="sl-tab-bar__label">{{ tab.label }}</span>
-          <span v-if="tab.count !== undefined" class="sl-tab-bar__count">{{ tab.count }}</span>
+          <span v-if="tab.suffixIcon" class="sl-tab-bar__suffix" :title="tab.suffixTitle">
+            <component :is="tab.suffixIcon" class="sl-tab-bar__suffix-icon" :size="12" />
+          </span>
+          <SLTooltip v-if="tab.countTitle" :content="tab.countTitle">
+            <span class="sl-tab-bar__count sl-tab-bar__count--hint" @click.stop @mousedown.stop>
+              {{ tab.count }}
+            </span>
+          </SLTooltip>
+          <span v-else-if="tab.count !== undefined" class="sl-tab-bar__count">{{ tab.count }}</span>
         </button>
       </div>
       <div v-if="$slots.extra" class="sl-tab-bar__extra">
@@ -178,6 +198,20 @@ function selectTab(tab: TabBarItem<string | null>) {
 .sl-tab-bar__icon {
   font-size: 1rem;
   transition: transform 0.2s ease;
+}
+
+.sl-tab-bar__suffix {
+  display: inline-flex;
+  align-items: center;
+  color: var(--sl-text-secondary);
+}
+
+.sl-tab-bar__suffix-icon {
+  opacity: 0.85;
+}
+
+.sl-tab-bar__count--hint {
+  cursor: help;
 }
 
 .sl-tab-bar__tab:hover:not(:disabled) .sl-tab-bar__icon {
