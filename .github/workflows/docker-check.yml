@@ -1,0 +1,52 @@
+name: "Docker 构建检查"
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "src-tauri/**"
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "docker-entry/**"
+      - ".github/workflows/docker-check.yml"
+  push:
+    branches: [main, dev]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "src-tauri/**"
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "docker-entry/**"
+      - ".github/workflows/docker-check.yml"
+
+jobs:
+  docker-build:
+    name: Docker 镜像构建测试
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 构建 Docker 镜像（测试构建）
+        run: |
+          echo "开始构建 Docker 镜像..."
+          docker build --build-arg CARGO_FEATURES=docker -t sealantern:test .
+          echo "Docker 镜像构建成功！"
+
+      - name: 清理测试镜像
+        if: always()
+        run: |
+          docker rmi sealantern:test || true
+          docker system prune -f || true
