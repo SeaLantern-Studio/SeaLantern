@@ -29,7 +29,7 @@
         "resizable": true,
         "transparent": true,
         "visible": true,
-        "dragDropEnabled": true
+        "dragDropEnabled": false
       }
     ],
     "macOSPrivateApi": true,

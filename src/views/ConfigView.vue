@@ -1,68 +1,133 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, onActivated, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
-import SLSpinner from "@components/common/SLSpinner.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
+import SLModal from "@components/common/SLModal.vue";
+import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
+import SLTooltip from "@components/common/SLTooltip.vue";
 import { SLTabBar } from "@components/common";
-import { configApi } from "@api/config";
-import { m_pluginApi, type m_PluginInfo, type m_PluginConfigFile } from "@api/mcs_plugins";
-import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
-import {
-  Trash2,
-  RefreshCw,
-  Settings,
-  FileText,
-  RotateCcw,
-  FolderOpen,
-  Edit,
-} from "lucide-vue-next";
+import { FileDiff } from "lucide-vue-next";
 
-import ConfigToolbar from "@components/config/ConfigToolbar.vue";
-import ConfigCategories from "@components/config/ConfigCategories.vue";
-import ConfigEntry from "@components/config/ConfigEntry.vue";
-import { systemApi } from "@api/system";
+import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
+import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
+import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.vue";
+import { useConfigPlugins } from "@views/config/useConfigPlugins";
+import { useConfigCompare } from "@views/config/useConfigCompare";
+import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
 
 const route = useRoute();
 const store = useServerStore();
 
-const entries = ref<ConfigEntryType[]>([]);
-const editValues = ref<Record<string, string>>({});
-const loading = ref(false);
-const saving = ref(false);
 const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
-const searchQuery = ref("");
-const activeCategory = ref("all");
-const serverPath = computed(() => {
-  const server = store.servers.find((s) => s.id === store.currentServerId);
-  return server?.path || "";
-});
-
-const plugins = ref<m_PluginInfo[]>([]);
-const pluginsLoading = ref(false);
-const selectedPlugin = ref<m_PluginInfo | null>(null);
-const loadedPlugins = ref<Set<string>>(new Set());
-const observer = ref<IntersectionObserver | null>(null);
 const activeTab = ref<"properties" | "plugins">("properties");
-const isLoading = ref(false);
-const loadingDebounceTimer = ref<number | null>(null);
-
-const autoSaveDebounceTimer = ref<number | null>(null);
-const AUTO_SAVE_DELAY = 1000;
+const configSaveDiffModalWidth = "1040px";
 
 const currentServerId = computed(() => store.currentServerId);
+const currentServer = computed(
+  () => store.servers.find((s) => s.id === store.currentServerId) || null,
+);
+const serverPath = computed(() => currentServer.value?.path || "");
 
-const categories = computed(() => {
-  const cats = new Set(entries.value.map((e) => e.category));
-  return ["all", ...Array.from(cats)];
+function buildServerPropertiesPath(path: string) {
+  const basePath = path.replace(/[/\\]$/, "");
+  if (!basePath) {
+    return "server.properties";
+  }
+
+  const separator = basePath.includes("\\") ? "\\" : "/";
+  return `${basePath}${separator}server.properties`;
+}
+
+const serverPropertiesPath = computed(() => buildServerPropertiesPath(serverPath.value));
+
+function setError(message: string | null) {
+  error.value = message;
+}
+
+function setSuccess(message: string | null) {
+  successMsg.value = message;
+}
+
+function updateCurrentServerPort(port: string) {
+  if (!port) return;
+
+  const activeServer = store.servers.find((s) => s.id === store.currentServerId);
+  if (activeServer) {
+    activeServer.port = parseInt(port) || 25565;
+  }
+}
+
+const propertiesEditor = useConfigPropertiesEditor({
+  serverPath,
+  serverPropertiesPath,
+  currentServerId,
+  currentServerName: computed(() => currentServer.value?.name || ""),
+  setError,
+  setSuccess,
+  updateCurrentServerPort,
 });
+
+const compare = useConfigCompare({
+  currentServerId,
+  servers: computed(() => store.servers),
+  sourceEntries: propertiesEditor.entries,
+  sourceValues: propertiesEditor.editValues,
+  sourceNumericFieldErrors: propertiesEditor.numericFieldErrors,
+  activeCategory: propertiesEditor.activeCategory,
+  searchQuery: propertiesEditor.searchQuery,
+  getTranslatedPropertyDescription: propertiesEditor.getTranslatedPropertyDescription,
+  setError,
+});
+
+propertiesEditor.bindCompareContext({
+  compareMode: compare.compareMode,
+  compareTargetServerId: compare.compareTargetServerId,
+  compareTargetEntries: compare.compareTargetEntries,
+  compareTargetPath: compare.compareTargetPath,
+  compareTargetServerName: computed(
+    () => compare.compareTargetServer.value?.name || i18n.t("config.compare.target_server"),
+  ),
+  compareTargetServerPropertiesPath: compare.compareTargetServerPropertiesPath,
+  compareTargetDraftValues: compare.compareTargetDraftValues,
+  compareTargetLoadedValues: compare.compareTargetLoadedValues,
+  compareTargetSourceDraftText: compare.compareTargetSourceDraftText,
+  compareTargetLoadedSourceText: compare.compareTargetLoadedSourceText,
+  compareTargetNumericFieldErrors: compare.compareTargetNumericFieldErrors,
+  loadCompareProperties: compare.loadCompareProperties,
+  applyParsedCompareTargetState: compare.applyParsedCompareTargetState,
+  applyCompareTargetSourceDraftToVisualState: compare.applyCompareTargetSourceDraftToVisualState,
+  buildCompareTargetPreviewSource: compare.buildCompareTargetPreviewSource,
+  prepareCompareTargetSourceDraftForSourceMode:
+    compare.prepareCompareTargetSourceDraftForSourceMode,
+  updateCompareTargetSourceDraft: compare.updateCompareTargetSourceDraft,
+  captureDifferenceCategorySnapshot: compare.captureDifferenceCategorySnapshot,
+});
+
+const pluginsState = useConfigPlugins({
+  currentServerId,
+  getCurrentServer: () => currentServer.value,
+  setError,
+});
+
+const configTabs = computed(() => [
+  {
+    key: "properties",
+    label: i18n.t("config.server_properties"),
+    count: "i",
+    countTitle: serverPropertiesPath.value,
+  },
+  { key: "plugins", label: i18n.t("config.server_plugins") },
+]);
+
+const editorModeTabs = computed(() => [
+  { key: "visual", label: i18n.t("config.visual_mode") },
+  { key: "source", label: i18n.t("config.source_mode") },
+]);
 
 const gamemodeOptions = ref([
   { label: i18n.t("config.gamemode.survival"), value: "survival" },
@@ -78,15 +143,12 @@ const difficultyOptions = ref([
   { label: i18n.t("config.difficulty.hard"), value: "hard" },
 ]);
 
-const filteredEntries = computed(() => {
-  return entries.value.filter((e: ConfigEntryType) => {
-    const matchCat = activeCategory.value === "all" || e.category === activeCategory.value;
-    const matchSearch =
-      !searchQuery.value ||
-      e.key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      (e.description ?? "").toLowerCase().includes(searchQuery.value.toLowerCase());
-    return matchCat && matchSearch;
+const translatedDescriptionByKey = computed(() => {
+  const result: Record<string, string> = {};
+  propertiesEditor.filteredEntries.value.forEach((entry) => {
+    result[entry.key] = propertiesEditor.getTranslatedPropertyDescription(entry.key);
   });
+  return result;
 });
 
 onMounted(async () => {
@@ -97,342 +159,72 @@ onMounted(async () => {
   } else if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
   }
-  await loadProperties();
-});
 
-onUnmounted(() => {
-  if (autoSaveDebounceTimer.value) {
-    clearTimeout(autoSaveDebounceTimer.value);
-  }
+  await propertiesEditor.loadProperties();
+  await pluginsState.loadPlugins();
 });
 
 watch(
   () => store.currentServerId,
   async () => {
     if (store.currentServerId) {
-      await loadProperties();
+      // 这是刻意的设计：切换当前服务器时直接进入新的对照上下文，不保留旧的对照侧草稿。
+      if (compare.compareTargetServerId.value === store.currentServerId) {
+        compare.compareTargetServerId.value =
+          compare.compareServerOptions.value[0]?.value?.toString() || "";
+      }
+      await propertiesEditor.loadProperties();
+      await pluginsState.loadPlugins();
     }
   },
 );
 
-async function loadProperties() {
-  if (!serverPath.value) return;
-
-  if (loadingDebounceTimer.value) {
-    clearTimeout(loadingDebounceTimer.value);
+watch(compare.compareTargetServerId, async () => {
+  if (compare.compareMode.value && compare.compareTargetServerId.value) {
+    await compare.loadCompareProperties();
   }
+});
 
-  isLoading.value = true;
-  error.value = null;
-  try {
-    const result = await configApi.readServerProperties(serverPath.value);
-    entries.value = result.entries as ConfigEntryType[];
-    editValues.value = { ...result.raw };
-  } catch (e) {
-    error.value = String(e);
-    entries.value = [];
-    editValues.value = {};
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-/**
- * 更新当前服务器的端口信息
- * @param port 端口号字符串
- */
-function updateCurrentServerPort(port: string) {
-  if (!port) return;
-
-  const currentServer = store.servers.find((s) => s.id === store.currentServerId);
-  if (currentServer) {
-    currentServer.port = parseInt(port) || 25565;
-  }
-}
-
-async function saveProperties() {
-  if (!serverPath.value) return;
-  saving.value = true;
-  error.value = null;
-  successMsg.value = null;
-  try {
-    await configApi.writeServerProperties(serverPath.value, editValues.value);
-    successMsg.value = i18n.t("config.saved");
-    setTimeout(() => (successMsg.value = null), 3000);
-
-    // 如果修改了服务器端口，更新服务器列表中的端口信息
-    if (editValues.value["server-port"]) {
-      updateCurrentServerPort(editValues.value["server-port"]);
-    }
-  } catch (e) {
-    error.value = String(e);
-  } finally {
-    saving.value = false;
-  }
-}
-
-function updateValue(key: string, value: string | boolean) {
-  editValues.value[key] = String(value);
-
-  // 启动自动保存防抖
-  if (autoSaveDebounceTimer.value) {
-    clearTimeout(autoSaveDebounceTimer.value);
-  }
-
-  autoSaveDebounceTimer.value = window.setTimeout(() => {
-    autoSaveProperties();
-  }, AUTO_SAVE_DELAY);
-}
-
-function autoSaveProperties() {
-  if (!serverPath.value) return;
-
-  saving.value = true;
-  error.value = null;
-  successMsg.value = null;
-
-  configApi
-    .writeServerProperties(serverPath.value, editValues.value)
-    .then(() => {
-      successMsg.value = i18n.t("config.saved");
-      setTimeout(() => (successMsg.value = null), 3000);
-
-      // 如果修改了服务器端口，更新服务器列表中的端口信息
-      if (editValues.value["server-port"]) {
-        updateCurrentServerPort(editValues.value["server-port"]);
-      }
-      return Promise.resolve();
-    })
-    .catch((e) => {
-      error.value = String(e);
-      return Promise.resolve();
-    })
-    .finally(() => {
-      saving.value = false;
-    });
-}
-
-function handleCategoryChange(category: string) {
-  activeCategory.value = category;
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function handleSearchUpdate(value: string) {
-  searchQuery.value = value;
-}
-
-async function loadPlugins() {
-  if (!store.currentServerId) return;
-
-  if (loadingDebounceTimer.value) {
-    clearTimeout(loadingDebounceTimer.value);
-  }
-
-  pluginsLoading.value = true;
-  error.value = null;
-  try {
-    plugins.value = await m_pluginApi.m_getPlugins(store.currentServerId);
-    loadedPlugins.value = new Set();
-    nextTick(() => {
-      setupIntersectionObserver();
-    });
-  } catch (e) {
-    error.value = String(e);
-    plugins.value = [];
-  } finally {
-    pluginsLoading.value = false;
-  }
-}
-
-function setupIntersectionObserver() {
-  if (observer.value) {
-    observer.value.disconnect();
-  }
-
-  observer.value = new IntersectionObserver(
-    (intersectionEntries) => {
-      intersectionEntries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const pluginElement = entry.target as HTMLElement;
-          const pluginFileName = pluginElement.getAttribute("data-plugin-file-name");
-          if (pluginFileName) {
-            loadPluginDetails(pluginFileName);
-          }
-        }
-      });
-    },
-    {
-      rootMargin: "200px 0px",
-      threshold: 0.1,
-    },
-  );
-
-  nextTick(() => {
-    const pluginElements = document.querySelectorAll(".plugin-list-item");
-    pluginElements.forEach((element) => {
-      observer.value?.observe(element);
-    });
-  });
-}
-
-async function loadPluginDetails(pluginFileName: string) {
-  if (loadedPlugins.value.has(pluginFileName)) {
+watch(compare.hasCompareTargets, (hasTargets) => {
+  if (hasTargets) {
     return;
   }
 
-  loadedPlugins.value.add(pluginFileName);
-}
-
-async function togglePlugin(plugin: m_PluginInfo) {
-  if (!store.currentServerId) return;
-
-  if (!plugin.file_name.endsWith(".jar") && !plugin.file_name.endsWith(".jar.disabled")) {
-    alert(i18n.t("config.not_jar_file", { file: plugin.file_name }));
-    return;
-  }
-
-  try {
-    await m_pluginApi.m_togglePlugin(store.currentServerId, plugin.file_name, !plugin.enabled);
-    plugin.enabled = !plugin.enabled;
-  } catch (e) {
-    error.value = String(e);
-  }
-}
-
-async function deletePlugin(plugin: m_PluginInfo) {
-  if (!store.currentServerId) return;
-  try {
-    const pluginElement = document.querySelector(
-      `.plugin-list-item[data-plugin-file-name="${plugin.file_name}"]`,
-    );
-    if (pluginElement) {
-      const originalHeight = pluginElement.offsetHeight;
-      pluginElement.style.height = `${originalHeight}px`;
-      pluginElement.style.flexShrink = "0";
-
-      pluginElement.classList.add("deleting");
-
-      setTimeout(async () => {
-        await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
-        plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
-        if (selectedPlugin.value?.file_name === plugin.file_name) {
-          selectedPlugin.value = null;
-        }
-      }, 500);
-    } else {
-      // 如果找不到元素，直接删除
-      await m_pluginApi.m_deletePlugin(store.currentServerId, plugin.file_name);
-      plugins.value = plugins.value.filter((p) => p.file_name !== plugin.file_name);
-      if (selectedPlugin.value?.file_name === plugin.file_name) {
-        selectedPlugin.value = null;
-      }
-    }
-  } catch (e) {
-    error.value = String(e);
-  }
-}
-
-async function reloadPlugins() {
-  if (!store.currentServerId) return;
-  try {
-    await m_pluginApi.m_reloadPlugins(store.currentServerId);
-    await loadPlugins();
-  } catch (e) {
-    error.value = String(e);
-  }
-}
-
-async function handlePluginClick(plugin: m_PluginInfo) {
-  if (selectedPlugin.value?.file_name === plugin.file_name) {
-    selectedPlugin.value = null;
-  } else {
-    if (!plugin.config_files || (plugin.config_files.length === 0 && plugin.has_config_folder)) {
-      try {
-        const configFiles = await m_pluginApi.m_getPluginConfigFiles(
-          store.currentServerId,
-          plugin.file_name,
-          plugin.name,
-        );
-        const updatedPlugin = {
-          ...plugin,
-          config_files: configFiles,
-        };
-        selectedPlugin.value = updatedPlugin;
-        const pluginIndex = plugins.value.findIndex((p) => p.file_name === plugin.file_name);
-        if (pluginIndex !== -1) {
-          plugins.value[pluginIndex] = updatedPlugin;
-        }
-      } catch (e) {
-        console.error("Failed to load plugin config files:", e);
-        selectedPlugin.value = plugin;
-      }
-    } else {
-      selectedPlugin.value = plugin;
-    }
-  }
-}
-
-async function openPluginFolder(plugin: m_PluginInfo) {
-  if (!store.currentServerId) return;
-  const server = store.servers.find((s) => s.id === store.currentServerId);
-  if (!server) return;
-
-  const basePath = server.path.replace(/[/\\]$/, "");
-  const pluginConfigPath = `${basePath}${basePath.includes("\\") ? "\\" : "/"}plugins${basePath.includes("\\") ? "\\" : "/"}${plugin.name}`;
-
-  try {
-    await systemApi.openFolder(pluginConfigPath);
-  } catch (e) {
-    error.value = String(e);
-  }
-}
-
-async function openConfigFile(config: m_PluginConfigFile) {
-  try {
-    await systemApi.openFile(config.file_path);
-  } catch (e) {
-    error.value = String(e);
-  }
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-}
-
-const currentServer = computed(() => store.servers.find((s) => s.id === store.currentServerId));
-
-watch(
-  () => store.currentServerId,
-  async () => {
-    if (store.currentServerId) {
-      await loadProperties();
-      await loadPlugins();
-    }
-  },
-);
+  // 这是刻意的设计：当没有可对照服务器时，直接退出对照模式并清空对照侧状态。
+  compare.resetCompareState(true);
+});
 
 onActivated(async () => {
-  await loadProperties();
-  await loadPlugins();
+  await propertiesEditor.loadProperties();
+  await pluginsState.loadPlugins();
 });
 </script>
 
 <template>
-  <div class="config-view animate-fade-in-up">
+  <div class="config-view animate-fade-in">
     <div class="config-header">
-      <div class="server-path-display text-mono text-caption">
-        {{ serverPath }}/server.properties
+      <div class="config-tabs-row">
+        <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" />
+        <div v-if="activeTab === 'properties'" class="config-properties-header-actions">
+          <SLButton
+            v-if="compare.hasCompareTargets.value"
+            size="sm"
+            :variant="compare.compareMode.value ? 'primary' : 'secondary'"
+            class="config-compare-toggle"
+            @click="compare.handleCompareModeChange(!compare.compareMode.value)"
+          >
+            <FileDiff :size="16" />
+            {{ i18n.t("config.compare.toggle") }}
+          </SLButton>
+          <SLTabBar
+            class="config-editor-mode-bar"
+            :modelValue="propertiesEditor.editorMode.value"
+            :tabs="editorModeTabs"
+            :level="2"
+            @update:modelValue="propertiesEditor.handleEditorModeChange"
+          />
+        </div>
       </div>
-      <SLTabBar
-        v-model="activeTab"
-        :tabs="[
-          { key: 'properties', label: i18n.t('config.server_properties') },
-          { key: 'plugins', label: i18n.t('config.server_plugins') },
-        ]"
-        :level="1"
-      />
     </div>
 
     <div v-if="!currentServerId" class="empty-state">
@@ -442,215 +234,136 @@ onActivated(async () => {
     <template v-else>
       <div v-if="error" class="error-banner">
         <span>{{ error }}</span>
-        <button class="banner-close" @click="error = null">x</button>
+        <button class="banner-close" @click="setError(null)">x</button>
       </div>
       <div v-if="successMsg" class="success-banner">
         <span>{{ i18n.t("config.saved") }}</span>
       </div>
 
       <template v-if="activeTab === 'properties'">
-        <ConfigCategories
-          :categories="categories"
-          :activeCategory="activeCategory"
-          :searchQuery="searchQuery"
-          @updateCategory="handleCategoryChange"
-          @updateSearch="handleSearchUpdate"
+        <ConfigPropertiesSection
+          :editorMode="propertiesEditor.editorMode.value"
+          :loading="propertiesEditor.loading.value"
+          :compareLoading="compare.compareLoading.value"
+          :compareMode="compare.compareMode.value"
+          :hasCompareTargets="compare.hasCompareTargets.value"
+          :compareTargetServerId="compare.compareTargetServerId.value"
+          :compareServerOptions="compare.compareServerOptions.value"
+          :compareDifferenceBadgeText="compare.compareDifferenceBadgeText.value"
+          :comparePanelRows="compare.comparePanelRows.value"
+          :sourceServerName="currentServer?.name || i18n.t('config.compare.source_server')"
+          :targetServerName="
+            compare.compareTargetServer.value?.name || i18n.t('config.compare.target_server')
+          "
+          :categories="propertiesEditor.categories.value"
+          :activeCategory="propertiesEditor.activeCategory.value"
+          :searchQuery="propertiesEditor.searchQuery.value"
+          :filteredEntries="propertiesEditor.filteredEntries.value"
+          :translatedDescriptionByKey="translatedDescriptionByKey"
+          :editValues="propertiesEditor.editValues.value"
+          :numericFieldErrors="propertiesEditor.numericFieldErrors.value"
+          :gamemodeOptions="gamemodeOptions"
+          :difficultyOptions="difficultyOptions"
+          :sourceDraftText="propertiesEditor.sourceDraftText.value"
+          :compareTargetSourceDraftText="compare.compareTargetSourceDraftText.value"
+          :sourceParseError="propertiesEditor.sourceParseError.value"
+          :hasUnsavedChanges="propertiesEditor.hasUnsavedChanges.value"
+          :saveStatusText="propertiesEditor.saveStatusText.value"
+          :saving="propertiesEditor.saving.value"
+          :reloadCurrentTooltipText="propertiesEditor.reloadCurrentTooltipText.value"
+          :reloadCompareTooltipText="propertiesEditor.reloadCompareTooltipText.value"
+          @updateCategory="propertiesEditor.handleCategoryChange"
+          @updateSearch="propertiesEditor.handleSearchUpdate"
+          @updateSourceDraft="propertiesEditor.updateSourceDraft"
+          @updateCompareTargetSourceDraft="propertiesEditor.updateCompareTargetSourceDraft"
+          @updateValue="propertiesEditor.updateValue($event.key, $event.value)"
+          @updateCompareTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
+          @addSourceValue="propertiesEditor.updateValue($event.key, $event.value)"
+          @addTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
+          @updateCompareTargetServer="compare.handleCompareTargetServerChange"
+          @reloadCurrent="propertiesEditor.reloadPropertiesWithGuard"
+          @reloadCompare="propertiesEditor.reloadComparePropertiesWithGuard"
+          @saveProperties="propertiesEditor.saveProperties"
         />
-
-        <div v-if="loading" class="loading-state">
-          <SLSpinner size="lg" />
-          <span>{{ i18n.t("config.loading") }}</span>
-        </div>
-
-        <div v-else class="config-entries">
-          <div v-for="entry in filteredEntries" :key="entry.key" class="config-entry glass-card">
-            <div class="entry-header">
-              <div class="entry-key-row">
-                <span class="entry-key text-mono">{{ entry.key }}</span>
-              </div>
-              <p v-if="i18n.t(`config.properties.${entry.key}`)" class="entry-desc text-caption">
-                {{ i18n.t(`config.properties.${entry.key}`) }}
-              </p>
-            </div>
-            <div class="entry-control">
-              <template
-                v-if="
-                  entry.value_type === 'boolean' ||
-                  editValues[entry.key] === 'true' ||
-                  editValues[entry.key] === 'false'
-                "
-              >
-                <SLSwitch
-                  :modelValue="editValues[entry.key] === 'true'"
-                  @update:modelValue="updateValue(entry.key, $event)"
-                />
-              </template>
-              <template v-else-if="entry.key === 'gamemode'">
-                <SLSelect
-                  :modelValue="editValues[entry.key]"
-                  :options="gamemodeOptions"
-                  @update:modelValue="updateValue(entry.key, $event)"
-                  style="width: 200px"
-                />
-              </template>
-              <template v-else-if="entry.key === 'difficulty'">
-                <SLSelect
-                  :modelValue="editValues[entry.key]"
-                  :options="difficultyOptions"
-                  @update:modelValue="updateValue(entry.key, $event)"
-                  style="width: 200px"
-                />
-              </template>
-              <template v-else>
-                <input
-                  :value="editValues[entry.key]"
-                  type="text"
-                  :placeholder="entry.default_value"
-                  @input="
-                    (e) => {
-                      const value = e.target.value;
-                      if (value === '' || /^\d+$/.test(value)) {
-                        updateValue(entry.key, value);
-                      }
-                    }
-                  "
-                  class="input integer-input"
-                />
-              </template>
-            </div>
-          </div>
-          <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
-            <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
-          </div>
-        </div>
       </template>
 
       <template v-if="activeTab === 'plugins'">
-        <div class="plugins-header">
-          <h3>{{ i18n.t("config.server_plugins") }}</h3>
-          <div class="plugins-header-actions">
-            <SLButton @click="loadPlugins" :loading="pluginsLoading" variant="secondary" size="sm">
-              <RotateCcw :size="16" />
-              {{ i18n.t("config.refresh_list") }}
+        <ConfigPluginsSection
+          :plugins="pluginsState.plugins.value"
+          :pluginsLoading="pluginsState.pluginsLoading.value"
+          :selectedPlugin="pluginsState.selectedPlugin.value"
+          @refreshList="pluginsState.loadPlugins"
+          @reloadPlugins="pluginsState.reloadPlugins"
+          @pluginClick="pluginsState.handlePluginClick"
+          @togglePlugin="pluginsState.togglePlugin"
+          @deletePlugin="pluginsState.deletePlugin"
+          @registerPluginRow="pluginsState.registerPluginRow"
+          @openPluginFolder="pluginsState.openPluginFolder"
+          @openConfigFile="pluginsState.openConfigFile"
+        />
+      </template>
+
+      <SLConfirmDialog
+        :visible="propertiesEditor.showDiscardConfirm.value"
+        :title="propertiesEditor.discardConfirmTitle.value"
+        :message="propertiesEditor.discardConfirmMessage.value"
+        :confirmText="i18n.t('config.discard_confirm')"
+        :cancelText="i18n.t('common.cancel')"
+        confirmVariant="danger"
+        @confirm="propertiesEditor.confirmReloadDiscard"
+        @close="
+          propertiesEditor.showDiscardConfirm.value = false;
+          propertiesEditor.pendingReloadSide.value = null;
+        "
+      />
+
+      <SLModal
+        :visible="propertiesEditor.showSaveDiffModal.value"
+        :title="i18n.t('config.diff_modal_title')"
+        :width="configSaveDiffModalWidth"
+        :close-on-overlay="!propertiesEditor.saving.value"
+        @close="propertiesEditor.closeSaveDiffModal"
+      >
+        <div
+          v-for="diffItem in propertiesEditor.pendingSaveItemsWithStats.value"
+          :key="`${diffItem.serverId}-${diffItem.filePath}`"
+          class="source-diff-block"
+        >
+          <div class="source-diff-title-row text-caption">
+            <span class="source-diff-server">{{ diffItem.serverName }}</span>
+            <SLTooltip :content="diffItem.filePath">
+              <span class="source-diff-path-hint">i</span>
+            </SLTooltip>
+            <span
+              >{{ i18n.t("config.diff_original") }} → {{ i18n.t("config.diff_after_save") }}</span
+            >
+            <span class="diff-count diff-count-add">+{{ diffItem.additions }}</span>
+            <span class="diff-count diff-count-del">-{{ diffItem.deletions }}</span>
+          </div>
+          <ConfigSourceDiffView
+            :original="diffItem.originalText"
+            :modified="diffItem.modifiedText"
+          />
+        </div>
+        <template #footer>
+          <div class="diff-modal-actions">
+            <SLButton
+              variant="secondary"
+              :disabled="propertiesEditor.saving.value"
+              @click="propertiesEditor.closeSaveDiffModal"
+            >
+              {{ i18n.t("common.cancel") }}
             </SLButton>
             <SLButton
-              @click="reloadPlugins"
-              :loading="pluginsLoading"
-              variant="danger"
-              size="sm"
-              class="reload-btn"
-              :title="i18n.t('config.reload_plugins_warning')"
+              variant="primary"
+              :loading="propertiesEditor.saving.value"
+              @click="propertiesEditor.confirmSaveProperties"
             >
-              <RefreshCw :size="14" />
-              {{ i18n.t("config.reload_plugins") }}
+              {{ i18n.t("config.confirm_save") }}
             </SLButton>
           </div>
-        </div>
-
-        <div v-if="pluginsLoading" class="loading-state">
-          <SLSpinner size="lg" />
-          <span>{{ i18n.t("config.loading_plugins") }}</span>
-        </div>
-
-        <div v-else class="plugins-container">
-          <div v-if="plugins.length === 0" class="empty-state">
-            <p class="text-caption">{{ i18n.t("config.no_plugins") }}</p>
-          </div>
-
-          <div v-else class="plugin-list-view">
-            <div
-              v-for="plugin in plugins"
-              :key="plugin.file_name"
-              class="plugin-list-item"
-              :class="{
-                disabled: !plugin.enabled,
-                expanded: selectedPlugin?.file_name === plugin.file_name,
-              }"
-              :data-plugin-file-name="plugin.file_name"
-              @click="handlePluginClick(plugin)"
-            >
-              <div class="plugin-list-icon">
-                {{ plugin.name.charAt(0).toUpperCase() }}
-              </div>
-              <div class="plugin-list-info">
-                <div class="plugin-list-header">
-                  <h4>{{ plugin.name }}</h4>
-                  <span class="plugin-list-version">{{ plugin.version }}</span>
-                  <div v-if="plugin.has_config_folder" class="config-badge">
-                    <Settings :size="14" />
-                    <template v-if="selectedPlugin?.file_name === plugin.file_name">
-                      {{ plugin.config_files.length }} {{ i18n.t("config.config_files_count") }}
-                    </template>
-                    <template v-else>
-                      {{ i18n.t("config.has_config_folder") }}
-                    </template>
-                  </div>
-                  <div v-else class="no-config-badge">
-                    <FileText :size="14" />
-                    {{ i18n.t("config.no_config_files") }}
-                  </div>
-                </div>
-                <div
-                  v-if="selectedPlugin?.file_name === plugin.file_name"
-                  class="plugin-list-details"
-                >
-                  <p>{{ i18n.t("config.author") }}: {{ plugin.author }}</p>
-                  <p v-if="plugin.description">{{ plugin.description }}</p>
-                  <p>{{ formatFileSize(plugin.file_size) }}</p>
-
-                  <div v-if="plugin.has_config_folder" class="plugin-config-section">
-                    <div class="plugin-config-section-header">
-                      <h5>{{ i18n.t("config.config_files") }}</h5>
-                      <SLButton
-                        size="sm"
-                        variant="secondary"
-                        @click.stop="openPluginFolder(plugin)"
-                      >
-                        <FolderOpen :size="14" />
-                        {{ i18n.t("common.open_folder") }}
-                      </SLButton>
-                    </div>
-                    <div v-if="plugin.config_files.length > 0" class="plugin-config-files-list">
-                      <div
-                        v-for="config in plugin.config_files"
-                        :key="config.file_name"
-                        class="plugin-config-file-item"
-                        @click.stop="openConfigFile(config)"
-                      >
-                        <div class="plugin-config-file-name">{{ config.file_name }}</div>
-                        <div class="plugin-config-file-type">{{ config.file_type }}</div>
-                        <div class="plugin-config-file-actions">
-                          <SLButton size="sm" variant="secondary">
-                            <Edit :size="14" />
-                            {{ i18n.t("config.open") }}
-                          </SLButton>
-                        </div>
-                      </div>
-                    </div>
-                    <div v-else class="empty-state">
-                      <p class="text-caption">{{ i18n.t("config.empty_config_folder") }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="plugin-list-actions">
-                <SLSwitch
-                  :modelValue="plugin.enabled"
-                  @update:modelValue="togglePlugin(plugin)"
-                  :title="plugin.enabled ? i18n.t('config.disable') : i18n.t('config.enable')"
-                />
-                <button
-                  @click.stop="deletePlugin(plugin)"
-                  class="icon-btn"
-                  :title="i18n.t('config.delete')"
-                >
-                  <Trash2 :size="16" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
+        </template>
+      </SLModal>
     </template>
   </div>
 </template>

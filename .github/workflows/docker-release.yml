@@ -1,67 +1,51 @@
-name: "Docker 镜像发布"
+name: Docker Release Build
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - release
+  release:
+    types: [published]
 
-permissions:
-  contents: write
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: sealantern
 
 jobs:
-  build-and-upload-docker:
-    runs-on: ubuntu-24.04
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: 检出代码
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 设置 Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 获取版本号
-        id: version
-        run: |
-          VERSION=$(grep '"version"' src-tauri/tauri.conf.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PUSH_TOKEN }}
 
-      - name: 构建 Docker 镜像（启用 docker feature）
-        run: |
-          # 构建镜像时通过 build-arg 传入 cargo 特性标志，以启用 docker-only 依赖
-          # 输出两个 tag：按版本号的 tag 以及 latest
-          docker build --build-arg CARGO_FEATURES=docker -t sealantern:${{ steps.version.outputs.version }} -t sealantern:latest .
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
-      - name: 导出 Docker 镜像
-        run: |
-          # 导出按版本 tag 的镜像为归档，便于上传到 Release
-          docker save sealantern:${{ steps.version.outputs.version }} | gzip > sealantern-docker-v${{ steps.version.outputs.version }}.tar.gz
-
-      - name: 获取 Release ID
-        id: get_release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # 查找匹配版本的 Release
-          RELEASE_ID=$(gh release list --limit 10 --search "v${{ steps.version.outputs.version }}" --json id,name --jq '.[] | select(.name | contains("${{ steps.version.outputs.version }}")) | .id' | head -1)
-
-          if [ -z "$RELEASE_ID" ]; then
-            echo "未找到匹配的 Release，可能需要先创建 Release"
-            echo "release_id=" >> $GITHUB_OUTPUT
-          else
-            echo "找到 Release ID: $RELEASE_ID"
-            echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 上传到 Release
-        if: steps.get_release.outputs.release_id != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release upload ${{ steps.get_release.outputs.release_id }} sealantern-docker-v${{ steps.version.outputs.version }}.tar.gz
-
-      - name: 上传到 Release（通过标签）
-        if: steps.get_release.outputs.release_id == ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release upload sea-lantern-v${{ steps.version.outputs.version }} sealantern-docker-v${{ steps.version.outputs.version }}.tar.gz || echo "Release 可能还未创建，请稍后手动上传"
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

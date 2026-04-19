@@ -1,4 +1,5 @@
 import { computed, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useRouter } from "vue-router";
 import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
@@ -31,9 +32,35 @@ function generateUUID(): string {
 
 type SourceType = "archive" | "folder" | "";
 
+function inferSourceType(path: string): SourceType {
+  const lowerPath = path.toLowerCase();
+  if (
+    lowerPath.endsWith(".zip") ||
+    lowerPath.endsWith(".tar") ||
+    lowerPath.endsWith(".tar.gz") ||
+    lowerPath.endsWith(".tgz") ||
+    lowerPath.endsWith(".jar")
+  ) {
+    return "archive";
+  }
+  return "folder";
+}
+
 function parseNumber(value: string, fallbackValue: number): number {
   const parsed = Number.parseInt(value, 10);
   return Number.isNaN(parsed) ? fallbackValue : parsed;
+}
+
+export const CREATE_SERVER_SOURCE_DROP_EVENT = "create-server-source-drop";
+const CREATE_SERVER_DND_DEBUG = import.meta.env.DEV;
+
+function logCreateServerDnd(message: string, payload?: unknown) {
+  if (!CREATE_SERVER_DND_DEBUG) return;
+  if (payload === undefined) {
+    console.debug(message);
+    return;
+  }
+  console.debug(message, payload);
 }
 
 export function useCreateServerPage() {
@@ -69,6 +96,7 @@ export function useCreateServerPage() {
 
   const AUTO_SCAN_DEBOUNCE_MS = 120;
   let startupDetectTimer: ReturnType<typeof setTimeout> | null = null;
+  let unlistenSourceDropEvent: UnlistenFn | null = null;
 
   const runPathOverwriteRisk = ref(false);
   const RUN_PATH_CONFLICT_DEBOUNCE_MS = 180;
@@ -185,6 +213,27 @@ export function useCreateServerPage() {
 
   onMounted(async () => {
     await loadDefaultSettings();
+
+    if (!isBrowserEnv()) {
+      try {
+        unlistenSourceDropEvent = await listen<string[]>(
+          CREATE_SERVER_SOURCE_DROP_EVENT,
+          (event) => {
+            const droppedPaths = Array.isArray(event.payload) ? event.payload : [];
+            logCreateServerDnd("[useCreateServerPage] Received source drop event", droppedPaths);
+            if (droppedPaths.length === 0) {
+              return;
+            }
+
+            const path = droppedPaths[0];
+            sourcePath.value = path;
+            sourceType.value = inferSourceType(path);
+          },
+        );
+      } catch (error) {
+        logCreateServerDnd("[useCreateServerPage] Failed to register source drop listener", error);
+      }
+    }
   });
 
   onUnmounted(() => {
@@ -195,6 +244,10 @@ export function useCreateServerPage() {
     if (runPathConflictTimer) {
       clearTimeout(runPathConflictTimer);
       runPathConflictTimer = null;
+    }
+    if (unlistenSourceDropEvent) {
+      unlistenSourceDropEvent();
+      unlistenSourceDropEvent = null;
     }
   });
 

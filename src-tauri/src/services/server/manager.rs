@@ -86,11 +86,32 @@ impl ManagedConsoleEncoding {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForceStopPreparation {
+    pub token: String,
+    pub expires_at: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct StartFallbackInfo {
+    pub from_mode: String,
+    pub to_mode: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct StartServerReport {
+    pub server_id: String,
+    pub server_name: String,
+    pub fallback: Option<StartFallbackInfo>,
+}
+
 pub struct ServerManager {
     pub servers: Mutex<Vec<ServerInstance>>,
     pub processes: Mutex<HashMap<String, Child>>,
     pub stopping_servers: Mutex<HashSet<String>>,
     pub starting_servers: Mutex<HashSet<String>>,
+    pub pending_force_stop_tokens: Mutex<HashMap<String, (String, u64)>>,
     pub data_dir: Mutex<String>,
 }
 
@@ -103,6 +124,7 @@ impl ServerManager {
             processes: Mutex::new(HashMap::new()),
             stopping_servers: Mutex::new(HashSet::new()),
             starting_servers: Mutex::new(HashSet::new()),
+            pending_force_stop_tokens: Mutex::new(HashMap::new()),
             data_dir: Mutex::new(data_dir),
         }
     }
@@ -164,6 +186,85 @@ impl ServerManager {
         });
 
         Ok(())
+    }
+
+    pub fn prepare_force_stop_server(&self, id: &str) -> Result<ForceStopPreparation, String> {
+        let expires_at = current_timestamp_secs().saturating_add(15);
+        let token = format!("{}-{}", id, current_timestamp_millis());
+
+        let mut pending = self
+            .pending_force_stop_tokens
+            .lock()
+            .map_err(|_| "pending_force_stop_tokens lock poisoned".to_string())?;
+        pending.insert(id.to_string(), (token.clone(), expires_at));
+        drop(pending);
+
+        let _ = server_log_pipeline::append_sealantern_log(
+            id,
+            "[Sea Lantern] 已创建强制关停确认，会在确认后执行",
+        );
+
+        Ok(ForceStopPreparation { token, expires_at })
+    }
+
+    pub fn force_stop_server(&self, id: &str, confirmation_token: &str) -> Result<(), String> {
+        let mut pending = self
+            .pending_force_stop_tokens
+            .lock()
+            .map_err(|_| "pending_force_stop_tokens lock poisoned".to_string())?;
+
+        let Some((expected_token, expires_at)) = pending.get(id).cloned() else {
+            return Err("缺少强制关停确认，请重新发起操作".to_string());
+        };
+
+        let now = current_timestamp_secs();
+        if now > expires_at {
+            pending.remove(id);
+            return Err("强制关停确认已过期，请重新发起操作".to_string());
+        }
+
+        if expected_token != confirmation_token {
+            return Err("强制关停确认无效，已拒绝执行".to_string());
+        }
+
+        pending.remove(id);
+        drop(pending);
+
+        self.mark_stopping(id);
+
+        let mut procs = self.lock_processes()?;
+        let Some(mut child) = procs.remove(id) else {
+            self.clear_stopping(id);
+            let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器未运行");
+            server_log_pipeline::shutdown_writer(id);
+            return Ok(());
+        };
+
+        let kill_result = force_kill_process_tree(&mut child);
+        drop(procs);
+
+        self.clear_starting(id);
+        self.clear_stopping(id);
+
+        match kill_result {
+            Ok(_) => {
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    "[Sea Lantern] 已按用户确认强制终止服务器进程",
+                );
+                server_log_pipeline::shutdown_writer(id);
+                Ok(())
+            }
+            Err(err) => {
+                let message = format!("强制终止服务器失败: {}", err);
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    &format!("[Sea Lantern] {}", message),
+                );
+                server_log_pipeline::shutdown_writer(id);
+                Err(message)
+            }
+        }
     }
 
     fn save(&self) -> Result<(), String> {
@@ -695,7 +796,7 @@ impl ServerManager {
         Ok(server)
     }
 
-    pub fn start_server(&self, id: &str) -> Result<(), String> {
+    pub fn start_server(&self, id: &str) -> Result<StartServerReport, String> {
         let server = {
             let servers = self.lock_servers()?;
             servers
@@ -850,17 +951,6 @@ impl ServerManager {
             resolve_managed_console_encoding(startup_mode, startup_path_obj)
         };
 
-        if startup_mode == "bat" || startup_mode == "sh" || startup_mode == "ps1" {
-            if let Some(major_version) = detect_java_major_version(&server.java_path) {
-                if major_version < 9 {
-                    return Err(format!(
-                        "当前 Java 版本 {} 不支持 @user_jvm_args.txt 参数文件语法，请改用 Java 9+（NeoForge 建议 Java 21）",
-                        major_version
-                    ));
-                }
-            }
-        }
-
         let java_path_obj = std::path::Path::new(&server.java_path);
         let java_bin_dir = java_path_obj
             .parent()
@@ -911,180 +1001,278 @@ impl ServerManager {
             None
         };
 
-        let mut cmd = match startup_mode {
-            "custom" => {
-                let custom_command = server
-                    .custom_command
-                    .as_ref()
-                    .map(|value| value.trim())
-                    .filter(|value| !value.is_empty())
-                    .ok_or_else(|| "自定义启动命令为空".to_string())?;
+        server_log_pipeline::init_db(Path::new(&server.path))?;
+        let configured_mode = startup_mode.to_string();
+        let mut fallback_info: Option<StartFallbackInfo> = None;
 
-                #[cfg(target_os = "windows")]
-                {
-                    let mut custom_cmd = Command::new("cmd");
-                    custom_cmd.arg("/d");
-                    custom_cmd.arg("/c");
-                    custom_cmd.arg(custom_command);
-                    custom_cmd.env("JAVA_HOME", &java_home_dir_str);
-                    let existing_path = std::env::var("PATH").unwrap_or_default();
-                    let path_value = if existing_path.is_empty() {
-                        java_bin_dir_str.clone()
-                    } else {
-                        format!("{};{}", java_bin_dir_str, existing_path)
-                    };
-                    custom_cmd.env("PATH", path_value);
-                    custom_cmd
+        let ensure_script_java_compat = || -> Result<(), String> {
+            if let Some(major_version) = detect_java_major_version(&server.java_path) {
+                if major_version < 9 {
+                    return Err(format!(
+                        "当前 Java 版本 {} 不支持 @user_jvm_args.txt 参数文件语法，请改用 Java 9+（NeoForge 建议 Java 21）",
+                        major_version
+                    ));
                 }
-                #[cfg(not(target_os = "windows"))]
-                {
-                    let mut custom_cmd = Command::new("sh");
-                    custom_cmd.arg("-c");
-                    custom_cmd.arg(custom_command);
-                    custom_cmd.env("JAVA_HOME", &java_home_dir_str);
+            }
+            Ok(())
+        };
+
+        let build_direct_jar_command = |jar_path: &str, installer_url: Option<&str>| {
+            let jar_path_obj = std::path::Path::new(jar_path);
+            let launch_target = jar_path_obj
+                .file_name()
+                .map(|name| name.to_string_lossy().to_string())
+                .unwrap_or_else(|| jar_path.to_string());
+
+            let mut java_cmd = Command::new(&server.java_path);
+            for arg in self.build_managed_jvm_args(&server, &settings, managed_console_encoding) {
+                java_cmd.arg(arg);
+            }
+            java_cmd.arg("-jar");
+            java_cmd.arg(launch_target);
+            java_cmd.arg("nogui");
+            if let Some(url) = installer_url {
+                java_cmd.arg("--installer");
+                java_cmd.arg(url);
+            }
+            java_cmd
+        };
+
+        let build_configured_command = || -> Result<Command, String> {
+            match configured_mode.as_str() {
+                "custom" => {
+                    let custom_command = server
+                        .custom_command
+                        .as_ref()
+                        .map(|value| value.trim())
+                        .filter(|value| !value.is_empty())
+                        .ok_or_else(|| "自定义启动命令为空".to_string())?;
+
+                    #[cfg(target_os = "windows")]
+                    {
+                        let mut custom_cmd = Command::new("cmd");
+                        custom_cmd.arg("/d");
+                        custom_cmd.arg("/c");
+                        custom_cmd.arg(custom_command);
+                        custom_cmd.env("JAVA_HOME", &java_home_dir_str);
+                        let existing_path = std::env::var("PATH").unwrap_or_default();
+                        let path_value = if existing_path.is_empty() {
+                            java_bin_dir_str.clone()
+                        } else {
+                            format!("{};{}", java_bin_dir_str, existing_path)
+                        };
+                        custom_cmd.env("PATH", path_value);
+                        Ok(custom_cmd)
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        let mut custom_cmd = Command::new("sh");
+                        custom_cmd.arg("-c");
+                        custom_cmd.arg(custom_command);
+                        custom_cmd.env("JAVA_HOME", &java_home_dir_str);
+                        let existing_path = std::env::var("PATH").unwrap_or_default();
+                        let path_value = if existing_path.is_empty() {
+                            java_bin_dir_str.clone()
+                        } else {
+                            format!("{}:{}", java_bin_dir_str, existing_path)
+                        };
+                        custom_cmd.env("PATH", path_value);
+                        Ok(custom_cmd)
+                    }
+                }
+                "bat" => {
+                    ensure_script_java_compat()?;
+                    self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
+
+                    #[cfg(target_os = "windows")]
+                    {
+                        use std::os::windows::process::CommandExt;
+
+                        let mut bat_cmd = Command::new("cmd");
+                        let code_page = managed_console_encoding.cmd_code_page();
+                        let launch_command = format!(
+                            "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & call \"{}\" nogui",
+                            code_page,
+                            escape_cmd_arg(&java_home_dir_str),
+                            escape_cmd_arg(&java_bin_dir_str),
+                            escape_cmd_arg(&startup_filename)
+                        );
+                        bat_cmd.arg("/d");
+                        bat_cmd.arg("/c");
+                        bat_cmd.raw_arg(&launch_command);
+                        Ok(bat_cmd)
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        Err("BAT 启动方式仅支持 Windows".to_string())
+                    }
+                }
+                "sh" => {
+                    ensure_script_java_compat()?;
+                    self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
+                    let mut sh_cmd = Command::new("sh");
+                    sh_cmd.arg(&startup_filename);
+                    sh_cmd.arg("nogui");
+                    sh_cmd.env("JAVA_HOME", &java_home_dir_str);
                     let existing_path = std::env::var("PATH").unwrap_or_default();
                     let path_value = if existing_path.is_empty() {
                         java_bin_dir_str.clone()
                     } else {
                         format!("{}:{}", java_bin_dir_str, existing_path)
                     };
-                    custom_cmd.env("PATH", path_value);
-                    custom_cmd
+                    sh_cmd.env("PATH", path_value);
+                    Ok(sh_cmd)
                 }
+                "ps1" => {
+                    ensure_script_java_compat()?;
+                    self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
+                    #[cfg(target_os = "windows")]
+                    {
+                        let mut ps_cmd = Command::new("powershell");
+                        ps_cmd.arg("-NoProfile");
+                        ps_cmd.arg("-NonInteractive");
+                        ps_cmd.arg("-ExecutionPolicy");
+                        ps_cmd.arg("Bypass");
+                        ps_cmd.arg("-File");
+                        ps_cmd.arg(&startup_filename);
+                        ps_cmd.arg("nogui");
+                        ps_cmd.env("JAVA_HOME", &java_home_dir_str);
+                        let existing_path = std::env::var("PATH").unwrap_or_default();
+                        let path_value = if existing_path.is_empty() {
+                            java_bin_dir_str.clone()
+                        } else {
+                            format!("{};{}", java_bin_dir_str, existing_path)
+                        };
+                        ps_cmd.env("PATH", path_value);
+                        Ok(ps_cmd)
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        Err("PS1 启动方式仅支持 Windows".to_string())
+                    }
+                }
+                "starter" => {
+                    let installer_url = starter_installer_url
+                        .as_deref()
+                        .ok_or_else(|| "Starter 安装器下载链接为空".to_string())?;
+                    Ok(build_direct_jar_command(&server.jar_path, Some(installer_url)))
+                }
+                "jar" => Ok(build_direct_jar_command(&server.jar_path, None)),
+                _ => Ok(build_direct_jar_command(&server.jar_path, None)),
             }
-            "bat" => {
-                self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
+        };
+
+        let spawn_command =
+            |mut cmd: Command, phase: &str| -> Result<std::process::Child, String> {
+                let command_for_log = format_command_for_log(&cmd);
+                let _ = server_log_pipeline::append_sealantern_log(
+                    id,
+                    &format!("[Sea Lantern] {}启动命令: {}", phase, command_for_log),
+                );
+
+                cmd.current_dir(&server.path);
+                cmd.stdout(Stdio::piped());
+                cmd.stderr(Stdio::piped());
+                cmd.stdin(Stdio::piped());
 
                 #[cfg(target_os = "windows")]
                 {
                     use std::os::windows::process::CommandExt;
+                    const CREATE_NO_WINDOW: u32 = 0x08000000;
+                    cmd.creation_flags(CREATE_NO_WINDOW);
+                }
 
-                    let mut bat_cmd = Command::new("cmd");
-                    let code_page = managed_console_encoding.cmd_code_page();
-                    let launch_command = format!(
-                        "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & call \"{}\" nogui",
-                        code_page,
-                        escape_cmd_arg(&java_home_dir_str),
-                        escape_cmd_arg(&java_bin_dir_str),
-                        escape_cmd_arg(&startup_filename)
-                    );
-                    bat_cmd.arg("/d");
-                    bat_cmd.arg("/c");
-                    bat_cmd.raw_arg(&launch_command);
-                    bat_cmd
-                }
-                #[cfg(not(target_os = "windows"))]
-                {
-                    return Err("BAT 启动方式仅支持 Windows".to_string());
-                }
+                cmd.spawn()
+                    .map_err(|e| format!("启动失败（id={}, path={}）: {}", id, server.path, e))
+            };
+
+        let jar_preferred_mode =
+            matches!(configured_mode.as_str(), "bat" | "sh" | "ps1" | "custom");
+        let preferred_jar_path = if jar_preferred_mode {
+            if startup_path_obj
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext.eq_ignore_ascii_case("jar"))
+                .unwrap_or(false)
+            {
+                Some(server.jar_path.clone())
+            } else {
+                installer::find_server_jar(Path::new(&server.path)).ok()
             }
-            "sh" => {
-                self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
-                let mut sh_cmd = Command::new("sh");
-                sh_cmd.arg(&startup_filename);
-                sh_cmd.arg("nogui");
-                sh_cmd.env("JAVA_HOME", &java_home_dir_str);
-                let existing_path = std::env::var("PATH").unwrap_or_default();
-                let path_value = if existing_path.is_empty() {
-                    java_bin_dir_str.clone()
-                } else {
-                    format!("{}:{}", java_bin_dir_str, existing_path)
-                };
-                sh_cmd.env("PATH", path_value);
-                sh_cmd
-            }
-            "ps1" => {
-                self.write_user_jvm_args(&server, &settings, managed_console_encoding)?;
-                #[cfg(target_os = "windows")]
-                {
-                    let mut ps_cmd = Command::new("powershell");
-                    ps_cmd.arg("-NoProfile");
-                    ps_cmd.arg("-NonInteractive");
-                    ps_cmd.arg("-ExecutionPolicy");
-                    ps_cmd.arg("Bypass");
-                    ps_cmd.arg("-File");
-                    ps_cmd.arg(&startup_filename);
-                    ps_cmd.arg("nogui");
-                    ps_cmd.env("JAVA_HOME", &java_home_dir_str);
-                    let existing_path = std::env::var("PATH").unwrap_or_default();
-                    let path_value = if existing_path.is_empty() {
-                        java_bin_dir_str.clone()
-                    } else {
-                        format!("{};{}", java_bin_dir_str, existing_path)
-                    };
-                    ps_cmd.env("PATH", path_value);
-                    ps_cmd
-                }
-                #[cfg(not(target_os = "windows"))]
-                {
-                    return Err("PS1 启动方式仅支持 Windows".to_string());
-                }
-            }
-            "starter" => {
-                let installer_url = starter_installer_url
-                    .clone()
-                    .ok_or_else(|| "Starter 安装器下载链接为空".to_string())?;
-                let mut starter_cmd = Command::new(&server.java_path);
-                for arg in self.build_managed_jvm_args(&server, &settings, managed_console_encoding)
-                {
-                    starter_cmd.arg(arg);
-                }
-                starter_cmd.arg("-jar");
-                starter_cmd.arg(&startup_filename);
-                starter_cmd.arg("nogui");
-                starter_cmd.arg("--installer");
-                starter_cmd.arg(installer_url);
-                starter_cmd
-            }
-            "jar" => {
-                let mut jar_cmd = Command::new(&server.java_path);
-                for arg in self.build_managed_jvm_args(&server, &settings, managed_console_encoding)
-                {
-                    jar_cmd.arg(arg);
-                }
-                jar_cmd.arg("-jar");
-                jar_cmd.arg(&startup_filename);
-                jar_cmd.arg("nogui");
-                jar_cmd
-            }
-            _ => {
-                let mut jar_cmd = Command::new(&server.java_path);
-                for arg in self.build_managed_jvm_args(&server, &settings, managed_console_encoding)
-                {
-                    jar_cmd.arg(arg);
-                }
-                jar_cmd.arg("-jar");
-                jar_cmd.arg(&startup_filename);
-                jar_cmd.arg("nogui");
-                jar_cmd
-            }
+        } else {
+            None
         };
 
-        let command_for_log = format_command_for_log(&cmd);
-        let _ = server_log_pipeline::append_sealantern_log(
-            id,
-            &format!("[Sea Lantern] 启动命令: {}", command_for_log),
-        );
+        let mut child = if let Some(jar_path) = preferred_jar_path {
+            match spawn_command(build_direct_jar_command(&jar_path, None), "优先 JAR 直启") {
+                Ok(mut primary_child) => {
+                    const PRIMARY_LAUNCH_PROBE_DELAY_MS: u64 = 800;
+                    std::thread::sleep(std::time::Duration::from_millis(
+                        PRIMARY_LAUNCH_PROBE_DELAY_MS,
+                    ));
+                    match primary_child.try_wait() {
+                        Ok(None) => primary_child,
+                        Ok(Some(status)) => {
+                            let reason = format!("JAR 直启进程过早退出: {}", status);
+                            let _ = server_log_pipeline::append_sealantern_log(
+                                id,
+                                &format!(
+                                    "[Sea Lantern] {}，回退到 {} 启动",
+                                    reason, configured_mode
+                                ),
+                            );
+                            let fallback_cmd = build_configured_command()?;
+                            let fallback_child = spawn_command(fallback_cmd, "回退脚本/配置模式")?;
+                            fallback_info = Some(StartFallbackInfo {
+                                from_mode: "jar".to_string(),
+                                to_mode: configured_mode.clone(),
+                                reason,
+                            });
+                            fallback_child
+                        }
+                        Err(error) => {
+                            let reason = format!("JAR 直启状态检查失败: {}", error);
+                            let _ = server_log_pipeline::append_sealantern_log(
+                                id,
+                                &format!(
+                                    "[Sea Lantern] {}，回退到 {} 启动",
+                                    reason, configured_mode
+                                ),
+                            );
+                            let fallback_cmd = build_configured_command()?;
+                            let fallback_child = spawn_command(fallback_cmd, "回退脚本/配置模式")?;
+                            fallback_info = Some(StartFallbackInfo {
+                                from_mode: "jar".to_string(),
+                                to_mode: configured_mode.clone(),
+                                reason,
+                            });
+                            fallback_child
+                        }
+                    }
+                }
+                Err(primary_error) => {
+                    let reason = format!("JAR 直启失败: {}", primary_error);
+                    let _ = server_log_pipeline::append_sealantern_log(
+                        id,
+                        &format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode),
+                    );
+                    let fallback_cmd = build_configured_command()?;
+                    let fallback_child = spawn_command(fallback_cmd, "回退脚本/配置模式").map_err(
+                        |fallback_error| format!("{}；回退也失败：{}", reason, fallback_error),
+                    )?;
+                    fallback_info = Some(StartFallbackInfo {
+                        from_mode: "jar".to_string(),
+                        to_mode: configured_mode.clone(),
+                        reason,
+                    });
+                    fallback_child
+                }
+            }
+        } else {
+            let cmd = build_configured_command()?;
+            spawn_command(cmd, "配置模式")?
+        };
 
-        cmd.current_dir(&server.path);
-
-        server_log_pipeline::init_db(Path::new(&server.path))?;
-
-        cmd.stdout(Stdio::piped());
-        cmd.stderr(Stdio::piped());
-        cmd.stdin(Stdio::piped());
-
-        // 隐藏控制台窗口
-        #[cfg(target_os = "windows")]
-        {
-            use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-            cmd.creation_flags(CREATE_NO_WINDOW);
-        }
-
-        let mut child = cmd
-            .spawn()
-            .map_err(|e| format!("启动失败（id={}, path={}）: {}", id, server.path, e))?;
         println!("Java进程已启动，PID: {:?}", child.id());
 
         let stdout = child.stdout.take();
@@ -1114,7 +1302,11 @@ impl ServerManager {
             server_log_pipeline::spawn_server_output_reader(id.to_string(), stderr);
         }
 
-        Ok(())
+        Ok(StartServerReport {
+            server_id: server.id.clone(),
+            server_name: server.name.clone(),
+            fallback: fallback_info,
+        })
     }
 
     pub fn stop_server(&self, id: &str) -> Result<(), String> {
@@ -1190,8 +1382,7 @@ impl ServerManager {
 
         let mut procs = self.lock_processes()?;
         if let Some(mut child) = procs.remove(id) {
-            let _ = child.kill();
-            let _ = child.wait();
+            let _ = force_kill_process_tree(&mut child);
             let _ = server_log_pipeline::append_sealantern_log(
                 id,
                 "[Sea Lantern] 服务器超时，已强制终止",
@@ -1284,6 +1475,25 @@ impl ServerManager {
             })
             .unwrap_or(false);
 
+        let pid = if is_running {
+            self.lock_processes()
+                .ok()
+                .and_then(|mut procs| procs.get_mut(id).map(|child| child.id()))
+        } else {
+            None
+        };
+
+        let uptime = self
+            .lock_servers()
+            .ok()
+            .and_then(|servers| {
+                servers
+                    .iter()
+                    .find(|s| s.id == id)
+                    .and_then(|s| s.last_started_at)
+            })
+            .and_then(|started_at| current_timestamp_secs().checked_sub(started_at));
+
         ServerStatusInfo {
             id: id.to_string(),
             status: if self.is_stopping(id) {
@@ -1295,8 +1505,8 @@ impl ServerManager {
             } else {
                 ServerStatus::Stopped
             },
-            pid: None,
-            uptime: None,
+            pid,
+            uptime,
             error_message,
         }
     }
@@ -1446,6 +1656,20 @@ fn escape_cmd_arg(s: &str) -> String {
     out
 }
 
+fn current_timestamp_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0)
+}
+
+fn current_timestamp_millis() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0)
+}
+
 fn get_data_dir() -> String {
     // 使用统一的应用数据目录，确保 MSI 安装时数据存储在 %AppData%
     crate::utils::path::get_or_create_app_data_dir()
@@ -1586,6 +1810,102 @@ fn detect_java_major_version(java_path: &str) -> Option<u32> {
     }
 
     None
+}
+
+#[cfg(unix)]
+fn list_child_pids_unix(ppid: u32) -> Vec<u32> {
+    let output = Command::new("pgrep")
+        .arg("-P")
+        .arg(ppid.to_string())
+        .output();
+    let Ok(output) = output else {
+        return Vec::new();
+    };
+    if !output.status.success() || output.stdout.is_empty() {
+        return Vec::new();
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| line.trim().parse::<u32>().ok())
+        .collect()
+}
+
+#[cfg(unix)]
+fn collect_descendant_pids_unix(root_pid: u32) -> Vec<u32> {
+    let mut stack = vec![root_pid];
+    let mut seen = HashSet::new();
+    let mut descendants = Vec::new();
+
+    while let Some(parent) = stack.pop() {
+        for child in list_child_pids_unix(parent) {
+            if seen.insert(child) {
+                descendants.push(child);
+                stack.push(child);
+            }
+        }
+    }
+
+    descendants
+}
+
+#[cfg(unix)]
+fn is_process_alive_unix(pid: u32) -> bool {
+    Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(unix)]
+fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
+    let root_pid = child.id();
+    let mut pids = collect_descendant_pids_unix(root_pid);
+    pids.push(root_pid);
+    pids.sort_unstable();
+    pids.dedup();
+
+    for pid in pids.iter().rev() {
+        let _ = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .status();
+    }
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    for pid in pids.iter().rev() {
+        if is_process_alive_unix(*pid) {
+            let _ = Command::new("kill")
+                .args(["-KILL", &pid.to_string()])
+                .status();
+        }
+    }
+
+    let _ = child.wait();
+    Ok(())
+}
+
+#[cfg(windows)]
+fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
+    let pid_str = child.id().to_string();
+    let status = Command::new("taskkill")
+        .args(["/PID", &pid_str, "/T", "/F"])
+        .status()
+        .map_err(|e| format!("执行 taskkill 失败: {}", e))?;
+
+    if !status.success() {
+        let _ = child.kill();
+    }
+    let _ = child.wait();
+    Ok(())
+}
+
+#[cfg(not(any(unix, windows)))]
+fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
+    child.kill().map_err(|e| format!("终止进程失败: {}", e))?;
+    child
+        .wait()
+        .map(|_| ())
+        .map_err(|e| format!("等待进程退出失败: {}", e))
 }
 
 fn format_command_for_log(command: &Command) -> String {

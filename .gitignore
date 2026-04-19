@@ -22,3 +22,10 @@ changelog/
 .review/
 plugin-market/
 plugins-demo/
+
+# About OpenCode
+.opencode/
+.playwright-mcp/
+
+#docker test
+data/

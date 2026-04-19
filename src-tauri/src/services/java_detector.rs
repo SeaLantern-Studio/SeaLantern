@@ -13,7 +13,9 @@ use crate::utils::constants::{ENV_VARS, MAX_SCAN_DEPTH};
 
 // 常量定义（Windows）
 #[cfg(target_os = "windows")]
-use crate::utils::constants::{CREATE_NO_WINDOW, JAVA_PATH_ALIASES, PROGRAM_FILES_JAVA_DIRS};
+use crate::utils::constants::{
+    CREATE_NO_WINDOW, JAVA_PATH_ALIASES, PROGRAM_FILES_JAVA_DIRS, USER_PROFILE_JAVA_DIRS,
+};
 
 // 常量定义（非Windows）
 #[cfg(not(target_os = "windows"))]
@@ -116,6 +118,13 @@ fn get_candidate_paths() -> Vec<String> {
                     .join("Programs")
                     .join("Adoptium"),
             );
+        }
+
+        if let Ok(user_profile) = std::env::var("USERPROFILE") {
+            let user_profile_path = PathBuf::from(&user_profile);
+            for java_dir in USER_PROFILE_JAVA_DIRS {
+                scan_roots.push(user_profile_path.join(java_dir));
+            }
         }
 
         for root in scan_roots {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted } from "vue";
+import { emit } from "@tauri-apps/api/event";
 import {
   StepperDescription,
   StepperIndicator,
@@ -8,10 +10,9 @@ import {
   StepperTitle,
   StepperTrigger,
 } from "reka-ui";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { useRouter } from "vue-router";
-import { ref, onMounted, onUnmounted } from "vue";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { FileUp } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
@@ -20,8 +21,10 @@ import ServerStartupConfigStep from "@components/views/create/ServerStartupConfi
 import SourceIntakeField from "@components/views/create/SourceIntakeField.vue";
 import StartupSelectionStep from "@components/views/create/StartupSelectionStep.vue";
 import { i18n } from "@language";
-import { useCreateServerPage } from "@components/views/create/useCreateServerPage";
-import { isBrowserEnv } from "@api/tauri";
+import {
+  CREATE_SERVER_SOURCE_DROP_EVENT,
+  useCreateServerPage,
+} from "@components/views/create/useCreateServerPage";
 
 const {
   errorMsg,
@@ -62,50 +65,59 @@ const {
   rescanStartupCandidates,
   detectJava,
   handleSubmit,
-  handleTauriDrop,
 } = useCreateServerPage();
 
 const router = useRouter();
+let unlistenCreateViewDragDrop: UnlistenFn | null = null;
+const CREATE_SERVER_DEBUG = import.meta.env.DEV;
 
-// Tauri 拖放状态
-const isDragging = ref(false);
-let unlistenDrag: UnlistenFn | null = null;
-let unlistenDrop: UnlistenFn | null = null;
-let unlistenDragCancelled: UnlistenFn | null = null;
+function logCreateServer(message: string, payload?: unknown) {
+  if (!CREATE_SERVER_DEBUG) return;
+  if (payload === undefined) {
+    console.debug(message);
+    return;
+  }
+  console.debug(message, payload);
+}
 
-// 监听 Tauri 文件拖放事件（仅桌面环境）
 onMounted(async () => {
-  if (!isBrowserEnv()) {
-    unlistenDrag = await listen("tauri://drag", () => {
-      isDragging.value = true;
+  logCreateServer("[CreateServerView] mounted", {
+    hasTauriInternals: !!window.__TAURI_INTERNALS__,
+  });
+
+  if (!window.__TAURI_INTERNALS__) {
+    logCreateServer("[CreateServerView] Running outside Tauri, skip native drag-drop listener");
+    return;
+  }
+
+  try {
+    const currentWindow = getCurrentWindow();
+    logCreateServer("[CreateServerView] Preparing native drag-drop listener");
+    unlistenCreateViewDragDrop = await currentWindow.onDragDropEvent((event) => {
+      logCreateServer("[CreateServerView] Native drag-drop event", event.payload);
+      if (event.payload.type === "drop") {
+        logCreateServer("[CreateServerView] Emitting source drop event", event.payload.paths);
+        void emit(CREATE_SERVER_SOURCE_DROP_EVENT, event.payload.paths).catch((error) => {
+          logCreateServer("[CreateServerView] Failed to emit source drop event", error);
+        });
+      }
     });
-    unlistenDrop = await listen<string[]>("tauri://drop", (event) => {
-      isDragging.value = false;
-      handleTauriDrop(event.payload);
-    });
-    unlistenDragCancelled = await listen("tauri://drag-cancelled", () => {
-      isDragging.value = false;
-    });
+    logCreateServer("[CreateServerView] Native drag-drop listener registered");
+  } catch (error) {
+    logCreateServer("[CreateServerView] Failed to register native drag-drop listener", error);
   }
 });
 
-onUnmounted(() => {
-  unlistenDrag?.();
-  unlistenDrop?.();
-  unlistenDragCancelled?.();
+onBeforeUnmount(() => {
+  if (unlistenCreateViewDragDrop) {
+    unlistenCreateViewDragDrop();
+    unlistenCreateViewDragDrop = null;
+  }
 });
 </script>
 
 <template>
   <div class="create-view animate-fade-in-up">
-    <!-- 拖放提示遮罩 -->
-    <div v-if="isDragging" class="create-drop-overlay">
-      <div class="drop-hint">
-        <FileUp :size="48" />
-        <p>{{ i18n.t("create.drop_hint") }}</p>
-      </div>
-    </div>
-
     <div v-if="errorMsg" class="create-error-banner">
       <span>{{ errorMsg }}</span>
       <button class="create-error-close" @click="clearError">x</button>
