@@ -15,7 +15,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: "update:consoleFontSize", value: string): void;
-  (e: "update:consoleFontFamily", value: string): void;
+  (e: "update:consoleFontFamily", value: string | number): void;
   (e: "update:consoleLetterSpacing", value: string): void;
   (e: "update:maxLogLines", value: string): void;
   (e: "change"): void;
