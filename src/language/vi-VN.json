@@ -235,7 +235,8 @@
     "java_env": "Môi trường Java",
     "java_scan": "Tìm bản cài Java trong hệ thống",
     "java_manual": "Chọn đường dẫn Java thủ công",
-    "java_path": "Đường dẫn Java"
+    "java_path": "Đường dẫn Java",
+    "drop_hint": "Kéo thả tệp hoặc thư mục vào đây"
   },
   "console": {
     "title": "Bảng điều khiển",

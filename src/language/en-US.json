@@ -371,7 +371,8 @@
       "copy_conflict_title": "File Conflicts Detected",
       "copy_conflict_description": "Files with the same name already exist in target path. Continue to overwrite.",
       "copy_conflict_more": "And {count} more conflict items",
-      "copy_conflict_confirm": "Continue Overwrite"
+      "copy_conflict_confirm": "Continue Overwrite",
+      "drop_hint": "Drop here to add files or folders"
     },
     "console": {
       "title": "Console",

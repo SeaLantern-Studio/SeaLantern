@@ -235,7 +235,8 @@
     "java_env": "Entorno Java",
     "java_scan": "Buscar instalaciones de Java en el sistema",
     "java_manual": "Seleccionar ruta manualmente",
-    "java_path": "Ruta de Java"
+    "java_path": "Ruta de Java",
+    "drop_hint": "Arrastra aquí para añadir archivos o carpetas"
   },
   "console": {
     "title": "Consola",

@@ -63,7 +63,7 @@ pub fn detect_java_installations() -> Vec<JavaInfo> {
         }
     }
 
-    results.sort_by(|a, b| b.major_version.cmp(&a.major_version));
+    results.sort_by_key(|b| std::cmp::Reverse(b.major_version));
     results
 }
 

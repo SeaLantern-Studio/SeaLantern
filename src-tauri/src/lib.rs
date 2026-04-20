@@ -269,6 +269,17 @@ pub fn run() {
             debug_commands::debug_panic //在前端使用  await window.__invoke("debug_panic") 来触发
         ])
         .on_window_event(|window, event| {
+            // 处理文件拖放事件，发送到前端
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Enter { .. }) = event {
+                let _ = window.emit("tauri://drag", ());
+            }
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                let _ = window.emit("tauri://drop", paths);
+            }
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Leave) = event {
+                let _ = window.emit("tauri://drag-cancelled", ());
+            }
+
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let settings = services::global::settings_manager().get();
 
