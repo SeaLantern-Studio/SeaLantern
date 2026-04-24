@@ -137,133 +137,37 @@ jobs:
         with:
           name: ubuntu-build-x64
           path: |
+            ${{ steps.workspace.outputs.path }}/target/release/bundle/pacman/*.pkg.tar.zst
             ${{ steps.workspace.outputs.path }}/target/release/bundle/deb/*_amd64.deb
             ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
   build-arch-package:
-    name: 构建 Arch 包并上传 Release
+    name: 上传 Arch 包到 Release
     needs: [validate-tag, publish-tauri]
     runs-on: ubuntu-22.04
-    container:
-      image: archlinux:latest
-      options: --user root
     defaults:
       run:
         shell: bash
 
     steps:
-      - name: 安装构建依赖
-        run: |
-          set -euo pipefail
-          pacman-key --init
-          pacman-key --populate archlinux
-          pacman -Syu --noconfirm \
-            base-devel \
-            git \
-            sudo \
-            dpkg \
-            binutils \
-            file \
-            findutils \
-            grep \
-            sed \
-            gawk \
-            cairo \
-            gdk-pixbuf2 \
-            glib2 \
-            gtk3 \
-            pango \
-            atk \
-            libgl \
-            webkit2gtk \
-            libsoup \
-            hicolor-icon-theme \
-            adwaita-icon-theme \
-            desktop-file-utils \
-            shared-mime-info \
-            libxss \
-            nss \
-            nspr \
-            libayatana-appindicator \
-            libappindicator-gtk3 \
-            curl \
-            wget \
-            openssl \
-            ca-certificates \
-            gnutls \
-            libx11 \
-            libxcb \
-            libxcomposite \
-            libxcursor \
-            libxdamage \
-            libxext \
-            libxfixes \
-            libxi \
-            libxrandr \
-            libxrender \
-            libxtst \
-            fontconfig \
-            freetype2 \
-            alsa-lib \
-            libpulse \
-            sqlite3 \
-            zlib \
-            bzip2 \
-            xz \
-            expat \
-            libffi \
-            pcre \
-            pcre2 \
-            libgcrypt \
-            libgpg-error \
-            libdatrie \
-            libthai \
-            libice \
-            libsm \
-            util-linux \
-            util-linux-libs
-
-          useradd -m builder
-          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
-      - name: 检出代码
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: 下载 Ubuntu x64 构建产物 (用于 Arch 打包)
+      - name: 下载 Ubuntu x64 构建产物
         uses: actions/download-artifact@v4
         with:
           name: ubuntu-build-x64
           path: ./downloads
 
-      - name: 查找 x64 deb 包
+      - name: 查找 Arch 包
         run: |
           set -euo pipefail
-          DEB_FILE="$(find ./downloads -name '*_amd64.deb' -type f | head -n 1)"
-          if [ -z "$DEB_FILE" ]; then
-            echo "❌ 未找到 x64 deb 包文件"
+          ARCH_PKG="$(find ./downloads -name '*.pkg.tar.zst' -type f | head -n 1)"
+          if [ -z "$ARCH_PKG" ]; then
+            echo "❌ 未找到 Arch .pkg.tar.zst 包文件"
             exit 1
           fi
 
-          echo "✅ 找到 x64 deb 包: $DEB_FILE"
-          cp "$DEB_FILE" ./sealantern.deb
-
-      - name: 使用 PKGBUILD 构建 Arch 包
-        run: |
-          set -euo pipefail
-          VERSION="${{ needs.validate-tag.outputs.version }}"
-          WORKDIR="$(pwd)"
-
-          sed -i 's|^source=.*|source=("sealantern.deb")|' PKGBUILD
-          sed -i 's|^sha256sums=.*|sha256sums=("SKIP")|' PKGBUILD
-          sed -i 's|Sea\.Lantern_\${pkgver}_amd64\.deb|sealantern.deb|g' PKGBUILD
-          sed -i 's/^pkgver=.*/pkgver='"$VERSION"'/' PKGBUILD
-          sed -i 's/^pkgrel=.*/pkgrel=1/' PKGBUILD
-
-          chown -R builder:builder "$WORKDIR"
-          su - builder -c "cd \"$WORKDIR\" && makepkg -f --noconfirm"
+          echo "✅ 找到 Arch 包: $ARCH_PKG"
+          cp "$ARCH_PKG" ./
 
       - name: 上传 Arch 包到 Release
         uses: softprops/action-gh-release@v2

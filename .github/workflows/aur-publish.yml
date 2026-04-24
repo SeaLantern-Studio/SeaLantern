@@ -21,7 +21,7 @@ jobs:
           set -euo pipefail
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Syu --noconfirm base-devel git sudo openssh dpkg nasm
+          pacman -Syu --noconfirm base-devel git sudo openssh
 
           useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
@@ -51,13 +51,12 @@ jobs:
         env:
           VERSION: ${{ steps.meta.outputs.version }}
           TAG: ${{ steps.meta.outputs.tag }}
-          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           cp PKGBUILD PKGBUILD.bak
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
           sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
-          sed -i "s|^source=.*|source=(\"https://github.com/${REPO}/releases/download/${TAG}/Sea.Lantern_\${pkgver}_amd64.deb\")|" PKGBUILD
+          sed -i "s|releases/download/v\${pkgver}/|releases/download/${TAG}/|" PKGBUILD
 
       - name: 生成 .SRCINFO
         run: |
@@ -72,6 +71,7 @@ jobs:
           pkgbuild: PKGBUILD
           assets: |
             .SRCINFO
+            sealantern.desktop
             sealantern.install
           commit_username: "${{ github.actor }}"
           commit_email: "${{ github.actor }}@users.noreply.github.com"

@@ -17,6 +17,7 @@ bun.lock
 nul
 changelogs/
 .claude/
+.codex
 .trae/
 changelog/
 .review/
