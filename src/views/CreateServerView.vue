@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { emit } from "@tauri-apps/api/event";
 import {
   StepperDescription,
@@ -13,6 +13,7 @@ import {
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { useRouter } from "vue-router";
+import { FileUp } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
@@ -69,6 +70,7 @@ const {
 
 const router = useRouter();
 let unlistenCreateViewDragDrop: UnlistenFn | null = null;
+const isDragging = ref(false);
 const CREATE_SERVER_DEBUG = import.meta.env.DEV;
 
 function logCreateServer(message: string, payload?: unknown) {
@@ -95,11 +97,16 @@ onMounted(async () => {
     logCreateServer("[CreateServerView] Preparing native drag-drop listener");
     unlistenCreateViewDragDrop = await currentWindow.onDragDropEvent((event) => {
       logCreateServer("[CreateServerView] Native drag-drop event", event.payload);
-      if (event.payload.type === "drop") {
+      if (event.payload.type === "enter" || event.payload.type === "over") {
+        isDragging.value = true;
+      } else if (event.payload.type === "drop") {
+        isDragging.value = false;
         logCreateServer("[CreateServerView] Emitting source drop event", event.payload.paths);
         void emit(CREATE_SERVER_SOURCE_DROP_EVENT, event.payload.paths).catch((error) => {
           logCreateServer("[CreateServerView] Failed to emit source drop event", error);
         });
+      } else {
+        isDragging.value = false;
       }
     });
     logCreateServer("[CreateServerView] Native drag-drop listener registered");
@@ -118,6 +125,14 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="create-view animate-fade-in-up">
+    <!-- 拖放提示遮罩 -->
+    <div v-if="isDragging" class="create-drop-overlay">
+      <div class="drop-hint">
+        <FileUp :size="48" />
+        <p>{{ i18n.t("create.drop_hint") }}</p>
+      </div>
+    </div>
+
     <div v-if="errorMsg" class="create-error-banner">
       <span>{{ errorMsg }}</span>
       <button class="create-error-close" @click="clearError">x</button>

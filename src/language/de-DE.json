@@ -235,7 +235,8 @@
     "java_env": "Java-Umgebung",
     "java_scan": "Im System nach Java-Installationen suchen",
     "java_manual": "Java-Pfad manuell auswählen",
-    "java_path": "Java-Pfad"
+    "java_path": "Java-Pfad",
+    "drop_hint": "Hier Dateien oder Ordner ablegen"
   },
   "console": {
     "title": "Konsole",

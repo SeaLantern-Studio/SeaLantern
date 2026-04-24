@@ -387,7 +387,8 @@
       "copy_conflict_title": "检测到文件冲突",
       "copy_conflict_description": "目标目录存在同名文件，继续将覆盖这些文件。",
       "copy_conflict_more": "另有 {count} 个冲突项未展示",
-      "copy_conflict_confirm": "继续覆盖"
+      "copy_conflict_confirm": "继续覆盖",
+      "drop_hint": "拖到此处可添加文件或文件夹"
     },
     "console": {
       "title": "控制台",

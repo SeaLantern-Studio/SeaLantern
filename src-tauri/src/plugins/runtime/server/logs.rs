@@ -43,8 +43,7 @@ fn get_all(lua: &Lua, ctx: &ServerContext) -> Result<mlua::Function, String> {
         let logs_pairs = running_log_pairs(count);
 
         let result = lua.create_table()?;
-        let mut i = 1;
-        for (server_id, logs) in logs_pairs {
+        for (i, (server_id, logs)) in logs_pairs.into_iter().enumerate() {
             let entry = lua.create_table()?;
             entry.set("server_id", server_id)?;
 
@@ -54,8 +53,7 @@ fn get_all(lua: &Lua, ctx: &ServerContext) -> Result<mlua::Function, String> {
             }
             entry.set("logs", lines_table)?;
 
-            result.set(i, entry)?;
-            i += 1;
+            result.set(i + 1, entry)?;
         }
 
         Ok(result)
