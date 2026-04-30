@@ -153,7 +153,7 @@ export function pickFileFromBrowser(
     if (options?.multiple) {
       input.multiple = true;
     }
-    input.onchange = () => {
+    input.addEventListener("change", () => {
       const files = input.files;
       if (!files || files.length === 0) {
         resolve(null);
@@ -166,12 +166,12 @@ export function pickFileFromBrowser(
       } else {
         resolve(files[0]);
       }
-    };
+    });
     // 处理用户取消的情况（某些浏览器支持）
-    input.oncancel = () => {
+    input.addEventListener("cancel", () => {
       document.body.removeChild(input);
       resolve(null);
-    };
+    });
     document.body.appendChild(input);
     input.click();
   });

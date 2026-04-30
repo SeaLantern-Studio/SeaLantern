@@ -1,9 +1,9 @@
 # Maintainer: xuezhajv <liaozecheng123@163.com>  qq群：293748695
 # Contributor: github.com/FPSZ <
 pkgname=sealantern
-pkgver=1.1.0
+pkgver=1.2.0
 pkgrel=2
-_binrel=1
+_debarch=amd64
 pkgdesc="A lightweight Minecraft server management tool based on Tauri 2 + Rust + Vue 3"
 arch=('x86_64')
 url="https://github.com/SeaLantern-Studio/SeaLantern"
@@ -31,7 +31,7 @@ options=('!strip' '!emptydirs')
 install=sealantern.install
 
 source=(
-    "${pkgname}-${pkgver}-${_binrel}-${CARCH}.release.pkg.tar.zst::https://github.com/SeaLantern-Studio/SeaLantern/releases/download/v${pkgver}/${pkgname}-${pkgver}-${_binrel}-${CARCH}.pkg.tar.zst"
+    "${pkgname}-${pkgver}-${_debarch}.deb::https://github.com/SeaLantern-Studio/SeaLantern/releases/download/v${pkgver}/Sea.Lantern_${pkgver}_${_debarch}.deb"
     'sealantern.desktop'
 )
 sha256sums=(
@@ -40,26 +40,10 @@ sha256sums=(
 )
 
 package() {
-    local archive="${srcdir}/${pkgname}-${pkgver}-${_binrel}-${CARCH}.release.pkg.tar.zst"
+    local deb="${srcdir}/${pkgname}-${pkgver}-${_debarch}.deb"
 
-    bsdtar --no-same-owner -xpf "${archive}" -C "${pkgdir}"
-    rm -f "${pkgdir}/.BUILDINFO" \
-          "${pkgdir}/.INSTALL" \
-          "${pkgdir}/.MTREE" \
-          "${pkgdir}/.PKGINFO"
-
-    # 兼容上游可能将可执行文件放在 /usr/local/bin 的情况
-    if [[ -f "${pkgdir}/usr/local/bin/sea-lantern" ]]; then
-        install -dm755 "${pkgdir}/usr/bin"
-        mv "${pkgdir}/usr/local/bin/sea-lantern" "${pkgdir}/usr/bin/"
-        rmdir "${pkgdir}/usr/local/bin" 2>/dev/null || true
-        rmdir "${pkgdir}/usr/local" 2>/dev/null || true
-    fi
-
-    # 确保图标缓存更新钩子能工作
-    if [[ -d "${pkgdir}/usr/share/icons" ]]; then
-        find "${pkgdir}/usr/share/icons" -name "icon-theme.cache" -delete
-    fi
+    bsdtar --no-same-owner -xf "${deb}" -C "${srcdir}" data.tar.*
+    bsdtar --no-same-owner -xpf "${srcdir}"/data.tar.* -C "${pkgdir}"
 
     rm -f "${pkgdir}/usr/share/applications/Sea Lantern.desktop"
     install -Dm644 "${srcdir}/sealantern.desktop" \

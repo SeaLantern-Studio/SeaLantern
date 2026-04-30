@@ -106,7 +106,7 @@
   align-items: center;
 }
 
-.server-picker-input :deep(.sl-select-trigger) {
+.server-picker-input .sl-select-trigger {
   padding-right: 32px;
 }
 

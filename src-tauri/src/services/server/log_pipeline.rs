@@ -438,20 +438,6 @@ fn process_log_line(server_id: &str, line: &str) -> String {
     processed_line
 }
 
-fn process_log_line(server_id: &str, line: &str) -> String {
-    let processors = server_log_processors();
-    let guard = match processors.lock() {
-        Ok(guard) => guard,
-        Err(_) => return line.to_string(),
-    };
-
-    let mut processed_line = line.to_string();
-    for processor in &*guard {
-        processed_line = processor(server_id, &processed_line);
-    }
-    processed_line
-}
-
 fn open_or_create_log_db(server_path: &Path) -> Result<Connection, String> {
     let db_path = server_path.join(LATEST_LOG_DB_FILE);
     match init_sqlite_log_db(&db_path) {

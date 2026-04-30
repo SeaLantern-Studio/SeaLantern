@@ -112,10 +112,6 @@ jobs:
           corepack prepare pnpm@9.15.9 --activate
           pnpm install --frozen-lockfile
 
-      - name: 保存工作目录路径
-        id: workspace
-        run: echo "path=$(pwd)" >> "$GITHUB_OUTPUT"
-
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0
         env:
@@ -130,60 +126,3 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
-
-      - name: 上传 Ubuntu x64 构建产物 (用于 Arch 打包)
-        if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ubuntu-build-x64
-          path: |
-            ${{ steps.workspace.outputs.path }}/target/release/bundle/pacman/*.pkg.tar.zst
-            ${{ steps.workspace.outputs.path }}/target/release/bundle/deb/*_amd64.deb
-            ${{ steps.workspace.outputs.path }}/target/release/bundle/appimage/*.AppImage
-          if-no-files-found: error
-
-  build-arch-package:
-    name: 上传 Arch 包到 Release
-    needs: [validate-tag, publish-tauri]
-    runs-on: ubuntu-22.04
-    defaults:
-      run:
-        shell: bash
-
-    steps:
-      - name: 下载 Ubuntu x64 构建产物
-        uses: actions/download-artifact@v4
-        with:
-          name: ubuntu-build-x64
-          path: ./downloads
-
-      - name: 查找 Arch 包
-        run: |
-          set -euo pipefail
-          ARCH_PKG="$(find ./downloads -name '*.pkg.tar.zst' -type f | head -n 1)"
-          if [ -z "$ARCH_PKG" ]; then
-            echo "❌ 未找到 Arch .pkg.tar.zst 包文件"
-            exit 1
-          fi
-
-          echo "✅ 找到 Arch 包: $ARCH_PKG"
-          cp "$ARCH_PKG" ./
-
-      - name: 上传 Arch 包到 Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.validate-tag.outputs.tag }}
-          files: |
-            *.pkg.tar.*
-          draft: true
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 上传 Arch 包作为构建产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: arch-package
-          path: |
-            *.pkg.tar.*
-          if-no-files-found: error
