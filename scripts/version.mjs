@@ -132,15 +132,16 @@ async function updateVersion(version) {
 
   if (await exists(files.srcinfo)) {
     const srcinfoRaw = await readFile(files.srcinfo, "utf8");
-    const oldPkgver = srcinfoRaw.match(/^\s*pkgver\s*=\s*(.+)$/m)?.[1]?.trim();
-
-    let srcinfoUpdated = srcinfoRaw.replace(/^\s*pkgver\s*=\s*.+$/m, `\tpkgver = ${version}`);
-
-    if (oldPkgver && oldPkgver !== "(未找到)") {
-      srcinfoUpdated = srcinfoUpdated
-        .replace(`sea-lantern-v${oldPkgver}`, `sea-lantern-v${version}`)
-        .replace(`Sea.Lantern_${oldPkgver}_amd64.deb`, `Sea.Lantern_${version}_amd64.deb`);
-    }
+    let srcinfoUpdated = srcinfoRaw
+      .replace(/^\s*pkgver\s*=\s*.+$/m, `\tpkgver = ${version}`)
+      .replace(/^(\s*source\s*=\s*.*)$/gm, (line) =>
+        line
+          .replace(
+            /(?<=releases\/download\/v)\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/g,
+            version,
+          )
+          .replace(/(?<=sealantern-)\d+\.\d+\.\d+(?=-\d+-)/g, version),
+      );
 
     await writeFile(files.srcinfo, srcinfoUpdated, "utf8");
     optionalUpdated.push(".SRCINFO");

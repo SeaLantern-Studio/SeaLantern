@@ -1,7 +1,7 @@
 # Maintainer: xuezhajv <liaozecheng123@163.com>  qq群：293748695
 # Contributor: github.com/FPSZ <
 pkgname=sealantern
-pkgver=1.1.0
+pkgver=1.2.0
 pkgrel=2
 _binrel=1
 pkgdesc="A lightweight Minecraft server management tool based on Tauri 2 + Rust + Vue 3"
