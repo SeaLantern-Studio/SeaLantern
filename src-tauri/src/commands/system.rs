@@ -533,3 +533,77 @@ pub fn get_safe_mode_status() -> Result<bool, String> {
 pub fn frontend_heartbeat() -> Result<(), String> {
     Ok(())
 }
+
+#[tauri::command]
+pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
+    use std::time::Duration;
+    use tokio::net::TcpStream;
+
+    // 测试多个 IPv6 公网地址，任一成功即表示支持
+    let test_targets = [
+        ("[2606:4700:4700::1111]:53", "Cloudflare DNS"),
+        ("[2001:4860:4860::8888]:53", "Google DNS"),
+        ("[2606:4700:4700::64]:443", "Cloudflare HTTPS"),
+    ];
+
+    let timeout_duration = Duration::from_secs(10);
+    let mut last_error = String::new();
+    let mut last_error_kind = String::new();
+    let mut tested_targets: Vec<serde_json::Value> = Vec::new();
+
+    for (addr, name) in &test_targets {
+        let result = tokio::time::timeout(
+            timeout_duration,
+            TcpStream::connect(*addr),
+        )
+        .await;
+
+        match result {
+            Ok(Ok(_stream)) => {
+                return Ok(serde_json::json!({
+                    "supported": true,
+                    "message": format!("IPv6 连接成功（通过 {}）", name),
+                    "detail": format!("成功连接到 {} ({})", name, addr)
+                }));
+            }
+            Ok(Err(e)) => {
+                let kind = format!("{:?}", e.kind());
+                tested_targets.push(serde_json::json!({
+                    "target": name,
+                    "address": addr,
+                    "error": format!("{}", e),
+                    "kind": kind.clone()
+                }));
+                last_error = format!("{}", e);
+                last_error_kind = kind;
+            }
+            Err(_) => {
+                tested_targets.push(serde_json::json!({
+                    "target": name,
+                    "address": addr,
+                    "error": "连接超时",
+                    "kind": "TimedOut"
+                }));
+                last_error = "连接超时".to_string();
+                last_error_kind = "TimedOut".to_string();
+            }
+        }
+    }
+
+    // 所有目标均失败
+    let summary = match last_error_kind.as_str() {
+        "AddrNotAvailable" => "系统未分配 IPv6 地址，请检查网络适配器是否启用了 IPv6".to_string(),
+        "NetworkUnreachable" => "IPv6 网络不可达，可能未启用 IPv6 或 ISP 不支持".to_string(),
+        "TimedOut" => "连接超时，您的网络可能不支持 IPv6 或防火墙阻止了连接".to_string(),
+        "ConnectionRefused" => "目标服务器拒绝连接，但 IPv6 网络可能可用".to_string(),
+        _ => format!("IPv6 连接失败: {}", last_error),
+    };
+
+    Ok(serde_json::json!({
+        "supported": false,
+        "message": summary,
+        "detail": last_error,
+        "error_kind": last_error_kind,
+        "targets": tested_targets
+    }))
+}

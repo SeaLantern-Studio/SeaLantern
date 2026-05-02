@@ -219,4 +219,8 @@ export const systemApi = {
   async getSafeModeStatus(): Promise<boolean> {
     return tauriInvoke("get_safe_mode_status");
   },
+
+  async testIPv6Connectivity(): Promise<{ supported: boolean; message: string }> {
+    return tauriInvoke("test_ipv6_connectivity");
+  },
 };
