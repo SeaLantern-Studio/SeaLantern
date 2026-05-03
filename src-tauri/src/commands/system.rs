@@ -552,11 +552,7 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
     let mut tested_targets: Vec<serde_json::Value> = Vec::new();
 
     for (addr, name) in &test_targets {
-        let result = tokio::time::timeout(
-            timeout_duration,
-            TcpStream::connect(*addr),
-        )
-        .await;
+        let result = tokio::time::timeout(timeout_duration, TcpStream::connect(*addr)).await;
 
         match result {
             Ok(Ok(_stream)) => {
