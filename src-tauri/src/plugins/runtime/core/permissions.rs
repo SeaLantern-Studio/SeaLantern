@@ -1,8 +1,9 @@
 use super::runtime::PluginRuntime;
+use crate::hardcode_data::plugin_manifest::missing_permission_in_manifest_message;
 use mlua::Table;
 
 impl PluginRuntime {
-    #[allow(dead_code)] // fu*k fmt
+    #[allow(dead_code)] // 未来校验调用
     pub(super) fn check_permission(&self, permission: &str) -> mlua::Result<()> {
         if self.permissions.iter().any(|p| p == permission) {
             Ok(())
@@ -28,10 +29,9 @@ impl PluginRuntime {
         let error_fn = self
             .lua
             .create_function(move |_, ()| -> Result<(), mlua::Error> {
-                Err(mlua::Error::runtime(format!(
-                    "权限不足: 使用 'sl.{}' 模块需要在 manifest.json 中声明 '{}' 权限",
-                    module_name_owned, module_name_owned
-                )))
+                Err(mlua::Error::runtime(
+                    missing_permission_in_manifest_message(&module_name_owned),
+                ))
             })
             .map_err(|e| format!("Failed to create error function for {}: {}", module_name, e))?;
 
@@ -48,10 +48,9 @@ impl PluginRuntime {
         let index_fn = self
             .lua
             .create_function(move |_, _key: mlua::Value| -> Result<mlua::Value, mlua::Error> {
-                Err(mlua::Error::runtime(format!(
-                    "权限不足: 使用 'sl.{}' 模块需要在 manifest.json 中声明 '{}' 权限",
-                    module_name_for_meta, module_name_for_meta
-                )))
+                Err(mlua::Error::runtime(
+                    missing_permission_in_manifest_message(&module_name_for_meta),
+                ))
             })
             .map_err(|e| format!("Failed to create __index for {}: {}", module_name, e))?;
 

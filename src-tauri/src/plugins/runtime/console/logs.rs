@@ -11,7 +11,7 @@ pub(super) fn get_logs(lua: &Lua, _ctx: &ConsoleContext) -> Result<mlua::Functio
             let offset = offset.unwrap_or(0);
             let count = count.unwrap_or(DEFAULT_LOG_COUNT).min(MAX_LOG_COUNT);
             let logs =
-                crate::services::server_log_pipeline::get_logs(&server_id, offset, Some(count));
+                crate::services::server::log_pipeline::get_logs(&server_id, offset, Some(count));
 
             let result = lua.create_table()?;
             result.set("server_id", server_id.clone())?;
