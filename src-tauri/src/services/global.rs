@@ -4,11 +4,11 @@
 //! 注意：`mod_manager()` 目前仍然使用 `expect("Failed to initialize ModManager")`
 //! 在初始化失败时 panic，属于启动期失败场景，而非正常运行期的业务错误。
 use super::i18n::I18nService;
-use super::join_manager::JoinManager;
-use super::mcs_plugin_manager::m_PluginManager;
 use super::mod_manager::ModManager;
-use super::server_id_manager::ServerIdManager;
-use super::server_manager::ServerManager;
+use super::server::id_manager::ServerIdManager;
+use super::server::join::JoinManager;
+use super::server::manager::ServerManager;
+use super::server::plugin_manager::ServerPluginManager;
 use super::settings_manager::SettingsManager;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
@@ -29,27 +29,24 @@ pub fn i18n_service() -> &'static I18nService {
     INSTANCE.get_or_init(I18nService::new)
 }
 
-#[allow(dead_code)]
 pub fn mod_manager() -> &'static ModManager {
     static INSTANCE: OnceLock<ModManager> = OnceLock::new();
     INSTANCE.get_or_init(|| ModManager::new().expect("Failed to initialize ModManager"))
 }
 
-#[allow(dead_code)]
 pub fn join_manager() -> &'static JoinManager {
     static INSTANCE: OnceLock<JoinManager> = OnceLock::new();
     INSTANCE.get_or_init(JoinManager::new)
 }
 
-#[allow(dead_code)]
 pub fn server_id_manager() -> &'static ServerIdManager {
     static INSTANCE: OnceLock<ServerIdManager> = OnceLock::new();
     INSTANCE.get_or_init(ServerIdManager::new)
 }
 
-pub fn m_plugin_manager() -> &'static m_PluginManager {
-    static INSTANCE: OnceLock<m_PluginManager> = OnceLock::new();
-    INSTANCE.get_or_init(m_PluginManager::new)
+pub fn server_plugin_manager() -> &'static ServerPluginManager {
+    static INSTANCE: OnceLock<ServerPluginManager> = OnceLock::new();
+    INSTANCE.get_or_init(ServerPluginManager::new)
 }
 
 static FRONTEND_LAST_HEARTBEAT: OnceLock<AtomicU64> = OnceLock::new();
@@ -59,7 +56,6 @@ fn heartbeat_storage() -> &'static AtomicU64 {
 }
 
 /// 更新前端心跳时间为当前 Unix 秒时间戳。
-#[allow(dead_code)]
 pub fn update_frontend_heartbeat() {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)

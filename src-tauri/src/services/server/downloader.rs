@@ -1,7 +1,7 @@
 pub(crate) use crate::models::download::{
     BaseDownloadLinks, DownloadLink, LinkManager, TypeDownloadLinks,
 };
-use crate::utils::constants::USER_AGENT_EXAMPLE;
+use crate::hardcode_data::external_services::COMMON_HTTP_BROWSER_USER_AGENT;
 use crate::utils::downloader::SingleThreadDownloader;
 use serde_json::Value;
 use tokio::sync::OnceCell;
@@ -26,7 +26,7 @@ impl LinkManager {
     }
 
     pub async fn init() -> Result<BaseDownloadLinks, String> {
-        let downloader = SingleThreadDownloader::new(USER_AGENT_EXAMPLE);
+        let downloader = SingleThreadDownloader::new(COMMON_HTTP_BROWSER_USER_AGENT);
         let response_body = downloader.read_to_string(DOWNLOAD_LINK_LIST_URL).await?;
 
         let root_json: Value =

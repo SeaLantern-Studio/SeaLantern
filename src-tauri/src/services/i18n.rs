@@ -88,7 +88,7 @@ impl I18nService {
             .unwrap_or_else(|| key.to_string())
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 预留调用
     pub fn t_for_locale(&self, locale: &str, key: &str) -> String {
         self.translate_for_locale(locale, key)
             .unwrap_or_else(|| key.to_string())
@@ -102,7 +102,7 @@ impl I18nService {
         result
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 预留调用
     pub fn t_with_options_for_locale(
         &self,
         locale: &str,
@@ -194,7 +194,7 @@ impl I18nService {
         locales
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 预留调用
     pub fn get_locale_display_name(&self, locale: &str) -> Option<String> {
         self.plugin_locale_names
             .read()
