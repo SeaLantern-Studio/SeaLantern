@@ -2,8 +2,9 @@
 //! 为了便于快捷修改常量，在此处抽取了一部分后端使用的常量
 //! 插件相关常量未抽取
 
-///一个基本的User-agent
-pub const USER_AGENT_EXAMPLE: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0";
+use crate::hardcode_data::server_downloads::{
+    SERVER_CORE_MIRROR_LINK_LIST_URL, STARTER_INSTALLER_LINKS_FILE_NAME,
+};
 
 /// services/settings_manager.rs
 pub const SETTINGS_FILE: &str = "sea_lantern_settings.json";
@@ -42,8 +43,8 @@ pub const SUPPORTED_LOCALES: &[&str] = &[
 ];
 
 /// services/server/downloader.rs + services/download/starter_installer_links.rs
-pub const DOWNLOAD_LINK_LIST_URL: &str = "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/releases/download/26.02.27/jar_lfs_links.json";
-pub const STARTER_INSTALLER_LINKS_FILE: &str = "jar_lfs_links.json";
+pub const DOWNLOAD_LINK_LIST_URL: &str = SERVER_CORE_MIRROR_LINK_LIST_URL;
+pub const STARTER_INSTALLER_LINKS_FILE: &str = STARTER_INSTALLER_LINKS_FILE_NAME;
 pub const STARTER_INSTALLER_LINKS_URL: &str = DOWNLOAD_LINK_LIST_URL;
 
 /// services/download/java_installer.rs

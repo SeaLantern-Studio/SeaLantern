@@ -4,17 +4,26 @@ use std::sync::Mutex;
 ///此处常量见 utils/constants.rs
 use crate::utils::constants::SETTINGS_FILE;
 
+/// 设置管理器
+///
+/// 负责读取、保存、重置和增量更新应用设置
 pub struct SettingsManager {
     pub settings: Mutex<AppSettings>,
     pub data_dir: String,
 }
 
+/// 一次设置更新的结果
 pub struct UpdateResult {
     pub settings: AppSettings,
     pub changed_groups: Vec<SettingsGroup>,
 }
 
 impl SettingsManager {
+    /// 创建设置管理器
+    ///
+    /// # Returns
+    ///
+    /// 返回已经完成本地设置加载的管理器实例
     pub fn new() -> Self {
         eprintln!("[DEBUG] SettingsManager::new() called");
         let data_dir = get_data_dir();
@@ -27,10 +36,24 @@ impl SettingsManager {
         SettingsManager { settings: Mutex::new(settings), data_dir }
     }
 
+    /// 读取当前完整设置
+    ///
+    /// # Returns
+    ///
+    /// 返回当前内存里的设置快照
     pub fn get(&self) -> AppSettings {
         self.settings.lock().unwrap().clone()
     }
 
+    /// 整体替换当前设置并写回本地
+    ///
+    /// # Parameters
+    ///
+    /// - `new_settings`: 新的完整设置
+    ///
+    /// # Returns
+    ///
+    /// 保存成功时返回 `Ok(())`
     pub fn update(&self, new_settings: AppSettings) -> Result<(), String> {
         eprintln!(
             "[DEBUG] SettingsManager::update() called, agreed_to_terms = {}",
@@ -42,6 +65,15 @@ impl SettingsManager {
         result
     }
 
+    /// 整体替换设置，并返回受影响的设置分组
+    ///
+    /// # Parameters
+    ///
+    /// - `new_settings`: 新的完整设置
+    ///
+    /// # Returns
+    ///
+    /// 返回新的设置内容和变化分组
     pub fn update_with_diff(&self, new_settings: AppSettings) -> Result<UpdateResult, String> {
         let old_settings = self.settings.lock().unwrap().clone();
         let changed_groups = old_settings.get_changed_groups(&new_settings);
@@ -50,6 +82,15 @@ impl SettingsManager {
         Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
+    /// 按局部字段更新设置，并返回受影响的设置分组
+    ///
+    /// # Parameters
+    ///
+    /// - `partial`: 只包含变动字段的局部设置
+    ///
+    /// # Returns
+    ///
+    /// 返回合并后的设置内容和变化分组
     pub fn update_partial(&self, partial: PartialSettings) -> Result<UpdateResult, String> {
         eprintln!(
             "[DEBUG] SettingsManager::update_partial() called, partial.agreed_to_terms = {:?}",
@@ -69,6 +110,11 @@ impl SettingsManager {
         Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
+    /// 重置为默认设置
+    ///
+    /// # Returns
+    ///
+    /// 返回一份新的默认设置，并同步写回本地文件
     pub fn reset(&self) -> Result<AppSettings, String> {
         let default = AppSettings::default();
         *self.settings.lock().unwrap() = default.clone();
