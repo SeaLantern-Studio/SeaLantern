@@ -64,9 +64,7 @@ pub(super) async fn get_plugins(server_path: &str) -> Result<Vec<m_PluginInfo>, 
                 file_name: base_file_name,
                 file_size,
                 enabled,
-                main_class: plugin_config
-                    .main
-                    .unwrap_or_else(|| "Unknown".to_string()),
+                main_class: plugin_config.main.unwrap_or_else(|| "Unknown".to_string()),
                 has_config_folder,
                 config_files: Vec::new(),
             });

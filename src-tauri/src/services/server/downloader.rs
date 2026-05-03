@@ -1,7 +1,7 @@
+use crate::hardcode_data::external_services::COMMON_HTTP_BROWSER_USER_AGENT;
 pub(crate) use crate::models::download::{
     BaseDownloadLinks, DownloadLink, LinkManager, TypeDownloadLinks,
 };
-use crate::hardcode_data::external_services::COMMON_HTTP_BROWSER_USER_AGENT;
 use crate::utils::downloader::SingleThreadDownloader;
 use serde_json::Value;
 use tokio::sync::OnceCell;

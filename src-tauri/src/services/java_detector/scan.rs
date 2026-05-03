@@ -70,7 +70,11 @@ fn collect_windows_candidate_paths(paths: &mut Vec<String>) {
     }
 
     if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
-        scan_roots.push(PathBuf::from(&local_appdata).join("Programs").join("Adoptium"));
+        scan_roots.push(
+            PathBuf::from(&local_appdata)
+                .join("Programs")
+                .join("Adoptium"),
+        );
     }
 
     if let Ok(user_profile) = std::env::var("USERPROFILE") {
@@ -100,7 +104,11 @@ fn deep_scan_recursive(dir: &Path, paths: &mut Vec<String>, depth: u32) {
         return;
     }
 
-    let target_name = if cfg!(target_os = "windows") { "java.exe" } else { "java" };
+    let target_name = if cfg!(target_os = "windows") {
+        "java.exe"
+    } else {
+        "java"
+    };
 
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -121,7 +129,11 @@ fn deep_scan_recursive(dir: &Path, paths: &mut Vec<String>, depth: u32) {
 fn push_java_exe(dir: &str, paths: &mut Vec<String>) {
     let bin = Path::new(dir)
         .join("bin")
-        .join(if cfg!(target_os = "windows") { "java.exe" } else { "java" });
+        .join(if cfg!(target_os = "windows") {
+            "java.exe"
+        } else {
+            "java"
+        });
     if bin.exists() {
         paths.push(bin.to_string_lossy().into_owned());
     }
@@ -129,8 +141,8 @@ fn push_java_exe(dir: &str, paths: &mut Vec<String>) {
 
 #[cfg(target_os = "windows")]
 fn command_output(program: &str, args: &[&str]) -> Option<std::process::Output> {
-    use std::process::Command;
     use crate::utils::constants::CREATE_NO_WINDOW;
+    use std::process::Command;
 
     let mut command = Command::new(program);
     command.args(args);

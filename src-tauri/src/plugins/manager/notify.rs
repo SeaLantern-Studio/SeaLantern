@@ -30,10 +30,7 @@ pub(super) fn notify_locale_changed(manager: &PluginManager, locale: &str) {
         }
 
         if let Err(e) = runtime.call_lifecycle_with_arg("onLocaleChanged", locale) {
-            eprintln!(
-                "[WARN] Failed to call onLocaleChanged for plugin '{}': {}",
-                id, e
-            );
+            eprintln!("[WARN] Failed to call onLocaleChanged for plugin '{}': {}", id, e);
             let _ = emit_log_event(id, "error", &format!("Failed to call onLocaleChanged: {}", e));
         }
     }

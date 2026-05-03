@@ -65,11 +65,7 @@ pub(super) fn scan_plugins(manager: &mut PluginManager) -> Result<Vec<PluginInfo
                 println!("[PluginManager] 插件 '{}' 已添加到管理器", manifest.id);
             }
             Err(e) => {
-                println!(
-                    "[PluginManager] 从 {} 加载 manifest 失败: {}",
-                    plugin_dir.display(),
-                    e
-                );
+                println!("[PluginManager] 从 {} 加载 manifest 失败: {}", plugin_dir.display(), e);
             }
         }
     }

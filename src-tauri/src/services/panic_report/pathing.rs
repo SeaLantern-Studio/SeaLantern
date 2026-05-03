@@ -6,7 +6,11 @@ use chrono::Utc;
 /// 构造崩溃日志的完整输出路径
 pub(super) fn build_report_path(now: &chrono::DateTime<Utc>) -> std::io::Result<PathBuf> {
     let base_dir = option_env!("CARGO_MANIFEST_DIR")
-        .and_then(|manifest| PathBuf::from(manifest).parent().map(|path| path.to_path_buf()))
+        .and_then(|manifest| {
+            PathBuf::from(manifest)
+                .parent()
+                .map(|path| path.to_path_buf())
+        })
         .or_else(|| {
             std::env::current_exe()
                 .ok()

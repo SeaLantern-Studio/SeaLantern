@@ -6,8 +6,8 @@ mod common;
 mod fs;
 mod process;
 mod provisioning;
-mod runtime_start;
 mod runtime_control;
+mod runtime_start;
 
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
@@ -20,9 +20,7 @@ use serde::{Deserialize, Serialize};
 use super::installer;
 use super::log_pipeline as server_log_pipeline;
 use common::{get_data_dir, normalize_startup_mode, validate_server_name, ManagedConsoleEncoding};
-use fs::{
-    load_servers, remove_run_path_mapping, save_servers, update_run_path_mapping,
-};
+use fs::{load_servers, remove_run_path_mapping, save_servers, update_run_path_mapping};
 
 /// 强停前返回给前端的确认信息
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -30,8 +30,10 @@ pub(super) fn import_modpack(
     let data_dir = manager.data_dir_value()?;
     mapping::save_modpack_run_mapping(&data_dir, &id, &server_name, &req, &run_dir, &startup)?;
 
-    let port = properties::ensure_server_properties_for_import(&run_dir, req.port, req.online_mode)?;
-    let server = build::build_modpack_server_instance(id, server_name, req, &run_dir, startup, port);
+    let port =
+        properties::ensure_server_properties_for_import(&run_dir, req.port, req.online_mode)?;
+    let server =
+        build::build_modpack_server_instance(id, server_name, req, &run_dir, startup, port);
 
     println!(
         "创建服务器实例: id={}, path={}, startup_path={}",

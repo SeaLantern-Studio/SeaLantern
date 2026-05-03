@@ -8,9 +8,9 @@ use defaults::{
     default_allowed_commands, default_bg_blur, default_bg_brightness, default_bg_opacity,
     default_bg_size, default_blocked_commands, default_close_action, default_color,
     default_console_font, default_console_font_family, default_console_letter_spacing,
-    default_false, default_font_family, default_font_size, default_language,
-    default_log_lines, default_max_memory, default_min_memory, default_port, default_theme,
-    default_true, default_window_height, default_window_width,
+    default_false, default_font_family, default_font_size, default_language, default_log_lines,
+    default_max_memory, default_min_memory, default_port, default_theme, default_true,
+    default_window_height, default_window_width,
 };
 
 /// 设置变更分组

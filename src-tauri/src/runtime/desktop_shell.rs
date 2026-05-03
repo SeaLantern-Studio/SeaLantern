@@ -20,16 +20,20 @@ pub(crate) fn stop_servers_and_disable_plugins(app: &tauri::AppHandle) {
         services::global::server_manager().stop_all_servers();
     }
 
-    if let Some(manager) = app.try_state::<std::sync::Arc<
-        std::sync::Mutex<crate::plugins::manager::PluginManager>,
-    >>() {
+    if let Some(manager) =
+        app.try_state::<std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>()
+    {
         if let Ok(mut m) = manager.lock() {
             m.disable_all_plugins_for_shutdown();
         }
     }
 }
 
-pub(crate) fn handle_single_instance(app: &tauri::AppHandle, args: Vec<String>, cwd: std::path::PathBuf) {
+pub(crate) fn handle_single_instance(
+    app: &tauri::AppHandle,
+    args: Vec<String>,
+    cwd: std::path::PathBuf,
+) {
     reveal_main_window(app);
     print!("Received second instance with args: {:?}, cwd: {:?}", args, cwd);
 }
@@ -88,9 +92,13 @@ fn restart_in_safe_mode(app: &tauri::AppHandle) {
     };
     let app_path = std::env::current_exe()
         .or_else(|_| {
-            std::env::args().next().map(std::path::PathBuf::from).ok_or(
-                std::io::Error::new(std::io::ErrorKind::NotFound, "Executable path not found"),
-            )
+            std::env::args()
+                .next()
+                .map(std::path::PathBuf::from)
+                .ok_or(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Executable path not found",
+                ))
         })
         .unwrap_or_else(|_| std::path::PathBuf::from(default_name));
 
@@ -190,13 +198,8 @@ pub(crate) fn setup_tray<M: Manager<tauri::Wry>>(app: &M) -> tauri::Result<()> {
     let menu = if safe_mode {
         Menu::with_items(app, &[&show_item, &quit_item])?
     } else {
-        let safe_mode_item = MenuItem::with_id(
-            app,
-            "restart-safe-mode",
-            "以安全模式重启",
-            true,
-            None::<&str>,
-        )?;
+        let safe_mode_item =
+            MenuItem::with_id(app, "restart-safe-mode", "以安全模式重启", true, None::<&str>)?;
         Menu::with_items(app, &[&show_item, &safe_mode_item, &quit_item])?
     };
 

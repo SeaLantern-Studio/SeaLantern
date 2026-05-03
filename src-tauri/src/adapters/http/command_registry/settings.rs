@@ -16,23 +16,14 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
         handle_update_settings_partial as CommandHandler,
     );
     handlers.insert("reset_settings".to_string(), handle_reset_settings as CommandHandler);
-    handlers.insert(
-        "export_settings".to_string(),
-        handle_export_settings as CommandHandler,
-    );
-    handlers.insert(
-        "import_settings".to_string(),
-        handle_import_settings as CommandHandler,
-    );
+    handlers.insert("export_settings".to_string(), handle_export_settings as CommandHandler);
+    handlers.insert("import_settings".to_string(), handle_import_settings as CommandHandler);
     handlers.insert(
         "check_acrylic_support".to_string(),
         handle_check_acrylic_support as CommandHandler,
     );
     handlers.insert("apply_acrylic".to_string(), handle_apply_acrylic as CommandHandler);
-    handlers.insert(
-        "get_system_fonts".to_string(),
-        handle_get_system_fonts as CommandHandler,
-    );
+    handlers.insert("get_system_fonts".to_string(), handle_get_system_fonts as CommandHandler);
 }
 
 fn handle_get_settings(

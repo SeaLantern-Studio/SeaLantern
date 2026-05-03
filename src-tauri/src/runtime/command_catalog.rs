@@ -14,8 +14,8 @@ use commands::online::join as join_commands;
 use commands::online::server_ids as server_id_commands;
 use commands::online::tunnel as tunnel_commands;
 use commands::plugins::manage as plugin_commands;
-use commands::server::manage as server_commands;
 use commands::server::config as config_commands;
+use commands::server::manage as server_commands;
 use commands::server::players as player_commands;
 use commands::server::plugins as server_plugin_commands;
 use commands::update as update_commands;
@@ -25,7 +25,8 @@ use commands::update as update_commands;
 /// # Returns
 ///
 /// 返回 Tauri 桌面端使用的命令分发表
-pub(crate) fn desktop_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
+pub(crate) fn desktop_handler(
+) -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         server_commands::create_server,
         server_commands::import_server,

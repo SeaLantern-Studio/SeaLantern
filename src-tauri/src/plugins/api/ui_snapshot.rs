@@ -48,7 +48,9 @@ pub fn buffer_ui_event(plugin_id: &str, action: &str, element_id: &str, html: &s
         }
         "inject_css" => {
             store.retain(|e| {
-                !(e.plugin_id == plugin_id && e.element_id == element_id && e.action == "inject_css")
+                !(e.plugin_id == plugin_id
+                    && e.element_id == element_id
+                    && e.action == "inject_css")
             });
             store.push(BufferedUiEvent {
                 plugin_id: plugin_id.to_string(),
@@ -59,7 +61,9 @@ pub fn buffer_ui_event(plugin_id: &str, action: &str, element_id: &str, html: &s
         }
         "remove_css" => {
             store.retain(|e| {
-                !(e.plugin_id == plugin_id && e.element_id == element_id && e.action == "inject_css")
+                !(e.plugin_id == plugin_id
+                    && e.element_id == element_id
+                    && e.action == "inject_css")
             });
         }
         "remove" => {

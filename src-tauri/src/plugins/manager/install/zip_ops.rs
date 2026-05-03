@@ -1,8 +1,7 @@
 use super::{PluginInfo, PluginManager, PluginState};
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 use crate::hardcode_data::plugin_manifest::{
-    manifest_not_found_in_zip_message, parse_manifest_failed_message,
-    read_manifest_failed_message,
+    manifest_not_found_in_zip_message, parse_manifest_failed_message, read_manifest_failed_message,
 };
 use crate::plugins::loader::PluginLoader;
 use std::fs::{self, File};

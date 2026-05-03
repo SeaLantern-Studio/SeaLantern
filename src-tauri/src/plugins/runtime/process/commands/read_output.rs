@@ -1,5 +1,7 @@
 use super::shared::emit_process_log;
-use crate::plugins::runtime::process::common::{is_process_owner, truncate_output, ProcessRegistry};
+use crate::plugins::runtime::process::common::{
+    is_process_owner, truncate_output, ProcessRegistry,
+};
 use mlua::{Function, Lua, Value};
 use std::sync::Arc;
 

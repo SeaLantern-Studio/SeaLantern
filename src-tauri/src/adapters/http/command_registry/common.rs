@@ -9,8 +9,6 @@ pub(super) fn parse_params<T: DeserializeOwned>(params: Value) -> Result<T, Stri
     serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))
 }
 
-pub(super) fn handle_unsupported(
-    _params: Value,
-) -> BoxFuture<'static, Result<Value, String>> {
+pub(super) fn handle_unsupported(_params: Value) -> BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move { Err("This command is not supported in HTTP/Docker mode".to_string()) })
 }

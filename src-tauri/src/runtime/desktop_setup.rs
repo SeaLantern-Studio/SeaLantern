@@ -2,9 +2,9 @@ use crate::plugins::manager::{PluginManager, SharedRuntimes};
 use crate::runtime::desktop_shell;
 
 use std::sync::{Arc, Mutex};
+use tauri::Manager;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
-use tauri::Manager;
 #[cfg(target_os = "macos")]
 use window_vibrancy::{
     apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,

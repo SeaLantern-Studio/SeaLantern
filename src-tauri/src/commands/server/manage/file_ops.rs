@@ -36,9 +36,7 @@ pub(super) fn copy_directory_contents(
 }
 
 /// 校验服务器目录是否可写，并尝试识别启动文件
-pub(super) fn validate_server_path(
-    new_path: String,
-) -> Result<ValidateServerPathResult, String> {
+pub(super) fn validate_server_path(new_path: String) -> Result<ValidateServerPathResult, String> {
     let path = std::path::Path::new(&new_path);
 
     let test_file = path.join(SERVER_PATH_PERMISSION_TEST_FILE_NAME);
@@ -64,12 +62,7 @@ pub(super) fn validate_server_path(
         "未找到可执行文件（.jar/.bat/.sh/.ps1），请确保路径正确".to_string()
     };
 
-    Ok(ValidateServerPathResult {
-        valid,
-        message,
-        jar_path,
-        startup_mode,
-    })
+    Ok(ValidateServerPathResult { valid, message, jar_path, startup_mode })
 }
 
 fn collect_copy_conflicts_recursive(

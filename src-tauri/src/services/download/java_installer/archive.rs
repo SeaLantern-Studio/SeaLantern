@@ -36,11 +36,7 @@ pub(super) fn extract_downloaded_archive(
 }
 
 #[cfg(target_os = "windows")]
-fn extract_zip(
-    zip_path: &Path,
-    target_dir: &Path,
-    cancel_flag: &AtomicBool,
-) -> Result<(), String> {
+fn extract_zip(zip_path: &Path, target_dir: &Path, cancel_flag: &AtomicBool) -> Result<(), String> {
     let file = fs::File::open(zip_path).map_err(|e| format!("打开 ZIP 文件失败：{}", e))?;
     let reader = BufReader::new(file);
     let mut archive = ZipArchive::new(reader).map_err(|e| format!("ZIP 解析失败：{}", e))?;

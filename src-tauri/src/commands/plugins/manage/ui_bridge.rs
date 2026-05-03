@@ -89,10 +89,7 @@ pub(super) fn component_mirror_clear() {
 }
 
 /// 通知插件当前页面已切换
-pub(super) fn on_page_changed(
-    path: String,
-    manager: PluginManagerState<'_>,
-) -> Result<(), String> {
+pub(super) fn on_page_changed(path: String, manager: PluginManagerState<'_>) -> Result<(), String> {
     let manager = lock_manager(&manager);
     manager.notify_page_changed(&path);
     Ok(())

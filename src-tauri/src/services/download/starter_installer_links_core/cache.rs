@@ -10,7 +10,9 @@ const STARTER_INSTALLER_LINKS_CACHE_TTL: Duration = Duration::from_secs(24 * 60 
 const STARTER_INSTALLER_FETCH_RETRY_LIMIT: usize = 3;
 const STARTER_INSTALLER_FETCH_RETRY_DELAY: Duration = Duration::from_secs(2);
 
-pub(super) fn load_or_refresh_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>, String> {
+pub(super) fn load_or_refresh_starter_links_json(
+    links_file_path: &Path,
+) -> Result<Vec<u8>, String> {
     if should_use_cached_links_file(links_file_path)? {
         return match read_and_validate_cached_links_file(links_file_path) {
             Ok(body) => Ok(body),

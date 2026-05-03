@@ -14,7 +14,10 @@ pub type PermissionInfo = common::PermissionInfo;
 #[tauri::command]
 /// 读取插件列表
 pub fn list_plugins(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<Vec<crate::models::plugin::PluginInfo>, String> {
     basic::list_plugins(manager)
 }
@@ -22,7 +25,10 @@ pub fn list_plugins(
 #[tauri::command]
 /// 重新扫描插件目录
 pub fn scan_plugins(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<Vec<crate::models::plugin::PluginInfo>, String> {
     basic::scan_plugins(manager)
 }
@@ -31,7 +37,10 @@ pub fn scan_plugins(
 /// 启用插件
 pub fn enable_plugin(
     plugin_id: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<(), String> {
     basic::enable_plugin(plugin_id, manager)
 }
@@ -40,14 +49,20 @@ pub fn enable_plugin(
 /// 禁用插件
 pub fn disable_plugin(
     plugin_id: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<Vec<String>, String> {
     basic::disable_plugin(plugin_id, manager)
 }
 
 #[tauri::command]
 pub fn get_plugin_nav_items(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<Vec<serde_json::Value>, String> {
     basic::get_plugin_nav_items(manager)
 }
@@ -55,7 +70,10 @@ pub fn get_plugin_nav_items(
 #[tauri::command]
 pub fn install_plugin(
     path: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<crate::models::plugin::PluginInstallResult, String> {
     basic::install_plugin(path, manager)
 }
@@ -63,7 +81,10 @@ pub fn install_plugin(
 #[tauri::command]
 pub fn get_plugin_icon(
     plugin_id: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<String, String> {
     basic::get_plugin_icon(plugin_id, manager)
 }
@@ -71,7 +92,10 @@ pub fn get_plugin_icon(
 #[tauri::command]
 pub fn get_plugin_settings(
     plugin_id: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<serde_json::Value, String> {
     basic::get_plugin_settings(plugin_id, manager)
 }
@@ -80,7 +104,10 @@ pub fn get_plugin_settings(
 pub fn set_plugin_settings(
     plugin_id: String,
     settings: serde_json::Value,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<(), String> {
     basic::set_plugin_settings(plugin_id, settings, manager)
 }
@@ -88,21 +115,30 @@ pub fn set_plugin_settings(
 #[tauri::command]
 pub fn get_plugin_css(
     plugin_id: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<String, String> {
     basic::get_plugin_css(plugin_id, manager)
 }
 
 #[tauri::command]
 pub fn get_all_plugin_css(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<Vec<(String, String)>, String> {
     basic::get_all_plugin_css(manager)
 }
 
 #[tauri::command]
 pub async fn delete_plugin(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
     plugin_id: String,
     delete_data: Option<bool>,
 ) -> Result<(), String> {
@@ -111,7 +147,10 @@ pub async fn delete_plugin(
 
 #[tauri::command]
 pub async fn delete_plugins(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
     plugin_ids: Vec<String>,
     delete_data: Option<bool>,
 ) -> Result<(), String> {
@@ -120,7 +159,10 @@ pub async fn delete_plugins(
 
 #[tauri::command]
 pub async fn check_plugin_update(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
     plugin_id: String,
 ) -> Result<Option<crate::models::plugin::PluginUpdateInfo>, String> {
     market::check_plugin_update(manager, plugin_id).await
@@ -128,14 +170,20 @@ pub async fn check_plugin_update(
 
 #[tauri::command]
 pub async fn check_all_plugin_updates(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<Vec<crate::models::plugin::PluginUpdateInfo>, String> {
     market::check_all_plugin_updates(manager).await
 }
 
 #[tauri::command]
 pub async fn fetch_market_plugins(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
     market_url: Option<String>,
 ) -> Result<Vec<crate::models::plugin::MarketPluginInfo>, String> {
     market::fetch_market_plugins(manager, market_url).await
@@ -150,7 +198,10 @@ pub async fn fetch_market_categories(
 
 #[tauri::command]
 pub async fn fetch_market_plugin_detail(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
     plugin_path: String,
     market_url: Option<String>,
 ) -> Result<serde_json::Value, String> {
@@ -160,7 +211,10 @@ pub async fn fetch_market_plugin_detail(
 #[tauri::command]
 /// 从插件市场安装插件
 pub async fn install_from_market(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
     req: market::InstallFromMarketRequest,
 ) -> Result<crate::models::plugin::PluginInstallResult, String> {
     market::install_from_market(manager, req).await
@@ -169,14 +223,20 @@ pub async fn install_from_market(
 #[tauri::command]
 pub fn install_plugins_batch(
     paths: Vec<String>,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<crate::models::plugin::BatchInstallResult, String> {
     basic::install_plugins_batch(paths, manager)
 }
 
 #[tauri::command]
 pub fn context_menu_hide_notify(
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<(), String> {
     ui_bridge::context_menu_hide_notify(manager)
 }
@@ -187,7 +247,10 @@ pub fn context_menu_show_notify(
     target_data: serde_json::Value,
     x: f64,
     y: f64,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<(), String> {
     ui_bridge::context_menu_show_notify(context, target_data, x, y, manager)
 }
@@ -198,7 +261,10 @@ pub fn context_menu_callback(
     context: String,
     item_id: String,
     target_data: serde_json::Value,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<(), String> {
     ui_bridge::context_menu_callback(plugin_id, context, item_id, target_data, manager)
 }
@@ -206,7 +272,10 @@ pub fn context_menu_callback(
 #[tauri::command]
 pub fn on_locale_changed(
     locale: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<(), String> {
     ui_bridge::on_locale_changed(locale, manager)
 }
@@ -229,7 +298,10 @@ pub fn component_mirror_clear() {
 #[tauri::command]
 pub fn on_page_changed(
     path: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<(), String> {
     ui_bridge::on_page_changed(path, manager)
 }
@@ -269,7 +341,10 @@ pub fn get_permission_list() -> Vec<PermissionInfo> {
 #[tauri::command]
 pub fn get_plugin_permissions(
     plugin_id: String,
-    manager: tauri::State<'_, std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>>,
+    manager: tauri::State<
+        '_,
+        std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
+    >,
 ) -> Result<Vec<PermissionInfo>, String> {
     permissions::get_plugin_permissions(plugin_id, manager)
 }

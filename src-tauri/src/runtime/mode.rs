@@ -21,7 +21,8 @@ impl RuntimeMode {
     /// The runtime mode that should be used for this process launch.
     pub fn detect() -> Self {
         if Path::new("/.dockerenv").exists() {
-            let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "/app/dist".to_string());
+            let static_dir =
+                std::env::var("STATIC_DIR").unwrap_or_else(|_| "/app/dist".to_string());
             let static_dir = Path::new(&static_dir).exists().then_some(static_dir);
 
             return Self::HeadlessHttp {

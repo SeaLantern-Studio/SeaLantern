@@ -58,7 +58,11 @@ pub fn get_server_resource_usage(server_id: String) -> Result<serde_json::Value,
     let disk_path = Path::new(&server.path);
     let disk_used = get_cached_directory_size(disk_path);
     let (disk_total, disk_available) = get_path_disk_capacity(disk_path);
-    let disk_total_effective = if disk_total > 0 { disk_total } else { disk_used.max(1) };
+    let disk_total_effective = if disk_total > 0 {
+        disk_total
+    } else {
+        disk_used.max(1)
+    };
     let disk_usage = if disk_total_effective > 0 {
         (disk_used as f64 / disk_total_effective as f64 * 100.0) as f32
     } else {

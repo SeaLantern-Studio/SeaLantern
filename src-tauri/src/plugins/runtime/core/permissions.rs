@@ -29,9 +29,9 @@ impl PluginRuntime {
         let error_fn = self
             .lua
             .create_function(move |_, ()| -> Result<(), mlua::Error> {
-                Err(mlua::Error::runtime(
-                    missing_permission_in_manifest_message(&module_name_owned),
-                ))
+                Err(mlua::Error::runtime(missing_permission_in_manifest_message(
+                    &module_name_owned,
+                )))
             })
             .map_err(|e| format!("Failed to create error function for {}: {}", module_name, e))?;
 
@@ -48,9 +48,9 @@ impl PluginRuntime {
         let index_fn = self
             .lua
             .create_function(move |_, _key: mlua::Value| -> Result<mlua::Value, mlua::Error> {
-                Err(mlua::Error::runtime(
-                    missing_permission_in_manifest_message(&module_name_for_meta),
-                ))
+                Err(mlua::Error::runtime(missing_permission_in_manifest_message(
+                    &module_name_for_meta,
+                )))
             })
             .map_err(|e| format!("Failed to create __index for {}: {}", module_name, e))?;
 

@@ -1,4 +1,6 @@
-use super::command_builder::{build_configured_command, build_direct_jar_command, find_preferred_jar_path};
+use super::command_builder::{
+    build_configured_command, build_direct_jar_command, find_preferred_jar_path,
+};
 use super::context::LaunchContext;
 use crate::models::server::ServerInstance;
 use crate::services::server::log_pipeline as server_log_pipeline;
@@ -70,13 +72,10 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                     &format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode),
                 );
                 let fallback_cmd = build_configured_command(&context)?;
-                let fallback_child = spawn_command(
-                    id,
-                    context.server,
-                    fallback_cmd,
-                    "回退脚本/配置模式",
-                )
-                .map_err(|fallback_error| format!("{}；回退也失败：{}", reason, fallback_error))?;
+                let fallback_child =
+                    spawn_command(id, context.server, fallback_cmd, "回退脚本/配置模式").map_err(
+                        |fallback_error| format!("{}；回退也失败：{}", reason, fallback_error),
+                    )?;
                 fallback_info = Some(super::super::super::StartFallbackInfo {
                     from_mode: "jar".to_string(),
                     to_mode: configured_mode,
@@ -90,10 +89,7 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
         spawn_command(id, context.server, command, "配置模式")?
     };
 
-    Ok(LaunchPlan {
-        child,
-        fallback_info,
-    })
+    Ok(LaunchPlan { child, fallback_info })
 }
 
 fn spawn_command(

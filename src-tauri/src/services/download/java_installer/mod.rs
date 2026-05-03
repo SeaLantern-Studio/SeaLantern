@@ -16,7 +16,10 @@ use crate::hardcode_data::app_files::JAVA_DOWNLOAD_TEMP_FILE_NAME;
 use crate::utils::constants::{JAVA_DOWNLOAD_RETRY_LIMIT, JAVA_DOWNLOAD_TIMEOUT_SECS};
 
 use archive::extract_downloaded_archive;
-use progress::{emit_download_finished, emit_downloading_started, emit_extracting_started, emit_finished, emit_progress};
+use progress::{
+    emit_download_finished, emit_downloading_started, emit_extracting_started, emit_finished,
+    emit_progress,
+};
 use shared::{bytes_to_mb, resolve_install_source, resolve_java_binary_path};
 
 /// 下载并安装 Java 运行时
@@ -96,11 +99,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
                 &window,
                 downloaded,
                 total_size,
-                format!(
-                    "正在下载：{}/{}",
-                    bytes_to_mb(downloaded),
-                    bytes_to_mb(total_size)
-                ),
+                format!("正在下载：{}/{}", bytes_to_mb(downloaded), bytes_to_mb(total_size)),
             );
             last_emit = std::time::Instant::now();
         }

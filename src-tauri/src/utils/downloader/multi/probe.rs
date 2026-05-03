@@ -24,10 +24,7 @@ pub(super) async fn probe_remote_file(
     let supports_range = probe.status() == StatusCode::PARTIAL_CONTENT;
     let total_size = parse_total_size(&probe, supports_range)?;
 
-    Ok(RemoteFileInfo {
-        total_size,
-        supports_range,
-    })
+    Ok(RemoteFileInfo { total_size, supports_range })
 }
 
 fn parse_total_size(response: &Response, supports_range: bool) -> Result<u64, String> {

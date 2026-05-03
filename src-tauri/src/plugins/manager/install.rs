@@ -5,8 +5,8 @@ mod zip_ops;
 use super::{PluginInfo, PluginInstallResult, PluginManager, PluginState};
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 use crate::hardcode_data::plugin_manifest::{
-    manifest_not_found_in_dir_message, parse_manifest_failed_message,
-    read_manifest_failed_message, unsupported_plugin_source_message_en,
+    manifest_not_found_in_dir_message, parse_manifest_failed_message, read_manifest_failed_message,
+    unsupported_plugin_source_message_en,
 };
 use crate::plugins::loader::PluginLoader;
 use std::fs::{self};
@@ -21,7 +21,10 @@ pub(super) fn install_plugin(
 ) -> Result<PluginInstallResult, String> {
     let plugin_info = if path.extension().is_some_and(|ext| ext == "zip") {
         zip_ops::install_plugin_from_zip(manager, path)?
-    } else if path.file_name().is_some_and(|name| name == PLUGIN_MANIFEST_FILE_NAME) {
+    } else if path
+        .file_name()
+        .is_some_and(|name| name == PLUGIN_MANIFEST_FILE_NAME)
+    {
         let plugin_dir = path.parent().ok_or("Invalid manifest path")?;
         install_plugin_from_dir(manager, plugin_dir)?
     } else if path.is_dir() {
@@ -54,8 +57,8 @@ pub(super) fn install_plugin_from_dir(
         return Err(manifest_not_found_in_dir_message(source_dir));
     }
 
-    let manifest_content = fs::read_to_string(&manifest_path)
-        .map_err(|e| read_manifest_failed_message(&e))?;
+    let manifest_content =
+        fs::read_to_string(&manifest_path).map_err(|e| read_manifest_failed_message(&e))?;
 
     let manifest: crate::models::plugin::PluginManifest =
         serde_json::from_str(&manifest_content).map_err(|e| parse_manifest_failed_message(&e))?;
@@ -143,10 +146,7 @@ pub(super) fn delete_plugin(
 ) -> Result<(), String> {
     if let Some(plugin_info) = manager.plugins.get(plugin_id) {
         if matches!(plugin_info.state, PluginState::Enabled) {
-            return Err(format!(
-                "插件 '{}' 正在运行，请先禁用后再删除",
-                plugin_info.manifest.name
-            ));
+            return Err(format!("插件 '{}' 正在运行，请先禁用后再删除", plugin_info.manifest.name));
         }
     }
 

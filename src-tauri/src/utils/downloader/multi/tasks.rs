@@ -1,5 +1,5 @@
-use super::chunk::download_chunk;
 use super::super::{DownloadError, DownloadStatus};
+use super::chunk::download_chunk;
 use reqwest::Client;
 use std::sync::Arc;
 

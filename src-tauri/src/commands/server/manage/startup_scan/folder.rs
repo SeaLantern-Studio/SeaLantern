@@ -1,4 +1,6 @@
-use super::common::{build_result, is_starter_main_class, startup_detail, unknown_parsed_core_info};
+use super::common::{
+    build_result, is_starter_main_class, startup_detail, unknown_parsed_core_info,
+};
 use crate::models::server::{ParsedServerCoreInfo, StartupCandidateItem, StartupScanResult};
 use std::path::Path;
 

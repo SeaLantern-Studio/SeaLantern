@@ -3,10 +3,7 @@
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 
 pub fn unsupported_plugin_source_message() -> String {
-    format!(
-        "不支持的文件格式，请提供 .zip 文件、{} 或插件目录",
-        PLUGIN_MANIFEST_FILE_NAME
-    )
+    format!("不支持的文件格式，请提供 .zip 文件、{} 或插件目录", PLUGIN_MANIFEST_FILE_NAME)
 }
 
 pub fn unsupported_plugin_source_message_en() -> String {

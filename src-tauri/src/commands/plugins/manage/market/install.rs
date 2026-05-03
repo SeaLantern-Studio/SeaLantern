@@ -1,6 +1,6 @@
+use super::super::common::{is_trusted_download_url, lock_manager, PluginManagerState};
 use super::github::resolve_plugin_download_url;
 use super::shared::{build_market_client, remove_download_temp_files};
-use super::super::common::{is_trusted_download_url, lock_manager, PluginManagerState};
 use crate::hardcode_data::app_files::PLUGIN_MARKET_TEMP_DIR_NAME;
 use crate::hardcode_data::plugin_market::{
     PLUGIN_MARKET_ALLOWED_DOWNLOAD_DOMAINS, PLUGIN_MARKET_HTTP_USER_AGENT,
@@ -52,11 +52,11 @@ pub(super) async fn install_from_market(
         if let Some(existing) = manager.plugins().get(&plugin_id) {
             if matches!(existing.state, crate::models::plugin::PluginState::Enabled) {
                 return Err(format!(
-                "插件 '{}' 正在运行中，请先禁用后再进行更新",
-                existing.manifest.name
-            ));
+                    "插件 '{}' 正在运行中，请先禁用后再进行更新",
+                    existing.manifest.name
+                ));
+            }
         }
-    }
     }
 
     let untrusted_url = download_url

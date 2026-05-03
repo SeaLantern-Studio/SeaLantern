@@ -83,10 +83,7 @@ fn validate_chunk_response(response: &Response, start: u64) -> Result<(), Downlo
     }
 
     if !response.status().is_success() && response.status() != StatusCode::PARTIAL_CONTENT {
-        return Err(DownloadError::Cancelled(format!(
-            "下载失败，状态码: {}",
-            response.status()
-        )));
+        return Err(DownloadError::Cancelled(format!("下载失败，状态码: {}", response.status())));
     }
 
     Ok(())

@@ -1,6 +1,4 @@
-use super::super::super::common::{
-    resolve_managed_console_encoding, ManagedConsoleEncoding,
-};
+use super::super::super::common::{resolve_managed_console_encoding, ManagedConsoleEncoding};
 use crate::models::server::ServerInstance;
 use crate::services::server::installer;
 use crate::services::server::log_pipeline as server_log_pipeline;

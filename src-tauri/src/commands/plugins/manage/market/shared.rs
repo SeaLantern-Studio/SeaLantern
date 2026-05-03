@@ -1,9 +1,7 @@
 use crate::hardcode_data::app_files::PLUGIN_MARKET_TEMP_DIR_NAME;
 use crate::hardcode_data::plugin_market::GITHUB_PROFILE_BASE_URL;
 
-pub(super) fn build_market_client(
-    user_agent: &str,
-) -> Result<reqwest::blocking::Client, String> {
+pub(super) fn build_market_client(user_agent: &str) -> Result<reqwest::blocking::Client, String> {
     reqwest::blocking::Client::builder()
         .user_agent(user_agent)
         .build()

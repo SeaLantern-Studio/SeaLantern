@@ -23,10 +23,7 @@ pub(super) fn validate_program_path(
     }
 
     if !program_path.is_file() {
-        return Err(mlua::Error::runtime(format!(
-            "Program path is not a file: {}",
-            program
-        )));
+        return Err(mlua::Error::runtime(format!("Program path is not a file: {}", program)));
     }
 
     Ok(())

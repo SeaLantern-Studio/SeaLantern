@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
+use super::super::version::compare_versions;
 use super::paths::get_pending_update_file;
 use super::PendingUpdate;
-use super::super::version::compare_versions;
 
 pub(super) async fn check_pending_update() -> Result<Option<PendingUpdate>, String> {
     let pending_file = get_pending_update_file();
@@ -14,8 +14,8 @@ pub(super) async fn check_pending_update() -> Result<Option<PendingUpdate>, Stri
     let json = std::fs::read_to_string(&pending_file)
         .map_err(|e| format!("Failed to read pending update file: {}", e))?;
 
-    let pending: PendingUpdate =
-        serde_json::from_str(&json).map_err(|e| format!("Failed to parse pending update: {}", e))?;
+    let pending: PendingUpdate = serde_json::from_str(&json)
+        .map_err(|e| format!("Failed to parse pending update: {}", e))?;
 
     let path = PathBuf::from(&pending.file_path);
     if !path.exists() {

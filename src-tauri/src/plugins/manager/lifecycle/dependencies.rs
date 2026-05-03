@@ -54,7 +54,12 @@ pub(super) fn get_dependent_plugin_ids(manager: &PluginManager, plugin_id: &str)
             continue;
         }
 
-        if info.manifest.dependencies.iter().any(|d| d.id() == plugin_id) {
+        if info
+            .manifest
+            .dependencies
+            .iter()
+            .any(|d| d.id() == plugin_id)
+        {
             dependents.push(id.clone());
         }
     }

@@ -1,10 +1,10 @@
 use super::types::UpdateInfo;
 #[cfg(target_os = "linux")]
+use super::version::compare_versions;
+#[cfg(target_os = "linux")]
 use crate::hardcode_data::external_services::{AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL};
 #[cfg(target_os = "linux")]
 use crate::hardcode_data::plugin_market::PLUGIN_MARKET_HTTP_USER_AGENT;
-#[cfg(target_os = "linux")]
-use super::version::compare_versions;
 
 /// 检查是否为 Arch Linux 系统
 #[cfg(target_os = "linux")]

@@ -39,10 +39,9 @@ pub(super) fn scan_archive_source(source_path: String) -> Result<StartupScanResu
     let mut temp_extract_dir: Option<std::path::PathBuf> = None;
 
     let inspect_root = if source.is_file() {
-        let temp_dir = std::env::temp_dir()
-            .join(format!("sea_lantern_startup_scan_{}", uuid::Uuid::new_v4()));
-        std::fs::create_dir_all(&temp_dir)
-            .map_err(|e| format!("无法创建临时解压目录: {}", e))?;
+        let temp_dir =
+            std::env::temp_dir().join(format!("sea_lantern_startup_scan_{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp_dir).map_err(|e| format!("无法创建临时解压目录: {}", e))?;
         crate::services::server::installer::extract_modpack_archive(source, &temp_dir)?;
         let root_dir = crate::services::server::installer::resolve_extracted_root(&temp_dir);
         temp_extract_dir = Some(temp_dir);

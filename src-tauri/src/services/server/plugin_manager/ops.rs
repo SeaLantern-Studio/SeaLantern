@@ -3,7 +3,11 @@ use std::fs;
 use super::common::{ensure_plugins_dir, normalize_plugin_file_name};
 use tokio::io::AsyncWriteExt;
 
-pub(super) fn toggle_plugin(server_path: &str, file_name: &str, enabled: bool) -> Result<(), String> {
+pub(super) fn toggle_plugin(
+    server_path: &str,
+    file_name: &str,
+    enabled: bool,
+) -> Result<(), String> {
     let plugins_dir = ensure_plugins_dir(server_path)?;
     let base_file_name = normalize_plugin_file_name(file_name);
 

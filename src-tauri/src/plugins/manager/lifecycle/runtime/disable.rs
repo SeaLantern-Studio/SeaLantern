@@ -1,7 +1,7 @@
+use super::super::super::{PluginManager, PluginState};
 use super::shared::{
     call_on_disable, cleanup_runtime_resources, clear_plugin_side_effects, mark_plugin_disabled,
 };
-use super::super::super::{PluginManager, PluginState};
 use std::collections::HashSet;
 
 pub(in crate::plugins::manager::lifecycle) fn disable_plugin(

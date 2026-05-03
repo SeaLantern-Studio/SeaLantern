@@ -137,7 +137,8 @@ pub(super) fn find_server_jar_in_dir(dir: &Path) -> Option<String> {
         .filter_map(|entry| {
             let path = entry.path();
             if path.is_file() && path.extension()? == "jar" {
-                path.file_name().map(|name| name.to_string_lossy().to_string())
+                path.file_name()
+                    .map(|name| name.to_string_lossy().to_string())
             } else {
                 None
             }

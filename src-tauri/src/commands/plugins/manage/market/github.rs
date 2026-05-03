@@ -1,7 +1,7 @@
 use super::shared::build_market_client;
 use crate::hardcode_data::plugin_market::{
-    GITHUB_CODELOAD_BASE_URL, GITHUB_RELEASE_API_BASE_URL,
-    PLUGIN_MARKET_ALLOWED_DOWNLOAD_DOMAINS, PLUGIN_MARKET_HTTP_USER_AGENT,
+    GITHUB_CODELOAD_BASE_URL, GITHUB_RELEASE_API_BASE_URL, PLUGIN_MARKET_ALLOWED_DOWNLOAD_DOMAINS,
+    PLUGIN_MARKET_HTTP_USER_AGENT,
 };
 use url::Url;
 
@@ -66,7 +66,9 @@ fn resolve_github_download_url(
             None | Some("latest") => {
                 format!("{}/{}/releases/latest", GITHUB_RELEASE_API_BASE_URL, github)
             }
-            Some(tag) => format!("{}/{}/releases/tags/{}", GITHUB_RELEASE_API_BASE_URL, github, tag),
+            Some(tag) => {
+                format!("{}/{}/releases/tags/{}", GITHUB_RELEASE_API_BASE_URL, github, tag)
+            }
         };
 
         let response = client
@@ -95,7 +97,9 @@ fn resolve_github_download_url(
 
             let parsed_url =
                 Url::parse(&url).map_err(|e| format!("Invalid browser_download_url: {}", e))?;
-            if !PLUGIN_MARKET_ALLOWED_DOWNLOAD_DOMAINS.contains(&parsed_url.host_str().unwrap_or("")) {
+            if !PLUGIN_MARKET_ALLOWED_DOWNLOAD_DOMAINS
+                .contains(&parsed_url.host_str().unwrap_or(""))
+            {
                 return Err(format!(
                     "browser_download_url domain '{}' is not in the allowed list",
                     parsed_url.host_str().unwrap_or("")
@@ -110,7 +114,8 @@ fn resolve_github_download_url(
         Ok((download_url, detected_version))
     } else {
         let branch = branch.unwrap_or("main");
-        let download_url = format!("{}/{}/zip/refs/heads/{}", GITHUB_CODELOAD_BASE_URL, github, branch);
+        let download_url =
+            format!("{}/{}/zip/refs/heads/{}", GITHUB_CODELOAD_BASE_URL, github, branch);
         Ok((download_url, "source".to_string()))
     }
 }

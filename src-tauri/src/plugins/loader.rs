@@ -1,5 +1,5 @@
-use crate::models::plugin::PluginManifest;
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
+use crate::models::plugin::PluginManifest;
 use std::fs;
 use std::path::{Path, PathBuf};
 

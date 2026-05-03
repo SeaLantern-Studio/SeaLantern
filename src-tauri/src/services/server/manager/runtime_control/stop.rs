@@ -69,10 +69,8 @@ pub(super) fn stop_server(manager: &ServerManager, id: &str) -> Result<(), Strin
     let mut procs = manager.lock_processes()?;
     if let Some(mut child) = procs.remove(id) {
         let _ = force_kill_process_tree(&mut child);
-        let _ = server_log_pipeline::append_sealantern_log(
-            id,
-            "[Sea Lantern] 服务器超时，已强制终止",
-        );
+        let _ =
+            server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器超时，已强制终止");
     }
     server_log_pipeline::shutdown_writer(id);
     manager.clear_stopping(id);

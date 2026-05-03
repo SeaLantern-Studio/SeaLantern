@@ -13,7 +13,6 @@ pub use setters::{
     set_server_ready_handler, set_sidebar_event_handler, set_ui_event_handler,
 };
 pub use state::{
-    ApiCallHandler, ComponentEventHandler, ContextMenuHandler, I18nEventHandler,
-    LogEventHandler, PermissionLogHandler, ServerReadyHandler, SidebarEventHandler,
-    UiEventHandler,
+    ApiCallHandler, ComponentEventHandler, ContextMenuHandler, I18nEventHandler, LogEventHandler,
+    PermissionLogHandler, ServerReadyHandler, SidebarEventHandler, UiEventHandler,
 };

@@ -21,16 +21,14 @@ pub type ComponentEventHandler = Arc<dyn Fn(&str, &str) -> Result<(), String> + 
 
 pub type ServerReadyHandler = Arc<dyn Fn(&str) -> Result<(), String> + Send + Sync>;
 
-pub type I18nEventHandler =
-    Arc<dyn Fn(&str, &str, &str, &str) -> Result<(), String> + Send + Sync>;
+pub type I18nEventHandler = Arc<dyn Fn(&str, &str, &str, &str) -> Result<(), String> + Send + Sync>;
 
 pub(super) static API_CALL_HANDLER: RwLock<Option<ApiCallHandler>> = RwLock::new(None);
 pub(super) static UI_EVENT_HANDLER: RwLock<Option<UiEventHandler>> = RwLock::new(None);
 pub(super) static LOG_EVENT_HANDLER: RwLock<Option<LogEventHandler>> = RwLock::new(None);
 pub(super) static CONTEXT_MENU_HANDLER: RwLock<Option<ContextMenuHandler>> = RwLock::new(None);
 pub(super) static SIDEBAR_EVENT_HANDLER: RwLock<Option<SidebarEventHandler>> = RwLock::new(None);
-pub(super) static PERMISSION_LOG_HANDLER: RwLock<Option<PermissionLogHandler>> =
-    RwLock::new(None);
+pub(super) static PERMISSION_LOG_HANDLER: RwLock<Option<PermissionLogHandler>> = RwLock::new(None);
 pub(super) static COMPONENT_EVENT_HANDLER: RwLock<Option<ComponentEventHandler>> =
     RwLock::new(None);
 pub(super) static SERVER_READY_HANDLER: RwLock<Option<ServerReadyHandler>> = RwLock::new(None);

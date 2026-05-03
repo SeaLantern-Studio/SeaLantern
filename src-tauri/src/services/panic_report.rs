@@ -45,7 +45,9 @@ pub fn init_panic_hook() {
         let panic_message = panic_info.to_string();
         let location = panic_info
             .location()
-            .map(|location| format!("{}:{}:{}", location.file(), location.line(), location.column()))
+            .map(|location| {
+                format!("{}:{}:{}", location.file(), location.line(), location.column())
+            })
             .unwrap_or_else(|| "unknown location".to_string());
 
         let os_info = system_info::get_os_info();

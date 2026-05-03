@@ -46,10 +46,7 @@ pub(super) fn stop_server(id: &str) {
 }
 
 pub(super) fn search_mods(query: &str, version: &str, loader: &str) {
-    println!(
-        "正在搜索 Modrinth: {} (版本: {}, 加载器: {})...",
-        query, version, loader
-    );
+    println!("正在搜索 Modrinth: {} (版本: {}, 加载器: {})...", query, version, loader);
     run_async_cli_task(async {
         let mod_manager = global::mod_manager();
         match mod_manager.search_modrinth(query, version, loader).await {
@@ -60,10 +57,7 @@ pub(super) fn search_mods(query: &str, version: &str, loader: &str) {
                     println!("{:<20} {:<15} {:<50}", "名称", "来源", "下载链接");
                     println!("{}", "-".repeat(85));
                     for item in mods {
-                        println!(
-                            "{:<20} {:<15} {:<50}",
-                            item.name, item.source, item.download_url
-                        );
+                        println!("{:<20} {:<15} {:<50}", item.name, item.source, item.download_url);
                     }
                 }
             }

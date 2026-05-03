@@ -34,5 +34,7 @@ pub use permission_logs::{
     BufferedPermissionLog,
 };
 pub use registry::{new_api_registry, ApiRegistry, ApiRegistryOps};
-pub use sidebar::{clear_plugin_sidebar_snapshot, take_sidebar_event_snapshot, BufferedSidebarEvent};
+pub use sidebar::{
+    clear_plugin_sidebar_snapshot, take_sidebar_event_snapshot, BufferedSidebarEvent,
+};
 pub use ui_snapshot::{clear_plugin_ui_snapshot, take_ui_event_snapshot, BufferedUiEvent};

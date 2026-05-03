@@ -2,9 +2,9 @@
 
 mod models;
 mod probe;
-mod scan;
 #[cfg(target_os = "windows")]
 mod registry;
+mod scan;
 
 pub use models::JavaInfo;
 

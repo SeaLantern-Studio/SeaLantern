@@ -4,10 +4,10 @@
 
 #[path = "plugin_model/dependencies.rs"]
 mod dependencies;
-#[path = "plugin_model/market.rs"]
-mod market;
 #[path = "plugin_model/manifest.rs"]
 mod manifest;
+#[path = "plugin_model/market.rs"]
+mod market;
 #[path = "plugin_model/runtime.rs"]
 mod runtime;
 

@@ -1,9 +1,13 @@
 use super::i18n::tunnel_t1;
-use super::state::{derive_ticket_for_state, tunnel_key_path, tunnel_profile_path, TunnelRuntimeState};
+use super::state::{
+    derive_ticket_for_state, tunnel_key_path, tunnel_profile_path, TunnelRuntimeState,
+};
 use sculk::persist::{generate_new_key, Profile};
 use sculk::types::{RelayUrl, SecretKey};
 
-pub(super) fn load_existing_secret_key(path: &std::path::Path) -> Result<Option<SecretKey>, String> {
+pub(super) fn load_existing_secret_key(
+    path: &std::path::Path,
+) -> Result<Option<SecretKey>, String> {
     let bytes = match std::fs::read(path) {
         Ok(bytes) => bytes,
         Err(e) => {

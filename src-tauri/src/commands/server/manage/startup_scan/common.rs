@@ -63,9 +63,10 @@ pub(super) fn build_result(
     detected_mc_version: Option<String>,
     mc_version_detection_failed: bool,
 ) -> StartupScanResult {
-    let detected_core_type_key = crate::services::server::installer::CoreType::normalize_to_api_core_key(
-        &parsed_core.core_type,
-    );
+    let detected_core_type_key =
+        crate::services::server::installer::CoreType::normalize_to_api_core_key(
+            &parsed_core.core_type,
+        );
 
     StartupScanResult {
         parsed_core,

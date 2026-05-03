@@ -20,8 +20,8 @@ pub(super) fn get_plugin_settings(
     let content = std::fs::read_to_string(&settings_path)
         .map_err(|e| format!("Failed to read settings file: {}", e))?;
 
-    let settings: serde_json::Value =
-        serde_json::from_str(&content).map_err(|e| format!("Failed to parse settings file: {}", e))?;
+    let settings: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse settings file: {}", e))?;
 
     Ok(settings)
 }
@@ -68,7 +68,8 @@ pub(super) fn get_plugin_icon(manager: &PluginManager, plugin_id: &str) -> Resul
         return Ok(String::new());
     }
 
-    let content = std::fs::read(&icon_path).map_err(|e| format!("Failed to read icon file: {}", e))?;
+    let content =
+        std::fs::read(&icon_path).map_err(|e| format!("Failed to read icon file: {}", e))?;
 
     let extension = icon_path.extension().and_then(|e| e.to_str()).unwrap_or("");
     let mime_type = match extension {

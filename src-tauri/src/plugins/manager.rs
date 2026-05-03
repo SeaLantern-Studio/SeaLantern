@@ -1,21 +1,21 @@
-mod lifecycle;
-mod install;
 mod assets;
-mod notify;
 mod dependency_state;
+mod install;
+mod lifecycle;
+mod notify;
 mod resource_copy;
 mod runtime_state;
 mod versioning;
 
+pub(crate) use crate::models::plugin::PluginState;
 use crate::models::plugin::{PluginInfo, PluginInstallResult};
 use crate::plugins::api::{new_api_registry, ApiRegistry};
+use runtime_state::new_shared_runtimes;
+pub(crate) use runtime_state::SharedRuntimes;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-pub(crate) use runtime_state::SharedRuntimes;
-use runtime_state::new_shared_runtimes;
-pub(crate) use crate::models::plugin::PluginState;
 
 /// 插件管理器
 ///

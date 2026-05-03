@@ -26,30 +26,28 @@ pub(crate) fn install_plugin_bridge(
     }));
 
     let app_handle = app.handle().clone();
-    plugins::api::set_ui_event_handler(Arc::new(
-        move |plugin_id, action, element_id, html| {
-            use serde::Serialize;
+    plugins::api::set_ui_event_handler(Arc::new(move |plugin_id, action, element_id, html| {
+        use serde::Serialize;
 
-            #[derive(Serialize, Clone)]
-            struct PluginUiEvent {
-                plugin_id: String,
-                action: String,
-                element_id: String,
-                html: String,
-            }
+        #[derive(Serialize, Clone)]
+        struct PluginUiEvent {
+            plugin_id: String,
+            action: String,
+            element_id: String,
+            html: String,
+        }
 
-            let event = PluginUiEvent {
-                plugin_id: plugin_id.to_string(),
-                action: action.to_string(),
-                element_id: element_id.to_string(),
-                html: html.to_string(),
-            };
+        let event = PluginUiEvent {
+            plugin_id: plugin_id.to_string(),
+            action: action.to_string(),
+            element_id: element_id.to_string(),
+            html: html.to_string(),
+        };
 
-            app_handle
-                .emit("plugin-ui-event", event)
-                .map_err(|e| format!("Failed to emit UI event: {}", e))
-        },
-    ));
+        app_handle
+            .emit("plugin-ui-event", event)
+            .map_err(|e| format!("Failed to emit UI event: {}", e))
+    }));
 
     let app_handle = app.handle().clone();
     plugins::api::set_log_event_handler(Arc::new(move |plugin_id, level, message| {
@@ -100,30 +98,28 @@ pub(crate) fn install_plugin_bridge(
     ));
 
     let app_handle = app.handle().clone();
-    plugins::api::set_sidebar_event_handler(Arc::new(
-        move |plugin_id, action, label, icon| {
-            use serde::Serialize;
+    plugins::api::set_sidebar_event_handler(Arc::new(move |plugin_id, action, label, icon| {
+        use serde::Serialize;
 
-            #[derive(Serialize, Clone)]
-            struct PluginSidebarEvent {
-                plugin_id: String,
-                action: String,
-                label: String,
-                icon: String,
-            }
+        #[derive(Serialize, Clone)]
+        struct PluginSidebarEvent {
+            plugin_id: String,
+            action: String,
+            label: String,
+            icon: String,
+        }
 
-            let event = PluginSidebarEvent {
-                plugin_id: plugin_id.to_string(),
-                action: action.to_string(),
-                label: label.to_string(),
-                icon: icon.to_string(),
-            };
+        let event = PluginSidebarEvent {
+            plugin_id: plugin_id.to_string(),
+            action: action.to_string(),
+            label: label.to_string(),
+            icon: icon.to_string(),
+        };
 
-            app_handle
-                .emit("plugin-sidebar-event", event)
-                .map_err(|e| format!("Failed to emit sidebar event: {}", e))
-        },
-    ));
+        app_handle
+            .emit("plugin-sidebar-event", event)
+            .map_err(|e| format!("Failed to emit sidebar event: {}", e))
+    }));
 
     let app_handle = app.handle().clone();
     plugins::api::set_permission_log_handler(Arc::new(
@@ -163,30 +159,28 @@ pub(crate) fn install_plugin_bridge(
     }));
 
     let app_handle = app.handle().clone();
-    plugins::api::set_i18n_event_handler(Arc::new(
-        move |plugin_id, action, locale, payload| {
-            use serde::Serialize;
+    plugins::api::set_i18n_event_handler(Arc::new(move |plugin_id, action, locale, payload| {
+        use serde::Serialize;
 
-            #[derive(Serialize, Clone)]
-            struct PluginI18nEvent {
-                plugin_id: String,
-                action: String,
-                locale: String,
-                payload: String,
-            }
+        #[derive(Serialize, Clone)]
+        struct PluginI18nEvent {
+            plugin_id: String,
+            action: String,
+            locale: String,
+            payload: String,
+        }
 
-            let event = PluginI18nEvent {
-                plugin_id: plugin_id.to_string(),
-                action: action.to_string(),
-                locale: locale.to_string(),
-                payload: payload.to_string(),
-            };
+        let event = PluginI18nEvent {
+            plugin_id: plugin_id.to_string(),
+            action: action.to_string(),
+            locale: locale.to_string(),
+            payload: payload.to_string(),
+        };
 
-            app_handle
-                .emit("plugin-i18n-event", event)
-                .map_err(|e| format!("Failed to emit i18n event: {}", e))
-        },
-    ));
+        app_handle
+            .emit("plugin-i18n-event", event)
+            .map_err(|e| format!("Failed to emit i18n event: {}", e))
+    }));
 
     plugins::api::set_server_ready_handler(Arc::new(move |server_id| {
         let runtimes = shared_runtimes_for_server_ready

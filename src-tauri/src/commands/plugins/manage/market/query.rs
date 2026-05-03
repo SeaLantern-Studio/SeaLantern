@@ -112,7 +112,8 @@ pub(super) async fn check_all_plugin_updates(
             let url = format!("{}/{}", PLUGIN_MARKET_BASE_URL, plugin_path);
             if let Ok(response) = client.get(&url).send() {
                 if response.status().is_success() {
-                    if let Ok(market_info) = response.json::<crate::models::plugin::MarketPluginInfo>()
+                    if let Ok(market_info) =
+                        response.json::<crate::models::plugin::MarketPluginInfo>()
                     {
                         if let Some(ref latest_version) = market_info.version {
                             if PluginManager::is_newer_version(latest_version, &current_version) {

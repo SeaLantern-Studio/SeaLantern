@@ -9,10 +9,7 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
     handlers.insert("tunnel_join".to_string(), handle_tunnel_join as CommandHandler);
     handlers.insert("tunnel_stop".to_string(), handle_tunnel_stop as CommandHandler);
     handlers.insert("tunnel_status".to_string(), handle_tunnel_status as CommandHandler);
-    handlers.insert(
-        "tunnel_copy_ticket".to_string(),
-        handle_tunnel_copy_ticket as CommandHandler,
-    );
+    handlers.insert("tunnel_copy_ticket".to_string(), handle_tunnel_copy_ticket as CommandHandler);
     handlers.insert(
         "tunnel_regenerate_ticket".to_string(),
         handle_tunnel_regenerate_ticket as CommandHandler,

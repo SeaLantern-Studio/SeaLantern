@@ -6,10 +6,8 @@ pub(super) fn run_preload_script(id: &str, server_path: &str) {
         let preload_script = std::path::Path::new(server_path).join("preload.bat");
         if preload_script.exists() {
             println!("发现预加载脚本: {:?}", preload_script);
-            let _ = server_log_pipeline::append_sealantern_log(
-                id,
-                "[preload] 开始执行预加载脚本...",
-            );
+            let _ =
+                server_log_pipeline::append_sealantern_log(id, "[preload] 开始执行预加载脚本...");
 
             let mut cmd = std::process::Command::new("cmd");
             cmd.args(["/c", preload_script.to_str().unwrap_or("preload.bat")])
@@ -62,10 +60,8 @@ pub(super) fn run_preload_script(id: &str, server_path: &str) {
         let preload_script = std::path::Path::new(server_path).join("preload.sh");
         if preload_script.exists() {
             println!("发现预加载脚本: {:?}", preload_script);
-            let _ = server_log_pipeline::append_sealantern_log(
-                id,
-                "[preload] 开始执行预加载脚本...",
-            );
+            let _ =
+                server_log_pipeline::append_sealantern_log(id, "[preload] 开始执行预加载脚本...");
 
             match std::process::Command::new("sh")
                 .arg(&preload_script)

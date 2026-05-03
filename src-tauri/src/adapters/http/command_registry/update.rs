@@ -5,10 +5,7 @@ use std::collections::HashMap;
 
 pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
     handlers.insert("check_update".to_string(), handle_check_update as CommandHandler);
-    handlers.insert(
-        "open_download_url".to_string(),
-        handle_open_download_url as CommandHandler,
-    );
+    handlers.insert("open_download_url".to_string(), handle_open_download_url as CommandHandler);
 }
 
 fn handle_check_update(

@@ -7,7 +7,7 @@ use crate::services;
 use super::super::arch::{get_aur_helper, is_arch_linux};
 use super::paths::get_pending_update_file;
 use super::windows;
-use super::{INSTALL_IN_PROGRESS, PendingUpdate};
+use super::{PendingUpdate, INSTALL_IN_PROGRESS};
 
 pub(super) async fn execute_install(file_path: String, version: String) -> Result<(), String> {
     if INSTALL_IN_PROGRESS.swap(true, Ordering::SeqCst) {
@@ -103,8 +103,7 @@ fn launch_update_installer(
                 Some(file_path),
                 Some(pending_file_path.as_str()),
             ),
-            _ => opener::open(file_path)
-                .map_err(|e| format!("Failed to open update file: {}", e)),
+            _ => opener::open(file_path).map_err(|e| format!("Failed to open update file: {}", e)),
         }
     }
 

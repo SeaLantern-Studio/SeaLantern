@@ -63,10 +63,12 @@ pub async fn pick_startup_file(
         }
     }
 
-    dialog.add_filter("All Files", &["*"]).pick_file(move |path| {
-        let result = path.map(|p| p.to_string());
-        let _ = tx.send(result);
-    });
+    dialog
+        .add_filter("All Files", &["*"])
+        .pick_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
 
     rx.recv().map_err(|e| format!("Dialog error: {}", e))
 }
@@ -131,10 +133,13 @@ pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
 
-    app.dialog().file().set_title("Save File").save_file(move |path| {
-        let result = path.map(|p| p.to_string());
-        let _ = tx.send(result);
-    });
+    app.dialog()
+        .file()
+        .set_title("Save File")
+        .save_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
 
     rx.recv().map_err(|e| format!("Dialog error: {}", e))
 }

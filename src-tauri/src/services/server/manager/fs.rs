@@ -178,7 +178,8 @@ pub(super) fn upsert_run_path_mapping(
     mapping: RunPathServerMapping,
 ) -> Result<(), String> {
     let mut mappings = load_run_path_mappings(dir);
-    mappings.retain(|item| item.server_id != mapping.server_id && item.run_path != mapping.run_path);
+    mappings
+        .retain(|item| item.server_id != mapping.server_id && item.run_path != mapping.run_path);
     mappings.push(mapping);
     save_run_path_mappings(dir, &mappings)
 }

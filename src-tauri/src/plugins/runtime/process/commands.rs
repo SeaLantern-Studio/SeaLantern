@@ -30,10 +30,7 @@ pub(super) fn register(
     process_registry: &ProcessRegistry,
 ) -> Result<(), String> {
     process_table
-        .set(
-            "exec",
-            exec::exec(lua, plugin_dir, plugin_id, permissions, process_registry)?,
-        )
+        .set("exec", exec::exec(lua, plugin_dir, plugin_id, permissions, process_registry)?)
         .map_err(|e| format!("Failed to set process.exec: {}", e))?;
     process_table
         .set("get", query::get(lua, plugin_id, process_registry)?)
@@ -42,10 +39,7 @@ pub(super) fn register(
         .set("list", query::list(lua, plugin_id, process_registry)?)
         .map_err(|e| format!("Failed to set process.list: {}", e))?;
     process_table
-        .set(
-            "read_output",
-            read_output::read_output(lua, plugin_id, process_registry)?,
-        )
+        .set("read_output", read_output::read_output(lua, plugin_id, process_registry)?)
         .map_err(|e| format!("Failed to set process.read_output: {}", e))?;
 
     Ok(())

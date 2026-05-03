@@ -163,10 +163,7 @@ pub(super) fn register_single_string_ui_action(
                 event,
                 &target,
                 "",
-                Some(UiLogSpec {
-                    api_name,
-                    target: &target,
-                }),
+                Some(UiLogSpec { api_name, target: &target }),
             )
         }),
         &format!("ui.{}", table_key),

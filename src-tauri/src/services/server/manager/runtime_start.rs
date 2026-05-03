@@ -8,10 +8,7 @@ use super::common::normalize_startup_mode;
 use super::{ServerManager, StartFallbackInfo, StartServerReport};
 use crate::services::server::log_pipeline as server_log_pipeline;
 
-pub(super) fn start_server(
-    manager: &ServerManager,
-    id: &str,
-) -> Result<StartServerReport, String> {
+pub(super) fn start_server(manager: &ServerManager, id: &str) -> Result<StartServerReport, String> {
     let server = {
         let servers = manager.lock_servers()?;
         servers

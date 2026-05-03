@@ -35,8 +35,8 @@ pub(super) fn copy_included_resources(
 pub(super) fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
     fs::create_dir_all(dest)
         .map_err(|e| format!("Failed to create dir {}: {}", dest.display(), e))?;
-    let entries = fs::read_dir(src)
-        .map_err(|e| format!("Failed to read dir {}: {}", src.display(), e))?;
+    let entries =
+        fs::read_dir(src).map_err(|e| format!("Failed to read dir {}: {}", src.display(), e))?;
 
     for entry in entries {
         let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;

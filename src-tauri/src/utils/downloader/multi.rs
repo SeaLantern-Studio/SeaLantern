@@ -47,12 +47,18 @@ impl MultiThreadDownloader {
         }
 
         let remote = probe::probe_remote_file(&self.client, url).await?;
-        let actual_thread_count = if remote.supports_range { thread_count } else { 1 };
+        let actual_thread_count = if remote.supports_range {
+            thread_count
+        } else {
+            1
+        };
 
         let file = tokio::fs::File::create(output_path)
             .await
             .map_err(|e| e.to_string())?;
-        file.set_len(remote.total_size).await.map_err(|e| e.to_string())?;
+        file.set_len(remote.total_size)
+            .await
+            .map_err(|e| e.to_string())?;
 
         let status = Arc::new(DownloadStatus::new(remote.total_size));
         let client = Arc::new(self.client.clone());

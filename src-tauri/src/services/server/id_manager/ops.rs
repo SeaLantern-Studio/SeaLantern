@@ -106,10 +106,7 @@ pub(super) async fn update_id(
 }
 
 /// 停用短 ID
-pub(super) async fn deactivate_id(
-    entries: &SharedServerIdEntries,
-    id: &str,
-) -> Result<(), String> {
+pub(super) async fn deactivate_id(entries: &SharedServerIdEntries, id: &str) -> Result<(), String> {
     let mut current_entries = entries.write().await;
 
     match current_entries.get_mut(id) {
@@ -133,10 +130,7 @@ pub(super) async fn delete_id(entries: &SharedServerIdEntries, id: &str) -> Resu
 }
 
 /// 搜索短 ID
-pub(super) async fn search_ids(
-    entries: &SharedServerIdEntries,
-    query: &str,
-) -> Vec<ServerIdEntry> {
+pub(super) async fn search_ids(entries: &SharedServerIdEntries, query: &str) -> Vec<ServerIdEntry> {
     let current_entries = entries.read().await;
     let query_lower = query.to_lowercase();
 

@@ -1,5 +1,5 @@
-use super::context::LaunchContext;
 use super::super::super::common::{detect_java_major_version, escape_cmd_arg};
+use super::context::LaunchContext;
 use crate::services::server::installer;
 use std::path::Path;
 use std::process::Command;
@@ -90,11 +90,7 @@ pub(super) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Co
                 .starter_installer_url
                 .as_deref()
                 .ok_or_else(|| "Starter 安装器下载链接为空".to_string())?;
-            Ok(build_direct_jar_command(
-                context,
-                &context.server.jar_path,
-                Some(installer_url),
-            ))
+            Ok(build_direct_jar_command(context, &context.server.jar_path, Some(installer_url)))
         }
         "jar" => Ok(build_direct_jar_command(context, &context.server.jar_path, None)),
         _ => Ok(build_direct_jar_command(context, &context.server.jar_path, None)),

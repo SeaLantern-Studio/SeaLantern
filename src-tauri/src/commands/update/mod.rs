@@ -16,9 +16,9 @@ use crate::hardcode_data::update_sources::UPDATE_HTTP_USER_AGENT;
 #[cfg(target_os = "linux")]
 #[allow(unused_imports)]
 use self::arch as update_arch;
+use self::types::{PendingUpdate, UpdateInfo};
 #[allow(unused_imports)]
 use self::{cnb as update_cnb, download as update_download, install as update_install};
-use self::types::{PendingUpdate, UpdateInfo};
 
 #[cfg(not(debug_assertions))]
 use self::github as update_github;

@@ -4,7 +4,9 @@ use crate::hardcode_data::plugin_manifest::{
     invalid_manifest_path_message, missing_manifest_in_folder_message,
     unsupported_plugin_source_message,
 };
-use crate::models::plugin::{BatchInstallError, BatchInstallResult, PluginInfo, PluginInstallResult};
+use crate::models::plugin::{
+    BatchInstallError, BatchInstallResult, PluginInfo, PluginInstallResult,
+};
 
 /// 读取插件列表
 pub(super) fn list_plugins(manager: PluginManagerState<'_>) -> Result<Vec<PluginInfo>, String> {
@@ -186,10 +188,7 @@ pub(super) fn install_plugins_batch(
 
         match result {
             Ok(install_result) => success.push(install_result),
-            Err(error) => failed.push(BatchInstallError {
-                path: path_str,
-                error,
-            }),
+            Err(error) => failed.push(BatchInstallError { path: path_str, error }),
         }
     }
 

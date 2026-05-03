@@ -21,7 +21,8 @@ pub(in crate::plugins::manager::lifecycle) fn enable_plugin(
         return Ok(());
     }
 
-    let missing_deps = super::super::check_dependencies(manager, &plugin_info.manifest.dependencies);
+    let missing_deps =
+        super::super::check_dependencies(manager, &plugin_info.manifest.dependencies);
     if !missing_deps.is_empty() {
         return Err(format!(
             "无法启用插件 '{}'：缺少必须依赖：{}",

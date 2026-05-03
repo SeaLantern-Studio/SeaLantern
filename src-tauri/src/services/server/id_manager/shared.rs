@@ -30,10 +30,8 @@ pub(super) fn validate_custom_id(custom_id: &str) -> Result<(), String> {
         .chars()
         .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
     {
-        return Err(
-            "Server ID can only contain alphanumeric characters, hyphens, and underscores"
-                .to_string(),
-        );
+        return Err("Server ID can only contain alphanumeric characters, hyphens, and underscores"
+            .to_string());
     }
     Ok(())
 }

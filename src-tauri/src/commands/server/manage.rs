@@ -13,9 +13,7 @@ pub use common::ForceStopPreparationResponse;
 
 #[tauri::command]
 /// 准备强制停止服务器
-pub fn prepare_force_stop_server(
-    id: String,
-) -> Result<ForceStopPreparationResponse, String> {
+pub fn prepare_force_stop_server(id: String) -> Result<ForceStopPreparationResponse, String> {
     runtime::prepare_force_stop_server(id)
 }
 
@@ -190,7 +188,10 @@ pub fn get_server_list() -> Vec<crate::models::server::ServerInstance> {
 }
 
 #[tauri::command]
-pub fn get_server_status(app: tauri::AppHandle, id: String) -> crate::models::server::ServerStatusInfo {
+pub fn get_server_status(
+    app: tauri::AppHandle,
+    id: String,
+) -> crate::models::server::ServerStatusInfo {
     runtime::get_server_status(app, id)
 }
 

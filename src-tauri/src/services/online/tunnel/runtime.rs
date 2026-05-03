@@ -1,4 +1,6 @@
-use super::config::{apply_relay_preference, ensure_secret_key, normalize_optional_string, save_profile_in_state};
+use super::config::{
+    apply_relay_preference, ensure_secret_key, normalize_optional_string, save_profile_in_state,
+};
 use super::events::{map_connection, spawn_event_task};
 use super::i18n::{tunnel_t, tunnel_t1};
 use super::state::{
@@ -190,7 +192,9 @@ pub async fn status() -> TunnelStatus {
     let (tunnel_ref, mode_from_active) = {
         let active = active_tunnel().lock().await;
         (
-            active.as_ref().map(|tunnel| std::sync::Arc::clone(&tunnel.tunnel)),
+            active
+                .as_ref()
+                .map(|tunnel| std::sync::Arc::clone(&tunnel.tunnel)),
             active.as_ref().map(|tunnel| tunnel.mode),
         )
     };
@@ -206,7 +210,9 @@ pub async fn status() -> TunnelStatus {
         .unwrap_or_default();
 
     let state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
-    let mode = mode_from_active.or(state.mode).map(|mode| mode.as_str().to_string());
+    let mode = mode_from_active
+        .or(state.mode)
+        .map(|mode| mode.as_str().to_string());
     let ticket = state.ticket.clone();
     let logs = state.logs.clone();
     let running = tunnel_ref.is_some();
