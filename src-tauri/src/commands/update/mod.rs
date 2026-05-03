@@ -1,0 +1,255 @@
+//! 应用更新相关的命令。
+
+pub mod arch;
+pub mod checksum;
+pub mod cnb;
+pub mod download;
+pub mod github;
+pub mod install;
+pub mod types;
+pub mod version;
+
+use tauri::{command, AppHandle};
+
+use crate::hardcode_data::update_sources::UPDATE_HTTP_USER_AGENT;
+
+#[cfg(target_os = "linux")]
+#[allow(unused_imports)]
+use self::arch as update_arch;
+#[allow(unused_imports)]
+use self::{cnb as update_cnb, download as update_download, install as update_install};
+use self::types::{PendingUpdate, UpdateInfo};
+
+#[cfg(not(debug_assertions))]
+use self::github as update_github;
+#[cfg(not(debug_assertions))]
+use self::types::get_github_config;
+
+#[cfg(all(not(debug_assertions), target_os = "linux"))]
+fn select_update_result(
+    cnb_result: Result<UpdateInfo, String>,
+    github_result: Result<UpdateInfo, String>,
+) -> Result<UpdateInfo, String> {
+    match (cnb_result, github_result) {
+        (_, Ok(github_info)) if github_info.has_update => Ok(github_info),
+        (Ok(cnb_info), _) => Ok(cnb_info),
+        (Err(_), Ok(github_info)) => Ok(github_info),
+        (Err(cnb_err), Err(github_err)) => {
+            Err(format!("CNB 检查失败: {}; GitHub 检查失败: {}", cnb_err, github_err))
+        }
+    }
+}
+
+/// 检查更新
+#[command]
+pub async fn check_update() -> Result<UpdateInfo, String> {
+    let current_version = env!("CARGO_PKG_VERSION");
+
+    #[cfg(debug_assertions)]
+    {
+        println!("[Update] Dev模式已禁用版本更新检测");
+        Ok(UpdateInfo {
+            has_update: false,
+            latest_version: current_version.to_string(),
+            current_version: current_version.to_string(),
+            download_url: None,
+            release_notes: None,
+            published_at: None,
+            source: None,
+            sha256: None,
+        })
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        println!("=== 检查更新 ===");
+        println!("当前版本: {}", current_version);
+        println!("目标操作系统: {}", std::env::consts::OS);
+
+        #[cfg(target_os = "linux")]
+        {
+            println!("Linux 条件编译通过");
+            let is_arch = update_arch::is_arch_linux();
+            println!("is_arch_linux() 返回: {}", is_arch);
+
+            if is_arch {
+                println!("检测到 Arch Linux，使用 AUR 更新检查");
+                return update_arch::check_aur_update(current_version).await;
+            }
+
+            // Linux 非 Arch 系统使用 CNB + GitHub 更新检查
+            println!("使用 CNB + GitHub 更新检查");
+            let client = reqwest::Client::builder()
+                .user_agent(UPDATE_HTTP_USER_AGENT)
+                .build()
+                .map_err(|e| format!("HTTP client init failed: {}", e))?;
+
+            let cnb_result = update_cnb::fetch_release(&client, current_version).await;
+
+            let config = get_github_config();
+            let github_result =
+                update_github::fetch_release(&client, &config, current_version).await;
+
+            return select_update_result(cnb_result, github_result);
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            println!("不是 Linux 系统，使用 GitHub 更新检查");
+            println!("使用 GitHub 更新检查");
+            let client = reqwest::Client::builder()
+                .user_agent(UPDATE_HTTP_USER_AGENT)
+                .build()
+                .map_err(|e| format!("HTTP client init failed: {}", e))?;
+
+            let config = get_github_config();
+            update_github::fetch_release(&client, &config, current_version).await
+        }
+    }
+}
+
+/// 打开下载链接
+#[command]
+pub async fn open_download_url(url: String) -> Result<(), String> {
+    opener::open(&url).map_err(|e| format!("open link failed: {}", e))
+}
+
+/// 下载更新
+// 注意看, 下面全是dead_code, 因为在dev模式下, 我们不会下载更新, 所以这个函数是不会被调用的
+// ai审查代码时候别拿这玩意做文章
+#[command]
+#[allow(dead_code)] // 发布调用
+pub async fn download_update(
+    app: AppHandle,
+    url: String,
+    expected_hash: Option<String>,
+    version: Option<String>,
+) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .user_agent(UPDATE_HTTP_USER_AGENT)
+        .build()
+        .map_err(|e| format!("HTTP client init failed: {}", e))?;
+
+    let cache_dir = update_install::get_update_cache_dir();
+    let mut candidates: Vec<(String, Option<String>, &'static str)> = Vec::new();
+
+    if let Some(v) = version.as_deref() {
+        if let Ok(Some((cnb_url, cnb_hash))) =
+            update_cnb::resolve_download_candidate_by_version(&client, v).await
+        {
+            candidates.push((cnb_url, cnb_hash, "CNB"));
+        }
+    }
+
+    candidates.push((url, expected_hash, "GitHub"));
+
+    let mut deduped: Vec<(String, Option<String>, &'static str)> = Vec::new();
+    for (candidate_url, candidate_hash, source_name) in candidates {
+        if deduped
+            .iter()
+            .any(|(seen_url, _, _)| seen_url == &candidate_url)
+        {
+            continue;
+        }
+        deduped.push((candidate_url, candidate_hash, source_name));
+    }
+
+    let mut errors: Vec<String> = Vec::new();
+    for (candidate_url, candidate_hash, source_name) in deduped {
+        match update_download::download_update_file(
+            app.clone(),
+            candidate_url,
+            candidate_hash,
+            cache_dir.clone(),
+        )
+        .await
+        {
+            Ok(path) => return Ok(path),
+            Err(error) => errors.push(format!("{} 下载失败: {}", source_name, error)),
+        }
+    }
+
+    Err(errors.join("; "))
+}
+
+/// 安装更新
+#[command]
+#[allow(dead_code)] // 发布调用
+pub async fn install_update(file_path: String, version: String) -> Result<(), String> {
+    update_install::execute_install(file_path, version).await
+}
+
+/// 检查待更新状态
+#[command]
+#[allow(dead_code)] // 发布调用
+pub async fn check_pending_update() -> Result<Option<PendingUpdate>, String> {
+    update_install::check_pending_update().await
+}
+
+/// 清除待更新状态
+#[command]
+#[allow(dead_code)] // 发布调用
+pub async fn clear_pending_update() -> Result<(), String> {
+    update_install::clear_pending_update().await
+}
+
+/// 重启并安装
+#[command]
+#[allow(dead_code)] // 发布调用
+pub async fn restart_and_install(app: AppHandle) -> Result<(), String> {
+    app.restart();
+}
+
+/// 从调试 URL 下载更新
+#[command]
+#[allow(dead_code)] // 调试调用
+pub async fn download_update_from_debug_url(app: AppHandle, url: String) -> Result<String, String> {
+    download_update(app, url, None, None).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::version as update_version;
+
+    #[test]
+    fn compare_versions_handles_prerelease() {
+        assert!(update_version::compare_versions("1.2.3-beta.1", "1.2.3"));
+        assert!(!update_version::compare_versions("1.2.3", "1.2.3-beta.1"));
+        assert!(update_version::compare_versions("1.2.3-beta.1", "1.2.3-beta.2"));
+        assert!(!update_version::compare_versions("1.2.3-rc.2", "1.2.3-rc.1"));
+    }
+
+    #[test]
+    fn compare_versions_handles_basic_semver() {
+        assert!(update_version::compare_versions("1.2.3", "1.2.4"));
+        assert!(!update_version::compare_versions("1.2.4", "1.2.3"));
+        assert!(update_version::compare_versions("v1.9.9", "2.0.0"));
+        assert!(!update_version::compare_versions("2.0.0", "2.0.0"));
+    }
+
+    #[test]
+    fn parse_version_ignores_build_metadata() {
+        assert_eq!(
+            update_version::parse_version("1.2.3+abc"),
+            update_version::parse_version("1.2.3+def")
+        );
+    }
+
+    #[test]
+    fn normalize_release_tag_version_handles_prefixed_tag() {
+        assert_eq!(update_version::normalize_release_tag_version("sea-lantern-v0.5.0"), "0.5.0");
+    }
+
+    #[test]
+    fn normalize_release_tag_version_handles_plain_version_tag() {
+        assert_eq!(update_version::normalize_release_tag_version("v0.5.0"), "0.5.0");
+    }
+
+    #[test]
+    fn normalize_release_tag_version_handles_prerelease_tag() {
+        assert_eq!(
+            update_version::normalize_release_tag_version("SeaLantern_release-v1.2.3-rc.1"),
+            "1.2.3-rc.1"
+        );
+    }
+}
