@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
+import SLButton from "@components/common/SLButton.vue";
 
 interface IPv6TestResult {
   supported: boolean;
@@ -47,10 +48,9 @@ async function testIPv6() {
           <span class="setting-desc">{{ i18n.t("settings.ipv6_test_desc") }}</span>
         </div>
         <div class="setting-control">
-          <button class="test-btn" :disabled="testing" @click="testIPv6">
-            <span v-if="testing" class="loading-spinner"></span>
+          <SLButton variant="primary" size="sm" :loading="testing" @click="testIPv6">
             {{ testing ? i18n.t("settings.ipv6_testing") : i18n.t("settings.ipv6_test_btn") }}
-          </button>
+          </SLButton>
         </div>
       </div>
 
@@ -150,46 +150,6 @@ async function testIPv6() {
 
 .setting-control {
   flex-shrink: 0;
-}
-
-.test-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sl-space-sm);
-  padding: var(--sl-space-sm) var(--sl-space-lg);
-  font-size: var(--sl-font-size-sm);
-  font-weight: 500;
-  color: var(--sl-text-on-primary);
-  background: var(--sl-primary);
-  border: none;
-  border-radius: var(--sl-radius-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.test-btn:hover:not(:disabled) {
-  background: var(--sl-primary-hover);
-}
-
-.test-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--sl-text-on-primary);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .test-result {
