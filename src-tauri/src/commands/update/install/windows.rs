@@ -197,4 +197,5 @@ mod imp {
     }
 }
 
+#[cfg(target_os = "windows")]
 pub(super) use imp::spawn_elevated_windows_process;

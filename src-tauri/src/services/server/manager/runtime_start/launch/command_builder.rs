@@ -1,4 +1,6 @@
-use super::super::super::common::{detect_java_major_version, escape_cmd_arg};
+use super::super::super::common::detect_java_major_version;
+#[cfg(target_os = "windows")]
+use super::super::super::common::escape_cmd_arg;
 use super::context::LaunchContext;
 use crate::services::server::installer;
 use std::path::Path;

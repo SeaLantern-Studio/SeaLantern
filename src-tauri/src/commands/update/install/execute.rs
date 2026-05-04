@@ -6,6 +6,7 @@ use crate::services;
 #[cfg(target_os = "linux")]
 use super::super::arch::{get_aur_helper, is_arch_linux};
 use super::paths::get_pending_update_file;
+#[cfg(target_os = "windows")]
 use super::windows;
 use super::{PendingUpdate, INSTALL_IN_PROGRESS};
 
