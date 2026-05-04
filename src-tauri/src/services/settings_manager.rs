@@ -42,7 +42,10 @@ impl SettingsManager {
     ///
     /// 返回当前内存里的设置快照
     pub fn get(&self) -> AppSettings {
-        self.settings.lock().unwrap().clone()
+        self.settings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// 整体替换当前设置并写回本地
@@ -59,10 +62,11 @@ impl SettingsManager {
             "[DEBUG] SettingsManager::update() called, agreed_to_terms = {}",
             new_settings.agreed_to_terms
         );
-        *self.settings.lock().unwrap() = new_settings.clone();
         let result = save_settings(&self.data_dir, &new_settings);
         eprintln!("[DEBUG] SettingsManager::update() save result: {:?}", result);
-        result
+        result?;
+        *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings;
+        Ok(())
     }
 
     /// 整体替换设置，并返回受影响的设置分组
@@ -75,10 +79,14 @@ impl SettingsManager {
     ///
     /// 返回新的设置内容和变化分组
     pub fn update_with_diff(&self, new_settings: AppSettings) -> Result<UpdateResult, String> {
-        let old_settings = self.settings.lock().unwrap().clone();
+        let old_settings = self
+            .settings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         let changed_groups = old_settings.get_changed_groups(&new_settings);
-        *self.settings.lock().unwrap() = new_settings.clone();
         save_settings(&self.data_dir, &new_settings)?;
+        *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings.clone();
         Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
@@ -96,7 +104,11 @@ impl SettingsManager {
             "[DEBUG] SettingsManager::update_partial() called, partial.agreed_to_terms = {:?}",
             partial.agreed_to_terms
         );
-        let old_settings = self.settings.lock().unwrap().clone();
+        let old_settings = self
+            .settings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         let mut new_settings = old_settings.clone();
         new_settings.merge_from(&partial);
         eprintln!(
@@ -104,8 +116,8 @@ impl SettingsManager {
             new_settings.agreed_to_terms
         );
         let changed_groups = old_settings.get_changed_groups(&new_settings);
-        *self.settings.lock().unwrap() = new_settings.clone();
         save_settings(&self.data_dir, &new_settings)?;
+        *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings.clone();
         eprintln!("[DEBUG] SettingsManager::update_partial() saved successfully");
         Ok(UpdateResult { settings: new_settings, changed_groups })
     }
@@ -117,8 +129,8 @@ impl SettingsManager {
     /// 返回一份新的默认设置，并同步写回本地文件
     pub fn reset(&self) -> Result<AppSettings, String> {
         let default = AppSettings::default();
-        *self.settings.lock().unwrap() = default.clone();
         save_settings(&self.data_dir, &default)?;
+        *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = default.clone();
         Ok(default)
     }
 }
@@ -142,9 +154,20 @@ fn load_settings(data_dir: &str) -> AppSettings {
     match std::fs::read_to_string(&path) {
         Ok(content) => {
             eprintln!("[DEBUG] load_settings: file content length = {} bytes", content.len());
-            let result: AppSettings = serde_json::from_str(&content).unwrap_or_default();
-            eprintln!("[DEBUG] load_settings: parsed agreed_to_terms = {}", result.agreed_to_terms);
-            result
+            match serde_json::from_str::<AppSettings>(&content) {
+                Ok(result) => {
+                    eprintln!(
+                        "[DEBUG] load_settings: parsed agreed_to_terms = {}",
+                        result.agreed_to_terms
+                    );
+                    result
+                }
+                Err(error) => {
+                    eprintln!("[DEBUG] load_settings: parse error: {}", error);
+                    backup_corrupt_settings_file(&path);
+                    AppSettings::default()
+                }
+            }
         }
         Err(e) => {
             eprintln!("[DEBUG] load_settings: failed to read file: {}", e);
@@ -173,3 +196,17 @@ fn save_settings(data_dir: &str, settings: &AppSettings) -> Result<(), String> {
     eprintln!("[DEBUG] save_settings: success!");
     Ok(())
 }
+
+fn backup_corrupt_settings_file(path: &std::path::Path) {
+    let timestamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+    let backup_path = path.with_extension(format!("json.bak-corrupt-{}", timestamp));
+
+    match std::fs::copy(path, &backup_path) {
+        Ok(_) => eprintln!("[DEBUG] load_settings: 已备份损坏设置到 {:?}", backup_path),
+        Err(error) => eprintln!("[DEBUG] load_settings: 备份损坏设置失败: {}", error),
+    }
+}
+
+#[cfg(test)]
+#[path = "../../tests/unit/services_settings_manager_tests.rs"]
+mod tests;

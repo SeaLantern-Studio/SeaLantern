@@ -48,7 +48,7 @@ pub(super) async fn cancel_task(manager: &DownloadManager, id: Uuid) -> Result<(
     let (state, file_path) = {
         let tasks = manager.tasks.read().await;
         if let Some(state) = tasks.get(&id) {
-            (Some(state.clone()), Some(state._file_path.clone()))
+            (Some(state.clone()), Some(state.file_path.clone()))
         } else {
             (None, None)
         }
@@ -57,7 +57,7 @@ pub(super) async fn cancel_task(manager: &DownloadManager, id: Uuid) -> Result<(
     let Some(state) = state else {
         return Ok(());
     };
-    let file_path = file_path.expect("file_path must exist when state exists");
+    let file_path = file_path.ok_or_else(|| format!("下载任务状态损坏，缺少文件路径: {}", id))?;
 
     {
         let handle = state.status_handle.lock().await;

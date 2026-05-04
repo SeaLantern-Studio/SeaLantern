@@ -17,8 +17,7 @@ pub(super) fn new_shared_download_tasks() -> SharedDownloadTasks {
 
 /// 单个下载任务的内部状态
 pub(super) struct DownloadTaskState {
-    pub(super) _url: String,
-    pub(super) _file_path: String,
+    pub(super) file_path: String,
     pub(super) status_handle: tokio::sync::Mutex<Option<Arc<DownloadStatus>>>,
     pub(super) internal_status: RwLock<TaskStatus>,
     pub(super) join_handle: tokio::sync::Mutex<Option<JoinHandle<()>>>,
@@ -26,9 +25,9 @@ pub(super) struct DownloadTaskState {
 
 /// 创建一个初始下载任务状态
 pub(super) fn create_task_state(url: &str, path: &str) -> Arc<DownloadTaskState> {
+    let _ = url;
     Arc::new(DownloadTaskState {
-        _url: url.to_string(),
-        _file_path: path.to_string(),
+        file_path: path.to_string(),
         status_handle: tokio::sync::Mutex::new(None),
         internal_status: RwLock::new(TaskStatus::Pending),
         join_handle: tokio::sync::Mutex::new(None),

@@ -13,21 +13,38 @@ const STARTER_INSTALLER_FETCH_RETRY_DELAY: Duration = Duration::from_secs(2);
 pub(super) fn load_or_refresh_starter_links_json(
     links_file_path: &Path,
 ) -> Result<Vec<u8>, String> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| format!("创建 Starter 异步运行时失败: {}", e))?
+        .block_on(load_or_refresh_starter_links_json_inner(links_file_path))
+}
+
+fn read_and_validate_cached_links_file(links_file_path: &Path) -> Result<Vec<u8>, String> {
+    let body = std::fs::read(links_file_path)
+        .map_err(|e| format!("读取本地 Starter 下载信息失败: {}", e))?;
+    validate_starter_links_json(&body)?;
+    Ok(body)
+}
+
+async fn load_or_refresh_starter_links_json_inner(
+    links_file_path: &Path,
+) -> Result<Vec<u8>, String> {
     if should_use_cached_links_file(links_file_path)? {
         return match read_and_validate_cached_links_file(links_file_path) {
             Ok(body) => Ok(body),
-            Err(local_error) => {
-                fetch_and_cache_starter_links_json(links_file_path).map_err(|refresh_error| {
+            Err(local_error) => fetch_and_cache_starter_links_json_async(links_file_path)
+                .await
+                .map_err(|refresh_error| {
                     format!(
                         "读取本地 Starter 下载信息失败: {}; 刷新远端 Starter 下载信息也失败: {}",
                         local_error, refresh_error
                     )
-                })
-            }
+                }),
         };
     }
 
-    match fetch_and_cache_starter_links_json(links_file_path) {
+    match fetch_and_cache_starter_links_json_async(links_file_path).await {
         Ok(body) => Ok(body),
         Err(refresh_error) => {
             if links_file_path.is_file() {
@@ -42,15 +59,10 @@ pub(super) fn load_or_refresh_starter_links_json(
     }
 }
 
-fn read_and_validate_cached_links_file(links_file_path: &Path) -> Result<Vec<u8>, String> {
-    let body = std::fs::read(links_file_path)
-        .map_err(|e| format!("读取本地 Starter 下载信息失败: {}", e))?;
-    validate_starter_links_json(&body)?;
-    Ok(body)
-}
-
-fn fetch_and_cache_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>, String> {
-    let client = reqwest::blocking::Client::builder()
+async fn fetch_and_cache_starter_links_json_async(
+    links_file_path: &Path,
+) -> Result<Vec<u8>, String> {
+    let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(15))
         .build()
         .map_err(|e| format!("创建 Starter 请求客户端失败: {}", e))?;
@@ -60,7 +72,7 @@ fn fetch_and_cache_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>,
     let body = loop {
         attempt += 1;
 
-        let response = match client.get(STARTER_INSTALLER_LINKS_URL).send() {
+        let response = match client.get(STARTER_INSTALLER_LINKS_URL).send().await {
             Ok(response) => response,
             Err(e) => {
                 if attempt >= STARTER_INSTALLER_FETCH_RETRY_LIMIT {
@@ -69,7 +81,7 @@ fn fetch_and_cache_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>,
                         attempt, e
                     ));
                 }
-                std::thread::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY);
+                tokio::time::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY).await;
                 continue;
             }
         };
@@ -82,11 +94,11 @@ fn fetch_and_cache_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>,
                     attempt, status, STARTER_INSTALLER_LINKS_URL
                 ));
             }
-            std::thread::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY);
+            tokio::time::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY).await;
             continue;
         }
 
-        match response.bytes() {
+        match response.bytes().await {
             Ok(bytes) => break bytes.to_vec(),
             Err(e) => {
                 if attempt >= STARTER_INSTALLER_FETCH_RETRY_LIMIT {
@@ -95,7 +107,7 @@ fn fetch_and_cache_starter_links_json(links_file_path: &Path) -> Result<Vec<u8>,
                         attempt, e
                     ));
                 }
-                std::thread::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY);
+                tokio::time::sleep(STARTER_INSTALLER_FETCH_RETRY_DELAY).await;
             }
         }
     };

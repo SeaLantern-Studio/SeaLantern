@@ -1,5 +1,6 @@
 //! 模组搜索和下载服务
 
+use futures::stream::{self, StreamExt};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -9,6 +10,8 @@ use crate::hardcode_data::external_services::{
     MODRINTH_PROJECT_VERSION_API_BASE, MODRINTH_SEARCH_API_URL,
 };
 use crate::hardcode_data::plugin_market::PLUGIN_MARKET_HTTP_USER_AGENT;
+
+const MODRINTH_VERSION_FETCH_CONCURRENCY: usize = 8;
 
 /// 模组来源
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -49,18 +52,31 @@ pub struct ModInfo {
 
 /// 模组查询和下载服务
 pub struct ModManager {
-    client: Client,
+    client: Option<Client>,
 }
 
 impl ModManager {
     /// 创建模组服务
     pub fn new() -> Result<Self, String> {
         Ok(ModManager {
-            client: Client::builder()
-                .user_agent(PLUGIN_MARKET_HTTP_USER_AGENT)
-                .build()
-                .map_err(|e| format!("Failed to create HTTP client: {}", e))?,
+            client: Some(
+                Client::builder()
+                    .user_agent(PLUGIN_MARKET_HTTP_USER_AGENT)
+                    .build()
+                    .map_err(|e| format!("Failed to create HTTP client: {}", e))?,
+            ),
         })
+    }
+
+    /// 初始化失败时使用的降级实例
+    pub fn fallback() -> Self {
+        Self { client: None }
+    }
+
+    fn client(&self) -> Result<&Client, String> {
+        self.client
+            .as_ref()
+            .ok_or_else(|| "模组服务初始化失败，暂时不可用".to_string())
     }
 
     /// 按版本和加载器搜索 Modrinth 模组
@@ -82,7 +98,7 @@ impl ModManager {
             loader.to_lowercase()
         );
         let resp = self
-            .client
+            .client()?
             .get(MODRINTH_SEARCH_API_URL)
             .query(&[("query", query), ("facets", facets.as_str())])
             .send()
@@ -90,23 +106,38 @@ impl ModManager {
             .map_err(|e| e.to_string())?;
         let data: ModrinthSearchResponse = resp.json().await.map_err(|e| e.to_string())?;
 
-        let mut results = Vec::new();
-        for hit in data.hits {
-            // 获取最新版本以获取下载链接
-            if let Ok(version) = self
-                .get_latest_modrinth_version(&hit.project_id, game_version, loader)
-                .await
-            {
-                results.push(ModInfo {
-                    id: hit.project_id,
-                    name: hit.title,
-                    summary: hit.description,
-                    download_url: version.url,
-                    file_name: version.filename,
-                    source: ModSource::Modrinth,
-                });
+        let game_version = game_version.to_string();
+        let loader = loader.to_string();
+
+        let results = stream::iter(data.hits.into_iter().map(|hit| {
+            let game_version = game_version.clone();
+            let loader = loader.clone();
+
+            async move {
+                match self
+                    .get_latest_modrinth_version(&hit.project_id, &game_version, &loader)
+                    .await
+                {
+                    Ok(version) => Some(ModInfo {
+                        id: hit.project_id,
+                        name: hit.title,
+                        summary: hit.description,
+                        download_url: version.url,
+                        file_name: version.filename,
+                        source: ModSource::Modrinth,
+                    }),
+                    Err(error) => {
+                        eprintln!("[Modrinth] 跳过项目 {}，原因: {}", hit.project_id, error);
+                        None
+                    }
+                }
             }
-        }
+        }))
+        .buffer_unordered(MODRINTH_VERSION_FETCH_CONCURRENCY)
+        .filter_map(async |item| item)
+        .collect::<Vec<_>>()
+        .await;
+
         Ok(results)
     }
 
@@ -126,7 +157,7 @@ impl ModManager {
         );
 
         let resp = self
-            .client
+            .client()?
             .get(&url)
             .send()
             .await
@@ -157,7 +188,7 @@ impl ModManager {
     /// - `target_path`: 目标保存路径
     pub async fn download_mod(&self, download_url: &str, target_path: &Path) -> Result<(), String> {
         let resp = self
-            .client
+            .client()?
             .get(download_url)
             .send()
             .await
