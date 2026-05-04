@@ -127,18 +127,17 @@ pub fn preview_server_properties_write_from_source(
 pub fn read_sl_config(server_path: String) -> Result<SLStartupConfig, String> {
     validate_config_path(&server_path)?;
     let sl_path = format!("{}/SL.json", server_path);
-    
+
     let path = Path::new(&sl_path);
     if !path.exists() {
         return Ok(SLStartupConfig::default());
     }
-    
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| format!("读取 SL.json 失败: {}", e))?;
-    
-    let config: SLStartupConfig = serde_json::from_str(&content)
-        .map_err(|e| format!("解析 SL.json 失败: {}", e))?;
-    
+
+    let content = std::fs::read_to_string(path).map_err(|e| format!("读取 SL.json 失败: {}", e))?;
+
+    let config: SLStartupConfig =
+        serde_json::from_str(&content).map_err(|e| format!("解析 SL.json 失败: {}", e))?;
+
     Ok(config)
 }
 
@@ -147,12 +146,11 @@ pub fn read_sl_config(server_path: String) -> Result<SLStartupConfig, String> {
 pub fn write_sl_config(server_path: String, config: SLStartupConfig) -> Result<(), String> {
     validate_config_path(&server_path)?;
     let sl_path = format!("{}/SL.json", server_path);
-    
-    let content = serde_json::to_string_pretty(&config)
-        .map_err(|e| format!("序列化 SL.json 失败: {}", e))?;
-    
-    std::fs::write(&sl_path, content)
-        .map_err(|e| format!("写入 SL.json 失败: {}", e))?;
-    
+
+    let content =
+        serde_json::to_string_pretty(&config).map_err(|e| format!("序列化 SL.json 失败: {}", e))?;
+
+    std::fs::write(&sl_path, content).map_err(|e| format!("写入 SL.json 失败: {}", e))?;
+
     Ok(())
 }

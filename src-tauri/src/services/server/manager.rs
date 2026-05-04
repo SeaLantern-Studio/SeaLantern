@@ -206,8 +206,8 @@ impl ServerManager {
         console_encoding: ManagedConsoleEncoding,
     ) -> Vec<String> {
         let java_encoding = console_encoding.java_name();
-        let (max_mem, min_mem) = Self::read_sl_startup_config(server)
-            .unwrap_or((server.max_memory, server.min_memory));
+        let (max_mem, min_mem) =
+            Self::read_sl_startup_config(server).unwrap_or((server.max_memory, server.min_memory));
         let mut args = vec![
             format!("-Xmx{}M", max_mem),
             format!("-Xms{}M", min_mem),
