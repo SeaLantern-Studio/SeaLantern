@@ -126,9 +126,7 @@ pub fn preview_server_properties_write_from_source(
 #[tauri::command]
 pub fn read_sl_config(server_path: String) -> Result<SLStartupConfig, String> {
     validate_config_path(&server_path)?;
-    let sl_path = format!("{}/SL.json", server_path);
-
-    let path = Path::new(&sl_path);
+    let path = Path::new(&server_path).join("SL.json");
     if !path.exists() {
         return Ok(SLStartupConfig::default());
     }
