@@ -27,7 +27,6 @@ pub(super) async fn check_plugin_update(
     check_plugin_update_without_manager(current_version, plugin_id).await
 }
 
-#[cfg(feature = "docker")]
 pub(crate) async fn check_plugin_update_without_manager(
     current_version: String,
     plugin_id: String,
@@ -51,7 +50,6 @@ pub(super) async fn check_all_plugin_updates(
     check_all_plugin_updates_without_manager(plugin_versions).await
 }
 
-#[cfg(feature = "docker")]
 pub(crate) async fn check_all_plugin_updates_without_manager(
     plugin_versions: Vec<(String, String)>,
 ) -> Result<Vec<PluginUpdateInfo>, String> {
@@ -66,7 +64,6 @@ pub(super) async fn fetch_market_plugins(
     fetch_market_plugins_without_manager(market_url).await
 }
 
-#[cfg(feature = "docker")]
 pub(crate) async fn fetch_market_plugins_without_manager(
     market_url: Option<String>,
 ) -> Result<Vec<crate::models::plugin::MarketPluginInfo>, String> {
@@ -91,7 +88,6 @@ pub(super) async fn fetch_market_plugin_detail(
     fetch_market_plugin_detail_without_manager(plugin_path, market_url).await
 }
 
-#[cfg(feature = "docker")]
 pub(crate) async fn fetch_market_plugin_detail_without_manager(
     plugin_path: String,
     market_url: Option<String>,
