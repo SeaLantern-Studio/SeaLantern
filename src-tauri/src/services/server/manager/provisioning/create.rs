@@ -38,15 +38,22 @@ pub(super) fn create_server(
         last_started_at: None,
     };
 
-    // 自动生成 SL.json 启动配置文件
-    let sl_config = SLStartupConfig {
-        max_memory: Some(req.max_memory),
-        min_memory: Some(req.min_memory),
-    };
-    let sl_path = Path::new(&server_dir).join("SL.json");
-    if let Ok(content) = serde_json::to_string_pretty(&sl_config) {
-        let _ = std::fs::write(&sl_path, content);
-    }
+ // 自动生成 SL.json 启动配置文件
+ let sl_config = SLStartupConfig {
+ max_memory: Some(req.max_memory),
+ min_memory: Some(req.min_memory),
+ };
+ let sl_path = Path::new(&server_dir).join("SL.json");
+ match serde_json::to_string_pretty(&sl_config) {
+ Ok(content) => {
+ if let Err(e) = std::fs::write(&sl_path, content) {
+ eprintln!("[WARN] 无法创建 SL.json 启动配置文件: {}", e);
+ }
+ }
+ Err(e) => {
+ eprintln!("[WARN] 无法序列化 SL.json 配置: {}", e);
+ }
+ }
 
     manager.lock_servers()?.push(server.clone());
     manager.save()?;
