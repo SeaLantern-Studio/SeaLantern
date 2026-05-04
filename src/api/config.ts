@@ -21,6 +21,14 @@ export interface ServerProperties {
 }
 
 /**
+ * SL.json 启动配置
+ */
+export interface SLStartupConfig {
+  max_memory: number | null;
+  min_memory: number | null;
+}
+
+/**
  * 配置管理 API
  */
 export const configApi = {
@@ -113,5 +121,19 @@ export const configApi = {
     values: Record<string, string>,
   ): Promise<void> {
     return tauriInvoke("write_config", { serverPath, path, values });
+  },
+
+  /**
+   * 读取 SL.json 启动配置
+   */
+  async readSLConfig(serverPath: string): Promise<SLStartupConfig> {
+    return tauriInvoke("read_sl_config", { serverPath });
+  },
+
+  /**
+   * 写入 SL.json 启动配置
+   */
+  async writeSLConfig(serverPath: string, config: SLStartupConfig): Promise<void> {
+    return tauriInvoke("write_sl_config", { serverPath, config });
   },
 };

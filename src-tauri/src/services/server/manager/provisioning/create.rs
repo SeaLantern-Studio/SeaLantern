@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::commands::server::config::SLStartupConfig;
 use crate::models::server::{CreateServerRequest, ServerInstance};
 
 use super::super::common::{current_timestamp_secs, normalize_startup_mode, validate_server_name};
@@ -24,7 +25,7 @@ pub(super) fn create_server(
         core_type: req.core_type,
         core_version: String::new(),
         mc_version: req.mc_version,
-        path: server_dir,
+        path: server_dir.clone(),
         jar_path: req.jar_path,
         startup_mode: normalize_startup_mode(&req.startup_mode).to_string(),
         custom_command: req.custom_command,
@@ -36,6 +37,16 @@ pub(super) fn create_server(
         created_at: now,
         last_started_at: None,
     };
+
+    // 自动生成 SL.json 启动配置文件
+    let sl_config = SLStartupConfig {
+        max_memory: Some(req.max_memory),
+        min_memory: Some(req.min_memory),
+    };
+    let sl_path = Path::new(&server_dir).join("SL.json");
+    if let Ok(content) = serde_json::to_string_pretty(&sl_config) {
+        let _ = std::fs::write(&sl_path, content);
+    }
 
     manager.lock_servers()?.push(server.clone());
     manager.save()?;
