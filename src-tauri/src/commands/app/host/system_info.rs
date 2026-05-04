@@ -1,4 +1,5 @@
 use super::common::SYSTEM;
+use std::io::ErrorKind;
 use sysinfo::{Disks, Networks, System};
 
 pub fn get_system_info() -> Result<serde_json::Value, String> {
@@ -130,8 +131,9 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
 }
 
 pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
-    use std::time::Duration;
     use tokio::net::TcpStream;
+    use tokio::task::JoinSet;
+    use tokio::time::Duration;
 
     let test_targets = [
         ("[2606:4700:4700::1111]:53", "Cloudflare DNS"),
@@ -139,16 +141,27 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
         ("[2606:4700:4700::64]:443", "Cloudflare HTTPS"),
     ];
 
-    let timeout_duration = Duration::from_secs(10);
+    let timeout_duration = Duration::from_secs(3);
     let mut last_error = String::new();
-    let mut last_error_kind = String::new();
+    let mut last_error_kind: Option<ErrorKind> = None;
     let mut tested_targets: Vec<serde_json::Value> = Vec::new();
 
-    for (addr, name) in &test_targets {
-        let result = tokio::time::timeout(timeout_duration, TcpStream::connect(*addr)).await;
+    let mut tasks = JoinSet::new();
+
+    for (addr, name) in test_targets {
+        tasks.spawn(async move {
+            let result = tokio::time::timeout(timeout_duration, TcpStream::connect(addr)).await;
+            (addr, name, result)
+        });
+    }
+
+    while let Some(join_result) = tasks.join_next().await {
+        let (addr, name, result) =
+            join_result.map_err(|error| format!("IPv6 测试任务失败: {}", error))?;
 
         match result {
             Ok(Ok(_stream)) => {
+                tasks.abort_all();
                 return Ok(serde_json::json!({
                     "supported": true,
                     "message": format!("IPv6 连接成功（通过 {}）", name),
@@ -156,15 +169,14 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
                 }));
             }
             Ok(Err(error)) => {
-                let kind = format!("{:?}", error.kind());
                 tested_targets.push(serde_json::json!({
                     "target": name,
                     "address": addr,
                     "error": format!("{}", error),
-                    "kind": kind.clone()
+                    "kind": format!("{:?}", error.kind())
                 }));
                 last_error = format!("{}", error);
-                last_error_kind = kind;
+                last_error_kind = Some(error.kind());
             }
             Err(_) => {
                 tested_targets.push(serde_json::json!({
@@ -174,24 +186,34 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
                     "kind": "TimedOut"
                 }));
                 last_error = "连接超时".to_string();
-                last_error_kind = "TimedOut".to_string();
+                last_error_kind = Some(ErrorKind::TimedOut);
             }
         }
     }
 
-    let summary = match last_error_kind.as_str() {
-        "AddrNotAvailable" => "系统未分配 IPv6 地址，请检查网络适配器是否启用了 IPv6".to_string(),
-        "NetworkUnreachable" => "IPv6 网络不可达，可能未启用 IPv6 或 ISP 不支持".to_string(),
-        "TimedOut" => "连接超时，您的网络可能不支持 IPv6 或防火墙阻止了连接".to_string(),
-        "ConnectionRefused" => "目标服务器拒绝连接，但 IPv6 网络可能可用".to_string(),
+    let summary = match last_error_kind {
+        Some(ErrorKind::AddrNotAvailable) => {
+            "系统未分配 IPv6 地址，请检查网络适配器是否启用了 IPv6".to_string()
+        }
+        Some(ErrorKind::NetworkUnreachable) => {
+            "IPv6 网络不可达，可能未启用 IPv6 或 ISP 不支持".to_string()
+        }
+        Some(ErrorKind::TimedOut) => {
+            "连接超时，您的网络可能不支持 IPv6 或防火墙阻止了连接".to_string()
+        }
+        Some(ErrorKind::ConnectionRefused) => {
+            "目标服务器拒绝连接，但 IPv6 网络可能可用".to_string()
+        }
         _ => format!("IPv6 连接失败: {}", last_error),
     };
+
+    let error_kind = last_error_kind.map(|kind| format!("{:?}", kind));
 
     Ok(serde_json::json!({
         "supported": false,
         "message": summary,
         "detail": last_error,
-        "error_kind": last_error_kind,
+        "error_kind": error_kind,
         "targets": tested_targets
     }))
 }

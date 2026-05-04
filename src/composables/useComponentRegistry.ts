@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { componentMirrorRegister, componentMirrorUnregister } from "@api/plugin";
 
 export interface ComponentHandle {
   type: string;
@@ -37,15 +37,13 @@ function enqueueMirrorOp(id: string, op: () => Promise<unknown>) {
 export function useComponentRegistry() {
   function register(id: string, handle: ComponentHandle) {
     registry.set(id, handle);
-    enqueueMirrorOp(id, () =>
-      invoke("component_mirror_register", { id, componentType: handle.type }),
-    );
+    enqueueMirrorOp(id, () => componentMirrorRegister(id, handle.type));
   }
 
   function unregister(id: string) {
     registry.delete(id);
     interceptors.delete(id);
-    enqueueMirrorOp(id, () => invoke("component_mirror_unregister", { id }));
+    enqueueMirrorOp(id, () => componentMirrorUnregister(id));
   }
 
   function get(id: string): ComponentHandle | undefined {

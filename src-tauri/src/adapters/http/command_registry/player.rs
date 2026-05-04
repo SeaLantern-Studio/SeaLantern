@@ -1,7 +1,6 @@
 use super::common::{parse_params, CommandHandler};
 use super::requests::{
-    BanPlayerRequest, ExportLogsRequest, KickPlayerRequest, PlayerActionRequest,
-    ServerPathRequest,
+    BanPlayerRequest, ExportLogsRequest, KickPlayerRequest, PlayerActionRequest, ServerPathRequest,
 };
 use crate::commands::server::players as player_commands;
 use serde_json::Value;
@@ -9,15 +8,9 @@ use std::collections::HashMap;
 
 pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
     handlers.insert("get_whitelist".to_string(), handle_get_whitelist as CommandHandler);
-    handlers.insert(
-        "get_banned_players".to_string(),
-        handle_get_banned_players as CommandHandler,
-    );
+    handlers.insert("get_banned_players".to_string(), handle_get_banned_players as CommandHandler);
     handlers.insert("get_ops".to_string(), handle_get_ops as CommandHandler);
-    handlers.insert(
-        "add_to_whitelist".to_string(),
-        handle_add_to_whitelist as CommandHandler,
-    );
+    handlers.insert("add_to_whitelist".to_string(), handle_add_to_whitelist as CommandHandler);
     handlers.insert(
         "remove_from_whitelist".to_string(),
         handle_remove_from_whitelist as CommandHandler,

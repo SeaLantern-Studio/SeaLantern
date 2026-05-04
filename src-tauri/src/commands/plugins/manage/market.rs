@@ -24,6 +24,14 @@ pub(super) async fn check_plugin_update(
         plugin_info.manifest.version.clone()
     };
 
+    check_plugin_update_without_manager(current_version, plugin_id).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn check_plugin_update_without_manager(
+    current_version: String,
+    plugin_id: String,
+) -> Result<Option<PluginUpdateInfo>, String> {
     query::check_plugin_update(current_version, plugin_id).await
 }
 
@@ -40,12 +48,26 @@ pub(super) async fn check_all_plugin_updates(
             .collect()
     };
 
+    check_all_plugin_updates_without_manager(plugin_versions).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn check_all_plugin_updates_without_manager(
+    plugin_versions: Vec<(String, String)>,
+) -> Result<Vec<PluginUpdateInfo>, String> {
     query::check_all_plugin_updates(plugin_versions).await
 }
 
 /// 拉取插件市场列表
 pub(super) async fn fetch_market_plugins(
     _manager: PluginManagerState<'_>,
+    market_url: Option<String>,
+) -> Result<Vec<crate::models::plugin::MarketPluginInfo>, String> {
+    fetch_market_plugins_without_manager(market_url).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn fetch_market_plugins_without_manager(
     market_url: Option<String>,
 ) -> Result<Vec<crate::models::plugin::MarketPluginInfo>, String> {
     let base_url = trim_market_base_url(market_url, PLUGIN_MARKET_BASE_URL);
@@ -66,6 +88,14 @@ pub(super) async fn fetch_market_plugin_detail(
     plugin_path: String,
     market_url: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    fetch_market_plugin_detail_without_manager(plugin_path, market_url).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn fetch_market_plugin_detail_without_manager(
+    plugin_path: String,
+    market_url: Option<String>,
+) -> Result<serde_json::Value, String> {
     let base_url = trim_market_base_url(market_url, PLUGIN_MARKET_BASE_URL);
     query::fetch_market_plugin_detail(base_url, plugin_path).await
 }
@@ -77,4 +107,12 @@ pub(super) async fn install_from_market(
 ) -> Result<PluginInstallResult, String> {
     validate_plugin_id(&req.plugin_id)?;
     install::install_from_market(manager, req).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn install_from_market_for_http(
+    req: InstallFromMarketRequest,
+) -> Result<PluginInstallResult, String> {
+    validate_plugin_id(&req.plugin_id)?;
+    install::install_from_market_for_http(req).await
 }

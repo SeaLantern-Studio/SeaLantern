@@ -784,6 +784,11 @@
       "ipv6_testing": "测试中...",
       "ipv6_supported": "您的网络支持 IPv6",
       "ipv6_not_supported": "您的网络不支持 IPv6",
+      "ipv6_detail_hide": "▲ 隐藏详情",
+      "ipv6_detail_show": "▼ 查看详情",
+      "ipv6_error_kind_label": "错误类型:",
+      "ipv6_raw_error_label": "原始错误:",
+      "ipv6_test_targets_label": "测试目标:",
       "minimal_mode": "极简模式",
       "minimal_mode_desc": "关闭所有动效和特效，只保留最基本的渲染和互动",
       "color_options": {

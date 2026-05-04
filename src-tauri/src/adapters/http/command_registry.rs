@@ -2,6 +2,7 @@ mod common;
 mod config;
 mod java;
 mod player;
+mod plugin;
 mod registry;
 mod requests;
 mod server;

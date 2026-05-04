@@ -1,21 +1,22 @@
 use crate::hardcode_data::app_files::PLUGIN_MARKET_TEMP_DIR_NAME;
 use crate::hardcode_data::plugin_market::GITHUB_PROFILE_BASE_URL;
 
-pub(super) fn build_market_client(user_agent: &str) -> Result<reqwest::blocking::Client, String> {
-    reqwest::blocking::Client::builder()
+pub(super) fn build_market_async_client(user_agent: &str) -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
         .user_agent(user_agent)
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))
 }
 
-pub(super) fn fetch_market_index(
-    client: &reqwest::blocking::Client,
+pub(super) async fn fetch_market_index_async(
+    client: &reqwest::Client,
     base_url: &str,
 ) -> Result<serde_json::Value, String> {
     let index_url = format!("{}/api/plugins.json", base_url);
     let response = client
         .get(&index_url)
         .send()
+        .await
         .map_err(|e| format!("Failed to fetch plugins index: {}", e))?;
 
     if !response.status().is_success() {
@@ -24,6 +25,7 @@ pub(super) fn fetch_market_index(
 
     response
         .json()
+        .await
         .map_err(|e| format!("Failed to parse plugins index: {}", e))
 }
 

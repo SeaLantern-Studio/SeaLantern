@@ -17,16 +17,10 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
     handlers.insert("stop_server".to_string(), handle_stop_server as CommandHandler);
     handlers.insert("send_command".to_string(), handle_send_command as CommandHandler);
     handlers.insert("get_server_list".to_string(), handle_get_server_list as CommandHandler);
-    handlers.insert(
-        "get_server_status".to_string(),
-        handle_get_server_status as CommandHandler,
-    );
+    handlers.insert("get_server_status".to_string(), handle_get_server_status as CommandHandler);
     handlers.insert("delete_server".to_string(), handle_delete_server as CommandHandler);
     handlers.insert("get_server_logs".to_string(), handle_get_server_logs as CommandHandler);
-    handlers.insert(
-        "update_server_name".to_string(),
-        handle_update_server_name as CommandHandler,
-    );
+    handlers.insert("update_server_name".to_string(), handle_update_server_name as CommandHandler);
     handlers.insert(
         "scan_startup_candidates".to_string(),
         handle_scan_startup_candidates as CommandHandler,
@@ -43,10 +37,8 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
         "copy_directory_contents".to_string(),
         handle_copy_directory_contents as CommandHandler,
     );
-    handlers.insert(
-        "add_existing_server".to_string(),
-        handle_add_existing_server as CommandHandler,
-    );
+    handlers
+        .insert("add_existing_server".to_string(), handle_add_existing_server as CommandHandler);
 }
 
 fn handle_create_server(

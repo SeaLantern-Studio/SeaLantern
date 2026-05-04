@@ -6,14 +6,9 @@ use std::collections::HashMap;
 
 pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
     handlers.insert("detect_java".to_string(), handle_detect_java as CommandHandler);
-    handlers.insert(
-        "validate_java_path".to_string(),
-        handle_validate_java_path as CommandHandler,
-    );
-    handlers.insert(
-        "cancel_java_install".to_string(),
-        handle_cancel_java_install as CommandHandler,
-    );
+    handlers.insert("validate_java_path".to_string(), handle_validate_java_path as CommandHandler);
+    handlers
+        .insert("cancel_java_install".to_string(), handle_cancel_java_install as CommandHandler);
 }
 
 fn handle_detect_java(

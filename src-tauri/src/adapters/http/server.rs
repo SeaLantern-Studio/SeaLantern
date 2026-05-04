@@ -236,7 +236,7 @@ async fn list_api_endpoints(State(state): State<AppState>) -> impl IntoResponse 
     Json(ApiResponse::success(serde_json::json!({
         "endpoints": endpoints,
         "supported_count": supported.len(),
-        "note": "Plugin commands are not yet supported in HTTP mode",
+        "note": "Some plugin commands are supported in HTTP mode, but install and enable flows are still limited",
         "usage": "POST /api/{command} with JSON body {\"params\": {...}}"
     })))
 }
@@ -278,8 +278,8 @@ async fn handle_api_command(
 /// 处理日志 SSE 订阅
 async fn handle_log_stream() -> impl IntoResponse {
     let receiver = LOG_BROADCAST.subscribe();
-    let stream = tokio_stream::wrappers::BroadcastStream::new(receiver).filter_map(|result| {
-        match result {
+    let stream =
+        tokio_stream::wrappers::BroadcastStream::new(receiver).filter_map(|result| match result {
             Ok(event) => {
                 let json = serde_json::to_string(&event).ok()?;
                 Some(Ok::<_, String>(Event::default().data(json)))
@@ -288,8 +288,7 @@ async fn handle_log_stream() -> impl IntoResponse {
                 eprintln!("[SSE] Broadcast error: {}", e);
                 None
             }
-        }
-    });
+        });
     Sse::new(stream).keep_alive(
         axum::response::sse::KeepAlive::new()
             .interval(std::time::Duration::from_secs(15))

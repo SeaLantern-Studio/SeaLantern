@@ -78,6 +78,21 @@ export interface ServerResourceUsage {
   disk: DiskInfo;
 }
 
+export interface IPv6TestTarget {
+  target: string;
+  address: string;
+  error: string;
+  kind: string;
+}
+
+export interface IPv6TestResult {
+  supported: boolean;
+  message: string;
+  detail?: string;
+  error_kind?: string;
+  targets?: IPv6TestTarget[];
+}
+
 export const systemApi = {
   async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
     if (!isUploadSupported()) {
@@ -205,10 +220,16 @@ export const systemApi = {
   },
 
   async openFile(path: string): Promise<void> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持从浏览器直接打开本地文件");
+    }
     return tauriInvoke("open_file", { path });
   },
 
   async openFolder(path: string): Promise<void> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持从浏览器直接打开本地文件夹");
+    }
     return tauriInvoke("open_folder", { path });
   },
 
@@ -220,7 +241,7 @@ export const systemApi = {
     return tauriInvoke("get_safe_mode_status");
   },
 
-  async testIPv6Connectivity(): Promise<{ supported: boolean; message: string }> {
+  async testIPv6Connectivity(): Promise<IPv6TestResult> {
     return tauriInvoke("test_ipv6_connectivity");
   },
 };

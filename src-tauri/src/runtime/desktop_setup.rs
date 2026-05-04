@@ -1,5 +1,6 @@
 use crate::plugins::manager::{PluginManager, SharedRuntimes};
 use crate::runtime::desktop_shell;
+use crate::services::global;
 
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
@@ -63,22 +64,11 @@ pub(crate) fn apply_platform_window_style(app: &tauri::App) {
 
 /// 初始化插件管理和运行时共享状态。
 pub(crate) fn initialize_plugins() -> PluginSetup {
-    let app_data_dir = crate::utils::path::get_app_data_dir();
-    let plugins_dir = app_data_dir.join("plugins");
-    let data_dir = app_data_dir.join("plugin_data");
-
-    let plugin_manager = PluginManager::new(plugins_dir, data_dir);
-    let shared_runtimes = plugin_manager.get_shared_runtimes();
-    let api_registry = plugin_manager.get_api_registry();
-    let manager = Arc::new(Mutex::new(plugin_manager));
-
-    {
-        let mut plugin_manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-
-        if let Err(e) = plugin_manager.scan_plugins() {
-            eprintln!("Failed to scan plugins: {}", e);
-        }
-    }
+    let manager = Arc::clone(global::plugin_manager());
+    let (shared_runtimes, api_registry) = {
+        let plugin_manager = manager.lock().unwrap_or_else(|e| e.into_inner());
+        (plugin_manager.get_shared_runtimes(), plugin_manager.get_api_registry())
+    };
 
     if is_safe_mode() {
         eprintln!("Safe mode enabled: plugins will be disabled");

@@ -10,6 +10,52 @@ mod ui_bridge;
 
 /// 前端显示用的权限信息
 pub type PermissionInfo = common::PermissionInfo;
+#[cfg(feature = "docker")]
+pub(crate) type InstallFromMarketRequest = market::InstallFromMarketRequest;
+
+#[cfg(feature = "docker")]
+pub(crate) async fn fetch_market_plugins_for_http(
+    market_url: Option<String>,
+) -> Result<Vec<crate::models::plugin::MarketPluginInfo>, String> {
+    market::fetch_market_plugins_without_manager(market_url).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn fetch_market_plugin_detail_for_http(
+    plugin_path: String,
+    market_url: Option<String>,
+) -> Result<serde_json::Value, String> {
+    market::fetch_market_plugin_detail_without_manager(plugin_path, market_url).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn fetch_market_categories_for_http(
+    market_url: Option<String>,
+) -> Result<serde_json::Value, String> {
+    market::fetch_market_categories(market_url).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn check_plugin_update_for_http(
+    current_version: String,
+    plugin_id: String,
+) -> Result<Option<crate::models::plugin::PluginUpdateInfo>, String> {
+    market::check_plugin_update_without_manager(current_version, plugin_id).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn check_all_plugin_updates_for_http(
+    plugin_versions: Vec<(String, String)>,
+) -> Result<Vec<crate::models::plugin::PluginUpdateInfo>, String> {
+    market::check_all_plugin_updates_without_manager(plugin_versions).await
+}
+
+#[cfg(feature = "docker")]
+pub(crate) async fn install_from_market_for_http(
+    req: InstallFromMarketRequest,
+) -> Result<crate::models::plugin::PluginInstallResult, String> {
+    market::install_from_market_for_http(req).await
+}
 
 #[tauri::command]
 /// 读取插件列表

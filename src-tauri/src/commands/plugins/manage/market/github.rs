@@ -1,4 +1,4 @@
-use super::shared::build_market_client;
+use super::shared::build_market_async_client;
 use crate::hardcode_data::plugin_market::{
     GITHUB_CODELOAD_BASE_URL, GITHUB_RELEASE_API_BASE_URL, PLUGIN_MARKET_ALLOWED_DOWNLOAD_DOMAINS,
     PLUGIN_MARKET_HTTP_USER_AGENT,
@@ -18,7 +18,7 @@ struct GitHubRelease {
     zipball_url: String,
 }
 
-pub(super) fn resolve_plugin_download_url(
+pub(super) async fn resolve_plugin_download_url(
     download_url: Option<String>,
     repo: Option<String>,
     download_type: Option<String>,
@@ -45,20 +45,21 @@ pub(super) fn resolve_plugin_download_url(
         release_asset.as_deref(),
         branch.as_deref(),
         version.as_deref(),
-    )?;
+    )
+    .await?;
 
     Ok(url)
 }
 
 #[allow(clippy::needless_option_as_deref)]
-fn resolve_github_download_url(
+async fn resolve_github_download_url(
     github: &str,
     download_type: Option<&str>,
     release_asset: Option<&str>,
     branch: Option<&str>,
     version: Option<&str>,
 ) -> Result<(String, String), String> {
-    let client = build_market_client(PLUGIN_MARKET_HTTP_USER_AGENT)?;
+    let client = build_market_async_client(PLUGIN_MARKET_HTTP_USER_AGENT)?;
     let download_type = download_type.unwrap_or("release");
 
     if download_type == "release" {
@@ -76,6 +77,7 @@ fn resolve_github_download_url(
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .send()
+            .await
             .map_err(|e| format!("Failed to fetch GitHub release: {}", e))?;
 
         if !response.status().is_success() {
@@ -84,6 +86,7 @@ fn resolve_github_download_url(
 
         let release: GitHubRelease = response
             .json()
+            .await
             .map_err(|e| format!("Failed to parse GitHub release: {}", e))?;
 
         let detected_version = release.tag_name.clone();
