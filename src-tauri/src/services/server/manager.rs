@@ -179,7 +179,26 @@ impl ServerManager {
             .map_err(|_| "data_dir lock poisoned".to_string())
     }
 
+    /// 尝试从服务器目录下的 SL.json 读取启动配置
+    fn read_sl_startup_config(server: &ServerInstance) -> Option<(u32, u32)> {
+        let sl_path = std::path::Path::new(&server.path).join("SL.json");
+        if !sl_path.exists() {
+            return None;
+        }
+        let content = std::fs::read_to_string(&sl_path).ok()?;
+        let config: crate::commands::server::config::SLStartupConfig =
+            serde_json::from_str(&content).ok()?;
+        match (config.max_memory, config.min_memory) {
+            (Some(max), Some(min)) => Some((max, min)),
+            (Some(max), None) => Some((max, server.min_memory)),
+            (None, Some(min)) => Some((server.max_memory, min)),
+            (None, None) => None,
+        }
+    }
+
     /// 按当前设置拼出托管启动参数
+    ///
+    /// 优先从 SL.json 读取内存值，没有则回退到 ServerInstance 的默认值
     fn build_managed_jvm_args(
         &self,
         server: &ServerInstance,
@@ -187,9 +206,11 @@ impl ServerManager {
         console_encoding: ManagedConsoleEncoding,
     ) -> Vec<String> {
         let java_encoding = console_encoding.java_name();
+        let (max_mem, min_mem) =
+            Self::read_sl_startup_config(server).unwrap_or((server.max_memory, server.min_memory));
         let mut args = vec![
-            format!("-Xmx{}M", server.max_memory),
-            format!("-Xms{}M", server.min_memory),
+            format!("-Xmx{}M", max_mem),
+            format!("-Xms{}M", min_mem),
             format!("-Dfile.encoding={}", java_encoding),
             format!("-Dsun.stdout.encoding={}", java_encoding),
             format!("-Dsun.stderr.encoding={}", java_encoding),
