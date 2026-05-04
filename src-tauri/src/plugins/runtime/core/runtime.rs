@@ -25,7 +25,7 @@ pub struct PluginRuntime {
 
     pub(crate) process_registry: ProcessRegistry,
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 未来回调用
     pub(crate) element_callbacks: Arc<Mutex<std::collections::HashMap<u64, mlua::RegistryKey>>>,
 }
 
@@ -34,7 +34,7 @@ impl PluginRuntime {
         &self.lua
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 测试调用
     pub fn is_loaded(&self) -> bool {
         self.loaded.load(Ordering::SeqCst)
     }

@@ -1,16 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { systemApi } from "@api/system";
+import { systemApi, type IPv6TestResult } from "@api/system";
 import { i18n } from "@language";
 import SLButton from "@components/common/SLButton.vue";
-
-interface IPv6TestResult {
-  supported: boolean;
-  message: string;
-  detail?: string;
-  error_kind?: string;
-  targets?: { target: string; address: string; error: string; kind: string }[];
-}
 
 const testing = ref(false);
 const showDetail = ref(false);
@@ -21,11 +13,7 @@ async function testIPv6() {
   result.value = null;
   showDetail.value = false;
   try {
-    const res = await systemApi.testIPv6Connectivity();
-    result.value =
-      typeof res === "object" && res !== null
-        ? (res as IPv6TestResult)
-        : { supported: false, message: String(res) };
+    result.value = await systemApi.testIPv6Connectivity();
   } catch (e) {
     result.value = { supported: false, message: String(e) };
   } finally {
@@ -68,19 +56,23 @@ async function testIPv6() {
             class="detail-toggle"
             @click="showDetail = !showDetail"
           >
-            {{ showDetail ? "▲ 隐藏详情" : "▼ 查看详情" }}
+            {{
+              showDetail ? i18n.t("settings.ipv6_detail_hide") : i18n.t("settings.ipv6_detail_show")
+            }}
           </button>
           <div v-if="showDetail && !result.supported" class="result-detail-panel">
             <div v-if="result.error_kind" class="detail-row">
-              <span class="detail-label">错误类型:</span>
+              <span class="detail-label">{{ i18n.t("settings.ipv6_error_kind_label") }}</span>
               <span class="detail-value">{{ result.error_kind }}</span>
             </div>
             <div v-if="result.detail" class="detail-row">
-              <span class="detail-label">原始错误:</span>
+              <span class="detail-label">{{ i18n.t("settings.ipv6_raw_error_label") }}</span>
               <span class="detail-value">{{ result.detail }}</span>
             </div>
             <div v-if="result.targets && result.targets.length" class="detail-targets">
-              <div class="detail-targets-title">测试目标:</div>
+              <div class="detail-targets-title">
+                {{ i18n.t("settings.ipv6_test_targets_label") }}
+              </div>
               <div v-for="t in result.targets" :key="t.address" class="detail-target">
                 <span class="target-name">{{ t.target }}</span>
                 <span class="target-addr">{{ t.address }}</span>

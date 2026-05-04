@@ -1,4 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
+import { isUploadSupported, pickFileFromBrowser, uploadFile, uploadFiles } from "@api/upload";
 import type {
   PluginInfo,
   PluginNavItem,
@@ -55,6 +56,35 @@ export async function installPlugin(path: string): Promise<PluginInstallResult> 
 
 export async function installPluginsBatch(paths: string[]): Promise<BatchInstallResult> {
   return tauriInvoke("install_plugins_batch", { paths });
+}
+
+export async function pickAndInstallPluginFiles(): Promise<BatchInstallResult | null> {
+  if (!isUploadSupported()) {
+    return null;
+  }
+
+  const files = await pickFileFromBrowser({ accept: ".zip,.json", multiple: true });
+  if (!files || !Array.isArray(files) || files.length === 0) {
+    return null;
+  }
+
+  const uploaded = await uploadFiles(files);
+  const paths = uploaded.files.map((file) => file.saved_path);
+  return installPluginsBatch(paths);
+}
+
+export async function pickAndInstallPluginFolderLikeFile(): Promise<PluginInstallResult | null> {
+  if (!isUploadSupported()) {
+    return null;
+  }
+
+  const file = await pickFileFromBrowser({ accept: ".zip,.json" });
+  if (!file || Array.isArray(file)) {
+    return null;
+  }
+
+  const uploaded = await uploadFile(file);
+  return installPlugin(uploaded.saved_path);
 }
 
 export async function getPluginIcon(pluginId: string): Promise<string> {
@@ -149,11 +179,32 @@ export async function componentMirrorClear(): Promise<void> {
   return tauriInvoke("component_mirror_clear");
 }
 
+export async function componentMirrorRegister(id: string, componentType: string): Promise<void> {
+  return tauriInvoke("component_mirror_register", { id, componentType });
+}
+
+export async function componentMirrorUnregister(id: string): Promise<void> {
+  return tauriInvoke("component_mirror_unregister", { id });
+}
+
+export async function contextMenuShowNotify(
+  context: string,
+  targetData: unknown,
+  x: number,
+  y: number,
+): Promise<void> {
+  return tauriInvoke("context_menu_show_notify", { context, targetData, x, y });
+}
+
+export async function contextMenuHideNotify(): Promise<void> {
+  return tauriInvoke("context_menu_hide_notify");
+}
+
 export async function contextMenuCallback(
   pluginId: string,
   context: string,
   itemId: string,
-  targetData: Record<string, unknown>,
+  targetData: unknown,
 ): Promise<void> {
   return tauriInvoke("context_menu_callback", { pluginId, context, itemId, targetData });
 }

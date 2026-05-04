@@ -10,7 +10,6 @@ pub struct LogEntry {
 
 pub struct LogCollector {
     logs: Arc<Mutex<Vec<LogEntry>>>,
-    #[allow(dead_code)]
     max_logs: usize,
 }
 
@@ -22,7 +21,6 @@ impl LogCollector {
         }
     }
 
-    #[allow(dead_code)]
     pub fn add_log(&self, level: &str, message: &str) {
         let mut logs = self.logs.lock().unwrap_or_else(|e| e.into_inner());
         let timestamp: DateTime<Local> = Local::now();
@@ -55,26 +53,12 @@ lazy_static::lazy_static! {
     pub static ref GLOBAL_LOG_COLLECTOR: LogCollector = LogCollector::new(1000);
 }
 
-#[allow(dead_code)]
-pub fn log_info(message: &str) {
-    println!("[INFO] {}", message);
-    GLOBAL_LOG_COLLECTOR.add_log("INFO", message);
-}
-
-#[allow(dead_code)]
 pub fn log_warn(message: &str) {
     println!("[WARN] {}", message);
     GLOBAL_LOG_COLLECTOR.add_log("WARN", message);
 }
 
-#[allow(dead_code)]
 pub fn log_error(message: &str) {
     eprintln!("[ERROR] {}", message);
     GLOBAL_LOG_COLLECTOR.add_log("ERROR", message);
-}
-
-#[allow(dead_code)]
-pub fn log_debug(message: &str) {
-    println!("[DEBUG] {}", message);
-    GLOBAL_LOG_COLLECTOR.add_log("DEBUG", message);
 }

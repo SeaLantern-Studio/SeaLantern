@@ -1,36 +1,91 @@
+//! 模组搜索和下载服务
+
+use futures::stream::{self, StreamExt};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[allow(dead_code)]
-pub struct ModInfo {
-    pub id: String,
-    pub name: String,
-    pub summary: String,
-    pub download_url: String,
-    pub file_name: String,
-    pub source: String, // "modrinth" or "curseforge"
+use crate::hardcode_data::external_services::{
+    MODRINTH_PROJECT_VERSION_API_BASE, MODRINTH_SEARCH_API_URL,
+};
+use crate::hardcode_data::plugin_market::PLUGIN_MARKET_HTTP_USER_AGENT;
+
+const MODRINTH_VERSION_FETCH_CONCURRENCY: usize = 8;
+
+/// 模组来源
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ModSource {
+    /// 来自 Modrinth
+    Modrinth,
+    /// 来自 CurseForge
+    Curseforge,
 }
 
-#[allow(dead_code)]
+impl std::fmt::Display for ModSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let value = match self {
+            Self::Modrinth => "modrinth",
+            Self::Curseforge => "curseforge",
+        };
+        f.write_str(value)
+    }
+}
+
+/// 前端使用的模组信息
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModInfo {
+    /// 模组 ID
+    pub id: String,
+    /// 模组名称
+    pub name: String,
+    /// 简介
+    pub summary: String,
+    /// 下载地址
+    pub download_url: String,
+    /// 建议保存文件名
+    pub file_name: String,
+    /// 来源平台
+    pub source: ModSource,
+}
+
+/// 模组查询和下载服务
 pub struct ModManager {
-    client: Client,
+    client: Option<Client>,
 }
 
 impl ModManager {
-    #[allow(dead_code)]
+    /// 创建模组服务
     pub fn new() -> Result<Self, String> {
         Ok(ModManager {
-            client: Client::builder()
-                .user_agent("SeaLantern/0.5.0 (contact@manus.im)")
-                .build()
-                .map_err(|e| format!("Failed to create HTTP client: {}", e))?,
+            client: Some(
+                Client::builder()
+                    .user_agent(PLUGIN_MARKET_HTTP_USER_AGENT)
+                    .build()
+                    .map_err(|e| format!("Failed to create HTTP client: {}", e))?,
+            ),
         })
     }
 
-    #[allow(dead_code)]
+    /// 初始化失败时使用的降级实例
+    pub fn fallback() -> Self {
+        Self { client: None }
+    }
+
+    fn client(&self) -> Result<&Client, String> {
+        self.client
+            .as_ref()
+            .ok_or_else(|| "模组服务初始化失败，暂时不可用".to_string())
+    }
+
+    /// 按版本和加载器搜索 Modrinth 模组
+    ///
+    /// # Parameters
+    ///
+    /// - `query`: 搜索关键词
+    /// - `game_version`: 目标 MC 版本
+    /// - `loader`: 目标加载器
     pub async fn search_modrinth(
         &self,
         query: &str,
@@ -43,35 +98,50 @@ impl ModManager {
             loader.to_lowercase()
         );
         let resp = self
-            .client
-            .get("https://api.modrinth.com/v2/search")
+            .client()?
+            .get(MODRINTH_SEARCH_API_URL)
             .query(&[("query", query), ("facets", facets.as_str())])
             .send()
             .await
             .map_err(|e| e.to_string())?;
         let data: ModrinthSearchResponse = resp.json().await.map_err(|e| e.to_string())?;
 
-        let mut results = Vec::new();
-        for hit in data.hits {
-            // 获取最新版本以获取下载链接
-            if let Ok(version) = self
-                .get_latest_modrinth_version(&hit.project_id, game_version, loader)
-                .await
-            {
-                results.push(ModInfo {
-                    id: hit.project_id,
-                    name: hit.title,
-                    summary: hit.description,
-                    download_url: version.url,
-                    file_name: version.filename,
-                    source: "modrinth".to_string(),
-                });
+        let game_version = game_version.to_string();
+        let loader = loader.to_string();
+
+        let results = stream::iter(data.hits.into_iter().map(|hit| {
+            let game_version = game_version.clone();
+            let loader = loader.clone();
+
+            async move {
+                match self
+                    .get_latest_modrinth_version(&hit.project_id, &game_version, &loader)
+                    .await
+                {
+                    Ok(version) => Some(ModInfo {
+                        id: hit.project_id,
+                        name: hit.title,
+                        summary: hit.description,
+                        download_url: version.url,
+                        file_name: version.filename,
+                        source: ModSource::Modrinth,
+                    }),
+                    Err(error) => {
+                        eprintln!("[Modrinth] 跳过项目 {}，原因: {}", hit.project_id, error);
+                        None
+                    }
+                }
             }
-        }
+        }))
+        .buffer_unordered(MODRINTH_VERSION_FETCH_CONCURRENCY)
+        .filter_map(async |item| item)
+        .collect::<Vec<_>>()
+        .await;
+
         Ok(results)
     }
 
-    #[allow(dead_code)]
+    /// 读取指定项目的最新可用版本文件
     async fn get_latest_modrinth_version(
         &self,
         project_id: &str,
@@ -79,12 +149,15 @@ impl ModManager {
         loader: &str,
     ) -> Result<ModrinthVersionFile, String> {
         let url = format!(
-            "https://api.modrinth.com/v2/project/{}/version?loaders=[\"{}\"]&game_versions=[\"{}\"]",
-            project_id, loader.to_lowercase(), game_version
+            "{}/{}/version?loaders=[\"{}\"]&game_versions=[\"{}\"]",
+            MODRINTH_PROJECT_VERSION_API_BASE,
+            project_id,
+            loader.to_lowercase(),
+            game_version
         );
 
         let resp = self
-            .client
+            .client()?
             .get(&url)
             .send()
             .await
@@ -104,13 +177,18 @@ impl ModManager {
                 });
             }
         }
-        Err("No compatible version found".to_string())
+        Err("没有找到兼容版本".to_string())
     }
 
-    #[allow(dead_code)]
+    /// 下载模组文件到目标路径
+    ///
+    /// # Parameters
+    ///
+    /// - `download_url`: 模组下载地址
+    /// - `target_path`: 目标保存路径
     pub async fn download_mod(&self, download_url: &str, target_path: &Path) -> Result<(), String> {
         let resp = self
-            .client
+            .client()?
             .get(download_url)
             .send()
             .await
@@ -126,11 +204,13 @@ impl ModManager {
     }
 }
 
+/// Modrinth 搜索响应
 #[derive(Deserialize)]
 struct ModrinthSearchResponse {
     hits: Vec<ModrinthHit>,
 }
 
+/// 搜索结果里的单个项目
 #[derive(Deserialize)]
 struct ModrinthHit {
     project_id: String,
@@ -138,11 +218,13 @@ struct ModrinthHit {
     description: String,
 }
 
+/// Modrinth 版本信息
 #[derive(Deserialize)]
 struct ModrinthVersion {
     files: Vec<ModrinthFile>,
 }
 
+/// 版本中的可下载文件
 #[derive(Deserialize)]
 struct ModrinthFile {
     url: String,
@@ -150,6 +232,7 @@ struct ModrinthFile {
     primary: bool,
 }
 
+/// 最终选中的下载文件
 struct ModrinthVersionFile {
     url: String,
     filename: String,

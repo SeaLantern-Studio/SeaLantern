@@ -1,17 +1,17 @@
 //! 全局单例访问入口：提供 server_manager / settings_manager / i18n_service 等静态句柄。
 //!
-//! 所有函数都基于 OnceLock 懒初始化，在进程生命周期内保持 `&'static` 引用。
-//! 注意：`mod_manager()` 目前仍然使用 `expect("Failed to initialize ModManager")`
-//! 在初始化失败时 panic，属于启动期失败场景，而非正常运行期的业务错误。
+//! 所有函数都基于 OnceLock 懒初始化，在进程生命周期内保持 `&'static` 引用
 use super::i18n::I18nService;
-use super::join_manager::JoinManager;
-use super::mcs_plugin_manager::m_PluginManager;
 use super::mod_manager::ModManager;
-use super::server_id_manager::ServerIdManager;
-use super::server_manager::ServerManager;
+use super::server::id_manager::ServerIdManager;
+use super::server::join::JoinManager;
+use super::server::manager::ServerManager;
+use super::server::plugin_manager::ServerPluginManager;
 use super::settings_manager::SettingsManager;
+use crate::plugins::manager::PluginManager;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn server_manager() -> &'static ServerManager {
@@ -29,27 +29,46 @@ pub fn i18n_service() -> &'static I18nService {
     INSTANCE.get_or_init(I18nService::new)
 }
 
-#[allow(dead_code)]
 pub fn mod_manager() -> &'static ModManager {
     static INSTANCE: OnceLock<ModManager> = OnceLock::new();
-    INSTANCE.get_or_init(|| ModManager::new().expect("Failed to initialize ModManager"))
+    INSTANCE.get_or_init(|| match ModManager::new() {
+        Ok(manager) => manager,
+        Err(error) => {
+            eprintln!("Failed to initialize ModManager: {}", error);
+            ModManager::fallback()
+        }
+    })
 }
 
-#[allow(dead_code)]
 pub fn join_manager() -> &'static JoinManager {
     static INSTANCE: OnceLock<JoinManager> = OnceLock::new();
     INSTANCE.get_or_init(JoinManager::new)
 }
 
-#[allow(dead_code)]
 pub fn server_id_manager() -> &'static ServerIdManager {
     static INSTANCE: OnceLock<ServerIdManager> = OnceLock::new();
     INSTANCE.get_or_init(ServerIdManager::new)
 }
 
-pub fn m_plugin_manager() -> &'static m_PluginManager {
-    static INSTANCE: OnceLock<m_PluginManager> = OnceLock::new();
-    INSTANCE.get_or_init(m_PluginManager::new)
+pub fn server_plugin_manager() -> &'static ServerPluginManager {
+    static INSTANCE: OnceLock<ServerPluginManager> = OnceLock::new();
+    INSTANCE.get_or_init(ServerPluginManager::new)
+}
+
+pub fn plugin_manager() -> &'static Arc<Mutex<PluginManager>> {
+    static INSTANCE: OnceLock<Arc<Mutex<PluginManager>>> = OnceLock::new();
+    INSTANCE.get_or_init(|| {
+        let app_data_dir = crate::utils::path::get_app_data_dir();
+        let plugins_dir = app_data_dir.join("plugins");
+        let data_dir = app_data_dir.join("plugin_data");
+
+        let mut plugin_manager = PluginManager::new(plugins_dir, data_dir);
+        if let Err(error) = plugin_manager.scan_plugins() {
+            eprintln!("Failed to scan plugins: {}", error);
+        }
+
+        Arc::new(Mutex::new(plugin_manager))
+    })
 }
 
 static FRONTEND_LAST_HEARTBEAT: OnceLock<AtomicU64> = OnceLock::new();
@@ -59,7 +78,6 @@ fn heartbeat_storage() -> &'static AtomicU64 {
 }
 
 /// 更新前端心跳时间为当前 Unix 秒时间戳。
-#[allow(dead_code)]
 pub fn update_frontend_heartbeat() {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
