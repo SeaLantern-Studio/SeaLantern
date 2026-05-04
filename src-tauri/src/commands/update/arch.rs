@@ -1,3 +1,4 @@
+#[cfg(all(target_os = "linux", not(debug_assertions)))]
 use super::types::UpdateInfo;
 #[cfg(target_os = "linux")]
 use super::version::compare_versions;
@@ -38,7 +39,7 @@ pub fn get_aur_helper() -> Option<String> {
 }
 
 /// 检查 AUR 更新
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(debug_assertions)))]
 pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, String> {
     let client = reqwest::Client::new();
     let url = AUR_PACKAGE_INFO_URL;
@@ -122,11 +123,4 @@ pub fn is_arch_linux() -> bool {
 #[allow(dead_code)] // 跨平台占位
 pub fn get_aur_helper() -> Option<String> {
     None
-}
-
-/// 非 Linux 系统的占位实现
-#[cfg(not(target_os = "linux"))]
-#[allow(dead_code)] // 跨平台占位
-pub async fn check_aur_update(_current_version: &str) -> Result<UpdateInfo, String> {
-    Err("AUR update check is only available on Linux".to_string())
 }
