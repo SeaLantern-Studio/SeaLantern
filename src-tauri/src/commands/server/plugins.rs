@@ -7,7 +7,10 @@ fn plugin_manager() -> &'static crate::services::server::plugin_manager::ServerP
 
 fn server_path_by_id(server_id: &str) -> Result<String, String> {
     let server_manager = global::server_manager();
-    let servers = server_manager.servers.lock().unwrap();
+    let servers = server_manager
+        .servers
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     let server = servers
         .iter()
         .find(|server| server.id == server_id)

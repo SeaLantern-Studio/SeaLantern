@@ -1,6 +1,6 @@
 use std::fs;
 
-use super::common::{ensure_plugins_dir, normalize_plugin_file_name};
+use super::common::{ensure_plugins_dir, validate_plugin_file_name};
 use tokio::io::AsyncWriteExt;
 
 pub(super) fn toggle_plugin(
@@ -9,7 +9,7 @@ pub(super) fn toggle_plugin(
     enabled: bool,
 ) -> Result<(), String> {
     let plugins_dir = ensure_plugins_dir(server_path)?;
-    let base_file_name = normalize_plugin_file_name(file_name);
+    let base_file_name = validate_plugin_file_name(file_name)?;
 
     let current_path = if enabled {
         plugins_dir.join(format!("{}.disabled", base_file_name))
@@ -33,7 +33,7 @@ pub(super) fn toggle_plugin(
 
 pub(super) fn delete_plugin(server_path: &str, file_name: &str) -> Result<(), String> {
     let plugins_dir = ensure_plugins_dir(server_path)?;
-    let base_file_name = normalize_plugin_file_name(file_name);
+    let base_file_name = validate_plugin_file_name(file_name)?;
 
     let enabled_path = plugins_dir.join(&base_file_name);
     let disabled_path = plugins_dir.join(format!("{}.disabled", base_file_name));
@@ -55,7 +55,8 @@ pub(super) async fn install_plugin(
     file_name: &str,
 ) -> Result<(), String> {
     let plugins_dir = ensure_plugins_dir(server_path)?;
-    let plugin_path = plugins_dir.join(file_name);
+    let base_file_name = validate_plugin_file_name(file_name)?;
+    let plugin_path = plugins_dir.join(base_file_name);
 
     let mut file = tokio::fs::File::create(&plugin_path)
         .await

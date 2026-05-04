@@ -100,6 +100,38 @@ pub fn get_or_create_app_data_dir() -> String {
     data_dir.to_string_lossy().to_string()
 }
 
+/// 只允许传入单纯的文件名
+pub fn validate_file_name_only(file_name: &str) -> Result<&str, String> {
+    let trimmed = file_name.trim();
+    if trimmed.is_empty() {
+        return Err("文件名不能为空".to_string());
+    }
+
+    let path = std::path::Path::new(trimmed);
+    if path.is_absolute() {
+        return Err("文件名不能是绝对路径".to_string());
+    }
+
+    if trimmed == "." || trimmed == ".." {
+        return Err("文件名不合法".to_string());
+    }
+
+    if trimmed.contains('/') || trimmed.contains('\\') {
+        return Err("文件名里不能包含路径分隔符".to_string());
+    }
+
+    let base_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "文件名不合法".to_string())?;
+
+    if base_name != trimmed {
+        return Err("文件名不合法".to_string());
+    }
+
+    Ok(trimmed)
+}
+
 #[cfg(test)]
 #[path = "../../tests/unit/utils_path_tests.rs"]
 mod tests;

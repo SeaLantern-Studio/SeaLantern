@@ -107,6 +107,15 @@ fn create_http_client(timeout: u64) -> Result<reqwest::blocking::Client, mlua::E
         .map_err(|e| mlua::Error::runtime(format!("Failed to create HTTP client: {}", e)))
 }
 
+fn run_blocking_http_request<F>(work: F) -> LuaResult<MultiValue>
+where
+    F: FnOnce() -> LuaResult<MultiValue>,
+{
+    // 这里保留同步返回，方便 Lua 侧直接拿结果
+    // 真正的阻塞网络请求集中放到这个边界里，避免继续散落到别处
+    work()
+}
+
 fn execute_http_request(
     lua: &Lua,
     ctx: &HttpContext,
@@ -126,31 +135,32 @@ fn execute_http_request(
     validate_ssrf_url(&url)?;
 
     let options = request::parse_http_options(request::option_arg(method, &args_vec))?;
-    let client = create_http_client(options.timeout)?;
 
-    let result = if method.accepts_body() {
-        let body_arg = args_vec.get(1);
-        let (body_str, is_json) = request::lua_body_to_string(body_arg)?;
-        let headers = request::with_json_content_type(options.headers, is_json);
-        let request = match method {
-            request::HttpMethod::Post => client.post(&url),
-            request::HttpMethod::Put => client.put(&url),
-            _ => unreachable!("checked by accepts_body"),
+    run_blocking_http_request(|| {
+        let client = create_http_client(options.timeout)?;
+
+        if method.accepts_body() {
+            let body_arg = args_vec.get(1);
+            let (body_str, is_json) = request::lua_body_to_string(body_arg)?;
+            let headers = request::with_json_content_type(options.headers, is_json);
+            let request = match method {
+                request::HttpMethod::Post => client.post(&url),
+                request::HttpMethod::Put => client.put(&url),
+                _ => unreachable!("checked by accepts_body"),
+            }
+            .body(body_str);
+
+            response::send_request(lua, request, headers, MAX_RESPONSE_SIZE)
+        } else {
+            let request = match method {
+                request::HttpMethod::Get => client.get(&url),
+                request::HttpMethod::Delete => client.delete(&url),
+                _ => unreachable!("non-body method branch"),
+            };
+
+            response::send_request(lua, request, options.headers, MAX_RESPONSE_SIZE)
         }
-        .body(body_str);
-
-        response::send_request(lua, request, headers, MAX_RESPONSE_SIZE)
-    } else {
-        let request = match method {
-            request::HttpMethod::Get => client.get(&url),
-            request::HttpMethod::Delete => client.delete(&url),
-            _ => unreachable!("non-body method branch"),
-        };
-
-        response::send_request(lua, request, options.headers, MAX_RESPONSE_SIZE)
-    };
-
-    result
+    })
 }
 
 impl PluginRuntime {
