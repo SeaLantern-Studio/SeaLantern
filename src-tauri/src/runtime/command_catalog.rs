@@ -63,8 +63,6 @@ pub(crate) fn desktop_handler(
         config_commands::parse_server_properties_source,
         config_commands::preview_server_properties_write,
         config_commands::preview_server_properties_write_from_source,
-        config_commands::read_sl_config,
-        config_commands::write_sl_config,
         system_commands::get_system_info,
         system_commands::get_server_resource_usage,
         system_commands::pick_jar_file,
