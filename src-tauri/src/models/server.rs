@@ -39,7 +39,13 @@ pub struct ServerInstance {
     #[serde(default)]
     pub custom_command: Option<String>,
     pub java_path: String,
+    #[deprecated(
+        note = "Use SL.json via SLStartupConfig for startup memory; this field is kept for legacy server data compatibility."
+    )]
     pub max_memory: u32,
+    #[deprecated(
+        note = "Use SL.json via SLStartupConfig for startup memory; this field is kept for legacy server data compatibility."
+    )]
     pub min_memory: u32,
     pub jvm_args: Vec<String>,
     pub port: u16,

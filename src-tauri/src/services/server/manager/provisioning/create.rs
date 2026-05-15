@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use crate::commands::server::config::SLStartupConfig;
 use crate::models::server::{CreateServerRequest, ServerInstance};
 
 use super::super::common::{current_timestamp_secs, normalize_startup_mode, validate_server_name};
+use super::shared::write_sl_startup_config;
 use super::ServerManager;
 
 pub(super) fn create_server(
@@ -38,22 +38,7 @@ pub(super) fn create_server(
         last_started_at: None,
     };
 
-    // 自动生成 SL.json 启动配置文件
-    let sl_config = SLStartupConfig {
-        max_memory: Some(req.max_memory),
-        min_memory: Some(req.min_memory),
-    };
-    let sl_path = Path::new(&server_dir).join("SL.json");
-    match serde_json::to_string_pretty(&sl_config) {
-        Ok(content) => {
-            if let Err(e) = std::fs::write(&sl_path, content) {
-                eprintln!("[WARN] 无法创建 SL.json 启动配置文件: {}", e);
-            }
-        }
-        Err(e) => {
-            eprintln!("[WARN] 无法序列化 SL.json 配置: {}", e);
-        }
-    }
+    write_sl_startup_config(Path::new(&server_dir), req.max_memory, req.min_memory)?;
 
     manager.lock_servers()?.push(server.clone());
     manager.save()?;
