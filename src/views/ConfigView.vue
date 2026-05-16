@@ -13,6 +13,7 @@ import { FileDiff } from "lucide-vue-next";
 import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
 import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
 import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.vue";
+import ConfigStartupSection from "@components/config/ConfigStartupSection.vue";
 import { useConfigPlugins } from "@views/config/useConfigPlugins";
 import { useConfigCompare } from "@views/config/useConfigCompare";
 import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
@@ -24,7 +25,7 @@ const store = useServerStore();
 
 const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
-const activeTab = ref<"properties" | "plugins">("properties");
+const activeTab = ref<"properties" | "plugins" | "startup">("properties");
 const configSaveDiffModalWidth = "1040px";
 
 const currentServerId = computed(() => store.currentServerId);
@@ -121,6 +122,7 @@ const configTabs = computed(() => [
     count: "i",
     countTitle: serverPropertiesPath.value,
   },
+  { key: "startup", label: i18n.t("config.startup_properties") },
   { key: "plugins", label: i18n.t("config.server_plugins") },
 ]);
 
@@ -284,6 +286,14 @@ onActivated(async () => {
           @reloadCurrent="propertiesEditor.reloadPropertiesWithGuard"
           @reloadCompare="propertiesEditor.reloadComparePropertiesWithGuard"
           @saveProperties="propertiesEditor.saveProperties"
+        />
+      </template>
+
+      <template v-if="activeTab === 'startup'">
+        <ConfigStartupSection
+          :serverPath="serverPath"
+          :defaultMaxMemory="currentServer?.max_memory ?? 2048"
+          :defaultMinMemory="currentServer?.min_memory ?? 512"
         />
       </template>
 
