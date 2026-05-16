@@ -365,9 +365,6 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
   <div class="console-output">
     <div ref="terminalHost" class="terminal-host"></div>
   </div>
-  <div v-if="userScrolledUp" class="scroll-btn" @click="emit('scrollToBottom')">
-    {{ i18n.t("console.back_to_bottom") }}
-  </div>
 </template>
 
 <style scoped>
@@ -386,20 +383,5 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
 
 .terminal-host :deep(.xterm-viewport) {
   background: transparent !important;
-}
-
-.scroll-btn {
-  position: absolute;
-  bottom: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 16px;
-  background: var(--sl-primary);
-  color: white;
-  border-radius: var(--sl-radius-full);
-  font-size: 0.75rem;
-  cursor: pointer;
-  box-shadow: var(--sl-shadow-md);
-  z-index: 10;
 }
 </style>
