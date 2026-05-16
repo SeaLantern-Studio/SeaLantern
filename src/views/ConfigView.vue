@@ -25,7 +25,13 @@ const store = useServerStore();
 
 const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
-const activeTab = ref<"properties" | "plugins" | "startup">("properties");
+const activeTab = ref<"properties" | "plugins" | "startup">(
+  (route.query.tab as string) === "startup"
+    ? "startup"
+    : (route.query.tab as string) === "plugins"
+      ? "plugins"
+      : "properties",
+);
 const configSaveDiffModalWidth = "1040px";
 
 const currentServerId = computed(() => store.currentServerId);
@@ -60,6 +66,14 @@ function updateCurrentServerPort(port: string) {
   const activeServer = store.servers.find((s) => s.id === store.currentServerId);
   if (activeServer) {
     activeServer.port = parseInt(port) || 25565;
+  }
+}
+
+function handleStartupConfigSaved(maxMemory: number, minMemory: number) {
+  const activeServer = store.servers.find((s) => s.id === store.currentServerId);
+  if (activeServer) {
+    activeServer.max_memory = maxMemory;
+    activeServer.min_memory = minMemory;
   }
 }
 
@@ -294,6 +308,7 @@ onActivated(async () => {
           :serverPath="serverPath"
           :defaultMaxMemory="currentServer?.max_memory ?? 2048"
           :defaultMinMemory="currentServer?.min_memory ?? 512"
+          @saved="handleStartupConfigSaved"
         />
       </template>
 

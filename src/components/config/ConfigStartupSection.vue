@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
-import SLButton from "@components/common/SLButton.vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
+import SLInput from "@components/common/SLInput.vue";
 import { configApi, type SLStartupConfig } from "@api/config";
 import { i18n } from "@language";
 
@@ -11,15 +11,24 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "saved"): void;
+  (e: "saved", maxMemory: number, minMemory: number): void;
 }>();
 
 const maxMemory = ref(props.defaultMaxMemory);
 const minMemory = ref(props.defaultMinMemory);
 const loading = ref(false);
 const saving = ref(false);
-const saved = ref(false);
 const error = ref<string | null>(null);
+
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+const AUTO_SAVE_DELAY = 800;
+
+function scheduleAutoSave() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    saveConfig();
+  }, AUTO_SAVE_DELAY);
+}
 
 async function loadConfig() {
   if (!props.serverPath) return;
@@ -37,7 +46,7 @@ async function loadConfig() {
 }
 
 async function saveConfig() {
-  if (!props.serverPath) return;
+  if (!props.serverPath || saving.value) return;
   if (maxMemory.value < 128) {
     error.value = "最大内存不能小于 128MB";
     return;
@@ -58,11 +67,7 @@ async function saveConfig() {
       min_memory: minMemory.value,
     };
     await configApi.writeSLConfig(props.serverPath, config);
-    saved.value = true;
-    setTimeout(() => {
-      saved.value = false;
-    }, 3000);
-    emit("saved");
+    emit("saved", maxMemory.value, minMemory.value);
   } catch (e: any) {
     error.value = e?.toString() || "保存启动配置失败";
   } finally {
@@ -71,52 +76,62 @@ async function saveConfig() {
 }
 
 onMounted(loadConfig);
+onUnmounted(() => {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+});
 watch(() => props.serverPath, loadConfig);
+watch([maxMemory, minMemory], () => {
+  scheduleAutoSave();
+});
 </script>
 
 <template>
   <div class="config-startup-section">
-    <div v-if="loading" class="startup-loading">
-      <p class="text-body">{{ i18n.t("common.loading") }}</p>
+    <div v-if="loading" class="loading-state">
+      <p class="text-caption">{{ i18n.t("common.loading") }}</p>
     </div>
     <template v-else>
       <div v-if="error" class="error-banner">
         <span>{{ error }}</span>
         <button class="banner-close" @click="error = null">x</button>
       </div>
-      <div v-if="saved" class="success-banner">
-        <span>{{ i18n.t("config.startup_config_saved") }}</span>
-      </div>
-      <div class="startup-settings-group">
-        <h3 class="startup-group-title">{{ i18n.t("config.memory_settings") }}</h3>
-        <p class="startup-group-desc">{{ i18n.t("config.memory_settings_desc") }}</p>
-        <div class="startup-field">
-          <label class="startup-field-label">{{ i18n.t("config.max_memory") }}</label>
-          <input
-            v-model.number="maxMemory"
-            type="number"
-            class="startup-field-input"
-            :placeholder="'2048'"
-            min="128"
-            step="128"
-          />
+      <div class="startup-entries">
+        <div class="config-entry glass-card">
+          <div class="entry-header">
+            <div class="entry-key-row">
+              <span class="entry-key">{{ i18n.t("config.max_memory") }}</span>
+            </div>
+            <p class="entry-desc text-caption">{{ i18n.t("config.max_memory_desc") }}</p>
+          </div>
+          <div class="entry-control">
+            <SLInput
+              :modelValue="String(maxMemory)"
+              @update:modelValue="maxMemory = Number($event)"
+              type="number"
+              :placeholder="'2048'"
+              :min="128"
+              :step="128"
+            />
+          </div>
         </div>
-        <div class="startup-field">
-          <label class="startup-field-label">{{ i18n.t("config.min_memory") }}</label>
-          <input
-            v-model.number="minMemory"
-            type="number"
-            class="startup-field-input"
-            :placeholder="'512'"
-            min="128"
-            step="128"
-          />
+        <div class="config-entry glass-card">
+          <div class="entry-header">
+            <div class="entry-key-row">
+              <span class="entry-key">{{ i18n.t("config.min_memory") }}</span>
+            </div>
+            <p class="entry-desc text-caption">{{ i18n.t("config.min_memory_desc") }}</p>
+          </div>
+          <div class="entry-control">
+            <SLInput
+              :modelValue="String(minMemory)"
+              @update:modelValue="minMemory = Number($event)"
+              type="number"
+              :placeholder="'512'"
+              :min="128"
+              :step="128"
+            />
+          </div>
         </div>
-      </div>
-      <div class="startup-actions">
-        <SLButton variant="primary" :loading="saving" @click="saveConfig">
-          {{ i18n.t("config.save_startup_config") }}
-        </SLButton>
       </div>
     </template>
   </div>
@@ -124,95 +139,85 @@ watch(() => props.serverPath, loadConfig);
 
 <style scoped>
 .config-startup-section {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
 }
 
-.startup-loading {
+.loading-state {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  padding: var(--sl-space-2xl);
+  color: var(--sl-text-tertiary);
 }
 
-.error-banner,
-.success-banner {
+.error-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
-
-.error-banner {
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-}
-
-.success-banner {
-  background: rgba(22, 163, 74, 0.1);
-  color: #16a34a;
-  border: 1px solid rgba(22, 163, 74, 0.2);
+  border-radius: var(--sl-radius-md);
+  font-size: var(--sl-font-size-base);
+  background: var(--sl-error-bg);
+  border: 1px solid color-mix(in srgb, var(--sl-error) 30%, transparent);
+  color: var(--sl-error);
 }
 
 .banner-close {
+  font-weight: 600;
   background: none;
   border: none;
-  color: inherit;
   cursor: pointer;
-  font-size: 16px;
-  padding: 0 4px;
+  color: inherit;
 }
 
-.startup-settings-group {
-  margin-bottom: 24px;
+.startup-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
 }
 
-.startup-group-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-}
-
-.startup-group-desc {
-  font-size: 13px;
-  color: var(--text-secondary, #888);
-  margin: 0 0 20px 0;
-}
-
-.startup-field {
+.config-entry {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  padding: var(--sl-config-entry-padding-block) var(--sl-space-md);
+  gap: var(--sl-space-lg);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  transition: all var(--sl-transition-fast);
 }
 
-.startup-field-label {
-  font-size: 14px;
-  min-width: 160px;
-  color: var(--text-primary, #e0e0e0);
+.config-entry:hover {
+  border-color: var(--sl-border);
+  box-shadow: var(--sl-shadow-sm);
 }
 
-.startup-field-input {
-  width: 200px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  background: var(--tertiary-background, rgba(255, 255, 255, 0.05));
-  color: var(--text-primary, #e0e0e0);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
+.entry-header {
+  flex: 1;
+  min-width: 0;
 }
 
-.startup-field-input:focus {
-  border-color: var(--primary-color, #3b82f6);
-}
-
-.startup-actions {
+.entry-key-row {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: var(--sl-space-sm);
+}
+
+.entry-key {
+  font-size: var(--sl-font-size-base);
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.entry-desc {
+  margin-top: 2px;
+}
+
+.entry-control {
+  flex-shrink: 0;
+  min-width: var(--sl-config-control-width);
 }
 </style>
