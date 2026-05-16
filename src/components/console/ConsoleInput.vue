@@ -25,40 +25,153 @@ let isCompleting = false;
 
 // 命令树结构：按词层级组织
 const commandTree: Record<string, string[]> = {
+  // 基础命令
   help: [],
   list: [],
+  me: [],
+  msg: [],
+  tell: [],
+  seed: [],
   stop: [],
-  say: [],
-  give: [],
-  tp: [],
-  teleport: [],
-  kill: [],
-  kick: [],
-  ban: [],
-  pardon: [],
-  op: [],
-  deop: [],
+  "save-all": [],
+  "save-on": [],
+  "save-off": [],
+  reload: [],
+  publish: [],
   tps: [],
   plugins: [],
   version: [],
-  "save-all": [],
-  time: ["set"],
-  weather: ["clear", "rain", "thunder"],
+  kill: [],
+
+  // 管理员
+  op: [],
+  deop: [],
+  ban: [],
+  "ban-ip": [],
+  banlist: ["players", "ips"],
+  pardon: [],
+  "pardon-ip": [],
+  kick: [],
+  whitelist: ["add", "remove", "list", "on", "off"],
+  setidletimeout: [],
+
+  // 游戏模式
   gamemode: ["survival", "creative", "adventure", "spectator"],
+  defaultgamemode: ["survival", "creative", "adventure", "spectator"],
+
+  // 难度
   difficulty: ["peaceful", "easy", "normal", "hard"],
-  whitelist: ["add", "remove", "list"],
-  gamerule: ["keepInventory", "doDaylightCycle", "mobGriefing"],
+
+  // 时间
+  time: ["set", "add", "query"],
+
+  // 天气
+  weather: ["clear", "rain", "thunder"],
+  toggledownfall: [],
+
+  // 基础操作
+  tp: [],
+  teleport: [],
+  say: [],
+  give: [],
+  clear: [],
+  enchant: [],
+  effect: ["give", "clear"],
+  xp: ["add", "set", "query"],
+  experience: [],
+  summon: [],
+
+  // 游戏规则
+  gamerule: [
+    "keepInventory",
+    "mobGriefing",
+    "naturalRegeneration",
+    "doFireTick",
+    "doDaylightCycle",
+    "doWeatherCycle",
+    "doMobSpawning",
+    "doMobLoot",
+    "doTileDrops",
+    "fallDamage",
+    "fireDamage",
+    "drowningDamage",
+    "showDeathMessages",
+    "showCoordinates",
+    "commandBlockOutput",
+    "tntExplodes",
+    "announceAdvancements",
+    "playersSleepingPercentage",
+    "randomTickSpeed",
+    "maxCommandChainLength",
+  ],
+
+  // 定位
+  locate: ["structure", "biome", "poi"],
+  locatebiome: [],
+  setworldspawn: [],
+  spawnpoint: [],
+
+  // 方块操作
+  setblock: [],
+  fill: [],
+  clone: [],
+  fillbiome: [],
+
+  // 数据
+  data: ["get", "merge", "modify", "remove"],
+  attribute: ["get", "set"],
+  scoreboard: ["objectives", "players"],
+
+  // 函数
+  function: [],
+  schedule: [],
+  datapack: ["enable", "disable", "list"],
+
+  // 标签/队伍
+  tag: ["add", "remove", "list"],
+  team: ["add", "remove", "join", "leave", "list"],
+
+  // 声音/粒子/标题
+  playsound: [],
+  stopsound: [],
+  particle: [],
+  title: ["clear", "reset", "title", "subtitle", "actionbar"],
+  tellraw: [],
+
+  // 调试
+  debug: ["start", "stop"],
+  tick: ["freeze", "step", "unfreeze", "rate", "query"],
+  perf: [],
+  jfr: [],
+  worldborder: ["add", "set", "center", "damage", "warning"],
 };
 
 // gamerule 的值选项
 const gameruleValues: Record<string, string[]> = {
   keepInventory: ["true", "false"],
   doDaylightCycle: ["true", "false"],
+  doWeatherCycle: ["true", "false"],
+  doMobSpawning: ["true", "false"],
   mobGriefing: ["true", "false"],
+  doFireTick: ["true", "false"],
+  doMobLoot: ["true", "false"],
+  doTileDrops: ["true", "false"],
+  naturalRegeneration: ["true", "false"],
+  fallDamage: ["true", "false"],
+  fireDamage: ["true", "false"],
+  drowningDamage: ["true", "false"],
+  showDeathMessages: ["true", "false"],
+  showCoordinates: ["true", "false"],
+  commandBlockOutput: ["true", "false"],
+  tntExplodes: ["true", "false"],
+  announceAdvancements: ["true", "false"],
+  playersSleepingPercentage: [],
+  randomTickSpeed: [],
+  maxCommandChainLength: [],
 };
 
 // time set 的值
-const timeValues = ["day", "night", "noon"];
+const timeValues = ["day", "night", "noon", "midnight"];
 
 // 获取当前光标所在词的位置
 function getCurrentWordInfo(
@@ -98,7 +211,6 @@ function getCompletions(input: string, wordIndex: number, currentWord: string): 
 
   if (wordIndex === 0) {
     // 第一级：匹配命令名
-    // 如果没有输入，返回所有命令
     if (!currentWord) {
       return Object.keys(commandTree).toSorted();
     }
@@ -111,9 +223,6 @@ function getCompletions(input: string, wordIndex: number, currentWord: string): 
 
   if (wordIndex === 1) {
     // 第二级：命令的子命令
-    if (cmd === "time") {
-      return ["set"].filter((s) => s.startsWith(lowerWord));
-    }
     if (commandTree[cmd]) {
       return commandTree[cmd].filter((s) => s.toLowerCase().startsWith(lowerWord));
     }

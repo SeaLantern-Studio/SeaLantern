@@ -1,19 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, onActivated, nextTick, computed, watch } from "vue";
-import {
-  ChevronDown,
-  Cpu,
-  HardDrive,
-  MemoryStick,
-  Menu,
-  Gauge,
-  Maximize2,
-  Minimize2,
-} from "lucide-vue-next";
+import { Cpu, HardDrive, MemoryStick, ArrowDown } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
@@ -25,14 +15,8 @@ import {
   serverCpuUsage,
   serverMemUsage,
   serverDiskUsage,
-  statsViewMode,
   serverStatsLoading,
   serverStatsError,
-  serverCpuGaugeOption,
-  serverMemGaugeOption,
-  serverDiskGaugeOption,
-  serverCpuLineOption,
-  serverMemLineOption,
   fetchServerResourceUsage,
   resetStatsHistory,
   startThemeObserver,
@@ -63,7 +47,6 @@ const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
-const consoleExpanded = ref(false);
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
 const {
   loading: forceStopLoading,
@@ -116,19 +99,6 @@ const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "st
   if (isStopping.value) return "stopping";
   return "stopped";
 });
-const serverOptions = computed(() =>
-  serverStore.servers.map((server) => ({
-    label: server.name,
-    value: server.id,
-  })),
-);
-const currentServerSelectValue = computed({
-  get: () => serverStore.currentServerId ?? undefined,
-  set: (value) => {
-    if (!value) return;
-    handleServerChange(String(value));
-  },
-});
 
 const statsSummaryItems = computed(() => [
   {
@@ -136,28 +106,26 @@ const statsSummaryItems = computed(() => [
     icon: Cpu,
     label: i18n.t("home.cpu"),
     value: serverStatsUnavailable.value ? "--" : `${serverCpuUsage.value}%`,
-    detail: serverPidText.value,
+    detail: "",
     tone: "primary",
   },
   {
     key: "memory",
     icon: MemoryStick,
     label: i18n.t("home.memory"),
-    value: serverStatsUnavailable.value ? "--" : `${serverMemUsage.value}%`,
-    detail:
-      serverProcessInfo.value && serverProcessInfo.value.memory.total > 0
-        ? `${formatBytes(serverProcessInfo.value.memory.used)} / ${formatBytes(serverProcessInfo.value.memory.total)}`
-        : noDataText.value,
+    value:
+      serverProcessInfo.value && currentServer.value
+        ? `${formatBytes(serverProcessInfo.value.memory.used)} / ${currentServer.value.max_memory} MB`
+        : "--",
+    detail: "",
     tone: "success",
   },
   {
     key: "disk",
     icon: HardDrive,
     label: i18n.t("home.disk"),
-    value: serverStatsUnavailable.value ? "--" : `${serverDiskUsage.value}%`,
-    detail: serverProcessInfo.value
-      ? `${formatBytes(serverProcessInfo.value.disk.used)} / ${formatBytes(serverProcessInfo.value.disk.total)}`
-      : "--",
+    value: serverProcessInfo.value ? formatBytes(serverProcessInfo.value.disk.used) : "--",
+    detail: "",
     tone: "warning",
   },
 ]);
@@ -174,7 +142,7 @@ async function refreshServerStats() {
     serverStatsLoading.value = false;
     return;
   }
-  await fetchServerResourceUsage(sid);
+  await Promise.all([fetchServerResourceUsage(sid), serverStore.refreshStatus(sid)]);
 }
 
 function startStatsPolling() {
@@ -275,20 +243,6 @@ function applyConsoleSettings(settings: {
 
 function handleSettingsUpdate(event: CustomEvent<SettingsUpdateEvent>) {
   applyConsoleSettings(event.detail.settings);
-}
-
-function handleServerChange(value: string) {
-  if (!value || value === serverStore.currentServerId) return;
-  serverStore.setCurrentServer(value);
-}
-
-function toggleStatsViewMode() {
-  statsViewMode.value = statsViewMode.value === "gauge" ? "detail" : "gauge";
-}
-
-function toggleConsoleExpanded() {
-  consoleExpanded.value = !consoleExpanded.value;
-  nextTick(() => doScroll());
 }
 
 async function sendCommand(cmd?: string) {
@@ -420,38 +374,17 @@ function deleteCommand() {}
 </script>
 
 <template>
-  <div
-    class="console-view animate-fade-in-up"
-    :class="{ 'console-view--expanded': consoleExpanded }"
-  >
+  <div class="console-view animate-fade-in-up">
     <div class="console-toolbar">
-      <div class="toolbar-left toolbar-left--wide">
-        <div class="server-picker-card">
-          <div class="server-picker-label">{{ i18n.t("config.select_server") }}</div>
-          <div class="server-picker-input">
-            <SLSelect
-              :modelValue="currentServerSelectValue"
-              :options="serverOptions"
-              :disabled="serverOptions.length === 0"
-              style="width: 260px"
-              @update:modelValue="handleServerChange(String($event))"
-            />
-            <ChevronDown class="server-picker-icon" :size="16" />
-          </div>
-        </div>
-        <div class="server-meta-card">
-          <div class="server-name-display">
-            {{ currentServer?.name || i18n.t("console.no_server") }}
-          </div>
-          <div class="server-meta-line">
-            <SLStatusIndicator
-              v-if="serverId"
-              :status="serverStatusIndicator"
-              :label="getStatusText()"
-            />
-            <span v-if="currentServer?.path" class="server-path">{{ currentServer.path }}</span>
-          </div>
-        </div>
+      <div class="toolbar-left">
+        <span class="server-name-display">
+          {{ currentServer?.name || i18n.t("console.no_server") }}
+        </span>
+        <SLStatusIndicator
+          v-if="serverId"
+          :status="serverStatusIndicator"
+          :label="getStatusText()"
+        />
       </div>
       <div class="toolbar-right">
         <div class="action-group primary-actions">
@@ -505,126 +438,25 @@ function deleteCommand() {}
     </div>
 
     <template v-else>
-      <div
-        class="console-overview-grid"
-        :class="{ 'console-overview-grid--collapsed': consoleExpanded }"
-      >
-        <div class="console-stats-panel">
-          <div class="console-stats-header">
-            <div>
-              <div class="console-stats-title">{{ i18n.t("home.system_resources") }}</div>
-              <div class="console-stats-subtitle">
-                {{ currentServer?.name || i18n.t("console.no_server") }}
-              </div>
-            </div>
-            <button
-              class="stats-view-toggle"
-              type="button"
-              :title="
-                statsViewMode === 'gauge' ? i18n.t('home.detail_view') : i18n.t('home.gauge_view')
-              "
-              @click="toggleStatsViewMode"
-            >
-              <Menu v-if="statsViewMode === 'gauge'" :size="16" />
-              <Gauge v-else :size="16" />
-            </button>
-          </div>
-
-          <div class="console-stats-summary">
-            <div
-              v-for="item in statsSummaryItems"
-              :key="item.key"
-              class="stats-summary-card"
-              :class="`stats-summary-card--${item.tone}`"
-            >
-              <component :is="item.icon" :size="16" class="stats-summary-icon" />
-              <div class="stats-summary-content">
-                <span class="stats-summary-label">{{ item.label }}</span>
-                <strong class="stats-summary-value">{{ item.value }}</strong>
-                <span class="stats-summary-detail">{{ item.detail }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="serverStatsLoading" class="console-stats-loading">
-            {{ i18n.t("common.loading") }}
-          </div>
-          <div v-else-if="serverStatsUnavailable" class="console-stats-loading">
-            {{ noDataText }}
-          </div>
-          <div v-else-if="statsViewMode === 'gauge'" class="console-gauge-grid">
-            <div class="console-gauge-item">
-              <v-chart class="console-gauge-chart" :option="serverCpuGaugeOption" autoresize />
-            </div>
-            <div class="console-gauge-item">
-              <v-chart class="console-gauge-chart" :option="serverMemGaugeOption" autoresize />
-            </div>
-            <div class="console-gauge-item">
-              <v-chart class="console-gauge-chart" :option="serverDiskGaugeOption" autoresize />
-            </div>
-          </div>
-          <div v-else class="console-line-grid">
-            <div class="console-line-item">
-              <div class="console-line-item-header">
-                <span>{{ i18n.t("home.cpu") }}</span>
-                <strong>{{ serverCpuUsage }}%</strong>
-              </div>
-              <v-chart class="console-line-chart" :option="serverCpuLineOption" autoresize />
-            </div>
-            <div class="console-line-item">
-              <div class="console-line-item-header">
-                <span>{{ i18n.t("home.memory") }}</span>
-                <strong>{{ serverMemUsage }}%</strong>
-              </div>
-              <v-chart class="console-line-chart" :option="serverMemLineOption" autoresize />
-            </div>
-            <div class="console-line-item console-line-item--disk">
-              <div class="console-line-item-header">
-                <span>{{ i18n.t("home.disk") }}</span>
-                <strong>{{ serverDiskUsage }}%</strong>
-              </div>
-              <div class="console-disk-bar-track">
-                <div class="console-disk-bar-fill" :style="{ width: `${serverDiskUsage}%` }"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="quick-commands">
-          <span class="quick-label">{{ i18n.t("console.quick") }}</span>
-          <div class="quick-groups">
-            <div
-              v-for="cmd in quickCommands"
-              :key="cmd.cmd"
-              class="quick-btn"
-              @click="sendCommand(cmd.cmd)"
-              :title="cmd.cmd"
-            >
-              {{ cmd.label }}
-            </div>
+      <div class="quick-commands">
+        <span class="quick-label">{{ i18n.t("console.quick") }}</span>
+        <div class="quick-groups">
+          <div
+            v-for="cmd in quickCommands"
+            :key="cmd.cmd"
+            class="quick-btn"
+            @click="sendCommand(cmd.cmd)"
+            :title="cmd.cmd"
+          >
+            {{ cmd.label }}
           </div>
         </div>
       </div>
 
-      <div
-        class="console-terminal-shell"
-        :class="{ 'console-terminal-shell--expanded': consoleExpanded }"
-      >
-        <div
-          class="console-terminal-section"
-          :class="{ 'console-terminal-section--expanded': consoleExpanded }"
-        >
+      <div class="console-terminal-shell">
+        <div class="console-terminal-section">
           <div class="console-terminal-toolbar">
             <div class="console-terminal-title">{{ i18n.t("console.title") }}</div>
-            <button
-              type="button"
-              class="console-terminal-resize-btn"
-              :title="consoleExpanded ? i18n.t('common.collapse') : i18n.t('common.expand')"
-              @click="toggleConsoleExpanded"
-            >
-              <Minimize2 v-if="consoleExpanded" :size="16" />
-              <Maximize2 v-else :size="16" />
-            </button>
           </div>
 
           <ConsoleOutput
@@ -640,9 +472,38 @@ function deleteCommand() {}
               doScroll();
             "
           />
+
+          <div class="console-input-float">
+            <ConsoleInput :consoleFontSize="consoleFontSize" @sendCommand="sendCommand" />
+            <button
+              v-if="userScrolledUp"
+              type="button"
+              class="scroll-to-bottom-btn"
+              @click="
+                userScrolledUp = false;
+                doScroll();
+              "
+            >
+              <ArrowDown :size="14" />
+            </button>
+          </div>
         </div>
 
-        <ConsoleInput :consoleFontSize="consoleFontSize" @sendCommand="sendCommand" />
+        <div class="console-stats-summary">
+          <div
+            v-for="item in statsSummaryItems"
+            :key="item.key"
+            class="stats-summary-card"
+            :class="`stats-summary-card--${item.tone}`"
+          >
+            <component :is="item.icon" :size="16" class="stats-summary-icon" />
+            <div class="stats-summary-content">
+              <span class="stats-summary-label">{{ item.label }}</span>
+              <strong class="stats-summary-value">{{ item.value }}</strong>
+              <span class="stats-summary-detail">{{ item.detail }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <CommandModal
