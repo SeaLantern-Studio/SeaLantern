@@ -13,35 +13,30 @@ sea-lantern/
 ├── .husky/                       # Git Hook 配置
 ├── .vscode/                      # VS Code 工作区设置
 ├── .zed/                         # Zed 编辑器配置
+├── docker/                       # Docker 构建相关文件
 ├── docker-entry/                 # Docker 环境下的独立 Rust 入口程序
 ├── docs/                         # 项目文档
+├── packaging/                    # Arch Linux 打包脚本与桌面文件
 ├── panic-log/                    # 崩溃日志目录占位
 ├── scripts/                      # 构建、版本、版权等辅助脚本
 ├── src/                          # 前端源码（Vue 3 + TypeScript）
 ├── src-tauri/                    # Tauri / Rust 后端源码
-├── .dockerignore                 # Docker 忽略配置
 ├── .editorconfig                 # 编辑器基础格式规范
 ├── .gitattributes                # Git 属性配置
 ├── .gitignore                    # Git 忽略规则
 ├── .oxfmtrc.json                 # oxfmt 配置
 ├── .oxlintrc.json                # Oxlint 配置
-├── .SRCINFO                      # Arch Linux 包信息
 ├── Cargo.lock                    # Rust 依赖锁文件（workspace）
 ├── Cargo.toml                    # Rust workspace 清单
 ├── commitlint.config.cjs         # Conventional Commits 校验配置
-├── docker-compose.yml            # Docker Compose 配置
-├── Dockerfile                    # 容器镜像构建文件
 ├── index.html                    # 前端 HTML 入口
 ├── LICENSE                       # GPLv3 许可证
 ├── NOTICE                        # 第三方声明
 ├── package.json                  # 前端依赖与脚本定义
-├── PKGBUILD                      # Arch Linux 打包脚本
 ├── pnpm-lock.yaml                # pnpm 锁文件
 ├── README.md                     # 中文说明文档
 ├── README-en.md                  # 英文说明文档
 ├── rustfmt.toml                  # Rust 格式化配置
-├── sealantern.desktop            # Linux 桌面启动项
-├── sealantern.install            # 安装脚本
 ```
 
 ## 前端结构 `src/`
@@ -85,10 +80,9 @@ src/
 
 ### `src/language/`
 
-该目录存放前端语言包与说明文档：
+该目录存放前端语言包：
 
 - `index.ts`：语言加载入口
-- `README.md`：国际化说明（双语）
 - 多个 `*.json`：具体语言资源，如 `zh-CN.json`、`en-US.json`、`ja-JP.json` 等
 
 ### `src/stores/`
@@ -130,7 +124,6 @@ src/
 - `rose.ts`
 - `sunset.ts`
 - `index.ts`
-- `README.md`
 
 ## 后端结构 `src-tauri/`
 
@@ -276,8 +269,11 @@ src-tauri/src/plugins/runtime/
 - `AI_GUIDE.md`
 - `CONTRIBUTING.md`
 - `STRUCTURE.md`
+- `language-system.md` # 前端 i18n 系统使用说明（原 src/language/README.md）
 - `plugin_api.md`
+- `theme-system.md` # 主题系统使用说明（原 src/themes/README.md）
 - `新手使用教程.html`
+- `lua-api/` # 插件运行时各模块 Lua API 文档（9 个模块）
 
 ### `docker-entry/`
 
