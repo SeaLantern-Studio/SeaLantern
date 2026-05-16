@@ -34,7 +34,6 @@ sea-lantern/
 ├── index.html                    # 前端 HTML 入口
 ├── LICENSE                       # GPLv3 许可证
 ├── NOTICE                        # 第三方声明
-├── package-lock.json             # npm 锁文件
 ├── package.json                  # 前端依赖与脚本定义
 ├── PKGBUILD                      # Arch Linux 打包脚本
 ├── pnpm-lock.yaml                # pnpm 锁文件
@@ -43,7 +42,6 @@ sea-lantern/
 ├── rustfmt.toml                  # Rust 格式化配置
 ├── sealantern.desktop            # Linux 桌面启动项
 ├── sealantern.install            # 安装脚本
-└── 提交前测试必读！！！.md       # 提交前检查说明
 ```
 
 ## 前端结构 `src/`
@@ -90,7 +88,7 @@ src/
 该目录存放前端语言包与说明文档：
 
 - `index.ts`：语言加载入口
-- `README.md`、`README-en.md`：国际化说明
+- `README.md`：国际化说明（双语）
 - 多个 `*.json`：具体语言资源，如 `zh-CN.json`、`en-US.json`、`ja-JP.json` 等
 
 ### `src/stores/`

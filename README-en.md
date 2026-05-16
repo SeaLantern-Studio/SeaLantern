@@ -210,7 +210,7 @@ The frontend and backend each have 3 files, plus one line each for the router an
 
 ### i18n — Internationalization Guide
 
-Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [src/language/README-en.md](src/language/README-en.md)
+Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [src/language/README.md](src/language/README.md)
 
 If you want to add additional languages besides the commonly used ones, please create plugins.
 
