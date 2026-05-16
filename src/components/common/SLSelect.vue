@@ -603,8 +603,6 @@ onUnmounted(() => {
   backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
   will-change: backdrop-filter;
-  transform: translateZ(0);
-  backface-visibility: hidden;
   color: var(--sl-text-primary);
   transform-origin: top center;
 }
