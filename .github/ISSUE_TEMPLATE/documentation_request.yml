@@ -1,5 +1,5 @@
-name: 文档更新请求
-description: 请求更新文档内容
+name: Documentation Request | 文档更新请求
+description: Request to update documentation content | 请求更新文档内容
 title: "[Docs] "
 labels: ["documentation", "pending"]
 assignees: []
@@ -7,26 +7,26 @@ body:
   - type: textarea
     id: content
     attributes:
-      label: 文档更新内容描述
-      description: 更新什么内容？
-      placeholder: 更新什么内容？
+      label: Documentation Update Content Description | 文档更新内容描述
+      description: What content needs to be updated? | 更新什么内容？
+      placeholder: What content needs to be updated and where? | 更新什么内容&在什么地方？
     validations:
       required: true
 
   - type: textarea
     id: reason
     attributes:
-      label: 理由
-      description: 说明你为什么想要更新这个内容
-      placeholder: 说明你为什么想要更新这个内容
+      label: Reason | 理由
+      description: Explain why you want to update this content | 说明你为什么想要更新这个内容
+      placeholder: Explain why you want to update this content | 说明你为什么想要更新这个内容
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: additional
     attributes:
-      label: 附加内容
-      description: 可选 - 例如界面的草图
-      placeholder: 例如界面的草图
+      label: Additional Content | 附加内容
+      description: Optional - for example, specific suggestions on how to update the content | 可选 - 例如对如何更新内容的具体建议
+      placeholder: Optional - for example, specific
     validations:
       required: false

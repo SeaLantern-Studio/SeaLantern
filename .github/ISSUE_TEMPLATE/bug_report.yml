@@ -1,5 +1,5 @@
-name: Bug 报告
-description: 创建一个 Bug 报告
+name: Bug Report | Bug 报告
+description: Create a Bug Report | 创建一个 Bug 报告
 title: "[Bug] "
 labels: ["bug", "pending"]
 assignees: []
@@ -7,38 +7,38 @@ body:
   - type: textarea
     id: description
     attributes:
-      label: 问题描述
-      description: 请详细描述遇到的问题
-      placeholder: 这里写你的问题描述
+      label: Issue Description | 问题描述
+      description: Please describe the issue in detail | 请详细描述这个问题
+      placeholder: Describe your issue here | 在这里描述你的问题
     validations:
       required: true
 
   - type: textarea
     id: reproduce
     attributes:
-      label: 复现步骤
-      description: 如何重现这个问题
+      label: Reproduction Steps | 复现步骤
+      description: How to reproduce this issue | 如何重现这个问题
       placeholder: 这里写你的复现步骤
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: expected
     attributes:
-      label: 预期行为
-      description: 可选 - 你认为预期应该是怎么样的
-      placeholder: 这里写你认为预期是怎么样的
+      label: Expected Behavior | 预期行为
+      description: Optional - what you expect to happen | 可选 - 你认为预期应该是怎么样的
+      placeholder: Describe the expected behavior here | 这里写你认为预期是怎么样的
     validations:
       required: false
 
   - type: textarea
     id: actual
     attributes:
-      label: 实际行为
-      description: 实际操作时是怎么样的
-      placeholder: 这里写你的实际操作时是怎么样的
+      label: Actual Behavior | 实际行为
+      description: What actually happened | 实际操作时是怎么样的
+      placeholder: Describe the actual behavior here | 这里写你的实际操作时是怎么样的
     validations:
-      required: true
+      required: false
 
   - type: markdown
     attributes:
@@ -48,44 +48,44 @@ body:
   - type: input
     id: os
     attributes:
-      label: 操作系统
-      description: 如 Windows 11、macOS 14、Ubuntu 22.04 等
-      placeholder: 如 windows11
+      label: Operating System | 操作系统
+      description: For example, Windows 11, macOS 14, Ubuntu 22.04, etc. | 例如，Windows 11、macOS 14、Ubuntu 22.04 等
+      placeholder: For example, windows11 | 例如，Windows 11
     validations:
       required: true
 
   - type: input
     id: version
     attributes:
-      label: 软件版本
-      description: 如 0.6.5 或最新 dev 分支
-      placeholder: 如 0.6.5 或最新 dev 分支
+      label: Software Version | 软件版本
+      description: For example, 0.6.5 or the latest dev branch | 例如，0.6.5 或最新 dev 分支
+      placeholder: For example, 0.6.5 or the latest dev branch | 例如，0.6.5 或最新 dev 分支
     validations:
       required: true
 
   - type: textarea
     id: other-env
     attributes:
-      label: 其他环境信息
-      description: 如有其他环境信息请在此填写
-      placeholder: 其他环境信息
+      label: Other Environment Information | 其他环境信息
+      description: Optional - for example, Java version, Minecraft version, etc. | 可选 - 例如 Java 版本、Minecraft 版本等
+      placeholder: Optional - for example, Java version, Minecraft version, etc. | 可选 - 例如 Java 版本、Minecraft 版本等
     validations:
       required: false
 
   - type: textarea
     id: logs
     attributes:
-      label: 日志或截图（如果存在）
-      description: 粘贴日志文件上传地址，或是上传图片
-      placeholder: 这里粘贴你的日志文件上传地址，或是上传图片
+      label: Logs or Screenshots (if any) | 日志或截图（如果存在）
+      description: Paste the log file upload URL, or upload an image | 粘贴日志文件上传地址，或是上传图片
+      placeholder: Paste your log file upload URL, or upload an image | 这里粘贴你的日志文件上传地址，或是上传图片
     validations:
       required: false
 
   - type: textarea
     id: notes
     attributes:
-      label: 备注
-      description: 可选 - 其他信息，如果没有请忽略
-      placeholder: 其他信息，如果没有请忽略
+      label: Additional Notes | 其他信息
+      description: Optional - additional information, ignore if not applicable | 可选 - 其他信息，如果没有请忽略
+      placeholder: Additional information, ignore if not applicable | 其他信息，如果没有请忽略
     validations:
       required: false
