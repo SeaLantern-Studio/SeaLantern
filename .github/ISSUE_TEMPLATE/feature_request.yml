@@ -35,8 +35,8 @@ body:
     id: alternatives
     attributes:
       label: Alternatives | 替代方案
-      description: Optional - Are there any alternative solutions?
-      placeholder: Are there any alternative solutions?
+      description: Optional - Are there any alternative solutions? | 可选 - 是否有其他替代方案？
+      placeholder: Are there any alternative solutions? | 是否有其他替代方案？
     validations:
       required: false
 
@@ -44,8 +44,8 @@ body:
     id: impact
     attributes:
       label: Impact | 影响
-      description: Optional - Does this feature have any impact on existing content?
-      placeholder: Optional - Does this feature have any impact on existing content?
+      description: Optional - Does this feature have any impact on existing content? | 可选 - 这个功能是否会对现有内容产生影响？
+      placeholder: Does this feature have any impact on existing content? | 这个功能是否会对现有内容产生影响？
     validations:
       required: false
 
@@ -63,6 +63,6 @@ body:
     attributes:
       label: Additional Notes | 其他信息
       description: Optional - For example, sketches of the UI | 可选 - 例如界面的草图
-      placeholder: For example, sketches of the UI | 例如界面的草图
+      placeholder: Optional - For example, sketches of the UI | 可选 - 例如界面的草图
     validations:
       required: false

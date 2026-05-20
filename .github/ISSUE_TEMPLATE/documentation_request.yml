@@ -27,6 +27,6 @@ body:
     attributes:
       label: Additional Content | 附加内容
       description: Optional - for example, specific suggestions on how to update the content | 可选 - 例如对如何更新内容的具体建议
-      placeholder: Optional - for example, specific
+      placeholder: Optional - for example, specific suggestions on how to update the content | 可选 - 例如对如何更新内容的具体建议
     validations:
       required: false
