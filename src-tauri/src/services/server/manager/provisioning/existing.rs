@@ -58,24 +58,22 @@ pub(super) fn add_existing_server(
     let now = current_timestamp_secs();
     let id = uuid::Uuid::new_v4().to_string();
 
-    let server = ServerInstance {
-        id: id.clone(),
-        name: server_name,
+    let server = ServerInstance::new(
+        id.clone(),
+        server_name,
         core_type,
-        core_version: String::new(),
-        mc_version: "unknown".into(),
-        path: req.server_path,
+        String::new(),
+        "unknown".into(),
+        req.server_path,
         jar_path,
         startup_mode,
         custom_command,
-        java_path: req.java_path,
-        max_memory: req.max_memory,
-        min_memory: req.min_memory,
-        jvm_args: Vec::new(),
+        req.java_path,
+        Vec::new(),
         port,
-        created_at: now,
-        last_started_at: None,
-    };
+        now,
+        None,
+    );
 
     manager.lock_servers()?.push(server.clone());
     manager.save()?;

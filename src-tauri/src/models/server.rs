@@ -39,18 +39,46 @@ pub struct ServerInstance {
     #[serde(default)]
     pub custom_command: Option<String>,
     pub java_path: String,
-    #[deprecated(
-        note = "Use SL.json via SLStartupConfig for startup memory; this field is kept for legacy server data compatibility."
-    )]
-    pub max_memory: u32,
-    #[deprecated(
-        note = "Use SL.json via SLStartupConfig for startup memory; this field is kept for legacy server data compatibility."
-    )]
-    pub min_memory: u32,
     pub jvm_args: Vec<String>,
     pub port: u16,
     pub created_at: u64,
     pub last_started_at: Option<u64>,
+}
+
+impl ServerInstance {
+    pub fn new(
+        id: String,
+        name: String,
+        core_type: String,
+        core_version: String,
+        mc_version: String,
+        path: String,
+        jar_path: String,
+        startup_mode: String,
+        custom_command: Option<String>,
+        java_path: String,
+        jvm_args: Vec<String>,
+        port: u16,
+        created_at: u64,
+        last_started_at: Option<u64>,
+    ) -> Self {
+        Self {
+            id,
+            name,
+            core_type,
+            core_version,
+            mc_version,
+            path,
+            jar_path,
+            startup_mode,
+            custom_command,
+            java_path,
+            jvm_args,
+            port,
+            created_at,
+            last_started_at,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

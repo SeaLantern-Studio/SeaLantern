@@ -7,6 +7,59 @@ use serde::{Deserialize, Serialize};
 
 use super::common::detect_startup_mode_from_path;
 
+fn default_startup_mode() -> String {
+    "jar".to_string()
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LegacyServerInstance {
+    id: String,
+    name: String,
+    core_type: String,
+    #[serde(default)]
+    core_version: String,
+    mc_version: String,
+    path: String,
+    jar_path: String,
+    #[serde(default = "default_startup_mode")]
+    startup_mode: String,
+    #[serde(default)]
+    custom_command: Option<String>,
+    java_path: String,
+    #[serde(default)]
+    jvm_args: Vec<String>,
+    port: u16,
+    created_at: u64,
+    #[serde(default)]
+    last_started_at: Option<u64>,
+    #[serde(default)]
+    max_memory: Option<u32>,
+    #[serde(default)]
+    min_memory: Option<u32>,
+}
+
+impl From<LegacyServerInstance> for ServerInstance {
+    fn from(value: LegacyServerInstance) -> Self {
+        let _ = (value.max_memory, value.min_memory);
+        ServerInstance::new(
+            value.id,
+            value.name,
+            value.core_type,
+            value.core_version,
+            value.mc_version,
+            value.path,
+            value.jar_path,
+            value.startup_mode,
+            value.custom_command,
+            value.java_path,
+            value.jvm_args,
+            value.port,
+            value.created_at,
+            value.last_started_at,
+        )
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct RunPathServerMapping {
     pub(super) run_path: String,
@@ -224,7 +277,8 @@ pub(super) fn load_servers(dir: &str) -> Vec<ServerInstance> {
 
     std::fs::read_to_string(&path)
         .ok()
-        .and_then(|content| serde_json::from_str(&content).ok())
+        .and_then(|content| serde_json::from_str::<Vec<LegacyServerInstance>>(&content).ok())
+        .map(|servers| servers.into_iter().map(ServerInstance::from).collect())
         .unwrap_or_default()
 }
 
