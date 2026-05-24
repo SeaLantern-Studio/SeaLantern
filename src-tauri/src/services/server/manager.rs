@@ -179,7 +179,10 @@ impl ServerManager {
             .map_err(|_| "data_dir lock poisoned".to_string())
     }
 
-    fn read_sl_startup_config(server: &ServerInstance) -> Option<(u32, u32)> {
+    fn read_sl_startup_config(
+        server: &ServerInstance,
+        settings: &crate::models::settings::AppSettings,
+    ) -> Option<(u32, u32)> {
         let sl_path = std::path::Path::new(&server.path).join("SL.json");
         if !sl_path.exists() {
             return None;
@@ -189,8 +192,8 @@ impl ServerManager {
             serde_json::from_str(&content).ok()?;
         match (config.max_memory, config.min_memory) {
             (Some(max), Some(min)) => Some((max, min)),
-            (Some(max), None) => Some((max, server.min_memory)),
-            (None, Some(min)) => Some((server.max_memory, min)),
+            (Some(max), None) => Some((max, settings.default_min_memory)),
+            (None, Some(min)) => Some((settings.default_max_memory, min)),
             (None, None) => None,
         }
     }
@@ -205,8 +208,9 @@ impl ServerManager {
         console_encoding: ManagedConsoleEncoding,
     ) -> Vec<String> {
         let java_encoding = console_encoding.java_name();
+        let default_memory = (settings.default_max_memory, settings.default_min_memory);
         let (max_mem, min_mem) =
-            Self::read_sl_startup_config(server).unwrap_or((server.max_memory, server.min_memory));
+            Self::read_sl_startup_config(server, settings).unwrap_or(default_memory);
         let mut args = vec![
             format!("-Xmx{}M", max_mem),
             format!("-Xms{}M", min_mem),
