@@ -24,20 +24,20 @@ pub(super) fn build_modpack_server_instance(
         .selected_mc_version
         .unwrap_or_else(|| "unknown".to_string());
 
-    ServerInstance::new(
+    ServerInstance {
         id,
-        server_name,
+        name: server_name,
         core_type,
-        String::new(),
+        core_version: String::new(),
         mc_version,
-        run_dir.to_string_lossy().to_string(),
-        startup_path,
-        startup.startup_mode,
-        startup.custom_command,
-        req.java_path,
-        Vec::new(),
+        path: run_dir.to_string_lossy().to_string(),
+        jar_path: startup_path,
+        startup_mode: startup.startup_mode,
+        custom_command: startup.custom_command,
+        java_path: req.java_path,
+        jvm_args: Vec::new(),
         port,
-        super::super::super::common::current_timestamp_secs(),
-        None,
-    )
+        created_at: super::super::super::common::current_timestamp_secs(),
+        last_started_at: None,
+    }
 }

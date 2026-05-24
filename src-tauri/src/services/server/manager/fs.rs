@@ -41,22 +41,22 @@ struct LegacyServerInstance {
 impl From<LegacyServerInstance> for ServerInstance {
     fn from(value: LegacyServerInstance) -> Self {
         let _ = (value.max_memory, value.min_memory);
-        ServerInstance::new(
-            value.id,
-            value.name,
-            value.core_type,
-            value.core_version,
-            value.mc_version,
-            value.path,
-            value.jar_path,
-            value.startup_mode,
-            value.custom_command,
-            value.java_path,
-            value.jvm_args,
-            value.port,
-            value.created_at,
-            value.last_started_at,
-        )
+        ServerInstance {
+            id: value.id,
+            name: value.name,
+            core_type: value.core_type,
+            core_version: value.core_version,
+            mc_version: value.mc_version,
+            path: value.path,
+            jar_path: value.jar_path,
+            startup_mode: value.startup_mode,
+            custom_command: value.custom_command,
+            java_path: value.java_path,
+            jvm_args: value.jvm_args,
+            port: value.port,
+            created_at: value.created_at,
+            last_started_at: value.last_started_at,
+        }
     }
 }
 

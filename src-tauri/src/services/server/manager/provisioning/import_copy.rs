@@ -56,22 +56,22 @@ pub(super) fn import_server(
     let core_type = installer::detect_core_type(&dest_startup.to_string_lossy());
     println!("检测到核心类型: {}", core_type);
 
-    let server = ServerInstance::new(
-        id.clone(),
-        server_name,
+    let server = ServerInstance {
+        id: id.clone(),
+        name: server_name,
         core_type,
-        String::new(),
-        "unknown".into(),
-        server_dir.to_string_lossy().to_string(),
-        dest_startup.to_string_lossy().to_string(),
+        core_version: String::new(),
+        mc_version: "unknown".into(),
+        path: server_dir.to_string_lossy().to_string(),
+        jar_path: dest_startup.to_string_lossy().to_string(),
         startup_mode,
-        req.custom_command,
-        req.java_path,
-        Vec::new(),
+        custom_command: req.custom_command,
+        java_path: req.java_path,
+        jvm_args: Vec::new(),
         port,
-        now,
-        None,
-    );
+        created_at: now,
+        last_started_at: None,
+    };
 
     manager.lock_servers()?.push(server.clone());
     manager.save()?;
