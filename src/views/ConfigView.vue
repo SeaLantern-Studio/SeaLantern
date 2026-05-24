@@ -25,7 +25,13 @@ const store = useServerStore();
 
 const error = ref<string | null>(null);
 const successMsg = ref<string | null>(null);
-const activeTab = ref<"properties" | "plugins" | "startup">("properties");
+const activeTab = ref<"properties" | "plugins" | "startup">(
+  (route.query.tab as string) === "startup"
+    ? "startup"
+    : (route.query.tab as string) === "plugins"
+      ? "plugins"
+      : "properties",
+);
 const configSaveDiffModalWidth = "1040px";
 
 const currentServerId = computed(() => store.currentServerId);
@@ -60,6 +66,14 @@ function updateCurrentServerPort(port: string) {
   const activeServer = store.servers.find((s) => s.id === store.currentServerId);
   if (activeServer) {
     activeServer.port = parseInt(port) || 25565;
+  }
+}
+
+function handleStartupConfigSaved(maxMemory: number, minMemory: number) {
+  const activeServer = store.servers.find((s) => s.id === store.currentServerId);
+  if (activeServer) {
+    activeServer.max_memory = maxMemory;
+    activeServer.min_memory = minMemory;
   }
 }
 
@@ -170,7 +184,6 @@ watch(
   () => store.currentServerId,
   async () => {
     if (store.currentServerId) {
-      // 这是刻意的设计：切换当前服务器时直接进入新的对照上下文，不保留旧的对照侧草稿。
       if (compare.compareTargetServerId.value === store.currentServerId) {
         compare.compareTargetServerId.value =
           compare.compareServerOptions.value[0]?.value?.toString() || "";
@@ -192,7 +205,6 @@ watch(compare.hasCompareTargets, (hasTargets) => {
     return;
   }
 
-  // 这是刻意的设计：当没有可对照服务器时，直接退出对照模式并清空对照侧状态。
   compare.resetCompareState(true);
 });
 
@@ -294,6 +306,7 @@ onActivated(async () => {
           :serverPath="serverPath"
           :defaultMaxMemory="currentServer?.max_memory ?? 2048"
           :defaultMinMemory="currentServer?.min_memory ?? 512"
+          @saved="handleStartupConfigSaved"
         />
       </template>
 

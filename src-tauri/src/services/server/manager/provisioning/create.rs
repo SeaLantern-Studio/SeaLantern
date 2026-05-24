@@ -19,22 +19,24 @@ pub(super) fn create_server(
         .map(|path| path.to_string_lossy().to_string())
         .unwrap_or_else(|| ".".to_string());
 
-    let server = ServerInstance::new(
-        id.clone(),
-        server_name,
-        req.core_type,
-        String::new(),
-        req.mc_version,
-        server_dir.clone(),
-        req.jar_path,
-        normalize_startup_mode(&req.startup_mode).to_string(),
-        req.custom_command,
-        req.java_path,
-        Vec::new(),
-        req.port,
-        now,
-        None,
-    );
+    let server = ServerInstance {
+        id: id.clone(),
+        name: server_name,
+        core_type: req.core_type,
+        core_version: String::new(),
+        mc_version: req.mc_version,
+        path: server_dir.clone(),
+        jar_path: req.jar_path,
+        startup_mode: normalize_startup_mode(&req.startup_mode).to_string(),
+        custom_command: req.custom_command,
+        java_path: req.java_path,
+        max_memory: req.max_memory,
+        min_memory: req.min_memory,
+        jvm_args: Vec::new(),
+        port: req.port,
+        created_at: now,
+        last_started_at: None,
+    };
 
     write_sl_startup_config(Path::new(&server_dir), req.max_memory, req.min_memory)?;
 
