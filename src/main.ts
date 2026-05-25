@@ -1,23 +1,16 @@
 import { createApp } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { tauriInvoke } from "@api/tauri";
+import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import App from "@src/App.vue";
 import router from "@src/router";
 import pinia from "@src/stores";
 import "@src/style.css";
-import VueECharts from "vue-echarts";
-import { use } from "echarts/core";
-import { PieChart, LineChart } from "echarts/charts";
-import { GridComponent } from "echarts/components";
-import { CanvasRenderer } from "echarts/renderers";
-
-// 注册 ECharts 必要的组件
-use([GridComponent, PieChart, LineChart, CanvasRenderer]);
 
 const HEARTBEAT_INTERVAL = 5000;
 
 function startHeartbeat() {
-  // 在普通浏览器环境下，Tauri 后端不存在，调用会直接失败，这里静默忽略错误
+  if (isBrowserEnv()) return;
+
   setInterval(() => {
     tauriInvoke("frontend_heartbeat", undefined, { silent: true }).catch(() => {
       // 后端可能已退出或当前不在 Tauri 环境中
@@ -26,8 +19,6 @@ function startHeartbeat() {
 }
 
 const app = createApp(App);
-// 全局注册 vue-echarts
-app.component("v-chart", VueECharts);
 
 if (import.meta.env.DEV) {
   app.config.errorHandler = (err, instance, info) => {

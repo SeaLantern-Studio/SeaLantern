@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { onActivated, onDeactivated, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import ErrorBanner from "@components/views/home/ErrorBanner.vue";
 import QuickStartCard from "@components/views/home/QuickStartCard.vue";
@@ -10,7 +10,7 @@ import ChangePathModal from "@components/views/home/ChangePathModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import { useServerStore } from "@stores/serverStore";
 import { initQuote, startQuoteTimer, cleanupQuoteResources } from "@utils/quoteUtils";
-import { fetchSystemInfo, startThemeObserver, cleanupStatsResources } from "@utils/statsUtils";
+import { fetchSystemInfo } from "@utils/statsUtils";
 import {
   actionError,
   deleteServerName,
@@ -27,36 +27,56 @@ const store = useServerStore();
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
+async function loadServers() {
+  try {
+    await store.refreshList();
+    await Promise.all(store.servers.map((server) => store.refreshStatus(server.id)));
+  } catch (e) {
+    console.error("Failed to load servers:", e);
+  }
+}
+
+function startHomePolling() {
+  stopHomePolling();
+  void fetchSystemInfo();
+  statsTimer = setInterval(fetchSystemInfo, 3000);
+  refreshTimer = setInterval(async () => {
+    await Promise.all(store.servers.map((server) => store.refreshStatus(server.id)));
+  }, 3000);
+}
+
+function stopHomePolling() {
+  if (statsTimer) {
+    clearInterval(statsTimer);
+    statsTimer = null;
+  }
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
 onMounted(() => {
   initQuote();
 
-  const loadServers = async () => {
-    try {
-      await store.refreshList();
-      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
-    } catch (e) {
-      console.error("Failed to load servers:", e);
-    }
-  };
-
-  loadServers();
-  fetchSystemInfo();
-
-  statsTimer = setInterval(fetchSystemInfo, 3000);
+  void loadServers();
+  startHomePolling();
   startQuoteTimer();
+});
 
-  refreshTimer = setInterval(async () => {
-    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
-  }, 3000);
+onActivated(() => {
+  startHomePolling();
+  startQuoteTimer();
+});
 
-  startThemeObserver();
+onDeactivated(() => {
+  stopHomePolling();
+  cleanupQuoteResources();
 });
 
 onUnmounted(() => {
-  if (statsTimer) clearInterval(statsTimer);
-  if (refreshTimer) clearInterval(refreshTimer);
+  stopHomePolling();
   cleanupQuoteResources();
-  cleanupStatsResources();
 });
 
 function handleCreate() {
