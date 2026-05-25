@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: aur-publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 

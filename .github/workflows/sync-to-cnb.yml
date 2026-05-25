@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sync-release-to-cnb
+  group: sync-release-to-cnb-${{ github.event.release.tag_name || inputs.tag || github.run_id }}
   cancel-in-progress: false
 
 jobs:

@@ -6,8 +6,13 @@ on:
       - "v*"
       - "sea-lantern-v*"
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
+  actions: read
 
 jobs:
   validate-tag:
@@ -31,6 +36,36 @@ jobs:
             exit 1
           fi
           echo "✅ Tag 来源校验通过"
+
+      - name: 校验主检查已通过
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const headSha = process.env.GITHUB_SHA;
+
+            const response = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'check.yml',
+              head_sha: headSha,
+              per_page: 20,
+            });
+
+            const passed = response.data.workflow_runs.some((run) =>
+              run.head_sha === headSha &&
+              run.event === 'push' &&
+              run.head_branch === 'main' &&
+              run.status === 'completed' &&
+              run.conclusion === 'success'
+            );
+
+            if (!passed) {
+              core.setFailed(`❌ 提交 ${headSha} 尚未通过 main 分支上的 check.yml`);
+              return;
+            }
+
+            core.info(`✅ 提交 ${headSha} 已通过 main 分支上的 check.yml`);
 
       - name: 提取版本信息
         id: meta
@@ -88,6 +123,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
+          cache: pnpm
 
       - name: Enable Corepack
         run: corepack enable
