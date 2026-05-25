@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
+import DOMPurify from "dompurify";
 import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
@@ -51,6 +52,13 @@ const isConfirmDisabled = computed(() => {
   return false;
 });
 
+const safeMessage = computed(() => {
+  return DOMPurify.sanitize(props.message, {
+    FORBID_TAGS: ["script", "iframe", "style", "link"],
+    FORBID_ATTR: ["style"],
+  });
+});
+
 watch(
   () => props.visible,
   (visible) => {
@@ -92,7 +100,7 @@ function handleKeydown(event: KeyboardEvent): void {
       :class="{ 'confirm-content--danger': dangerous }"
       @keydown="handleKeydown"
     >
-      <p v-if="message" class="confirm-message" v-html="message"></p>
+      <p v-if="message" class="confirm-message" v-html="safeMessage"></p>
 
       <div v-if="requireInput" class="confirm-input-group">
         <SLInput
