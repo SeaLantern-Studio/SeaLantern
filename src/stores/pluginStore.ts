@@ -7,7 +7,6 @@ import { useComponentRegistry } from "@composables/useComponentRegistry";
 import { useToast } from "@composables/useToast";
 import DOMPurify from "dompurify";
 import * as pluginApi from "@api/plugin";
-import type { BufferedComponentEvent } from "@api/plugin";
 import { setThemeProviderOverrides } from "@utils/theme";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import type {
@@ -18,7 +17,6 @@ import type {
   MissingDependency,
   BatchInstallResult,
   SidebarItem,
-  PluginDependency,
   SidebarMode,
   PluginUiAction,
   PluginPermissionLog,
@@ -31,14 +29,6 @@ interface PluginUiEvent {
   element_id: string;
   html: string;
   target?: string;
-}
-
-interface PluginSidebarEvent {
-  plugin_id: string;
-  action: "register" | "unregister";
-  label: string;
-  icon: string;
-  mode?: SidebarMode;
 }
 
 function sanitizeHtml(html: string): string {

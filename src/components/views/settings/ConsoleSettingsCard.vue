@@ -4,6 +4,10 @@ import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import { i18n } from "@language";
 
+function toStringValue(value: string | number) {
+  return String(value);
+}
+
 defineProps<{
   consoleFontSize: string;
   consoleFontFamily: string;
@@ -59,7 +63,7 @@ const emit = defineEmits<{
             :placeholder="i18n.t('settings.search_font')"
             @update:model-value="
               (v) => {
-                emit('update:consoleFontFamily', v);
+                emit('update:consoleFontFamily', toStringValue(v));
                 emit('change');
               }
             "

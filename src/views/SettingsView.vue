@@ -29,6 +29,8 @@ const defaultRunPath = ref("");
 const showImportModal = ref(false);
 const showResetConfirm = ref(false);
 
+type CloseAction = "ask" | "minimize" | "close";
+
 onMounted(async () => {
   await loadSettings();
 
@@ -222,7 +224,7 @@ function handleJavaInstalled(path: string) {
 
 async function handleBrowseJavaPath() {
   const selected = await systemApi.pickJavaFile();
-  if (selected) {
+  if (selected && settings.value) {
     settings.value.default_java_path = selected;
     markChanged();
   }
@@ -254,7 +256,7 @@ async function handleBrowseRunPath() {
         v-model:closeServersOnExit="settings.close_servers_on_exit"
         v-model:closeServersOnUpdate="settings.close_servers_on_update"
         v-model:autoAcceptEula="settings.auto_accept_eula"
-        v-model:closeAction="settings.close_action"
+        v-model:closeAction="settings.close_action as CloseAction"
         @change="markChanged"
       />
 
