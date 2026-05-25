@@ -89,9 +89,7 @@ jobs:
       - name: 缓存 Rust 编译产物
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: |
-            ./src-tauri -> target
-            ./docker-entry -> target
+          workspaces: ". -> target"
 
       - name: 检查代码格式 (Rust)
         run: cargo fmt --all -- --check
