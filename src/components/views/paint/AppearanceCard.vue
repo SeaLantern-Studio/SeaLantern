@@ -51,8 +51,8 @@ const themeOptions = computed(() => [
   { label: i18n.t("settings.theme_options.dark"), value: "dark" },
 ]);
 
-function handleThemeChange(value: string) {
-  emit("update:theme", value);
+function handleThemeChange(value: string | number) {
+  emit("update:theme", String(value));
   emit("themeChange");
 }
 
@@ -61,8 +61,8 @@ function handleFontSizeChange(e: Event) {
   emit("fontSizeChange");
 }
 
-function handleFontFamilyChange(value: string) {
-  emit("update:fontFamily", value);
+function handleFontFamilyChange(value: string | number) {
+  emit("update:fontFamily", String(value));
   emit("fontFamilyChange");
 }
 

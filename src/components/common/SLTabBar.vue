@@ -34,7 +34,7 @@ const activeTab = computed({
   set: (value: string | null) => emit("update:modelValue", value),
 });
 
-const { indicatorRef, updatePosition } = useTabIndicator(activeTab);
+const { updatePosition } = useTabIndicator(activeTab);
 
 const localeRef = i18n.getLocaleRef();
 watch(localeRef, () => {

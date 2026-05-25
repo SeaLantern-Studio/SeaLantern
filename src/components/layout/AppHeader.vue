@@ -108,33 +108,6 @@ function toggleMoreLanguages() {
   showMoreLanguages.value = !showMoreLanguages.value;
 }
 
-const currentLanguageText = computed(() => {
-  const currentLocale = i18nStore.currentLocale;
-
-  // 尝试从语言文件中获取 languageName
-  const translations = i18n.getTranslations();
-  const languageName = translations[currentLocale as keyof typeof translations]?.languageName;
-
-  if (languageName) {
-    return languageName;
-  }
-
-  // 如果没有 languageName，使用原来的逻辑
-  const labelKey = {
-    "zh-CN": "header.chinese",
-    "en-US": "header.english",
-    "zh-TW": "header.chinese_tw",
-    "de-DE": "header.deutsch",
-    "es-ES": "header.spanish",
-    "ja-JP": "header.japanese",
-    "ru-RU": "header.russian",
-    "vi-VN": "header.vietnamese",
-    "ko-KR": "header.korean",
-    "fr-FA": "header.french",
-  }[currentLocale];
-  return labelKey ? i18n.t(labelKey) : i18n.t("header.english");
-});
-
 onMounted(async () => {
   isUnmounted = false;
   await loadSettings();

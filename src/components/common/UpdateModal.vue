@@ -50,7 +50,9 @@ const progressPercent = computed(() => {
 
 onMounted(async () => {
   unlistenProgress = await onDownloadProgress((progress) => {
-    updateStore.setDownloading(progress.percent);
+    const percent =
+      progress.percent ?? (progress.total > 0 ? (progress.downloaded / progress.total) * 100 : 0);
+    updateStore.setDownloading(percent);
   });
 });
 

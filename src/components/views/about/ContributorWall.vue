@@ -33,7 +33,7 @@ function loadMore() {
   currentPage.value++;
 }
 
-const { copiedQQ, openLink, copyQQ, openSocialLink } = useAboutLinks();
+const { copiedQQ, openSocialLink } = useAboutLinks();
 
 function isSocialLinks(url: string | SocialLinks | undefined): url is SocialLinks {
   return typeof url === "object" && url !== null;

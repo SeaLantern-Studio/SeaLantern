@@ -2,19 +2,18 @@
 import { Menu, Gauge } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
 import SLProgress from "@components/common/SLProgress.vue";
+import UsageGauge from "./UsageGauge.vue";
+import UsageSparkline from "./UsageSparkline.vue";
 import { i18n } from "@language";
 import {
   systemInfo,
   cpuUsage,
+  cpuHistory,
   memUsage,
+  memHistory,
   diskUsage,
   statsViewMode,
   statsLoading,
-  cpuGaugeOption,
-  memGaugeOption,
-  diskGaugeOption,
-  cpuLineOption,
-  memLineOption,
 } from "@utils/statsUtils";
 import { formatBytes } from "@utils/serverUtils";
 
@@ -49,28 +48,13 @@ function toggleViewMode() {
     <div v-else-if="statsViewMode === 'gauge'" class="gauge-view">
       <div class="gauge-grid">
         <div class="gauge-item">
-          <v-chart
-            class="gauge-chart"
-            :option="cpuGaugeOption"
-            autoresize
-            :update-options="{ notMerge: false }"
-          />
+          <UsageGauge class="gauge-chart" :value="cpuUsage" tone="primary" />
         </div>
         <div class="gauge-item">
-          <v-chart
-            class="gauge-chart"
-            :option="memGaugeOption"
-            autoresize
-            :update-options="{ notMerge: false }"
-          />
+          <UsageGauge class="gauge-chart" :value="memUsage" tone="success" />
         </div>
         <div class="gauge-item">
-          <v-chart
-            class="gauge-chart"
-            :option="diskGaugeOption"
-            autoresize
-            :update-options="{ notMerge: false }"
-          />
+          <UsageGauge class="gauge-chart" :value="diskUsage" tone="warning" />
         </div>
       </div>
       <div v-if="systemInfo" class="gauge-details">
@@ -107,7 +91,7 @@ function toggleViewMode() {
           <span class="stat-value">{{ cpuUsage }}%</span>
         </div>
         <div class="mini-chart">
-          <v-chart class="line-chart" :option="cpuLineOption" autoresize />
+          <UsageSparkline class="line-chart" :values="cpuHistory" tone="primary" />
         </div>
       </div>
       <div class="stat-item">
@@ -122,7 +106,7 @@ function toggleViewMode() {
           <span class="stat-value">{{ memUsage }}%</span>
         </div>
         <div class="mini-chart">
-          <v-chart class="line-chart" :option="memLineOption" autoresize />
+          <UsageSparkline class="line-chart" :values="memHistory" tone="success" />
         </div>
       </div>
       <div class="stat-item">

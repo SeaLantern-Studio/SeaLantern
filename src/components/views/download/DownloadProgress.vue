@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { SLProgress } from "@components/common";
-import { i18n } from "@language";
 import { formatBytes } from "@utils/serverUtils";
 
 const props = defineProps<{

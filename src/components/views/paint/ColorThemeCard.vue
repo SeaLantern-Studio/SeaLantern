@@ -18,8 +18,8 @@ const emit = defineEmits<{
 
 const colorOptions = computed(() => getThemeOptions());
 
-function handleColorChange(value: string) {
-  emit("update:color", value);
+function handleColorChange(value: string | number) {
+  emit("update:color", String(value));
   emit("change");
 }
 </script>

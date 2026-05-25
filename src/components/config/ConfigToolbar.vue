@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { i18n } from "@language";
 import SLInput from "@components/common/SLInput.vue";
-import SLSpinner from "@components/common/SLSpinner.vue";
-
 interface Props {
   serverPath: string;
   searchQuery: string;
