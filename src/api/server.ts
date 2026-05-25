@@ -25,6 +25,11 @@ export interface ForceStopPreparation {
   expiresAt: number;
 }
 
+interface ForceStopPreparationRaw {
+  token: string;
+  expires_at: number;
+}
+
 export interface StartupCandidateItem {
   id: string;
   mode: "starter" | "jar" | "bat" | "sh" | "ps1";
@@ -229,7 +234,39 @@ export const serverApi = {
   },
 
   async prepareForceStop(id: string): Promise<ForceStopPreparation> {
-    return tauriInvoke("prepare_force_stop_server", { id });
+    const result = await tauriInvoke<ForceStopPreparationRaw>("prepare_force_stop_server", { id });
+    return {
+      token: result.token,
+      expiresAt: result.expires_at,
+    };
+  },
+
+  async forceStopAll(): Promise<void> {
+    const servers = await this.getList();
+    const runningServerIds = await Promise.all(
+      servers.map(async (server) => {
+        try {
+          const status = await this.getStatus(server.id);
+          return status.status === "Running" ? server.id : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const activeServerIds = runningServerIds.filter(
+      (serverId): serverId is string => serverId !== null,
+    );
+    if (activeServerIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      activeServerIds.map(async (serverId) => {
+        const preparation = await this.prepareForceStop(serverId);
+        await this.forceStop(serverId, preparation.token);
+      }),
+    );
   },
 
   async forceStop(id: string, confirmationToken: string): Promise<void> {
@@ -274,29 +311,56 @@ export const serverApi = {
   subscribeLogStream(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
     return new Promise((resolve) => {
       const url = `${HTTP_API_BASE}/api/logs/stream`;
-      const eventSource = new EventSource(url);
+      let eventSource: EventSource | null = null;
+      let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+      let disposed = false;
 
-      eventSource.addEventListener("message", (event) => {
-        try {
-          const data = JSON.parse(event.data) as ServerLogLineEvent;
-          callback(data);
-        } catch (e) {
-          console.warn("[SSE] Failed to parse log event:", e);
+      const clearReconnectTimer = () => {
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
         }
-      });
+      };
 
-      eventSource.addEventListener("error", (e) => {
-        console.warn("[SSE] Connection error, reconnecting...", e);
-        // 自动重连：关闭旧连接，延迟后创建新连接
-        eventSource.close();
-        setTimeout(() => {
-          this.subscribeLogStream(callback);
-        }, 3000);
-      });
+      const connect = () => {
+        if (disposed) {
+          return;
+        }
 
-      // 返回取消订阅函数
+        eventSource = new EventSource(url);
+
+        eventSource.addEventListener("message", (event) => {
+          try {
+            const data = JSON.parse(event.data) as ServerLogLineEvent;
+            callback(data);
+          } catch (e) {
+            console.warn("[SSE] Failed to parse log event:", e);
+          }
+        });
+
+        eventSource.addEventListener("error", (e) => {
+          if (disposed) {
+            return;
+          }
+
+          console.warn("[SSE] Connection error, reconnecting...", e);
+          eventSource?.close();
+          eventSource = null;
+          clearReconnectTimer();
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            connect();
+          }, 3000);
+        });
+      };
+
+      connect();
+
       resolve(() => {
-        eventSource.close();
+        disposed = true;
+        clearReconnectTimer();
+        eventSource?.close();
+        eventSource = null;
       });
     });
   },
