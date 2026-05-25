@@ -25,7 +25,9 @@ concurrency:
 
 jobs:
   sync:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.release.prerelease }}
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - name: 设置 Go 环境
         uses: actions/setup-go@v5
@@ -33,7 +35,7 @@ jobs:
           go-version: "1.23.x"
 
       - name: 克隆 release-sync
-        run: git clone https://github.com/SeaLantern-Studio/release-sync.git
+        run: git clone --depth 1 https://github.com/SeaLantern-Studio/release-sync.git
 
       - name: 下载依赖
         working-directory: release-sync
