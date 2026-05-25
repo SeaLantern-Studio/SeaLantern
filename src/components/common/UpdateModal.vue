@@ -6,12 +6,19 @@ import { useUpdateStore } from "@stores/updateStore";
 import { i18n } from "@language";
 import { downloadUpdate, installUpdate, onDownloadProgress } from "@api/update";
 import { serverApi } from "@api/server";
+import type { ServerStatus } from "@type/common";
 import type { UnlistenFn } from "@tauri-apps/api/event";
+import { isActiveServerStatus } from "@utils/serverStatus";
+
+interface ForceStopFailureItem {
+  serverId: string;
+  error: string;
+}
 
 const updateStore = useUpdateStore();
 
 const showInstallRiskConfirm = ref(false);
-const runningServerNames = ref<string[]>([]);
+const activeServerNames = ref<string[]>([]);
 let unlistenProgress: UnlistenFn | null = null;
 const isInstallLaunching = computed(() => updateStore.status === "installing");
 
@@ -93,7 +100,7 @@ async function handleUpdateClick() {
   }
 }
 
-async function getRunningServerNames(): Promise<string[]> {
+async function getActiveServerNames(): Promise<string[]> {
   const servers = await serverApi.getList();
   if (servers.length === 0) {
     return [];
@@ -116,10 +123,10 @@ async function getRunningServerNames(): Promise<string[]> {
         item,
       ): item is {
         name: string;
-        status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
+        status: ServerStatus;
       } => item !== null,
     )
-    .filter((item) => item.status === "Running")
+    .filter((item) => isActiveServerStatus(item.status))
     .map((item) => item.name);
 }
 
@@ -129,13 +136,13 @@ async function handleInstallClick() {
   }
 
   try {
-    runningServerNames.value = await getRunningServerNames();
+    activeServerNames.value = await getActiveServerNames();
   } catch (error) {
-    console.error("Failed to check running servers:", error);
-    runningServerNames.value = [];
+    console.error("Failed to check active servers:", error);
+    activeServerNames.value = [];
   }
 
-  if (runningServerNames.value.length > 0) {
+  if (activeServerNames.value.length > 0) {
     showInstallRiskConfirm.value = true;
     return;
   }
@@ -170,16 +177,26 @@ async function handleForceAutoUpdate() {
 
   showInstallRiskConfirm.value = false;
   try {
-    await serverApi.forceStopAll();
+    const result = await serverApi.forceStopAll();
+    if (result.failed.length > 0) {
+      updateStore.setInstallError(formatForceStopFailureMessage(result.failed));
+      return;
+    }
   } catch (error) {
     updateStore.setInstallError(String(error));
     return;
   }
+
   await performInstall();
 }
 
 function closeInstallRiskConfirm() {
   showInstallRiskConfirm.value = false;
+}
+
+function formatForceStopFailureMessage(failed: ForceStopFailureItem[]): string {
+  const failedServerIds = failed.map((item) => item.serverId).join(", ");
+  return `${i18n.t("about.update_force_stop_failed")}: ${failedServerIds}`;
 }
 </script>
 
@@ -247,9 +264,9 @@ function closeInstallRiskConfirm() {
       <div class="install-risk-text">{{ i18n.t("about.update_running_warning_desc") }}</div>
       <div class="install-risk-hint">{{ i18n.t("about.update_running_warning_hint") }}</div>
 
-      <div v-if="runningServerNames.length > 0" class="running-servers-box">
+      <div v-if="activeServerNames.length > 0" class="running-servers-box">
         <div class="running-servers-title">{{ i18n.t("about.update_running_servers") }}:</div>
-        <div class="running-servers-value">{{ runningServerNames.join(" / ") }}</div>
+        <div class="running-servers-value">{{ activeServerNames.join(" / ") }}</div>
       </div>
 
       <div class="install-risk-actions">

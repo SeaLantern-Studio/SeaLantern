@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLFormField from "@components/common/SLFormField.vue";
@@ -24,9 +25,11 @@ const plugin = ref<PluginInfo | null>(null);
 const settingsForm = reactive<Record<string, any>>({});
 const saving = ref(false);
 const loading = ref(true);
+const isInitializingForms = ref(false);
 
 const dependentPlugins = ref<PluginInfo[]>([]);
 const dependentSettingsForms = reactive<Record<string, Record<string, any>>>({});
+const dependentSettingsSnapshots = reactive<Record<string, string>>({});
 
 const sidebarConfig = computed(() => {
   return plugin.value?.manifest.sidebar;
@@ -44,28 +47,184 @@ function getDependencyId(dep: string | { id: string; version?: string }): string
   return typeof dep === "string" ? dep : dep.id;
 }
 
-async function loadPluginData() {
-  loading.value = true;
-  const found = pluginStore.plugins.find((p) => p.manifest.id === props.pluginId);
-  if (found) {
-    plugin.value = found;
+function clearRecord(record: Record<string, any>) {
+  Object.keys(record).forEach((key) => delete record[key]);
+}
 
-    const settings = await pluginStore.getPluginSettings(props.pluginId);
-    Object.assign(settingsForm, settings || {});
+function serializeSettings(settings: Record<string, any>): string {
+  return JSON.stringify(settings);
+}
 
-    if (found.manifest.settings) {
-      for (const field of found.manifest.settings) {
-        if (settingsForm[field.key] === undefined) {
-          settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
-        }
-      }
+let saveRequestCount = 0;
+const inFlightSavePromises = new Map<string, Promise<void>>();
+let pendingFlushPromise: Promise<void> | null = null;
+
+function beginSaving() {
+  saveRequestCount += 1;
+  saving.value = true;
+}
+
+function endSaving() {
+  saveRequestCount = Math.max(0, saveRequestCount - 1);
+  saving.value = saveRequestCount > 0;
+}
+
+async function persistPluginSettings(pluginId: string, settings: Record<string, any>) {
+  beginSaving();
+  try {
+    await pluginStore.setPluginSettings(pluginId, settings);
+  } finally {
+    endSaving();
+  }
+}
+
+async function saveMainSettingsNow(pluginId: string) {
+  const settingsToSave = { ...settingsForm };
+  const snapshot = serializeSettings(settingsToSave);
+  if (snapshot === mainSettingsSnapshot.value) return;
+
+  const inFlight = inFlightSavePromises.get(pluginId);
+  if (inFlight) {
+    await inFlight;
+    return saveMainSettingsNow(pluginId);
+  }
+
+  const savePromise = (async () => {
+    await persistPluginSettings(pluginId, settingsToSave);
+    if (plugin.value?.manifest.id === pluginId) {
+      mainSettingsSnapshot.value = snapshot;
     }
+  })();
 
-    if (showDependents.value) {
-      await loadDependentPlugins();
+  inFlightSavePromises.set(pluginId, savePromise);
+  try {
+    await savePromise;
+  } finally {
+    if (inFlightSavePromises.get(pluginId) === savePromise) {
+      inFlightSavePromises.delete(pluginId);
     }
   }
-  loading.value = false;
+}
+
+async function saveDependentSettingsNow(pluginId: string) {
+  const form = dependentSettingsForms[pluginId];
+  if (!form) return;
+
+  const settingsToSave = { ...form };
+  const snapshot = serializeSettings(settingsToSave);
+  if (snapshot === dependentSettingsSnapshots[pluginId]) return;
+
+  const inFlight = inFlightSavePromises.get(pluginId);
+  if (inFlight) {
+    await inFlight;
+    return saveDependentSettingsNow(pluginId);
+  }
+
+  const savePromise = (async () => {
+    await persistPluginSettings(pluginId, settingsToSave);
+    if (dependentSettingsForms[pluginId]) {
+      dependentSettingsSnapshots[pluginId] = snapshot;
+    }
+  })();
+
+  inFlightSavePromises.set(pluginId, savePromise);
+  try {
+    await savePromise;
+  } finally {
+    if (inFlightSavePromises.get(pluginId) === savePromise) {
+      inFlightSavePromises.delete(pluginId);
+    }
+  }
+}
+
+async function flushMainSettingsSave() {
+  const pluginId = plugin.value?.manifest.id;
+  if (!pluginId) return;
+
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = null;
+  }
+
+  await saveMainSettingsNow(pluginId);
+}
+
+async function flushDependentSettingsSave(pluginId: string) {
+  const timer = dependentAutoSaveTimers.get(pluginId);
+  if (timer) {
+    clearTimeout(timer);
+    dependentAutoSaveTimers.delete(pluginId);
+  }
+
+  await saveDependentSettingsNow(pluginId);
+}
+
+async function flushPendingAutoSaves() {
+  if (pendingFlushPromise) {
+    await pendingFlushPromise;
+    return;
+  }
+
+  pendingFlushPromise = (async () => {
+    await flushMainSettingsSave();
+
+    await Promise.all(
+      dependentPlugins.value.map((depPlugin) => flushDependentSettingsSave(depPlugin.manifest.id)),
+    );
+  })();
+
+  try {
+    await pendingFlushPromise;
+  } finally {
+    pendingFlushPromise = null;
+  }
+}
+
+async function loadPluginData() {
+  loading.value = true;
+
+  await flushPendingAutoSaves();
+
+  isInitializingForms.value = true;
+
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = null;
+  }
+
+  dependentAutoSaveTimers.forEach((timer) => clearTimeout(timer));
+  dependentAutoSaveTimers.clear();
+
+  clearRecord(settingsForm);
+  clearRecord(dependentSettingsForms);
+  clearRecord(dependentSettingsSnapshots);
+  dependentPlugins.value = [];
+
+  try {
+    const found = pluginStore.plugins.find((p) => p.manifest.id === props.pluginId);
+    plugin.value = found ?? null;
+
+    if (found) {
+      const settings = await pluginStore.getPluginSettings(props.pluginId);
+      Object.assign(settingsForm, settings || {});
+
+      if (found.manifest.settings) {
+        for (const field of found.manifest.settings) {
+          if (settingsForm[field.key] === undefined) {
+            settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
+          }
+        }
+      }
+
+      if (showDependents.value) {
+        await loadDependentPlugins();
+      }
+    }
+  } finally {
+    mainSettingsSnapshot.value = serializeSettings({ ...settingsForm });
+    isInitializingForms.value = false;
+    loading.value = false;
+  }
 }
 
 async function loadDependentPlugins() {
@@ -99,6 +258,7 @@ async function loadDependentPlugins() {
   dependentPlugins.value = results.map((r) => r.plugin);
   for (const { plugin: depPlugin, form } of results) {
     dependentSettingsForms[depPlugin.manifest.id] = form;
+    dependentSettingsSnapshots[depPlugin.manifest.id] = serializeSettings(form);
   }
 }
 
@@ -147,8 +307,8 @@ async function applyPreset(presetKey: string) {
   settingsForm["preset"] = presetKey;
   settingsToSave["preset"] = presetKey;
 
-  await pluginStore.setPluginSettings(pluginId, settingsToSave);
-  await pluginStore.applyThemeProviderSettings(pluginId);
+  await persistPluginSettings(pluginId, settingsToSave);
+  mainSettingsSnapshot.value = serializeSettings({ ...settingsForm });
 }
 
 async function resetToDefault() {
@@ -181,21 +341,85 @@ watch(
   },
 );
 
+onBeforeRouteLeave(async () => {
+  await flushPendingAutoSaves();
+});
+
+onBeforeRouteUpdate(async () => {
+  await flushPendingAutoSaves();
+});
+
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+const mainSettingsSnapshot = ref("{}");
+const dependentAutoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function queueDependentSettingsSave(pluginId: string) {
+  const form = dependentSettingsForms[pluginId];
+  if (!form) return;
+
+  const currentSnapshot = serializeSettings({ ...form });
+  if (currentSnapshot === dependentSettingsSnapshots[pluginId]) return;
+
+  const existingTimer = dependentAutoSaveTimers.get(pluginId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  const timer = setTimeout(async () => {
+    dependentAutoSaveTimers.delete(pluginId);
+    try {
+      await saveDependentSettingsNow(pluginId);
+    } catch (error) {
+      console.error(`Failed to auto-save dependent plugin settings for ${pluginId}:`, error);
+    }
+  }, 300);
+
+  dependentAutoSaveTimers.set(pluginId, timer);
+}
+
 watch(
   settingsForm,
   async () => {
-    if (!plugin.value) return;
+    if (!plugin.value || isInitializingForms.value) return;
+
+    const nextSnapshot = serializeSettings({ ...settingsForm });
+    if (nextSnapshot === mainSettingsSnapshot.value) return;
+
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    const pluginId = plugin.value.manifest.id;
     autoSaveTimer = setTimeout(async () => {
-      await pluginStore.setPluginSettings(props.pluginId, { ...settingsForm });
-      if (isThemeProvider.value) {
-        await pluginStore.applyThemeProviderSettings(props.pluginId);
+      autoSaveTimer = null;
+
+      try {
+        await saveMainSettingsNow(pluginId);
+      } catch (error) {
+        console.error(`Failed to auto-save plugin settings for ${pluginId}:`, error);
       }
     }, 300);
   },
   { deep: true },
 );
+
+watch(
+  dependentSettingsForms,
+  () => {
+    if (isInitializingForms.value) return;
+
+    for (const depPlugin of dependentPlugins.value) {
+      queueDependentSettingsSave(depPlugin.manifest.id);
+    }
+  },
+  { deep: true },
+);
+
+onUnmounted(() => {
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer);
+  }
+
+  dependentAutoSaveTimers.forEach((timer) => clearTimeout(timer));
+  dependentAutoSaveTimers.clear();
+});
 </script>
 
 <template>

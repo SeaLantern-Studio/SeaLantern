@@ -27,13 +27,28 @@ const quoteCache = ref<Quote[]>([]);
 let typeTimer: ReturnType<typeof setInterval> | null = null;
 let quoteTimer: ReturnType<typeof setInterval> | null = null;
 
+function stopTypeTimer() {
+  if (typeTimer) {
+    clearInterval(typeTimer);
+    typeTimer = null;
+  }
+}
+
+function restoreCurrentQuoteDisplay() {
+  stopTypeTimer();
+  if (currentQuote.value.text) {
+    displayText.value = currentQuote.value.text;
+  }
+  isTyping.value = false;
+}
+
 /**
  * 打字机效果函数
  * @param text 要显示的文本
  * @param callback 完成后的回调函数
  */
 function typeWriter(text: string, callback?: () => void) {
-  if (typeTimer) clearInterval(typeTimer);
+  stopTypeTimer();
   displayText.value = "";
   isTyping.value = true;
   let index = 0;
@@ -42,7 +57,7 @@ function typeWriter(text: string, callback?: () => void) {
       displayText.value += text[index];
       index++;
     } else {
-      if (typeTimer) clearInterval(typeTimer);
+      stopTypeTimer();
       isTyping.value = false;
       if (callback) callback();
     }
@@ -54,8 +69,9 @@ function typeWriter(text: string, callback?: () => void) {
  * @param callback 完成后的回调函数
  */
 function typeWriterOut(callback?: () => void) {
-  if (typeTimer) clearInterval(typeTimer);
+  stopTypeTimer();
   if (!displayText.value) {
+    isTyping.value = false;
     if (callback) callback();
     return;
   }
@@ -66,7 +82,7 @@ function typeWriterOut(callback?: () => void) {
       chars.pop();
       displayText.value = chars.join("");
     } else {
-      if (typeTimer) clearInterval(typeTimer);
+      stopTypeTimer();
       isTyping.value = false;
       if (callback) callback();
     }
@@ -196,14 +212,42 @@ function stopQuoteTimer() {
 }
 
 /**
+ * 暂停引用自动更新，并恢复到可立即展示的稳定状态
+ */
+function pauseQuoteUpdates() {
+  stopQuoteTimer();
+
+  if (
+    isTyping.value ||
+    (currentQuote.value.text && displayText.value !== currentQuote.value.text)
+  ) {
+    restoreCurrentQuoteDisplay();
+    return;
+  }
+
+  stopTypeTimer();
+  isTyping.value = false;
+}
+
+/**
+ * 恢复引用展示和自动更新
+ * @param interval 更新间隔（毫秒），默认30000毫秒
+ */
+function resumeQuoteUpdates(interval: number = 30000) {
+  if ((currentQuote.value.text && !displayText.value) || isTyping.value) {
+    restoreCurrentQuoteDisplay();
+  }
+
+  startQuoteTimer(interval);
+}
+
+/**
  * 清理引用相关资源
  */
 function cleanupQuoteResources() {
-  if (typeTimer) {
-    clearInterval(typeTimer);
-    typeTimer = null;
-  }
+  stopTypeTimer();
   stopQuoteTimer();
+  isTyping.value = false;
 }
 
 export {
@@ -218,5 +262,7 @@ export {
   initQuote,
   startQuoteTimer,
   stopQuoteTimer,
+  pauseQuoteUpdates,
+  resumeQuoteUpdates,
   cleanupQuoteResources,
 };

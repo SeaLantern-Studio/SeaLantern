@@ -44,5 +44,4 @@ pub async fn status() -> TunnelStatus {
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit/services_online_tunnel_tests.rs"]
 mod tests;

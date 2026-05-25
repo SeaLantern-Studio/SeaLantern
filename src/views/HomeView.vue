@@ -9,7 +9,12 @@ import AlertsSection from "@components/views/home/AlertsSection.vue";
 import ChangePathModal from "@components/views/home/ChangePathModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import { useServerStore } from "@stores/serverStore";
-import { initQuote, startQuoteTimer, cleanupQuoteResources } from "@utils/quoteUtils";
+import {
+  cleanupQuoteResources,
+  initQuote,
+  pauseQuoteUpdates,
+  resumeQuoteUpdates,
+} from "@utils/quoteUtils";
 import { fetchSystemInfo } from "@utils/statsUtils";
 import {
   actionError,
@@ -61,17 +66,17 @@ onMounted(() => {
 
   void loadServers();
   startHomePolling();
-  startQuoteTimer();
+  resumeQuoteUpdates();
 });
 
 onActivated(() => {
   startHomePolling();
-  startQuoteTimer();
+  resumeQuoteUpdates();
 });
 
 onDeactivated(() => {
   stopHomePolling();
-  cleanupQuoteResources();
+  pauseQuoteUpdates();
 });
 
 onUnmounted(() => {

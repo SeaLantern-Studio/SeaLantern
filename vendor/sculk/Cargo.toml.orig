@@ -1,0 +1,38 @@
+[package]
+name = "sculk"
+categories = ["network-programming", "game-development"]
+description = "P2P tunnel core library for Minecraft multiplayer"
+documentation = "https://docs.rs/sculk"
+include = ["/src/**", "/Cargo.toml", "/README.md"]
+keywords = ["minecraft", "p2p", "tunnel", "quic", "iroh"]
+readme = "README.md"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+default = []
+clipboard = ["dep:arboard"]
+persist = ["dep:dirs", "dep:rand", "dep:serde", "dep:toml"]
+
+[dependencies]
+iroh.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+subtle.workspace = true
+thiserror.workspace = true
+arboard = { workspace = true, optional = true }
+dirs = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
+
+[dev-dependencies]
+rand.workspace = true
+
+[lints]
+workspace = true
