@@ -129,10 +129,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-          cache: pnpm
 
       - name: Enable Corepack
         run: corepack enable
+
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - name: 安装 Rust 工具链 (默认目标)
         if: ${{ matrix.args == '' }}
