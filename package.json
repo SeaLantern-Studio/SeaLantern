@@ -29,7 +29,7 @@
     "@codemirror/view": "^6.41.0",
     "@headlessui/vue": "^1.7.23",
     "@lezer/highlight": "^1.2.3",
-    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-http": "^2.5.7",
@@ -52,7 +52,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.4.4",
     "@commitlint/config-conventional": "^20.4.4",
-    "@tauri-apps/cli": "^2.10.1",
+    "@tauri-apps/cli": "^2.11.2",
     "@types/node": "^25.5.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "glob": "^13.0.0",
