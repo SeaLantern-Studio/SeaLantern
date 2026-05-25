@@ -474,20 +474,6 @@ function getDepDisplayName(depId: string): string {
   return depPlugin ? depPlugin.manifest.name : depId;
 }
 
-function getDepStatus(depId: string): string {
-  const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-  if (!depPlugin) return "not-installed";
-  if (depPlugin.state !== "enabled") return "not-enabled";
-  return "ok";
-}
-
-function getDepStatusLabel(depId: string): string {
-  const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-  if (!depPlugin) return i18n.t("plugins.dep_status.not_installed");
-  if (depPlugin.state !== "enabled") return i18n.t("plugins.dep_status.disabled");
-  return i18n.t("plugins.dep_status.enabled");
-}
-
 interface DependencyDetail {
   id: string;
   name: string;
@@ -760,12 +746,6 @@ function invertSelection() {
     }
   }
   selectedPlugins.value = newSet;
-}
-
-function isAllSelected(): boolean {
-  return (
-    pluginStore.plugins.length > 0 && selectedPlugins.value.size === pluginStore.plugins.length
-  );
 }
 
 function showBatchDeleteConfirm() {

@@ -14,6 +14,7 @@ export interface MarketPluginInfo {
   id: string;
   name: Record<string, string> | string;
   description: Record<string, string> | string;
+  changelog?: string;
   repo?: string;
   version?: string;
   author: { name: string; url?: string };

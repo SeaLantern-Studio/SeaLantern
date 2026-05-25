@@ -95,6 +95,7 @@ const canFileDownload = computed(() => {
   // 验证URL格式
   try {
     const validatedUrl = new URL(url.value.trim());
+    void validatedUrl;
   } catch {
     return false;
   }

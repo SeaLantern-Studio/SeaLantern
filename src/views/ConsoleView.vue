@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onActivated, nextTick, computed, watch } from "vue";
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  onActivated,
+  onDeactivated,
+  nextTick,
+  computed,
+  watch,
+} from "vue";
 import { Cpu, HardDrive, MemoryStick, ArrowDown } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
@@ -13,14 +22,10 @@ import { settingsApi } from "@api/settings";
 import {
   serverSystemInfo,
   serverCpuUsage,
-  serverMemUsage,
-  serverDiskUsage,
   serverStatsLoading,
   serverStatsError,
   fetchServerResourceUsage,
   resetStatsHistory,
-  startThemeObserver,
-  stopThemeObserver,
 } from "@utils/statsUtils";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
@@ -86,13 +91,6 @@ const currentServer = computed(
 );
 const serverProcessInfo = computed(() => serverSystemInfo.value);
 const serverStatsUnavailable = computed(() => serverStatsError.value && !serverProcessInfo.value);
-const noDataText = computed(() => {
-  const text = i18n.t("home.no_data");
-  return text === "home.no_data" ? i18n.t("common.unknown") : text;
-});
-const serverPidText = computed(() =>
-  serverProcessInfo.value?.pid ? `PID ${serverProcessInfo.value.pid}` : noDataText.value,
-);
 const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "stopped">(() => {
   if (isRunning.value) return "running";
   if (isStarting.value) return "starting";
@@ -160,9 +158,41 @@ function stopStatsPolling() {
   }
 }
 
-onMounted(async () => {
+async function startLogSubscription() {
+  if (unlistenLogLine) {
+    return;
+  }
+
+  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
+    const sid = serverId.value;
+    if (!sid || server_id !== sid) return;
+    consoleOutputRef.value?.appendLines([line]);
+  });
+}
+
+function stopLogSubscription() {
+  if (unlistenLogLine) {
+    unlistenLogLine();
+    unlistenLogLine = null;
+  }
+}
+
+async function activateConsoleView() {
   await loadConsoleSettings();
-  startThemeObserver();
+
+  if (serverId.value) {
+    startStatsPolling();
+  }
+
+  await startLogSubscription();
+}
+
+function deactivateConsoleView() {
+  stopStatsPolling();
+  stopLogSubscription();
+}
+
+onMounted(async () => {
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
 
   await serverStore.refreshList();
@@ -172,30 +202,22 @@ onMounted(async () => {
   if (serverId.value) {
     await serverStore.refreshStatus(serverId.value);
     await syncLogsOnce(serverId.value);
-    startStatsPolling();
   }
-  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
-    const sid = serverId.value;
-    if (!sid || server_id !== sid) return;
-    consoleOutputRef.value?.appendLines([line]);
-  });
+  await activateConsoleView();
   nextTick(() => doScroll());
 });
 
 onUnmounted(() => {
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
-  stopThemeObserver();
-  stopStatsPolling();
-  if (unlistenLogLine) {
-    unlistenLogLine();
-    unlistenLogLine = null;
-  }
+  deactivateConsoleView();
 });
 
 onActivated(async () => {
-  await loadConsoleSettings();
-  startThemeObserver();
-  startStatsPolling();
+  await activateConsoleView();
+});
+
+onDeactivated(() => {
+  deactivateConsoleView();
 });
 
 watch(

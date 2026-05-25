@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLFormField from "@components/common/SLFormField.vue";
@@ -11,15 +10,14 @@ import SLTextarea from "@components/common/SLTextarea.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import type { PluginInfo, PluginSettingField } from "@type/plugin";
-import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
+import type { PluginInfo } from "@type/plugin";
+import { getLocalizedPluginDescription } from "@type/plugin";
 import { Palette, Puzzle } from "lucide-vue-next";
 
 const props = defineProps<{
   pluginId: string;
 }>();
 
-const route = useRoute();
 const pluginStore = usePluginStore();
 
 const plugin = ref<PluginInfo | null>(null);
@@ -151,30 +149,6 @@ async function applyPreset(presetKey: string) {
 
   await pluginStore.setPluginSettings(pluginId, settingsToSave);
   await pluginStore.applyThemeProviderSettings(pluginId);
-}
-
-async function saveSettings() {
-  if (!plugin.value) return;
-  saving.value = true;
-  try {
-    await pluginStore.setPluginSettings(props.pluginId, { ...settingsForm });
-    if (isThemeProvider.value) {
-      await pluginStore.applyThemeProviderSettings(props.pluginId);
-    }
-
-    const depPromises = dependentPlugins.value.map(async (depPlugin) => {
-      const depForm = dependentSettingsForms[depPlugin.manifest.id];
-      if (depForm) {
-        await pluginStore.setPluginSettings(depPlugin.manifest.id, { ...depForm });
-        if (pluginStore.hasCapability(depPlugin.manifest.id, "theme-widgets-provider")) {
-          await pluginStore.applyThemeWidgetsProviderSettings(depPlugin.manifest.id);
-        }
-      }
-    });
-    await Promise.all(depPromises);
-  } finally {
-    saving.value = false;
-  }
 }
 
 async function resetToDefault() {
