@@ -1,52 +1,52 @@
-name: "发布"
+name: "Nightly 发布"
 
 on:
-  push:
-    tags:
-      - "v*"
-      - "sea-lantern-v*"
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: nightly-release-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
   contents: write
   actions: read
 
+env:
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
 jobs:
-  validate-tag:
-    name: 校验 Tag 来源并提取版本
+  validate-nightly:
+    name: 校验来源并准备 Nightly 元数据
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       version: ${{ steps.meta.outputs.version }}
-      prerelease: ${{ steps.meta.outputs.prerelease }}
       release_name: ${{ steps.meta.outputs.release_name }}
       release_body: ${{ steps.meta.outputs.release_body }}
     steps:
+      - name: 校验仅允许从默认分支发布
+        if: github.ref != format('refs/heads/{0}', env.DEFAULT_BRANCH)
+        run: |
+          echo "❌ Nightly 发布仅允许从默认分支 ${DEFAULT_BRANCH} 触发，当前来源：${GITHUB_REF}"
+          exit 1
+
       - name: 检出代码
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: 校验 Tag 指向 main 分支提交
-        run: |
-          set -euo pipefail
-          git fetch origin main --no-tags
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "❌ 当前 tag (${GITHUB_REF_NAME}) 对应提交不在 main 分支上"
-            exit 1
-          fi
-          echo "✅ Tag 来源校验通过"
-
       - name: 校验主检查已通过
         uses: actions/github-script@v7
+        env:
+          DEFAULT_BRANCH: ${{ env.DEFAULT_BRANCH }}
         with:
           script: |
             const { owner, repo } = context.repo;
             const headSha = process.env.GITHUB_SHA;
+            const defaultBranch = process.env.DEFAULT_BRANCH;
             const requiredWorkflowName = '代码质量检查';
 
             const response = await github.rest.actions.listWorkflowRunsForRepo({
@@ -60,63 +60,82 @@ jobs:
               run.name === requiredWorkflowName &&
               run.head_sha === headSha &&
               run.event === 'push' &&
-              run.head_branch === 'main' &&
+              run.head_branch === defaultBranch &&
               run.status === 'completed' &&
               run.conclusion === 'success'
             );
 
             if (!passed) {
-              core.setFailed(`❌ 提交 ${headSha} 尚未通过 main 分支上的 ${requiredWorkflowName}`);
+              core.setFailed(`❌ 提交 ${headSha} 尚未通过 ${defaultBranch} 分支上的 ${requiredWorkflowName}`);
               return;
             }
 
-            core.info(`✅ 提交 ${headSha} 已通过 main 分支上的 ${requiredWorkflowName}`);
+            core.info(`✅ 提交 ${headSha} 已通过 ${defaultBranch} 分支上的 ${requiredWorkflowName}`);
 
-      - name: 提取版本信息
+      - name: 生成 Nightly 标签与 Release 信息
         id: meta
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          if ! echo "$TAG" | grep -Eq '^(v|sea-lantern-v)[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
-            echo "❌ 当前 tag 不符合支持的版本格式: $TAG"
-            exit 1
-          fi
-          VERSION="$(echo "$TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
+
+          VERSION="$(grep -m 1 -oP '"version"\s*:\s*"\K[^"]+' package.json)"
           if [ -z "$VERSION" ]; then
-            echo "❌ 无法从 tag 提取版本号: $TAG"
+            echo "❌ 无法从 package.json 提取版本号"
             exit 1
           fi
 
-          PRERELEASE=false
-          if echo "$TAG" | grep -Eq '^(v|sea-lantern-v)[0-9]+\.[0-9]+\.[0-9]+-'; then
-            PRERELEASE=true
+          DATE_UTC="$(date -u +%Y%m%d)"
+          DATE_LABEL="$(date -u +%Y-%m-%d)"
+          SHORT_SHA="$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
+          TAG="nightly-v${VERSION}-${DATE_UTC}-${SHORT_SHA}"
+          RELEASE_NAME="Sea Lantern Nightly ${DATE_LABEL} (${SHORT_SHA})"
+
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            echo "release_name=$RELEASE_NAME"
+            echo "release_body<<EOF"
+            echo "## 下载说明"
+            echo ""
+            echo "这是预览版本，适合想提前体验新内容的用户。"
+            echo ""
+            echo "如果你只想下载后直接运行：Windows 选 portable.zip，Mac 选 portable.tar.gz，Linux 选 AppImage。"
+            echo ""
+            echo "- \`x64-setup.exe\`：Windows 64 位安装包。"
+            echo "- \`x64_en-US.msi\`：Windows 64 位安装包，适合需要 MSI 的场景。"
+            echo "- \`Sea.Lantern_${VERSION}_windows_x64_portable.zip\` / \`Sea.Lantern_${VERSION}_windows_arm64_portable.zip\`：Windows 免安装版，解压后直接运行。"
+            echo "- \`x64.dmg\`：适用于 Intel Mac。"
+            echo "- \`aarch64.dmg\`：适用于 Apple 芯片 Mac。"
+            echo "- \`Sea.Lantern_${VERSION}_macos_x64_portable.tar.gz\` / \`Sea.Lantern_${VERSION}_macos_arm64_portable.tar.gz\`：Mac 免安装版，解压后把 \`.app\` 放到任意位置即可打开。"
+            echo "- \`*.AppImage\`：Linux 免安装版，给文件执行权限后即可直接运行。"
+            echo "- \`*.deb\` / \`*.rpm\`：Linux 安装包。"
+            echo ""
+            echo "本次构建基于 ${DEFAULT_BRANCH} 分支提交 ${SHORT_SHA}，仅发布在 GitHub Release。"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 创建或复用 Nightly GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.release_name }}
+          RELEASE_BODY: ${{ steps.meta.outputs.release_body }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "✅ 已存在 Nightly Release，复用标签 $TAG"
+            exit 0
           fi
 
-          RELEASE_NAME="Sea Lantern v${VERSION}"
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "$RELEASE_NAME" \
+            --notes "$RELEASE_BODY" \
+            --prerelease
 
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
-          echo "release_name=$RELEASE_NAME" >> "$GITHUB_OUTPUT"
-          echo "release_body<<EOF" >> "$GITHUB_OUTPUT"
-          echo "## 下载说明" >> "$GITHUB_OUTPUT"
-          echo "" >> "$GITHUB_OUTPUT"
-          echo "如果你只想下载后直接运行：Windows 选 portable.zip，Mac 选 portable.tar.gz，Linux 选 AppImage。" >> "$GITHUB_OUTPUT"
-          echo "" >> "$GITHUB_OUTPUT"
-          echo "- \`x64-setup.exe\`：Windows 64 位安装包，双击后按提示安装即可。" >> "$GITHUB_OUTPUT"
-          echo "- \`x64_en-US.msi\`：Windows 64 位安装包，适合手动部署或需要 MSI 的场景。" >> "$GITHUB_OUTPUT"
-          echo "- \`Sea.Lantern_${VERSION}_windows_x64_portable.zip\` / \`Sea.Lantern_${VERSION}_windows_arm64_portable.zip\`：Windows 免安装版，解压后直接运行。" >> "$GITHUB_OUTPUT"
-          echo "- \`x64.dmg\`：适用于 Intel Mac。" >> "$GITHUB_OUTPUT"
-          echo "- \`aarch64.dmg\`：适用于 Apple 芯片 Mac。" >> "$GITHUB_OUTPUT"
-          echo "- \`Sea.Lantern_${VERSION}_macos_x64_portable.tar.gz\` / \`Sea.Lantern_${VERSION}_macos_arm64_portable.tar.gz\`：Mac 免安装版，解压后把 \`.app\` 放到任意位置即可打开。" >> "$GITHUB_OUTPUT"
-          echo "- \`*.AppImage\`：Linux 免安装版，给文件执行权限后即可直接运行。" >> "$GITHUB_OUTPUT"
-          echo "- \`*.deb\` / \`*.rpm\`：Linux 安装包。" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-          echo "✅ 发布版本: $VERSION"
-
-  publish-tauri:
-    name: 构建并发布桌面端
-    needs: validate-tag
+  publish-tauri-nightly:
+    name: 构建并发布 Nightly 桌面端
+    needs: validate-nightly
     permissions:
       contents: write
     timeout-minutes: 90
@@ -132,19 +151,15 @@ jobs:
             asset_arch: "x64"
           - platform: "ubuntu-22.04"
             args: ""
-            arch: "amd64"
             asset_arch: "x64"
           - platform: "ubuntu-22.04-arm"
             args: ""
-            arch: "arm64"
             asset_arch: "arm64"
           - platform: "windows-latest"
             args: ""
-            arch: "amd64"
             asset_arch: "x64"
           - platform: "windows-11-arm"
             args: ""
-            arch: "arm64"
             asset_arch: "arm64"
 
     runs-on: ${{ matrix.platform }}
@@ -194,16 +209,16 @@ jobs:
           corepack prepare pnpm@9.15.9 --activate
           pnpm install --frozen-lockfile
 
-      - name: 构建并发布
+      - name: 构建并上传 Nightly 产物
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ needs.validate-tag.outputs.tag }}
-          releaseName: ${{ needs.validate-tag.outputs.release_name }}
-          releaseBody: ${{ needs.validate-tag.outputs.release_body }}
-          releaseDraft: true
-          prerelease: ${{ needs.validate-tag.outputs.prerelease }}
+          tagName: ${{ needs.validate-nightly.outputs.tag }}
+          releaseName: ${{ needs.validate-nightly.outputs.release_name }}
+          releaseBody: ${{ needs.validate-nightly.outputs.release_body }}
+          releaseDraft: false
+          prerelease: true
           args: ${{ matrix.args }}
 
       - name: 打包 Windows 免安装版
@@ -211,8 +226,8 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.validate-tag.outputs.tag }}
-          VERSION: ${{ needs.validate-tag.outputs.version }}
+          TAG: ${{ needs.validate-nightly.outputs.tag }}
+          VERSION: ${{ needs.validate-nightly.outputs.version }}
           ASSET_ARCH: ${{ matrix.asset_arch }}
         run: |
           $releaseDir = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
@@ -248,8 +263,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.validate-tag.outputs.tag }}
-          VERSION: ${{ needs.validate-tag.outputs.version }}
+          TAG: ${{ needs.validate-nightly.outputs.tag }}
+          VERSION: ${{ needs.validate-nightly.outputs.version }}
           ASSET_ARCH: ${{ matrix.asset_arch }}
         run: |
           set -euo pipefail
