@@ -1,10 +1,12 @@
 import { tauriInvoke, isBrowserEnv, HTTP_API_BASE } from "@api/tauri";
+import type { ServerStatus } from "@type/common";
 import type { ServerInstance } from "@type/server";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { isActiveServerStatus } from "@utils/serverStatus";
 
 export interface ServerStatusInfo {
   id: string;
-  status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
+  status: ServerStatus;
   pid: number | null;
   uptime: number | null;
 }
@@ -25,9 +27,35 @@ export interface ForceStopPreparation {
   expiresAt: number;
 }
 
+export interface ForceStopAllFailure {
+  serverId: string;
+  error: string;
+}
+
+export interface ForceStopAllResult {
+  attemptedServerIds: string[];
+  failed: ForceStopAllFailure[];
+}
+
 interface ForceStopPreparationRaw {
   token: string;
   expires_at: number;
+}
+
+function formatForceStopError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }
 
 export interface StartupCandidateItem {
@@ -241,36 +269,48 @@ export const serverApi = {
     };
   },
 
-  async forceStopAll(): Promise<void> {
+  async forceStopAll(): Promise<ForceStopAllResult> {
     const servers = await this.getList();
-    const runningServerIds = await Promise.all(
+    const activeServerIds = await Promise.all(
       servers.map(async (server) => {
         try {
           const status = await this.getStatus(server.id);
-          return status.status === "Running" ? server.id : null;
+          return isActiveServerStatus(status.status) ? server.id : null;
         } catch {
           return null;
         }
       }),
     );
 
-    const activeServerIds = runningServerIds.filter(
+    const filteredActiveServerIds = activeServerIds.filter(
       (serverId): serverId is string => serverId !== null,
     );
-    if (activeServerIds.length === 0) {
-      return;
+    if (filteredActiveServerIds.length === 0) {
+      return {
+        attemptedServerIds: [],
+        failed: [],
+      };
     }
 
-    await Promise.all(
-      activeServerIds.map(async (serverId) => {
+    const failures = await Promise.all(
+      filteredActiveServerIds.map(async (serverId) => {
         try {
           const { token } = await this.prepareForceStop(serverId);
           await this.forceStop(serverId, token);
+          return null;
         } catch (err) {
-          console.warn("Failed to force stop server", serverId, err);
+          return {
+            serverId,
+            error: formatForceStopError(err),
+          } satisfies ForceStopAllFailure;
         }
       }),
     );
+
+    return {
+      attemptedServerIds: filteredActiveServerIds,
+      failed: failures.filter((failure): failure is ForceStopAllFailure => failure !== null),
+    };
   },
 
   async forceStop(id: string, confirmationToken: string): Promise<void> {
