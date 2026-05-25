@@ -1,4 +1,5 @@
-use super::*;
+use super::config::apply_relay_preference;
+use sculk::persist::Profile;
 
 #[test]
 fn apply_relay_preference_rejects_invalid_input_without_mutating_profile() {

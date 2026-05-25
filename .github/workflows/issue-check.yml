@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, edited]
 
+concurrency:
+  group: issue-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   pull-requests: read
   issues: read
@@ -18,8 +22,23 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request.number;
+            const pr = context.payload.pull_request;
 
-            // 获取所有关联的 issues
+            const exemptLabels = new Set([
+              "ci",
+              "dependencies",
+              "docs",
+              "release",
+              "skip-issue-check"
+            ]);
+
+            const prLabels = new Set((pr.labels || []).map(label => label.name.trim().toLowerCase()));
+            if ([...prLabels].some(label => exemptLabels.has(label))) {
+              core.info("✅ PR 命中 issue 检查豁免标签");
+              return;
+            }
+
+            // 使用 closing keyword 关联 issue；豁免标签用于降低维护类 PR 的阻力
             const query = `
               query($owner:String!, $repo:String!, $number:Int!) {
                 repository(owner:$owner, name:$repo) {
@@ -50,7 +69,6 @@ jobs:
             const prNode = result.repository.pullRequest;
             const repoFull = `${owner}/${repo}`.toLowerCase();
 
-            // 只检查当前仓库的 issue
             const issues = (prNode.closingIssuesReferences.nodes || [])
               .filter(i => `${i.repository.nameWithOwner}`.toLowerCase() === repoFull);
 

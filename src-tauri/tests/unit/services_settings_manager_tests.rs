@@ -25,7 +25,7 @@ fn load_settings_backs_up_corrupt_file_and_returns_default() {
             entry
                 .file_name()
                 .to_string_lossy()
-                .contains("settings.bak-corrupt-")
+                .contains(&format!("{}.bak-corrupt-", SETTINGS_FILE))
         })
         .count();
 
