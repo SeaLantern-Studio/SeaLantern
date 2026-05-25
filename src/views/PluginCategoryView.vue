@@ -79,67 +79,61 @@ async function persistPluginSettings(pluginId: string, settings: Record<string, 
 }
 
 async function saveMainSettingsNow(pluginId: string) {
-  while (true) {
-    const settingsToSave = { ...settingsForm };
-    const snapshot = serializeSettings(settingsToSave);
-    if (snapshot === mainSettingsSnapshot.value) return;
+  const settingsToSave = { ...settingsForm };
+  const snapshot = serializeSettings(settingsToSave);
+  if (snapshot === mainSettingsSnapshot.value) return;
 
-    const inFlight = inFlightSavePromises.get(pluginId);
-    if (inFlight) {
-      await inFlight;
-      continue;
+  const inFlight = inFlightSavePromises.get(pluginId);
+  if (inFlight) {
+    await inFlight;
+    return saveMainSettingsNow(pluginId);
+  }
+
+  const savePromise = (async () => {
+    await persistPluginSettings(pluginId, settingsToSave);
+    if (plugin.value?.manifest.id === pluginId) {
+      mainSettingsSnapshot.value = snapshot;
     }
+  })();
 
-    const savePromise = (async () => {
-      await persistPluginSettings(pluginId, settingsToSave);
-      if (plugin.value?.manifest.id === pluginId) {
-        mainSettingsSnapshot.value = snapshot;
-      }
-    })();
-
-    inFlightSavePromises.set(pluginId, savePromise);
-    try {
-      await savePromise;
-    } finally {
-      if (inFlightSavePromises.get(pluginId) === savePromise) {
-        inFlightSavePromises.delete(pluginId);
-      }
+  inFlightSavePromises.set(pluginId, savePromise);
+  try {
+    await savePromise;
+  } finally {
+    if (inFlightSavePromises.get(pluginId) === savePromise) {
+      inFlightSavePromises.delete(pluginId);
     }
-    return;
   }
 }
 
 async function saveDependentSettingsNow(pluginId: string) {
-  while (true) {
-    const form = dependentSettingsForms[pluginId];
-    if (!form) return;
+  const form = dependentSettingsForms[pluginId];
+  if (!form) return;
 
-    const settingsToSave = { ...form };
-    const snapshot = serializeSettings(settingsToSave);
-    if (snapshot === dependentSettingsSnapshots[pluginId]) return;
+  const settingsToSave = { ...form };
+  const snapshot = serializeSettings(settingsToSave);
+  if (snapshot === dependentSettingsSnapshots[pluginId]) return;
 
-    const inFlight = inFlightSavePromises.get(pluginId);
-    if (inFlight) {
-      await inFlight;
-      continue;
+  const inFlight = inFlightSavePromises.get(pluginId);
+  if (inFlight) {
+    await inFlight;
+    return saveDependentSettingsNow(pluginId);
+  }
+
+  const savePromise = (async () => {
+    await persistPluginSettings(pluginId, settingsToSave);
+    if (dependentSettingsForms[pluginId]) {
+      dependentSettingsSnapshots[pluginId] = snapshot;
     }
+  })();
 
-    const savePromise = (async () => {
-      await persistPluginSettings(pluginId, settingsToSave);
-      if (dependentSettingsForms[pluginId]) {
-        dependentSettingsSnapshots[pluginId] = snapshot;
-      }
-    })();
-
-    inFlightSavePromises.set(pluginId, savePromise);
-    try {
-      await savePromise;
-    } finally {
-      if (inFlightSavePromises.get(pluginId) === savePromise) {
-        inFlightSavePromises.delete(pluginId);
-      }
+  inFlightSavePromises.set(pluginId, savePromise);
+  try {
+    await savePromise;
+  } finally {
+    if (inFlightSavePromises.get(pluginId) === savePromise) {
+      inFlightSavePromises.delete(pluginId);
     }
-    return;
   }
 }
 
@@ -174,9 +168,9 @@ async function flushPendingAutoSaves() {
   pendingFlushPromise = (async () => {
     await flushMainSettingsSave();
 
-    for (const depPlugin of dependentPlugins.value) {
-      await flushDependentSettingsSave(depPlugin.manifest.id);
-    }
+    await Promise.all(
+      dependentPlugins.value.map((depPlugin) => flushDependentSettingsSave(depPlugin.manifest.id)),
+    );
   })();
 
   try {
