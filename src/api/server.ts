@@ -263,8 +263,12 @@ export const serverApi = {
 
     await Promise.all(
       activeServerIds.map(async (serverId) => {
-        const preparation = await this.prepareForceStop(serverId);
-        await this.forceStop(serverId, preparation.token);
+        try {
+          const { token } = await this.prepareForceStop(serverId);
+          await this.forceStop(serverId, token);
+        } catch (err) {
+          console.warn("Failed to force stop server", serverId, err);
+        }
       }),
     );
   },
