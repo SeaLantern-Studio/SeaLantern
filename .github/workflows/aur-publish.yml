@@ -4,13 +4,19 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: aur-publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   aur-publish:
     name: 发布到 AUR
+    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     container:
       image: archlinux:latest
       options: --user root

@@ -4,13 +4,19 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: docker-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 env:
   REGISTRY: docker.io
   IMAGE_NAME: sealantern
 
 jobs:
   build-and-push:
+    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
