@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, type Component } from "vue";
 import SLMenuBase from "./SLMenuBase.vue";
 import { useContextMenuStore, type ContextMenuItem } from "@stores/contextMenuStore";
 
@@ -46,7 +46,7 @@ const menuItems = computed(() => {
   }));
 });
 
-function handleItemClick(item: { id: string; label: string; icon?: string }) {
+function handleItemClick(item: { id: string | number; label: string; icon?: string | Component }) {
   const originalItem = contextMenuStore.items.find(
     (i: ContextMenuItem) => `${i.pluginId}-${i.id}` === item.id,
   );

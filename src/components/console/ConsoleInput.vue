@@ -385,7 +385,7 @@ function scrollToActiveSuggestion() {
   nextTick(() => {
     if (!suggestionsRef.value) return;
 
-    const activeItem = suggestionsRef.value.querySelector(".suggestion-item.active");
+    const activeItem = suggestionsRef.value.querySelector<HTMLElement>(".suggestion-item.active");
     if (!activeItem) return;
 
     const popup = suggestionsRef.value;

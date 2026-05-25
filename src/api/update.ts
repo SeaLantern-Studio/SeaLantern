@@ -20,6 +20,7 @@ export interface PendingUpdate {
 export interface DownloadProgress {
   downloaded: number;
   total: number;
+  percent?: number;
 }
 
 export async function checkUpdate(): Promise<UpdateInfo | null> {

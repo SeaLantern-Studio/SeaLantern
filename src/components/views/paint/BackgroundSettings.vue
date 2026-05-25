@@ -90,8 +90,8 @@ function handleBrightnessChange(e: Event) {
   emit("change");
 }
 
-function handleBackgroundSizeChange(value: string) {
-  emit("update:backgroundSize", value);
+function handleBackgroundSizeChange(value: string | number) {
+  emit("update:backgroundSize", String(value));
   emit("change");
 }
 

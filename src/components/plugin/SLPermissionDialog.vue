@@ -4,38 +4,7 @@ import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 import { type PermissionMetadata, groupPermissionsByDangerLevel } from "@type/plugin";
-import {
-  AlertTriangle,
-  Info,
-  Globe,
-  Folder,
-  Server,
-  Terminal,
-  MousePointer,
-  Monitor,
-  FileText,
-  HardDrive,
-  Plug,
-  Palette,
-  LockOpen,
-  HelpCircle,
-} from "lucide-vue-next";
-
-const permIconMap: Record<string, unknown> = {
-  Globe,
-  Folder,
-  Server,
-  Terminal,
-  MousePointer,
-  Monitor,
-  FileText,
-  HardDrive,
-  Plug,
-  Palette,
-  AlertTriangle,
-  LockOpen,
-  HelpCircle,
-};
+import { AlertTriangle, Info } from "lucide-vue-next";
 
 const props = defineProps<{
   show: boolean;

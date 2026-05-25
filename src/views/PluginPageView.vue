@@ -31,6 +31,25 @@ const pluginPresets = computed(() => {
   return plugin.value?.manifest.presets ?? null;
 });
 
+function getFieldStringValue(value: string | number | boolean | null | undefined): string {
+  return value == null ? "" : String(value);
+}
+
+function getFieldSelectValue(
+  value: string | number | boolean | null | undefined,
+): string | number | undefined {
+  if (typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+  return undefined;
+}
+
+function getFieldOptions(
+  options: Array<{ value: string; label: string }> | undefined,
+): Array<{ value: string; label: string }> {
+  return options ?? [];
+}
+
 const isThemeProvider = computed(() => {
   return plugin.value?.manifest.capabilities?.includes("theme-provider") ?? false;
 });
@@ -239,10 +258,17 @@ watch(
                 <span v-if="field.description" class="field-desc">{{ field.description }}</span>
               </label>
               <template v-if="field.type === 'string'">
-                <SLInput v-model="settingsForm[field.key]" />
+                <SLInput
+                  :modelValue="getFieldStringValue(settingsForm[field.key])"
+                  @update:modelValue="settingsForm[field.key] = $event"
+                />
               </template>
               <template v-else-if="field.type === 'number'">
-                <SLInput type="number" v-model="settingsForm[field.key]" />
+                <SLInput
+                  type="number"
+                  :modelValue="getFieldStringValue(settingsForm[field.key])"
+                  @update:modelValue="settingsForm[field.key] = $event"
+                />
               </template>
               <template v-else-if="field.type === 'boolean'">
                 <SLSwitch
@@ -252,7 +278,11 @@ watch(
                 />
               </template>
               <template v-else-if="field.type === 'select'">
-                <SLSelect v-model="settingsForm[field.key]" :options="field.options" />
+                <SLSelect
+                  :modelValue="getFieldSelectValue(settingsForm[field.key])"
+                  :options="getFieldOptions(field.options)"
+                  @update:modelValue="settingsForm[field.key] = $event"
+                />
               </template>
             </div>
           </div>
@@ -279,12 +309,24 @@ watch(
                 <span v-if="field.description" class="field-desc">{{ field.description }}</span>
               </label>
               <template v-if="field.type === 'string'">
-                <SLInput v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]" />
+                <SLInput
+                  :modelValue="
+                    getFieldStringValue(dependentSettingsForms[depPlugin.manifest.id][field.key])
+                  "
+                  @update:modelValue="
+                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
+                  "
+                />
               </template>
               <template v-else-if="field.type === 'number'">
                 <SLInput
                   type="number"
-                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
+                  :modelValue="
+                    getFieldStringValue(dependentSettingsForms[depPlugin.manifest.id][field.key])
+                  "
+                  @update:modelValue="
+                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
+                  "
                 />
               </template>
               <template v-else-if="field.type === 'boolean'">
@@ -298,8 +340,13 @@ watch(
               </template>
               <template v-else-if="field.type === 'select'">
                 <SLSelect
-                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                  :options="field.options"
+                  :modelValue="
+                    getFieldSelectValue(dependentSettingsForms[depPlugin.manifest.id][field.key])
+                  "
+                  :options="getFieldOptions(field.options)"
+                  @update:modelValue="
+                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
+                  "
                 />
               </template>
             </div>
