@@ -95,6 +95,9 @@ fn test_validate_manifest_ok() {
         sidebar: None,
         locales: None,
         include: vec![],
+        capabilities: vec![],
+        theme_var_map: Default::default(),
+        presets: Default::default(),
     };
     assert!(PluginLoader::validate_manifest(&manifest).is_ok());
 }
@@ -127,6 +130,9 @@ fn test_validate_manifest_empty_id() {
         sidebar: None,
         locales: None,
         include: vec![],
+        capabilities: vec![],
+        theme_var_map: Default::default(),
+        presets: Default::default(),
     };
     let err = PluginLoader::validate_manifest(&manifest).unwrap_err();
     assert!(err.contains("id"));
