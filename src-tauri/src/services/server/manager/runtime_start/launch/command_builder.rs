@@ -6,10 +6,14 @@ use crate::services::server::installer;
 use std::path::Path;
 use std::process::Command;
 
+fn should_prefer_direct_jar(startup_mode: &str) -> bool {
+    matches!(startup_mode, "bat" | "sh" | "ps1")
+}
+
 /// 优先寻找可直接运行的 JAR 文件
 pub(super) fn find_preferred_jar_path(context: &LaunchContext<'_>) -> Option<String> {
     let startup_path_obj = Path::new(&context.server.jar_path);
-    let jar_preferred_mode = matches!(context.startup_mode, "bat" | "sh" | "ps1" | "custom");
+    let jar_preferred_mode = should_prefer_direct_jar(context.startup_mode);
 
     if !jar_preferred_mode {
         return None;
@@ -193,5 +197,22 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
     #[cfg(not(target_os = "windows"))]
     {
         Err("PS1 启动方式仅支持 Windows".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_prefer_direct_jar;
+
+    #[test]
+    fn custom_mode_does_not_prefer_direct_jar() {
+        assert!(!should_prefer_direct_jar("custom"));
+    }
+
+    #[test]
+    fn script_modes_still_prefer_direct_jar() {
+        assert!(should_prefer_direct_jar("bat"));
+        assert!(should_prefer_direct_jar("sh"));
+        assert!(should_prefer_direct_jar("ps1"));
     }
 }
