@@ -11,12 +11,13 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  background: transparent;
 }
 
 body {
   font-family: var(--sl-font-sans);
   color: var(--sl-text-primary);
-  background-color: var(--sl-bg);
+  background-color: transparent;
   line-height: 1.6;
   overflow: hidden;
   user-select: none;

@@ -3,8 +3,6 @@
 @import "@styles/reset.css";
 @import "@styles/typography.css";
 @import "@styles/animations.css";
-@import "@styles/glass.css";
-
 /* 组件样式 - Layout */
 @import "@styles/components/layout/AppLayout.css";
 @import "@styles/components/layout/AppSidebar.css";

@@ -144,6 +144,43 @@ pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, Str
     rx.recv().map_err(|e| format!("Dialog error: {}", e))
 }
 
+pub async fn pick_personalization_export_file(
+    app: tauri::AppHandle,
+    suggested_name: String,
+) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    app.dialog()
+        .file()
+        .set_title("Export personalization package")
+        .set_file_name(&suggested_name)
+        .add_filter("Sea Lantern Personalization Package", &["zip"])
+        .save_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+pub async fn pick_personalization_import_file(
+    app: tauri::AppHandle,
+) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    app.dialog()
+        .file()
+        .set_title("Import personalization package")
+        .add_filter("Sea Lantern Personalization Package", &["zip"])
+        .add_filter("ZIP Files", &["zip"])
+        .pick_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
 pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
 

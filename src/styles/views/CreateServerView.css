@@ -172,7 +172,6 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  backdrop-filter: blur(4px);
 }
 
 .drop-hint {

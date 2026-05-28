@@ -1499,7 +1499,6 @@ function goToMarket() {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
   z-index: 3000;
 }
 
@@ -2054,7 +2053,6 @@ function goToMarket() {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
 }
 
 .settings-modal {
@@ -2062,8 +2060,6 @@ function goToMarket() {
   max-width: 480px;
   max-height: 80vh;
   background: var(--sl-surface);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--sl-radius-lg);
   border: 1px solid var(--sl-border);
   box-shadow: var(--sl-shadow-xl);

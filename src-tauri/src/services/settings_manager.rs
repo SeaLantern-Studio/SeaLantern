@@ -59,6 +59,8 @@ impl SettingsManager {
     ///
     /// 保存成功时返回 `Ok(())`
     pub fn update(&self, new_settings: AppSettings) -> Result<(), String> {
+        let mut new_settings = new_settings;
+        new_settings.normalize_window_effect();
         capture_eprintln(format!(
             "[DEBUG] SettingsManager::update() called, agreed_to_terms = {}",
             new_settings.agreed_to_terms
@@ -80,6 +82,8 @@ impl SettingsManager {
     ///
     /// 返回新的设置内容和变化分组
     pub fn update_with_diff(&self, new_settings: AppSettings) -> Result<UpdateResult, String> {
+        let mut new_settings = new_settings;
+        new_settings.normalize_window_effect();
         let old_settings = self
             .settings
             .lock()
@@ -119,7 +123,9 @@ impl SettingsManager {
         let changed_groups = old_settings.get_changed_groups(&new_settings);
         save_settings(&self.data_dir, &new_settings)?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings.clone();
-        capture_eprintln("[DEBUG] SettingsManager::update_partial() saved successfully".to_string());
+        capture_eprintln(
+            "[DEBUG] SettingsManager::update_partial() saved successfully".to_string(),
+        );
         Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
@@ -129,7 +135,8 @@ impl SettingsManager {
     ///
     /// 返回一份新的默认设置，并同步写回本地文件
     pub fn reset(&self) -> Result<AppSettings, String> {
-        let default = AppSettings::default();
+        let mut default = AppSettings::default();
+        default.normalize_window_effect();
         save_settings(&self.data_dir, &default)?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = default.clone();
         Ok(default)
@@ -147,16 +154,22 @@ fn load_settings(data_dir: &str) -> AppSettings {
     capture_eprintln(format!("[DEBUG] load_settings: path.exists() = {}", path.exists()));
 
     if !path.exists() {
-        capture_eprintln("[DEBUG] load_settings: file not found, creating default settings".to_string());
+        capture_eprintln(
+            "[DEBUG] load_settings: file not found, creating default settings".to_string(),
+        );
         let default = AppSettings::default();
         let _ = save_settings(data_dir, &default);
         return default;
     }
     match std::fs::read_to_string(&path) {
         Ok(content) => {
-            capture_eprintln(format!("[DEBUG] load_settings: file content length = {} bytes", content.len()));
+            capture_eprintln(format!(
+                "[DEBUG] load_settings: file content length = {} bytes",
+                content.len()
+            ));
             match serde_json::from_str::<AppSettings>(&content) {
-                Ok(result) => {
+                Ok(mut result) => {
+                    result.normalize_window_effect();
                     capture_eprintln(format!(
                         "[DEBUG] load_settings: parsed agreed_to_terms = {}",
                         result.agreed_to_terms
@@ -180,7 +193,10 @@ fn load_settings(data_dir: &str) -> AppSettings {
 fn save_settings(data_dir: &str, settings: &AppSettings) -> Result<(), String> {
     let path = std::path::Path::new(data_dir).join(SETTINGS_FILE);
     capture_eprintln(format!("[DEBUG] save_settings: path = {:?}", path));
-    capture_eprintln(format!("[DEBUG] save_settings: agreed_to_terms = {}", settings.agreed_to_terms));
+    capture_eprintln(format!(
+        "[DEBUG] save_settings: agreed_to_terms = {}",
+        settings.agreed_to_terms
+    ));
 
     let json = serde_json::to_string_pretty(settings).map_err(|e| {
         capture_eprintln(format!("[DEBUG] save_settings: serialize error: {}", e));
@@ -203,8 +219,12 @@ fn backup_corrupt_settings_file(path: &std::path::Path) {
     let backup_path = path.with_extension(format!("json.bak-corrupt-{}", timestamp));
 
     match std::fs::copy(path, &backup_path) {
-        Ok(_) => capture_eprintln(format!("[DEBUG] load_settings: 已备份损坏设置到 {:?}", backup_path)),
-        Err(error) => capture_eprintln(format!("[DEBUG] load_settings: 备份损坏设置失败: {}", error)),
+        Ok(_) => {
+            capture_eprintln(format!("[DEBUG] load_settings: 已备份损坏设置到 {:?}", backup_path))
+        }
+        Err(error) => {
+            capture_eprintln(format!("[DEBUG] load_settings: 备份损坏设置失败: {}", error))
+        }
     }
 }
 

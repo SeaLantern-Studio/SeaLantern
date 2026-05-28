@@ -29,6 +29,7 @@ import {
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
 import { isMacOSPlatform } from "@utils/platform";
+import { getAppDisplayName } from "@utils/theme";
 
 const iconMap: Record<string, LucideIcon> = {
   home: Home,
@@ -446,10 +447,10 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
 
 // 彩蛋
 function getAppName() {
-  const now = new Date();
-  if (now.getMonth() == 3 && now.getDate() == 1) {
-    return i18n.t("common.easter_name");
+  if (settingsStore.settings) {
+    return getAppDisplayName(settingsStore.settings);
   }
+
   return i18n.t("common.app_name");
 }
 

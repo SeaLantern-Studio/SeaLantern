@@ -3,8 +3,6 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,11 +105,9 @@
 @keyframes overlay-fade-in {
   from {
     opacity: 0;
-    backdrop-filter: blur(0);
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(4px);
   }
 }
 
@@ -164,8 +160,6 @@
 
 /* Glass effect variant */
 .sl-modal.glass-strong {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   background: var(--sl-surface, rgba(255, 255, 255, 0.9));
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow:

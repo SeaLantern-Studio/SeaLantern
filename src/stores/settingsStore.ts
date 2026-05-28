@@ -5,6 +5,7 @@ import {
   type AppSettings,
   type PartialSettings,
   type SettingsGroup,
+  type WindowEffect,
 } from "@api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
@@ -61,11 +62,18 @@ const defaultSettings: AppSettings = {
   background_blur: 0,
   background_brightness: 1.0,
   background_size: "cover",
+  window_effect: "off",
   acrylic_enabled: false,
   theme: "auto",
   font_size: 14,
   font_family: "",
   color: "default",
+  text_color_overrides: {
+    title: "",
+    text: "",
+    description: "",
+  },
+  app_display_name: "",
   language: "zh-CN",
   developer_mode: false,
   close_action: "ask",
@@ -100,7 +108,9 @@ export const useSettingsStore = defineStore("settings", () => {
 
   const theme = computed(() => settings.value.theme || "auto");
   const fontSize = computed(() => settings.value.font_size || 14);
-  const acrylicEnabled = computed(() => settings.value.acrylic_enabled);
+  const windowEffect = computed<WindowEffect>(
+    () => (settings.value.window_effect || "off") as WindowEffect,
+  );
   const colorScheme = computed(() => settings.value.color || "default");
   const minimalMode = computed(() => settings.value.minimal_mode || false);
   const backgroundImage = computed(() =>
@@ -180,7 +190,7 @@ export const useSettingsStore = defineStore("settings", () => {
     loadError,
     theme,
     fontSize,
-    acrylicEnabled,
+    windowEffect,
     colorScheme,
     minimalMode,
     backgroundImage,

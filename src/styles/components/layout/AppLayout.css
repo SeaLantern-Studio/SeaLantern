@@ -8,7 +8,7 @@
   overflow: hidden;
 }
 
-.app-layout.macos-native-vibrancy {
+.app-layout.has-native-window-effect {
   background-color: transparent;
 }
 
@@ -34,7 +34,7 @@
   min-width: 0;
 }
 
-.app-main.macos-native-vibrancy {
+.app-main.has-native-window-effect {
   background: transparent;
 }
 

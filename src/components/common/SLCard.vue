@@ -115,13 +115,8 @@ const cardClasses = computed(() => ({
 /* Glass 变体 - 毛玻璃效果 */
 .sl-card--glass {
   background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
-  backdrop-filter: blur(var(--sl-blur-md, 16px)) saturate(var(--sl-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md, 16px)) saturate(var(--sl-saturate-normal, 180%));
   border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   box-shadow: var(--sl-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
-  will-change: backdrop-filter;
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 /* Outline 变体 - 仅边框无阴影 */
@@ -269,8 +264,6 @@ const cardClasses = computed(() => ({
 /* 亚克力模式 */
 [data-acrylic="true"] .sl-card--glass {
   --sl-glass-bg: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
 }
 
 [data-theme="dark"][data-acrylic="true"] .sl-card--glass {
@@ -279,33 +272,12 @@ const cardClasses = computed(() => ({
 
 [data-acrylic="false"] .sl-card--glass {
   background: var(--sl-surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  will-change: auto;
-}
-
-/* 浏览器兼容性降级 */
-@supports not (backdrop-filter: blur(1px)) {
-  .sl-card--glass {
-    background: var(--sl-surface);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
-  [data-acrylic="true"] .sl-card--glass {
-    background: rgba(255, 255, 255, 0.95);
-  }
-
-  [data-theme="dark"][data-acrylic="true"] .sl-card--glass {
-    background: rgba(30, 33, 48, 0.95);
-  }
 }
 
 /* 低性能设备优化 */
 @media (prefers-reduced-motion: reduce) {
   .sl-card--glass {
     transition: none;
-    will-change: auto;
   }
 }
 </style>

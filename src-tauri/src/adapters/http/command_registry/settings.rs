@@ -19,10 +19,24 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
     handlers.insert("export_settings".to_string(), handle_export_settings as CommandHandler);
     handlers.insert("import_settings".to_string(), handle_import_settings as CommandHandler);
     handlers.insert(
+        "export_personalization_package".to_string(),
+        handle_export_personalization_package as CommandHandler,
+    );
+    handlers.insert(
+        "import_personalization_package".to_string(),
+        handle_import_personalization_package as CommandHandler,
+    );
+    handlers.insert(
+        "get_personalization_package_suggested_name".to_string(),
+        handle_get_personalization_package_suggested_name as CommandHandler,
+    );
+    handlers.insert(
         "check_acrylic_support".to_string(),
         handle_check_acrylic_support as CommandHandler,
     );
     handlers.insert("apply_acrylic".to_string(), handle_apply_acrylic as CommandHandler);
+    handlers
+        .insert("apply_window_effect".to_string(), handle_apply_window_effect as CommandHandler);
     handlers.insert("get_system_fonts".to_string(), handle_get_system_fonts as CommandHandler);
 }
 
@@ -98,6 +112,37 @@ fn handle_import_settings(
     })
 }
 
+fn handle_export_personalization_package(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        Err(
+            "export_personalization_package is not supported in HTTP/Docker mode (requires host file access)"
+                .to_string(),
+        )
+    })
+}
+
+fn handle_import_personalization_package(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        Err(
+            "import_personalization_package is not supported in HTTP/Docker mode (requires host file access)"
+                .to_string(),
+        )
+    })
+}
+
+fn handle_get_personalization_package_suggested_name(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = settings_commands::get_personalization_package_suggested_name();
+        Ok(Value::String(result))
+    })
+}
+
 fn handle_check_acrylic_support(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
@@ -115,6 +160,17 @@ fn handle_apply_acrylic(
     Box::pin(async move {
         Err("apply_acrylic is not supported in HTTP/Docker mode (requires Window handle)"
             .to_string())
+    })
+}
+
+fn handle_apply_window_effect(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        Err(
+            "apply_window_effect is not supported in HTTP/Docker mode (requires Window handle)"
+                .to_string(),
+        )
     })
 }
 

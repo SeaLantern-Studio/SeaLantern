@@ -12,6 +12,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 import { isMacOSPlatform } from "@utils/platform";
+import { getAppDisplayName } from "@utils/theme";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -34,6 +35,14 @@ const pageTitle = computed(() => {
     return i18n.t(titleKey);
   }
   return i18n.t("common.app_name");
+});
+
+const appDisplayName = computed(() => {
+  if (!settings.value) {
+    return i18n.t("common.app_name");
+  }
+
+  return getAppDisplayName(settings.value);
 });
 
 const primaryLanguages = computed(() => {
@@ -321,7 +330,7 @@ function isActive(code: string) {
 
       <div class="header-status">
         <span class="status-dot online"></span>
-        <span class="status-text">{{ i18n.t("common.app_name") }}</span>
+        <span class="status-text">{{ appDisplayName }}</span>
       </div>
 
       <div v-if="!isMacOS" class="window-controls">

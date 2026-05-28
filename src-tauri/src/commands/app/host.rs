@@ -50,6 +50,21 @@ pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 }
 
 #[tauri::command]
+pub async fn pick_personalization_export_file(
+    app: tauri::AppHandle,
+    suggested_name: String,
+) -> Result<Option<String>, String> {
+    dialogs::pick_personalization_export_file(app, suggested_name).await
+}
+
+#[tauri::command]
+pub async fn pick_personalization_import_file(
+    app: tauri::AppHandle,
+) -> Result<Option<String>, String> {
+    dialogs::pick_personalization_import_file(app).await
+}
+
+#[tauri::command]
 pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     dialogs::pick_folder(app).await
 }

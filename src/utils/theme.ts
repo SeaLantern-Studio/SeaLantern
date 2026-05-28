@@ -5,6 +5,7 @@
 
 import type { AppSettings } from "@api/settings";
 import { isBrowserEnv } from "@api/tauri";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getThemeColors, mapLegacyPlanName } from "@themes";
 
 let _themeProviderOverrides: string[] = [];
@@ -60,6 +61,38 @@ export function applyFontFamily(fontFamily: string): void {
  */
 export function applyFontSize(fontSize: number): void {
   document.documentElement.style.fontSize = fontSize + "px";
+}
+
+function isHexColor(value: string | undefined): boolean {
+  return typeof value === "string" && /^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value.trim());
+}
+
+function resolveDisplayName(settings: AppSettings): string {
+  const custom = settings.app_display_name?.trim();
+  if (custom) {
+    return custom;
+  }
+
+  const now = new Date();
+  if (now.getMonth() === 3 && now.getDate() === 1) {
+    return "Shit Lantern";
+  }
+
+  return "Sea Lantern";
+}
+
+export function getAppDisplayName(settings: AppSettings): string {
+  return resolveDisplayName(settings);
+}
+
+export async function applyWindowTitle(settings: AppSettings): Promise<void> {
+  if (isBrowserEnv()) return;
+
+  try {
+    await getCurrentWindow().setTitle(resolveDisplayName(settings));
+  } catch (e) {
+    console.warn("Failed to update window title:", e);
+  }
 }
 
 /**
@@ -132,13 +165,13 @@ export function applyColors(settings: AppSettings): void {
 
   const effectiveTheme = getEffectiveTheme(settings.theme);
   const isDark = effectiveTheme === "dark";
-  const isAcrylic = settings.acrylic_enabled;
+  const hasNativeWindowEffect = (settings.window_effect || "off") !== "off";
 
   const actualPlan = isDark
-    ? isAcrylic
+    ? hasNativeWindowEffect
       ? "dark_acrylic"
       : "dark"
-    : isAcrylic
+    : hasNativeWindowEffect
       ? "light_acrylic"
       : "light";
 
@@ -153,19 +186,33 @@ export function applyColors(settings: AppSettings): void {
     border: getColorValue(settings, "border", actualPlan),
   };
 
+  const textTertiary = isDark
+    ? adjustBrightness(colors.textSecondary, -20)
+    : adjustBrightness(colors.textSecondary, 20);
+  const overrides = settings.text_color_overrides || { title: "", text: "", description: "" };
+  const resolvedTextPrimary = isHexColor(overrides.title)
+    ? overrides.title.trim()
+    : colors.textPrimary;
+  const resolvedTextSecondary = isHexColor(overrides.text)
+    ? overrides.text.trim()
+    : colors.textSecondary;
+  const resolvedTextTertiary = isHexColor(overrides.description)
+    ? overrides.description.trim()
+    : textTertiary;
+
   document.documentElement.style.setProperty("--sl-bg", colors.bg);
   document.documentElement.style.setProperty("--sl-bg-secondary", colors.bgSecondary);
   document.documentElement.style.setProperty("--sl-bg-tertiary", colors.bgTertiary);
   document.documentElement.style.setProperty("--sl-primary", colors.primary);
   document.documentElement.style.setProperty("--sl-accent", colors.secondary);
-  document.documentElement.style.setProperty("--sl-text-primary", colors.textPrimary);
-  document.documentElement.style.setProperty("--sl-text-secondary", colors.textSecondary);
+  document.documentElement.style.setProperty("--sl-text-primary", resolvedTextPrimary);
+  document.documentElement.style.setProperty("--sl-text-secondary", resolvedTextSecondary);
   document.documentElement.style.setProperty("--sl-border", colors.border);
   document.documentElement.style.setProperty("--sl-border-light", colors.border);
 
   let surfaceColor: string;
   let surfaceHoverColor: string;
-  if (isAcrylic) {
+  if (hasNativeWindowEffect) {
     if (isDark) {
       surfaceColor = "rgba(30, 33, 48, 0.65)";
       surfaceHoverColor = "rgba(40, 44, 62, 0.75)";
@@ -194,11 +241,8 @@ export function applyColors(settings: AppSettings): void {
   const accentLight = adjustBrightness(colors.secondary, 20);
   document.documentElement.style.setProperty("--sl-accent-light", accentLight);
 
-  const textTertiary = isDark
-    ? adjustBrightness(colors.textSecondary, -20)
-    : adjustBrightness(colors.textSecondary, 20);
   const textInverse = "#ffffff";
-  document.documentElement.style.setProperty("--sl-text-tertiary", textTertiary);
+  document.documentElement.style.setProperty("--sl-text-tertiary", resolvedTextTertiary);
   document.documentElement.style.setProperty("--sl-text-inverse", textInverse);
 
   const shadowOpacity = isDark ? 0.4 : 0.06;

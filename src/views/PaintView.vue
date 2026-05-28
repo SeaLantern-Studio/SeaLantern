@@ -3,19 +3,23 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import ErrorBanner from "@components/views/paint/ErrorBanner.vue";
 import ColorThemeCard from "@components/views/paint/ColorThemeCard.vue";
 import AppearanceCard from "@components/views/paint/AppearanceCard.vue";
+import TextCustomizationCard from "@components/views/paint/TextCustomizationCard.vue";
 import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.vue";
 import SettingsActions from "@components/views/paint/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/paint/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/paint/ResetConfirmModal.vue";
-import { settingsApi, getSystemFonts, type AppSettings } from "@api/settings";
+import { settingsApi, getSystemFonts, type AppSettings, type WindowEffect } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
+import { useToast } from "@composables/useToast";
 import { usePluginStore } from "@stores/pluginStore";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
   type SettingsUpdateEvent,
 } from "@stores/settingsStore";
+import { isMacOSPlatform, isWindowsPlatform } from "@utils/platform";
+import { applyWindowTitle } from "@utils/theme";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
@@ -23,6 +27,7 @@ const fontsLoading = ref(false);
 const error = ref<string | null>(null);
 
 const pluginStore = usePluginStore();
+const toast = useToast();
 
 const themeProxyPlugin = computed(() => {
   return pluginStore.plugins.find(
@@ -41,14 +46,44 @@ const maxLogLines = ref("5000");
 const bgOpacity = ref("0.3");
 const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
+const isMacOS = isMacOSPlatform();
+const isWindows = isWindowsPlatform();
 
 const fontFamilyOptions = ref<{ label: string; value: string }[]>([
   { label: i18n.t("settings.font_family_default"), value: "" },
 ]);
 
+const windowEffectOptions = computed<{ label: string; value: WindowEffect }[]>(() => {
+  if (isMacOS) {
+    return [
+      { label: i18n.t("settings.window_effect_options.off"), value: "off" },
+      { label: i18n.t("settings.window_effect_options.vibrancy"), value: "vibrancy" },
+    ];
+  }
+
+  if (isWindows) {
+    return [
+      { label: i18n.t("settings.window_effect_options.off"), value: "off" },
+      { label: i18n.t("settings.window_effect_options.auto"), value: "auto" },
+      { label: i18n.t("settings.window_effect_options.mica"), value: "mica" },
+      { label: i18n.t("settings.window_effect_options.acrylic"), value: "acrylic" },
+      { label: i18n.t("settings.window_effect_options.blur"), value: "blur" },
+    ];
+  }
+
+  return [{ label: i18n.t("settings.window_effect_options.off"), value: "off" }];
+});
+
+const windowEffectSummary = computed(() => {
+  const effect = settings.value?.window_effect || "off";
+  const key = `settings.window_effect_help.${effect}`;
+  return i18n.t(key);
+});
+
 const showImportModal = ref(false);
 const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
+const personalizationBusy = ref(false);
 
 onMounted(async () => {
   await loadSettings();
@@ -115,6 +150,7 @@ async function loadSettings() {
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    await applyWindowTitle(s);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -178,9 +214,14 @@ function handleFontFamilyChange() {
   }
 }
 
-function handleAcrylicChange(enabled: boolean) {
+function handleWindowEffectChange(effect: WindowEffect) {
   markChanged();
-  document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
+  const hasBackgroundImage = Boolean(settings.value?.background_image);
+  document.documentElement.setAttribute(
+    "data-acrylic",
+    effect === "off" && hasBackgroundImage ? "false" : "true",
+  );
+  document.documentElement.setAttribute("data-window-effect", effect);
 }
 
 function handleMinimalModeChange(enabled: boolean) {
@@ -223,6 +264,7 @@ async function saveSettings() {
     if (result.changed_groups.includes("Appearance")) {
       applyTheme(settings.value.theme);
       applyFontSize(settings.value.font_size);
+      await applyWindowTitle(result.settings);
     }
 
     dispatchSettingsUpdate(result.changed_groups, result.settings);
@@ -257,6 +299,8 @@ async function resetSettings() {
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    await applyWindowTitle(s);
+    dispatchSettingsUpdate(["Appearance", "Console"], s);
   } catch (e) {
     error.value = String(e);
   }
@@ -282,8 +326,62 @@ async function handleImport(json: string) {
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    await applyWindowTitle(s);
+    dispatchSettingsUpdate(["Appearance", "Console"], s);
   } catch (e) {
     error.value = String(e);
+  }
+}
+
+async function exportPersonalizationPackage() {
+  personalizationBusy.value = true;
+  error.value = null;
+  try {
+    const suggestedName = await settingsApi.getPersonalizationPackageSuggestedName();
+    const filePath = await systemApi.pickPersonalizationExportFile(suggestedName);
+    if (!filePath) {
+      return;
+    }
+
+    await settingsApi.exportPersonalizationPackage(filePath);
+    toast.success(i18n.t("settings.personalization_export_success"));
+  } catch (e) {
+    error.value = String(e);
+    toast.error(String(e));
+  } finally {
+    personalizationBusy.value = false;
+  }
+}
+
+async function importPersonalizationPackage() {
+  personalizationBusy.value = true;
+  error.value = null;
+  try {
+    const filePath = await systemApi.pickPersonalizationImportFile();
+    if (!filePath) {
+      return;
+    }
+
+    const result = await settingsApi.importPersonalizationPackage(filePath);
+    settings.value = result.settings;
+    syncLocalValues(result.settings);
+    applyTheme(result.settings.theme);
+    applyFontSize(result.settings.font_size);
+    applyFontFamily(result.settings.font_family);
+    await applyWindowTitle(result.settings);
+    dispatchSettingsUpdate(result.changed_groups, result.settings);
+    await pluginStore.injectAllPluginCss();
+
+    if (result.skipped_plugins.length > 0) {
+      toast.warning(i18n.t("settings.personalization_import_partial"));
+    } else {
+      toast.success(i18n.t("settings.personalization_import_success"));
+    }
+  } catch (e) {
+    error.value = String(e);
+    toast.error(String(e));
+  } finally {
+    personalizationBusy.value = false;
   }
 }
 
@@ -327,13 +425,23 @@ function clearBackgroundImage() {
         @change="markChanged"
       />
 
+      <TextCustomizationCard
+        :app-display-name="settings.app_display_name"
+        :text-color-overrides="settings.text_color_overrides"
+        @update:app-display-name="settings.app_display_name = $event"
+        @update:text-color-overrides="settings.text_color_overrides = $event"
+        @change="markChanged"
+      />
+
       <AppearanceCard
         :theme="settings.theme"
         :font-size="fontSize"
         :font-family="settings.font_family"
         :font-family-options="fontFamilyOptions"
         :fonts-loading="fontsLoading"
-        :acrylic-enabled="settings.acrylic_enabled"
+        :window-effect="settings.window_effect"
+        :window-effect-options="windowEffectOptions"
+        :window-effect-summary="windowEffectSummary"
         :is-theme-proxied="isThemeProxied"
         :theme-proxy-plugin-name="themeProxyPluginName"
         :background-image="settings.background_image"
@@ -346,7 +454,7 @@ function clearBackgroundImage() {
         @update:theme="settings.theme = $event"
         @update:font-size="fontSize = $event"
         @update:font-family="settings.font_family = $event"
-        @update:acrylic-enabled="settings.acrylic_enabled = $event"
+        @update:window-effect="settings.window_effect = $event"
         @update:bg-settings-expanded="bgSettingsExpanded = $event"
         @update:bg-opacity="bgOpacity = $event"
         @update:bg-blur="bgBlur = $event"
@@ -356,7 +464,7 @@ function clearBackgroundImage() {
         @theme-change="handleThemeChange"
         @font-size-change="handleFontSizeChange"
         @font-family-change="handleFontFamilyChange"
-        @acrylic-change="handleAcrylicChange"
+        @window-effect-change="handleWindowEffectChange"
         @minimal-mode-change="handleMinimalModeChange"
         @pick-image="pickBackgroundImage"
         @clear-image="clearBackgroundImage"
@@ -373,7 +481,13 @@ function clearBackgroundImage() {
         @change="markChanged"
       />
 
-      <SettingsActions />
+      <SettingsActions
+        :busy="personalizationBusy"
+        :package-available="true"
+        @export-package="exportPersonalizationPackage"
+        @import-package="importPersonalizationPackage"
+        @reset="showResetConfirm = true"
+      />
     </template>
 
     <ImportSettingsModal v-model:visible="showImportModal" @import="handleImport" />

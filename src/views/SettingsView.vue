@@ -14,6 +14,7 @@ import { i18n } from "@language";
 import { useMessage, useGlobalMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "@stores/settingsStore";
+import { applyWindowTitle } from "@utils/theme";
 
 const { error, showError, clearError } = useMessage();
 const { success: globalSuccess } = useGlobalMessage();
@@ -74,6 +75,7 @@ async function loadSettings() {
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    await applyWindowTitle(s);
   } catch (e) {
     showError(String(e));
   } finally {
@@ -152,6 +154,7 @@ async function saveSettings() {
       applyFontFamily(settings.value.font_family);
     }
 
+    await applyWindowTitle(result.settings);
     dispatchSettingsUpdate(result.changed_groups, result.settings);
   } catch (e) {
     showError(String(e));
@@ -180,6 +183,8 @@ async function resetSettings() {
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    await applyWindowTitle(s);
+    dispatchSettingsUpdate(["Appearance", "General", "ServerDefaults", "Console"], s);
   } catch (e) {
     showError(String(e));
   }
@@ -210,6 +215,8 @@ async function handleImport(json: string) {
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    await applyWindowTitle(s);
+    dispatchSettingsUpdate(["Appearance", "General", "ServerDefaults", "Console"], s);
   } catch (e) {
     showError(String(e));
   }

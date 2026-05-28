@@ -44,8 +44,6 @@ const { messages, remove } = useGlobalMessage();
   pointer-events: auto;
   max-width: 320px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 

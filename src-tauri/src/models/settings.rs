@@ -10,4 +10,7 @@ mod merge;
 mod schema;
 
 /// 应用设置相关的公开类型
-pub use schema::{AppSettings, PartialSettings, SettingsGroup};
+pub use schema::{
+    AppSettings, PartialSettings, SettingsGroup, TextColorOverrides, WINDOW_EFFECT_AUTO,
+    WINDOW_EFFECT_OFF,
+};

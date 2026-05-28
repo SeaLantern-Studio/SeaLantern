@@ -6,10 +6,6 @@ use std::sync::{Arc, Mutex};
 use tauri::Manager;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
-#[cfg(target_os = "macos")]
-use window_vibrancy::{
-    apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
-};
 
 pub(crate) struct PluginSetup {
     pub manager: Arc<Mutex<PluginManager>>,
@@ -40,24 +36,39 @@ pub(crate) fn apply_platform_window_style(app: &tauri::App) {
             eprintln!("Failed to set macOS title bar style to overlay: {}", e);
         }
 
-        let acrylic_enabled = crate::services::global::settings_manager()
-            .get()
-            .acrylic_enabled;
-
-        let native_effect_result = if acrylic_enabled {
-            apply_vibrancy(
-                &window,
-                NSVisualEffectMaterial::UnderWindowBackground,
-                Some(NSVisualEffectState::Active),
-                None,
-            )
-            .map(|_| ())
-        } else {
-            clear_vibrancy(&window).map(|_| ())
+        let settings = crate::services::global::settings_manager().get();
+        let theme_pref = match settings.theme.as_str() {
+            "dark" => Some(true),
+            "light" => Some(false),
+            _ => None,
         };
+
+        let native_effect_result = crate::commands::app::settings::sync_native_window_effect(
+            &window,
+            &settings.window_effect,
+            theme_pref,
+        );
 
         if let Err(e) = native_effect_result {
             eprintln!("Failed to sync native macOS vibrancy effect: {}", e);
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    if let Some(window) = app.get_webview_window("main") {
+        let settings = crate::services::global::settings_manager().get();
+        let theme_pref = match settings.theme.as_str() {
+            "dark" => Some(true),
+            "light" => Some(false),
+            _ => None,
+        };
+
+        if let Err(e) = crate::commands::app::settings::sync_native_window_effect(
+            &window,
+            &settings.window_effect,
+            theme_pref,
+        ) {
+            eprintln!("Failed to sync native Windows window effect: {}", e);
         }
     }
 }

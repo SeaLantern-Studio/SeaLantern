@@ -600,11 +600,6 @@ onUnmounted(() => {
   border-radius: var(--sl-radius-lg, 12px);
   box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
-  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
-  will-change: backdrop-filter;
-  transform: translateZ(0);
-  backface-visibility: hidden;
   color: var(--sl-text-primary);
   transform-origin: top center;
 }
@@ -616,8 +611,6 @@ onUnmounted(() => {
 
 [data-acrylic="true"] .sl-select-dropdown {
   --sl-glass-bg: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
 }
 
 [data-theme="dark"][data-acrylic="true"] .sl-select-dropdown {
@@ -626,9 +619,6 @@ onUnmounted(() => {
 
 [data-acrylic="false"] .sl-select-dropdown {
   background: var(--sl-surface, #ffffff);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  will-change: auto;
 }
 
 .sl-select-dropdown .sl-select-search {

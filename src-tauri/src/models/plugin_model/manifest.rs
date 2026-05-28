@@ -46,6 +46,12 @@ pub struct PluginManifest {
     pub locales: Option<std::collections::HashMap<String, PluginLocaleEntry>>,
     #[serde(default)]
     pub include: Vec<String>,
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+    #[serde(default)]
+    pub theme_var_map: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    pub presets: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 }
 
 /// 插件语言条目

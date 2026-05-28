@@ -1,6 +1,37 @@
-use super::schema::{AppSettings, PartialSettings};
+use super::schema::{
+    AppSettings, PartialSettings, WINDOW_EFFECT_ACRYLIC, WINDOW_EFFECT_AUTO, WINDOW_EFFECT_BLUR,
+    WINDOW_EFFECT_MICA, WINDOW_EFFECT_OFF, WINDOW_EFFECT_VIBRANCY,
+};
 
 impl AppSettings {
+    pub fn normalize_window_effect(&mut self) {
+        let normalized = match self.window_effect.trim().to_ascii_lowercase().as_str() {
+            "" => {
+                if self.acrylic_enabled {
+                    WINDOW_EFFECT_AUTO.to_string()
+                } else {
+                    WINDOW_EFFECT_OFF.to_string()
+                }
+            }
+            WINDOW_EFFECT_OFF
+            | WINDOW_EFFECT_AUTO
+            | WINDOW_EFFECT_BLUR
+            | WINDOW_EFFECT_ACRYLIC
+            | WINDOW_EFFECT_MICA
+            | WINDOW_EFFECT_VIBRANCY => self.window_effect.trim().to_ascii_lowercase(),
+            _ => {
+                if self.acrylic_enabled {
+                    WINDOW_EFFECT_AUTO.to_string()
+                } else {
+                    WINDOW_EFFECT_OFF.to_string()
+                }
+            }
+        };
+
+        self.window_effect = normalized;
+        self.acrylic_enabled = self.window_effect != WINDOW_EFFECT_OFF;
+    }
+
     pub fn merge_from(&mut self, partial: &PartialSettings) {
         if let Some(v) = partial.close_servers_on_exit {
             self.close_servers_on_exit = v;
@@ -71,8 +102,15 @@ impl AppSettings {
         if let Some(v) = partial.window_maximized {
             self.window_maximized = v;
         }
+        if let Some(ref v) = partial.window_effect {
+            self.window_effect = v.clone();
+        }
         if let Some(v) = partial.acrylic_enabled {
-            self.acrylic_enabled = v;
+            self.window_effect = if v {
+                WINDOW_EFFECT_AUTO.to_string()
+            } else {
+                WINDOW_EFFECT_OFF.to_string()
+            };
         }
         if let Some(ref v) = partial.theme {
             self.theme = v.clone();
@@ -85,6 +123,12 @@ impl AppSettings {
         }
         if let Some(ref v) = partial.font_family {
             self.font_family = v.clone();
+        }
+        if let Some(ref v) = partial.text_color_overrides {
+            self.text_color_overrides = v.clone();
+        }
+        if let Some(ref v) = partial.app_display_name {
+            self.app_display_name = v.clone();
         }
         if let Some(ref v) = partial.language {
             self.language = v.clone();
@@ -110,5 +154,7 @@ impl AppSettings {
         if let Some(v) = partial.agreed_to_terms {
             self.agreed_to_terms = v;
         }
+
+        self.normalize_window_effect();
     }
 }
