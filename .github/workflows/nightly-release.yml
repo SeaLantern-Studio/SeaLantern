@@ -269,9 +269,28 @@ jobs:
         run: |
           set -euo pipefail
 
-          APP_PATH="$(find target src-tauri/target -type d -path '*/bundle/macos/*.app' 2>/dev/null | head -n 1)"
+          SEARCH_ROOTS=()
+          for dir in target src-tauri/target; do
+            if [ -d "$dir" ]; then
+              SEARCH_ROOTS+=("$dir")
+            fi
+          done
+
+          if [ ${#SEARCH_ROOTS[@]} -eq 0 ]; then
+            echo "❌ 未找到 target 目录，无法打包 macOS 免安装版"
+            exit 1
+          fi
+
+          APP_PATH="$(find "${SEARCH_ROOTS[@]}" -type d -name '*.app' -path '*/bundle/*' 2>/dev/null | head -n 1 || true)"
+          APP_ARCHIVE_PATH=""
           if [ -z "$APP_PATH" ]; then
-            echo "❌ 未找到 macOS .app 产物，无法打包免安装版"
+            APP_ARCHIVE_PATH="$(find "${SEARCH_ROOTS[@]}" -type f -name '*.app.tar.gz' -path '*/bundle/*' 2>/dev/null | head -n 1 || true)"
+          fi
+
+          if [ -z "$APP_PATH" ] && [ -z "$APP_ARCHIVE_PATH" ]; then
+            echo "❌ 未找到 macOS .app 或 .app.tar.gz 产物，无法打包免安装版"
+            echo "已发现的 bundle 路径:"
+            find "${SEARCH_ROOTS[@]}" -path '*/bundle/*' 2>/dev/null | sort || true
             exit 1
           fi
 
@@ -279,11 +298,24 @@ jobs:
           rm -rf "$STAGE_DIR"
           mkdir -p "$STAGE_DIR"
 
-          cp -R "$APP_PATH" "$STAGE_DIR/"
+          if [ -n "$APP_PATH" ]; then
+            cp -R "$APP_PATH" "$STAGE_DIR/"
+            APP_BASENAME="$(basename "$APP_PATH")"
+          else
+            tar -C "$STAGE_DIR" -xzf "$APP_ARCHIVE_PATH"
+            EXTRACTED_APP_PATH="$(find "$STAGE_DIR" -maxdepth 2 -type d -name '*.app' 2>/dev/null | head -n 1 || true)"
+            if [ -z "$EXTRACTED_APP_PATH" ]; then
+              echo "❌ 已找到 $APP_ARCHIVE_PATH，但解压后未发现 .app 目录"
+              find "$STAGE_DIR" -maxdepth 2 2>/dev/null | sort || true
+              exit 1
+            fi
+            APP_BASENAME="$(basename "$EXTRACTED_APP_PATH")"
+          fi
+
           cp LICENSE NOTICE "$STAGE_DIR/"
 
           ASSET_NAME="Sea.Lantern_${VERSION}_macos_${ASSET_ARCH}_portable.tar.gz"
           ASSET_PATH="$RUNNER_TEMP/$ASSET_NAME"
-          tar -C "$STAGE_DIR" -czf "$ASSET_PATH" "$(basename "$APP_PATH")" LICENSE NOTICE
+          tar -C "$STAGE_DIR" -czf "$ASSET_PATH" "$APP_BASENAME" LICENSE NOTICE
 
           gh release upload "$TAG" "$ASSET_PATH" --clobber
