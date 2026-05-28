@@ -4,6 +4,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import { i18n } from "@language";
 import SLSelect from "@components/common/SLSelect.vue";
 import {
@@ -57,6 +58,7 @@ const route = useRoute();
 const ui = useUiStore();
 const serverStore = useServerStore();
 const pluginStore = usePluginStore();
+const settingsStore = useSettingsStore();
 const navIndicator = ref<HTMLElement | null>(null);
 const sidebarTransitioning = ref(false);
 const isMacOS = isMacOSPlatform();
@@ -198,6 +200,23 @@ function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem
 
 const navItems = computed<NavItem[]>(() => {
   const result: NavItem[] = [];
+  const settingsIndex = staticNavItems.findIndex((item) => item.name === "settings");
+  const developerItem: NavItem = {
+    name: "developer",
+    path: "/developer",
+    icon: "sparkles",
+    labelKey: "common.developer_tools",
+    label: i18n.t("common.developer_tools"),
+    group: "system",
+  };
+  const baseStaticItems =
+    settingsStore.settings.developer_mode && settingsIndex >= 0
+      ? [
+          ...staticNavItems.slice(0, settingsIndex),
+          developerItem,
+          ...staticNavItems.slice(settingsIndex),
+        ]
+      : staticNavItems;
 
   // 收集插件边栏项目
   const positioned = pluginStore.sidebarItems
@@ -225,7 +244,7 @@ const navItems = computed<NavItem[]>(() => {
   ];
 
   // 遍历静态导航项，在 plugins 和 settings 之间插入插件边栏项目
-  for (const staticItem of staticNavItems) {
+  for (const staticItem of baseStaticItems) {
     result.push(staticItem);
 
     // 在 plugins 项之后插入插件边栏项目

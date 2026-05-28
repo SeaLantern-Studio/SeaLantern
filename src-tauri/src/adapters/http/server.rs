@@ -3,6 +3,7 @@
 //! 这里负责启动 Axum 服务、处理命令请求、文件上传和日志 SSE 推送
 
 use super::command_registry::CommandRegistry;
+use crate::utils::logger::{capture_eprintln, capture_println};
 use axum::{
     extract::{DefaultBodyLimit, Multipart, Path, State},
     http::StatusCode,
@@ -127,29 +128,29 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
             .append_index_html_on_directories(true)
             .fallback(ServeFile::new(&index_path));
         app = app.fallback_service(serve_dir);
-        println!("Serving static files from: {} (SPA fallback enabled)", dir);
+        capture_println(format!("Serving static files from: {} (SPA fallback enabled)", dir));
     }
 
     let upload_dir = "/app/uploads";
     if let Err(e) = fs::create_dir_all(upload_dir).await {
-        eprintln!("Failed to create upload directory: {}", e);
+        capture_eprintln(format!("Failed to create upload directory: {}", e));
     }
 
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(listener) => listener,
         Err(e) => {
-            eprintln!("SeaLantern HTTP server failed to bind at {}: {}", addr, e);
+            capture_eprintln(format!("SeaLantern HTTP server failed to bind at {}: {}", addr, e));
             return;
         }
     };
 
-    println!("SeaLantern HTTP server listening on {}", addr);
-    println!("API endpoints available at http://{}/api/<command>", addr);
-    println!("Health check at http://{}/health", addr);
-    println!("File upload available at http://{}/upload", addr);
+    capture_println(format!("SeaLantern HTTP server listening on {}", addr));
+    capture_println(format!("API endpoints available at http://{}/api/<command>", addr));
+    capture_println(format!("Health check at http://{}/health", addr));
+    capture_println(format!("File upload available at http://{}/upload", addr));
 
     if let Err(e) = axum::serve(listener, app).await {
-        eprintln!("SeaLantern HTTP server error on {}: {}", addr, e);
+        capture_eprintln(format!("SeaLantern HTTP server error on {}: {}", addr, e));
     }
 }
 
@@ -162,18 +163,18 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
         let file_name = match field.file_name() {
             Some(name) => name.to_string(),
             None => {
-                eprintln!("[Upload] Field without filename, skipping");
+                capture_eprintln("[Upload] Field without filename, skipping".to_string());
                 continue;
             }
         };
 
-        eprintln!("[Upload] Processing file: {} (mime: {:?})", file_name, field.content_type());
+        capture_eprintln(format!("[Upload] Processing file: {} (mime: {:?})", file_name, field.content_type()));
 
         let file_data: Vec<u8> = match field.bytes().await {
             Ok(data) => data.to_vec(),
             Err(e) => {
                 let msg = format!("Failed to read file '{}': {}", file_name, e);
-                eprintln!("[Upload] {}", msg);
+                capture_eprintln(format!("[Upload] {}", msg));
                 break;
             }
         };
@@ -181,7 +182,7 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
         let timestamp = match SystemTime::now().duration_since(UNIX_EPOCH) {
             Ok(duration) => duration.as_secs(),
             Err(e) => {
-                eprintln!("[Upload] Failed to get system time: {}", e);
+                capture_eprintln(format!("[Upload] Failed to get system time: {}", e));
                 0
             }
         };
@@ -189,7 +190,7 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
         let file_path = format!("{}/{}", upload_dir, unique_filename);
 
         if let Err(e) = fs::write(&file_path, &file_data).await {
-            eprintln!("[Upload] Failed to write file '{}': {}", file_path, e);
+            capture_eprintln(format!("[Upload] Failed to write file '{}': {}", file_path, e));
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::error(format!("Failed to save file: {}", e))),
@@ -197,7 +198,7 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
                 .into_response();
         }
 
-        println!("[Upload] File '{}' saved to '{}'", file_name, file_path);
+        capture_println(format!("[Upload] File '{}' saved to '{}'", file_name, file_path));
         uploaded_files.push(serde_json::json!({
             "original_name": file_name,
             "saved_path": file_path,
@@ -213,7 +214,7 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
             .into_response();
     }
 
-    println!("[Upload] Successfully uploaded {} file(s)", uploaded_files.len());
+    capture_println(format!("[Upload] Successfully uploaded {} file(s)", uploaded_files.len()));
     (
         StatusCode::OK,
         Json(ApiResponse::success(serde_json::json!({
@@ -247,7 +248,7 @@ async fn handle_api_command(
     State(state): State<AppState>,
     Json(payload): Json<ApiRequest>,
 ) -> impl IntoResponse {
-    eprintln!("[HTTP API] Received command: {}", command);
+    capture_eprintln(format!("[HTTP API] Received command: {}", command));
 
     let handler = match state.command_registry.get_handler(&command) {
         Some(h) => h,
@@ -265,11 +266,11 @@ async fn handle_api_command(
 
     match handler(payload.params).await {
         Ok(data) => {
-            eprintln!("[HTTP API] Command '{}' succeeded", command);
+            capture_eprintln(format!("[HTTP API] Command '{}' succeeded", command));
             (StatusCode::OK, Json(ApiResponse::success(data))).into_response()
         }
         Err(e) => {
-            eprintln!("[HTTP API] Command '{}' failed: {}", command, e);
+            capture_eprintln(format!("[HTTP API] Command '{}' failed: {}", command, e));
             (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::error(e))).into_response()
         }
     }
@@ -285,7 +286,7 @@ async fn handle_log_stream() -> impl IntoResponse {
                 Some(Ok::<_, String>(Event::default().data(json)))
             }
             Err(e) => {
-                eprintln!("[SSE] Broadcast error: {}", e);
+                capture_eprintln(format!("[SSE] Broadcast error: {}", e));
                 None
             }
         });

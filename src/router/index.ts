@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { checkDeveloperMode } from "@api/logging";
 import { onPageChanged } from "@api/plugin";
 
 const routes = [
@@ -55,6 +56,12 @@ const routes = [
     meta: { titleKey: "common.settings", icon: "sliders" },
   },
   {
+    path: "/developer",
+    name: "developer",
+    component: () => import("@views/DeveloperView.vue"),
+    meta: { titleKey: "common.developer_tools", icon: "sparkles" },
+  },
+  {
     path: "/paint",
     name: "paint",
     component: () => import("@views/PaintView.vue"),
@@ -90,6 +97,19 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+router.beforeEach(async (to) => {
+  if (to.name !== "developer") {
+    return true;
+  }
+
+  const developerEnabled = await checkDeveloperMode().catch(() => false);
+  if (!developerEnabled) {
+    return { path: "/settings" };
+  }
+
+  return true;
 });
 
 let pageChangedTimers: number[] = [];

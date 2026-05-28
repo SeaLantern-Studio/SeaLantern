@@ -99,13 +99,14 @@ fn handle_get_logs(params: Value) -> futures::future::BoxFuture<'static, Result<
             .get("limit")
             .and_then(|value| value.as_u64())
             .map(|value| value as usize);
-        serde_json::to_value(logging_commands::get_logs(limit)).map_err(|error| error.to_string())
+        let logs = logging_commands::get_logs(limit)?;
+        serde_json::to_value(logs).map_err(|error| error.to_string())
     })
 }
 
 fn handle_clear_logs(_params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        logging_commands::clear_logs();
+        logging_commands::clear_logs()?;
         Ok(Value::Null)
     })
 }

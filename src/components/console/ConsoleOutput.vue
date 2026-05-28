@@ -174,7 +174,7 @@ function appendLines(lines: string[]) {
   }
 }
 
-function clear() {
+function clear(resetScrollState = true) {
   if (!terminal) return;
   emptyStateRenderId += 1;
   const renderId = emptyStateRenderId;
@@ -182,7 +182,9 @@ function clear() {
   terminal.reset();
   hasAnyLine = false;
   renderEmptyState(renderId);
-  emit("scroll", false);
+  if (resetScrollState) {
+    emit("scroll", false);
+  }
 }
 
 function getAllPlainText(): string {
