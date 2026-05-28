@@ -1,6 +1,6 @@
 use super::super::super::common::detect_java_major_version;
 #[cfg(target_os = "windows")]
-use super::super::super::common::escape_cmd_arg;
+use super::super::super::common::{build_windows_cmd_command, escape_cmd_arg};
 use super::context::LaunchContext;
 use crate::services::server::installer;
 use std::path::Path;
@@ -111,10 +111,7 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
 
     #[cfg(target_os = "windows")]
     {
-        let mut custom_cmd = Command::new("cmd");
-        custom_cmd.arg("/d");
-        custom_cmd.arg("/c");
-        custom_cmd.arg(custom_command);
+        let mut custom_cmd = build_windows_cmd_command(custom_command);
         custom_cmd.env("JAVA_HOME", &context.java_home_dir_str);
         custom_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ";"));
         Ok(custom_cmd)
@@ -146,9 +143,6 @@ fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 
     #[cfg(target_os = "windows")]
     {
-        use std::os::windows::process::CommandExt;
-
-        let mut bat_cmd = Command::new("cmd");
         let code_page = context.managed_console_encoding.cmd_code_page();
         let launch_command = format!(
             "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & call \"{}\" nogui",
@@ -157,9 +151,7 @@ fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
             escape_cmd_arg(&context.java_bin_dir_str),
             escape_cmd_arg(&context.startup_filename)
         );
-        bat_cmd.arg("/d");
-        bat_cmd.arg("/c");
-        bat_cmd.raw_arg(&launch_command);
+        let bat_cmd = build_windows_cmd_command(&launch_command);
         Ok(bat_cmd)
     }
     #[cfg(not(target_os = "windows"))]

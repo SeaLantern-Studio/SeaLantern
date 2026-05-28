@@ -81,6 +81,17 @@ pub(super) fn escape_cmd_arg(s: &str) -> String {
     out
 }
 
+#[cfg(target_os = "windows")]
+pub(super) fn build_windows_cmd_command(command_text: &str) -> Command {
+    use std::os::windows::process::CommandExt;
+
+    let mut cmd = Command::new("cmd");
+    cmd.arg("/d");
+    cmd.arg("/c");
+    cmd.raw_arg(command_text);
+    cmd
+}
+
 pub(super) fn current_timestamp_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -229,6 +240,10 @@ fn quote_command_fragment(value: &str) -> String {
         return value.to_string();
     }
 
+    if value.contains('"') && !value.contains('\'') {
+        return format!("'{}'", value);
+    }
+
     format!("\"{}\"", value.replace('"', "\\\""))
 }
 
@@ -245,5 +260,60 @@ pub(super) fn decode_console_bytes(bytes: &[u8]) -> String {
     #[cfg(not(target_os = "windows"))]
     {
         String::from_utf8_lossy(bytes).into_owned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn build_windows_cmd_command_keeps_shell_command_intact() {
+        let command_text = "\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui";
+        let cmd = build_windows_cmd_command(command_text);
+
+        let args = cmd
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(args, vec!["/d", "/c", command_text]);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn build_windows_cmd_command_executes_quoted_program_path() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "sealantern-cmd-test-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let script_path = temp_dir.join("echo args.cmd");
+        std::fs::write(&script_path, "@echo off\r\necho %1\r\n").unwrap();
+
+        let command_text = format!("\"{}\" ok", script_path.display());
+        let output = build_windows_cmd_command(&command_text).output().unwrap();
+
+        assert!(output.status.success());
+        assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "ok");
+
+        let _ = std::fs::remove_file(&script_path);
+        let _ = std::fs::remove_dir(&temp_dir);
+    }
+
+    #[test]
+    fn format_command_for_log_escapes_nested_quotes_for_display_only() {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/c");
+        cmd.arg("\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui");
+
+        let formatted = format_command_for_log(&cmd);
+
+        assert_eq!(
+            formatted,
+            "cmd /c '\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui'"
+        );
     }
 }
