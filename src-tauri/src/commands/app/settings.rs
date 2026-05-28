@@ -8,10 +8,11 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use tauri::window::Color;
 use tauri::AppHandle;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use tauri::Manager;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use tauri::window::Color;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use tauri::WebviewWindow;
 #[cfg(target_os = "windows")]
@@ -659,14 +660,13 @@ pub fn update_plugin_commands(commands: PluginCommands) -> Result<UpdateSettings
 ///
 /// 平台处理成功时返回 `Ok(())`
 pub fn apply_acrylic(enabled: bool, app: AppHandle) -> Result<(), String> {
-    let effect = if enabled {
-        WINDOW_EFFECT_AUTO
-    } else {
-        WINDOW_EFFECT_OFF
-    };
-
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     {
+        let effect = if enabled {
+            WINDOW_EFFECT_AUTO
+        } else {
+            WINDOW_EFFECT_OFF
+        };
         if let Some(window) = app.get_webview_window("main") {
             sync_native_window_effect(&window, effect, None)?;
         }
