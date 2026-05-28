@@ -146,9 +146,7 @@ impl IrohTunnel {
             };
             if let Err(e) = host_accept_loop(ep, mc_port, tx.clone(), ctx).await {
                 let _ = tx
-                    .send(TunnelEvent::Error {
-                        message: format!("host loop ended: {e}"),
-                    })
+                    .send(TunnelEvent::Error { message: format!("host loop ended: {e}") })
                     .await;
             }
         });

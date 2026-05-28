@@ -125,11 +125,7 @@ pub(super) async fn reconnect_supervisor(
             }
         };
         if let Some(e) = lock_error {
-            let _ = tx
-                .send(TunnelEvent::Error {
-                    message: e.to_string(),
-                })
-                .await;
+            let _ = tx.send(TunnelEvent::Error { message: e.to_string() }).await;
             return;
         }
 
@@ -155,9 +151,7 @@ fn spawn_join_accept_loop(
     tokio::spawn(async move {
         if let Err(e) = join_accept_loop(conn, listener).await {
             let _ = tx
-                .send(TunnelEvent::Error {
-                    message: format!("join loop ended: {e}"),
-                })
+                .send(TunnelEvent::Error { message: format!("join loop ended: {e}") })
                 .await;
         }
     })

@@ -39,13 +39,8 @@ impl HostSessions {
                 (generation, true, old_conn)
             }
             None => {
-                self.by_id.insert(
-                    endpoint_id,
-                    SessionEntry {
-                        generation: 1,
-                        conn: Some(conn),
-                    },
-                );
+                self.by_id
+                    .insert(endpoint_id, SessionEntry { generation: 1, conn: Some(conn) });
                 (1, false, None)
             }
         }
@@ -67,13 +62,8 @@ impl HostSessions {
 
     #[cfg(test)]
     pub(super) fn insert_for_test(&mut self, endpoint_id: EndpointId, generation: u64) {
-        self.by_id.insert(
-            endpoint_id,
-            SessionEntry {
-                generation,
-                conn: None,
-            },
-        );
+        self.by_id
+            .insert(endpoint_id, SessionEntry { generation, conn: None });
     }
 }
 

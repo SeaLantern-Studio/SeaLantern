@@ -23,10 +23,7 @@ pub struct Ticket {
 impl Ticket {
     /// 创建票据。
     pub fn new(endpoint_id: EndpointId, relay_url: Option<RelayUrl>) -> Self {
-        Self {
-            endpoint_id,
-            relay_url,
-        }
+        Self { endpoint_id, relay_url }
     }
 }
 
@@ -69,10 +66,7 @@ impl FromStr for Ticket {
             .transpose()
             .map_err(|e| TicketError::RelayUrlParse(e.to_string()))?;
 
-        Ok(Self {
-            endpoint_id,
-            relay_url,
-        })
+        Ok(Self { endpoint_id, relay_url })
     }
 }
 

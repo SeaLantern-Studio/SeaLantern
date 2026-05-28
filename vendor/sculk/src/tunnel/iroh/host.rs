@@ -57,9 +57,7 @@ pub(super) async fn host_accept_loop(
                 Ok(false) => {
                     tracing::info!(remote = %remote_id, "auth failed");
                     let _ = tx
-                        .send(TunnelEvent::AuthFailed {
-                            id: remote_id.clone(),
-                        })
+                        .send(TunnelEvent::AuthFailed { id: remote_id.clone() })
                         .await;
                     spawn_rejected_conn_cleanup(conn, CLOSE_AUTH_FAILED, b"auth failed", remote_id);
                     continue;
@@ -67,9 +65,7 @@ pub(super) async fn host_accept_loop(
                 Err(e) => {
                     tracing::warn!(remote = %remote_id, "auth error: {e}");
                     let _ = tx
-                        .send(TunnelEvent::AuthFailed {
-                            id: remote_id.clone(),
-                        })
+                        .send(TunnelEvent::AuthFailed { id: remote_id.clone() })
                         .await;
                     spawn_rejected_conn_cleanup(conn, CLOSE_AUTH_FAILED, b"auth failed", remote_id);
                     continue;
@@ -92,9 +88,7 @@ pub(super) async fn host_accept_loop(
             tracing::info!(remote = %remote_id, "player reconnected");
         } else {
             let _ = tx
-                .send(TunnelEvent::PlayerJoined {
-                    id: remote_id.clone(),
-                })
+                .send(TunnelEvent::PlayerJoined { id: remote_id.clone() })
                 .await;
         }
 
@@ -118,17 +112,12 @@ pub(super) async fn host_accept_loop(
             };
             if let Some(e) = lock_error {
                 let _ = tx_left
-                    .send(TunnelEvent::Error {
-                        message: e.to_string(),
-                    })
+                    .send(TunnelEvent::Error { message: e.to_string() })
                     .await;
             }
             if should_emit_left {
                 let _ = tx_left
-                    .send(TunnelEvent::PlayerLeft {
-                        id: left_id,
-                        reason,
-                    })
+                    .send(TunnelEvent::PlayerLeft { id: left_id, reason })
                     .await;
             } else {
                 tracing::debug!(remote = %left_id, "stale connection closed, ignored");
