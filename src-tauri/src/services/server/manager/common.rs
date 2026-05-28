@@ -1,6 +1,57 @@
 use std::path::Path;
 use std::process::Command;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum StartupMode {
+    Starter,
+    Jar,
+    Bat,
+    Sh,
+    Ps1,
+    Custom,
+}
+
+impl StartupMode {
+    pub(super) fn from_raw(mode: &str) -> Self {
+        match mode.to_ascii_lowercase().as_str() {
+            "starter" => Self::Starter,
+            "bat" => Self::Bat,
+            "sh" => Self::Sh,
+            "ps1" => Self::Ps1,
+            "custom" => Self::Custom,
+            _ => Self::Jar,
+        }
+    }
+
+    pub(super) fn as_str(self) -> &'static str {
+        match self {
+            Self::Starter => "starter",
+            Self::Jar => "jar",
+            Self::Bat => "bat",
+            Self::Sh => "sh",
+            Self::Ps1 => "ps1",
+            Self::Custom => "custom",
+        }
+    }
+
+    pub(super) fn is_custom(self) -> bool {
+        matches!(self, Self::Custom)
+    }
+
+    pub(super) fn is_starter(self) -> bool {
+        matches!(self, Self::Starter)
+    }
+
+    pub(super) fn prefers_direct_jar(self) -> bool {
+        matches!(self, Self::Bat | Self::Sh | Self::Ps1)
+    }
+
+    #[cfg(target_os = "windows")]
+    pub(super) fn uses_windows_script_encoding_detection(self) -> bool {
+        matches!(self, Self::Bat | Self::Ps1)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(super) enum ManagedConsoleEncoding {
     Utf8,
@@ -111,14 +162,7 @@ pub(super) fn get_data_dir() -> String {
 }
 
 pub(super) fn normalize_startup_mode(mode: &str) -> &str {
-    match mode.to_ascii_lowercase().as_str() {
-        "starter" => "starter",
-        "bat" => "bat",
-        "sh" => "sh",
-        "ps1" => "ps1",
-        "custom" => "custom",
-        _ => "jar",
-    }
+    StartupMode::from_raw(mode).as_str()
 }
 
 pub(super) fn detect_startup_mode_from_path(path: &Path) -> String {
@@ -137,12 +181,12 @@ pub(super) fn detect_startup_mode_from_path(path: &Path) -> String {
 }
 
 pub(super) fn resolve_managed_console_encoding(
-    startup_mode: &str,
+    startup_mode: StartupMode,
     startup_path: &Path,
 ) -> ManagedConsoleEncoding {
     #[cfg(target_os = "windows")]
     {
-        if startup_mode == "bat" || startup_mode == "ps1" {
+        if startup_mode.uses_windows_script_encoding_detection() {
             return detect_windows_batch_encoding(startup_path);
         }
     }
@@ -272,7 +316,8 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn build_windows_cmd_command_keeps_shell_command_intact() {
-        let command_text = "\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui";
+        let command_text =
+            "\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui";
         let cmd = build_windows_cmd_command(command_text);
 
         let args = cmd
@@ -310,5 +355,16 @@ mod tests {
             formatted,
             "cmd /c '\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui'"
         );
+    }
+
+    #[test]
+    fn startup_mode_parsing_and_flags_match_runtime_expectations() {
+        assert_eq!(StartupMode::from_raw("CUSTOM"), StartupMode::Custom);
+        assert_eq!(StartupMode::from_raw("unknown"), StartupMode::Jar);
+        assert!(StartupMode::Bat.prefers_direct_jar());
+        assert!(StartupMode::Sh.prefers_direct_jar());
+        assert!(!StartupMode::Custom.prefers_direct_jar());
+        assert!(StartupMode::Starter.is_starter());
+        assert!(StartupMode::Custom.is_custom());
     }
 }

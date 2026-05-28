@@ -15,7 +15,7 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
     id: &str,
     context: LaunchContext<'_>,
 ) -> Result<LaunchPlan, String> {
-    let configured_mode = context.startup_mode.to_string();
+    let configured_mode = context.startup_mode.as_str().to_string();
     let preferred_jar_path = find_preferred_jar_path(&context);
     let mut fallback_info: Option<super::super::super::StartFallbackInfo> = None;
 
