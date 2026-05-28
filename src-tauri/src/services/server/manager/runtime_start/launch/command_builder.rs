@@ -2,18 +2,15 @@ use super::super::super::common::detect_java_major_version;
 #[cfg(target_os = "windows")]
 use super::super::super::common::{build_windows_cmd_command, escape_cmd_arg};
 use super::context::LaunchContext;
+use crate::services::server::manager::common::StartupMode;
 use crate::services::server::installer;
 use std::path::Path;
 use std::process::Command;
 
-fn should_prefer_direct_jar(startup_mode: &str) -> bool {
-    matches!(startup_mode, "bat" | "sh" | "ps1")
-}
-
 /// 优先寻找可直接运行的 JAR 文件
 pub(super) fn find_preferred_jar_path(context: &LaunchContext<'_>) -> Option<String> {
     let startup_path_obj = Path::new(&context.server.jar_path);
-    let jar_preferred_mode = should_prefer_direct_jar(context.startup_mode);
+    let jar_preferred_mode = context.startup_mode.prefers_direct_jar();
 
     if !jar_preferred_mode {
         return None;
@@ -87,19 +84,18 @@ pub(super) fn build_direct_jar_command(
 /// 按启动方式构建最终命令
 pub(super) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Command, String> {
     match context.startup_mode {
-        "custom" => build_custom_command(context),
-        "bat" => build_bat_command(context),
-        "sh" => build_sh_command(context),
-        "ps1" => build_ps1_command(context),
-        "starter" => {
+        StartupMode::Custom => build_custom_command(context),
+        StartupMode::Bat => build_bat_command(context),
+        StartupMode::Sh => build_sh_command(context),
+        StartupMode::Ps1 => build_ps1_command(context),
+        StartupMode::Starter => {
             let installer_url = context
                 .starter_installer_url
                 .as_deref()
                 .ok_or_else(|| "Starter 安装器下载链接为空".to_string())?;
             Ok(build_direct_jar_command(context, &context.server.jar_path, Some(installer_url)))
         }
-        "jar" => Ok(build_direct_jar_command(context, &context.server.jar_path, None)),
-        _ => Ok(build_direct_jar_command(context, &context.server.jar_path, None)),
+        StartupMode::Jar => Ok(build_direct_jar_command(context, &context.server.jar_path, None)),
     }
 }
 
@@ -202,17 +198,17 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::should_prefer_direct_jar;
+    use crate::services::server::manager::common::StartupMode;
 
     #[test]
     fn custom_mode_does_not_prefer_direct_jar() {
-        assert!(!should_prefer_direct_jar("custom"));
+        assert!(!StartupMode::Custom.prefers_direct_jar());
     }
 
     #[test]
     fn script_modes_still_prefer_direct_jar() {
-        assert!(should_prefer_direct_jar("bat"));
-        assert!(should_prefer_direct_jar("sh"));
-        assert!(should_prefer_direct_jar("ps1"));
+        assert!(StartupMode::Bat.prefers_direct_jar());
+        assert!(StartupMode::Sh.prefers_direct_jar());
+        assert!(StartupMode::Ps1.prefers_direct_jar());
     }
 }

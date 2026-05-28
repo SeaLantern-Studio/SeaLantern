@@ -3,8 +3,7 @@ use std::path::Path;
 use crate::models::server::{AddExistingServerRequest, ServerInstance};
 
 use super::super::common::{
-    current_timestamp_secs, detect_startup_mode_from_path, normalize_startup_mode,
-    validate_server_name,
+    current_timestamp_secs, detect_startup_mode_from_path, StartupMode, validate_server_name,
 };
 use super::super::fs::find_server_executable;
 use super::super::ServerManager;
@@ -26,15 +25,15 @@ pub(super) fn add_existing_server(
 
     ensure_server_path_writable(server_path)?;
 
-    let requested_mode = normalize_startup_mode(&req.startup_mode).to_string();
-    let (jar_path, startup_mode, custom_command) = if requested_mode == "custom" {
+    let requested_mode = StartupMode::from_raw(&req.startup_mode);
+    let (jar_path, startup_mode, custom_command) = if requested_mode.is_custom() {
         let command = req
             .custom_command
             .as_ref()
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
             .ok_or_else(|| "自定义启动命令不能为空".to_string())?;
-        (String::new(), requested_mode, Some(command))
+        (String::new(), requested_mode.as_str().to_string(), Some(command))
     } else if let Some(ref exec_path) = req.executable_path {
         let path = Path::new(exec_path);
         if !path.exists() {
@@ -48,7 +47,7 @@ pub(super) fn add_existing_server(
 
     let port = read_server_port(server_path, req.port);
     write_sl_startup_config(server_path, req.max_memory, req.min_memory)?;
-    let core_type = if startup_mode == "custom" {
+    let core_type = if StartupMode::from_raw(&startup_mode).is_custom() {
         "Unknown".to_string()
     } else {
         installer::detect_core_type(&jar_path)

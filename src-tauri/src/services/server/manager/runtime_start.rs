@@ -4,7 +4,7 @@ mod preload;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::common::normalize_startup_mode;
+use super::common::StartupMode;
 use super::{ServerManager, StartFallbackInfo, StartServerReport};
 use crate::services::server::log_pipeline as server_log_pipeline;
 
@@ -48,7 +48,7 @@ pub(super) fn start_server(manager: &ServerManager, id: &str) -> Result<StartSer
 
     preload::run_preload_script(id, &server.path);
 
-    let startup_mode = normalize_startup_mode(&server.startup_mode);
+    let startup_mode = StartupMode::from_raw(&server.startup_mode);
     let startup_path_obj = std::path::Path::new(&server.jar_path);
     let managed_console_encoding =
         launch::context::resolve_managed_encoding(startup_mode, startup_path_obj);

@@ -1,4 +1,6 @@
-use super::super::super::common::{resolve_managed_console_encoding, ManagedConsoleEncoding};
+use super::super::super::common::{
+    resolve_managed_console_encoding, ManagedConsoleEncoding, StartupMode,
+};
 use crate::models::server::ServerInstance;
 use crate::services::server::installer;
 use crate::services::server::log_pipeline as server_log_pipeline;
@@ -8,7 +10,7 @@ pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a>
     pub manager: &'a super::super::super::ServerManager,
     pub server: &'a ServerInstance,
     pub settings: &'a crate::models::settings::AppSettings,
-    pub startup_mode: &'a str,
+    pub startup_mode: StartupMode,
     pub managed_console_encoding: ManagedConsoleEncoding,
     pub java_bin_dir_str: String,
     pub java_home_dir_str: String,
@@ -17,10 +19,10 @@ pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a>
 }
 
 pub(in crate::services::server::manager::runtime_start) fn resolve_managed_encoding(
-    startup_mode: &str,
+    startup_mode: StartupMode,
     startup_path: &Path,
 ) -> ManagedConsoleEncoding {
-    if startup_mode == "custom" {
+    if startup_mode.is_custom() {
         ManagedConsoleEncoding::Utf8
     } else {
         resolve_managed_console_encoding(startup_mode, startup_path)
@@ -55,8 +57,8 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_starter_insta
     id: &str,
     server: &ServerInstance,
 ) -> Result<Option<String>, String> {
-    let startup_mode = super::super::super::common::normalize_startup_mode(&server.startup_mode);
-    if startup_mode != "starter" {
+    let startup_mode = StartupMode::from_raw(&server.startup_mode);
+    if !startup_mode.is_starter() {
         return Ok(None);
     }
 
