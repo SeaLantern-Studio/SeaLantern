@@ -8,7 +8,7 @@ use super::super::common::{
 };
 use super::super::fs::find_server_executable;
 use super::super::ServerManager;
-use super::shared::{ensure_server_path_writable, read_server_port};
+use super::shared::{ensure_server_path_writable, read_server_port, write_sl_startup_config};
 use crate::services::server::installer;
 
 pub(super) fn add_existing_server(
@@ -47,6 +47,7 @@ pub(super) fn add_existing_server(
     };
 
     let port = read_server_port(server_path, req.port);
+    write_sl_startup_config(server_path, req.max_memory, req.min_memory)?;
     let core_type = if startup_mode == "custom" {
         "Unknown".to_string()
     } else {
@@ -68,8 +69,6 @@ pub(super) fn add_existing_server(
         startup_mode,
         custom_command,
         java_path: req.java_path,
-        max_memory: req.max_memory,
-        min_memory: req.min_memory,
         jvm_args: Vec::new(),
         port,
         created_at: now,

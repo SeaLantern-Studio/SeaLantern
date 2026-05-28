@@ -35,8 +35,6 @@ pub(super) fn build_modpack_server_instance(
         startup_mode: startup.startup_mode,
         custom_command: startup.custom_command,
         java_path: req.java_path,
-        max_memory: req.max_memory,
-        min_memory: req.min_memory,
         jvm_args: Vec::new(),
         port,
         created_at: super::super::super::common::current_timestamp_secs(),

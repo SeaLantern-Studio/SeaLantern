@@ -39,8 +39,6 @@ pub struct ServerInstance {
     #[serde(default)]
     pub custom_command: Option<String>,
     pub java_path: String,
-    pub max_memory: u32,
-    pub min_memory: u32,
     pub jvm_args: Vec<String>,
     pub port: u16,
     pub created_at: u64,

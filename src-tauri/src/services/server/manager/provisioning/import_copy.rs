@@ -5,7 +5,9 @@ use crate::models::server::{ImportServerRequest, ServerInstance};
 use super::super::common::{current_timestamp_secs, normalize_startup_mode, validate_server_name};
 use super::super::fs::copy_dir_recursive;
 use super::super::ServerManager;
-use super::shared::{create_server_properties_if_missing, read_server_port};
+use super::shared::{
+    create_server_properties_if_missing, read_server_port, write_sl_startup_config,
+};
 use crate::services::server::installer;
 
 pub(super) fn import_server(
@@ -48,6 +50,7 @@ pub(super) fn import_server(
 
     create_server_properties_if_missing(&server_dir, req.port, req.online_mode)?;
     let port = read_server_port(&server_dir, req.port);
+    write_sl_startup_config(&server_dir, req.max_memory, req.min_memory)?;
 
     let now = current_timestamp_secs();
     let core_type = installer::detect_core_type(&dest_startup.to_string_lossy());
@@ -64,8 +67,6 @@ pub(super) fn import_server(
         startup_mode,
         custom_command: req.custom_command,
         java_path: req.java_path,
-        max_memory: req.max_memory,
-        min_memory: req.min_memory,
         jvm_args: Vec::new(),
         port,
         created_at: now,

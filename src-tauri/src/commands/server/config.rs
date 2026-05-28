@@ -1,7 +1,17 @@
 use crate::models::config::ServerProperties;
 use crate::services::server::config as config_parser;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
+
+/// SL.json 启动配置结构
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SLStartupConfig {
+    #[serde(default)]
+    pub max_memory: Option<u32>,
+    #[serde(default)]
+    pub min_memory: Option<u32>,
+}
 
 fn validate_config_path(path: &str) -> Result<(), String> {
     let path = Path::new(path);
@@ -110,4 +120,35 @@ pub fn preview_server_properties_write_from_source(
     values: HashMap<String, String>,
 ) -> Result<String, String> {
     config_parser::preview_properties_write_from_source(&source, &values)
+}
+
+/// 读取服务器目录下的 SL.json 启动配置
+#[tauri::command]
+pub fn read_sl_config(server_path: String) -> Result<SLStartupConfig, String> {
+    validate_config_path(&server_path)?;
+    let path = Path::new(&server_path).join("SL.json");
+    if !path.exists() {
+        return Ok(SLStartupConfig::default());
+    }
+
+    let content = std::fs::read_to_string(path).map_err(|e| format!("读取 SL.json 失败: {}", e))?;
+
+    let config: SLStartupConfig =
+        serde_json::from_str(&content).map_err(|e| format!("解析 SL.json 失败: {}", e))?;
+
+    Ok(config)
+}
+
+/// 写入服务器目录下的 SL.json 启动配置
+#[tauri::command]
+pub fn write_sl_config(server_path: String, config: SLStartupConfig) -> Result<(), String> {
+    validate_config_path(&server_path)?;
+    let sl_path = format!("{}/SL.json", server_path);
+
+    let content =
+        serde_json::to_string_pretty(&config).map_err(|e| format!("序列化 SL.json 失败: {}", e))?;
+
+    std::fs::write(&sl_path, content).map_err(|e| format!("写入 SL.json 失败: {}", e))?;
+
+    Ok(())
 }

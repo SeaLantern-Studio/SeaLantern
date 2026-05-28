@@ -49,6 +49,27 @@ pub(super) fn create_server_properties_if_missing(
     Ok(())
 }
 
+/// 将启动内存设置写入服务器目录下的 SL.json。
+///
+/// 这是新建/导入服务器时持久化内存配置的主路径；ServerInstance 上的
+/// max_memory/min_memory 仅作为历史数据兼容字段保留。
+pub(super) fn write_sl_startup_config(
+    server_dir: &Path,
+    max_memory: u32,
+    min_memory: u32,
+) -> Result<(), String> {
+    let config = crate::commands::server::config::SLStartupConfig {
+        max_memory: Some(max_memory),
+        min_memory: Some(min_memory),
+    };
+    let content =
+        serde_json::to_string_pretty(&config).map_err(|e| format!("序列化 SL.json 失败: {}", e))?;
+    let sl_path = server_dir.join("SL.json");
+    std::fs::write(&sl_path, content).map_err(|e| format!("写入 SL.json 失败: {}", e))?;
+    println!("已创建 SL.json: {}", sl_path.display());
+    Ok(())
+}
+
 pub(super) fn ensure_server_path_writable(server_path: &Path) -> Result<(), String> {
     let test_file = server_path.join(SERVER_PATH_PERMISSION_TEST_FILE_NAME);
     if std::fs::write(&test_file, "").is_err() {
