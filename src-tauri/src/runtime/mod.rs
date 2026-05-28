@@ -6,6 +6,7 @@ mod mode;
 mod plugin_bridge;
 
 use crate::services;
+use crate::utils::logger::capture_eprintln;
 use mode::RuntimeMode;
 
 /// Selects the runtime mode and transfers control to the matching bootstrap path.
@@ -39,14 +40,15 @@ fn run_desktop() {
 /// - `bind_addr`: the socket address to listen on
 /// - `static_dir`: optional directory used to serve frontend assets
 fn run_headless_http(bind_addr: &str, static_dir: Option<String>) {
-    eprintln!("SeaLantern: Running in headless HTTP mode at {}", bind_addr);
+    capture_eprintln(format!("SeaLantern: Running in headless HTTP mode at {}", bind_addr));
 
     let rt = match tokio::runtime::Runtime::new() {
         Ok(rt) => rt,
         Err(e) => {
-            eprintln!("SeaLantern: Failed to create Tokio runtime for HTTP server: {}", e);
-            eprintln!(
+            capture_eprintln(format!("SeaLantern: Failed to create Tokio runtime for HTTP server: {}", e));
+            capture_eprintln(
                 "SeaLantern: This may be due to container resource limits (memory, threads, etc.)"
+                    .to_string(),
             );
             std::process::exit(1);
         }

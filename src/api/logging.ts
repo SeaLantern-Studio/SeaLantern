@@ -1,12 +1,13 @@
 import { tauriInvoke } from "@api/tauri";
 
-export interface LogEntry {
+export interface LogLine {
   timestamp: string;
   level: string;
   message: string;
+  formatted: string;
 }
 
-export async function getLogs(limit?: number): Promise<LogEntry[]> {
+export async function getLogs(limit?: number): Promise<LogLine[]> {
   return tauriInvoke("get_logs", { limit });
 }
 

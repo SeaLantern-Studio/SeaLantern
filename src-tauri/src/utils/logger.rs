@@ -1,11 +1,21 @@
 use chrono::{DateTime, Local};
 use std::sync::{Arc, Mutex};
 
+const KNOWN_LEVEL_PREFIXES: [&str; 5] = ["[DEBUG]", "[INFO]", "[WARN]", "[ERROR]", "[FATAL]"];
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LogEntry {
     pub timestamp: String,
     pub level: String,
     pub message: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct LogLine {
+    pub timestamp: String,
+    pub level: String,
+    pub message: String,
+    pub formatted: String,
 }
 
 pub struct LogCollector {
@@ -68,24 +78,48 @@ fn parse_level<'a>(message: &'a str, default_level: &'a str) -> &'a str {
     default_level
 }
 
-pub fn format_log_entry(entry: &LogEntry) -> String {
-    let has_level_prefix = ["[DEBUG]", "[INFO]", "[WARN]", "[ERROR]", "[FATAL]"]
-        .iter()
-        .any(|prefix| entry.message.starts_with(prefix));
+fn strip_level_prefix(message: &str) -> &str {
+    let trimmed = message.trim_start();
+    for prefix in KNOWN_LEVEL_PREFIXES {
+        if let Some(rest) = trimmed.strip_prefix(prefix) {
+            return rest.trim_start();
+        }
+    }
+    trimmed
+}
 
-    if has_level_prefix {
-        format!("[{}] {}", entry.timestamp, entry.message)
-    } else {
-        format!("[{}] [{}] {}", entry.timestamp, entry.level, entry.message)
+pub fn format_log_entry(entry: &LogEntry) -> String {
+    format!("[{}] [{}] {}", entry.timestamp, entry.level, entry.message)
+}
+
+pub fn to_log_line(entry: LogEntry) -> LogLine {
+    let formatted = format_log_entry(&entry);
+    LogLine {
+        timestamp: entry.timestamp,
+        level: entry.level,
+        message: entry.message,
+        formatted,
     }
 }
 
-pub fn capture_stdout(message: &str) {
-    GLOBAL_LOG_COLLECTOR.add_log(parse_level(message, "INFO"), message);
+#[allow(dead_code)]
+pub(crate) fn capture_stdout(message: &str) {
+    GLOBAL_LOG_COLLECTOR.add_log(parse_level(message, "INFO"), strip_level_prefix(message));
 }
 
-pub fn capture_stderr(message: &str) {
-    GLOBAL_LOG_COLLECTOR.add_log(parse_level(message, "ERROR"), message);
+pub(crate) fn capture_stderr(message: &str) {
+    GLOBAL_LOG_COLLECTOR.add_log(parse_level(message, "ERROR"), strip_level_prefix(message));
+}
+
+#[allow(dead_code)]
+pub(crate) fn capture_println(message: String) {
+    std::println!("{}", message);
+    capture_stdout(&message);
+}
+
+pub(crate) fn capture_eprintln(message: String) {
+    std::eprintln!("{}", message);
+    capture_stderr(&message);
 }
 
 lazy_static::lazy_static! {
@@ -94,10 +128,10 @@ lazy_static::lazy_static! {
 
 pub fn log_warn(message: &str) {
     std::println!("[WARN] {}", message);
-    GLOBAL_LOG_COLLECTOR.add_log("WARN", &format!("[WARN] {}", message));
+    GLOBAL_LOG_COLLECTOR.add_log("WARN", message);
 }
 
 pub fn log_error(message: &str) {
     std::eprintln!("[ERROR] {}", message);
-    GLOBAL_LOG_COLLECTOR.add_log("ERROR", &format!("[ERROR] {}", message));
+    GLOBAL_LOG_COLLECTOR.add_log("ERROR", message);
 }

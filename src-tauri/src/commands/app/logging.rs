@@ -1,7 +1,7 @@
 use crate::services::global;
-use crate::utils::logger::{format_log_entry, LogEntry, GLOBAL_LOG_COLLECTOR};
+use crate::utils::logger::{format_log_entry, to_log_line, LogLine, GLOBAL_LOG_COLLECTOR};
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use tauri::command;
 
 fn ensure_developer_mode() -> Result<(), String> {
@@ -29,8 +29,7 @@ fn resolve_export_path(save_path: &str) -> Result<PathBuf, String> {
         std::fs::canonicalize(&allowed_root).map_err(|e| format!("无法规范化用户目录: {}", e))?;
 
     let parent = save.parent().ok_or_else(|| "无效的保存路径".to_string())?;
-    let canonical_parent =
-        std::fs::canonicalize(parent).map_err(|e| format!("无效的保存路径: {}", e))?;
+    let canonical_parent = resolve_parent_within_root(parent, &canonical_root)?;
 
     if !canonical_parent.starts_with(&canonical_root) {
         return Err("保存路径必须在用户目录内".to_string());
@@ -55,15 +54,51 @@ fn resolve_export_path(save_path: &str) -> Result<PathBuf, String> {
     }
 }
 
+fn resolve_parent_within_root(parent: &Path, canonical_root: &Path) -> Result<PathBuf, String> {
+    for component in parent.components() {
+        if matches!(component, Component::ParentDir) {
+            return Err("无效的保存路径".to_string());
+        }
+    }
+
+    let mut existing_ancestor = parent;
+    let mut pending_components = Vec::new();
+
+    while !existing_ancestor.exists() {
+        let name = existing_ancestor
+            .file_name()
+            .ok_or_else(|| "无效的保存路径".to_string())?;
+        pending_components.push(name.to_os_string());
+        existing_ancestor = existing_ancestor
+            .parent()
+            .ok_or_else(|| "无效的保存路径".to_string())?;
+    }
+
+    let mut resolved_parent = std::fs::canonicalize(existing_ancestor)
+        .map_err(|e| format!("无效的保存路径: {}", e))?;
+    if !resolved_parent.starts_with(canonical_root) {
+        return Err("保存路径必须在用户目录内".to_string());
+    }
+
+    for component in pending_components.iter().rev() {
+        resolved_parent.push(component);
+    }
+
+    Ok(resolved_parent)
+}
+
 fn write_logs_to_file(lines: &[String], save_path: &str) -> Result<(), String> {
     let resolved_path = resolve_export_path(save_path)?;
+    if let Some(parent) = resolved_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("创建保存目录失败: {}", e))?;
+    }
     std::fs::write(resolved_path, lines.join("\n")).map_err(|e| format!("保存失败: {}", e))
 }
 
 #[command]
-pub fn get_logs(limit: Option<usize>) -> Result<Vec<LogEntry>, String> {
+pub fn get_logs(limit: Option<usize>) -> Result<Vec<LogLine>, String> {
     ensure_developer_mode()?;
-    Ok(GLOBAL_LOG_COLLECTOR.get_logs(limit))
+    Ok(GLOBAL_LOG_COLLECTOR.get_logs(limit).into_iter().map(to_log_line).collect())
 }
 
 #[command]

@@ -1,6 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { isBrowserEnv, tauriInvoke } from "@api/tauri";
-import { clearLogs, exportAppLogs, getLogs, type LogEntry } from "@api/logging";
+import { clearLogs, exportAppLogs, getLogs, type LogLine } from "@api/logging";
 import { systemApi, type SystemInfo } from "@api/system";
 import { useGlobalMessage } from "@composables/useMessage";
 import { i18n } from "@language";
@@ -8,16 +8,6 @@ import { i18n } from "@language";
 const LOG_POLL_INTERVAL = 1500;
 const SYSTEM_POLL_INTERVAL = 5000;
 const LOG_LIMIT = 300;
-const KNOWN_LEVEL_PREFIX = /^\[(DEBUG|INFO|WARN|ERROR|FATAL)\]\s+/;
-
-function formatLogLine(entry: LogEntry): string {
-  const message = entry.message.trimStart();
-  const normalizedLevel = entry.level.trim().toUpperCase();
-  if (KNOWN_LEVEL_PREFIX.test(message)) {
-    return `[${entry.timestamp}] ${message}`;
-  }
-  return `[${entry.timestamp}] [${normalizedLevel}] ${entry.message}`;
-}
 
 interface UseDeveloperToolsOptions {
   enabled: () => boolean;
@@ -26,7 +16,7 @@ interface UseDeveloperToolsOptions {
 export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const globalMessage = useGlobalMessage();
 
-  const logs = ref<LogEntry[]>([]);
+  const logs = ref<LogLine[]>([]);
   const systemInfo = ref<SystemInfo | null>(null);
   const version = ref("-");
   const loadingLogs = ref(false);
@@ -42,8 +32,8 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   let logTimer: ReturnType<typeof setInterval> | null = null;
   let systemTimer: ReturnType<typeof setInterval> | null = null;
 
-  const logText = computed(() => logs.value.map(formatLogLine).join("\n"));
-  const logLines = computed(() => logs.value.map(formatLogLine));
+  const logText = computed(() => logs.value.map((entry) => entry.formatted).join("\n"));
+  const logLines = computed(() => logs.value.map((entry) => entry.formatted));
   const systemSummary = computed(() => {
     if (!systemInfo.value) return "";
 
