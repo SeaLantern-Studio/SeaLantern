@@ -39,11 +39,9 @@ fn load_key(path: &Path) -> Result<SecretKey> {
         source: e,
     })?;
     if bytes.len() != KEY_LEN {
-        return Err(PersistError::InvalidKeyLength {
-            expected: KEY_LEN,
-            actual: bytes.len(),
-        }
-        .into());
+        return Err(
+            PersistError::InvalidKeyLength { expected: KEY_LEN, actual: bytes.len() }.into()
+        );
     }
     let arr: [u8; KEY_LEN] =
         bytes

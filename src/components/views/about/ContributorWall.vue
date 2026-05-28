@@ -266,16 +266,12 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
 .join-card {
   border: 2px dashed var(--sl-border);
   background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   cursor: default;
 }
 
 .join-card:hover {
   border-color: var(--sl-primary-light);
   background: var(--sl-primary-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   transform: none;
   box-shadow: none;
 }
@@ -286,20 +282,14 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
 
 [data-theme="dark"] .join-card:hover {
   background: var(--sl-primary-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 [data-acrylic="true"] .join-card {
   background: rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 [data-acrylic="true"] .join-card:hover {
   background: var(--sl-primary-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 [data-theme="dark"][data-acrylic="true"] .join-card {
@@ -308,8 +298,6 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
 
 [data-theme="dark"][data-acrylic="true"] .join-card:hover {
   background: var(--sl-primary-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .join-icon {

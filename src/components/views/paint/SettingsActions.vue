@@ -1,11 +1,35 @@
 <script setup lang="ts">
+import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
+
+defineProps<{
+  busy?: boolean;
+  packageAvailable?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: "export-package"): void;
+  (e: "import-package"): void;
+  (e: "reset"): void;
+}>();
 </script>
 
 <template>
   <div class="settings-actions">
-    <div class="actions-left"></div>
-    <div class="actions-right">{{ i18n.t("settings.personalize_page_import_export") }}</div>
+    <div class="actions-left">
+      <SLButton variant="secondary" :loading="busy" @click="emit('import-package')">
+        {{ i18n.t("settings.personalization_import") }}
+      </SLButton>
+      <SLButton variant="secondary" :loading="busy" @click="emit('export-package')">
+        {{ i18n.t("settings.personalization_export") }}
+      </SLButton>
+      <SLButton variant="danger" :loading="busy" @click="emit('reset')">
+        {{ i18n.t("settings.reset") }}
+      </SLButton>
+    </div>
+    <div class="actions-right" v-if="packageAvailable">
+      {{ i18n.t("settings.personalization_package_desc") }}
+    </div>
   </div>
 </template>
 

@@ -1,6 +1,14 @@
 import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import type { JavaInfo } from "@api/java";
 
+export type WindowEffect = "off" | "auto" | "blur" | "acrylic" | "mica" | "vibrancy";
+
+export interface TextColorOverrides {
+  title: string;
+  text: string;
+  description: string;
+}
+
 export type SettingsGroup =
   | "General"
   | "ServerDefaults"
@@ -33,11 +41,14 @@ export interface AppSettings {
   window_x?: number | null;
   window_y?: number | null;
   window_maximized?: boolean;
+  window_effect: WindowEffect;
   acrylic_enabled: boolean;
   theme: string;
   font_size: number;
   font_family: string;
   color: string;
+  text_color_overrides: TextColorOverrides;
+  app_display_name: string;
   language: string;
   locales_base_url?: string;
   developer_mode: boolean;
@@ -71,11 +82,14 @@ export interface PartialSettings {
   window_x?: number | null;
   window_y?: number | null;
   window_maximized?: boolean;
+  window_effect?: WindowEffect;
   acrylic_enabled?: boolean;
   theme?: string;
   font_size?: number;
   font_family?: string;
   color?: string;
+  text_color_overrides?: TextColorOverrides;
+  app_display_name?: string;
   language?: string;
   developer_mode?: boolean;
   close_action?: string;
@@ -87,6 +101,13 @@ export interface PartialSettings {
 export interface UpdateSettingsResult {
   settings: AppSettings;
   changed_groups: SettingsGroup[];
+}
+
+export interface ImportPersonalizationResult {
+  settings: AppSettings;
+  changed_groups: SettingsGroup[];
+  imported_plugins: string[];
+  skipped_plugins: string[];
 }
 
 export const settingsApi = {
@@ -111,9 +132,22 @@ export const settingsApi = {
   async importJson(json: string): Promise<AppSettings> {
     return tauriInvoke("import_settings", { json });
   },
+  async exportPersonalizationPackage(path: string): Promise<void> {
+    return tauriInvoke("export_personalization_package", { path });
+  },
+  async importPersonalizationPackage(path: string): Promise<ImportPersonalizationResult> {
+    return tauriInvoke("import_personalization_package", { path });
+  },
+  async getPersonalizationPackageSuggestedName(): Promise<string> {
+    return tauriInvoke("get_personalization_package_suggested_name");
+  },
   async applyAcrylic(enabled: boolean): Promise<void> {
     if (isBrowserEnv()) return;
     await tauriInvoke("apply_acrylic", { enabled }, { silent: true });
+  },
+  async applyWindowEffect(effect: WindowEffect, dark?: boolean): Promise<void> {
+    if (isBrowserEnv()) return;
+    await tauriInvoke("apply_window_effect", { effect, dark }, { silent: true });
   },
 };
 

@@ -56,9 +56,7 @@ pub struct RelayProfile {
 
 impl Default for HostProfile {
     fn default() -> Self {
-        Self {
-            port: default_mc_port(),
-        }
+        Self { port: default_mc_port() }
     }
 }
 
@@ -103,10 +101,8 @@ impl Profile {
             path: path.to_path_buf(),
             source: e,
         })?;
-        let profile: Self = toml::from_str(&content).map_err(|e| PersistError::ProfileParse {
-            path: path.to_path_buf(),
-            source: e,
-        })?;
+        let profile: Self = toml::from_str(&content)
+            .map_err(|e| PersistError::ProfileParse { path: path.to_path_buf(), source: e })?;
         Ok(profile)
     }
 

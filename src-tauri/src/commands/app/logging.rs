@@ -19,7 +19,9 @@ fn resolve_export_path(save_path: &str) -> Result<PathBuf, String> {
         return Err("保存路径必须是绝对路径".to_string());
     }
 
-    let file_name = save.file_name().ok_or_else(|| "无效的保存路径".to_string())?;
+    let file_name = save
+        .file_name()
+        .ok_or_else(|| "无效的保存路径".to_string())?;
     if file_name == "." || file_name == ".." {
         return Err("无效的保存路径".to_string());
     }
@@ -74,8 +76,8 @@ fn resolve_parent_within_root(parent: &Path, canonical_root: &Path) -> Result<Pa
             .ok_or_else(|| "无效的保存路径".to_string())?;
     }
 
-    let mut resolved_parent = std::fs::canonicalize(existing_ancestor)
-        .map_err(|e| format!("无效的保存路径: {}", e))?;
+    let mut resolved_parent =
+        std::fs::canonicalize(existing_ancestor).map_err(|e| format!("无效的保存路径: {}", e))?;
     if !resolved_parent.starts_with(canonical_root) {
         return Err("保存路径必须在用户目录内".to_string());
     }
@@ -98,7 +100,11 @@ fn write_logs_to_file(lines: &[String], save_path: &str) -> Result<(), String> {
 #[command]
 pub fn get_logs(limit: Option<usize>) -> Result<Vec<LogLine>, String> {
     ensure_developer_mode()?;
-    Ok(GLOBAL_LOG_COLLECTOR.get_logs(limit).into_iter().map(to_log_line).collect())
+    Ok(GLOBAL_LOG_COLLECTOR
+        .get_logs(limit)
+        .into_iter()
+        .map(to_log_line)
+        .collect())
 }
 
 #[command]

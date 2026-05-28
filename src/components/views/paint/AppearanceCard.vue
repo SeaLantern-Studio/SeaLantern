@@ -5,6 +5,7 @@ import SLSelect from "@components/common/SLSelect.vue";
 import BackgroundSettings from "./BackgroundSettings.vue";
 import { i18n } from "@language";
 import { computed } from "vue";
+import type { WindowEffect } from "@api/settings";
 
 defineProps<{
   theme: string;
@@ -12,7 +13,9 @@ defineProps<{
   fontFamily: string;
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
-  acrylicEnabled: boolean;
+  windowEffect: WindowEffect;
+  windowEffectOptions: { label: string; value: WindowEffect }[];
+  windowEffectSummary: string;
   isThemeProxied: boolean;
   themeProxyPluginName: string;
   backgroundImage: string;
@@ -28,7 +31,7 @@ const emit = defineEmits<{
   (e: "update:theme", value: string): void;
   (e: "update:fontSize", value: string): void;
   (e: "update:fontFamily", value: string): void;
-  (e: "update:acrylicEnabled", value: boolean): void;
+  (e: "update:windowEffect", value: WindowEffect): void;
   (e: "update:bgSettingsExpanded", value: boolean): void;
   (e: "update:bgOpacity", value: string): void;
   (e: "update:bgBlur", value: string): void;
@@ -38,7 +41,7 @@ const emit = defineEmits<{
   (e: "themeChange"): void;
   (e: "fontSizeChange"): void;
   (e: "fontFamilyChange"): void;
-  (e: "acrylicChange", value: boolean): void;
+  (e: "windowEffectChange", value: WindowEffect): void;
   (e: "minimalModeChange", value: boolean): void;
   (e: "pickImage"): void;
   (e: "clearImage"): void;
@@ -66,9 +69,10 @@ function handleFontFamilyChange(value: string | number) {
   emit("fontFamilyChange");
 }
 
-function handleAcrylicChange(value: boolean) {
-  emit("update:acrylicEnabled", value);
-  emit("acrylicChange", value);
+function handleWindowEffectChange(value: string | number) {
+  const nextValue = String(value) as WindowEffect;
+  emit("update:windowEffect", nextValue);
+  emit("windowEffectChange", nextValue);
 }
 
 function handleMinimalModeChange(value: boolean) {
@@ -139,10 +143,17 @@ function handleMinimalModeChange(value: boolean) {
 
       <div class="sl-setting-row">
         <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.acrylic") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
+          <span class="sl-setting-label">{{ i18n.t("settings.window_effect") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.window_effect_desc") }}</span>
         </div>
-        <SLSwitch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
+        <div class="sl-input-lg window-effect-control">
+          <SLSelect
+            :model-value="windowEffect"
+            :options="windowEffectOptions"
+            @update:model-value="handleWindowEffectChange"
+          />
+          <p class="window-effect-summary">{{ windowEffectSummary }}</p>
+        </div>
       </div>
 
       <div class="sl-setting-row">
@@ -188,5 +199,17 @@ function handleMinimalModeChange(value: boolean) {
 
 .proxied-text {
   white-space: nowrap;
+}
+
+.window-effect-control {
+  display: grid;
+  gap: 8px;
+}
+
+.window-effect-summary {
+  margin: 0;
+  color: var(--sl-text-tertiary);
+  font-size: var(--sl-font-size-sm);
+  line-height: 1.5;
 }
 </style>

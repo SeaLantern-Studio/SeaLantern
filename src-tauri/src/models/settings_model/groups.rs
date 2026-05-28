@@ -35,11 +35,14 @@ impl AppSettings {
             || self.background_blur != other.background_blur
             || self.background_brightness != other.background_brightness
             || self.background_size != other.background_size
+            || self.window_effect != other.window_effect
             || self.acrylic_enabled != other.acrylic_enabled
             || self.theme != other.theme
             || self.color != other.color
             || self.font_size != other.font_size
             || self.font_family != other.font_family
+            || self.text_color_overrides != other.text_color_overrides
+            || self.app_display_name != other.app_display_name
             || self.minimal_mode != other.minimal_mode
         {
             changed.push(SettingsGroup::Appearance);

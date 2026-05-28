@@ -45,7 +45,10 @@ fn run_headless_http(bind_addr: &str, static_dir: Option<String>) {
     let rt = match tokio::runtime::Runtime::new() {
         Ok(rt) => rt,
         Err(e) => {
-            capture_eprintln(format!("SeaLantern: Failed to create Tokio runtime for HTTP server: {}", e));
+            capture_eprintln(format!(
+                "SeaLantern: Failed to create Tokio runtime for HTTP server: {}",
+                e
+            ));
             capture_eprintln(
                 "SeaLantern: This may be due to container resource limits (memory, threads, etc.)"
                     .to_string(),

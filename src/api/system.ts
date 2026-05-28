@@ -200,6 +200,20 @@ export const systemApi = {
     return tauriInvoke("pick_save_file");
   },
 
+  async pickPersonalizationExportFile(suggestedName: string): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持个性化包导出，请在桌面端使用此功能");
+    }
+    return tauriInvoke("pick_personalization_export_file", { suggestedName });
+  },
+
+  async pickPersonalizationImportFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error("Docker环境不支持个性化包导入，请在桌面端使用此功能");
+    }
+    return tauriInvoke("pick_personalization_import_file");
+  },
+
   async pickFolder(): Promise<string | null> {
     if (isUploadSupported()) {
       throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");

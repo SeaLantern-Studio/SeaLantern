@@ -27,11 +27,14 @@ impl Default for AppSettings {
             window_x: None,
             window_y: None,
             window_maximized: false,
+            window_effect: default_window_effect(),
             acrylic_enabled: false,
             theme: "auto".to_string(),
             color: "default".to_string(),
             font_size: 14,
             font_family: String::new(),
+            text_color_overrides: Default::default(),
+            app_display_name: String::new(),
             language: "zh-CN".to_string(),
             developer_mode: false,
             close_action: "ask".to_string(),
@@ -102,6 +105,10 @@ pub(super) fn default_window_width() -> u32 {
 
 pub(super) fn default_window_height() -> u32 {
     720
+}
+
+pub(super) fn default_window_effect() -> String {
+    "off".to_string()
 }
 
 pub(super) fn default_theme() -> String {

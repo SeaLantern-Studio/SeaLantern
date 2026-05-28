@@ -168,7 +168,11 @@ async fn handle_file_upload(mut multipart: Multipart) -> impl IntoResponse {
             }
         };
 
-        capture_eprintln(format!("[Upload] Processing file: {} (mime: {:?})", file_name, field.content_type()));
+        capture_eprintln(format!(
+            "[Upload] Processing file: {} (mime: {:?})",
+            file_name,
+            field.content_type()
+        ));
 
         let file_data: Vec<u8> = match field.bytes().await {
             Ok(data) => data.to_vec(),

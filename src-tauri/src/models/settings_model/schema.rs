@@ -10,8 +10,25 @@ use defaults::{
     default_console_font, default_console_font_family, default_console_letter_spacing,
     default_false, default_font_family, default_font_size, default_language, default_log_lines,
     default_max_memory, default_min_memory, default_port, default_theme, default_true,
-    default_window_height, default_window_width,
+    default_window_effect, default_window_height, default_window_width,
 };
+
+pub const WINDOW_EFFECT_OFF: &str = "off";
+pub const WINDOW_EFFECT_AUTO: &str = "auto";
+pub const WINDOW_EFFECT_BLUR: &str = "blur";
+pub const WINDOW_EFFECT_ACRYLIC: &str = "acrylic";
+pub const WINDOW_EFFECT_MICA: &str = "mica";
+pub const WINDOW_EFFECT_VIBRANCY: &str = "vibrancy";
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct TextColorOverrides {
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub text: String,
+    #[serde(default)]
+    pub description: String,
+}
 
 /// 设置变更分组
 ///
@@ -97,7 +114,10 @@ pub struct AppSettings {
     #[serde(default)]
     pub window_maximized: bool,
 
-    #[serde(default)]
+    #[serde(default = "default_window_effect")]
+    pub window_effect: String,
+
+    #[serde(default, skip_serializing)]
     pub acrylic_enabled: bool,
 
     #[serde(default = "default_theme")]
@@ -111,6 +131,12 @@ pub struct AppSettings {
 
     #[serde(default = "default_font_family")]
     pub font_family: String,
+
+    #[serde(default)]
+    pub text_color_overrides: TextColorOverrides,
+
+    #[serde(default)]
+    pub app_display_name: String,
 
     #[serde(default = "default_language")]
     pub language: String,
@@ -189,6 +215,8 @@ pub struct PartialSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub window_maximized: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_effect: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub acrylic_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
@@ -198,6 +226,10 @@ pub struct PartialSettings {
     pub font_size: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_color_overrides: Option<TextColorOverrides>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_display_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

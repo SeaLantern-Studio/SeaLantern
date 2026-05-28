@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, computed } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
-import { settingsApi } from "@api/settings";
+import { settingsApi, type WindowEffect } from "@api/settings";
 import { useUiStore } from "@stores/uiStore";
 import {
   useSettingsStore,
@@ -14,10 +14,12 @@ import {
   applyFontFamily,
   applyFontSize,
   applyColors,
+  applyWindowTitle,
   applyDeveloperMode,
   isThemeProviderActive,
+  getEffectiveTheme,
 } from "@utils/theme";
-import { isMacOSPlatform } from "@utils/platform";
+import { isWindowsPlatform } from "@utils/platform";
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();
@@ -27,14 +29,17 @@ const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
 const backgroundBlur = computed(() => settingsStore.backgroundBlur);
 const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
 const backgroundSize = computed(() => settingsStore.backgroundSize);
-const isMacOS = isMacOSPlatform();
+const isWindows = isWindowsPlatform();
 
 let systemThemeQuery: MediaQueryList | null = null;
-let lastNativeAcrylic: boolean | null = null;
+let lastNativeEffectKey: string | null = null;
 let appearanceApplyQueue: Promise<void> = Promise.resolve();
 
-function applyAcrylicEffect(enabled: boolean): void {
+function applyWindowEffectAttributes(effect: WindowEffect): void {
+  const normalized = effect || "off";
+  const enabled = normalized !== "off" || !backgroundImage.value;
   document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
+  document.documentElement.setAttribute("data-window-effect", normalized);
 }
 
 function handleSystemThemeChange(): void {
@@ -53,11 +58,18 @@ async function applyAppearanceSettings(): Promise<void> {
   applyTheme(settings.theme || "auto");
   applyFontSize(settings.font_size || 14);
   applyFontFamily(settings.font_family || "");
+  await applyWindowTitle(settings);
 
-  applyAcrylicEffect(settings.acrylic_enabled);
-  if (lastNativeAcrylic !== settings.acrylic_enabled) {
-    lastNativeAcrylic = settings.acrylic_enabled;
-    await settingsApi.applyAcrylic(settings.acrylic_enabled);
+  const effect = (settings.window_effect || "off") as WindowEffect;
+  const dark = getEffectiveTheme(settings.theme || "auto") === "dark";
+
+  applyWindowEffectAttributes(effect);
+  if (isWindows) {
+    const nativeEffectKey = `${effect}:${dark}`;
+    if (lastNativeEffectKey !== nativeEffectKey) {
+      lastNativeEffectKey = nativeEffectKey;
+      await settingsApi.applyWindowEffect(effect, dark);
+    }
   }
 
   if (!isThemeProviderActive()) {
@@ -121,16 +133,26 @@ const backgroundStyle = computed(() => {
     filter: `blur(${backgroundBlur.value}px) brightness(${backgroundBrightness.value})`,
   };
 });
+
+const hasTransparentWindowBackdrop = computed(
+  () => settingsStore.windowEffect !== "off" || !backgroundImage.value,
+);
+
+const layoutClasses = computed(() => ({
+  "has-native-window-effect": hasTransparentWindowBackdrop.value,
+}));
+
+const mainClasses = computed(() => ({
+  "has-native-window-effect": hasTransparentWindowBackdrop.value,
+  "sidebar-collapsed": ui.sidebarCollapsed,
+}));
 </script>
 
 <template>
-  <div class="app-layout" :class="{ 'macos-native-vibrancy': isMacOS }">
+  <div class="app-layout" :class="layoutClasses">
     <div class="app-background" :style="backgroundStyle"></div>
     <AppSidebar />
-    <div
-      class="app-main"
-      :class="{ 'sidebar-collapsed': ui.sidebarCollapsed, 'macos-native-vibrancy': isMacOS }"
-    >
+    <div class="app-main" :class="mainClasses">
       <AppHeader />
       <main class="app-content">
         <router-view v-slot="{ Component }">

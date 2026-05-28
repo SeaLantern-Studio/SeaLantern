@@ -88,6 +88,9 @@ pnpm run tauri build
 # 代码质量检查
 pnpm run lint
 
+# 类型检查并验证生产构建
+pnpm run build:check
+
 # 自动修复可修复问题
 pnpm run lint:fix
 
@@ -105,6 +108,9 @@ pnpm run fmt:check
 ```bash
 # 检查代码格式
 cargo fmt --all -- --check
+
+# 编译检查
+cargo check --manifest-path Cargo.toml
 
 # 运行 Clippy 检查
 cargo clippy --workspace -- -D warnings
