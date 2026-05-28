@@ -1,4 +1,6 @@
 use crate::services::server::log_pipeline as server_log_pipeline;
+#[cfg(target_os = "windows")]
+use crate::services::server::manager::common::build_windows_cmd_command;
 
 pub(super) fn run_preload_script(id: &str, server_path: &str) {
     #[cfg(target_os = "windows")]
@@ -9,9 +11,14 @@ pub(super) fn run_preload_script(id: &str, server_path: &str) {
             let _ =
                 server_log_pipeline::append_sealantern_log(id, "[preload] 开始执行预加载脚本...");
 
-            let mut cmd = std::process::Command::new("cmd");
-            cmd.args(["/c", preload_script.to_str().unwrap_or("preload.bat")])
-                .current_dir(server_path);
+            let preload_script_name = preload_script
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("preload.bat");
+            let launch_command = format!("call \"{}\"", preload_script_name.replace('"', "\"\""));
+
+            let mut cmd = build_windows_cmd_command(&launch_command);
+            cmd.current_dir(server_path);
 
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x08000000;

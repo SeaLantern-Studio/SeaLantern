@@ -84,3 +84,6 @@ font-kit = "0.14"
 opener = "0.7"
 trash = "5.1"
 tauri-plugin-notification = "2"
+
+[dev-dependencies]
+tempfile = "3"
