@@ -33,7 +33,9 @@ interface ConsoleOutputExpose {
 
 const outputRef = ref<ConsoleOutputExpose | null>(null);
 const userScrolledUp = ref(false);
-const renderedLines = ref<string[]>([]);
+const renderedCount = ref(0);
+const lastRenderedFirstLine = ref("");
+const lastRenderedLastLine = ref("");
 
 const panelHeight = computed(() => {
   const visibleRows = Math.min(Math.max(props.logLines.length + 1, 8), 22);
@@ -42,54 +44,53 @@ const panelHeight = computed(() => {
   return `${Math.min(Math.max(height, 220), 420)}px`;
 });
 
+function syncRenderedLines(lines: string[]): void {
+  const output = outputRef.value;
+  if (!output) return;
+
+  if (lines.length === 0) {
+    if (renderedCount.value > 0) {
+      output.clear(false);
+      renderedCount.value = 0;
+      lastRenderedFirstLine.value = "";
+      lastRenderedLastLine.value = "";
+    }
+    return;
+  }
+
+  const canAppendOnly =
+    renderedCount.value > 0 &&
+    lines.length >= renderedCount.value &&
+    lines[0] === lastRenderedFirstLine.value &&
+    lines[renderedCount.value - 1] === lastRenderedLastLine.value;
+
+  if (canAppendOnly) {
+    const appendedLines = lines.slice(renderedCount.value);
+    if (appendedLines.length > 0) {
+      output.appendLines(appendedLines);
+      renderedCount.value = lines.length;
+      lastRenderedLastLine.value = lines[lines.length - 1] || "";
+    }
+    return;
+  }
+
+  output.clear(false);
+  output.appendLines(lines);
+  renderedCount.value = lines.length;
+  lastRenderedFirstLine.value = lines[0] || "";
+  lastRenderedLastLine.value = lines[lines.length - 1] || "";
+
+  if (!userScrolledUp.value) {
+    nextTick(() => {
+      outputRef.value?.doScroll();
+    });
+  }
+}
+
 watch(
   () => props.logLines,
   (lines) => {
-    if (!outputRef.value) return;
-
-    if (lines.length === 0) {
-      if (renderedLines.value.length > 0) {
-        outputRef.value.clear(false);
-        renderedLines.value = [];
-      }
-      return;
-    }
-
-    const previous = renderedLines.value;
-    if (previous.length === 0) {
-      outputRef.value.clear(false);
-      outputRef.value.appendLines(lines);
-      renderedLines.value = [...lines];
-      return;
-    }
-
-    let commonPrefixLength = 0;
-    const compareLength = Math.min(previous.length, lines.length);
-    while (
-      commonPrefixLength < compareLength &&
-      previous[commonPrefixLength] === lines[commonPrefixLength]
-    ) {
-      commonPrefixLength += 1;
-    }
-
-    if (commonPrefixLength === previous.length && lines.length >= previous.length) {
-      const appendedLines = lines.slice(previous.length);
-      if (appendedLines.length > 0) {
-        outputRef.value.appendLines(appendedLines);
-        renderedLines.value = [...lines];
-      }
-      return;
-    }
-
-    outputRef.value.clear(false);
-    outputRef.value.appendLines(lines);
-    renderedLines.value = [...lines];
-
-    if (!userScrolledUp.value) {
-      nextTick(() => {
-        outputRef.value?.doScroll();
-      });
-    }
+    syncRenderedLines(lines);
   },
   { immediate: true },
 );
@@ -98,24 +99,7 @@ watch(
   outputRef,
   (output) => {
     if (!output) return;
-
-    if (props.logLines.length === 0) {
-      if (renderedLines.value.length > 0) {
-        output.clear(false);
-        renderedLines.value = [];
-      }
-      return;
-    }
-
-    output.clear(false);
-    output.appendLines(props.logLines);
-    renderedLines.value = [...props.logLines];
-
-    if (!userScrolledUp.value) {
-      nextTick(() => {
-        outputRef.value?.doScroll();
-      });
-    }
+    syncRenderedLines(props.logLines);
   },
   { flush: "post" },
 );

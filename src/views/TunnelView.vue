@@ -84,7 +84,9 @@ const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
 let statusPollTimer: ReturnType<typeof setInterval> | null = null;
-const syncedLogs = ref<string[]>([]);
+const syncedLogCount = ref(0);
+const syncedFirstLogLine = ref("");
+const syncedLastLogLine = ref("");
 const logsDisplayClearedByUser = ref(false);
 
 function beginAction(action: PendingAction): boolean {
@@ -122,31 +124,40 @@ function validatePort(value: string, fieldName: string): string | null {
 
 function syncLogOutput(logs: string[]) {
   const output = tunnelOutputRef.value;
+  const visibleLogs = logs.filter((line) => !line.includes("host loop ended"));
+
   if (!output) {
-    syncedLogs.value = logs.slice();
+    syncedLogCount.value = visibleLogs.length;
+    syncedFirstLogLine.value = visibleLogs[0] || "";
+    syncedLastLogLine.value = visibleLogs[visibleLogs.length - 1] || "";
     return;
   }
 
-  const prev = syncedLogs.value;
-  const canAppend = logs.length >= prev.length && prev.every((line, idx) => logs[idx] === line);
-
   const missedInitialWrite =
-    logs.length > 0 && !output.getAllPlainText().trim() && !logsDisplayClearedByUser.value;
+    visibleLogs.length > 0 && !output.getAllPlainText().trim() && !logsDisplayClearedByUser.value;
 
-  if (!canAppend || missedInitialWrite) {
+  const canAppendOnly =
+    syncedLogCount.value > 0 &&
+    visibleLogs.length >= syncedLogCount.value &&
+    visibleLogs[0] === syncedFirstLogLine.value &&
+    visibleLogs[syncedLogCount.value - 1] === syncedLastLogLine.value;
+
+  if (!canAppendOnly || missedInitialWrite) {
     logsDisplayClearedByUser.value = false;
     output.clear();
-    if (logs.length > 0) {
-      output.appendLines(logs.filter((l) => !l.includes("host loop ended")));
+    if (visibleLogs.length > 0) {
+      output.appendLines(visibleLogs);
     }
   } else {
-    const delta = logs.slice(prev.length);
+    const delta = visibleLogs.slice(syncedLogCount.value);
     if (delta.length > 0) {
-      output.appendLines(delta.filter((l) => !l.includes("host loop ended")));
+      output.appendLines(delta);
     }
   }
 
-  syncedLogs.value = logs.slice();
+  syncedLogCount.value = visibleLogs.length;
+  syncedFirstLogLine.value = visibleLogs[0] || "";
+  syncedLastLogLine.value = visibleLogs[visibleLogs.length - 1] || "";
 }
 
 function applyStatus(next: TunnelStatus) {
@@ -338,7 +349,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopStatusPolling();
-  syncedLogs.value = [];
+  syncedLogCount.value = 0;
+  syncedFirstLogLine.value = "";
+  syncedLastLogLine.value = "";
   logsDisplayClearedByUser.value = false;
 });
 </script>
