@@ -303,7 +303,7 @@ jobs:
             APP_BASENAME="$(basename "$APP_PATH")"
           else
             tar -C "$STAGE_DIR" -xzf "$APP_ARCHIVE_PATH"
-            EXTRACTED_APP_PATH="$(find "$STAGE_DIR" -maxdepth 1 -type d -name '*.app' 2>/dev/null | head -n 1 || true)"
+            EXTRACTED_APP_PATH="$(find "$STAGE_DIR" -maxdepth 2 -type d -name '*.app' 2>/dev/null | head -n 1 || true)"
             if [ -z "$EXTRACTED_APP_PATH" ]; then
               echo "❌ 已找到 $APP_ARCHIVE_PATH，但解压后未发现 .app 目录"
               find "$STAGE_DIR" -maxdepth 2 2>/dev/null | sort || true
