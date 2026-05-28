@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
@@ -6,7 +7,10 @@ import type { TextColorOverrides } from "@api/settings";
 
 const props = defineProps<{
   appDisplayName: string;
+  theme: string;
+  color: string;
   textColorOverrides: TextColorOverrides;
+  windowEffect: string;
 }>();
 
 const emit = defineEmits<{
@@ -31,6 +35,51 @@ function handleColorChange(key: keyof TextColorOverrides, value: string) {
 function resetColor(key: keyof TextColorOverrides) {
   handleColorChange(key, "");
 }
+
+function normalizeHexColor(value: string, fallback: string): string {
+  const trimmed = value.trim();
+
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    return `#${trimmed
+      .slice(1)
+      .split("")
+      .map((segment) => `${segment}${segment}`)
+      .join("")}`.toLowerCase();
+  }
+
+  const rgbMatch = trimmed.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgbMatch) {
+    const [red = "0", green = "0", blue = "0"] = rgbMatch[1].split(",");
+    const channels = [red, green, blue].map((segment) => {
+      const numeric = Number.parseInt(segment.trim(), 10);
+      return Number.isNaN(numeric) ? 0 : Math.min(255, Math.max(0, numeric));
+    });
+    return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  return fallback;
+}
+
+function getCssVar(name: string, fallback: string): string {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+  return normalizeHexColor(value, fallback);
+}
+
+const defaultTextColors = computed<TextColorOverrides>(() => {
+  void props.theme;
+  void props.color;
+  void props.windowEffect;
+
+  return {
+    title: getCssVar("--sl-text-primary", "#0f172a"),
+    text: getCssVar("--sl-text-secondary", "#475569"),
+    description: getCssVar("--sl-text-tertiary", "#94a3b8"),
+  };
+});
 </script>
 
 <template>
@@ -63,12 +112,12 @@ function resetColor(key: keyof TextColorOverrides) {
             <input
               class="text-color-picker"
               type="color"
-              :value="textColorOverrides.title || '#0f172a'"
+              :value="textColorOverrides.title || defaultTextColors.title"
               @input="handleColorChange('title', ($event.target as HTMLInputElement).value)"
             />
             <SLInput
               :model-value="textColorOverrides.title"
-              placeholder="#0f172a"
+              :placeholder="defaultTextColors.title"
               @update:model-value="handleColorChange('title', $event)"
             />
             <button class="text-color-reset" type="button" @click="resetColor('title')">
@@ -86,12 +135,12 @@ function resetColor(key: keyof TextColorOverrides) {
             <input
               class="text-color-picker"
               type="color"
-              :value="textColorOverrides.text || '#475569'"
+              :value="textColorOverrides.text || defaultTextColors.text"
               @input="handleColorChange('text', ($event.target as HTMLInputElement).value)"
             />
             <SLInput
               :model-value="textColorOverrides.text"
-              placeholder="#475569"
+              :placeholder="defaultTextColors.text"
               @update:model-value="handleColorChange('text', $event)"
             />
             <button class="text-color-reset" type="button" @click="resetColor('text')">
@@ -111,12 +160,12 @@ function resetColor(key: keyof TextColorOverrides) {
             <input
               class="text-color-picker"
               type="color"
-              :value="textColorOverrides.description || '#94a3b8'"
+              :value="textColorOverrides.description || defaultTextColors.description"
               @input="handleColorChange('description', ($event.target as HTMLInputElement).value)"
             />
             <SLInput
               :model-value="textColorOverrides.description"
-              placeholder="#94a3b8"
+              :placeholder="defaultTextColors.description"
               @update:model-value="handleColorChange('description', $event)"
             />
             <button class="text-color-reset" type="button" @click="resetColor('description')">

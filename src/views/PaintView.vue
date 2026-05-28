@@ -427,7 +427,10 @@ function clearBackgroundImage() {
 
       <TextCustomizationCard
         :app-display-name="settings.app_display_name"
+        :theme="settings.theme"
+        :color="settings.color"
         :text-color-overrides="settings.text_color_overrides"
+        :window-effect="settings.window_effect"
         @update:app-display-name="settings.app_display_name = $event"
         @update:text-color-overrides="settings.text_color_overrides = $event"
         @change="markChanged"

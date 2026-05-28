@@ -34,8 +34,23 @@ interface ConsoleOutputExpose {
 const outputRef = ref<ConsoleOutputExpose | null>(null);
 const userScrolledUp = ref(false);
 const renderedCount = ref(0);
+const renderedLines = ref<string[]>([]);
 const lastRenderedFirstLine = ref("");
 const lastRenderedLastLine = ref("");
+
+function hasMatchingPrefix(lines: string[], prefixLength: number): boolean {
+  if (prefixLength === 0) {
+    return false;
+  }
+
+  for (let index = 0; index < prefixLength; index += 1) {
+    if (lines[index] !== renderedLines.value[index]) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 const panelHeight = computed(() => {
   const visibleRows = Math.min(Math.max(props.logLines.length + 1, 8), 22);
@@ -52,6 +67,7 @@ function syncRenderedLines(lines: string[]): void {
     if (renderedCount.value > 0) {
       output.clear(false);
       renderedCount.value = 0;
+      renderedLines.value = [];
       lastRenderedFirstLine.value = "";
       lastRenderedLastLine.value = "";
     }
@@ -62,13 +78,15 @@ function syncRenderedLines(lines: string[]): void {
     renderedCount.value > 0 &&
     lines.length >= renderedCount.value &&
     lines[0] === lastRenderedFirstLine.value &&
-    lines[renderedCount.value - 1] === lastRenderedLastLine.value;
+    lines[renderedCount.value - 1] === lastRenderedLastLine.value &&
+    hasMatchingPrefix(lines, renderedCount.value);
 
   if (canAppendOnly) {
     const appendedLines = lines.slice(renderedCount.value);
     if (appendedLines.length > 0) {
       output.appendLines(appendedLines);
       renderedCount.value = lines.length;
+      renderedLines.value = lines.slice();
       lastRenderedLastLine.value = lines[lines.length - 1] || "";
     }
     return;
@@ -77,6 +95,7 @@ function syncRenderedLines(lines: string[]): void {
   output.clear(false);
   output.appendLines(lines);
   renderedCount.value = lines.length;
+  renderedLines.value = lines.slice();
   lastRenderedFirstLine.value = lines[0] || "";
   lastRenderedLastLine.value = lines[lines.length - 1] || "";
 

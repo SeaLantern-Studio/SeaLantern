@@ -85,9 +85,24 @@ const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
 let statusPollTimer: ReturnType<typeof setInterval> | null = null;
 const syncedLogCount = ref(0);
+const syncedVisibleLogs = ref<string[]>([]);
 const syncedFirstLogLine = ref("");
 const syncedLastLogLine = ref("");
 const logsDisplayClearedByUser = ref(false);
+
+function hasMatchingPrefix(lines: string[], prefixLength: number): boolean {
+  if (prefixLength === 0) {
+    return false;
+  }
+
+  for (let index = 0; index < prefixLength; index += 1) {
+    if (lines[index] !== syncedVisibleLogs.value[index]) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 function beginAction(action: PendingAction): boolean {
   if (pendingAction.value !== null) return false;
@@ -128,6 +143,7 @@ function syncLogOutput(logs: string[]) {
 
   if (!output) {
     syncedLogCount.value = visibleLogs.length;
+    syncedVisibleLogs.value = visibleLogs.slice();
     syncedFirstLogLine.value = visibleLogs[0] || "";
     syncedLastLogLine.value = visibleLogs[visibleLogs.length - 1] || "";
     return;
@@ -140,7 +156,8 @@ function syncLogOutput(logs: string[]) {
     syncedLogCount.value > 0 &&
     visibleLogs.length >= syncedLogCount.value &&
     visibleLogs[0] === syncedFirstLogLine.value &&
-    visibleLogs[syncedLogCount.value - 1] === syncedLastLogLine.value;
+    visibleLogs[syncedLogCount.value - 1] === syncedLastLogLine.value &&
+    hasMatchingPrefix(visibleLogs, syncedLogCount.value);
 
   if (!canAppendOnly || missedInitialWrite) {
     logsDisplayClearedByUser.value = false;
@@ -156,6 +173,7 @@ function syncLogOutput(logs: string[]) {
   }
 
   syncedLogCount.value = visibleLogs.length;
+  syncedVisibleLogs.value = visibleLogs.slice();
   syncedFirstLogLine.value = visibleLogs[0] || "";
   syncedLastLogLine.value = visibleLogs[visibleLogs.length - 1] || "";
 }
@@ -350,6 +368,7 @@ onMounted(async () => {
 onUnmounted(() => {
   stopStatusPolling();
   syncedLogCount.value = 0;
+  syncedVisibleLogs.value = [];
   syncedFirstLogLine.value = "";
   syncedLastLogLine.value = "";
   logsDisplayClearedByUser.value = false;
