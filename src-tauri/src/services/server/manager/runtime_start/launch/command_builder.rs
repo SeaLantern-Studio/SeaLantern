@@ -2,8 +2,8 @@ use super::super::super::common::detect_java_major_version;
 #[cfg(target_os = "windows")]
 use super::super::super::common::{build_windows_cmd_command, escape_cmd_arg};
 use super::context::LaunchContext;
-use crate::services::server::manager::common::StartupMode;
 use crate::services::server::installer;
+use crate::services::server::manager::common::StartupMode;
 use std::path::Path;
 use std::process::Command;
 

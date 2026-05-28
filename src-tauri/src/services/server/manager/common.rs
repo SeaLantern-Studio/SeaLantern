@@ -316,7 +316,8 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn build_windows_cmd_command_keeps_shell_command_intact() {
-        let command_text = "\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui";
+        let command_text =
+            "\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui";
         let cmd = build_windows_cmd_command(command_text);
 
         let args = cmd

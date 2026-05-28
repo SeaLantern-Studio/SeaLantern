@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::models::server::{AddExistingServerRequest, ServerInstance};
 
 use super::super::common::{
-    current_timestamp_secs, detect_startup_mode_from_path, StartupMode, validate_server_name,
+    current_timestamp_secs, detect_startup_mode_from_path, validate_server_name, StartupMode,
 };
 use super::super::fs::find_server_executable;
 use super::super::ServerManager;
