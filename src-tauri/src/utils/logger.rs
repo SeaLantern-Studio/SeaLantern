@@ -1,7 +1,7 @@
 use chrono::{DateTime, Local};
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LogEntry {
     pub timestamp: String,
     pub level: String,
@@ -49,16 +49,55 @@ impl LogCollector {
     }
 }
 
+fn parse_level<'a>(message: &'a str, default_level: &'a str) -> &'a str {
+    if message.contains("[FATAL]") {
+        return "FATAL";
+    }
+    if message.contains("[ERROR]") {
+        return "ERROR";
+    }
+    if message.contains("[WARN]") || message.contains("WARNING") {
+        return "WARN";
+    }
+    if message.contains("[DEBUG]") {
+        return "DEBUG";
+    }
+    if message.contains("[INFO]") {
+        return "INFO";
+    }
+    default_level
+}
+
+pub fn format_log_entry(entry: &LogEntry) -> String {
+    let has_level_prefix = ["[DEBUG]", "[INFO]", "[WARN]", "[ERROR]", "[FATAL]"]
+        .iter()
+        .any(|prefix| entry.message.starts_with(prefix));
+
+    if has_level_prefix {
+        format!("[{}] {}", entry.timestamp, entry.message)
+    } else {
+        format!("[{}] [{}] {}", entry.timestamp, entry.level, entry.message)
+    }
+}
+
+pub fn capture_stdout(message: &str) {
+    GLOBAL_LOG_COLLECTOR.add_log(parse_level(message, "INFO"), message);
+}
+
+pub fn capture_stderr(message: &str) {
+    GLOBAL_LOG_COLLECTOR.add_log(parse_level(message, "ERROR"), message);
+}
+
 lazy_static::lazy_static! {
     pub static ref GLOBAL_LOG_COLLECTOR: LogCollector = LogCollector::new(1000);
 }
 
 pub fn log_warn(message: &str) {
-    println!("[WARN] {}", message);
-    GLOBAL_LOG_COLLECTOR.add_log("WARN", message);
+    std::println!("[WARN] {}", message);
+    GLOBAL_LOG_COLLECTOR.add_log("WARN", &format!("[WARN] {}", message));
 }
 
 pub fn log_error(message: &str) {
-    eprintln!("[ERROR] {}", message);
-    GLOBAL_LOG_COLLECTOR.add_log("ERROR", message);
+    std::eprintln!("[ERROR] {}", message);
+    GLOBAL_LOG_COLLECTOR.add_log("ERROR", &format!("[ERROR] {}", message));
 }

@@ -177,6 +177,7 @@ pub(crate) fn desktop_handler(
         server_plugin_commands::m_get_plugin_config_files,
         logging_commands::get_logs,
         logging_commands::clear_logs,
+        logging_commands::export_app_logs,
         logging_commands::check_developer_mode,
         #[cfg(debug_assertions)]
         debug_commands::debug_panic

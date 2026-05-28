@@ -1,3 +1,21 @@
+#[macro_export]
+macro_rules! println {
+    ($($arg:tt)*) => {{
+        let message = format!($($arg)*);
+        std::println!("{}", message);
+        $crate::utils::logger::capture_stdout(&message);
+    }};
+}
+
+#[macro_export]
+macro_rules! eprintln {
+    ($($arg:tt)*) => {{
+        let message = format!($($arg)*);
+        std::eprintln!("{}", message);
+        $crate::utils::logger::capture_stderr(&message);
+    }};
+}
+
 mod adapters;
 mod commands;
 mod hardcode_data;
