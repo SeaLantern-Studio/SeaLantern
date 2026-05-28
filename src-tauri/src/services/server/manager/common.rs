@@ -266,6 +266,8 @@ pub(super) fn decode_console_bytes(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "windows")]
+    use tempfile::TempDir;
 
     #[cfg(target_os = "windows")]
     #[test]
@@ -284,13 +286,9 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn build_windows_cmd_command_executes_quoted_program_path() {
-        let temp_dir = std::env::temp_dir().join(format!(
-            "sealantern-cmd-test-{}",
-            std::process::id()
-        ));
-        std::fs::create_dir_all(&temp_dir).unwrap();
+        let temp_dir = TempDir::new().unwrap();
 
-        let script_path = temp_dir.join("echo args.cmd");
+        let script_path = temp_dir.path().join("echo args.cmd");
         std::fs::write(&script_path, "@echo off\r\necho %1\r\n").unwrap();
 
         let command_text = format!("\"{}\" ok", script_path.display());
@@ -298,9 +296,6 @@ mod tests {
 
         assert!(output.status.success());
         assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "ok");
-
-        let _ = std::fs::remove_file(&script_path);
-        let _ = std::fs::remove_dir(&temp_dir);
     }
 
     #[test]
