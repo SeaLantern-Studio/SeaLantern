@@ -2,6 +2,7 @@ use crate::services::global;
 use crate::services::server::id_manager::CreateServerIdRequest;
 
 use super::runtime::run_async_cli_task;
+use super::server_control::{start_server_with_feedback, stop_server_with_feedback};
 
 pub(super) fn list_servers() {
     let manager = global::server_manager();
@@ -23,14 +24,12 @@ pub(super) fn list_servers() {
 
 pub(super) fn start_server(id: &str) {
     let manager = global::server_manager();
-    match manager.start_server(id) {
-        Ok(report) => {
-            println!("服务器 {} 正在启动...", id);
-            if let Some(fallback) = report.fallback {
-                println!(
-                    "已触发启动回退: {} -> {} ({})",
-                    fallback.from_mode, fallback.to_mode, fallback.reason
-                );
+    match manager.find_server_clone(id) {
+        Ok(server) => {
+            if let Err(err) =
+                start_server_with_feedback(&server, "interactive_start", "服务器正在启动...")
+            {
+                println!("启动失败: {}", err);
             }
         }
         Err(err) => println!("启动失败: {}", err),
@@ -39,8 +38,14 @@ pub(super) fn start_server(id: &str) {
 
 pub(super) fn stop_server(id: &str) {
     let manager = global::server_manager();
-    match manager.stop_server(id) {
-        Ok(_) => println!("服务器 {} 已停止。", id),
+    match manager.find_server_clone(id) {
+        Ok(server) => {
+            match stop_server_with_feedback(&server, "interactive_stop", "正在停止服务器...")
+            {
+                Ok(_) => {}
+                Err(err) => println!("停止失败: {}", err),
+            }
+        }
         Err(err) => println!("停止失败: {}", err),
     }
 }
