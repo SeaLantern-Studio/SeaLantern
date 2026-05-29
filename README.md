@@ -147,6 +147,12 @@ cargo fmt --all
 
 详见 [项目结构](docs/STRUCTURE.md)。
 
+### CLI 服务器入口
+
+当前仓库已经提供统一的 `sealantern server ...` CLI 入口，可同时覆盖本地 Java 服务端与 `itzg/minecraft-server` Docker 运行方式。
+
+使用说明见 [CLI 服务器运行指南](docs/cli-server-runtime-guide.md)。
+
 ## 待开发功能
 
 这些功能的位置都预留好了，代码骨架是现成的，等你来写：

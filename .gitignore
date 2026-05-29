@@ -31,3 +31,7 @@ plugins-demo/
 #docker test
 data/
 CLAUDE.md
+
+# smoke test
+target-goal-smoke/
+tmp/
