@@ -4,23 +4,46 @@
 
 mod common;
 mod fs;
-mod process;
+pub(crate) mod process;
 mod provisioning;
+mod registry;
 mod runtime_control;
 mod runtime_start;
 
 use std::collections::{HashMap, HashSet};
-use std::io::Write;
 use std::process::Child;
 use std::sync::Mutex;
 
 use crate::models::server::*;
+use crate::services::server::runtime;
+use crate::utils::logger;
+use crate::utils::server_status::status_blocks_start;
 use serde::{Deserialize, Serialize};
 
 use super::installer;
 use super::log_pipeline as server_log_pipeline;
+use super::manager::process::force_kill_process_tree;
+use super::runtime::local::LocalServerRuntime;
 use common::{get_data_dir, normalize_startup_mode, validate_server_name, ManagedConsoleEncoding};
 use fs::{load_servers, remove_run_path_mapping, save_servers, update_run_path_mapping};
+#[allow(unused_imports)]
+pub use registry::{
+    DuplicateServerRecordEntry, DuplicateServerRecordGroup, ServerRegistryDedupeReport,
+};
+
+fn log_manager_result<T>(
+    action: &str,
+    detail: &str,
+    result: Result<T, String>,
+) -> Result<T, String> {
+    match result {
+        Ok(value) => Ok(value),
+        Err(err) => {
+            logger::log_user_action_error("server.manager", action, detail, &err);
+            Err(err)
+        }
+    }
+}
 
 /// 强停前返回给前端的确认信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +72,8 @@ pub struct StartServerReport {
     pub server_id: String,
     /// 服务器名称
     pub server_name: String,
+    /// 本次是否只是识别到现有运行态而跳过了重复启动
+    pub skipped_existing_state: bool,
     /// 启动回退信息
     pub fallback: Option<StartFallbackInfo>,
 }
@@ -64,6 +89,13 @@ pub struct ServerManager {
 }
 
 impl ServerManager {
+    pub(crate) fn ensure_local_runtime<'a>(
+        &self,
+        server: &'a ServerInstance,
+    ) -> Result<&'a LocalRuntimeConfig, String> {
+        LocalServerRuntime::ensure_config(server)
+    }
+
     /// 创建服务器管理器
     ///
     /// 启动时会一并读入已经保存的服务器列表
@@ -80,33 +112,33 @@ impl ServerManager {
         }
     }
 
-    fn is_stopping(&self, id: &str) -> bool {
+    pub(crate) fn is_stopping(&self, id: &str) -> bool {
         self.stopping_servers
             .lock()
             .map(|stopping| stopping.contains(id))
             .unwrap_or(false)
     }
 
-    fn mark_stopping(&self, id: &str) {
+    pub(crate) fn mark_stopping(&self, id: &str) {
         if let Ok(mut stopping) = self.stopping_servers.lock() {
             stopping.insert(id.to_string());
         }
     }
 
-    fn clear_stopping(&self, id: &str) {
+    pub(crate) fn clear_stopping(&self, id: &str) {
         if let Ok(mut stopping) = self.stopping_servers.lock() {
             stopping.remove(id);
         }
     }
 
-    fn is_starting(&self, id: &str) -> bool {
+    pub(crate) fn is_starting(&self, id: &str) -> bool {
         self.starting_servers
             .lock()
             .map(|s| s.contains(id))
             .unwrap_or(false)
     }
 
-    fn mark_starting(&self, id: &str) {
+    pub(crate) fn mark_starting(&self, id: &str) {
         if let Ok(mut s) = self.starting_servers.lock() {
             s.insert(id.to_string());
         }
@@ -127,7 +159,9 @@ impl ServerManager {
     ///
     /// - `id`: 服务器 ID
     pub fn request_stop_server(&self, id: &str) -> Result<(), String> {
-        runtime_control::request_stop_server(self, id)
+        let detail = format!("server_id={}", id);
+        logger::log_user_action("server.manager", "request_stop", &detail);
+        log_manager_result("request_stop", &detail, runtime_control::request_stop_server(self, id))
     }
 
     /// 生成强停确认口令
@@ -136,7 +170,13 @@ impl ServerManager {
     ///
     /// - `id`: 服务器 ID
     pub fn prepare_force_stop_server(&self, id: &str) -> Result<ForceStopPreparation, String> {
-        runtime_control::prepare_force_stop_server(self, id)
+        let detail = format!("server_id={}", id);
+        logger::log_user_action("server.manager", "prepare_force_stop", &detail);
+        log_manager_result(
+            "prepare_force_stop",
+            &detail,
+            runtime_control::prepare_force_stop_server(self, id),
+        )
     }
 
     /// 使用确认口令执行强停
@@ -146,30 +186,57 @@ impl ServerManager {
     /// - `id`: 服务器 ID
     /// - `confirmation_token`: 强停确认口令
     pub fn force_stop_server(&self, id: &str, confirmation_token: &str) -> Result<(), String> {
-        runtime_control::force_stop_server(self, id, confirmation_token)
+        let detail = format!("server_id={} token_present={}", id, !confirmation_token.is_empty());
+        logger::log_user_action("server.manager", "force_stop", &detail);
+        log_manager_result(
+            "force_stop",
+            &detail,
+            runtime_control::force_stop_server(self, id, confirmation_token),
+        )
     }
 
-    fn save(&self) -> Result<(), String> {
+    pub(crate) fn save(&self) -> Result<(), String> {
         let servers = self.lock_servers()?;
         let data_dir = self.data_dir_value()?;
         save_servers(&data_dir, &servers);
         Ok(())
     }
 
-    fn get_app_settings(&self) -> crate::models::settings::AppSettings {
+    pub(crate) fn get_app_settings(&self) -> crate::models::settings::AppSettings {
         crate::services::global::settings_manager().get()
     }
 
-    fn lock_servers(&self) -> Result<std::sync::MutexGuard<'_, Vec<ServerInstance>>, String> {
+    pub(crate) fn lock_servers(
+        &self,
+    ) -> Result<std::sync::MutexGuard<'_, Vec<ServerInstance>>, String> {
         self.servers
             .lock()
             .map_err(|_| "servers lock poisoned".to_string())
     }
 
-    fn lock_processes(&self) -> Result<std::sync::MutexGuard<'_, HashMap<String, Child>>, String> {
+    pub(crate) fn lock_processes(
+        &self,
+    ) -> Result<std::sync::MutexGuard<'_, HashMap<String, Child>>, String> {
         self.processes
             .lock()
             .map_err(|_| "processes lock poisoned".to_string())
+    }
+
+    pub(crate) fn find_server_clone(&self, id: &str) -> Result<ServerInstance, String> {
+        self.find_server_clone_optional(id)?
+            .ok_or_else(|| format!("未找到服务器: {}", id))
+    }
+
+    pub(crate) fn find_server_clone_optional(
+        &self,
+        id: &str,
+    ) -> Result<Option<ServerInstance>, String> {
+        let servers = self.lock_servers()?;
+        Ok(servers.iter().find(|s| s.id == id).cloned())
+    }
+
+    pub(crate) fn force_kill_local_process(&self, child: &mut Child) -> Result<(), String> {
+        force_kill_process_tree(child)
     }
 
     fn data_dir_value(&self) -> Result<String, String> {
@@ -224,7 +291,7 @@ impl ServerManager {
             args.extend(jvm.split_whitespace().map(|arg| arg.to_string()));
         }
 
-        args.extend(server.jvm_args.iter().cloned());
+        args.extend(server.jvm_args().iter().cloned());
         args
     }
 
@@ -253,7 +320,39 @@ impl ServerManager {
     ///
     /// - `req`: 新建服务器请求
     pub fn create_server(&self, req: CreateServerRequest) -> Result<ServerInstance, String> {
-        provisioning::create_server(self, req)
+        let detail = format!(
+            "name={} core={} mc={} port={} aliases={}",
+            req.name,
+            req.core_type,
+            req.mc_version,
+            req.port,
+            req.aliases.join(",")
+        );
+        logger::log_user_action("server.manager", "create_local", &detail);
+        log_manager_result("create_local", &detail, provisioning::create_server(self, req))
+    }
+
+    pub fn create_docker_itzg_server(
+        &self,
+        req: CreateDockerItzgServerRequest,
+    ) -> Result<ServerInstance, String> {
+        let detail = format!(
+            "name={} core={} mc={} port={} image={}:{} container={} aliases={}",
+            req.name,
+            req.core_type,
+            req.mc_version,
+            req.port,
+            req.runtime.image,
+            req.runtime.image_tag,
+            req.runtime.container_name,
+            req.aliases.join(",")
+        );
+        logger::log_user_action("server.manager", "create_docker_itzg", &detail);
+        log_manager_result(
+            "create_docker_itzg",
+            &detail,
+            provisioning::create_docker_itzg_server(self, req),
+        )
     }
 
     /// 导入一个已有服务端目录副本
@@ -283,7 +382,16 @@ impl ServerManager {
         &self,
         req: AddExistingServerRequest,
     ) -> Result<ServerInstance, String> {
-        provisioning::add_existing_server(self, req)
+        let detail = format!(
+            "name={} path={} port={} startup_mode={} aliases={}",
+            req.name,
+            req.server_path,
+            req.port,
+            req.startup_mode,
+            req.aliases.join(",")
+        );
+        logger::log_user_action("server.manager", "attach_existing", &detail);
+        log_manager_result("attach_existing", &detail, provisioning::add_existing_server(self, req))
     }
 
     /// 启动服务器
@@ -292,7 +400,87 @@ impl ServerManager {
     ///
     /// - `id`: 服务器 ID
     pub fn start_server(&self, id: &str) -> Result<StartServerReport, String> {
-        runtime_start::start_server(self, id)
+        let detail = format!("server_id={}", id);
+        logger::log_user_action("server.manager", "start", &detail);
+        let result = (|| {
+            let server = self.find_server_clone(id)?;
+
+            let status = self.get_server_status(id);
+            if status_blocks_start(&status) {
+                logger::log_user_action(
+                    "server.manager",
+                    "start_skip_existing_state",
+                    &format!(
+                        "server_id={} status={} detail={} error={}",
+                        id,
+                        status.status.as_str(),
+                        status.detail_message.as_deref().unwrap_or(""),
+                        status.error_message.as_deref().unwrap_or("")
+                    ),
+                );
+                return Ok(StartServerReport {
+                    server_id: server.id.clone(),
+                    server_name: server.name.clone(),
+                    skipped_existing_state: true,
+                    fallback: None,
+                });
+            }
+
+            let resolved_runtime = runtime::resolve_runtime(&server)?;
+            let start_result = resolved_runtime.start_with_manager(
+                self,
+                runtime::RuntimeStartRequest { server_id: id, server: &server },
+            )?;
+
+            if let Some(process_handle) = start_result.process_handle {
+                if let Some(mut child) = process_handle.into_local_child() {
+                    println!("Java进程已启动，PID: {:?}", child.id());
+
+                    let stdout = child.stdout.take();
+                    let stderr = child.stderr.take();
+
+                    self.lock_processes()?.insert(id.to_string(), child);
+                    self.mark_starting(id);
+
+                    if let Some(stdout) = stdout {
+                        server_log_pipeline::spawn_server_output_reader(id.to_string(), stdout);
+                    }
+                    if let Some(stderr) = stderr {
+                        server_log_pipeline::spawn_server_output_reader(id.to_string(), stderr);
+                    }
+                }
+            }
+
+            {
+                let mut servers = self.lock_servers()?;
+                if let Some(s) = servers.iter_mut().find(|s| s.id == id) {
+                    s.last_started_at = Some(
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map_err(|e| format!("获取当前时间失败: {}", e))?
+                            .as_secs(),
+                    );
+                }
+            }
+            self.save()?;
+            let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器启动中...");
+
+            Ok(StartServerReport {
+                server_id: server.id.clone(),
+                server_name: server.name.clone(),
+                skipped_existing_state: false,
+                fallback: start_result.fallback,
+            })
+        })();
+
+        log_manager_result("start", &detail, result)
+    }
+
+    pub(crate) fn start_local_runtime(
+        &self,
+        request: runtime::RuntimeStartRequest<'_>,
+    ) -> Result<runtime::RuntimeStartResult, String> {
+        runtime_start::start_local_runtime(self, request)
     }
 
     /// 停止服务器
@@ -301,7 +489,9 @@ impl ServerManager {
     ///
     /// - `id`: 服务器 ID
     pub fn stop_server(&self, id: &str) -> Result<(), String> {
-        runtime_control::stop_server(self, id)
+        let detail = format!("server_id={}", id);
+        logger::log_user_action("server.manager", "stop", &detail);
+        log_manager_result("stop", &detail, runtime_control::stop_server(self, id))
     }
 
     /// 向运行中的服务器发送控制台命令
@@ -311,17 +501,15 @@ impl ServerManager {
     /// - `id`: 服务器 ID
     /// - `command`: 要发送的控制台命令
     pub fn send_command(&self, id: &str, command: &str) -> Result<(), String> {
-        let mut procs = self.lock_processes()?;
-        let child = procs
-            .get_mut(id)
-            .ok_or_else(|| format!("服务器未运行: {}", id))?;
-        if let Some(ref mut stdin) = child.stdin {
-            writeln!(stdin, "{}", command).map_err(|e| format!("发送失败（id={}）: {}", id, e))?;
-            stdin
-                .flush()
-                .map_err(|e| format!("发送失败（id={}）: {}", id, e))?;
-        }
-        Ok(())
+        let detail = format!("server_id={} command={}", id, command);
+        logger::log_user_action("server.manager", "send_command", &detail);
+        let result = (|| {
+            let server = self.find_server_clone(id)?;
+            let resolved_runtime = runtime::resolve_runtime(&server)?;
+            resolved_runtime.send_command_with_manager(self, &server, command)
+        })();
+
+        log_manager_result("send_command", &detail, result)
     }
 
     /// 读取全部服务器列表
@@ -340,45 +528,77 @@ impl ServerManager {
         runtime_control::get_server_status(self, id)
     }
 
+    pub fn audit_duplicate_server_records(&self) -> Result<ServerRegistryDedupeReport, String> {
+        logger::log_user_action("server.manager", "audit_duplicate_records", "");
+        log_manager_result(
+            "audit_duplicate_records",
+            "",
+            registry::audit_duplicate_server_records(self),
+        )
+    }
+
+    pub fn dedupe_duplicate_server_records(&self) -> Result<ServerRegistryDedupeReport, String> {
+        logger::log_user_action("server.manager", "dedupe_duplicate_records", "");
+        log_manager_result(
+            "dedupe_duplicate_records",
+            "",
+            registry::dedupe_duplicate_server_records(self),
+        )
+    }
+
     /// 删除服务器记录和对应目录
     ///
     /// # Parameters
     ///
     /// - `id`: 服务器 ID
     pub fn delete_server(&self, id: &str) -> Result<(), String> {
-        {
-            let procs = self.lock_processes()?;
-            if procs.contains_key(id) {
-                drop(procs);
+        let detail = format!("server_id={}", id);
+        logger::log_user_action("server.manager", "delete", &detail);
+        let result = (|| {
+            let status = self.get_server_status(id).status;
+            if !matches!(status, ServerStatus::Stopped | ServerStatus::Error) {
                 let _ = self.stop_server(id);
             }
-        }
 
-        server_log_pipeline::shutdown_writer(id);
+            server_log_pipeline::shutdown_writer(id);
 
-        let server_path = {
-            let servers = self.lock_servers()?;
-            servers.iter().find(|s| s.id == id).map(|s| s.path.clone())
-        };
-        if let Some(path) = server_path {
-            let dir = std::path::Path::new(&path);
-            if dir.exists() {
-                std::fs::remove_dir_all(dir).map_err(|e| format!("删除服务器目录失败: {}", e))?;
+            let server_path = self
+                .find_server_clone_optional(id)?
+                .map(|server| server.path);
+            if let Some(path) = server_path {
+                let dir = std::path::Path::new(&path);
+                if dir.exists() {
+                    std::fs::remove_dir_all(dir)
+                        .map_err(|e| format!("删除服务器目录失败: {}", e))?;
+                }
             }
-        }
 
-        self.lock_servers()?.retain(|s| s.id != id);
-        let data_dir = self.data_dir_value()?;
-        remove_run_path_mapping(&data_dir, id);
-        self.save()?;
-        Ok(())
+            self.lock_servers()?.retain(|s| s.id != id);
+            let data_dir = self.data_dir_value()?;
+            remove_run_path_mapping(&data_dir, id);
+            self.save()?;
+            Ok(())
+        })();
+
+        log_manager_result("delete", &detail, result)
     }
 
     /// 读取当前正在运行的服务器 ID 列表
     pub fn get_running_server_ids(&self) -> Vec<String> {
-        self.lock_processes()
-            .map(|procs| procs.keys().cloned().collect())
-            .unwrap_or_default()
+        self.get_server_list()
+            .into_iter()
+            .filter_map(|server| {
+                let status = self.get_server_status(&server.id).status;
+                if matches!(
+                    status,
+                    ServerStatus::Running | ServerStatus::Starting | ServerStatus::Stopping
+                ) {
+                    Some(server.id)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// 更新服务器名称
@@ -430,17 +650,24 @@ impl ServerManager {
 
             // 如果提供了新的 jar_path，则更新
             if let Some(jar_path) = new_jar_path {
-                server.jar_path = jar_path.to_string();
+                let runtime = server
+                    .local_runtime_mut()
+                    .ok_or_else(|| "当前运行时不支持修改启动文件路径".to_string())?;
+                runtime.jar_path = jar_path.to_string();
             }
 
             // 如果提供了新的 startup_mode，则更新
             if let Some(startup_mode) = new_startup_mode {
-                server.startup_mode = normalize_startup_mode(startup_mode).to_string();
+                let runtime = server
+                    .local_runtime_mut()
+                    .ok_or_else(|| "当前运行时不支持修改启动方式".to_string())?;
+                runtime.startup_mode = normalize_startup_mode(startup_mode).to_string();
             }
 
             // 尝试从新的路径检测核心类型
-            if server.startup_mode != "custom" {
-                let detected_core = installer::detect_core_type(&server.jar_path);
+            if server.startup_mode_str() != "custom" {
+                let jar_path = server.jar_path().unwrap_or_default();
+                let detected_core = installer::detect_core_type(jar_path);
                 if !detected_core.is_empty() && detected_core != "Unknown" {
                     server.core_type = detected_core;
                 }
@@ -476,10 +703,7 @@ impl ServerManager {
 
     /// 停止全部正在运行的服务器
     pub fn stop_all_servers(&self) {
-        let ids: Vec<String> = self
-            .lock_processes()
-            .map(|procs| procs.keys().cloned().collect())
-            .unwrap_or_default();
+        let ids = self.get_running_server_ids();
         for id in ids {
             let _ = self.stop_server(&id);
         }

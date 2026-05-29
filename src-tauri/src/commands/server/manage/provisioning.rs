@@ -5,6 +5,7 @@ use crate::models::server::*;
 /// 创建服务器请求并交给服务层处理
 pub(super) fn create_server(
     name: String,
+    aliases: Option<Vec<String>>,
     core_type: String,
     mc_version: String,
     max_memory: u32,
@@ -12,10 +13,13 @@ pub(super) fn create_server(
     port: u16,
     java_path: String,
     jar_path: String,
+    server_path: Option<String>,
     startup_mode: String,
+    custom_command: Option<String>,
 ) -> Result<ServerInstance, String> {
     let req = CreateServerRequest {
         name,
+        aliases: aliases.unwrap_or_default(),
         core_type,
         mc_version,
         max_memory,
@@ -23,8 +27,9 @@ pub(super) fn create_server(
         port,
         java_path,
         jar_path,
+        server_path,
         startup_mode,
-        custom_command: None,
+        custom_command,
     };
     manager().create_server(req)
 }
@@ -43,6 +48,7 @@ pub(super) fn import_server(
 ) -> Result<ServerInstance, String> {
     let req = ImportServerRequest {
         name,
+        aliases: Vec::new(),
         jar_path,
         startup_mode,
         custom_command: None,
@@ -67,9 +73,12 @@ pub(super) fn add_existing_server(
     startup_mode: String,
     executable_path: Option<String>,
     custom_command: Option<String>,
+    core_type: Option<String>,
+    mc_version: Option<String>,
 ) -> Result<ServerInstance, String> {
     let req = AddExistingServerRequest {
         name,
+        aliases: Vec::new(),
         server_path,
         java_path,
         max_memory,
@@ -78,6 +87,8 @@ pub(super) fn add_existing_server(
         startup_mode,
         executable_path,
         custom_command,
+        core_type,
+        mc_version,
     };
     manager().add_existing_server(req)
 }
@@ -101,6 +112,7 @@ pub(super) fn import_modpack(
 ) -> Result<ServerInstance, String> {
     let req = ImportModpackRequest {
         name,
+        aliases: Vec::new(),
         modpack_path,
         java_path,
         max_memory,

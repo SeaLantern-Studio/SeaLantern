@@ -102,7 +102,11 @@ impl ApiResponse {
 ///
 /// - `addr`: 监听地址
 /// - `static_dir`: 可选静态文件目录
-pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
+pub async fn run_http_server(
+    addr: &str,
+    static_dir: Option<String>,
+    startup_notifier: Option<std::sync::mpsc::Sender<Result<(), String>>>,
+) -> Result<(), String> {
     let command_registry = Arc::new(CommandRegistry::new());
 
     let state = AppState { command_registry };
@@ -139,10 +143,18 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(listener) => listener,
         Err(e) => {
-            capture_eprintln(format!("SeaLantern HTTP server failed to bind at {}: {}", addr, e));
-            return;
+            let message = format!("SeaLantern HTTP server failed to bind at {}: {}", addr, e);
+            capture_eprintln(message.clone());
+            if let Some(notifier) = startup_notifier {
+                let _ = notifier.send(Err(message.clone()));
+            }
+            return Err(message);
         }
     };
+
+    if let Some(notifier) = startup_notifier {
+        let _ = notifier.send(Ok(()));
+    }
 
     capture_println(format!("SeaLantern HTTP server listening on {}", addr));
     capture_println(format!("API endpoints available at http://{}/api/<command>", addr));
@@ -150,8 +162,12 @@ pub async fn run_http_server(addr: &str, static_dir: Option<String>) {
     capture_println(format!("File upload available at http://{}/upload", addr));
 
     if let Err(e) = axum::serve(listener, app).await {
-        capture_eprintln(format!("SeaLantern HTTP server error on {}: {}", addr, e));
+        let message = format!("SeaLantern HTTP server error on {}: {}", addr, e);
+        capture_eprintln(message.clone());
+        return Err(message);
     }
+
+    Ok(())
 }
 
 /// 处理文件上传请求

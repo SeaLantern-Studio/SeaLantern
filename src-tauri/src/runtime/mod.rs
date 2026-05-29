@@ -58,6 +58,13 @@ fn run_headless_http(bind_addr: &str, static_dir: Option<String>) {
     };
 
     rt.block_on(async {
-        crate::adapters::http::run_http_server(bind_addr, static_dir).await;
+        if let Err(err) = crate::adapters::http::run_http_server(bind_addr, static_dir, None).await
+        {
+            capture_eprintln(format!(
+                "SeaLantern: Headless HTTP runtime failed to start or exited with error: {}",
+                err
+            ));
+            std::process::exit(1);
+        }
     });
 }

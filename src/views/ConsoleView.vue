@@ -17,6 +17,7 @@ import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
+import { useRoute } from "vue-router";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
 import {
@@ -34,6 +35,7 @@ import { formatBytes } from "@utils/serverUtils";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();
+const route = useRoute();
 
 interface ConsoleOutputExpose {
   doScroll: () => void;
@@ -196,7 +198,10 @@ onMounted(async () => {
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
 
   await serverStore.refreshList();
-  if (!serverStore.currentServerId && serverStore.servers.length > 0) {
+  const routeId = typeof route.params.id === "string" ? route.params.id : "";
+  if (routeId && serverStore.servers.some((server) => server.id === routeId)) {
+    serverStore.setCurrentServer(routeId);
+  } else if (!serverStore.currentServerId && serverStore.servers.length > 0) {
     serverStore.setCurrentServer(serverStore.servers[0].id);
   }
   if (serverId.value) {
@@ -219,6 +224,19 @@ onActivated(async () => {
 onDeactivated(() => {
   deactivateConsoleView();
 });
+
+watch(
+  () => route.params.id,
+  (routeId) => {
+    const normalizedId = typeof routeId === "string" ? routeId : "";
+    if (!normalizedId) {
+      return;
+    }
+    if (serverStore.servers.some((server) => server.id === normalizedId)) {
+      serverStore.setCurrentServer(normalizedId);
+    }
+  },
+);
 
 watch(
   () => serverId.value,

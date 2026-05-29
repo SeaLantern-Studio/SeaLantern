@@ -2,25 +2,28 @@ mod launch;
 mod preload;
 
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::common::StartupMode;
-use super::{ServerManager, StartFallbackInfo, StartServerReport};
+use super::ServerManager;
 use crate::services::server::log_pipeline as server_log_pipeline;
+use crate::services::server::runtime::{
+    RuntimeProcessHandle, RuntimeStartRequest, RuntimeStartResult,
+};
 
-pub(super) fn start_server(manager: &ServerManager, id: &str) -> Result<StartServerReport, String> {
-    let server = {
-        let servers = manager.lock_servers()?;
-        servers
-            .iter()
-            .find(|s| s.id == id)
-            .ok_or_else(|| format!("未找到服务器: {}", id))?
-            .clone()
-    };
+pub(crate) fn start_local_runtime(
+    manager: &ServerManager,
+    request: RuntimeStartRequest<'_>,
+) -> Result<RuntimeStartResult, String> {
+    let id = request.server_id;
+    let server = request.server;
+
+    let startup_mode_raw = server.startup_mode_str().to_string();
+    let startup_path = server.jar_path().unwrap_or_default().to_string();
+    let java_path = server.java_path().unwrap_or_default().to_string();
 
     println!(
         "准备启动服务器: id={}, name={}, startup_mode={}, startup_path={}, java_path={}",
-        server.id, server.name, server.startup_mode, server.jar_path, server.java_path
+        server.id, server.name, startup_mode_raw, startup_path, java_path
     );
 
     {
@@ -48,17 +51,17 @@ pub(super) fn start_server(manager: &ServerManager, id: &str) -> Result<StartSer
 
     preload::run_preload_script(id, &server.path);
 
-    let startup_mode = StartupMode::from_raw(&server.startup_mode);
-    let startup_path_obj = std::path::Path::new(&server.jar_path);
+    let startup_mode = StartupMode::from_raw(server.startup_mode_str());
+    let startup_path_obj = std::path::Path::new(startup_path.as_str());
     let managed_console_encoding =
         launch::context::resolve_managed_encoding(startup_mode, startup_path_obj);
     let (java_bin_dir_str, java_home_dir_str) =
-        launch::context::resolve_java_paths(&server.java_path)?;
-    let startup_filename = launch::context::startup_filename(&server.jar_path);
-    let starter_installer_url = launch::context::resolve_starter_installer_url(id, &server)?;
+        launch::context::resolve_java_paths(java_path.as_str())?;
+    let startup_filename = launch::context::startup_filename(startup_path.as_str());
+    let starter_installer_url = launch::context::resolve_starter_installer_url(id, server)?;
     let launch_context = launch::context::LaunchContext {
         manager,
-        server: &server,
+        server,
         settings: &settings,
         startup_mode,
         managed_console_encoding,
@@ -71,41 +74,8 @@ pub(super) fn start_server(manager: &ServerManager, id: &str) -> Result<StartSer
     server_log_pipeline::init_db(Path::new(&server.path))?;
     let launch_plan = launch::runner::launch_server_process(id, launch_context)?;
 
-    let mut child = launch_plan.child;
-    let fallback_info: Option<StartFallbackInfo> = launch_plan.fallback_info;
-
-    println!("Java进程已启动，PID: {:?}", child.id());
-
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-
-    manager.lock_processes()?.insert(id.to_string(), child);
-    manager.mark_starting(id);
-
-    {
-        let mut servers = manager.lock_servers()?;
-        if let Some(s) = servers.iter_mut().find(|s| s.id == id) {
-            s.last_started_at = Some(
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map_err(|e| format!("获取当前时间失败: {}", e))?
-                    .as_secs(),
-            );
-        }
-    }
-    manager.save()?;
-    let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器启动中...");
-
-    if let Some(stdout) = stdout {
-        server_log_pipeline::spawn_server_output_reader(id.to_string(), stdout);
-    }
-    if let Some(stderr) = stderr {
-        server_log_pipeline::spawn_server_output_reader(id.to_string(), stderr);
-    }
-
-    Ok(StartServerReport {
-        server_id: server.id.clone(),
-        server_name: server.name.clone(),
-        fallback: fallback_info,
+    Ok(RuntimeStartResult {
+        process_handle: Some(RuntimeProcessHandle::LocalChild(launch_plan.child)),
+        fallback: launch_plan.fallback_info,
     })
 }

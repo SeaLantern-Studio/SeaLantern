@@ -1,5 +1,5 @@
 use crate::models::settings::{AppSettings, PartialSettings, SettingsGroup};
-use crate::utils::logger::capture_eprintln;
+use crate::utils::logger::log_debug;
 use std::sync::Mutex;
 
 ///此处常量见 utils/constants.rs
@@ -26,12 +26,12 @@ impl SettingsManager {
     ///
     /// 返回已经完成本地设置加载的管理器实例
     pub fn new() -> Self {
-        capture_eprintln("[DEBUG] SettingsManager::new() called".to_string());
+        log_debug("SettingsManager::new() called");
         let data_dir = get_data_dir();
-        capture_eprintln(format!("[DEBUG] SettingsManager: data_dir = {}", data_dir));
+        log_debug(&format!("SettingsManager: data_dir = {}", data_dir));
         let settings = load_settings(&data_dir);
-        capture_eprintln(format!(
-            "[DEBUG] SettingsManager: loaded settings, agreed_to_terms = {}",
+        log_debug(&format!(
+            "SettingsManager: loaded settings, agreed_to_terms = {}",
             settings.agreed_to_terms
         ));
         SettingsManager { settings: Mutex::new(settings), data_dir }
@@ -61,12 +61,12 @@ impl SettingsManager {
     pub fn update(&self, new_settings: AppSettings) -> Result<(), String> {
         let mut new_settings = new_settings;
         new_settings.normalize_window_effect();
-        capture_eprintln(format!(
-            "[DEBUG] SettingsManager::update() called, agreed_to_terms = {}",
+        log_debug(&format!(
+            "SettingsManager::update() called, agreed_to_terms = {}",
             new_settings.agreed_to_terms
         ));
         let result = save_settings(&self.data_dir, &new_settings);
-        capture_eprintln(format!("[DEBUG] SettingsManager::update() save result: {:?}", result));
+        log_debug(&format!("SettingsManager::update() save result: {:?}", result));
         result?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings;
         Ok(())
@@ -105,8 +105,8 @@ impl SettingsManager {
     ///
     /// 返回合并后的设置内容和变化分组
     pub fn update_partial(&self, partial: PartialSettings) -> Result<UpdateResult, String> {
-        capture_eprintln(format!(
-            "[DEBUG] SettingsManager::update_partial() called, partial.agreed_to_terms = {:?}",
+        log_debug(&format!(
+            "SettingsManager::update_partial() called, partial.agreed_to_terms = {:?}",
             partial.agreed_to_terms
         ));
         let old_settings = self
@@ -116,16 +116,14 @@ impl SettingsManager {
             .clone();
         let mut new_settings = old_settings.clone();
         new_settings.merge_from(&partial);
-        capture_eprintln(format!(
-            "[DEBUG] SettingsManager::update_partial() new_settings.agreed_to_terms = {}",
+        log_debug(&format!(
+            "SettingsManager::update_partial() new_settings.agreed_to_terms = {}",
             new_settings.agreed_to_terms
         ));
         let changed_groups = old_settings.get_changed_groups(&new_settings);
         save_settings(&self.data_dir, &new_settings)?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings.clone();
-        capture_eprintln(
-            "[DEBUG] SettingsManager::update_partial() saved successfully".to_string(),
-        );
+        log_debug("SettingsManager::update_partial() saved successfully");
         Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
@@ -150,41 +148,36 @@ fn get_data_dir() -> String {
 
 fn load_settings(data_dir: &str) -> AppSettings {
     let path = std::path::Path::new(data_dir).join(SETTINGS_FILE);
-    capture_eprintln(format!("[DEBUG] load_settings: path = {:?}", path));
-    capture_eprintln(format!("[DEBUG] load_settings: path.exists() = {}", path.exists()));
+    log_debug(&format!("load_settings: path = {:?}", path));
+    log_debug(&format!("load_settings: path.exists() = {}", path.exists()));
 
     if !path.exists() {
-        capture_eprintln(
-            "[DEBUG] load_settings: file not found, creating default settings".to_string(),
-        );
+        log_debug("load_settings: file not found, creating default settings");
         let default = AppSettings::default();
         let _ = save_settings(data_dir, &default);
         return default;
     }
     match std::fs::read_to_string(&path) {
         Ok(content) => {
-            capture_eprintln(format!(
-                "[DEBUG] load_settings: file content length = {} bytes",
-                content.len()
-            ));
+            log_debug(&format!("load_settings: file content length = {} bytes", content.len()));
             match serde_json::from_str::<AppSettings>(&content) {
                 Ok(mut result) => {
                     result.normalize_window_effect();
-                    capture_eprintln(format!(
-                        "[DEBUG] load_settings: parsed agreed_to_terms = {}",
+                    log_debug(&format!(
+                        "load_settings: parsed agreed_to_terms = {}",
                         result.agreed_to_terms
                     ));
                     result
                 }
                 Err(error) => {
-                    capture_eprintln(format!("[DEBUG] load_settings: parse error: {}", error));
+                    log_debug(&format!("load_settings: parse error: {}", error));
                     backup_corrupt_settings_file(&path);
                     AppSettings::default()
                 }
             }
         }
         Err(e) => {
-            capture_eprintln(format!("[DEBUG] load_settings: failed to read file: {}", e));
+            log_debug(&format!("load_settings: failed to read file: {}", e));
             AppSettings::default()
         }
     }
@@ -192,25 +185,22 @@ fn load_settings(data_dir: &str) -> AppSettings {
 
 fn save_settings(data_dir: &str, settings: &AppSettings) -> Result<(), String> {
     let path = std::path::Path::new(data_dir).join(SETTINGS_FILE);
-    capture_eprintln(format!("[DEBUG] save_settings: path = {:?}", path));
-    capture_eprintln(format!(
-        "[DEBUG] save_settings: agreed_to_terms = {}",
-        settings.agreed_to_terms
-    ));
+    log_debug(&format!("save_settings: path = {:?}", path));
+    log_debug(&format!("save_settings: agreed_to_terms = {}", settings.agreed_to_terms));
 
     let json = serde_json::to_string_pretty(settings).map_err(|e| {
-        capture_eprintln(format!("[DEBUG] save_settings: serialize error: {}", e));
+        log_debug(&format!("save_settings: serialize error: {}", e));
         format!("Failed to serialize settings: {}", e)
     })?;
 
-    capture_eprintln(format!("[DEBUG] save_settings: json length = {} bytes", json.len()));
+    log_debug(&format!("save_settings: json length = {} bytes", json.len()));
 
     std::fs::write(&path, json).map_err(|e| {
-        capture_eprintln(format!("[DEBUG] save_settings: write error: {}", e));
+        log_debug(&format!("save_settings: write error: {}", e));
         format!("Failed to save settings: {}", e)
     })?;
 
-    capture_eprintln("[DEBUG] save_settings: success!".to_string());
+    log_debug("save_settings: success!");
     Ok(())
 }
 
@@ -219,12 +209,8 @@ fn backup_corrupt_settings_file(path: &std::path::Path) {
     let backup_path = path.with_extension(format!("json.bak-corrupt-{}", timestamp));
 
     match std::fs::copy(path, &backup_path) {
-        Ok(_) => {
-            capture_eprintln(format!("[DEBUG] load_settings: 已备份损坏设置到 {:?}", backup_path))
-        }
-        Err(error) => {
-            capture_eprintln(format!("[DEBUG] load_settings: 备份损坏设置失败: {}", error))
-        }
+        Ok(_) => log_debug(&format!("load_settings: 已备份损坏设置到 {:?}", backup_path)),
+        Err(error) => log_debug(&format!("load_settings: 备份损坏设置失败: {}", error)),
     }
 }
 

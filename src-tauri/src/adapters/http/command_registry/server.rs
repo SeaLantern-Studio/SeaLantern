@@ -48,6 +48,7 @@ fn handle_create_server(
         let req: CreateServerRequest = parse_params(params)?;
         let result = server_commands::create_server(
             req.name,
+            Some(req.aliases),
             req.core_type,
             req.mc_version,
             req.max_memory,
@@ -55,7 +56,9 @@ fn handle_create_server(
             req.port,
             req.java_path,
             req.jar_path,
+            req.server_path,
             req.startup_mode,
+            req.custom_command,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -240,6 +243,8 @@ fn handle_add_existing_server(
             req.startup_mode,
             req.executable_path,
             req.custom_command,
+            req.core_type,
+            req.mc_version,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })

@@ -268,6 +268,7 @@ src-tauri/src/plugins/runtime/
 
 - `AI_GUIDE.md`
 - `CONTRIBUTING.md`
+- `docker-runtime-itzg-design.md` # Java 版 Minecraft 容器运行时（itzg）设计草案
 - `STRUCTURE.md`
 - `language-system.md` # 前端 i18n 系统使用说明（原 src/language/README.md）
 - `plugin_api.md`

@@ -1,13 +1,25 @@
 use super::super::common::{current_timestamp_millis, current_timestamp_secs};
-use super::super::process::force_kill_process_tree;
 use super::{ForceStopPreparation, ServerManager};
 use crate::services::server::log_pipeline as server_log_pipeline;
+use crate::services::server::runtime;
 
 /// 生成强停确认信息
 pub(super) fn prepare_force_stop_server(
     manager: &ServerManager,
     id: &str,
 ) -> Result<ForceStopPreparation, String> {
+    let server = manager.find_server_clone(id)?;
+
+    let resolved_runtime = runtime::resolve_runtime(&server)?;
+    let preparation = resolved_runtime.prepare_force_stop_with_manager(manager, &server)?;
+    if !preparation.supported {
+        return Err(format!("当前服务器运行时暂未实现强停确认能力: {}", server.runtime_kind));
+    }
+
+    if server.runtime_kind == "local" {
+        let _ = manager.ensure_local_runtime(&server)?;
+    }
+
     let expires_at = current_timestamp_secs().saturating_add(15);
     let token = format!("{}-{}", id, current_timestamp_millis());
 
@@ -32,6 +44,24 @@ pub(super) fn force_stop_server(
     id: &str,
     confirmation_token: &str,
 ) -> Result<(), String> {
+    let server = manager.find_server_clone(id)?;
+
+    let resolved_runtime = runtime::resolve_runtime(&server)?;
+
+    validate_force_stop_confirmation(manager, id, confirmation_token)?;
+
+    if server.runtime_kind == "local" {
+        let _ = manager.ensure_local_runtime(&server)?;
+    }
+
+    resolved_runtime.force_stop_with_manager(manager, &server)
+}
+
+fn validate_force_stop_confirmation(
+    manager: &ServerManager,
+    id: &str,
+    confirmation_token: &str,
+) -> Result<(), String> {
     let mut pending = manager
         .pending_force_stop_tokens
         .lock()
@@ -52,41 +82,71 @@ pub(super) fn force_stop_server(
     }
 
     pending.remove(id);
-    drop(pending);
+    Ok(())
+}
 
-    manager.mark_stopping(id);
+#[cfg(test)]
+mod tests {
+    use super::validate_force_stop_confirmation;
+    use crate::services::server::manager::ServerManager;
 
-    let mut procs = manager.lock_processes()?;
-    let Some(mut child) = procs.remove(id) else {
-        manager.clear_stopping(id);
-        let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器未运行");
-        server_log_pipeline::shutdown_writer(id);
-        return Ok(());
-    };
+    #[test]
+    fn validate_force_stop_confirmation_rejects_missing_token() {
+        let manager = ServerManager::new();
 
-    let kill_result = force_kill_process_tree(&mut child);
-    drop(procs);
+        let err = validate_force_stop_confirmation(&manager, "docker-1", "token")
+            .expect_err("missing token should be rejected");
 
-    manager.clear_starting(id);
-    manager.clear_stopping(id);
+        assert!(err.contains("缺少强制关停确认"));
+    }
 
-    match kill_result {
-        Ok(_) => {
-            let _ = server_log_pipeline::append_sealantern_log(
-                id,
-                "[Sea Lantern] 已按用户确认强制终止服务器进程",
-            );
-            server_log_pipeline::shutdown_writer(id);
-            Ok(())
-        }
-        Err(err) => {
-            let message = format!("强制终止服务器失败: {}", err);
-            let _ = server_log_pipeline::append_sealantern_log(
-                id,
-                &format!("[Sea Lantern] {}", message),
-            );
-            server_log_pipeline::shutdown_writer(id);
-            Err(message)
-        }
+    #[test]
+    fn validate_force_stop_confirmation_rejects_wrong_token_without_consuming_it() {
+        let manager = ServerManager::new();
+        manager
+            .pending_force_stop_tokens
+            .lock()
+            .unwrap()
+            .insert("docker-1".to_string(), ("expected".to_string(), u64::MAX));
+
+        let err = validate_force_stop_confirmation(&manager, "docker-1", "wrong")
+            .expect_err("wrong token should be rejected");
+        assert!(err.contains("无效"));
+
+        let pending = manager.pending_force_stop_tokens.lock().unwrap();
+        assert!(pending.contains_key("docker-1"));
+    }
+
+    #[test]
+    fn validate_force_stop_confirmation_consumes_valid_token() {
+        let manager = ServerManager::new();
+        manager
+            .pending_force_stop_tokens
+            .lock()
+            .unwrap()
+            .insert("docker-1".to_string(), ("expected".to_string(), u64::MAX));
+
+        validate_force_stop_confirmation(&manager, "docker-1", "expected")
+            .expect("valid token should pass");
+
+        let pending = manager.pending_force_stop_tokens.lock().unwrap();
+        assert!(!pending.contains_key("docker-1"));
+    }
+
+    #[test]
+    fn validate_force_stop_confirmation_removes_expired_token() {
+        let manager = ServerManager::new();
+        manager
+            .pending_force_stop_tokens
+            .lock()
+            .unwrap()
+            .insert("docker-1".to_string(), ("expected".to_string(), 0));
+
+        let err = validate_force_stop_confirmation(&manager, "docker-1", "expected")
+            .expect_err("expired token should be rejected");
+        assert!(err.contains("已过期"));
+
+        let pending = manager.pending_force_stop_tokens.lock().unwrap();
+        assert!(!pending.contains_key("docker-1"));
     }
 }

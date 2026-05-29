@@ -1,6 +1,8 @@
 use std::path::Path;
 use std::process::Command;
 
+use crate::models::server::{ServerInstance, ServerRuntimeConfig};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum StartupMode {
     Starter,
@@ -110,6 +112,99 @@ pub(super) fn validate_server_name(name: &str) -> Result<String, String> {
     }
 
     Ok(trimmed.to_string())
+}
+
+pub(super) fn ensure_server_identity_available(
+    existing: &[ServerInstance],
+    candidate_name: &str,
+    candidate_aliases: &[String],
+    candidate_path: &str,
+    candidate_container_name: Option<&str>,
+) -> Result<(), String> {
+    let candidate_name_lower = candidate_name.trim().to_ascii_lowercase();
+    let candidate_path_normalized = normalize_server_identity_path(candidate_path);
+    let candidate_container_lower = candidate_container_name
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_ascii_lowercase());
+
+    let alias_pairs = candidate_aliases
+        .iter()
+        .map(|alias| (alias, alias.trim().to_ascii_lowercase()))
+        .filter(|(_, lowered)| !lowered.is_empty())
+        .collect::<Vec<_>>();
+
+    for server in existing {
+        if server.name.trim().to_ascii_lowercase() == candidate_name_lower {
+            return Err(format!("服务器名称已存在: {} (id={})", server.name, server.id));
+        }
+
+        if normalize_server_identity_path(&server.path) == candidate_path_normalized {
+            return Err(format!(
+                "服务器路径已存在记录: {} (id={} name={})",
+                server.path, server.id, server.name
+            ));
+        }
+
+        for (alias, alias_lower) in &alias_pairs {
+            if server.name.trim().to_ascii_lowercase() == *alias_lower {
+                return Err(format!(
+                    "别名 '{}' 与现有服务器名称冲突: {} (id={})",
+                    alias, server.name, server.id
+                ));
+            }
+            if server
+                .aliases
+                .iter()
+                .any(|existing_alias| existing_alias.trim().to_ascii_lowercase() == *alias_lower)
+            {
+                return Err(format!(
+                    "别名 '{}' 已存在于服务器 {} (id={})",
+                    alias, server.name, server.id
+                ));
+            }
+        }
+
+        if server.aliases.iter().any(|existing_alias| {
+            existing_alias.trim().to_ascii_lowercase() == candidate_name_lower
+        }) {
+            return Err(format!(
+                "服务器名称 '{}' 与现有别名冲突: {} (id={})",
+                candidate_name, server.name, server.id
+            ));
+        }
+
+        if let Some(candidate_container_lower) = candidate_container_lower.as_deref() {
+            if server_container_name_lower(server).as_deref() == Some(candidate_container_lower) {
+                return Err(format!(
+                    "Docker 容器名已存在记录: {} (id={} name={})",
+                    candidate_container_name.unwrap_or_default(),
+                    server.id,
+                    server.name
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn normalize_server_identity_path(path: &str) -> String {
+    path.trim().replace('\\', "/").to_ascii_lowercase()
+}
+
+fn server_container_name_lower(server: &ServerInstance) -> Option<String> {
+    match &server.runtime {
+        ServerRuntimeConfig::DockerItzg(runtime) => {
+            let trimmed = runtime.container_name.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_ascii_lowercase())
+            }
+        }
+        ServerRuntimeConfig::Local(_) => None,
+    }
 }
 
 #[cfg(target_os = "windows")]

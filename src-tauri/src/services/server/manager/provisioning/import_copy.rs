@@ -1,6 +1,8 @@
 use std::path::Path;
 
-use crate::models::server::{ImportServerRequest, ServerInstance};
+use crate::models::server::{
+    ImportServerRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+};
 
 use super::super::common::{current_timestamp_secs, normalize_startup_mode, validate_server_name};
 use super::super::fs::copy_dir_recursive;
@@ -59,18 +61,24 @@ pub(super) fn import_server(
     let server = ServerInstance {
         id: id.clone(),
         name: server_name,
+        aliases: req.aliases,
         core_type,
         core_version: String::new(),
         mc_version: "unknown".into(),
         path: server_dir.to_string_lossy().to_string(),
-        jar_path: dest_startup.to_string_lossy().to_string(),
-        startup_mode,
-        custom_command: req.custom_command,
-        java_path: req.java_path,
-        jvm_args: Vec::new(),
         port,
+        max_memory: req.max_memory,
+        min_memory: req.min_memory,
         created_at: now,
         last_started_at: None,
+        runtime_kind: "local".to_string(),
+        runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
+            jar_path: dest_startup.to_string_lossy().to_string(),
+            startup_mode,
+            custom_command: req.custom_command,
+            java_path: req.java_path,
+            jvm_args: Vec::new(),
+        }),
     };
 
     manager.lock_servers()?.push(server.clone());
