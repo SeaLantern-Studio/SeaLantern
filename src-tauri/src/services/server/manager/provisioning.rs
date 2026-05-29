@@ -1,14 +1,15 @@
 //! 服务器建服和导入流程
 
 mod create;
+mod create_docker_itzg;
 mod existing;
 mod import_copy;
 mod modpack;
 mod shared;
 
 use crate::models::server::{
-    AddExistingServerRequest, CreateServerRequest, ImportModpackRequest, ImportServerRequest,
-    ServerInstance,
+    AddExistingServerRequest, CreateDockerItzgServerRequest, CreateServerRequest,
+    ImportModpackRequest, ImportServerRequest, ServerInstance,
 };
 
 use super::ServerManager;
@@ -21,6 +22,13 @@ pub(super) fn create_server(
     req: CreateServerRequest,
 ) -> Result<ServerInstance, String> {
     create::create_server(manager, req)
+}
+
+pub(super) fn create_docker_itzg_server(
+    manager: &ServerManager,
+    req: CreateDockerItzgServerRequest,
+) -> Result<ServerInstance, String> {
+    create_docker_itzg::create_docker_itzg_server(manager, req)
 }
 
 /// 复制已有服务端目录并导入

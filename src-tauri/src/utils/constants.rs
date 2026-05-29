@@ -59,6 +59,7 @@ pub const LOG_FLUSH_INTERVAL_MS: u64 = 50;
 /// services/server/manager.rs
 pub const DATA_FILE: &str = "sea_lantern_servers.json";
 pub const RUN_PATH_MAP_FILE: &str = "sea_lantern_run_path_map.json";
+pub const LOCAL_RUNTIME_STATE_FILE: &str = "sea_lantern_local_runtime.json";
 
 /// services/server/installer.rs
 pub const STARTER_MC_VERSION_OPTIONS: [&str; 161] = [

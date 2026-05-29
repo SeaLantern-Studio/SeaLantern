@@ -1,6 +1,8 @@
 use std::path::Path;
 
-use crate::models::server::{ImportModpackRequest, ServerInstance};
+use crate::models::server::{
+    ImportModpackRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+};
 
 use super::startup::ModpackStartupSelection;
 use crate::services::server::installer;
@@ -27,17 +29,23 @@ pub(super) fn build_modpack_server_instance(
     ServerInstance {
         id,
         name: server_name,
+        aliases: req.aliases,
         core_type,
         core_version: String::new(),
         mc_version,
         path: run_dir.to_string_lossy().to_string(),
-        jar_path: startup_path,
-        startup_mode: startup.startup_mode,
-        custom_command: startup.custom_command,
-        java_path: req.java_path,
-        jvm_args: Vec::new(),
         port,
+        max_memory: req.max_memory,
+        min_memory: req.min_memory,
         created_at: super::super::super::common::current_timestamp_secs(),
         last_started_at: None,
+        runtime_kind: "local".to_string(),
+        runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
+            jar_path: startup_path,
+            startup_mode: startup.startup_mode,
+            custom_command: startup.custom_command,
+            java_path: req.java_path,
+            jvm_args: Vec::new(),
+        }),
     }
 }

@@ -1,5 +1,6 @@
 use crate::models::config::ServerProperties;
 use crate::services::server::config as config_parser;
+use crate::utils::logger;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -45,6 +46,26 @@ fn validate_path_within_server(server_path: &str, file_path: &str) -> Result<(),
     Ok(())
 }
 
+fn build_server_properties_path(server_path: &str) -> Result<String, String> {
+    validate_config_path(server_path)?;
+    let props_path = format!("{}/server.properties", server_path);
+    validate_path_within_server(server_path, &props_path)?;
+    Ok(props_path)
+}
+
+fn trace_missing_server_properties(server_path: &str, action: &str) {
+    logger::log_trace(&format!(
+        "[server.config] action={} missing_server_properties path={}",
+        action, server_path
+    ));
+}
+
+fn is_missing_server_properties_error(error: &str) -> bool {
+    error.contains("os error 2")
+        || error.contains("系统找不到指定的文件")
+        || error.contains("No such file or directory")
+}
+
 #[tauri::command]
 pub fn read_config(server_path: String, path: String) -> Result<HashMap<String, String>, String> {
     validate_config_path(&path)?;
@@ -65,10 +86,15 @@ pub fn write_config(
 
 #[tauri::command]
 pub fn read_server_properties(server_path: String) -> Result<ServerProperties, String> {
-    validate_config_path(&server_path)?;
-    let props_path = format!("{}/server.properties", server_path);
-    validate_path_within_server(&server_path, &props_path)?;
-    config_parser::parse_server_properties(&props_path)
+    let props_path = build_server_properties_path(&server_path)?;
+    match config_parser::parse_server_properties(&props_path) {
+        Ok(properties) => Ok(properties),
+        Err(error) if is_missing_server_properties_error(&error) => {
+            trace_missing_server_properties(&server_path, "read_server_properties");
+            Ok(ServerProperties { entries: Vec::new(), raw: HashMap::new() })
+        }
+        Err(error) => Err(error),
+    }
 }
 
 #[tauri::command]
@@ -76,25 +102,26 @@ pub fn write_server_properties(
     server_path: String,
     values: HashMap<String, String>,
 ) -> Result<(), String> {
-    validate_config_path(&server_path)?;
-    let props_path = format!("{}/server.properties", server_path);
-    validate_path_within_server(&server_path, &props_path)?;
+    let props_path = build_server_properties_path(&server_path)?;
     config_parser::write_properties(&props_path, &values)
 }
 
 #[tauri::command]
 pub fn read_server_properties_source(server_path: String) -> Result<String, String> {
-    validate_config_path(&server_path)?;
-    let props_path = format!("{}/server.properties", server_path);
-    validate_path_within_server(&server_path, &props_path)?;
-    config_parser::read_raw_text(&props_path)
+    let props_path = build_server_properties_path(&server_path)?;
+    match config_parser::read_raw_text(&props_path) {
+        Ok(source) => Ok(source),
+        Err(error) if is_missing_server_properties_error(&error) => {
+            trace_missing_server_properties(&server_path, "read_server_properties_source");
+            Ok(String::new())
+        }
+        Err(error) => Err(error),
+    }
 }
 
 #[tauri::command]
 pub fn write_server_properties_source(server_path: String, source: String) -> Result<(), String> {
-    validate_config_path(&server_path)?;
-    let props_path = format!("{}/server.properties", server_path);
-    validate_path_within_server(&server_path, &props_path)?;
+    let props_path = build_server_properties_path(&server_path)?;
     config_parser::write_raw_text(&props_path, &source)
 }
 
@@ -108,9 +135,7 @@ pub fn preview_server_properties_write(
     server_path: String,
     values: HashMap<String, String>,
 ) -> Result<String, String> {
-    validate_config_path(&server_path)?;
-    let props_path = format!("{}/server.properties", server_path);
-    validate_path_within_server(&server_path, &props_path)?;
+    let props_path = build_server_properties_path(&server_path)?;
     config_parser::preview_properties_write(&props_path, &values)
 }
 
@@ -151,4 +176,28 @@ pub fn write_sl_config(server_path: String, config: SLStartupConfig) -> Result<(
     std::fs::write(&sl_path, content).map_err(|e| format!("写入 SL.json 失败: {}", e))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{read_server_properties, read_server_properties_source};
+    use tempfile::tempdir;
+
+    #[test]
+    fn read_server_properties_returns_empty_when_server_properties_missing() {
+        let dir = tempdir().unwrap();
+        let result = read_server_properties(dir.path().to_string_lossy().to_string()).unwrap();
+
+        assert!(result.entries.is_empty());
+        assert!(result.raw.is_empty());
+    }
+
+    #[test]
+    fn read_server_properties_source_returns_empty_string_when_file_missing() {
+        let dir = tempdir().unwrap();
+        let result =
+            read_server_properties_source(dir.path().to_string_lossy().to_string()).unwrap();
+
+        assert!(result.is_empty());
+    }
 }

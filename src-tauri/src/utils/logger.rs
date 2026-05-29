@@ -1,7 +1,8 @@
 use chrono::{DateTime, Local};
 use std::sync::{Arc, Mutex};
 
-const KNOWN_LEVEL_PREFIXES: [&str; 5] = ["[DEBUG]", "[INFO]", "[WARN]", "[ERROR]", "[FATAL]"];
+const KNOWN_LEVEL_PREFIXES: [&str; 6] =
+    ["[TRACE]", "[DEBUG]", "[INFO]", "[WARN]", "[ERROR]", "[FATAL]"];
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LogEntry {
@@ -60,6 +61,9 @@ impl LogCollector {
 }
 
 fn parse_level<'a>(message: &'a str, default_level: &'a str) -> &'a str {
+    if message.contains("[TRACE]") {
+        return "TRACE";
+    }
     if message.contains("[FATAL]") {
         return "FATAL";
     }
@@ -127,11 +131,38 @@ lazy_static::lazy_static! {
 }
 
 pub fn log_warn(message: &str) {
-    std::println!("[WARN] {}", message);
     GLOBAL_LOG_COLLECTOR.add_log("WARN", message);
+}
+
+pub fn log_trace(message: &str) {
+    GLOBAL_LOG_COLLECTOR.add_log("TRACE", message);
+}
+
+pub fn log_debug(message: &str) {
+    GLOBAL_LOG_COLLECTOR.add_log("DEBUG", message);
 }
 
 pub fn log_error(message: &str) {
     std::eprintln!("[ERROR] {}", message);
     GLOBAL_LOG_COLLECTOR.add_log("ERROR", message);
+}
+
+pub fn log_user_action(scope: &str, action: &str, detail: &str) {
+    let message = if detail.trim().is_empty() {
+        format!("[{}] action={}", scope, action)
+    } else {
+        format!("[{}] action={} {}", scope, action, detail.trim())
+    };
+
+    log_trace(&message);
+}
+
+pub fn log_user_action_error(scope: &str, action: &str, detail: &str, error: &str) {
+    let message = if detail.trim().is_empty() {
+        format!("[{}] action={} error={}", scope, action, error.trim())
+    } else {
+        format!("[{}] action={} {} error={}", scope, action, detail.trim(), error.trim())
+    };
+
+    log_error(&message);
 }

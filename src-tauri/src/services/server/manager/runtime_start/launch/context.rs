@@ -57,12 +57,12 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_starter_insta
     id: &str,
     server: &ServerInstance,
 ) -> Result<Option<String>, String> {
-    let startup_mode = StartupMode::from_raw(&server.startup_mode);
+    let startup_mode = StartupMode::from_raw(server.startup_mode_str());
     if !startup_mode.is_starter() {
         return Ok(None);
     }
 
-    let detected_core_type = installer::detect_core_type(&server.jar_path);
+    let detected_core_type = installer::detect_core_type(server.jar_path().unwrap_or_default());
     let core_key = installer::CoreType::normalize_to_api_core_key(&server.core_type)
         .or_else(|| installer::CoreType::normalize_to_api_core_key(&detected_core_type))
         .ok_or_else(|| {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useServerStore } from "@stores/serverStore";
+import { useRoute } from "vue-router";
 import { useConsoleStore } from "@stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
 import { TIME, MESSAGES, getMessage } from "@utils/constants";
@@ -16,6 +17,7 @@ import PlayerModals from "@components/views/player/PlayerModals.vue";
 type PlayerTab = "online" | "whitelist" | "banned" | "ops";
 
 const store = useServerStore();
+const route = useRoute();
 const consoleStore = useConsoleStore();
 
 const activeTab = ref<PlayerTab>("online");
@@ -61,7 +63,10 @@ function getAddLabel(): string {
 
 onMounted(async () => {
   await store.refreshList();
-  if (!store.currentServerId && store.servers.length > 0) {
+  const routeId = typeof route.params.id === "string" ? route.params.id : "";
+  if (routeId && store.servers.some((server) => server.id === routeId)) {
+    store.setCurrentServer(routeId);
+  } else if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
   }
   if (store.currentServerId) {
@@ -86,6 +91,19 @@ function startRefresh() {
     }
   }, 5000);
 }
+
+watch(
+  () => route.params.id,
+  (routeId) => {
+    const normalizedId = typeof routeId === "string" ? routeId : "";
+    if (!normalizedId) {
+      return;
+    }
+    if (store.servers.some((server) => server.id === normalizedId)) {
+      store.setCurrentServer(normalizedId);
+    }
+  },
+);
 
 watch(
   () => store.currentServerId,

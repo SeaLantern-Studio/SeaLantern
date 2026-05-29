@@ -28,6 +28,7 @@ pub fn force_stop_server(id: String, confirmation_token: String) -> Result<(), S
 /// 新建服务器实例
 pub fn create_server(
     name: String,
+    aliases: Option<Vec<String>>,
     core_type: String,
     mc_version: String,
     max_memory: u32,
@@ -35,10 +36,13 @@ pub fn create_server(
     port: u16,
     java_path: String,
     jar_path: String,
+    server_path: Option<String>,
     startup_mode: String,
+    custom_command: Option<String>,
 ) -> Result<crate::models::server::ServerInstance, String> {
     provisioning::create_server(
         name,
+        aliases,
         core_type,
         mc_version,
         max_memory,
@@ -46,7 +50,9 @@ pub fn create_server(
         port,
         java_path,
         jar_path,
+        server_path,
         startup_mode,
+        custom_command,
     )
 }
 
@@ -88,6 +94,8 @@ pub fn add_existing_server(
     startup_mode: String,
     executable_path: Option<String>,
     custom_command: Option<String>,
+    core_type: Option<String>,
+    mc_version: Option<String>,
 ) -> Result<crate::models::server::ServerInstance, String> {
     provisioning::add_existing_server(
         name,
@@ -99,6 +107,8 @@ pub fn add_existing_server(
         startup_mode,
         executable_path,
         custom_command,
+        core_type,
+        mc_version,
     )
 }
 

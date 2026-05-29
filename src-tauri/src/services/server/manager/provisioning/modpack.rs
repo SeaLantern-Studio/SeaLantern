@@ -39,7 +39,9 @@ pub(super) fn import_modpack(
 
     println!(
         "创建服务器实例: id={}, path={}, startup_path={}",
-        server.id, server.path, server.jar_path
+        server.id,
+        server.path,
+        server.jar_path().unwrap_or_default()
     );
 
     manager.lock_servers()?.push(server.clone());

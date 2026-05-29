@@ -5,6 +5,8 @@ use std::collections::HashMap;
 #[serde(rename_all = "camelCase")]
 pub(super) struct CreateServerRequest {
     pub name: String,
+    #[serde(default)]
+    pub aliases: Vec<String>,
     pub core_type: String,
     pub mc_version: String,
     pub max_memory: u32,
@@ -12,7 +14,63 @@ pub(super) struct CreateServerRequest {
     pub port: u16,
     pub java_path: String,
     pub jar_path: String,
+    #[serde(default)]
+    pub server_path: Option<String>,
     pub startup_mode: String,
+    #[serde(default)]
+    pub custom_command: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CreateServerRequest;
+
+    #[test]
+    fn create_server_request_accepts_extended_optional_fields() {
+        let req: CreateServerRequest = serde_json::from_str(
+            r#"{
+  "name": "custom-local",
+  "aliases": ["cache_server", "test_server"],
+  "coreType": "Fabric",
+  "mcVersion": "1.20.1",
+  "maxMemory": 4096,
+  "minMemory": 2048,
+  "port": 25565,
+  "javaPath": "C:/Java/bin/java.exe",
+  "jarPath": "E:/srv/server.jar",
+  "serverPath": "E:/srv",
+  "startupMode": "custom",
+  "customCommand": "java -Xmx4G -Xms4G -jar server.jar nogui"
+}"#,
+        )
+        .expect("extended create request should deserialize");
+
+        assert_eq!(req.aliases, vec!["cache_server", "test_server"]);
+        assert_eq!(req.server_path.as_deref(), Some("E:/srv"));
+        assert_eq!(req.custom_command.as_deref(), Some("java -Xmx4G -Xms4G -jar server.jar nogui"));
+    }
+
+    #[test]
+    fn create_server_request_defaults_extended_fields_for_legacy_payloads() {
+        let req: CreateServerRequest = serde_json::from_str(
+            r#"{
+  "name": "legacy-local",
+  "coreType": "Paper",
+  "mcVersion": "1.21.1",
+  "maxMemory": 4096,
+  "minMemory": 2048,
+  "port": 25565,
+  "javaPath": "C:/Java/bin/java.exe",
+  "jarPath": "E:/srv/server.jar",
+  "startupMode": "jar"
+}"#,
+        )
+        .expect("legacy create request should still deserialize");
+
+        assert!(req.aliases.is_empty());
+        assert_eq!(req.server_path, None);
+        assert_eq!(req.custom_command, None);
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,6 +176,8 @@ pub(super) struct AddExistingServerRequest {
     pub startup_mode: String,
     pub executable_path: Option<String>,
     pub custom_command: Option<String>,
+    pub core_type: Option<String>,
+    pub mc_version: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -9,6 +9,8 @@ export interface ServerStatusInfo {
   status: ServerStatus;
   pid: number | null;
   uptime: number | null;
+  detail_message?: string | null;
+  error_message?: string | null;
 }
 
 export interface ParsedServerCoreInfo {
