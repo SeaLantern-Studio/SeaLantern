@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { checkDeveloperMode } from "@api/logging";
-import { onPageChanged } from "@api/plugin";
+import { notifyPluginPageLifecycle } from "@router/pluginPageLifecycle";
 
 const routes = [
   {
@@ -112,24 +112,8 @@ router.beforeEach(async (to) => {
   return true;
 });
 
-let pageChangedTimers: number[] = [];
-
 router.afterEach((to) => {
-  for (const t of pageChangedTimers) {
-    clearTimeout(t);
-  }
-  pageChangedTimers = [];
-
-  pageChangedTimers.push(
-    window.setTimeout(() => {
-      onPageChanged(to.path).catch(() => {});
-    }, 250),
-  );
-  pageChangedTimers.push(
-    window.setTimeout(() => {
-      onPageChanged(to.path).catch(() => {});
-    }, 900),
-  );
+  notifyPluginPageLifecycle(to.fullPath);
 });
 
 export default router;

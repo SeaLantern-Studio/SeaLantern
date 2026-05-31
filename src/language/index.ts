@@ -38,6 +38,8 @@ type LanguageFile = TranslationNode & {
 
 const { translations, supportedLocales } = processLanguageFiles();
 
+const backendFlatTranslations: Record<string, Record<string, string>> = {};
+
 const pluginFlatTranslations: Record<string, Record<string, Record<string, string>>> = {};
 const pluginLocaleNames: Record<string, string> = {};
 
@@ -47,6 +49,24 @@ export type LocaleCode = string;
 export function setTranslations(locale: LocaleCode, data: LanguageFile) {
   if (isSupportedLocale(locale)) {
     translations[locale] = data;
+  }
+}
+
+export function setLocaleBundle(
+  locale: LocaleCode,
+  entries: Record<string, string>,
+  locales?: readonly string[],
+) {
+  backendFlatTranslations[locale] = entries;
+  if (!translations[locale]) {
+    translations[locale] = {};
+  }
+  if (locales) {
+    for (const localeCode of locales) {
+      if (!supportedLocales.includes(localeCode)) {
+        supportedLocales.push(localeCode);
+      }
+    }
   }
 }
 
@@ -95,6 +115,10 @@ function resolveNestedValue(source: TranslationNode, keys: string[]): string | u
   return typeof current === "string" ? current : undefined;
 }
 
+function resolveBackendFlatValue(locale: string, key: string): string | undefined {
+  return backendFlatTranslations[locale]?.[key];
+}
+
 function interpolateVariables(template: string, options: Record<string, unknown>): string {
   // 同时支持 {{variable}} 和 {variable} 两种格式的占位符
   return template
@@ -127,8 +151,12 @@ class I18n {
     const currentLocaleValue = this.currentLocale.value;
 
     let resolved: string | undefined =
+      resolveBackendFlatValue(currentLocaleValue, key) ??
+      resolveBackendFlatValue(currentLocaleValue, `sealantern.${key}`) ??
       resolveNestedValue(translations[currentLocaleValue], ["sealantern"].concat(keys)) ??
       resolveNestedValue(translations[currentLocaleValue], keys) ??
+      resolveBackendFlatValue(this.fallbackLocale, key) ??
+      resolveBackendFlatValue(this.fallbackLocale, `sealantern.${key}`) ??
       resolveNestedValue(translations[this.fallbackLocale], ["sealantern"].concat(keys)) ??
       resolveNestedValue(translations[this.fallbackLocale], keys);
 
@@ -153,8 +181,12 @@ class I18n {
     const keys = key.split(".");
     const currentLocaleValue = this.currentLocale.value;
     const resolved =
+      resolveBackendFlatValue(currentLocaleValue, key) ??
+      resolveBackendFlatValue(currentLocaleValue, `sealantern.${key}`) ??
       resolveNestedValue(translations[currentLocaleValue], ["sealantern"].concat(keys)) ??
       resolveNestedValue(translations[currentLocaleValue], keys) ??
+      resolveBackendFlatValue(this.fallbackLocale, key) ??
+      resolveBackendFlatValue(this.fallbackLocale, `sealantern.${key}`) ??
       resolveNestedValue(translations[this.fallbackLocale], ["sealantern"].concat(keys)) ??
       resolveNestedValue(translations[this.fallbackLocale], keys);
     return resolved !== undefined;
@@ -183,6 +215,7 @@ const languageAPI = {
   i18n,
   SUPPORTED_LOCALES,
   setTranslations,
+  setLocaleBundle,
   registerPluginLocale,
   addPluginTranslations,
   removePluginTranslations,

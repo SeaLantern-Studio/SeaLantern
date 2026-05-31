@@ -1,280 +1,47 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
-import { usePluginStore } from "@stores/pluginStore";
-import {
-  fetchMarketPlugins,
-  fetchMarketPluginDetail,
-  fetchMarketCategories,
-  installFromMarket,
-} from "@api/plugin";
-import type { MarketPluginInfo } from "@api/plugin";
 import { i18n } from "@language";
-import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
+import { RefreshCw, AlertCircle, Search, Puzzle, Globe } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
+import PluginMarketDetailDialog from "@components/views/plugins/PluginMarketDetailDialog.vue";
+import { usePluginMarket } from "@components/views/plugins/usePluginMarket";
 import { SLTabBar } from "@components/common";
-
-type MarketPlugin = MarketPluginInfo & { _path?: string };
+const {
+  loading,
+  error,
+  installFeedback,
+  searchQuery,
+  selectedTag,
+  installing,
+  selectedPlugin,
+  detailLoading,
+  pluginDetail,
+  showUrlEditor,
+  customMarketUrl,
+  urlInput,
+  marketErrorHint,
+  filteredPlugins,
+  allTags,
+  tagTabs,
+  clearFeedback,
+  saveMarketUrl,
+  resetMarketUrl,
+  toggleUrlEditor,
+  resolveI18n,
+  isInstalled,
+  isInstalledAndEnabled,
+  getInstallButtonText,
+  getPermissionLevel,
+  getPermissionLabel,
+  getPermissionDesc,
+  getCategoryLabel,
+  getIconUrl,
+  loadMarket,
+  showDetail,
+  handleInstall,
+  closeDetail,
+} = usePluginMarket();
 
 const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market";
-const MARKET_URL_KEY = "sealantern_market_url";
-
-const pluginStore = usePluginStore();
-const loading = ref(true);
-const error = ref<string | null>(null);
-const installFeedback = ref<{
-  type: "success" | "warning" | "error";
-  message: string;
-} | null>(null);
-const marketPlugins = ref<MarketPlugin[]>([]);
-const categories = ref<Record<string, Record<string, string> | string>>({});
-const searchQuery = ref("");
-const selectedTag = ref<string | null>(null);
-const installing = ref<string | null>(null);
-const selectedPlugin = ref<MarketPlugin | null>(null);
-const detailLoading = ref(false);
-const pluginDetail = ref<MarketPluginInfo | null>(null);
-const showUrlEditor = ref(false);
-const customMarketUrl = ref(localStorage.getItem(MARKET_URL_KEY) || "");
-const urlInput = ref(customMarketUrl.value);
-
-const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
-const marketErrorHint = computed<string>(() => {
-  if (!error.value) return "";
-  return resolveMarketNetworkHint(error.value);
-});
-
-function showInstallFeedback(
-  type: "success" | "warning" | "error",
-  message: string,
-  duration = 6000,
-) {
-  installFeedback.value = { type, message };
-  if (duration > 0) {
-    setTimeout(() => {
-      if (installFeedback.value?.message === message) {
-        installFeedback.value = null;
-      }
-    }, duration);
-  }
-}
-
-function saveMarketUrl() {
-  const url = urlInput.value.trim();
-  customMarketUrl.value = url;
-  if (url) {
-    localStorage.setItem(MARKET_URL_KEY, url);
-  } else {
-    localStorage.removeItem(MARKET_URL_KEY);
-  }
-  showUrlEditor.value = false;
-  loadMarket();
-}
-
-function resetMarketUrl() {
-  urlInput.value = "";
-  customMarketUrl.value = "";
-  localStorage.removeItem(MARKET_URL_KEY);
-  showUrlEditor.value = false;
-  loadMarket();
-}
-
-const filteredPlugins = computed(() => {
-  let result = marketPlugins.value;
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
-    result = result.filter(
-      (p) =>
-        resolveI18n(p.name).toLowerCase().includes(q) ||
-        resolveI18n(p.description).toLowerCase().includes(q) ||
-        p.author?.name?.toLowerCase().includes(q),
-    );
-  }
-  if (selectedTag.value) {
-    result = result.filter((p) => p.categories?.includes(selectedTag.value!));
-  }
-  return result;
-});
-
-const allTags = computed(() => {
-  const tags = new Set<string>();
-  marketPlugins.value.forEach((p) => p.categories?.forEach((t) => tags.add(t)));
-  return Array.from(tags);
-});
-
-function resolveI18n(val: Record<string, string> | string | undefined): string {
-  if (!val) return "";
-  if (typeof val === "string") return val;
-  const locale = i18n.getLocale();
-  const key = locale.startsWith("zh") ? "zh-CN" : "en-US";
-  return val[key] || val["zh-CN"] || Object.values(val)[0] || "";
-}
-
-function isInstalled(pluginId: string): boolean {
-  return pluginStore.plugins.some((p) => p.manifest.id === pluginId);
-}
-
-function isInstalledAndEnabled(pluginId: string): boolean {
-  const plugin = pluginStore.plugins.find((p) => p.manifest.id === pluginId);
-  return !!plugin && plugin.state === "enabled";
-}
-
-function getInstallButtonText(pluginId: string): string {
-  if (installing.value === pluginId) return i18n.t("market.installing");
-  if (isInstalledAndEnabled(pluginId)) return i18n.t("market.running_need_disable");
-  if (isInstalled(pluginId)) return i18n.t("market.installed");
-  return i18n.t("market.install");
-}
-
-const CRITICAL_PERMS = new Set(["execute_program", "plugin_folder_access"]);
-const DANGEROUS_PERMS = new Set(["fs", "network", "server", "console"]);
-
-function getPermissionLevel(perm: string): "critical" | "dangerous" | "normal" {
-  if (CRITICAL_PERMS.has(perm)) return "critical";
-  if (DANGEROUS_PERMS.has(perm)) return "dangerous";
-  return "normal";
-}
-
-function getPermissionLabel(perm: string): string {
-  return i18n.t(`plugins.permission.${perm}`) !== `plugins.permission.${perm}`
-    ? i18n.t(`plugins.permission.${perm}`)
-    : perm;
-}
-
-function getPermissionDesc(perm: string): string {
-  return i18n.t(`plugins.permission.${perm}_desc`) !== `plugins.permission.${perm}_desc`
-    ? i18n.t(`plugins.permission.${perm}_desc`)
-    : "";
-}
-
-function getCategoryLabel(key: string): string {
-  const locale = i18n.getLocale();
-  const langKey = locale.startsWith("zh") ? "zh-CN" : "en-US";
-  const cat = categories.value[key];
-  if (!cat) return key;
-  if (typeof cat === "string") return cat;
-  return cat[langKey] || cat["zh-CN"] || key;
-}
-
-function getIconUrl(plugin: MarketPlugin): string | null {
-  if (!plugin.icon_url || !plugin._path) return null;
-  const dir = plugin._path.replace(/\/[^/]+$/, "");
-  return `${activeMarketUrl.value.trim().replace(/\/$/, "")}/${dir}/${plugin.icon_url}`;
-}
-
-function normalizeErrorMessage(err: unknown): string {
-  if (err instanceof Error && err.message) return err.message;
-  if (typeof err === "string") return err;
-  return String(err);
-}
-
-function resolveMarketNetworkHint(message: string): string {
-  const text = message.toLowerCase();
-  const looksLikeNetworkIssue =
-    text.includes("download") ||
-    text.includes("fetch") ||
-    text.includes("network") ||
-    text.includes("timeout") ||
-    text.includes("proxy") ||
-    text.includes("连接") ||
-    text.includes("请求") ||
-    text.includes("下载");
-
-  if (!looksLikeNetworkIssue) {
-    return "";
-  }
-
-  const isProxyRefused =
-    text.includes("127.0.0.1:9") ||
-    text.includes("actively refused") ||
-    text.includes("connection refused") ||
-    text.includes("proxyconnect") ||
-    text.includes("proxy connect") ||
-    text.includes("无法连接") ||
-    text.includes("积极拒绝");
-
-  if (isProxyRefused) {
-    return i18n.t("market.network_hint_proxy");
-  }
-  if (text.includes("timed out") || text.includes("timeout") || text.includes("超时")) {
-    return i18n.t("market.network_hint_timeout");
-  }
-  return i18n.t("market.network_hint_check");
-}
-
-async function loadMarket() {
-  loading.value = true;
-  error.value = null;
-  try {
-    const url = activeMarketUrl.value.trim().replace(/\/$/, "");
-    const [plugins, cats] = await Promise.all([
-      fetchMarketPlugins(url === MARKET_BASE_URL ? undefined : url),
-      fetchMarketCategories(url === MARKET_BASE_URL ? undefined : url).catch(() => ({})),
-    ]);
-    marketPlugins.value = plugins;
-    categories.value = cats;
-  } catch (e: any) {
-    error.value = normalizeErrorMessage(e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function showDetail(plugin: MarketPlugin) {
-  selectedPlugin.value = plugin;
-  detailLoading.value = true;
-  try {
-    const url = activeMarketUrl.value.trim().replace(/\/$/, "");
-    pluginDetail.value = await fetchMarketPluginDetail(
-      plugin._path || `plugins/${plugin.id}.json`,
-      url === MARKET_BASE_URL ? undefined : url,
-    );
-  } catch {
-    pluginDetail.value = null;
-  } finally {
-    detailLoading.value = false;
-  }
-}
-
-async function handleInstall(plugin: MarketPlugin) {
-  if (installing.value || isInstalled(plugin.id)) return;
-  installing.value = plugin.id;
-  try {
-    const result = await installFromMarket({
-      pluginId: plugin.id,
-      downloadUrl: plugin.download_url,
-      repo: plugin.repo,
-      downloadType: plugin.download_type,
-      releaseAsset: plugin.release_asset,
-      branch: plugin.branch,
-    });
-    await pluginStore.loadPlugins();
-    if (result?.untrusted_url) {
-      showInstallFeedback("warning", i18n.t("market.untrusted_download_warning"));
-    } else {
-      showInstallFeedback("success", i18n.t("market.install_success"));
-    }
-  } catch (e: any) {
-    const errorMessage = normalizeErrorMessage(e);
-    const hint = resolveMarketNetworkHint(errorMessage);
-    const extraHint = hint ? `\n${hint}` : "";
-    showInstallFeedback(
-      "error",
-      `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`,
-      0,
-    );
-  } finally {
-    installing.value = null;
-  }
-}
-
-function closeDetail() {
-  selectedPlugin.value = null;
-  pluginDetail.value = null;
-}
-
-onMounted(() => {
-  loadMarket();
-});
 </script>
 
 <template>
@@ -284,7 +51,7 @@ onMounted(() => {
       :class="['install-feedback', `install-feedback--${installFeedback.type}`]"
     >
       <span>{{ installFeedback.message }}</span>
-      <button class="install-feedback-close" @click="installFeedback = null">x</button>
+      <button class="install-feedback-close" @click="clearFeedback">x</button>
     </div>
 
     <div v-if="showUrlEditor" class="url-editor glass">
@@ -308,15 +75,7 @@ onMounted(() => {
       </button>
     </div>
 
-    <SLTabBar
-      v-if="allTags.length"
-      v-model="selectedTag"
-      :tabs="[
-        { key: null, label: i18n.t('config.categories.all') },
-        ...allTags.map((tag) => ({ key: tag, label: getCategoryLabel(tag) })),
-      ]"
-      :level="2"
-    >
+    <SLTabBar v-if="allTags.length" v-model="selectedTag" :tabs="tagTabs" :level="2">
       <template #extra>
         <input
           v-model="searchQuery"
@@ -327,7 +86,7 @@ onMounted(() => {
         <button
           class="action-btn"
           :class="{ active: customMarketUrl }"
-          @click="showUrlEditor = !showUrlEditor"
+          @click="toggleUrlEditor"
           :title="i18n.t('market.custom_source')"
         >
           <Globe :size="14" />
@@ -417,76 +176,22 @@ onMounted(() => {
       </SLCard>
     </div>
 
-    <Teleport to="body">
-      <div v-if="selectedPlugin" class="modal-overlay" @click.self="closeDetail">
-        <div class="detail-modal glass-strong">
-          <button class="modal-close" @click="closeDetail">
-            <X :size="20" />
-          </button>
-          <div class="detail-header">
-            <div class="detail-icon">
-              <img
-                v-if="getIconUrl(selectedPlugin)"
-                :src="getIconUrl(selectedPlugin)!"
-                :alt="resolveI18n(selectedPlugin.name)"
-              />
-              <Puzzle v-else :size="48" :stroke-width="1.5" />
-            </div>
-            <div class="detail-title">
-              <h2>{{ resolveI18n(selectedPlugin.name) }}</h2>
-              <span class="detail-version">{{
-                selectedPlugin.version ? "v" + selectedPlugin.version : ""
-              }}</span>
-              <span class="detail-author">by {{ selectedPlugin.author?.name }}</span>
-            </div>
-          </div>
-          <div v-if="detailLoading" class="detail-loading">
-            <div class="loading-spinner"></div>
-          </div>
-          <div v-else class="detail-body">
-            <p class="detail-desc">
-              {{ resolveI18n(pluginDetail?.description || selectedPlugin.description) }}
-            </p>
-            <div v-if="pluginDetail?.permissions?.length" class="detail-section">
-              <h3>{{ i18n.t("market.permissions") }}</h3>
-              <div class="permission-badges">
-                <span
-                  v-for="perm in pluginDetail.permissions"
-                  :key="perm"
-                  :class="['perm-badge', `perm-badge--${getPermissionLevel(perm)}`]"
-                  :title="getPermissionDesc(perm)"
-                  >{{ getPermissionLabel(perm) }}</span
-                >
-              </div>
-            </div>
-            <div v-if="pluginDetail?.changelog" class="detail-section">
-              <h3>{{ i18n.t("market.changelog") }}</h3>
-              <pre class="changelog">{{ pluginDetail.changelog }}</pre>
-            </div>
-          </div>
-          <div class="detail-footer">
-            <button
-              :class="[
-                'install-btn-lg',
-                {
-                  installed: isInstalled(selectedPlugin.id),
-                  'is-enabled': isInstalledAndEnabled(selectedPlugin.id),
-                },
-              ]"
-              :disabled="isInstalled(selectedPlugin.id) || installing === selectedPlugin.id"
-              :title="
-                isInstalledAndEnabled(selectedPlugin.id)
-                  ? i18n.t('market.plugin_running_warning')
-                  : ''
-              "
-              @click="handleInstall(selectedPlugin)"
-            >
-              {{ getInstallButtonText(selectedPlugin.id) }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <PluginMarketDetailDialog
+      :plugin="selectedPlugin"
+      :plugin-detail="pluginDetail"
+      :detail-loading="detailLoading"
+      :installing-plugin-id="installing"
+      :get-icon-url="getIconUrl"
+      :resolve-i18n="resolveI18n"
+      :get-install-button-text="getInstallButtonText"
+      :is-installed="isInstalled"
+      :is-installed-and-enabled="isInstalledAndEnabled"
+      :get-permission-level="getPermissionLevel"
+      :get-permission-label="getPermissionLabel"
+      :get-permission-desc="getPermissionDesc"
+      @close="closeDetail"
+      @install="handleInstall"
+    />
   </div>
 </template>
 
@@ -823,193 +528,6 @@ onMounted(() => {
   background: var(--sl-bg-tertiary);
   color: var(--sl-warning);
   font-size: 12px;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.detail-modal {
-  width: 90%;
-  max-width: 560px;
-  max-height: 80vh;
-  overflow-y: auto;
-  border-radius: var(--sl-radius-lg);
-  padding: 24px;
-  position: relative;
-}
-
-.modal-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  padding: 8px;
-  border: none;
-  background: transparent;
-  color: var(--sl-text-secondary);
-  cursor: pointer;
-  border-radius: var(--sl-radius-md);
-}
-
-.modal-close:hover {
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-primary);
-}
-
-.detail-header {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.detail-icon {
-  flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--sl-text-tertiary);
-}
-
-.detail-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: var(--sl-radius-lg);
-}
-
-.detail-title h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--sl-text-primary);
-}
-
-.detail-version {
-  display: inline-block;
-  padding: 2px 8px;
-  background: var(--sl-bg-tertiary);
-  border-radius: var(--sl-radius-xs);
-  font-size: 12px;
-  color: var(--sl-text-tertiary);
-  margin-top: 4px;
-}
-
-.detail-author {
-  display: block;
-  font-size: 13px;
-  color: var(--sl-text-secondary);
-  margin-top: 4px;
-}
-
-.detail-loading {
-  display: flex;
-  justify-content: center;
-  padding: 32px;
-}
-
-.detail-body {
-  margin-bottom: 20px;
-}
-
-.detail-desc {
-  font-size: 14px;
-  color: var(--sl-text-secondary);
-  line-height: 1.6;
-  margin: 0 0 16px;
-}
-
-.detail-section {
-  margin-top: 16px;
-}
-
-.detail-section h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin: 0 0 8px;
-}
-
-.permission-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.perm-badge {
-  padding: 3px 10px;
-  border-radius: var(--sl-radius-lg);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: default;
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-secondary);
-  border: 1px solid var(--sl-border);
-}
-
-.perm-badge--dangerous {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.perm-badge--critical {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.changelog {
-  margin: 0;
-  padding: 12px;
-  background: var(--sl-bg-tertiary);
-  border-radius: var(--sl-radius-md);
-  font-size: 12px;
-  color: var(--sl-text-secondary);
-  white-space: pre-wrap;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.detail-footer {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.install-btn-lg {
-  padding: 10px 32px;
-  border-radius: 8px;
-  border: none;
-  background: var(--sl-primary);
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.install-btn-lg:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.install-btn-lg:disabled {
-  cursor: not-allowed;
-}
-
-.install-btn-lg.installed {
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-secondary);
-}
-
-.install-btn-lg.is-enabled {
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-warning);
-  font-size: 13px;
 }
 
 .refresh-btn.active {
