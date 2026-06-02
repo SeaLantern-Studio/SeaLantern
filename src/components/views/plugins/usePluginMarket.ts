@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import {
   fetchMarketCategories,
   fetchMarketPluginDetail,
@@ -9,13 +9,13 @@ import {
 import {
   getMarketPermissionLevel,
   MARKET_BASE_URL,
-  resolveMarketNetworkHint,
   resolveMarketValue,
   type MarketFeedback,
   type MarketFeedbackType,
   type MarketPlugin,
 } from "@components/views/plugins/pluginMarketShared";
 import { usePluginMarketSource } from "@components/views/plugins/usePluginMarketSource";
+import { usePluginMarketViewState } from "@components/views/plugins/usePluginMarketViewState";
 import { i18n } from "@language";
 import { usePluginStore } from "@stores/pluginStore";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
@@ -56,37 +56,22 @@ export function usePluginMarket() {
     showFeedback,
   });
 
-  const marketErrorHint = computed<string>(() => {
-    if (!error.value) {
-      return "";
-    }
-    return resolveMarketNetworkHint(error.value);
+  const {
+    marketErrorHint,
+    filteredPlugins,
+    allTags,
+    tagTabs,
+    getCategoryLabel,
+    getIconUrl,
+    getMarketRequestUrl,
+  } = usePluginMarketViewState({
+    error,
+    marketPlugins,
+    categories,
+    searchQuery,
+    selectedTag,
+    activeMarketUrl,
   });
-  const filteredPlugins = computed(() => {
-    let result = marketPlugins.value;
-    if (searchQuery.value) {
-      const q = searchQuery.value.toLowerCase();
-      result = result.filter(
-        (plugin) =>
-          resolveMarketValue(plugin.name).toLowerCase().includes(q) ||
-          resolveMarketValue(plugin.description).toLowerCase().includes(q) ||
-          plugin.author?.name?.toLowerCase().includes(q),
-      );
-    }
-    if (selectedTag.value) {
-      result = result.filter((plugin) => plugin.categories?.includes(selectedTag.value!));
-    }
-    return result;
-  });
-  const allTags = computed(() => {
-    const tags = new Set<string>();
-    marketPlugins.value.forEach((plugin) => plugin.categories?.forEach((tag) => tags.add(tag)));
-    return Array.from(tags);
-  });
-  const tagTabs = computed(() => [
-    { key: null, label: i18n.t("config.categories.all") },
-    ...allTags.value.map((tag) => ({ key: tag, label: getCategoryLabel(tag) })),
-  ]);
 
   function normalizeErrorMessage(err: unknown): string {
     const normalized = normalizeAppError(err);
@@ -142,41 +127,21 @@ export function usePluginMarket() {
       : "";
   }
 
-  function getCategoryLabel(key: string): string {
-    const locale = i18n.getLocale();
-    const localeKey = locale.startsWith("zh") ? "zh-CN" : "en-US";
-    const category = categories.value[key];
-    if (!category) {
-      return key;
-    }
-    if (typeof category === "string") {
-      return category;
-    }
-    return category[localeKey] || category["zh-CN"] || key;
-  }
-
-  function getIconUrl(plugin: MarketPlugin): string | null {
-    if (!plugin.icon_url || !plugin._path) {
-      return null;
-    }
-    const dir = plugin._path.replace(/\/[^/]+$/, "");
-    return `${activeMarketUrl.value.trim().replace(/\/$/, "")}/${dir}/${plugin.icon_url}`;
-  }
-
   async function loadMarket() {
     loading.value = true;
     error.value = null;
 
     try {
-      const url = activeMarketUrl.value.trim().replace(/\/$/, "");
+      const requestUrl = getMarketRequestUrl();
+      const sourceUrl = activeMarketUrl.value.trim().replace(/\/$/, "") || MARKET_BASE_URL;
       const [plugins, categoryMap] = await Promise.all([
-        fetchMarketPlugins(url === MARKET_BASE_URL ? undefined : url),
-        fetchMarketCategories(url === MARKET_BASE_URL ? undefined : url).catch(() => ({})),
+        fetchMarketPlugins(requestUrl),
+        fetchMarketCategories(requestUrl).catch(() => ({})),
       ]);
       marketPlugins.value = plugins;
       categories.value = categoryMap;
       pluginLogger.info("Market", "插件市场列表已更新", {
-        source: url || MARKET_BASE_URL,
+        source: sourceUrl,
         pluginCount: plugins.length,
         categoryCount: Object.keys(categoryMap).length,
       });
@@ -194,14 +159,15 @@ export function usePluginMarket() {
     detailLoading.value = true;
 
     try {
-      const url = activeMarketUrl.value.trim().replace(/\/$/, "");
+      const requestUrl = getMarketRequestUrl();
+      const sourceUrl = activeMarketUrl.value.trim().replace(/\/$/, "") || MARKET_BASE_URL;
       pluginDetail.value = await fetchMarketPluginDetail(
         plugin._path || `plugins/${plugin.id}.json`,
-        url === MARKET_BASE_URL ? undefined : url,
+        requestUrl,
       );
       pluginLogger.info("Market", "插件详情已读取", {
         pluginId: plugin.id,
-        source: url || MARKET_BASE_URL,
+        source: sourceUrl,
       });
     } catch (err) {
       pluginDetail.value = null;
@@ -245,7 +211,7 @@ export function usePluginMarket() {
       });
     } catch (err) {
       const errorMessage = normalizeErrorMessage(err);
-      const hint = resolveMarketNetworkHint(errorMessage);
+      const hint = marketErrorHint.value || undefined;
       const extraHint = hint ? `\n${hint}` : "";
       showFeedback("error", `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`, 0);
       pluginLogger.error("Market", `插件市场安装失败: ${plugin.id}`, normalizeAppError(err));
