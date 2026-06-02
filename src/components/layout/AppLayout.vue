@@ -1,25 +1,10 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from "vue";
+import { onMounted, onUnmounted, computed, watch } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
-import { settingsApi, type WindowEffect } from "@api/settings";
+import type { WindowEffect } from "@api/settings";
 import { useUiStore } from "@stores/uiStore";
-import {
-  useSettingsStore,
-  SETTINGS_UPDATE_EVENT,
-  type SettingsUpdateEvent,
-} from "@stores/settingsStore";
-import {
-  applyTheme,
-  applyFontFamily,
-  applyFontSize,
-  applyColors,
-  applyWindowTitle,
-  applyDeveloperMode,
-  isThemeProviderActive,
-  getEffectiveTheme,
-} from "@utils/theme";
-import { isWindowsPlatform } from "@utils/platform";
+import { useSettingsStore } from "@stores/settingsStore";
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();
@@ -29,98 +14,43 @@ const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
 const backgroundBlur = computed(() => settingsStore.backgroundBlur);
 const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
 const backgroundSize = computed(() => settingsStore.backgroundSize);
-const isWindows = isWindowsPlatform();
-
 let systemThemeQuery: MediaQueryList | null = null;
-let lastNativeEffectKey: string | null = null;
-let appearanceApplyQueue: Promise<void> = Promise.resolve();
-
-function applyWindowEffectAttributes(effect: WindowEffect): void {
-  const normalized = effect || "off";
-  const enabled = normalized !== "off" || !backgroundImage.value;
-  document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
-  document.documentElement.setAttribute("data-window-effect", normalized);
-}
 
 function handleSystemThemeChange(): void {
   const settings = settingsStore.settings;
   if (settings.theme === "auto") {
-    applyTheme("auto");
-    if (!isThemeProviderActive()) {
-      applyColors(settings);
-    }
+    void settingsStore.queueClientSettingsApply(settings);
   }
-}
-
-async function applyAppearanceSettings(): Promise<void> {
-  const settings = settingsStore.settings;
-
-  applyTheme(settings.theme || "auto");
-  applyFontSize(settings.font_size || 14);
-  applyFontFamily(settings.font_family || "");
-  await applyWindowTitle(settings);
-
-  const effect = (settings.window_effect || "off") as WindowEffect;
-  const dark = getEffectiveTheme(settings.theme || "auto") === "dark";
-
-  applyWindowEffectAttributes(effect);
-  if (isWindows) {
-    const nativeEffectKey = `${effect}:${dark}`;
-    if (lastNativeEffectKey !== nativeEffectKey) {
-      lastNativeEffectKey = nativeEffectKey;
-      await settingsApi.applyWindowEffect(effect, dark);
-    }
-  }
-
-  if (!isThemeProviderActive()) {
-    applyColors(settings);
-  }
-}
-
-function enqueueAppearanceApply(): Promise<void> {
-  appearanceApplyQueue = appearanceApplyQueue.then(
-    () => applyAppearanceSettings(),
-    () => applyAppearanceSettings(),
-  );
-  return appearanceApplyQueue;
-}
-
-function applyDeveloperSettings(): void {
-  applyDeveloperMode(settingsStore.settings.developer_mode || false);
 }
 
 async function applyAllSettings(): Promise<void> {
-  await enqueueAppearanceApply();
-  applyDeveloperSettings();
-}
-
-function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>): void {
-  const { changedGroups, settings } = e.detail;
-  settingsStore.settings = settings;
-
-  if (changedGroups.includes("Appearance")) {
-    void enqueueAppearanceApply();
-  }
-  if (changedGroups.includes("Developer")) {
-    applyDeveloperSettings();
-  }
+  await settingsStore.queueClientSettingsApply(settingsStore.settings);
 }
 
 onMounted(async () => {
+  await settingsStore.ensureLoaded();
   await applyAllSettings();
-
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 
   systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
   systemThemeQuery.addEventListener("change", handleSystemThemeChange);
 });
 
 onUnmounted(() => {
-  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (systemThemeQuery) {
     systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
   }
 });
+
+watch(
+  () => settingsStore.settings,
+  (nextSettings, previousSettings) => {
+    if (nextSettings === previousSettings) {
+      return;
+    }
+    void settingsStore.queueClientSettingsApply(nextSettings);
+  },
+  { deep: true },
+);
 
 const backgroundStyle = computed(() => {
   if (!backgroundImage.value) return {};
@@ -135,7 +65,7 @@ const backgroundStyle = computed(() => {
 });
 
 const hasTransparentWindowBackdrop = computed(
-  () => settingsStore.windowEffect !== "off" || !backgroundImage.value,
+  () => (settingsStore.windowEffect as WindowEffect) !== "off" || !backgroundImage.value,
 );
 
 const layoutClasses = computed(() => ({

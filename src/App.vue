@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { onMounted } from "vue";
 import AppLayout from "@components/layout/AppLayout.vue";
 import SplashScreen from "@components/splash/SplashScreen.vue";
 import UpdateModal from "@components/common/UpdateModal.vue";
@@ -19,22 +19,13 @@ const {
   initializeApp,
   handleAgreeTerms,
   handleSplashReady,
-  mountSettingsListener,
 } = useAppBootstrap();
 
 useGlobalContextMenu();
 useTauriGlobalEvents();
 
-let cleanupSettingsListener: (() => void) | null = null;
-
 onMounted(async () => {
-  cleanupSettingsListener = mountSettingsListener();
   await initializeApp();
-});
-
-onUnmounted(() => {
-  cleanupSettingsListener?.();
-  cleanupSettingsListener = null;
 });
 
 function handleUpdateModalClose() {

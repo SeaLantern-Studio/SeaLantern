@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from "vue";
+import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X, ChevronDown, ChevronUp, Copy, Check, Globe } from "lucide-vue-next";
@@ -9,21 +9,16 @@ import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 import { isMacOSPlatform } from "@utils/platform";
 import { getAppDisplayName } from "@utils/theme";
-import {
-  dispatchSettingsUpdate,
-  SETTINGS_UPDATE_EVENT,
-  type SettingsUpdateEvent,
-} from "@stores/settingsStore";
+import { useSettingsStore } from "@stores/settingsStore";
 
 const route = useRoute();
 const appWindow = getCurrentWindow();
 const i18nStore = useI18nStore();
+const settingsStore = useSettingsStore();
 const showCloseModal = ref(false);
-const settings = ref<AppSettings | null>(null);
 const closeAction = ref<string>("ask"); // ask, minimize, close
 const rememberChoice = ref(false);
 const isMaximized = ref(false);
@@ -38,11 +33,11 @@ const pageTitle = computed(() => {
 });
 
 const appDisplayName = computed(() => {
-  if (!settings.value) {
+  if (!settingsStore.isLoaded) {
     return i18n.t("common.app_name");
   }
 
-  return getAppDisplayName(settings.value);
+  return getAppDisplayName(settingsStore.settings);
 });
 
 const primaryLanguages = computed(() => {
@@ -119,7 +114,8 @@ function toggleMoreLanguages() {
 
 onMounted(async () => {
   isUnmounted = false;
-  await loadSettings();
+  await settingsStore.ensureLoaded();
+  closeAction.value = settingsStore.settings.close_action || "ask";
 
   // 初始化最大化状态
   isMaximized.value = await appWindow.isMaximized();
@@ -137,13 +133,10 @@ onMounted(async () => {
   } else {
     unlistenCloseRequested = unlisten;
   }
-
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
   isUnmounted = true;
-  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (unlistenResize) {
     unlistenResize();
   }
@@ -153,21 +146,12 @@ onUnmounted(() => {
   }
 });
 
-function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
-  const { settings: newSettings } = e.detail;
-  settings.value = newSettings;
-  closeAction.value = newSettings.close_action || "ask";
-}
-
-async function loadSettings() {
-  try {
-    const s = await settingsApi.get();
-    settings.value = s;
-    closeAction.value = s.close_action || "ask";
-  } catch (e) {
-    console.error("Failed to load settings:", e);
-  }
-}
+watch(
+  () => settingsStore.settings.close_action,
+  (value) => {
+    closeAction.value = value || "ask";
+  },
+);
 
 async function minimizeWindow() {
   await appWindow.minimize();
@@ -188,12 +172,13 @@ async function closeWindow() {
 }
 
 async function handleCloseOption(option: string) {
-  if (rememberChoice.value && settings.value) {
-    settings.value.close_action = option === "minimize" ? "minimize" : "close";
-    closeAction.value = settings.value.close_action;
+  if (rememberChoice.value) {
+    const nextCloseAction = option === "minimize" ? "minimize" : "close";
+    const nextSettings = settingsStore.cloneSettings();
+    nextSettings.close_action = nextCloseAction;
+    closeAction.value = nextCloseAction;
     try {
-      const result = await settingsApi.saveWithDiff(settings.value);
-      dispatchSettingsUpdate(result.changed_groups, result.settings);
+      await settingsStore.saveSettingsWithDiff(nextSettings);
     } catch (e) {
       console.error("Failed to save settings:", e);
     }

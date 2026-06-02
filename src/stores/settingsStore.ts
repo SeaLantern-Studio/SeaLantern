@@ -8,6 +8,18 @@ import {
   type WindowEffect,
 } from "@api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { isWindowsPlatform } from "@utils/platform";
+import {
+  applyColors,
+  applyDeveloperMode,
+  applyFontFamily,
+  applyFontSize,
+  applyMinimalMode,
+  applyTheme,
+  applyWindowTitle,
+  getEffectiveTheme as resolveEffectiveTheme,
+  isThemeProviderActive,
+} from "@utils/theme";
 
 const THEME_CACHE_KEY = "sl_theme_cache";
 
@@ -105,6 +117,11 @@ export const useSettingsStore = defineStore("settings", () => {
   const isLoaded = ref(false);
   const isLoading = ref(false);
   const loadError = ref<string | null>(null);
+  const isWindows = isWindowsPlatform();
+
+  let loadPromise: Promise<void> | null = null;
+  let appearanceApplyQueue: Promise<void> = Promise.resolve();
+  let lastNativeEffectKey: string | null = null;
 
   const theme = computed(() => settings.value.theme || "auto");
   const fontSize = computed(() => settings.value.font_size || 14);
@@ -121,54 +138,147 @@ export const useSettingsStore = defineStore("settings", () => {
   const backgroundBrightness = computed(() => settings.value.background_brightness);
   const backgroundSize = computed(() => settings.value.background_size);
 
+  function cloneSettings(source: AppSettings = settings.value): AppSettings {
+    if (typeof structuredClone === "function") {
+      return structuredClone(source);
+    }
+    return JSON.parse(JSON.stringify(source)) as AppSettings;
+  }
+
+  function syncSettings(nextSettings: AppSettings): void {
+    settings.value = nextSettings;
+    isLoaded.value = true;
+    saveThemeCache(nextSettings.theme || "auto", nextSettings.font_size || 14);
+  }
+
+  function replaceSettings(
+    nextSettings: AppSettings,
+    changedGroups: SettingsGroup[] = [],
+  ): AppSettings {
+    syncSettings(nextSettings);
+    if (changedGroups.length > 0) {
+      dispatchSettingsUpdate(changedGroups, nextSettings);
+    }
+    return nextSettings;
+  }
+
+  function applyWindowEffectAttributes(nextSettings: AppSettings): void {
+    const effect = (nextSettings.window_effect || "off") as WindowEffect;
+    const enabled = effect !== "off" || !nextSettings.background_image;
+    document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
+    document.documentElement.setAttribute("data-window-effect", effect);
+  }
+
+  async function applyClientSettings(nextSettings: AppSettings = settings.value): Promise<void> {
+    applyTheme(nextSettings.theme || "auto");
+    applyFontSize(nextSettings.font_size || 14);
+    applyFontFamily(nextSettings.font_family || "");
+    applyMinimalMode(nextSettings.minimal_mode || false);
+    applyDeveloperMode(nextSettings.developer_mode || false);
+    await applyWindowTitle(nextSettings);
+
+    const effect = (nextSettings.window_effect || "off") as WindowEffect;
+    const dark = resolveEffectiveTheme(nextSettings.theme || "auto") === "dark";
+
+    applyWindowEffectAttributes(nextSettings);
+    if (isWindows) {
+      const nativeEffectKey = `${effect}:${dark}`;
+      if (lastNativeEffectKey !== nativeEffectKey) {
+        lastNativeEffectKey = nativeEffectKey;
+        await settingsApi.applyWindowEffect(effect, dark);
+      }
+    }
+
+    if (!isThemeProviderActive()) {
+      applyColors(nextSettings);
+    }
+  }
+
+  function queueClientSettingsApply(nextSettings: AppSettings = settings.value): Promise<void> {
+    const snapshot = cloneSettings(nextSettings);
+    appearanceApplyQueue = appearanceApplyQueue.then(
+      () => applyClientSettings(snapshot),
+      () => applyClientSettings(snapshot),
+    );
+    return appearanceApplyQueue;
+  }
+
+  async function ensureLoaded(): Promise<void> {
+    if (isLoaded.value) {
+      return;
+    }
+    await loadSettings();
+  }
+
   async function loadSettings(): Promise<void> {
-    if (isLoading.value) return;
+    if (loadPromise) {
+      return loadPromise;
+    }
 
     isLoading.value = true;
     loadError.value = null;
 
-    try {
-      const loadedSettings = await settingsApi.get();
+    loadPromise = (async () => {
+      try {
+        const loadedSettings = await settingsApi.get();
+        syncSettings(loadedSettings);
+      } catch (e) {
+        console.error("Failed to load settings:", e);
+        loadError.value = e instanceof Error ? e.message : String(e);
+        syncSettings(cloneSettings(defaultSettings));
+      } finally {
+        isLoading.value = false;
+        loadPromise = null;
+      }
+    })();
 
-      settings.value = loadedSettings;
-      isLoaded.value = true;
-      saveThemeCache(loadedSettings.theme || "auto", loadedSettings.font_size || 14);
-    } catch (e) {
-      console.error("Failed to load settings:", e);
-      loadError.value = e instanceof Error ? e.message : String(e);
-      settings.value = defaultSettings;
-      isLoaded.value = true;
-    } finally {
-      isLoading.value = false;
-    }
+    return loadPromise;
   }
 
   async function saveSettings(newSettings: AppSettings): Promise<void> {
     await settingsApi.save(newSettings);
-    settings.value = newSettings;
-    saveThemeCache(newSettings.theme || "auto", newSettings.font_size || 14);
+    syncSettings(newSettings);
   }
 
   async function saveSettingsWithDiff(newSettings: AppSettings): Promise<SettingsGroup[]> {
     const result = await settingsApi.saveWithDiff(newSettings);
-    settings.value = result.settings;
-    saveThemeCache(result.settings.theme || "auto", result.settings.font_size || 14);
+    replaceSettings(result.settings, result.changed_groups);
     return result.changed_groups;
   }
 
   async function updatePartial(partial: PartialSettings): Promise<SettingsGroup[]> {
     const result = await settingsApi.updatePartial(partial);
-    settings.value = result.settings;
-    if (partial.theme || partial.font_size) {
-      saveThemeCache(result.settings.theme || "auto", result.settings.font_size || 14);
-    }
+    replaceSettings(result.settings, result.changed_groups);
     return result.changed_groups;
   }
 
-  async function resetSettings(): Promise<void> {
+  async function resetSettings(
+    changedGroups: SettingsGroup[] = [
+      "Appearance",
+      "General",
+      "ServerDefaults",
+      "Console",
+      "Window",
+      "Developer",
+    ],
+  ): Promise<AppSettings> {
     const defaultSettingsResult = await settingsApi.reset();
-    settings.value = defaultSettingsResult;
-    saveThemeCache(defaultSettingsResult.theme || "auto", defaultSettingsResult.font_size || 14);
+    return replaceSettings(defaultSettingsResult, changedGroups);
+  }
+
+  async function importSettingsJson(
+    json: string,
+    changedGroups: SettingsGroup[] = [
+      "Appearance",
+      "General",
+      "ServerDefaults",
+      "Console",
+      "Window",
+      "Developer",
+    ],
+  ): Promise<AppSettings> {
+    const importedSettings = await settingsApi.importJson(json);
+    return replaceSettings(importedSettings, changedGroups);
   }
 
   function updateSettings(partial: Partial<AppSettings>): void {
@@ -198,12 +308,18 @@ export const useSettingsStore = defineStore("settings", () => {
     backgroundBlur,
     backgroundBrightness,
     backgroundSize,
+    ensureLoaded,
     loadSettings,
     saveSettings,
     saveSettingsWithDiff,
     updatePartial,
     resetSettings,
+    importSettingsJson,
     updateSettings,
+    cloneSettings,
+    replaceSettings,
+    applyClientSettings,
+    queueClientSettingsApply,
     getEffectiveTheme,
   };
 });

@@ -8,17 +8,17 @@ import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue"
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue";
-import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
+import { settingsApi, type AppSettings } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { useMessage, useGlobalMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
-import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "@stores/settingsStore";
-import { applyWindowTitle } from "@utils/theme";
+import { useSettingsStore } from "@stores/settingsStore";
 
 const { error, showError, clearError } = useMessage();
 const { success: globalSuccess } = useGlobalMessage();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
+const settingsStore = useSettingsStore();
 
 const settings = ref<AppSettings | null>(null);
 
@@ -34,25 +34,14 @@ type CloseAction = "ask" | "minimize" | "close";
 
 onMounted(async () => {
   await loadSettings();
-
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
-  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
 });
-
-function handleSettingsUpdateEvent(
-  e: CustomEvent<{ changedGroups: SettingsGroup[]; settings: AppSettings }>,
-) {
-  const newSettings = e.detail.settings;
-  settings.value = newSettings;
-  syncLocalValues(newSettings);
-}
 
 function syncLocalValues(s: AppSettings) {
   maxMem.value = String(s.default_max_memory);
@@ -65,17 +54,11 @@ async function loadSettings() {
   startLoading();
   clearError();
   try {
-    const s = await settingsApi.get();
-    settings.value = s;
-    maxMem.value = String(s.default_max_memory);
-    minMem.value = String(s.default_min_memory);
-    port.value = String(s.default_port);
-    defaultRunPath.value = s.last_run_path || "";
-    settings.value.color = s.color || "default";
-    applyTheme(s.theme);
-    applyFontSize(s.font_size);
-    applyFontFamily(s.font_family);
-    await applyWindowTitle(s);
+    await settingsStore.ensureLoaded();
+    const nextSettings = settingsStore.cloneSettings();
+    settings.value = nextSettings;
+    settings.value.color = nextSettings.color || "default";
+    syncLocalValues(nextSettings);
   } catch (e) {
     showError(String(e));
   } finally {
@@ -99,33 +82,6 @@ function debouncedSave() {
   }, 500);
 }
 
-function getEffectiveTheme(theme: string): "light" | "dark" {
-  if (theme === "auto") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  return theme as "light" | "dark";
-}
-
-function applyTheme(theme: string) {
-  const effectiveTheme = getEffectiveTheme(theme);
-  document.documentElement.setAttribute("data-theme", effectiveTheme);
-  return effectiveTheme;
-}
-
-function applyFontSize(size: number) {
-  document.documentElement.style.fontSize = `${size}px`;
-}
-
-function applyFontFamily(fontFamily: string) {
-  if (fontFamily) {
-    document.documentElement.style.setProperty("--sl-font-sans", fontFamily);
-    document.documentElement.style.setProperty("--sl-font-display", fontFamily);
-  } else {
-    document.documentElement.style.removeProperty("--sl-font-sans");
-    document.documentElement.style.removeProperty("--sl-font-display");
-  }
-}
-
 async function saveSettings() {
   if (!settings.value) return;
 
@@ -138,24 +94,9 @@ async function saveSettings() {
 
   clearError();
   try {
-    const result = await settingsApi.saveWithDiff(settings.value);
-
-    localStorage.setItem(
-      "sl_theme_cache",
-      JSON.stringify({
-        theme: settings.value.theme || "auto",
-        fontSize: settings.value.font_size || 14,
-      }),
-    );
-
-    if (result.changed_groups.includes("Appearance")) {
-      applyTheme(settings.value.theme);
-      applyFontSize(settings.value.font_size);
-      applyFontFamily(settings.value.font_family);
-    }
-
-    await applyWindowTitle(result.settings);
-    dispatchSettingsUpdate(result.changed_groups, result.settings);
+    await settingsStore.saveSettingsWithDiff(settings.value);
+    settings.value = settingsStore.cloneSettings();
+    syncLocalValues(settings.value);
   } catch (e) {
     showError(String(e));
   }
@@ -163,28 +104,16 @@ async function saveSettings() {
 
 async function resetSettings() {
   try {
-    const s = await settingsApi.reset();
-    settings.value = s;
-    maxMem.value = String(s.default_max_memory);
-    minMem.value = String(s.default_min_memory);
-    port.value = String(s.default_port);
-    defaultRunPath.value = s.last_run_path || "";
+    const s = await settingsStore.resetSettings([
+      "Appearance",
+      "General",
+      "ServerDefaults",
+      "Console",
+    ]);
+    settings.value = settingsStore.cloneSettings(s);
+    syncLocalValues(settings.value);
     showResetConfirm.value = false;
     settings.value.color = "default";
-
-    localStorage.setItem(
-      "sl_theme_cache",
-      JSON.stringify({
-        theme: s.theme || "auto",
-        fontSize: s.font_size || 14,
-      }),
-    );
-
-    applyTheme(s.theme);
-    applyFontSize(s.font_size);
-    applyFontFamily(s.font_family);
-    await applyWindowTitle(s);
-    dispatchSettingsUpdate(["Appearance", "General", "ServerDefaults", "Console"], s);
   } catch (e) {
     showError(String(e));
   }
@@ -206,17 +135,15 @@ async function handleImport(json: string) {
     return;
   }
   try {
-    const s = await settingsApi.importJson(json);
-    settings.value = s;
-    maxMem.value = String(s.default_max_memory);
-    minMem.value = String(s.default_min_memory);
-    port.value = String(s.default_port);
+    const s = await settingsStore.importSettingsJson(json, [
+      "Appearance",
+      "General",
+      "ServerDefaults",
+      "Console",
+    ]);
+    settings.value = settingsStore.cloneSettings(s);
+    syncLocalValues(settings.value);
     showImportModal.value = false;
-    applyTheme(s.theme);
-    applyFontSize(s.font_size);
-    applyFontFamily(s.font_family);
-    await applyWindowTitle(s);
-    dispatchSettingsUpdate(["Appearance", "General", "ServerDefaults", "Console"], s);
   } catch (e) {
     showError(String(e));
   }

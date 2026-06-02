@@ -1,20 +1,9 @@
 import { computed, ref } from "vue";
 import { useUpdateStore } from "@stores/updateStore";
 import { useI18nStore } from "@stores/i18nStore";
-import {
-  useSettingsStore,
-  SETTINGS_UPDATE_EVENT,
-  type SettingsUpdateEvent,
-} from "@stores/settingsStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useServerStore } from "@stores/serverStore";
-import {
-  applyTheme,
-  applyFontSize,
-  applyFontFamily,
-  applyMinimalMode,
-  applyDeveloperMode,
-} from "@utils/theme";
 
 export function useAppBootstrap() {
   const showSplash = ref(true);
@@ -26,20 +15,11 @@ export function useAppBootstrap() {
   const pluginStore = usePluginStore();
   const serverStore = useServerStore();
 
-  function applySettingsSideEffects() {
-    const settings = settingsStore.settings;
-    applyTheme(settings.theme || "auto");
-    applyFontSize(settings.font_size || 14);
-    applyFontFamily(settings.font_family || "");
-    applyMinimalMode(settings.minimal_mode || false);
-    applyDeveloperMode(settings.developer_mode || false);
-  }
-
   async function initializeApp() {
     try {
       await settingsStore.loadSettings();
       await i18nStore.loadLanguageSetting();
-      applySettingsSideEffects();
+      await settingsStore.queueClientSettingsApply();
 
       try {
         await pluginStore.loadPlugins();
@@ -85,17 +65,6 @@ export function useAppBootstrap() {
     }
   }
 
-  function handleSettingsUpdate(event: CustomEvent<SettingsUpdateEvent>) {
-    applyDeveloperMode(event.detail.settings.developer_mode || false);
-  }
-
-  function mountSettingsListener() {
-    window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
-    return () => {
-      window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
-    };
-  }
-
   return {
     showSplash,
     isInitializing,
@@ -104,7 +73,6 @@ export function useAppBootstrap() {
     initializeApp,
     handleAgreeTerms,
     handleSplashReady,
-    mountSettingsListener,
     isReady: computed(() => !isInitializing.value),
   };
 }

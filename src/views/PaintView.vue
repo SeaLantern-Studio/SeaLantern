@@ -13,13 +13,8 @@ import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { useToast } from "@composables/useToast";
 import { usePluginStore } from "@stores/pluginStore";
-import {
-  dispatchSettingsUpdate,
-  SETTINGS_UPDATE_EVENT,
-  type SettingsUpdateEvent,
-} from "@stores/settingsStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import { isMacOSPlatform, isWindowsPlatform } from "@utils/platform";
-import { applyWindowTitle } from "@utils/theme";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
@@ -27,6 +22,7 @@ const fontsLoading = ref(false);
 const error = ref<string | null>(null);
 
 const pluginStore = usePluginStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 
 const themeProxyPlugin = computed(() => {
@@ -88,23 +84,14 @@ const personalizationBusy = ref(false);
 onMounted(async () => {
   await loadSettings();
   await loadSystemFonts();
-
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
-  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
 });
-
-function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
-  const { settings: newSettings } = e.detail;
-  settings.value = newSettings;
-  syncLocalValues(newSettings);
-}
 
 function syncLocalValues(s: AppSettings) {
   fontSize.value = String(s.font_size);
@@ -136,21 +123,11 @@ async function loadSettings() {
   loading.value = true;
   error.value = null;
   try {
-    const s = await settingsApi.get();
-    settings.value = s;
-    fontSize.value = String(s.font_size);
-    consoleFontSize.value = String(s.console_font_size);
-    consoleFontFamily.value = s.console_font_family || "";
-    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
-    maxLogLines.value = String(s.max_log_lines);
-    bgOpacity.value = String(s.background_opacity);
-    bgBlur.value = String(s.background_blur);
-    bgBrightness.value = String(s.background_brightness);
-    settings.value.color = s.color || "default";
-    applyTheme(s.theme);
-    applyFontSize(s.font_size);
-    applyFontFamily(s.font_family);
-    await applyWindowTitle(s);
+    await settingsStore.ensureLoaded();
+    const nextSettings = settingsStore.cloneSettings();
+    settings.value = nextSettings;
+    settings.value.color = nextSettings.color || "default";
+    syncLocalValues(nextSettings);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -174,66 +151,24 @@ function debouncedSave() {
   }, 500);
 }
 
-function getEffectiveTheme(theme: string): "light" | "dark" {
-  if (theme === "auto") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  return theme as "light" | "dark";
-}
-
-function applyTheme(theme: string) {
-  const effectiveTheme = getEffectiveTheme(theme);
-  document.documentElement.setAttribute("data-theme", effectiveTheme);
-  return effectiveTheme;
-}
-
-function applyFontSize(size: number) {
-  document.documentElement.style.fontSize = `${size}px`;
-}
-
 function handleFontSizeChange() {
   markChanged();
-  const size = parseInt(fontSize.value) || 14;
-  applyFontSize(size);
-}
-
-function applyFontFamily(fontFamily: string) {
-  if (fontFamily) {
-    document.documentElement.style.setProperty("--sl-font-sans", fontFamily);
-    document.documentElement.style.setProperty("--sl-font-display", fontFamily);
-  } else {
-    document.documentElement.style.removeProperty("--sl-font-sans");
-    document.documentElement.style.removeProperty("--sl-font-display");
-  }
 }
 
 function handleFontFamilyChange() {
   markChanged();
-  if (settings.value) {
-    applyFontFamily(settings.value.font_family);
-  }
 }
 
-function handleWindowEffectChange(effect: WindowEffect) {
+function handleWindowEffectChange(_effect: WindowEffect) {
   markChanged();
-  const hasBackgroundImage = Boolean(settings.value?.background_image);
-  document.documentElement.setAttribute(
-    "data-acrylic",
-    effect === "off" && hasBackgroundImage ? "false" : "true",
-  );
-  document.documentElement.setAttribute("data-window-effect", effect);
 }
 
-function handleMinimalModeChange(enabled: boolean) {
+function handleMinimalModeChange(_enabled: boolean) {
   markChanged();
-  document.documentElement.setAttribute("data-minimal", enabled ? "true" : "false");
 }
 
 function handleThemeChange() {
   markChanged();
-  if (!settings.value) return;
-
-  applyTheme(settings.value.theme);
 }
 
 async function saveSettings() {
@@ -251,23 +186,9 @@ async function saveSettings() {
 
   error.value = null;
   try {
-    const result = await settingsApi.saveWithDiff(settings.value);
-
-    localStorage.setItem(
-      "sl_theme_cache",
-      JSON.stringify({
-        theme: settings.value.theme || "auto",
-        fontSize: settings.value.font_size || 14,
-      }),
-    );
-
-    if (result.changed_groups.includes("Appearance")) {
-      applyTheme(settings.value.theme);
-      applyFontSize(settings.value.font_size);
-      await applyWindowTitle(result.settings);
-    }
-
-    dispatchSettingsUpdate(result.changed_groups, result.settings);
+    await settingsStore.saveSettingsWithDiff(settings.value);
+    settings.value = settingsStore.cloneSettings();
+    syncLocalValues(settings.value);
   } catch (e) {
     error.value = String(e);
   }
@@ -275,32 +196,11 @@ async function saveSettings() {
 
 async function resetSettings() {
   try {
-    const s = await settingsApi.reset();
-    settings.value = s;
-    fontSize.value = String(s.font_size);
-    consoleFontSize.value = String(s.console_font_size);
-    consoleFontFamily.value = s.console_font_family || "";
-    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
-    maxLogLines.value = String(s.max_log_lines);
-    bgOpacity.value = String(s.background_opacity);
-    bgBlur.value = String(s.background_blur);
-    bgBrightness.value = String(s.background_brightness);
+    const s = await settingsStore.resetSettings(["Appearance", "Console"]);
+    settings.value = settingsStore.cloneSettings(s);
+    syncLocalValues(settings.value);
     showResetConfirm.value = false;
     settings.value.color = "default";
-
-    localStorage.setItem(
-      "sl_theme_cache",
-      JSON.stringify({
-        theme: s.theme || "auto",
-        fontSize: s.font_size || 14,
-      }),
-    );
-
-    applyTheme(s.theme);
-    applyFontSize(s.font_size);
-    applyFontFamily(s.font_family);
-    await applyWindowTitle(s);
-    dispatchSettingsUpdate(["Appearance", "Console"], s);
   } catch (e) {
     error.value = String(e);
   }
@@ -312,22 +212,10 @@ async function handleImport(json: string) {
     return;
   }
   try {
-    const s = await settingsApi.importJson(json);
-    settings.value = s;
-    fontSize.value = String(s.font_size);
-    consoleFontSize.value = String(s.console_font_size);
-    consoleFontFamily.value = s.console_font_family || "";
-    consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
-    maxLogLines.value = String(s.max_log_lines);
-    bgOpacity.value = String(s.background_opacity);
-    bgBlur.value = String(s.background_blur);
-    bgBrightness.value = String(s.background_brightness);
+    const s = await settingsStore.importSettingsJson(json, ["Appearance", "Console"]);
+    settings.value = settingsStore.cloneSettings(s);
+    syncLocalValues(settings.value);
     showImportModal.value = false;
-    applyTheme(s.theme);
-    applyFontSize(s.font_size);
-    applyFontFamily(s.font_family);
-    await applyWindowTitle(s);
-    dispatchSettingsUpdate(["Appearance", "Console"], s);
   } catch (e) {
     error.value = String(e);
   }
@@ -363,13 +251,9 @@ async function importPersonalizationPackage() {
     }
 
     const result = await settingsApi.importPersonalizationPackage(filePath);
-    settings.value = result.settings;
+    settingsStore.replaceSettings(result.settings, result.changed_groups);
+    settings.value = settingsStore.cloneSettings(result.settings);
     syncLocalValues(result.settings);
-    applyTheme(result.settings.theme);
-    applyFontSize(result.settings.font_size);
-    applyFontFamily(result.settings.font_family);
-    await applyWindowTitle(result.settings);
-    dispatchSettingsUpdate(result.changed_groups, result.settings);
     await pluginStore.injectAllPluginCss();
 
     if (result.skipped_plugins.length > 0) {
