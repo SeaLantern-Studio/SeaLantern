@@ -1,9 +1,8 @@
 import { onActivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useCreateServerDefaults } from "@components/views/create/useCreateServerDefaults";
+import { useCreateServerScan } from "@components/views/create/useCreateServerScan";
 import { useCreateServerSubmit } from "@components/views/create/useCreateServerSubmit";
-import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
-import type { StartupCandidate } from "@components/views/create/startupTypes";
 import { isStrictChildPath, normalizePathForCompare } from "@components/views/create/startupUtils";
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
@@ -51,28 +50,6 @@ export function useCreateServerPage() {
   const sourceType = ref<SourceType>("");
   const runPath = ref("");
 
-  const coreDetecting = ref(false);
-  const detectedCoreType = ref("");
-  const detectedCoreMainClass = ref("");
-  const detectedCoreTypeKey = ref("");
-  const coreTypeOptions = ref<string[]>([]);
-  const selectedCoreType = ref("");
-
-  const detectedMcVersion = ref("");
-  const mcVersionOptions = ref<string[]>([]);
-  const selectedMcVersion = ref("");
-  const mcVersionDetectionFailed = ref(false);
-
-  const startupDetecting = ref(false);
-  // 源路径变更后先进入同步等待态，覆盖防抖空窗，防止提交时仍引用旧启动项。
-  const startupSyncPending = ref(false);
-  const startupCandidates = ref<StartupCandidate[]>([]);
-  const selectedStartupId = ref("");
-  const customStartupCommand = ref("");
-  let startupDetectRequestId = 0;
-
-  const AUTO_SCAN_DEBOUNCE_MS = 120;
-  let startupDetectTimer: ReturnType<typeof setTimeout> | null = null;
   let unlistenSourceDropEvent: UnlistenFn | null = null;
 
   const runPathOverwriteRisk = ref(false);
@@ -103,20 +80,26 @@ export function useCreateServerPage() {
     },
   });
 
+  const scan = useCreateServerScan({
+    sourcePath,
+    sourceType,
+    showError,
+  });
+
   const submit = useCreateServerSubmit({
     sourcePath,
     sourceType,
     runPath,
-    startupSyncPending,
-    startupDetecting,
-    startupCandidates,
-    selectedStartupId,
-    customStartupCommand,
-    detectedCoreTypeKey,
-    selectedCoreType,
-    detectedMcVersion,
-    selectedMcVersion,
-    mcVersionDetectionFailed,
+    startupSyncPending: scan.startupSyncPending,
+    startupDetecting: scan.startupDetecting,
+    startupCandidates: scan.startupCandidates,
+    selectedStartupId: scan.selectedStartupId,
+    customStartupCommand: scan.customStartupCommand,
+    detectedCoreTypeKey: scan.detectedCoreTypeKey,
+    selectedCoreType: scan.selectedCoreType,
+    detectedMcVersion: scan.detectedMcVersion,
+    selectedMcVersion: scan.selectedMcVersion,
+    mcVersionDetectionFailed: scan.mcVersionDetectionFailed,
     serverName,
     maxMemory,
     minMemory,
@@ -157,10 +140,7 @@ export function useCreateServerPage() {
   });
 
   onUnmounted(() => {
-    if (startupDetectTimer) {
-      clearTimeout(startupDetectTimer);
-      startupDetectTimer = null;
-    }
+    scan.cleanupScanTimer();
     if (runPathConflictTimer) {
       clearTimeout(runPathConflictTimer);
       runPathConflictTimer = null;
@@ -222,35 +202,6 @@ export function useCreateServerPage() {
     { immediate: true },
   );
 
-  function scheduleStartupDetect(path: string, type: SourceType) {
-    if (startupDetectTimer) {
-      clearTimeout(startupDetectTimer);
-      startupDetectTimer = null;
-    }
-
-    if (!path.trim() || !type) {
-      startupSyncPending.value = false;
-      void refreshStartupCandidates(path, type, false);
-      return;
-    }
-
-    // 源路径一旦变化就立刻锁提交，直到本轮扫描完成。
-    startupSyncPending.value = true;
-
-    startupDetectTimer = setTimeout(() => {
-      startupDetectTimer = null;
-      void refreshStartupCandidates(path, type, false);
-    }, AUTO_SCAN_DEBOUNCE_MS);
-  }
-
-  watch(
-    [sourcePath, sourceType],
-    ([path, type]) => {
-      scheduleStartupDetect(path, type);
-    },
-    { immediate: true },
-  );
-
   function loadFromDraft() {
     const draftStore = useCreateServerDraftStore();
     const draft = draftStore.consumeDraft();
@@ -281,100 +232,8 @@ export function useCreateServerPage() {
     defaults.applyRunPath(nextPath);
   }
 
-  async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
-    const requestId = ++startupDetectRequestId;
-
-    if (!path.trim() || !type) {
-      coreDetecting.value = false;
-      detectedCoreType.value = "";
-      detectedCoreMainClass.value = "";
-      startupDetecting.value = false;
-      startupCandidates.value = [];
-      selectedStartupId.value = "";
-      customStartupCommand.value = "";
-      detectedCoreTypeKey.value = "";
-      coreTypeOptions.value = [];
-      selectedCoreType.value = "";
-      detectedMcVersion.value = "";
-      mcVersionOptions.value = [];
-      selectedMcVersion.value = "";
-      mcVersionDetectionFailed.value = false;
-      startupSyncPending.value = false;
-      return;
-    }
-
-    coreDetecting.value = true;
-    startupDetecting.value = true;
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    if (requestId !== startupDetectRequestId) {
-      return;
-    }
-    try {
-      const discovered = await serverApi.scanStartupCandidates(path, type as "archive" | "folder");
-      const list = appendCustomCandidate(discovered.candidates);
-
-      if (requestId !== startupDetectRequestId) {
-        return;
-      }
-
-      detectedCoreType.value =
-        discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
-      detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
-      const previousDetectedCoreKey = detectedCoreTypeKey.value;
-      const previousDetectedMcVersion = detectedMcVersion.value;
-      detectedCoreTypeKey.value = discovered.detectedCoreTypeKey ?? "";
-      coreTypeOptions.value = discovered.coreTypeOptions;
-      detectedMcVersion.value = discovered.detectedMcVersion ?? "";
-      mcVersionOptions.value = discovered.mcVersionOptions;
-      mcVersionDetectionFailed.value = discovered.mcVersionDetectionFailed;
-      startupCandidates.value = list;
-
-      if (forceReset || !list.some((item) => item.id === selectedStartupId.value)) {
-        selectedStartupId.value = list[0]?.id ?? "";
-      }
-
-      if (
-        forceReset ||
-        !coreTypeOptions.value.includes(selectedCoreType.value) ||
-        selectedCoreType.value === previousDetectedCoreKey
-      ) {
-        selectedCoreType.value = detectedCoreTypeKey.value;
-      }
-
-      if (
-        forceReset ||
-        !mcVersionOptions.value.includes(selectedMcVersion.value) ||
-        selectedMcVersion.value === previousDetectedMcVersion
-      ) {
-        selectedMcVersion.value = detectedMcVersion.value;
-      }
-    } catch (error) {
-      if (requestId !== startupDetectRequestId) {
-        return;
-      }
-      detectedCoreType.value = i18n.t("create.source_core_unknown");
-      detectedCoreMainClass.value = "";
-      startupCandidates.value = appendCustomCandidate([]);
-      selectedStartupId.value = startupCandidates.value[0]?.id ?? "";
-      detectedCoreTypeKey.value = "";
-      coreTypeOptions.value = [];
-      selectedCoreType.value = "";
-      detectedMcVersion.value = "";
-      mcVersionOptions.value = [];
-      selectedMcVersion.value = "";
-      mcVersionDetectionFailed.value = false;
-      showError(String(error));
-    } finally {
-      if (requestId === startupDetectRequestId) {
-        coreDetecting.value = false;
-        startupDetecting.value = false;
-        startupSyncPending.value = false;
-      }
-    }
-  }
-
   async function rescanStartupCandidates() {
-    await refreshStartupCandidates(sourcePath.value.trim(), sourceType.value, true);
+    await scan.rescanStartupCandidates();
   }
 
   /**
@@ -411,20 +270,20 @@ export function useCreateServerPage() {
     sourceType,
     runPath,
     runPathOverwriteRisk,
-    coreDetecting,
-    detectedCoreType,
-    detectedCoreMainClass,
-    startupDetecting,
-    startupCandidates,
-    selectedStartupId,
-    customStartupCommand,
-    detectedCoreTypeKey,
-    coreTypeOptions,
-    selectedCoreType,
-    detectedMcVersion,
-    mcVersionOptions,
-    selectedMcVersion,
-    mcVersionDetectionFailed,
+    coreDetecting: scan.coreDetecting,
+    detectedCoreType: scan.detectedCoreType,
+    detectedCoreMainClass: scan.detectedCoreMainClass,
+    startupDetecting: scan.startupDetecting,
+    startupCandidates: scan.startupCandidates,
+    selectedStartupId: scan.selectedStartupId,
+    customStartupCommand: scan.customStartupCommand,
+    detectedCoreTypeKey: scan.detectedCoreTypeKey,
+    coreTypeOptions: scan.coreTypeOptions,
+    selectedCoreType: scan.selectedCoreType,
+    detectedMcVersion: scan.detectedMcVersion,
+    mcVersionOptions: scan.mcVersionOptions,
+    selectedMcVersion: scan.selectedMcVersion,
+    mcVersionDetectionFailed: scan.mcVersionDetectionFailed,
     serverName,
     maxMemory,
     minMemory,
