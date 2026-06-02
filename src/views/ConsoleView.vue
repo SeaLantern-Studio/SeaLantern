@@ -9,7 +9,7 @@ import {
   computed,
   watch,
 } from "vue";
-import { Cpu, HardDrive, MemoryStick, ArrowDown } from "lucide-vue-next";
+import { ArrowDown } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
@@ -17,26 +17,16 @@ import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useConsoleDisplaySettings } from "@composables/useConsoleDisplaySettings";
-import { useConsoleStore } from "@stores/consoleStore";
+import { useConsoleLogStream } from "@views/useConsoleLogStream";
+import { useConsoleServerStats } from "@views/useConsoleServerStats";
 import { useServerStore } from "@stores/serverStore";
 import { useSettingsStore } from "@stores/settingsStore";
 import { useRoute } from "vue-router";
 import { serverApi } from "@api/server";
-import {
-  serverSystemInfo,
-  serverCpuUsage,
-  serverStatsLoading,
-  serverStatsError,
-  fetchServerResourceUsage,
-  resetStatsHistory,
-} from "@utils/statsUtils";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
-import { formatBytes } from "@utils/formatters";
-import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();
-const consoleStore = useConsoleStore();
 const settingsStore = useSettingsStore();
 const route = useRoute();
 
@@ -61,9 +51,6 @@ const {
   start: startForceStopLoading,
   stop: stopForceStopLoading,
 } = useLoading();
-let unlistenLogLine: UnlistenFn | null = null;
-let statsTimer: ReturnType<typeof setInterval> | null = null;
-const SERVER_STATS_POLL_INTERVAL_MS = 15000;
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
@@ -89,11 +76,16 @@ const quickCommands = computed(() => [
 ]);
 
 const serverId = computed(() => serverStore.currentServerId || "");
-const currentServer = computed(
-  () => serverStore.servers.find((server) => server.id === serverId.value) || null,
-);
-const serverProcessInfo = computed(() => serverSystemInfo.value);
-const serverStatsUnavailable = computed(() => serverStatsError.value && !serverProcessInfo.value);
+const {
+  currentServer,
+  statsSummaryItems,
+  refreshServerStats,
+  startStatsPolling,
+  stopStatsPolling,
+  resetServerStats,
+} = useConsoleServerStats({
+  serverId,
+});
 const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "stopped">(() => {
   if (isRunning.value) return "running";
   if (isStarting.value) return "starting";
@@ -101,104 +93,39 @@ const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "st
   return "stopped";
 });
 
-const statsSummaryItems = computed(() => [
-  {
-    key: "cpu",
-    icon: Cpu,
-    label: i18n.t("home.cpu"),
-    value: serverStatsUnavailable.value ? "--" : `${serverCpuUsage.value}%`,
-    detail: "",
-    tone: "primary",
-  },
-  {
-    key: "memory",
-    icon: MemoryStick,
-    label: i18n.t("home.memory"),
-    value:
-      serverProcessInfo.value && currentServer.value
-        ? `${formatBytes(serverProcessInfo.value.memory.used)} / ${currentServer.value.max_memory} MB`
-        : "--",
-    detail: "",
-    tone: "success",
-  },
-  {
-    key: "disk",
-    icon: HardDrive,
-    label: i18n.t("home.disk"),
-    value: serverProcessInfo.value ? formatBytes(serverProcessInfo.value.disk.used) : "--",
-    detail: "",
-    tone: "warning",
-  },
-]);
-
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopping = computed(() => serverStatus.value === "Stopping");
 const isStarting = computed(() => serverStatus.value === "Starting");
-async function refreshServerStats() {
-  const sid = serverId.value;
-  if (!sid) {
-    serverStatsLoading.value = false;
-    return;
-  }
-  await Promise.all([fetchServerResourceUsage(sid), serverStore.refreshStatus(sid)]);
-}
-
-function startStatsPolling() {
-  stopStatsPolling();
-  void refreshServerStats();
-  statsTimer = setInterval(() => {
-    void refreshServerStats();
-  }, SERVER_STATS_POLL_INTERVAL_MS);
-}
-
-function stopStatsPolling() {
-  if (statsTimer) {
-    clearInterval(statsTimer);
-    statsTimer = null;
-  }
-}
-
-async function startLogSubscription() {
-  if (unlistenLogLine) {
-    return;
-  }
-
-  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
-    const sid = serverId.value;
-    consoleStore.appendLocal(server_id, line);
-    consoleStore.setLogCursor(server_id, (consoleStore.logs[server_id] || []).length);
-    if (!sid || server_id !== sid) return;
-    consoleOutputRef.value?.appendLines([line]);
-  });
-}
-
-function stopLogSubscription() {
-  if (unlistenLogLine) {
-    unlistenLogLine();
-    unlistenLogLine = null;
-  }
-}
+const {
+  activateLogStream,
+  deactivateLogStream,
+  syncLogsOnce,
+  syncAndFocus,
+  clearActiveLogs,
+  appendCommandEcho,
+} = useConsoleLogStream({
+  consoleOutputRef,
+  userScrolledUp,
+  maxLogLines,
+  doScroll,
+});
 
 async function activateConsoleView() {
   const sid = serverId.value;
   if (sid) {
-    consoleStore.setActiveServer(sid);
-    renderCachedLogs(sid);
+    await activateLogStream(sid);
   }
 
   if (serverId.value) {
     startStatsPolling();
   }
-
-  await startLogSubscription();
 }
 
 function deactivateConsoleView() {
   stopStatsPolling();
-  stopLogSubscription();
-  consoleStore.setActiveServer(null);
+  deactivateLogStream();
 }
 
 onMounted(async () => {
@@ -247,49 +174,20 @@ watch(
 watch(
   () => serverId.value,
   async (sid) => {
-    resetStatsHistory();
-    stopStatsPolling();
-    consoleStore.setActiveServer(sid || null);
+    resetServerStats();
     if (!sid) return;
     await serverStore.refreshStatus(sid);
-    await syncLogsOnce(sid);
-    userScrolledUp.value = false;
+    await syncAndFocus(sid);
+    await activateLogStream(sid);
     startStatsPolling();
-    nextTick(() => doScroll());
   },
 );
-
-async function syncLogsOnce(sid: string) {
-  try {
-    const cachedLines = consoleStore.logs[sid] || [];
-
-    if (cachedLines.length > 0) {
-      renderCachedLogs(sid);
-      return;
-    }
-
-    const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
-    consoleStore.replaceLogs(sid, lines);
-    consoleStore.setLogCursor(sid, (consoleStore.logs[sid] || []).length);
-    renderCachedLogs(sid);
-  } catch (_e) {}
-}
-
-function renderCachedLogs(sid: string) {
-  consoleOutputRef.value?.clear();
-  const lines = consoleStore.logs[sid] || [];
-  if (lines.length > 0) {
-    consoleOutputRef.value?.appendLines(lines);
-  }
-}
 
 async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
-  consoleStore.appendLocal(sid, "> " + command);
-  consoleStore.setLogCursor(sid, (consoleStore.logs[sid] || []).length);
-  consoleOutputRef.value?.appendLines(["> " + command]);
+  appendCommandEcho(sid, command);
   commandHistory.value.push(command);
   if (commandHistory.value.length > 500) {
     commandHistory.value.splice(0, commandHistory.value.length - 500);
@@ -399,12 +297,7 @@ function exportLogs() {
 }
 
 function handleClearLogs() {
-  const sid = serverId.value;
-  if (sid) {
-    consoleStore.clearLogs(sid);
-    consoleStore.setLogCursor(sid, 0);
-  }
-  consoleOutputRef.value?.clear();
+  clearActiveLogs(serverId.value);
 }
 
 function getStatusText() {
