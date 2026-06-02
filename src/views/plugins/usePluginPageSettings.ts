@@ -6,7 +6,6 @@ import {
   applyPluginPreset,
   buildPluginSettingsForm,
   clearSettingsRecord,
-  findDependentPlugins,
   getPluginFieldOptions,
   getPluginFieldSelectValue,
   getPluginFieldStringValue,
@@ -14,6 +13,8 @@ import {
   type PluginSettingsRecord,
   updatePluginSettingsField,
 } from "@views/plugins/pluginSettingsShared";
+import { usePluginDependentSettings } from "@views/plugins/usePluginDependentSettings";
+import { usePluginSettingsPersistence } from "@views/plugins/usePluginSettingsPersistence";
 
 type DependentSettingsForms = Record<string, PluginSettingsRecord>;
 
@@ -35,30 +36,24 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
     return plugin.value?.manifest.capabilities?.includes("theme-provider") ?? false;
   });
 
-  async function loadDependentPlugins() {
-    dependentPlugins.value = [];
-    clearSettingsRecord(dependentSettingsForms);
+  const { loadDependentPlugins } = usePluginDependentSettings({
+    pluginId: options.pluginId,
+    plugins: () => pluginStore.plugins,
+    showDependents: () => true,
+    hasPlugin: () => Boolean(plugin.value),
+    getPluginSettings: pluginStore.getPluginSettings,
+    dependentPlugins,
+    dependentSettingsForms,
+    dependentSettingsSnapshots: {},
+  });
 
-    const candidates = findDependentPlugins(pluginStore.plugins, options.pluginId());
-
-    const settingsPromises = candidates
-      .filter((candidate) => candidate.manifest.settings?.length)
-      .map(async (candidate) => {
-        return {
-          plugin: candidate,
-          form: buildPluginSettingsForm(
-            candidate.manifest.settings,
-            await pluginStore.getPluginSettings(candidate.manifest.id),
-          ),
-        };
-      });
-
-    const results = await Promise.all(settingsPromises);
-    for (const { plugin: dependentPlugin, form } of results) {
-      dependentPlugins.value.push(dependentPlugin);
-      dependentSettingsForms[dependentPlugin.manifest.id] = form;
-    }
-  }
+  const settingsPersistence = usePluginSettingsPersistence({
+    ownerPluginId: options.pluginId,
+    plugin: () => plugin.value,
+    dependentPlugins: () => dependentPlugins.value,
+    dependentSettingsForms,
+    setPluginSettings: pluginStore.setPluginSettings,
+  });
 
   async function loadPlugin() {
     loading.value = true;
@@ -109,13 +104,8 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
 
     try {
       const settingsToSave = applyPluginPreset(settingsForm, presetKey, presets[presetKey]);
-      await pluginStore.setPluginSettings(pluginId, settingsToSave);
+      await settingsPersistence.applyPreset(pluginId, presetKey, settingsToSave);
     } catch (error) {
-      pluginLogger.error("PluginPageSettings", "Failed to apply plugin preset", {
-        pluginId,
-        presetKey,
-        error,
-      });
       throw error;
     }
   }
@@ -127,20 +117,7 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
 
     saving.value = true;
     try {
-      await pluginStore.setPluginSettings(options.pluginId(), { ...settingsForm });
-      if (isThemeProvider.value) {
-        await pluginStore.applyThemeProviderSettings(options.pluginId());
-      }
-
-      const dependentSaves = dependentPlugins.value.map(async (dependentPlugin) => {
-        const dependentForm = dependentSettingsForms[dependentPlugin.manifest.id];
-        if (!dependentForm) {
-          return;
-        }
-
-        await pluginStore.setPluginSettings(dependentPlugin.manifest.id, { ...dependentForm });
-      });
-      await Promise.all(dependentSaves);
+      await settingsPersistence.savePluginSettings(settingsForm);
     } catch (error) {
       pluginLogger.error("PluginPageSettings", "Failed to save plugin settings", {
         pluginId: options.pluginId(),
