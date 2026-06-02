@@ -7,10 +7,10 @@ import {
   setLocaleBundle,
   setTranslations,
 } from "@language";
-import { settingsApi } from "@api/settings";
 import { fetchLocale } from "@api/remoteLocales";
 import { onLocaleChanged } from "@api/plugin";
 import { tryLoadLocaleBundle } from "@composables/useI18nBundles";
+import { useSettingsStore } from "@stores/settingsStore";
 import { normalizeAppError, resolveErrorMessage } from "@utils/appError";
 
 const LOCALE_LABEL_KEYS: Record<string, string> = {
@@ -29,6 +29,7 @@ const LOCALE_LABEL_KEYS: Record<string, string> = {
 export const useI18nStore = defineStore("i18n", () => {
   const localeRef = i18n.getLocaleRef();
   const supportedLocales = i18n.getAvailableLocales();
+  const settingsStore = useSettingsStore();
 
   const locale = computed(() => localeRef.value);
   const currentLocale = computed(() => localeRef.value);
@@ -42,30 +43,40 @@ export const useI18nStore = defineStore("i18n", () => {
       labelKey: LOCALE_LABEL_KEYS[code],
     })),
   );
-  async function setLocale(nextLocale: string) {
-    if (i18n.isSupportedLocale(nextLocale)) {
-      const bundleLoaded = await tryLoadLocaleBundle(nextLocale);
-      if (!bundleLoaded && !(await ensureLocaleLoaded(nextLocale as LocaleCode))) {
-        return false;
-      }
+  async function ensureLocaleReady(nextLocale: string): Promise<boolean> {
+    if (!i18n.isSupportedLocale(nextLocale)) {
+      return false;
+    }
 
-      i18n.setLocale(nextLocale);
-      try {
-        const settings = await settingsApi.get();
-        settings.language = nextLocale;
-        await settingsApi.save(settings);
-      } catch (error) {
-        console.error("Failed to save language setting:", normalizeAppError(error));
-      }
-      try {
-        await onLocaleChanged(nextLocale);
-      } catch (error) {
-        console.error("Failed to notify backend about locale change:", normalizeAppError(error));
-      }
+    const bundleLoaded = await tryLoadLocaleBundle(nextLocale);
+    if (bundleLoaded) {
       return true;
     }
 
-    return false;
+    return ensureLocaleLoaded(nextLocale as LocaleCode);
+  }
+
+  async function setLocale(nextLocale: string) {
+    const localeReady = await ensureLocaleReady(nextLocale);
+    if (!localeReady) {
+      return false;
+    }
+
+    i18n.setLocale(nextLocale);
+
+    try {
+      await settingsStore.setLanguage(nextLocale);
+    } catch (error) {
+      console.error("Failed to save language setting:", normalizeAppError(error));
+    }
+
+    try {
+      await onLocaleChanged(nextLocale);
+    } catch (error) {
+      console.error("Failed to notify backend about locale change:", normalizeAppError(error));
+    }
+
+    return true;
   }
 
   async function downloadLocale(localeCode: string) {
@@ -85,17 +96,15 @@ export const useI18nStore = defineStore("i18n", () => {
   function toggleLocale() {
     const currentIndex = supportedLocales.indexOf(localeRef.value);
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % supportedLocales.length;
-    setLocale(supportedLocales[nextIndex]);
+    void setLocale(supportedLocales[nextIndex]);
   }
 
   async function loadLanguageSetting() {
     try {
-      const settings = await settingsApi.get();
-      if (settings.language && i18n.isSupportedLocale(settings.language)) {
-        const bundleLoaded = await tryLoadLocaleBundle(settings.language);
-        if (bundleLoaded || (await ensureLocaleLoaded(settings.language as LocaleCode))) {
-          i18n.setLocale(settings.language);
-        }
+      await settingsStore.ensureLoaded();
+      const language = settingsStore.settings.language;
+      if (language && (await ensureLocaleReady(language))) {
+        i18n.setLocale(language);
       }
     } catch (error) {
       console.error("Failed to load language setting:", {
@@ -113,6 +122,7 @@ export const useI18nStore = defineStore("i18n", () => {
     isTraditionalChinese,
     isEnglish,
     localeOptions,
+    ensureLocaleReady,
     setLocale,
     toggleLocale,
     loadLanguageSetting,

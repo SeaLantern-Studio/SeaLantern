@@ -208,10 +208,6 @@ async function minimizeToTray() {
     await appWindow.minimize();
   }
 }
-function setLanguage(locale: string) {
-  i18nStore.setLocale(locale);
-}
-
 const isChangingLanguage = ref(false);
 
 async function handleLanguageClick(locale: string, close?: () => void) {
@@ -219,17 +215,10 @@ async function handleLanguageClick(locale: string, close?: () => void) {
 
   isChangingLanguage.value = true;
   try {
-    // For local languages we can just switch immediately
-    if (locale === "zh-CN" || locale === "en-US") {
-      setLanguage(locale);
+    const switched = await i18nStore.setLocale(locale);
+    if (switched) {
       close?.();
-      return;
     }
-
-    // trigger download and then switch (downloadLocale logs errors internally)
-    await i18nStore.downloadLocale(locale);
-    setLanguage(locale);
-    close?.();
   } finally {
     isChangingLanguage.value = false;
   }

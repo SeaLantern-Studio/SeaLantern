@@ -252,6 +252,10 @@ export const useSettingsStore = defineStore("settings", () => {
     return result.changed_groups;
   }
 
+  async function setLanguage(language: string): Promise<SettingsGroup[]> {
+    return updatePartial({ language });
+  }
+
   async function resetSettings(
     changedGroups: SettingsGroup[] = [
       "Appearance",
@@ -313,6 +317,7 @@ export const useSettingsStore = defineStore("settings", () => {
     saveSettings,
     saveSettingsWithDiff,
     updatePartial,
+    setLanguage,
     resetSettings,
     importSettingsJson,
     updateSettings,
