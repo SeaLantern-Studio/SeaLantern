@@ -74,6 +74,7 @@ export function createPluginComponentBridge(
     cleanupComponentEventListener,
     removePluginProxies,
     removePluginComponents,
+    pendingComponentVersion: state.pendingComponentVersion,
     consumePendingComponentCreates: state.consumePendingComponentCreates,
     consumePendingComponentDeletes: state.consumePendingComponentDeletes,
   };

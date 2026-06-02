@@ -1,22 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import SLInput from "@components/common/SLInput.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
-import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
 import { useGlobalMessage } from "@composables/useMessage";
 import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "lucide-vue-next";
 import SLModal from "@components/common/SLModal.vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { useSettingsStore } from "@stores/settingsStore";
 
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;
 
 const globalMessage = useGlobalMessage();
+const settingsStore = useSettingsStore();
 type PendingAction = "host" | "join" | "stop" | "generate-ticket";
 const pendingAction = ref<PendingAction | null>(null);
 const status = ref<TunnelStatus | null>(null);
@@ -190,16 +191,28 @@ function applyStatus(next: TunnelStatus) {
 }
 
 async function loadConsoleSettings() {
-  try {
-    const settings = await settingsApi.get();
-    consoleFontSize.value = settings.console_font_size;
-    consoleFontFamily.value = settings.console_font_family || "";
-    consoleLetterSpacing.value = settings.console_letter_spacing || 0;
-    maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-  } catch {
-    // keep defaults
-  }
+  applyConsoleSettings(settingsStore.settings);
 }
+
+function applyConsoleSettings(settings: {
+  console_font_size: number;
+  console_font_family: string;
+  console_letter_spacing: number;
+  max_log_lines: number;
+}) {
+  consoleFontSize.value = settings.console_font_size;
+  consoleFontFamily.value = settings.console_font_family || "";
+  consoleLetterSpacing.value = settings.console_letter_spacing || 0;
+  maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
+}
+
+watch(
+  () => settingsStore.settings,
+  (settings) => {
+    applyConsoleSettings(settings);
+  },
+  { deep: true, immediate: true },
+);
 
 function startStatusPolling() {
   stopStatusPolling();
@@ -360,6 +373,7 @@ function handleJoinTicketInput(value: string) {
 }
 
 onMounted(async () => {
+  await settingsStore.ensureLoaded();
   await loadConsoleSettings();
   await refreshStatus();
   startStatusPolling();

@@ -69,6 +69,7 @@ export const usePluginStore = defineStore("plugin", () => {
     cleanupComponentEventListener,
     removePluginProxies,
     removePluginComponents,
+    pendingComponentVersion,
     consumePendingComponentCreates,
     consumePendingComponentDeletes,
   } = componentBridge;
@@ -212,6 +213,7 @@ export const usePluginStore = defineStore("plugin", () => {
     cleanupComponentEventListener,
     removePluginProxies,
     removePluginComponents,
+    pendingComponentVersion,
     consumePendingComponentCreates,
     consumePendingComponentDeletes,
 

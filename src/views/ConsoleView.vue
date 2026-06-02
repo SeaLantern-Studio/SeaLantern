@@ -17,9 +17,9 @@ import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import { useRoute } from "vue-router";
 import { serverApi } from "@api/server";
-import { settingsApi } from "@api/settings";
 import {
   serverSystemInfo,
   serverCpuUsage,
@@ -30,11 +30,11 @@ import {
 } from "@utils/statsUtils";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
-import { SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "@stores/settingsStore";
 import { formatBytes } from "@utils/serverUtils";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();
+const settingsStore = useSettingsStore();
 const route = useRoute();
 
 interface ConsoleOutputExpose {
@@ -180,8 +180,6 @@ function stopLogSubscription() {
 }
 
 async function activateConsoleView() {
-  await loadConsoleSettings();
-
   if (serverId.value) {
     startStatsPolling();
   }
@@ -195,7 +193,7 @@ function deactivateConsoleView() {
 }
 
 onMounted(async () => {
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
+  await settingsStore.ensureLoaded();
 
   await serverStore.refreshList();
   const routeId = typeof route.params.id === "string" ? route.params.id : "";
@@ -213,7 +211,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
   deactivateConsoleView();
 });
 
@@ -260,15 +257,6 @@ async function syncLogsOnce(sid: string) {
   } catch (_e) {}
 }
 
-async function loadConsoleSettings() {
-  try {
-    const settings = await settingsApi.get();
-    applyConsoleSettings(settings);
-  } catch (e) {
-    console.error("Failed to load settings:", e);
-  }
-}
-
 function applyConsoleSettings(settings: {
   console_font_size: number;
   console_font_family: string;
@@ -281,9 +269,13 @@ function applyConsoleSettings(settings: {
   maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
 }
 
-function handleSettingsUpdate(event: CustomEvent<SettingsUpdateEvent>) {
-  applyConsoleSettings(event.detail.settings);
-}
+watch(
+  () => settingsStore.settings,
+  (settings) => {
+    applyConsoleSettings(settings);
+  },
+  { deep: true, immediate: true },
+);
 
 async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();

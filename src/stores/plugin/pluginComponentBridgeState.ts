@@ -1,17 +1,24 @@
+import { ref } from "vue";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import type { PendingPluginComponentCreate } from "./pluginComponentBridgeShared";
 
 export function createPluginComponentBridgeState() {
+  const pendingComponentVersion = ref(0);
   const pendingComponentCreates = new Map<string, PendingPluginComponentCreate[]>();
   const pendingComponentDeletes = new Map<string, string[]>();
   const mountedComponentIds = new Map<string, Set<string>>();
   const pluginComponentSetMap = new Map<string, Array<{ componentId: string; prop: string }>>();
+
+  function bumpPendingComponentVersion() {
+    pendingComponentVersion.value += 1;
+  }
 
   function enqueueComponentCreate(pluginId: string, component: PendingPluginComponentCreate) {
     if (!pendingComponentCreates.has(pluginId)) {
       pendingComponentCreates.set(pluginId, []);
     }
     pendingComponentCreates.get(pluginId)!.push(component);
+    bumpPendingComponentVersion();
     pluginLogger.info(
       "Component",
       `已排入组件创建: ${component.component_type} (${component.component_id})`,
@@ -56,6 +63,7 @@ export function createPluginComponentBridgeState() {
     const componentIds = mountedIds ? Array.from(mountedIds) : [];
     if (componentIds.length > 0) {
       pendingComponentDeletes.set(pluginId, componentIds);
+      bumpPendingComponentVersion();
     }
 
     mountedComponentIds.delete(pluginId);
@@ -69,6 +77,7 @@ export function createPluginComponentBridgeState() {
   }
 
   return {
+    pendingComponentVersion,
     enqueueComponentCreate,
     trackPluginComponentSet,
     consumePendingComponentCreates,

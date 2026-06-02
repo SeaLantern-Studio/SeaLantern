@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
 import type { PendingPluginComponentCreate } from "@stores/plugin/pluginComponentBridge";
 import SLProgress from "@components/common/SLProgress.vue";
@@ -114,21 +114,18 @@ function removeComponentHost(component: RenderedComponent) {
   document.getElementById(getComponentHostId(component))?.remove();
 }
 
-let intervalId: ReturnType<typeof setInterval> | null = null;
+watch(
+  () => pluginStore.pendingComponentVersion,
+  () => {
+    processAllPendingComponents();
+  },
+);
 
 onMounted(() => {
   processAllPendingComponents();
-  intervalId = setInterval(() => {
-    processAllPendingComponents();
-  }, 300);
 });
 
 onUnmounted(() => {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-  }
-
   for (const component of renderedComponents.value) {
     removeComponentHost(component);
   }
