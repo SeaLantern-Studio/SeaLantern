@@ -16,6 +16,7 @@ import {
   resumeQuoteUpdates,
 } from "@utils/quoteUtils";
 import { fetchSystemInfo } from "@utils/statsUtils";
+import { useSerialPolling } from "@composables/useSerialPolling";
 import {
   actionError,
   deleteServerName,
@@ -29,9 +30,6 @@ import { i18n } from "@language";
 const router = useRouter();
 const store = useServerStore();
 
-let statsTimer: ReturnType<typeof setInterval> | null = null;
-let refreshTimer: ReturnType<typeof setInterval> | null = null;
-
 async function loadServers() {
   try {
     await store.refreshList();
@@ -41,31 +39,36 @@ async function loadServers() {
   }
 }
 
-function startHomePolling() {
-  stopHomePolling();
-  void fetchSystemInfo();
-  statsTimer = setInterval(fetchSystemInfo, 3000);
-  refreshTimer = setInterval(async () => {
+const systemInfoPolling = useSerialPolling({
+  intervalMs: 3000,
+  task: async () => {
+    await fetchSystemInfo();
+  },
+});
+
+const serverStatusPolling = useSerialPolling({
+  intervalMs: 3000,
+  task: async () => {
     await Promise.all(store.servers.map((server) => store.refreshStatus(server.id)));
-  }, 3000);
+  },
+});
+
+function startHomePolling() {
+  systemInfoPolling.start();
+  serverStatusPolling.start();
 }
 
 function stopHomePolling() {
-  if (statsTimer) {
-    clearInterval(statsTimer);
-    statsTimer = null;
-  }
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
+  systemInfoPolling.stop();
+  serverStatusPolling.stop();
 }
 
 onMounted(() => {
   initQuote();
 
-  void loadServers();
-  startHomePolling();
+  void loadServers().finally(() => {
+    startHomePolling();
+  });
   resumeQuoteUpdates();
 });
 
