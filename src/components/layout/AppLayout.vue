@@ -1,56 +1,22 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, watch } from "vue";
+import { computed } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
 import type { WindowEffect } from "@api/settings";
+import { useClientSettingsSync } from "@composables/useClientSettingsSync";
 import { useUiStore } from "@stores/uiStore";
 import { useSettingsStore } from "@stores/settingsStore";
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();
 
+useClientSettingsSync();
+
 const backgroundImage = computed(() => settingsStore.backgroundImage);
 const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
 const backgroundBlur = computed(() => settingsStore.backgroundBlur);
 const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
 const backgroundSize = computed(() => settingsStore.backgroundSize);
-let systemThemeQuery: MediaQueryList | null = null;
-
-function handleSystemThemeChange(): void {
-  const settings = settingsStore.settings;
-  if (settings.theme === "auto") {
-    void settingsStore.queueClientSettingsApply(settings);
-  }
-}
-
-async function applyAllSettings(): Promise<void> {
-  await settingsStore.queueClientSettingsApply(settingsStore.settings);
-}
-
-onMounted(async () => {
-  await settingsStore.ensureLoaded();
-  await applyAllSettings();
-
-  systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  systemThemeQuery.addEventListener("change", handleSystemThemeChange);
-});
-
-onUnmounted(() => {
-  if (systemThemeQuery) {
-    systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
-  }
-});
-
-watch(
-  () => settingsStore.settings,
-  (nextSettings, previousSettings) => {
-    if (nextSettings === previousSettings) {
-      return;
-    }
-    void settingsStore.queueClientSettingsApply(nextSettings);
-  },
-  { deep: true },
-);
 
 const backgroundStyle = computed(() => {
   if (!backgroundImage.value) return {};

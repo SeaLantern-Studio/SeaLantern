@@ -94,24 +94,6 @@ const defaultSettings: AppSettings = {
   agreed_to_terms: false,
 };
 
-export interface SettingsUpdateEvent {
-  changedGroups: SettingsGroup[];
-  settings: AppSettings;
-}
-
-export const SETTINGS_UPDATE_EVENT = "settings-updated-v2";
-
-export function dispatchSettingsUpdate(
-  changedGroups: SettingsGroup[],
-  settings: AppSettings,
-): void {
-  window.dispatchEvent(
-    new CustomEvent<SettingsUpdateEvent>(SETTINGS_UPDATE_EVENT, {
-      detail: { changedGroups, settings },
-    }),
-  );
-}
-
 export const useSettingsStore = defineStore("settings", () => {
   const settings = ref<AppSettings>(defaultSettings);
   const isLoaded = ref(false);
@@ -153,12 +135,9 @@ export const useSettingsStore = defineStore("settings", () => {
 
   function replaceSettings(
     nextSettings: AppSettings,
-    changedGroups: SettingsGroup[] = [],
+    _changedGroups: SettingsGroup[] = [],
   ): AppSettings {
     syncSettings(nextSettings);
-    if (changedGroups.length > 0) {
-      dispatchSettingsUpdate(changedGroups, nextSettings);
-    }
     return nextSettings;
   }
 

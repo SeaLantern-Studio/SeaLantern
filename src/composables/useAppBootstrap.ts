@@ -19,7 +19,6 @@ export function useAppBootstrap() {
     try {
       await settingsStore.loadSettings();
       await i18nStore.loadLanguageSetting();
-      await settingsStore.queueClientSettingsApply();
 
       try {
         await pluginStore.loadPlugins();
