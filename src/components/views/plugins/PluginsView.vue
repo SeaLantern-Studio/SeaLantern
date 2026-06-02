@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { ref } from "vue";
 import SLDropzone from "@components/common/SLDropzone.vue";
 import PluginChooserDialog from "@components/views/plugins/PluginChooserDialog.vue";
 import PluginFeedbackDialogs from "@components/views/plugins/PluginFeedbackDialogs.vue";
@@ -14,12 +13,11 @@ import { usePluginFeedback } from "@components/views/plugins/usePluginFeedback";
 import { usePluginListActions } from "@components/views/plugins/usePluginListActions";
 import { usePluginSelection } from "@components/views/plugins/usePluginSelection";
 import { usePluginSettingsDialog } from "@components/views/plugins/usePluginSettingsDialog";
+import { usePluginsViewPage } from "@components/views/plugins/usePluginsViewPage";
 import { usePluginsInstaller } from "@components/views/plugins/usePluginsInstaller";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import type { PluginInfo } from "@type/plugin";
-import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
 import { Upload } from "lucide-vue-next";
 
 const pluginStore = usePluginStore();
@@ -65,17 +63,6 @@ const {
   getDependencyTooltip,
   getPluginDependencyViewModel,
 } = usePluginDependencies(() => pluginStore.plugins);
-
-const filteredPlugins = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return pluginStore.plugins;
-  return pluginStore.plugins.filter((p) => {
-    const id = p.manifest.id.toLowerCase();
-    const name = getLocalizedPluginName(p.manifest, i18n.getLocale()).toLowerCase();
-    const stateStr = (typeof p.state === "string" ? p.state : "error").toLowerCase();
-    return id.includes(q) || name.includes(q) || stateStr.includes(q);
-  });
-});
 
 const {
   alertDialog,
@@ -151,57 +138,40 @@ const {
   },
 });
 
-function handleRefresh() {
-  pluginStore.refreshPlugins();
-}
-
-function getPermissionLabel(perm: string): string {
-  return i18n.t(`plugins.permission.${perm}`) !== `plugins.permission.${perm}`
-    ? i18n.t(`plugins.permission.${perm}`)
-    : perm;
-}
-
-function getPermissionDesc(perm: string): string {
-  return i18n.t(`plugins.permission.${perm}_desc`) !== `plugins.permission.${perm}_desc`
-    ? i18n.t(`plugins.permission.${perm}_desc`)
-    : "";
-}
-
-function updateSettingsField(key: string, value: string | number | boolean) {
-  settingsForm[key] = value;
-}
-
-function showMissingDependenciesModal(plugin: PluginInfo) {
-  installedPluginName.value = plugin.manifest.name;
-  const required = getMissingRequiredDependencies(plugin);
-  const optional = getMissingOptionalDependencies(plugin);
-  missingDependencies.value = [...required, ...optional];
-  showDependencyModal.value = true;
-}
-
-function openRepository(url: string) {
-  openUrl(url);
-}
-
-function getPluginName(plugin: PluginInfo): string {
-  return getLocalizedPluginName(plugin.manifest, i18n.getLocale());
-}
-
-function getPluginDescription(plugin: PluginInfo): string {
-  return getLocalizedPluginDescription(plugin.manifest, i18n.getLocale());
-}
-
-async function handleSaveSettings() {
-  const errorMessage = await saveSettings();
-  if (errorMessage) {
-    showAlert(i18n.t("common.message_unknown_error"), errorMessage);
-  }
-}
-
-function handleGoToMarket() {
-  showDependencyModal.value = false;
-  goToMarket();
-}
+const {
+  filteredPlugins,
+  handleRefresh,
+  getPermissionLabel,
+  getPermissionDesc,
+  updateSettingsField,
+  showMissingDependenciesModal,
+  openRepository,
+  getPluginName,
+  getPluginDescription,
+  handleSaveSettings,
+  handleGoToMarket,
+} = usePluginsViewPage({
+  plugins: () => pluginStore.plugins,
+  searchQuery: () => searchQuery.value,
+  refreshPlugins: pluginStore.refreshPlugins,
+  getMissingRequiredDependencies,
+  getMissingOptionalDependencies,
+  saveSettings,
+  showAlert: (title, message) => {
+    showAlert(title, message ?? "");
+  },
+  goToMarket,
+  settingsForm,
+  setInstalledPluginName: (name) => {
+    installedPluginName.value = name;
+  },
+  setMissingDependencies: (dependencies) => {
+    missingDependencies.value = dependencies;
+  },
+  setShowDependencyModal: (show) => {
+    showDependencyModal.value = show;
+  },
+});
 </script>
 
 <template>
