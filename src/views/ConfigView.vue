@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onActivated } from "vue";
+import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
@@ -16,6 +16,7 @@ import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.
 import ConfigStartupSection from "@components/config/ConfigStartupSection.vue";
 import { useConfigPlugins } from "@views/config/useConfigPlugins";
 import { useConfigCompare } from "@views/config/useConfigCompare";
+import { useConfigPageLifecycle } from "@views/config/useConfigPageLifecycle";
 import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
@@ -35,6 +36,7 @@ const activeTab = ref<"properties" | "plugins" | "startup">(
 const configSaveDiffModalWidth = "1040px";
 
 const currentServerId = computed(() => store.currentServerId);
+const routeId = computed(() => (route.params.id as string) || "");
 const currentServer = computed(
   () => store.servers.find((s) => s.id === store.currentServerId) || null,
 );
@@ -167,50 +169,29 @@ const translatedDescriptionByKey = computed(() => {
   return result;
 });
 
-onMounted(async () => {
-  await store.refreshList();
-  const routeId = route.params.id as string;
-  if (routeId) {
-    store.setCurrentServer(routeId);
-  } else if (!store.currentServerId && store.servers.length > 0) {
-    store.setCurrentServer(store.servers[0].id);
-  }
+useConfigPageLifecycle({
+  routeId,
+  currentServerId,
+  serverCount: computed(() => store.servers.length),
+  setCurrentServer: (id) => {
+    if (id) {
+      store.setCurrentServer(id);
+      return;
+    }
 
-  await propertiesEditor.loadProperties();
-  await pluginsState.loadPlugins();
-});
-
-watch(
-  () => store.currentServerId,
-  async () => {
-    if (store.currentServerId) {
-      if (compare.compareTargetServerId.value === store.currentServerId) {
-        compare.compareTargetServerId.value =
-          compare.compareServerOptions.value[0]?.value?.toString() || "";
-      }
-      await propertiesEditor.loadProperties();
-      await pluginsState.loadPlugins();
+    if (!store.currentServerId && store.servers.length > 0) {
+      store.setCurrentServer(store.servers[0].id);
     }
   },
-);
-
-watch(compare.compareTargetServerId, async () => {
-  if (compare.compareMode.value && compare.compareTargetServerId.value) {
-    await compare.loadCompareProperties();
-  }
-});
-
-watch(compare.hasCompareTargets, (hasTargets) => {
-  if (hasTargets) {
-    return;
-  }
-
-  compare.resetCompareState(true);
-});
-
-onActivated(async () => {
-  await propertiesEditor.loadProperties();
-  await pluginsState.loadPlugins();
+  refreshList: () => store.refreshList(),
+  loadProperties: () => propertiesEditor.loadProperties(),
+  loadPlugins: () => pluginsState.loadPlugins(),
+  compareTargetServerId: compare.compareTargetServerId,
+  compareServerOptions: compare.compareServerOptions,
+  hasCompareTargets: compare.hasCompareTargets,
+  compareMode: compare.compareMode,
+  loadCompareProperties: () => compare.loadCompareProperties(),
+  resetCompareState: (clearTarget) => compare.resetCompareState(clearTarget),
 });
 </script>
 
