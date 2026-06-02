@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { useRoute } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
@@ -13,14 +12,12 @@ import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
 import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
 import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.vue";
 import ConfigStartupSection from "@components/config/ConfigStartupSection.vue";
-import { useConfigPageLifecycle } from "@views/config/useConfigPageLifecycle";
 import { useConfigViewModel } from "@views/config/useConfigViewModel";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
 
 const route = useRoute();
 const viewModel = useConfigViewModel({ route });
-const store = viewModel.store;
 const error = viewModel.error;
 const successMsg = viewModel.successMsg;
 const activeTab = viewModel.activeTab;
@@ -36,36 +33,10 @@ const gamemodeOptions = viewModel.gamemodeOptions;
 const difficultyOptions = viewModel.difficultyOptions;
 const translatedDescriptionByKey = viewModel.translatedDescriptionByKey;
 const configSaveDiffModalWidth = viewModel.configSaveDiffModalWidth;
-const routeId = viewModel.routeId;
 const currentServerName = viewModel.currentServerName;
 const compareTargetServerName = viewModel.compareTargetServerName;
 const handleStartupConfigSaved = viewModel.handleStartupConfigSaved;
 const setError = viewModel.setError;
-
-useConfigPageLifecycle({
-  routeId,
-  currentServerId,
-  serverCount: computed(() => store.servers.length),
-  setCurrentServer: (id) => {
-    if (id) {
-      store.setCurrentServer(id);
-      return;
-    }
-
-    if (!store.currentServerId && store.servers.length > 0) {
-      store.setCurrentServer(store.servers[0].id);
-    }
-  },
-  refreshList: () => store.refreshList(),
-  loadProperties: () => propertiesEditor.loadProperties(),
-  loadPlugins: () => pluginsState.loadPlugins(),
-  compareTargetServerId: compare.compareTargetServerId,
-  compareServerOptions: compare.compareServerOptions,
-  hasCompareTargets: compare.hasCompareTargets,
-  compareMode: compare.compareMode,
-  loadCompareProperties: () => compare.loadCompareProperties(),
-  resetCompareState: (clearTarget) => compare.resetCompareState(clearTarget),
-});
 </script>
 
 <template>

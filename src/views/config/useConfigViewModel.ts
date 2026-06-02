@@ -4,6 +4,7 @@ import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import { useConfigPlugins } from "@views/config/useConfigPlugins";
 import { useConfigCompare } from "@views/config/useConfigCompare";
+import { useConfigPageLifecycle } from "@views/config/useConfigPageLifecycle";
 import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
 
 type ConfigTabKey = "properties" | "plugins" | "startup";
@@ -172,6 +173,31 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
   const compareTargetServerName = computed(
     () => compare.compareTargetServer.value?.name || i18n.t("config.compare.target_server"),
   );
+
+  useConfigPageLifecycle({
+    routeId,
+    currentServerId,
+    serverCount: computed(() => store.servers.length),
+    setCurrentServer: (id) => {
+      if (id) {
+        store.setCurrentServer(id);
+        return;
+      }
+
+      if (!store.currentServerId && store.servers.length > 0) {
+        store.setCurrentServer(store.servers[0].id);
+      }
+    },
+    refreshList: () => store.refreshList(),
+    loadProperties: () => propertiesEditor.loadProperties(),
+    loadPlugins: () => pluginsState.loadPlugins(),
+    compareTargetServerId: compare.compareTargetServerId,
+    compareServerOptions: compare.compareServerOptions,
+    hasCompareTargets: compare.hasCompareTargets,
+    compareMode: compare.compareMode,
+    loadCompareProperties: () => compare.loadCompareProperties(),
+    resetCompareState: (clearTarget) => compare.resetCompareState(clearTarget),
+  });
 
   return {
     store,
