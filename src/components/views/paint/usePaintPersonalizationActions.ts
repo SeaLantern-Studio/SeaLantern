@@ -1,9 +1,10 @@
 import { ref, type Ref } from "vue";
-import { settingsApi, type AppSettings } from "@api/settings";
+import type { AppSettings } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { useToast } from "@composables/useToast";
 import { usePluginStore } from "@stores/pluginStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import type { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 
 type SettingsDraftState = ReturnType<typeof useSettingsPageDraft>;
@@ -16,6 +17,7 @@ interface UsePaintPersonalizationActionsOptions {
 
 export function usePaintPersonalizationActions(options: UsePaintPersonalizationActionsOptions) {
   const pluginStore = usePluginStore();
+  const settingsStore = useSettingsStore();
   const toast = useToast();
   const personalizationBusy = ref(false);
 
@@ -23,13 +25,13 @@ export function usePaintPersonalizationActions(options: UsePaintPersonalizationA
     personalizationBusy.value = true;
     options.settingsDraft.clearError();
     try {
-      const suggestedName = await settingsApi.getPersonalizationPackageSuggestedName();
+      const suggestedName = await settingsStore.getPersonalizationPackageSuggestedName();
       const filePath = await systemApi.pickPersonalizationExportFile(suggestedName);
       if (!filePath) {
         return;
       }
 
-      await settingsApi.exportPersonalizationPackage(filePath);
+      await settingsStore.exportPersonalizationPackage(filePath);
       toast.success(i18n.t("settings.personalization_export_success"));
     } catch (error) {
       const message = String(error);
@@ -49,8 +51,8 @@ export function usePaintPersonalizationActions(options: UsePaintPersonalizationA
         return;
       }
 
-      const result = await settingsApi.importPersonalizationPackage(filePath);
-      options.settingsDraft.replaceSettings(result.settings, result.changed_groups);
+      const result = await settingsStore.importPersonalizationPackage(filePath);
+      options.settingsDraft.applyStoreSnapshot(result.settings);
       await pluginStore.injectAllPluginCss();
 
       if (result.skipped_plugins.length > 0) {

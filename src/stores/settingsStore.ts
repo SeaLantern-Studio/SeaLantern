@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import {
   settingsApi,
   type AppSettings,
+  type ImportPersonalizationResult,
   type PartialSettings,
   type SettingsGroup,
   type WindowEffect,
@@ -268,6 +269,20 @@ export const useSettingsStore = defineStore("settings", () => {
     return settingsApi.exportJson();
   }
 
+  async function getPersonalizationPackageSuggestedName(): Promise<string> {
+    return settingsApi.getPersonalizationPackageSuggestedName();
+  }
+
+  async function exportPersonalizationPackage(path: string): Promise<void> {
+    return settingsApi.exportPersonalizationPackage(path);
+  }
+
+  async function importPersonalizationPackage(path: string): Promise<ImportPersonalizationResult> {
+    const result = await settingsApi.importPersonalizationPackage(path);
+    replaceSettings(result.settings, result.changed_groups);
+    return result;
+  }
+
   async function setCloseAction(closeAction: string): Promise<SettingsGroup[]> {
     return updatePartial({ close_action: closeAction });
   }
@@ -308,6 +323,9 @@ export const useSettingsStore = defineStore("settings", () => {
     setCloseAction,
     resetSettings,
     exportSettingsJson,
+    getPersonalizationPackageSuggestedName,
+    exportPersonalizationPackage,
+    importPersonalizationPackage,
     importSettingsJson,
     updateSettings,
     cloneSettings,
