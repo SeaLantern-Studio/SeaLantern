@@ -1,4 +1,15 @@
 import { tauriInvoke } from "@api/tauri";
+import type { JavaInfo } from "@api/java";
+
+export interface CreateServerDefaults {
+  default_run_path: string;
+  suggested_run_path: string;
+  default_max_memory: number;
+  default_min_memory: number;
+  default_port: number;
+  cached_java_list: JavaInfo[];
+  preferred_java_path: string;
+}
 import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 
 export interface CpuInfo {
@@ -249,6 +260,10 @@ export const systemApi = {
 
   async getDefaultRunPath(): Promise<string> {
     return tauriInvoke("get_default_run_path");
+  },
+
+  async getCreateServerDefaults(): Promise<CreateServerDefaults> {
+    return tauriInvoke("get_create_server_defaults");
   },
 
   async getSafeModeStatus(): Promise<boolean> {

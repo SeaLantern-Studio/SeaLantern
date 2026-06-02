@@ -21,15 +21,6 @@ import { useServerStore } from "@stores/serverStore";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { isBrowserEnv } from "@api/tauri";
 
-// UUID 生成函数（用于前端备用方案）
-function generateUUID(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
 type SourceType = "archive" | "folder" | "";
 
 function inferSourceType(path: string): SourceType {
@@ -333,50 +324,14 @@ export function useCreateServerPage() {
 
   async function loadDefaultSettings() {
     try {
-      const settings = await settingsApi.get();
+      const defaults = await systemApi.getCreateServerDefaults();
 
-      maxMemory.value = String(settings.default_max_memory);
-      minMemory.value = String(settings.default_min_memory);
-      port.value = String(settings.default_port);
-
-      // Docker 环境下强制使用默认路径，忽略已保存的路径设置
-      if (isBrowserEnv()) {
-        try {
-          const defaultPath = await systemApi.getDefaultRunPath();
-          // 在Docker环境下，生成UUID并显示完整路径
-          const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
-          runPath.value = `${defaultPath}/${uuid}`;
-        } catch (error) {
-          console.error("Failed to get default run path:", error);
-          // 即使API调用失败，也设置一个合理的默认值
-          const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
-          runPath.value = `./data/${uuid}`;
-        }
-      } else {
-        // 非 Docker 环境下加载上次选择的开服路径
-        if (settings.last_run_path) {
-          runPath.value = settings.last_run_path;
-        } else {
-          // 如果没有上次的路径，获取默认路径
-          try {
-            runPath.value = await systemApi.getDefaultRunPath();
-          } catch (error) {
-            console.error("Failed to get default run path:", error);
-          }
-        }
-      }
-
-      if (settings.cached_java_list && settings.cached_java_list.length > 0) {
-        javaList.value = settings.cached_java_list;
-        if (settings.default_java_path) {
-          selectedJava.value = settings.default_java_path;
-        } else {
-          const preferredJava = javaList.value.find(
-            (java) => java.is_64bit && java.major_version >= 17,
-          );
-          selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
-        }
-      }
+      maxMemory.value = String(defaults.default_max_memory);
+      minMemory.value = String(defaults.default_min_memory);
+      port.value = String(defaults.default_port);
+      runPath.value = defaults.suggested_run_path || defaults.default_run_path;
+      javaList.value = defaults.cached_java_list || [];
+      selectedJava.value = defaults.preferred_java_path || "";
     } catch (error) {
       console.error("Failed to load default settings:", error);
     }
@@ -402,9 +357,10 @@ export function useCreateServerPage() {
         selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
       }
 
-      const settings = await settingsApi.get();
-      settings.cached_java_list = javaList.value;
-      await settingsApi.save(settings);
+      await settingsApi.updatePartial({
+        cached_java_list: javaList.value,
+        default_java_path: selectedJava.value || undefined,
+      });
     } catch (error) {
       showError(String(error));
     } finally {
@@ -413,25 +369,18 @@ export function useCreateServerPage() {
   }
 
   async function pickRunPath() {
-    // Docker 环境下禁用文件选择器，使用默认路径
     if (isBrowserEnv()) {
       try {
-        const defaultPath = await systemApi.getDefaultRunPath();
-        // 在Docker环境下，生成UUID并显示完整路径
-        const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
-        const fullPath = `${defaultPath}/${uuid}`;
+        const defaults = await systemApi.getCreateServerDefaults();
+        const fullPath = defaults.suggested_run_path || defaults.default_run_path;
         updateRunPath(fullPath);
-        // 保存选择的开服路径
         try {
           await settingsApi.updatePartial({ last_run_path: fullPath });
         } catch (error) {
           console.error("Failed to save last run path:", error);
         }
       } catch (error) {
-        console.error("Failed to get default run path:", error);
-        // 即使API调用失败，也设置一个合理的默认值（包含UUID）
-        const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
-        updateRunPath(`./data/${uuid}`);
+        console.error("Failed to get create server defaults:", error);
       }
       return;
     }
