@@ -16,6 +16,7 @@ import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import { useConsoleDisplaySettings } from "@composables/useConsoleDisplaySettings";
 import { useConsoleStore } from "@stores/consoleStore";
 import { useServerStore } from "@stores/serverStore";
 import { useSettingsStore } from "@stores/settingsStore";
@@ -51,10 +52,8 @@ const consoleOutputRef = ref<ConsoleOutputExpose | null>(null);
 const userScrolledUp = ref(false);
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref(-1);
-const consoleFontSize = ref(13);
-const consoleFontFamily = ref("");
-const consoleLetterSpacing = ref(0);
-const maxLogLines = ref(5000);
+const { consoleFontSize, consoleFontFamily, consoleLetterSpacing, maxLogLines } =
+  useConsoleDisplaySettings();
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
 const {
@@ -283,26 +282,6 @@ function renderCachedLogs(sid: string) {
     consoleOutputRef.value?.appendLines(lines);
   }
 }
-
-function applyConsoleSettings(settings: {
-  console_font_size: number;
-  console_font_family: string;
-  console_letter_spacing: number;
-  max_log_lines: number;
-}) {
-  consoleFontSize.value = settings.console_font_size;
-  consoleFontFamily.value = settings.console_font_family || "";
-  consoleLetterSpacing.value = settings.console_letter_spacing || 0;
-  maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-}
-
-watch(
-  () => settingsStore.settings,
-  (settings) => {
-    applyConsoleSettings(settings);
-  },
-  { deep: true, immediate: true },
-);
 
 async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();

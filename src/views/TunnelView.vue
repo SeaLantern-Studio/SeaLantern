@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import SLInput from "@components/common/SLInput.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import { useConsoleDisplaySettings } from "@composables/useConsoleDisplaySettings";
+import { useTunnelStatusPolling } from "@views/useTunnelStatusPolling";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { i18n } from "@language";
 import { useGlobalMessage } from "@composables/useMessage";
@@ -80,13 +82,8 @@ interface ConsoleOutputExpose {
 
 const tunnelOutputRef = ref<ConsoleOutputExpose | null>(null);
 const userScrolledUp = ref(false);
-const consoleFontSize = ref(13);
-const consoleFontFamily = ref("");
-const consoleLetterSpacing = ref(0);
-const maxLogLines = ref(5000);
-let statusPollTimer: ReturnType<typeof setTimeout> | null = null;
-let statusPollInFlight: Promise<void> | null = null;
-let tunnelViewDisposed = false;
+const { consoleFontSize, consoleFontFamily, consoleLetterSpacing, maxLogLines } =
+  useConsoleDisplaySettings();
 const syncedLogCount = ref(0);
 const syncedVisibleLogs = ref<string[]>([]);
 const syncedFirstLogLine = ref("");
@@ -192,82 +189,9 @@ function applyStatus(next: TunnelStatus) {
   }
 }
 
-async function loadConsoleSettings() {
-  applyConsoleSettings(settingsStore.settings);
-}
-
-function applyConsoleSettings(settings: {
-  console_font_size: number;
-  console_font_family: string;
-  console_letter_spacing: number;
-  max_log_lines: number;
-}) {
-  consoleFontSize.value = settings.console_font_size;
-  consoleFontFamily.value = settings.console_font_family || "";
-  consoleLetterSpacing.value = settings.console_letter_spacing || 0;
-  maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-}
-
-watch(
-  () => settingsStore.settings,
-  (settings) => {
-    applyConsoleSettings(settings);
-  },
-  { deep: true, immediate: true },
-);
-
-function startStatusPolling() {
-  tunnelViewDisposed = false;
-  stopStatusPolling();
-  scheduleNextStatusRefresh();
-}
-
-function stopStatusPolling() {
-  if (statusPollTimer) {
-    clearTimeout(statusPollTimer);
-    statusPollTimer = null;
-  }
-}
-
-function scheduleNextStatusRefresh(delay = 2000) {
-  if (tunnelViewDisposed) {
-    return;
-  }
-  stopStatusPolling();
-  statusPollTimer = setTimeout(() => {
-    void refreshStatus({ silent: true, reschedule: true });
-  }, delay);
-}
-
-async function refreshStatus(options?: { silent?: boolean; reschedule?: boolean }) {
-  const silent = options?.silent ?? false;
-  const reschedule = options?.reschedule ?? false;
-
-  if (statusPollInFlight) {
-    if (reschedule) {
-      scheduleNextStatusRefresh();
-    }
-    return statusPollInFlight;
-  }
-
-  statusPollInFlight = (async () => {
-    try {
-      const next = await tunnelApi.status();
-      if (!tunnelViewDisposed) {
-        applyStatus(next);
-      }
-    } catch (e) {
-      if (!silent && !tunnelViewDisposed) globalMessage.error(String(e));
-    } finally {
-      statusPollInFlight = null;
-      if (reschedule && !tunnelViewDisposed) {
-        scheduleNextStatusRefresh();
-      }
-    }
-  })();
-
-  return statusPollInFlight;
-}
+const { refreshStatus, startStatusPolling, stopStatusPolling } = useTunnelStatusPolling({
+  applyStatus,
+});
 
 async function startHost() {
   if (!beginAction("host")) return;
@@ -404,15 +328,12 @@ function handleJoinTicketInput(value: string) {
 }
 
 onMounted(async () => {
-  tunnelViewDisposed = false;
   await settingsStore.ensureLoaded();
-  await loadConsoleSettings();
   await refreshStatus();
   startStatusPolling();
 });
 
 onUnmounted(() => {
-  tunnelViewDisposed = true;
   stopStatusPolling();
   syncedLogCount.value = 0;
   syncedVisibleLogs.value = [];
