@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import SLDropzone from "@components/common/SLDropzone.vue";
 import PluginChooserDialog from "@components/views/plugins/PluginChooserDialog.vue";
 import PluginFeedbackDialogs from "@components/views/plugins/PluginFeedbackDialogs.vue";
@@ -8,24 +7,16 @@ import PluginSettingsDialog from "@components/views/plugins/PluginSettingsDialog
 import PluginsStatePanel from "@components/views/plugins/PluginsStatePanel.vue";
 import PluginsToolbar from "@components/views/plugins/PluginsToolbar.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
-import { usePluginDependencies } from "@components/views/plugins/usePluginDependencies";
-import { usePluginFeedback } from "@components/views/plugins/usePluginFeedback";
-import { usePluginListActions } from "@components/views/plugins/usePluginListActions";
-import { usePluginSelection } from "@components/views/plugins/usePluginSelection";
-import { usePluginSettingsDialog } from "@components/views/plugins/usePluginSettingsDialog";
-import { usePluginsViewPage } from "@components/views/plugins/usePluginsViewPage";
-import { usePluginsInstaller } from "@components/views/plugins/usePluginsInstaller";
-import { pluginLogger } from "@stores/plugin/pluginLogger";
-import { usePluginStore } from "@stores/pluginStore";
+import { usePluginsViewModel } from "@components/views/plugins/usePluginsViewModel";
 import { i18n } from "@language";
 import { Upload } from "lucide-vue-next";
 
-const pluginStore = usePluginStore();
-const searchQuery = ref("");
+const viewModel = usePluginsViewModel();
+const pluginStore = viewModel.pluginStore;
+const searchQuery = viewModel.searchQuery;
 const {
   isDragging,
   chooserOpen,
-  safeMode,
   isInstalling,
   showDependencyModal,
   missingDependencies,
@@ -37,12 +28,14 @@ const {
   handleBatchInstall,
   pickFile,
   pickFolder,
-} = usePluginsInstaller();
+} = viewModel.installer;
+const safeMode = viewModel.installer.safeMode;
+const checkingAllUpdates = viewModel.listActions.checkingAllUpdates;
+const filteredPlugins = viewModel.page.filteredPlugins;
 const {
   batchMode,
   selectedPlugins,
   showBatchDeleteDialog,
-  pendingDeletePluginId,
   showSingleDeleteDialog,
   singleDeletePluginName,
   toggleBatchMode,
@@ -51,77 +44,10 @@ const {
   deselectAll,
   invertSelection,
   showBatchDeleteConfirm,
-  prepareSingleDelete,
-  clearSingleDeleteState,
-} = usePluginSelection();
-const {
-  getDepDisplayName,
-  hasMissingRequiredDependencies,
-  getMissingRequiredDependencies,
-  getMissingOptionalDependencies,
-  hasMissingOptionalDependencies,
-  getDependencyTooltip,
-  getPluginDependencyViewModel,
-} = usePluginDependencies(() => pluginStore.plugins);
-
-const {
-  alertDialog,
-  permissionWarning,
-  showAlert,
-  closeAlertDialog,
-  openPermissionWarning,
-  closePermissionWarning,
-  getErrorMessage,
-} = usePluginFeedback();
-
-const {
-  checkingAllUpdates,
-  handleToggle,
-  confirmPermissionWarning,
-  cancelPermissionWarning,
-  executeSingleDelete,
-  executeBatchDelete,
-  handleCheckAllUpdates,
-  getStatusColor,
-  getStatusLabel,
-  isPluginEnabled,
-  hasSettings,
-  getPluginMenuItems,
-  handleMenuSelect,
-  goToMarket,
-} = usePluginListActions({
-  plugins: () => pluginStore.plugins,
-  clearError: () => {
-    pluginStore.error = null;
-  },
-  togglePlugin: pluginStore.togglePlugin,
-  checkUpdate: pluginStore.checkUpdate,
-  checkAllUpdates: pluginStore.checkAllUpdates,
-  deletePlugin: pluginStore.deletePlugin,
-  deletePlugins: pluginStore.deletePlugins,
-  showAlert,
-  getErrorMessage,
-  openPermissionWarning,
-  closePermissionWarning,
-  pendingPermissionPluginId: () => permissionWarning.value.pluginId,
-  prepareSingleDelete,
-  clearSingleDeleteState,
-  pendingDeletePluginId: () => pendingDeletePluginId.value,
-  selectedPluginIds: () => selectedPlugins.value,
-  clearSelection: () => {
-    selectedPlugins.value.clear();
-  },
-  closeSingleDeleteDialog: () => {
-    showSingleDeleteDialog.value = false;
-  },
-  closeBatchDeleteDialog: () => {
-    showBatchDeleteDialog.value = false;
-  },
-  exitBatchMode: () => {
-    batchMode.value = false;
-  },
-});
-
+} = viewModel.selection;
+const dependencies = viewModel.dependencies;
+const { alertDialog, permissionWarning, closeAlertDialog } = viewModel.feedback;
+const listActions = viewModel.listActions;
 const {
   showSettingsModal,
   currentSettingsPlugin,
@@ -129,49 +55,8 @@ const {
   savingSettings,
   openSettings,
   closeSettings,
-  saveSettings,
-} = usePluginSettingsDialog({
-  getPluginSettings: pluginStore.getPluginSettings,
-  setPluginSettings: pluginStore.setPluginSettings,
-  logError: (message, details) => {
-    pluginLogger.error("PluginsView", message, details);
-  },
-});
-
-const {
-  filteredPlugins,
-  handleRefresh,
-  getPermissionLabel,
-  getPermissionDesc,
-  updateSettingsField,
-  showMissingDependenciesModal,
-  openRepository,
-  getPluginName,
-  getPluginDescription,
-  handleSaveSettings,
-  handleGoToMarket,
-} = usePluginsViewPage({
-  plugins: () => pluginStore.plugins,
-  searchQuery: () => searchQuery.value,
-  refreshPlugins: pluginStore.refreshPlugins,
-  getMissingRequiredDependencies,
-  getMissingOptionalDependencies,
-  saveSettings,
-  showAlert: (title, message) => {
-    showAlert(title, message ?? "");
-  },
-  goToMarket,
-  settingsForm,
-  setInstalledPluginName: (name) => {
-    installedPluginName.value = name;
-  },
-  setMissingDependencies: (dependencies) => {
-    missingDependencies.value = dependencies;
-  },
-  setShowDependencyModal: (show) => {
-    showDependencyModal.value = show;
-  },
-});
+} = viewModel.settingsDialog;
+const page = viewModel.page;
 </script>
 
 <template>
@@ -183,8 +68,8 @@ const {
       :loading="pluginStore.loading"
       @update:search-query="searchQuery = $event"
       @toggle-batch-mode="toggleBatchMode"
-      @check-all-updates="handleCheckAllUpdates"
-      @refresh="handleRefresh"
+      @check-all-updates="listActions.handleCheckAllUpdates"
+      @refresh="page.handleRefresh"
     />
 
     <SLDropzone
@@ -225,26 +110,26 @@ const {
       :updates="pluginStore.updates"
       :icons="pluginStore.icons"
       :safe-mode="safeMode"
-      :get-plugin-name="getPluginName"
-      :get-plugin-description="getPluginDescription"
-      :is-plugin-enabled="isPluginEnabled"
-      :get-status-color="getStatusColor"
-      :get-status-label="getStatusLabel"
-      :has-settings="hasSettings"
-      :has-missing-required-dependencies="hasMissingRequiredDependencies"
-      :has-missing-optional-dependencies="hasMissingOptionalDependencies"
-      :get-dependency-tooltip="getDependencyTooltip"
-      :get-plugin-menu-items="getPluginMenuItems"
+      :get-plugin-name="page.getPluginName"
+      :get-plugin-description="page.getPluginDescription"
+      :is-plugin-enabled="listActions.isPluginEnabled"
+      :get-status-color="listActions.getStatusColor"
+      :get-status-label="listActions.getStatusLabel"
+      :has-settings="listActions.hasSettings"
+      :has-missing-required-dependencies="dependencies.hasMissingRequiredDependencies"
+      :has-missing-optional-dependencies="dependencies.hasMissingOptionalDependencies"
+      :get-dependency-tooltip="dependencies.getDependencyTooltip"
+      :get-plugin-menu-items="listActions.getPluginMenuItems"
       @select-all="selectAll(pluginStore.plugins)"
       @invert-selection="invertSelection(pluginStore.plugins)"
       @deselect-all="deselectAll"
       @batch-delete="showBatchDeleteConfirm"
       @toggle-plugin-selection="togglePluginSelection"
-      @show-missing-dependencies="showMissingDependenciesModal"
-      @menu-select="handleMenuSelect"
-      @open-repository="openRepository"
+      @show-missing-dependencies="page.showMissingDependenciesModal"
+      @menu-select="listActions.handleMenuSelect"
+      @open-repository="page.openRepository"
       @open-settings="openSettings"
-      @toggle-plugin="handleToggle"
+      @toggle-plugin="listActions.handleToggle"
     />
 
     <PluginSettingsDialog
@@ -252,22 +137,24 @@ const {
       :plugin="currentSettingsPlugin"
       :field-values="settingsForm"
       :saving="savingSettings"
-      :get-permission-label="getPermissionLabel"
-      :get-permission-desc="getPermissionDesc"
+      :get-permission-label="page.getPermissionLabel"
+      :get-permission-desc="page.getPermissionDesc"
       :dependency-view-model="
-        currentSettingsPlugin ? getPluginDependencyViewModel(currentSettingsPlugin) : null
+        currentSettingsPlugin
+          ? dependencies.getPluginDependencyViewModel(currentSettingsPlugin)
+          : null
       "
       @close="closeSettings"
-      @save="handleSaveSettings"
-      @update-field="updateSettingsField"
+      @save="page.handleSaveSettings"
+      @update-field="page.updateSettingsField"
     />
 
     <SLPermissionDialog
       :show="permissionWarning.show"
       :plugin-name="permissionWarning.pluginName"
       :permissions="permissionWarning.permissions"
-      @confirm="confirmPermissionWarning"
-      @cancel="cancelPermissionWarning"
+      @confirm="listActions.confirmPermissionWarning"
+      @cancel="listActions.cancelPermissionWarning"
     />
 
     <PluginFeedbackDialogs
@@ -281,14 +168,14 @@ const {
       :missing-dependencies="missingDependencies"
       :show-batch-result-modal="showBatchResultModal"
       :batch-install-result="batchInstallResult"
-      :get-dep-display-name="getDepDisplayName"
+      :get-dep-display-name="dependencies.getDepDisplayName"
       @close-single-delete="showSingleDeleteDialog = false"
-      @confirm-single-delete="executeSingleDelete"
+      @confirm-single-delete="listActions.executeSingleDelete"
       @close-batch-delete="showBatchDeleteDialog = false"
-      @confirm-batch-delete="executeBatchDelete"
+      @confirm-batch-delete="listActions.executeBatchDelete"
       @close-alert="closeAlertDialog"
       @close-dependency="showDependencyModal = false"
-      @go-market="handleGoToMarket"
+      @go-market="page.handleGoToMarket"
       @close-batch-result="showBatchResultModal = false"
     />
   </div>
