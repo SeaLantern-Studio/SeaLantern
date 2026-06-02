@@ -1,31 +1,6 @@
 import { ref, type Ref } from "vue";
-
-// 动态导入所有语言文件 ,此处不用别名导入，因为需要使用 import.meta.glob 来获取文件路径
-const languageFiles: Record<string, any> = import.meta.glob("./*.json", { eager: true });
-
-// 处理语言文件，提取语言代码和数据
-const processLanguageFiles = () => {
-  const translations: Record<string, LanguageFile> = {};
-  const supportedLocales: string[] = [];
-
-  // 遍历所有导入的语言文件
-  for (const [path, module] of Object.entries(languageFiles)) {
-    // 从文件路径中提取语言代码，如 "./zh-CN.json" -> "zh-CN"
-    const match = path.match(/\.\/(.*)\.json$/);
-    if (match) {
-      const localeCode = match[1];
-      const data = (module as any).default;
-
-      // 确保数据是有效的语言文件
-      if (data && typeof data === "object") {
-        translations[localeCode] = data;
-        supportedLocales.push(localeCode);
-      }
-    }
-  }
-
-  return { translations, supportedLocales };
-};
+import enUS from "./en-US.json";
+import zhCN from "./zh-CN.json";
 
 type TranslationNode = {
   [key: string]: string | TranslationNode;
@@ -36,7 +11,16 @@ type LanguageFile = TranslationNode & {
   languageName?: string;
 };
 
-const { translations, supportedLocales } = processLanguageFiles();
+type LocaleModule = { default: LanguageFile };
+
+const localeLoaders = import.meta.glob<LocaleModule>("./*.json");
+const translations: Record<string, LanguageFile> = {
+  "zh-CN": zhCN as LanguageFile,
+  "en-US": enUS as LanguageFile,
+};
+const supportedLocales: string[] = Object.keys(localeLoaders)
+  .map((path) => path.match(/\.\/(.*)\.json$/)?.[1])
+  .filter((locale): locale is string => Boolean(locale));
 
 const backendFlatTranslations: Record<string, Record<string, string>> = {};
 
@@ -50,6 +34,24 @@ export function setTranslations(locale: LocaleCode, data: LanguageFile) {
   if (isSupportedLocale(locale)) {
     translations[locale] = data;
   }
+}
+
+export async function ensureLocaleLoaded(locale: LocaleCode): Promise<boolean> {
+  if (translations[locale]) {
+    return true;
+  }
+
+  const loader = localeLoaders[`./${locale}.json`];
+  if (!loader) {
+    return false;
+  }
+
+  const module = await loader();
+  translations[locale] = module.default;
+  if (!supportedLocales.includes(locale)) {
+    supportedLocales.push(locale);
+  }
+  return true;
 }
 
 export function setLocaleBundle(
@@ -215,6 +217,7 @@ const languageAPI = {
   i18n,
   SUPPORTED_LOCALES,
   setTranslations,
+  ensureLocaleLoaded,
   setLocaleBundle,
   registerPluginLocale,
   addPluginTranslations,

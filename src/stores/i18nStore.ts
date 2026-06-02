@@ -1,6 +1,12 @@
 import { computed } from "vue";
 import { defineStore } from "pinia";
-import { i18n, type LocaleCode, setLocaleBundle, setTranslations } from "@language";
+import {
+  ensureLocaleLoaded,
+  i18n,
+  type LocaleCode,
+  setLocaleBundle,
+  setTranslations,
+} from "@language";
 import { settingsApi } from "@api/settings";
 import { fetchLocale } from "@api/remoteLocales";
 import { onLocaleChanged } from "@api/plugin";
@@ -39,7 +45,7 @@ export const useI18nStore = defineStore("i18n", () => {
   async function setLocale(nextLocale: string) {
     if (i18n.isSupportedLocale(nextLocale)) {
       const bundleLoaded = await tryLoadLocaleBundle(nextLocale);
-      if (!bundleLoaded) {
+      if (!bundleLoaded && !(await ensureLocaleLoaded(nextLocale as LocaleCode))) {
         return false;
       }
 
@@ -87,7 +93,7 @@ export const useI18nStore = defineStore("i18n", () => {
       const settings = await settingsApi.get();
       if (settings.language && i18n.isSupportedLocale(settings.language)) {
         const bundleLoaded = await tryLoadLocaleBundle(settings.language);
-        if (bundleLoaded) {
+        if (bundleLoaded || (await ensureLocaleLoaded(settings.language as LocaleCode))) {
           i18n.setLocale(settings.language);
         }
       }

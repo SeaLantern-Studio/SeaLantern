@@ -1140,6 +1140,10 @@
       "network_hint_check": "Please check network connectivity, market source URL, and proxy settings before retrying.",
       "custom_source": "Switch Plugin Source",
       "source_url": "Plugin Source URL",
+      "source_invalid": "This source URL is not available. Use HTTPS, or http://localhost for local testing.",
+      "source_current": "Current source: {{host}}",
+      "source_confirm_title": "Custom source",
+      "source_confirm_desc": "This source is outside the default market. Review the domain, signature, and checksum before installing from it.",
       "source_save": "Save",
       "source_reset": "Reset to Default"
     },

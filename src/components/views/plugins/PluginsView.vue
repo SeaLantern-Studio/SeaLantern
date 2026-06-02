@@ -2,16 +2,12 @@
 import { ref, computed } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useRouter } from "vue-router";
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLCheckbox from "@components/common/SLCheckbox.vue";
-import SLMenu from "@components/common/SLMenu.vue";
 import SLDropzone from "@components/common/SLDropzone.vue";
 import PluginChooserDialog from "@components/views/plugins/PluginChooserDialog.vue";
 import PluginFeedbackDialogs from "@components/views/plugins/PluginFeedbackDialogs.vue";
-import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
+import PluginList from "@components/views/plugins/PluginList.vue";
 import PluginSettingsDialog from "@components/views/plugins/PluginSettingsDialog.vue";
+import PluginsToolbar from "@components/views/plugins/PluginsToolbar.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginDependencies } from "@components/views/plugins/usePluginDependencies";
 import { usePluginFeedback } from "@components/views/plugins/usePluginFeedback";
@@ -27,16 +23,7 @@ import {
   getLocalizedPluginName,
   getLocalizedPluginDescription,
 } from "@type/plugin";
-import {
-  Upload,
-  Layers,
-  ShieldAlert,
-  MoreVertical,
-  Github,
-  Settings,
-  Trash2,
-  RefreshCw,
-} from "lucide-vue-next";
+import { Upload, Layers, Trash2, RefreshCw } from "lucide-vue-next";
 
 const router = useRouter();
 const pluginStore = usePluginStore();
@@ -129,10 +116,10 @@ function handleRefresh() {
   pluginStore.refreshPlugins();
 }
 
-async function handleToggle(id: string, currentEnabled: boolean) {
+async function handleToggle(id: string, nextEnabled: boolean) {
   pluginStore.error = null;
 
-  if (!currentEnabled) {
+  if (nextEnabled) {
     const plugin = pluginStore.plugins.find((p) => p.manifest.id === id);
     const permissions = plugin?.manifest.permissions || [];
     if (hasDangerousPermissions(permissions)) {
@@ -141,7 +128,7 @@ async function handleToggle(id: string, currentEnabled: boolean) {
     }
   }
 
-  await doTogglePlugin(id, !currentEnabled);
+  await doTogglePlugin(id, nextEnabled);
 }
 
 async function confirmPermissionWarning() {
@@ -348,6 +335,14 @@ function openRepository(url: string) {
   openUrl(url);
 }
 
+function getPluginName(plugin: PluginInfo): string {
+  return getLocalizedPluginName(plugin.manifest, i18n.getLocale());
+}
+
+function getPluginDescription(plugin: PluginInfo): string {
+  return getLocalizedPluginDescription(plugin.manifest, i18n.getLocale());
+}
+
 async function handleSaveSettings() {
   const errorMessage = await saveSettings();
   if (errorMessage) {
@@ -363,37 +358,16 @@ function goToMarket() {
 
 <template>
   <div class="plugins-view">
-    <div class="plugins-toolbar">
-      <div class="toolbar-left">
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="plugin-search"
-          :placeholder="i18n.t('plugins.search_placeholder')"
-        />
-      </div>
-      <div class="toolbar-right">
-        <SLButton :variant="batchMode ? 'primary' : 'secondary'" size="sm" @click="toggleBatchMode">
-          {{ i18n.t("plugins.batch_mode") }}
-        </SLButton>
-        <SLButton
-          variant="secondary"
-          size="sm"
-          :loading="checkingAllUpdates"
-          @click="handleCheckAllUpdates"
-        >
-          {{ i18n.t("plugins.check_updates") }}
-        </SLButton>
-        <SLButton
-          variant="secondary"
-          size="sm"
-          :loading="pluginStore.loading"
-          @click="handleRefresh"
-        >
-          {{ i18n.t("plugins.refresh") }}
-        </SLButton>
-      </div>
-    </div>
+    <PluginsToolbar
+      :search-query="searchQuery"
+      :batch-mode="batchMode"
+      :checking-all-updates="checkingAllUpdates"
+      :loading="pluginStore.loading"
+      @update:search-query="searchQuery = $event"
+      @toggle-batch-mode="toggleBatchMode"
+      @check-all-updates="handleCheckAllUpdates"
+      @refresh="handleRefresh"
+    />
 
     <SLDropzone
       class="plugins-dropzone"
@@ -437,179 +411,35 @@ function goToMarket() {
       <p class="empty-desc">{{ i18n.t("plugins.no_plugins_desc") }}</p>
     </div>
 
-    <div v-else>
-      <div v-if="batchMode" class="batch-action-bar">
-        <div class="batch-action-left">
-          <span class="selected-count">{{
-            i18n.t("plugins.selected_count", { count: selectedPlugins.size })
-          }}</span>
-        </div>
-        <div class="batch-action-right">
-          <SLButton variant="secondary" size="sm" @click="selectAll(pluginStore.plugins)">
-            {{ i18n.t("plugins.select_all") }}
-          </SLButton>
-          <SLButton variant="secondary" size="sm" @click="invertSelection(pluginStore.plugins)">
-            {{ i18n.t("plugins.invert_selection") }}
-          </SLButton>
-          <SLButton variant="secondary" size="sm" @click="deselectAll">
-            {{ i18n.t("plugins.deselect_all") }}
-          </SLButton>
-          <SLButton
-            variant="danger"
-            size="sm"
-            :disabled="selectedPlugins.size === 0"
-            @click="showBatchDeleteConfirm"
-          >
-            {{ i18n.t("plugins.batch_delete") }}
-          </SLButton>
-        </div>
-      </div>
-      <div class="plugin-grid">
-        <SLCard
-          v-for="plugin in filteredPlugins"
-          :key="plugin.manifest.id"
-          class="plugin-card"
-          :class="{ 'plugin-card--selected': batchMode && selectedPlugins.has(plugin.manifest.id) }"
-        >
-          <div class="plugin-content">
-            <label v-if="batchMode" class="plugin-checkbox" @click.stop>
-              <SLCheckbox
-                :modelValue="selectedPlugins.has(plugin.manifest.id)"
-                @update:modelValue="togglePluginSelection(plugin.manifest.id)"
-              />
-            </label>
-
-            <div class="plugin-card-actions">
-              <div
-                v-if="pluginStore.updates[plugin.manifest.id]"
-                class="update-badge"
-                :title="i18n.t('plugins.update_available')"
-              >
-                <ShieldAlert :size="12" />
-              </div>
-
-              <div
-                v-if="hasMissingRequiredDependencies(plugin)"
-                class="dependency-indicator dependency-indicator--required"
-                :title="getDependencyTooltip(plugin)"
-                @click.stop="showMissingDependenciesModal(plugin)"
-              ></div>
-              <div
-                v-else-if="hasMissingOptionalDependencies(plugin)"
-                class="dependency-indicator dependency-indicator--optional"
-                :title="getDependencyTooltip(plugin)"
-                @click.stop="showMissingDependenciesModal(plugin)"
-              ></div>
-
-              <PluginPermissionPanel
-                :plugin-id="plugin.manifest.id"
-                :permissions="plugin.manifest.permissions || []"
-              />
-
-              <SLMenu
-                :items="getPluginMenuItems(plugin.manifest.id)"
-                position="bottom-end"
-                @select="handleMenuSelect($event, plugin.manifest.id)"
-              >
-                <SLButton variant="ghost" icon-only size="sm">
-                  <MoreVertical :size="16" />
-                </SLButton>
-              </SLMenu>
-            </div>
-            <div class="plugin-main">
-              <div class="plugin-icon">
-                <img
-                  v-if="pluginStore.icons[plugin.manifest.id]"
-                  :src="pluginStore.icons[plugin.manifest.id]"
-                  alt="plugin icon"
-                  class="plugin-icon-img"
-                />
-                <Layers v-else :size="32" :stroke-width="1.5" class="plugin-icon-default" />
-              </div>
-              <div class="plugin-info">
-                <div class="plugin-header">
-                  <div class="plugin-title-row">
-                    <h3 class="plugin-name">
-                      {{ getLocalizedPluginName(plugin.manifest, i18n.getLocale()) }}
-                    </h3>
-                    <span class="plugin-version">v{{ plugin.manifest.version }}</span>
-                  </div>
-                  <div class="plugin-author-row">
-                    <span v-if="plugin.manifest.author" class="plugin-author">
-                      by {{ plugin.manifest.author.name }}
-                    </span>
-                    <SLButton
-                      v-if="plugin.manifest.repository"
-                      variant="ghost"
-                      icon-only
-                      size="sm"
-                      @click.stop="openRepository(plugin.manifest.repository)"
-                      :title="i18n.t('plugins.open_repository')"
-                    >
-                      <Github :size="14" />
-                    </SLButton>
-                  </div>
-                </div>
-                <p v-if="plugin.manifest.description" class="plugin-description">
-                  {{ getLocalizedPluginDescription(plugin.manifest, i18n.getLocale()) }}
-                </p>
-                <p
-                  v-if="typeof plugin.state === 'object' && 'error' in plugin.state"
-                  class="plugin-error-message"
-                >
-                  {{ plugin.state.error }}
-                </p>
-              </div>
-            </div>
-
-            <div class="plugin-footer">
-              <span
-                class="plugin-status"
-                :style="{ color: getStatusColor(plugin.state) }"
-                :title="
-                  typeof plugin.state === 'object' && 'error' in plugin.state
-                    ? plugin.state.error
-                    : undefined
-                "
-              >
-                {{ getStatusLabel(plugin.state) }}
-              </span>
-              <div class="plugin-actions">
-                <SLButton
-                  v-if="hasSettings(plugin)"
-                  variant="ghost"
-                  icon-only
-                  size="sm"
-                  @click="openSettings(plugin)"
-                  :title="i18n.t('plugins.settings')"
-                >
-                  <Settings :size="16" />
-                </SLButton>
-                <SLSwitch
-                  v-if="!safeMode"
-                  :modelValue="isPluginEnabled(plugin.state)"
-                  :disabled="
-                    hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
-                  "
-                  :title="
-                    hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
-                      ? i18n.t('plugins.missing_required_deps')
-                      : ''
-                  "
-                  @update:modelValue="
-                    handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))
-                  "
-                  size="sm"
-                />
-                <span v-else class="safe-mode-label">{{
-                  i18n.t("plugins.safe_mode_disabled")
-                }}</span>
-              </div>
-            </div>
-          </div>
-        </SLCard>
-      </div>
-    </div>
+    <PluginList
+      v-else
+      :plugins="filteredPlugins"
+      :batch-mode="batchMode"
+      :selected-plugin-ids="selectedPlugins"
+      :updates="pluginStore.updates"
+      :icons="pluginStore.icons"
+      :safe-mode="safeMode"
+      :get-plugin-name="getPluginName"
+      :get-plugin-description="getPluginDescription"
+      :is-plugin-enabled="isPluginEnabled"
+      :get-status-color="getStatusColor"
+      :get-status-label="getStatusLabel"
+      :has-settings="hasSettings"
+      :has-missing-required-dependencies="hasMissingRequiredDependencies"
+      :has-missing-optional-dependencies="hasMissingOptionalDependencies"
+      :get-dependency-tooltip="getDependencyTooltip"
+      :get-plugin-menu-items="getPluginMenuItems"
+      @select-all="selectAll(pluginStore.plugins)"
+      @invert-selection="invertSelection(pluginStore.plugins)"
+      @deselect-all="deselectAll"
+      @batch-delete="showBatchDeleteConfirm"
+      @toggle-plugin-selection="togglePluginSelection"
+      @show-missing-dependencies="showMissingDependenciesModal"
+      @menu-select="handleMenuSelect"
+      @open-repository="openRepository"
+      @open-settings="openSettings"
+      @toggle-plugin="handleToggle"
+    />
 
     <PluginSettingsDialog
       :visible="showSettingsModal"

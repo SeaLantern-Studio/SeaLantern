@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
 import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
+import SLRegisteredButton from "@components/common/SLRegisteredButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
@@ -20,7 +20,7 @@ const pluginStore = usePluginStore();
 
 const componentMap: Record<string, any> = {
   SLCard,
-  SLButton,
+  SLButton: SLRegisteredButton,
   SLInput,
   SLCheckbox,
   SLSwitch,

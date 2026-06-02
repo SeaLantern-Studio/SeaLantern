@@ -19,6 +19,13 @@ export interface MarketFeedback {
   message: string;
 }
 
+interface ValidatedMarketSource {
+  url: string;
+  custom: boolean;
+  host: string;
+  protocol: string;
+}
+
 const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market";
 const MARKET_URL_KEY = "sealantern_market_url";
 const CRITICAL_PERMS = new Set(["execute_program", "plugin_folder_access"]);
@@ -40,8 +47,27 @@ export function usePluginMarket() {
   const showUrlEditor = ref(false);
   const customMarketUrl = ref(localStorage.getItem(MARKET_URL_KEY) || "");
   const urlInput = ref(customMarketUrl.value);
+  const pendingMarketSource = ref<string | null>(null);
+  const showCustomSourceConfirm = ref(false);
 
-  const activeMarketUrl = computed(() => customMarketUrl.value.trim() || MARKET_BASE_URL);
+  const validatedMarketSource = computed<ValidatedMarketSource>(() => {
+    const validated = validateMarketUrl(customMarketUrl.value);
+    if (validated) {
+      return validated;
+    }
+
+    const fallback = new URL(MARKET_BASE_URL);
+    return {
+      url: MARKET_BASE_URL,
+      custom: false,
+      host: fallback.host,
+      protocol: fallback.protocol,
+    };
+  });
+
+  const activeMarketUrl = computed(() => validatedMarketSource.value.url);
+  const activeMarketHost = computed(() => validatedMarketSource.value.host);
+  const isUsingCustomMarket = computed(() => validatedMarketSource.value.custom);
   const marketErrorHint = computed<string>(() => {
     if (!error.value) {
       return "";
@@ -169,6 +195,33 @@ export function usePluginMarket() {
     }
     const dir = plugin._path.replace(/\/[^/]+$/, "");
     return `${activeMarketUrl.value.trim().replace(/\/$/, "")}/${dir}/${plugin.icon_url}`;
+  }
+
+  function validateMarketUrl(input: string): ValidatedMarketSource | null {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    try {
+      const parsed = new URL(trimmed);
+      const isHttps = parsed.protocol === "https:";
+      const isLocalHttp =
+        parsed.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+      if (!isHttps && !isLocalHttp) {
+        return null;
+      }
+
+      parsed.hash = "";
+      return {
+        url: parsed.toString().replace(/\/$/, ""),
+        custom: parsed.toString().replace(/\/$/, "") !== MARKET_BASE_URL,
+        host: parsed.host,
+        protocol: parsed.protocol,
+      };
+    } catch {
+      return null;
+    }
   }
 
   function resolveMarketNetworkHint(message: string): string {
@@ -302,25 +355,66 @@ export function usePluginMarket() {
 
   function saveMarketUrl() {
     const url = urlInput.value.trim();
-    customMarketUrl.value = url;
-    if (url) {
-      localStorage.setItem(MARKET_URL_KEY, url);
+    if (!url) {
+      resetMarketUrl();
+      return;
+    }
+
+    const validated = validateMarketUrl(url);
+    if (!validated) {
+      showFeedback("error", i18n.t("market.source_invalid"));
+      return;
+    }
+
+    if (validated.custom) {
+      pendingMarketSource.value = validated.url;
+      showCustomSourceConfirm.value = true;
+      return;
+    }
+
+    applyMarketUrl(validated.url);
+  }
+
+  function applyMarketUrl(url: string) {
+    const normalized = url.trim();
+    customMarketUrl.value = normalized === MARKET_BASE_URL ? "" : normalized;
+    urlInput.value = customMarketUrl.value;
+    if (customMarketUrl.value) {
+      localStorage.setItem(MARKET_URL_KEY, customMarketUrl.value);
     } else {
       localStorage.removeItem(MARKET_URL_KEY);
     }
     showUrlEditor.value = false;
+    showCustomSourceConfirm.value = false;
+    pendingMarketSource.value = null;
     pluginLogger.info("Market", "插件市场来源已更新", {
-      source: url || MARKET_BASE_URL,
-      custom: Boolean(url),
+      source: customMarketUrl.value || MARKET_BASE_URL,
+      custom: Boolean(customMarketUrl.value),
     });
     void loadMarket();
+  }
+
+  function confirmCustomMarketUrl() {
+    if (!pendingMarketSource.value) {
+      showCustomSourceConfirm.value = false;
+      return;
+    }
+
+    applyMarketUrl(pendingMarketSource.value);
+  }
+
+  function cancelCustomMarketUrl() {
+    pendingMarketSource.value = null;
+    showCustomSourceConfirm.value = false;
   }
 
   function resetMarketUrl() {
     urlInput.value = "";
     customMarketUrl.value = "";
+    pendingMarketSource.value = null;
     localStorage.removeItem(MARKET_URL_KEY);
     showUrlEditor.value = false;
+    showCustomSourceConfirm.value = false;
     pluginLogger.info("Market", "插件市场来源已恢复默认", {
       source: MARKET_BASE_URL,
     });
@@ -347,12 +441,18 @@ export function usePluginMarket() {
     customMarketUrl,
     urlInput,
     activeMarketUrl,
+    activeMarketHost,
+    isUsingCustomMarket,
     marketErrorHint,
+    pendingMarketSource,
+    showCustomSourceConfirm,
     filteredPlugins,
     allTags,
     tagTabs,
     clearFeedback,
     saveMarketUrl,
+    confirmCustomMarketUrl,
+    cancelCustomMarketUrl,
     resetMarketUrl,
     toggleUrlEditor,
     resolveI18n,

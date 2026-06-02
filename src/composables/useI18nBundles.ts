@@ -1,5 +1,5 @@
 import { getLocaleBundle } from "@api/i18n";
-import { setLocaleBundle } from "@language";
+import { ensureLocaleLoaded, setLocaleBundle } from "@language";
 import { normalizeAppError } from "@utils/appError";
 
 export async function loadLocaleBundle(locale: string): Promise<void> {
@@ -13,6 +13,6 @@ export async function tryLoadLocaleBundle(locale: string): Promise<boolean> {
     return true;
   } catch (error) {
     console.error("Failed to load locale bundle:", normalizeAppError(error));
-    return false;
+    return ensureLocaleLoaded(locale);
   }
 }

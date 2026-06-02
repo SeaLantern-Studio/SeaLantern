@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, computed } from "vue";
 import { Loader2 } from "lucide-vue-next";
+import { useRegisterComponent } from "@composables/useRegisterComponent";
 
 interface Props {
   variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
@@ -9,6 +10,7 @@ interface Props {
   disabled?: boolean;
   loading?: boolean;
   iconOnly?: boolean;
+  componentId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -18,6 +20,21 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   loading: false,
   iconOnly: false,
+});
+
+const elRef = ref<HTMLElement | null>(null);
+const id = props.componentId ?? `sl-button-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(id, {
+  type: "SLButton",
+  get: (prop) => (prop === "disabled" ? props.disabled : undefined),
+  set: () => {},
+  call: (method) => {
+    if (method === "click") {
+      elRef.value?.click();
+    }
+  },
+  on: () => () => {},
+  el: () => elRef.value,
 });
 
 const buttonClasses = computed(() => [
@@ -32,6 +49,7 @@ const buttonClasses = computed(() => [
 
 <template>
   <button
+    ref="elRef"
     class="sl-button"
     :class="buttonClasses"
     :type="type"

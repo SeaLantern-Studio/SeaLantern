@@ -16,6 +16,121 @@ export type PluginRuntimeEventListenerRegistry = Map<
   Array<{ element: Element; eventType: string; handler: EventListener }>
 >;
 
+const ALLOWED_RUNTIME_STYLE_PROPS = new Set([
+  "align-items",
+  "background",
+  "background-color",
+  "border",
+  "border-color",
+  "border-radius",
+  "border-style",
+  "border-width",
+  "bottom",
+  "box-shadow",
+  "color",
+  "display",
+  "flex",
+  "flex-direction",
+  "font-size",
+  "font-weight",
+  "gap",
+  "height",
+  "justify-content",
+  "left",
+  "margin",
+  "margin-bottom",
+  "margin-left",
+  "margin-right",
+  "margin-top",
+  "max-height",
+  "max-width",
+  "min-height",
+  "min-width",
+  "opacity",
+  "overflow",
+  "padding",
+  "padding-bottom",
+  "padding-left",
+  "padding-right",
+  "padding-top",
+  "pointer-events",
+  "position",
+  "right",
+  "text-align",
+  "top",
+  "transform",
+  "visibility",
+  "width",
+  "z-index",
+]);
+
+const ALLOWED_RUNTIME_ATTRIBUTES = new Set([
+  "aria-label",
+  "aria-hidden",
+  "aria-pressed",
+  "aria-selected",
+  "data-state",
+  "data-variant",
+  "disabled",
+  "role",
+  "tabindex",
+  "title",
+  "value",
+]);
+
+function getPluginRootSelector(pluginId: string): string {
+  return `[data-plugin-id="${pluginId}"]`;
+}
+
+function getPluginRuntimeRoots(pluginId: string): HTMLElement[] {
+  return Array.from(document.querySelectorAll(getPluginRootSelector(pluginId))) as HTMLElement[];
+}
+
+function resolveScopedTargets(pluginId: string, selector: string): Element[] {
+  const roots = getPluginRuntimeRoots(pluginId);
+  if (roots.length === 0) {
+    return [];
+  }
+
+  const targets: Element[] = [];
+  for (const root of roots) {
+    if (root.matches(selector)) {
+      targets.push(root);
+    }
+    root.querySelectorAll(selector).forEach((element) => {
+      targets.push(element);
+    });
+  }
+  return targets;
+}
+
+function resolveScopedTarget(pluginId: string, selector: string): Element | null {
+  return resolveScopedTargets(pluginId, selector)[0] ?? null;
+}
+
+function normalizeStyleProperty(property: string): string {
+  return property.replace(/([A-Z])/g, "-$1").toLowerCase();
+}
+
+function isAllowedStyleProperty(property: string): boolean {
+  const normalized = normalizeStyleProperty(property);
+  if (normalized.startsWith("--")) {
+    return true;
+  }
+  return ALLOWED_RUNTIME_STYLE_PROPS.has(normalized);
+}
+
+function isAllowedAttribute(attribute: string): boolean {
+  const normalized = attribute.trim().toLowerCase();
+  if (normalized.startsWith("aria-")) {
+    return true;
+  }
+  if (normalized.startsWith("data-plugin-")) {
+    return true;
+  }
+  return ALLOWED_RUNTIME_ATTRIBUTES.has(normalized);
+}
+
 export function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, {
     FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "link", "meta", "style"],
@@ -33,24 +148,15 @@ export function sanitizeCss(css: string): string {
   sanitized = sanitized.replace(/url\s*\(\s*(['"]?)\s*data:[^)]*\1\s*\)/gi, "url(about:blank)");
   sanitized = sanitized.replace(/expression\s*\(/gi, "(");
   sanitized = sanitized.replace(/-moz-binding\s*:/gi, ":");
+  sanitized = sanitized.replace(/\b(position|z-index)\s*:[^;]+;?/gi, "");
   return sanitized;
 }
 
 export function executePluginScripts(container: HTMLElement, rawHtml: string) {
-  const scriptRegex = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = scriptRegex.exec(rawHtml)) !== null) {
-    const scriptContent = match[1]?.trim();
-    if (!scriptContent) {
-      continue;
-    }
-    try {
-      const scriptEl = document.createElement("script");
-      scriptEl.textContent = scriptContent;
-      container.appendChild(scriptEl);
-    } catch (error) {
-      pluginLogger.error("RuntimeUI", "插件脚本执行失败", error);
-    }
+  if (/<script\b/i.test(rawHtml)) {
+    pluginLogger.warn("RuntimeUI", "已拦截插件脚本注入", {
+      containerId: container.id,
+    });
   }
 }
 
@@ -196,7 +302,7 @@ export async function handlePluginRuntimeDomEvent(
 
     case "hide": {
       if (!target) return true;
-      document.querySelectorAll(target).forEach((element) => {
+      resolveScopedTargets(plugin_id, target).forEach((element) => {
         (element as HTMLElement).style.display = "none";
         (element as HTMLElement).dataset.pluginHidden = plugin_id;
       });
@@ -205,7 +311,7 @@ export async function handlePluginRuntimeDomEvent(
 
     case "show": {
       if (!target) return true;
-      document.querySelectorAll(target).forEach((element) => {
+      resolveScopedTargets(plugin_id, target).forEach((element) => {
         (element as HTMLElement).style.display = "";
         delete (element as HTMLElement).dataset.pluginHidden;
       });
@@ -214,7 +320,7 @@ export async function handlePluginRuntimeDomEvent(
 
     case "disable": {
       if (!target) return true;
-      document.querySelectorAll(target).forEach((element) => {
+      resolveScopedTargets(plugin_id, target).forEach((element) => {
         (element as HTMLElement).setAttribute("disabled", "true");
         (element as HTMLElement).style.pointerEvents = "none";
         (element as HTMLElement).style.opacity = "0.5";
@@ -225,7 +331,7 @@ export async function handlePluginRuntimeDomEvent(
 
     case "enable": {
       if (!target) return true;
-      document.querySelectorAll(target).forEach((element) => {
+      resolveScopedTargets(plugin_id, target).forEach((element) => {
         (element as HTMLElement).removeAttribute("disabled");
         (element as HTMLElement).style.pointerEvents = "";
         (element as HTMLElement).style.opacity = "";
@@ -237,7 +343,7 @@ export async function handlePluginRuntimeDomEvent(
     case "insert": {
       if (!target) return true;
       const [placement, selector] = target.split("|");
-      const targetElement = selector ? document.querySelector(selector) : null;
+      const targetElement = selector ? resolveScopedTarget(plugin_id, selector) : null;
       if (!targetElement) return true;
 
       const wrapper = document.createElement("div");
@@ -264,7 +370,7 @@ export async function handlePluginRuntimeDomEvent(
 
     case "remove_selector": {
       if (!target) return true;
-      document.querySelectorAll(target).forEach((element) => {
+      resolveScopedTargets(plugin_id, target).forEach((element) => {
         if ((element as HTMLElement).dataset.pluginInserted === plugin_id) {
           element.remove();
         }
@@ -282,12 +388,16 @@ export async function handlePluginRuntimeDomEvent(
       if (!target) return true;
       try {
         const styles = JSON.parse(html) as Record<string, string>;
-        document.querySelectorAll(target).forEach((element) => {
+        resolveScopedTargets(plugin_id, target).forEach((element) => {
           Object.entries(styles).forEach(([prop, value]) => {
-            (element as HTMLElement).style.setProperty(
-              prop.replace(/([A-Z])/g, "-$1").toLowerCase(),
-              value,
-            );
+            if (!isAllowedStyleProperty(prop)) {
+              pluginLogger.warn("RuntimeUI", "已拦截插件样式属性", {
+                pluginId: plugin_id,
+                property: prop,
+              });
+              return;
+            }
+            (element as HTMLElement).style.setProperty(normalizeStyleProperty(prop), value);
           });
         });
       } catch (error) {
@@ -304,7 +414,14 @@ export async function handlePluginRuntimeDomEvent(
           value?: string;
         };
         if (!attribute) return true;
-        document.querySelectorAll(target).forEach((element) => {
+        if (!isAllowedAttribute(attribute)) {
+          pluginLogger.warn("RuntimeUI", "已拦截插件属性更新", {
+            pluginId: plugin_id,
+            attribute,
+          });
+          return true;
+        }
+        resolveScopedTargets(plugin_id, target).forEach((element) => {
           element.setAttribute(attribute, value ?? "");
         });
       } catch (error) {
@@ -315,7 +432,7 @@ export async function handlePluginRuntimeDomEvent(
 
     case "query": {
       if (!target) return true;
-      const results = Array.from(document.querySelectorAll(target)).map((element) => ({
+      const results = resolveScopedTargets(plugin_id, target).map((element) => ({
         id: element.id || "",
         tag: element.tagName.toLowerCase(),
         classes: Array.from(element.classList),
@@ -334,7 +451,7 @@ export async function handlePluginRuntimeDomEvent(
         await emit("plugin-element-response", {
           plugin_id,
           request_id: parsed.request_id,
-          data: document.querySelector(target) !== null ? "true" : "false",
+          data: resolveScopedTarget(plugin_id, target) !== null ? "true" : "false",
         });
       } catch (error) {
         pluginLogger.error("RuntimeUI", "元素存在性查询失败", error);
@@ -346,7 +463,7 @@ export async function handlePluginRuntimeDomEvent(
       if (!target) return true;
       try {
         const parsed = JSON.parse(html || "{}") as { request_id?: string };
-        const element = document.querySelector(target) as HTMLElement | null;
+        const element = resolveScopedTarget(plugin_id, target) as HTMLElement | null;
         const isVisible =
           !!element &&
           element.isConnected &&
@@ -366,7 +483,7 @@ export async function handlePluginRuntimeDomEvent(
       if (!target) return true;
       try {
         const parsed = JSON.parse(html || "{}") as { request_id?: string };
-        const element = document.querySelector(target) as HTMLElement | null;
+        const element = resolveScopedTarget(plugin_id, target) as HTMLElement | null;
         await emit("plugin-element-response", {
           plugin_id,
           request_id: parsed.request_id,
@@ -382,7 +499,7 @@ export async function handlePluginRuntimeDomEvent(
       if (!target) return true;
       try {
         const parsed = JSON.parse(html || "{}") as { request_id?: string };
-        const element = document.querySelector(target);
+        const element = resolveScopedTarget(plugin_id, target);
         await emit("plugin-element-response", {
           plugin_id,
           request_id: parsed.request_id,
@@ -398,7 +515,7 @@ export async function handlePluginRuntimeDomEvent(
       if (!target) return true;
       try {
         const parsed = JSON.parse(html || "{}") as { request_id?: string };
-        const element = document.querySelector(target) as
+        const element = resolveScopedTarget(plugin_id, target) as
           | HTMLInputElement
           | HTMLSelectElement
           | HTMLTextAreaElement
@@ -418,7 +535,7 @@ export async function handlePluginRuntimeDomEvent(
       if (!target) return true;
       try {
         const parsed = JSON.parse(html || "{}") as { request_id?: string; attr?: string };
-        const element = document.querySelector(target);
+        const element = resolveScopedTarget(plugin_id, target);
         await emit("plugin-element-response", {
           plugin_id,
           request_id: parsed.request_id,
@@ -434,7 +551,7 @@ export async function handlePluginRuntimeDomEvent(
       if (!target) return true;
       try {
         const parsed = JSON.parse(html || "{}") as { request_id?: string };
-        const element = document.querySelector(target);
+        const element = resolveScopedTarget(plugin_id, target);
         const attrs: Record<string, string> = {};
         if (element) {
           Array.from(element.attributes).forEach((attr) => {
@@ -454,13 +571,13 @@ export async function handlePluginRuntimeDomEvent(
 
     case "element_click": {
       if (!target) return true;
-      (document.querySelector(target) as HTMLElement | null)?.click();
+      (resolveScopedTarget(plugin_id, target) as HTMLElement | null)?.click();
       return true;
     }
 
     case "element_set_value": {
       if (!target) return true;
-      const element = document.querySelector(target) as HTMLInputElement | null;
+      const element = resolveScopedTarget(plugin_id, target) as HTMLInputElement | null;
       if (!element) return true;
       try {
         const { value } = JSON.parse(html || "{}") as { value?: string };
@@ -475,7 +592,7 @@ export async function handlePluginRuntimeDomEvent(
 
     case "element_check": {
       if (!target) return true;
-      const element = document.querySelector(target) as HTMLInputElement | null;
+      const element = resolveScopedTarget(plugin_id, target) as HTMLInputElement | null;
       if (!element) return true;
       try {
         const { checked } = JSON.parse(html || "{}") as { checked?: boolean };
@@ -489,7 +606,7 @@ export async function handlePluginRuntimeDomEvent(
 
     case "element_select": {
       if (!target) return true;
-      const element = document.querySelector(target) as HTMLSelectElement | null;
+      const element = resolveScopedTarget(plugin_id, target) as HTMLSelectElement | null;
       if (!element) return true;
       try {
         const { value } = JSON.parse(html || "{}") as { value?: string };
@@ -503,19 +620,19 @@ export async function handlePluginRuntimeDomEvent(
 
     case "element_focus": {
       if (!target) return true;
-      (document.querySelector(target) as HTMLElement | null)?.focus();
+      (resolveScopedTarget(plugin_id, target) as HTMLElement | null)?.focus();
       return true;
     }
 
     case "element_blur": {
       if (!target) return true;
-      (document.querySelector(target) as HTMLElement | null)?.blur();
+      (resolveScopedTarget(plugin_id, target) as HTMLElement | null)?.blur();
       return true;
     }
 
     case "element_on_change": {
       if (!target) return true;
-      const element = document.querySelector(target) as HTMLElement | null;
+      const element = resolveScopedTarget(plugin_id, target) as HTMLElement | null;
       if (!element) return true;
 
       const listeners = eventListenerRegistry.get(plugin_id) ?? [];
@@ -571,7 +688,7 @@ export async function handlePluginRuntimeDomEvent(
       if (!target) return true;
       try {
         const payload = JSON.parse(html || "{}") as { fields?: Record<string, unknown> };
-        const form = document.querySelector(target);
+        const form = resolveScopedTarget(plugin_id, target);
         const fields = payload.fields;
         if (!form || !fields || typeof fields !== "object") {
           return true;
@@ -621,7 +738,8 @@ export async function handlePluginRuntimeDomEvent(
     case "inject_css": {
       const styleId = `plugin-css-${plugin_id}-${element_id}`;
       const css = sanitizeCss(html);
-      const existingStyle = document.getElementById(styleId) as HTMLStyleElement | null;
+      const pluginRoot = getPluginUiContainer();
+      const existingStyle = pluginRoot.querySelector(`#${styleId}`) as HTMLStyleElement | null;
       if (existingStyle) {
         existingStyle.textContent = css;
         existingStyle.setAttribute("data-plugin-id", plugin_id);
@@ -634,12 +752,12 @@ export async function handlePluginRuntimeDomEvent(
       style.setAttribute("data-plugin-id", plugin_id);
       style.setAttribute("data-plugin-source", "runtime");
       style.textContent = css;
-      document.head.appendChild(style);
+      pluginRoot.appendChild(style);
       return true;
     }
 
     case "remove_css": {
-      document.getElementById(`plugin-css-${plugin_id}-${element_id}`)?.remove();
+      getPluginUiContainer().querySelector(`#plugin-css-${plugin_id}-${element_id}`)?.remove();
       return true;
     }
 

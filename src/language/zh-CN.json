@@ -1169,6 +1169,10 @@
       "network_hint_check": "请检查网络连接、插件源地址和代理设置后重试。",
       "custom_source": "切换插件源",
       "source_url": "插件源地址",
+      "source_invalid": "当前地址不可用。仅支持 HTTPS，或本地调试使用的 http://localhost。",
+      "source_current": "当前来源: {{host}}",
+      "source_confirm_title": "自定义来源",
+      "source_confirm_desc": "这个来源不在默认市场范围内。安装前请确认域名、签名和校验信息都符合预期。",
       "source_save": "保存",
       "source_reset": "恢复默认"
     },

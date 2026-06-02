@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import type { PluginInfo } from "@type/plugin";
 import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
-import { ArrowLeft, Puzzle, Link } from "lucide-vue-next";
+import PluginSettingsFormCard from "@views/plugins/PluginSettingsFormCard.vue";
+import { usePluginPageSettings } from "@views/plugins/usePluginPageSettings";
+import { ArrowLeft, Puzzle } from "lucide-vue-next";
 
 const props = defineProps<{
   pluginId: string;
@@ -18,176 +15,29 @@ const props = defineProps<{
 
 const router = useRouter();
 const pluginStore = usePluginStore();
-
-const plugin = ref<PluginInfo | null>(null);
-const settingsForm = reactive<Record<string, string | number | boolean | null>>({});
-const saving = ref(false);
-const loading = ref(true);
-
-const dependentPlugins = ref<PluginInfo[]>([]);
-const dependentSettingsForms = reactive<Record<string, Record<string, any>>>({});
-
-const pluginPresets = computed(() => {
-  return plugin.value?.manifest.presets ?? null;
+const {
+  plugin,
+  settingsForm,
+  saving,
+  loading,
+  dependentPlugins,
+  dependentSettingsForms,
+  pluginPresets,
+  isThemeProvider,
+  getFieldStringValue,
+  getFieldSelectValue,
+  getFieldOptions,
+  updateSettingsField,
+  applyPreset,
+  saveSettings,
+  resetToDefault,
+} = usePluginPageSettings({
+  pluginId: () => props.pluginId,
 });
-
-function getFieldStringValue(value: string | number | boolean | null | undefined): string {
-  return value == null ? "" : String(value);
-}
-
-function getFieldSelectValue(
-  value: string | number | boolean | null | undefined,
-): string | number | undefined {
-  if (typeof value === "string" || typeof value === "number") {
-    return value;
-  }
-  return undefined;
-}
-
-function getFieldOptions(
-  options: Array<{ value: string; label: string }> | undefined,
-): Array<{ value: string; label: string }> {
-  return options ?? [];
-}
-
-const isThemeProvider = computed(() => {
-  return plugin.value?.manifest.capabilities?.includes("theme-provider") ?? false;
-});
-
-async function loadPlugin() {
-  loading.value = true;
-  try {
-    if (!pluginStore.plugins.length) {
-      await pluginStore.loadPlugins();
-    }
-    plugin.value = pluginStore.plugins.find((p) => p.manifest.id === props.pluginId) || null;
-
-    if (plugin.value) {
-      const savedSettings = await pluginStore.getPluginSettings(props.pluginId);
-      Object.keys(settingsForm).forEach((key) => delete settingsForm[key]);
-      if (plugin.value.manifest.settings) {
-        for (const field of plugin.value.manifest.settings) {
-          settingsForm[field.key] =
-            savedSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
-        }
-      }
-
-      await loadDependentPlugins();
-    }
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function loadDependentPlugins() {
-  dependentPlugins.value = [];
-
-  Object.keys(dependentSettingsForms).forEach((key) => delete dependentSettingsForms[key]);
-
-  const candidates = pluginStore.plugins.filter((p) => {
-    if (p.state !== "enabled") return false;
-    if (p.manifest.id === props.pluginId) return false;
-    const deps = p.manifest.dependencies || [];
-    return deps.some((dep: string | { id: string }) => {
-      const depId = typeof dep === "string" ? dep : dep.id;
-      return depId === props.pluginId;
-    });
-  });
-
-  const settingsPromises = candidates
-    .filter((p) => p.manifest.settings?.length)
-    .map(async (p) => {
-      const depSettings = await pluginStore.getPluginSettings(p.manifest.id);
-      const form: Record<string, any> = {};
-      for (const field of p.manifest.settings!) {
-        form[field.key] = depSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
-      }
-      return { plugin: p, form };
-    });
-
-  const results = await Promise.all(settingsPromises);
-  for (const { plugin: depPlugin, form } of results) {
-    dependentPlugins.value.push(depPlugin);
-    dependentSettingsForms[depPlugin.manifest.id] = form;
-  }
-}
-
-function getDefaultValue(type: string): any {
-  switch (type) {
-    case "boolean":
-      return false;
-    case "number":
-      return 0;
-    case "select":
-      return "";
-    default:
-      return "";
-  }
-}
-
-async function applyPreset(presetKey: string) {
-  const presets = pluginPresets.value;
-  if (!presets || !presets[presetKey]) return;
-  const presetData = presets[presetKey];
-  const pluginId = plugin.value?.manifest.id;
-  if (!pluginId) return;
-
-  const settingsToSave: Record<string, any> = {};
-  for (const [key, value] of Object.entries(presetData)) {
-    if (key !== "name") {
-      settingsForm[key] = value as string | number | boolean;
-      settingsToSave[key] = value;
-    }
-  }
-  await pluginStore.setPluginSettings(pluginId, settingsToSave);
-  await pluginStore.applyThemeProviderSettings(pluginId);
-}
-
-async function saveSettings() {
-  if (!plugin.value) return;
-  saving.value = true;
-  try {
-    await pluginStore.setPluginSettings(props.pluginId, { ...settingsForm });
-    if (isThemeProvider.value) {
-      await pluginStore.applyThemeProviderSettings(props.pluginId);
-    }
-
-    const depPromises = dependentPlugins.value.map(async (depPlugin) => {
-      const depForm = dependentSettingsForms[depPlugin.manifest.id];
-      if (depForm) {
-        await pluginStore.setPluginSettings(depPlugin.manifest.id, { ...depForm });
-        if (pluginStore.hasCapability(depPlugin.manifest.id, "theme-widgets-provider")) {
-          await pluginStore.applyThemeWidgetsProviderSettings(depPlugin.manifest.id);
-        }
-      }
-    });
-    await Promise.all(depPromises);
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function resetToDefault() {
-  if (!plugin.value?.manifest.settings) return;
-  for (const field of plugin.value.manifest.settings) {
-    settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
-  }
-}
 
 function goBack() {
   router.back();
 }
-
-onMounted(() => {
-  loadPlugin();
-});
-
-watch(
-  () => props.pluginId,
-  () => {
-    loadPlugin();
-  },
-);
 </script>
 
 <template>
@@ -248,111 +98,32 @@ watch(
         </div>
       </SLCard>
 
-      <template v-if="plugin.manifest.settings?.length">
-        <SLCard class="settings-card">
-          <h3 class="section-title">{{ i18n.t("plugins.plugin_settings") }}</h3>
-          <div class="settings-form">
-            <div v-for="field in plugin.manifest.settings" :key="field.key" class="form-field">
-              <label class="field-label">
-                {{ field.label }}
-                <span v-if="field.description" class="field-desc">{{ field.description }}</span>
-              </label>
-              <template v-if="field.type === 'string'">
-                <SLInput
-                  :modelValue="getFieldStringValue(settingsForm[field.key])"
-                  @update:modelValue="settingsForm[field.key] = $event"
-                />
-              </template>
-              <template v-else-if="field.type === 'number'">
-                <SLInput
-                  type="number"
-                  :modelValue="getFieldStringValue(settingsForm[field.key])"
-                  @update:modelValue="settingsForm[field.key] = $event"
-                />
-              </template>
-              <template v-else-if="field.type === 'boolean'">
-                <SLSwitch
-                  :modelValue="Boolean(settingsForm[field.key])"
-                  @update:modelValue="settingsForm[field.key] = $event"
-                  size="sm"
-                />
-              </template>
-              <template v-else-if="field.type === 'select'">
-                <SLSelect
-                  :modelValue="getFieldSelectValue(settingsForm[field.key])"
-                  :options="getFieldOptions(field.options)"
-                  @update:modelValue="settingsForm[field.key] = $event"
-                />
-              </template>
-            </div>
-          </div>
-        </SLCard>
-      </template>
+      <PluginSettingsFormCard
+        v-if="plugin.manifest.settings?.length"
+        :title="i18n.t('plugins.plugin_settings')"
+        :fields="plugin.manifest.settings"
+        :form="settingsForm"
+        :get-field-string-value="getFieldStringValue"
+        :get-field-select-value="getFieldSelectValue"
+        :get-field-options="getFieldOptions"
+        @update-field="updateSettingsField(settingsForm, $event[0], $event[1])"
+      />
 
-      <template v-if="dependentPlugins.length > 0">
-        <SLCard
-          v-for="depPlugin in dependentPlugins"
-          :key="depPlugin.manifest.id"
-          class="settings-card dependent-settings"
-        >
-          <h3 class="section-title">
-            <Link class="dependent-icon" :size="16" />
-            {{ depPlugin.manifest.name }} {{ i18n.t("plugins.settings") }}
-          </h3>
-          <p class="dependent-desc">
-            {{ i18n.t("plugins.depends_on", { name: plugin?.manifest.name }) }}
-          </p>
-          <div class="settings-form">
-            <div v-for="field in depPlugin.manifest.settings" :key="field.key" class="form-field">
-              <label class="field-label">
-                {{ field.label }}
-                <span v-if="field.description" class="field-desc">{{ field.description }}</span>
-              </label>
-              <template v-if="field.type === 'string'">
-                <SLInput
-                  :modelValue="
-                    getFieldStringValue(dependentSettingsForms[depPlugin.manifest.id][field.key])
-                  "
-                  @update:modelValue="
-                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
-                  "
-                />
-              </template>
-              <template v-else-if="field.type === 'number'">
-                <SLInput
-                  type="number"
-                  :modelValue="
-                    getFieldStringValue(dependentSettingsForms[depPlugin.manifest.id][field.key])
-                  "
-                  @update:modelValue="
-                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
-                  "
-                />
-              </template>
-              <template v-else-if="field.type === 'boolean'">
-                <SLSwitch
-                  :modelValue="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])"
-                  @update:modelValue="
-                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
-                  "
-                  size="sm"
-                />
-              </template>
-              <template v-else-if="field.type === 'select'">
-                <SLSelect
-                  :modelValue="
-                    getFieldSelectValue(dependentSettingsForms[depPlugin.manifest.id][field.key])
-                  "
-                  :options="getFieldOptions(field.options)"
-                  @update:modelValue="
-                    dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
-                  "
-                />
-              </template>
-            </div>
-          </div>
-        </SLCard>
-      </template>
+      <PluginSettingsFormCard
+        v-for="depPlugin in dependentPlugins"
+        :key="depPlugin.manifest.id"
+        dependent
+        :title="`${depPlugin.manifest.name} ${i18n.t('plugins.settings')}`"
+        :description="i18n.t('plugins.depends_on', { name: plugin?.manifest.name })"
+        :fields="depPlugin.manifest.settings || []"
+        :form="dependentSettingsForms[depPlugin.manifest.id]"
+        :get-field-string-value="getFieldStringValue"
+        :get-field-select-value="getFieldSelectValue"
+        :get-field-options="getFieldOptions"
+        @update-field="
+          updateSettingsField(dependentSettingsForms[depPlugin.manifest.id], $event[0], $event[1])
+        "
+      />
 
       <div class="action-buttons">
         <SLButton variant="secondary" @click="resetToDefault">{{
