@@ -26,15 +26,11 @@ const currentServer = viewModel.currentServer;
 const serverPath = viewModel.serverPath;
 const propertiesEditor = viewModel.propertiesEditor;
 const compare = viewModel.compare;
+const propertiesSectionBindings = viewModel.propertiesSectionBindings;
 const pluginsState = viewModel.pluginsState;
 const configTabs = viewModel.configTabs;
 const editorModeTabs = viewModel.editorModeTabs;
-const gamemodeOptions = viewModel.gamemodeOptions;
-const difficultyOptions = viewModel.difficultyOptions;
-const translatedDescriptionByKey = viewModel.translatedDescriptionByKey;
 const configSaveDiffModalWidth = viewModel.configSaveDiffModalWidth;
-const currentServerName = viewModel.currentServerName;
-const compareTargetServerName = viewModel.compareTargetServerName;
 const handleStartupConfigSaved = viewModel.handleStartupConfigSaved;
 const setError = viewModel.setError;
 </script>
@@ -81,46 +77,25 @@ const setError = viewModel.setError;
 
       <template v-if="activeTab === 'properties'">
         <ConfigPropertiesSection
-          :editorMode="propertiesEditor.editorMode.value"
-          :loading="propertiesEditor.loading.value"
-          :compareLoading="compare.compareLoading.value"
-          :compareMode="compare.compareMode.value"
-          :hasCompareTargets="compare.hasCompareTargets.value"
-          :compareTargetServerId="compare.compareTargetServerId.value"
-          :compareServerOptions="compare.compareServerOptions.value"
-          :compareDifferenceBadgeText="compare.compareDifferenceBadgeText.value"
-          :comparePanelRows="compare.comparePanelRows.value"
-          :sourceServerName="currentServerName"
-          :targetServerName="compareTargetServerName"
-          :categories="propertiesEditor.categories.value"
-          :activeCategory="propertiesEditor.activeCategory.value"
-          :searchQuery="propertiesEditor.searchQuery.value"
-          :filteredEntries="propertiesEditor.filteredEntries.value"
-          :translatedDescriptionByKey="translatedDescriptionByKey"
-          :editValues="propertiesEditor.editValues.value"
-          :numericFieldErrors="propertiesEditor.numericFieldErrors.value"
-          :gamemodeOptions="gamemodeOptions"
-          :difficultyOptions="difficultyOptions"
-          :sourceDraftText="propertiesEditor.sourceDraftText.value"
-          :compareTargetSourceDraftText="compare.compareTargetSourceDraftText.value"
-          :sourceParseError="propertiesEditor.sourceParseError.value"
-          :hasUnsavedChanges="propertiesEditor.hasUnsavedChanges.value"
-          :saveStatusText="propertiesEditor.saveStatusText.value"
-          :saving="propertiesEditor.saving.value"
-          :reloadCurrentTooltipText="propertiesEditor.reloadCurrentTooltipText.value"
-          :reloadCompareTooltipText="propertiesEditor.reloadCompareTooltipText.value"
-          @updateCategory="propertiesEditor.handleCategoryChange"
-          @updateSearch="propertiesEditor.handleSearchUpdate"
-          @updateSourceDraft="propertiesEditor.updateSourceDraft"
-          @updateCompareTargetSourceDraft="propertiesEditor.updateCompareTargetSourceDraft"
-          @updateValue="propertiesEditor.updateValue($event.key, $event.value)"
-          @updateCompareTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
-          @addSourceValue="propertiesEditor.updateValue($event.key, $event.value)"
-          @addTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
-          @updateCompareTargetServer="compare.handleCompareTargetServerChange"
-          @reloadCurrent="propertiesEditor.reloadPropertiesWithGuard"
-          @reloadCompare="propertiesEditor.reloadComparePropertiesWithGuard"
-          @saveProperties="propertiesEditor.saveProperties"
+          v-bind="propertiesSectionBindings.sectionProps.value"
+          @updateCategory="propertiesSectionBindings.sectionHandlers.updateCategory"
+          @updateSearch="propertiesSectionBindings.sectionHandlers.updateSearch"
+          @updateSourceDraft="propertiesSectionBindings.sectionHandlers.updateSourceDraft"
+          @updateCompareTargetSourceDraft="
+            propertiesSectionBindings.sectionHandlers.updateCompareTargetSourceDraft
+          "
+          @updateValue="propertiesSectionBindings.sectionHandlers.updateValue"
+          @updateCompareTargetValue="
+            propertiesSectionBindings.sectionHandlers.updateCompareTargetValue
+          "
+          @addSourceValue="propertiesSectionBindings.sectionHandlers.addSourceValue"
+          @addTargetValue="propertiesSectionBindings.sectionHandlers.addTargetValue"
+          @updateCompareTargetServer="
+            propertiesSectionBindings.sectionHandlers.updateCompareTargetServer
+          "
+          @reloadCurrent="propertiesSectionBindings.sectionHandlers.reloadCurrent"
+          @reloadCompare="propertiesSectionBindings.sectionHandlers.reloadCompare"
+          @saveProperties="propertiesSectionBindings.sectionHandlers.saveProperties"
         />
       </template>
 

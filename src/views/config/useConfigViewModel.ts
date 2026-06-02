@@ -5,6 +5,7 @@ import { i18n } from "@language";
 import { useConfigPlugins } from "@views/config/useConfigPlugins";
 import { useConfigCompare } from "@views/config/useConfigCompare";
 import { useConfigPageLifecycle } from "@views/config/useConfigPageLifecycle";
+import { useConfigPropertiesSectionBindings } from "@views/config/useConfigPropertiesSectionBindings";
 import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
 
 type ConfigTabKey = "properties" | "plugins" | "startup";
@@ -173,6 +174,15 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
   const compareTargetServerName = computed(
     () => compare.compareTargetServer.value?.name || i18n.t("config.compare.target_server"),
   );
+  const propertiesSectionBindings = useConfigPropertiesSectionBindings({
+    propertiesEditor,
+    compare,
+    currentServerName,
+    compareTargetServerName,
+    translatedDescriptionByKey,
+    gamemodeOptions,
+    difficultyOptions,
+  });
 
   useConfigPageLifecycle({
     routeId,
@@ -214,6 +224,7 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
     setError,
     propertiesEditor,
     compare,
+    propertiesSectionBindings,
     pluginsState,
     configTabs,
     editorModeTabs,
