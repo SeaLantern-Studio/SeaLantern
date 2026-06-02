@@ -8,6 +8,7 @@ import ServerListSection from "@components/views/home/ServerListSection.vue";
 import AlertsSection from "@components/views/home/AlertsSection.vue";
 import ChangePathModal from "@components/views/home/ChangePathModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
+import { useHomeServerActionsStore } from "@stores/homeServerActionsStore";
 import { useServerStore } from "@stores/serverStore";
 import {
   cleanupQuoteResources,
@@ -17,18 +18,11 @@ import {
 } from "@utils/quoteUtils";
 import { fetchSystemInfo } from "@utils/statsUtils";
 import { useSerialPolling } from "@composables/useSerialPolling";
-import {
-  actionError,
-  deleteServerName,
-  showDeleteConfirm,
-  confirmDelete,
-  cancelDelete,
-  closeDeleteConfirm,
-} from "@utils/serverUtils";
 import { i18n } from "@language";
 
 const router = useRouter();
 const store = useServerStore();
+const homeServerActionsStore = useHomeServerActionsStore();
 
 async function loadServers() {
   try {
@@ -94,7 +88,10 @@ function handleCreate() {
 
 <template>
   <div class="home-view animate-fade-in-up">
-    <ErrorBanner :message="actionError" @close="actionError = null" />
+    <ErrorBanner
+      :message="homeServerActionsStore.actionError"
+      @close="homeServerActionsStore.actionError = null"
+    />
 
     <div class="top-row">
       <QuickStartCard @create="handleCreate" />
@@ -108,11 +105,11 @@ function handleCreate() {
     <ChangePathModal />
 
     <SLConfirmDialog
-      :visible="showDeleteConfirm"
+      :visible="homeServerActionsStore.showDeleteConfirm"
       :title="i18n.t('home.delete_server')"
       :message="
         i18n.t('home.delete_confirm_message', {
-          server: '<strong>' + deleteServerName + '</strong>',
+          server: '<strong>' + homeServerActionsStore.deleteServerName + '</strong>',
         })
       "
       :confirmText="i18n.t('home.delete_confirm')"
@@ -120,10 +117,10 @@ function handleCreate() {
       confirmVariant="danger"
       :requireInput="true"
       :inputPlaceholder="i18n.t('home.delete_input_placeholder')"
-      :expectedInput="deleteServerName"
-      @confirm="confirmDelete"
-      @cancel="cancelDelete"
-      @close="closeDeleteConfirm"
+      :expectedInput="homeServerActionsStore.deleteServerName"
+      @confirm="homeServerActionsStore.confirmDelete"
+      @cancel="homeServerActionsStore.cancelDelete"
+      @close="homeServerActionsStore.closeDeleteConfirm"
       dangerous
     />
   </div>

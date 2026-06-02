@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import { recentAlerts } from "@utils/serverUtils";
+import { useHomeServerActionsStore } from "@stores/homeServerActionsStore";
+
+const homeServerActionsStore = useHomeServerActionsStore();
 </script>
 
 <template>
-  <div v-if="recentAlerts.length > 0" class="alerts-section">
+  <div v-if="homeServerActionsStore.recentAlerts.length > 0" class="alerts-section">
     <h3 class="section-title">{{ i18n.t("home.recent_alerts") }}</h3>
     <div class="alerts-list">
       <div
-        v-for="(alert, i) in recentAlerts"
+        v-for="(alert, i) in homeServerActionsStore.recentAlerts"
         :key="i"
         class="alert-item"
         :class="{

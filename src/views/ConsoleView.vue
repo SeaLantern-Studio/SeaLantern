@@ -31,7 +31,7 @@ import {
 } from "@utils/statsUtils";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
-import { formatBytes } from "@utils/serverUtils";
+import { formatBytes } from "@utils/formatters";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();

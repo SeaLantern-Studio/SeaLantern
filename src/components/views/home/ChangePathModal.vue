@@ -5,42 +5,36 @@ import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import { i18n } from "@language";
+import { useHomeServerActionsStore } from "@stores/homeServerActionsStore";
 import { useServerStore } from "@stores/serverStore";
-import {
-  changePathModalVisible,
-  changePathLoading,
-  changePathValidationResult,
-  selectedNewPath,
-  changingPathServerId,
-  closeChangePathModal,
-  selectNewPath,
-  confirmChangePath,
-} from "@utils/serverUtils";
 
 const store = useServerStore();
+const homeServerActionsStore = useHomeServerActionsStore();
 
 const currentServer = computed(() => {
-  if (!changingPathServerId.value) return null;
-  return store.getServerById(changingPathServerId.value);
+  if (!homeServerActionsStore.changingPathServerId) return null;
+  return store.getServerById(homeServerActionsStore.changingPathServerId);
 });
 
 const canConfirm = computed(() => {
   return (
-    selectedNewPath.value && changePathValidationResult.value?.valid && !changePathLoading.value
+    homeServerActionsStore.selectedNewPath &&
+    homeServerActionsStore.changePathValidationResult?.valid &&
+    !homeServerActionsStore.changePathLoading
   );
 });
 
 const validationStatus = computed(() => {
-  if (!changePathValidationResult.value) return null;
-  return changePathValidationResult.value.valid ? "success" : "error";
+  if (!homeServerActionsStore.changePathValidationResult) return null;
+  return homeServerActionsStore.changePathValidationResult.valid ? "success" : "error";
 });
 </script>
 
 <template>
   <SLModal
-    :visible="changePathModalVisible"
+    :visible="homeServerActionsStore.changePathModalVisible"
     :title="i18n.t('home.change_path_title')"
-    @close="closeChangePathModal"
+    @close="homeServerActionsStore.closeChangePathModal"
     width="560px"
   >
     <div class="change-path-content">
@@ -64,16 +58,16 @@ const validationStatus = computed(() => {
       <div class="path-section">
         <label class="path-label">{{ i18n.t("home.change_path_new") }}</label>
         <div class="path-input-group">
-          <div class="path-display" :class="{ selected: selectedNewPath }">
+          <div class="path-display" :class="{ selected: homeServerActionsStore.selectedNewPath }">
             <code class="path-code">{{
-              selectedNewPath || i18n.t("home.change_path_select_folder")
+              homeServerActionsStore.selectedNewPath || i18n.t("home.change_path_select_folder")
             }}</code>
           </div>
           <SLButton
             variant="secondary"
             size="sm"
-            @click="selectNewPath"
-            :loading="changePathLoading"
+            @click="homeServerActionsStore.selectNewPath"
+            :loading="homeServerActionsStore.changePathLoading"
           >
             <FolderOpen :size="16" />
             {{ i18n.t("add_existing.browse") }}
@@ -82,44 +76,55 @@ const validationStatus = computed(() => {
       </div>
 
       <!-- 验证结果 -->
-      <div v-if="changePathValidationResult" class="validation-result" :class="validationStatus">
+      <div
+        v-if="homeServerActionsStore.changePathValidationResult"
+        class="validation-result"
+        :class="validationStatus"
+      >
         <div class="validation-header">
           <CheckCircle
-            v-if="changePathValidationResult.valid"
+            v-if="homeServerActionsStore.changePathValidationResult.valid"
             :size="18"
             class="validation-icon success"
           />
           <XCircle v-else :size="18" class="validation-icon error" />
           <span class="validation-title">
             {{
-              changePathValidationResult.valid
+              homeServerActionsStore.changePathValidationResult.valid
                 ? i18n.t("common.confirm")
                 : i18n.t("home.change_path_invalid")
             }}
           </span>
         </div>
-        <p class="validation-message">{{ changePathValidationResult.message }}</p>
+        <p class="validation-message">
+          {{ homeServerActionsStore.changePathValidationResult.message }}
+        </p>
 
         <!-- 检测到的启动文件信息 -->
         <div
-          v-if="changePathValidationResult.valid && changePathValidationResult.jarPath"
+          v-if="
+            homeServerActionsStore.changePathValidationResult.valid &&
+            homeServerActionsStore.changePathValidationResult.jarPath
+          "
           class="detected-info"
         >
           <div class="detected-item">
             <span class="detected-label">启动文件:</span>
-            <code class="detected-value">{{ changePathValidationResult.jarPath }}</code>
+            <code class="detected-value">{{
+              homeServerActionsStore.changePathValidationResult.jarPath
+            }}</code>
           </div>
           <div class="detected-item">
             <span class="detected-label">启动方式:</span>
             <span class="detected-value">{{
-              changePathValidationResult.startupMode?.toUpperCase() || "JAR"
+              homeServerActionsStore.changePathValidationResult.startupMode?.toUpperCase() || "JAR"
             }}</span>
           </div>
         </div>
       </div>
 
       <!-- 验证中状态 -->
-      <div v-else-if="changePathLoading" class="validation-loading">
+      <div v-else-if="homeServerActionsStore.changePathLoading" class="validation-loading">
         <Loader2 :size="20" class="loading-spinner" />
         <span>{{ i18n.t("home.change_path_validating") }}</span>
       </div>
@@ -128,13 +133,17 @@ const validationStatus = computed(() => {
     <!-- 底部按钮 -->
     <template #footer>
       <div class="modal-actions">
-        <SLButton variant="ghost" @click="closeChangePathModal" :disabled="changePathLoading">
+        <SLButton
+          variant="ghost"
+          @click="homeServerActionsStore.closeChangePathModal"
+          :disabled="homeServerActionsStore.changePathLoading"
+        >
           {{ i18n.t("home.change_path_cancel") }}
         </SLButton>
         <SLButton
           variant="primary"
-          @click="confirmChangePath"
-          :loading="changePathLoading"
+          @click="homeServerActionsStore.confirmChangePath"
+          :loading="homeServerActionsStore.changePathLoading"
           :disabled="!canConfirm"
         >
           {{ i18n.t("home.change_path_confirm") }}

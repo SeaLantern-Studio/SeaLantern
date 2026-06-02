@@ -15,7 +15,7 @@ import {
   statsViewMode,
   statsLoading,
 } from "@utils/statsUtils";
-import { formatBytes } from "@utils/serverUtils";
+import { formatBytes } from "@utils/formatters";
 
 function toggleViewMode() {
   statsViewMode.value = statsViewMode.value === "gauge" ? "detail" : "gauge";

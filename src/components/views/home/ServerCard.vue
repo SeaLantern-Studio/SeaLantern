@@ -2,25 +2,12 @@
 import { Pencil, FolderOpen, Check, X } from "lucide-vue-next";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
+import { useHomeServerActionsStore } from "@stores/homeServerActionsStore";
 import type { ServerInstance } from "@type/server";
 import { i18n } from "@language";
 import { systemApi } from "@api/system";
+import { formatServerPath } from "@utils/formatters";
 import { useRouter } from "vue-router";
-import {
-  actionLoading,
-  editingServerId,
-  editName,
-  editLoading,
-  formatServerPath,
-  getStatusText,
-  handleStart,
-  handleStop,
-  startEditServerName,
-  saveServerName,
-  cancelEdit,
-  showDeleteConfirmInput,
-  showChangePathModal,
-} from "@utils/serverUtils";
 import { useServerStore } from "@stores/serverStore";
 
 const props = defineProps<{
@@ -28,6 +15,7 @@ const props = defineProps<{
 }>();
 
 const store = useServerStore();
+const homeServerActionsStore = useHomeServerActionsStore();
 const router = useRouter();
 
 async function handlePathClick(path: string) {
@@ -69,32 +57,40 @@ function getStatusClass(status: string | undefined): string {
     <div class="status-badge-container">
       <div class="status-indicator" :class="getStatusClass(store.statuses[server.id]?.status)">
         <span class="status-dot"></span>
-        <span class="status-label">{{ getStatusText(store.statuses[server.id]?.status) }}</span>
+        <span class="status-label">{{
+          homeServerActionsStore.getStatusText(store.statuses[server.id]?.status)
+        }}</span>
       </div>
     </div>
 
     <div class="server-card-header">
       <div class="server-name-container">
-        <template v-if="editingServerId === server.id">
+        <template v-if="homeServerActionsStore.editingServerId === server.id">
           <div class="inline-edit">
             <input
               type="text"
-              v-model="editName"
+              v-model="homeServerActionsStore.editName"
               class="server-name-input"
-              @keyup.enter="saveServerName(server.id)"
-              @keyup.esc="cancelEdit"
-              @blur="saveServerName(server.id)"
+              @keyup.enter="homeServerActionsStore.saveServerName(server.id)"
+              @keyup.esc="homeServerActionsStore.cancelEdit"
+              @blur="homeServerActionsStore.saveServerName(server.id)"
             />
             <div class="inline-edit-actions">
               <button
                 class="inline-edit-btn save"
-                @click="saveServerName(server.id)"
-                :disabled="!editName.trim() || editLoading"
-                :class="{ loading: editLoading }"
+                @click="homeServerActionsStore.saveServerName(server.id)"
+                :disabled="
+                  !homeServerActionsStore.editName.trim() || homeServerActionsStore.editLoading
+                "
+                :class="{ loading: homeServerActionsStore.editLoading }"
               >
                 <Check :size="16" />
               </button>
-              <button class="inline-edit-btn cancel" @click="cancelEdit" :disabled="editLoading">
+              <button
+                class="inline-edit-btn cancel"
+                @click="homeServerActionsStore.cancelEdit"
+                :disabled="homeServerActionsStore.editLoading"
+              >
                 <X :size="16" />
               </button>
             </div>
@@ -104,7 +100,7 @@ function getStatusClass(status: string | undefined): string {
           <h4 class="server-name">{{ server.name }}</h4>
           <button
             class="edit-server-name"
-            @click="startEditServerName(server)"
+            @click="homeServerActionsStore.startEditServerName(server)"
             :title="i18n.t('common.edit_server_name')"
           >
             <Pencil :size="16" />
@@ -139,18 +135,24 @@ function getStatusClass(status: string | undefined): string {
           "
           variant="primary"
           size="sm"
-          :loading="actionLoading[server.id]"
-          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
-          @click="handleStart(server.id)"
+          :loading="homeServerActionsStore.actionLoading[server.id]"
+          :disabled="
+            homeServerActionsStore.actionLoading[server.id] ||
+            store.statuses[server.id]?.status === 'Stopping'
+          "
+          @click="homeServerActionsStore.handleStart(server.id)"
           >{{ i18n.t("home.start") }}</SLButton
         >
         <SLButton
           v-else
           variant="danger"
           size="sm"
-          :loading="actionLoading[server.id]"
-          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
-          @click="handleStop(server.id)"
+          :loading="homeServerActionsStore.actionLoading[server.id]"
+          :disabled="
+            homeServerActionsStore.actionLoading[server.id] ||
+            store.statuses[server.id]?.status === 'Stopping'
+          "
+          @click="homeServerActionsStore.handleStop(server.id)"
           >{{ i18n.t("home.stop") }}</SLButton
         >
       </div>
@@ -161,10 +163,18 @@ function getStatusClass(status: string | undefined): string {
         <SLButton variant="ghost" size="sm" @click="handleConfig">
           {{ i18n.t("common.config_edit") }}
         </SLButton>
-        <SLButton variant="ghost" size="sm" @click="showChangePathModal(server)">
+        <SLButton
+          variant="ghost"
+          size="sm"
+          @click="homeServerActionsStore.showChangePathModal(server)"
+        >
           {{ i18n.t("home.change_path") }}
         </SLButton>
-        <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
+        <SLButton
+          variant="ghost"
+          size="sm"
+          @click="homeServerActionsStore.showDeleteConfirmInput(server)"
+        >
           {{ i18n.t("home.delete") }}
         </SLButton>
       </div>

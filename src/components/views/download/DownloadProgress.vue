@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { SLProgress } from "@components/common";
-import { formatBytes } from "@utils/serverUtils";
+import { formatBytes } from "@utils/formatters";
 
 const props = defineProps<{
   taskInfo: {
