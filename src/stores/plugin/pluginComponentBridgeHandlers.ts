@@ -1,9 +1,10 @@
 import { emit } from "@tauri-apps/api/event";
 import { useComponentRegistry } from "@composables/useComponentRegistry";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
-import type {
-  PluginComponentEvent,
-  PendingPluginComponentCreate,
+import {
+  ALLOWED_PLUGIN_COMPONENT_TYPES,
+  type PluginComponentEvent,
+  type PendingPluginComponentCreate,
 } from "./pluginComponentBridgeShared";
 
 interface PluginComponentBridgeHandlersOptions {
@@ -108,6 +109,13 @@ export function createPluginComponentBridgeHandlers(options: PluginComponentBrid
           return;
         }
         if (event.component_type && component_id) {
+          if (!ALLOWED_PLUGIN_COMPONENT_TYPES.has(event.component_type)) {
+            pluginLogger.warn("Component", `已拦截未开放组件类型: ${plugin_id}`, {
+              componentType: event.component_type,
+            });
+            await reply({ error: "component type not allowed" });
+            return;
+          }
           options.enqueueComponentCreate(plugin_id, {
             plugin_id,
             component_type: event.component_type,

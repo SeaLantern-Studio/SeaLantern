@@ -1,40 +1,32 @@
 const ALLOWED_RUNTIME_STYLE_PROPS = new Set([
   "align-items",
-  "background",
-  "background-color",
-  "border",
-  "border-color",
-  "border-radius",
-  "border-style",
-  "border-width",
-  "box-shadow",
   "color",
   "display",
   "flex",
   "flex-direction",
+  "flex-wrap",
   "font-size",
   "font-weight",
   "gap",
   "justify-content",
+  "line-height",
   "margin",
   "margin-bottom",
   "margin-left",
   "margin-right",
   "margin-top",
-  "max-height",
   "max-width",
-  "min-height",
-  "min-width",
-  "opacity",
   "overflow",
+  "overflow-x",
+  "overflow-y",
   "padding",
   "padding-bottom",
   "padding-left",
   "padding-right",
   "padding-top",
   "text-align",
-  "transform",
-  "visibility",
+  "white-space",
+  "word-break",
 ]);
 
 export const PLUGIN_RUNTIME_HOST_CLASS = "plugin-runtime-host";
@@ -53,26 +45,28 @@ function ensurePluginRuntimeStyles() {
   style.textContent = `
     #plugin-ui-container {
       position: fixed;
-      top: 0;
+      right: 12px;
+      bottom: 12px;
       right: 0;
       width: min(420px, calc(100vw - 24px));
-      max-width: 100vw;
-      height: 100%;
-      padding: 12px;
+      max-width: calc(100vw - 24px);
+      max-height: calc(100vh - 24px);
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      justify-content: flex-start;
+      justify-content: flex-end;
       gap: 12px;
       pointer-events: none;
       z-index: 30;
       box-sizing: border-box;
+      overflow: auto;
+      overscroll-behavior: contain;
     }
 
     #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} {
       width: 100%;
       max-width: 100%;
-      max-height: calc(100vh - 24px);
+      max-height: min(360px, calc(100vh - 48px));
       display: flex;
       flex-direction: column;
       align-items: stretch;
@@ -83,7 +77,7 @@ function ensurePluginRuntimeStyles() {
     #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} {
       width: 100%;
       max-width: 100%;
-      max-height: calc(100vh - 24px);
+      max-height: min(360px, calc(100vh - 48px));
       overflow: hidden;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
@@ -124,6 +118,7 @@ function ensurePluginRuntimeStyles() {
       padding: 12px;
       box-sizing: border-box;
       contain: content;
+      background: color-mix(in srgb, var(--sl-surface) 94%, var(--sl-primary) 6%);
     }
 
     #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CONTENT_CLASS} [hidden] {

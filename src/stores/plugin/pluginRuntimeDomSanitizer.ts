@@ -3,17 +3,65 @@ import { pluginLogger } from "@stores/plugin/pluginLogger";
 
 const RUNTIME_CSS_BLOCKLIST = [
   /\b(position|z-index|top|right|bottom|left|inset|pointer-events)\s*:[^;]+;?/gi,
-  /\b(content|cursor)\s*:[^;]+;?/gi,
+  /\b(content|cursor|backdrop-filter|filter|clip-path)\s*:[^;]+;?/gi,
   /\b(body|html|:root)\b/gi,
   /\b(\*|body\s+\*|html\s+\*|:root\s+\*)\b/gi,
 ];
 
+const FORBIDDEN_RUNTIME_SELECTOR_PATTERNS = [
+  /::?(before|after|backdrop|marker|selection|file-selector-button)/i,
+  /\b(body|html|:root)\b/i,
+  /\*/,
+  />/,
+  /~/,
+  /\+/,
+  /\[/,
+];
+
 export function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, {
-    FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "link", "meta", "style"],
+    FORBID_TAGS: [
+      "script",
+      "iframe",
+      "object",
+      "embed",
+      "form",
+      "link",
+      "meta",
+      "style",
+      "dialog",
+      "header",
+      "footer",
+      "nav",
+      "aside",
+      "button",
+      "input",
+      "select",
+      "textarea",
+      "label",
+    ],
     FORBID_ATTR: ["style"],
     ALLOW_DATA_ATTR: false,
   });
+}
+
+function isAllowedRuntimeSelector(selector: string): boolean {
+  const normalized = selector.replace(/\s+/g, " ").trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  for (const pattern of FORBIDDEN_RUNTIME_SELECTOR_PATTERNS) {
+    if (pattern.test(normalized)) {
+      return false;
+    }
+  }
+
+  if (normalized.startsWith("#") || normalized.includes(" #")) {
+    return false;
+  }
+
+  return true;
 }
 
 export function sanitizeCss(css: string): string {
@@ -61,19 +109,7 @@ export function scopeRuntimeCss(css: string, scopeSelector: string): string {
       .split(",")
       .map((selector) => selector.trim())
       .filter(Boolean)
-      .filter((selector) => {
-        const normalized = selector.replace(/\s+/g, " ").trim().toLowerCase();
-        if (!normalized) {
-          return false;
-        }
-        if (normalized === "*" || normalized.startsWith("body") || normalized.startsWith("html")) {
-          return false;
-        }
-        if (normalized.includes(":root")) {
-          return false;
-        }
-        return true;
-      })
+      .filter((selector) => isAllowedRuntimeSelector(selector))
       .map((selector) => {
         if (selector === ":scope") {
           return scopeSelector;

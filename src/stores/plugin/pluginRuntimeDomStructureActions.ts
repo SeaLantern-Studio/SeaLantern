@@ -9,16 +9,24 @@ import {
   getPluginUiContainer,
   getPluginRuntimeSurface,
   getScopedRuntimeCssSelector,
-  isAllowedAttribute,
   isAllowedStyleProperty,
   normalizeStyleProperty,
-  resolveScopedTarget,
   resolveScopedTargets,
 } from "@stores/plugin/pluginRuntimeDomShared";
 import type {
   PluginRuntimeEventListenerRegistry,
   PluginRuntimeUiEvent,
 } from "@stores/plugin/pluginRuntimeDomTypes";
+
+const BLOCKED_RUNTIME_MUTATION_ACTIONS = new Set([
+  "hide",
+  "show",
+  "disable",
+  "enable",
+  "insert",
+  "remove_selector",
+  "set_attribute",
+]);
 
 interface HandleRuntimeStructureActionOptions {
   handlePluginRuntimeDomEvent: (
@@ -34,6 +42,15 @@ export async function handlePluginRuntimeStructureAction(
 ): Promise<boolean> {
   const { plugin_id, action, element_id, html, target } = event;
   const fullElementId = `plugin-ui-${plugin_id}-${element_id}`;
+
+  if (BLOCKED_RUNTIME_MUTATION_ACTIONS.has(action)) {
+    pluginLogger.warn("RuntimeUI", "已拦截插件界面控制操作", {
+      pluginId: plugin_id,
+      action,
+      target,
+    });
+    return true;
+  }
 
   switch (action) {
     case "inject": {
@@ -74,89 +91,6 @@ export async function handlePluginRuntimeStructureAction(
       return true;
     }
 
-    case "hide": {
-      if (!target) return true;
-      resolveScopedTargets(plugin_id, target).forEach((element) => {
-        (element as HTMLElement).style.display = "none";
-        (element as HTMLElement).dataset.pluginHidden = plugin_id;
-      });
-      return true;
-    }
-
-    case "show": {
-      if (!target) return true;
-      resolveScopedTargets(plugin_id, target).forEach((element) => {
-        (element as HTMLElement).style.display = "";
-        delete (element as HTMLElement).dataset.pluginHidden;
-      });
-      return true;
-    }
-
-    case "disable": {
-      if (!target) return true;
-      resolveScopedTargets(plugin_id, target).forEach((element) => {
-        (element as HTMLElement).setAttribute("disabled", "true");
-        (element as HTMLElement).style.pointerEvents = "none";
-        (element as HTMLElement).style.opacity = "0.5";
-        (element as HTMLElement).dataset.pluginDisabled = plugin_id;
-      });
-      return true;
-    }
-
-    case "enable": {
-      if (!target) return true;
-      resolveScopedTargets(plugin_id, target).forEach((element) => {
-        (element as HTMLElement).removeAttribute("disabled");
-        (element as HTMLElement).style.pointerEvents = "";
-        (element as HTMLElement).style.opacity = "";
-        delete (element as HTMLElement).dataset.pluginDisabled;
-      });
-      return true;
-    }
-
-    case "insert": {
-      if (!target) return true;
-      const [placement, selector] = target.split("|");
-      const targetElement = selector ? resolveScopedTarget(plugin_id, selector) : null;
-      if (!targetElement) return true;
-
-      const wrapper = document.createElement("div");
-      wrapper.dataset.pluginInserted = plugin_id;
-      wrapper.innerHTML = sanitizeHtml(html);
-
-      switch (placement) {
-        case "before":
-          targetElement.parentNode?.insertBefore(wrapper, targetElement);
-          break;
-        case "after":
-          targetElement.parentNode?.insertBefore(wrapper, targetElement.nextSibling);
-          break;
-        case "prepend":
-          targetElement.prepend(wrapper);
-          break;
-        case "append":
-          targetElement.append(wrapper);
-          break;
-      }
-      return true;
-    }
-
-    case "remove_selector": {
-      if (!target) return true;
-      resolveScopedTargets(plugin_id, target).forEach((element) => {
-        if ((element as HTMLElement).dataset.pluginInserted === plugin_id) {
-          element.remove();
-        }
-      });
-
-      document.querySelectorAll(`[data-plugin-inserted="${plugin_id}"]`).forEach((element) => {
-        if (element.querySelector(target) || element.matches(target)) {
-          element.remove();
-        }
-      });
-      return true;
-    }
-
     case "set_style": {
       if (!target) return true;
       try {
@@ -175,30 +109,6 @@ export async function handlePluginRuntimeStructureAction(
         });
       } catch (error) {
         pluginLogger.error("RuntimeUI", "插件样式更新内容无效", error);
-      }
-      return true;
-    }
-
-    case "set_attribute": {
-      if (!target) return true;
-      try {
-        const { attribute, value } = JSON.parse(html || "{}") as {
-          attribute?: string;
-          value?: string;
-        };
-        if (!attribute) return true;
-        if (!isAllowedAttribute(attribute)) {
-          pluginLogger.warn("RuntimeUI", "已拦截插件属性更新", {
-            pluginId: plugin_id,
-            attribute,
-          });
-          return true;
-        }
-        resolveScopedTargets(plugin_id, target).forEach((element) => {
-          element.setAttribute(attribute, value ?? "");
-        });
-      } catch (error) {
-        pluginLogger.error("RuntimeUI", "插件属性更新内容无效", error);
       }
       return true;
     }

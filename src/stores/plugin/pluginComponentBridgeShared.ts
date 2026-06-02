@@ -22,6 +22,8 @@ export interface PendingPluginComponentCreate {
   props: Record<string, any>;
 }
 
+export const ALLOWED_PLUGIN_COMPONENT_TYPES = new Set(["SLProgress"]);
+
 export function hasPluginPermission(
   getPlugins: () => PluginInfo[],
   pluginId: string,

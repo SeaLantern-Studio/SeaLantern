@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
 import type { PendingPluginComponentCreate } from "@stores/plugin/pluginComponentBridge";
+import { pluginLogger } from "@stores/plugin/pluginLogger";
+import { ALLOWED_PLUGIN_COMPONENT_TYPES } from "@stores/plugin/pluginComponentBridgeShared";
 import SLProgress from "@components/common/SLProgress.vue";
 import {
   createPluginRuntimeHost,
@@ -39,7 +41,20 @@ function safeConsumeDeletes(pluginId: string): string[] {
 function consumePendingCreates(pluginId: string) {
   const creates = safeConsumeCreates(pluginId);
   for (const create of creates) {
+    if (!ALLOWED_PLUGIN_COMPONENT_TYPES.has(create.component_type)) {
+      pluginLogger.warn("Component", "已跳过未开放组件渲染", {
+        pluginId: create.plugin_id,
+        componentType: create.component_type,
+        componentId: create.component_id,
+      });
+      continue;
+    }
     if (!componentMap[create.component_type]) {
+      pluginLogger.warn("Component", "组件类型未映射到渲染器", {
+        pluginId: create.plugin_id,
+        componentType: create.component_type,
+        componentId: create.component_id,
+      });
       continue;
     }
     if (!renderedComponents.value.find((c) => c.id === create.component_id)) {
