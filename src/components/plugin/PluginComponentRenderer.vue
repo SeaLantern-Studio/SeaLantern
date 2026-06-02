@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
+import type { PendingPluginComponentCreate } from "@stores/plugin/pluginComponentBridge";
 import SLCard from "@components/common/SLCard.vue";
 import SLRegisteredButton from "@components/common/SLRegisteredButton.vue";
 import SLInput from "@components/common/SLInput.vue";
@@ -9,12 +10,6 @@ import SLSwitch from "@components/common/SLSwitch.vue";
 import SLProgress from "@components/common/SLProgress.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTabBar from "@components/common/SLTabBar.vue";
-
-type PendingCreate = {
-  component_type: string;
-  component_id: string;
-  props: Record<string, any>;
-};
 
 const pluginStore = usePluginStore();
 
@@ -38,10 +33,10 @@ interface RenderedComponent {
 
 const renderedComponents = ref<RenderedComponent[]>([]);
 
-function safeConsumeCreates(pluginId: string): PendingCreate[] {
+function safeConsumeCreates(pluginId: string): PendingPluginComponentCreate[] {
   const fn = (pluginStore as any).consumePendingComponentCreates;
   if (typeof fn !== "function") return [];
-  return fn(pluginId) as PendingCreate[];
+  return fn(pluginId) as PendingPluginComponentCreate[];
 }
 
 function safeConsumeDeletes(pluginId: string): string[] {
