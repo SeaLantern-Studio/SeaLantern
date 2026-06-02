@@ -3,13 +3,12 @@ import {
   cleanupPluginEventListeners,
   removePluginUiElements,
 } from "@stores/plugin/pluginRuntimeDomCleanup";
+import { scopeRuntimeCss, sanitizeHtml } from "@stores/plugin/pluginRuntimeDomSanitizer";
 import {
-  executePluginScripts,
-  sanitizeCss,
-  sanitizeHtml,
-} from "@stores/plugin/pluginRuntimeDomSanitizer";
-import {
+  createPluginRuntimeHost,
   getPluginUiContainer,
+  getPluginRuntimeSurface,
+  getScopedRuntimeCssSelector,
   isAllowedAttribute,
   isAllowedStyleProperty,
   normalizeStyleProperty,
@@ -41,13 +40,12 @@ export async function handlePluginRuntimeStructureAction(
       document.getElementById(fullElementId)?.remove();
 
       const container = getPluginUiContainer();
-      const wrapper = document.createElement("div");
-      wrapper.id = fullElementId;
-      wrapper.setAttribute("data-plugin-id", plugin_id);
-      wrapper.style.pointerEvents = "auto";
-      wrapper.innerHTML = sanitizeHtml(html);
+      const wrapper = createPluginRuntimeHost(plugin_id, element_id);
+      const surface = getPluginRuntimeSurface(wrapper);
+      if (surface) {
+        surface.innerHTML = sanitizeHtml(html);
+      }
       container.appendChild(wrapper);
-      executePluginScripts(wrapper, html);
       return true;
     }
 
@@ -58,9 +56,9 @@ export async function handlePluginRuntimeStructureAction(
 
     case "update": {
       const element = document.getElementById(fullElementId);
-      if (element) {
-        element.innerHTML = sanitizeHtml(html);
-        executePluginScripts(element, html);
+      const surface = getPluginRuntimeSurface(element);
+      if (surface) {
+        surface.innerHTML = sanitizeHtml(html);
       } else {
         await options.handlePluginRuntimeDomEvent(
           { ...event, action: "inject" },
@@ -125,7 +123,6 @@ export async function handlePluginRuntimeStructureAction(
       const wrapper = document.createElement("div");
       wrapper.dataset.pluginInserted = plugin_id;
       wrapper.innerHTML = sanitizeHtml(html);
-      executePluginScripts(wrapper, html);
 
       switch (placement) {
         case "before":
@@ -208,7 +205,7 @@ export async function handlePluginRuntimeStructureAction(
 
     case "inject_css": {
       const styleId = `plugin-css-${plugin_id}-${element_id}`;
-      const css = sanitizeCss(html);
+      const css = scopeRuntimeCss(html, getScopedRuntimeCssSelector(plugin_id));
       const pluginRoot = getPluginUiContainer();
       const existingStyle = pluginRoot.querySelector(`#${styleId}`) as HTMLStyleElement | null;
       if (existingStyle) {

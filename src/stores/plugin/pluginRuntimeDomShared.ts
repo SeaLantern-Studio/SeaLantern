@@ -7,7 +7,6 @@ const ALLOWED_RUNTIME_STYLE_PROPS = new Set([
   "border-radius",
   "border-style",
   "border-width",
-  "bottom",
   "box-shadow",
   "color",
   "display",
@@ -16,9 +15,7 @@ const ALLOWED_RUNTIME_STYLE_PROPS = new Set([
   "font-size",
   "font-weight",
   "gap",
-  "height",
   "justify-content",
-  "left",
   "margin",
   "margin-bottom",
   "margin-left",
@@ -35,16 +32,72 @@ const ALLOWED_RUNTIME_STYLE_PROPS = new Set([
   "padding-left",
   "padding-right",
   "padding-top",
-  "pointer-events",
-  "position",
-  "right",
   "text-align",
-  "top",
   "transform",
   "visibility",
-  "width",
-  "z-index",
 ]);
+
+export const PLUGIN_RUNTIME_HOST_CLASS = "plugin-runtime-host";
+export const PLUGIN_RUNTIME_SURFACE_CLASS = "plugin-runtime-surface";
+
+function ensurePluginRuntimeStyles() {
+  let style = document.getElementById("plugin-runtime-host-style") as HTMLStyleElement | null;
+  if (style) {
+    return;
+  }
+
+  style = document.createElement("style");
+  style.id = "plugin-runtime-host-style";
+  style.textContent = `
+    #plugin-ui-container {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(420px, calc(100vw - 24px));
+      max-width: 100vw;
+      height: 100%;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      gap: 12px;
+      pointer-events: none;
+      z-index: 30;
+      box-sizing: border-box;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} {
+      width: 100%;
+      max-width: 100%;
+      max-height: calc(100vh - 24px);
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      pointer-events: auto;
+      box-sizing: border-box;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} {
+      width: 100%;
+      max-width: 100%;
+      max-height: calc(100vh - 24px);
+      overflow: auto;
+      background: var(--sl-surface);
+      color: var(--sl-text-primary);
+      border: 1px solid var(--sl-border-light);
+      border-radius: var(--sl-radius-md);
+      box-shadow: var(--sl-shadow-lg);
+      padding: 12px;
+      box-sizing: border-box;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} [hidden] {
+      display: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 const ALLOWED_RUNTIME_ATTRIBUTES = new Set([
   "aria-label",
@@ -118,11 +171,37 @@ export function getPluginUiContainer(): HTMLElement {
   if (!container) {
     container = document.createElement("div");
     container.id = "plugin-ui-container";
-    container.style.cssText =
-      "position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998;";
+    ensurePluginRuntimeStyles();
     document.body.appendChild(container);
   }
   return container;
+}
+
+export function createPluginRuntimeHost(pluginId: string, elementId: string): HTMLDivElement {
+  const host = document.createElement("div");
+  host.id = `plugin-ui-${pluginId}-${elementId}`;
+  host.className = PLUGIN_RUNTIME_HOST_CLASS;
+  host.setAttribute("data-plugin-id", pluginId);
+  host.setAttribute("data-plugin-runtime", "host");
+
+  const surface = document.createElement("div");
+  surface.className = PLUGIN_RUNTIME_SURFACE_CLASS;
+  surface.setAttribute("data-plugin-id", pluginId);
+  surface.setAttribute("data-plugin-runtime", "surface");
+  host.appendChild(surface);
+
+  return host;
+}
+
+export function getPluginRuntimeSurface(host: Element | null): HTMLElement | null {
+  if (!(host instanceof HTMLElement)) {
+    return null;
+  }
+  return host.querySelector(`.${PLUGIN_RUNTIME_SURFACE_CLASS}`) as HTMLElement | null;
+}
+
+export function getScopedRuntimeCssSelector(pluginId: string): string {
+  return `#plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS}[data-plugin-id="${pluginId}"] > .${PLUGIN_RUNTIME_SURFACE_CLASS}`;
 }
 
 export function setFormFieldValue(field: Element, value: unknown) {

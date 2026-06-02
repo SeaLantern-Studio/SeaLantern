@@ -109,6 +109,7 @@ export function createPluginComponentBridgeHandlers(options: PluginComponentBrid
         }
         if (event.component_type && component_id) {
           options.enqueueComponentCreate(plugin_id, {
+            plugin_id,
             component_type: event.component_type,
             component_id,
             props: event.props || {},

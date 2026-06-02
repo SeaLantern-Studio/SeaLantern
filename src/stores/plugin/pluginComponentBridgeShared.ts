@@ -16,6 +16,7 @@ export interface PluginComponentEvent {
 }
 
 export interface PendingPluginComponentCreate {
+  plugin_id: string;
   component_type: string;
   component_id: string;
   props: Record<string, any>;
