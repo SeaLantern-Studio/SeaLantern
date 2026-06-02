@@ -1,5 +1,4 @@
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
+import { computed, reactive, ref, watch } from "vue";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { usePluginStore } from "@stores/pluginStore";
 import type { PluginInfo } from "@type/plugin";
@@ -15,8 +14,8 @@ import {
   type PluginSettingsRecord,
   updatePluginSettingsField,
 } from "@views/plugins/pluginSettingsShared";
-import { useAutoSaveSettings } from "@views/plugins/useAutoSaveSettings";
 import { useDependentAutoSaves } from "@views/plugins/useDependentAutoSaves";
+import { usePluginCategoryLifecycle } from "@views/plugins/usePluginCategoryLifecycle";
 import { usePluginDependentSettings } from "@views/plugins/usePluginDependentSettings";
 
 interface UsePluginCategorySettingsOptions {
@@ -56,26 +55,6 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
     dependentSettingsSnapshots,
   });
 
-  const mainAutoSave = useAutoSaveSettings({
-    source: settingsForm,
-    snapshot: mainSettingsSnapshot,
-    enabled: () => Boolean(plugin.value) && !isInitializingForms.value,
-    save: async (payload) => {
-      const pluginId = plugin.value?.manifest.id;
-      if (!pluginId) {
-        return;
-      }
-
-      await pluginStore.setPluginSettings(pluginId, payload);
-    },
-    onError: (error) => {
-      pluginLogger.error("PluginCategorySettings", "Failed to auto-save plugin settings", {
-        pluginId: options.pluginId(),
-        error,
-      });
-    },
-  });
-
   const {
     dependentSaving,
     syncDependentAutoSaves,
@@ -90,12 +69,19 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
     setPluginSettings: pluginStore.setPluginSettings,
   });
 
-  const saving = computed(() => mainAutoSave.saving.value || dependentSaving.value);
-
-  async function flushPendingAutoSaves() {
-    await mainAutoSave.flush();
-    await flushDependentAutoSaves();
-  }
+  const { saving, finishFormInitialization, flushPendingAutoSaves } = usePluginCategoryLifecycle({
+    pluginId: options.pluginId,
+    plugin,
+    pluginSettingsForm: settingsForm,
+    mainSettingsSnapshot,
+    isInitializingForms,
+    loadPluginData,
+    syncDependentAutoSaves,
+    dependentSaving,
+    flushDependentAutoSaves,
+    stopDependentAutoSaves,
+    setPluginSettings: pluginStore.setPluginSettings,
+  });
 
   async function loadPluginData() {
     loading.value = true;
@@ -139,9 +125,7 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
         error,
       });
     } finally {
-      syncDependentAutoSaves();
-      mainSettingsSnapshot.value = serializeSettingsRecord({ ...settingsForm });
-      isInitializingForms.value = false;
+      finishFormInitialization();
       loading.value = false;
     }
   }
@@ -174,10 +158,6 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
     resetPluginSettingsForm(settingsForm, plugin.value.manifest.settings);
   }
 
-  onMounted(() => {
-    void loadPluginData();
-  });
-
   watch(
     () => pluginStore.plugins,
     (newPlugins) => {
@@ -187,25 +167,6 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
     },
     { deep: false },
   );
-
-  watch(
-    () => options.pluginId(),
-    () => {
-      void loadPluginData();
-    },
-  );
-
-  onBeforeRouteLeave(async () => {
-    await flushPendingAutoSaves();
-  });
-
-  onBeforeRouteUpdate(async () => {
-    await flushPendingAutoSaves();
-  });
-
-  onUnmounted(() => {
-    stopDependentAutoSaves();
-  });
 
   return {
     plugin,
