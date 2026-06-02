@@ -1,7 +1,26 @@
 import { emit } from "@tauri-apps/api/event";
-import DOMPurify from "dompurify";
+import {
+  cleanupPluginEventListeners,
+  removePluginUiElements,
+} from "@stores/plugin/pluginRuntimeDomCleanup";
+import {
+  executePluginScripts,
+  sanitizeCss,
+  sanitizeHtml,
+} from "@stores/plugin/pluginRuntimeDomSanitizer";
+import {
+  getPluginUiContainer,
+  isAllowedAttribute,
+  isAllowedStyleProperty,
+  normalizeStyleProperty,
+  resolveScopedTarget,
+  resolveScopedTargets,
+  setFormFieldValue,
+} from "@stores/plugin/pluginRuntimeDomShared";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import type { PluginUiAction } from "@type/plugin";
+
+export { cleanupPluginEventListeners, removePluginUiElements, sanitizeCss, sanitizeHtml };
 
 export interface PluginRuntimeUiEvent {
   plugin_id: string;
@@ -15,246 +34,6 @@ export type PluginRuntimeEventListenerRegistry = Map<
   string,
   Array<{ element: Element; eventType: string; handler: EventListener }>
 >;
-
-const ALLOWED_RUNTIME_STYLE_PROPS = new Set([
-  "align-items",
-  "background",
-  "background-color",
-  "border",
-  "border-color",
-  "border-radius",
-  "border-style",
-  "border-width",
-  "bottom",
-  "box-shadow",
-  "color",
-  "display",
-  "flex",
-  "flex-direction",
-  "font-size",
-  "font-weight",
-  "gap",
-  "height",
-  "justify-content",
-  "left",
-  "margin",
-  "margin-bottom",
-  "margin-left",
-  "margin-right",
-  "margin-top",
-  "max-height",
-  "max-width",
-  "min-height",
-  "min-width",
-  "opacity",
-  "overflow",
-  "padding",
-  "padding-bottom",
-  "padding-left",
-  "padding-right",
-  "padding-top",
-  "pointer-events",
-  "position",
-  "right",
-  "text-align",
-  "top",
-  "transform",
-  "visibility",
-  "width",
-  "z-index",
-]);
-
-const ALLOWED_RUNTIME_ATTRIBUTES = new Set([
-  "aria-label",
-  "aria-hidden",
-  "aria-pressed",
-  "aria-selected",
-  "data-state",
-  "data-variant",
-  "disabled",
-  "role",
-  "tabindex",
-  "title",
-  "value",
-]);
-
-function getPluginRootSelector(pluginId: string): string {
-  return `[data-plugin-id="${pluginId}"]`;
-}
-
-function getPluginRuntimeRoots(pluginId: string): HTMLElement[] {
-  return Array.from(document.querySelectorAll(getPluginRootSelector(pluginId))) as HTMLElement[];
-}
-
-function resolveScopedTargets(pluginId: string, selector: string): Element[] {
-  const roots = getPluginRuntimeRoots(pluginId);
-  if (roots.length === 0) {
-    return [];
-  }
-
-  const targets: Element[] = [];
-  for (const root of roots) {
-    if (root.matches(selector)) {
-      targets.push(root);
-    }
-    root.querySelectorAll(selector).forEach((element) => {
-      targets.push(element);
-    });
-  }
-  return targets;
-}
-
-function resolveScopedTarget(pluginId: string, selector: string): Element | null {
-  return resolveScopedTargets(pluginId, selector)[0] ?? null;
-}
-
-function normalizeStyleProperty(property: string): string {
-  return property.replace(/([A-Z])/g, "-$1").toLowerCase();
-}
-
-function isAllowedStyleProperty(property: string): boolean {
-  const normalized = normalizeStyleProperty(property);
-  if (normalized.startsWith("--")) {
-    return true;
-  }
-  return ALLOWED_RUNTIME_STYLE_PROPS.has(normalized);
-}
-
-function isAllowedAttribute(attribute: string): boolean {
-  const normalized = attribute.trim().toLowerCase();
-  if (normalized.startsWith("aria-")) {
-    return true;
-  }
-  if (normalized.startsWith("data-plugin-")) {
-    return true;
-  }
-  return ALLOWED_RUNTIME_ATTRIBUTES.has(normalized);
-}
-
-export function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
-    FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "link", "meta", "style"],
-    FORBID_ATTR: ["style"],
-    ALLOW_DATA_ATTR: false,
-  });
-}
-
-export function sanitizeCss(css: string): string {
-  let sanitized = css.replace(/@import\s+[^;]+;/gi, "");
-  sanitized = sanitized.replace(
-    /url\s*\(\s*(['"]?)\s*(https?:\/\/|\/\/)[^)]*\1\s*\)/gi,
-    "url(about:blank)",
-  );
-  sanitized = sanitized.replace(/url\s*\(\s*(['"]?)\s*data:[^)]*\1\s*\)/gi, "url(about:blank)");
-  sanitized = sanitized.replace(/expression\s*\(/gi, "(");
-  sanitized = sanitized.replace(/-moz-binding\s*:/gi, ":");
-  sanitized = sanitized.replace(/\b(position|z-index)\s*:[^;]+;?/gi, "");
-  return sanitized;
-}
-
-export function executePluginScripts(container: HTMLElement, rawHtml: string) {
-  if (/<script\b/i.test(rawHtml)) {
-    pluginLogger.warn("RuntimeUI", "已拦截插件脚本注入", {
-      containerId: container.id,
-    });
-  }
-}
-
-export function getPluginUiContainer(): HTMLElement {
-  let container = document.getElementById("plugin-ui-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "plugin-ui-container";
-    container.style.cssText =
-      "position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998;";
-    document.body.appendChild(container);
-  }
-  return container;
-}
-
-export function removePluginUiElements(pluginId: string) {
-  const elements = document.querySelectorAll(`[data-plugin-id="${pluginId}"]`);
-  elements.forEach((element) => element.remove());
-
-  const insertedElements = document.querySelectorAll(`[data-plugin-inserted="${pluginId}"]`);
-  insertedElements.forEach((element) => element.remove());
-
-  const hiddenElements = document.querySelectorAll(`[data-plugin-hidden="${pluginId}"]`);
-  hiddenElements.forEach((element) => {
-    (element as HTMLElement).style.display = "";
-    delete (element as HTMLElement).dataset.pluginHidden;
-  });
-
-  const disabledElements = document.querySelectorAll(`[data-plugin-disabled="${pluginId}"]`);
-  disabledElements.forEach((element) => {
-    (element as HTMLElement).removeAttribute("disabled");
-    (element as HTMLElement).style.pointerEvents = "";
-    (element as HTMLElement).style.opacity = "";
-    delete (element as HTMLElement).dataset.pluginDisabled;
-  });
-
-  pluginLogger.info("RuntimeUI", `已清理插件界面元素: ${pluginId}`, {
-    removed: elements.length + insertedElements.length,
-  });
-}
-
-export function cleanupPluginEventListeners(
-  pluginId: string,
-  eventListenerRegistry: PluginRuntimeEventListenerRegistry,
-) {
-  const listeners = eventListenerRegistry.get(pluginId);
-  if (!listeners) {
-    return;
-  }
-
-  for (const { element, eventType, handler } of listeners) {
-    element.removeEventListener(eventType, handler);
-  }
-  eventListenerRegistry.delete(pluginId);
-  pluginLogger.info("RuntimeUI", `已清理插件事件监听: ${pluginId}`, {
-    count: listeners.length,
-  });
-}
-
-export function setFormFieldValue(field: Element, value: unknown) {
-  if (field instanceof HTMLInputElement) {
-    const type = field.type.toLowerCase();
-    if (type === "checkbox") {
-      field.checked = Boolean(value);
-      field.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    }
-    if (type === "radio") {
-      const normalized = value == null ? "" : String(value);
-      if (field.value === normalized) {
-        field.checked = true;
-        field.dispatchEvent(new Event("change", { bubbles: true }));
-        return true;
-      }
-      return false;
-    }
-
-    field.value = value == null ? "" : String(value);
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
-  }
-
-  if (field instanceof HTMLTextAreaElement) {
-    field.value = value == null ? "" : String(value);
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
-  }
-
-  if (field instanceof HTMLSelectElement) {
-    field.value = value == null ? "" : String(value);
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
-  }
-
-  return false;
-}
 
 export async function handlePluginRuntimeDomEvent(
   event: PluginRuntimeUiEvent,
