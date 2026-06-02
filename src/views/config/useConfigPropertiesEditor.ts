@@ -2,6 +2,7 @@ import { computed, ref, shallowRef, type ComputedRef, type Ref } from "vue";
 import { configApi } from "@api/config";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { i18n } from "@language";
+import { useConfigPropertiesModeSwitch } from "@views/config/useConfigPropertiesModeSwitch";
 import { useConfigPropertiesReloadGuard } from "@views/config/useConfigPropertiesReloadGuard";
 import { useConfigPropertiesSaveFlow } from "@views/config/useConfigPropertiesSaveFlow";
 
@@ -50,8 +51,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   const sourceDraftText = ref("");
   const loadedSourceText = ref("");
   const visualModeBaseValues = ref<Record<string, string>>({});
-  const visualDraftDirty = ref(false);
-  const modeSwitching = ref(false);
   const sourceParseError = ref<string | null>(null);
 
   const compareContext = shallowRef<CompareContext | null>(null);
@@ -152,8 +151,8 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     visualModeBaseValues.value = { ...parsed.raw };
     sourceDraftText.value = sourceText;
     loadedSourceText.value = sourceText;
-    sourceParseError.value = null;
-    visualDraftDirty.value = false;
+    modeSwitch.clearSourceParseError();
+    modeSwitch.visualDraftDirty.value = false;
     editorMode.value = targetMode;
 
     const port = parsed.raw["server-port"];
@@ -182,6 +181,18 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     setSuccess: options.setSuccess,
     getCompareContext: () => compareContext.value,
     applyParsedSourceState,
+  });
+
+  const modeSwitch = useConfigPropertiesModeSwitch({
+    serverPath: options.serverPath,
+    editorMode,
+    sourceDraftText,
+    editValues,
+    visualModeBaseValues,
+    sourceParseError,
+    setError: options.setError,
+    buildVisualPreviewSource: saveFlow.buildVisualPreviewSource,
+    getCompareContext: () => compareContext.value,
   });
 
   async function loadProperties() {
@@ -259,58 +270,23 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     }
 
     editValues.value[key] = String(value);
-    visualDraftDirty.value = true;
+    modeSwitch.markVisualDraftDirty();
   }
 
   function updateSourceDraft(value: string) {
     sourceDraftText.value = value;
-    sourceParseError.value = null;
+    modeSwitch.clearSourceParseError();
   }
 
   function updateCompareTargetSourceDraft(value: string) {
     compareContext.value?.updateCompareTargetSourceDraft(value);
-    sourceParseError.value = null;
+    modeSwitch.clearSourceParseError();
   }
 
   async function handleEditorModeChange(mode: string | null) {
-    const targetMode = mode === "source" ? "source" : "visual";
-    if (targetMode === editorMode.value || modeSwitching.value || !options.serverPath.value) return;
-
-    modeSwitching.value = true;
-    options.setError(null);
-
-    try {
-      if (targetMode === "source") {
-        if (visualDraftDirty.value) {
-          sourceDraftText.value = await saveFlow.buildVisualPreviewSource();
-          visualDraftDirty.value = false;
-        }
-        if (compareContext.value?.compareMode.value) {
-          await compareContext.value.prepareCompareTargetSourceDraftForSourceMode();
-        }
-        sourceParseError.value = null;
-        editorMode.value = "source";
-        return;
-      }
-
-      const parsed = await configApi.parseServerPropertiesSource(sourceDraftText.value);
-      entries.value = parsed.entries as ConfigEntryType[];
-      editValues.value = { ...parsed.raw };
-      visualModeBaseValues.value = { ...parsed.raw };
-      const context = compareContext.value;
-      if (context?.compareMode.value) {
-        await context.applyCompareTargetSourceDraftToVisualState(
-          context.compareTargetSourceDraftText.value,
-        );
-      }
-      visualDraftDirty.value = false;
-      sourceParseError.value = null;
-      editorMode.value = "visual";
-    } catch (e) {
-      sourceParseError.value = i18n.t("config.source_parse_failed");
-      options.setError(String(e));
-    } finally {
-      modeSwitching.value = false;
+    const parsedEntries = await modeSwitch.handleEditorModeChange(mode);
+    if (parsedEntries) {
+      entries.value = parsedEntries;
     }
   }
 
