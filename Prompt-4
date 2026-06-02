@@ -1,56 +1,36 @@
-你是 SeaLantern 的 Code Agent。本轮你负责后端结构继续下沉，允许直接编辑代码，但不要提交 commit，不要额外产出 markdown 文件，最后直接口述结果。
+你是 SeaLantern 的 Code Agent。本轮这个 Prompt 暂缓执行，先不要开工。
 
-## 你的目标
+## 当前状态
 
-聚焦 `local helper` 和 `ServerManager` 这两块，做一轮小而稳的后端结构改进。不要做大重写，要做 reviewer 一眼能看懂、回归半径可控的拆分。
+Agent 5 已经校准过：上一轮这条线只拆了 `local_helper`，但没有推进 `manager.rs`，所以完成度不够，继续做很容易变成新的大范围搬文件。
 
-## 允许你修改的文件
+## 你的执行条件
 
-- `src-tauri/src/services/server/manager.rs`
-- `src-tauri/src/services/server/manager/**`
-- `src-tauri/src/services/server/runtime/local.rs`
-- `src-tauri/src/services/server/runtime/local_helper.rs`
-- 你为这轮拆分新增的同目录子模块文件
-- 与这轮拆分直接相关的测试文件
+只有在我明确再次启用你时，你才开始工作。
 
-## 不要碰的文件
+## 下次启用时的硬约束
 
-- `src-tauri/src/adapters/http/**`
-- `src-tauri/src/plugins/**`
-- `src-tauri/src/utils/cli/**`
-- `src-tauri/src/services/server/runtime/docker_itzg.rs`
+如果下一轮重新启用你，任务必须满足下面两个条件之一：
 
-## 已知背景
+1. 明确要求你触达 `src-tauri/src/services/server/manager.rs`
+2. 或者明确只让你做 `local_helper` 某一层的纯验证，而不是泛泛地说“继续做复杂度拆分”
 
-1. `local_helper.rs` 现在混了 helper 客户端、helper 服务端、状态文件、终端快照、孤儿进程清理等职责。
-2. `manager.rs` 已经拆出一部分子模块，但顶层仍残留启动细节、状态编排和路径相关逻辑。
-3. 这轮不追求把两块一次性拆干净，只追求切出最值得先分离的一层，让后续继续拆时不用再从一整块大文件下手。
+## 这轮不要做的事
 
-## 实现要求
+- 不要编辑任何文件
+- 不要补测试
+- 不要输出 markdown 文件
+- 不要 commit
 
-1. 只做小步拆分，不要改公开行为，不要顺手引入新功能。
-2. 优先把纯状态、纯协议、纯辅助逻辑挪出去，不要先动最脆弱的主流程。
-3. 如果你动了 `manager.rs`，目标应该是让它更像 orchestrator，而不是让它继续长出更多细节。
-4. 如果你动了 `local_helper.rs`，优先考虑把客户端、服务端、状态文件、terminal snapshot 之类的职责拉开。
-5. 改动范围要克制，宁可少拆一点，也不要把风险面拉得太大。
+## 你下次被启用时应优先做什么
 
-## 测试要求
+优先级建议只有两种：
 
-1. 优先补最小行为锁测试，确保拆分前后行为不变。
-2. 如果你拆了状态文件或协议层，至少补对应的纯逻辑测试。
-3. 如果你动了 `manager.rs` 的启动或删除流程，至少补一条编排级回归测试。
+1. 把 `manager.rs` 里的启动辅助逻辑继续下沉，让它更接近 orchestrator。
+2. 或者把 `local_helper` 里剩下的 terminal snapshot / tracked-child 生成再拆一层，但前提是目标写得非常具体。
 
 ## 输出方式
 
-结束时不要写文件总结，不要 commit，直接口述：
+这轮如果有人误把你开起来，你只需要口述一句：
 
-1. 你最终选择拆了哪一层，为什么先拆它。
-2. 你改了哪些文件。
-3. 你有没有改变行为，还是只做结构下沉。
-4. 你跑了哪些测试，哪些没跑。
-5. 你建议下一轮从哪里继续拆。
-
-## 额外提醒
-
-- 这一轮每个 Agent 的记忆会清空，所以你不要把关键前提藏在“默认大家都知道”的上下文里。
-- 不要碰 HTTP、插件运行时和 CLI Docker 拆分那几块，避免抢文件。
+“Prompt-4 当前按计划暂缓，等待明确触达 manager.rs 或更具体的 local_helper 子任务后再执行。”
