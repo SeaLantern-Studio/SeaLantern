@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import SLTooltip from "@components/common/SLTooltip.vue";
 import { SLTabBar } from "@components/common";
-import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import { FileDiff } from "lucide-vue-next";
 
@@ -14,160 +13,34 @@ import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
 import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
 import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.vue";
 import ConfigStartupSection from "@components/config/ConfigStartupSection.vue";
-import { useConfigPlugins } from "@views/config/useConfigPlugins";
-import { useConfigCompare } from "@views/config/useConfigCompare";
 import { useConfigPageLifecycle } from "@views/config/useConfigPageLifecycle";
-import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
+import { useConfigViewModel } from "@views/config/useConfigViewModel";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
 
 const route = useRoute();
-const store = useServerStore();
-
-const error = ref<string | null>(null);
-const successMsg = ref<string | null>(null);
-const activeTab = ref<"properties" | "plugins" | "startup">(
-  (route.query.tab as string) === "startup"
-    ? "startup"
-    : (route.query.tab as string) === "plugins"
-      ? "plugins"
-      : "properties",
-);
-const configSaveDiffModalWidth = "1040px";
-
-const currentServerId = computed(() => store.currentServerId);
-const routeId = computed(() => (route.params.id as string) || "");
-const currentServer = computed(
-  () => store.servers.find((s) => s.id === store.currentServerId) || null,
-);
-const serverPath = computed(() => currentServer.value?.path || "");
-
-function buildServerPropertiesPath(path: string) {
-  const basePath = path.replace(/[/\\]$/, "");
-  if (!basePath) {
-    return "server.properties";
-  }
-
-  const separator = basePath.includes("\\") ? "\\" : "/";
-  return `${basePath}${separator}server.properties`;
-}
-
-const serverPropertiesPath = computed(() => buildServerPropertiesPath(serverPath.value));
-
-function setError(message: string | null) {
-  error.value = message;
-}
-
-function setSuccess(message: string | null) {
-  successMsg.value = message;
-}
-
-function updateCurrentServerPort(port: string) {
-  if (!port) return;
-
-  const activeServer = store.servers.find((s) => s.id === store.currentServerId);
-  if (activeServer) {
-    activeServer.port = parseInt(port) || 25565;
-  }
-}
-
-function handleStartupConfigSaved(maxMemory: number, minMemory: number) {
-  const activeServer = store.servers.find((s) => s.id === store.currentServerId);
-  if (activeServer) {
-    activeServer.max_memory = maxMemory;
-    activeServer.min_memory = minMemory;
-  }
-}
-
-const propertiesEditor = useConfigPropertiesEditor({
-  serverPath,
-  serverPropertiesPath,
-  currentServerId,
-  currentServerName: computed(() => currentServer.value?.name || ""),
-  setError,
-  setSuccess,
-  updateCurrentServerPort,
-});
-
-const compare = useConfigCompare({
-  currentServerId,
-  servers: computed(() => store.servers),
-  sourceEntries: propertiesEditor.entries,
-  sourceValues: propertiesEditor.editValues,
-  sourceNumericFieldErrors: propertiesEditor.numericFieldErrors,
-  activeCategory: propertiesEditor.activeCategory,
-  searchQuery: propertiesEditor.searchQuery,
-  getTranslatedPropertyDescription: propertiesEditor.getTranslatedPropertyDescription,
-  setError,
-});
-
-propertiesEditor.bindCompareContext({
-  compareMode: compare.compareMode,
-  compareTargetServerId: compare.compareTargetServerId,
-  compareTargetEntries: compare.compareTargetEntries,
-  compareTargetPath: compare.compareTargetPath,
-  compareTargetServerName: computed(
-    () => compare.compareTargetServer.value?.name || i18n.t("config.compare.target_server"),
-  ),
-  compareTargetServerPropertiesPath: compare.compareTargetServerPropertiesPath,
-  compareTargetDraftValues: compare.compareTargetDraftValues,
-  compareTargetLoadedValues: compare.compareTargetLoadedValues,
-  compareTargetSourceDraftText: compare.compareTargetSourceDraftText,
-  compareTargetLoadedSourceText: compare.compareTargetLoadedSourceText,
-  compareTargetNumericFieldErrors: compare.compareTargetNumericFieldErrors,
-  loadCompareProperties: compare.loadCompareProperties,
-  applyParsedCompareTargetState: compare.applyParsedCompareTargetState,
-  applyCompareTargetSourceDraftToVisualState: compare.applyCompareTargetSourceDraftToVisualState,
-  buildCompareTargetPreviewSource: compare.buildCompareTargetPreviewSource,
-  prepareCompareTargetSourceDraftForSourceMode:
-    compare.prepareCompareTargetSourceDraftForSourceMode,
-  updateCompareTargetSourceDraft: compare.updateCompareTargetSourceDraft,
-  captureDifferenceCategorySnapshot: compare.captureDifferenceCategorySnapshot,
-});
-
-const pluginsState = useConfigPlugins({
-  currentServerId,
-  getCurrentServer: () => currentServer.value,
-  setError,
-});
-
-const configTabs = computed(() => [
-  {
-    key: "properties",
-    label: i18n.t("config.server_properties"),
-    count: "i",
-    countTitle: serverPropertiesPath.value,
-  },
-  { key: "startup", label: i18n.t("config.startup_properties") },
-  { key: "plugins", label: i18n.t("config.server_plugins") },
-]);
-
-const editorModeTabs = computed(() => [
-  { key: "visual", label: i18n.t("config.visual_mode") },
-  { key: "source", label: i18n.t("config.source_mode") },
-]);
-
-const gamemodeOptions = ref([
-  { label: i18n.t("config.gamemode.survival"), value: "survival" },
-  { label: i18n.t("config.gamemode.creative"), value: "creative" },
-  { label: i18n.t("config.gamemode.adventure"), value: "adventure" },
-  { label: i18n.t("config.gamemode.spectator"), value: "spectator" },
-]);
-
-const difficultyOptions = ref([
-  { label: i18n.t("config.difficulty.peaceful"), value: "peaceful" },
-  { label: i18n.t("config.difficulty.easy"), value: "easy" },
-  { label: i18n.t("config.difficulty.normal"), value: "normal" },
-  { label: i18n.t("config.difficulty.hard"), value: "hard" },
-]);
-
-const translatedDescriptionByKey = computed(() => {
-  const result: Record<string, string> = {};
-  propertiesEditor.filteredEntries.value.forEach((entry) => {
-    result[entry.key] = propertiesEditor.getTranslatedPropertyDescription(entry.key);
-  });
-  return result;
-});
+const viewModel = useConfigViewModel({ route });
+const store = viewModel.store;
+const error = viewModel.error;
+const successMsg = viewModel.successMsg;
+const activeTab = viewModel.activeTab;
+const currentServerId = viewModel.currentServerId;
+const currentServer = viewModel.currentServer;
+const serverPath = viewModel.serverPath;
+const propertiesEditor = viewModel.propertiesEditor;
+const compare = viewModel.compare;
+const pluginsState = viewModel.pluginsState;
+const configTabs = viewModel.configTabs;
+const editorModeTabs = viewModel.editorModeTabs;
+const gamemodeOptions = viewModel.gamemodeOptions;
+const difficultyOptions = viewModel.difficultyOptions;
+const translatedDescriptionByKey = viewModel.translatedDescriptionByKey;
+const configSaveDiffModalWidth = viewModel.configSaveDiffModalWidth;
+const routeId = viewModel.routeId;
+const currentServerName = viewModel.currentServerName;
+const compareTargetServerName = viewModel.compareTargetServerName;
+const handleStartupConfigSaved = viewModel.handleStartupConfigSaved;
+const setError = viewModel.setError;
 
 useConfigPageLifecycle({
   routeId,
@@ -246,10 +119,8 @@ useConfigPageLifecycle({
           :compareServerOptions="compare.compareServerOptions.value"
           :compareDifferenceBadgeText="compare.compareDifferenceBadgeText.value"
           :comparePanelRows="compare.comparePanelRows.value"
-          :sourceServerName="currentServer?.name || i18n.t('config.compare.source_server')"
-          :targetServerName="
-            compare.compareTargetServer.value?.name || i18n.t('config.compare.target_server')
-          "
+          :sourceServerName="currentServerName"
+          :targetServerName="compareTargetServerName"
           :categories="propertiesEditor.categories.value"
           :activeCategory="propertiesEditor.activeCategory.value"
           :searchQuery="propertiesEditor.searchQuery.value"
