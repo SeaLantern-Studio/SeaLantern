@@ -12,11 +12,11 @@ import {
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
-import { settingsApi } from "@api/settings";
 import { systemApi } from "@api/system";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
+import { useSettingsStore } from "@stores/settingsStore";
 import { useServerStore } from "@stores/serverStore";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { isBrowserEnv } from "@api/tauri";
@@ -57,6 +57,7 @@ function logCreateServerDnd(message: string, payload?: unknown) {
 export function useCreateServerPage() {
   const router = useRouter();
   const serverstore = useServerStore();
+  const settingsStore = useSettingsStore();
   const { error: errorMsg, showError, clearError } = useMessage();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
@@ -357,7 +358,7 @@ export function useCreateServerPage() {
         selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
       }
 
-      await settingsApi.updatePartial({
+      await settingsStore.updatePartial({
         cached_java_list: javaList.value,
         default_java_path: selectedJava.value || undefined,
       });
@@ -375,7 +376,7 @@ export function useCreateServerPage() {
         const fullPath = defaults.suggested_run_path || defaults.default_run_path;
         updateRunPath(fullPath);
         try {
-          await settingsApi.updatePartial({ last_run_path: fullPath });
+          await settingsStore.updatePartial({ last_run_path: fullPath });
         } catch (error) {
           console.error("Failed to save last run path:", error);
         }
@@ -390,7 +391,7 @@ export function useCreateServerPage() {
       updateRunPath(selected);
       // 保存选择的开服路径
       try {
-        await settingsApi.updatePartial({ last_run_path: selected });
+        await settingsStore.updatePartial({ last_run_path: selected });
       } catch (error) {
         console.error("Failed to save last run path:", error);
       }

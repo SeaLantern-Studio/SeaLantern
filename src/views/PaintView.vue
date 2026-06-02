@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { computed, ref } from "vue";
 import ErrorBanner from "@components/views/paint/ErrorBanner.vue";
 import ColorThemeCard from "@components/views/paint/ColorThemeCard.vue";
 import AppearanceCard from "@components/views/paint/AppearanceCard.vue";
@@ -8,21 +8,17 @@ import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.
 import SettingsActions from "@components/views/paint/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/paint/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/paint/ResetConfirmModal.vue";
-import { settingsApi, getSystemFonts, type AppSettings, type WindowEffect } from "@api/settings";
+import { settingsApi, getSystemFonts, type WindowEffect } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
+import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 import { useToast } from "@composables/useToast";
 import { usePluginStore } from "@stores/pluginStore";
-import { useSettingsStore } from "@stores/settingsStore";
 import { isMacOSPlatform, isWindowsPlatform } from "@utils/platform";
 
-const settings = ref<AppSettings | null>(null);
-const loading = ref(true);
 const fontsLoading = ref(false);
-const error = ref<string | null>(null);
 
 const pluginStore = usePluginStore();
-const settingsStore = useSettingsStore();
 const toast = useToast();
 
 const themeProxyPlugin = computed(() => {
@@ -76,33 +72,42 @@ const windowEffectSummary = computed(() => {
   return i18n.t(key);
 });
 
-const showImportModal = ref(false);
-const showResetConfirm = ref(false);
 const bgSettingsExpanded = ref(false);
 const personalizationBusy = ref(false);
 
-onMounted(async () => {
-  await loadSettings();
-  await loadSystemFonts();
+const settingsDraft = useSettingsPageDraft({
+  changedGroups: ["Appearance", "Console"],
+  syncLocalValues: (settings) => {
+    fontSize.value = String(settings.font_size);
+    consoleFontSize.value = String(settings.console_font_size);
+    consoleFontFamily.value = settings.console_font_family || "";
+    consoleLetterSpacing.value = String(settings.console_letter_spacing ?? 0);
+    maxLogLines.value = String(settings.max_log_lines);
+    bgOpacity.value = String(settings.background_opacity);
+    bgBlur.value = String(settings.background_blur);
+    bgBrightness.value = String(settings.background_brightness);
+  },
+  prepareForSave: (settings) => {
+    settings.console_font_size = parseInt(consoleFontSize.value) || 13;
+    settings.console_font_family = consoleFontFamily.value;
+    settings.console_letter_spacing = parseInt(consoleLetterSpacing.value) || 0;
+    settings.max_log_lines = parseInt(maxLogLines.value) || 5000;
+    settings.background_opacity = parseFloat(bgOpacity.value) || 0.3;
+    settings.background_blur = parseInt(bgBlur.value) || 0;
+    settings.background_brightness = parseFloat(bgBrightness.value) || 1.0;
+    settings.font_size = parseInt(fontSize.value) || 14;
+    settings.color = settings.color || "default";
+  },
+  emptyImportMessage: () => i18n.t("settings.no_json"),
 });
 
-onUnmounted(() => {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-    saveTimeout = null;
-  }
-});
+const settings = settingsDraft.settings;
+const loading = settingsDraft.loading;
+const error = settingsDraft.error;
+const showImportModal = settingsDraft.showImportModal;
+const showResetConfirm = settingsDraft.showResetConfirm;
 
-function syncLocalValues(s: AppSettings) {
-  fontSize.value = String(s.font_size);
-  consoleFontSize.value = String(s.console_font_size);
-  consoleFontFamily.value = s.console_font_family || "";
-  consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
-  maxLogLines.value = String(s.max_log_lines);
-  bgOpacity.value = String(s.background_opacity);
-  bgBlur.value = String(s.background_blur);
-  bgBrightness.value = String(s.background_brightness);
-}
+void loadSystemFonts();
 
 async function loadSystemFonts() {
   fontsLoading.value = true;
@@ -119,36 +124,8 @@ async function loadSystemFonts() {
   }
 }
 
-async function loadSettings() {
-  loading.value = true;
-  error.value = null;
-  try {
-    await settingsStore.ensureLoaded();
-    const nextSettings = settingsStore.cloneSettings();
-    settings.value = nextSettings;
-    settings.value.color = nextSettings.color || "default";
-    syncLocalValues(nextSettings);
-  } catch (e) {
-    error.value = String(e);
-  } finally {
-    loading.value = false;
-  }
-}
-
 function markChanged() {
-  debouncedSave();
-}
-
-let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-
-function debouncedSave() {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-  }
-  saveTimeout = setTimeout(() => {
-    saveSettings();
-    saveTimeout = null;
-  }, 500);
+  settingsDraft.markChanged();
 }
 
 function handleFontSizeChange() {
@@ -171,59 +148,17 @@ function handleThemeChange() {
   markChanged();
 }
 
-async function saveSettings() {
-  if (!settings.value) return;
-
-  settings.value.console_font_size = parseInt(consoleFontSize.value) || 13;
-  settings.value.console_font_family = consoleFontFamily.value;
-  settings.value.console_letter_spacing = parseInt(consoleLetterSpacing.value) || 0;
-  settings.value.max_log_lines = parseInt(maxLogLines.value) || 5000;
-  settings.value.background_opacity = parseFloat(bgOpacity.value) || 0.3;
-  settings.value.background_blur = parseInt(bgBlur.value) || 0;
-  settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
-  settings.value.font_size = parseInt(fontSize.value) || 14;
-  settings.value.color = settings.value.color || "default";
-
-  error.value = null;
-  try {
-    await settingsStore.saveSettingsWithDiff(settings.value);
-    settings.value = settingsStore.cloneSettings();
-    syncLocalValues(settings.value);
-  } catch (e) {
-    error.value = String(e);
-  }
-}
-
 async function resetSettings() {
-  try {
-    const s = await settingsStore.resetSettings(["Appearance", "Console"]);
-    settings.value = settingsStore.cloneSettings(s);
-    syncLocalValues(settings.value);
-    showResetConfirm.value = false;
-    settings.value.color = "default";
-  } catch (e) {
-    error.value = String(e);
-  }
+  await settingsDraft.resetSettings();
 }
 
 async function handleImport(json: string) {
-  if (!json.trim()) {
-    error.value = i18n.t("settings.no_json");
-    return;
-  }
-  try {
-    const s = await settingsStore.importSettingsJson(json, ["Appearance", "Console"]);
-    settings.value = settingsStore.cloneSettings(s);
-    syncLocalValues(settings.value);
-    showImportModal.value = false;
-  } catch (e) {
-    error.value = String(e);
-  }
+  await settingsDraft.importSettings(json);
 }
 
 async function exportPersonalizationPackage() {
   personalizationBusy.value = true;
-  error.value = null;
+  settingsDraft.clearError();
   try {
     const suggestedName = await settingsApi.getPersonalizationPackageSuggestedName();
     const filePath = await systemApi.pickPersonalizationExportFile(suggestedName);
@@ -234,7 +169,7 @@ async function exportPersonalizationPackage() {
     await settingsApi.exportPersonalizationPackage(filePath);
     toast.success(i18n.t("settings.personalization_export_success"));
   } catch (e) {
-    error.value = String(e);
+    settingsDraft.setError(String(e));
     toast.error(String(e));
   } finally {
     personalizationBusy.value = false;
@@ -243,7 +178,7 @@ async function exportPersonalizationPackage() {
 
 async function importPersonalizationPackage() {
   personalizationBusy.value = true;
-  error.value = null;
+  settingsDraft.clearError();
   try {
     const filePath = await systemApi.pickPersonalizationImportFile();
     if (!filePath) {
@@ -251,9 +186,7 @@ async function importPersonalizationPackage() {
     }
 
     const result = await settingsApi.importPersonalizationPackage(filePath);
-    settingsStore.replaceSettings(result.settings, result.changed_groups);
-    settings.value = settingsStore.cloneSettings(result.settings);
-    syncLocalValues(result.settings);
+    settingsDraft.replaceSettings(result.settings, result.changed_groups);
     await pluginStore.injectAllPluginCss();
 
     if (result.skipped_plugins.length > 0) {
@@ -262,7 +195,7 @@ async function importPersonalizationPackage() {
       toast.success(i18n.t("settings.personalization_import_success"));
     }
   } catch (e) {
-    error.value = String(e);
+    settingsDraft.setError(String(e));
     toast.error(String(e));
   } finally {
     personalizationBusy.value = false;
@@ -279,7 +212,7 @@ async function pickBackgroundImage() {
     }
   } catch (e) {
     console.error("Pick image error:", e);
-    error.value = String(e);
+    settingsDraft.setError(String(e));
   }
 }
 
