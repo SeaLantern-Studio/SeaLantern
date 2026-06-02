@@ -2,6 +2,7 @@ import { computed, ref, shallowRef, type ComputedRef, type Ref } from "vue";
 import { configApi } from "@api/config";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { i18n } from "@language";
+import { useConfigPropertiesReloadGuard } from "@views/config/useConfigPropertiesReloadGuard";
 import { useConfigPropertiesSaveFlow } from "@views/config/useConfigPropertiesSaveFlow";
 
 interface CompareContext {
@@ -52,8 +53,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   const visualDraftDirty = ref(false);
   const modeSwitching = ref(false);
   const sourceParseError = ref<string | null>(null);
-  const showDiscardConfirm = ref(false);
-  const pendingReloadSide = ref<"current" | "compare" | null>(null);
 
   const compareContext = shallowRef<CompareContext | null>(null);
 
@@ -130,47 +129,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   const reloadCompareTooltipText = computed(() => {
     const context = compareContext.value;
     return `重新载入${context?.compareTargetServerName.value || i18n.t("config.compare.target_server")}属性`;
-  });
-
-  const currentSideDirty = computed(
-    () =>
-      sourceDraftText.value !== loadedSourceText.value ||
-      !areMapValuesEqual(editValues.value, loadedValues.value),
-  );
-
-  const compareSideDirty = computed(() => {
-    const context = compareContext.value;
-    if (!context) {
-      return false;
-    }
-    return (
-      context.compareTargetSourceDraftText.value !== context.compareTargetLoadedSourceText.value ||
-      !areMapValuesEqual(
-        context.compareTargetDraftValues.value,
-        context.compareTargetLoadedValues.value,
-      )
-    );
-  });
-
-  const discardConfirmTitle = computed(() => {
-    if (pendingReloadSide.value === "compare") {
-      return "丢弃对照侧修改";
-    }
-    if (pendingReloadSide.value === "current") {
-      return "丢弃当前侧修改";
-    }
-    return i18n.t("config.discard_title");
-  });
-
-  const discardConfirmMessage = computed(() => {
-    const context = compareContext.value;
-    if (pendingReloadSide.value === "compare") {
-      return `重新载入将丢弃 ${context?.compareTargetServerName.value || i18n.t("config.compare.target_server")} 的未保存属性修改。`;
-    }
-    if (pendingReloadSide.value === "current") {
-      return `重新载入将丢弃 ${options.currentServerName.value || i18n.t("config.current_server")} 的未保存属性修改。`;
-    }
-    return i18n.t("config.discard_message");
   });
 
   function bindCompareContext(context: CompareContext) {
@@ -280,6 +238,16 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     }
   }
 
+  const reloadGuard = useConfigPropertiesReloadGuard({
+    currentServerName: options.currentServerName,
+    sourceDraftText,
+    loadedSourceText,
+    editValues,
+    loadedValues,
+    getCompareContext: () => compareContext.value,
+    loadCurrentPropertiesOnly,
+  });
+
   function updateValue(key: string, value: string | boolean | number) {
     if (!entries.value.some((entry) => entry.key === key)) {
       const compareEntry = compareContext.value?.compareTargetEntries.value.find(
@@ -346,44 +314,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     }
   }
 
-  async function reloadPropertiesWithGuard() {
-    pendingReloadSide.value = "current";
-    if (currentSideDirty.value) {
-      showDiscardConfirm.value = true;
-      return;
-    }
-
-    await loadCurrentPropertiesOnly();
-    pendingReloadSide.value = null;
-  }
-
-  async function reloadComparePropertiesWithGuard() {
-    const context = compareContext.value;
-    if (!context?.compareMode.value) {
-      return;
-    }
-
-    pendingReloadSide.value = "compare";
-    if (compareSideDirty.value) {
-      showDiscardConfirm.value = true;
-      return;
-    }
-
-    await context.loadCompareProperties();
-    pendingReloadSide.value = null;
-  }
-
-  async function confirmReloadDiscard() {
-    showDiscardConfirm.value = false;
-    const context = compareContext.value;
-    if (pendingReloadSide.value === "compare" && context) {
-      await context.loadCompareProperties();
-    } else {
-      await loadCurrentPropertiesOnly();
-    }
-    pendingReloadSide.value = null;
-  }
-
   function handleCategoryChange(category: string) {
     if (
       category === COMPARE_DIFFERENCE_CATEGORY &&
@@ -411,8 +341,8 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     editorMode,
     sourceDraftText,
     sourceParseError,
-    showDiscardConfirm,
-    pendingReloadSide,
+    showDiscardConfirm: reloadGuard.showDiscardConfirm,
+    pendingReloadSide: reloadGuard.pendingReloadSide,
     showSaveDiffModal: saveFlow.showSaveDiffModal,
     pendingSaveItems: saveFlow.pendingSaveItems,
     categories,
@@ -423,8 +353,8 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     hasInvalidNumericValues,
     reloadCurrentTooltipText,
     reloadCompareTooltipText,
-    discardConfirmTitle,
-    discardConfirmMessage,
+    discardConfirmTitle: reloadGuard.discardConfirmTitle,
+    discardConfirmMessage: reloadGuard.discardConfirmMessage,
     pendingSaveItemsWithStats: saveFlow.pendingSaveItemsWithStats,
     bindCompareContext,
     getTranslatedPropertyDescription,
@@ -437,9 +367,10 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     handleEditorModeChange,
     confirmSaveProperties: saveFlow.confirmSaveProperties,
     closeSaveDiffModal: saveFlow.closeSaveDiffModal,
-    reloadPropertiesWithGuard,
-    reloadComparePropertiesWithGuard,
-    confirmReloadDiscard,
+    closeDiscardDialog: reloadGuard.closeDiscardDialog,
+    reloadPropertiesWithGuard: reloadGuard.reloadPropertiesWithGuard,
+    reloadComparePropertiesWithGuard: reloadGuard.reloadComparePropertiesWithGuard,
+    confirmReloadDiscard: reloadGuard.confirmReloadDiscard,
     handleCategoryChange,
     handleSearchUpdate,
   };

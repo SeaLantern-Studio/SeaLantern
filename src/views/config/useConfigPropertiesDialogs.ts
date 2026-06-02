@@ -33,8 +33,7 @@ export function useConfigPropertiesDialogs(options: UseConfigPropertiesDialogsOp
   }));
 
   function closeDiscardDialog() {
-    options.propertiesEditor.showDiscardConfirm.value = false;
-    options.propertiesEditor.pendingReloadSide.value = null;
+    options.propertiesEditor.closeDiscardDialog();
   }
 
   return {
