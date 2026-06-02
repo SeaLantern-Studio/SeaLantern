@@ -40,6 +40,11 @@ export const useConsoleStore = defineStore("console", () => {
     trimLogs(serverId);
   }
 
+  function replaceLogs(serverId: string, nextLines: string[]) {
+    logs.value[serverId] = nextLines.slice();
+    trimLogs(serverId);
+  }
+
   function appendLocal(serverId: string, line: string) {
     if (!logs.value[serverId]) {
       logs.value[serverId] = [];
@@ -75,6 +80,7 @@ export const useConsoleStore = defineStore("console", () => {
     logCursors,
     activeServerId,
     appendLogs,
+    replaceLogs,
     appendLocal,
     getLogCursor,
     setLogCursor,

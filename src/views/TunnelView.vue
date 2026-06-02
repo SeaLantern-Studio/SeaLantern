@@ -84,7 +84,9 @@ const consoleFontSize = ref(13);
 const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
-let statusPollTimer: ReturnType<typeof setInterval> | null = null;
+let statusPollTimer: ReturnType<typeof setTimeout> | null = null;
+let statusPollInFlight: Promise<void> | null = null;
+let tunnelViewDisposed = false;
 const syncedLogCount = ref(0);
 const syncedVisibleLogs = ref<string[]>([]);
 const syncedFirstLogLine = ref("");
@@ -215,27 +217,56 @@ watch(
 );
 
 function startStatusPolling() {
+  tunnelViewDisposed = false;
   stopStatusPolling();
-  statusPollTimer = setInterval(() => {
-    void refreshStatus({ silent: true });
-  }, 2000);
+  scheduleNextStatusRefresh();
 }
 
 function stopStatusPolling() {
   if (statusPollTimer) {
-    clearInterval(statusPollTimer);
+    clearTimeout(statusPollTimer);
     statusPollTimer = null;
   }
 }
 
-async function refreshStatus(options?: { silent?: boolean }) {
-  const silent = options?.silent ?? false;
-  try {
-    const next = await tunnelApi.status();
-    applyStatus(next);
-  } catch (e) {
-    if (!silent) globalMessage.error(String(e));
+function scheduleNextStatusRefresh(delay = 2000) {
+  if (tunnelViewDisposed) {
+    return;
   }
+  stopStatusPolling();
+  statusPollTimer = setTimeout(() => {
+    void refreshStatus({ silent: true, reschedule: true });
+  }, delay);
+}
+
+async function refreshStatus(options?: { silent?: boolean; reschedule?: boolean }) {
+  const silent = options?.silent ?? false;
+  const reschedule = options?.reschedule ?? false;
+
+  if (statusPollInFlight) {
+    if (reschedule) {
+      scheduleNextStatusRefresh();
+    }
+    return statusPollInFlight;
+  }
+
+  statusPollInFlight = (async () => {
+    try {
+      const next = await tunnelApi.status();
+      if (!tunnelViewDisposed) {
+        applyStatus(next);
+      }
+    } catch (e) {
+      if (!silent && !tunnelViewDisposed) globalMessage.error(String(e));
+    } finally {
+      statusPollInFlight = null;
+      if (reschedule && !tunnelViewDisposed) {
+        scheduleNextStatusRefresh();
+      }
+    }
+  })();
+
+  return statusPollInFlight;
 }
 
 async function startHost() {
@@ -373,6 +404,7 @@ function handleJoinTicketInput(value: string) {
 }
 
 onMounted(async () => {
+  tunnelViewDisposed = false;
   await settingsStore.ensureLoaded();
   await loadConsoleSettings();
   await refreshStatus();
@@ -380,6 +412,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  tunnelViewDisposed = true;
   stopStatusPolling();
   syncedLogCount.value = 0;
   syncedVisibleLogs.value = [];

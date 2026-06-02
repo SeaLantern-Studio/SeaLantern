@@ -16,6 +16,7 @@ import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import { useConsoleStore } from "@stores/consoleStore";
 import { useServerStore } from "@stores/serverStore";
 import { useSettingsStore } from "@stores/settingsStore";
 import { useRoute } from "vue-router";
@@ -34,6 +35,7 @@ import { formatBytes } from "@utils/serverUtils";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();
+const consoleStore = useConsoleStore();
 const settingsStore = useSettingsStore();
 const route = useRoute();
 
@@ -135,7 +137,6 @@ const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopping = computed(() => serverStatus.value === "Stopping");
 const isStarting = computed(() => serverStatus.value === "Starting");
-
 async function refreshServerStats() {
   const sid = serverId.value;
   if (!sid) {
@@ -167,6 +168,8 @@ async function startLogSubscription() {
 
   unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
     const sid = serverId.value;
+    consoleStore.appendLocal(server_id, line);
+    consoleStore.setLogCursor(server_id, (consoleStore.logs[server_id] || []).length);
     if (!sid || server_id !== sid) return;
     consoleOutputRef.value?.appendLines([line]);
   });
@@ -180,6 +183,12 @@ function stopLogSubscription() {
 }
 
 async function activateConsoleView() {
+  const sid = serverId.value;
+  if (sid) {
+    consoleStore.setActiveServer(sid);
+    renderCachedLogs(sid);
+  }
+
   if (serverId.value) {
     startStatsPolling();
   }
@@ -190,6 +199,7 @@ async function activateConsoleView() {
 function deactivateConsoleView() {
   stopStatsPolling();
   stopLogSubscription();
+  consoleStore.setActiveServer(null);
 }
 
 onMounted(async () => {
@@ -240,6 +250,7 @@ watch(
   async (sid) => {
     resetStatsHistory();
     stopStatsPolling();
+    consoleStore.setActiveServer(sid || null);
     if (!sid) return;
     await serverStore.refreshStatus(sid);
     await syncLogsOnce(sid);
@@ -250,11 +261,27 @@ watch(
 );
 
 async function syncLogsOnce(sid: string) {
-  consoleOutputRef.value?.clear();
   try {
+    const cachedLines = consoleStore.logs[sid] || [];
+
+    if (cachedLines.length > 0) {
+      renderCachedLogs(sid);
+      return;
+    }
+
     const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
-    consoleOutputRef.value?.appendLines(lines);
+    consoleStore.replaceLogs(sid, lines);
+    consoleStore.setLogCursor(sid, (consoleStore.logs[sid] || []).length);
+    renderCachedLogs(sid);
   } catch (_e) {}
+}
+
+function renderCachedLogs(sid: string) {
+  consoleOutputRef.value?.clear();
+  const lines = consoleStore.logs[sid] || [];
+  if (lines.length > 0) {
+    consoleOutputRef.value?.appendLines(lines);
+  }
 }
 
 function applyConsoleSettings(settings: {
@@ -281,6 +308,8 @@ async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
+  consoleStore.appendLocal(sid, "> " + command);
+  consoleStore.setLogCursor(sid, (consoleStore.logs[sid] || []).length);
   consoleOutputRef.value?.appendLines(["> " + command]);
   commandHistory.value.push(command);
   if (commandHistory.value.length > 500) {
@@ -391,6 +420,11 @@ function exportLogs() {
 }
 
 function handleClearLogs() {
+  const sid = serverId.value;
+  if (sid) {
+    consoleStore.clearLogs(sid);
+    consoleStore.setLogCursor(sid, 0);
+  }
   consoleOutputRef.value?.clear();
 }
 
