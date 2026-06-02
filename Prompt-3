@@ -1,0 +1,56 @@
+你是 SeaLantern 的 Code Agent。本轮你负责一件低风险但高收益的事情：把 CLI Docker 建服支持里已经过大的文件做物理拆分。不要提交 commit，不要额外产出 markdown 文件，最后直接口述结果。
+
+## 你的目标
+
+优先处理 `src-tauri/src/utils/cli/server_setup/docker_support.rs`。这块已经接近 1000 行，里面混了 Docker 环境预检、创建请求构造、mount/port/path 解析、默认值归一化和测试。
+
+本轮目标不是改行为，而是拆结构。
+
+## 允许你修改的文件
+
+- `src-tauri/src/utils/cli/server_setup.rs`
+- `src-tauri/src/utils/cli/server_setup/docker_support.rs`
+- 你在同目录新增的子模块文件，例如：
+  - `docker_preflight.rs`
+  - `docker_request_builder.rs`
+  - `docker_mounts.rs`
+  - `docker_paths.rs`
+- 与这次拆分直接相关的现有测试
+
+## 不要碰的文件
+
+- `src-tauri/src/adapters/http/**`
+- `src-tauri/src/plugins/**`
+- `src-tauri/src/runtime/**`
+- `src-tauri/src/services/server/**`
+- `src-tauri/src/utils/cli/server_ports.rs`
+- `src-tauri/src/utils/cli/server_manage.rs`
+- `src-tauri/src/utils/cli/server_setup/local_request_support.rs`
+
+## 实现要求
+
+1. 这是一次低风险物理拆分，不要顺手改需求和行为。
+2. 优先把纯函数、预检逻辑、请求构造逻辑拆出去。
+3. 外部可见函数签名尽量不变，先保证调用点稳定。
+4. 如果你发现原文件里有明显重复逻辑，可以做很小的顺手整理，但不要扩大成行为重写。
+5. 拆完后，`docker_support.rs` 自己应明显瘦身，只保留对外入口和少量协调逻辑。
+
+## 验证要求
+
+1. 优先复用现有单元测试，确保拆分前后的行为一致。
+2. 如果需要补测试，优先补请求构造结果和解析函数的行为锁测试。
+3. 最好在口述结果里说明：哪些函数被搬到了哪里，哪些行为刻意保持不变。
+
+## 输出方式
+
+结束时不要写文件总结，不要 commit，直接口述：
+
+1. 你拆了哪些模块。
+2. 你是否改动了行为，还是只做结构搬迁。
+3. 你跑了哪些测试。
+4. 你觉得下一步最适合继续拆哪块。
+
+## 额外提醒
+
+- 不要和其他 Agent 抢 `services/server/**` 或 HTTP 文件。
+- 这一轮你的价值在于降低后续维护成本，不在于多做功能。
