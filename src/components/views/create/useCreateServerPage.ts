@@ -1,6 +1,7 @@
 import { computed, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useRouter } from "vue-router";
+import { useCreateServerDefaults } from "@components/views/create/useCreateServerDefaults";
 import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
 import {
@@ -12,11 +13,9 @@ import {
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
-import { systemApi } from "@api/system";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
-import { useSettingsStore } from "@stores/settingsStore";
 import { useServerStore } from "@stores/serverStore";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { isBrowserEnv } from "@api/tauri";
@@ -57,7 +56,6 @@ function logCreateServerDnd(message: string, payload?: unknown) {
 export function useCreateServerPage() {
   const router = useRouter();
   const serverstore = useServerStore();
-  const settingsStore = useSettingsStore();
   const { error: errorMsg, showError, clearError } = useMessage();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
@@ -199,13 +197,26 @@ export function useCreateServerPage() {
     () => step4Completed.value && !startupSyncPending.value && !startupDetecting.value,
   );
 
+  const defaults = useCreateServerDefaults({
+    sourcePath,
+    sourceType,
+    runPath,
+    maxMemory,
+    minMemory,
+    port,
+    selectedJava,
+    javaList,
+    isChildPathBlocked: (targetPath) => isStrictChildPath(targetPath, sourcePath.value),
+    onInvalidRunPath: () => {
+      showError(i18n.t("create.path_child_of_source_forbidden"));
+    },
+  });
+
   onActivated(() => {
     loadFromDraft();
   });
 
   onMounted(async () => {
-    await loadDefaultSettings();
-
     if (!isBrowserEnv()) {
       try {
         unlistenSourceDropEvent = await listen<string[]>(
@@ -323,21 +334,6 @@ export function useCreateServerPage() {
     { immediate: true },
   );
 
-  async function loadDefaultSettings() {
-    try {
-      const defaults = await systemApi.getCreateServerDefaults();
-
-      maxMemory.value = String(defaults.default_max_memory);
-      minMemory.value = String(defaults.default_min_memory);
-      port.value = String(defaults.default_port);
-      runPath.value = defaults.suggested_run_path || defaults.default_run_path;
-      javaList.value = defaults.cached_java_list || [];
-      selectedJava.value = defaults.preferred_java_path || "";
-    } catch (error) {
-      console.error("Failed to load default settings:", error);
-    }
-  }
-
   function loadFromDraft() {
     const draftStore = useCreateServerDraftStore();
     const draft = draftStore.consumeDraft();
@@ -357,11 +353,6 @@ export function useCreateServerPage() {
         );
         selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
       }
-
-      await settingsStore.updatePartial({
-        cached_java_list: javaList.value,
-        default_java_path: selectedJava.value || undefined,
-      });
     } catch (error) {
       showError(String(error));
     } finally {
@@ -369,43 +360,8 @@ export function useCreateServerPage() {
     }
   }
 
-  async function pickRunPath() {
-    if (isBrowserEnv()) {
-      try {
-        const defaults = await systemApi.getCreateServerDefaults();
-        const fullPath = defaults.suggested_run_path || defaults.default_run_path;
-        updateRunPath(fullPath);
-        try {
-          await settingsStore.updatePartial({ last_run_path: fullPath });
-        } catch (error) {
-          console.error("Failed to save last run path:", error);
-        }
-      } catch (error) {
-        console.error("Failed to get create server defaults:", error);
-      }
-      return;
-    }
-
-    const selected = await systemApi.pickFolder();
-    if (selected) {
-      updateRunPath(selected);
-      // 保存选择的开服路径
-      try {
-        await settingsStore.updatePartial({ last_run_path: selected });
-      } catch (error) {
-        console.error("Failed to save last run path:", error);
-      }
-    }
-  }
-
   function updateRunPath(nextPath: string) {
-    const targetPath = nextPath.trim();
-    if (sourceType.value === "folder" && isStrictChildPath(targetPath, sourcePath.value)) {
-      showError(i18n.t("create.path_child_of_source_forbidden"));
-      return;
-    }
-
-    runPath.value = nextPath;
+    defaults.applyRunPath(nextPath);
   }
 
   async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
@@ -655,7 +611,7 @@ export function useCreateServerPage() {
     activeStep,
     stepItems,
     canSubmit,
-    pickRunPath,
+    pickRunPath: defaults.pickRunPath,
     updateRunPath,
     rescanStartupCandidates,
     detectJava,
