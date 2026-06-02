@@ -1,6 +1,8 @@
-import { onActivated, onMounted, onUnmounted, ref, watch } from "vue";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useCreateServerDefaults } from "@components/views/create/useCreateServerDefaults";
+import {
+  type CreateServerSourceType,
+  useCreateServerDropSource,
+} from "@components/views/create/useCreateServerDropSource";
 import { useCreateServerScan } from "@components/views/create/useCreateServerScan";
 import { useCreateServerSubmit } from "@components/views/create/useCreateServerSubmit";
 import { isStrictChildPath, normalizePathForCompare } from "@components/views/create/startupUtils";
@@ -11,35 +13,7 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
-import { isBrowserEnv } from "@api/tauri";
-
-type SourceType = "archive" | "folder" | "";
-
-function inferSourceType(path: string): SourceType {
-  const lowerPath = path.toLowerCase();
-  if (
-    lowerPath.endsWith(".zip") ||
-    lowerPath.endsWith(".tar") ||
-    lowerPath.endsWith(".tar.gz") ||
-    lowerPath.endsWith(".tgz") ||
-    lowerPath.endsWith(".jar")
-  ) {
-    return "archive";
-  }
-  return "folder";
-}
-
-export const CREATE_SERVER_SOURCE_DROP_EVENT = "create-server-source-drop";
-const CREATE_SERVER_DND_DEBUG = import.meta.env.DEV;
-
-function logCreateServerDnd(message: string, payload?: unknown) {
-  if (!CREATE_SERVER_DND_DEBUG) return;
-  if (payload === undefined) {
-    console.debug(message);
-    return;
-  }
-  console.debug(message, payload);
-}
+import { onActivated, onUnmounted, ref, watch } from "vue";
 
 export function useCreateServerPage() {
   const { error: errorMsg, showError, clearError } = useMessage();
@@ -47,10 +21,8 @@ export function useCreateServerPage() {
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
 
   const sourcePath = ref("");
-  const sourceType = ref<SourceType>("");
+  const sourceType = ref<CreateServerSourceType>("");
   const runPath = ref("");
-
-  let unlistenSourceDropEvent: UnlistenFn | null = null;
 
   const runPathOverwriteRisk = ref(false);
   const RUN_PATH_CONFLICT_DEBOUNCE_MS = 180;
@@ -86,6 +58,11 @@ export function useCreateServerPage() {
     showError,
   });
 
+  useCreateServerDropSource({
+    sourcePath,
+    sourceType,
+  });
+
   const submit = useCreateServerSubmit({
     sourcePath,
     sourceType,
@@ -116,38 +93,11 @@ export function useCreateServerPage() {
     loadFromDraft();
   });
 
-  onMounted(async () => {
-    if (!isBrowserEnv()) {
-      try {
-        unlistenSourceDropEvent = await listen<string[]>(
-          CREATE_SERVER_SOURCE_DROP_EVENT,
-          (event) => {
-            const droppedPaths = Array.isArray(event.payload) ? event.payload : [];
-            logCreateServerDnd("[useCreateServerPage] Received source drop event", droppedPaths);
-            if (droppedPaths.length === 0) {
-              return;
-            }
-
-            const path = droppedPaths[0];
-            sourcePath.value = path;
-            sourceType.value = inferSourceType(path);
-          },
-        );
-      } catch (error) {
-        logCreateServerDnd("[useCreateServerPage] Failed to register source drop listener", error);
-      }
-    }
-  });
-
   onUnmounted(() => {
     scan.cleanupScanTimer();
     if (runPathConflictTimer) {
       clearTimeout(runPathConflictTimer);
       runPathConflictTimer = null;
-    }
-    if (unlistenSourceDropEvent) {
-      unlistenSourceDropEvent();
-      unlistenSourceDropEvent = null;
     }
   });
 
@@ -236,30 +186,6 @@ export function useCreateServerPage() {
     await scan.rescanStartupCandidates();
   }
 
-  /**
-   * 处理 Tauri 文件拖放事件
-   * 根据文件扩展名自动识别为压缩包或文件夹
-   */
-  function handleTauriDrop(paths: string[]) {
-    if (paths.length === 0) return;
-
-    const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz", ".jar"];
-
-    function hasArchiveExtension(path: string): boolean {
-      const lowerPath = path.toLowerCase();
-      return archiveExtensions.some((ext) => lowerPath.endsWith(ext));
-    }
-
-    const firstPath = paths[0];
-    if (hasArchiveExtension(firstPath)) {
-      sourcePath.value = firstPath;
-      sourceType.value = "archive";
-    } else {
-      sourcePath.value = firstPath;
-      sourceType.value = "folder";
-    }
-  }
-
   return {
     errorMsg,
     clearError,
@@ -299,7 +225,6 @@ export function useCreateServerPage() {
     rescanStartupCandidates,
     detectJava,
     handleSubmit: submit.handleSubmit,
-    handleTauriDrop,
     starterSelected: submit.starterSelected,
     customCommandHasRedirect: submit.customCommandHasRedirect,
   };
