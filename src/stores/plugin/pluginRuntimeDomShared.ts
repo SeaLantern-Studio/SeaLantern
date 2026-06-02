@@ -47,7 +47,6 @@ function ensurePluginRuntimeStyles() {
       position: fixed;
       right: 12px;
       bottom: 12px;
-      right: 0;
       width: min(420px, calc(100vw - 24px));
       max-width: calc(100vw - 24px);
       max-height: calc(100vh - 24px);
@@ -81,11 +80,12 @@ function ensurePluginRuntimeStyles() {
       overflow: hidden;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
-      background: var(--sl-surface);
+      background: color-mix(in srgb, var(--sl-surface) 92%, var(--sl-primary) 8%);
       color: var(--sl-text-primary);
       border: 1px solid var(--sl-border-light);
+      border-style: dashed;
       border-radius: var(--sl-radius-md);
-      box-shadow: var(--sl-shadow-lg);
+      box-shadow: none;
       box-sizing: border-box;
       isolation: isolate;
     }
@@ -118,7 +118,9 @@ function ensurePluginRuntimeStyles() {
       padding: 12px;
       box-sizing: border-box;
       contain: content;
-      background: color-mix(in srgb, var(--sl-surface) 94%, var(--sl-primary) 6%);
+      background: color-mix(in srgb, var(--sl-surface) 96%, var(--sl-primary) 4%);
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CONTENT_CLASS} [hidden] {
@@ -232,6 +234,7 @@ export function createPluginRuntimeHost(pluginId: string, elementId: string): HT
   content.className = PLUGIN_RUNTIME_CONTENT_CLASS;
   content.setAttribute("data-plugin-id", pluginId);
   content.setAttribute("data-plugin-runtime", "content");
+  content.setAttribute("aria-label", `Plugin panel ${pluginId}`);
 
   surface.appendChild(chrome);
   surface.appendChild(content);

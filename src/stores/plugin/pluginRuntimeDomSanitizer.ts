@@ -1,6 +1,37 @@
 import DOMPurify from "dompurify";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 
+const ALLOWED_RUNTIME_DECLARATIONS = new Set([
+  "align-items",
+  "color",
+  "display",
+  "flex",
+  "flex-direction",
+  "flex-wrap",
+  "font-size",
+  "font-weight",
+  "gap",
+  "justify-content",
+  "line-height",
+  "margin",
+  "margin-bottom",
+  "margin-left",
+  "margin-right",
+  "margin-top",
+  "max-width",
+  "overflow",
+  "overflow-x",
+  "overflow-y",
+  "padding",
+  "padding-bottom",
+  "padding-left",
+  "padding-right",
+  "padding-top",
+  "text-align",
+  "white-space",
+  "word-break",
+]);
+
 const RUNTIME_CSS_BLOCKLIST = [
   /\b(position|z-index|top|right|bottom|left|inset|pointer-events)\s*:[^;]+;?/gi,
   /\b(content|cursor|backdrop-filter|filter|clip-path)\s*:[^;]+;?/gi,
@@ -39,10 +70,44 @@ export function sanitizeHtml(html: string): string {
       "select",
       "textarea",
       "label",
+      "img",
+      "svg",
+      "canvas",
+      "video",
+      "audio",
     ],
     FORBID_ATTR: ["style"],
     ALLOW_DATA_ATTR: false,
   });
+}
+
+function filterRuntimeDeclarations(body: string): string {
+  const declarations = body
+    .split(";")
+    .map((declaration) => declaration.trim())
+    .filter(Boolean);
+
+  const allowed: string[] = [];
+  for (const declaration of declarations) {
+    const separatorIndex = declaration.indexOf(":");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const property = declaration.slice(0, separatorIndex).trim().toLowerCase();
+    const value = declaration.slice(separatorIndex + 1).trim();
+    if (!property || !value) {
+      continue;
+    }
+
+    if (!ALLOWED_RUNTIME_DECLARATIONS.has(property) && !property.startsWith("--")) {
+      continue;
+    }
+
+    allowed.push(`${property}: ${value}`);
+  }
+
+  return allowed.join("; ");
 }
 
 function isAllowedRuntimeSelector(selector: string): boolean {
@@ -105,6 +170,11 @@ export function scopeRuntimeCss(css: string, scopeSelector: string): string {
       continue;
     }
 
+    const filteredBody = filterRuntimeDeclarations(bodyPart);
+    if (!filteredBody) {
+      continue;
+    }
+
     const scopedSelectors = selectorPart
       .split(",")
       .map((selector) => selector.trim())
@@ -124,7 +194,7 @@ export function scopeRuntimeCss(css: string, scopeSelector: string): string {
       continue;
     }
 
-    output.push(`${scopedSelectors.join(", ")} { ${bodyPart} }`);
+    output.push(`${scopedSelectors.join(", ")} { ${filteredBody} }`);
   }
 
   return output.join("\n");

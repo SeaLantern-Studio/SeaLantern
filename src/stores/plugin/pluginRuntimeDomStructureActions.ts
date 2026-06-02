@@ -116,6 +116,15 @@ export async function handlePluginRuntimeStructureAction(
     case "inject_css": {
       const styleId = `plugin-css-${plugin_id}-${element_id}`;
       const css = scopeRuntimeCss(html, getScopedRuntimeCssSelector(plugin_id));
+      if (!css.trim()) {
+        pluginLogger.warn("RuntimeUI", "已忽略超出白名单的插件样式", {
+          pluginId: plugin_id,
+          elementId: element_id,
+        });
+        getPluginUiContainer().querySelector(`#${styleId}`)?.remove();
+        return true;
+      }
+
       const pluginRoot = getPluginUiContainer();
       const existingStyle = pluginRoot.querySelector(`#${styleId}`) as HTMLStyleElement | null;
       if (existingStyle) {
