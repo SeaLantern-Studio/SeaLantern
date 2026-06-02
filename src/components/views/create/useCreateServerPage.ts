@@ -1,22 +1,16 @@
-import { computed, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
+import { onActivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { useRouter } from "vue-router";
 import { useCreateServerDefaults } from "@components/views/create/useCreateServerDefaults";
+import { useCreateServerSubmit } from "@components/views/create/useCreateServerSubmit";
 import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
-import {
-  containsIoRedirection,
-  isStrictChildPath,
-  mapStartupModeForModpack,
-  normalizePathForCompare,
-} from "@components/views/create/startupUtils";
+import { isStrictChildPath, normalizePathForCompare } from "@components/views/create/startupUtils";
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
-import { useServerStore } from "@stores/serverStore";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { isBrowserEnv } from "@api/tauri";
 
@@ -36,11 +30,6 @@ function inferSourceType(path: string): SourceType {
   return "folder";
 }
 
-function parseNumber(value: string, fallbackValue: number): number {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? fallbackValue : parsed;
-}
-
 export const CREATE_SERVER_SOURCE_DROP_EVENT = "create-server-source-drop";
 const CREATE_SERVER_DND_DEBUG = import.meta.env.DEV;
 
@@ -54,8 +43,6 @@ function logCreateServerDnd(message: string, payload?: unknown) {
 }
 
 export function useCreateServerPage() {
-  const router = useRouter();
-  const serverstore = useServerStore();
   const { error: errorMsg, showError, clearError } = useMessage();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
@@ -101,102 +88,6 @@ export function useCreateServerPage() {
   const onlineMode = ref(true);
   const javaList = ref<JavaInfo[]>([]);
 
-  const hasSource = computed(() => sourcePath.value.trim().length > 0 && sourceType.value !== "");
-
-  const selectedStartup = computed(
-    () => startupCandidates.value.find((item) => item.id === selectedStartupId.value) ?? null,
-  );
-  const starterSelected = computed(() => selectedStartup.value?.mode === "starter");
-  const customCommandHasRedirect = computed(
-    () =>
-      selectedStartup.value?.mode === "custom" && containsIoRedirection(customStartupCommand.value),
-  );
-
-  const hasPathStep = computed(() => {
-    if (!hasSource.value) {
-      return false;
-    }
-    return runPath.value.trim().length > 0;
-  });
-
-  const hasStartupStep = computed(() => {
-    if (!hasPathStep.value || !selectedStartup.value) {
-      return false;
-    }
-    if (selectedStartup.value.mode === "custom") {
-      return customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value;
-    }
-    return !(
-      selectedStartup.value.mode === "starter" &&
-      mcVersionDetectionFailed.value &&
-      selectedMcVersion.value.trim().length === 0
-    );
-  });
-
-  const hasJava = computed(() => selectedJava.value.trim().length > 0);
-  const hasServerConfig = computed(() => serverName.value.trim().length > 0);
-
-  const step1Completed = computed(() => hasSource.value);
-  const step2Completed = computed(() => step1Completed.value && hasPathStep.value);
-  const step3Completed = computed(() => step2Completed.value && hasStartupStep.value);
-  const step4Completed = computed(
-    () => step3Completed.value && hasJava.value && hasServerConfig.value,
-  );
-
-  const activeStep = computed(() => {
-    if (!step1Completed.value) {
-      return 1;
-    }
-    if (!step2Completed.value) {
-      return 2;
-    }
-    if (!step3Completed.value) {
-      return 3;
-    }
-    if (!step4Completed.value) {
-      return 4;
-    }
-    return 5;
-  });
-
-  const stepItems = computed(() => [
-    {
-      step: 1,
-      title: i18n.t("create.step_source_title"),
-      description: i18n.t("create.step_source_desc"),
-      completed: step1Completed.value,
-    },
-    {
-      step: 2,
-      title: i18n.t("create.step_path_title"),
-      description: i18n.t("create.step_path_desc"),
-      completed: step2Completed.value,
-    },
-    {
-      step: 3,
-      title: i18n.t("create.step_startup_title"),
-      description: i18n.t("create.step_startup_desc"),
-      completed: step3Completed.value,
-    },
-    {
-      step: 4,
-      title: i18n.t("create.step_config_title"),
-      description: i18n.t("create.step_config_desc"),
-      completed: step4Completed.value,
-    },
-    {
-      step: 5,
-      title: i18n.t("create.step_action_title"),
-      description: i18n.t("create.step_action_desc"),
-      completed: false,
-    },
-  ]);
-
-  // 只有步骤完成且“启动项同步”完成后才允许提交，避免新源路径配旧 startupFilePath。
-  const canSubmit = computed(
-    () => step4Completed.value && !startupSyncPending.value && !startupDetecting.value,
-  );
-
   const defaults = useCreateServerDefaults({
     sourcePath,
     sourceType,
@@ -210,6 +101,32 @@ export function useCreateServerPage() {
     onInvalidRunPath: () => {
       showError(i18n.t("create.path_child_of_source_forbidden"));
     },
+  });
+
+  const submit = useCreateServerSubmit({
+    sourcePath,
+    sourceType,
+    runPath,
+    startupSyncPending,
+    startupDetecting,
+    startupCandidates,
+    selectedStartupId,
+    customStartupCommand,
+    detectedCoreTypeKey,
+    selectedCoreType,
+    detectedMcVersion,
+    selectedMcVersion,
+    mcVersionDetectionFailed,
+    serverName,
+    maxMemory,
+    minMemory,
+    port,
+    selectedJava,
+    onlineMode,
+    startCreating,
+    stopCreating,
+    showError,
+    clearError,
   });
 
   onActivated(() => {
@@ -460,97 +377,6 @@ export function useCreateServerPage() {
     await refreshStartupCandidates(sourcePath.value.trim(), sourceType.value, true);
   }
 
-  function validateBeforeSubmit(): boolean {
-    clearError();
-
-    if (!hasSource.value) {
-      showError(i18n.t("create.source_required"));
-      return false;
-    }
-    if (runPath.value.trim().length === 0) {
-      showError(i18n.t("create.path_required"));
-      return false;
-    }
-    if (sourceType.value === "folder" && isStrictChildPath(runPath.value, sourcePath.value)) {
-      showError(i18n.t("create.path_child_of_source_forbidden"));
-      return false;
-    }
-    if (!selectedStartup.value) {
-      showError(i18n.t("create.startup_required"));
-      return false;
-    }
-
-    if (selectedStartup.value.mode === "custom") {
-      if (!customStartupCommand.value.trim()) {
-        showError(i18n.t("create.startup_custom_required"));
-        return false;
-      }
-      if (containsIoRedirection(customStartupCommand.value)) {
-        showError(i18n.t("create.startup_custom_redirect_forbidden"));
-        return false;
-      }
-    }
-
-    if (
-      selectedStartup.value.mode === "starter" &&
-      mcVersionDetectionFailed.value &&
-      selectedMcVersion.value.trim().length === 0
-    ) {
-      showError(i18n.t("create.startup_mc_version_required"));
-      return false;
-    }
-
-    if (!selectedJava.value) {
-      showError(i18n.t("common.select_java_path"));
-      return false;
-    }
-    if (!serverName.value.trim()) {
-      showError(i18n.t("common.enter_server_name"));
-      return false;
-    }
-
-    return true;
-  }
-
-  async function handleSubmit() {
-    if (!validateBeforeSubmit()) {
-      return;
-    }
-
-    startCreating();
-    try {
-      const startup = selectedStartup.value;
-      const startupMode = mapStartupModeForModpack(startup?.mode ?? "jar");
-      const resolvedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
-      const resolvedMcVersion =
-        startupMode === "starter"
-          ? selectedMcVersion.value.trim() || detectedMcVersion.value.trim()
-          : "";
-      await serverApi.importModpack({
-        name: serverName.value.trim(),
-        modpackPath: sourcePath.value,
-        javaPath: selectedJava.value,
-        maxMemory: parseNumber(maxMemory.value, 2048),
-        minMemory: parseNumber(minMemory.value, 512),
-        port: parseNumber(port.value, 25565),
-        startupMode,
-        onlineMode: onlineMode.value,
-        customCommand: startupMode === "custom" ? customStartupCommand.value.trim() : undefined,
-        runPath: runPath.value.trim(),
-        startupFilePath: startupMode === "custom" ? undefined : startup?.path,
-        coreType: resolvedCoreType || undefined,
-        mcVersion: resolvedMcVersion || undefined,
-      });
-
-      await serverstore.refreshList();
-      router.push("/");
-    } catch (error) {
-      showError(String(error));
-    } finally {
-      stopCreating();
-    }
-  }
-
   /**
    * 处理 Tauri 文件拖放事件
    * 根据文件扩展名自动识别为压缩包或文件夹
@@ -592,7 +418,6 @@ export function useCreateServerPage() {
     startupCandidates,
     selectedStartupId,
     customStartupCommand,
-    starterSelected,
     detectedCoreTypeKey,
     coreTypeOptions,
     selectedCoreType,
@@ -600,7 +425,6 @@ export function useCreateServerPage() {
     mcVersionOptions,
     selectedMcVersion,
     mcVersionDetectionFailed,
-    customCommandHasRedirect,
     serverName,
     maxMemory,
     minMemory,
@@ -608,14 +432,16 @@ export function useCreateServerPage() {
     selectedJava,
     onlineMode,
     javaList,
-    activeStep,
-    stepItems,
-    canSubmit,
+    activeStep: submit.activeStep,
+    stepItems: submit.stepItems,
+    canSubmit: submit.canSubmit,
     pickRunPath: defaults.pickRunPath,
     updateRunPath,
     rescanStartupCandidates,
     detectJava,
-    handleSubmit,
+    handleSubmit: submit.handleSubmit,
     handleTauriDrop,
+    starterSelected: submit.starterSelected,
+    customCommandHasRedirect: submit.customCommandHasRedirect,
   };
 }
