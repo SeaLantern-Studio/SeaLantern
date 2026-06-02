@@ -7,8 +7,6 @@ type PluginSettingValue = string | number | boolean;
 interface PluginSettingsActions {
   getPluginSettings: (pluginId: string) => Promise<Record<string, unknown>>;
   setPluginSettings: (pluginId: string, settings: Record<string, unknown>) => Promise<void>;
-  hasCapability: (pluginId: string, capability: string) => boolean;
-  applyThemeProviderSettings: (pluginId: string) => Promise<void>;
   logError: (message: string, details?: unknown) => void;
 }
 
@@ -57,10 +55,6 @@ export function usePluginSettingsDialog(actions: PluginSettingsActions) {
       await actions.setPluginSettings(currentSettingsPlugin.value.manifest.id, {
         ...settingsForm,
       });
-
-      if (actions.hasCapability(currentSettingsPlugin.value.manifest.id, "theme-provider")) {
-        await actions.applyThemeProviderSettings(currentSettingsPlugin.value.manifest.id);
-      }
 
       closeSettings();
       return null;

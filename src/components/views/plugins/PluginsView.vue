@@ -146,8 +146,6 @@ const {
 } = usePluginSettingsDialog({
   getPluginSettings: pluginStore.getPluginSettings,
   setPluginSettings: pluginStore.setPluginSettings,
-  hasCapability: pluginStore.hasCapability,
-  applyThemeProviderSettings: pluginStore.applyThemeProviderSettings,
   logError: (message, details) => {
     pluginLogger.error("PluginsView", message, details);
   },

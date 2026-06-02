@@ -110,7 +110,6 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
     try {
       const settingsToSave = applyPluginPreset(settingsForm, presetKey, presets[presetKey]);
       await pluginStore.setPluginSettings(pluginId, settingsToSave);
-      await pluginStore.applyThemeProviderSettings(pluginId);
     } catch (error) {
       pluginLogger.error("PluginPageSettings", "Failed to apply plugin preset", {
         pluginId,
@@ -140,9 +139,6 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
         }
 
         await pluginStore.setPluginSettings(dependentPlugin.manifest.id, { ...dependentForm });
-        if (pluginStore.hasCapability(dependentPlugin.manifest.id, "theme-widgets-provider")) {
-          await pluginStore.applyThemeWidgetsProviderSettings(dependentPlugin.manifest.id);
-        }
       });
       await Promise.all(dependentSaves);
     } catch (error) {

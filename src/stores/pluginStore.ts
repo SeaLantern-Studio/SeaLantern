@@ -1,15 +1,17 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { isBrowserEnv } from "@api/tauri";
-import * as pluginApi from "@api/plugin";
 import { createPluginAppearanceManager } from "@stores/plugin/pluginAppearanceManager";
 import { createPluginComponentBridge } from "@stores/plugin/pluginComponentBridge";
 import { createPluginLifecycleActions } from "@stores/plugin/pluginLifecycleActions";
-import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { createPluginRuntimeUiBridge } from "@stores/plugin/pluginRuntimeUiBridge";
 import { createPluginSnapshotReplay } from "@stores/plugin/pluginSnapshotReplay";
+import {
+  createPluginCapabilityManager,
+  createPluginSettingsWriter,
+  readPluginSettings,
+} from "@stores/plugin/pluginSettingsManager";
 import { createPluginTelemetryBridge } from "@stores/plugin/pluginTelemetryBridge";
-import { normalizeAppError } from "@utils/appError";
 import type {
   PluginInfo,
   PluginNavItem,
@@ -84,15 +86,6 @@ export const usePluginStore = defineStore("plugin", () => {
   });
   const { replayUiSnapshot } = snapshotReplay;
 
-  async function readPluginSettings(pluginId: string): Promise<Record<string, unknown>> {
-    try {
-      return await pluginApi.getPluginSettings(pluginId);
-    } catch (errorCause) {
-      pluginLogger.error("Store", `插件设置读取失败: ${pluginId}`, normalizeAppError(errorCause));
-      return {};
-    }
-  }
-
   const appearanceManager = createPluginAppearanceManager({
     getPlugins: () => plugins.value,
     getIcons: () => icons.value,
@@ -112,6 +105,18 @@ export const usePluginStore = defineStore("plugin", () => {
     applyThemeWidgetsProviderSettings,
   } = appearanceManager;
 
+  const capabilityManager = createPluginCapabilityManager({
+    getPlugins: () => plugins.value,
+  });
+  const settingsWriter = createPluginSettingsWriter({
+    getPlugins: () => plugins.value,
+    applyThemeProviderSettings,
+    applyThemeWidgetsProviderSettings,
+  });
+  const getPluginSettings = readPluginSettings;
+  const { setPluginSettings } = settingsWriter;
+  const { hasCapability } = capabilityManager;
+
   function collectSidebarItems() {
     // 已禁用插件注册的侧栏按钮功能
     sidebarItems.value = [];
@@ -119,34 +124,6 @@ export const usePluginStore = defineStore("plugin", () => {
 
   async function loadPluginIcons() {
     await loadPluginIconsFromAppearance();
-  }
-
-  async function getPluginSettings(pluginId: string): Promise<Record<string, unknown>> {
-    return readPluginSettings(pluginId);
-  }
-
-  async function setPluginSettings(
-    pluginId: string,
-    settings: Record<string, unknown>,
-  ): Promise<void> {
-    try {
-      await pluginApi.setPluginSettings(pluginId, settings);
-
-      if (hasCapability(pluginId, "theme-provider")) {
-        await applyThemeProviderSettings(pluginId);
-      }
-      if (hasCapability(pluginId, "theme-widgets-provider")) {
-        await applyThemeWidgetsProviderSettings(pluginId);
-      }
-    } catch (e) {
-      pluginLogger.error("Store", `插件设置保存失败: ${pluginId}`, e);
-      throw e;
-    }
-  }
-
-  function hasCapability(pluginId: string, capability: string): boolean {
-    const plugin = plugins.value.find((p) => p.manifest.id === pluginId);
-    return plugin?.manifest.capabilities?.includes(capability) ?? false;
   }
 
   const {
