@@ -3,6 +3,7 @@ import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { usePluginStore } from "@stores/pluginStore";
 import { usePluginDependencies } from "@components/views/plugins/usePluginDependencies";
 import { usePluginFeedback } from "@components/views/plugins/usePluginFeedback";
+import { usePluginFeedbackBindings } from "@components/views/plugins/usePluginFeedbackBindings";
 import { usePluginListActions } from "@components/views/plugins/usePluginListActions";
 import { usePluginSelection } from "@components/views/plugins/usePluginSelection";
 import { usePluginSettingsDialog } from "@components/views/plugins/usePluginSettingsDialog";
@@ -82,6 +83,15 @@ export function usePluginsViewModel() {
     },
   });
 
+  const feedbackBindings = usePluginFeedbackBindings({
+    selection,
+    feedback,
+    dependencies,
+    listActions,
+    installer,
+    page,
+  });
+
   return {
     pluginStore,
     searchQuery,
@@ -89,6 +99,7 @@ export function usePluginsViewModel() {
     selection,
     dependencies,
     feedback,
+    feedbackBindings,
     listActions,
     settingsDialog,
     page,

@@ -18,11 +18,6 @@ const {
   isDragging,
   chooserOpen,
   isInstalling,
-  showDependencyModal,
-  missingDependencies,
-  installedPluginName,
-  showBatchResultModal,
-  batchInstallResult,
   installErrorMessage,
   openChooser,
   handleBatchInstall,
@@ -35,9 +30,6 @@ const filteredPlugins = viewModel.page.filteredPlugins;
 const {
   batchMode,
   selectedPlugins,
-  showBatchDeleteDialog,
-  showSingleDeleteDialog,
-  singleDeletePluginName,
   toggleBatchMode,
   togglePluginSelection,
   selectAll,
@@ -46,7 +38,8 @@ const {
   showBatchDeleteConfirm,
 } = viewModel.selection;
 const dependencies = viewModel.dependencies;
-const { alertDialog, permissionWarning, closeAlertDialog } = viewModel.feedback;
+const { permissionWarning } = viewModel.feedback;
+const feedbackBindings = viewModel.feedbackBindings;
 const listActions = viewModel.listActions;
 const {
   showSettingsModal,
@@ -158,25 +151,15 @@ const page = viewModel.page;
     />
 
     <PluginFeedbackDialogs
-      :show-single-delete-dialog="showSingleDeleteDialog"
-      :single-delete-plugin-name="singleDeletePluginName"
-      :show-batch-delete-dialog="showBatchDeleteDialog"
-      :selected-count="selectedPlugins.size"
-      :alert-dialog="alertDialog"
-      :show-dependency-modal="showDependencyModal"
-      :installed-plugin-name="installedPluginName"
-      :missing-dependencies="missingDependencies"
-      :show-batch-result-modal="showBatchResultModal"
-      :batch-install-result="batchInstallResult"
-      :get-dep-display-name="dependencies.getDepDisplayName"
-      @close-single-delete="showSingleDeleteDialog = false"
-      @confirm-single-delete="listActions.executeSingleDelete"
-      @close-batch-delete="showBatchDeleteDialog = false"
-      @confirm-batch-delete="listActions.executeBatchDelete"
-      @close-alert="closeAlertDialog"
-      @close-dependency="showDependencyModal = false"
-      @go-market="page.handleGoToMarket"
-      @close-batch-result="showBatchResultModal = false"
+      v-bind="feedbackBindings.feedbackDialogProps.value"
+      @close-single-delete="feedbackBindings.feedbackDialogHandlers.closeSingleDelete"
+      @confirm-single-delete="feedbackBindings.feedbackDialogHandlers.confirmSingleDelete"
+      @close-batch-delete="feedbackBindings.feedbackDialogHandlers.closeBatchDelete"
+      @confirm-batch-delete="feedbackBindings.feedbackDialogHandlers.confirmBatchDelete"
+      @close-alert="feedbackBindings.feedbackDialogHandlers.closeAlert"
+      @close-dependency="feedbackBindings.feedbackDialogHandlers.closeDependency"
+      @go-market="feedbackBindings.feedbackDialogHandlers.goMarket"
+      @close-batch-result="feedbackBindings.feedbackDialogHandlers.closeBatchResult"
     />
   </div>
 </template>
