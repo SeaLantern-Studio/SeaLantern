@@ -8,13 +8,14 @@ import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue"
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue";
-import { settingsApi } from "@api/settings";
 import { systemApi } from "@api/system";
 import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 import { i18n } from "@language";
 import { useGlobalMessage } from "@composables/useMessage";
+import { useSettingsStore } from "@stores/settingsStore";
 
 const { success: globalSuccess } = useGlobalMessage();
+const settingsStore = useSettingsStore();
 
 const maxMem = ref("2048");
 const minMem = ref("512");
@@ -53,7 +54,7 @@ type CloseAction = "ask" | "minimize" | "close";
 
 async function exportSettings() {
   try {
-    const json = await settingsApi.exportJson();
+    const json = await settingsStore.exportSettingsJson();
     await navigator.clipboard.writeText(json);
     globalSuccess(i18n.t("settings.export_success"));
   } catch (e) {

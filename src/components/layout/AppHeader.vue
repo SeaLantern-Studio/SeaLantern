@@ -174,11 +174,9 @@ async function closeWindow() {
 async function handleCloseOption(option: string) {
   if (rememberChoice.value) {
     const nextCloseAction = option === "minimize" ? "minimize" : "close";
-    const nextSettings = settingsStore.cloneSettings();
-    nextSettings.close_action = nextCloseAction;
     closeAction.value = nextCloseAction;
     try {
-      await settingsStore.saveSettingsWithDiff(nextSettings);
+      await settingsStore.setCloseAction(nextCloseAction);
     } catch (e) {
       console.error("Failed to save settings:", e);
     }

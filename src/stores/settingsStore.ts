@@ -264,6 +264,14 @@ export const useSettingsStore = defineStore("settings", () => {
     return replaceSettings(importedSettings, changedGroups);
   }
 
+  async function exportSettingsJson(): Promise<string> {
+    return settingsApi.exportJson();
+  }
+
+  async function setCloseAction(closeAction: string): Promise<SettingsGroup[]> {
+    return updatePartial({ close_action: closeAction });
+  }
+
   function updateSettings(partial: Partial<AppSettings>): void {
     settings.value = { ...settings.value, ...partial };
   }
@@ -297,7 +305,9 @@ export const useSettingsStore = defineStore("settings", () => {
     saveSettingsWithDiff,
     updatePartial,
     setLanguage,
+    setCloseAction,
     resetSettings,
+    exportSettingsJson,
     importSettingsJson,
     updateSettings,
     cloneSettings,
