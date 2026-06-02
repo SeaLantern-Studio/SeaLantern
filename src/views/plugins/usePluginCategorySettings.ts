@@ -7,7 +7,6 @@ import {
   applyPluginPreset,
   buildPluginSettingsForm,
   clearSettingsRecord,
-  findDependentPlugins,
   getPluginFieldOptions,
   getPluginFieldSelectValue,
   getPluginFieldStringValue,
@@ -17,6 +16,8 @@ import {
   updatePluginSettingsField,
 } from "@views/plugins/pluginSettingsShared";
 import { useAutoSaveSettings } from "@views/plugins/useAutoSaveSettings";
+import { useDependentAutoSaves } from "@views/plugins/useDependentAutoSaves";
+import { usePluginDependentSettings } from "@views/plugins/usePluginDependentSettings";
 
 interface UsePluginCategorySettingsOptions {
   pluginId: () => string;
@@ -44,36 +45,16 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
     return plugin.value?.manifest.capabilities?.includes("theme-provider") ?? false;
   });
 
-  async function loadDependentPlugins() {
-    if (!plugin.value || !showDependents.value) {
-      dependentPlugins.value = [];
-      clearSettingsRecord(dependentSettingsForms);
-      clearSettingsRecord(dependentSettingsSnapshots);
-      return;
-    }
-
-    const candidates = findDependentPlugins(pluginStore.plugins, options.pluginId());
-    const results = await Promise.all(
-      candidates
-        .filter((candidate) => candidate.manifest.settings?.length)
-        .map(async (candidate) => ({
-          plugin: candidate,
-          form: buildPluginSettingsForm(
-            candidate.manifest.settings,
-            await pluginStore.getPluginSettings(candidate.manifest.id),
-          ),
-        })),
-    );
-
-    dependentPlugins.value = results.map((item) => item.plugin);
-    clearSettingsRecord(dependentSettingsForms);
-    clearSettingsRecord(dependentSettingsSnapshots);
-
-    for (const { plugin: depPlugin, form } of results) {
-      dependentSettingsForms[depPlugin.manifest.id] = form;
-      dependentSettingsSnapshots[depPlugin.manifest.id] = serializeSettingsRecord(form);
-    }
-  }
+  const { loadDependentPlugins } = usePluginDependentSettings({
+    pluginId: options.pluginId,
+    plugins: () => pluginStore.plugins,
+    showDependents: () => showDependents.value,
+    hasPlugin: () => Boolean(plugin.value),
+    getPluginSettings: pluginStore.getPluginSettings,
+    dependentPlugins,
+    dependentSettingsForms,
+    dependentSettingsSnapshots,
+  });
 
   const mainAutoSave = useAutoSaveSettings({
     source: settingsForm,
@@ -95,75 +76,25 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
     },
   });
 
-  const dependentAutoSaves = new Map<string, ReturnType<typeof useAutoSaveSettings>>();
-
-  const saving = computed(() => {
-    if (mainAutoSave.saving.value) {
-      return true;
-    }
-
-    return Array.from(dependentAutoSaves.values()).some((entry) => entry.saving.value);
+  const {
+    dependentSaving,
+    syncDependentAutoSaves,
+    flushDependentAutoSaves,
+    stopDependentAutoSaves,
+  } = useDependentAutoSaves({
+    ownerPluginId: options.pluginId,
+    dependentPlugins,
+    dependentSettingsForms,
+    dependentSettingsSnapshots,
+    isInitializingForms: () => isInitializingForms.value,
+    setPluginSettings: pluginStore.setPluginSettings,
   });
 
-  function syncDependentAutoSaves() {
-    const activeIds = new Set(dependentPlugins.value.map((depPlugin) => depPlugin.manifest.id));
-
-    for (const [pluginId, autoSave] of dependentAutoSaves.entries()) {
-      if (!activeIds.has(pluginId)) {
-        autoSave.stop();
-        dependentAutoSaves.delete(pluginId);
-      }
-    }
-
-    for (const depPlugin of dependentPlugins.value) {
-      const pluginId = depPlugin.manifest.id;
-      if (dependentAutoSaves.has(pluginId)) {
-        continue;
-      }
-
-      if (!dependentSettingsForms[pluginId]) {
-        dependentSettingsForms[pluginId] = {};
-      }
-
-      if (dependentSettingsSnapshots[pluginId] === undefined) {
-        dependentSettingsSnapshots[pluginId] = serializeSettingsRecord(
-          dependentSettingsForms[pluginId],
-        );
-      }
-
-      dependentAutoSaves.set(
-        pluginId,
-        useAutoSaveSettings({
-          source: dependentSettingsForms[pluginId],
-          snapshot: computed({
-            get: () => dependentSettingsSnapshots[pluginId] ?? "{}",
-            set: (value) => {
-              dependentSettingsSnapshots[pluginId] = value;
-            },
-          }),
-          enabled: () => !isInitializingForms.value,
-          save: async (payload) => {
-            await pluginStore.setPluginSettings(pluginId, payload);
-          },
-          onError: (error) => {
-            pluginLogger.error(
-              "PluginCategorySettings",
-              "Failed to auto-save dependent plugin settings",
-              {
-                pluginId,
-                ownerPluginId: options.pluginId(),
-                error,
-              },
-            );
-          },
-        }),
-      );
-    }
-  }
+  const saving = computed(() => mainAutoSave.saving.value || dependentSaving.value);
 
   async function flushPendingAutoSaves() {
     await mainAutoSave.flush();
-    await Promise.all(Array.from(dependentAutoSaves.values()).map((entry) => entry.flush()));
+    await flushDependentAutoSaves();
   }
 
   async function loadPluginData() {
@@ -273,11 +204,7 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
   });
 
   onUnmounted(() => {
-    for (const autoSave of dependentAutoSaves.values()) {
-      autoSave.stop();
-    }
-
-    dependentAutoSaves.clear();
+    stopDependentAutoSaves();
   });
 
   return {
