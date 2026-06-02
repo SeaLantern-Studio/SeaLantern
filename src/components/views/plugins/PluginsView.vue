@@ -14,6 +14,7 @@ import { Upload } from "lucide-vue-next";
 const viewModel = usePluginsViewModel();
 const pluginStore = viewModel.pluginStore;
 const searchQuery = viewModel.searchQuery;
+const listBindings = viewModel.listBindings;
 const {
   isDragging,
   chooserOpen,
@@ -24,31 +25,14 @@ const {
   pickFile,
   pickFolder,
 } = viewModel.installer;
-const safeMode = viewModel.installer.safeMode;
 const checkingAllUpdates = viewModel.listActions.checkingAllUpdates;
-const filteredPlugins = viewModel.page.filteredPlugins;
-const {
-  batchMode,
-  selectedPlugins,
-  toggleBatchMode,
-  togglePluginSelection,
-  selectAll,
-  deselectAll,
-  invertSelection,
-  showBatchDeleteConfirm,
-} = viewModel.selection;
+const { batchMode, toggleBatchMode } = viewModel.selection;
 const dependencies = viewModel.dependencies;
 const { permissionWarning } = viewModel.feedback;
 const feedbackBindings = viewModel.feedbackBindings;
 const listActions = viewModel.listActions;
-const {
-  showSettingsModal,
-  currentSettingsPlugin,
-  settingsForm,
-  savingSettings,
-  openSettings,
-  closeSettings,
-} = viewModel.settingsDialog;
+const { showSettingsModal, currentSettingsPlugin, settingsForm, savingSettings, closeSettings } =
+  viewModel.settingsDialog;
 const page = viewModel.page;
 </script>
 
@@ -97,32 +81,17 @@ const page = viewModel.page;
 
     <PluginList
       v-if="pluginStore.plugins.length > 0"
-      :plugins="filteredPlugins"
-      :batch-mode="batchMode"
-      :selected-plugin-ids="selectedPlugins"
-      :updates="pluginStore.updates"
-      :icons="pluginStore.icons"
-      :safe-mode="safeMode"
-      :get-plugin-name="page.getPluginName"
-      :get-plugin-description="page.getPluginDescription"
-      :is-plugin-enabled="listActions.isPluginEnabled"
-      :get-status-color="listActions.getStatusColor"
-      :get-status-label="listActions.getStatusLabel"
-      :has-settings="listActions.hasSettings"
-      :has-missing-required-dependencies="dependencies.hasMissingRequiredDependencies"
-      :has-missing-optional-dependencies="dependencies.hasMissingOptionalDependencies"
-      :get-dependency-tooltip="dependencies.getDependencyTooltip"
-      :get-plugin-menu-items="listActions.getPluginMenuItems"
-      @select-all="selectAll(pluginStore.plugins)"
-      @invert-selection="invertSelection(pluginStore.plugins)"
-      @deselect-all="deselectAll"
-      @batch-delete="showBatchDeleteConfirm"
-      @toggle-plugin-selection="togglePluginSelection"
-      @show-missing-dependencies="page.showMissingDependenciesModal"
-      @menu-select="listActions.handleMenuSelect"
-      @open-repository="page.openRepository"
-      @open-settings="openSettings"
-      @toggle-plugin="listActions.handleToggle"
+      v-bind="listBindings.listProps.value"
+      @select-all="listBindings.listHandlers.selectAll"
+      @invert-selection="listBindings.listHandlers.invertSelection"
+      @deselect-all="listBindings.listHandlers.deselectAll"
+      @batch-delete="listBindings.listHandlers.batchDelete"
+      @toggle-plugin-selection="listBindings.listHandlers.togglePluginSelection"
+      @show-missing-dependencies="listBindings.listHandlers.showMissingDependencies"
+      @menu-select="listBindings.listHandlers.menuSelect"
+      @open-repository="listBindings.listHandlers.openRepository"
+      @open-settings="listBindings.listHandlers.openSettings"
+      @toggle-plugin="listBindings.listHandlers.togglePlugin"
     />
 
     <PluginSettingsDialog

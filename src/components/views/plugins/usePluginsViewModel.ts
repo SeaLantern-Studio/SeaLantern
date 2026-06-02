@@ -4,6 +4,7 @@ import { usePluginStore } from "@stores/pluginStore";
 import { usePluginDependencies } from "@components/views/plugins/usePluginDependencies";
 import { usePluginFeedback } from "@components/views/plugins/usePluginFeedback";
 import { usePluginFeedbackBindings } from "@components/views/plugins/usePluginFeedbackBindings";
+import { usePluginListBindings } from "@components/views/plugins/usePluginListBindings";
 import { usePluginListActions } from "@components/views/plugins/usePluginListActions";
 import { usePluginSelection } from "@components/views/plugins/usePluginSelection";
 import { usePluginSettingsDialog } from "@components/views/plugins/usePluginSettingsDialog";
@@ -92,6 +93,18 @@ export function usePluginsViewModel() {
     page,
   });
 
+  const listBindings = usePluginListBindings({
+    plugins: () => pluginStore.plugins,
+    updates: () => pluginStore.updates,
+    icons: () => pluginStore.icons,
+    safeMode: () => installer.safeMode.value,
+    selection,
+    dependencies,
+    listActions,
+    page,
+    openSettings: settingsDialog.openSettings,
+  });
+
   return {
     pluginStore,
     searchQuery,
@@ -100,6 +113,7 @@ export function usePluginsViewModel() {
     dependencies,
     feedback,
     feedbackBindings,
+    listBindings,
     listActions,
     settingsDialog,
     page,

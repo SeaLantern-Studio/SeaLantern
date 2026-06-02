@@ -39,6 +39,8 @@ const ALLOWED_RUNTIME_STYLE_PROPS = new Set([
 
 export const PLUGIN_RUNTIME_HOST_CLASS = "plugin-runtime-host";
 export const PLUGIN_RUNTIME_SURFACE_CLASS = "plugin-runtime-surface";
+export const PLUGIN_RUNTIME_CHROME_CLASS = "plugin-runtime-chrome";
+export const PLUGIN_RUNTIME_CONTENT_CLASS = "plugin-runtime-content";
 
 function ensurePluginRuntimeStyles() {
   let style = document.getElementById("plugin-runtime-host-style") as HTMLStyleElement | null;
@@ -82,17 +84,49 @@ function ensurePluginRuntimeStyles() {
       width: 100%;
       max-width: 100%;
       max-height: calc(100vh - 24px);
-      overflow: auto;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
       background: var(--sl-surface);
       color: var(--sl-text-primary);
       border: 1px solid var(--sl-border-light);
       border-radius: var(--sl-radius-md);
       box-shadow: var(--sl-shadow-lg);
-      padding: 12px;
       box-sizing: border-box;
+      isolation: isolate;
     }
 
-    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} [hidden] {
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CHROME_CLASS} {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--sl-border-light);
+      background: color-mix(in srgb, var(--sl-surface) 88%, var(--sl-primary) 12%);
+      color: var(--sl-text-secondary);
+      font-size: 12px;
+      line-height: 1.4;
+      user-select: none;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CHROME_CLASS} > .plugin-runtime-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: var(--sl-font-family-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CONTENT_CLASS} {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+      box-sizing: border-box;
+      contain: content;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CONTENT_CLASS} [hidden] {
       display: none !important;
     }
   `;
@@ -114,7 +148,7 @@ const ALLOWED_RUNTIME_ATTRIBUTES = new Set([
 ]);
 
 export function getPluginRootSelector(pluginId: string): string {
-  return `[data-plugin-id="${pluginId}"]`;
+  return `[data-plugin-id="${pluginId}"][data-plugin-runtime="content"]`;
 }
 
 export function getPluginRuntimeRoots(pluginId: string): HTMLElement[] {
@@ -188,6 +222,24 @@ export function createPluginRuntimeHost(pluginId: string, elementId: string): HT
   surface.className = PLUGIN_RUNTIME_SURFACE_CLASS;
   surface.setAttribute("data-plugin-id", pluginId);
   surface.setAttribute("data-plugin-runtime", "surface");
+
+  const chrome = document.createElement("div");
+  chrome.className = PLUGIN_RUNTIME_CHROME_CLASS;
+  chrome.setAttribute("data-plugin-id", pluginId);
+  chrome.setAttribute("data-plugin-runtime", "chrome");
+
+  const label = document.createElement("span");
+  label.className = "plugin-runtime-label";
+  label.textContent = pluginId;
+  chrome.appendChild(label);
+
+  const content = document.createElement("div");
+  content.className = PLUGIN_RUNTIME_CONTENT_CLASS;
+  content.setAttribute("data-plugin-id", pluginId);
+  content.setAttribute("data-plugin-runtime", "content");
+
+  surface.appendChild(chrome);
+  surface.appendChild(content);
   host.appendChild(surface);
 
   return host;
@@ -197,11 +249,11 @@ export function getPluginRuntimeSurface(host: Element | null): HTMLElement | nul
   if (!(host instanceof HTMLElement)) {
     return null;
   }
-  return host.querySelector(`.${PLUGIN_RUNTIME_SURFACE_CLASS}`) as HTMLElement | null;
+  return host.querySelector(`.${PLUGIN_RUNTIME_CONTENT_CLASS}`) as HTMLElement | null;
 }
 
 export function getScopedRuntimeCssSelector(pluginId: string): string {
-  return `#plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS}[data-plugin-id="${pluginId}"] > .${PLUGIN_RUNTIME_SURFACE_CLASS}`;
+  return `#plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS}[data-plugin-id="${pluginId}"] > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CONTENT_CLASS}`;
 }
 
 export function setFormFieldValue(field: Element, value: unknown) {

@@ -3,7 +3,9 @@ import { pluginLogger } from "@stores/plugin/pluginLogger";
 
 const RUNTIME_CSS_BLOCKLIST = [
   /\b(position|z-index|top|right|bottom|left|inset|pointer-events)\s*:[^;]+;?/gi,
+  /\b(content|cursor)\s*:[^;]+;?/gi,
   /\b(body|html|:root)\b/gi,
+  /\b(\*|body\s+\*|html\s+\*|:root\s+\*)\b/gi,
 ];
 
 export function sanitizeHtml(html: string): string {
@@ -59,6 +61,19 @@ export function scopeRuntimeCss(css: string, scopeSelector: string): string {
       .split(",")
       .map((selector) => selector.trim())
       .filter(Boolean)
+      .filter((selector) => {
+        const normalized = selector.replace(/\s+/g, " ").trim().toLowerCase();
+        if (!normalized) {
+          return false;
+        }
+        if (normalized === "*" || normalized.startsWith("body") || normalized.startsWith("html")) {
+          return false;
+        }
+        if (normalized.includes(":root")) {
+          return false;
+        }
+        return true;
+      })
       .map((selector) => {
         if (selector === ":scope") {
           return scopeSelector;
