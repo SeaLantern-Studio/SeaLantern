@@ -2,16 +2,7 @@ import { computed, ref, shallowRef, type ComputedRef, type Ref } from "vue";
 import { configApi } from "@api/config";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { i18n } from "@language";
-import { buildDiffLines } from "@utils/configDiff";
-
-export interface PendingSaveItem {
-  serverId: string;
-  serverName: string;
-  serverPath: string;
-  filePath: string;
-  originalText: string;
-  modifiedText: string;
-}
+import { useConfigPropertiesSaveFlow } from "@views/config/useConfigPropertiesSaveFlow";
 
 interface CompareContext {
   compareMode: Ref<boolean>;
@@ -46,21 +37,6 @@ interface UseConfigPropertiesEditorOptions {
   updateCurrentServerPort: (port: string) => void;
 }
 
-function getChangedValues(
-  draftValues: Record<string, string>,
-  baseValues: Record<string, string>,
-): Record<string, string> {
-  const changedValues: Record<string, string> = {};
-
-  for (const [key, value] of Object.entries(draftValues)) {
-    if (baseValues[key] !== value) {
-      changedValues[key] = value;
-    }
-  }
-
-  return changedValues;
-}
-
 export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOptions) {
   const entries = ref<ConfigEntryType[]>([]);
   const editValues = ref<Record<string, string>>({});
@@ -78,8 +54,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   const sourceParseError = ref<string | null>(null);
   const showDiscardConfirm = ref(false);
   const pendingReloadSide = ref<"current" | "compare" | null>(null);
-  const showSaveDiffModal = ref(false);
-  const pendingSaveItems = ref<PendingSaveItem[]>([]);
 
   const compareContext = shallowRef<CompareContext | null>(null);
 
@@ -199,25 +173,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     return i18n.t("config.discard_message");
   });
 
-  const pendingSaveItemsWithStats = computed(() =>
-    pendingSaveItems.value.map((item) => {
-      const diffLines = buildDiffLines(item.originalText, item.modifiedText);
-      let additions = 0;
-      let deletions = 0;
-
-      for (const line of diffLines) {
-        if (line.type === "addition") additions += 1;
-        if (line.type === "deletion") deletions += 1;
-      }
-
-      return {
-        ...item,
-        additions,
-        deletions,
-      };
-    }),
-  );
-
   function bindCompareContext(context: CompareContext) {
     compareContext.value = context;
   }
@@ -226,24 +181,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     const translationKey = `config.properties.${key}`;
     const translated = i18n.t(translationKey);
     return translated === translationKey ? "" : translated;
-  }
-
-  function getChangedPropertyValues() {
-    const baseValues =
-      sourceDraftText.value !== loadedSourceText.value
-        ? visualModeBaseValues.value
-        : loadedValues.value;
-    return getChangedValues(editValues.value, baseValues);
-  }
-
-  async function buildVisualPreviewSource() {
-    const changedValues = getChangedPropertyValues();
-
-    if (sourceDraftText.value !== loadedSourceText.value) {
-      return configApi.previewServerPropertiesWriteFromSource(sourceDraftText.value, changedValues);
-    }
-
-    return configApi.previewServerPropertiesWrite(options.serverPath.value, changedValues);
   }
 
   async function applyParsedSourceState(
@@ -268,6 +205,26 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
     return parsed;
   }
+
+  const saveFlow = useConfigPropertiesSaveFlow({
+    serverPath: options.serverPath,
+    serverPropertiesPath: options.serverPropertiesPath,
+    currentServerId: options.currentServerId,
+    currentServerName: options.currentServerName,
+    editorMode,
+    sourceDraftText,
+    loadedSourceText,
+    editValues,
+    loadedValues,
+    visualModeBaseValues,
+    saving,
+    hasUnsavedChanges,
+    numericFieldErrors,
+    setError: options.setError,
+    setSuccess: options.setSuccess,
+    getCompareContext: () => compareContext.value,
+    applyParsedSourceState,
+  });
 
   async function loadProperties() {
     if (!options.serverPath.value) return;
@@ -323,103 +280,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     }
   }
 
-  async function saveProperties() {
-    if (!options.serverPath.value || !hasUnsavedChanges.value || saving.value) return;
-
-    options.setError(null);
-    pendingSaveItems.value = [];
-
-    try {
-      if (editorMode.value === "visual" && hasInvalidNumericValues.value) {
-        const invalidKeys = Object.keys(numericFieldErrors.value);
-        options.setError(`以下字段需要填写整数：${invalidKeys.join("、")}`);
-        return;
-      }
-
-      const context = compareContext.value;
-      if (
-        editorMode.value === "visual" &&
-        context &&
-        context.compareMode.value &&
-        Object.keys(context.compareTargetNumericFieldErrors.value).length > 0
-      ) {
-        const invalidKeys = Object.keys(context.compareTargetNumericFieldErrors.value);
-        options.setError(`以下字段需要填写整数：${invalidKeys.join("、")}`);
-        return;
-      }
-
-      const pendingItems: PendingSaveItem[] = [];
-
-      const sourceChanged =
-        sourceDraftText.value !== loadedSourceText.value ||
-        !areMapValuesEqual(editValues.value, loadedValues.value);
-      if (sourceChanged) {
-        const latestSourceText = await configApi.readServerPropertiesSource(
-          options.serverPath.value,
-        );
-        const nextSourceText =
-          editorMode.value === "visual" ? await buildVisualPreviewSource() : sourceDraftText.value;
-
-        if (nextSourceText !== latestSourceText) {
-          pendingItems.push({
-            serverId: options.currentServerId.value || "",
-            serverName: options.currentServerName.value || i18n.t("config.compare.source_server"),
-            serverPath: options.serverPath.value,
-            filePath: options.serverPropertiesPath.value,
-            originalText: latestSourceText,
-            modifiedText: nextSourceText,
-          });
-        } else {
-          await applyParsedSourceState(latestSourceText, editorMode.value);
-        }
-      }
-
-      const targetDirty =
-        !!context?.compareMode.value &&
-        (context.compareTargetSourceDraftText.value !==
-          context.compareTargetLoadedSourceText.value ||
-          !areMapValuesEqual(
-            context.compareTargetDraftValues.value,
-            context.compareTargetLoadedValues.value,
-          ));
-      if (targetDirty && context?.compareTargetPath.value) {
-        const latestTargetText = await configApi.readServerPropertiesSource(
-          context.compareTargetPath.value,
-        );
-        const nextTargetText =
-          editorMode.value === "visual"
-            ? await context.buildCompareTargetPreviewSource()
-            : context.compareTargetSourceDraftText.value;
-
-        if (nextTargetText !== latestTargetText) {
-          pendingItems.push({
-            serverId: context.compareTargetServerId.value,
-            serverName:
-              context.compareTargetServerName.value || i18n.t("config.compare.target_server"),
-            serverPath: context.compareTargetPath.value,
-            filePath: context.compareTargetServerPropertiesPath.value,
-            originalText: latestTargetText,
-            modifiedText: nextTargetText,
-          });
-        } else {
-          await context.applyParsedCompareTargetState(latestTargetText);
-        }
-      }
-
-      pendingSaveItems.value = pendingItems;
-
-      if (pendingSaveItems.value.length === 0) {
-        options.setSuccess(i18n.t("config.no_changes_to_save"));
-        setTimeout(() => options.setSuccess(null), 3000);
-        return;
-      }
-
-      showSaveDiffModal.value = true;
-    } catch (e) {
-      options.setError(String(e));
-    }
-  }
-
   function updateValue(key: string, value: string | boolean | number) {
     if (!entries.value.some((entry) => entry.key === key)) {
       const compareEntry = compareContext.value?.compareTargetEntries.value.find(
@@ -454,7 +314,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     try {
       if (targetMode === "source") {
         if (visualDraftDirty.value) {
-          sourceDraftText.value = await buildVisualPreviewSource();
+          sourceDraftText.value = await saveFlow.buildVisualPreviewSource();
           visualDraftDirty.value = false;
         }
         if (compareContext.value?.compareMode.value) {
@@ -484,52 +344,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     } finally {
       modeSwitching.value = false;
     }
-  }
-
-  async function confirmSaveProperties() {
-    if (pendingSaveItems.value.length === 0 || saving.value) return;
-
-    saving.value = true;
-    options.setError(null);
-    options.setSuccess(null);
-
-    try {
-      await Promise.all(
-        pendingSaveItems.value.map((item) =>
-          configApi.writeServerPropertiesSource(item.serverPath, item.modifiedText),
-        ),
-      );
-
-      const savedCurrent = pendingSaveItems.value.find(
-        (item) => item.serverId === options.currentServerId.value,
-      );
-      if (savedCurrent) {
-        await applyParsedSourceState(savedCurrent.modifiedText, editorMode.value);
-      }
-
-      const context = compareContext.value;
-      const savedTarget = pendingSaveItems.value.find(
-        (item) => item.serverId === context?.compareTargetServerId.value,
-      );
-      if (savedTarget && context) {
-        await context.applyParsedCompareTargetState(savedTarget.modifiedText);
-      }
-
-      pendingSaveItems.value = [];
-      options.setSuccess(i18n.t("config.saved"));
-      showSaveDiffModal.value = false;
-      setTimeout(() => options.setSuccess(null), 3000);
-    } catch (e) {
-      options.setError(String(e));
-    } finally {
-      saving.value = false;
-    }
-  }
-
-  function closeSaveDiffModal() {
-    if (saving.value) return;
-    pendingSaveItems.value = [];
-    showSaveDiffModal.value = false;
   }
 
   async function reloadPropertiesWithGuard() {
@@ -599,8 +413,8 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     sourceParseError,
     showDiscardConfirm,
     pendingReloadSide,
-    showSaveDiffModal,
-    pendingSaveItems,
+    showSaveDiffModal: saveFlow.showSaveDiffModal,
+    pendingSaveItems: saveFlow.pendingSaveItems,
     categories,
     filteredEntries,
     numericFieldErrors,
@@ -611,18 +425,18 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     reloadCompareTooltipText,
     discardConfirmTitle,
     discardConfirmMessage,
-    pendingSaveItemsWithStats,
+    pendingSaveItemsWithStats: saveFlow.pendingSaveItemsWithStats,
     bindCompareContext,
     getTranslatedPropertyDescription,
     loadProperties,
     loadCurrentPropertiesOnly,
-    saveProperties,
+    saveProperties: saveFlow.saveProperties,
     updateValue,
     updateSourceDraft,
     updateCompareTargetSourceDraft,
     handleEditorModeChange,
-    confirmSaveProperties,
-    closeSaveDiffModal,
+    confirmSaveProperties: saveFlow.confirmSaveProperties,
+    closeSaveDiffModal: saveFlow.closeSaveDiffModal,
     reloadPropertiesWithGuard,
     reloadComparePropertiesWithGuard,
     confirmReloadDiscard,
