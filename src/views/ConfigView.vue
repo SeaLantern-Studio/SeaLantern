@@ -26,11 +26,11 @@ const currentServer = viewModel.currentServer;
 const serverPath = viewModel.serverPath;
 const propertiesEditor = viewModel.propertiesEditor;
 const compare = viewModel.compare;
+const propertiesDialogs = viewModel.propertiesDialogs;
 const propertiesSectionBindings = viewModel.propertiesSectionBindings;
 const pluginsState = viewModel.pluginsState;
 const configTabs = viewModel.configTabs;
 const editorModeTabs = viewModel.editorModeTabs;
-const configSaveDiffModalWidth = viewModel.configSaveDiffModalWidth;
 const handleStartupConfigSaved = viewModel.handleStartupConfigSaved;
 const setError = viewModel.setError;
 </script>
@@ -125,28 +125,25 @@ const setError = viewModel.setError;
       </template>
 
       <SLConfirmDialog
-        :visible="propertiesEditor.showDiscardConfirm.value"
-        :title="propertiesEditor.discardConfirmTitle.value"
-        :message="propertiesEditor.discardConfirmMessage.value"
-        :confirmText="i18n.t('config.discard_confirm')"
-        :cancelText="i18n.t('common.cancel')"
-        confirmVariant="danger"
-        @confirm="propertiesEditor.confirmReloadDiscard"
-        @close="
-          propertiesEditor.showDiscardConfirm.value = false;
-          propertiesEditor.pendingReloadSide.value = null;
-        "
+        :visible="propertiesDialogs.discardDialog.value.visible"
+        :title="propertiesDialogs.discardDialog.value.title"
+        :message="propertiesDialogs.discardDialog.value.message"
+        :confirmText="propertiesDialogs.discardDialog.value.confirmText"
+        :cancelText="propertiesDialogs.discardDialog.value.cancelText"
+        :confirmVariant="propertiesDialogs.discardDialog.value.confirmVariant"
+        @confirm="propertiesDialogs.confirmReloadDiscard"
+        @close="propertiesDialogs.closeDiscardDialog"
       />
 
       <SLModal
-        :visible="propertiesEditor.showSaveDiffModal.value"
-        :title="i18n.t('config.diff_modal_title')"
-        :width="configSaveDiffModalWidth"
-        :close-on-overlay="!propertiesEditor.saving.value"
-        @close="propertiesEditor.closeSaveDiffModal"
+        :visible="propertiesDialogs.saveDiffDialog.value.visible"
+        :title="propertiesDialogs.saveDiffDialog.value.title"
+        :width="propertiesDialogs.saveDiffDialog.value.width"
+        :close-on-overlay="propertiesDialogs.saveDiffDialog.value.closeOnOverlay"
+        @close="propertiesDialogs.closeSaveDiffModal"
       >
         <div
-          v-for="diffItem in propertiesEditor.pendingSaveItemsWithStats.value"
+          v-for="diffItem in propertiesDialogs.saveDiffDialog.value.items"
           :key="`${diffItem.serverId}-${diffItem.filePath}`"
           class="source-diff-block"
         >
@@ -156,7 +153,8 @@ const setError = viewModel.setError;
               <span class="source-diff-path-hint">i</span>
             </SLTooltip>
             <span
-              >{{ i18n.t("config.diff_original") }} → {{ i18n.t("config.diff_after_save") }}</span
+              >{{ propertiesDialogs.saveDiffDialog.value.originalLabel }} →
+              {{ propertiesDialogs.saveDiffDialog.value.savedLabel }}</span
             >
             <span class="diff-count diff-count-add">+{{ diffItem.additions }}</span>
             <span class="diff-count diff-count-del">-{{ diffItem.deletions }}</span>
@@ -170,17 +168,17 @@ const setError = viewModel.setError;
           <div class="diff-modal-actions">
             <SLButton
               variant="secondary"
-              :disabled="propertiesEditor.saving.value"
-              @click="propertiesEditor.closeSaveDiffModal"
+              :disabled="propertiesDialogs.saveDiffDialog.value.saving"
+              @click="propertiesDialogs.closeSaveDiffModal"
             >
-              {{ i18n.t("common.cancel") }}
+              {{ propertiesDialogs.saveDiffDialog.value.cancelText }}
             </SLButton>
             <SLButton
               variant="primary"
-              :loading="propertiesEditor.saving.value"
-              @click="propertiesEditor.confirmSaveProperties"
+              :loading="propertiesDialogs.saveDiffDialog.value.saving"
+              @click="propertiesDialogs.confirmSaveProperties"
             >
-              {{ i18n.t("config.confirm_save") }}
+              {{ propertiesDialogs.saveDiffDialog.value.confirmText }}
             </SLButton>
           </div>
         </template>

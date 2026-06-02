@@ -4,6 +4,7 @@ import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import { useConfigPlugins } from "@views/config/useConfigPlugins";
 import { useConfigCompare } from "@views/config/useConfigCompare";
+import { useConfigPropertiesDialogs } from "@views/config/useConfigPropertiesDialogs";
 import { useConfigPageLifecycle } from "@views/config/useConfigPageLifecycle";
 import { useConfigPropertiesSectionBindings } from "@views/config/useConfigPropertiesSectionBindings";
 import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
@@ -183,6 +184,10 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
     gamemodeOptions,
     difficultyOptions,
   });
+  const propertiesDialogs = useConfigPropertiesDialogs({
+    propertiesEditor,
+    modalWidth: configSaveDiffModalWidth,
+  });
 
   useConfigPageLifecycle({
     routeId,
@@ -224,6 +229,7 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
     setError,
     propertiesEditor,
     compare,
+    propertiesDialogs,
     propertiesSectionBindings,
     pluginsState,
     configTabs,
