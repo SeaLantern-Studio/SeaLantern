@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import type { MarketFeedback } from "./usePluginMarket";
+import type { MarketFeedback } from "@components/views/plugins/pluginMarketShared";
 
 defineProps<{
   installFeedback: MarketFeedback | null;
