@@ -1,10 +1,21 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { usePluginStore } from "@stores/pluginStore";
 import type { PluginInfo } from "@type/plugin";
+import {
+  applyPluginPreset,
+  buildPluginSettingsForm,
+  clearSettingsRecord,
+  findDependentPlugins,
+  getPluginFieldOptions,
+  getPluginFieldSelectValue,
+  getPluginFieldStringValue,
+  resetPluginSettingsForm,
+  type PluginSettingsRecord,
+  updatePluginSettingsField,
+} from "@views/plugins/pluginSettingsShared";
 
-type PluginSettingValue = string | number | boolean | null;
-type SettingsForm = Record<string, PluginSettingValue>;
-type DependentSettingsForms = Record<string, SettingsForm>;
+type DependentSettingsForms = Record<string, PluginSettingsRecord>;
 
 interface UsePluginPageSettingsOptions {
   pluginId: () => string;
@@ -13,7 +24,7 @@ interface UsePluginPageSettingsOptions {
 export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
   const pluginStore = usePluginStore();
   const plugin = ref<PluginInfo | null>(null);
-  const settingsForm = reactive<SettingsForm>({});
+  const settingsForm = reactive<PluginSettingsRecord>({});
   const saving = ref(false);
   const loading = ref(true);
   const dependentPlugins = ref<PluginInfo[]>([]);
@@ -24,68 +35,22 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
     return plugin.value?.manifest.capabilities?.includes("theme-provider") ?? false;
   });
 
-  function getDefaultValue(type: string): PluginSettingValue {
-    switch (type) {
-      case "boolean":
-        return false;
-      case "number":
-        return 0;
-      case "select":
-        return "";
-      default:
-        return "";
-    }
-  }
-
-  function getFieldStringValue(value: PluginSettingValue | undefined): string {
-    return value == null ? "" : String(value);
-  }
-
-  function getFieldSelectValue(value: PluginSettingValue | undefined): string | number | undefined {
-    if (typeof value === "string" || typeof value === "number") {
-      return value;
-    }
-    return undefined;
-  }
-
-  function getFieldOptions(
-    options: Array<{ value: string; label: string }> | undefined,
-  ): Array<{ value: string; label: string }> {
-    return options ?? [];
-  }
-
-  function updateSettingsField(form: SettingsForm, key: string, value: string | number | boolean) {
-    form[key] = value;
-  }
-
   async function loadDependentPlugins() {
     dependentPlugins.value = [];
-    Object.keys(dependentSettingsForms).forEach((key) => delete dependentSettingsForms[key]);
+    clearSettingsRecord(dependentSettingsForms);
 
-    const candidates = pluginStore.plugins.filter((candidate) => {
-      if (candidate.state !== "enabled") {
-        return false;
-      }
-      if (candidate.manifest.id === options.pluginId()) {
-        return false;
-      }
-      const dependencies = candidate.manifest.dependencies || [];
-      return dependencies.some((dependency: string | { id: string }) => {
-        const dependencyId = typeof dependency === "string" ? dependency : dependency.id;
-        return dependencyId === options.pluginId();
-      });
-    });
+    const candidates = findDependentPlugins(pluginStore.plugins, options.pluginId());
 
     const settingsPromises = candidates
       .filter((candidate) => candidate.manifest.settings?.length)
       .map(async (candidate) => {
-        const candidateSettings = await pluginStore.getPluginSettings(candidate.manifest.id);
-        const form: SettingsForm = {};
-        for (const field of candidate.manifest.settings || []) {
-          form[field.key] =
-            candidateSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
-        }
-        return { plugin: candidate, form };
+        return {
+          plugin: candidate,
+          form: buildPluginSettingsForm(
+            candidate.manifest.settings,
+            await pluginStore.getPluginSettings(candidate.manifest.id),
+          ),
+        };
       });
 
     const results = await Promise.all(settingsPromises);
@@ -104,18 +69,32 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
 
       plugin.value =
         pluginStore.plugins.find((item) => item.manifest.id === options.pluginId()) || null;
+      clearSettingsRecord(settingsForm);
+      clearSettingsRecord(dependentSettingsForms);
+      dependentPlugins.value = [];
+
       if (!plugin.value) {
         return;
       }
 
-      const savedSettings = await pluginStore.getPluginSettings(options.pluginId());
-      Object.keys(settingsForm).forEach((key) => delete settingsForm[key]);
-      for (const field of plugin.value.manifest.settings || []) {
-        settingsForm[field.key] =
-          savedSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
-      }
+      Object.assign(
+        settingsForm,
+        buildPluginSettingsForm(
+          plugin.value.manifest.settings,
+          await pluginStore.getPluginSettings(options.pluginId()),
+        ),
+      );
 
       await loadDependentPlugins();
+    } catch (error) {
+      plugin.value = null;
+      dependentPlugins.value = [];
+      clearSettingsRecord(settingsForm);
+      clearSettingsRecord(dependentSettingsForms);
+      pluginLogger.error("PluginPageSettings", "Failed to load plugin settings page", {
+        pluginId: options.pluginId(),
+        error,
+      });
     } finally {
       loading.value = false;
     }
@@ -128,18 +107,18 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
       return;
     }
 
-    const presetData = presets[presetKey];
-    const settingsToSave: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(presetData)) {
-      if (key === "name") {
-        continue;
-      }
-      settingsForm[key] = value as string | number | boolean;
-      settingsToSave[key] = value;
+    try {
+      const settingsToSave = applyPluginPreset(settingsForm, presetKey, presets[presetKey]);
+      await pluginStore.setPluginSettings(pluginId, settingsToSave);
+      await pluginStore.applyThemeProviderSettings(pluginId);
+    } catch (error) {
+      pluginLogger.error("PluginPageSettings", "Failed to apply plugin preset", {
+        pluginId,
+        presetKey,
+        error,
+      });
+      throw error;
     }
-
-    await pluginStore.setPluginSettings(pluginId, settingsToSave);
-    await pluginStore.applyThemeProviderSettings(pluginId);
   }
 
   async function saveSettings() {
@@ -166,6 +145,12 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
         }
       });
       await Promise.all(dependentSaves);
+    } catch (error) {
+      pluginLogger.error("PluginPageSettings", "Failed to save plugin settings", {
+        pluginId: options.pluginId(),
+        error,
+      });
+      throw error;
     } finally {
       saving.value = false;
     }
@@ -175,9 +160,8 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
     if (!plugin.value?.manifest.settings) {
       return;
     }
-    for (const field of plugin.value.manifest.settings) {
-      settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
-    }
+
+    resetPluginSettingsForm(settingsForm, plugin.value.manifest.settings);
   }
 
   onMounted(() => {
@@ -200,10 +184,10 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
     dependentSettingsForms,
     pluginPresets,
     isThemeProvider,
-    getFieldStringValue,
-    getFieldSelectValue,
-    getFieldOptions,
-    updateSettingsField,
+    getFieldStringValue: getPluginFieldStringValue,
+    getFieldSelectValue: getPluginFieldSelectValue,
+    getFieldOptions: getPluginFieldOptions,
+    updateSettingsField: updatePluginSettingsField,
     applyPreset,
     saveSettings,
     resetToDefault,

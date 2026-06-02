@@ -5,6 +5,8 @@ import SLButton from "@components/common/SLButton.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
+import PluginDependentSettingsList from "@views/plugins/PluginDependentSettingsList.vue";
+import PluginPresetPickerCard from "@views/plugins/PluginPresetPickerCard.vue";
 import PluginSettingsFormCard from "@views/plugins/PluginSettingsFormCard.vue";
 import { usePluginPageSettings } from "@views/plugins/usePluginPageSettings";
 import { ArrowLeft, Puzzle } from "lucide-vue-next";
@@ -37,6 +39,23 @@ const {
 
 function goBack() {
   router.back();
+}
+
+function handleMainFieldUpdate(key: string, value: string | number | boolean) {
+  updateSettingsField(settingsForm, key, value);
+}
+
+function handleDependentFieldUpdate(
+  pluginId: string,
+  key: string,
+  value: string | number | boolean,
+) {
+  const form = dependentSettingsForms[pluginId];
+  if (!form) {
+    return;
+  }
+
+  updateSettingsField(form, key, value);
 }
 </script>
 
@@ -83,20 +102,13 @@ function goBack() {
         </div>
       </SLCard>
 
-      <SLCard v-if="isThemeProvider && pluginPresets" class="presets-card">
-        <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
-        <div class="presets-grid">
-          <SLButton
-            v-for="(presetData, presetKey) in pluginPresets"
-            :key="presetKey"
-            variant="secondary"
-            class="preset-btn"
-            @click="applyPreset(String(presetKey))"
-          >
-            <span class="preset-name">{{ (presetData as any).name ?? presetKey }}</span>
-          </SLButton>
-        </div>
-      </SLCard>
+      <PluginPresetPickerCard
+        v-if="isThemeProvider && pluginPresets"
+        :title="i18n.t('plugins.preset_theme')"
+        :presets="pluginPresets"
+        :selected-preset="settingsForm['preset']"
+        @select="applyPreset"
+      />
 
       <PluginSettingsFormCard
         v-if="plugin.manifest.settings?.length"
@@ -106,23 +118,17 @@ function goBack() {
         :get-field-string-value="getFieldStringValue"
         :get-field-select-value="getFieldSelectValue"
         :get-field-options="getFieldOptions"
-        @update-field="updateSettingsField(settingsForm, $event[0], $event[1])"
+        @update-field="handleMainFieldUpdate"
       />
 
-      <PluginSettingsFormCard
-        v-for="depPlugin in dependentPlugins"
-        :key="depPlugin.manifest.id"
-        dependent
-        :title="`${depPlugin.manifest.name} ${i18n.t('plugins.settings')}`"
-        :description="i18n.t('plugins.depends_on', { name: plugin?.manifest.name })"
-        :fields="depPlugin.manifest.settings || []"
-        :form="dependentSettingsForms[depPlugin.manifest.id]"
+      <PluginDependentSettingsList
+        :plugins="dependentPlugins"
+        :forms="dependentSettingsForms"
+        :item-description="i18n.t('plugins.depends_on', { name: plugin.manifest.name })"
         :get-field-string-value="getFieldStringValue"
         :get-field-select-value="getFieldSelectValue"
         :get-field-options="getFieldOptions"
-        @update-field="
-          updateSettingsField(dependentSettingsForms[depPlugin.manifest.id], $event[0], $event[1])
-        "
+        @update-field="handleDependentFieldUpdate"
       />
 
       <div class="action-buttons">
@@ -269,314 +275,6 @@ function goBack() {
 
 .plugin-details .author {
   color: var(--text-secondary);
-}
-
-.section-title {
-  margin: 0 0 16px;
-  font-size: var(--sl-font-size-lg);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.presets-card {
-  padding: 20px;
-}
-
-.presets-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-}
-
-.preset-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.preset-btn:hover {
-  border-color: var(--accent-primary);
-  background: var(--bg-tertiary);
-}
-
-.preset-btn.active {
-  border-color: var(--accent-primary);
-  background: rgba(96, 165, 250, 0.1);
-}
-
-.preset-colors {
-  display: flex;
-  gap: 4px;
-}
-
-.color-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.preset-name {
-  font-size: var(--sl-font-size-sm);
-  color: var(--text-primary);
-}
-
-.colors-card {
-  padding: 20px;
-}
-
-.color-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.color-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-}
-
-.color-label {
-  font-size: var(--sl-font-size-base);
-  color: var(--text-primary);
-}
-
-.color-inputs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.color-text {
-  width: 140px;
-  padding: 6px 10px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: monospace;
-  font-size: var(--sl-font-size-sm);
-}
-
-.color-text:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-}
-
-.color-picker-wrapper {
-  position: relative;
-  width: 32px;
-  height: 32px;
-}
-
-.color-picker {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.color-preview {
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--border-color);
-  pointer-events: none;
-}
-
-.effects-card {
-  padding: 20px;
-}
-
-.effect-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.effect-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.effect-label {
-  font-size: var(--sl-font-size-base);
-  color: var(--text-primary);
-}
-
-.effect-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.effect-btn {
-  padding: 6px 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  font-size: var(--sl-font-size-sm);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.effect-btn:hover {
-  border-color: var(--accent-primary);
-  color: var(--text-primary);
-}
-
-.effect-btn.active {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-  color: white;
-}
-
-.settings-card {
-  padding: 20px;
-}
-
-.settings-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field-label {
-  font-size: var(--sl-font-size-base);
-  color: var(--text-primary);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.field-desc {
-  font-size: var(--sl-font-size-sm);
-  color: var(--text-secondary);
-  font-weight: normal;
-}
-
-.field-input,
-.field-select {
-  padding: 10px 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: var(--sl-font-size-base);
-}
-
-.field-input:focus,
-.field-select:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-}
-
-.import-export-card {
-  padding: 20px;
-}
-
-.import-export-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.ie-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.ie-btn:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--accent-primary);
-}
-
-.ie-btn svg {
-  flex-shrink: 0;
-}
-
-.dependent-settings {
-  border-left: 3px solid var(--accent-secondary);
-}
-
-.dependent-settings .section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dependent-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: var(--accent-secondary);
-}
-
-.dependent-desc {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin: -8px 0 16px 0;
-}
-
-.dependent-settings .field-select {
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-}
-
-.dependent-settings .field-select:hover {
-  border-color: var(--accent-primary);
-}
-
-.dependent-settings .field-select:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
-}
-
-.dependent-settings .field-select option {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  padding: 8px;
 }
 
 .action-buttons {
