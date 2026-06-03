@@ -327,7 +327,11 @@ fn append_sealantern_service(
     lines.push("    restart: unless-stopped".to_string());
     lines.push("    environment:".to_string());
     lines.push("      SEALANTERN_HEADLESS_HTTP: \"1\"".to_string());
-    lines.push("      SEALANTERN_WEB_BIND: \"0.0.0.0\"".to_string());
+    lines.push(
+        "      # 默认行为是仅监听 127.0.0.1；如需容器外访问，才显式改成 0.0.0.0:3000 或其他实际需要监听的地址"
+            .to_string(),
+    );
+    lines.push("      SEALANTERN_HTTP_BIND: \"127.0.0.1:3000\"".to_string());
     lines.push(format!(
         "      SEALANTERN_SERVERS_CONTAINER_ROOT: \"{}\"",
         escape_yaml_double_quoted(&container_root)
@@ -599,12 +603,35 @@ mod tests {
         let yaml = build_compose_yaml(&server, runtime, &options).unwrap();
         assert!(yaml.contains("  sealantern:"));
         assert!(yaml.contains("SEALANTERN_HEADLESS_HTTP: \"1\""));
+        assert!(yaml.contains("SEALANTERN_HTTP_BIND: \"127.0.0.1:3000\""));
         assert!(yaml.contains("SEALANTERN_SERVERS_CONTAINER_ROOT: \"/app/data/servers\""));
         assert!(yaml.contains("SEALANTERN_SERVERS_HOST_ROOT: \"E:/docker/paper\""));
         assert!(yaml.contains("STATIC_DIR: \"/app/dist\""));
         assert!(yaml.contains("- \"3000:3000/tcp\""));
         assert!(yaml.contains("depends_on:"));
         assert!(yaml.contains("- sealantern"));
+    }
+
+    #[test]
+    fn full_stack_compose_template_marks_external_bind_as_explicit_opt_in() {
+        let server = sample_server();
+        let runtime = server.docker_itzg_runtime().unwrap();
+        let options = ComposeGenerateOptions {
+            output: None,
+            full_stack: true,
+            sealantern_image: DEFAULT_SEALANTERN_IMAGE.to_string(),
+            sealantern_http_port: 3000,
+            static_dir: None,
+            sealantern_data_dir: Some("/app/data/servers".to_string()),
+            docker_socket: DEFAULT_DOCKER_SOCKET.to_string(),
+        };
+
+        let yaml = build_compose_yaml(&server, runtime, &options).unwrap();
+        assert!(yaml.contains("默认行为是仅监听 127.0.0.1"));
+        assert!(yaml.contains("SEALANTERN_HTTP_BIND: \"127.0.0.1:3000\""));
+        assert!(yaml.contains("才显式改成 0.0.0.0:3000"));
+        assert!(!yaml.contains("SEALANTERN_WEB_BIND: \"0.0.0.0\""));
+        assert!(!yaml.contains("默认行为是仅监听 0.0.0.0"));
     }
 
     #[test]

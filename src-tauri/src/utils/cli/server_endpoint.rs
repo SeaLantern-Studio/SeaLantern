@@ -56,6 +56,12 @@ mod tests {
             std::env::set_var(name, value);
             Self { name, original }
         }
+
+        fn remove(name: &'static str) -> Self {
+            let original = std::env::var(name).ok();
+            std::env::remove_var(name);
+            Self { name, original }
+        }
     }
 
     impl Drop for EnvGuard {
@@ -84,6 +90,18 @@ mod tests {
 
         let hint = render_cli_web_binding_hint(8000).expect("hint should exist");
         assert!(hint.contains("0.0.0.0:8000"));
+    }
+
+    #[test]
+    fn browser_url_defaults_to_loopback_without_explicit_bind_override() {
+        let _env_lock = ENV_LOCK.lock().expect("env lock");
+        let _http_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
+        let _http_bind = EnvGuard::remove("SEALANTERN_HTTP_BIND");
+        let _web_bind = EnvGuard::remove("SEALANTERN_WEB_BIND");
+
+        let url = render_cli_web_browser_url(8000, "docker-1");
+        assert_eq!(url, "http://127.0.0.1:8000/console/docker-1");
+        assert!(render_cli_web_binding_hint(8000).is_none());
     }
 
     #[test]

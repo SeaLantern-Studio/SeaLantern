@@ -19,4 +19,3 @@ pub fn get_locale_bundle(locale: Option<String>) -> Result<LocaleBundleResponse,
         locale: resolved_locale,
     })
 }
-

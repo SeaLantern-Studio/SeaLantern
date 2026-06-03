@@ -59,11 +59,12 @@ pub(super) fn build_server_help_text() -> String {
         "  --detach 与 --web/--cli 互斥，适合 smoke、脚本和容器终端。",
         "  --create-only 与 --detach/--web/--cli 互斥，适合只落记录、不触发首次启动的场景。",
         "  --web 和 --cli 可以共存；Web-only 也会正常创建并启动服务器。",
-        "  在 Headless/容器环境中，Web 默认绑定 0.0.0.0，只打印可手动访问的 URL，不尝试自动打开浏览器。",
+        "  在桌面、Headless 和容器环境中，Web 默认仅绑定到本地回环地址；只有显式配置 SEALANTERN_HTTP_BIND 或 SEALANTERN_WEB_BIND 时才会监听外部地址。",
         "",
         "容器环境变量:",
-        "  SEALANTERN_HEADLESS_HTTP=1           强制按 Headless Web 绑定逻辑运行 CLI Web 入口",
-        "  SEALANTERN_WEB_BIND=0.0.0.0          强制 CLI Web 绑定到 0.0.0.0",
+        "  SEALANTERN_HEADLESS_HTTP=1           强制按 Headless Web 入口逻辑运行 CLI Web（不改变默认 loopback 绑定）",
+        "  SEALANTERN_HTTP_BIND=<host[:port]>   显式指定 HTTP 绑定地址；例如 0.0.0.0:3000（仅在需要容器外/远端访问时启用）",
+        "  SEALANTERN_WEB_BIND=<host[:port]>    兼容旧变量名；未设置时默认仍为 loopback",
         "  SEALANTERN_DATA_DIR=<path>           显式指定 Sea Lantern 数据目录，统一不同可执行位置的服务器记录/配置",
         "  SEALANTERN_DOCKER_RCON_HOST=<host>   覆盖 Docker RCON 默认宿主地址",
         "  SEALANTERN_SERVERS_CONTAINER_ROOT    SeaLantern 容器内可见的 servers 根目录",
@@ -108,5 +109,19 @@ mod tests {
         let help = build_server_help_text();
         assert!(help.contains("sealantern server dedupe-audit"));
         assert!(help.contains("sealantern server dedupe-apply"));
+    }
+
+    #[test]
+    fn help_text_describes_loopback_default_and_explicit_external_bind() {
+        let help = build_server_help_text();
+        assert!(help.contains("Web 默认仅绑定到本地回环地址"));
+        assert!(help.contains("SEALANTERN_WEB_BIND=<host[:port]>"));
+        assert!(help.contains("未设置时默认仍为 loopback"));
+        assert!(help.contains(
+            "只有显式配置 SEALANTERN_HTTP_BIND 或 SEALANTERN_WEB_BIND 时才会监听外部地址"
+        ));
+        assert!(help.contains("SEALANTERN_HTTP_BIND=<host[:port]>"));
+        assert!(help.contains("仅在需要容器外/远端访问时启用"));
+        assert!(!help.contains("默认绑定到 0.0.0.0"));
     }
 }

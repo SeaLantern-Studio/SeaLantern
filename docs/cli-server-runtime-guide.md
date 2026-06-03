@@ -315,12 +315,12 @@ sealantern.exe server paper-docker --runtime docker --mc 1.21.1 --core paper --i
 
 ### CLI Web 绑定
 
-在 Headless / 容器环境中，CLI Web 默认绑定到 `0.0.0.0`，但打印给用户的访问地址会改写成 `127.0.0.1` 形式，方便直接复制打开。此时 CLI 不会尝试自动拉起本机浏览器。
+在桌面、 Headless 和容器环境中，CLI Web 默认都只绑定到本地回环地址，例如 `127.0.0.1`。只有显式设置 `SEALANTERN_HTTP_BIND` 或兼容变量 `SEALANTERN_WEB_BIND` 时，才会监听外部地址。若当前环境不会自动打开浏览器，CLI 只会打印可手动访问的 URL。
 
 如果你需要显式指定绑定地址，可设置：
 
 ```powershell
-$env:SEALANTERN_WEB_BIND = "192.168.1.10"
+$env:SEALANTERN_HTTP_BIND = "192.168.1.10:3000"
 ```
 
 ### Docker RCON 宿主地址
@@ -360,10 +360,13 @@ SEALANTERN_SERVERS_HOST_ROOT=/srv/sealantern/servers
 ### 相关环境变量
 
 - `SEALANTERN_HEADLESS_HTTP=1`
-  强制按 Headless Web 绑定逻辑运行 CLI Web 入口。
+  强制按 Headless Web 入口逻辑运行 CLI Web，但不会改变默认 loopback 绑定。
 
-- `SEALANTERN_WEB_BIND=0.0.0.0`
-  强制 CLI Web 绑定到 `0.0.0.0`。
+- `SEALANTERN_HTTP_BIND=0.0.0.0:3000`
+  显式让 CLI Web 监听所有网卡；默认仍是 `127.0.0.1:3000`，仅在确实需要容器外/远端访问时启用。
+
+- `SEALANTERN_WEB_BIND=0.0.0.0:3000`
+  兼容旧变量名，效果与 `SEALANTERN_HTTP_BIND` 相同；不设置时不会改掉默认的 `127.0.0.1:3000`。
 
 - `SEALANTERN_DOCKER_RCON_HOST=<host>`
   覆盖 Docker RCON 默认宿主地址。
@@ -444,6 +447,7 @@ sealantern.exe compose generate paper-docker --full-stack --sealantern-data /app
 
 - `sealantern` 服务
 - `SEALANTERN_HEADLESS_HTTP=1`
+- `SEALANTERN_HTTP_BIND=127.0.0.1:3000`，保持默认仅 loopback；如需容器外访问，请再显式改成对外地址
 - `SEALANTERN_SERVERS_CONTAINER_ROOT` / `SEALANTERN_SERVERS_HOST_ROOT`
 - `docker.sock` 挂载
 - Sea Lantern HTTP 端口映射
