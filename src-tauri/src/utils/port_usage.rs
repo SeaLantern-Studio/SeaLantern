@@ -15,7 +15,7 @@ pub fn is_tcp_port_listening(port: u16, kind: PortUsageKind) -> bool {
 
     #[cfg(not(target_os = "windows"))]
     {
-        return unix_is_tcp_port_listening(port, kind).unwrap_or(false);
+        unix_is_tcp_port_listening(port, kind).unwrap_or(false)
     }
 }
 

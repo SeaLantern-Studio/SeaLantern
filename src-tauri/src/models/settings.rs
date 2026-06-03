@@ -10,7 +10,6 @@ mod merge;
 mod schema;
 
 /// 应用设置相关的公开类型
-pub use schema::{
-    AppSettings, PartialSettings, SettingsGroup, TextColorOverrides, WINDOW_EFFECT_AUTO,
-    WINDOW_EFFECT_OFF,
-};
+pub use schema::{AppSettings, PartialSettings, SettingsGroup, TextColorOverrides};
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+pub use schema::{WINDOW_EFFECT_AUTO, WINDOW_EFFECT_OFF};

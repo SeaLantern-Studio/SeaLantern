@@ -139,7 +139,7 @@ pub(crate) fn is_process_alive(pid: u32) -> bool {
 pub(crate) fn force_kill_process_tree_by_pid(pid: u32) -> Result<(), String> {
     #[cfg(unix)]
     {
-        return force_kill_process_tree_by_pid_unix(pid);
+        force_kill_process_tree_by_pid_unix(pid)
     }
 
     #[cfg(windows)]
