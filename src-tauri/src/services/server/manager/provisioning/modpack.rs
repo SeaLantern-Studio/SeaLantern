@@ -11,6 +11,7 @@ use crate::models::server::{ImportModpackRequest, ServerInstance};
 
 use super::super::common::validate_server_name;
 use super::super::ServerManager;
+use super::shared::write_sl_startup_config;
 
 pub(super) fn import_modpack(
     manager: &ServerManager,
@@ -32,6 +33,7 @@ pub(super) fn import_modpack(
 
     let port =
         properties::ensure_server_properties_for_import(&run_dir, req.port, req.online_mode)?;
+    write_sl_startup_config(&run_dir, req.max_memory, req.min_memory)?;
     let server =
         build::build_modpack_server_instance(id, server_name, req, &run_dir, startup, port);
 

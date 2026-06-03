@@ -1,0 +1,14 @@
+name: Empty Issue | 空白 Issue
+description: If you don't know which template to choose, you can create an empty issue and fill in the content yourself | 如果你不知道选择哪个模板，你可以创建一个空白 Issue，自行填写内容
+title: ""
+labels: ["pending"]
+assignees: []
+body:
+  - type: textarea
+    id: content
+    attributes:
+      label: Content | 内容
+      description: Specific content | 具体内容
+      placeholder: This is an empty issue. Please fill in the content yourself. | 这是一个空白 Issue，请自行填写内容。
+    validations:
+      required: true

@@ -4,8 +4,8 @@ on:
   pull_request:
     branches: [main, dev]
     paths:
-      - "Dockerfile"
-      - "docker-compose.yml"
+      - "docker/Dockerfile"
+      - "docker/docker-compose.yml"
       - "src-tauri/**"
       - "src/**"
       - "package.json"
@@ -17,8 +17,8 @@ on:
   push:
     branches: [main, dev]
     paths:
-      - "Dockerfile"
-      - "docker-compose.yml"
+      - "docker/Dockerfile"
+      - "docker/docker-compose.yml"
       - "src-tauri/**"
       - "src/**"
       - "package.json"
@@ -42,7 +42,7 @@ jobs:
       - name: 构建 Docker 镜像（测试构建）
         run: |
           echo "开始构建 Docker 镜像..."
-          docker build --build-arg CARGO_FEATURES=docker -t sealantern:test .
+          docker build -f docker/Dockerfile --build-arg CARGO_FEATURES=docker -t sealantern:test .
           echo "Docker 镜像构建成功！"
 
       - name: 清理测试镜像
