@@ -2,16 +2,18 @@ use super::shared::{
     collect_env_vars, emit_process_log, mask_args_for_log, validate_args, validate_program_path,
 };
 use crate::plugins::runtime::process::common::{
-    collect_finished_processes, plugin_process_count, truncate_output, ProcessEntry,
-    ProcessRegistry, MAX_ARGS_COUNT, MAX_ARG_LENGTH, MAX_BACKGROUND_PROCESSES_PER_PLUGIN,
-    MAX_ENV_KEY_LENGTH, MAX_ENV_VALUE_LENGTH, MAX_ENV_VARS, MAX_FOREGROUND_EXEC_DURATION,
-    MAX_STDOUT_BUFFER_BYTES,
+    collect_finished_processes, new_process_output, plugin_process_count,
+    spawn_background_pipe_reader, truncate_output, ProcessEntry, ProcessRegistry, ProcessStream,
+    MAX_ARGS_COUNT, MAX_ARG_LENGTH, MAX_BACKGROUND_PROCESSES_PER_PLUGIN, MAX_ENV_KEY_LENGTH,
+    MAX_ENV_VALUE_LENGTH, MAX_ENV_VARS, MAX_FOREGROUND_EXEC_DURATION,
 };
 use crate::plugins::runtime::shared::validate_path_static;
 use mlua::{Function, Lua, Table};
+use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-use std::time::Instant;
+use std::thread;
+use std::time::{Duration, Instant};
 
 /// 注册 `sl.process.exec`
 ///
@@ -25,7 +27,18 @@ use std::time::Instant;
 ///
 /// # Returns
 ///
-/// 返回一个可在 Lua 里执行程序的函数
+/// 返回一个可在 Lua 里执行程序的函数。
+///
+/// 前台执行成功创建结果表后，始终会返回：
+/// - `pid = 0`
+/// - `success: boolean`
+/// - `exit_code: integer`
+/// - `stdout: string`
+/// - `stderr: string`
+///
+/// 当某个输出流被截断到 `MAX_STDOUT_BUFFER_BYTES` 上限时，会额外返回：
+/// - `truncated = true` 表示 `stdout` 被截断
+/// - `stderr_truncated = true` 表示 `stderr` 被截断
 pub(super) fn exec(
     lua: &Lua,
     plugin_dir: &std::path::Path,
@@ -61,6 +74,7 @@ pub(super) fn exec(
             let mut cwd = dir.clone();
             let mut env_vars: Vec<(String, String)> = Vec::new();
             let mut background = false;
+            let mut timeout = MAX_FOREGROUND_EXEC_DURATION;
 
             if let Some(ref opts) = options {
                 if let Ok(cwd_str) = opts.get::<String>("cwd") {
@@ -76,6 +90,16 @@ pub(super) fn exec(
                 }
                 if let Ok(bg) = opts.get::<bool>("background") {
                     background = bg;
+                }
+                if let Ok(timeout_ms) = opts.get::<u64>("timeout_ms") {
+                    if timeout_ms == 0 {
+                        return Err(mlua::Error::runtime(
+                            "Process timeout must be greater than 0 milliseconds",
+                        ));
+                    }
+
+                    let requested_timeout = Duration::from_millis(timeout_ms);
+                    timeout = requested_timeout.min(MAX_FOREGROUND_EXEC_DURATION);
                 }
             }
 
@@ -98,7 +122,7 @@ pub(super) fn exec(
                 });
                 collect_finished_processes(&mut procs);
 
-                if plugin_process_count(&procs, &pid) >= MAX_BACKGROUND_PROCESSES_PER_PLUGIN {
+                if plugin_process_count(&mut procs, &pid) >= MAX_BACKGROUND_PROCESSES_PER_PLUGIN {
                     return Err(mlua::Error::runtime(format!(
                         "Too many background processes: maximum {} allowed per plugin",
                         MAX_BACKGROUND_PROCESSES_PER_PLUGIN
@@ -106,16 +130,32 @@ pub(super) fn exec(
                 }
 
                 match cmd.spawn() {
-                    Ok(child) => {
+                    Ok(mut child) => {
                         let child_pid = child.id();
                         result_table.set("pid", child_pid)?;
                         result_table.set("success", true)?;
+
+                        let output = new_process_output();
+                        if let Some(stdout) = child.stdout.take() {
+                            spawn_background_pipe_reader(
+                                stdout,
+                                Arc::clone(&output),
+                                ProcessStream::Stdout,
+                            );
+                        }
+                        if let Some(stderr) = child.stderr.take() {
+                            spawn_background_pipe_reader(
+                                stderr,
+                                Arc::clone(&output),
+                                ProcessStream::Stderr,
+                            );
+                        }
 
                         let entry = ProcessEntry {
                             owner_plugin_id: pid.clone(),
                             program: program.clone(),
                             child,
-                            stdout_buf: Vec::new(),
+                            output,
                             started_at: Instant::now(),
                         };
 
@@ -130,34 +170,78 @@ pub(super) fn exec(
             } else {
                 let started_at = Instant::now();
                 match cmd.spawn() {
-                    Ok(child) => match child.wait_with_output() {
-                        Ok(output) => {
-                            let elapsed = started_at.elapsed();
-                            if elapsed > MAX_FOREGROUND_EXEC_DURATION {
-                                return Err(mlua::Error::runtime(format!(
-                                    "Process execution exceeded maximum duration of {} seconds",
-                                    MAX_FOREGROUND_EXEC_DURATION.as_secs()
-                                )));
-                            }
+                    Ok(mut child) => {
+                        let stdout_reader = child.stdout.take().map(spawn_pipe_reader);
+                        let stderr_reader = child.stderr.take().map(spawn_pipe_reader);
 
-                            let mut stdout = output.stdout;
-                            truncate_output(&mut stdout);
-                            result_table.set("pid", 0)?;
-                            result_table.set("success", output.status.success())?;
-                            result_table.set("exit_code", output.status.code().unwrap_or(-1))?;
-                            let stdout_text = String::from_utf8_lossy(&stdout).into_owned();
-                            result_table
-                                .set("stdout", lua.create_string(stdout_text.as_bytes())?)?;
-                            if stdout.len() >= MAX_STDOUT_BUFFER_BYTES {
-                                result_table.set("truncated", true)?;
+                        let mut timed_out = false;
+                        let exit_status = loop {
+                            match child.try_wait() {
+                                Ok(Some(status)) => break status,
+                                Ok(None) => {
+                                    if started_at.elapsed() >= timeout {
+                                        timed_out = true;
+
+                                        if let Err(kill_error) = child.kill() {
+                                            match child.try_wait() {
+                                                Ok(Some(status)) => break status,
+                                                Ok(None) => {
+                                                    return Err(mlua::Error::runtime(format!(
+                                                        "Failed to terminate timed out process: {}",
+                                                        kill_error
+                                                    )));
+                                                }
+                                                Err(wait_error) => {
+                                                    return Err(mlua::Error::runtime(format!(
+                                                        "Failed to inspect timed out process after kill error: {}",
+                                                        wait_error
+                                                    )));
+                                                }
+                                            }
+                                        }
+
+                                        break child.wait().map_err(|e| {
+                                            mlua::Error::runtime(format!(
+                                                "Failed to wait for timed out process: {}",
+                                                e
+                                            ))
+                                        })?;
+                                    }
+
+                                    thread::sleep(Duration::from_millis(25));
+                                }
+                                Err(e) => {
+                                    return Err(mlua::Error::runtime(format!(
+                                        "Failed to wait for process: {}",
+                                        e
+                                    )));
+                                }
                             }
+                        };
+
+                        let mut stdout = join_pipe_reader(stdout_reader, "stdout")?;
+                        let mut stderr = join_pipe_reader(stderr_reader, "stderr")?;
+
+                        if timed_out {
+                            return Err(mlua::Error::runtime(timeout_error_message(timeout)));
                         }
-                        Err(e) => {
-                            result_table.set("pid", 0)?;
-                            result_table.set("success", false)?;
-                            result_table.set("error", format!("{}", e))?;
+
+                        let stdout_truncated = truncate_output(&mut stdout);
+                        let stderr_truncated = truncate_output(&mut stderr);
+                        result_table.set("pid", 0)?;
+                        result_table.set("success", exit_status.success())?;
+                        result_table.set("exit_code", exit_status.code().unwrap_or(-1))?;
+                        let stdout_text = String::from_utf8_lossy(&stdout).into_owned();
+                        let stderr_text = String::from_utf8_lossy(&stderr).into_owned();
+                        result_table.set("stdout", lua.create_string(stdout_text.as_bytes())?)?;
+                        result_table.set("stderr", lua.create_string(stderr_text.as_bytes())?)?;
+                        if stdout_truncated {
+                            result_table.set("truncated", true)?;
                         }
-                    },
+                        if stderr_truncated {
+                            result_table.set("stderr_truncated", true)?;
+                        }
+                    }
                     Err(e) => {
                         result_table.set("pid", 0)?;
                         result_table.set("success", false)?;
@@ -170,4 +254,43 @@ pub(super) fn exec(
         },
     )
     .map_err(|e| format!("Failed to create process.exec: {}", e))
+}
+
+fn spawn_pipe_reader<R>(mut reader: R) -> thread::JoinHandle<std::io::Result<Vec<u8>>>
+where
+    R: Read + Send + 'static,
+{
+    thread::spawn(move || {
+        let mut buffer = Vec::new();
+        reader.read_to_end(&mut buffer)?;
+        Ok(buffer)
+    })
+}
+
+fn join_pipe_reader(
+    handle: Option<thread::JoinHandle<std::io::Result<Vec<u8>>>>,
+    stream_name: &str,
+) -> mlua::Result<Vec<u8>> {
+    let Some(handle) = handle else {
+        return Ok(Vec::new());
+    };
+
+    match handle.join() {
+        Ok(Ok(buffer)) => Ok(buffer),
+        Ok(Err(error)) => Err(mlua::Error::runtime(format!(
+            "Failed to read process {}: {}",
+            stream_name, error
+        ))),
+        Err(_) => {
+            Err(mlua::Error::runtime(format!("Process {} reader thread panicked", stream_name)))
+        }
+    }
+}
+
+fn timeout_error_message(timeout: Duration) -> String {
+    if timeout.as_millis() % 1000 == 0 {
+        format!("Process execution exceeded maximum duration of {} seconds", timeout.as_secs())
+    } else {
+        format!("Process execution exceeded maximum duration of {} ms", timeout.as_millis())
+    }
 }

@@ -1,5 +1,8 @@
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 use crate::models::plugin::PluginManifest;
+use crate::plugins::runtime::permissions::{
+    is_valid_declared_permission, valid_permission_summary,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -107,33 +110,13 @@ impl PluginLoader {
             ));
         }
 
-        let valid_permissions = [
-            "log",
-            "fs",
-            "fs.data",
-            "fs.server",
-            "fs.global",
-            "api",
-            "storage",
-            "network",
-            "system",
-            "server",
-            "console",
-            "ui",
-            "element",
-            "execute_program",
-            "plugin_folder_access",
-            "plugins",
-            "ui.component.read",
-            "ui.component.write",
-            "ui.component.proxy",
-            "ui.component.create",
-        ];
         for perm in &manifest.permissions {
-            if !valid_permissions.contains(&perm.as_str()) {
+            if !is_valid_declared_permission(perm) {
                 return Err(format!(
-                    "Plugin '{}': unknown permission '{}' is not allowed. Valid permissions are: {:?}",
-                    manifest.id, perm, valid_permissions
+                    "Plugin '{}': unknown permission '{}' is not allowed. Valid permissions include: {}",
+                    manifest.id,
+                    perm,
+                    valid_permission_summary()
                 ));
             }
         }

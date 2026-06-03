@@ -1,5 +1,8 @@
 use super::runtime::PluginRuntime;
 use crate::plugins::runtime::filesystem::has_any_fs_permission;
+use crate::plugins::runtime::permissions::{
+    has_plugin_folder_access_permission, normalize_permissions, PLUGIN_FOLDER_ACCESS_PERMISSION,
+};
 use mlua::Table;
 use std::path::Path;
 
@@ -26,10 +29,7 @@ impl PluginRuntime {
         std::fs::create_dir_all(data_dir)
             .map_err(|e| format!("Failed to create data dir: {}", e))?;
 
-        let normalized_permissions = permissions
-            .into_iter()
-            .map(|p| if p == "fs" { "fs.data".to_string() } else { p })
-            .collect::<Vec<_>>();
+        let normalized_permissions = normalize_permissions(permissions);
 
         let runtime = Self {
             lua,
@@ -125,10 +125,14 @@ impl PluginRuntime {
             self.setup_permission_denied_module(&sl, "execute_program")?;
         }
 
-        if self.permissions.iter().any(|p| p == "plugin_folder_access") {
+        if has_plugin_folder_access_permission(&self.permissions) {
             self.setup_plugins_namespace(&sl)?;
         } else {
-            self.setup_permission_denied_module(&sl, "plugin_folder_access")?;
+            self.setup_permission_denied_namespace(
+                &sl,
+                "plugins",
+                PLUGIN_FOLDER_ACCESS_PERMISSION,
+            )?;
         }
 
         self.setup_i18n_namespace(&sl)?;

@@ -1,3 +1,4 @@
+use crate::plugins::runtime::permissions::is_any_fs_permission;
 use crate::plugins::runtime::shared::validate_path_static;
 use crate::utils::logger::log_error;
 use mlua::{Lua, Table};
@@ -52,32 +53,9 @@ pub(super) fn set_fs_function(
 }
 
 pub(crate) fn has_any_fs_permission(perms: &[String]) -> bool {
-    perms.iter().any(|p| {
-        matches!(
-            p.as_str(),
-            "fs.data"
-                | "fs.server"
-                | "fs.global"
-                | "fs.data.read"
-                | "fs.data.write"
-                | "fs.data.list"
-                | "fs.data.meta"
-                | "fs.data.delete"
-                | "fs.data.transfer"
-                | "fs.server.read"
-                | "fs.server.write"
-                | "fs.server.list"
-                | "fs.server.meta"
-                | "fs.server.delete"
-                | "fs.server.transfer"
-                | "fs.global.read"
-                | "fs.global.write"
-                | "fs.global.list"
-                | "fs.global.meta"
-                | "fs.global.delete"
-                | "fs.global.transfer"
-        )
-    })
+    perms
+        .iter()
+        .any(|permission| is_any_fs_permission(permission))
 }
 
 fn resolve_scope_permission(scope: &str) -> Result<&'static str, mlua::Error> {

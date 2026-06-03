@@ -7,7 +7,7 @@ mod lifecycle;
 
 use common::ProcessRegistry as InternalProcessRegistry;
 #[cfg(test)]
-pub(crate) use common::{collect_finished_processes, ProcessEntry};
+pub(crate) use common::{collect_finished_processes, new_process_output, ProcessEntry};
 pub use common::{
     kill_all_processes, kill_plugin_processes, new_process_registry, ProcessRegistry,
 };
