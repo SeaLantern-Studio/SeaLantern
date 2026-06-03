@@ -2,6 +2,20 @@ use std::path::PathBuf;
 
 use crate::hardcode_data::app_files::{APP_DOCKER_DATA_DIR, APP_HIDDEN_DIRECTORY_NAME};
 
+/// 判断字符串是否是 Windows 绝对路径。
+pub fn is_windows_absolute_path(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    if bytes.len() >= 3
+        && bytes[1] == b':'
+        && bytes[0].is_ascii_alphabetic()
+        && matches!(bytes[2], b'/' | b'\\')
+    {
+        return true;
+    }
+
+    path.starts_with("\\\\") || path.starts_with("//")
+}
+
 fn explicit_app_data_dir_from_env() -> Option<PathBuf> {
     let value = std::env::var("SEALANTERN_DATA_DIR").ok()?;
     let trimmed = value.trim();

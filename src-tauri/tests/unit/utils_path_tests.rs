@@ -29,6 +29,19 @@ fn test_get_app_data_dir_prefers_explicit_env_override() {
 }
 
 #[test]
+fn test_is_windows_absolute_path_detects_drive_and_unc_paths() {
+    assert!(is_windows_absolute_path("C:/SeaLantern/server.jar"));
+    assert!(is_windows_absolute_path("D:\\SeaLantern\\server.jar"));
+    assert!(is_windows_absolute_path(r"\\server\share\server.jar"));
+    assert!(is_windows_absolute_path("//server/share/server.jar"));
+
+    assert!(!is_windows_absolute_path("C:SeaLantern/server.jar"));
+    assert!(!is_windows_absolute_path("server.jar"));
+    assert!(!is_windows_absolute_path("./server.jar"));
+    assert!(!is_windows_absolute_path("/opt/sealantern/server.jar"));
+}
+
+#[test]
 fn test_find_root_startup_file_prefers_scripts_over_jar() {
     let temp_dir = tempfile::tempdir().expect("temp dir should exist");
     fs::write(temp_dir.path().join("server.jar"), b"jar").unwrap();

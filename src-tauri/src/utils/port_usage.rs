@@ -15,7 +15,7 @@ pub fn is_tcp_port_listening(port: u16, kind: PortUsageKind) -> bool {
 
     #[cfg(not(target_os = "windows"))]
     {
-        return unix_is_tcp_port_listening(port, kind).unwrap_or(false);
+        unix_is_tcp_port_listening(port, kind).unwrap_or(false)
     }
 }
 
@@ -78,7 +78,7 @@ fn windows_is_tcp_port_listening(port: u16, kind: PortUsageKind) -> Result<bool,
     Ok(parse_windows_netstat_for_tcp_port(&stdout, port, kind))
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(test, target_os = "windows"))]
 fn parse_windows_netstat_for_tcp_port(
     netstat_output: &str,
     port: u16,
@@ -115,7 +115,7 @@ fn parse_windows_netstat_for_tcp_port(
     })
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(test, target_os = "windows"))]
 fn split_host_port(endpoint: &str) -> Option<(&str, u16)> {
     split_host_port_impl(endpoint)
 }
@@ -187,8 +187,7 @@ fn parse_unix_lsof_for_tcp_port(lsof_output: &str, port: u16, kind: PortUsageKin
 
         trimmed
             .split_whitespace()
-            .find(|token| token.contains("TCP"))
-            .or_else(|| trimmed.split_whitespace().find(|token| token.contains(':')))
+            .find(|token| token.contains(':') && !token.eq_ignore_ascii_case("TCP"))
             .is_some_and(|endpoint| endpoint_matches_from_lsof(endpoint, port, kind))
     })
 }
@@ -224,7 +223,7 @@ mod tests {
         parse_unix_lsof_for_tcp_port, parse_unix_netstat_for_tcp_port, parse_unix_ss_for_tcp_port,
     };
 
-    #[cfg(target_os = "windows")]
+    #[cfg(any(test, target_os = "windows"))]
     use super::parse_windows_netstat_for_tcp_port;
 
     #[test]

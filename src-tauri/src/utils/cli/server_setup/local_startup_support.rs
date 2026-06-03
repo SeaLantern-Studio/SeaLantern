@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::utils::cli::server_args::CliServerCommand;
+use crate::utils::path::is_windows_absolute_path;
 
 use super::local_folder_inspection::inspect_local_folder;
 
@@ -92,7 +93,8 @@ pub(super) fn resolve_command_path_hint(token: &str, folder: Option<&Path>) -> O
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.to_ascii_lowercase());
-    let looks_like_launch_path = path.is_absolute()
+    let is_absolute = path.is_absolute() || is_windows_absolute_path(trimmed);
+    let looks_like_launch_path = is_absolute
         || trimmed.contains(['/', '\\'])
         || trimmed.starts_with('.')
         || matches!(extension.as_deref(), Some("jar" | "bat" | "sh" | "ps1" | "cmd"));
@@ -101,8 +103,8 @@ pub(super) fn resolve_command_path_hint(token: &str, folder: Option<&Path>) -> O
         return None;
     }
 
-    if path.is_absolute() {
-        Some(path.to_string_lossy().to_string())
+    if is_absolute {
+        Some(trimmed.to_string())
     } else if let Some(folder) = folder {
         Some(folder.join(path).to_string_lossy().to_string())
     } else {

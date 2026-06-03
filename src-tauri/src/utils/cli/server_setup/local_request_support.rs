@@ -5,6 +5,7 @@ use crate::services::server::installer::{detect_core_type, find_server_jar, Core
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::trace_cli_action;
+use crate::utils::path::is_windows_absolute_path;
 
 use super::java_support::resolve_java_path;
 use super::local_folder_inspection::LocalFolderInspection;
@@ -403,7 +404,7 @@ fn paths_refer_to_same_location(left: &Path, right: &Path) -> bool {
 }
 
 fn normalize_path_for_compare(path: &Path) -> String {
-    let absolute = if path.is_absolute() {
+    let absolute = if path.is_absolute() || is_windows_absolute_path(&path.to_string_lossy()) {
         path.to_path_buf()
     } else if let Ok(current_dir) = std::env::current_dir() {
         current_dir.join(path)

@@ -1,6 +1,6 @@
-use crate::models::settings::{
-    AppSettings, PartialSettings, TextColorOverrides, WINDOW_EFFECT_AUTO, WINDOW_EFFECT_OFF,
-};
+use crate::models::settings::{AppSettings, PartialSettings, TextColorOverrides};
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use crate::models::settings::{WINDOW_EFFECT_AUTO, WINDOW_EFFECT_OFF};
 use crate::services::global;
 use font_kit::source::SystemSource;
 use serde::Deserialize;
