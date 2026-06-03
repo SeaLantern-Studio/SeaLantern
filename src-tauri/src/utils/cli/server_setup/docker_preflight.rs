@@ -5,6 +5,8 @@ use crate::utils::docker_cli::{
     inspect_docker_image_reference_with_soft_failures, DockerImageAvailability,
     DockerImageInspectOutcome,
 };
+#[cfg(test)]
+use crate::utils::docker_cli::interpret_docker_image_inspect_outputs_for_tests;
 use crate::utils::logger;
 use std::process::Output;
 
@@ -275,6 +277,34 @@ mod tests {
 
     fn failed_output_with_stdout(stdout: &str) -> Output {
         output_with_status(1, stdout, "")
+    }
+
+    fn run_facade_visible_preflight_path_from_outputs<F>(
+        image: &str,
+        image_tag: &str,
+        command_mode: DockerCommandMode,
+        local_output: &Output,
+        manifest_output: &Output,
+        ensure_stdio_support: F,
+    ) -> Result<(), String>
+    where
+        F: FnOnce(&str) -> Result<(), String>,
+    {
+        super::preflight_docker_image_reference_from_outputs_for_tests(
+            image,
+            image_tag,
+            local_output,
+            manifest_output,
+        )?;
+
+        super::preflight_docker_command_mode_support_from_outputs_for_tests(
+            image,
+            image_tag,
+            &command_mode,
+            local_output,
+            manifest_output,
+            ensure_stdio_support,
+        )
     }
 
     #[test]
@@ -699,6 +729,117 @@ mod tests {
     }
 
     #[test]
+    fn facade_visible_preflight_path_allows_rcon_soft_failure_without_probe() {
+        let probe_calls = Cell::new(0);
+
+        run_facade_visible_preflight_path_from_outputs(
+            "itzg/minecraft-server",
+            "latest",
+            DockerCommandMode::Rcon,
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
+            &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Err("probe should have been skipped".to_string())
+            },
+        )
+        .expect("rcon user path should stay non-blocking across soft image preflight failures");
+
+        assert_eq!(probe_calls.get(), 0);
+    }
+
+    #[test]
+    fn facade_visible_preflight_path_allows_stdio_remote_resolvable_and_skips_probe() {
+        let probe_calls = Cell::new(0);
+
+        run_facade_visible_preflight_path_from_outputs(
+            "itzg/minecraft-server",
+            "latest",
+            DockerCommandMode::DockerStdio,
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
+            &manifest_success_output(),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Err("probe should have been skipped".to_string())
+            },
+        )
+        .expect("remote-resolvable docker_stdio user path should pass while skipping probe");
+
+        assert_eq!(probe_calls.get(), 0);
+    }
+
+    #[test]
+    fn facade_visible_preflight_path_requires_probe_before_allowing_local_cached_stdio() {
+        let probe_calls = Cell::new(0);
+
+        run_facade_visible_preflight_path_from_outputs(
+            "itzg/minecraft-server",
+            "latest",
+            DockerCommandMode::DockerStdio,
+            &local_success_output(),
+            &failed_output("manifest unknown: manifest unknown"),
+            |image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                assert_eq!(image_ref, "itzg/minecraft-server:latest");
+                Ok(())
+            },
+        )
+        .expect("local-cached docker_stdio user path should only pass after stdio probe");
+
+        assert_eq!(probe_calls.get(), 1);
+    }
+
+    #[test]
+    fn facade_visible_preflight_path_surfaces_stdio_probe_hint_for_local_cached_image() {
+        let err = run_facade_visible_preflight_path_from_outputs(
+            "itzg/minecraft-server",
+            "java21",
+            DockerCommandMode::DockerStdio,
+            &local_success_output(),
+            &failed_output("manifest unknown: manifest unknown"),
+            |image_ref| {
+                Err(format!(
+                    "当前镜像不支持 --command-mode docker_stdio: image={} 未检测到 mc-send-to-console",
+                    image_ref
+                ))
+            },
+        )
+        .expect_err("local-cached docker_stdio probe failures should remain user-visible");
+
+        assert!(err.contains("docker_stdio"));
+        assert!(err.contains("mc-send-to-console"));
+        assert!(err.contains("itzg/minecraft-server:java21"));
+    }
+
+    #[test]
+    fn facade_visible_preflight_path_blocks_hard_image_failure_before_probe() {
+        let probe_calls = Cell::new(0);
+
+        let err = run_facade_visible_preflight_path_from_outputs(
+            "itzg/minecraft-server",
+            "missing",
+            DockerCommandMode::DockerStdio,
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:missing",
+            ),
+            &failed_output_with_stdout("manifest unknown: manifest unknown"),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Ok(())
+            },
+        )
+        .expect_err("hard image failures should still block the facade-visible user path");
+
+        assert!(err.contains("镜像或标签不存在"));
+        assert!(err.contains("manifest unknown"));
+        assert_eq!(probe_calls.get(), 0);
+    }
+
+    #[test]
     fn handle_docker_stdio_preflight_outcome_probes_only_for_local_cached_images() {
         let calls = AtomicUsize::new(0);
         handle_docker_stdio_preflight_outcome(
@@ -773,6 +914,45 @@ mod tests {
         assert!(err.contains("退出码"));
         assert!(err.contains("java21"));
     }
+}
+
+#[cfg(test)]
+pub(crate) fn preflight_docker_image_reference_from_outputs_for_tests(
+    image: &str,
+    image_tag: &str,
+    local_output: &Output,
+    manifest_output: &Output,
+) -> Result<(), String> {
+    preflight_docker_image_reference_with(image, image_tag, |image_ref| {
+        interpret_docker_image_inspect_outputs_for_tests(image_ref, local_output, manifest_output)
+    })
+}
+
+#[cfg(test)]
+pub(crate) fn preflight_docker_command_mode_support_from_outputs_for_tests<F>(
+    image: &str,
+    image_tag: &str,
+    command_mode: &DockerCommandMode,
+    local_output: &Output,
+    manifest_output: &Output,
+    ensure_stdio_support: F,
+) -> Result<(), String>
+where
+    F: FnOnce(&str) -> Result<(), String>,
+{
+    preflight_docker_command_mode_support_with(
+        image,
+        image_tag,
+        command_mode,
+        |image_ref| {
+            interpret_docker_image_inspect_outputs_for_tests(
+                image_ref,
+                local_output,
+                manifest_output,
+            )
+        },
+        ensure_stdio_support,
+    )
 }
 
 #[cfg(test)]
