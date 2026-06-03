@@ -103,12 +103,15 @@
 
 - 默认调用 `sl.process.read_output(pid)` 时，保持旧契约：只返回 stdout 字符串；如果当前没有 stdout 可读，则返回 `nil`
 - 显式传入 `sl.process.read_output(pid, { include_stderr = false })` 时，行为与默认调用完全一致，不会切换到结构化结果
-- 当调用 `sl.process.read_output(pid, { include_stderr = true })` 时，有输出则返回表，字段至少包括：`stdout`、`stderr`
+- 当调用 `sl.process.read_output(pid, { include_stderr = true })` 时，有输出则返回表，字段至少包括：`stdout`、`stderr`、`chunk_seq`、`updated_at_ms`
 - 在 `include_stderr = true` 模式下，`stdout` 和 `stderr` 任何一边当前有数据，都会一起返回；没有数据的一边返回空字符串
+- `chunk_seq` 是该后台进程结构化输出片段的递增序号；每成功返回一批 `stdout` / `stderr` 后自增一次，便于调用方按读取批次排序
+- `updated_at_ms` 是最近一次采集到这批后台输出的 Unix 毫秒时间戳，用于粗粒度排障时间定位；同一后台进程内只保证非倒退，不保证跨进程可比
 - `truncated = true` 表示本次返回的后台 `stdout` 片段被截断
 - `stderr_truncated = true` 表示本次返回的后台 `stderr` 片段被截断
 - 后台进程退出后，未消费的 `stdout` / `stderr` 缓冲仍会保留，直到被 `read_output` 读取并清空；因此状态查询不会提前吞掉排障输出
 - 在 `include_stderr = true` 模式下，如果两个流当前都没有可读取内容，则返回 `nil`
+- 结构化模式下，返回 `nil` 的空读不会推进 `chunk_seq`，也不会伪造新的 `updated_at_ms`
 
 ## Plugins API
 

@@ -309,9 +309,13 @@ fn test_process_read_output_returns_background_stdout_and_stderr() {
     let output = wait_for_background_output(runtime.lua(), &read_output, pid).unwrap();
     let stdout: String = output.get("stdout").unwrap();
     let stderr: String = output.get("stderr").unwrap();
+    let chunk_seq: u64 = output.get("chunk_seq").unwrap();
+    let updated_at_ms: u64 = output.get("updated_at_ms").unwrap();
 
     assert!(stdout.contains("bg-out"));
     assert!(stderr.contains("bg-err"));
+    assert_eq!(chunk_seq, 0);
+    assert!(updated_at_ms > 0);
 
     cleanup_test_root(&temp_dir);
 }
@@ -364,6 +368,8 @@ fn test_process_read_output_marks_background_stderr_truncated() {
     let output = wait_for_background_output(runtime.lua(), &read_output, pid).unwrap();
     let stderr: String = output.get("stderr").unwrap();
     let stderr_truncated: bool = output.get("stderr_truncated").unwrap();
+    let chunk_seq: u64 = output.get("chunk_seq").unwrap();
+    let updated_at_ms: u64 = output.get("updated_at_ms").unwrap();
     let has_stdout_truncated_flag: bool = runtime
         .lua()
         .load("return rawget(..., 'truncated') ~= nil")
@@ -372,6 +378,8 @@ fn test_process_read_output_marks_background_stderr_truncated() {
 
     assert!(stderr_truncated);
     assert_eq!(stderr.len(), PROCESS_OUTPUT_LIMIT_BYTES);
+    assert_eq!(chunk_seq, 0);
+    assert!(updated_at_ms > 0);
     assert!(!has_stdout_truncated_flag);
     assert!(stderr.ends_with("bg-tail-marker"));
 
@@ -406,9 +414,13 @@ fn test_process_read_output_keeps_exited_stderr_after_status_queries() {
     let output = wait_for_background_output(runtime.lua(), &read_output, pid).unwrap();
     let stdout: String = output.get("stdout").unwrap();
     let stderr: String = output.get("stderr").unwrap();
+    let chunk_seq: u64 = output.get("chunk_seq").unwrap();
+    let updated_at_ms: u64 = output.get("updated_at_ms").unwrap();
 
     assert!(stdout.contains("bg-out"));
     assert!(stderr.contains("bg-err"));
+    assert_eq!(chunk_seq, 0);
+    assert!(updated_at_ms > 0);
 
     let final_read: mlua::Value = read_output
         .call((pid, background_output_options(runtime.lua())))
@@ -526,9 +538,184 @@ fn test_process_read_output_default_call_returns_nil_until_stderr_is_opted_in() 
     };
     let stdout_after_default: String = structured.get("stdout").unwrap();
     let stderr: String = structured.get("stderr").unwrap();
+    let chunk_seq: u64 = structured.get("chunk_seq").unwrap();
+    let updated_at_ms: u64 = structured.get("updated_at_ms").unwrap();
 
     assert_eq!(stdout_after_default, "");
     assert!(stderr.contains("bg-err"));
+    assert_eq!(chunk_seq, 0);
+    assert!(updated_at_ms > 0);
+
+    cleanup_test_root(&temp_dir);
+}
+
+#[test]
+fn test_process_read_output_structured_metadata_orders_multiple_background_chunks() {
+    let (runtime, temp_dir) = create_test_runtime_with_root(vec!["execute_program"]);
+    let (program, args) = prepare_background_multi_chunk_process_fixture(&temp_dir);
+
+    let sl: Table = runtime.lua().globals().get("sl").unwrap();
+    let process: Table = sl.get("process").unwrap();
+    let exec: Function = process.get("exec").unwrap();
+    let read_output: Function = process.get("read_output").unwrap();
+    let options = runtime.lua().create_table().unwrap();
+    options.set("background", true).unwrap();
+
+    let launch_result: Table = exec.call((program, args, Some(options))).unwrap();
+    let pid: u32 = launch_result.get("pid").unwrap();
+
+    let first = wait_for_background_output_matching(runtime.lua(), &read_output, pid, |table| {
+        let stdout: String = table.get("stdout").unwrap();
+        stdout.contains("chunk-1")
+    })
+    .unwrap();
+    let first_stdout: String = first.get("stdout").unwrap();
+    let first_seq: u64 = first.get("chunk_seq").unwrap();
+    let first_updated_at_ms: u64 = first.get("updated_at_ms").unwrap();
+
+    let second = wait_for_background_output_matching(runtime.lua(), &read_output, pid, |table| {
+        let stdout: String = table.get("stdout").unwrap();
+        stdout.contains("chunk-2")
+    })
+    .unwrap();
+    let second_stdout: String = second.get("stdout").unwrap();
+    let second_seq: u64 = second.get("chunk_seq").unwrap();
+    let second_updated_at_ms: u64 = second.get("updated_at_ms").unwrap();
+
+    assert!(first_stdout.contains("chunk-1"));
+    assert!(second_stdout.contains("chunk-2"));
+    assert_eq!(first_seq, 0);
+    assert_eq!(second_seq, 1);
+    assert!(second_updated_at_ms >= first_updated_at_ms);
+
+    cleanup_test_root(&temp_dir);
+}
+
+#[test]
+fn test_process_read_output_structured_empty_reads_do_not_advance_or_rewind_metadata() {
+    let (runtime, temp_dir) = create_test_runtime_with_root(vec!["execute_program"]);
+
+    let sl: Table = runtime.lua().globals().get("sl").unwrap();
+    let process: Table = sl.get("process").unwrap();
+    let read_output: Function = process.get("read_output").unwrap();
+
+    let child = spawn_sleep_child();
+    let pid = child.id();
+    let output = process::new_process_output();
+
+    {
+        let mut state = output.lock().unwrap();
+        state.stdout_buf.extend_from_slice(b"first-chunk\n");
+        process::update_output_timestamp(&mut state, 100);
+    }
+
+    {
+        let mut procs = runtime.process_registry.lock().unwrap();
+        procs.insert(
+            pid,
+            process::ProcessEntry {
+                output: Arc::clone(&output),
+                owner_plugin_id: runtime.plugin_id.clone(),
+                program: "sleep-test".to_string(),
+                child,
+                started_at: Instant::now(),
+            },
+        );
+    }
+
+    let first: Table = read_output
+        .call((pid, background_output_options(runtime.lua())))
+        .unwrap();
+    let first_stdout: String = first.get("stdout").unwrap();
+    let first_seq: u64 = first.get("chunk_seq").unwrap();
+    let first_updated_at_ms: u64 = first.get("updated_at_ms").unwrap();
+
+    assert!(first_stdout.contains("first-chunk"));
+    assert_eq!(first_seq, 0);
+    assert_eq!(first_updated_at_ms, 100);
+
+    let empty_read: mlua::Value = read_output
+        .call((pid, background_output_options(runtime.lua())))
+        .unwrap();
+    assert!(matches!(empty_read, mlua::Value::Nil));
+
+    {
+        let procs = runtime.process_registry.lock().unwrap();
+        let entry = procs.get(&pid).unwrap();
+        let state = entry.output.lock().unwrap();
+
+        assert_eq!(state.next_chunk_seq, 1);
+        assert_eq!(state.last_update_unix_ms, Some(100));
+    }
+
+    {
+        let mut procs = runtime.process_registry.lock().unwrap();
+        let entry = procs.get_mut(&pid).unwrap();
+        let mut state = entry.output.lock().unwrap();
+        state.stderr_buf.extend_from_slice(b"second-chunk\n");
+        process::update_output_timestamp(&mut state, 90);
+    }
+
+    let second: Table = read_output
+        .call((pid, background_output_options(runtime.lua())))
+        .unwrap();
+    let second_stderr: String = second.get("stderr").unwrap();
+    let second_seq: u64 = second.get("chunk_seq").unwrap();
+    let second_updated_at_ms: u64 = second.get("updated_at_ms").unwrap();
+
+    assert!(second_stderr.contains("second-chunk"));
+    assert_eq!(second_seq, 1);
+    assert_eq!(second_updated_at_ms, 100);
+
+    cleanup_registered_process(&runtime.process_registry, pid);
+    cleanup_test_root(&temp_dir);
+}
+
+#[test]
+fn test_process_read_output_structured_nil_for_drained_output_cleans_up_process() {
+    let (runtime, temp_dir) = create_test_runtime_with_root(vec!["execute_program"]);
+
+    let sl: Table = runtime.lua().globals().get("sl").unwrap();
+    let process: Table = sl.get("process").unwrap();
+    let read_output: Function = process.get("read_output").unwrap();
+    let get: Function = process.get("get").unwrap();
+
+    let child = spawn_quick_exit_child();
+    let pid = child.id();
+    let output = process::new_process_output();
+
+    {
+        let mut state = output.lock().unwrap();
+        state.stdout_closed = true;
+        state.stderr_closed = true;
+        state.next_chunk_seq = 3;
+        state.last_update_unix_ms = Some(123);
+    }
+
+    {
+        let mut procs = runtime.process_registry.lock().unwrap();
+        procs.insert(
+            pid,
+            process::ProcessEntry {
+                output,
+                owner_plugin_id: runtime.plugin_id.clone(),
+                program: "quick-exit".to_string(),
+                child,
+                started_at: Instant::now(),
+            },
+        );
+    }
+
+    std::thread::sleep(Duration::from_millis(200));
+
+    let empty_read: mlua::Value = read_output
+        .call((pid, background_output_options(runtime.lua())))
+        .unwrap();
+    assert!(matches!(empty_read, mlua::Value::Nil));
+
+    let post_read: mlua::Value = get.call(pid).unwrap();
+    assert!(matches!(post_read, mlua::Value::Nil));
+    assert!(!runtime.process_registry.lock().unwrap().contains_key(&pid));
 
     cleanup_test_root(&temp_dir);
 }
@@ -716,6 +903,32 @@ Start-Sleep -Milliseconds 200
     )
 }
 
+#[cfg(windows)]
+fn prepare_background_multi_chunk_process_fixture(temp_dir: &Path) -> (String, Vec<String>) {
+    let shell_src = PathBuf::from(env::var("SystemRoot").unwrap())
+        .join("System32")
+        .join("WindowsPowerShell")
+        .join("v1.0")
+        .join("powershell.exe");
+    let shell_dest = temp_dir.join("powershell.exe");
+    fs::copy(&shell_src, &shell_dest).unwrap();
+
+    let script_path = temp_dir.join("background-multi-chunk-script.ps1");
+    let script = "Write-Output 'chunk-1'\nStart-Sleep -Milliseconds 250\nWrite-Output 'chunk-2'\n[Console]::Error.WriteLine('bg-err-2')\nStart-Sleep -Milliseconds 200\n";
+    fs::write(&script_path, script).unwrap();
+
+    (
+        "powershell.exe".to_string(),
+        vec![
+            "-NoProfile".to_string(),
+            "-ExecutionPolicy".to_string(),
+            "Bypass".to_string(),
+            "-File".to_string(),
+            "background-multi-chunk-script.ps1".to_string(),
+        ],
+    )
+}
+
 #[cfg(not(windows))]
 fn prepare_timeout_process_fixture(temp_dir: &Path, pid_file: &Path) -> (String, Vec<String>) {
     let shell_dest = temp_dir.join("sh");
@@ -777,6 +990,18 @@ fn prepare_large_background_stderr_process_fixture(temp_dir: &Path) -> (String, 
     ("sh".to_string(), vec!["background-stderr-large-script.sh".to_string()])
 }
 
+#[cfg(not(windows))]
+fn prepare_background_multi_chunk_process_fixture(temp_dir: &Path) -> (String, Vec<String>) {
+    let shell_dest = temp_dir.join("sh");
+    fs::copy("/bin/sh", &shell_dest).unwrap();
+
+    let script_path = temp_dir.join("background-multi-chunk-script.sh");
+    let script = "printf 'chunk-1\n'\nsleep 0.25\nprintf 'chunk-2\n'\nprintf 'bg-err-2\n' >&2\nsleep 0.2\n";
+    fs::write(&script_path, script).unwrap();
+
+    ("sh".to_string(), vec!["background-multi-chunk-script.sh".to_string()])
+}
+
 fn wait_for_background_output(lua: &mlua::Lua, read_output: &Function, pid: u32) -> Option<Table> {
     let deadline = Instant::now() + Duration::from_secs(3);
 
@@ -788,6 +1013,34 @@ fn wait_for_background_output(lua: &mlua::Lua, read_output: &Function, pid: u32)
             let stdout: String = table.get("stdout").unwrap();
             let stderr: String = table.get("stderr").unwrap();
             if !stdout.is_empty() || !stderr.is_empty() {
+                return Some(table);
+            }
+        }
+
+        std::thread::sleep(Duration::from_millis(50));
+    }
+
+    None
+}
+
+fn wait_for_background_output_matching<P>(
+    lua: &mlua::Lua,
+    read_output: &Function,
+    pid: u32,
+    predicate: P,
+) -> Option<Table>
+where
+    P: Fn(&Table) -> bool,
+{
+    let deadline = Instant::now() + Duration::from_secs(3);
+    let options = background_output_options(lua)?;
+
+    while Instant::now() < deadline {
+        let value: mlua::Value = read_output.call((pid, Some(options.clone()))).unwrap();
+        if let mlua::Value::Table(table) = value {
+            let stdout: String = table.get("stdout").unwrap();
+            let stderr: String = table.get("stderr").unwrap();
+            if (!stdout.is_empty() || !stderr.is_empty()) && predicate(&table) {
                 return Some(table);
             }
         }
@@ -904,4 +1157,12 @@ fn process_exists(pid: u32) -> bool {
         .status()
         .map(|status| status.success())
         .unwrap_or(false)
+}
+
+fn cleanup_registered_process(registry: &process::ProcessRegistry, pid: u32) {
+    let mut procs = registry.lock().unwrap();
+    if let Some(mut entry) = procs.remove(&pid) {
+        let _ = entry.child.kill();
+        let _ = entry.child.wait();
+    }
 }

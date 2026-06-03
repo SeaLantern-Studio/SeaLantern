@@ -3,7 +3,7 @@ use std::io::Read;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// 单次输出缓冲上限
 pub const MAX_STDOUT_BUFFER_BYTES: usize = 1024 * 1024;
@@ -37,6 +37,8 @@ pub struct ProcessOutputBuffers {
     pub stderr_truncated: bool,
     pub stdout_closed: bool,
     pub stderr_closed: bool,
+    pub next_chunk_seq: u64,
+    pub last_update_unix_ms: Option<u64>,
 }
 
 #[derive(Clone, Copy)]
@@ -62,6 +64,23 @@ pub fn new_process_registry() -> ProcessRegistry {
 /// 创建后台进程输出缓冲
 pub fn new_process_output() -> SharedProcessOutput {
     Arc::new(Mutex::new(ProcessOutputBuffers::default()))
+}
+
+pub fn unix_timestamp_ms_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
+}
+
+/// 记录后台输出最近一次更新时间，并保证同一进程内不会倒退。
+pub(crate) fn update_output_timestamp(output: &mut ProcessOutputBuffers, observed_at_ms: u64) {
+    output.last_update_unix_ms = Some(
+        output
+            .last_update_unix_ms
+            .map_or(observed_at_ms, |last| last.max(observed_at_ms)),
+    );
 }
 
 /// 后台输出是否已经全部被读取并消费完成。
@@ -120,13 +139,18 @@ pub fn spawn_background_pipe_reader<R>(
                         e.into_inner()
                     });
 
-                    let target = match stream {
-                        ProcessStream::Stdout => &mut output.stdout_buf,
-                        ProcessStream::Stderr => &mut output.stderr_buf,
+                    let truncated = {
+                        let target = match stream {
+                            ProcessStream::Stdout => &mut output.stdout_buf,
+                            ProcessStream::Stderr => &mut output.stderr_buf,
+                        };
+                        target.extend_from_slice(&buf[..n]);
+                        truncate_output(target)
                     };
-                    target.extend_from_slice(&buf[..n]);
 
-                    if truncate_output(target) {
+                    update_output_timestamp(&mut output, unix_timestamp_ms_now());
+
+                    if truncated {
                         match stream {
                             ProcessStream::Stdout => output.stdout_truncated = true,
                             ProcessStream::Stderr => output.stderr_truncated = true,

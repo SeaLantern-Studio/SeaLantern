@@ -22,6 +22,8 @@ use std::sync::Arc;
 /// 当第二个参数传入 `{ include_stderr = true }` 时，有输出时返回表：
 /// - `stdout: string`
 /// - `stderr: string`
+/// - `chunk_seq: integer`，当前返回片段的递增序号，便于排序
+/// - `updated_at_ms: integer`，最近一次采集到该批输出的 Unix 毫秒时间戳
 /// - `truncated = true` 表示本次返回的 stdout 片段发生截断
 /// - `stderr_truncated = true` 表示本次返回的 stderr 片段发生截断
 ///
@@ -72,6 +74,10 @@ pub(super) fn read_output(
                 let stderr_text = String::from_utf8_lossy(&output_state.stderr_buf).to_string();
                 output.set("stdout", lua.create_string(&stdout_text)?)?;
                 output.set("stderr", lua.create_string(&stderr_text)?)?;
+                output.set("chunk_seq", output_state.next_chunk_seq)?;
+                if let Some(updated_at_ms) = output_state.last_update_unix_ms {
+                    output.set("updated_at_ms", updated_at_ms)?;
+                }
 
                 if output_state.stdout_truncated {
                     output.set("truncated", true)?;
@@ -80,11 +86,11 @@ pub(super) fn read_output(
                     output.set("stderr_truncated", true)?;
                 }
 
+                output_state.next_chunk_seq = output_state.next_chunk_seq.saturating_add(1);
                 output_state.stdout_buf.clear();
                 output_state.stderr_buf.clear();
                 output_state.stdout_truncated = false;
                 output_state.stderr_truncated = false;
-
                 let should_cleanup = is_output_drained(&output_state);
                 drop(output_state);
                 if should_cleanup {
