@@ -25,7 +25,7 @@ pub(super) fn apply_script_process_env(cmd: &mut Command, context: &LaunchContex
 }
 
 #[cfg(target_os = "windows")]
-pub(super) fn build_windows_cmd_env_prefix(
+pub(super) fn build_windows_java_env_prefix(
     java_home_dir_str: &str,
     java_bin_dir_str: &str,
 ) -> String {
@@ -61,7 +61,7 @@ fn build_windows_bat_command_text(
     format!(
         "chcp {}>nul & {} & call \"{}\" nogui",
         managed_console_encoding.cmd_code_page(),
-        build_windows_cmd_env_prefix(java_home_dir_str, java_bin_dir_str),
+        build_windows_java_env_prefix(java_home_dir_str, java_bin_dir_str),
         escape_cmd_arg(startup_filename)
     )
 }
@@ -72,7 +72,7 @@ pub(super) fn apply_java_process_env(
     java_bin_dir_str: &str,
 ) {
     cmd.env("JAVA_HOME", java_home_dir_str);
-    cmd.env("PATH", build_script_path_value(java_bin_dir_str));
+    cmd.env("PATH", build_java_launch_path_value(java_bin_dir_str));
 }
 
 fn ensure_script_java_compat(java_path: &str) -> Result<(), String> {
@@ -92,23 +92,19 @@ fn ensure_supported_script_java_major_version(major_version: Option<u32>) -> Res
     Ok(())
 }
 
-fn build_script_path_value(java_bin_dir_str: &str) -> String {
-    build_prefixed_path_value(
+fn build_java_launch_path_value(java_bin_dir_str: &str) -> String {
+    prepend_path_entry(
         java_bin_dir_str,
         &std::env::var("PATH").unwrap_or_default(),
         path_separator(),
     )
 }
 
-fn build_prefixed_path_value(
-    java_bin_dir_str: &str,
-    existing_path: &str,
-    separator: &str,
-) -> String {
+fn prepend_path_entry(path_entry: &str, existing_path: &str, separator: &str) -> String {
     if existing_path.is_empty() {
-        java_bin_dir_str.to_string()
+        path_entry.to_string()
     } else {
-        format!("{}{}{}", java_bin_dir_str, separator, existing_path)
+        format!("{}{}{}", path_entry, separator, existing_path)
     }
 }
 
@@ -125,15 +121,26 @@ fn path_separator() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        apply_java_process_env, build_prefixed_path_value,
-        ensure_supported_script_java_major_version,
+        apply_java_process_env, ensure_supported_script_java_major_version, prepend_path_entry,
     };
     use std::process::Command;
 
     #[cfg(target_os = "windows")]
-    use super::{build_windows_bat_command, build_windows_cmd_env_prefix};
+    use super::{build_windows_bat_command, build_windows_java_env_prefix};
     #[cfg(target_os = "windows")]
     use crate::services::server::manager::common::ManagedConsoleEncoding;
+
+    fn collect_envs(command: &Command) -> Vec<(String, Option<String>)> {
+        command
+            .get_envs()
+            .map(|(key, value)| {
+                (
+                    key.to_string_lossy().to_string(),
+                    value.map(|value| value.to_string_lossy().to_string()),
+                )
+            })
+            .collect()
+    }
 
     #[test]
     fn script_launch_rejects_java_8_for_args_file_mode() {
@@ -153,34 +160,26 @@ mod tests {
     }
 
     #[test]
-    fn build_prefixed_path_value_keeps_java_bin_first() {
-        let path = build_prefixed_path_value("E:/java/bin", "C:/Windows/System32", ";");
+    fn prepend_path_entry_keeps_java_bin_first() {
+        let path = prepend_path_entry("E:/java/bin", "C:/Windows/System32", ";");
 
         assert_eq!(path, "E:/java/bin;C:/Windows/System32");
     }
 
     #[test]
-    fn build_prefixed_path_value_omits_separator_when_existing_path_is_empty() {
-        let path = build_prefixed_path_value("E:/java/bin", "", ";");
+    fn prepend_path_entry_omits_separator_when_existing_path_is_empty() {
+        let path = prepend_path_entry("E:/java/bin", "", ";");
 
         assert_eq!(path, "E:/java/bin");
     }
 
     #[test]
-    fn apply_java_process_env_sets_java_home_and_prefixed_path() {
+    fn process_env_injection_sets_java_home_and_puts_java_bin_first_in_path() {
         let mut command = Command::new("cmd");
 
         apply_java_process_env(&mut command, "E:/java", "E:/java/bin");
 
-        let envs = command
-            .get_envs()
-            .map(|(key, value)| {
-                (
-                    key.to_string_lossy().to_string(),
-                    value.map(|value| value.to_string_lossy().to_string()),
-                )
-            })
-            .collect::<Vec<_>>();
+        let envs = collect_envs(&command);
 
         assert!(envs
             .iter()
@@ -195,8 +194,8 @@ mod tests {
 
     #[cfg(target_os = "windows")]
     #[test]
-    fn build_windows_cmd_env_prefix_sets_java_home_and_path_in_order() {
-        let prefix = build_windows_cmd_env_prefix("C:/Java/JDK 21", "C:/Java/JDK 21/bin");
+    fn windows_bat_env_prefix_sets_java_home_before_path_update() {
+        let prefix = build_windows_java_env_prefix("C:/Java/JDK 21", "C:/Java/JDK 21/bin");
 
         assert_eq!(
             prefix,
@@ -206,7 +205,7 @@ mod tests {
 
     #[cfg(target_os = "windows")]
     #[test]
-    fn build_windows_bat_command_keeps_java_env_and_call_escaping_in_support_layer() {
+    fn windows_bat_command_inlines_shared_java_env_before_calling_script() {
         let cmd = build_windows_bat_command(
             "start &(1)%2.bat",
             ManagedConsoleEncoding::Utf8,
@@ -230,7 +229,35 @@ mod tests {
 
     #[cfg(target_os = "windows")]
     #[test]
-    fn build_windows_bat_command_reuses_shared_env_prefix_and_selected_code_page() {
+    fn windows_bat_command_keeps_java_env_in_command_text_instead_of_process_envs() {
+        let java_home = "D:/Java/Zulu 21";
+        let java_bin = "D:/Java/Zulu 21/bin";
+        let cmd = build_windows_bat_command(
+            "launch.bat",
+            ManagedConsoleEncoding::Gbk,
+            java_home,
+            java_bin,
+        );
+
+        let args = cmd
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        let envs = collect_envs(&cmd);
+
+        assert!(envs.is_empty(), "bat launch should keep env injection inline in cmd text");
+        assert_eq!(
+            args[2],
+            format!(
+                "chcp 936>nul & {} & call \"launch.bat\" nogui",
+                build_windows_java_env_prefix(java_home, java_bin)
+            )
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_bat_command_reuses_shared_env_prefix_verbatim() {
         let java_home = "D:/Java/Zulu 21";
         let java_bin = "D:/Java/Zulu 21/bin";
         let cmd = build_windows_bat_command(
@@ -246,7 +273,7 @@ mod tests {
             .collect::<Vec<_>>();
         let expected = format!(
             "chcp 936>nul & {} & call \"launch.bat\" nogui",
-            build_windows_cmd_env_prefix(java_home, java_bin)
+            build_windows_java_env_prefix(java_home, java_bin)
         );
 
         assert_eq!(args, vec!["/d".to_string(), "/c".to_string(), expected]);
