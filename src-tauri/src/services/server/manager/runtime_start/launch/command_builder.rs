@@ -1,7 +1,8 @@
-use super::super::super::common::detect_java_major_version;
 #[cfg(target_os = "windows")]
-use super::super::super::common::{build_windows_cmd_command, escape_cmd_arg};
+use super::super::super::common::build_windows_cmd_command;
+use super::super::super::startup_support;
 use super::context::LaunchContext;
+use super::script_launch_support;
 use crate::services::server::installer;
 use crate::services::server::manager::common::StartupMode;
 use std::path::Path;
@@ -28,29 +29,6 @@ pub(super) fn find_preferred_jar_path(context: &LaunchContext<'_>) -> Option<Str
     }
 }
 
-/// 检查脚本启动方式是否支持参数文件语法
-fn ensure_script_java_compat(java_path: &str) -> Result<(), String> {
-    if let Some(major_version) = detect_java_major_version(java_path) {
-        if major_version < 9 {
-            return Err(format!(
-                "当前 Java 版本 {} 不支持 @user_jvm_args.txt 参数文件语法，请改用 Java 9+（NeoForge 建议 Java 21）",
-                major_version
-            ));
-        }
-    }
-    Ok(())
-}
-
-/// 把 Java bin 目录加到 PATH 前面
-fn extend_path(java_bin_dir_str: &str, separator: &str) -> String {
-    let existing_path = std::env::var("PATH").unwrap_or_default();
-    if existing_path.is_empty() {
-        java_bin_dir_str.to_string()
-    } else {
-        format!("{}{}{}", java_bin_dir_str, separator, existing_path)
-    }
-}
-
 /// 构建直接运行 JAR 的命令
 pub(super) fn build_direct_jar_command(
     context: &LaunchContext<'_>,
@@ -65,7 +43,7 @@ pub(super) fn build_direct_jar_command(
             .java_path()
             .expect("local runtime launch requires java_path"),
     );
-    for arg in context.manager.build_managed_jvm_args(
+    for arg in startup_support::build_managed_jvm_args(
         context.server,
         context.settings,
         context.managed_console_encoding,
@@ -140,8 +118,11 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
     #[cfg(target_os = "windows")]
     {
         let mut custom_cmd = build_windows_cmd_command(custom_command);
-        custom_cmd.env("JAVA_HOME", &context.java_home_dir_str);
-        custom_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ";"));
+        script_launch_support::apply_java_process_env(
+            &mut custom_cmd,
+            &context.java_home_dir_str,
+            &context.java_bin_dir_str,
+        );
         Ok(custom_cmd)
     }
     #[cfg(not(target_os = "windows"))]
@@ -149,42 +130,27 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
         let mut custom_cmd = Command::new("sh");
         custom_cmd.arg("-c");
         custom_cmd.arg(custom_command);
-        custom_cmd.env("JAVA_HOME", &context.java_home_dir_str);
-        custom_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ":"));
+        script_launch_support::apply_java_process_env(
+            &mut custom_cmd,
+            &context.java_home_dir_str,
+            &context.java_bin_dir_str,
+        );
         Ok(custom_cmd)
     }
 }
 
-/// 生成脚本启动会读取的 JVM 参数文件
-fn write_user_jvm_args(context: &LaunchContext<'_>) -> Result<(), String> {
-    context.manager.write_user_jvm_args(
-        context.server,
-        context.settings,
-        context.managed_console_encoding,
-    )
-}
-
 /// 构建 BAT 启动命令
 fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
-    ensure_script_java_compat(
-        context
-            .server
-            .java_path()
-            .expect("script launch requires java_path"),
-    )?;
-    write_user_jvm_args(context)?;
+    script_launch_support::prepare_script_startup(context)?;
 
     #[cfg(target_os = "windows")]
     {
-        let code_page = context.managed_console_encoding.cmd_code_page();
-        let launch_command = format!(
-            "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & call \"{}\" nogui",
-            code_page,
-            escape_cmd_arg(&context.java_home_dir_str),
-            escape_cmd_arg(&context.java_bin_dir_str),
-            escape_cmd_arg(&context.startup_filename)
+        let bat_cmd = script_launch_support::build_windows_bat_command(
+            &context.startup_filename,
+            context.managed_console_encoding,
+            &context.java_home_dir_str,
+            &context.java_bin_dir_str,
         );
-        let bat_cmd = build_windows_cmd_command(&launch_command);
         Ok(bat_cmd)
     }
     #[cfg(not(target_os = "windows"))]
@@ -195,30 +161,17 @@ fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 
 /// 构建 SH 启动命令
 fn build_sh_command(context: &LaunchContext<'_>) -> Result<Command, String> {
-    ensure_script_java_compat(
-        context
-            .server
-            .java_path()
-            .expect("script launch requires java_path"),
-    )?;
-    write_user_jvm_args(context)?;
+    script_launch_support::prepare_script_startup(context)?;
     let mut sh_cmd = Command::new("sh");
     sh_cmd.arg(&context.startup_filename);
     sh_cmd.arg("nogui");
-    sh_cmd.env("JAVA_HOME", &context.java_home_dir_str);
-    sh_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ":"));
+    script_launch_support::apply_script_process_env(&mut sh_cmd, context);
     Ok(sh_cmd)
 }
 
 /// 构建 PowerShell 启动命令
 fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
-    ensure_script_java_compat(
-        context
-            .server
-            .java_path()
-            .expect("script launch requires java_path"),
-    )?;
-    write_user_jvm_args(context)?;
+    script_launch_support::prepare_script_startup(context)?;
     #[cfg(target_os = "windows")]
     {
         let mut ps_cmd = Command::new("powershell");
@@ -229,8 +182,7 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
         ps_cmd.arg("-File");
         ps_cmd.arg(&context.startup_filename);
         ps_cmd.arg("nogui");
-        ps_cmd.env("JAVA_HOME", &context.java_home_dir_str);
-        ps_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ";"));
+        script_launch_support::apply_script_process_env(&mut ps_cmd, context);
         Ok(ps_cmd)
     }
     #[cfg(not(target_os = "windows"))]
@@ -274,5 +226,15 @@ mod tests {
         );
 
         assert_eq!(target.replace('\\', "/"), "E:/srv/shared/server.jar");
+    }
+
+    #[test]
+    fn direct_jar_launch_keeps_full_path_when_jar_is_in_nested_subdirectory() {
+        let target = resolve_direct_jar_launch_target(
+            "E:/servers/fabric-1.20.1",
+            "E:/servers/fabric-1.20.1/libraries/server.jar",
+        );
+
+        assert_eq!(target.replace('\\', "/"), "E:/servers/fabric-1.20.1/libraries/server.jar");
     }
 }

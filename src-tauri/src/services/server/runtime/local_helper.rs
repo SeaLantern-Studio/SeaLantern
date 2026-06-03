@@ -1,72 +1,27 @@
+mod protocol;
+mod state;
+
+pub use state::{read_state, LocalHelperStatusSnapshot, LocalRuntimeState};
+
+use self::protocol::{
+    read_request, send_request, write_response, LocalHelperRequest, LocalHelperResponse,
+};
+use self::state::{
+    current_timestamp_secs, persist_terminal_state, remove_state_file, state_file_path,
+    write_state_file,
+};
 use crate::models::server::ServerInstance;
 use crate::services::global;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::process::{force_kill_process_tree_by_pid, is_process_alive};
 use crate::services::server::runtime::ServerRuntime;
 use crate::services::server::runtime::{RuntimeProcessHandle, RuntimeStartRequest};
-use crate::utils::constants::LOCAL_RUNTIME_STATE_FILE;
 use crate::utils::logger;
-use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
-use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use sysinfo::{ProcessesToUpdate, System};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LocalRuntimeState {
-    pub server_id: String,
-    pub helper_pid: u32,
-    pub child_pid: Option<u32>,
-    pub control_port: Option<u16>,
-    pub auth_token: String,
-    pub running: bool,
-    pub exit_code: Option<i32>,
-    pub detail_message: String,
-    pub error_message: Option<String>,
-    pub updated_at: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LocalHelperStatusSnapshot {
-    pub running: bool,
-    pub pid: Option<u32>,
-    pub exit_code: Option<i32>,
-    pub detail_message: String,
-    pub error_message: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-enum LocalHelperRequest {
-    Status { auth_token: String },
-    Send { auth_token: String, command: String },
-    Stop { auth_token: String },
-    ForceStop { auth_token: String },
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct LocalHelperResponse {
-    ok: bool,
-    snapshot: Option<LocalHelperStatusSnapshot>,
-    error: Option<String>,
-}
-
-pub fn state_file_path(server: &ServerInstance) -> PathBuf {
-    Path::new(&server.path).join(LOCAL_RUNTIME_STATE_FILE)
-}
-
-pub fn read_state(server: &ServerInstance) -> Option<LocalRuntimeState> {
-    let path = state_file_path(server);
-    let content = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str::<LocalRuntimeState>(&content).ok()
-}
-
-pub fn remove_state_file(server: &ServerInstance) {
-    let path = state_file_path(server);
-    let _ = std::fs::remove_file(path);
-}
 
 pub fn cleanup_for_new_start(server: &ServerInstance) {
     if let Some(state) = read_state(server) {
@@ -454,7 +409,8 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         updated_at: current_timestamp_secs(),
     };
 
-    write_state_file(state_file_path(&server), &state)?;
+    let state_path = state_file_path(&server);
+    write_state_file(&state_path, &state)?;
     logger::log_user_action(
         "server.runtime.local.helper",
         "started",
@@ -477,7 +433,7 @@ fn run_helper(server_id: &str) -> Result<(), String> {
             state.detail_message = snapshot.detail_message;
             state.error_message = snapshot.error_message;
             state.updated_at = current_timestamp_secs();
-            write_state_file(state_file_path(&server), &state)?;
+            write_state_file(&state_path, &state)?;
             break;
         }
 
@@ -495,7 +451,7 @@ fn run_helper(server_id: &str) -> Result<(), String> {
                     };
                     state.error_message = None;
                     state.updated_at = current_timestamp_secs();
-                    write_state_file(state_file_path(&server), &state)?;
+                    write_state_file(&state_path, &state)?;
                     break;
                 }
             }
@@ -521,29 +477,12 @@ fn handle_connection(
     state: &LocalRuntimeState,
     mut stream: TcpStream,
 ) -> Result<bool, String> {
-    let request: LocalHelperRequest = {
-        let mut reader = BufReader::new(
-            stream
-                .try_clone()
-                .map_err(|e| format!("复制 helper 连接失败: {}", e))?,
-        );
-        let mut line = String::new();
-        reader
-            .read_line(&mut line)
-            .map_err(|e| format!("读取 helper 请求失败: {}", e))?;
-        serde_json::from_str(&line).map_err(|e| format!("解析 helper 请求失败: {}", e))?
-    };
+    let request = read_request(&stream)?;
 
-    let auth_token = match &request {
-        LocalHelperRequest::Status { auth_token }
-        | LocalHelperRequest::Send { auth_token, .. }
-        | LocalHelperRequest::Stop { auth_token }
-        | LocalHelperRequest::ForceStop { auth_token } => auth_token,
-    };
-    if auth_token != &state.auth_token {
+    if request.auth_token() != state.auth_token.as_str() {
         write_response(
             &mut stream,
-            LocalHelperResponse {
+            &LocalHelperResponse {
                 ok: false,
                 snapshot: None,
                 error: Some("本地 runtime helper 鉴权失败".to_string()),
@@ -557,7 +496,7 @@ fn handle_connection(
             let snapshot = snapshot_from_manager(manager, server.id.as_str())?;
             write_response(
                 &mut stream,
-                LocalHelperResponse {
+                &LocalHelperResponse {
                     ok: true,
                     snapshot: Some(snapshot),
                     error: None,
@@ -574,7 +513,7 @@ fn handle_connection(
                     error: Some(err),
                 },
             };
-            write_response(&mut stream, response)?;
+            write_response(&mut stream, &response)?;
             Ok(false)
         }
         LocalHelperRequest::Stop { .. } => {
@@ -587,7 +526,7 @@ fn handle_connection(
                 },
             };
             let should_exit = response.ok;
-            write_response(&mut stream, response)?;
+            write_response(&mut stream, &response)?;
             Ok(should_exit)
         }
         LocalHelperRequest::ForceStop { .. } => {
@@ -602,82 +541,10 @@ fn handle_connection(
                 },
             };
             let should_exit = response.ok;
-            write_response(&mut stream, response)?;
+            write_response(&mut stream, &response)?;
             Ok(should_exit)
         }
     }
-}
-
-fn write_response(stream: &mut TcpStream, response: LocalHelperResponse) -> Result<(), String> {
-    let payload =
-        serde_json::to_string(&response).map_err(|e| format!("序列化 helper 响应失败: {}", e))?;
-    writeln!(stream, "{}", payload).map_err(|e| format!("写入 helper 响应失败: {}", e))
-}
-
-fn send_request(
-    state: &LocalRuntimeState,
-    request: LocalHelperRequest,
-) -> Result<LocalHelperResponse, String> {
-    let control_port = state
-        .control_port
-        .ok_or_else(|| "本地 runtime helper 当前未暴露控制端口".to_string())?;
-    let mut stream = TcpStream::connect(("127.0.0.1", control_port)).map_err(|e| {
-        format!(
-            "连接本地 runtime helper 失败: helper_pid={} port={} error={}",
-            state.helper_pid, control_port, e
-        )
-    })?;
-    stream
-        .set_read_timeout(Some(Duration::from_secs(5)))
-        .map_err(|e| format!("设置 helper 读取超时失败: {}", e))?;
-    stream
-        .set_write_timeout(Some(Duration::from_secs(5)))
-        .map_err(|e| format!("设置 helper 写入超时失败: {}", e))?;
-
-    let payload =
-        serde_json::to_string(&request).map_err(|e| format!("序列化 helper 请求失败: {}", e))?;
-    writeln!(stream, "{}", payload).map_err(|e| format!("写入 helper 请求失败: {}", e))?;
-
-    let mut reader = BufReader::new(stream);
-    let mut line = String::new();
-    reader
-        .read_line(&mut line)
-        .map_err(|e| format!("读取 helper 响应失败: {}", e))?;
-
-    serde_json::from_str(&line).map_err(|e| format!("解析 helper 响应失败: {}", e))
-}
-
-fn write_state_file(path: PathBuf, state: &LocalRuntimeState) -> Result<(), String> {
-    let content = serde_json::to_string_pretty(state)
-        .map_err(|e| format!("序列化本地 runtime 状态失败: {}", e))?;
-    std::fs::write(&path, content)
-        .map_err(|e| format!("写入本地 runtime 状态失败 ({}): {}", path.display(), e))
-}
-
-fn persist_terminal_state(
-    server: &ServerInstance,
-    state: &LocalRuntimeState,
-    exit_code: Option<i32>,
-    error_message: Option<String>,
-) -> Result<(), String> {
-    let next = LocalRuntimeState {
-        server_id: state.server_id.clone(),
-        helper_pid: state.helper_pid,
-        child_pid: state.child_pid,
-        control_port: None,
-        auth_token: state.auth_token.clone(),
-        running: false,
-        exit_code,
-        detail_message: format!(
-            "runtime=local running=false source=state_file exit_code={}",
-            exit_code
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string())
-        ),
-        error_message,
-        updated_at: current_timestamp_secs(),
-    };
-    write_state_file(state_file_path(server), &next)
 }
 
 fn detect_terminal_snapshot(
@@ -800,11 +667,4 @@ fn snapshot_from_manager(
             })
         }
     }
-}
-
-fn current_timestamp_secs() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs())
-        .unwrap_or(0)
 }
