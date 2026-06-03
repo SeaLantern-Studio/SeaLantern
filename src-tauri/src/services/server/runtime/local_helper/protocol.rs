@@ -5,7 +5,7 @@ use std::net::TcpStream;
 use std::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(super) enum LocalHelperRequest {
+pub(in super::super) enum LocalHelperRequest {
     Status { auth_token: String },
     Send { auth_token: String, command: String },
     Stop { auth_token: String },
@@ -13,14 +13,14 @@ pub(super) enum LocalHelperRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(super) struct LocalHelperResponse {
-    pub(super) ok: bool,
-    pub(super) snapshot: Option<LocalHelperStatusSnapshot>,
-    pub(super) error: Option<String>,
+pub(in super::super) struct LocalHelperResponse {
+    pub(in super::super) ok: bool,
+    pub(in super::super) snapshot: Option<LocalHelperStatusSnapshot>,
+    pub(in super::super) error: Option<String>,
 }
 
 impl LocalHelperRequest {
-    pub(super) fn auth_token(&self) -> &str {
+    pub(in super::super) fn auth_token(&self) -> &str {
         match self {
             Self::Status { auth_token }
             | Self::Send { auth_token, .. }
@@ -30,7 +30,7 @@ impl LocalHelperRequest {
     }
 }
 
-pub(super) fn read_request(stream: &TcpStream) -> Result<LocalHelperRequest, String> {
+pub(in super::super) fn read_request(stream: &TcpStream) -> Result<LocalHelperRequest, String> {
     let mut reader = BufReader::new(
         stream
             .try_clone()
@@ -43,7 +43,7 @@ pub(super) fn read_request(stream: &TcpStream) -> Result<LocalHelperRequest, Str
     serde_json::from_str(&line).map_err(|e| format!("解析 helper 请求失败: {}", e))
 }
 
-pub(super) fn write_response(
+pub(in super::super) fn write_response(
     stream: &mut TcpStream,
     response: &LocalHelperResponse,
 ) -> Result<(), String> {

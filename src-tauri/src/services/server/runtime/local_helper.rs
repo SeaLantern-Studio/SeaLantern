@@ -1,11 +1,13 @@
+mod dispatch;
 mod protocol;
+mod snapshot;
 mod state;
 
 pub use state::{read_state, LocalHelperStatusSnapshot, LocalRuntimeState};
 
-use self::protocol::{
-    read_request, send_request, write_response, LocalHelperRequest, LocalHelperResponse,
-};
+use self::dispatch::handle_connection;
+use self::protocol::{send_request, LocalHelperRequest};
+use self::snapshot::detect_terminal_snapshot;
 use self::state::{
     current_timestamp_secs, persist_terminal_state, remove_state_file, state_file_path,
     write_state_file,
@@ -14,11 +16,10 @@ use crate::models::server::ServerInstance;
 use crate::services::global;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::process::{force_kill_process_tree_by_pid, is_process_alive};
-use crate::services::server::runtime::ServerRuntime;
 use crate::services::server::runtime::{RuntimeProcessHandle, RuntimeStartRequest};
 use crate::utils::logger;
 use std::ffi::OsString;
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpListener;
 use std::process::Command;
 use std::time::Duration;
 use sysinfo::{ProcessesToUpdate, System};
@@ -469,202 +470,4 @@ fn run_helper(server_id: &str) -> Result<(), String> {
     }
 
     Ok(())
-}
-
-fn handle_connection(
-    manager: &crate::services::server::manager::ServerManager,
-    server: &ServerInstance,
-    state: &LocalRuntimeState,
-    mut stream: TcpStream,
-) -> Result<bool, String> {
-    let request = read_request(&stream)?;
-
-    if request.auth_token() != state.auth_token.as_str() {
-        write_response(
-            &mut stream,
-            &LocalHelperResponse {
-                ok: false,
-                snapshot: None,
-                error: Some("本地 runtime helper 鉴权失败".to_string()),
-            },
-        )?;
-        return Ok(false);
-    }
-
-    match request {
-        LocalHelperRequest::Status { .. } => {
-            let snapshot = snapshot_from_manager(manager, server.id.as_str())?;
-            write_response(
-                &mut stream,
-                &LocalHelperResponse {
-                    ok: true,
-                    snapshot: Some(snapshot),
-                    error: None,
-                },
-            )?;
-            Ok(false)
-        }
-        LocalHelperRequest::Send { command, .. } => {
-            let response = match manager.send_command(&server.id, &command) {
-                Ok(()) => LocalHelperResponse { ok: true, snapshot: None, error: None },
-                Err(err) => LocalHelperResponse {
-                    ok: false,
-                    snapshot: None,
-                    error: Some(err),
-                },
-            };
-            write_response(&mut stream, &response)?;
-            Ok(false)
-        }
-        LocalHelperRequest::Stop { .. } => {
-            let response = match manager.stop_server(&server.id) {
-                Ok(()) => LocalHelperResponse { ok: true, snapshot: None, error: None },
-                Err(err) => LocalHelperResponse {
-                    ok: false,
-                    snapshot: None,
-                    error: Some(err),
-                },
-            };
-            let should_exit = response.ok;
-            write_response(&mut stream, &response)?;
-            Ok(should_exit)
-        }
-        LocalHelperRequest::ForceStop { .. } => {
-            let response = match crate::services::server::runtime::local::LocalServerRuntime
-                .force_stop_with_manager(manager, server)
-            {
-                Ok(()) => LocalHelperResponse { ok: true, snapshot: None, error: None },
-                Err(err) => LocalHelperResponse {
-                    ok: false,
-                    snapshot: None,
-                    error: Some(err),
-                },
-            };
-            let should_exit = response.ok;
-            write_response(&mut stream, &response)?;
-            Ok(should_exit)
-        }
-    }
-}
-
-fn detect_terminal_snapshot(
-    manager: &crate::services::server::manager::ServerManager,
-    server: &ServerInstance,
-) -> Result<Option<LocalHelperStatusSnapshot>, String> {
-    let mut procs = manager.lock_processes()?;
-    let Some(child) = procs.get_mut(&server.id) else {
-        return Ok(Some(LocalHelperStatusSnapshot {
-            running: false,
-            pid: None,
-            exit_code: None,
-            detail_message: "runtime=local running=false source=helper process=missing".to_string(),
-            error_message: None,
-        }));
-    };
-
-    match child.try_wait() {
-        Ok(Some(status)) => {
-            let exit_code = status.code();
-            procs.remove(&server.id);
-            server_log_pipeline::shutdown_writer(&server.id);
-            Ok(Some(LocalHelperStatusSnapshot {
-                running: false,
-                pid: None,
-                exit_code,
-                detail_message: format!(
-                    "runtime=local running=false source=helper exit_code={}",
-                    exit_code
-                        .map(|value| value.to_string())
-                        .unwrap_or_else(|| "none".to_string())
-                ),
-                error_message: if matches!(exit_code, Some(0)) {
-                    None
-                } else {
-                    Some(format!(
-                        "服务器异常退出 (退出码：{})",
-                        exit_code
-                            .map(|value| value.to_string())
-                            .unwrap_or_else(|| "unknown".to_string())
-                    ))
-                },
-            }))
-        }
-        Ok(None) => Ok(None),
-        Err(err) => {
-            procs.remove(&server.id);
-            server_log_pipeline::shutdown_writer(&server.id);
-            Ok(Some(LocalHelperStatusSnapshot {
-                running: false,
-                pid: None,
-                exit_code: None,
-                detail_message: "runtime=local running=false source=helper status=error"
-                    .to_string(),
-                error_message: Some(format!("获取本地进程状态失败: {}", err)),
-            }))
-        }
-    }
-}
-
-fn snapshot_from_manager(
-    manager: &crate::services::server::manager::ServerManager,
-    server_id: &str,
-) -> Result<LocalHelperStatusSnapshot, String> {
-    let mut procs = manager.lock_processes()?;
-    let Some(child) = procs.get_mut(server_id) else {
-        return Ok(LocalHelperStatusSnapshot {
-            running: false,
-            pid: None,
-            exit_code: None,
-            detail_message: "runtime=local running=false source=helper process=missing".to_string(),
-            error_message: None,
-        });
-    };
-
-    match child.try_wait() {
-        Ok(Some(status)) => {
-            let exit_code = status.code();
-            procs.remove(server_id);
-            server_log_pipeline::shutdown_writer(server_id);
-            Ok(LocalHelperStatusSnapshot {
-                running: false,
-                pid: None,
-                exit_code,
-                detail_message: format!(
-                    "runtime=local running=false source=helper exit_code={}",
-                    exit_code
-                        .map(|value| value.to_string())
-                        .unwrap_or_else(|| "none".to_string())
-                ),
-                error_message: if matches!(exit_code, Some(0)) {
-                    None
-                } else {
-                    Some(format!(
-                        "服务器异常退出 (退出码：{})",
-                        exit_code
-                            .map(|value| value.to_string())
-                            .unwrap_or_else(|| "unknown".to_string())
-                    ))
-                },
-            })
-        }
-        Ok(None) => Ok(LocalHelperStatusSnapshot {
-            running: true,
-            pid: Some(child.id()),
-            exit_code: None,
-            detail_message: format!("runtime=local running=true source=helper pid={}", child.id()),
-            error_message: None,
-        }),
-        Err(err) => {
-            procs.remove(server_id);
-            server_log_pipeline::shutdown_writer(server_id);
-            Ok(LocalHelperStatusSnapshot {
-                running: false,
-                pid: None,
-                exit_code: None,
-                detail_message: "runtime=local running=false source=helper status=error"
-                    .to_string(),
-                error_message: Some(format!("获取本地进程状态失败: {}", err)),
-            })
-        }
-    }
 }
