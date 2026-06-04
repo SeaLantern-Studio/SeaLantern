@@ -138,13 +138,15 @@ fn spawn_command(
         .spawn()
         .map_err(|e| format!("启动失败（id={}, path={}）: {}", id, server.path, e))?;
 
-    apply_cpu_policy_after_spawn(id, server, startup_mode, child.id())?;
+    let settings = crate::services::global::settings_manager().get();
+    apply_cpu_policy_after_spawn(id, server, &settings, startup_mode, child.id())?;
     Ok(child)
 }
 
 fn apply_cpu_policy_after_spawn(
     id: &str,
     server: &ServerInstance,
+    settings: &crate::models::settings::AppSettings,
     startup_mode: StartupMode,
     pid: u32,
 ) -> Result<(), String> {
@@ -152,7 +154,7 @@ fn apply_cpu_policy_after_spawn(
         return Ok(());
     }
 
-    let Some(resolved) = cpu_policy::resolve_local_cpu_policy(server)? else {
+    let Some(resolved) = cpu_policy::resolve_local_cpu_policy(server, settings)? else {
         return Ok(());
     };
 
@@ -163,7 +165,7 @@ fn apply_cpu_policy_after_spawn(
         id,
         &format!(
             "[Sea Lantern] CPU affinity applied: mode={} cpuset={} pid={}",
-            cpu_policy::local_cpu_policy(server).mode.as_str(),
+            cpu_policy::local_cpu_policy(server, settings).mode.as_str(),
             resolved.cpuset_display,
             pid
         ),

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::models::server::ServerInstance;
+use crate::services::server::manager::startup_support::resolve_effective_startup_config;
 
 use super::super::common::{format_command_for_log, StartupMode};
 use super::super::startup_support::build_managed_jvm_args;
@@ -18,6 +19,10 @@ pub struct LocalLaunchDetail {
     pub startup_mode: String,
     pub java_path: String,
     pub launch_target: String,
+    pub effective_max_memory: u32,
+    pub effective_min_memory: u32,
+    pub effective_cpu_policy_mode: String,
+    pub effective_jvm_preset: String,
     pub effective_jvm_args: Vec<String>,
     pub command_preview: String,
 }
@@ -47,6 +52,7 @@ pub(crate) fn build_local_launch_detail(
         startup_filename: startup_filename(startup_path),
         starter_installer_url,
     };
+    let effective = resolve_effective_startup_config(server, settings);
 
     let effective_jvm_args = if matches!(startup_mode, StartupMode::Jar | StartupMode::Starter) {
         build_managed_jvm_args(server, settings, managed_console_encoding)?
@@ -61,6 +67,17 @@ pub(crate) fn build_local_launch_detail(
         startup_mode: runtime.startup_mode.clone(),
         java_path: runtime.java_path.clone(),
         launch_target,
+        effective_max_memory: effective.max_memory,
+        effective_min_memory: effective.min_memory,
+        effective_cpu_policy_mode: effective.cpu_policy.mode.as_str().to_string(),
+        effective_jvm_preset: match effective.jvm_preset.preset {
+            crate::models::server::JvmPresetId::None => "none",
+            crate::models::server::JvmPresetId::G1Basic => "g1_basic",
+            crate::models::server::JvmPresetId::AikarG1 => "aikar_g1",
+            crate::models::server::JvmPresetId::ThroughputBasic => "throughput_basic",
+            crate::models::server::JvmPresetId::PaperRecommendedLite => "paper_recommended_lite",
+        }
+        .to_string(),
         effective_jvm_args,
         command_preview,
     })
@@ -96,8 +113,8 @@ fn resolve_command_preview(context: &LaunchContext<'_>) -> Result<String, String
 mod tests {
     use super::{build_local_launch_detail, LocalLaunchDetail};
     use crate::models::server::{
-        CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, LocalRuntimeConfig, ServerInstance,
-        ServerRuntimeConfig,
+        CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId, LocalRuntimeConfig,
+        ServerInstance, ServerRuntimeConfig,
     };
     use crate::models::settings::AppSettings;
     use tempfile::tempdir;
@@ -150,6 +167,23 @@ mod tests {
                 sync_active_processor_count: true,
             };
         }
+        let config_dir = temp_dir.path().join("SeaLantern");
+        std::fs::create_dir_all(&config_dir).expect("config dir should exist");
+        std::fs::write(
+            config_dir.join("config.toml"),
+            concat!(
+                "max_memory = 3072\n",
+                "min_memory = 1536\n",
+                "jvm_args = [\"-Dinstance.flag=true\"]\n",
+                "[cpu_policy]\n",
+                "mode = \"count\"\n",
+                "count = 3\n",
+                "sync_active_processor_count = true\n",
+                "[jvm_preset]\n",
+                "preset = \"aikar_g1\"\n"
+            ),
+        )
+        .expect("config should be written");
 
         let detail = build_local_launch_detail(&server, &test_settings())
             .expect("local launch detail should build");
@@ -157,12 +191,58 @@ mod tests {
         assert_eq!(detail.startup_mode, "jar");
         assert_eq!(detail.java_path, "C:/Java/bin/java.exe");
         assert_eq!(detail.launch_target, "E:/servers/detail/server.jar");
+        assert_eq!(detail.effective_max_memory, 3072);
+        assert_eq!(detail.effective_min_memory, 1536);
+        assert_eq!(detail.effective_cpu_policy_mode, "count");
+        assert_eq!(detail.effective_jvm_preset, "aikar_g1");
         assert!(detail
             .effective_jvm_args
             .iter()
-            .any(|arg| arg == "-XX:ActiveProcessorCount=2"));
+            .any(|arg| arg == "-XX:ActiveProcessorCount=3"));
+        assert!(detail
+            .effective_jvm_args
+            .iter()
+            .any(|arg| arg == "-Dinstance.flag=true"));
+        assert!(detail
+            .effective_jvm_args
+            .iter()
+            .any(|arg| arg == "-XX:+DisableExplicitGC"));
         assert!(detail.command_preview.contains("java.exe"));
         assert!(detail.command_preview.contains("-jar"));
+    }
+
+    #[test]
+    fn build_local_launch_detail_falls_back_to_runtime_when_instance_config_missing() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let mut server = test_server(temp_dir.path().to_string_lossy().to_string(), "jar");
+        if let ServerRuntimeConfig::Local(runtime) = &mut server.runtime {
+            runtime.jvm_args = vec!["-Druntime.flag=true".to_string()];
+            runtime.cpu_policy = CpuPolicyConfig {
+                mode: CpuPolicyMode::Count,
+                count: Some(2),
+                explicit_set: None,
+                sync_active_processor_count: true,
+            };
+            runtime.jvm_preset = JvmPresetConfig {
+                preset: JvmPresetId::PaperRecommendedLite,
+            };
+        }
+
+        let detail = build_local_launch_detail(&server, &test_settings())
+            .expect("local launch detail should build");
+
+        assert_eq!(detail.effective_max_memory, 4096);
+        assert_eq!(detail.effective_min_memory, 2048);
+        assert_eq!(detail.effective_cpu_policy_mode, "count");
+        assert_eq!(detail.effective_jvm_preset, "paper_recommended_lite");
+        assert!(detail
+            .effective_jvm_args
+            .iter()
+            .any(|arg| arg == "-Druntime.flag=true"));
+        assert!(detail
+            .effective_jvm_args
+            .iter()
+            .any(|arg| arg == "-Dusing.aikars.flags=https://mcflags.emc.gs"));
     }
 
     #[test]
@@ -198,5 +278,70 @@ mod tests {
         assert_eq!(detail.launch_target, "java -jar custom.jar nogui");
         assert!(detail.effective_jvm_args.is_empty());
         assert!(detail.command_preview.contains("custom.jar"));
+    }
+
+    #[test]
+    fn build_local_launch_detail_refreshes_after_instance_config_changes() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let mut server = test_server(temp_dir.path().to_string_lossy().to_string(), "jar");
+        if let ServerRuntimeConfig::Local(runtime) = &mut server.runtime {
+            runtime.jvm_args = vec!["-Druntime.flag=true".to_string()];
+            runtime.cpu_policy = CpuPolicyConfig {
+                mode: CpuPolicyMode::Off,
+                count: None,
+                explicit_set: None,
+                sync_active_processor_count: true,
+            };
+            runtime.jvm_preset = JvmPresetConfig {
+                preset: JvmPresetId::None,
+            };
+        }
+
+        let detail_before = build_local_launch_detail(&server, &test_settings())
+            .expect("local launch detail should build before config change");
+        assert_eq!(detail_before.effective_max_memory, 4096);
+        assert_eq!(detail_before.effective_cpu_policy_mode, "off");
+        assert!(detail_before
+            .effective_jvm_args
+            .iter()
+            .any(|arg| arg == "-Druntime.flag=true"));
+
+        let config_dir = temp_dir.path().join("SeaLantern");
+        std::fs::create_dir_all(&config_dir).expect("config dir should exist");
+        std::fs::write(
+            config_dir.join("config.toml"),
+            concat!(
+                "max_memory = 6144\n",
+                "min_memory = 1024\n",
+                "jvm_args = [\"-Dupdated.flag=true\"]\n",
+                "[cpu_policy]\n",
+                "mode = \"count\"\n",
+                "count = 2\n",
+                "sync_active_processor_count = true\n",
+                "[jvm_preset]\n",
+                "preset = \"g1_basic\"\n"
+            ),
+        )
+        .expect("config should be written");
+
+        let detail_after = build_local_launch_detail(&server, &test_settings())
+            .expect("local launch detail should rebuild after config change");
+
+        assert_eq!(detail_after.effective_max_memory, 6144);
+        assert_eq!(detail_after.effective_min_memory, 1024);
+        assert_eq!(detail_after.effective_cpu_policy_mode, "count");
+        assert_eq!(detail_after.effective_jvm_preset, "g1_basic");
+        assert!(detail_after
+            .effective_jvm_args
+            .iter()
+            .any(|arg| arg == "-Dupdated.flag=true"));
+        assert!(detail_after
+            .effective_jvm_args
+            .iter()
+            .any(|arg| arg == "-XX:ActiveProcessorCount=2"));
+        assert!(!detail_after
+            .effective_jvm_args
+            .iter()
+            .any(|arg| arg == "-Druntime.flag=true"));
     }
 }

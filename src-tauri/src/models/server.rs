@@ -249,11 +249,6 @@ impl ServerInstance {
             .and_then(|runtime| runtime.custom_command.as_deref())
     }
 
-    pub fn jvm_args(&self) -> &[String] {
-        self.local_runtime()
-            .map(|runtime| runtime.jvm_args.as_slice())
-            .unwrap_or(&[])
-    }
 }
 
 impl DockerBackendKind {

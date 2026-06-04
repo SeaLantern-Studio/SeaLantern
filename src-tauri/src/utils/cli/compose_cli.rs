@@ -276,7 +276,7 @@ fn build_compose_yaml(
         lines.push("      - sealantern".to_string());
     }
 
-    let environment = build_compose_environment(runtime)?;
+    let environment = build_compose_environment(server, runtime)?;
     if !environment.is_empty() {
         lines.push("    environment:".to_string());
         for (key, value) in environment {
@@ -284,7 +284,7 @@ fn build_compose_yaml(
         }
     }
 
-    if let Some(cpuset) = resolve_runtime_cpuset(runtime)? {
+    if let Some(cpuset) = resolve_runtime_cpuset(&runtime.cpu_policy)? {
         lines.push(format!("    cpuset: \"{}\"", escape_yaml_double_quoted(&cpuset)));
     }
 
@@ -375,9 +375,11 @@ fn append_sealantern_service(
 }
 
 fn build_compose_environment(
+    server: &ServerInstance,
     runtime: &DockerItzgRuntimeConfig,
 ) -> Result<BTreeMap<String, String>, String> {
-    let launch_spec = resolve_docker_launch_spec(runtime)?;
+    let settings = crate::models::settings::AppSettings::default();
+    let launch_spec = resolve_docker_launch_spec(server, runtime, &settings)?;
     Ok(launch_spec.environment.into_iter().collect())
 }
 

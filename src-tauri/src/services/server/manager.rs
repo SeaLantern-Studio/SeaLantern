@@ -10,7 +10,7 @@ mod provisioning;
 mod registry;
 mod runtime_control;
 mod runtime_start;
-mod startup_support;
+pub(crate) mod startup_support;
 
 use std::collections::{HashMap, HashSet};
 use std::process::Child;
@@ -59,10 +59,11 @@ pub(crate) fn build_local_launch_detail_for_server(
 pub(crate) fn build_docker_launch_detail_for_server(
     server: &ServerInstance,
 ) -> Result<DockerLaunchDetail, String> {
+    let settings = crate::services::global::settings_manager().get();
     let runtime = server
         .docker_itzg_runtime()
         .ok_or_else(|| format!("当前服务器运行时暂未实现: {}", server.runtime_kind))?;
-    crate::services::server::runtime::docker_itzg::build_docker_launch_detail(runtime)
+    crate::services::server::runtime::docker_itzg::build_docker_launch_detail(server, runtime, &settings)
 }
 
 /// 强停前返回给前端的确认信息

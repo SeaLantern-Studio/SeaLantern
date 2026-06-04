@@ -1,5 +1,6 @@
 use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, ServerInstance};
 use crate::services::server::manager::common::StartupMode;
+use crate::services::server::manager::startup_support::resolve_effective_startup_config;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ResolvedCpuPolicy {
@@ -12,18 +13,19 @@ pub(crate) fn mode_supports_local_cpu_policy(startup_mode: StartupMode) -> bool 
     matches!(startup_mode, StartupMode::Jar | StartupMode::Starter)
 }
 
-pub(crate) fn local_cpu_policy(server: &ServerInstance) -> CpuPolicyConfig {
-    server
-        .local_runtime()
-        .map(|runtime| runtime.cpu_policy.clone())
-        .unwrap_or_default()
+pub(crate) fn local_cpu_policy(
+    server: &ServerInstance,
+    settings: &crate::models::settings::AppSettings,
+) -> CpuPolicyConfig {
+    resolve_effective_startup_config(server, settings).cpu_policy
 }
 
 pub(crate) fn compute_active_processor_count_arg(
     server: &ServerInstance,
+    settings: &crate::models::settings::AppSettings,
     startup_mode: StartupMode,
 ) -> Result<Option<String>, String> {
-    let policy = local_cpu_policy(server);
+    let policy = local_cpu_policy(server, settings);
 
     if !mode_supports_local_cpu_policy(startup_mode) {
         if policy.mode != CpuPolicyMode::Off {
@@ -39,14 +41,15 @@ pub(crate) fn compute_active_processor_count_arg(
         return Ok(None);
     }
 
-    let resolved = resolve_local_cpu_policy(server)?;
+    let resolved = resolve_local_cpu_policy(server, settings)?;
     Ok(resolved.map(|value| format!("-XX:ActiveProcessorCount={}", value.active_processor_count)))
 }
 
 pub(crate) fn resolve_local_cpu_policy(
     server: &ServerInstance,
+    settings: &crate::models::settings::AppSettings,
 ) -> Result<Option<ResolvedCpuPolicy>, String> {
-    let policy = local_cpu_policy(server);
+    let policy = local_cpu_policy(server, settings);
     match policy.mode {
         CpuPolicyMode::Off => Ok(None),
         CpuPolicyMode::Count => {
@@ -257,6 +260,7 @@ mod tests {
     use crate::models::server::{
         JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
+    use crate::models::settings::AppSettings;
     use crate::services::server::manager::common::StartupMode;
 
     fn test_server(startup_mode: &str, cpu_policy: CpuPolicyConfig) -> ServerInstance {
@@ -284,6 +288,10 @@ mod tests {
                 jvm_preset: JvmPresetConfig::default(),
             }),
         }
+    }
+
+    fn test_settings() -> AppSettings {
+        AppSettings::default()
     }
 
     #[test]
@@ -316,7 +324,7 @@ mod tests {
             },
         );
 
-        let resolved = resolve_local_cpu_policy(&server).unwrap().unwrap();
+        let resolved = resolve_local_cpu_policy(&server, &test_settings()).unwrap().unwrap();
         assert_eq!(resolved.cpu_indices, vec![0, 1]);
         assert_eq!(resolved.cpuset_display, "0-1");
         assert_eq!(resolved.active_processor_count, 2);
@@ -334,7 +342,7 @@ mod tests {
             },
         );
 
-        let arg = compute_active_processor_count_arg(&server, StartupMode::Starter)
+        let arg = compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Starter)
             .unwrap()
             .unwrap();
         assert_eq!(arg, "-XX:ActiveProcessorCount=3");
@@ -352,7 +360,7 @@ mod tests {
             },
         );
 
-        let err = compute_active_processor_count_arg(&server, StartupMode::Bat)
+        let err = compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Bat)
             .expect_err("unsupported mode should fail");
         assert!(err.contains("暂不支持 CPU policy"));
     }
@@ -369,13 +377,13 @@ mod tests {
             },
         );
 
-        let arg = compute_active_processor_count_arg(&server, StartupMode::Jar).unwrap();
+        let arg = compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Jar).unwrap();
         assert_eq!(arg, None);
     }
 
     #[test]
     fn local_cpu_policy_defaults_to_off_for_non_local_server_shape() {
         let server = test_server("jar", CpuPolicyConfig::default());
-        assert_eq!(local_cpu_policy(&server).mode, CpuPolicyMode::Off);
+        assert_eq!(local_cpu_policy(&server, &test_settings()).mode, CpuPolicyMode::Off);
     }
 }

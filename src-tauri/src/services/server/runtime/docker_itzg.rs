@@ -439,12 +439,13 @@ impl DockerCliAdapter {
             self.remove_container(runtime)?;
         }
 
-        let launch_spec = resolve_docker_launch_spec(runtime)?;
+        let settings = crate::services::global::settings_manager().get();
+        let launch_spec = resolve_docker_launch_spec(server, runtime, &settings)?;
         logger::log_trace(&format!(
             "[server.runtime.docker_itzg] docker_jvm_env_synthesized server_id={} container={} preset={} jvm_opts_args={} jvm_xx_opts_args={}",
             server.id,
             runtime.container_name,
-            runtime_jvm_preset_name(&runtime.jvm_preset.preset),
+            launch_spec.jvm_synthesis.preset,
             launch_spec.jvm_opts_args_count,
             launch_spec.jvm_xx_opts_args_count
         ));
@@ -453,9 +454,9 @@ impl DockerCliAdapter {
                 "[server.runtime.docker_itzg] docker_cpu_policy_applied server_id={} container={} mode={} cpuset={} sync_active_processor_count={}",
                 server.id,
                 runtime.container_name,
-                runtime.cpu_policy.mode.as_str(),
+                launch_spec.jvm_synthesis.active_processor_count.as_str(),
                 cpuset,
-                runtime.cpu_policy.sync_active_processor_count
+                launch_spec.jvm_synthesis.active_processor_count != ActiveProcessorCountDecision::Disabled
             ));
         }
 
@@ -1436,7 +1437,14 @@ mod tests {
         let mut runtime = docker_runtime(DockerCommandMode::DockerStdio);
         runtime.env.insert("EULA".to_string(), "FALSE".to_string());
 
-        let (env, _) = build_effective_env(&runtime).unwrap();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let server = docker_server(runtime.clone());
+        let settings = crate::models::settings::AppSettings::default();
+        let effective = crate::services::server::manager::startup_support::resolve_effective_startup_config(
+            &ServerInstance { path: temp_dir.path().to_string_lossy().to_string(), ..server.clone() },
+            &settings,
+        );
+        let (env, _) = build_effective_env(&runtime, &effective).unwrap();
 
         assert!(env
             .iter()
@@ -1462,7 +1470,9 @@ mod tests {
             sync_active_processor_count: true,
         };
 
-        let launch_spec = resolve_docker_launch_spec(&runtime).unwrap();
+        let settings = crate::models::settings::AppSettings::default();
+        let server = docker_server(runtime.clone());
+        let launch_spec = resolve_docker_launch_spec(&server, &runtime, &settings).unwrap();
         let args = build_docker_run_args(&runtime, &launch_spec);
 
         let cpuset_index = args
@@ -1475,7 +1485,9 @@ mod tests {
     #[test]
     fn build_docker_run_args_omits_cpuset_for_off_policy() {
         let runtime = docker_runtime(DockerCommandMode::Rcon);
-        let launch_spec = resolve_docker_launch_spec(&runtime).unwrap();
+        let settings = crate::models::settings::AppSettings::default();
+        let server = docker_server(runtime.clone());
+        let launch_spec = resolve_docker_launch_spec(&server, &runtime, &settings).unwrap();
         let args = build_docker_run_args(&runtime, &launch_spec);
 
         assert!(!args.iter().any(|arg| arg == "--cpuset-cpus"));
