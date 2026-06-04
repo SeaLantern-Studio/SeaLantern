@@ -2,6 +2,8 @@ use mlua::{Lua, Result as LuaResult, Table, Value};
 use serde_json::Value as JsonValue;
 use std::path::{Path, PathBuf};
 
+use crate::utils::path::is_windows_absolute_path;
+
 // 错误信息用英文, 中文容易出编码问题
 
 // 最大循环深度, 后来的改的别太大, 可以调
@@ -244,7 +246,7 @@ pub(crate) fn validate_server_path(
 fn validate_path(base_dir: &Path, relative_path: &str) -> Result<PathBuf, mlua::Error> {
     let path = PathBuf::from(relative_path);
 
-    if path.is_absolute() {
+    if path.is_absolute() || is_windows_absolute_path(relative_path) {
         return Err(mlua::Error::runtime("Absolute paths are not allowed".to_string()));
     }
 

@@ -256,6 +256,7 @@ mod tests {
         let command = CliServerCommand {
             mc_version: Some("1.21.1".to_string()),
             core_type: Some("paper".to_string()),
+            data_dir: Some("E:/docker/paper-prod".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
