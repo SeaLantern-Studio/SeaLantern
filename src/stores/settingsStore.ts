@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, toRaw } from "vue";
 import {
   settingsApi,
   type AppSettings,
@@ -122,10 +122,16 @@ export const useSettingsStore = defineStore("settings", () => {
   const backgroundSize = computed(() => settings.value.background_size);
 
   function cloneSettings(source: AppSettings = settings.value): AppSettings {
+    const plainSource = toRaw(source) as AppSettings;
+
     if (typeof structuredClone === "function") {
-      return structuredClone(source);
+      try {
+        return structuredClone(plainSource);
+      } catch (error) {
+        console.warn("Failed to structuredClone settings, falling back to JSON clone.", error);
+      }
     }
-    return JSON.parse(JSON.stringify(source)) as AppSettings;
+    return JSON.parse(JSON.stringify(plainSource)) as AppSettings;
   }
 
   function syncSettings(nextSettings: AppSettings): void {

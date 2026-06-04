@@ -180,7 +180,6 @@ async function handleImport(json: string) {
 
       <SettingsActions
         :busy="personalizationBusy"
-        :package-available="true"
         @export-package="exportPersonalizationPackage"
         @import-package="importPersonalizationPackage"
         @reset="showResetConfirm = true"

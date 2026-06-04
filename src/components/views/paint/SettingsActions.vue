@@ -4,7 +4,6 @@ import { i18n } from "@language";
 
 defineProps<{
   busy?: boolean;
-  packageAvailable?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,9 +26,6 @@ const emit = defineEmits<{
         {{ i18n.t("settings.reset") }}
       </SLButton>
     </div>
-    <div class="actions-right" v-if="packageAvailable">
-      {{ i18n.t("settings.personalization_package_desc") }}
-    </div>
   </div>
 </template>
 
@@ -42,8 +38,7 @@ const emit = defineEmits<{
   border-top: 1px solid var(--sl-border);
 }
 
-.actions-left,
-.actions-right {
+.actions-left {
   display: flex;
   align-items: center;
   gap: var(--sl-space-sm);
