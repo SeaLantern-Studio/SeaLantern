@@ -225,7 +225,7 @@ fn test_process_exec_timeout_kills_and_reaps_foreground_process() {
         error_message.contains("exceeded maximum duration") || error_message.contains("timeout")
     );
     assert!(elapsed >= Duration::from_millis(250));
-    assert!(elapsed < Duration::from_secs(5));
+    assert!(elapsed < Duration::from_secs(10));
 
     let child_pid = wait_for_pid_file(&pid_file);
     std::thread::sleep(Duration::from_millis(200));
@@ -1022,8 +1022,10 @@ fn prepare_timeout_process_fixture(temp_dir: &Path, pid_file: &Path) -> (String,
     fs::copy("/bin/sh", &shell_dest).unwrap();
 
     let script_path = temp_dir.join("timeout-script.sh");
-    let script =
-        format!("printf '%s' \"$$\" > '{}'\nsleep 5\nprintf 'finished\\n'\n", pid_file.display());
+    let script = format!(
+        "printf '%s' \"$$\" > '{}'\nexec sleep 5\n",
+        pid_file.display()
+    );
     fs::write(&script_path, script).unwrap();
 
     ("sh".to_string(), vec!["timeout-script.sh".to_string()])

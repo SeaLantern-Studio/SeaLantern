@@ -199,11 +199,18 @@ pub fn status_snapshot(
     };
 
     if is_process_alive(state.helper_pid) {
-        let response = send_request(
+        match send_request(
             &state,
             LocalHelperRequest::Status { auth_token: state.auth_token.clone() },
-        )?;
-        return Ok(response.snapshot);
+        ) {
+            Ok(response) => return Ok(response.snapshot),
+            Err(error) => {
+                logger::log_warn(&format!(
+                    "local runtime helper status probe failed, falling back to state file: server_id={} helper_pid={} error={}",
+                    server.id, state.helper_pid, error
+                ));
+            }
+        }
     }
 
     Ok(Some(fallback_snapshot_from_state_file(&state)))

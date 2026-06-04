@@ -17,14 +17,14 @@ fn server_help_text_mentions_docker_command_mode_and_env_overrides() {
     assert!(help.contains("--detach"));
     assert!(help.contains("--create-only"));
     assert!(help.contains("SEALANTERN_DOCKER_RCON_HOST=<host>"));
-    assert!(help.contains("Headless/容器环境"));
+    assert!(help.contains("桌面、Headless 和容器环境"));
     assert!(help.contains("custom-local"));
     assert!(help.contains("sealantern server inspect <target>"));
     assert!(help.contains("sealantern server send paper-docker"));
     assert!(help.contains("sealantern compose generate paper-docker"));
     assert!(help.contains("sealantern server restart <target>"));
     assert!(help.contains("--follow --interval 1000"));
-    assert!(help.contains("不尝试自动打开浏览器"));
+    assert!(help.contains("会立即返回"));
     assert!(help.contains("--folder 目录名"));
     assert!(help.contains("/inspect 查看服务器详情与运行时配置"));
     assert!(help.contains("/restart 请求重启当前服务器"));
