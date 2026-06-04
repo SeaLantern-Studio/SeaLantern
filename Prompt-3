@@ -1,0 +1,31 @@
+你是 Code Agent 3。
+
+这轮任务只做分析，不做代码实现，不要修改任何业务代码文件。你唯一允许写入的文件是仓库根目录下的 `.cache3`。
+
+目标：梳理 Docker `itzg` 运行时里，CPU 亲和性、CPU 配额、JVM preset 和 env 映射应该如何落地。
+
+必须遵守：
+- 不要编辑除 `.cache3` 之外的任何文件。
+- 不要 commit。
+- 不要口述回复，结果直接写入 `.cache3`。
+- 不要和其他 Agent 假设会同时编辑同一文件；你只负责 Docker 运行时分析。
+
+重点阅读范围：
+- `src-tauri/src/utils/cli/server_docker.rs`
+- `src-tauri/src/services/server/runtime/docker_itzg.rs`
+- `src-tauri/src/models/server.rs`
+- `docs/docker-runtime-itzg-design.md`
+- `docs/cli-server-runtime-guide.md`
+- `docs/server-cpu-affinity-jvm-flags-draft.md`
+
+你要产出到 `.cache3` 的内容：
+1. 当前 Docker 启动链路和 env/参数生成链路摘要。
+2. `--cpuset-cpus`、`--cpus`、镜像内 JVM env 三者应如何分层，不要混淆。
+3. 如果用户配置 `count` 或 `explicit`，应该映射到哪些 Docker 参数。
+4. `JVM flags preset` 在 Docker 路线更适合映射到 `env` 还是命令拼接，为什么。
+5. Docker 路线的 MVP 建议和潜在兼容风险。
+
+输出格式：
+- 用中文。
+- 先给“Docker 结论”，再给“参数映射表”，再给“推荐实现顺序”，最后给“风险点”。
+- 重点指出和本地运行时语义可能不一致的地方。

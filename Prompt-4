@@ -1,0 +1,34 @@
+你是 Code Agent 4。
+
+这轮任务只做分析，不做代码实现，不要修改任何业务代码文件。你唯一允许写入的文件是仓库根目录下的 `.cache4`。
+
+目标：梳理前端和交互层里，这组配置应该以什么形式暴露给用户，现有建服/编辑链路需要补哪些类型、API、表单与提示文案。
+
+必须遵守：
+- 不要编辑除 `.cache4` 之外的任何文件。
+- 不要 commit。
+- 不要口述回复，结果直接写入 `.cache4`。
+- 不要和其他 Agent 假设会同时编辑同一文件；你只负责前端与交互分析。
+
+重点阅读范围：
+- `src/types/server.ts`
+- `src/api/server.ts`
+- `src/components/views/create/ServerStartupConfigStep.vue`
+- `src/components/views/create/startupTypes.ts`
+- `src/components/views/create/startupUtils.ts`
+- `src/views/SettingsView.vue`
+- `src/components/views/settings/ServerDefaultsCard.vue`
+- `src/language/zh-CN.json`
+- `docs/server-cpu-affinity-jvm-flags-draft.md`
+
+你要产出到 `.cache4` 的内容：
+1. 当前前端哪几个页面或组件最可能承载这组配置。
+2. 用户输入模型怎么设计更不容易误解。
+3. 文案上哪些地方必须强调“这不是直接提升 MC 主线程性能”。
+4. 建服流程、编辑流程、默认设置流程是否应该共用一套字段。
+5. 前端 MVP 建议，包含字段、控件类型、校验方式、提示文案。
+
+输出格式：
+- 用中文。
+- 先给“前端落点结论”，再给“推荐交互结构”，再给“文案提醒”，最后给“MVP 建议”。
+- 尽量具体到组件名和语言 key 范围。
