@@ -6055,6 +6055,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util",
+ "toml 0.8.2",
  "tower",
  "tower-http",
  "trash",

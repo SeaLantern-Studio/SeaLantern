@@ -60,7 +60,14 @@ pub(super) fn add_existing_server(
     };
 
     let port = read_server_port(server_path, req.port);
-    write_sl_startup_config(server_path, req.max_memory, req.min_memory)?;
+    write_sl_startup_config(
+        server_path,
+        req.max_memory,
+        req.min_memory,
+        req.jvm_args.clone(),
+        req.cpu_policy.clone(),
+        req.jvm_preset.clone(),
+    )?;
     let core_type = req
         .core_type
         .as_deref()

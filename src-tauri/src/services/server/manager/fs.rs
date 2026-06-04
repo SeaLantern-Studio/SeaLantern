@@ -554,7 +554,10 @@ mod tests {
         assert_eq!(new_server.startup_mode_str(), "custom");
         assert_eq!(new_server.custom_command(), Some("java -jar server.jar nogui"));
         assert_eq!(new_server.java_path(), Some("C:/Java21/bin/java.exe"));
-        assert_eq!(new_server.jvm_args(), ["-Xmx4G".to_string()]);
+        assert_eq!(
+            new_server.local_runtime().unwrap().jvm_args,
+            ["-Xmx4G".to_string()]
+        );
     }
 
     #[test]

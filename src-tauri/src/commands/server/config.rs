@@ -4,9 +4,12 @@ use crate::services::server::config as config_parser;
 use crate::utils::logger;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-/// SL.json 启动配置结构
+const INSTANCE_CONFIG_DIR_NAME: &str = "SeaLantern";
+const INSTANCE_CONFIG_FILE_NAME: &str = "config.toml";
+
+/// 实例级启动配置结构。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SLStartupConfig {
     #[serde(default)]
@@ -19,6 +22,21 @@ pub struct SLStartupConfig {
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
     pub jvm_preset: JvmPresetConfig,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct StartupConfigPresence {
+    pub max_memory: bool,
+    pub min_memory: bool,
+    pub jvm_args: bool,
+    pub cpu_policy: bool,
+    pub jvm_preset: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ServerStartupConfigDocument {
+    pub config: SLStartupConfig,
+    pub presence: StartupConfigPresence,
 }
 
 fn validate_config_path(path: &str) -> Result<(), String> {
@@ -35,6 +53,124 @@ fn validate_config_path(path: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn canonical_server_dir(server_path: &str) -> Result<PathBuf, String> {
+    validate_config_path(server_path)?;
+    let canonical_server =
+        std::fs::canonicalize(server_path).map_err(|e| format!("无效的服务器目录: {}", e))?;
+    if !canonical_server.is_dir() {
+        return Err("服务器目录无效".to_string());
+    }
+    Ok(canonical_server)
+}
+
+fn build_instance_config_path(server_path: &str) -> Result<PathBuf, String> {
+    let canonical_server = canonical_server_dir(server_path)?;
+    let instance_config_path = canonical_server
+        .join(INSTANCE_CONFIG_DIR_NAME)
+        .join(INSTANCE_CONFIG_FILE_NAME);
+
+    if !instance_config_path.starts_with(&canonical_server) {
+        return Err("实例配置路径必须在服务器目录内".to_string());
+    }
+
+    Ok(instance_config_path)
+}
+
+fn build_legacy_sl_config_path(server_path: &str) -> Result<PathBuf, String> {
+    let canonical_server = canonical_server_dir(server_path)?;
+    let legacy_path = canonical_server.join("SL.json");
+
+    if !legacy_path.starts_with(&canonical_server) {
+        return Err("实例配置路径必须在服务器目录内".to_string());
+    }
+
+    Ok(legacy_path)
+}
+
+fn read_startup_document_from_toml(path: &Path) -> Result<ServerStartupConfigDocument, String> {
+    let content =
+        std::fs::read_to_string(path).map_err(|e| format!("读取实例配置失败: {}", e))?;
+    let config = toml::from_str(&content).map_err(|e| format!("解析实例配置失败: {}", e))?;
+    let value: toml::Value =
+        toml::from_str(&content).map_err(|e| format!("解析实例配置失败: {}", e))?;
+    Ok(ServerStartupConfigDocument {
+        config,
+        presence: startup_config_presence_from_toml(&value),
+    })
+}
+
+fn read_startup_document_from_legacy_json(
+    path: &Path,
+) -> Result<ServerStartupConfigDocument, String> {
+    let content = std::fs::read_to_string(path).map_err(|e| format!("读取 SL.json 失败: {}", e))?;
+    let config =
+        serde_json::from_str(&content).map_err(|e| format!("解析 SL.json 失败: {}", e))?;
+    let value: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析 SL.json 失败: {}", e))?;
+    Ok(ServerStartupConfigDocument {
+        config,
+        presence: startup_config_presence_from_json(&value),
+    })
+}
+
+fn startup_config_presence_from_toml(value: &toml::Value) -> StartupConfigPresence {
+    let table = value.as_table();
+    StartupConfigPresence {
+        max_memory: table.and_then(|table| table.get("max_memory")).is_some(),
+        min_memory: table.and_then(|table| table.get("min_memory")).is_some(),
+        jvm_args: table.and_then(|table| table.get("jvm_args")).is_some(),
+        cpu_policy: table.and_then(|table| table.get("cpu_policy")).is_some(),
+        jvm_preset: table.and_then(|table| table.get("jvm_preset")).is_some(),
+    }
+}
+
+fn startup_config_presence_from_json(value: &serde_json::Value) -> StartupConfigPresence {
+    let object = value.as_object();
+    StartupConfigPresence {
+        max_memory: object.and_then(|object| object.get("max_memory")).is_some(),
+        min_memory: object.and_then(|object| object.get("min_memory")).is_some(),
+        jvm_args: object.and_then(|object| object.get("jvm_args")).is_some(),
+        cpu_policy: object.and_then(|object| object.get("cpu_policy")).is_some(),
+        jvm_preset: object.and_then(|object| object.get("jvm_preset")).is_some(),
+    }
+}
+
+pub(crate) fn read_server_startup_config(server_path: &str) -> Result<SLStartupConfig, String> {
+    Ok(read_server_startup_config_document(server_path)?.config)
+}
+
+pub(crate) fn read_server_startup_config_document(
+    server_path: &str,
+) -> Result<ServerStartupConfigDocument, String> {
+    let instance_config_path = build_instance_config_path(server_path)?;
+    if instance_config_path.exists() {
+        return read_startup_document_from_toml(&instance_config_path);
+    }
+
+    let legacy_path = build_legacy_sl_config_path(server_path)?;
+    if legacy_path.exists() {
+        return read_startup_document_from_legacy_json(&legacy_path);
+    }
+
+    Ok(ServerStartupConfigDocument::default())
+}
+
+pub(crate) fn write_server_startup_config(
+    server_path: &str,
+    config: &SLStartupConfig,
+) -> Result<(), String> {
+    let instance_config_path = build_instance_config_path(server_path)?;
+    if let Some(parent) = instance_config_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("创建实例配置目录失败: {}", e))?;
+    }
+
+    let content =
+        toml::to_string_pretty(config).map_err(|e| format!("序列化实例配置失败: {}", e))?;
+
+    std::fs::write(&instance_config_path, content)
+        .map_err(|e| format!("写入实例配置失败: {}", e))
 }
 
 fn validate_path_within_server(server_path: &str, file_path: &str) -> Result<(), String> {
@@ -154,40 +290,27 @@ pub fn preview_server_properties_write_from_source(
     config_parser::preview_properties_write_from_source(&source, &values)
 }
 
-/// 读取服务器目录下的 SL.json 启动配置
+/// 读取服务器目录下的实例级启动配置。
+/// 优先读取 `SeaLantern/config.toml`，兼容回退到旧的 `SL.json`。
 #[tauri::command]
 pub fn read_sl_config(server_path: String) -> Result<SLStartupConfig, String> {
-    validate_config_path(&server_path)?;
-    let path = Path::new(&server_path).join("SL.json");
-    if !path.exists() {
-        return Ok(SLStartupConfig::default());
-    }
-
-    let content = std::fs::read_to_string(path).map_err(|e| format!("读取 SL.json 失败: {}", e))?;
-
-    let config: SLStartupConfig =
-        serde_json::from_str(&content).map_err(|e| format!("解析 SL.json 失败: {}", e))?;
-
-    Ok(config)
+    read_server_startup_config(&server_path)
 }
 
-/// 写入服务器目录下的 SL.json 启动配置
+/// 写入服务器目录下的实例级启动配置。
+/// 写回统一落到 `SeaLantern/config.toml`。
 #[tauri::command]
 pub fn write_sl_config(server_path: String, config: SLStartupConfig) -> Result<(), String> {
-    validate_config_path(&server_path)?;
-    let sl_path = format!("{}/SL.json", server_path);
-
-    let content =
-        serde_json::to_string_pretty(&config).map_err(|e| format!("序列化 SL.json 失败: {}", e))?;
-
-    std::fs::write(&sl_path, content).map_err(|e| format!("写入 SL.json 失败: {}", e))?;
-
-    Ok(())
+    write_server_startup_config(&server_path, &config)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{read_server_properties, read_server_properties_source};
+    use super::{
+        read_server_properties, read_server_properties_source, read_sl_config, write_sl_config,
+        SLStartupConfig,
+    };
+    use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId};
     use tempfile::tempdir;
 
     #[test]
@@ -206,5 +329,71 @@ mod tests {
             read_server_properties_source(dir.path().to_string_lossy().to_string()).unwrap();
 
         assert!(result.is_empty());
+    }
+
+    #[test]
+    fn write_sl_config_writes_to_sealantern_config_toml() {
+        let dir = tempdir().unwrap();
+        let server_path = dir.path().to_string_lossy().to_string();
+        let config = SLStartupConfig {
+            max_memory: Some(4096),
+            min_memory: Some(2048),
+            jvm_args: vec!["-Dfoo=bar".to_string()],
+            cpu_policy: CpuPolicyConfig {
+                mode: CpuPolicyMode::Count,
+                count: Some(4),
+                explicit_set: None,
+                sync_active_processor_count: true,
+            },
+            jvm_preset: JvmPresetConfig {
+                preset: JvmPresetId::AikarG1,
+            },
+        };
+
+        write_sl_config(server_path.clone(), config.clone()).unwrap();
+
+        let new_path = dir.path().join("SeaLantern").join("config.toml");
+        assert!(new_path.exists());
+        assert!(!dir.path().join("SL.json").exists());
+
+        let reloaded = read_sl_config(server_path).unwrap();
+        assert_eq!(reloaded.max_memory, Some(4096));
+        assert_eq!(reloaded.min_memory, Some(2048));
+        assert_eq!(reloaded.jvm_args, vec!["-Dfoo=bar"]);
+        assert_eq!(reloaded.cpu_policy.mode, CpuPolicyMode::Count);
+        assert_eq!(reloaded.cpu_policy.count, Some(4));
+        assert_eq!(reloaded.jvm_preset.preset, JvmPresetId::AikarG1);
+    }
+
+    #[test]
+    fn read_sl_config_falls_back_to_legacy_sl_json() {
+        let dir = tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("SL.json"),
+            r#"{
+  "max_memory": 6144,
+  "min_memory": 1536,
+  "jvm_args": ["-XX:+UseG1GC"],
+  "cpu_policy": {
+    "mode": "count",
+    "count": 2,
+    "explicit_set": null,
+    "sync_active_processor_count": true
+  },
+  "jvm_preset": {
+    "preset": "g1_basic"
+  }
+}"#,
+        )
+        .unwrap();
+
+        let config = read_sl_config(dir.path().to_string_lossy().to_string()).unwrap();
+
+        assert_eq!(config.max_memory, Some(6144));
+        assert_eq!(config.min_memory, Some(1536));
+        assert_eq!(config.jvm_args, vec!["-XX:+UseG1GC"]);
+        assert_eq!(config.cpu_policy.mode, CpuPolicyMode::Count);
+        assert_eq!(config.cpu_policy.count, Some(2));
+        assert_eq!(config.jvm_preset.preset, JvmPresetId::G1Basic);
     }
 }
