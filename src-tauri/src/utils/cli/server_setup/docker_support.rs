@@ -50,6 +50,30 @@ fn build_docker_request_after_preflight_for_tests(
     local_output: &std::process::Output,
     manifest_output: &std::process::Output,
 ) -> Result<crate::models::server::CreateDockerItzgServerRequest, String> {
+    build_docker_request_after_facade_preflight_with_stdio_probe_for_tests(
+        command,
+        resolved_name,
+        ports,
+        defaults,
+        local_output,
+        manifest_output,
+        |_image_ref| Ok(()),
+    )
+}
+
+#[cfg(test)]
+fn build_docker_request_after_facade_preflight_with_stdio_probe_for_tests<F>(
+    command: &CliServerCommand,
+    resolved_name: &str,
+    ports: &PreparedPorts,
+    defaults: DockerCreateDefaults,
+    local_output: &std::process::Output,
+    manifest_output: &std::process::Output,
+    ensure_stdio_support: F,
+) -> Result<crate::models::server::CreateDockerItzgServerRequest, String>
+where
+    F: FnOnce(&str) -> Result<(), String>,
+{
     let (image, image_tag) = resolve_requested_docker_image(command)?;
     validate_docker_itzg_image_compatibility(&image)?;
     preflight_docker_image_reference_from_outputs_for_tests(
@@ -66,7 +90,7 @@ fn build_docker_request_after_preflight_for_tests(
         &command_mode,
         local_output,
         manifest_output,
-        |_image_ref| Ok(()),
+        ensure_stdio_support,
     )?;
 
     build_docker_create_request(command, resolved_name, ports, defaults)
@@ -97,7 +121,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        build_docker_create_request, build_docker_request_after_preflight_for_tests,
+        build_docker_create_request,
+        build_docker_request_after_facade_preflight_with_stdio_probe_for_tests,
+        build_docker_request_after_preflight_for_tests,
         format_memory_env_value,
         map_container_visible_path_to_docker_host_path, parse_command_mode, parse_docker_backend,
         parse_docker_volume_mount, parse_published_port, resolve_docker_data_dir,
@@ -637,6 +663,95 @@ mod tests {
 
         assert!(err.contains("镜像或标签不存在"));
         assert_eq!(probe_calls.get(), 0);
+    }
+
+    #[test]
+    fn facade_chain_preserves_remote_resolvable_stdio_and_builds_runtime_request_without_probe() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            command_mode: Some("docker_stdio".to_string()),
+            data_dir: Some("E:/docker/facade-remote-stdio-build".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts {
+            game_port: 25565,
+            web_port: None,
+        };
+        let probe_calls = Cell::new(0);
+
+        let request = build_docker_request_after_facade_preflight_with_stdio_probe_for_tests(
+            &command,
+            "paper-remote-stdio-build",
+            &ports,
+            sample_defaults(),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
+            &manifest_success_output(),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Err("probe should have been skipped".to_string())
+            },
+        )
+        .expect("remote resolvable docker_stdio facade chain should skip probe and still build");
+
+        assert_eq!(probe_calls.get(), 0);
+        assert_eq!(request.runtime.command_mode, DockerCommandMode::DockerStdio);
+        assert!(request.runtime.rcon.is_none());
+        assert!(request.runtime.extra_ports.is_empty());
+        assert_eq!(
+            request
+                .runtime
+                .env
+                .get("CREATE_CONSOLE_IN_PIPE")
+                .map(String::as_str),
+            Some("true")
+        );
+    }
+
+    #[test]
+    fn facade_chain_preserves_local_success_stdio_probe_and_builds_runtime_request() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            command_mode: Some("docker_stdio".to_string()),
+            data_dir: Some("E:/docker/facade-local-stdio-build".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts {
+            game_port: 25565,
+            web_port: None,
+        };
+        let probe_calls = Cell::new(0);
+
+        let request = build_docker_request_after_facade_preflight_with_stdio_probe_for_tests(
+            &command,
+            "paper-local-stdio-build",
+            &ports,
+            sample_defaults(),
+            &local_success_output(),
+            &failed_output("manifest unknown: manifest unknown"),
+            |image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                assert_eq!(image_ref, "itzg/minecraft-server:latest");
+                Ok(())
+            },
+        )
+        .expect("local success docker_stdio facade chain should probe first and then build");
+
+        assert_eq!(probe_calls.get(), 1);
+        assert_eq!(request.runtime.command_mode, DockerCommandMode::DockerStdio);
+        assert!(request.runtime.rcon.is_none());
+        assert!(request.runtime.extra_ports.is_empty());
+        assert_eq!(
+            request
+                .runtime
+                .env
+                .get("CREATE_CONSOLE_IN_PIPE")
+                .map(String::as_str),
+            Some("true")
+        );
     }
 
     #[test]
