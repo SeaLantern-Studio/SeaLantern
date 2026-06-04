@@ -513,14 +513,11 @@ fn test_process_read_output_default_call_returns_nil_until_stderr_is_opted_in() 
     let stdout = wait_for_background_stdout(&read_output, pid).unwrap();
     assert!(stdout.contains("bg-out"));
 
-    let nil_value = wait_for_background_value_with_options(
-        runtime.lua(),
-        &read_output,
-        pid,
-        None,
-        |value| matches!(value, mlua::Value::Nil),
-    )
-    .unwrap();
+    let nil_value =
+        wait_for_background_value_with_options(runtime.lua(), &read_output, pid, None, |value| {
+            matches!(value, mlua::Value::Nil)
+        })
+        .unwrap();
     assert!(matches!(nil_value, mlua::Value::Nil));
 
     let structured_value = wait_for_background_value_with_options(
@@ -1086,7 +1083,8 @@ fn prepare_background_multi_chunk_process_fixture(temp_dir: &Path) -> (String, V
     fs::copy("/bin/sh", &shell_dest).unwrap();
 
     let script_path = temp_dir.join("background-multi-chunk-script.sh");
-    let script = "printf 'chunk-1\n'\nsleep 0.25\nprintf 'chunk-2\n'\nprintf 'bg-err-2\n' >&2\nsleep 0.2\n";
+    let script =
+        "printf 'chunk-1\n'\nsleep 0.25\nprintf 'chunk-2\n'\nprintf 'bg-err-2\n' >&2\nsleep 0.2\n";
     fs::write(&script_path, script).unwrap();
 
     ("sh".to_string(), vec!["background-multi-chunk-script.sh".to_string()])

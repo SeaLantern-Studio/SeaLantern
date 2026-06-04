@@ -681,7 +681,9 @@ mod tests {
             .expect("web_bind check");
 
         assert_eq!(check.status, DoctorStatus::Pass);
-        assert!(check.detail.contains("已显式配置 CLI Web 绑定地址: 0.0.0.0:3000"));
+        assert!(check
+            .detail
+            .contains("已显式配置 CLI Web 绑定地址: 0.0.0.0:3000"));
         assert!(!check.detail.contains("默认绑定地址"));
     }
 

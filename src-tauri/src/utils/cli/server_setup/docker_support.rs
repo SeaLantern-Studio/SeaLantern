@@ -17,13 +17,13 @@ pub(super) use docker_request_builder::{
 };
 
 #[cfg(test)]
-use docker_mounts::{parse_docker_volume_mount, parse_published_port};
-#[cfg(test)]
-use docker_paths::map_container_visible_path_to_docker_host_path;
-#[cfg(test)]
 use crate::utils::cli::server_args::CliServerCommand;
 #[cfg(test)]
 use crate::utils::cli::server_ports::PreparedPorts;
+#[cfg(test)]
+use docker_mounts::{parse_docker_volume_mount, parse_published_port};
+#[cfg(test)]
+use docker_paths::map_container_visible_path_to_docker_host_path;
 #[cfg(test)]
 use docker_preflight::{
     preflight_docker_command_mode_support_from_outputs_for_tests,
@@ -123,13 +123,12 @@ mod tests {
     use super::{
         build_docker_create_request,
         build_docker_request_after_facade_preflight_with_stdio_probe_for_tests,
-        build_docker_request_after_preflight_for_tests,
-        format_memory_env_value,
+        build_docker_request_after_preflight_for_tests, format_memory_env_value,
         map_container_visible_path_to_docker_host_path, parse_command_mode, parse_docker_backend,
-        parse_docker_volume_mount, parse_published_port, resolve_docker_data_dir,
+        parse_docker_volume_mount, parse_published_port,
+        preflight_docker_mode_from_outputs_for_tests, resolve_docker_data_dir,
         resolve_requested_docker_image, validate_docker_itzg_image_compatibility,
-        preflight_docker_mode_from_outputs_for_tests, DockerCreateDefaults,
-        DEFAULT_DOCKER_IMAGE_TAG,
+        DockerCreateDefaults, DEFAULT_DOCKER_IMAGE_TAG,
     };
     use crate::models::server::{DockerBackendKind, DockerCommandMode};
     use crate::utils::cli::server_args::CliServerCommand;
@@ -501,7 +500,9 @@ mod tests {
             "paper-remote-success",
             &ports,
             sample_defaults(),
-            &failed_output("Error response from daemon: No such image: itzg/minecraft-server:latest"),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
             &manifest_success_output(),
         )
         .expect("remote resolvable should pass preflight and build facade request");
@@ -527,7 +528,9 @@ mod tests {
             "paper-soft-failure",
             &ports,
             sample_defaults(),
-            &failed_output("Error response from daemon: No such image: itzg/minecraft-server:latest"),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
             &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
         )
         .expect("soft failure should stay non-blocking through facade request build");
@@ -554,7 +557,9 @@ mod tests {
             "paper-hard-failure",
             &ports,
             sample_defaults(),
-            &failed_output("Error response from daemon: No such image: itzg/minecraft-server:missing"),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:missing",
+            ),
             &failed_output_with_stdout("manifest unknown: manifest unknown"),
         )
         .expect_err("hard failure should block facade request build");
@@ -576,7 +581,9 @@ mod tests {
 
         preflight_docker_mode_from_outputs_for_tests(
             &command,
-            &failed_output("Error response from daemon: No such image: itzg/minecraft-server:latest"),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
             &manifest_success_output(),
             |_image_ref| {
                 probe_calls.set(probe_calls.get() + 1);
@@ -601,7 +608,9 @@ mod tests {
 
         preflight_docker_mode_from_outputs_for_tests(
             &command,
-            &failed_output("Error response from daemon: No such image: itzg/minecraft-server:latest"),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
             &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
             |_image_ref| {
                 probe_calls.set(probe_calls.get() + 1);
@@ -652,7 +661,9 @@ mod tests {
 
         let err = preflight_docker_mode_from_outputs_for_tests(
             &command,
-            &failed_output("Error response from daemon: No such image: itzg/minecraft-server:missing"),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:missing",
+            ),
             &failed_output_with_stdout("manifest unknown: manifest unknown"),
             |_image_ref| {
                 probe_calls.set(probe_calls.get() + 1);
@@ -674,10 +685,7 @@ mod tests {
             data_dir: Some("E:/docker/facade-remote-stdio-build".to_string()),
             ..Default::default()
         };
-        let ports = PreparedPorts {
-            game_port: 25565,
-            web_port: None,
-        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
         let probe_calls = Cell::new(0);
 
         let request = build_docker_request_after_facade_preflight_with_stdio_probe_for_tests(
@@ -719,10 +727,7 @@ mod tests {
             data_dir: Some("E:/docker/facade-local-stdio-build".to_string()),
             ..Default::default()
         };
-        let ports = PreparedPorts {
-            game_port: 25565,
-            web_port: None,
-        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
         let probe_calls = Cell::new(0);
 
         let request = build_docker_request_after_facade_preflight_with_stdio_probe_for_tests(

@@ -194,8 +194,7 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_custom_command, build_ps1_command, build_sh_command,
-        resolve_direct_jar_launch_target,
+        build_custom_command, build_ps1_command, build_sh_command, resolve_direct_jar_launch_target,
     };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use crate::models::settings::AppSettings;
@@ -320,13 +319,8 @@ mod tests {
         let manager = ServerManager::new();
         let settings = test_settings();
         let server = test_server(temp_dir.path(), "custom", Some("echo launch ready"));
-        let context = test_launch_context(
-            &manager,
-            &server,
-            &settings,
-            StartupMode::Custom,
-            "ignored.bat",
-        );
+        let context =
+            test_launch_context(&manager, &server, &settings, StartupMode::Custom, "ignored.bat");
 
         let command = build_custom_command(&context).expect("custom command should build");
         let args = command
@@ -355,7 +349,8 @@ mod tests {
         let manager = ServerManager::new();
         let settings = test_settings();
         let server = test_server(temp_dir.path(), "sh", None);
-        let context = test_launch_context(&manager, &server, &settings, StartupMode::Sh, "start.sh");
+        let context =
+            test_launch_context(&manager, &server, &settings, StartupMode::Sh, "start.sh");
 
         let command = build_sh_command(&context).expect("sh command should build");
         let args = command
@@ -377,7 +372,8 @@ mod tests {
         let manager = ServerManager::new();
         let settings = test_settings();
         let server = test_server(temp_dir.path(), "ps1", None);
-        let context = test_launch_context(&manager, &server, &settings, StartupMode::Ps1, "start.ps1");
+        let context =
+            test_launch_context(&manager, &server, &settings, StartupMode::Ps1, "start.ps1");
 
         let command = build_ps1_command(&context).expect("ps1 command should build");
         let args = command
@@ -398,7 +394,9 @@ mod tests {
                 "nogui",
             ]
         );
-        assert!(args.iter().all(|arg| !arg.contains("JAVA_HOME") && !arg.contains("PATH=")));
+        assert!(args
+            .iter()
+            .all(|arg| !arg.contains("JAVA_HOME") && !arg.contains("PATH=")));
         assert_java_process_env_is_injected(&command);
     }
 

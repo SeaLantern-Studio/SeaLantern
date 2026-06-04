@@ -1,12 +1,12 @@
 use crate::models::server::DockerCommandMode;
 use crate::utils::cli::server_shared::{trace_cli_action, trace_cli_error};
+#[cfg(test)]
+use crate::utils::docker_cli::interpret_docker_image_inspect_outputs_for_tests;
 use crate::utils::docker_cli::{
     docker_executable_path, format_docker_image_reference,
     inspect_docker_image_reference_with_soft_failures, DockerImageAvailability,
     DockerImageInspectOutcome,
 };
-#[cfg(test)]
-use crate::utils::docker_cli::interpret_docker_image_inspect_outputs_for_tests;
 use crate::utils::logger;
 use std::process::Output;
 
@@ -352,58 +352,36 @@ mod tests {
     fn preflight_docker_image_reference_with_consumes_local_cached_outcome() {
         let seen_image_ref = RefCell::new(None::<String>);
 
-        preflight_docker_image_reference_with(
-            "itzg/minecraft-server",
-            "latest",
-            |image_ref| {
-                seen_image_ref.replace(Some(image_ref.to_string()));
-                Ok(DockerImageInspectOutcome::Available(
-                    DockerImageAvailability::LocalCached,
-                ))
-            },
-        )
+        preflight_docker_image_reference_with("itzg/minecraft-server", "latest", |image_ref| {
+            seen_image_ref.replace(Some(image_ref.to_string()));
+            Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached))
+        })
         .expect("local cached images should pass preflight");
 
-        assert_eq!(
-            seen_image_ref.into_inner().as_deref(),
-            Some("itzg/minecraft-server:latest")
-        );
+        assert_eq!(seen_image_ref.into_inner().as_deref(), Some("itzg/minecraft-server:latest"));
     }
 
     #[test]
     fn preflight_docker_image_reference_with_consumes_remote_resolvable_outcome() {
         let seen_image_ref = RefCell::new(None::<String>);
 
-        preflight_docker_image_reference_with(
-            "itzg/minecraft-server",
-            "java21",
-            |image_ref| {
-                seen_image_ref.replace(Some(image_ref.to_string()));
-                Ok(DockerImageInspectOutcome::Available(
-                    DockerImageAvailability::RemoteResolvable,
-                ))
-            },
-        )
+        preflight_docker_image_reference_with("itzg/minecraft-server", "java21", |image_ref| {
+            seen_image_ref.replace(Some(image_ref.to_string()));
+            Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::RemoteResolvable))
+        })
         .expect("remote resolvable images should pass preflight");
 
-        assert_eq!(
-            seen_image_ref.into_inner().as_deref(),
-            Some("itzg/minecraft-server:java21")
-        );
+        assert_eq!(seen_image_ref.into_inner().as_deref(), Some("itzg/minecraft-server:java21"));
     }
 
     #[test]
     fn preflight_docker_image_reference_with_allows_soft_failure_outcome() {
-        preflight_docker_image_reference_with(
-            "itzg/minecraft-server",
-            "latest",
-            |_image_ref| {
-                Ok(DockerImageInspectOutcome::SoftFailure {
-                    failure_kind: DockerCommandFailureKind::Timeout,
-                    message: "docker manifest inspect timeout".to_string(),
-                })
-            },
-        )
+        preflight_docker_image_reference_with("itzg/minecraft-server", "latest", |_image_ref| {
+            Ok(DockerImageInspectOutcome::SoftFailure {
+                failure_kind: DockerCommandFailureKind::Timeout,
+                message: "docker manifest inspect timeout".to_string(),
+            })
+        })
         .expect("soft failure should still allow preflight to continue");
     }
 
@@ -426,67 +404,67 @@ mod tests {
     }
 
     #[test]
-    fn preflight_docker_image_reference_with_preserves_local_success_from_docker_cli_interpretation() {
-        preflight_docker_image_reference_with(
-            "itzg/minecraft-server",
-            "latest",
-            |image_ref| {
-                interpret_docker_image_inspect_outputs_for_tests(
-                    image_ref,
-                    &local_success_output(),
-                    &failed_output("manifest unknown: manifest unknown"),
-                )
-            },
-        )
+    fn preflight_docker_image_reference_with_preserves_local_success_from_docker_cli_interpretation(
+    ) {
+        preflight_docker_image_reference_with("itzg/minecraft-server", "latest", |image_ref| {
+            interpret_docker_image_inspect_outputs_for_tests(
+                image_ref,
+                &local_success_output(),
+                &failed_output("manifest unknown: manifest unknown"),
+            )
+        })
         .expect("local inspect success should stay non-blocking after preflight consumption");
     }
 
     #[test]
-    fn preflight_docker_image_reference_with_preserves_remote_resolvable_from_docker_cli_interpretation() {
-        preflight_docker_image_reference_with(
-            "itzg/minecraft-server",
-            "latest",
-            |image_ref| {
-                interpret_docker_image_inspect_outputs_for_tests(
-                    image_ref,
-                    &failed_output("Error response from daemon: No such image: itzg/minecraft-server:latest"),
-                    &manifest_success_output(),
-                )
-            },
-        )
+    fn preflight_docker_image_reference_with_preserves_remote_resolvable_from_docker_cli_interpretation(
+    ) {
+        preflight_docker_image_reference_with("itzg/minecraft-server", "latest", |image_ref| {
+            interpret_docker_image_inspect_outputs_for_tests(
+                image_ref,
+                &failed_output(
+                    "Error response from daemon: No such image: itzg/minecraft-server:latest",
+                ),
+                &manifest_success_output(),
+            )
+        })
         .expect("manifest success should stay non-blocking after preflight consumption");
     }
 
     #[test]
-    fn preflight_docker_image_reference_with_preserves_soft_failure_from_docker_cli_interpretation() {
-        preflight_docker_image_reference_with(
-            "itzg/minecraft-server",
-            "latest",
-            |image_ref| {
-                interpret_docker_image_inspect_outputs_for_tests(
-                    image_ref,
-                    &failed_output("Error response from daemon: No such image: itzg/minecraft-server:latest"),
-                    &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
-                )
-            },
-        )
+    fn preflight_docker_image_reference_with_preserves_soft_failure_from_docker_cli_interpretation()
+    {
+        preflight_docker_image_reference_with("itzg/minecraft-server", "latest", |image_ref| {
+            interpret_docker_image_inspect_outputs_for_tests(
+                image_ref,
+                &failed_output(
+                    "Error response from daemon: No such image: itzg/minecraft-server:latest",
+                ),
+                &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
+            )
+        })
         .expect("network soft failure should stay non-blocking after preflight consumption");
     }
 
     #[test]
-    fn preflight_docker_image_reference_with_preserves_hard_failure_from_docker_cli_interpretation() {
+    fn preflight_docker_image_reference_with_preserves_hard_failure_from_docker_cli_interpretation()
+    {
         let err = preflight_docker_image_reference_with(
             "itzg/minecraft-server",
             "missing",
             |image_ref| {
                 interpret_docker_image_inspect_outputs_for_tests(
                     image_ref,
-                    &failed_output("Error response from daemon: No such image: itzg/minecraft-server:missing"),
+                    &failed_output(
+                        "Error response from daemon: No such image: itzg/minecraft-server:missing",
+                    ),
                     &failed_output_with_stdout("manifest unknown: manifest unknown"),
                 )
             },
         )
-        .expect_err("image-not-found hard failure should remain user-visible after preflight consumption");
+        .expect_err(
+            "image-not-found hard failure should remain user-visible after preflight consumption",
+        );
 
         assert!(err.contains("镜像或标签不存在"));
         assert!(err.contains("manifest unknown"));
@@ -513,9 +491,7 @@ mod tests {
             &DockerCommandMode::DockerStdio,
             |image_ref| {
                 seen_image_ref.replace(Some(image_ref.to_string()));
-                Ok(DockerImageInspectOutcome::Available(
-                    DockerImageAvailability::LocalCached,
-                ))
+                Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached))
             },
             |image_ref| {
                 probe_calls.set(probe_calls.get() + 1);
@@ -525,10 +501,7 @@ mod tests {
         )
         .expect("local cached docker_stdio image should run probe and pass");
 
-        assert_eq!(
-            seen_image_ref.into_inner().as_deref(),
-            Some("itzg/minecraft-server:latest")
-        );
+        assert_eq!(seen_image_ref.into_inner().as_deref(), Some("itzg/minecraft-server:latest"));
         assert_eq!(probe_calls.get(), 1);
     }
 
@@ -541,9 +514,7 @@ mod tests {
             "latest",
             &DockerCommandMode::DockerStdio,
             |_image_ref| {
-                Ok(DockerImageInspectOutcome::Available(
-                    DockerImageAvailability::RemoteResolvable,
-                ))
+                Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::RemoteResolvable))
             },
             |_image_ref| {
                 probe_calls.set(probe_calls.get() + 1);
@@ -629,7 +600,8 @@ mod tests {
     }
 
     #[test]
-    fn preflight_docker_command_mode_support_with_preserves_local_success_probe_requirement_from_docker_cli_interpretation() {
+    fn preflight_docker_command_mode_support_with_preserves_local_success_probe_requirement_from_docker_cli_interpretation(
+    ) {
         let probe_calls = Cell::new(0);
 
         preflight_docker_command_mode_support_with(
@@ -654,7 +626,8 @@ mod tests {
     }
 
     #[test]
-    fn preflight_docker_command_mode_support_with_preserves_remote_resolvable_skip_from_docker_cli_interpretation() {
+    fn preflight_docker_command_mode_support_with_preserves_remote_resolvable_skip_from_docker_cli_interpretation(
+    ) {
         let probe_calls = Cell::new(0);
 
         preflight_docker_command_mode_support_with(
@@ -664,7 +637,9 @@ mod tests {
             |image_ref| {
                 interpret_docker_image_inspect_outputs_for_tests(
                     image_ref,
-                    &failed_output("Error response from daemon: No such image: itzg/minecraft-server:latest"),
+                    &failed_output(
+                        "Error response from daemon: No such image: itzg/minecraft-server:latest",
+                    ),
                     &manifest_success_output(),
                 )
             },
@@ -679,7 +654,8 @@ mod tests {
     }
 
     #[test]
-    fn preflight_docker_command_mode_support_with_preserves_soft_failure_skip_from_docker_cli_interpretation() {
+    fn preflight_docker_command_mode_support_with_preserves_soft_failure_skip_from_docker_cli_interpretation(
+    ) {
         let probe_calls = Cell::new(0);
 
         preflight_docker_command_mode_support_with(
@@ -689,7 +665,9 @@ mod tests {
             |image_ref| {
                 interpret_docker_image_inspect_outputs_for_tests(
                     image_ref,
-                    &failed_output("Error response from daemon: No such image: itzg/minecraft-server:latest"),
+                    &failed_output(
+                        "Error response from daemon: No such image: itzg/minecraft-server:latest",
+                    ),
                     &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
                 )
             },
@@ -704,7 +682,8 @@ mod tests {
     }
 
     #[test]
-    fn preflight_docker_command_mode_support_with_preserves_hard_failure_from_docker_cli_interpretation() {
+    fn preflight_docker_command_mode_support_with_preserves_hard_failure_from_docker_cli_interpretation(
+    ) {
         let probe_calls = Cell::new(0);
         let err = preflight_docker_command_mode_support_with(
             "itzg/minecraft-server",
@@ -713,7 +692,9 @@ mod tests {
             |image_ref| {
                 interpret_docker_image_inspect_outputs_for_tests(
                     image_ref,
-                    &failed_output("Error response from daemon: No such image: itzg/minecraft-server:missing"),
+                    &failed_output(
+                        "Error response from daemon: No such image: itzg/minecraft-server:missing",
+                    ),
                     &failed_output_with_stdout("manifest unknown: manifest unknown"),
                 )
             },

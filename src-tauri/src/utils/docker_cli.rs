@@ -125,7 +125,11 @@ pub(crate) fn inspect_docker_image_reference_with_soft_failures(
 ) -> Result<DockerImageInspectOutcome, String> {
     let docker_path = docker_executable_path()?;
 
-    inspect_docker_image_reference_with_runner(&docker_path, image_ref, run_docker_command_with_timeout)
+    inspect_docker_image_reference_with_runner(
+        &docker_path,
+        image_ref,
+        run_docker_command_with_timeout,
+    )
 }
 
 fn inspect_docker_image_reference_with_runner<F>(
@@ -382,12 +386,10 @@ mod tests {
     use super::{
         classify_docker_command_failure, classify_manifest_inspect_outcome,
         docker_error_indicates_missing_container, exit_status_from_raw,
-        format_docker_image_reference, interpret_docker_image_inspect_outputs,
-        inspect_docker_image_reference_with_runner, render_docker_command_error,
-        resolve_docker_image_and_tag,
-        split_docker_image_reference_tag, DockerCommandFailureKind,
-        DockerImageAvailability, DockerImageInspectOutcome,
-        DOCKER_IMAGE_INSPECT_TIMEOUT_SECS,
+        format_docker_image_reference, inspect_docker_image_reference_with_runner,
+        interpret_docker_image_inspect_outputs, render_docker_command_error,
+        resolve_docker_image_and_tag, split_docker_image_reference_tag, DockerCommandFailureKind,
+        DockerImageAvailability, DockerImageInspectOutcome, DOCKER_IMAGE_INSPECT_TIMEOUT_SECS,
     };
     use std::process::Output;
 
@@ -553,7 +555,9 @@ mod tests {
             |docker_path, args, timeout, action| {
                 calls.push((
                     docker_path.to_string(),
-                    args.iter().map(|value| value.to_string()).collect::<Vec<_>>(),
+                    args.iter()
+                        .map(|value| value.to_string())
+                        .collect::<Vec<_>>(),
                     timeout.as_secs(),
                     action.to_string(),
                 ));
@@ -575,7 +579,8 @@ mod tests {
     }
 
     #[test]
-    fn inspect_docker_image_reference_with_runner_interprets_manifest_success_without_real_docker() {
+    fn inspect_docker_image_reference_with_runner_interprets_manifest_success_without_real_docker()
+    {
         let mut call_index = 0;
         let outcome = inspect_docker_image_reference_with_runner(
             "docker",
