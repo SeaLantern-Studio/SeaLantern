@@ -1,48 +1,49 @@
 你是 Code Agent 2。
 
-这轮任务只收“前端所有建服/接入入口的实例配置透传”。目标不是再做新 UI，而是把已经有的 `cpu_policy + jvm_preset + jvm_args` 真正带到各条入口里，不只停在当前一条主路径。
+这轮任务只做“提交前验证与分组建议”。目标不是继续铺代码，而是把当前工作区按功能面核一遍，确认测试口径、风险边界和建议的 commit 分组，避免下一步提交时把半成品混在一起。
 
 调度说明：这是第一阶段任务，可与 `Prompt-1` 并行启动。
 
-唯一输出要求：正常修改代码，并把结果写入 `.cache2`，不要口述回复，不要 commit。
+唯一输出要求：正常修改代码或补验证脚本（如果确有必要），并把结果写入 `.cache2`，不要口述回复，不要 commit。
 
 必须遵守：
-- 允许编辑前端 TS、组合式逻辑、必要的页面接线、必要的 API 层。
-- 如确有需要，可最小补后端请求字段对齐，但不要改运行时读取主线。
-- 不要重做配置页启动详情卡片。
+- 允许补很小的测试/类型/验证修正，只在验证被真实问题卡住时动代码。
+- 不要主动重构功能代码。
+- 不要做新的 UI 能力。
 - 不要 commit。
 
 必须阅读：
-- `src/components/views/create/useCreateServerSubmit.ts`
-- `src/views/CreateServerView.vue`
-- `src/components/views/create/useCreateServerPage.ts`
-- `src/components/views/create/useCreateServerDefaults.ts`
-- `src/api/server.ts`
-- `src/types/server.ts`
+- `.cache1`
+- `.cache2`
+- `git status --short`
+- `src-tauri/src/commands/server/config.rs`
+- `src-tauri/src/services/server/manager/startup_support.rs`
+- `src-tauri/src/services/server/runtime/docker_itzg/helpers.rs`
+- `src/components/config/useStartupConfigSection.ts`
+- `src/components/config/ConfigStartupSection.vue`
 - `src/views/SettingsView.vue`
 - `src/components/views/settings/ServerDefaultsCard.vue`
-- `.cache2`
 
 本轮你应该实现的范围：
-1. 逐条核对并补齐这些入口对 `cpu_policy + jvm_preset + jvm_args` 的透传：
-   - 新建本地服务器
-   - 接入已有服务器
-   - 导入整合包/复制目录
-   - 其他当前建服页可触达的本地入口
-2. 默认设置页里的 `default_cpu_policy`、`default_jvm_preset`、`default_jvm_args` 要能稳定继承到建服页面状态。
-3. 入口侧校验要统一，别出现某条入口能保存非法 CPU 策略、另一条又拦住的情况。
-4. 如果某条入口当前 UI 根本没覆盖到，就把缺口写清楚，不要假装全通。
-5. 补最小验证，至少说明每条入口最后落到了哪一个 API 调用上。
+1. 站在“准备提交”的角度，把当前改动按功能面归类：
+   - 实例配置文件迁移与兼容
+   - 运行时实例配置优先级
+   - 配置页真实启动详情与保存后刷新
+   - CPU 亲和性 / JVM 预设 / 默认值入口
+   - 建服入口透传与桥层补齐
+2. 逐类核对是否已经具备最小验证，不够的就补最小验证。
+3. 如果发现当前工作区里有明显不该一起提交的混杂改动，要指出分组方式；如果确实缺一块验证导致不能放心提交，也要写清楚。
+4. 只在验证被真实 bug 卡住时做最小修补。
 
 本轮不要做：
-- 不要改运行时读取优先级。
-- 不要扩展示卡片文案。
-- 不要再新增新的设置项。
+- 不要扩大实现范围。
+- 不要新增产品功能。
+- 不要替用户直接 commit。
 
 完成后 `.cache2` 输出格式：
 - `已修改文件`
-- `已接通的入口`
-- `每条入口最后调用了什么`
-- `默认值继承情况`
-- `验证结果`
-- `遗留风险`
+- `建议的 commit 分组`
+- `每组包含什么`
+- `已完成验证`
+- `仍需注意的风险`
+
