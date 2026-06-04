@@ -110,6 +110,33 @@ interface StartupScanResultRaw {
   mc_version_detection_failed: boolean;
 }
 
+interface LocalLaunchDetailRaw {
+  startupMode: LocalLaunchDetail["startup_mode"];
+  javaPath: string;
+  launchTarget: string;
+  effectiveJvmArgs: string[];
+  commandPreview: string;
+}
+
+interface DockerLaunchDetailRaw {
+  runtimeKind: DockerLaunchDetail["runtime_kind"];
+  image: string;
+  imageTag: string;
+  containerName: string;
+  cpusetApplied: string | null;
+  jvmPreset: DockerLaunchDetail["jvm_preset"];
+  jvmOptsPreview: string | null;
+  jvmXxOptsPreview: string | null;
+  jvmOptsArgsCount: number;
+  jvmXxOptsArgsCount: number;
+  jvmOptsOverriddenByRuntimeEnv: boolean;
+  jvmXxOptsOverriddenByRuntimeEnv: boolean;
+  activeProcessorCountStatus: DockerLaunchDetail["active_processor_count_status"];
+  activeProcessorCountValue: number | null;
+  dockerArgsPreview: string[];
+  commandPreview: string;
+}
+
 export const serverApi = {
   async create(params: {
     name: string;
@@ -370,11 +397,36 @@ export const serverApi = {
   },
 
   async getLocalLaunchDetail(id: string): Promise<LocalLaunchDetail> {
-    return tauriInvoke("get_local_launch_detail", { id });
+    const result = await tauriInvoke<LocalLaunchDetailRaw>("get_local_launch_detail", { id });
+    return {
+      startup_mode: result.startupMode,
+      java_path: result.javaPath,
+      launch_target: result.launchTarget,
+      effective_jvm_args: result.effectiveJvmArgs,
+      command_preview: result.commandPreview,
+    };
   },
 
   async getDockerLaunchDetail(id: string): Promise<DockerLaunchDetail> {
-    return tauriInvoke("get_docker_launch_detail", { id });
+    const result = await tauriInvoke<DockerLaunchDetailRaw>("get_docker_launch_detail", { id });
+    return {
+      runtime_kind: result.runtimeKind,
+      image: result.image,
+      image_tag: result.imageTag,
+      container_name: result.containerName,
+      cpuset_applied: result.cpusetApplied,
+      jvm_preset: result.jvmPreset,
+      jvm_opts_preview: result.jvmOptsPreview,
+      jvm_xx_opts_preview: result.jvmXxOptsPreview,
+      jvm_opts_args_count: result.jvmOptsArgsCount,
+      jvm_xx_opts_args_count: result.jvmXxOptsArgsCount,
+      jvm_opts_overridden_by_runtime_env: result.jvmOptsOverriddenByRuntimeEnv,
+      jvm_xx_opts_overridden_by_runtime_env: result.jvmXxOptsOverriddenByRuntimeEnv,
+      active_processor_count_status: result.activeProcessorCountStatus,
+      active_processor_count_value: result.activeProcessorCountValue,
+      docker_args_preview: result.dockerArgsPreview,
+      command_preview: result.commandPreview,
+    };
   },
 
   onLogLine(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {

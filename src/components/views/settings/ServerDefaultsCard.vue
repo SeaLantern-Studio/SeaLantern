@@ -5,10 +5,11 @@ import SLCard from "@components/common/SLCard.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
+import CpuPolicyEditor from "@components/startup/CpuPolicyEditor.vue";
 import JavaDownloader from "@components/JavaDownloader.vue";
 import type { JavaInfo } from "@api/java";
 import { i18n } from "@language";
-import type { JvmPresetConfig, JvmPresetId } from "@type/server";
+import type { CpuPolicyConfig, JvmPresetConfig, JvmPresetId } from "@type/server";
 import { MVP_JVM_PRESET_IDS } from "@utils/serverStartupConfig";
 
 const props = defineProps<{
@@ -18,6 +19,7 @@ const props = defineProps<{
   defaultJavaPath: string;
   defaultJvmArgsText: string;
   defaultJvmPreset: JvmPresetConfig;
+  defaultCpuPolicy: CpuPolicyConfig;
   defaultRunPath: string;
   javaList: JavaInfo[];
   javaLoading: boolean;
@@ -30,6 +32,7 @@ const emit = defineEmits<{
   (e: "update:defaultJavaPath", value: string): void;
   (e: "update:defaultJvmArgsText", value: string): void;
   (e: "update:defaultJvmPreset", value: JvmPresetConfig): void;
+  (e: "update:defaultCpuPolicy", value: CpuPolicyConfig): void;
   (e: "update:defaultRunPath", value: string): void;
   (e: "change"): void;
   (e: "detectJava"): void;
@@ -267,6 +270,23 @@ const jvmPresetOptions = computed(() =>
         <p class="sl-startup-notice">
           {{ i18n.t("settings.startup_notice_not_main_thread_boost") }}
         </p>
+      </div>
+
+      <div class="sl-setting-row full-width">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.default_cpu_policy_label") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.default_cpu_policy_desc") }}</span>
+        </div>
+        <CpuPolicyEditor
+          :model-value="defaultCpuPolicy"
+          scope="settings"
+          @update:modelValue="
+            (value) => {
+              emit('update:defaultCpuPolicy', value);
+              emit('change');
+            }
+          "
+        />
       </div>
 
       <div class="sl-setting-row full-width">

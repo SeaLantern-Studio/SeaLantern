@@ -1,10 +1,18 @@
-import { onMounted, onUnmounted, ref, watch, type Ref } from "vue";
+import { onUnmounted, ref, watch, type Ref } from "vue";
 import { configApi, type SLStartupConfig } from "@api/config";
-import type { JvmPresetConfig } from "@type/server";
+import { serverApi } from "@api/server";
+import { i18n } from "@language";
+import type {
+  DockerLaunchDetail,
+  JvmPresetConfig,
+  LocalLaunchDetail,
+  ServerRuntimeKind,
+} from "@type/server";
 import {
   createDefaultCpuPolicy,
   createDefaultJvmPreset,
   deserializeJvmArgs,
+  getCpuPolicyValidationError,
   normalizeCpuPolicy,
   normalizeJvmPreset,
   serializeJvmArgsText,
@@ -12,10 +20,16 @@ import {
 
 interface UseStartupConfigSectionOptions {
   serverPath: Ref<string>;
+  serverId: Ref<string | null>;
+  runtimeKind: Ref<ServerRuntimeKind | null>;
   defaultMaxMemory: Ref<number>;
   defaultMinMemory: Ref<number>;
   onSaved?: (maxMemory: number, minMemory: number) => void;
 }
+
+type StartupLaunchDetail =
+  | { kind: "local"; detail: LocalLaunchDetail }
+  | { kind: "docker_itzg"; detail: DockerLaunchDetail };
 
 const AUTO_SAVE_DELAY = 800;
 
@@ -28,8 +42,12 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
   const saving = ref(false);
   const error = ref<string | null>(null);
   const cpuPolicy = ref(createDefaultCpuPolicy());
+  const launchDetail = ref<StartupLaunchDetail | null>(null);
+  const launchDetailLoading = ref(false);
+  const launchDetailError = ref<string | null>(null);
 
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  let launchDetailRequestToken = 0;
 
   function clearAutoSaveTimer() {
     if (autoSaveTimer) {
@@ -63,6 +81,51 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     }
   }
 
+  async function loadLaunchDetail() {
+    const serverId = options.serverId.value;
+    const runtimeKind = options.runtimeKind.value;
+
+    launchDetailRequestToken += 1;
+    const currentToken = launchDetailRequestToken;
+
+    if (!serverId || !runtimeKind) {
+      launchDetail.value = null;
+      launchDetailError.value = null;
+      launchDetailLoading.value = false;
+      return;
+    }
+
+    launchDetailLoading.value = true;
+    launchDetailError.value = null;
+
+    try {
+      if (runtimeKind === "local") {
+        const detail = await serverApi.getLocalLaunchDetail(serverId);
+        if (currentToken !== launchDetailRequestToken) {
+          return;
+        }
+        launchDetail.value = { kind: "local", detail };
+        return;
+      }
+
+      const detail = await serverApi.getDockerLaunchDetail(serverId);
+      if (currentToken !== launchDetailRequestToken) {
+        return;
+      }
+      launchDetail.value = { kind: "docker_itzg", detail };
+    } catch (e: any) {
+      if (currentToken !== launchDetailRequestToken) {
+        return;
+      }
+      launchDetail.value = null;
+      launchDetailError.value = e?.toString() || "加载真实启动详情失败";
+    } finally {
+      if (currentToken === launchDetailRequestToken) {
+        launchDetailLoading.value = false;
+      }
+    }
+  }
+
   async function saveConfig() {
     if (!options.serverPath.value || saving.value) return;
     if (maxMemory.value < 128) {
@@ -78,6 +141,12 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
       return;
     }
 
+    const cpuPolicyError = getCpuPolicyValidationError(cpuPolicy.value);
+    if (cpuPolicyError) {
+      error.value = i18n.t(`config.cpu_policy_invalid_${cpuPolicyError}`);
+      return;
+    }
+
     saving.value = true;
     error.value = null;
     try {
@@ -90,6 +159,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
       };
       await configApi.writeSLConfig(options.serverPath.value, config);
       options.onSaved?.(maxMemory.value, minMemory.value);
+      void loadLaunchDetail();
     } catch (e: any) {
       error.value = e?.toString() || "保存启动配置失败";
     } finally {
@@ -97,19 +167,27 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     }
   }
 
-  onMounted(() => {
-    void loadConfig();
-  });
-
   onUnmounted(() => {
     clearAutoSaveTimer();
   });
 
-  watch(options.serverPath, () => {
-    void loadConfig();
-  });
+  watch(
+    options.serverPath,
+    () => {
+      void loadConfig();
+    },
+    { immediate: true },
+  );
 
-  watch([maxMemory, minMemory, jvmArgsText, jvmPreset], () => {
+  watch(
+    [options.serverId, options.runtimeKind],
+    () => {
+      void loadLaunchDetail();
+    },
+    { immediate: true },
+  );
+
+  watch([maxMemory, minMemory, jvmArgsText, jvmPreset, cpuPolicy], () => {
     scheduleAutoSave();
   });
 
@@ -122,7 +200,11 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     loading,
     saving,
     error,
+    launchDetail,
+    launchDetailLoading,
+    launchDetailError,
     loadConfig,
+    loadLaunchDetail,
     saveConfig,
   };
 }

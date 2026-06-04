@@ -59,6 +59,9 @@ fn handle_create_server(
             req.server_path,
             req.startup_mode,
             req.custom_command,
+            req.jvm_args,
+            req.cpu_policy,
+            req.jvm_preset,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -78,6 +81,9 @@ fn handle_import_server(
             req.min_memory,
             req.port,
             req.online_mode,
+            req.jvm_args,
+            req.cpu_policy,
+            req.jvm_preset,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -102,6 +108,9 @@ fn handle_import_modpack(
             req.startup_file_path,
             req.core_type,
             req.mc_version,
+            req.jvm_args,
+            req.cpu_policy,
+            req.jvm_preset,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -245,6 +254,9 @@ fn handle_add_existing_server(
             req.custom_command,
             req.core_type,
             req.mc_version,
+            req.jvm_args,
+            req.cpu_policy,
+            req.jvm_preset,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })

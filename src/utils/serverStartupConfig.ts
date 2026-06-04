@@ -1,5 +1,7 @@
 import type { CpuPolicyConfig, JvmPresetConfig, JvmPresetId } from "@type/server";
 
+export type CpuPolicyValidationError = "count" | "explicit" | null;
+
 export const MVP_JVM_PRESET_IDS: JvmPresetId[] = ["none", "g1_basic", "aikar_g1"];
 
 const JVM_PRESET_ARGS: Record<JvmPresetId, string[]> = {
@@ -76,10 +78,43 @@ export function deserializeJvmArgs(args: string[] | null | undefined): string {
 }
 
 export function normalizeCpuPolicy(cpuPolicy: CpuPolicyConfig | null | undefined): CpuPolicyConfig {
+  const mode =
+    cpuPolicy?.mode === "count" || cpuPolicy?.mode === "explicit" || cpuPolicy?.mode === "off"
+      ? cpuPolicy.mode
+      : "off";
+  const count = cpuPolicy?.count;
+  const explicitSet = cpuPolicy?.explicit_set?.trim() ?? "";
+
   return {
     ...createDefaultCpuPolicy(),
     ...(cpuPolicy ?? {}),
+    mode,
+    count: mode === "count" && Number.isFinite(count) ? Math.trunc(Number(count)) : null,
+    explicit_set: mode === "explicit" ? (explicitSet.length > 0 ? explicitSet : null) : null,
+    sync_active_processor_count:
+      cpuPolicy?.sync_active_processor_count ??
+      createDefaultCpuPolicy().sync_active_processor_count,
   };
+}
+
+export function getCpuPolicyValidationError(
+  cpuPolicy: CpuPolicyConfig | null | undefined,
+): CpuPolicyValidationError {
+  const normalized = normalizeCpuPolicy(cpuPolicy);
+
+  if (normalized.mode === "count") {
+    if (normalized.count == null || normalized.count <= 0) {
+      return "count";
+    }
+  }
+
+  if (normalized.mode === "explicit") {
+    if (!normalized.explicit_set?.trim()) {
+      return "explicit";
+    }
+  }
+
+  return null;
 }
 
 function isJvmPresetId(value: unknown): value is JvmPresetId {

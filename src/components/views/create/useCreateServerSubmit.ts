@@ -11,6 +11,7 @@ import {
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
 import {
+  getCpuPolicyValidationError,
   normalizeCpuPolicy,
   normalizeJvmPreset,
   serializeJvmArgsText,
@@ -203,6 +204,12 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
     }
     if (!options.serverName.value.trim()) {
       options.showError(i18n.t("common.enter_server_name"));
+      return false;
+    }
+
+    const cpuPolicyError = getCpuPolicyValidationError(options.cpuPolicy.value);
+    if (cpuPolicyError) {
+      options.showError(i18n.t(`create.cpu_policy_invalid_${cpuPolicyError}`));
       return false;
     }
 

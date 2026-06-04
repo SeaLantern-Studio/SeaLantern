@@ -3,6 +3,7 @@ import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
+import CpuPolicyEditor from "@components/startup/CpuPolicyEditor.vue";
 import { i18n } from "@language";
 import { computed } from "vue";
 import {
@@ -11,7 +12,7 @@ import {
   getJvmPresetPreviewArgs,
   serializeJvmArgsText,
 } from "@utils/serverStartupConfig";
-import type { JvmPresetId, LocalStartupMode } from "@type/server";
+import type { CpuPolicyConfig, JvmPresetId, LocalStartupMode } from "@type/server";
 
 const props = defineProps<{
   serverName: string;
@@ -21,6 +22,7 @@ const props = defineProps<{
   onlineMode: boolean;
   jvmArgsText: string;
   jvmPreset: JvmPresetId;
+  cpuPolicy: CpuPolicyConfig;
   startupMode?: LocalStartupMode;
   startupTarget?: string;
   customCommandPreview?: string;
@@ -35,6 +37,7 @@ const emit = defineEmits<{
   (e: "update:onlineMode", value: boolean): void;
   (e: "update:jvmArgsText", value: string): void;
   (e: "update:jvmPreset", value: JvmPresetId): void;
+  (e: "update:cpuPolicy", value: CpuPolicyConfig): void;
 }>();
 
 const jvmPresetOptions = computed(() =>
@@ -163,6 +166,17 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
           <p class="startup-advanced-notice">
             {{ i18n.t("create.startup_notice_not_main_thread_boost") }}
           </p>
+        </div>
+
+        <div class="startup-advanced-field">
+          <span class="startup-row-label">{{ i18n.t("create.cpu_policy_label") }}</span>
+          <CpuPolicyEditor
+            :model-value="cpuPolicy"
+            scope="create"
+            :disabled="disabled"
+            @update:modelValue="$emit('update:cpuPolicy', $event)"
+          />
+          <p class="startup-field-hint">{{ i18n.t("create.cpu_policy_desc") }}</p>
         </div>
 
         <div class="startup-advanced-field">

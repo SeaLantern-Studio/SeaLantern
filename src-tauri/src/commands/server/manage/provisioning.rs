@@ -16,6 +16,9 @@ pub(super) fn create_server(
     server_path: Option<String>,
     startup_mode: String,
     custom_command: Option<String>,
+    jvm_args: Vec<String>,
+    cpu_policy: CpuPolicyConfig,
+    jvm_preset: JvmPresetConfig,
 ) -> Result<ServerInstance, String> {
     let req = CreateServerRequest {
         name,
@@ -30,9 +33,9 @@ pub(super) fn create_server(
         server_path,
         startup_mode,
         custom_command,
-        jvm_args: Vec::new(),
-        cpu_policy: CpuPolicyConfig::default(),
-        jvm_preset: JvmPresetConfig::default(),
+        jvm_args,
+        cpu_policy,
+        jvm_preset,
     };
     manager().create_server(req)
 }
@@ -48,6 +51,9 @@ pub(super) fn import_server(
     min_memory: u32,
     port: u16,
     online_mode: bool,
+    jvm_args: Vec<String>,
+    cpu_policy: CpuPolicyConfig,
+    jvm_preset: JvmPresetConfig,
 ) -> Result<ServerInstance, String> {
     let req = ImportServerRequest {
         name,
@@ -60,9 +66,9 @@ pub(super) fn import_server(
         min_memory,
         port,
         online_mode,
-        jvm_args: Vec::new(),
-        cpu_policy: CpuPolicyConfig::default(),
-        jvm_preset: JvmPresetConfig::default(),
+        jvm_args,
+        cpu_policy,
+        jvm_preset,
     };
     manager().import_server(req)
 }
@@ -81,6 +87,9 @@ pub(super) fn add_existing_server(
     custom_command: Option<String>,
     core_type: Option<String>,
     mc_version: Option<String>,
+    jvm_args: Vec<String>,
+    cpu_policy: CpuPolicyConfig,
+    jvm_preset: JvmPresetConfig,
 ) -> Result<ServerInstance, String> {
     let req = AddExistingServerRequest {
         name,
@@ -95,9 +104,9 @@ pub(super) fn add_existing_server(
         custom_command,
         core_type,
         mc_version,
-        jvm_args: Vec::new(),
-        cpu_policy: CpuPolicyConfig::default(),
-        jvm_preset: JvmPresetConfig::default(),
+        jvm_args,
+        cpu_policy,
+        jvm_preset,
     };
     manager().add_existing_server(req)
 }
@@ -118,6 +127,9 @@ pub(super) fn import_modpack(
     startup_file_path: Option<String>,
     core_type: Option<String>,
     mc_version: Option<String>,
+    jvm_args: Vec<String>,
+    cpu_policy: CpuPolicyConfig,
+    jvm_preset: JvmPresetConfig,
 ) -> Result<ServerInstance, String> {
     let req = ImportModpackRequest {
         name,
@@ -134,9 +146,9 @@ pub(super) fn import_modpack(
         startup_file_path,
         core_type,
         mc_version,
-        jvm_args: Vec::new(),
-        cpu_policy: CpuPolicyConfig::default(),
-        jvm_preset: JvmPresetConfig::default(),
+        jvm_args,
+        cpu_policy,
+        jvm_preset,
     };
     manager().import_modpack(req)
 }

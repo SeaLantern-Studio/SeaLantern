@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
+use crate::models::server::{CpuPolicyConfig, JvmPresetConfig};
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CreateServerRequest {
@@ -19,6 +21,12 @@ pub(super) struct CreateServerRequest {
     pub startup_mode: String,
     #[serde(default)]
     pub custom_command: Option<String>,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[cfg(test)]
@@ -48,6 +56,7 @@ mod tests {
         assert_eq!(req.aliases, vec!["cache_server", "test_server"]);
         assert_eq!(req.server_path.as_deref(), Some("E:/srv"));
         assert_eq!(req.custom_command.as_deref(), Some("java -Xmx4G -Xms4G -jar server.jar nogui"));
+        assert!(req.jvm_args.is_empty());
     }
 
     #[test]
@@ -70,6 +79,7 @@ mod tests {
         assert!(req.aliases.is_empty());
         assert_eq!(req.server_path, None);
         assert_eq!(req.custom_command, None);
+        assert!(req.jvm_args.is_empty());
     }
 }
 
@@ -84,6 +94,12 @@ pub(super) struct ImportServerRequest {
     pub min_memory: u32,
     pub port: u16,
     pub online_mode: bool,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -102,6 +118,12 @@ pub(super) struct ImportModpackRequest {
     pub startup_file_path: Option<String>,
     pub core_type: Option<String>,
     pub mc_version: Option<String>,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -178,6 +200,12 @@ pub(super) struct AddExistingServerRequest {
     pub custom_command: Option<String>,
     pub core_type: Option<String>,
     pub mc_version: Option<String>,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Deserialize)]

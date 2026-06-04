@@ -3,6 +3,7 @@ import { computed } from "vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
+import CpuPolicyEditor from "@components/startup/CpuPolicyEditor.vue";
 import { i18n } from "@language";
 import { useStartupConfigSection } from "@components/config/useStartupConfigSection";
 import {
@@ -26,8 +27,14 @@ const emit = defineEmits<{
 
 const serverStore = useServerStore();
 
+const currentServer = computed(
+  () => serverStore.servers.find((server) => server.path === props.serverPath) ?? null,
+);
+
 const startupConfig = useStartupConfigSection({
   serverPath: computed(() => props.serverPath),
+  serverId: computed(() => currentServer.value?.id ?? null),
+  runtimeKind: computed(() => currentServer.value?.runtime.kind ?? null),
   defaultMaxMemory: computed(() => props.defaultMaxMemory),
   defaultMinMemory: computed(() => props.defaultMinMemory),
   onSaved: (maxMemory, minMemory) => {
@@ -43,15 +50,7 @@ const jvmPresetOptions = computed(() =>
   })),
 );
 
-const currentServer = computed(
-  () => serverStore.servers.find((server) => server.path === props.serverPath) ?? null,
-);
-
-const startupModeLabel = computed(() => {
-  const mode =
-    currentServer.value?.runtime.kind === "local"
-      ? (currentServer.value.runtime.startup_mode as LocalStartupMode)
-      : undefined;
+function formatStartupModeLabel(mode?: LocalStartupMode) {
   switch (mode) {
     case "starter":
       return i18n.t("create.startup_mode_starter");
@@ -66,6 +65,31 @@ const startupModeLabel = computed(() => {
     default:
       return i18n.t("common.unknown");
   }
+}
+
+function formatJvmPresetLabel(preset?: string | null) {
+  switch (preset) {
+    case "none":
+    case "g1_basic":
+    case "aikar_g1":
+    case "throughput_basic":
+    case "paper_recommended_lite":
+      return i18n.t(`common.jvm_preset_${preset}_label`);
+    case undefined:
+    case null:
+    case "":
+      return i18n.t("common.unknown");
+    default:
+      return preset;
+  }
+}
+
+const startupModeLabel = computed(() => {
+  const mode =
+    currentServer.value?.runtime.kind === "local"
+      ? (currentServer.value.runtime.startup_mode as LocalStartupMode)
+      : undefined;
+  return formatStartupModeLabel(mode);
 });
 
 const startupTargetSummary = computed(() => {
@@ -92,6 +116,74 @@ const selectedJvmPresetOption = computed(
       (option) => option.value === startupConfig.jvmPreset.value.preset,
     ) ?? null,
 );
+
+const realLaunchDetail = computed(() => startupConfig.launchDetail.value);
+const realLocalLaunchDetail = computed(() =>
+  realLaunchDetail.value?.kind === "local" ? realLaunchDetail.value.detail : null,
+);
+const realDockerLaunchDetail = computed(() =>
+  realLaunchDetail.value?.kind === "docker_itzg" ? realLaunchDetail.value.detail : null,
+);
+
+const realLaunchModeLabel = computed(() => {
+  if (realLocalLaunchDetail.value) {
+    return formatStartupModeLabel(realLocalLaunchDetail.value.startup_mode);
+  }
+
+  if (realDockerLaunchDetail.value) {
+    return i18n.t("config.startup_preview_mode_docker_itzg");
+  }
+
+  return i18n.t("common.unknown");
+});
+
+const dockerPresetStatusTags = computed(() => {
+  const detail = realDockerLaunchDetail.value;
+  if (!detail) {
+    return [];
+  }
+
+  const tags = [
+    formatJvmPresetLabel(detail.jvm_preset),
+    i18n.t("config.startup_preview_jvm_opts_count", { count: detail.jvm_opts_args_count }),
+    i18n.t("config.startup_preview_jvm_xx_opts_count", {
+      count: detail.jvm_xx_opts_args_count,
+    }),
+  ];
+
+  if (detail.jvm_opts_overridden_by_runtime_env) {
+    tags.push(i18n.t("config.startup_preview_jvm_opts_overridden"));
+  }
+
+  if (detail.jvm_xx_opts_overridden_by_runtime_env) {
+    tags.push(i18n.t("config.startup_preview_jvm_xx_opts_overridden"));
+  }
+
+  if (detail.cpuset_applied) {
+    tags.push(i18n.t("config.startup_preview_cpuset_applied", { value: detail.cpuset_applied }));
+  }
+
+  switch (detail.active_processor_count_status) {
+    case "injected":
+      tags.push(
+        i18n.t("config.startup_preview_active_processor_count_injected", {
+          value: detail.active_processor_count_value ?? "?",
+        }),
+      );
+      break;
+    case "skipped_by_jvm_args":
+      tags.push(i18n.t("config.startup_preview_active_processor_count_from_jvm_args"));
+      break;
+    case "skipped_by_runtime_env_override":
+      tags.push(i18n.t("config.startup_preview_active_processor_count_runtime_override"));
+      break;
+    default:
+      tags.push(i18n.t("config.startup_preview_active_processor_count_disabled"));
+      break;
+  }
+
+  return tags;
+});
 
 const parsedJvmArgs = computed(() => serializeJvmArgsText(startupConfig.jvmArgsText.value));
 const jvmPresetPreviewArgs = computed(() =>
@@ -155,6 +247,22 @@ const jvmPresetArgCount = computed(
         <div class="config-entry glass-card config-entry--stacked">
           <div class="entry-header">
             <div class="entry-key-row">
+              <span class="entry-key">{{ i18n.t("config.cpu_policy_label") }}</span>
+            </div>
+            <p class="entry-desc text-caption">{{ i18n.t("config.cpu_policy_desc") }}</p>
+          </div>
+          <div class="entry-control entry-control--full">
+            <CpuPolicyEditor
+              :model-value="startupConfig.cpuPolicy.value"
+              scope="config"
+              :disabled="startupConfig.saving.value"
+              @update:modelValue="startupConfig.cpuPolicy.value = $event"
+            />
+          </div>
+        </div>
+        <div class="config-entry glass-card config-entry--stacked">
+          <div class="entry-header">
+            <div class="entry-key-row">
               <span class="entry-key">{{ i18n.t("config.jvm_preset_label") }}</span>
             </div>
             <p class="entry-desc text-caption">{{ i18n.t("config.jvm_preset_desc") }}</p>
@@ -195,58 +303,183 @@ const jvmPresetArgCount = computed(
             </div>
             <p class="entry-desc text-caption">{{ i18n.t("config.startup_preview_desc") }}</p>
           </div>
-          <div class="startup-preview-grid">
-            <div class="startup-preview-item">
-              <span class="startup-preview-label">{{ i18n.t("config.startup_preview_mode") }}</span>
-              <span class="startup-preview-value">{{ startupModeLabel }}</span>
-            </div>
-            <div class="startup-preview-item">
-              <span class="startup-preview-label">{{
-                i18n.t("config.startup_preview_preset")
+          <div class="startup-preview-section">
+            <div class="startup-preview-section-header">
+              <span class="startup-preview-section-title">{{
+                i18n.t("config.startup_preview_real_title")
               }}</span>
-              <span class="startup-preview-value">
-                {{ selectedJvmPresetOption?.label || i18n.t("common.unknown") }}
-              </span>
+              <p class="startup-preview-section-desc text-caption">
+                {{ i18n.t("config.startup_preview_real_desc") }}
+              </p>
+            </div>
+            <div v-if="startupConfig.launchDetailLoading.value" class="startup-preview-empty">
+              {{ i18n.t("common.loading") }}
+            </div>
+            <template v-else-if="realLaunchDetail">
+              <div class="startup-preview-grid">
+                <div class="startup-preview-item">
+                  <span class="startup-preview-label">{{
+                    i18n.t("config.startup_preview_mode")
+                  }}</span>
+                  <span class="startup-preview-value">{{ realLaunchModeLabel }}</span>
+                </div>
+                <div v-if="realLocalLaunchDetail" class="startup-preview-item">
+                  <span class="startup-preview-label">{{
+                    i18n.t("config.startup_preview_java")
+                  }}</span>
+                  <span class="startup-preview-value">{{ realLocalLaunchDetail.java_path }}</span>
+                </div>
+                <div v-else-if="realDockerLaunchDetail" class="startup-preview-item">
+                  <span class="startup-preview-label">{{
+                    i18n.t("config.startup_preview_image")
+                  }}</span>
+                  <span class="startup-preview-value">
+                    {{ realDockerLaunchDetail.image }}:{{ realDockerLaunchDetail.image_tag }}
+                  </span>
+                </div>
+                <div v-if="realDockerLaunchDetail" class="startup-preview-item">
+                  <span class="startup-preview-label">{{
+                    i18n.t("config.startup_preview_container")
+                  }}</span>
+                  <span class="startup-preview-value">{{
+                    realDockerLaunchDetail.container_name
+                  }}</span>
+                </div>
+              </div>
+              <div v-if="realLocalLaunchDetail" class="startup-preview-block">
+                <span class="startup-preview-label">{{
+                  i18n.t("config.startup_preview_target")
+                }}</span>
+                <code class="startup-preview-code">{{ realLocalLaunchDetail.launch_target }}</code>
+              </div>
+              <div class="startup-preview-block">
+                <span class="startup-preview-label">{{
+                  i18n.t("config.startup_preview_command")
+                }}</span>
+                <code class="startup-preview-code">{{
+                  realLaunchDetail.detail.command_preview
+                }}</code>
+              </div>
+              <div v-if="realLocalLaunchDetail" class="startup-preview-block">
+                <span class="startup-preview-label">{{
+                  i18n.t("config.startup_preview_effective_jvm_args")
+                }}</span>
+                <div
+                  v-if="realLocalLaunchDetail.effective_jvm_args.length === 0"
+                  class="startup-preview-empty"
+                >
+                  {{ i18n.t("config.startup_preview_none") }}
+                </div>
+                <div v-else class="startup-preview-tags">
+                  <span
+                    v-for="arg in realLocalLaunchDetail.effective_jvm_args"
+                    :key="arg"
+                    class="startup-preview-tag"
+                  >
+                    {{ arg }}
+                  </span>
+                </div>
+              </div>
+              <template v-if="realDockerLaunchDetail">
+                <div class="startup-preview-block">
+                  <span class="startup-preview-label">{{
+                    i18n.t("config.startup_preview_runtime_preset")
+                  }}</span>
+                  <div class="startup-preview-tags">
+                    <span
+                      v-for="tag in dockerPresetStatusTags"
+                      :key="tag"
+                      class="startup-preview-tag"
+                    >
+                      {{ tag }}
+                    </span>
+                  </div>
+                </div>
+                <div class="startup-preview-block">
+                  <span class="startup-preview-label">JVM_OPTS</span>
+                  <code class="startup-preview-code">{{
+                    realDockerLaunchDetail.jvm_opts_preview || i18n.t("config.startup_preview_none")
+                  }}</code>
+                </div>
+                <div class="startup-preview-block">
+                  <span class="startup-preview-label">JVM_XX_OPTS</span>
+                  <code class="startup-preview-code">{{
+                    realDockerLaunchDetail.jvm_xx_opts_preview ||
+                    i18n.t("config.startup_preview_none")
+                  }}</code>
+                </div>
+              </template>
+            </template>
+            <div v-else class="startup-preview-empty">
+              {{ i18n.t("config.startup_preview_real_unavailable") }}
             </div>
           </div>
-          <div class="startup-preview-block">
-            <span class="startup-preview-label">{{ i18n.t("config.startup_preview_target") }}</span>
-            <code class="startup-preview-code">{{ startupTargetSummary }}</code>
-          </div>
-          <div class="startup-preview-block">
-            <span class="startup-preview-label">{{
-              i18n.t("config.startup_preview_preset_args")
-            }}</span>
-            <div v-if="jvmPresetArgCount === 0" class="startup-preview-empty">
-              {{ i18n.t("config.startup_preview_none") }}
+          <div class="startup-preview-section">
+            <div class="startup-preview-section-header">
+              <span class="startup-preview-section-title">{{
+                i18n.t("config.startup_preview_config_title")
+              }}</span>
+              <p class="startup-preview-section-desc text-caption">
+                {{ i18n.t("config.startup_preview_config_desc") }}
+              </p>
             </div>
-            <div v-else class="startup-preview-tags">
-              <span v-for="arg in jvmPresetPreviewArgs" :key="arg" class="startup-preview-tag">
-                {{ arg }}
-              </span>
-              <span
-                v-if="jvmPresetArgCount > jvmPresetPreviewArgs.length"
-                class="startup-preview-tag startup-preview-tag--muted"
-              >
-                {{
-                  i18n.t("config.startup_preview_more_args", {
-                    count: jvmPresetArgCount - jvmPresetPreviewArgs.length,
-                  })
-                }}
-              </span>
+            <div class="startup-preview-grid">
+              <div class="startup-preview-item">
+                <span class="startup-preview-label">{{
+                  i18n.t("config.startup_preview_mode")
+                }}</span>
+                <span class="startup-preview-value">{{ startupModeLabel }}</span>
+              </div>
+              <div class="startup-preview-item">
+                <span class="startup-preview-label">{{
+                  i18n.t("config.startup_preview_preset")
+                }}</span>
+                <span class="startup-preview-value">
+                  {{ selectedJvmPresetOption?.label || i18n.t("common.unknown") }}
+                </span>
+              </div>
             </div>
-          </div>
-          <div class="startup-preview-block">
-            <span class="startup-preview-label">{{
-              i18n.t("config.startup_preview_extra_args")
-            }}</span>
-            <div v-if="parsedJvmArgs.length === 0" class="startup-preview-empty">
-              {{ i18n.t("config.startup_preview_none") }}
+            <div class="startup-preview-block">
+              <span class="startup-preview-label">{{
+                i18n.t("config.startup_preview_target")
+              }}</span>
+              <code class="startup-preview-code">{{ startupTargetSummary }}</code>
             </div>
-            <div v-else class="startup-preview-tags">
-              <span v-for="arg in parsedJvmArgs" :key="arg" class="startup-preview-tag">
-                {{ arg }}
-              </span>
+            <div class="startup-preview-block">
+              <span class="startup-preview-label">{{
+                i18n.t("config.startup_preview_preset_args")
+              }}</span>
+              <div v-if="jvmPresetArgCount === 0" class="startup-preview-empty">
+                {{ i18n.t("config.startup_preview_none") }}
+              </div>
+              <div v-else class="startup-preview-tags">
+                <span v-for="arg in jvmPresetPreviewArgs" :key="arg" class="startup-preview-tag">
+                  {{ arg }}
+                </span>
+                <span
+                  v-if="jvmPresetArgCount > jvmPresetPreviewArgs.length"
+                  class="startup-preview-tag startup-preview-tag--muted"
+                >
+                  {{
+                    i18n.t("config.startup_preview_more_args", {
+                      count: jvmPresetArgCount - jvmPresetPreviewArgs.length,
+                    })
+                  }}
+                </span>
+              </div>
+            </div>
+            <div class="startup-preview-block">
+              <span class="startup-preview-label">{{
+                i18n.t("config.startup_preview_extra_args")
+              }}</span>
+              <div v-if="parsedJvmArgs.length === 0" class="startup-preview-empty">
+                {{ i18n.t("config.startup_preview_none") }}
+              </div>
+              <div v-else class="startup-preview-tags">
+                <span v-for="arg in parsedJvmArgs" :key="arg" class="startup-preview-tag">
+                  {{ arg }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -365,6 +598,33 @@ const jvmPresetArgCount = computed(
 
 .startup-preview-card {
   gap: var(--sl-space-sm);
+}
+
+.startup-preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+
+.startup-preview-section + .startup-preview-section {
+  padding-top: var(--sl-space-sm);
+  border-top: 1px solid var(--sl-border-light);
+}
+
+.startup-preview-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.startup-preview-section-title {
+  font-size: var(--sl-font-size-sm);
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.startup-preview-section-desc {
+  margin: 0;
 }
 
 .startup-preview-grid {

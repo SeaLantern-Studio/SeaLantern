@@ -39,6 +39,9 @@ pub fn create_server(
     server_path: Option<String>,
     startup_mode: String,
     custom_command: Option<String>,
+    jvm_args: Vec<String>,
+    cpu_policy: crate::models::server::CpuPolicyConfig,
+    jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
     provisioning::create_server(
         name,
@@ -53,6 +56,9 @@ pub fn create_server(
         server_path,
         startup_mode,
         custom_command,
+        jvm_args,
+        cpu_policy,
+        jvm_preset,
     )
 }
 
@@ -68,6 +74,9 @@ pub fn import_server(
     min_memory: u32,
     port: u16,
     online_mode: bool,
+    jvm_args: Vec<String>,
+    cpu_policy: crate::models::server::CpuPolicyConfig,
+    jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
     provisioning::import_server(
         name,
@@ -78,6 +87,9 @@ pub fn import_server(
         min_memory,
         port,
         online_mode,
+        jvm_args,
+        cpu_policy,
+        jvm_preset,
     )
 }
 
@@ -96,6 +108,9 @@ pub fn add_existing_server(
     custom_command: Option<String>,
     core_type: Option<String>,
     mc_version: Option<String>,
+    jvm_args: Vec<String>,
+    cpu_policy: crate::models::server::CpuPolicyConfig,
+    jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
     provisioning::add_existing_server(
         name,
@@ -109,6 +124,9 @@ pub fn add_existing_server(
         custom_command,
         core_type,
         mc_version,
+        jvm_args,
+        cpu_policy,
+        jvm_preset,
     )
 }
 
@@ -129,6 +147,9 @@ pub fn import_modpack(
     startup_file_path: Option<String>,
     core_type: Option<String>,
     mc_version: Option<String>,
+    jvm_args: Vec<String>,
+    cpu_policy: crate::models::server::CpuPolicyConfig,
+    jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
     provisioning::import_modpack(
         name,
@@ -144,6 +165,9 @@ pub fn import_modpack(
         startup_file_path,
         core_type,
         mc_version,
+        jvm_args,
+        cpu_policy,
+        jvm_preset,
     )
 }
 

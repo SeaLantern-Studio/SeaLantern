@@ -54,6 +54,7 @@ const {
   onlineMode,
   jvmArgsText,
   jvmPreset,
+  cpuPolicy,
   javaList,
   activeStep,
   stepItems,
@@ -170,6 +171,7 @@ const { isDragging } = useCreateServerWindowDrop();
                   :online-mode="onlineMode"
                   :jvm-args-text="jvmArgsText"
                   :jvm-preset="jvmPreset.preset"
+                  :cpu-policy="cpuPolicy"
                   :startup-mode="selectedStartup?.mode"
                   :startup-target="selectedStartup?.path"
                   :custom-command-preview="customStartupCommand"
@@ -181,6 +183,7 @@ const { isDragging } = useCreateServerWindowDrop();
                   @update:online-mode="onlineMode = $event"
                   @update:jvm-args-text="jvmArgsText = $event"
                   @update:jvm-preset="jvmPreset = { preset: $event }"
+                  @update:cpu-policy="cpuPolicy = $event"
                 />
               </div>
             </template>

@@ -136,6 +136,8 @@ export interface DockerLaunchDetail {
   container_name: string;
   cpuset_applied: string | null;
   jvm_preset: JvmPresetId | string;
+  jvm_opts_preview: string | null;
+  jvm_xx_opts_preview: string | null;
   jvm_opts_args_count: number;
   jvm_xx_opts_args_count: number;
   jvm_opts_overridden_by_runtime_env: boolean;
