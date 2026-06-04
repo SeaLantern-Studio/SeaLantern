@@ -1,42 +1,49 @@
 你是 Code Agent 3。
 
-这轮任务只补“前端启动概览与预设应用展示”的闭环，不要改 Rust 运行时实现。
+这轮任务只补“CPU 亲和性可编辑入口”，让用户能在实例配置里改它，并把默认值入口补齐。不要处理实例配置文件迁移，不要重做启动详情展示。
 
-调度说明：这是第二阶段任务。请在 `.cache1` 和 `.cache2` 产出后再启动。
+调度说明：这是第二阶段任务。请在 `.cache1` 和 `.cache2` 回来后再启动。
 
 唯一输出要求：正常修改代码，并把结果写入 `.cache3`，不要口述回复，不要 commit。
 
 必须遵守：
-- 允许编辑前端 API、组合式逻辑、页面组件、语言包。
-- 不要改 Rust 启动逻辑。
-- 不要使用工程化用语，不要写命令式文案，不要堆多余说明。
+- 允许编辑前端页面、组合式逻辑、TS API、必要的语言包。
+- 如保存链路缺字段，可做最小补齐，但不要重做后端配置文件迁移。
 - 不要 commit。
+- 文案保持自然，少解释，不要堆术语。
 
 必须阅读：
 - `.cache1`
 - `.cache2`
-- `.cache4`
-- `src/api/server.ts`
-- `src/components/views/create/ServerStartupConfigStep.vue`
 - `src/components/config/ConfigStartupSection.vue`
 - `src/components/config/useStartupConfigSection.ts`
-- `src/views/CreateServerView.vue`
+- `src/components/views/create/ServerStartupConfigStep.vue`
+- `src/components/views/settings/ServerDefaultsCard.vue`
+- `src/views/SettingsView.vue`
+- `src/components/views/create/useCreateServerPage.ts`
+- `src/components/views/create/useCreateServerDefaults.ts`
+- `src/utils/serverStartupConfig.ts`
 - `src/language/zh-CN.json`
 
 本轮你应该实现的范围：
-1. 编辑页优先接入真实启动详情接口，不再只靠本地拼接的近似摘要。
-2. 如果建服页暂时拿不到真实后端预览，就把它维持为“当前选择的概览”，但文案不要假装它是最终命令。
-3. 把 JVM 预设“已保存 / 已应用 / 关键参数概览”表达清楚。
-4. 文案要自然、短，不要出现 `DTO`、`序列化`、`argv` 之类词。
-5. 能补的交互校验和空态一起补上。
+1. 配置页补出 CPU 亲和性可编辑项：
+   - 关闭
+   - 按数量限制核心数
+   - 自定义核心列表
+2. 建服页补出相同能力，至少能把值带到实例配置里。
+3. 默认设置页补出默认 CPU 策略入口，新建服务器时可继承。
+4. 自动保存或保存链路要真正包含 `cpu_policy`，不要出现界面能改但不会落盘。
+5. 基础校验要补上：
+   - `count` 必须是 `> 0`
+   - `explicit` 为空时不给保存成有效策略
 
 本轮不要做：
-- 不要新增 CPU policy 表单。
-- 不要再扩 schema。
+- 不要迁移实例配置文件。
+- 不要重做真实启动详情接口。
 
 完成后 `.cache3` 输出格式：
 - `已修改文件`
-- `完成内容`
-- `启动概览现在分别怎么显示`
-- `文案调整`
+- `CPU 亲和性现在在哪些页面可改`
+- `保存链路是否已接通`
+- `验证结果`
 - `遗留风险`

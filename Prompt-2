@@ -1,46 +1,46 @@
 你是 Code Agent 2。
 
-这轮任务只补“真实启动详情接口闭环”，不要碰前端页面，不要处理建服默认值。
+这轮任务只补“真实启动详情接口和配置页展示闭环”，不要改实例配置文件迁移，不要做 CPU 亲和性表单。
 
 调度说明：这是第一阶段任务，可与 `Prompt-1` 并行启动。
 
 唯一输出要求：正常修改代码，并把结果写入 `.cache2`，不要口述回复，不要 commit。
 
 必须遵守：
-- 允许编辑 Rust 后端、必要的 Tauri command 注册、必要的 TS API 层。
-- 不要编辑 `.vue` 页面组件。
-- 不要改 schema 主结构，除非为了接口返回类型最小补充。
-- 不要 commit。
+- 允许编辑前端 API、组合式逻辑、页面组件、必要的语言包。
+- 如接口字段不足，可最小补 TS 类型，但不要重做后端配置落点。
+- 不要提交 commit。
+- 文案不要写得像工程日志，不要假装近似概览就是最终命令。
 
 必须阅读：
-- `src-tauri/src/commands/server/manage.rs`
-- `src-tauri/src/commands/server/manage/runtime.rs`
-- `src-tauri/src/runtime/command_catalog.rs`
-- `src-tauri/src/services/server/manager/runtime_start/local_launch_detail.rs`
-- `src-tauri/src/services/server/runtime/docker_itzg/helpers.rs`
 - `src/api/server.ts`
+- `src/components/config/ConfigStartupSection.vue`
+- `src/components/config/useStartupConfigSection.ts`
+- `src/types/server.ts`
+- `src/language/zh-CN.json`
 - `.cache2`
-- `.cache3`
 
 本轮你应该实现的范围：
-1. 检查并补齐前端可直接调用的 API：
-   - `get_local_launch_detail`
-   - `get_docker_launch_detail`
-2. 如果 TS API 层还没暴露对应方法，补上它们。
-3. 返回类型要能让前端直接显示：
+1. 配置页优先接入真实启动详情接口：
+   - 本地服务器使用真实 launch detail
+   - Docker 服务器也显示真实启动详情，不再只显示镜像名
+2. 页面里要能看到：
    - 启动方式
-   - 启动命令概览
-   - 实际 JVM 参数或可展示的参数概览
+   - 启动命令或命令概览
+   - 实际 JVM 参数或可直接展示的参数结果
    - 预设应用状态
-4. 补上最小验证，确保这两条接口可用。
+3. 如果接口暂时取不到，空态和失败态要自然，不要硬说“会这样启动”。
+4. 建服页如果仍然只能前端拼概览，可以顺手把文案降级，但不要扩到 CPU 表单。
+5. 补最小验证，至少确认现有页面能消费这些返回值。
 
 本轮不要做：
-- 不要改前端 UI。
-- 不要改建服默认值返回。
+- 不要迁移实例配置文件。
+- 不要新增 CPU 亲和性编辑表单。
+- 不要碰默认设置页。
 
 完成后 `.cache2` 输出格式：
 - `已修改文件`
-- `完成内容`
-- `前端现在可以直接调用什么`
+- `配置页现在能看到什么`
+- `建服页概览怎么表述`
 - `验证结果`
 - `遗留风险`
