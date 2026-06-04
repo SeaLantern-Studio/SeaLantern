@@ -1,5 +1,6 @@
 use super::common::{manager, ForceStopPreparationResponse, ServerStartFallbackEvent};
 use crate::models::server::{ServerInstance, ServerStatusInfo};
+use crate::services::server::manager::{DockerLaunchDetail, LocalLaunchDetail};
 use tauri::Emitter;
 
 /// 生成强制停止确认信息
@@ -88,6 +89,14 @@ pub(super) fn delete_server(id: String) -> Result<(), String> {
 /// 读取服务器日志
 pub(super) fn get_server_logs(id: String, since: usize, max_lines: Option<usize>) -> Vec<String> {
     crate::services::server::log_pipeline::get_logs(&id, since, max_lines)
+}
+
+pub(super) fn get_local_launch_detail(id: String) -> Result<LocalLaunchDetail, String> {
+    manager().get_local_launch_detail(&id)
+}
+
+pub(super) fn get_docker_launch_detail(id: String) -> Result<DockerLaunchDetail, String> {
+    manager().get_docker_launch_detail(&id)
 }
 
 pub(super) fn update_server_name(id: String, name: String) -> Result<(), String> {

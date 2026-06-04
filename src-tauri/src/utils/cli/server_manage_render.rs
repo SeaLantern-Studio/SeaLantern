@@ -1,8 +1,9 @@
 use crate::models::server::{
-    DockerItzgRuntimeConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+    DockerItzgRuntimeConfig, JvmPresetId, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     ServerStatusInfo,
 };
 use crate::services::server::manager::ServerRegistryDedupeReport;
+use crate::services::server::manager::{DockerLaunchDetail, LocalLaunchDetail};
 use crate::utils::server_status::status_is_docker_command_ready;
 
 use super::server_endpoint::render_docker_rcon_operator_hint;
@@ -255,12 +256,17 @@ fn status_action_hint_lines(server: &ServerInstance, status: &ServerStatusInfo) 
 
 fn runtime_detail_lines(server: &ServerInstance) -> Vec<String> {
     match &server.runtime {
-        ServerRuntimeConfig::Local(runtime) => render_local_runtime_detail_lines(runtime),
-        ServerRuntimeConfig::DockerItzg(runtime) => render_docker_runtime_detail_lines(runtime),
+        ServerRuntimeConfig::Local(runtime) => render_local_runtime_detail_lines(server, runtime),
+        ServerRuntimeConfig::DockerItzg(runtime) => {
+            render_docker_runtime_detail_lines(server, runtime)
+        }
     }
 }
 
-fn render_local_runtime_detail_lines(runtime: &LocalRuntimeConfig) -> Vec<String> {
+fn render_local_runtime_detail_lines(
+    server: &ServerInstance,
+    runtime: &LocalRuntimeConfig,
+) -> Vec<String> {
     let mut lines = vec![
         format!("  local.java_path: {}", runtime.java_path),
         format!("  local.jar_path: {}", runtime.jar_path),
@@ -272,10 +278,35 @@ fn render_local_runtime_detail_lines(runtime: &LocalRuntimeConfig) -> Vec<String
     if !runtime.jvm_args.is_empty() {
         lines.push(format!("  local.jvm_args: {}", runtime.jvm_args.join(" ")));
     }
+    if let Some(detail) = local_launch_detail_lines(server) {
+        lines.extend(detail);
+    }
     lines
 }
 
-fn render_docker_runtime_detail_lines(runtime: &DockerItzgRuntimeConfig) -> Vec<String> {
+fn local_launch_detail_lines(server: &ServerInstance) -> Option<Vec<String>> {
+    let detail =
+        crate::services::server::manager::build_local_launch_detail_for_server(server).ok()?;
+    Some(render_local_launch_detail_lines(&detail))
+}
+
+fn render_local_launch_detail_lines(detail: &LocalLaunchDetail) -> Vec<String> {
+    let mut lines = vec![
+        format!("  local.launch_target: {}", detail.launch_target),
+        format!("  local.command_preview: {}", detail.command_preview),
+    ];
+    if detail.effective_jvm_args.is_empty() {
+        lines.push("  local.effective_jvm_args: []".to_string());
+    } else {
+        lines.push(format!("  local.effective_jvm_args: {}", detail.effective_jvm_args.join(" ")));
+    }
+    lines
+}
+
+fn render_docker_runtime_detail_lines(
+    server: &ServerInstance,
+    runtime: &DockerItzgRuntimeConfig,
+) -> Vec<String> {
     let mut lines = vec![
         format!("  docker.image: {}:{}", runtime.image, runtime.image_tag),
         format!("  docker.container_name: {}", runtime.container_name),
@@ -285,16 +316,115 @@ fn render_docker_runtime_detail_lines(runtime: &DockerItzgRuntimeConfig) -> Vec<
         format!("  docker.published_game_port: {}", runtime.published_game_port),
         format!("  docker.backend: {}", runtime.docker_backend_kind.as_str()),
         format!("  docker.command_mode: {}", runtime.command_mode.as_str()),
+        format!("  docker.cpu_policy.mode: {}", runtime.cpu_policy.mode.as_str()),
+        format!(
+            "  docker.cpu_policy.count: {}",
+            runtime
+                .cpu_policy
+                .count
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "-".to_string())
+        ),
+        format!(
+            "  docker.cpu_policy.explicit_set: {}",
+            runtime
+                .cpu_policy
+                .explicit_set
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or("-")
+        ),
+        format!(
+            "  docker.cpu_policy.sync_active_processor_count: {}",
+            runtime.cpu_policy.sync_active_processor_count
+        ),
+        format!("  docker.jvm_preset: {}", render_jvm_preset_id(&runtime.jvm_preset.preset)),
         format!("  docker.extra_ports: {}", format_docker_extra_ports(runtime)),
         format!("  docker.volume_mounts: {}", format_docker_volume_mounts(runtime)),
         format!("  docker.env_count: {}", runtime.env.len()),
     ];
+    if !runtime.jvm_args.is_empty() {
+        lines.push(format!("  docker.jvm_args: {}", runtime.jvm_args.join(" ")));
+    }
+    if let Some(detail) = docker_launch_detail_lines(server) {
+        lines.extend(detail);
+    }
     if let Some(rcon) = &runtime.rcon {
         lines.push(format!("  docker.rcon_host: {}", rcon.host));
         lines.push(format!("  docker.rcon_port: {}", rcon.port));
         lines.push(format!("  docker.rcon_password: {}", redact_secret(&rcon.password)));
     }
     lines
+}
+
+fn docker_launch_detail_lines(server: &ServerInstance) -> Option<Vec<String>> {
+    let detail =
+        crate::services::server::manager::build_docker_launch_detail_for_server(server).ok()?;
+    Some(render_docker_launch_detail_lines(&detail))
+}
+
+fn render_docker_launch_detail_lines(detail: &DockerLaunchDetail) -> Vec<String> {
+    let mut lines = vec![
+        format!("  docker.launch.runtime_kind: {}", detail.runtime_kind),
+        format!("  docker.launch.image: {}:{}", detail.image, detail.image_tag),
+        format!("  docker.launch.container_name: {}", detail.container_name),
+        format!(
+            "  docker.launch.cpuset_applied: {}",
+            detail.cpuset_applied.as_deref().unwrap_or("-")
+        ),
+        format!("  docker.launch.jvm_preset: {}", detail.jvm_preset),
+        format!(
+            "  docker.launch.jvm_opts_preview: {}",
+            detail.jvm_opts_preview.as_deref().unwrap_or("-")
+        ),
+        format!(
+            "  docker.launch.jvm_xx_opts_preview: {}",
+            detail.jvm_xx_opts_preview.as_deref().unwrap_or("-")
+        ),
+        format!(
+            "  docker.launch.active_processor_count_status: {}",
+            detail.active_processor_count_status
+        ),
+        format!(
+            "  docker.launch.active_processor_count_value: {}",
+            detail
+                .active_processor_count_value
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "-".to_string())
+        ),
+        format!("  docker.launch.jvm_opts_args_count: {}", detail.jvm_opts_args_count),
+        format!("  docker.launch.jvm_xx_opts_args_count: {}", detail.jvm_xx_opts_args_count),
+        format!(
+            "  docker.launch.jvm_opts_overridden_by_runtime_env: {}",
+            detail.jvm_opts_overridden_by_runtime_env
+        ),
+        format!(
+            "  docker.launch.jvm_xx_opts_overridden_by_runtime_env: {}",
+            detail.jvm_xx_opts_overridden_by_runtime_env
+        ),
+        format!("  docker.launch.command_preview: {}", detail.command_preview),
+    ];
+
+    if detail.docker_args_preview.is_empty() {
+        lines.push("  docker.launch.args_preview: []".to_string());
+    } else {
+        lines.push(format!(
+            "  docker.launch.args_preview: {}",
+            detail.docker_args_preview.join(" ")
+        ));
+    }
+
+    lines
+}
+
+fn render_jvm_preset_id(preset: &JvmPresetId) -> &'static str {
+    match preset {
+        JvmPresetId::None => "none",
+        JvmPresetId::G1Basic => "g1_basic",
+        JvmPresetId::AikarG1 => "aikar_g1",
+        JvmPresetId::ThroughputBasic => "throughput_basic",
+        JvmPresetId::PaperRecommendedLite => "paper_recommended_lite",
+    }
 }
 
 fn port_summary(server: &ServerInstance) -> String {
@@ -375,9 +505,10 @@ mod tests {
         render_server_list_lines, render_server_management_help, render_server_status_lines,
     };
     use crate::models::server::{
-        DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig, LocalRuntimeConfig,
-        PublishedPort, RconConfig, ServerInstance, ServerRuntimeConfig, ServerStatus,
-        ServerStatusInfo, VolumeMount,
+        CpuPolicyConfig, CpuPolicyMode, DockerBackendKind, DockerCommandMode,
+        DockerItzgRuntimeConfig, JvmPresetConfig, JvmPresetId, LocalRuntimeConfig, PublishedPort,
+        RconConfig, ServerInstance, ServerRuntimeConfig, ServerStatus, ServerStatusInfo,
+        VolumeMount,
     };
     use crate::services::server::manager::{
         DuplicateServerRecordEntry, DuplicateServerRecordGroup, ServerRegistryDedupeReport,
@@ -415,7 +546,9 @@ mod tests {
                 startup_mode: "jar".to_string(),
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
-                jvm_args: vec!["-Dnogui=true".to_string()],
+                jvm_args: Vec::new(),
+                cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+                jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
         }
     }
@@ -464,6 +597,14 @@ mod tests {
                     port: 25575,
                     password: "secret-pass".to_string(),
                 }),
+                jvm_args: vec!["-Dfoo=bar".to_string()],
+                cpu_policy: CpuPolicyConfig {
+                    mode: CpuPolicyMode::Explicit,
+                    count: None,
+                    explicit_set: Some("0-3,6".to_string()),
+                    sync_active_processor_count: true,
+                },
+                jvm_preset: JvmPresetConfig { preset: JvmPresetId::AikarG1 },
             }),
         }
     }
@@ -497,6 +638,21 @@ mod tests {
         assert!(joined.contains("local.entry_path: E:/servers/fabric-main/server.jar"));
         assert!(joined.contains("uptime: 88s"));
         assert!(joined.contains("detail: runtime=local/jar"));
+    }
+
+    #[test]
+    fn render_server_inspect_lines_include_local_launch_detail() {
+        let lines = render_server_inspect_lines(
+            &sample_local_server(),
+            &sample_status(ServerStatus::Running),
+        );
+        let joined = lines.join("\n");
+
+        assert!(joined.contains("local.launch_target: E:/servers/fabric-main/server.jar"));
+        assert!(joined.contains("local.command_preview:"));
+        assert!(joined.contains("-jar server.jar nogui"));
+        assert!(joined.contains("local.effective_jvm_args:"));
+        assert!(joined.contains("-Dfile.encoding=UTF-8"));
     }
 
     #[test]
@@ -580,6 +736,21 @@ mod tests {
         assert!(joined.contains("docker.container_name: sealantern-paper"));
         assert!(joined.contains("docker.extra_ports: [24454->24454/udp]"));
         assert!(joined.contains("docker.volume_mounts: [E:/docker/paper/plugins:/data/plugins:ro]"));
+        assert!(joined.contains("docker.cpu_policy.mode: explicit"));
+        assert!(joined.contains("docker.cpu_policy.explicit_set: 0-3,6"));
+        assert!(joined.contains("docker.cpu_policy.sync_active_processor_count: true"));
+        assert!(joined.contains("docker.jvm_preset: aikar_g1"));
+        assert!(joined.contains("docker.jvm_args: -Dfoo=bar"));
+        assert!(joined.contains("docker.launch.runtime_kind: docker_itzg"));
+        assert!(joined.contains("docker.launch.cpuset_applied: 0-3,6"));
+        assert!(joined.contains("docker.launch.jvm_preset: aikar_g1"));
+        assert!(joined.contains("docker.launch.jvm_opts_preview: -Dfoo=bar"));
+        assert!(joined.contains("docker.launch.jvm_xx_opts_preview:"));
+        assert!(joined.contains("-XX:ActiveProcessorCount=5"));
+        assert!(joined.contains("docker.launch.command_preview: docker run -d --name sealantern-paper --cpuset-cpus 0-3,6"));
+        assert!(joined.contains(
+            "docker.launch.args_preview: run -d --name sealantern-paper --cpuset-cpus 0-3,6"
+        ));
         assert!(joined.contains("docker.rcon_password: <redacted:11 chars>"));
         assert!(joined.contains("error: rcon unavailable"));
     }

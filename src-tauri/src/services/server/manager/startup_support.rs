@@ -5,12 +5,14 @@ use crate::models::server::ServerInstance;
 use crate::models::settings::AppSettings;
 
 use super::common::ManagedConsoleEncoding;
+use super::common::StartupMode;
+use super::cpu_policy;
 
 pub(super) fn build_managed_jvm_args(
     server: &ServerInstance,
     settings: &AppSettings,
     console_encoding: ManagedConsoleEncoding,
-) -> Vec<String> {
+) -> Result<Vec<String>, String> {
     let java_encoding = console_encoding.java_name();
     let default_memory = (settings.default_max_memory, settings.default_min_memory);
     let (max_mem, min_mem) = read_sl_startup_config(server, settings).unwrap_or(default_memory);
@@ -22,13 +24,22 @@ pub(super) fn build_managed_jvm_args(
         format!("-Dsun.stderr.encoding={}", java_encoding),
     ];
 
-    let jvm = settings.default_jvm_args.trim();
-    if !jvm.is_empty() {
-        args.extend(jvm.split_whitespace().map(|arg| arg.to_string()));
+    let startup_mode = StartupMode::from_raw(server.startup_mode_str());
+    let default_args = settings.default_jvm_args.clone();
+    let user_args = server.jvm_args().to_vec();
+
+    let user_already_set_apc = jvm_args_contain_active_processor_count(&default_args)
+        || jvm_args_contain_active_processor_count(&user_args);
+
+    if !user_already_set_apc {
+        if let Some(arg) = cpu_policy::compute_active_processor_count_arg(server, startup_mode)? {
+            args.push(arg);
+        }
     }
 
-    args.extend(server.jvm_args().iter().cloned());
-    args
+    args.extend(default_args);
+    args.extend(user_args);
+    Ok(args)
 }
 
 pub(super) fn write_user_jvm_args(
@@ -36,7 +47,7 @@ pub(super) fn write_user_jvm_args(
     settings: &AppSettings,
     console_encoding: ManagedConsoleEncoding,
 ) -> Result<(), String> {
-    let args = build_managed_jvm_args(server, settings, console_encoding);
+    let args = build_managed_jvm_args(server, settings, console_encoding)?;
     let user_jvm_args_path = Path::new(&server.path).join("user_jvm_args.txt");
     let content = if args.is_empty() {
         String::new()
@@ -46,6 +57,11 @@ pub(super) fn write_user_jvm_args(
 
     std::fs::write(&user_jvm_args_path, content)
         .map_err(|e| format!("写入 user_jvm_args.txt 失败: {}", e))
+}
+
+fn jvm_args_contain_active_processor_count(args: &[String]) -> bool {
+    args.iter()
+        .any(|arg| arg.starts_with("-XX:ActiveProcessorCount="))
 }
 
 fn read_sl_startup_config(server: &ServerInstance, settings: &AppSettings) -> Option<(u32, u32)> {
@@ -66,7 +82,10 @@ fn read_sl_startup_config(server: &ServerInstance, settings: &AppSettings) -> Op
 #[cfg(test)]
 mod tests {
     use super::{build_managed_jvm_args, write_user_jvm_args};
-    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::models::server::{
+        CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, LocalRuntimeConfig, ServerInstance,
+        ServerRuntimeConfig,
+    };
     use crate::models::settings::AppSettings;
     use crate::services::server::manager::common::ManagedConsoleEncoding;
     use tempfile::tempdir;
@@ -92,15 +111,30 @@ mod tests {
                 custom_command: None,
                 java_path: "java".to_string(),
                 jvm_args: vec!["-Dserver.flag=true".to_string()],
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
+    }
+
+    fn test_server_with_cpu_policy(
+        path: String,
+        startup_mode: &str,
+        cpu_policy: CpuPolicyConfig,
+    ) -> ServerInstance {
+        let mut server = test_server(path);
+        if let ServerRuntimeConfig::Local(runtime) = &mut server.runtime {
+            runtime.startup_mode = startup_mode.to_string();
+            runtime.cpu_policy = cpu_policy;
+        }
+        server
     }
 
     fn test_settings() -> AppSettings {
         AppSettings {
             default_max_memory: 8192,
             default_min_memory: 1024,
-            default_jvm_args: "-Dglobal.flag=true -XX:+UseG1GC".to_string(),
+            default_jvm_args: vec!["-Dglobal.flag=true".to_string(), "-XX:+UseG1GC".to_string()],
             ..AppSettings::default()
         }
     }
@@ -112,7 +146,8 @@ mod tests {
         std::fs::write(temp_dir.path().join("SL.json"), r#"{"max_memory":3072,"min_memory":1536}"#)
             .expect("SL.json should be written");
 
-        let args = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8);
+        let args = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
+            .expect("managed args should build");
 
         assert_eq!(
             args,
@@ -155,5 +190,74 @@ mod tests {
                 "-Dserver.flag=true\n"
             )
         );
+    }
+
+    #[test]
+    fn build_managed_jvm_args_injects_active_processor_count_before_default_args() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server_with_cpu_policy(
+            temp_dir.path().to_string_lossy().to_string(),
+            "jar",
+            CpuPolicyConfig {
+                mode: CpuPolicyMode::Count,
+                count: Some(2),
+                explicit_set: None,
+                sync_active_processor_count: true,
+            },
+        );
+
+        let args = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
+            .expect("managed args should build");
+
+        assert_eq!(args[5], "-XX:ActiveProcessorCount=2");
+        assert_eq!(args[6], "-Dglobal.flag=true");
+    }
+
+    #[test]
+    fn build_managed_jvm_args_skips_active_processor_count_when_user_already_provided() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let mut server = test_server_with_cpu_policy(
+            temp_dir.path().to_string_lossy().to_string(),
+            "starter",
+            CpuPolicyConfig {
+                mode: CpuPolicyMode::Count,
+                count: Some(2),
+                explicit_set: None,
+                sync_active_processor_count: true,
+            },
+        );
+        if let ServerRuntimeConfig::Local(runtime) = &mut server.runtime {
+            runtime.jvm_args = vec!["-XX:ActiveProcessorCount=6".to_string()];
+        }
+
+        let args = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
+            .expect("managed args should build");
+
+        assert_eq!(
+            args.iter()
+                .filter(|arg| arg.starts_with("-XX:ActiveProcessorCount="))
+                .count(),
+            1
+        );
+        assert!(args.iter().any(|arg| arg == "-XX:ActiveProcessorCount=6"));
+    }
+
+    #[test]
+    fn build_managed_jvm_args_rejects_cpu_policy_for_unsupported_modes() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server_with_cpu_policy(
+            temp_dir.path().to_string_lossy().to_string(),
+            "bat",
+            CpuPolicyConfig {
+                mode: CpuPolicyMode::Count,
+                count: Some(2),
+                explicit_set: None,
+                sync_active_processor_count: true,
+            },
+        );
+
+        let err = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
+            .expect_err("unsupported mode should fail");
+        assert!(err.contains("暂不支持 CPU policy"));
     }
 }

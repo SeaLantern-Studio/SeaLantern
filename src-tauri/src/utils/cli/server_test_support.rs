@@ -1,4 +1,6 @@
-use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+use crate::models::server::{
+    CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+};
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
@@ -53,7 +55,9 @@ pub(super) fn sample_server() -> ServerInstance {
             startup_mode: "jar".to_string(),
             custom_command: None,
             java_path: "C:/Java/bin/java.exe".to_string(),
-            jvm_args: vec![],
+            jvm_args: Vec::new(),
+            cpu_policy: CpuPolicyConfig::default(),
+            jvm_preset: JvmPresetConfig::default(),
         }),
     }
 }

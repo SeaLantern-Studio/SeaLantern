@@ -121,8 +121,8 @@ fn render_detach_follow_up_lines(server: &ServerInstance) -> Vec<String> {
 mod tests {
     use super::{render_create_only_follow_up_lines, render_detach_follow_up_lines};
     use crate::models::server::{
-        DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig, LocalRuntimeConfig,
-        ServerInstance, ServerRuntimeConfig,
+        CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
+        JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
     use std::collections::BTreeMap;
 
@@ -146,7 +146,9 @@ mod tests {
                 startup_mode: "jar".to_string(),
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
-                jvm_args: vec![],
+                jvm_args: Vec::new(),
+                cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+                jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
         }
     }
@@ -180,6 +182,9 @@ mod tests {
                 docker_backend_kind: DockerBackendKind::Cli,
                 command_mode: DockerCommandMode::Rcon,
                 rcon: None,
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }

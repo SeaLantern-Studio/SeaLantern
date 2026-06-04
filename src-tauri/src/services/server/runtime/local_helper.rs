@@ -443,6 +443,8 @@ mod tests {
                 custom_command: None,
                 java_path: "java".to_string(),
                 jvm_args: Vec::new(),
+                cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+                jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
         }
     }

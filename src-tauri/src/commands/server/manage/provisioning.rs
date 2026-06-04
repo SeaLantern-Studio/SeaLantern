@@ -30,6 +30,9 @@ pub(super) fn create_server(
         server_path,
         startup_mode,
         custom_command,
+        jvm_args: Vec::new(),
+        cpu_policy: CpuPolicyConfig::default(),
+        jvm_preset: JvmPresetConfig::default(),
     };
     manager().create_server(req)
 }
@@ -57,6 +60,9 @@ pub(super) fn import_server(
         min_memory,
         port,
         online_mode,
+        jvm_args: Vec::new(),
+        cpu_policy: CpuPolicyConfig::default(),
+        jvm_preset: JvmPresetConfig::default(),
     };
     manager().import_server(req)
 }
@@ -89,6 +95,9 @@ pub(super) fn add_existing_server(
         custom_command,
         core_type,
         mc_version,
+        jvm_args: Vec::new(),
+        cpu_policy: CpuPolicyConfig::default(),
+        jvm_preset: JvmPresetConfig::default(),
     };
     manager().add_existing_server(req)
 }
@@ -125,6 +134,9 @@ pub(super) fn import_modpack(
         startup_file_path,
         core_type,
         mc_version,
+        jvm_args: Vec::new(),
+        cpu_policy: CpuPolicyConfig::default(),
+        jvm_preset: JvmPresetConfig::default(),
     };
     manager().import_modpack(req)
 }

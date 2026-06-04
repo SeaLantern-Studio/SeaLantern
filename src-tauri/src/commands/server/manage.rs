@@ -216,6 +216,20 @@ pub fn get_server_logs(id: String, since: usize, max_lines: Option<usize>) -> Ve
 }
 
 #[tauri::command]
+pub fn get_local_launch_detail(
+    id: String,
+) -> Result<crate::services::server::manager::LocalLaunchDetail, String> {
+    runtime::get_local_launch_detail(id)
+}
+
+#[tauri::command]
+pub fn get_docker_launch_detail(
+    id: String,
+) -> Result<crate::services::server::manager::DockerLaunchDetail, String> {
+    runtime::get_docker_launch_detail(id)
+}
+
+#[tauri::command]
 pub fn update_server_name(id: String, name: String) -> Result<(), String> {
     runtime::update_server_name(id, name)
 }

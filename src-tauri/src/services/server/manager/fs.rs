@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+use crate::models::server::{
+    CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+};
 use crate::utils::constants::{DATA_FILE, RUN_PATH_MAP_FILE};
 use crate::utils::logger;
 use crate::utils::path::find_root_startup_file;
@@ -65,6 +67,8 @@ impl From<LegacyServerInstance> for ServerInstance {
                 custom_command: value.custom_command,
                 java_path: value.java_path,
                 jvm_args: value.jvm_args,
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }
@@ -384,7 +388,9 @@ pub(super) fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> 
 #[cfg(test)]
 mod tests {
     use super::{load_servers, save_servers};
-    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::models::server::{
+        CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+    };
     use crate::utils::constants::DATA_FILE;
     use serde_json::Value;
     use tempfile::tempdir;
@@ -409,7 +415,9 @@ mod tests {
                 startup_mode: "jar".to_string(),
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
-                jvm_args: vec!["-Dfoo=bar".to_string()],
+                jvm_args: vec!["-Xmx2G".to_string()],
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }

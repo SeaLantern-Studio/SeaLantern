@@ -455,7 +455,9 @@ mod tests {
                 startup_mode: "jar".to_string(),
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
-                jvm_args: vec![],
+                jvm_args: Vec::new(),
+                cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+                jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
         }
     }
@@ -493,6 +495,9 @@ mod tests {
                     port: 25575,
                     password: "secret".to_string(),
                 }),
+                jvm_args: Vec::new(),
+                cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+                jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
         }
     }

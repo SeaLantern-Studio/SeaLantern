@@ -1,4 +1,5 @@
 mod launch;
+mod local_launch_detail;
 mod preload;
 
 use std::path::Path;
@@ -9,6 +10,15 @@ use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::runtime::{
     RuntimeProcessHandle, RuntimeStartRequest, RuntimeStartResult,
 };
+
+pub use local_launch_detail::LocalLaunchDetail;
+
+pub(crate) fn get_local_launch_detail(
+    server: &crate::models::server::ServerInstance,
+    settings: &crate::models::settings::AppSettings,
+) -> Result<LocalLaunchDetail, String> {
+    local_launch_detail::build_local_launch_detail(server, settings)
+}
 
 pub(crate) fn start_local_runtime(
     manager: &ServerManager,
