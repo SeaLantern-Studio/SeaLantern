@@ -28,7 +28,13 @@
 3. 实现 Docker `jvm_preset + jvm_args + ActiveProcessorCount` 到 `JVM_OPTS/JVM_XX_OPTS` 的合成。
 4. 实现原始 `runtime.env` 接管冲突规则。
 5. 同步 compose 导出与 inspect 展示。
-6. 补 Docker 侧测试。
+6. 为前端和 inspect 准备“Docker 启动详情”所需的后端信息，至少要能稳定拿到：
+   - 运行时类型
+   - 镜像与 tag
+   - cpuset 应用结果
+   - 预设与附加参数合成后的 JVM 参数概览
+   - 可展示的 docker 启动参数概览
+7. 补 Docker 侧测试。
 
 本轮不要做：
 - 不要改本地 runtime。
@@ -37,5 +43,6 @@
 完成后 `.cache3` 输出格式：
 - `已修改文件`
 - `完成内容`
+- `启动详情对外提供了什么`
 - `与共享 schema 对接情况`
 - `遗留风险`
