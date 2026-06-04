@@ -193,6 +193,13 @@
   word-break: break-all;
 }
 
+.startup-preview-code--single-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+}
+
 .startup-preview-empty {
   color: var(--sl-text-tertiary);
   font-size: 0.8125rem;

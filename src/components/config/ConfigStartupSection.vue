@@ -3,6 +3,7 @@ import { computed } from "vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
+import SLTooltip from "@components/common/SLTooltip.vue";
 import CpuPolicyEditor from "@components/startup/CpuPolicyEditor.vue";
 import { i18n } from "@language";
 import { useStartupConfigSection } from "@components/config/useStartupConfigSection";
@@ -12,6 +13,7 @@ import {
   getJvmPresetPreviewArgs,
   serializeJvmArgsText,
 } from "@utils/serverStartupConfig";
+import { compactPathMiddle } from "@utils/pathDisplay";
 import type { JvmPresetId, LocalStartupMode } from "@type/server";
 import { useServerStore } from "@stores/serverStore";
 
@@ -192,6 +194,20 @@ const jvmPresetPreviewArgs = computed(() =>
 const jvmPresetArgCount = computed(
   () => getJvmPresetArgs(startupConfig.jvmPreset.value.preset).length,
 );
+
+const realJavaPathDisplay = computed(() => {
+  const javaPath = realLocalLaunchDetail.value?.java_path?.trim();
+  return javaPath ? compactPathMiddle(javaPath) : i18n.t("common.unknown");
+});
+
+const realLaunchTargetDisplay = computed(() => {
+  const launchTarget = realLocalLaunchDetail.value?.launch_target?.trim();
+  return launchTarget
+    ? compactPathMiddle(launchTarget, 64)
+    : i18n.t("config.startup_preview_pending");
+});
+
+const configLaunchTargetDisplay = computed(() => compactPathMiddle(startupTargetSummary.value, 64));
 </script>
 
 <template>
@@ -327,7 +343,11 @@ const jvmPresetArgCount = computed(
                   <span class="startup-preview-label">{{
                     i18n.t("config.startup_preview_java")
                   }}</span>
-                  <span class="startup-preview-value">{{ realLocalLaunchDetail.java_path }}</span>
+                  <SLTooltip :content="realLocalLaunchDetail.java_path">
+                    <span class="startup-preview-value startup-preview-value--path">{{
+                      realJavaPathDisplay
+                    }}</span>
+                  </SLTooltip>
                 </div>
                 <div v-else-if="realDockerLaunchDetail" class="startup-preview-item">
                   <span class="startup-preview-label">{{
@@ -350,7 +370,11 @@ const jvmPresetArgCount = computed(
                 <span class="startup-preview-label">{{
                   i18n.t("config.startup_preview_target")
                 }}</span>
-                <code class="startup-preview-code">{{ realLocalLaunchDetail.launch_target }}</code>
+                <SLTooltip :content="realLocalLaunchDetail.launch_target">
+                  <code class="startup-preview-code startup-preview-code--single-line">{{
+                    realLaunchTargetDisplay
+                  }}</code>
+                </SLTooltip>
               </div>
               <div class="startup-preview-block">
                 <span class="startup-preview-label">{{
@@ -443,7 +467,11 @@ const jvmPresetArgCount = computed(
               <span class="startup-preview-label">{{
                 i18n.t("config.startup_preview_target")
               }}</span>
-              <code class="startup-preview-code">{{ startupTargetSummary }}</code>
+              <SLTooltip :content="startupTargetSummary">
+                <code class="startup-preview-code startup-preview-code--single-line">{{
+                  configLaunchTargetDisplay
+                }}</code>
+              </SLTooltip>
             </div>
             <div class="startup-preview-block">
               <span class="startup-preview-label">{{
@@ -650,6 +678,12 @@ const jvmPresetArgCount = computed(
   font-weight: 500;
 }
 
+.startup-preview-value--path {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .startup-preview-code {
   display: block;
   padding: 10px 12px;
@@ -661,6 +695,13 @@ const jvmPresetArgCount = computed(
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.startup-preview-code--single-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
 }
 
 .startup-preview-empty {

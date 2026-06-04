@@ -4,6 +4,7 @@ import SLModal from "@components/common/SLModal.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
+import SLTooltip from "@components/common/SLTooltip.vue";
 import CpuPolicyEditor from "@components/startup/CpuPolicyEditor.vue";
 import { i18n } from "@language";
 import { computed, ref } from "vue";
@@ -13,6 +14,7 @@ import {
   getJvmPresetPreviewArgs,
   serializeJvmArgsText,
 } from "@utils/serverStartupConfig";
+import { compactPathMiddle } from "@utils/pathDisplay";
 import type { CpuPolicyConfig, JvmPresetId, LocalStartupMode } from "@type/server";
 
 const props = defineProps<{
@@ -83,6 +85,8 @@ const startupTargetSummary = computed(() => {
 
   return props.startupTarget?.trim() || i18n.t("create.startup_command_pending");
 });
+
+const startupTargetDisplay = computed(() => compactPathMiddle(startupTargetSummary.value, 64));
 
 function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port") {
   const target = event.target as HTMLInputElement;
@@ -229,7 +233,11 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
 
           <div class="startup-preview-block">
             <span class="startup-preview-label">{{ i18n.t("create.startup_preview_target") }}</span>
-            <code class="startup-preview-code">{{ startupTargetSummary }}</code>
+            <SLTooltip :content="startupTargetSummary">
+              <code class="startup-preview-code startup-preview-code--single-line">{{
+                startupTargetDisplay
+              }}</code>
+            </SLTooltip>
           </div>
 
           <div class="startup-preview-block">
