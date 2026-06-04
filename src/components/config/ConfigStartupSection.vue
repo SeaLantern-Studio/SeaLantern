@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { computed } from "vue";
 import SLInput from "@components/common/SLInput.vue";
-import { configApi, type SLStartupConfig } from "@api/config";
 import { i18n } from "@language";
+import { useStartupConfigSection } from "@components/config/useStartupConfigSection";
 
 const props = defineProps<{
   serverPath: string;
@@ -14,89 +14,25 @@ const emit = defineEmits<{
   (e: "saved", maxMemory: number, minMemory: number): void;
 }>();
 
-const maxMemory = ref(props.defaultMaxMemory);
-const minMemory = ref(props.defaultMinMemory);
-const loading = ref(false);
-const saving = ref(false);
-const error = ref<string | null>(null);
-
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
-const AUTO_SAVE_DELAY = 800;
-
-function scheduleAutoSave() {
-  if (autoSaveTimer) clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(() => {
-    saveConfig();
-  }, AUTO_SAVE_DELAY);
-}
-
-async function loadConfig() {
-  if (!props.serverPath) return;
-  loading.value = true;
-  error.value = null;
-  try {
-    const config = await configApi.readSLConfig(props.serverPath);
-    maxMemory.value = config.max_memory ?? props.defaultMaxMemory;
-    minMemory.value = config.min_memory ?? props.defaultMinMemory;
-  } catch (e: any) {
-    error.value = e?.toString() || "加载启动配置失败";
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function saveConfig() {
-  if (!props.serverPath || saving.value) return;
-  if (maxMemory.value < 128) {
-    error.value = "最大内存不能小于 128MB";
-    return;
-  }
-  if (minMemory.value < 128) {
-    error.value = "最小内存不能小于 128MB";
-    return;
-  }
-  if (minMemory.value > maxMemory.value) {
-    error.value = "最小内存不能大于最大内存";
-    return;
-  }
-
-  saving.value = true;
-  error.value = null;
-  try {
-    const config: SLStartupConfig = {
-      max_memory: maxMemory.value,
-      min_memory: minMemory.value,
-    };
-    await configApi.writeSLConfig(props.serverPath, config);
-    emit("saved", maxMemory.value, minMemory.value);
-  } catch (e: any) {
-    error.value = e?.toString() || "保存启动配置失败";
-  } finally {
-    saving.value = false;
-  }
-}
-
-onMounted(loadConfig);
-
-onUnmounted(() => {
-  if (autoSaveTimer) clearTimeout(autoSaveTimer);
-});
-
-watch(() => props.serverPath, loadConfig);
-watch([maxMemory, minMemory], () => {
-  scheduleAutoSave();
+const startupConfig = useStartupConfigSection({
+  serverPath: computed(() => props.serverPath),
+  defaultMaxMemory: computed(() => props.defaultMaxMemory),
+  defaultMinMemory: computed(() => props.defaultMinMemory),
+  onSaved: (maxMemory, minMemory) => {
+    emit("saved", maxMemory, minMemory);
+  },
 });
 </script>
 
 <template>
   <div class="config-startup-section">
-    <div v-if="loading" class="loading-state">
+    <div v-if="startupConfig.loading" class="loading-state">
       <p class="text-caption">{{ i18n.t("common.loading") }}</p>
     </div>
     <template v-else>
-      <div v-if="error" class="error-banner">
-        <span>{{ error }}</span>
-        <button class="banner-close" @click="error = null">x</button>
+      <div v-if="startupConfig.error.value" class="error-banner">
+        <span>{{ startupConfig.error.value }}</span>
+        <button class="banner-close" @click="startupConfig.error.value = null">x</button>
       </div>
       <div class="startup-entries">
         <div class="config-entry glass-card">
@@ -108,8 +44,8 @@ watch([maxMemory, minMemory], () => {
           </div>
           <div class="entry-control">
             <SLInput
-              :modelValue="String(maxMemory)"
-              @update:modelValue="maxMemory = Number($event)"
+              :modelValue="String(startupConfig.maxMemory.value)"
+              @update:modelValue="startupConfig.maxMemory.value = Number($event)"
               type="number"
               :placeholder="'2048'"
               :min="128"
@@ -126,8 +62,8 @@ watch([maxMemory, minMemory], () => {
           </div>
           <div class="entry-control">
             <SLInput
-              :modelValue="String(minMemory)"
-              @update:modelValue="minMemory = Number($event)"
+              :modelValue="String(startupConfig.minMemory.value)"
+              @update:modelValue="startupConfig.minMemory.value = Number($event)"
               type="number"
               :placeholder="'512'"
               :min="128"

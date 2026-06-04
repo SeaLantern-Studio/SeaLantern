@@ -61,10 +61,12 @@ const serverStore = useServerStore();
 const pluginStore = usePluginStore();
 const settingsStore = useSettingsStore();
 const navIndicator = ref<HTMLElement | null>(null);
+const sidebarNavRef = ref<HTMLElement | null>(null);
 const sidebarTransitioning = ref(false);
 const isMacOS = isMacOSPlatform();
-let indicatorSyncInterval: ReturnType<typeof setInterval> | null = null;
 let indicatorSyncTimeout: ReturnType<typeof setTimeout> | null = null;
+let indicatorFrameId: number | null = null;
+let indicatorResizeObserver: ResizeObserver | null = null;
 
 interface NavItem {
   name: string;
@@ -271,58 +273,56 @@ function navigateTo(path: string) {
   router.push(path);
 }
 
+function cancelIndicatorFrame() {
+  if (indicatorFrameId !== null) {
+    cancelAnimationFrame(indicatorFrameId);
+    indicatorFrameId = null;
+  }
+}
+
+function scheduleNavIndicatorUpdate() {
+  cancelIndicatorFrame();
+  indicatorFrameId = requestAnimationFrame(() => {
+    indicatorFrameId = null;
+    void updateNavIndicator();
+  });
+}
+
 function updateNavIndicator() {
-  nextTick(() => {
-    if (!navIndicator.value) return;
+  return nextTick(() => {
+    const indicator = navIndicator.value;
+    const sidebarNav = sidebarNavRef.value;
+    const activeNavItem = sidebarNav?.querySelector<HTMLElement>(".nav-item.active");
 
-    const activeNavItem = document.querySelector(".nav-item.active");
-    const sidebarNav = document.querySelector(".sidebar-nav");
-
-    if (activeNavItem && sidebarNav && navIndicator.value.parentElement) {
-      // 获取滚动容器和激活项的位置
-      const navItemRect = activeNavItem.getBoundingClientRect();
-      const sidebarNavRect = sidebarNav.getBoundingClientRect();
-
-      // 计算相对于滚动容器的位置（考虑滚动偏移）
-      const top =
-        navItemRect.top - sidebarNavRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
-
-      // 确保导航指示器可见
-      navIndicator.value.style.display = "block";
-
-      // 强制触发重排，确保动画能够正确执行
-      void navIndicator.value.offsetHeight;
-
-      // 使用 requestAnimationFrame 确保动画在正确的时机执行
-      requestAnimationFrame(() => {
-        navIndicator.value!.style.top = `${top}px`;
-      });
+    if (!indicator || !sidebarNav || !activeNavItem || !indicator.parentElement) {
+      if (indicator) {
+        indicator.style.display = "none";
+      }
+      return;
     }
+
+    const navItemRect = activeNavItem.getBoundingClientRect();
+    const sidebarNavRect = sidebarNav.getBoundingClientRect();
+    const top =
+      navItemRect.top - sidebarNavRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
+
+    indicator.style.display = "block";
+    indicator.style.top = `${top}px`;
   });
 }
 
 function startIndicatorSyncDuringSidebarTransition() {
-  if (indicatorSyncInterval) {
-    clearInterval(indicatorSyncInterval);
-    indicatorSyncInterval = null;
-  }
   if (indicatorSyncTimeout) {
     clearTimeout(indicatorSyncTimeout);
     indicatorSyncTimeout = null;
   }
 
   sidebarTransitioning.value = true;
-  indicatorSyncInterval = setInterval(() => {
-    updateNavIndicator();
-  }, 16);
+  scheduleNavIndicatorUpdate();
 
   indicatorSyncTimeout = setTimeout(() => {
-    if (indicatorSyncInterval) {
-      clearInterval(indicatorSyncInterval);
-      indicatorSyncInterval = null;
-    }
     sidebarTransitioning.value = false;
-    updateNavIndicator();
+    scheduleNavIndicatorUpdate();
   }, 360);
 }
 
@@ -330,7 +330,7 @@ function startIndicatorSyncDuringSidebarTransition() {
 watch(
   () => ui.sidebarCollapsed,
   () => {
-    updateNavIndicator();
+    scheduleNavIndicatorUpdate();
     startIndicatorSyncDuringSidebarTransition();
   },
 );
@@ -339,17 +339,13 @@ watch(
 watch(
   () => route.path,
   () => {
-    nextTick(() => {
-      updateNavIndicator();
-    });
+    scheduleNavIndicatorUpdate();
   },
 );
 
 onMounted(async () => {
   await serverStore.refreshList();
-  nextTick(() => {
-    updateNavIndicator();
-  });
+  scheduleNavIndicatorUpdate();
 });
 
 function handleServerChange(value: string) {
@@ -381,37 +377,39 @@ const currentServerRef = computed({
 watch(
   () => serverOptions.value.length,
   () => {
-    updateNavIndicator();
+    scheduleNavIndicatorUpdate();
   },
 );
 
-// 监听窗口尺寸变化，更新选项位置
 onMounted(() => {
-  window.addEventListener("resize", updateNavIndicator);
+  window.addEventListener("resize", scheduleNavIndicatorUpdate);
 
-  // 监听侧边栏滚动，更新指示器位置
-  const sidebarNav = document.querySelector(".sidebar-nav");
+  const sidebarNav = sidebarNavRef.value;
   if (sidebarNav) {
-    sidebarNav.addEventListener("scroll", updateNavIndicator);
+    sidebarNav.addEventListener("scroll", scheduleNavIndicatorUpdate, { passive: true });
+    if (typeof ResizeObserver !== "undefined") {
+      indicatorResizeObserver = new ResizeObserver(() => {
+        scheduleNavIndicatorUpdate();
+      });
+      indicatorResizeObserver.observe(sidebarNav);
+    }
   }
 });
 
 onUnmounted(() => {
-  if (indicatorSyncInterval) {
-    clearInterval(indicatorSyncInterval);
-    indicatorSyncInterval = null;
-  }
   if (indicatorSyncTimeout) {
     clearTimeout(indicatorSyncTimeout);
     indicatorSyncTimeout = null;
   }
+  cancelIndicatorFrame();
+  indicatorResizeObserver?.disconnect();
+  indicatorResizeObserver = null;
 
-  window.removeEventListener("resize", updateNavIndicator);
+  window.removeEventListener("resize", scheduleNavIndicatorUpdate);
 
-  // 移除侧边栏滚动监听
-  const sidebarNav = document.querySelector(".sidebar-nav");
+  const sidebarNav = sidebarNavRef.value;
   if (sidebarNav) {
-    sidebarNav.removeEventListener("scroll", updateNavIndicator);
+    sidebarNav.removeEventListener("scroll", scheduleNavIndicatorUpdate);
   }
 });
 
@@ -474,7 +472,7 @@ function getAppName() {
         <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ getAppName() }}</span>
       </transition>
     </div>
-    <nav class="sidebar-nav">
+    <nav ref="sidebarNavRef" class="sidebar-nav">
       <div class="nav-active-indicator" ref="navIndicator"></div>
       <SLSelect
         v-if="serverOptions.length > 0"

@@ -9,6 +9,7 @@ mod provisioning;
 mod registry;
 mod runtime_control;
 mod runtime_start;
+mod startup_support;
 
 use std::collections::{HashMap, HashSet};
 use std::process::Child;
@@ -24,7 +25,7 @@ use super::installer;
 use super::log_pipeline as server_log_pipeline;
 use super::manager::process::force_kill_process_tree;
 use super::runtime::local::LocalServerRuntime;
-use common::{get_data_dir, normalize_startup_mode, validate_server_name, ManagedConsoleEncoding};
+use common::{get_data_dir, normalize_startup_mode, validate_server_name};
 use fs::{load_servers, remove_run_path_mapping, save_servers, update_run_path_mapping};
 #[allow(unused_imports)]
 pub use registry::{
@@ -244,74 +245,6 @@ impl ServerManager {
             .lock()
             .map(|dir| dir.clone())
             .map_err(|_| "data_dir lock poisoned".to_string())
-    }
-
-    fn read_sl_startup_config(
-        server: &ServerInstance,
-        settings: &crate::models::settings::AppSettings,
-    ) -> Option<(u32, u32)> {
-        let sl_path = std::path::Path::new(&server.path).join("SL.json");
-        if !sl_path.exists() {
-            return None;
-        }
-        let content = std::fs::read_to_string(&sl_path).ok()?;
-        let config: crate::commands::server::config::SLStartupConfig =
-            serde_json::from_str(&content).ok()?;
-        match (config.max_memory, config.min_memory) {
-            (Some(max), Some(min)) => Some((max, min)),
-            (Some(max), None) => Some((max, settings.default_min_memory)),
-            (None, Some(min)) => Some((settings.default_max_memory, min)),
-            (None, None) => None,
-        }
-    }
-
-    /// 按当前设置拼出托管启动参数
-    ///
-    /// 优先从 SL.json 读取内存值，没有则回退到 ServerInstance 的默认值
-    fn build_managed_jvm_args(
-        &self,
-        server: &ServerInstance,
-        settings: &crate::models::settings::AppSettings,
-        console_encoding: ManagedConsoleEncoding,
-    ) -> Vec<String> {
-        let java_encoding = console_encoding.java_name();
-        let default_memory = (settings.default_max_memory, settings.default_min_memory);
-        let (max_mem, min_mem) =
-            Self::read_sl_startup_config(server, settings).unwrap_or(default_memory);
-        let mut args = vec![
-            format!("-Xmx{}M", max_mem),
-            format!("-Xms{}M", min_mem),
-            format!("-Dfile.encoding={}", java_encoding),
-            format!("-Dsun.stdout.encoding={}", java_encoding),
-            format!("-Dsun.stderr.encoding={}", java_encoding),
-        ];
-
-        let jvm = settings.default_jvm_args.trim();
-        if !jvm.is_empty() {
-            args.extend(jvm.split_whitespace().map(|arg| arg.to_string()));
-        }
-
-        args.extend(server.jvm_args().iter().cloned());
-        args
-    }
-
-    /// 写入 `user_jvm_args.txt`
-    fn write_user_jvm_args(
-        &self,
-        server: &ServerInstance,
-        settings: &crate::models::settings::AppSettings,
-        console_encoding: ManagedConsoleEncoding,
-    ) -> Result<(), String> {
-        let args = self.build_managed_jvm_args(server, settings, console_encoding);
-        let user_jvm_args_path = std::path::Path::new(&server.path).join("user_jvm_args.txt");
-        let content = if args.is_empty() {
-            String::new()
-        } else {
-            format!("{}\n", args.join("\n"))
-        };
-
-        std::fs::write(&user_jvm_args_path, content)
-            .map_err(|e| format!("写入 user_jvm_args.txt 失败: {}", e))
     }
 
     /// 新建一个服务器记录

@@ -1,102 +1,28 @@
-import { computed, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { useRouter } from "vue-router";
-import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
-import type { StartupCandidate } from "@components/views/create/startupTypes";
+import { useCreateServerDefaults } from "@components/views/create/useCreateServerDefaults";
 import {
-  containsIoRedirection,
-  isStrictChildPath,
-  mapStartupModeForModpack,
-  normalizePathForCompare,
-} from "@components/views/create/startupUtils";
+  type CreateServerSourceType,
+  useCreateServerDropSource,
+} from "@components/views/create/useCreateServerDropSource";
+import { useCreateServerScan } from "@components/views/create/useCreateServerScan";
+import { useCreateServerSubmit } from "@components/views/create/useCreateServerSubmit";
+import { isStrictChildPath, normalizePathForCompare } from "@components/views/create/startupUtils";
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
-import { settingsApi } from "@api/settings";
-import { systemApi } from "@api/system";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
-import { useServerStore } from "@stores/serverStore";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
-import { isBrowserEnv } from "@api/tauri";
-
-// UUID 生成函数（用于前端备用方案）
-function generateUUID(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
-type SourceType = "archive" | "folder" | "";
-
-function inferSourceType(path: string): SourceType {
-  const lowerPath = path.toLowerCase();
-  if (
-    lowerPath.endsWith(".zip") ||
-    lowerPath.endsWith(".tar") ||
-    lowerPath.endsWith(".tar.gz") ||
-    lowerPath.endsWith(".tgz") ||
-    lowerPath.endsWith(".jar")
-  ) {
-    return "archive";
-  }
-  return "folder";
-}
-
-function parseNumber(value: string, fallbackValue: number): number {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? fallbackValue : parsed;
-}
-
-export const CREATE_SERVER_SOURCE_DROP_EVENT = "create-server-source-drop";
-const CREATE_SERVER_DND_DEBUG = import.meta.env.DEV;
-
-function logCreateServerDnd(message: string, payload?: unknown) {
-  if (!CREATE_SERVER_DND_DEBUG) return;
-  if (payload === undefined) {
-    console.debug(message);
-    return;
-  }
-  console.debug(message, payload);
-}
+import { onActivated, onUnmounted, ref, watch } from "vue";
 
 export function useCreateServerPage() {
-  const router = useRouter();
-  const serverstore = useServerStore();
   const { error: errorMsg, showError, clearError } = useMessage();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
 
   const sourcePath = ref("");
-  const sourceType = ref<SourceType>("");
+  const sourceType = ref<CreateServerSourceType>("");
   const runPath = ref("");
-
-  const coreDetecting = ref(false);
-  const detectedCoreType = ref("");
-  const detectedCoreMainClass = ref("");
-  const detectedCoreTypeKey = ref("");
-  const coreTypeOptions = ref<string[]>([]);
-  const selectedCoreType = ref("");
-
-  const detectedMcVersion = ref("");
-  const mcVersionOptions = ref<string[]>([]);
-  const selectedMcVersion = ref("");
-  const mcVersionDetectionFailed = ref(false);
-
-  const startupDetecting = ref(false);
-  // 源路径变更后先进入同步等待态，覆盖防抖空窗，防止提交时仍引用旧启动项。
-  const startupSyncPending = ref(false);
-  const startupCandidates = ref<StartupCandidate[]>([]);
-  const selectedStartupId = ref("");
-  const customStartupCommand = ref("");
-  let startupDetectRequestId = 0;
-
-  const AUTO_SCAN_DEBOUNCE_MS = 120;
-  let startupDetectTimer: ReturnType<typeof setTimeout> | null = null;
-  let unlistenSourceDropEvent: UnlistenFn | null = null;
 
   const runPathOverwriteRisk = ref(false);
   const RUN_PATH_CONFLICT_DEBOUNCE_MS = 180;
@@ -111,143 +37,67 @@ export function useCreateServerPage() {
   const onlineMode = ref(true);
   const javaList = ref<JavaInfo[]>([]);
 
-  const hasSource = computed(() => sourcePath.value.trim().length > 0 && sourceType.value !== "");
-
-  const selectedStartup = computed(
-    () => startupCandidates.value.find((item) => item.id === selectedStartupId.value) ?? null,
-  );
-  const starterSelected = computed(() => selectedStartup.value?.mode === "starter");
-  const customCommandHasRedirect = computed(
-    () =>
-      selectedStartup.value?.mode === "custom" && containsIoRedirection(customStartupCommand.value),
-  );
-
-  const hasPathStep = computed(() => {
-    if (!hasSource.value) {
-      return false;
-    }
-    return runPath.value.trim().length > 0;
+  const defaults = useCreateServerDefaults({
+    sourcePath,
+    sourceType,
+    runPath,
+    maxMemory,
+    minMemory,
+    port,
+    selectedJava,
+    javaList,
+    isChildPathBlocked: (targetPath) => isStrictChildPath(targetPath, sourcePath.value),
+    onInvalidRunPath: () => {
+      showError(i18n.t("create.path_child_of_source_forbidden"));
+    },
   });
 
-  const hasStartupStep = computed(() => {
-    if (!hasPathStep.value || !selectedStartup.value) {
-      return false;
-    }
-    if (selectedStartup.value.mode === "custom") {
-      return customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value;
-    }
-    return !(
-      selectedStartup.value.mode === "starter" &&
-      mcVersionDetectionFailed.value &&
-      selectedMcVersion.value.trim().length === 0
-    );
+  const scan = useCreateServerScan({
+    sourcePath,
+    sourceType,
+    showError,
   });
 
-  const hasJava = computed(() => selectedJava.value.trim().length > 0);
-  const hasServerConfig = computed(() => serverName.value.trim().length > 0);
-
-  const step1Completed = computed(() => hasSource.value);
-  const step2Completed = computed(() => step1Completed.value && hasPathStep.value);
-  const step3Completed = computed(() => step2Completed.value && hasStartupStep.value);
-  const step4Completed = computed(
-    () => step3Completed.value && hasJava.value && hasServerConfig.value,
-  );
-
-  const activeStep = computed(() => {
-    if (!step1Completed.value) {
-      return 1;
-    }
-    if (!step2Completed.value) {
-      return 2;
-    }
-    if (!step3Completed.value) {
-      return 3;
-    }
-    if (!step4Completed.value) {
-      return 4;
-    }
-    return 5;
+  useCreateServerDropSource({
+    sourcePath,
+    sourceType,
   });
 
-  const stepItems = computed(() => [
-    {
-      step: 1,
-      title: i18n.t("create.step_source_title"),
-      description: i18n.t("create.step_source_desc"),
-      completed: step1Completed.value,
-    },
-    {
-      step: 2,
-      title: i18n.t("create.step_path_title"),
-      description: i18n.t("create.step_path_desc"),
-      completed: step2Completed.value,
-    },
-    {
-      step: 3,
-      title: i18n.t("create.step_startup_title"),
-      description: i18n.t("create.step_startup_desc"),
-      completed: step3Completed.value,
-    },
-    {
-      step: 4,
-      title: i18n.t("create.step_config_title"),
-      description: i18n.t("create.step_config_desc"),
-      completed: step4Completed.value,
-    },
-    {
-      step: 5,
-      title: i18n.t("create.step_action_title"),
-      description: i18n.t("create.step_action_desc"),
-      completed: false,
-    },
-  ]);
-
-  // 只有步骤完成且“启动项同步”完成后才允许提交，避免新源路径配旧 startupFilePath。
-  const canSubmit = computed(
-    () => step4Completed.value && !startupSyncPending.value && !startupDetecting.value,
-  );
+  const submit = useCreateServerSubmit({
+    sourcePath,
+    sourceType,
+    runPath,
+    startupSyncPending: scan.startupSyncPending,
+    startupDetecting: scan.startupDetecting,
+    startupCandidates: scan.startupCandidates,
+    selectedStartupId: scan.selectedStartupId,
+    customStartupCommand: scan.customStartupCommand,
+    detectedCoreTypeKey: scan.detectedCoreTypeKey,
+    selectedCoreType: scan.selectedCoreType,
+    detectedMcVersion: scan.detectedMcVersion,
+    selectedMcVersion: scan.selectedMcVersion,
+    mcVersionDetectionFailed: scan.mcVersionDetectionFailed,
+    serverName,
+    maxMemory,
+    minMemory,
+    port,
+    selectedJava,
+    onlineMode,
+    startCreating,
+    stopCreating,
+    showError,
+    clearError,
+  });
 
   onActivated(() => {
     loadFromDraft();
   });
 
-  onMounted(async () => {
-    await loadDefaultSettings();
-
-    if (!isBrowserEnv()) {
-      try {
-        unlistenSourceDropEvent = await listen<string[]>(
-          CREATE_SERVER_SOURCE_DROP_EVENT,
-          (event) => {
-            const droppedPaths = Array.isArray(event.payload) ? event.payload : [];
-            logCreateServerDnd("[useCreateServerPage] Received source drop event", droppedPaths);
-            if (droppedPaths.length === 0) {
-              return;
-            }
-
-            const path = droppedPaths[0];
-            sourcePath.value = path;
-            sourceType.value = inferSourceType(path);
-          },
-        );
-      } catch (error) {
-        logCreateServerDnd("[useCreateServerPage] Failed to register source drop listener", error);
-      }
-    }
-  });
-
   onUnmounted(() => {
-    if (startupDetectTimer) {
-      clearTimeout(startupDetectTimer);
-      startupDetectTimer = null;
-    }
+    scan.cleanupScanTimer();
     if (runPathConflictTimer) {
       clearTimeout(runPathConflictTimer);
       runPathConflictTimer = null;
-    }
-    if (unlistenSourceDropEvent) {
-      unlistenSourceDropEvent();
-      unlistenSourceDropEvent = null;
     }
   });
 
@@ -302,86 +152,6 @@ export function useCreateServerPage() {
     { immediate: true },
   );
 
-  function scheduleStartupDetect(path: string, type: SourceType) {
-    if (startupDetectTimer) {
-      clearTimeout(startupDetectTimer);
-      startupDetectTimer = null;
-    }
-
-    if (!path.trim() || !type) {
-      startupSyncPending.value = false;
-      void refreshStartupCandidates(path, type, false);
-      return;
-    }
-
-    // 源路径一旦变化就立刻锁提交，直到本轮扫描完成。
-    startupSyncPending.value = true;
-
-    startupDetectTimer = setTimeout(() => {
-      startupDetectTimer = null;
-      void refreshStartupCandidates(path, type, false);
-    }, AUTO_SCAN_DEBOUNCE_MS);
-  }
-
-  watch(
-    [sourcePath, sourceType],
-    ([path, type]) => {
-      scheduleStartupDetect(path, type);
-    },
-    { immediate: true },
-  );
-
-  async function loadDefaultSettings() {
-    try {
-      const settings = await settingsApi.get();
-
-      maxMemory.value = String(settings.default_max_memory);
-      minMemory.value = String(settings.default_min_memory);
-      port.value = String(settings.default_port);
-
-      // Docker 环境下强制使用默认路径，忽略已保存的路径设置
-      if (isBrowserEnv()) {
-        try {
-          const defaultPath = await systemApi.getDefaultRunPath();
-          // 在Docker环境下，生成UUID并显示完整路径
-          const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
-          runPath.value = `${defaultPath}/${uuid}`;
-        } catch (error) {
-          console.error("Failed to get default run path:", error);
-          // 即使API调用失败，也设置一个合理的默认值
-          const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
-          runPath.value = `./data/${uuid}`;
-        }
-      } else {
-        // 非 Docker 环境下加载上次选择的开服路径
-        if (settings.last_run_path) {
-          runPath.value = settings.last_run_path;
-        } else {
-          // 如果没有上次的路径，获取默认路径
-          try {
-            runPath.value = await systemApi.getDefaultRunPath();
-          } catch (error) {
-            console.error("Failed to get default run path:", error);
-          }
-        }
-      }
-
-      if (settings.cached_java_list && settings.cached_java_list.length > 0) {
-        javaList.value = settings.cached_java_list;
-        if (settings.default_java_path) {
-          selectedJava.value = settings.default_java_path;
-        } else {
-          const preferredJava = javaList.value.find(
-            (java) => java.is_64bit && java.major_version >= 17,
-          );
-          selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load default settings:", error);
-    }
-  }
-
   function loadFromDraft() {
     const draftStore = useCreateServerDraftStore();
     const draft = draftStore.consumeDraft();
@@ -401,10 +171,6 @@ export function useCreateServerPage() {
         );
         selectedJava.value = preferredJava ? preferredJava.path : javaList.value[0].path;
       }
-
-      const settings = await settingsApi.get();
-      settings.cached_java_list = javaList.value;
-      await settingsApi.save(settings);
     } catch (error) {
       showError(String(error));
     } finally {
@@ -412,261 +178,12 @@ export function useCreateServerPage() {
     }
   }
 
-  async function pickRunPath() {
-    // Docker 环境下禁用文件选择器，使用默认路径
-    if (isBrowserEnv()) {
-      try {
-        const defaultPath = await systemApi.getDefaultRunPath();
-        // 在Docker环境下，生成UUID并显示完整路径
-        const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
-        const fullPath = `${defaultPath}/${uuid}`;
-        updateRunPath(fullPath);
-        // 保存选择的开服路径
-        try {
-          await settingsApi.updatePartial({ last_run_path: fullPath });
-        } catch (error) {
-          console.error("Failed to save last run path:", error);
-        }
-      } catch (error) {
-        console.error("Failed to get default run path:", error);
-        // 即使API调用失败，也设置一个合理的默认值（包含UUID）
-        const uuid = generateUUID().replace(/-/g, "").substring(0, 30);
-        updateRunPath(`./data/${uuid}`);
-      }
-      return;
-    }
-
-    const selected = await systemApi.pickFolder();
-    if (selected) {
-      updateRunPath(selected);
-      // 保存选择的开服路径
-      try {
-        await settingsApi.updatePartial({ last_run_path: selected });
-      } catch (error) {
-        console.error("Failed to save last run path:", error);
-      }
-    }
-  }
-
   function updateRunPath(nextPath: string) {
-    const targetPath = nextPath.trim();
-    if (sourceType.value === "folder" && isStrictChildPath(targetPath, sourcePath.value)) {
-      showError(i18n.t("create.path_child_of_source_forbidden"));
-      return;
-    }
-
-    runPath.value = nextPath;
-  }
-
-  async function refreshStartupCandidates(path: string, type: SourceType, forceReset: boolean) {
-    const requestId = ++startupDetectRequestId;
-
-    if (!path.trim() || !type) {
-      coreDetecting.value = false;
-      detectedCoreType.value = "";
-      detectedCoreMainClass.value = "";
-      startupDetecting.value = false;
-      startupCandidates.value = [];
-      selectedStartupId.value = "";
-      customStartupCommand.value = "";
-      detectedCoreTypeKey.value = "";
-      coreTypeOptions.value = [];
-      selectedCoreType.value = "";
-      detectedMcVersion.value = "";
-      mcVersionOptions.value = [];
-      selectedMcVersion.value = "";
-      mcVersionDetectionFailed.value = false;
-      startupSyncPending.value = false;
-      return;
-    }
-
-    coreDetecting.value = true;
-    startupDetecting.value = true;
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    if (requestId !== startupDetectRequestId) {
-      return;
-    }
-    try {
-      const discovered = await serverApi.scanStartupCandidates(path, type as "archive" | "folder");
-      const list = appendCustomCandidate(discovered.candidates);
-
-      if (requestId !== startupDetectRequestId) {
-        return;
-      }
-
-      detectedCoreType.value =
-        discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
-      detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
-      const previousDetectedCoreKey = detectedCoreTypeKey.value;
-      const previousDetectedMcVersion = detectedMcVersion.value;
-      detectedCoreTypeKey.value = discovered.detectedCoreTypeKey ?? "";
-      coreTypeOptions.value = discovered.coreTypeOptions;
-      detectedMcVersion.value = discovered.detectedMcVersion ?? "";
-      mcVersionOptions.value = discovered.mcVersionOptions;
-      mcVersionDetectionFailed.value = discovered.mcVersionDetectionFailed;
-      startupCandidates.value = list;
-
-      if (forceReset || !list.some((item) => item.id === selectedStartupId.value)) {
-        selectedStartupId.value = list[0]?.id ?? "";
-      }
-
-      if (
-        forceReset ||
-        !coreTypeOptions.value.includes(selectedCoreType.value) ||
-        selectedCoreType.value === previousDetectedCoreKey
-      ) {
-        selectedCoreType.value = detectedCoreTypeKey.value;
-      }
-
-      if (
-        forceReset ||
-        !mcVersionOptions.value.includes(selectedMcVersion.value) ||
-        selectedMcVersion.value === previousDetectedMcVersion
-      ) {
-        selectedMcVersion.value = detectedMcVersion.value;
-      }
-    } catch (error) {
-      if (requestId !== startupDetectRequestId) {
-        return;
-      }
-      detectedCoreType.value = i18n.t("create.source_core_unknown");
-      detectedCoreMainClass.value = "";
-      startupCandidates.value = appendCustomCandidate([]);
-      selectedStartupId.value = startupCandidates.value[0]?.id ?? "";
-      detectedCoreTypeKey.value = "";
-      coreTypeOptions.value = [];
-      selectedCoreType.value = "";
-      detectedMcVersion.value = "";
-      mcVersionOptions.value = [];
-      selectedMcVersion.value = "";
-      mcVersionDetectionFailed.value = false;
-      showError(String(error));
-    } finally {
-      if (requestId === startupDetectRequestId) {
-        coreDetecting.value = false;
-        startupDetecting.value = false;
-        startupSyncPending.value = false;
-      }
-    }
+    defaults.applyRunPath(nextPath);
   }
 
   async function rescanStartupCandidates() {
-    await refreshStartupCandidates(sourcePath.value.trim(), sourceType.value, true);
-  }
-
-  function validateBeforeSubmit(): boolean {
-    clearError();
-
-    if (!hasSource.value) {
-      showError(i18n.t("create.source_required"));
-      return false;
-    }
-    if (runPath.value.trim().length === 0) {
-      showError(i18n.t("create.path_required"));
-      return false;
-    }
-    if (sourceType.value === "folder" && isStrictChildPath(runPath.value, sourcePath.value)) {
-      showError(i18n.t("create.path_child_of_source_forbidden"));
-      return false;
-    }
-    if (!selectedStartup.value) {
-      showError(i18n.t("create.startup_required"));
-      return false;
-    }
-
-    if (selectedStartup.value.mode === "custom") {
-      if (!customStartupCommand.value.trim()) {
-        showError(i18n.t("create.startup_custom_required"));
-        return false;
-      }
-      if (containsIoRedirection(customStartupCommand.value)) {
-        showError(i18n.t("create.startup_custom_redirect_forbidden"));
-        return false;
-      }
-    }
-
-    if (
-      selectedStartup.value.mode === "starter" &&
-      mcVersionDetectionFailed.value &&
-      selectedMcVersion.value.trim().length === 0
-    ) {
-      showError(i18n.t("create.startup_mc_version_required"));
-      return false;
-    }
-
-    if (!selectedJava.value) {
-      showError(i18n.t("common.select_java_path"));
-      return false;
-    }
-    if (!serverName.value.trim()) {
-      showError(i18n.t("common.enter_server_name"));
-      return false;
-    }
-
-    return true;
-  }
-
-  async function handleSubmit() {
-    if (!validateBeforeSubmit()) {
-      return;
-    }
-
-    startCreating();
-    try {
-      const startup = selectedStartup.value;
-      const startupMode = mapStartupModeForModpack(startup?.mode ?? "jar");
-      const resolvedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
-      const resolvedMcVersion =
-        startupMode === "starter"
-          ? selectedMcVersion.value.trim() || detectedMcVersion.value.trim()
-          : "";
-      await serverApi.importModpack({
-        name: serverName.value.trim(),
-        modpackPath: sourcePath.value,
-        javaPath: selectedJava.value,
-        maxMemory: parseNumber(maxMemory.value, 2048),
-        minMemory: parseNumber(minMemory.value, 512),
-        port: parseNumber(port.value, 25565),
-        startupMode,
-        onlineMode: onlineMode.value,
-        customCommand: startupMode === "custom" ? customStartupCommand.value.trim() : undefined,
-        runPath: runPath.value.trim(),
-        startupFilePath: startupMode === "custom" ? undefined : startup?.path,
-        coreType: resolvedCoreType || undefined,
-        mcVersion: resolvedMcVersion || undefined,
-      });
-
-      await serverstore.refreshList();
-      router.push("/");
-    } catch (error) {
-      showError(String(error));
-    } finally {
-      stopCreating();
-    }
-  }
-
-  /**
-   * 处理 Tauri 文件拖放事件
-   * 根据文件扩展名自动识别为压缩包或文件夹
-   */
-  function handleTauriDrop(paths: string[]) {
-    if (paths.length === 0) return;
-
-    const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz", ".jar"];
-
-    function hasArchiveExtension(path: string): boolean {
-      const lowerPath = path.toLowerCase();
-      return archiveExtensions.some((ext) => lowerPath.endsWith(ext));
-    }
-
-    const firstPath = paths[0];
-    if (hasArchiveExtension(firstPath)) {
-      sourcePath.value = firstPath;
-      sourceType.value = "archive";
-    } else {
-      sourcePath.value = firstPath;
-      sourceType.value = "folder";
-    }
+    await scan.rescanStartupCandidates();
   }
 
   return {
@@ -679,22 +196,20 @@ export function useCreateServerPage() {
     sourceType,
     runPath,
     runPathOverwriteRisk,
-    coreDetecting,
-    detectedCoreType,
-    detectedCoreMainClass,
-    startupDetecting,
-    startupCandidates,
-    selectedStartupId,
-    customStartupCommand,
-    starterSelected,
-    detectedCoreTypeKey,
-    coreTypeOptions,
-    selectedCoreType,
-    detectedMcVersion,
-    mcVersionOptions,
-    selectedMcVersion,
-    mcVersionDetectionFailed,
-    customCommandHasRedirect,
+    coreDetecting: scan.coreDetecting,
+    detectedCoreType: scan.detectedCoreType,
+    detectedCoreMainClass: scan.detectedCoreMainClass,
+    startupDetecting: scan.startupDetecting,
+    startupCandidates: scan.startupCandidates,
+    selectedStartupId: scan.selectedStartupId,
+    customStartupCommand: scan.customStartupCommand,
+    detectedCoreTypeKey: scan.detectedCoreTypeKey,
+    coreTypeOptions: scan.coreTypeOptions,
+    selectedCoreType: scan.selectedCoreType,
+    detectedMcVersion: scan.detectedMcVersion,
+    mcVersionOptions: scan.mcVersionOptions,
+    selectedMcVersion: scan.selectedMcVersion,
+    mcVersionDetectionFailed: scan.mcVersionDetectionFailed,
     serverName,
     maxMemory,
     minMemory,
@@ -702,14 +217,15 @@ export function useCreateServerPage() {
     selectedJava,
     onlineMode,
     javaList,
-    activeStep,
-    stepItems,
-    canSubmit,
-    pickRunPath,
+    activeStep: submit.activeStep,
+    stepItems: submit.stepItems,
+    canSubmit: submit.canSubmit,
+    pickRunPath: defaults.pickRunPath,
     updateRunPath,
     rescanStartupCandidates,
     detectJava,
-    handleSubmit,
-    handleTauriDrop,
+    handleSubmit: submit.handleSubmit,
+    starterSelected: submit.starterSelected,
+    customCommandHasRedirect: submit.customCommandHasRedirect,
   };
 }

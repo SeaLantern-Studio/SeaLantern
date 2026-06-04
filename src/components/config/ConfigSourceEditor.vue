@@ -1,15 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { i18n } from "@language";
 import SLButton from "@components/common/SLButton.vue";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
-import { SearchQuery, findNext, findPrevious, search, setSearchQuery } from "@codemirror/search";
-import { EditorState } from "@codemirror/state";
-import { EditorView, lineNumbers } from "@codemirror/view";
-import {
-  propertiesLanguage,
-  propertiesSyntaxHighlighting,
-} from "@components/config/propertiesCodeMirror";
+import { usePropertiesSourceEditor } from "@components/config/usePropertiesSourceEditor";
 
 interface Props {
   modelValue: string;
@@ -25,214 +19,13 @@ const emit = defineEmits<{
 }>();
 
 const editorRoot = ref<HTMLElement | null>(null);
-const searchText = ref("");
-const totalMatches = ref(0);
-const currentMatch = ref(0);
-
-let editorView: EditorView | null = null;
-
-const searchQuery = computed(
-  () =>
-    new SearchQuery({
-      search: searchText.value,
-      caseSensitive: false,
-      literal: true,
-    }),
-);
-
-const matchCountText = computed(() => {
-  if (!searchText.value) {
-    return "0 / 0";
-  }
-  return `${currentMatch.value} / ${totalMatches.value}`;
-});
-
-const canNavigate = computed(() => totalMatches.value > 0);
-
-function getMatchRanges(text: string, query: string) {
-  if (!query) {
-    return [] as Array<{ from: number; to: number }>;
-  }
-
-  const ranges: Array<{ from: number; to: number }> = [];
-  const haystack = text.toLowerCase();
-  const needle = query.toLowerCase();
-  let index = 0;
-
-  while (index <= haystack.length - needle.length) {
-    const found = haystack.indexOf(needle, index);
-    if (found === -1) {
-      break;
-    }
-
-    ranges.push({ from: found, to: found + needle.length });
-    index = found + needle.length;
-  }
-
-  return ranges;
-}
-
-function updateMatchStats() {
-  if (!editorView || !searchText.value) {
-    totalMatches.value = 0;
-    currentMatch.value = 0;
-    return;
-  }
-
-  const text = editorView.state.doc.toString();
-  const ranges = getMatchRanges(text, searchText.value);
-  totalMatches.value = ranges.length;
-
-  if (ranges.length === 0) {
-    currentMatch.value = 0;
-    return;
-  }
-
-  const selection = editorView.state.selection.main;
-  const exactIndex = ranges.findIndex(
-    (range) => range.from === selection.from && range.to === selection.to,
-  );
-
-  if (exactIndex !== -1) {
-    currentMatch.value = exactIndex + 1;
-    return;
-  }
-
-  const nearestIndex = ranges.findIndex((range) => range.from >= selection.to);
-  currentMatch.value = nearestIndex === -1 ? ranges.length : nearestIndex + 1;
-}
-
-function applySearchQuery() {
-  if (!editorView) {
-    return;
-  }
-
-  editorView.dispatch({ effects: setSearchQuery.of(searchQuery.value) });
-  updateMatchStats();
-}
-
-function navigateToPrevious() {
-  if (!editorView || !canNavigate.value) {
-    return;
-  }
-
-  editorView.focus();
-  if (findPrevious(editorView)) {
-    editorView.dispatch({ scrollIntoView: true });
-    updateMatchStats();
-  }
-}
-
-function navigateToNext() {
-  if (!editorView || !canNavigate.value) {
-    return;
-  }
-
-  editorView.focus();
-  if (findNext(editorView)) {
-    editorView.dispatch({ scrollIntoView: true });
-    updateMatchStats();
-  }
-}
-
-onMounted(() => {
-  if (!editorRoot.value) {
-    return;
-  }
-
-  const state = EditorState.create({
-    doc: props.modelValue,
-    extensions: [
-      lineNumbers(),
-      EditorView.lineWrapping,
-      EditorState.readOnly.of(!!props.readOnly),
-      propertiesLanguage,
-      propertiesSyntaxHighlighting,
-      search({ top: false }),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          emit("update:modelValue", update.state.doc.toString());
-        }
-
-        if (update.docChanged || update.selectionSet) {
-          updateMatchStats();
-        }
-      }),
-      EditorView.theme({
-        "&": {
-          border: "1px solid var(--sl-border-light)",
-          borderRadius: "var(--sl-radius-md)",
-          backgroundColor: "var(--sl-surface)",
-          height: "480px",
-          overflow: "hidden",
-        },
-        ".cm-scroller": {
-          fontFamily: "var(--sl-font-mono)",
-          fontSize: "var(--sl-font-size-sm)",
-          lineHeight: "1.45",
-          padding: "0",
-        },
-        ".cm-gutters": {
-          backgroundColor: "var(--sl-bg-secondary)",
-          color: "var(--sl-text-tertiary)",
-          borderRight: "1px solid var(--sl-border-light)",
-        },
-        ".cm-lineNumbers .cm-gutterElement": {
-          padding: "0 10px 0 12px",
-        },
-        ".cm-content": {
-          color: "var(--sl-text-primary)",
-          caretColor: "var(--sl-primary)",
-          padding: "0 12px",
-        },
-        ".cm-activeLine": {
-          backgroundColor: "transparent",
-        },
-        ".cm-searchMatch": {
-          backgroundColor: "color-mix(in srgb, var(--sl-warning) 30%, transparent)",
-          outline: "1px solid color-mix(in srgb, var(--sl-warning) 50%, transparent)",
-        },
-        ".cm-searchMatch.cm-searchMatch-selected": {
-          backgroundColor: "color-mix(in srgb, var(--sl-primary) 25%, transparent)",
-          outline: "1px solid color-mix(in srgb, var(--sl-primary) 45%, transparent)",
-        },
-        "&.cm-focused": {
-          borderColor: "var(--sl-primary-light)",
-          boxShadow: "0 0 0 2px var(--sl-primary-bg)",
-        },
-      }),
-    ],
-  });
-
-  editorView = new EditorView({ state, parent: editorRoot.value });
-  applySearchQuery();
-});
-
-watch(
-  () => props.modelValue,
-  (value) => {
-    if (!editorView) {
-      return;
-    }
-
-    const currentValue = editorView.state.doc.toString();
-    if (value === currentValue) {
-      return;
-    }
-
-    editorView.dispatch({
-      changes: { from: 0, to: editorView.state.doc.length, insert: value },
-    });
+const sourceEditor = usePropertiesSourceEditor({
+  editorRoot,
+  modelValue: computed(() => props.modelValue),
+  readOnly: computed(() => !!props.readOnly),
+  onUpdateModelValue: (value) => {
+    emit("update:modelValue", value);
   },
-);
-
-watch(searchText, () => {
-  applySearchQuery();
-});
-
-onBeforeUnmount(() => {
-  editorView?.destroy();
-  editorView = null;
 });
 </script>
 
@@ -242,12 +35,12 @@ onBeforeUnmount(() => {
     <div class="plugins-toolbar source-search-toolbar">
       <div class="toolbar-left">
         <input
-          v-model="searchText"
+          v-model="sourceEditor.searchText"
           type="text"
           class="plugin-search"
           :placeholder="i18n.t('config.source_search_placeholder')"
         />
-        <span class="source-search-count text-caption">{{ matchCountText }}</span>
+        <span class="source-search-count text-caption">{{ sourceEditor.matchCountText }}</span>
       </div>
       <div class="toolbar-right">
         <template v-if="props.iconNavOnly">
@@ -255,9 +48,9 @@ onBeforeUnmount(() => {
             variant="secondary"
             size="sm"
             iconOnly
-            :disabled="!canNavigate"
+            :disabled="!sourceEditor.canNavigate"
             :aria-label="i18n.t('config.source_search_prev')"
-            @click="navigateToPrevious"
+            @click="sourceEditor.navigateToPrevious"
           >
             <ChevronUp :size="14" />
           </SLButton>
@@ -265,9 +58,9 @@ onBeforeUnmount(() => {
             variant="secondary"
             size="sm"
             iconOnly
-            :disabled="!canNavigate"
+            :disabled="!sourceEditor.canNavigate"
             :aria-label="i18n.t('config.source_search_next')"
-            @click="navigateToNext"
+            @click="sourceEditor.navigateToNext"
           >
             <ChevronDown :size="14" />
           </SLButton>
@@ -276,12 +69,17 @@ onBeforeUnmount(() => {
           <SLButton
             variant="secondary"
             size="sm"
-            :disabled="!canNavigate"
-            @click="navigateToPrevious"
+            :disabled="!sourceEditor.canNavigate"
+            @click="sourceEditor.navigateToPrevious"
           >
             {{ i18n.t("config.source_search_prev") }}
           </SLButton>
-          <SLButton variant="secondary" size="sm" :disabled="!canNavigate" @click="navigateToNext">
+          <SLButton
+            variant="secondary"
+            size="sm"
+            :disabled="!sourceEditor.canNavigate"
+            @click="sourceEditor.navigateToNext"
+          >
             {{ i18n.t("config.source_search_next") }}
           </SLButton>
         </template>

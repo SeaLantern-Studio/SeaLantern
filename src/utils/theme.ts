@@ -152,6 +152,43 @@ export function getColorValue(settings: AppSettings, colorType: string, theme: s
   return "";
 }
 
+function getResolvedColorPlan(theme: string, windowEffect: string): string {
+  const effectiveTheme = getEffectiveTheme(theme);
+  const hasNativeWindowEffect = (windowEffect || "off") !== "off";
+
+  if (effectiveTheme === "dark") {
+    return hasNativeWindowEffect ? "dark_acrylic" : "dark";
+  }
+
+  return hasNativeWindowEffect ? "light_acrylic" : "light";
+}
+
+export function getDefaultTextColors(
+  themeId: string,
+  theme: string,
+  windowEffect: string,
+): {
+  title: string;
+  text: string;
+  description: string;
+} {
+  const actualPlan = getResolvedColorPlan(theme, windowEffect);
+  const colors = {
+    textPrimary: getThemeColors(themeId, mapLegacyPlanName(actualPlan))?.textPrimary || "",
+    textSecondary: getThemeColors(themeId, mapLegacyPlanName(actualPlan))?.textSecondary || "",
+  };
+  const textTertiary =
+    getEffectiveTheme(theme) === "dark"
+      ? adjustBrightness(colors.textSecondary, -20)
+      : adjustBrightness(colors.textSecondary, 20);
+
+  return {
+    title: colors.textPrimary || "#0f172a",
+    text: colors.textSecondary || "#475569",
+    description: textTertiary || "#94a3b8",
+  };
+}
+
 /**
  * 应用颜色设置到 DOM
  * @param settings - 应用设置
@@ -166,14 +203,7 @@ export function applyColors(settings: AppSettings): void {
   const effectiveTheme = getEffectiveTheme(settings.theme);
   const isDark = effectiveTheme === "dark";
   const hasNativeWindowEffect = (settings.window_effect || "off") !== "off";
-
-  const actualPlan = isDark
-    ? hasNativeWindowEffect
-      ? "dark_acrylic"
-      : "dark"
-    : hasNativeWindowEffect
-      ? "light_acrylic"
-      : "light";
+  const actualPlan = getResolvedColorPlan(settings.theme, settings.window_effect);
 
   const colors = {
     bg: getColorValue(settings, "bg", actualPlan),
@@ -186,19 +216,21 @@ export function applyColors(settings: AppSettings): void {
     border: getColorValue(settings, "border", actualPlan),
   };
 
-  const textTertiary = isDark
-    ? adjustBrightness(colors.textSecondary, -20)
-    : adjustBrightness(colors.textSecondary, 20);
   const overrides = settings.text_color_overrides || { title: "", text: "", description: "" };
+  const defaultTextColors = getDefaultTextColors(
+    settings.color,
+    settings.theme,
+    settings.window_effect,
+  );
   const resolvedTextPrimary = isHexColor(overrides.title)
     ? overrides.title.trim()
-    : colors.textPrimary;
+    : defaultTextColors.title;
   const resolvedTextSecondary = isHexColor(overrides.text)
     ? overrides.text.trim()
-    : colors.textSecondary;
+    : defaultTextColors.text;
   const resolvedTextTertiary = isHexColor(overrides.description)
     ? overrides.description.trim()
-    : textTertiary;
+    : defaultTextColors.description;
 
   document.documentElement.style.setProperty("--sl-bg", colors.bg);
   document.documentElement.style.setProperty("--sl-bg-secondary", colors.bgSecondary);

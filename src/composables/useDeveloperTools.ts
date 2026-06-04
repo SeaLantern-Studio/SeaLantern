@@ -3,6 +3,7 @@ import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import { clearLogs, exportAppLogs, getLogs, type LogLine } from "@api/logging";
 import { systemApi, type SystemInfo } from "@api/system";
 import { useGlobalMessage } from "@composables/useMessage";
+import { useSerialPolling } from "@composables/useSerialPolling";
 import { i18n } from "@language";
 
 const LOG_POLL_INTERVAL = 1500;
@@ -28,9 +29,6 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const updateUrl = ref("");
   const logError = ref<string | null>(null);
   const systemError = ref<string | null>(null);
-
-  let logTimer: ReturnType<typeof setInterval> | null = null;
-  let systemTimer: ReturnType<typeof setInterval> | null = null;
 
   const logText = computed(() => logs.value.map((entry) => entry.formatted).join("\n"));
   const logLines = computed(() => logs.value.map((entry) => entry.formatted));
@@ -183,31 +181,31 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     }
   }
 
+  const logPolling = useSerialPolling({
+    intervalMs: LOG_POLL_INTERVAL,
+    task: async () => {
+      await refreshLogs();
+    },
+  });
+
+  const systemPolling = useSerialPolling({
+    intervalMs: SYSTEM_POLL_INTERVAL,
+    task: async () => {
+      await refreshSystemInfo();
+    },
+  });
+
   function startPolling() {
     if (!isEnabled.value) return;
     stopPolling();
 
-    void refreshLogs();
-    void refreshSystemInfo();
-
-    logTimer = setInterval(() => {
-      void refreshLogs();
-    }, LOG_POLL_INTERVAL);
-
-    systemTimer = setInterval(() => {
-      void refreshSystemInfo();
-    }, SYSTEM_POLL_INTERVAL);
+    logPolling.start();
+    systemPolling.start();
   }
 
   function stopPolling() {
-    if (logTimer) {
-      clearInterval(logTimer);
-      logTimer = null;
-    }
-    if (systemTimer) {
-      clearInterval(systemTimer);
-      systemTimer = null;
-    }
+    logPolling.stop();
+    systemPolling.stop();
   }
 
   onMounted(() => {

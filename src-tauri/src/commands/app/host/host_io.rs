@@ -21,6 +21,14 @@ pub fn get_default_run_path() -> Result<String, String> {
     Ok(base.join(APP_DIRECTORY_NAME).to_string_lossy().to_string())
 }
 
+pub fn append_generated_server_dir(base_path: &str) -> String {
+    let folder_name = uuid::Uuid::new_v4().to_string().replace('-', "")[..30].to_string();
+    std::path::PathBuf::from(base_path)
+        .join(folder_name)
+        .to_string_lossy()
+        .to_string()
+}
+
 pub fn get_safe_mode_status() -> Result<bool, String> {
     Ok(std::env::args().any(|arg| arg == "--safe-mode"))
 }

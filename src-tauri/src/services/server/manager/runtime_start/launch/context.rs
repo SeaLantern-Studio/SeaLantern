@@ -7,7 +7,6 @@ use crate::services::server::log_pipeline as server_log_pipeline;
 use std::path::Path;
 
 pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a> {
-    pub manager: &'a super::super::super::ServerManager,
     pub server: &'a ServerInstance,
     pub settings: &'a crate::models::settings::AppSettings,
     pub startup_mode: StartupMode,

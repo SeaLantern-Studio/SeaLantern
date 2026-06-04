@@ -9,32 +9,25 @@ import {
   computed,
   watch,
 } from "vue";
-import { Cpu, HardDrive, MemoryStick, ArrowDown } from "lucide-vue-next";
+import { ArrowDown } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import { useConsoleDisplaySettings } from "@composables/useConsoleDisplaySettings";
+import { useConsoleLogStream } from "@views/useConsoleLogStream";
+import { useConsoleServerStats } from "@views/useConsoleServerStats";
 import { useServerStore } from "@stores/serverStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import { useRoute } from "vue-router";
 import { serverApi } from "@api/server";
-import { settingsApi } from "@api/settings";
-import {
-  serverSystemInfo,
-  serverCpuUsage,
-  serverStatsLoading,
-  serverStatsError,
-  fetchServerResourceUsage,
-  resetStatsHistory,
-} from "@utils/statsUtils";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
-import { SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "@stores/settingsStore";
-import { formatBytes } from "@utils/serverUtils";
-import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();
+const settingsStore = useSettingsStore();
 const route = useRoute();
 
 interface ConsoleOutputExpose {
@@ -49,10 +42,8 @@ const consoleOutputRef = ref<ConsoleOutputExpose | null>(null);
 const userScrolledUp = ref(false);
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref(-1);
-const consoleFontSize = ref(13);
-const consoleFontFamily = ref("");
-const consoleLetterSpacing = ref(0);
-const maxLogLines = ref(5000);
+const { consoleFontSize, consoleFontFamily, consoleLetterSpacing, maxLogLines } =
+  useConsoleDisplaySettings();
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
 const {
@@ -60,9 +51,6 @@ const {
   start: startForceStopLoading,
   stop: stopForceStopLoading,
 } = useLoading();
-let unlistenLogLine: UnlistenFn | null = null;
-let statsTimer: ReturnType<typeof setInterval> | null = null;
-const SERVER_STATS_POLL_INTERVAL_MS = 15000;
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
@@ -88,11 +76,16 @@ const quickCommands = computed(() => [
 ]);
 
 const serverId = computed(() => serverStore.currentServerId || "");
-const currentServer = computed(
-  () => serverStore.servers.find((server) => server.id === serverId.value) || null,
-);
-const serverProcessInfo = computed(() => serverSystemInfo.value);
-const serverStatsUnavailable = computed(() => serverStatsError.value && !serverProcessInfo.value);
+const {
+  currentServer,
+  statsSummaryItems,
+  refreshServerStats,
+  startStatsPolling,
+  stopStatsPolling,
+  resetServerStats,
+} = useConsoleServerStats({
+  serverId,
+});
 const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "stopped">(() => {
   if (isRunning.value) return "running";
   if (isStarting.value) return "starting";
@@ -100,102 +93,43 @@ const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "st
   return "stopped";
 });
 
-const statsSummaryItems = computed(() => [
-  {
-    key: "cpu",
-    icon: Cpu,
-    label: i18n.t("home.cpu"),
-    value: serverStatsUnavailable.value ? "--" : `${serverCpuUsage.value}%`,
-    detail: "",
-    tone: "primary",
-  },
-  {
-    key: "memory",
-    icon: MemoryStick,
-    label: i18n.t("home.memory"),
-    value:
-      serverProcessInfo.value && currentServer.value
-        ? `${formatBytes(serverProcessInfo.value.memory.used)} / ${currentServer.value.max_memory} MB`
-        : "--",
-    detail: "",
-    tone: "success",
-  },
-  {
-    key: "disk",
-    icon: HardDrive,
-    label: i18n.t("home.disk"),
-    value: serverProcessInfo.value ? formatBytes(serverProcessInfo.value.disk.used) : "--",
-    detail: "",
-    tone: "warning",
-  },
-]);
-
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
 
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopping = computed(() => serverStatus.value === "Stopping");
 const isStarting = computed(() => serverStatus.value === "Starting");
-
-async function refreshServerStats() {
-  const sid = serverId.value;
-  if (!sid) {
-    serverStatsLoading.value = false;
-    return;
-  }
-  await Promise.all([fetchServerResourceUsage(sid), serverStore.refreshStatus(sid)]);
-}
-
-function startStatsPolling() {
-  stopStatsPolling();
-  void refreshServerStats();
-  statsTimer = setInterval(() => {
-    void refreshServerStats();
-  }, SERVER_STATS_POLL_INTERVAL_MS);
-}
-
-function stopStatsPolling() {
-  if (statsTimer) {
-    clearInterval(statsTimer);
-    statsTimer = null;
-  }
-}
-
-async function startLogSubscription() {
-  if (unlistenLogLine) {
-    return;
-  }
-
-  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
-    const sid = serverId.value;
-    if (!sid || server_id !== sid) return;
-    consoleOutputRef.value?.appendLines([line]);
-  });
-}
-
-function stopLogSubscription() {
-  if (unlistenLogLine) {
-    unlistenLogLine();
-    unlistenLogLine = null;
-  }
-}
+const {
+  activateLogStream,
+  deactivateLogStream,
+  syncLogsOnce,
+  syncAndFocus,
+  clearActiveLogs,
+  appendCommandEcho,
+} = useConsoleLogStream({
+  consoleOutputRef,
+  userScrolledUp,
+  maxLogLines,
+  doScroll,
+});
 
 async function activateConsoleView() {
-  await loadConsoleSettings();
+  const sid = serverId.value;
+  if (sid) {
+    await activateLogStream(sid);
+  }
 
   if (serverId.value) {
     startStatsPolling();
   }
-
-  await startLogSubscription();
 }
 
 function deactivateConsoleView() {
   stopStatsPolling();
-  stopLogSubscription();
+  deactivateLogStream();
 }
 
 onMounted(async () => {
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
+  await settingsStore.ensureLoaded();
 
   await serverStore.refreshList();
   const routeId = typeof route.params.id === "string" ? route.params.id : "";
@@ -213,7 +147,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
   deactivateConsoleView();
 });
 
@@ -241,55 +174,20 @@ watch(
 watch(
   () => serverId.value,
   async (sid) => {
-    resetStatsHistory();
-    stopStatsPolling();
+    resetServerStats();
     if (!sid) return;
     await serverStore.refreshStatus(sid);
-    await syncLogsOnce(sid);
-    userScrolledUp.value = false;
+    await syncAndFocus(sid);
+    await activateLogStream(sid);
     startStatsPolling();
-    nextTick(() => doScroll());
   },
 );
-
-async function syncLogsOnce(sid: string) {
-  consoleOutputRef.value?.clear();
-  try {
-    const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
-    consoleOutputRef.value?.appendLines(lines);
-  } catch (_e) {}
-}
-
-async function loadConsoleSettings() {
-  try {
-    const settings = await settingsApi.get();
-    applyConsoleSettings(settings);
-  } catch (e) {
-    console.error("Failed to load settings:", e);
-  }
-}
-
-function applyConsoleSettings(settings: {
-  console_font_size: number;
-  console_font_family: string;
-  console_letter_spacing: number;
-  max_log_lines: number;
-}) {
-  consoleFontSize.value = settings.console_font_size;
-  consoleFontFamily.value = settings.console_font_family || "";
-  consoleLetterSpacing.value = settings.console_letter_spacing || 0;
-  maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-}
-
-function handleSettingsUpdate(event: CustomEvent<SettingsUpdateEvent>) {
-  applyConsoleSettings(event.detail.settings);
-}
 
 async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
-  consoleOutputRef.value?.appendLines(["> " + command]);
+  appendCommandEcho(sid, command);
   commandHistory.value.push(command);
   if (commandHistory.value.length > 500) {
     commandHistory.value.splice(0, commandHistory.value.length - 500);
@@ -399,7 +297,7 @@ function exportLogs() {
 }
 
 function handleClearLogs() {
-  consoleOutputRef.value?.clear();
+  clearActiveLogs(serverId.value);
 }
 
 function getStatusText() {

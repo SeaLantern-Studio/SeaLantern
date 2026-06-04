@@ -1,8 +1,9 @@
-import { nextTick, ref, type Ref } from "vue";
+import { ref, type Ref } from "vue";
 import { m_pluginApi, type m_PluginConfigFile, type m_PluginInfo } from "@api/mcs_plugins";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import type { ServerInstance } from "@type/server";
+import { useConfigPluginSelection } from "@views/config/useConfigPluginSelection";
 
 interface UseConfigPluginsOptions {
   currentServerId: Ref<string | null>;
@@ -19,17 +20,16 @@ function formatFileSize(bytes: number) {
 export function useConfigPlugins(options: UseConfigPluginsOptions) {
   const plugins = ref<m_PluginInfo[]>([]);
   const pluginsLoading = ref(false);
-  const selectedPlugin = ref<m_PluginInfo | null>(null);
-  const loadedPlugins = ref<Set<string>>(new Set());
-  const observer = ref<IntersectionObserver | null>(null);
   const pluginRowElements = ref<Map<string, HTMLElement>>(new Map());
+  const selection = useConfigPluginSelection({
+    currentServerId: options.currentServerId,
+    plugins,
+    setError: options.setError,
+  });
 
   function removePluginFromState(pluginFileName: string) {
     plugins.value = plugins.value.filter((p) => p.file_name !== pluginFileName);
-    if (selectedPlugin.value?.file_name === pluginFileName) {
-      selectedPlugin.value = null;
-    }
-    loadedPlugins.value.delete(pluginFileName);
+    selection.clearSelectedPlugin(pluginFileName);
     pluginRowElements.value.delete(pluginFileName);
   }
 
@@ -40,10 +40,6 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     options.setError(null);
     try {
       plugins.value = await m_pluginApi.m_getPlugins(options.currentServerId.value);
-      loadedPlugins.value = new Set();
-      nextTick(() => {
-        setupIntersectionObserver();
-      });
     } catch (e) {
       options.setError(String(e));
       plugins.value = [];
@@ -52,41 +48,8 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     }
   }
 
-  function setupIntersectionObserver() {
-    if (observer.value) {
-      observer.value.disconnect();
-    }
-
-    observer.value = new IntersectionObserver(
-      (intersectionEntries) => {
-        intersectionEntries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const pluginElement = entry.target as HTMLElement;
-            const pluginFileName = pluginElement.dataset.pluginFileName;
-            if (pluginFileName) {
-              void loadPluginDetails(pluginFileName);
-            }
-          }
-        });
-      },
-      {
-        rootMargin: "200px 0px",
-        threshold: 0.1,
-      },
-    );
-
-    pluginRowElements.value.forEach((element) => {
-      observer.value?.observe(element);
-    });
-  }
-
   function registerPluginRow(payload: { pluginFileName: string; element: HTMLElement | null }) {
     const { pluginFileName, element } = payload;
-    const previousElement = pluginRowElements.value.get(pluginFileName);
-
-    if (previousElement) {
-      observer.value?.unobserve(previousElement);
-    }
 
     if (!element) {
       pluginRowElements.value.delete(pluginFileName);
@@ -95,15 +58,6 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
 
     element.dataset.pluginFileName = pluginFileName;
     pluginRowElements.value.set(pluginFileName, element);
-    observer.value?.observe(element);
-  }
-
-  async function loadPluginDetails(pluginFileName: string) {
-    if (loadedPlugins.value.has(pluginFileName)) {
-      return;
-    }
-
-    loadedPlugins.value.add(pluginFileName);
   }
 
   async function togglePlugin(plugin: m_PluginInfo) {
@@ -163,41 +117,6 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     }
   }
 
-  async function handlePluginClick(plugin: m_PluginInfo) {
-    const activeServerId = options.currentServerId.value;
-    if (!activeServerId) return;
-
-    if (selectedPlugin.value?.file_name === plugin.file_name) {
-      selectedPlugin.value = null;
-      return;
-    }
-
-    if (!plugin.config_files || (plugin.config_files.length === 0 && plugin.has_config_folder)) {
-      try {
-        const configFiles = await m_pluginApi.m_getPluginConfigFiles(
-          activeServerId,
-          plugin.file_name,
-          plugin.name,
-        );
-        const updatedPlugin = {
-          ...plugin,
-          config_files: configFiles,
-        };
-        selectedPlugin.value = updatedPlugin;
-        const pluginIndex = plugins.value.findIndex((p) => p.file_name === plugin.file_name);
-        if (pluginIndex !== -1) {
-          plugins.value[pluginIndex] = updatedPlugin;
-        }
-      } catch (e) {
-        console.error("Failed to load plugin config files:", e);
-        selectedPlugin.value = plugin;
-      }
-      return;
-    }
-
-    selectedPlugin.value = plugin;
-  }
-
   async function openPluginFolder(plugin: m_PluginInfo) {
     const server = options.getCurrentServer();
     if (!server) return;
@@ -224,10 +143,10 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
   return {
     plugins,
     pluginsLoading,
-    selectedPlugin,
+    selectedPlugin: selection.selectedPlugin,
     loadPlugins,
     reloadPlugins,
-    handlePluginClick,
+    handlePluginClick: selection.handlePluginClick,
     togglePlugin,
     deletePlugin,
     registerPluginRow,

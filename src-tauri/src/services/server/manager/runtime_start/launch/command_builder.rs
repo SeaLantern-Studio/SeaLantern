@@ -1,7 +1,8 @@
-use super::super::super::common::detect_java_major_version;
 #[cfg(target_os = "windows")]
-use super::super::super::common::{build_windows_cmd_command, escape_cmd_arg};
+use super::super::super::common::build_windows_cmd_command;
+use super::super::super::startup_support;
 use super::context::LaunchContext;
+use super::script_launch_support;
 use crate::services::server::installer;
 use crate::services::server::manager::common::StartupMode;
 use std::path::Path;
@@ -28,29 +29,6 @@ pub(super) fn find_preferred_jar_path(context: &LaunchContext<'_>) -> Option<Str
     }
 }
 
-/// 检查脚本启动方式是否支持参数文件语法
-fn ensure_script_java_compat(java_path: &str) -> Result<(), String> {
-    if let Some(major_version) = detect_java_major_version(java_path) {
-        if major_version < 9 {
-            return Err(format!(
-                "当前 Java 版本 {} 不支持 @user_jvm_args.txt 参数文件语法，请改用 Java 9+（NeoForge 建议 Java 21）",
-                major_version
-            ));
-        }
-    }
-    Ok(())
-}
-
-/// 把 Java bin 目录加到 PATH 前面
-fn extend_path(java_bin_dir_str: &str, separator: &str) -> String {
-    let existing_path = std::env::var("PATH").unwrap_or_default();
-    if existing_path.is_empty() {
-        java_bin_dir_str.to_string()
-    } else {
-        format!("{}{}{}", java_bin_dir_str, separator, existing_path)
-    }
-}
-
 /// 构建直接运行 JAR 的命令
 pub(super) fn build_direct_jar_command(
     context: &LaunchContext<'_>,
@@ -65,7 +43,7 @@ pub(super) fn build_direct_jar_command(
             .java_path()
             .expect("local runtime launch requires java_path"),
     );
-    for arg in context.manager.build_managed_jvm_args(
+    for arg in startup_support::build_managed_jvm_args(
         context.server,
         context.settings,
         context.managed_console_encoding,
@@ -140,8 +118,11 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
     #[cfg(target_os = "windows")]
     {
         let mut custom_cmd = build_windows_cmd_command(custom_command);
-        custom_cmd.env("JAVA_HOME", &context.java_home_dir_str);
-        custom_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ";"));
+        script_launch_support::apply_java_process_env(
+            &mut custom_cmd,
+            &context.java_home_dir_str,
+            &context.java_bin_dir_str,
+        );
         Ok(custom_cmd)
     }
     #[cfg(not(target_os = "windows"))]
@@ -149,42 +130,27 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
         let mut custom_cmd = Command::new("sh");
         custom_cmd.arg("-c");
         custom_cmd.arg(custom_command);
-        custom_cmd.env("JAVA_HOME", &context.java_home_dir_str);
-        custom_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ":"));
+        script_launch_support::apply_java_process_env(
+            &mut custom_cmd,
+            &context.java_home_dir_str,
+            &context.java_bin_dir_str,
+        );
         Ok(custom_cmd)
     }
 }
 
-/// 生成脚本启动会读取的 JVM 参数文件
-fn write_user_jvm_args(context: &LaunchContext<'_>) -> Result<(), String> {
-    context.manager.write_user_jvm_args(
-        context.server,
-        context.settings,
-        context.managed_console_encoding,
-    )
-}
-
 /// 构建 BAT 启动命令
 fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
-    ensure_script_java_compat(
-        context
-            .server
-            .java_path()
-            .expect("script launch requires java_path"),
-    )?;
-    write_user_jvm_args(context)?;
+    script_launch_support::prepare_script_startup(context)?;
 
     #[cfg(target_os = "windows")]
     {
-        let code_page = context.managed_console_encoding.cmd_code_page();
-        let launch_command = format!(
-            "chcp {}>nul & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\" & call \"{}\" nogui",
-            code_page,
-            escape_cmd_arg(&context.java_home_dir_str),
-            escape_cmd_arg(&context.java_bin_dir_str),
-            escape_cmd_arg(&context.startup_filename)
+        let bat_cmd = script_launch_support::build_windows_bat_command(
+            &context.startup_filename,
+            context.managed_console_encoding,
+            &context.java_home_dir_str,
+            &context.java_bin_dir_str,
         );
-        let bat_cmd = build_windows_cmd_command(&launch_command);
         Ok(bat_cmd)
     }
     #[cfg(not(target_os = "windows"))]
@@ -195,30 +161,17 @@ fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 
 /// 构建 SH 启动命令
 fn build_sh_command(context: &LaunchContext<'_>) -> Result<Command, String> {
-    ensure_script_java_compat(
-        context
-            .server
-            .java_path()
-            .expect("script launch requires java_path"),
-    )?;
-    write_user_jvm_args(context)?;
+    script_launch_support::prepare_script_startup(context)?;
     let mut sh_cmd = Command::new("sh");
     sh_cmd.arg(&context.startup_filename);
     sh_cmd.arg("nogui");
-    sh_cmd.env("JAVA_HOME", &context.java_home_dir_str);
-    sh_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ":"));
+    script_launch_support::apply_script_process_env(&mut sh_cmd, context);
     Ok(sh_cmd)
 }
 
 /// 构建 PowerShell 启动命令
 fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
-    ensure_script_java_compat(
-        context
-            .server
-            .java_path()
-            .expect("script launch requires java_path"),
-    )?;
-    write_user_jvm_args(context)?;
+    script_launch_support::prepare_script_startup(context)?;
     #[cfg(target_os = "windows")]
     {
         let mut ps_cmd = Command::new("powershell");
@@ -229,8 +182,7 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
         ps_cmd.arg("-File");
         ps_cmd.arg(&context.startup_filename);
         ps_cmd.arg("nogui");
-        ps_cmd.env("JAVA_HOME", &context.java_home_dir_str);
-        ps_cmd.env("PATH", extend_path(&context.java_bin_dir_str, ";"));
+        script_launch_support::apply_script_process_env(&mut ps_cmd, context);
         Ok(ps_cmd)
     }
     #[cfg(not(target_os = "windows"))]
@@ -241,8 +193,111 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_direct_jar_launch_target;
-    use crate::services::server::manager::common::StartupMode;
+    use super::{
+        build_custom_command, build_ps1_command, build_sh_command, resolve_direct_jar_launch_target,
+    };
+    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::models::settings::AppSettings;
+    use crate::services::server::manager::common::{ManagedConsoleEncoding, StartupMode};
+    use crate::services::server::manager::runtime_start::launch::context::LaunchContext;
+    use crate::services::server::manager::ServerManager;
+    use std::path::Path;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    fn collect_envs(command: &Command) -> Vec<(String, Option<String>)> {
+        command
+            .get_envs()
+            .map(|(key, value)| {
+                (
+                    key.to_string_lossy().to_string(),
+                    value.map(|value| value.to_string_lossy().to_string()),
+                )
+            })
+            .collect()
+    }
+
+    fn fake_java_probe_command() -> String {
+        #[cfg(target_os = "windows")]
+        {
+            std::env::var("ComSpec").unwrap_or_else(|_| "cmd".to_string())
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            "sh".to_string()
+        }
+    }
+
+    fn test_settings() -> AppSettings {
+        AppSettings {
+            default_max_memory: 4096,
+            default_min_memory: 1024,
+            default_jvm_args: "-Dlaunch.test=true".to_string(),
+            ..AppSettings::default()
+        }
+    }
+
+    fn test_server(
+        server_dir: &Path,
+        startup_mode: &str,
+        custom_command: Option<&str>,
+    ) -> ServerInstance {
+        ServerInstance {
+            id: format!("launch-{}", startup_mode),
+            name: format!("Launch {}", startup_mode),
+            aliases: Vec::new(),
+            core_type: "paper".to_string(),
+            core_version: "paper".to_string(),
+            mc_version: "1.21.1".to_string(),
+            path: server_dir.to_string_lossy().to_string(),
+            port: 25565,
+            max_memory: 4096,
+            min_memory: 1024,
+            created_at: 0,
+            last_started_at: None,
+            runtime_kind: "local".to_string(),
+            runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
+                jar_path: server_dir.join("server.jar").to_string_lossy().to_string(),
+                startup_mode: startup_mode.to_string(),
+                custom_command: custom_command.map(str::to_string),
+                java_path: fake_java_probe_command(),
+                jvm_args: vec!["-Dserver.test=true".to_string()],
+            }),
+        }
+    }
+
+    fn test_launch_context<'a>(
+        server: &'a ServerInstance,
+        settings: &'a AppSettings,
+        startup_mode: StartupMode,
+        startup_filename: &str,
+    ) -> LaunchContext<'a> {
+        LaunchContext {
+            server,
+            settings,
+            startup_mode,
+            managed_console_encoding: ManagedConsoleEncoding::Utf8,
+            java_bin_dir_str: "C:/Java/JDK 21/bin".to_string(),
+            java_home_dir_str: "C:/Java/JDK 21".to_string(),
+            startup_filename: startup_filename.to_string(),
+            starter_installer_url: None,
+        }
+    }
+
+    fn assert_java_process_env_is_injected(command: &Command) {
+        let envs = collect_envs(command);
+
+        assert!(envs.iter().any(|(key, value)| {
+            key == "JAVA_HOME" && value.as_deref() == Some("C:/Java/JDK 21")
+        }));
+        assert!(envs.iter().any(|(key, value)| {
+            key == "PATH"
+                && value
+                    .as_deref()
+                    .is_some_and(|value| value.starts_with("C:/Java/JDK 21/bin"))
+        }));
+    }
 
     #[test]
     fn custom_mode_does_not_prefer_direct_jar() {
@@ -254,6 +309,87 @@ mod tests {
         assert!(StartupMode::Bat.prefers_direct_jar());
         assert!(StartupMode::Sh.prefers_direct_jar());
         assert!(StartupMode::Ps1.prefers_direct_jar());
+    }
+
+    #[test]
+    fn custom_command_keeps_user_shell_text_and_injects_java_via_process_envs() {
+        let temp_dir = TempDir::new().expect("temp dir should exist");
+        let settings = test_settings();
+        let server = test_server(temp_dir.path(), "custom", Some("echo launch ready"));
+        let context = test_launch_context(&server, &settings, StartupMode::Custom, "ignored.bat");
+
+        let command = build_custom_command(&context).expect("custom command should build");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(command.get_program().to_string_lossy(), "cmd");
+            assert_eq!(args, vec!["/d", "/c", "echo launch ready"]);
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            assert_eq!(command.get_program().to_string_lossy(), "sh");
+            assert_eq!(args, vec!["-c", "echo launch ready"]);
+        }
+
+        assert_java_process_env_is_injected(&command);
+    }
+
+    #[test]
+    fn sh_command_prepares_user_jvm_args_and_injects_java_via_process_envs() {
+        let temp_dir = TempDir::new().expect("temp dir should exist");
+        let settings = test_settings();
+        let server = test_server(temp_dir.path(), "sh", None);
+        let context = test_launch_context(&server, &settings, StartupMode::Sh, "start.sh");
+
+        let command = build_sh_command(&context).expect("sh command should build");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        let user_jvm_args_path = temp_dir.path().join("user_jvm_args.txt");
+
+        assert_eq!(command.get_program().to_string_lossy(), "sh");
+        assert_eq!(args, vec!["start.sh", "nogui"]);
+        assert_java_process_env_is_injected(&command);
+        assert!(user_jvm_args_path.exists());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn ps1_command_uses_process_env_injection_instead_of_inline_cmd_prefix() {
+        let temp_dir = TempDir::new().expect("temp dir should exist");
+        let settings = test_settings();
+        let server = test_server(temp_dir.path(), "ps1", None);
+        let context = test_launch_context(&server, &settings, StartupMode::Ps1, "start.ps1");
+
+        let command = build_ps1_command(&context).expect("ps1 command should build");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(command.get_program().to_string_lossy(), "powershell");
+        assert_eq!(
+            args,
+            vec![
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "start.ps1",
+                "nogui",
+            ]
+        );
+        assert!(args
+            .iter()
+            .all(|arg| !arg.contains("JAVA_HOME") && !arg.contains("PATH=")));
+        assert_java_process_env_is_injected(&command);
     }
 
     #[test]
@@ -274,5 +410,15 @@ mod tests {
         );
 
         assert_eq!(target.replace('\\', "/"), "E:/srv/shared/server.jar");
+    }
+
+    #[test]
+    fn direct_jar_launch_keeps_full_path_when_jar_is_in_nested_subdirectory() {
+        let target = resolve_direct_jar_launch_target(
+            "E:/servers/fabric-1.20.1",
+            "E:/servers/fabric-1.20.1/libraries/server.jar",
+        );
+
+        assert_eq!(target.replace('\\', "/"), "E:/servers/fabric-1.20.1/libraries/server.jar");
     }
 }

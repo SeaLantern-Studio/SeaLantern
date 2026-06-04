@@ -20,6 +20,42 @@ fn sample_manifest_json() -> &'static str {
     }"#
 }
 
+fn make_manifest(permissions: Vec<&str>) -> PluginManifest {
+    PluginManifest {
+        id: "com.example.test".into(),
+        name: "Test".into(),
+        version: "1.0.0".into(),
+        description: "desc".into(),
+        author: PluginAuthor {
+            name: "Dev".into(),
+            email: None,
+            url: None,
+        },
+        main: "main.lua".into(),
+        license: None,
+        homepage: None,
+        repository: None,
+        engines: None,
+        permissions: permissions
+            .into_iter()
+            .map(|permission| permission.to_string())
+            .collect(),
+        ui: None,
+        events: vec![],
+        commands: vec![],
+        dependencies: Default::default(),
+        optional_dependencies: Default::default(),
+        icon: None,
+        settings: None,
+        sidebar: None,
+        locales: None,
+        include: vec![],
+        capabilities: vec![],
+        theme_var_map: Default::default(),
+        presets: Default::default(),
+    }
+}
+
 #[test]
 fn test_discover_plugins_finds_valid_dirs() {
     let tmp = make_temp_dir("discover");
@@ -69,71 +105,35 @@ fn test_load_manifest_file_not_found() {
 
 #[test]
 fn test_validate_manifest_ok() {
-    let manifest = PluginManifest {
-        id: "com.example.test".into(),
-        name: "Test".into(),
-        version: "1.0.0".into(),
-        description: "desc".into(),
-        author: PluginAuthor {
-            name: "Dev".into(),
-            email: None,
-            url: None,
-        },
-        main: "main.lua".into(),
-        license: None,
-        homepage: None,
-        repository: None,
-        engines: None,
-        permissions: vec![],
-        ui: None,
-        events: vec![],
-        commands: vec![],
-        dependencies: Default::default(),
-        optional_dependencies: Default::default(),
-        icon: None,
-        settings: None,
-        sidebar: None,
-        locales: None,
-        include: vec![],
-        capabilities: vec![],
-        theme_var_map: Default::default(),
-        presets: Default::default(),
-    };
+    let manifest = make_manifest(vec![]);
     assert!(PluginLoader::validate_manifest(&manifest).is_ok());
 }
 
 #[test]
 fn test_validate_manifest_empty_id() {
-    let manifest = PluginManifest {
-        id: "".into(),
-        name: "Test".into(),
-        version: "1.0.0".into(),
-        description: "desc".into(),
-        author: PluginAuthor {
-            name: "Dev".into(),
-            email: None,
-            url: None,
-        },
-        main: "main.lua".into(),
-        license: None,
-        homepage: None,
-        repository: None,
-        engines: None,
-        permissions: vec![],
-        ui: None,
-        events: vec![],
-        commands: vec![],
-        dependencies: Default::default(),
-        optional_dependencies: Default::default(),
-        icon: None,
-        settings: None,
-        sidebar: None,
-        locales: None,
-        include: vec![],
-        capabilities: vec![],
-        theme_var_map: Default::default(),
-        presets: Default::default(),
-    };
+    let mut manifest = make_manifest(vec![]);
+    manifest.id = "".into();
     let err = PluginLoader::validate_manifest(&manifest).unwrap_err();
     assert!(err.contains("id"));
+}
+
+#[test]
+fn test_validate_manifest_allows_action_level_fs_permissions() {
+    let manifest = make_manifest(vec![
+        "fs.data.read",
+        "fs.data.write",
+        "fs.server.list",
+        "fs.global.transfer",
+    ]);
+
+    assert!(PluginLoader::validate_manifest(&manifest).is_ok());
+}
+
+#[test]
+fn test_validate_manifest_allows_both_plugin_folder_permission_names() {
+    let legacy_manifest = make_manifest(vec!["plugins"]);
+    let canonical_manifest = make_manifest(vec!["plugin_folder_access"]);
+
+    assert!(PluginLoader::validate_manifest(&legacy_manifest).is_ok());
+    assert!(PluginLoader::validate_manifest(&canonical_manifest).is_ok());
 }

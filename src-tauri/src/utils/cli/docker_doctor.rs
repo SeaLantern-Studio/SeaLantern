@@ -400,7 +400,7 @@ fn build_docker_doctor_report(context: &DockerDoctorContext) -> DockerDoctorRepo
                 "当前容器化/Headless 环境下仍绑定到 127.0.0.1，容器外通常无法访问 CLI Web 控制台"
                     .to_string(),
             hint: Some(
-                "可以设置 SEALANTERN_WEB_BIND=0.0.0.0，或指定一个容器内实际可绑定的地址"
+                "当前默认只监听 loopback；如需容器外访问，请显式设置 SEALANTERN_HTTP_BIND=0.0.0.0:3000，或指定一个实际需要监听的地址"
                     .to_string(),
             ),
         }
@@ -410,7 +410,10 @@ fn build_docker_doctor_report(context: &DockerDoctorContext) -> DockerDoctorRepo
             status: DoctorStatus::Pass,
             detail: match &context.configured_web_bind {
                 Some(bind) => format!("已显式配置 CLI Web 绑定地址: {}", bind),
-                None => format!("CLI Web 将使用默认绑定地址: {}", context.effective_web_bind),
+                None => format!(
+                    "CLI Web 将使用默认绑定地址: {}（仅本地回环可访问，除非显式改绑）",
+                    context.effective_web_bind
+                ),
             },
             hint: None,
         }
@@ -623,6 +626,65 @@ mod tests {
 
         std::env::remove_var("SEALANTERN_SERVERS_HOST_ROOT");
         std::env::remove_var("SEALANTERN_SERVERS_CONTAINER_ROOT");
+    }
+
+    #[test]
+    fn doctor_report_warns_loopback_bind_in_container_like_mode_with_explicit_guidance() {
+        let mut context = sample_context();
+        context.is_container_like = true;
+        context.is_headless_http = true;
+        context.effective_web_bind = "127.0.0.1".to_string();
+
+        let report = build_docker_doctor_report(&context);
+        let check = report
+            .checks
+            .iter()
+            .find(|check| check.name == "web_bind")
+            .expect("web_bind check");
+
+        assert_eq!(check.status, DoctorStatus::Warn);
+        assert!(check.detail.contains("127.0.0.1"));
+        assert!(check
+            .hint
+            .as_deref()
+            .unwrap_or_default()
+            .contains("SEALANTERN_HTTP_BIND=0.0.0.0:3000"));
+    }
+
+    #[test]
+    fn doctor_report_describes_default_bind_as_loopback_when_not_explicitly_configured() {
+        let report = build_docker_doctor_report(&sample_context());
+        let check = report
+            .checks
+            .iter()
+            .find(|check| check.name == "web_bind")
+            .expect("web_bind check");
+
+        assert_eq!(check.status, DoctorStatus::Pass);
+        assert!(check.detail.contains("默认绑定地址: 127.0.0.1"));
+        assert!(check.detail.contains("仅本地回环可访问"));
+    }
+
+    #[test]
+    fn doctor_report_treats_explicit_external_bind_as_configuration_not_default() {
+        let mut context = sample_context();
+        context.is_container_like = true;
+        context.is_headless_http = true;
+        context.effective_web_bind = "0.0.0.0".to_string();
+        context.configured_web_bind = Some("0.0.0.0:3000".to_string());
+
+        let report = build_docker_doctor_report(&context);
+        let check = report
+            .checks
+            .iter()
+            .find(|check| check.name == "web_bind")
+            .expect("web_bind check");
+
+        assert_eq!(check.status, DoctorStatus::Pass);
+        assert!(check
+            .detail
+            .contains("已显式配置 CLI Web 绑定地址: 0.0.0.0:3000"));
+        assert!(!check.detail.contains("默认绑定地址"));
     }
 
     #[test]

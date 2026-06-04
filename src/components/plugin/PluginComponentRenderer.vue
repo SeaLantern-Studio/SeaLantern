@@ -1,36 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLCheckbox from "@components/common/SLCheckbox.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
+import type { PendingPluginComponentCreate } from "@stores/plugin/pluginComponentBridge";
+import { pluginLogger } from "@stores/plugin/pluginLogger";
+import { ALLOWED_PLUGIN_COMPONENT_TYPES } from "@stores/plugin/pluginComponentBridgeShared";
 import SLProgress from "@components/common/SLProgress.vue";
-import SLSelect from "@components/common/SLSelect.vue";
-import SLTabBar from "@components/common/SLTabBar.vue";
-
-type PendingCreate = {
-  component_type: string;
-  component_id: string;
-  props: Record<string, any>;
-};
+import {
+  createPluginRuntimeHost,
+  getPluginRuntimeSurface,
+  getPluginUiContainer,
+} from "@stores/plugin/pluginRuntimeDomShared";
 
 const pluginStore = usePluginStore();
 
 const componentMap: Record<string, any> = {
-  SLCard,
-  SLButton,
-  SLInput,
-  SLCheckbox,
-  SLSwitch,
   SLProgress,
-  SLSelect,
-  SLTabs: SLTabBar,
-  SLTabBar,
 };
 
 interface RenderedComponent {
+  pluginId: string;
   id: string;
   type: string;
   props: Record<string, any>;
@@ -38,10 +26,10 @@ interface RenderedComponent {
 
 const renderedComponents = ref<RenderedComponent[]>([]);
 
-function safeConsumeCreates(pluginId: string): PendingCreate[] {
+function safeConsumeCreates(pluginId: string): PendingPluginComponentCreate[] {
   const fn = (pluginStore as any).consumePendingComponentCreates;
   if (typeof fn !== "function") return [];
-  return fn(pluginId) as PendingCreate[];
+  return fn(pluginId) as PendingPluginComponentCreate[];
 }
 
 function safeConsumeDeletes(pluginId: string): string[] {
@@ -53,8 +41,25 @@ function safeConsumeDeletes(pluginId: string): string[] {
 function consumePendingCreates(pluginId: string) {
   const creates = safeConsumeCreates(pluginId);
   for (const create of creates) {
+    if (!ALLOWED_PLUGIN_COMPONENT_TYPES.has(create.component_type)) {
+      pluginLogger.warn("Component", "已跳过未开放组件渲染", {
+        pluginId: create.plugin_id,
+        componentType: create.component_type,
+        componentId: create.component_id,
+      });
+      continue;
+    }
+    if (!componentMap[create.component_type]) {
+      pluginLogger.warn("Component", "组件类型未映射到渲染器", {
+        pluginId: create.plugin_id,
+        componentType: create.component_type,
+        componentId: create.component_id,
+      });
+      continue;
+    }
     if (!renderedComponents.value.find((c) => c.id === create.component_id)) {
       renderedComponents.value.push({
+        pluginId: create.plugin_id,
         id: create.component_id,
         type: create.component_type,
         props: create.props,
@@ -68,6 +73,7 @@ function consumePendingDeletes(pluginId: string) {
   for (const id of deletes) {
     const index = renderedComponents.value.findIndex((c) => c.id === id);
     if (index !== -1) {
+      removeComponentHost(renderedComponents.value[index]);
       renderedComponents.value.splice(index, 1);
     }
   }
@@ -102,46 +108,59 @@ function getComponentProps(component: RenderedComponent) {
   return props;
 }
 
-let intervalId: ReturnType<typeof setInterval> | null = null;
+function getComponentHostId(component: RenderedComponent): string {
+  return `plugin-component-host-${component.pluginId}-${component.id}`;
+}
+
+function ensureComponentHost(component: RenderedComponent) {
+  const existing = document.getElementById(getComponentHostId(component));
+  if (existing) {
+    return getPluginRuntimeSurface(existing);
+  }
+
+  const container = getPluginUiContainer();
+  const host = createPluginRuntimeHost(component.pluginId, `component-${component.id}`);
+  host.id = getComponentHostId(component);
+  container.appendChild(host);
+  return getPluginRuntimeSurface(host);
+}
+
+function removeComponentHost(component: RenderedComponent) {
+  document.getElementById(getComponentHostId(component))?.remove();
+}
+
+watch(
+  () => pluginStore.pendingComponentVersion,
+  () => {
+    processAllPendingComponents();
+  },
+);
 
 onMounted(() => {
   processAllPendingComponents();
-  intervalId = setInterval(() => {
-    processAllPendingComponents();
-  }, 300);
 });
 
 onUnmounted(() => {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
+  for (const component of renderedComponents.value) {
+    removeComponentHost(component);
   }
 });
 </script>
 
 <template>
-  <div class="plugin-component-renderer">
-    <component
+  <div class="plugin-component-renderer" aria-hidden="true">
+    <Teleport
       v-for="component in renderedComponents"
       :key="component.id"
-      :is="componentMap[component.type]"
-      v-bind="getComponentProps(component)"
-    />
+      :to="ensureComponentHost(component) ?? 'body'"
+    >
+      <component :is="componentMap[component.type]" v-bind="getComponentProps(component)" />
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
 .plugin-component-renderer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 9999;
-}
-
-.plugin-component-renderer > * {
-  pointer-events: auto;
+  display: contents;
 }
 </style>

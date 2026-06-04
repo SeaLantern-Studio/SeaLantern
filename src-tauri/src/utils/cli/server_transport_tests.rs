@@ -12,7 +12,10 @@ use crate::utils::cli::server_transport::{
     open_browser_or_warn_with, orchestrate_transports_with, should_auto_open_browser,
 };
 use crate::utils::server_status::status_blocks_start;
+use axum::body::Body;
+use axum::http::{header, Request, StatusCode};
 use std::sync::{Arc, Mutex};
+use tower::ServiceExt;
 
 #[test]
 fn open_browser_helper_returns_true_on_success() {
@@ -62,6 +65,75 @@ fn web_bind_host_prefers_explicit_env_override() {
     assert_eq!(bind_host, "192.168.1.10");
 
     std::env::remove_var("SEALANTERN_WEB_BIND");
+}
+
+#[test]
+fn cli_web_bind_defaults_to_loopback_even_in_headless_mode() {
+    let _env_lock = ENV_LOCK.lock().expect("env lock");
+    let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
+    let _http_bind_guard = EnvGuard::remove("SEALANTERN_HTTP_BIND");
+    let _web_bind_guard = EnvGuard::remove("SEALANTERN_WEB_BIND");
+
+    let bind_host = effective_cli_web_bind_host();
+    assert_eq!(bind_host, "127.0.0.1");
+}
+
+#[tokio::test]
+async fn cli_resolved_bind_still_enforces_http_auth_and_default_cors() {
+    let _env_lock = ENV_LOCK.lock().expect("env lock");
+    let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
+    let _http_bind_guard = EnvGuard::remove("SEALANTERN_HTTP_BIND");
+    let _web_bind_guard = EnvGuard::remove("SEALANTERN_WEB_BIND");
+    let _cors_guard = EnvGuard::remove("SEALANTERN_HTTP_CORS_ORIGINS");
+    let _auth_guard = EnvGuard::remove("SEALANTERN_HTTP_AUTH_TOKEN");
+
+    let bind_addr = format!("{}:{}", effective_cli_web_bind_host(), 3000);
+    assert_eq!(bind_addr, "127.0.0.1:3000");
+
+    let app = crate::adapters::http::server::build_test_http_app(std::env::temp_dir());
+
+    let health = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("health response");
+    assert_eq!(health.status(), StatusCode::OK);
+
+    let protected = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/does-not-exist")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(r#"{"params":{}}"#))
+                .unwrap(),
+        )
+        .await
+        .expect("protected response");
+    assert_eq!(protected.status(), StatusCode::UNAUTHORIZED);
+
+    let cors = app
+        .oneshot(
+            Request::builder()
+                .method("OPTIONS")
+                .uri("/health")
+                .header(header::ORIGIN, "https://example.com")
+                .header(header::ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("cors response");
+    assert!(cors
+        .headers()
+        .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .is_none());
 }
 
 #[test]

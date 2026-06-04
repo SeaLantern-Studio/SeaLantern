@@ -125,8 +125,23 @@ pub(crate) fn inspect_docker_image_reference_with_soft_failures(
 ) -> Result<DockerImageInspectOutcome, String> {
     let docker_path = docker_executable_path()?;
 
-    let local_output = match run_docker_command_with_timeout(
+    inspect_docker_image_reference_with_runner(
         &docker_path,
+        image_ref,
+        run_docker_command_with_timeout,
+    )
+}
+
+fn inspect_docker_image_reference_with_runner<F>(
+    docker_path: &str,
+    image_ref: &str,
+    mut run_command: F,
+) -> Result<DockerImageInspectOutcome, String>
+where
+    F: FnMut(&str, &[&str], Duration, &str) -> Result<Output, String>,
+{
+    let local_output = match run_command(
+        docker_path,
         &["image", "inspect", image_ref],
         Duration::from_secs(DOCKER_IMAGE_INSPECT_TIMEOUT_SECS),
         "docker image inspect",
@@ -138,8 +153,8 @@ pub(crate) fn inspect_docker_image_reference_with_soft_failures(
         return Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached));
     }
 
-    let manifest_output = match run_docker_command_with_timeout(
-        &docker_path,
+    let manifest_output = match run_command(
+        docker_path,
         &["manifest", "inspect", image_ref],
         Duration::from_secs(DOCKER_IMAGE_INSPECT_TIMEOUT_SECS),
         "docker manifest inspect",
@@ -147,13 +162,33 @@ pub(crate) fn inspect_docker_image_reference_with_soft_failures(
         Ok(output) => output,
         Err(message) => failed_output_with_message(message),
     };
+
+    interpret_docker_image_inspect_outputs(image_ref, &local_output, &manifest_output)
+}
+
+fn interpret_docker_image_inspect_outputs(
+    image_ref: &str,
+    local_output: &Output,
+    manifest_output: &Output,
+) -> Result<DockerImageInspectOutcome, String> {
+    if local_output.status.success() {
+        return Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached));
+    }
+
     if manifest_output.status.success() {
         return Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::RemoteResolvable));
     }
 
+    classify_manifest_inspect_outcome(image_ref, manifest_output)
+}
+
+fn classify_manifest_inspect_outcome(
+    image_ref: &str,
+    manifest_output: &Output,
+) -> Result<DockerImageInspectOutcome, String> {
     let message = render_docker_command_error(
         "docker manifest inspect",
-        &manifest_output,
+        manifest_output,
         Some(image_ref),
         None,
     );
@@ -338,12 +373,23 @@ fn stderr_text(output: &Output) -> String {
 }
 
 #[cfg(test)]
+pub(crate) fn interpret_docker_image_inspect_outputs_for_tests(
+    image_ref: &str,
+    local_output: &Output,
+    manifest_output: &Output,
+) -> Result<DockerImageInspectOutcome, String> {
+    interpret_docker_image_inspect_outputs(image_ref, local_output, manifest_output)
+}
+
+#[cfg(test)]
 mod tests {
     use super::{
-        classify_docker_command_failure, docker_error_indicates_missing_container,
-        exit_status_from_raw, format_docker_image_reference, render_docker_command_error,
+        classify_docker_command_failure, classify_manifest_inspect_outcome,
+        docker_error_indicates_missing_container, exit_status_from_raw,
+        format_docker_image_reference, inspect_docker_image_reference_with_runner,
+        interpret_docker_image_inspect_outputs, render_docker_command_error,
         resolve_docker_image_and_tag, split_docker_image_reference_tag, DockerCommandFailureKind,
-        DockerImageAvailability, DockerImageInspectOutcome,
+        DockerImageAvailability, DockerImageInspectOutcome, DOCKER_IMAGE_INSPECT_TIMEOUT_SECS,
     };
     use std::process::Output;
 
@@ -352,6 +398,22 @@ mod tests {
             status: exit_status_from_raw(1),
             stdout: Vec::new(),
             stderr: stderr.as_bytes().to_vec(),
+        }
+    }
+
+    fn successful_output(stdout: &str) -> Output {
+        Output {
+            status: exit_status_from_raw(0),
+            stdout: stdout.as_bytes().to_vec(),
+            stderr: Vec::new(),
+        }
+    }
+
+    fn failed_output_with_stdout(stdout: &str) -> Output {
+        Output {
+            status: exit_status_from_raw(1),
+            stdout: stdout.as_bytes().to_vec(),
+            stderr: Vec::new(),
         }
     }
 
@@ -402,6 +464,38 @@ mod tests {
     }
 
     #[test]
+    fn render_docker_command_error_prefers_stdout_when_stderr_is_empty() {
+        let output = failed_output_with_stdout("manifest unknown: manifest unknown");
+        let message = render_docker_command_error(
+            "docker manifest inspect",
+            &output,
+            Some("itzg/minecraft-server:bad-tag"),
+            None,
+        );
+
+        assert!(message.contains("镜像或标签不存在"));
+        assert!(message.contains("manifest unknown"));
+    }
+
+    #[test]
+    fn render_docker_command_error_falls_back_to_exit_code_when_streams_are_empty() {
+        let output = Output {
+            status: exit_status_from_raw(7),
+            stdout: Vec::new(),
+            stderr: Vec::new(),
+        };
+        let message = render_docker_command_error(
+            "docker manifest inspect",
+            &output,
+            Some("itzg/test:1"),
+            None,
+        );
+
+        assert!(message.contains("退出码"));
+        assert!(message.contains("image=itzg/test:1"));
+    }
+
+    #[test]
     fn docker_image_soft_failure_variant_carries_message_and_kind() {
         let outcome = DockerImageInspectOutcome::SoftFailure {
             failure_kind: DockerCommandFailureKind::Network,
@@ -420,6 +514,225 @@ mod tests {
                 panic!("expected soft failure")
             }
         }
+    }
+
+    #[test]
+    fn interpret_docker_image_inspect_outputs_prefers_local_cached_success() {
+        let outcome = interpret_docker_image_inspect_outputs(
+            "itzg/minecraft-server:latest",
+            &successful_output("[{\"Id\":\"sha256:abc\"}]"),
+            &failed_output("manifest unknown: manifest unknown"),
+        )
+        .expect("local inspect success should short-circuit");
+
+        assert_eq!(
+            outcome,
+            DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached)
+        );
+    }
+
+    #[test]
+    fn interpret_docker_image_inspect_outputs_falls_back_to_remote_resolvable() {
+        let outcome = interpret_docker_image_inspect_outputs(
+            "itzg/minecraft-server:latest",
+            &failed_output("Error: No such image: itzg/minecraft-server:latest"),
+            &successful_output("{\"schemaVersion\":2}"),
+        )
+        .expect("manifest success should mark image as remotely resolvable");
+
+        assert_eq!(
+            outcome,
+            DockerImageInspectOutcome::Available(DockerImageAvailability::RemoteResolvable)
+        );
+    }
+
+    #[test]
+    fn inspect_docker_image_reference_with_runner_short_circuits_after_local_success() {
+        let mut calls = Vec::new();
+        let outcome = inspect_docker_image_reference_with_runner(
+            "docker",
+            "itzg/minecraft-server:latest",
+            |docker_path, args, timeout, action| {
+                calls.push((
+                    docker_path.to_string(),
+                    args.iter()
+                        .map(|value| value.to_string())
+                        .collect::<Vec<_>>(),
+                    timeout.as_secs(),
+                    action.to_string(),
+                ));
+
+                Ok(successful_output("[{\"Id\":\"sha256:abc\"}]"))
+            },
+        )
+        .expect("local inspect success should short-circuit before manifest probe");
+
+        assert_eq!(
+            outcome,
+            DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached)
+        );
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0, "docker");
+        assert_eq!(calls[0].1, vec!["image", "inspect", "itzg/minecraft-server:latest"]);
+        assert_eq!(calls[0].2, DOCKER_IMAGE_INSPECT_TIMEOUT_SECS);
+        assert_eq!(calls[0].3, "docker image inspect");
+    }
+
+    #[test]
+    fn inspect_docker_image_reference_with_runner_interprets_manifest_success_without_real_docker()
+    {
+        let mut call_index = 0;
+        let outcome = inspect_docker_image_reference_with_runner(
+            "docker",
+            "itzg/minecraft-server:latest",
+            |_docker_path, args, _timeout, action| {
+                call_index += 1;
+                match call_index {
+                    1 => {
+                        assert_eq!(action, "docker image inspect");
+                        assert_eq!(args, ["image", "inspect", "itzg/minecraft-server:latest"]);
+                        Ok(failed_output(
+                            "Error response from daemon: No such image: itzg/minecraft-server:latest",
+                        ))
+                    }
+                    2 => {
+                        assert_eq!(action, "docker manifest inspect");
+                        assert_eq!(args, ["manifest", "inspect", "itzg/minecraft-server:latest"]);
+                        Ok(successful_output("{\"schemaVersion\":2}"))
+                    }
+                    _ => panic!("unexpected extra probe"),
+                }
+            },
+        )
+        .expect("manifest success should produce remote-resolvable outcome");
+
+        assert_eq!(call_index, 2);
+        assert_eq!(
+            outcome,
+            DockerImageInspectOutcome::Available(DockerImageAvailability::RemoteResolvable)
+        );
+    }
+
+    #[test]
+    fn inspect_docker_image_reference_with_runner_downgrades_runner_errors_to_soft_failure() {
+        let mut call_index = 0;
+        let outcome = inspect_docker_image_reference_with_runner(
+            "docker",
+            "itzg/minecraft-server:latest",
+            |_docker_path, _args, _timeout, action| {
+                call_index += 1;
+                match call_index {
+                    1 => Err(format!("{} 超时: 5s 内未返回；已按软失败处理", action)),
+                    2 => Err(format!("{} 超时: 5s 内未返回；已按软失败处理", action)),
+                    _ => panic!("unexpected extra probe"),
+                }
+            },
+        )
+        .expect("timeout-style runner errors should downgrade to soft failure");
+
+        assert_eq!(call_index, 2);
+        match outcome {
+            DockerImageInspectOutcome::SoftFailure { failure_kind, message } => {
+                assert_eq!(failure_kind, DockerCommandFailureKind::Timeout);
+                assert!(message.contains("Docker 镜像探测超时"));
+                assert!(message.contains("docker manifest inspect 超时"));
+            }
+            other => panic!("expected soft failure, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn inspect_docker_image_reference_with_runner_uses_stdout_only_manifest_output_for_not_found() {
+        let err = inspect_docker_image_reference_with_runner(
+            "docker",
+            "itzg/minecraft-server:missing",
+            |_docker_path, args, _timeout, _action| {
+                if args[0] == "image" {
+                    Ok(failed_output(
+                        "Error response from daemon: No such image: itzg/minecraft-server:missing",
+                    ))
+                } else {
+                    Ok(failed_output_with_stdout("manifest unknown: manifest unknown"))
+                }
+            },
+        )
+        .expect_err("stdout-only manifest failure should still map to image-not-found hard error");
+
+        assert!(err.contains("镜像或标签不存在"));
+        assert!(err.contains("manifest unknown"));
+    }
+
+    #[test]
+    fn inspect_docker_image_reference_with_runner_falls_back_to_exit_code_only_soft_failure() {
+        let outcome = inspect_docker_image_reference_with_runner(
+            "docker",
+            "itzg/minecraft-server:latest",
+            |_docker_path, args, _timeout, _action| {
+                if args[0] == "image" {
+                    Ok(failed_output(
+                        "Error response from daemon: No such image: itzg/minecraft-server:latest",
+                    ))
+                } else {
+                    Ok(Output {
+                        status: exit_status_from_raw(7),
+                        stdout: Vec::new(),
+                        stderr: Vec::new(),
+                    })
+                }
+            },
+        )
+        .expect("exit-code-only manifest failure should become soft failure");
+
+        match outcome {
+            DockerImageInspectOutcome::SoftFailure { failure_kind, message } => {
+                assert_eq!(failure_kind, DockerCommandFailureKind::Other);
+                assert!(message.contains("退出码"));
+                assert!(message.contains("image=itzg/minecraft-server:latest"));
+            }
+            other => panic!("expected soft failure, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn classify_manifest_inspect_outcome_returns_soft_failure_for_network_errors() {
+        let outcome = classify_manifest_inspect_outcome(
+            "itzg/minecraft-server:latest",
+            &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
+        )
+        .expect("network failures should downgrade to soft failure");
+
+        match outcome {
+            DockerImageInspectOutcome::SoftFailure { failure_kind, message } => {
+                assert_eq!(failure_kind, DockerCommandFailureKind::Network);
+                assert!(message.contains("镜像拉取网络不可达或超时"));
+                assert!(message.contains("itzg/minecraft-server:latest"));
+            }
+            other => panic!("expected soft failure, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn classify_manifest_inspect_outcome_returns_hard_error_for_auth_failures() {
+        let err = classify_manifest_inspect_outcome(
+            "itzg/minecraft-server:latest",
+            &failed_output("unauthorized: authentication required"),
+        )
+        .expect_err("auth failures should remain hard errors");
+
+        assert!(err.contains("镜像仓库认证或访问被拒绝"));
+        assert!(err.contains("authentication required"));
+    }
+
+    #[test]
+    fn classify_manifest_inspect_outcome_returns_hard_error_for_image_not_found() {
+        let err = classify_manifest_inspect_outcome(
+            "itzg/minecraft-server:missing",
+            &failed_output_with_stdout("manifest unknown: manifest unknown"),
+        )
+        .expect_err("missing images should remain hard errors");
+
+        assert!(err.contains("镜像或标签不存在"));
+        assert!(err.contains("manifest unknown"));
     }
 
     #[test]

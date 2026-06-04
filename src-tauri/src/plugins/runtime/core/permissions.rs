@@ -20,48 +20,66 @@ impl PluginRuntime {
         sl: &Table,
         module_name: &str,
     ) -> Result<(), String> {
+        self.setup_permission_denied_namespace(sl, module_name, module_name)
+    }
+
+    pub(super) fn setup_permission_denied_namespace(
+        &self,
+        sl: &Table,
+        namespace_name: &str,
+        required_permission: &str,
+    ) -> Result<(), String> {
+        let missing_permission_message = || {
+            if namespace_name == required_permission {
+                missing_permission_in_manifest_message(namespace_name)
+            } else {
+                format!(
+                    "权限不足: 使用 'sl.{}' 模块需要在 manifest.json 中声明 '{}' 权限",
+                    namespace_name, required_permission
+                )
+            }
+        };
+
         let module_table = self
             .lua
             .create_table()
-            .map_err(|e| format!("Failed to create {} table: {}", module_name, e))?;
+            .map_err(|e| format!("Failed to create {} table: {}", namespace_name, e))?;
 
-        let module_name_owned = module_name.to_string();
+        let missing_message = missing_permission_message();
         let error_fn = self
             .lua
             .create_function(move |_, ()| -> Result<(), mlua::Error> {
-                Err(mlua::Error::runtime(missing_permission_in_manifest_message(
-                    &module_name_owned,
-                )))
+                Err(mlua::Error::runtime(missing_message.clone()))
             })
-            .map_err(|e| format!("Failed to create error function for {}: {}", module_name, e))?;
+            .map_err(|e| {
+                format!("Failed to create error function for {}: {}", namespace_name, e)
+            })?;
 
         module_table
             .set("_error", error_fn)
-            .map_err(|e| format!("Failed to set error for {}: {}", module_name, e))?;
+            .map_err(|e| format!("Failed to set error for {}: {}", namespace_name, e))?;
 
-        let module_name_for_meta = module_name.to_string();
+        let missing_message_for_meta = missing_permission_message();
         let meta_table = self
             .lua
             .create_table()
-            .map_err(|e| format!("Failed to create metatable for {}: {}", module_name, e))?;
+            .map_err(|e| format!("Failed to create metatable for {}: {}", namespace_name, e))?;
 
         let index_fn = self
             .lua
             .create_function(move |_, _key: mlua::Value| -> Result<mlua::Value, mlua::Error> {
-                Err(mlua::Error::runtime(missing_permission_in_manifest_message(
-                    &module_name_for_meta,
-                )))
+                Err(mlua::Error::runtime(missing_message_for_meta.clone()))
             })
-            .map_err(|e| format!("Failed to create __index for {}: {}", module_name, e))?;
+            .map_err(|e| format!("Failed to create __index for {}: {}", namespace_name, e))?;
 
         meta_table
             .set(mlua::MetaMethod::Index.name(), index_fn)
-            .map_err(|e| format!("Failed to set __index for {}: {}", module_name, e))?;
+            .map_err(|e| format!("Failed to set __index for {}: {}", namespace_name, e))?;
 
         module_table.set_metatable(Some(meta_table));
 
-        sl.set(module_name, module_table)
-            .map_err(|e| format!("Failed to set sl.{}: {}", module_name, e))?;
+        sl.set(namespace_name, module_table)
+            .map_err(|e| format!("Failed to set sl.{}: {}", namespace_name, e))?;
 
         Ok(())
     }

@@ -1,72 +1,33 @@
+mod dispatch;
+mod protocol;
+mod snapshot;
+mod state;
+mod status;
+
+pub use state::{read_state, state_file_path, LocalHelperStatusSnapshot, LocalRuntimeState};
+pub(crate) use status::{
+    helper_runtime_status, runtime_snapshot_from_helper, stopped_runtime_snapshot,
+};
+
+use self::dispatch::handle_connection;
+use self::protocol::{send_request, LocalHelperRequest};
+use self::snapshot::detect_terminal_snapshot;
+use self::state::{
+    current_timestamp_secs, persist_terminal_state, remove_state_file, started_state,
+    state_from_requested_stop, state_from_terminal_snapshot, write_state_file,
+};
+use self::status::fallback_snapshot_from_state_file;
 use crate::models::server::ServerInstance;
 use crate::services::global;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::process::{force_kill_process_tree_by_pid, is_process_alive};
-use crate::services::server::runtime::ServerRuntime;
 use crate::services::server::runtime::{RuntimeProcessHandle, RuntimeStartRequest};
-use crate::utils::constants::LOCAL_RUNTIME_STATE_FILE;
 use crate::utils::logger;
-use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
-use std::io::{BufRead, BufReader, Write};
-use std::net::{TcpListener, TcpStream};
-use std::path::{Path, PathBuf};
+use std::net::TcpListener;
 use std::process::Command;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use sysinfo::{ProcessesToUpdate, System};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LocalRuntimeState {
-    pub server_id: String,
-    pub helper_pid: u32,
-    pub child_pid: Option<u32>,
-    pub control_port: Option<u16>,
-    pub auth_token: String,
-    pub running: bool,
-    pub exit_code: Option<i32>,
-    pub detail_message: String,
-    pub error_message: Option<String>,
-    pub updated_at: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LocalHelperStatusSnapshot {
-    pub running: bool,
-    pub pid: Option<u32>,
-    pub exit_code: Option<i32>,
-    pub detail_message: String,
-    pub error_message: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-enum LocalHelperRequest {
-    Status { auth_token: String },
-    Send { auth_token: String, command: String },
-    Stop { auth_token: String },
-    ForceStop { auth_token: String },
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct LocalHelperResponse {
-    ok: bool,
-    snapshot: Option<LocalHelperStatusSnapshot>,
-    error: Option<String>,
-}
-
-pub fn state_file_path(server: &ServerInstance) -> PathBuf {
-    Path::new(&server.path).join(LOCAL_RUNTIME_STATE_FILE)
-}
-
-pub fn read_state(server: &ServerInstance) -> Option<LocalRuntimeState> {
-    let path = state_file_path(server);
-    let content = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str::<LocalRuntimeState>(&content).ok()
-}
-
-pub fn remove_state_file(server: &ServerInstance) {
-    let path = state_file_path(server);
-    let _ = std::fs::remove_file(path);
-}
 
 pub fn cleanup_for_new_start(server: &ServerInstance) {
     if let Some(state) = read_state(server) {
@@ -238,59 +199,21 @@ pub fn status_snapshot(
     };
 
     if is_process_alive(state.helper_pid) {
-        let response = send_request(
+        match send_request(
             &state,
             LocalHelperRequest::Status { auth_token: state.auth_token.clone() },
-        )?;
-        return Ok(response.snapshot);
+        ) {
+            Ok(response) => return Ok(response.snapshot),
+            Err(error) => {
+                logger::log_warn(&format!(
+                    "local runtime helper status probe failed, falling back to state file: server_id={} helper_pid={} error={}",
+                    server.id, state.helper_pid, error
+                ));
+            }
+        }
     }
 
-    let child_running = if state.running {
-        state.child_pid.filter(|pid| is_process_alive(*pid))
-    } else {
-        None
-    };
-    let detail_message = if child_running.is_some() {
-        format!(
-            "runtime=local running=true source=state_file helper=unavailable exit_code={}",
-            state
-                .exit_code
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string())
-        )
-    } else if state.running {
-        format!(
-            "runtime=local running=false source=state_file helper=exited exit_code={}",
-            state
-                .exit_code
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string())
-        )
-    } else {
-        format!(
-            "runtime=local running=false source=state_file exit_code={}",
-            state
-                .exit_code
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string())
-        )
-    };
-    let error_message = if child_running.is_some() {
-        Some(
-            "本地 runtime helper 已退出，但 Java 进程仍在运行；当前无法继续发送命令，建议执行 force-stop 后重新启动"
-                .to_string(),
-        )
-    } else {
-        state.error_message.clone()
-    };
-
-    Ok(Some(LocalHelperStatusSnapshot {
-        running: child_running.is_some(),
-        pid: child_running,
-        exit_code: state.exit_code,
-        detail_message,
-        error_message,
-    }))
+    Ok(Some(fallback_snapshot_from_state_file(&state)))
 }
 
 pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String> {
@@ -435,26 +358,17 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         server_log_pipeline::spawn_server_output_reader(server_id.to_string(), stderr);
     }
 
-    let mut state = LocalRuntimeState {
-        server_id: server_id.to_string(),
+    let mut state = started_state(
+        server_id,
         helper_pid,
         child_pid,
-        control_port: Some(control_port),
+        control_port,
         auth_token,
-        running: true,
-        exit_code: None,
-        detail_message: format!(
-            "runtime=local running=true source=helper child_pid={} control_port={}",
-            child_pid
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string()),
-            control_port
-        ),
-        error_message: None,
-        updated_at: current_timestamp_secs(),
-    };
+        current_timestamp_secs(),
+    );
 
-    write_state_file(state_file_path(&server), &state)?;
+    let state_path = state_file_path(&server);
+    write_state_file(&state_path, &state)?;
     logger::log_user_action(
         "server.runtime.local.helper",
         "started",
@@ -471,13 +385,8 @@ fn run_helper(server_id: &str) -> Result<(), String> {
 
     loop {
         if let Some(snapshot) = detect_terminal_snapshot(manager, &server)? {
-            state.running = false;
-            state.control_port = None;
-            state.exit_code = snapshot.exit_code;
-            state.detail_message = snapshot.detail_message;
-            state.error_message = snapshot.error_message;
-            state.updated_at = current_timestamp_secs();
-            write_state_file(state_file_path(&server), &state)?;
+            state = state_from_terminal_snapshot(&state, &snapshot, current_timestamp_secs());
+            write_state_file(&state_path, &state)?;
             break;
         }
 
@@ -485,17 +394,8 @@ fn run_helper(server_id: &str) -> Result<(), String> {
             Ok((stream, _)) => {
                 let should_exit = handle_connection(manager, &server, &state, stream)?;
                 if should_exit {
-                    state.running = false;
-                    state.child_pid = None;
-                    state.control_port = None;
-                    state.detail_message = if state.exit_code == Some(0) {
-                        "runtime=local running=false source=helper exit_code=0".to_string()
-                    } else {
-                        "runtime=local running=false source=helper requested_stop".to_string()
-                    };
-                    state.error_message = None;
-                    state.updated_at = current_timestamp_secs();
-                    write_state_file(state_file_path(&server), &state)?;
+                    state = state_from_requested_stop(&state, current_timestamp_secs());
+                    write_state_file(&state_path, &state)?;
                     break;
                 }
             }
@@ -515,296 +415,74 @@ fn run_helper(server_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn handle_connection(
-    manager: &crate::services::server::manager::ServerManager,
-    server: &ServerInstance,
-    state: &LocalRuntimeState,
-    mut stream: TcpStream,
-) -> Result<bool, String> {
-    let request: LocalHelperRequest = {
-        let mut reader = BufReader::new(
-            stream
-                .try_clone()
-                .map_err(|e| format!("复制 helper 连接失败: {}", e))?,
-        );
-        let mut line = String::new();
-        reader
-            .read_line(&mut line)
-            .map_err(|e| format!("读取 helper 请求失败: {}", e))?;
-        serde_json::from_str(&line).map_err(|e| format!("解析 helper 请求失败: {}", e))?
-    };
+#[cfg(test)]
+mod tests {
+    use super::state::{state_file_path, write_state_file};
+    use super::status_snapshot;
+    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use tempfile::tempdir;
 
-    let auth_token = match &request {
-        LocalHelperRequest::Status { auth_token }
-        | LocalHelperRequest::Send { auth_token, .. }
-        | LocalHelperRequest::Stop { auth_token }
-        | LocalHelperRequest::ForceStop { auth_token } => auth_token,
-    };
-    if auth_token != &state.auth_token {
-        write_response(
-            &mut stream,
-            LocalHelperResponse {
-                ok: false,
-                snapshot: None,
-                error: Some("本地 runtime helper 鉴权失败".to_string()),
+    fn test_server(path: String) -> ServerInstance {
+        ServerInstance {
+            id: "local-helper".to_string(),
+            name: "Local Helper".to_string(),
+            aliases: Vec::new(),
+            core_type: "fabric".to_string(),
+            core_version: "fabric".to_string(),
+            mc_version: "1.20.1".to_string(),
+            path,
+            port: 25565,
+            max_memory: 4096,
+            min_memory: 2048,
+            created_at: 0,
+            last_started_at: None,
+            runtime_kind: "local".to_string(),
+            runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
+                jar_path: "server.jar".to_string(),
+                startup_mode: "jar".to_string(),
+                custom_command: None,
+                java_path: "java".to_string(),
+                jvm_args: Vec::new(),
+            }),
+        }
+    }
+
+    #[test]
+    fn helper_status_snapshot_falls_back_to_helper_exited_state_file_when_helper_is_unavailable() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let path = state_file_path(&server);
+
+        write_state_file(
+            &path,
+            &super::LocalRuntimeState {
+                server_id: server.id.clone(),
+                helper_pid: 999_999,
+                child_pid: None,
+                control_port: Some(25570),
+                auth_token: "token".to_string(),
+                running: true,
+                exit_code: None,
+                detail_message:
+                    "runtime=local running=true source=helper child_pid=none control_port=25570"
+                        .to_string(),
+                error_message: None,
+                updated_at: 123,
             },
-        )?;
-        return Ok(false);
-    }
-
-    match request {
-        LocalHelperRequest::Status { .. } => {
-            let snapshot = snapshot_from_manager(manager, server.id.as_str())?;
-            write_response(
-                &mut stream,
-                LocalHelperResponse {
-                    ok: true,
-                    snapshot: Some(snapshot),
-                    error: None,
-                },
-            )?;
-            Ok(false)
-        }
-        LocalHelperRequest::Send { command, .. } => {
-            let response = match manager.send_command(&server.id, &command) {
-                Ok(()) => LocalHelperResponse { ok: true, snapshot: None, error: None },
-                Err(err) => LocalHelperResponse {
-                    ok: false,
-                    snapshot: None,
-                    error: Some(err),
-                },
-            };
-            write_response(&mut stream, response)?;
-            Ok(false)
-        }
-        LocalHelperRequest::Stop { .. } => {
-            let response = match manager.stop_server(&server.id) {
-                Ok(()) => LocalHelperResponse { ok: true, snapshot: None, error: None },
-                Err(err) => LocalHelperResponse {
-                    ok: false,
-                    snapshot: None,
-                    error: Some(err),
-                },
-            };
-            let should_exit = response.ok;
-            write_response(&mut stream, response)?;
-            Ok(should_exit)
-        }
-        LocalHelperRequest::ForceStop { .. } => {
-            let response = match crate::services::server::runtime::local::LocalServerRuntime
-                .force_stop_with_manager(manager, server)
-            {
-                Ok(()) => LocalHelperResponse { ok: true, snapshot: None, error: None },
-                Err(err) => LocalHelperResponse {
-                    ok: false,
-                    snapshot: None,
-                    error: Some(err),
-                },
-            };
-            let should_exit = response.ok;
-            write_response(&mut stream, response)?;
-            Ok(should_exit)
-        }
-    }
-}
-
-fn write_response(stream: &mut TcpStream, response: LocalHelperResponse) -> Result<(), String> {
-    let payload =
-        serde_json::to_string(&response).map_err(|e| format!("序列化 helper 响应失败: {}", e))?;
-    writeln!(stream, "{}", payload).map_err(|e| format!("写入 helper 响应失败: {}", e))
-}
-
-fn send_request(
-    state: &LocalRuntimeState,
-    request: LocalHelperRequest,
-) -> Result<LocalHelperResponse, String> {
-    let control_port = state
-        .control_port
-        .ok_or_else(|| "本地 runtime helper 当前未暴露控制端口".to_string())?;
-    let mut stream = TcpStream::connect(("127.0.0.1", control_port)).map_err(|e| {
-        format!(
-            "连接本地 runtime helper 失败: helper_pid={} port={} error={}",
-            state.helper_pid, control_port, e
         )
-    })?;
-    stream
-        .set_read_timeout(Some(Duration::from_secs(5)))
-        .map_err(|e| format!("设置 helper 读取超时失败: {}", e))?;
-    stream
-        .set_write_timeout(Some(Duration::from_secs(5)))
-        .map_err(|e| format!("设置 helper 写入超时失败: {}", e))?;
+        .expect("state file should be written");
 
-    let payload =
-        serde_json::to_string(&request).map_err(|e| format!("序列化 helper 请求失败: {}", e))?;
-    writeln!(stream, "{}", payload).map_err(|e| format!("写入 helper 请求失败: {}", e))?;
+        let snapshot = status_snapshot(&server)
+            .expect("status should succeed")
+            .expect("fallback snapshot should exist");
 
-    let mut reader = BufReader::new(stream);
-    let mut line = String::new();
-    reader
-        .read_line(&mut line)
-        .map_err(|e| format!("读取 helper 响应失败: {}", e))?;
-
-    serde_json::from_str(&line).map_err(|e| format!("解析 helper 响应失败: {}", e))
-}
-
-fn write_state_file(path: PathBuf, state: &LocalRuntimeState) -> Result<(), String> {
-    let content = serde_json::to_string_pretty(state)
-        .map_err(|e| format!("序列化本地 runtime 状态失败: {}", e))?;
-    std::fs::write(&path, content)
-        .map_err(|e| format!("写入本地 runtime 状态失败 ({}): {}", path.display(), e))
-}
-
-fn persist_terminal_state(
-    server: &ServerInstance,
-    state: &LocalRuntimeState,
-    exit_code: Option<i32>,
-    error_message: Option<String>,
-) -> Result<(), String> {
-    let next = LocalRuntimeState {
-        server_id: state.server_id.clone(),
-        helper_pid: state.helper_pid,
-        child_pid: state.child_pid,
-        control_port: None,
-        auth_token: state.auth_token.clone(),
-        running: false,
-        exit_code,
-        detail_message: format!(
-            "runtime=local running=false source=state_file exit_code={}",
-            exit_code
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string())
-        ),
-        error_message,
-        updated_at: current_timestamp_secs(),
-    };
-    write_state_file(state_file_path(server), &next)
-}
-
-fn detect_terminal_snapshot(
-    manager: &crate::services::server::manager::ServerManager,
-    server: &ServerInstance,
-) -> Result<Option<LocalHelperStatusSnapshot>, String> {
-    let mut procs = manager.lock_processes()?;
-    let Some(child) = procs.get_mut(&server.id) else {
-        return Ok(Some(LocalHelperStatusSnapshot {
-            running: false,
-            pid: None,
-            exit_code: None,
-            detail_message: "runtime=local running=false source=helper process=missing".to_string(),
-            error_message: None,
-        }));
-    };
-
-    match child.try_wait() {
-        Ok(Some(status)) => {
-            let exit_code = status.code();
-            procs.remove(&server.id);
-            server_log_pipeline::shutdown_writer(&server.id);
-            Ok(Some(LocalHelperStatusSnapshot {
-                running: false,
-                pid: None,
-                exit_code,
-                detail_message: format!(
-                    "runtime=local running=false source=helper exit_code={}",
-                    exit_code
-                        .map(|value| value.to_string())
-                        .unwrap_or_else(|| "none".to_string())
-                ),
-                error_message: if matches!(exit_code, Some(0)) {
-                    None
-                } else {
-                    Some(format!(
-                        "服务器异常退出 (退出码：{})",
-                        exit_code
-                            .map(|value| value.to_string())
-                            .unwrap_or_else(|| "unknown".to_string())
-                    ))
-                },
-            }))
-        }
-        Ok(None) => Ok(None),
-        Err(err) => {
-            procs.remove(&server.id);
-            server_log_pipeline::shutdown_writer(&server.id);
-            Ok(Some(LocalHelperStatusSnapshot {
-                running: false,
-                pid: None,
-                exit_code: None,
-                detail_message: "runtime=local running=false source=helper status=error"
-                    .to_string(),
-                error_message: Some(format!("获取本地进程状态失败: {}", err)),
-            }))
-        }
+        assert!(!snapshot.running);
+        assert_eq!(snapshot.pid, None);
+        assert_eq!(snapshot.exit_code, None);
+        assert_eq!(
+            snapshot.detail_message,
+            "runtime=local running=false source=state_file helper=exited exit_code=none"
+        );
+        assert_eq!(snapshot.error_message, None);
     }
-}
-
-fn snapshot_from_manager(
-    manager: &crate::services::server::manager::ServerManager,
-    server_id: &str,
-) -> Result<LocalHelperStatusSnapshot, String> {
-    let mut procs = manager.lock_processes()?;
-    let Some(child) = procs.get_mut(server_id) else {
-        return Ok(LocalHelperStatusSnapshot {
-            running: false,
-            pid: None,
-            exit_code: None,
-            detail_message: "runtime=local running=false source=helper process=missing".to_string(),
-            error_message: None,
-        });
-    };
-
-    match child.try_wait() {
-        Ok(Some(status)) => {
-            let exit_code = status.code();
-            procs.remove(server_id);
-            server_log_pipeline::shutdown_writer(server_id);
-            Ok(LocalHelperStatusSnapshot {
-                running: false,
-                pid: None,
-                exit_code,
-                detail_message: format!(
-                    "runtime=local running=false source=helper exit_code={}",
-                    exit_code
-                        .map(|value| value.to_string())
-                        .unwrap_or_else(|| "none".to_string())
-                ),
-                error_message: if matches!(exit_code, Some(0)) {
-                    None
-                } else {
-                    Some(format!(
-                        "服务器异常退出 (退出码：{})",
-                        exit_code
-                            .map(|value| value.to_string())
-                            .unwrap_or_else(|| "unknown".to_string())
-                    ))
-                },
-            })
-        }
-        Ok(None) => Ok(LocalHelperStatusSnapshot {
-            running: true,
-            pid: Some(child.id()),
-            exit_code: None,
-            detail_message: format!("runtime=local running=true source=helper pid={}", child.id()),
-            error_message: None,
-        }),
-        Err(err) => {
-            procs.remove(server_id);
-            server_log_pipeline::shutdown_writer(server_id);
-            Ok(LocalHelperStatusSnapshot {
-                running: false,
-                pid: None,
-                exit_code: None,
-                detail_message: "runtime=local running=false source=helper status=error"
-                    .to_string(),
-                error_message: Some(format!("获取本地进程状态失败: {}", err)),
-            })
-        }
-    }
-}
-
-fn current_timestamp_secs() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs())
-        .unwrap_or(0)
 }

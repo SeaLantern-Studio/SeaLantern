@@ -8,6 +8,7 @@ import ServerListSection from "@components/views/home/ServerListSection.vue";
 import AlertsSection from "@components/views/home/AlertsSection.vue";
 import ChangePathModal from "@components/views/home/ChangePathModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
+import { useHomeServerActionsStore } from "@stores/homeServerActionsStore";
 import { useServerStore } from "@stores/serverStore";
 import {
   cleanupQuoteResources,
@@ -16,21 +17,12 @@ import {
   resumeQuoteUpdates,
 } from "@utils/quoteUtils";
 import { fetchSystemInfo } from "@utils/statsUtils";
-import {
-  actionError,
-  deleteServerName,
-  showDeleteConfirm,
-  confirmDelete,
-  cancelDelete,
-  closeDeleteConfirm,
-} from "@utils/serverUtils";
+import { useSerialPolling } from "@composables/useSerialPolling";
 import { i18n } from "@language";
 
 const router = useRouter();
 const store = useServerStore();
-
-let statsTimer: ReturnType<typeof setInterval> | null = null;
-let refreshTimer: ReturnType<typeof setInterval> | null = null;
+const homeServerActionsStore = useHomeServerActionsStore();
 
 async function loadServers() {
   try {
@@ -41,31 +33,36 @@ async function loadServers() {
   }
 }
 
-function startHomePolling() {
-  stopHomePolling();
-  void fetchSystemInfo();
-  statsTimer = setInterval(fetchSystemInfo, 3000);
-  refreshTimer = setInterval(async () => {
+const systemInfoPolling = useSerialPolling({
+  intervalMs: 3000,
+  task: async () => {
+    await fetchSystemInfo();
+  },
+});
+
+const serverStatusPolling = useSerialPolling({
+  intervalMs: 3000,
+  task: async () => {
     await Promise.all(store.servers.map((server) => store.refreshStatus(server.id)));
-  }, 3000);
+  },
+});
+
+function startHomePolling() {
+  systemInfoPolling.start();
+  serverStatusPolling.start();
 }
 
 function stopHomePolling() {
-  if (statsTimer) {
-    clearInterval(statsTimer);
-    statsTimer = null;
-  }
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
+  systemInfoPolling.stop();
+  serverStatusPolling.stop();
 }
 
 onMounted(() => {
   initQuote();
 
-  void loadServers();
-  startHomePolling();
+  void loadServers().finally(() => {
+    startHomePolling();
+  });
   resumeQuoteUpdates();
 });
 
@@ -91,7 +88,10 @@ function handleCreate() {
 
 <template>
   <div class="home-view animate-fade-in-up">
-    <ErrorBanner :message="actionError" @close="actionError = null" />
+    <ErrorBanner
+      :message="homeServerActionsStore.actionError"
+      @close="homeServerActionsStore.actionError = null"
+    />
 
     <div class="top-row">
       <QuickStartCard @create="handleCreate" />
@@ -105,11 +105,11 @@ function handleCreate() {
     <ChangePathModal />
 
     <SLConfirmDialog
-      :visible="showDeleteConfirm"
+      :visible="homeServerActionsStore.showDeleteConfirm"
       :title="i18n.t('home.delete_server')"
       :message="
         i18n.t('home.delete_confirm_message', {
-          server: '<strong>' + deleteServerName + '</strong>',
+          server: '<strong>' + homeServerActionsStore.deleteServerName + '</strong>',
         })
       "
       :confirmText="i18n.t('home.delete_confirm')"
@@ -117,10 +117,10 @@ function handleCreate() {
       confirmVariant="danger"
       :requireInput="true"
       :inputPlaceholder="i18n.t('home.delete_input_placeholder')"
-      :expectedInput="deleteServerName"
-      @confirm="confirmDelete"
-      @cancel="cancelDelete"
-      @close="closeDeleteConfirm"
+      :expectedInput="homeServerActionsStore.deleteServerName"
+      @confirm="homeServerActionsStore.confirmDelete"
+      @cancel="homeServerActionsStore.cancelDelete"
+      @close="homeServerActionsStore.closeDeleteConfirm"
       dangerous
     />
   </div>

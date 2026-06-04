@@ -4,6 +4,7 @@ import SLCard from "@components/common/SLCard.vue";
 import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
 import type { TextColorOverrides } from "@api/settings";
+import { getDefaultTextColors } from "@utils/theme";
 
 const props = defineProps<{
   appDisplayName: string;
@@ -36,49 +37,8 @@ function resetColor(key: keyof TextColorOverrides) {
   handleColorChange(key, "");
 }
 
-function normalizeHexColor(value: string, fallback: string): string {
-  const trimmed = value.trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) {
-    return trimmed.toLowerCase();
-  }
-
-  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
-    return `#${trimmed
-      .slice(1)
-      .split("")
-      .map((segment) => `${segment}${segment}`)
-      .join("")}`.toLowerCase();
-  }
-
-  const rgbMatch = trimmed.match(/^rgba?\(([^)]+)\)$/i);
-  if (rgbMatch) {
-    const [red = "0", green = "0", blue = "0"] = rgbMatch[1].split(",");
-    const channels = [red, green, blue].map((segment) => {
-      const numeric = Number.parseInt(segment.trim(), 10);
-      return Number.isNaN(numeric) ? 0 : Math.min(255, Math.max(0, numeric));
-    });
-    return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
-  }
-
-  return fallback;
-}
-
-function getCssVar(name: string, fallback: string): string {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
-  return normalizeHexColor(value, fallback);
-}
-
 const defaultTextColors = computed<TextColorOverrides>(() => {
-  void props.theme;
-  void props.color;
-  void props.windowEffect;
-
-  return {
-    title: getCssVar("--sl-text-primary", "#0f172a"),
-    text: getCssVar("--sl-text-secondary", "#475569"),
-    description: getCssVar("--sl-text-tertiary", "#94a3b8"),
-  };
+  return getDefaultTextColors(props.color, props.theme, props.windowEffect);
 });
 </script>
 

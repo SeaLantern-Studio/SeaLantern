@@ -1,31 +1,36 @@
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+#[path = "docker_mounts.rs"]
+mod docker_mounts;
+#[path = "docker_paths.rs"]
+mod docker_paths;
+#[path = "docker_preflight.rs"]
+mod docker_preflight;
+#[path = "docker_request_builder.rs"]
+mod docker_request_builder;
 
-use crate::models::server::{
-    CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
-    PublishedPort, VolumeMount,
+pub(super) use docker_paths::resolve_docker_data_dir;
+pub(super) use docker_preflight::{
+    ensure_docker_environment, preflight_docker_command_mode_support,
+    preflight_docker_image_reference, validate_docker_itzg_image_compatibility,
 };
-use crate::services::server::installer::CoreType;
-use crate::utils::cli::cli_env::{
-    configured_servers_container_root, has_docker_host_path_mapping, is_container_like_environment,
+pub(super) use docker_request_builder::{
+    build_docker_create_request, parse_command_mode, resolve_requested_docker_image,
 };
+
+#[cfg(test)]
 use crate::utils::cli::server_args::CliServerCommand;
-use crate::utils::cli::server_docker::{
-    build_docker_command_transport, default_docker_env, sanitize_name_like,
-};
+#[cfg(test)]
 use crate::utils::cli::server_ports::PreparedPorts;
-use crate::utils::cli::server_shared::{trace_cli_action, trace_cli_error};
-use crate::utils::docker_cli::{
-    docker_executable_path, format_docker_image_reference,
-    inspect_docker_image_reference_with_soft_failures, resolve_docker_image_and_tag,
-    DockerImageAvailability, DockerImageInspectOutcome,
+#[cfg(test)]
+use docker_mounts::{parse_docker_volume_mount, parse_published_port};
+#[cfg(test)]
+use docker_paths::map_container_visible_path_to_docker_host_path;
+#[cfg(test)]
+use docker_preflight::{
+    preflight_docker_command_mode_support_from_outputs_for_tests,
+    preflight_docker_image_reference_from_outputs_for_tests,
 };
-use crate::utils::logger;
-use crate::utils::path::strip_path_prefix_for_compare;
-
-use super::metadata_support::{
-    infer_core_type_from_local_inputs, infer_mc_version_from_folder, infer_mc_version_hint,
-};
+#[cfg(test)]
+use docker_request_builder::{format_memory_env_value, parse_docker_backend};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct DockerCreateDefaults {
@@ -36,486 +41,92 @@ pub(super) struct DockerCreateDefaults {
 const DEFAULT_DOCKER_IMAGE: &str = "itzg/minecraft-server";
 pub(super) const DEFAULT_DOCKER_IMAGE_TAG: &str = "latest";
 
-fn docker_itzg_image_looks_compatible(image: &str) -> bool {
-    let normalized = image.trim().trim_matches('/').to_ascii_lowercase();
-    if normalized.is_empty() {
-        return false;
-    }
-
-    normalized == "minecraft-server" || normalized.ends_with("/minecraft-server")
-}
-
-pub(super) fn validate_docker_itzg_image_compatibility(image: &str) -> Result<(), String> {
-    if docker_itzg_image_looks_compatible(image) {
-        return Ok(());
-    }
-
-    Err(format!(
-        "当前 docker runtime 目标是 Minecraft server 容器，但镜像名看起来不兼容: {}。请使用 itzg/minecraft-server 或你自己的 */minecraft-server 镜像名；如果这是私有镜像/镜像代理，也请保持最终镜像名仍为 minecraft-server",
-        image.trim()
-    ))
-}
-
-pub(super) fn ensure_docker_environment() -> Result<(), String> {
-    let docker_path = docker_executable_path()?;
-    let output = std::process::Command::new(docker_path)
-        .arg("info")
-        .output()
-        .map_err(|e| format!("执行 docker info 失败: {}", e))?;
-    if output.status.success() {
-        trace_cli_action("docker_environment_ready", "docker info succeeded");
-        return Ok(());
-    }
-
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let error = if stderr.is_empty() {
-        "docker 环境不可用，请确认 Docker Desktop 或 Docker Engine 已启动".to_string()
-    } else {
-        format!("docker 环境不可用: {}", stderr)
-    };
-    trace_cli_error("docker_environment_unavailable", "docker info", &error);
-    Err(error)
-}
-
-pub(super) fn preflight_docker_image_reference(image: &str, image_tag: &str) -> Result<(), String> {
-    validate_docker_itzg_image_compatibility(image)?;
-
-    let image_ref = format_docker_image_reference(image, image_tag);
-    match inspect_docker_image_reference_with_soft_failures(&image_ref)? {
-        DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached) => {
-            trace_cli_action(
-                "docker_image_preflight",
-                &format!("image_ref={} availability=local_cached", image_ref),
-            );
-            Ok(())
-        }
-        DockerImageInspectOutcome::Available(DockerImageAvailability::RemoteResolvable) => {
-            trace_cli_action(
-                "docker_image_preflight",
-                &format!("image_ref={} availability=remote_resolvable", image_ref),
-            );
-            Ok(())
-        }
-        DockerImageInspectOutcome::SoftFailure { failure_kind, message } => {
-            trace_cli_action(
-                "docker_image_preflight_soft_failure",
-                &format!("image_ref={} failure_kind={:?}", image_ref, failure_kind),
-            );
-            logger::log_warn(&format!(
-                "Docker 镜像预检已降级为软失败，将继续创建服务器记录: image_ref={} failure_kind={:?} detail={}",
-                image_ref, failure_kind, message
-            ));
-            println!(
-                "Docker 镜像预检未确认远端可用性，但已继续创建；若本地已缓存该镜像可直接忽略，否则待网络恢复后再执行 `sealantern docker pull {}`。",
-                image_ref,
-            );
-            Ok(())
-        }
-    }
-}
-
-pub(super) fn preflight_docker_command_mode_support(
-    image: &str,
-    image_tag: &str,
-    command_mode: &DockerCommandMode,
-) -> Result<(), String> {
-    if *command_mode != DockerCommandMode::DockerStdio {
-        return Ok(());
-    }
-
-    let image_ref = format_docker_image_reference(image, image_tag);
-    match inspect_docker_image_reference_with_soft_failures(&image_ref)? {
-        DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached) => {
-            ensure_docker_stdio_image_support(&image_ref)
-        }
-        DockerImageInspectOutcome::Available(DockerImageAvailability::RemoteResolvable) => {
-            trace_cli_action(
-                "docker_stdio_preflight_remote_only",
-                &format!("image_ref={}", image_ref),
-            );
-            logger::log_warn(&format!(
-                "docker_stdio 预检跳过镜像内部探测: image_ref={} availability=remote_resolvable",
-                image_ref
-            ));
-            Ok(())
-        }
-        DockerImageInspectOutcome::SoftFailure { failure_kind, message } => {
-            trace_cli_action(
-                "docker_stdio_preflight_soft_failure",
-                &format!("image_ref={} failure_kind={:?}", image_ref, failure_kind),
-            );
-            logger::log_warn(&format!(
-                "docker_stdio 预检未确认镜像缓存状态，将跳过内部命令探测: image_ref={} failure_kind={:?} detail={}",
-                image_ref, failure_kind, message
-            ));
-            Ok(())
-        }
-    }
-}
-
-fn ensure_docker_stdio_image_support(image_ref: &str) -> Result<(), String> {
-    let docker_path = docker_executable_path()?;
-    let output = std::process::Command::new(docker_path)
-        .arg("run")
-        .arg("--rm")
-        .arg("--entrypoint")
-        .arg("sh")
-        .arg(image_ref)
-        .arg("-lc")
-        .arg("command -v mc-send-to-console >/dev/null 2>&1")
-        .output()
-        .map_err(|err| format!("执行 docker run 检查 docker_stdio 镜像能力失败: {}", err))?;
-
-    if output.status.success() {
-        trace_cli_action("docker_stdio_preflight_supported", &format!("image_ref={}", image_ref));
-        return Ok(());
-    }
-
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let raw = if !stderr.is_empty() {
-        stderr
-    } else if !stdout.is_empty() {
-        stdout
-    } else {
-        format!("退出码: {:?}", output.status.code())
-    };
-
-    Err(format!(
-        "当前镜像不支持 --command-mode docker_stdio: image={} 未检测到 mc-send-to-console。请改用 --command-mode rcon，或改用兼容 itzg 语义且内置 mc-send-to-console 的镜像。原始输出: {}",
-        image_ref, raw
-    ))
-}
-
-pub(super) fn resolve_requested_docker_image(
-    command: &CliServerCommand,
-) -> Result<(String, String), String> {
-    resolve_docker_image_and_tag(
-        command.image.as_deref(),
-        command.image_tag.as_deref(),
-        DEFAULT_DOCKER_IMAGE,
-        DEFAULT_DOCKER_IMAGE_TAG,
-    )
-}
-
-pub(super) fn build_docker_create_request(
+#[cfg(test)]
+fn build_docker_request_after_preflight_for_tests(
     command: &CliServerCommand,
     resolved_name: &str,
     ports: &PreparedPorts,
     defaults: DockerCreateDefaults,
-) -> Result<CreateDockerItzgServerRequest, String> {
-    let docker_folder_path = command.folder.as_deref().map(Path::new);
-    let mc_version = command
-        .mc_version
-        .clone()
-        .or_else(|| {
-            docker_folder_path.and_then(|folder| infer_mc_version_from_folder(folder, None))
-        })
-        .or_else(|| {
-            command
-                .folder
-                .as_deref()
-                .and_then(|folder| infer_mc_version_hint(&[folder]))
-        })
-        .or_else(|| infer_mc_version_hint(&[resolved_name]))
-        .ok_or_else(|| "docker server 缺少 --mc".to_string())?;
-    let core_type = command
-        .core_type
-        .clone()
-        .or_else(|| {
-            docker_folder_path.and_then(|folder| infer_core_type_from_local_inputs(folder, None))
-        })
-        .map(|value| normalize_core_type(Some(&value)))
-        .transpose()?
-        .unwrap_or_else(|| "paper".to_string());
-    let api_core = CoreType::normalize_to_api_core_key(&core_type).unwrap_or(core_type.clone());
-    let data_dir = resolve_docker_data_dir(command, resolved_name)?;
-    let (image, image_tag) = resolve_requested_docker_image(command)?;
-    let container_name = command
-        .container_name
-        .clone()
-        .unwrap_or_else(|| format!("sealantern-{}", sanitize_container_name(resolved_name)));
-    let docker_backend_kind = parse_docker_backend(command.docker_backend.as_deref())?;
-    let command_mode = parse_command_mode(command.command_mode.as_deref())?;
-    let mut env = default_docker_env();
-    apply_docker_memory_env(command, &mut env, defaults);
-    apply_custom_docker_env(command, &mut env);
-    let volume_mounts = parse_docker_volume_mounts(&command.docker_mounts)?;
-    let mut reserved_ports = vec![ports.game_port];
-    if let Some(web_port) = ports.web_port {
-        reserved_ports.push(web_port);
-    }
-    let (mut extra_ports, rcon) =
-        build_docker_command_transport(&command_mode, &container_name, &reserved_ports, &mut env)?;
-    reserved_ports.extend(extra_ports.iter().map(|port| port.host_port));
-    let published_ports = parse_extra_published_ports(&command.docker_publishes, &reserved_ports)?;
-    extra_ports.extend(published_ports);
-
-    trace_cli_action(
-        "docker_request_built",
-        &format!(
-            "name={} image={}:{} container={} backend={} command_mode={} data_dir={} game_port= {}",
-            resolved_name,
-            image,
-            image_tag,
-            container_name,
-            docker_backend_kind.as_str(),
-            command_mode.as_str(),
-            data_dir,
-            ports.game_port
-        ),
-    );
-
-    Ok(CreateDockerItzgServerRequest {
-        name: resolved_name.to_string(),
-        aliases: command.aliases.clone(),
-        core_type,
-        mc_version: mc_version.clone(),
-        port: ports.game_port,
-        runtime: DockerItzgRuntimeConfig {
-            image,
-            image_tag,
-            container_name,
-            type_value: api_core.to_ascii_uppercase().replace('-', "_"),
-            version: mc_version,
-            data_dir_mount: data_dir,
-            published_game_port: ports.game_port,
-            env,
-            extra_ports,
-            volume_mounts,
-            docker_backend_kind,
-            command_mode,
-            rcon,
-        },
-    })
+    local_output: &std::process::Output,
+    manifest_output: &std::process::Output,
+) -> Result<crate::models::server::CreateDockerItzgServerRequest, String> {
+    build_docker_request_after_facade_preflight_with_stdio_probe_for_tests(
+        command,
+        resolved_name,
+        ports,
+        defaults,
+        local_output,
+        manifest_output,
+        |_image_ref| Ok(()),
+    )
 }
 
-pub(super) fn parse_docker_backend(value: Option<&str>) -> Result<DockerBackendKind, String> {
-    match value.unwrap_or("cli").trim().to_ascii_lowercase().as_str() {
-        "cli" => Ok(DockerBackendKind::Cli),
-        "engine_api" | "engine-api" => Ok(DockerBackendKind::EngineApi),
-        other => Err(format!("不支持的 docker backend: {}", other)),
-    }
-}
-
-pub(super) fn parse_command_mode(value: Option<&str>) -> Result<DockerCommandMode, String> {
-    match value.unwrap_or("rcon").trim().to_ascii_lowercase().as_str() {
-        "rcon" => Ok(DockerCommandMode::Rcon),
-        "docker_stdio" | "docker-stdio" | "stdio" => Ok(DockerCommandMode::DockerStdio),
-        other => Err(format!("不支持的 docker command mode: {}", other)),
-    }
-}
-
-pub(super) fn format_memory_env_value(memory_mb: u32) -> String {
-    if memory_mb.is_multiple_of(1024) {
-        format!("{}G", memory_mb / 1024)
-    } else {
-        format!("{}M", memory_mb)
-    }
-}
-
-pub(super) fn resolve_docker_data_dir(
+#[cfg(test)]
+fn build_docker_request_after_facade_preflight_with_stdio_probe_for_tests<F>(
     command: &CliServerCommand,
     resolved_name: &str,
-) -> Result<String, String> {
-    if let Some(explicit_data_dir) = command.data_dir.clone().or_else(|| command.folder.clone()) {
-        return Ok(explicit_data_dir);
-    }
-
-    if is_container_like_environment() && !has_docker_host_path_mapping() {
-        return Err(
-            "当前 Sea Lantern 运行在容器可见路径下，且未配置 SEALANTERN_SERVERS_CONTAINER_ROOT / SEALANTERN_SERVERS_HOST_ROOT；请显式传入 --data-dir，或配置宿主路径映射"
-                .to_string(),
-        );
-    }
-
-    Ok(default_docker_server_dir(resolved_name))
-}
-
-pub(super) fn map_container_visible_path_to_docker_host_path(path: &Path) -> Option<String> {
-    let host_root = std::env::var("SEALANTERN_SERVERS_HOST_ROOT").ok()?;
-    let container_root = std::env::var("SEALANTERN_SERVERS_CONTAINER_ROOT").ok()?;
-
-    let host_root = PathBuf::from(host_root);
-    let container_root = PathBuf::from(container_root);
-    let relative = strip_path_prefix_for_compare(path, &container_root)?;
-
-    if relative.is_empty() {
-        return Some(host_root.to_string_lossy().to_string());
-    }
-
-    Some(host_root.join(relative).to_string_lossy().to_string())
-}
-
-fn apply_docker_memory_env(
-    command: &CliServerCommand,
-    env: &mut BTreeMap<String, String>,
+    ports: &PreparedPorts,
     defaults: DockerCreateDefaults,
-) {
-    let max_memory_mb = command
-        .max_memory_mb
-        .unwrap_or(defaults.default_max_memory_mb);
-    let min_memory_mb = command
-        .min_memory_mb
-        .unwrap_or(defaults.default_min_memory_mb);
+    local_output: &std::process::Output,
+    manifest_output: &std::process::Output,
+    ensure_stdio_support: F,
+) -> Result<crate::models::server::CreateDockerItzgServerRequest, String>
+where
+    F: FnOnce(&str) -> Result<(), String>,
+{
+    let (image, image_tag) = resolve_requested_docker_image(command)?;
+    validate_docker_itzg_image_compatibility(&image)?;
+    preflight_docker_image_reference_from_outputs_for_tests(
+        &image,
+        &image_tag,
+        local_output,
+        manifest_output,
+    )?;
 
-    env.insert("MEMORY".to_string(), format_memory_env_value(max_memory_mb));
-    env.insert("MAX_MEMORY".to_string(), format_memory_env_value(max_memory_mb));
-    env.insert("INIT_MEMORY".to_string(), format_memory_env_value(min_memory_mb));
+    let command_mode = parse_command_mode(command.command_mode.as_deref())?;
+    preflight_docker_command_mode_support_from_outputs_for_tests(
+        &image,
+        &image_tag,
+        &command_mode,
+        local_output,
+        manifest_output,
+        ensure_stdio_support,
+    )?;
+
+    build_docker_create_request(command, resolved_name, ports, defaults)
 }
 
-fn apply_custom_docker_env(command: &CliServerCommand, env: &mut BTreeMap<String, String>) {
-    for (key, value) in &command.docker_env {
-        env.insert(key.clone(), value.clone());
-    }
-}
-
-fn parse_docker_volume_mounts(values: &[String]) -> Result<Vec<VolumeMount>, String> {
-    values
-        .iter()
-        .map(|value| parse_docker_volume_mount(value))
-        .collect()
-}
-
-fn parse_docker_volume_mount(value: &str) -> Result<VolumeMount, String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return Err("--mount 不能为空".to_string());
-    }
-
-    let (without_mode, read_only) = if let Some(prefix) = trimmed.strip_suffix(":ro") {
-        (prefix, true)
-    } else if let Some(prefix) = trimmed.strip_suffix(":rw") {
-        (prefix, false)
-    } else {
-        (trimmed, false)
-    };
-
-    let (source, target) = split_mount_source_target(without_mode, value)?;
-    if source.trim().is_empty() || target.trim().is_empty() {
-        return Err(format!("--mount 需要非空 source 与 target: {}", value));
-    }
-
-    Ok(VolumeMount {
-        source: source.trim().to_string(),
-        target: target.trim().to_string(),
-        read_only,
-    })
-}
-
-fn parse_extra_published_ports(
-    values: &[String],
-    reserved_host_ports: &[u16],
-) -> Result<Vec<PublishedPort>, String> {
-    let mut ports = Vec::with_capacity(values.len());
-    for value in values {
-        let port = parse_published_port(value)?;
-        if reserved_host_ports.contains(&port.host_port) {
-            return Err(format!(
-                "--publish 宿主端口 {} 与当前已保留端口冲突，请改用其他宿主端口: {}",
-                port.host_port, value
-            ));
-        }
-        if ports
-            .iter()
-            .any(|existing: &PublishedPort| existing.host_port == port.host_port)
-        {
-            return Err(format!(
-                "--publish 宿主端口 {} 重复定义，请检查参数: {}",
-                port.host_port, value
-            ));
-        }
-        ports.push(port);
-    }
-    Ok(ports)
-}
-
-fn parse_published_port(value: &str) -> Result<PublishedPort, String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return Err("--publish 不能为空".to_string());
-    }
-
-    let (port_pair, protocol) = if let Some((pair, protocol)) = trimmed.rsplit_once('/') {
-        let protocol = protocol.trim().to_ascii_lowercase();
-        if !matches!(protocol.as_str(), "tcp" | "udp") {
-            return Err(format!("--publish 仅支持 tcp/udp 协议: {}", value));
-        }
-        (pair, protocol)
-    } else {
-        (trimmed, "tcp".to_string())
-    };
-
-    let Some((host_port, container_port)) = port_pair.split_once(':') else {
-        return Err(format!("--publish 需要 host:container[/tcp|udp] 形式: {}", value));
-    };
-
-    Ok(PublishedPort {
-        host_port: parse_non_zero_port(host_port.trim(), "--publish host")?,
-        container_port: parse_non_zero_port(container_port.trim(), "--publish container")?,
-        protocol,
-    })
-}
-
-fn parse_non_zero_port(value: &str, label: &str) -> Result<u16, String> {
-    value
-        .parse::<u16>()
-        .ok()
-        .filter(|port| *port > 0)
-        .ok_or_else(|| format!("{} 需要有效的非零端口号: {}", label, value))
-}
-
-fn split_mount_source_target(value: &str, original: &str) -> Result<(String, String), String> {
-    let chars: Vec<(usize, char)> = value.char_indices().collect();
-    for (position, ch) in chars.iter().rev() {
-        if *ch != ':' {
-            continue;
-        }
-
-        let source = &value[..*position];
-        let target = &value[*position + 1..];
-        if target.starts_with('/') || target.starts_with("./") || target.starts_with("../") {
-            return Ok((source.to_string(), target.to_string()));
-        }
-    }
-
-    Err(format!("--mount 需要 source:target[:ro|rw] 形式: {}", original))
-}
-
-fn default_docker_server_dir(name: &str) -> String {
-    let path = default_container_visible_server_dir(name);
-    map_container_visible_path_to_docker_host_path(&path)
-        .unwrap_or_else(|| path.to_string_lossy().to_string())
-}
-
-fn default_container_visible_server_dir(name: &str) -> PathBuf {
-    let mut path = configured_servers_container_root().unwrap_or_else(|| {
-        let mut app_data_dir = PathBuf::from(crate::utils::path::get_or_create_app_data_dir());
-        app_data_dir.push("servers");
-        app_data_dir
-    });
-    path.push(sanitize_container_name(name));
-    path
-}
-
-fn sanitize_container_name(name: &str) -> String {
-    sanitize_name_like(name)
-}
-
-fn normalize_core_type(value: Option<&str>) -> Result<String, String> {
-    let raw = value.unwrap_or("paper").trim();
-    if raw.is_empty() {
-        return Err("--core 不能为空".to_string());
-    }
-    Ok(CoreType::normalize_to_api_core_key(raw).unwrap_or_else(|| raw.to_string()))
+#[cfg(test)]
+fn preflight_docker_mode_from_outputs_for_tests<F>(
+    command: &CliServerCommand,
+    local_output: &std::process::Output,
+    manifest_output: &std::process::Output,
+    ensure_stdio_support: F,
+) -> Result<(), String>
+where
+    F: FnOnce(&str) -> Result<(), String>,
+{
+    let (image, image_tag) = resolve_requested_docker_image(command)?;
+    let command_mode = parse_command_mode(command.command_mode.as_deref())?;
+    preflight_docker_command_mode_support_from_outputs_for_tests(
+        &image,
+        &image_tag,
+        &command_mode,
+        local_output,
+        manifest_output,
+        ensure_stdio_support,
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        build_docker_create_request, format_memory_env_value,
+        build_docker_create_request,
+        build_docker_request_after_facade_preflight_with_stdio_probe_for_tests,
+        build_docker_request_after_preflight_for_tests, format_memory_env_value,
         map_container_visible_path_to_docker_host_path, parse_command_mode, parse_docker_backend,
-        parse_docker_volume_mount, parse_published_port, resolve_docker_data_dir,
+        parse_docker_volume_mount, parse_published_port,
+        preflight_docker_mode_from_outputs_for_tests, resolve_docker_data_dir,
         resolve_requested_docker_image, validate_docker_itzg_image_compatibility,
         DockerCreateDefaults, DEFAULT_DOCKER_IMAGE_TAG,
     };
@@ -523,7 +134,9 @@ mod tests {
     use crate::utils::cli::server_args::CliServerCommand;
     use crate::utils::cli::server_ports::PreparedPorts;
     use once_cell::sync::Lazy;
+    use std::cell::Cell;
     use std::path::Path;
+    use std::process::Output;
     use std::sync::Mutex;
     use tempfile::tempdir;
 
@@ -539,6 +152,30 @@ mod tests {
             default_max_memory_mb: 4096,
             default_min_memory_mb: 2048,
         }
+    }
+
+    fn output_with_status(code: i32, stdout: &str, stderr: &str) -> Output {
+        Output {
+            status: super::exit_status_from_raw(code),
+            stdout: stdout.as_bytes().to_vec(),
+            stderr: stderr.as_bytes().to_vec(),
+        }
+    }
+
+    fn local_success_output() -> Output {
+        output_with_status(0, "[{\"Id\":\"sha256:abc\"}]", "")
+    }
+
+    fn manifest_success_output() -> Output {
+        output_with_status(0, "{\"schemaVersion\":2}", "")
+    }
+
+    fn failed_output(stderr: &str) -> Output {
+        output_with_status(1, "", stderr)
+    }
+
+    fn failed_output_with_stdout(stdout: &str) -> Output {
+        output_with_status(1, stdout, "")
     }
 
     impl EnvVarGuard {
@@ -593,6 +230,25 @@ mod tests {
             parse_command_mode(Some("docker-stdio")).unwrap(),
             DockerCommandMode::DockerStdio
         );
+    }
+
+    #[test]
+    fn parse_command_mode_rejects_unknown_value() {
+        let err = parse_command_mode(Some("pty")).expect_err("unknown command mode should fail");
+
+        assert!(err.contains("docker command mode"));
+        assert!(err.contains("pty"));
+    }
+
+    #[test]
+    fn resolve_requested_docker_image_uses_default_image_and_tag_by_default() {
+        let command = CliServerCommand::default();
+
+        let (image, tag) =
+            resolve_requested_docker_image(&command).expect("default image should resolve");
+
+        assert_eq!(image, "itzg/minecraft-server");
+        assert_eq!(tag, DEFAULT_DOCKER_IMAGE_TAG);
     }
 
     #[test]
@@ -717,6 +373,61 @@ mod tests {
     }
 
     #[test]
+    fn build_docker_create_request_locks_facade_runtime_shape() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            data_dir: Some("E:/docker/facade-lock".to_string()),
+            aliases: vec!["paper_prod".to_string(), "main".to_string()],
+            docker_env: vec![("ENABLE_AUTOPAUSE".to_string(), "FALSE".to_string())],
+            docker_mounts: vec!["E:/plugins:/data/plugins:ro".to_string()],
+            docker_publishes: vec!["8123:8123/tcp".to_string()],
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+
+        let request =
+            build_docker_create_request(&command, "paper-prod", &ports, sample_defaults())
+                .expect("facade request should build");
+
+        assert_eq!(request.name, "paper-prod");
+        assert_eq!(request.aliases, vec!["paper_prod", "main"]);
+        assert_eq!(request.core_type, "paper");
+        assert_eq!(request.mc_version, "1.21.1");
+        assert_eq!(request.port, 25565);
+
+        assert_eq!(request.runtime.image, "itzg/minecraft-server");
+        assert_eq!(request.runtime.image_tag, "latest");
+        assert_eq!(request.runtime.container_name, "sealantern-paper-prod");
+        assert_eq!(request.runtime.type_value, "PAPER");
+        assert_eq!(request.runtime.version, "1.21.1");
+        assert_eq!(request.runtime.data_dir_mount, "E:/docker/facade-lock");
+        assert_eq!(request.runtime.published_game_port, 25565);
+        assert_eq!(request.runtime.docker_backend_kind, DockerBackendKind::Cli);
+        assert_eq!(request.runtime.command_mode, DockerCommandMode::Rcon);
+
+        assert_eq!(request.runtime.env.get("MEMORY").map(String::as_str), Some("4G"));
+        assert_eq!(
+            request
+                .runtime
+                .env
+                .get("ENABLE_AUTOPAUSE")
+                .map(String::as_str),
+            Some("FALSE")
+        );
+
+        assert_eq!(request.runtime.volume_mounts.len(), 1);
+        assert_eq!(request.runtime.volume_mounts[0].source, "E:/plugins");
+        assert_eq!(request.runtime.volume_mounts[0].target, "/data/plugins");
+        assert!(request.runtime.volume_mounts[0].read_only);
+
+        assert!(request.runtime.extra_ports.iter().any(|port| {
+            port.host_port == 8123 && port.container_port == 8123 && port.protocol == "tcp"
+        }));
+        assert!(request.runtime.rcon.is_some());
+    }
+
+    #[test]
     fn build_docker_create_request_skips_rcon_side_effects_for_stdio_mode() {
         let command = CliServerCommand {
             mc_version: Some("1.21.1".to_string()),
@@ -739,6 +450,306 @@ mod tests {
         assert_eq!(request.runtime.env.get("INIT_MEMORY").map(String::as_str), Some("2G"));
         assert!(request.runtime.env.get("ENABLE_RCON").is_none());
         assert!(request.runtime.env.get("RCON_PASSWORD").is_none());
+        assert_eq!(
+            request
+                .runtime
+                .env
+                .get("CREATE_CONSOLE_IN_PIPE")
+                .map(String::as_str),
+            Some("true")
+        );
+    }
+
+    #[test]
+    fn facade_chain_preserves_local_success_and_builds_runtime_request() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            data_dir: Some("E:/docker/facade-local-success".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+
+        let request = build_docker_request_after_preflight_for_tests(
+            &command,
+            "paper-local-success",
+            &ports,
+            sample_defaults(),
+            &local_success_output(),
+            &failed_output("manifest unknown: manifest unknown"),
+        )
+        .expect("local success should pass preflight and build facade request");
+
+        assert_eq!(request.runtime.image, "itzg/minecraft-server");
+        assert_eq!(request.runtime.image_tag, "latest");
+        assert_eq!(request.runtime.command_mode, DockerCommandMode::Rcon);
+        assert!(request.runtime.rcon.is_some());
+    }
+
+    #[test]
+    fn facade_chain_preserves_remote_resolvable_and_builds_runtime_request() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            data_dir: Some("E:/docker/facade-remote-success".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+
+        let request = build_docker_request_after_preflight_for_tests(
+            &command,
+            "paper-remote-success",
+            &ports,
+            sample_defaults(),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
+            &manifest_success_output(),
+        )
+        .expect("remote resolvable should pass preflight and build facade request");
+
+        assert_eq!(request.runtime.image, "itzg/minecraft-server");
+        assert_eq!(request.runtime.image_tag, "latest");
+        assert_eq!(request.runtime.command_mode, DockerCommandMode::Rcon);
+        assert!(request.runtime.rcon.is_some());
+    }
+
+    #[test]
+    fn facade_chain_preserves_soft_failure_and_still_builds_runtime_request() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            data_dir: Some("E:/docker/facade-soft-failure".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+
+        let request = build_docker_request_after_preflight_for_tests(
+            &command,
+            "paper-soft-failure",
+            &ports,
+            sample_defaults(),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
+            &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
+        )
+        .expect("soft failure should stay non-blocking through facade request build");
+
+        assert_eq!(request.runtime.image, "itzg/minecraft-server");
+        assert_eq!(request.runtime.image_tag, "latest");
+        assert_eq!(request.runtime.command_mode, DockerCommandMode::Rcon);
+        assert!(request.runtime.rcon.is_some());
+    }
+
+    #[test]
+    fn facade_chain_preserves_hard_failure_and_blocks_request_build() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            image_tag: Some("missing".to_string()),
+            data_dir: Some("E:/docker/facade-hard-failure".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+
+        let err = build_docker_request_after_preflight_for_tests(
+            &command,
+            "paper-hard-failure",
+            &ports,
+            sample_defaults(),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:missing",
+            ),
+            &failed_output_with_stdout("manifest unknown: manifest unknown"),
+        )
+        .expect_err("hard failure should block facade request build");
+
+        assert!(err.contains("镜像或标签不存在"));
+        assert!(err.contains("manifest unknown"));
+    }
+
+    #[test]
+    fn facade_chain_preserves_remote_resolvable_stdio_skip_behavior() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            command_mode: Some("docker_stdio".to_string()),
+            data_dir: Some("E:/docker/facade-remote-stdio".to_string()),
+            ..Default::default()
+        };
+        let probe_calls = Cell::new(0);
+
+        preflight_docker_mode_from_outputs_for_tests(
+            &command,
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
+            &manifest_success_output(),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Err("probe should have been skipped".to_string())
+            },
+        )
+        .expect("remote resolvable docker_stdio should skip probe at facade level");
+
+        assert_eq!(probe_calls.get(), 0);
+    }
+
+    #[test]
+    fn facade_chain_preserves_soft_failure_stdio_skip_behavior() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            command_mode: Some("docker_stdio".to_string()),
+            data_dir: Some("E:/docker/facade-soft-stdio".to_string()),
+            ..Default::default()
+        };
+        let probe_calls = Cell::new(0);
+
+        preflight_docker_mode_from_outputs_for_tests(
+            &command,
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
+            &failed_output("dial tcp 1.2.3.4:443: connectex: timeout"),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Err("probe should have been skipped".to_string())
+            },
+        )
+        .expect("soft failure docker_stdio should skip probe at facade level");
+
+        assert_eq!(probe_calls.get(), 0);
+    }
+
+    #[test]
+    fn facade_chain_preserves_local_success_stdio_probe_requirement() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            command_mode: Some("docker_stdio".to_string()),
+            data_dir: Some("E:/docker/facade-local-stdio".to_string()),
+            ..Default::default()
+        };
+        let probe_calls = Cell::new(0);
+
+        preflight_docker_mode_from_outputs_for_tests(
+            &command,
+            &local_success_output(),
+            &failed_output("manifest unknown: manifest unknown"),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Ok(())
+            },
+        )
+        .expect("local success docker_stdio should still require probe at facade level");
+
+        assert_eq!(probe_calls.get(), 1);
+    }
+
+    #[test]
+    fn facade_chain_preserves_hard_failure_stdio_blocking_behavior() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            command_mode: Some("docker_stdio".to_string()),
+            image_tag: Some("missing".to_string()),
+            data_dir: Some("E:/docker/facade-hard-stdio".to_string()),
+            ..Default::default()
+        };
+        let probe_calls = Cell::new(0);
+
+        let err = preflight_docker_mode_from_outputs_for_tests(
+            &command,
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:missing",
+            ),
+            &failed_output_with_stdout("manifest unknown: manifest unknown"),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Ok(())
+            },
+        )
+        .expect_err("hard failure docker_stdio should block before probe at facade level");
+
+        assert!(err.contains("镜像或标签不存在"));
+        assert_eq!(probe_calls.get(), 0);
+    }
+
+    #[test]
+    fn facade_chain_preserves_remote_resolvable_stdio_and_builds_runtime_request_without_probe() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            command_mode: Some("docker_stdio".to_string()),
+            data_dir: Some("E:/docker/facade-remote-stdio-build".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+        let probe_calls = Cell::new(0);
+
+        let request = build_docker_request_after_facade_preflight_with_stdio_probe_for_tests(
+            &command,
+            "paper-remote-stdio-build",
+            &ports,
+            sample_defaults(),
+            &failed_output(
+                "Error response from daemon: No such image: itzg/minecraft-server:latest",
+            ),
+            &manifest_success_output(),
+            |_image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                Err("probe should have been skipped".to_string())
+            },
+        )
+        .expect("remote resolvable docker_stdio facade chain should skip probe and still build");
+
+        assert_eq!(probe_calls.get(), 0);
+        assert_eq!(request.runtime.command_mode, DockerCommandMode::DockerStdio);
+        assert!(request.runtime.rcon.is_none());
+        assert!(request.runtime.extra_ports.is_empty());
+        assert_eq!(
+            request
+                .runtime
+                .env
+                .get("CREATE_CONSOLE_IN_PIPE")
+                .map(String::as_str),
+            Some("true")
+        );
+    }
+
+    #[test]
+    fn facade_chain_preserves_local_success_stdio_probe_and_builds_runtime_request() {
+        let command = CliServerCommand {
+            mc_version: Some("1.21.1".to_string()),
+            core_type: Some("paper".to_string()),
+            command_mode: Some("docker_stdio".to_string()),
+            data_dir: Some("E:/docker/facade-local-stdio-build".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+        let probe_calls = Cell::new(0);
+
+        let request = build_docker_request_after_facade_preflight_with_stdio_probe_for_tests(
+            &command,
+            "paper-local-stdio-build",
+            &ports,
+            sample_defaults(),
+            &local_success_output(),
+            &failed_output("manifest unknown: manifest unknown"),
+            |image_ref| {
+                probe_calls.set(probe_calls.get() + 1);
+                assert_eq!(image_ref, "itzg/minecraft-server:latest");
+                Ok(())
+            },
+        )
+        .expect("local success docker_stdio facade chain should probe first and then build");
+
+        assert_eq!(probe_calls.get(), 1);
+        assert_eq!(request.runtime.command_mode, DockerCommandMode::DockerStdio);
+        assert!(request.runtime.rcon.is_none());
+        assert!(request.runtime.extra_ports.is_empty());
         assert_eq!(
             request
                 .runtime
@@ -989,6 +1000,19 @@ mod tests {
     }
 
     #[test]
+    fn resolve_docker_data_dir_falls_back_to_folder_mount_source() {
+        let command = CliServerCommand {
+            folder: Some("E:/servers/paper-prod".to_string()),
+            ..Default::default()
+        };
+
+        let resolved =
+            resolve_docker_data_dir(&command, "paper-docker").expect("folder should be reused");
+
+        assert_eq!(resolved, "E:/servers/paper-prod");
+    }
+
+    #[test]
     fn resolve_docker_data_dir_errors_for_container_like_default_without_mapping() {
         let _env_lock = ENV_LOCK.lock().expect("env lock should acquire");
         let _headless_guard = EnvVarGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
@@ -1001,6 +1025,7 @@ mod tests {
 
         assert!(err.contains("SEALANTERN_SERVERS_CONTAINER_ROOT"));
         assert!(err.contains("--data-dir"));
+        assert!(!err.contains("0.0.0.0"));
     }
 
     #[test]
@@ -1084,5 +1109,17 @@ mod tests {
         assert_eq!(request.runtime.env.get("MEMORY").map(String::as_str), Some("3G"));
         assert_eq!(request.runtime.env.get("MAX_MEMORY").map(String::as_str), Some("3G"));
         assert_eq!(request.runtime.env.get("INIT_MEMORY").map(String::as_str), Some("1536M"));
+    }
+}
+
+#[cfg(test)]
+fn exit_status_from_raw(code: i32) -> std::process::ExitStatus {
+    #[cfg(windows)]
+    {
+        std::os::windows::process::ExitStatusExt::from_raw(code as u32)
+    }
+    #[cfg(unix)]
+    {
+        std::os::unix::process::ExitStatusExt::from_raw(code)
     }
 }

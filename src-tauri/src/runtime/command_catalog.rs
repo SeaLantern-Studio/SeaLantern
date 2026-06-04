@@ -5,6 +5,7 @@ use crate::commands;
 use commands::app::debug as debug_commands;
 
 use commands::app::host as system_commands;
+use commands::app::i18n as i18n_commands;
 use commands::app::logging as logging_commands;
 use commands::app::settings as settings_commands;
 use commands::downloads::java as java_commands;
@@ -80,9 +81,11 @@ pub(crate) fn desktop_handler(
         system_commands::open_file,
         system_commands::open_folder,
         system_commands::get_default_run_path,
+        system_commands::get_create_server_defaults,
         system_commands::get_safe_mode_status,
         system_commands::frontend_heartbeat,
         system_commands::test_ipv6_connectivity,
+        i18n_commands::get_locale_bundle,
         player_commands::get_whitelist,
         player_commands::get_banned_players,
         player_commands::get_ops,

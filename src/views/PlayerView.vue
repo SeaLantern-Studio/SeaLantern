@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useServerStore } from "@stores/serverStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import { useRoute } from "vue-router";
 import { useConsoleStore } from "@stores/consoleStore";
+import { serverApi } from "@api/server";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
 import { TIME, MESSAGES, getMessage } from "@utils/constants";
 import { validatePlayerName, handleError } from "@utils/errorHandler";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import PlayerTabs from "@components/views/player/PlayerTabs.vue";
 import PlayerActionBar from "@components/views/player/PlayerActionBar.vue";
 import PlayerList from "@components/views/player/PlayerList.vue";
@@ -25,7 +28,6 @@ const activeTab = ref<PlayerTab>("online");
 const whitelist = ref<PlayerEntry[]>([]);
 const bannedPlayers = ref<BanEntry[]>([]);
 const ops = ref<OpEntry[]>([]);
-const onlinePlayers = ref<string[]>([]);
 
 const { loading, withLoading } = useLoading();
 const { error, success, showError, showSuccess, clear: clearMessage } = useMessage();
@@ -34,8 +36,8 @@ const showAddModal = ref(false);
 const addPlayerName = ref("");
 const addBanReason = ref("");
 const addLoading = ref(false);
-
-let refreshTimer: ReturnType<typeof setInterval> | null = null;
+const settingsStore = useSettingsStore();
+let unlistenLogLine: UnlistenFn | null = null;
 
 const selectedServerId = computed(() => store.currentServerId || "");
 
@@ -47,6 +49,10 @@ const serverPath = computed(() => {
 const isRunning = computed(() => {
   return store.statuses[selectedServerId.value]?.status === "Running";
 });
+
+const onlinePlayers = computed(() =>
+  parseOnlinePlayers(consoleStore.logs[selectedServerId.value] || []),
+);
 
 function getAddLabel(): string {
   switch (activeTab.value) {
@@ -62,6 +68,7 @@ function getAddLabel(): string {
 }
 
 onMounted(async () => {
+  await settingsStore.ensureLoaded();
   await store.refreshList();
   const routeId = typeof route.params.id === "string" ? route.params.id : "";
   if (routeId && store.servers.some((server) => server.id === routeId)) {
@@ -69,28 +76,12 @@ onMounted(async () => {
   } else if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
   }
-  if (store.currentServerId) {
-    await store.refreshStatus(store.currentServerId);
-    await loadAll();
-    parseOnlinePlayers();
-  }
-  startRefresh();
+  await startPlayerLogSubscription();
 });
 
 onUnmounted(() => {
-  if (refreshTimer) clearInterval(refreshTimer);
+  stopPlayerLogSubscription();
 });
-
-function startRefresh() {
-  if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(async () => {
-    if (selectedServerId.value) {
-      await store.refreshStatus(selectedServerId.value);
-      await loadAll();
-      parseOnlinePlayers();
-    }
-  }, 5000);
-}
 
 watch(
   () => route.params.id,
@@ -107,13 +98,18 @@ watch(
 
 watch(
   () => store.currentServerId,
-  async () => {
-    if (store.currentServerId) {
-      await store.refreshStatus(store.currentServerId);
-      await loadAll();
-      parseOnlinePlayers();
+  async (serverId) => {
+    if (!serverId) {
+      whitelist.value = [];
+      bannedPlayers.value = [];
+      ops.value = [];
+      return;
     }
+
+    await store.refreshStatus(serverId);
+    await Promise.all([loadAll(), ensureRecentLogsLoaded(serverId)]);
   },
+  { immediate: true },
 );
 
 async function loadAll() {
@@ -125,9 +121,36 @@ async function loadAll() {
   });
 }
 
-function parseOnlinePlayers() {
-  const sid = selectedServerId.value;
-  const logs = consoleStore.logs[sid] || [];
+async function ensureRecentLogsLoaded(serverId: string) {
+  if ((consoleStore.logs[serverId] || []).length > 0) {
+    return;
+  }
+
+  const maxLogLines = Math.max(100, settingsStore.settings.max_log_lines || 5000);
+  const lines = await serverApi.getLogs(serverId, 0, maxLogLines);
+  consoleStore.replaceLogs(serverId, lines);
+  consoleStore.setLogCursor(serverId, (consoleStore.logs[serverId] || []).length);
+}
+
+async function startPlayerLogSubscription() {
+  if (unlistenLogLine) {
+    return;
+  }
+
+  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
+    consoleStore.appendLocal(server_id, line);
+    consoleStore.setLogCursor(server_id, (consoleStore.logs[server_id] || []).length);
+  });
+}
+
+function stopPlayerLogSubscription() {
+  if (unlistenLogLine) {
+    unlistenLogLine();
+    unlistenLogLine = null;
+  }
+}
+
+function parseOnlinePlayers(logs: string[]): string[] {
   const players: string[] = [];
 
   let startIndex = 0;
@@ -160,7 +183,13 @@ function parseOnlinePlayers() {
     }
   }
 
-  onlinePlayers.value = players;
+  return players;
+}
+
+function schedulePlayerListRefresh() {
+  window.setTimeout(() => {
+    void loadAll();
+  }, TIME.SUCCESS_MESSAGE_DURATION);
 }
 
 function openAddModal() {
@@ -199,9 +228,7 @@ async function handleAdd() {
         break;
     }
     showAddModal.value = false;
-    setTimeout(() => {
-      loadAll();
-    }, TIME.SUCCESS_MESSAGE_DURATION);
+    schedulePlayerListRefresh();
   } catch (e) {
     showError(handleError(e, "AddPlayer"));
   } finally {
@@ -217,7 +244,7 @@ async function handleRemoveWhitelist(name: string) {
   try {
     await playerApi.removeFromWhitelist(selectedServerId.value, name);
     showSuccess(getMessage(MESSAGES.SUCCESS.WHITELIST_REMOVED));
-    setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
+    schedulePlayerListRefresh();
   } catch (e) {
     showError(handleError(e, "RemoveWhitelist"));
   }
@@ -231,7 +258,7 @@ async function handleUnban(name: string) {
   try {
     await playerApi.unbanPlayer(selectedServerId.value, name);
     showSuccess(getMessage(MESSAGES.SUCCESS.PLAYER_UNBANNED));
-    setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
+    schedulePlayerListRefresh();
   } catch (e) {
     showError(handleError(e, "UnbanPlayer"));
   }
@@ -245,7 +272,7 @@ async function handleRemoveOp(name: string) {
   try {
     await playerApi.removeOp(selectedServerId.value, name);
     showSuccess(getMessage(MESSAGES.SUCCESS.OP_REMOVED));
-    setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
+    schedulePlayerListRefresh();
   } catch (e) {
     showError(handleError(e, "RemoveOp"));
   }
@@ -259,7 +286,6 @@ async function handleKick(name: string) {
   try {
     await playerApi.kickPlayer(selectedServerId.value, name);
     showSuccess(`${name} ${getMessage(MESSAGES.SUCCESS.PLAYER_KICKED)}`);
-    setTimeout(() => parseOnlinePlayers(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
     showError(handleError(e, "KickPlayer"));
   }

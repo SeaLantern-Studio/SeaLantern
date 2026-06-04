@@ -151,6 +151,7 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
         handle_context_menu_hide_notify as CommandHandler,
     );
     handlers.insert("on_locale_changed".to_string(), handle_on_locale_changed as CommandHandler);
+    handlers.insert("get_locale_bundle".to_string(), handle_get_locale_bundle as CommandHandler);
     handlers.insert(
         "component_mirror_register".to_string(),
         handle_component_mirror_register as CommandHandler,
@@ -193,6 +194,25 @@ fn handle_list_plugins(
         let manager = global::plugin_manager();
         let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
         serde_json::to_value(manager.get_plugin_list()).map_err(|error| error.to_string())
+    })
+}
+
+fn handle_get_locale_bundle(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let locale = params
+            .get("locale")
+            .and_then(|value| value.as_str())
+            .map(|value| value.to_string());
+        let i18n = global::i18n_service();
+        let resolved_locale = locale.unwrap_or_else(|| i18n.get_locale());
+        serde_json::to_value(crate::commands::app::i18n::LocaleBundleResponse {
+            locale: resolved_locale.clone(),
+            entries: i18n.get_translations_for_locale(&resolved_locale),
+            available_locales: i18n.get_available_locales(),
+        })
+        .map_err(|error| error.to_string())
     })
 }
 

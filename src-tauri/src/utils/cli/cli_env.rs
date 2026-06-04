@@ -36,13 +36,7 @@ pub(super) fn is_container_like_environment() -> bool {
 }
 
 pub(super) fn effective_cli_web_bind_host() -> String {
-    configured_web_bind_host().unwrap_or_else(|| {
-        if is_headless_http_environment() {
-            "0.0.0.0".to_string()
-        } else {
-            "127.0.0.1".to_string()
-        }
-    })
+    crate::adapters::http::resolve_http_bind_host(3000)
 }
 
 #[cfg(test)]
@@ -111,6 +105,17 @@ mod tests {
     }
 
     #[test]
+    fn effective_web_bind_defaults_to_loopback_even_in_headless_environment() {
+        let _lock = ENV_LOCK.lock().expect("env lock");
+        let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
+        let _http_bind = EnvGuard::remove("SEALANTERN_HTTP_BIND");
+        let _bind_guard = EnvGuard::remove("SEALANTERN_WEB_BIND");
+
+        assert!(is_headless_http_environment());
+        assert_eq!(effective_cli_web_bind_host(), "127.0.0.1");
+    }
+
+    #[test]
     fn docker_host_path_mapping_requires_both_roots() {
         let _lock = ENV_LOCK.lock().expect("env lock");
         let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
@@ -141,7 +146,7 @@ mod tests {
         let _lock = ENV_LOCK.lock().expect("env lock");
         let _guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
         assert!(is_headless_http_environment());
-        assert_eq!(effective_cli_web_bind_host(), "0.0.0.0");
+        assert_eq!(effective_cli_web_bind_host(), "127.0.0.1");
     }
 
     #[test]

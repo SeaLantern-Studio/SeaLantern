@@ -5,18 +5,21 @@ import SLCard from "@components/common/SLCard.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import SLInput from "@components/common/SLInput.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import { useConsoleDisplaySettings } from "@composables/useConsoleDisplaySettings";
+import { useTunnelStatusPolling } from "@views/useTunnelStatusPolling";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
-import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
 import { useGlobalMessage } from "@composables/useMessage";
 import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "lucide-vue-next";
 import SLModal from "@components/common/SLModal.vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { useSettingsStore } from "@stores/settingsStore";
 
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;
 
 const globalMessage = useGlobalMessage();
+const settingsStore = useSettingsStore();
 type PendingAction = "host" | "join" | "stop" | "generate-ticket";
 const pendingAction = ref<PendingAction | null>(null);
 const status = ref<TunnelStatus | null>(null);
@@ -79,11 +82,8 @@ interface ConsoleOutputExpose {
 
 const tunnelOutputRef = ref<ConsoleOutputExpose | null>(null);
 const userScrolledUp = ref(false);
-const consoleFontSize = ref(13);
-const consoleFontFamily = ref("");
-const consoleLetterSpacing = ref(0);
-const maxLogLines = ref(5000);
-let statusPollTimer: ReturnType<typeof setInterval> | null = null;
+const { consoleFontSize, consoleFontFamily, consoleLetterSpacing, maxLogLines } =
+  useConsoleDisplaySettings();
 const syncedLogCount = ref(0);
 const syncedVisibleLogs = ref<string[]>([]);
 const syncedFirstLogLine = ref("");
@@ -189,41 +189,9 @@ function applyStatus(next: TunnelStatus) {
   }
 }
 
-async function loadConsoleSettings() {
-  try {
-    const settings = await settingsApi.get();
-    consoleFontSize.value = settings.console_font_size;
-    consoleFontFamily.value = settings.console_font_family || "";
-    consoleLetterSpacing.value = settings.console_letter_spacing || 0;
-    maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-  } catch {
-    // keep defaults
-  }
-}
-
-function startStatusPolling() {
-  stopStatusPolling();
-  statusPollTimer = setInterval(() => {
-    void refreshStatus({ silent: true });
-  }, 2000);
-}
-
-function stopStatusPolling() {
-  if (statusPollTimer) {
-    clearInterval(statusPollTimer);
-    statusPollTimer = null;
-  }
-}
-
-async function refreshStatus(options?: { silent?: boolean }) {
-  const silent = options?.silent ?? false;
-  try {
-    const next = await tunnelApi.status();
-    applyStatus(next);
-  } catch (e) {
-    if (!silent) globalMessage.error(String(e));
-  }
-}
+const { refreshStatus, startStatusPolling, stopStatusPolling } = useTunnelStatusPolling({
+  applyStatus,
+});
 
 async function startHost() {
   if (!beginAction("host")) return;
@@ -360,7 +328,7 @@ function handleJoinTicketInput(value: string) {
 }
 
 onMounted(async () => {
-  await loadConsoleSettings();
+  await settingsStore.ensureLoaded();
   await refreshStatus();
   startStatusPolling();
 });

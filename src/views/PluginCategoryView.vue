@@ -1,19 +1,13 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
-import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
-import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
-import SLFormField from "@components/common/SLFormField.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLSelect from "@components/common/SLSelect.vue";
-import SLTextarea from "@components/common/SLTextarea.vue";
-import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import type { PluginInfo } from "@type/plugin";
 import { getLocalizedPluginDescription } from "@type/plugin";
-import { Palette, Puzzle } from "lucide-vue-next";
+import PluginDependentSettingsList from "@views/plugins/PluginDependentSettingsList.vue";
+import PluginPresetPickerCard from "@views/plugins/PluginPresetPickerCard.vue";
+import PluginSettingsFormCard from "@views/plugins/PluginSettingsFormCard.vue";
+import { usePluginCategorySettings } from "@views/plugins/usePluginCategorySettings";
+import { Palette } from "lucide-vue-next";
 
 const props = defineProps<{
   pluginId: string;
@@ -21,405 +15,43 @@ const props = defineProps<{
 
 const pluginStore = usePluginStore();
 
-const plugin = ref<PluginInfo | null>(null);
-const settingsForm = reactive<Record<string, any>>({});
-const saving = ref(false);
-const loading = ref(true);
-const isInitializingForms = ref(false);
-
-const dependentPlugins = ref<PluginInfo[]>([]);
-const dependentSettingsForms = reactive<Record<string, Record<string, any>>>({});
-const dependentSettingsSnapshots = reactive<Record<string, string>>({});
-
-const sidebarConfig = computed(() => {
-  return plugin.value?.manifest.sidebar;
+const {
+  plugin,
+  settingsForm,
+  dependentSettingsForms,
+  dependentPlugins,
+  loading,
+  saving,
+  categoryLabel,
+  showDependents,
+  pluginPresets,
+  isThemeProvider,
+  getFieldStringValue,
+  getFieldSelectValue,
+  getFieldOptions,
+  updateSettingsField,
+  applyPreset,
+  resetToDefault,
+} = usePluginCategorySettings({
+  pluginId: () => props.pluginId,
 });
 
-const categoryLabel = computed(() => {
-  return sidebarConfig.value?.label || plugin.value?.manifest.name || "";
-});
-
-const showDependents = computed(() => {
-  return sidebarConfig.value?.show_dependents !== false;
-});
-
-function getDependencyId(dep: string | { id: string; version?: string }): string {
-  return typeof dep === "string" ? dep : dep.id;
+function handleMainFieldUpdate(key: string, value: string | number | boolean) {
+  updateSettingsField(settingsForm, key, value);
 }
 
-function clearRecord(record: Record<string, any>) {
-  Object.keys(record).forEach((key) => delete record[key]);
-}
-
-function serializeSettings(settings: Record<string, any>): string {
-  return JSON.stringify(settings);
-}
-
-let saveRequestCount = 0;
-const inFlightSavePromises = new Map<string, Promise<void>>();
-let pendingFlushPromise: Promise<void> | null = null;
-
-function beginSaving() {
-  saveRequestCount += 1;
-  saving.value = true;
-}
-
-function endSaving() {
-  saveRequestCount = Math.max(0, saveRequestCount - 1);
-  saving.value = saveRequestCount > 0;
-}
-
-async function persistPluginSettings(pluginId: string, settings: Record<string, any>) {
-  beginSaving();
-  try {
-    await pluginStore.setPluginSettings(pluginId, settings);
-  } finally {
-    endSaving();
-  }
-}
-
-async function saveMainSettingsNow(pluginId: string) {
-  const settingsToSave = { ...settingsForm };
-  const snapshot = serializeSettings(settingsToSave);
-  if (snapshot === mainSettingsSnapshot.value) return;
-
-  const inFlight = inFlightSavePromises.get(pluginId);
-  if (inFlight) {
-    await inFlight;
-    return saveMainSettingsNow(pluginId);
-  }
-
-  const savePromise = (async () => {
-    await persistPluginSettings(pluginId, settingsToSave);
-    if (plugin.value?.manifest.id === pluginId) {
-      mainSettingsSnapshot.value = snapshot;
-    }
-  })();
-
-  inFlightSavePromises.set(pluginId, savePromise);
-  try {
-    await savePromise;
-  } finally {
-    if (inFlightSavePromises.get(pluginId) === savePromise) {
-      inFlightSavePromises.delete(pluginId);
-    }
-  }
-}
-
-async function saveDependentSettingsNow(pluginId: string) {
+function handleDependentFieldUpdate(
+  pluginId: string,
+  key: string,
+  value: string | number | boolean,
+) {
   const form = dependentSettingsForms[pluginId];
-  if (!form) return;
-
-  const settingsToSave = { ...form };
-  const snapshot = serializeSettings(settingsToSave);
-  if (snapshot === dependentSettingsSnapshots[pluginId]) return;
-
-  const inFlight = inFlightSavePromises.get(pluginId);
-  if (inFlight) {
-    await inFlight;
-    return saveDependentSettingsNow(pluginId);
-  }
-
-  const savePromise = (async () => {
-    await persistPluginSettings(pluginId, settingsToSave);
-    if (dependentSettingsForms[pluginId]) {
-      dependentSettingsSnapshots[pluginId] = snapshot;
-    }
-  })();
-
-  inFlightSavePromises.set(pluginId, savePromise);
-  try {
-    await savePromise;
-  } finally {
-    if (inFlightSavePromises.get(pluginId) === savePromise) {
-      inFlightSavePromises.delete(pluginId);
-    }
-  }
-}
-
-async function flushMainSettingsSave() {
-  const pluginId = plugin.value?.manifest.id;
-  if (!pluginId) return;
-
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = null;
-  }
-
-  await saveMainSettingsNow(pluginId);
-}
-
-async function flushDependentSettingsSave(pluginId: string) {
-  const timer = dependentAutoSaveTimers.get(pluginId);
-  if (timer) {
-    clearTimeout(timer);
-    dependentAutoSaveTimers.delete(pluginId);
-  }
-
-  await saveDependentSettingsNow(pluginId);
-}
-
-async function flushPendingAutoSaves() {
-  if (pendingFlushPromise) {
-    await pendingFlushPromise;
+  if (!form) {
     return;
   }
 
-  pendingFlushPromise = (async () => {
-    await flushMainSettingsSave();
-
-    await Promise.all(
-      dependentPlugins.value.map((depPlugin) => flushDependentSettingsSave(depPlugin.manifest.id)),
-    );
-  })();
-
-  try {
-    await pendingFlushPromise;
-  } finally {
-    pendingFlushPromise = null;
-  }
+  updateSettingsField(form, key, value);
 }
-
-async function loadPluginData() {
-  loading.value = true;
-
-  await flushPendingAutoSaves();
-
-  isInitializingForms.value = true;
-
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = null;
-  }
-
-  dependentAutoSaveTimers.forEach((timer) => clearTimeout(timer));
-  dependentAutoSaveTimers.clear();
-
-  clearRecord(settingsForm);
-  clearRecord(dependentSettingsForms);
-  clearRecord(dependentSettingsSnapshots);
-  dependentPlugins.value = [];
-
-  try {
-    const found = pluginStore.plugins.find((p) => p.manifest.id === props.pluginId);
-    plugin.value = found ?? null;
-
-    if (found) {
-      const settings = await pluginStore.getPluginSettings(props.pluginId);
-      Object.assign(settingsForm, settings || {});
-
-      if (found.manifest.settings) {
-        for (const field of found.manifest.settings) {
-          if (settingsForm[field.key] === undefined) {
-            settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
-          }
-        }
-      }
-
-      if (showDependents.value) {
-        await loadDependentPlugins();
-      }
-    }
-  } finally {
-    mainSettingsSnapshot.value = serializeSettings({ ...settingsForm });
-    isInitializingForms.value = false;
-    loading.value = false;
-  }
-}
-
-async function loadDependentPlugins() {
-  if (!plugin.value) return;
-
-  const candidates = pluginStore.plugins.filter((p) => {
-    if (p.state !== "enabled") return false;
-    if (p.manifest.id === props.pluginId) return false;
-
-    const allDeps = [
-      ...(p.manifest.dependencies || []),
-      ...(p.manifest.optional_dependencies || []),
-    ];
-    return allDeps.some((dep) => getDependencyId(dep) === props.pluginId);
-  });
-
-  const settingsPromises = candidates
-    .filter((p) => p.manifest.settings?.length)
-    .map(async (p) => {
-      const depSettings = await pluginStore.getPluginSettings(p.manifest.id);
-      const form: Record<string, any> = { ...depSettings };
-      for (const field of p.manifest.settings!) {
-        if (form[field.key] === undefined) {
-          form[field.key] = field.default ?? getDefaultValue(field.type);
-        }
-      }
-      return { plugin: p, form };
-    });
-
-  const results = await Promise.all(settingsPromises);
-  dependentPlugins.value = results.map((r) => r.plugin);
-  for (const { plugin: depPlugin, form } of results) {
-    dependentSettingsForms[depPlugin.manifest.id] = form;
-    dependentSettingsSnapshots[depPlugin.manifest.id] = serializeSettings(form);
-  }
-}
-
-function getDefaultValue(type: string): any {
-  switch (type) {
-    case "string":
-      return "";
-    case "textarea":
-      return "";
-    case "number":
-      return 0;
-    case "boolean":
-      return false;
-    case "checkbox":
-      return false;
-    case "select":
-      return "";
-    default:
-      return "";
-  }
-}
-
-const pluginPresets = computed(() => {
-  return plugin.value?.manifest.presets ?? null;
-});
-
-const isThemeProvider = computed(() => {
-  return plugin.value?.manifest.capabilities?.includes("theme-provider") ?? false;
-});
-
-async function applyPreset(presetKey: string) {
-  const presets = pluginPresets.value;
-  if (!presets || !presets[presetKey]) return;
-  const presetData = presets[presetKey];
-  const pluginId = plugin.value?.manifest.id;
-  if (!pluginId) return;
-
-  const settingsToSave: Record<string, any> = {};
-  for (const [key, value] of Object.entries(presetData)) {
-    if (key !== "name") {
-      settingsForm[key] = value;
-      settingsToSave[key] = value;
-    }
-  }
-
-  settingsForm["preset"] = presetKey;
-  settingsToSave["preset"] = presetKey;
-
-  await persistPluginSettings(pluginId, settingsToSave);
-  mainSettingsSnapshot.value = serializeSettings({ ...settingsForm });
-}
-
-async function resetToDefault() {
-  if (!plugin.value?.manifest.settings) return;
-  for (const field of plugin.value.manifest.settings) {
-    settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
-  }
-}
-
-onMounted(() => {
-  if (pluginStore.plugins.length > 0) {
-    loadPluginData();
-  }
-});
-
-watch(
-  () => pluginStore.plugins,
-  (newPlugins) => {
-    if (newPlugins.length > 0 && !plugin.value) {
-      loadPluginData();
-    }
-  },
-  { deep: false },
-);
-
-watch(
-  () => props.pluginId,
-  () => {
-    loadPluginData();
-  },
-);
-
-onBeforeRouteLeave(async () => {
-  await flushPendingAutoSaves();
-});
-
-onBeforeRouteUpdate(async () => {
-  await flushPendingAutoSaves();
-});
-
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
-const mainSettingsSnapshot = ref("{}");
-const dependentAutoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-function queueDependentSettingsSave(pluginId: string) {
-  const form = dependentSettingsForms[pluginId];
-  if (!form) return;
-
-  const currentSnapshot = serializeSettings({ ...form });
-  if (currentSnapshot === dependentSettingsSnapshots[pluginId]) return;
-
-  const existingTimer = dependentAutoSaveTimers.get(pluginId);
-  if (existingTimer) {
-    clearTimeout(existingTimer);
-  }
-
-  const timer = setTimeout(async () => {
-    dependentAutoSaveTimers.delete(pluginId);
-    try {
-      await saveDependentSettingsNow(pluginId);
-    } catch (error) {
-      console.error(`Failed to auto-save dependent plugin settings for ${pluginId}:`, error);
-    }
-  }, 300);
-
-  dependentAutoSaveTimers.set(pluginId, timer);
-}
-
-watch(
-  settingsForm,
-  async () => {
-    if (!plugin.value || isInitializingForms.value) return;
-
-    const nextSnapshot = serializeSettings({ ...settingsForm });
-    if (nextSnapshot === mainSettingsSnapshot.value) return;
-
-    if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    const pluginId = plugin.value.manifest.id;
-    autoSaveTimer = setTimeout(async () => {
-      autoSaveTimer = null;
-
-      try {
-        await saveMainSettingsNow(pluginId);
-      } catch (error) {
-        console.error(`Failed to auto-save plugin settings for ${pluginId}:`, error);
-      }
-    }, 300);
-  },
-  { deep: true },
-);
-
-watch(
-  dependentSettingsForms,
-  () => {
-    if (isInitializingForms.value) return;
-
-    for (const depPlugin of dependentPlugins.value) {
-      queueDependentSettingsSave(depPlugin.manifest.id);
-    }
-  },
-  { deep: true },
-);
-
-onUnmounted(() => {
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer);
-  }
-
-  dependentAutoSaveTimers.forEach((timer) => clearTimeout(timer));
-  dependentAutoSaveTimers.clear();
-});
 </script>
 
 <template>
@@ -447,183 +79,38 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <SLCard v-if="isThemeProvider && pluginPresets" class="settings-card">
-        <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
-        <div class="presets-grid">
-          <button
-            v-for="(presetData, presetKey) in pluginPresets"
-            :key="presetKey"
-            class="preset-btn"
-            :class="{ active: settingsForm['preset'] === String(presetKey) }"
-            @click="applyPreset(String(presetKey))"
-          >
-            <div class="preset-swatches">
-              <span
-                class="preset-swatch"
-                :style="{ background: (presetData as any).accent_primary }"
-              ></span>
-              <span
-                class="preset-swatch"
-                :style="{ background: (presetData as any).accent_secondary }"
-              ></span>
-            </div>
-            <span class="preset-name">{{ (presetData as any).name ?? presetKey }}</span>
-          </button>
-        </div>
-      </SLCard>
+      <PluginPresetPickerCard
+        v-if="isThemeProvider && pluginPresets"
+        :title="i18n.t('plugins.preset_theme')"
+        :presets="pluginPresets"
+        :selected-preset="settingsForm['preset']"
+        @select="applyPreset"
+      />
 
-      <SLCard v-if="plugin.manifest.settings?.length" class="settings-card main-settings">
-        <h3 class="section-title">{{ plugin.manifest.name }} {{ i18n.t("plugins.settings") }}</h3>
-        <div class="settings-form">
-          <SLFormField
-            v-for="field in plugin.manifest.settings"
-            :key="field.key"
-            :label="field.label"
-            :hint="field.description"
-          >
-            <template v-if="field.type === 'string'">
-              <SLInput v-model="settingsForm[field.key]" />
-            </template>
-            <template v-else-if="field.type === 'color'">
-              <div class="color-row-inline">
-                <span class="color-row-value">{{ settingsForm[field.key] }}</span>
-                <input type="color" v-model="settingsForm[field.key]" class="color-row-picker" />
-              </div>
-            </template>
-            <template v-else-if="field.type === 'textarea'">
-              <SLTextarea
-                v-model="settingsForm[field.key]"
-                :rows="field.rows"
-                :maxlength="field.maxlength"
-              />
-            </template>
-            <template v-else-if="field.type === 'number'">
-              <SLInput
-                type="number"
-                :model-value="String(settingsForm[field.key])"
-                @update:model-value="settingsForm[field.key] = Number($event)"
-              />
-            </template>
-            <template v-else-if="field.type === 'boolean'">
-              <SLSwitch v-model="settingsForm[field.key]" />
-            </template>
-            <template v-else-if="field.type === 'checkbox'">
-              <SLCheckbox v-model="settingsForm[field.key]" />
-            </template>
-            <template v-else-if="field.type === 'select' && field.display === 'button-group'">
-              <div class="btn-group">
-                <button
-                  v-for="opt in field.options"
-                  :key="opt.value"
-                  class="btn-group-item"
-                  :class="{ active: settingsForm[field.key] === opt.value }"
-                  @click="settingsForm[field.key] = opt.value"
-                >
-                  {{ opt.label }}
-                </button>
-              </div>
-            </template>
-            <template v-else-if="field.type === 'select'">
-              <SLSelect v-model="settingsForm[field.key]" :options="field.options || []" />
-            </template>
-          </SLFormField>
-        </div>
-      </SLCard>
+      <PluginSettingsFormCard
+        v-if="plugin.manifest.settings?.length"
+        :title="`${plugin.manifest.name} ${i18n.t('plugins.settings')}`"
+        :fields="plugin.manifest.settings"
+        :form="settingsForm"
+        :get-field-string-value="getFieldStringValue"
+        :get-field-select-value="getFieldSelectValue"
+        :get-field-options="getFieldOptions"
+        @update-field="handleMainFieldUpdate"
+      />
 
-      <template v-if="showDependents && dependentPlugins.length > 0">
-        <div class="dependent-section-header">
-          <h2>{{ i18n.t("plugins.related_plugins") }}</h2>
-          <p>{{ i18n.t("plugins.related_plugins_desc", { name: plugin.manifest.name }) }}</p>
-        </div>
-
-        <SLCard
-          v-for="depPlugin in dependentPlugins"
-          :key="depPlugin.manifest.id"
-          class="settings-card dependent-settings"
-        >
-          <div class="dependent-header">
-            <img
-              v-if="pluginStore.icons[depPlugin.manifest.id]"
-              :src="pluginStore.icons[depPlugin.manifest.id]"
-              class="dependent-icon"
-              :alt="depPlugin.manifest.name"
-            />
-            <Puzzle v-else class="dependent-icon" :size="20" />
-            <div class="dependent-info">
-              <h3>{{ depPlugin.manifest.name }}</h3>
-              <span class="dependent-version">v{{ depPlugin.manifest.version }}</span>
-            </div>
-          </div>
-          <div class="settings-form">
-            <SLFormField
-              v-for="field in depPlugin.manifest.settings"
-              :key="field.key"
-              :label="field.label"
-              :hint="field.description"
-            >
-              <template v-if="field.type === 'string'">
-                <SLInput v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]" />
-              </template>
-              <template v-else-if="field.type === 'color'">
-                <div class="color-row-inline">
-                  <span class="color-row-value">{{
-                    dependentSettingsForms[depPlugin.manifest.id][field.key]
-                  }}</span>
-                  <input
-                    type="color"
-                    v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                    class="color-row-picker"
-                  />
-                </div>
-              </template>
-              <template v-else-if="field.type === 'textarea'">
-                <SLTextarea
-                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                  :rows="field.rows"
-                  :maxlength="field.maxlength"
-                />
-              </template>
-              <template v-else-if="field.type === 'number'">
-                <SLInput
-                  type="number"
-                  :model-value="String(dependentSettingsForms[depPlugin.manifest.id][field.key])"
-                  @update:model-value="
-                    dependentSettingsForms[depPlugin.manifest.id][field.key] = Number($event)
-                  "
-                />
-              </template>
-              <template v-else-if="field.type === 'boolean'">
-                <SLSwitch v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]" />
-              </template>
-              <template v-else-if="field.type === 'checkbox'">
-                <SLCheckbox v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]" />
-              </template>
-              <template v-else-if="field.type === 'select' && field.display === 'button-group'">
-                <div class="btn-group">
-                  <button
-                    v-for="opt in field.options"
-                    :key="opt.value"
-                    class="btn-group-item"
-                    :class="{
-                      active:
-                        dependentSettingsForms[depPlugin.manifest.id][field.key] === opt.value,
-                    }"
-                    @click="dependentSettingsForms[depPlugin.manifest.id][field.key] = opt.value"
-                  >
-                    {{ opt.label }}
-                  </button>
-                </div>
-              </template>
-              <template v-else-if="field.type === 'select'">
-                <SLSelect
-                  v-model="dependentSettingsForms[depPlugin.manifest.id][field.key]"
-                  :options="field.options || []"
-                />
-              </template>
-            </SLFormField>
-          </div>
-        </SLCard>
-      </template>
+      <PluginDependentSettingsList
+        v-if="showDependents"
+        :plugins="dependentPlugins"
+        :forms="dependentSettingsForms"
+        show-header
+        :header-title="i18n.t('plugins.related_plugins')"
+        :header-description="i18n.t('plugins.related_plugins_desc', { name: plugin.manifest.name })"
+        :item-description="i18n.t('plugins.related_plugins_desc', { name: plugin.manifest.name })"
+        :get-field-string-value="getFieldStringValue"
+        :get-field-select-value="getFieldSelectValue"
+        :get-field-options="getFieldOptions"
+        @update-field="handleDependentFieldUpdate"
+      />
 
       <div class="action-buttons">
         <SLButton variant="secondary" @click="resetToDefault">{{
@@ -709,107 +196,13 @@ onUnmounted(() => {
   font-size: var(--sl-font-size-3xl);
   font-weight: 600;
   color: var(--sl-text-primary);
-  margin: 0 0 4px 0;
+  margin: 0 0 4px;
 }
 
 .header-desc {
   color: var(--sl-text-secondary);
   font-size: var(--sl-font-size-base);
   margin: 0;
-}
-
-.settings-card {
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: var(--sl-font-size-lg);
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin: 0 0 16px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.settings-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.color-row-inline {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.color-row-value {
-  font-size: var(--sl-font-size-sm);
-  color: var(--sl-text-secondary);
-  font-family: monospace;
-}
-
-.color-row-picker {
-  width: 36px;
-  height: 36px;
-  padding: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.dependent-section-header {
-  margin: 32px 0 16px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.dependent-section-header h2 {
-  font-size: var(--sl-font-size-xl);
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin: 0 0 4px 0;
-}
-
-.dependent-section-header p {
-  font-size: var(--sl-font-size-base);
-  color: var(--sl-text-secondary);
-  margin: 0;
-}
-
-.dependent-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.dependent-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--sl-radius-sm);
-  object-fit: cover;
-}
-
-.dependent-icon svg {
-  color: var(--sl-text-secondary);
-}
-
-.dependent-info h3 {
-  font-size: var(--sl-font-size-base);
-  font-weight: 600;
-  color: var(--sl-text-primary);
-  margin: 0;
-}
-
-.dependent-version {
-  font-size: var(--sl-font-size-xs);
-  color: var(--sl-text-secondary);
 }
 
 .action-buttons {
@@ -832,140 +225,5 @@ onUnmounted(() => {
   text-align: center;
   padding: 48px;
   color: var(--sl-text-secondary);
-}
-
-.presets-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.preset-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--sl-radius-md, 10px);
-  cursor: pointer;
-  transition: all 0.2s;
-  color: var(--sl-text-primary);
-  min-width: 80px;
-}
-
-.preset-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-.preset-btn.active {
-  border-color: var(--sl-accent, #60a5fa);
-  background: rgba(96, 165, 250, 0.1);
-}
-
-.preset-swatches {
-  display: flex;
-  gap: 4px;
-}
-
-.preset-swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.preset-name {
-  font-size: var(--sl-font-size-xs);
-}
-
-.color-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.color-row {
-  display: flex;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  gap: 12px;
-}
-
-.color-row:last-child {
-  border-bottom: none;
-}
-
-.color-row-label {
-  flex: 1;
-  font-size: 14px;
-  color: var(--sl-text-primary);
-}
-
-.color-row-value {
-  font-size: 13px;
-  color: var(--sl-text-secondary);
-  font-family: monospace;
-  min-width: 80px;
-  text-align: right;
-}
-
-.color-row-picker {
-  width: 36px;
-  height: 36px;
-  padding: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.effect-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.effect-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.effect-row-label {
-  font-size: 14px;
-  color: var(--sl-text-primary);
-}
-
-.btn-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.btn-group-item {
-  padding: 6px 14px;
-  font-size: 13px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--sl-radius-md, 8px);
-  color: var(--sl-text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-group-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--sl-text-primary);
-}
-
-.btn-group-item.active {
-  background: rgba(96, 165, 250, 0.15);
-  border-color: var(--sl-accent, #60a5fa);
-  color: var(--sl-accent, #60a5fa);
 }
 </style>

@@ -1,9 +1,17 @@
 import { computed } from "vue";
 import { defineStore } from "pinia";
-import { i18n, type LocaleCode, setTranslations } from "@language";
-import { settingsApi } from "@api/settings";
+import {
+  ensureLocaleLoaded,
+  i18n,
+  type LocaleCode,
+  setLocaleBundle,
+  setTranslations,
+} from "@language";
 import { fetchLocale } from "@api/remoteLocales";
 import { onLocaleChanged } from "@api/plugin";
+import { tryLoadLocaleBundle } from "@composables/useI18nBundles";
+import { useSettingsStore } from "@stores/settingsStore";
+import { normalizeAppError, resolveErrorMessage } from "@utils/appError";
 
 const LOCALE_LABEL_KEYS: Record<string, string> = {
   "zh-CN": "header.chinese",
@@ -21,6 +29,7 @@ const LOCALE_LABEL_KEYS: Record<string, string> = {
 export const useI18nStore = defineStore("i18n", () => {
   const localeRef = i18n.getLocaleRef();
   const supportedLocales = i18n.getAvailableLocales();
+  const settingsStore = useSettingsStore();
 
   const locale = computed(() => localeRef.value);
   const currentLocale = computed(() => localeRef.value);
@@ -34,32 +43,51 @@ export const useI18nStore = defineStore("i18n", () => {
       labelKey: LOCALE_LABEL_KEYS[code],
     })),
   );
+  async function ensureLocaleReady(nextLocale: string): Promise<boolean> {
+    if (!i18n.isSupportedLocale(nextLocale)) {
+      return false;
+    }
+
+    const bundleLoaded = await tryLoadLocaleBundle(nextLocale);
+    if (bundleLoaded) {
+      return true;
+    }
+
+    return ensureLocaleLoaded(nextLocale as LocaleCode);
+  }
 
   async function setLocale(nextLocale: string) {
-    if (i18n.isSupportedLocale(nextLocale)) {
-      i18n.setLocale(nextLocale);
-      try {
-        const settings = await settingsApi.get();
-        settings.language = nextLocale;
-        await settingsApi.save(settings);
-      } catch (error) {
-        console.error("Failed to save language setting:", error);
-      }
-      try {
-        await onLocaleChanged(nextLocale);
-      } catch (error) {
-        console.error("Failed to notify backend about locale change:", error);
-      }
+    const localeReady = await ensureLocaleReady(nextLocale);
+    if (!localeReady) {
+      return false;
     }
+
+    i18n.setLocale(nextLocale);
+
+    try {
+      await settingsStore.setLanguage(nextLocale);
+    } catch (error) {
+      console.error("Failed to save language setting:", normalizeAppError(error));
+    }
+
+    try {
+      await onLocaleChanged(nextLocale);
+    } catch (error) {
+      console.error("Failed to notify backend about locale change:", normalizeAppError(error));
+    }
+
+    return true;
   }
 
   async function downloadLocale(localeCode: string) {
     if (!i18n.isSupportedLocale(localeCode)) return;
     try {
-      // 直接从本地加载语言文件
-      let data: any = null;
-      data = await fetchLocale(localeCode as LocaleCode);
-      setTranslations(localeCode as any, data as any);
+      const data = await fetchLocale(localeCode as LocaleCode);
+      if (data && typeof data === "object" && !("sealantern" in data)) {
+        setLocaleBundle(localeCode, data as Record<string, string>);
+      } else {
+        setTranslations(localeCode as LocaleCode, data as any);
+      }
     } catch (e) {
       console.error("Failed to load locale:", localeCode, e);
     }
@@ -68,21 +96,23 @@ export const useI18nStore = defineStore("i18n", () => {
   function toggleLocale() {
     const currentIndex = supportedLocales.indexOf(localeRef.value);
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % supportedLocales.length;
-    setLocale(supportedLocales[nextIndex]);
+    void setLocale(supportedLocales[nextIndex]);
   }
 
   async function loadLanguageSetting() {
     try {
-      const settings = await settingsApi.get();
-      if (settings.language && i18n.isSupportedLocale(settings.language)) {
-        i18n.setLocale(settings.language);
+      await settingsStore.ensureLoaded();
+      const language = settingsStore.settings.language;
+      if (language && (await ensureLocaleReady(language))) {
+        i18n.setLocale(language);
       }
     } catch (error) {
-      console.error("Failed to load language setting:", error);
+      console.error("Failed to load language setting:", {
+        error: normalizeAppError(error),
+        fallback: resolveErrorMessage("common.message_unknown_error"),
+      });
     }
   }
-
-  loadLanguageSetting();
 
   return {
     locale,
@@ -92,6 +122,7 @@ export const useI18nStore = defineStore("i18n", () => {
     isTraditionalChinese,
     isEnglish,
     localeOptions,
+    ensureLocaleReady,
     setLocale,
     toggleLocale,
     loadLanguageSetting,

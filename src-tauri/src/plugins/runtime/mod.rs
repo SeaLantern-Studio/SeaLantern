@@ -9,6 +9,7 @@ mod filesystem_test;
 mod http;
 mod i18n;
 mod log;
+pub(crate) mod permissions;
 mod plugins_api;
 mod process;
 #[cfg(test)]
