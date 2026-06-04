@@ -9,11 +9,13 @@ import { isStrictChildPath, normalizePathForCompare } from "@components/views/cr
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
+import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { onActivated, onUnmounted, ref, watch } from "vue";
+import { createDefaultCpuPolicy, createDefaultJvmPreset } from "@utils/serverStartupConfig";
 
 export function useCreateServerPage() {
   const { error: errorMsg, showError, clearError } = useMessage();
@@ -36,6 +38,9 @@ export function useCreateServerPage() {
   const selectedJava = ref("");
   const onlineMode = ref(true);
   const javaList = ref<JavaInfo[]>([]);
+  const jvmArgsText = ref("");
+  const jvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
+  const cpuPolicy = ref<CpuPolicyConfig>(createDefaultCpuPolicy());
 
   const defaults = useCreateServerDefaults({
     sourcePath,
@@ -46,6 +51,9 @@ export function useCreateServerPage() {
     port,
     selectedJava,
     javaList,
+    jvmArgsText,
+    jvmPreset,
+    cpuPolicy,
     isChildPathBlocked: (targetPath) => isStrictChildPath(targetPath, sourcePath.value),
     onInvalidRunPath: () => {
       showError(i18n.t("create.path_child_of_source_forbidden"));
@@ -83,6 +91,9 @@ export function useCreateServerPage() {
     port,
     selectedJava,
     onlineMode,
+    jvmArgsText,
+    jvmPreset,
+    cpuPolicy,
     startCreating,
     stopCreating,
     showError,
@@ -216,6 +227,9 @@ export function useCreateServerPage() {
     port,
     selectedJava,
     onlineMode,
+    jvmArgsText,
+    jvmPreset,
+    cpuPolicy,
     javaList,
     activeStep: submit.activeStep,
     stepItems: submit.stepItems,
@@ -226,6 +240,7 @@ export function useCreateServerPage() {
     detectJava,
     handleSubmit: submit.handleSubmit,
     starterSelected: submit.starterSelected,
+    selectedStartup: submit.selectedStartup,
     customCommandHasRedirect: submit.customCommandHasRedirect,
   };
 }

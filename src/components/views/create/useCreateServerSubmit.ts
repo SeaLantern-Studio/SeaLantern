@@ -2,6 +2,7 @@ import { computed, type Ref } from "vue";
 import { useRouter } from "vue-router";
 import { serverApi } from "@api/server";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
+import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 import {
   containsIoRedirection,
   isStrictChildPath,
@@ -9,6 +10,11 @@ import {
 } from "@components/views/create/startupUtils";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
+import {
+  normalizeCpuPolicy,
+  normalizeJvmPreset,
+  serializeJvmArgsText,
+} from "@utils/serverStartupConfig";
 
 type SourceType = "archive" | "folder" | "";
 
@@ -32,6 +38,9 @@ interface UseCreateServerSubmitOptions {
   port: Ref<string>;
   selectedJava: Ref<string>;
   onlineMode: Ref<boolean>;
+  jvmArgsText: Ref<string>;
+  jvmPreset: Ref<JvmPresetConfig>;
+  cpuPolicy: Ref<CpuPolicyConfig>;
   startCreating: () => void;
   stopCreating: () => void;
   showError: (message: string) => void;
@@ -231,6 +240,9 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
         startupFilePath: startupMode === "custom" ? undefined : startup?.path,
         coreType: resolvedCoreType || undefined,
         mcVersion: resolvedMcVersion || undefined,
+        jvmArgs: serializeJvmArgsText(options.jvmArgsText.value),
+        cpuPolicy: normalizeCpuPolicy(options.cpuPolicy.value),
+        jvmPreset: normalizeJvmPreset(options.jvmPreset.value),
       });
 
       await serverStore.refreshList();

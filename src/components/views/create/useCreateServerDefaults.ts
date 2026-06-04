@@ -3,6 +3,14 @@ import type { JavaInfo } from "@api/java";
 import { systemApi } from "@api/system";
 import { useSettingsStore } from "@stores/settingsStore";
 import { isBrowserEnv } from "@api/tauri";
+import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
+import {
+  createDefaultCpuPolicy,
+  createDefaultJvmPreset,
+  deserializeJvmArgs,
+  normalizeCpuPolicy,
+  normalizeJvmPreset,
+} from "@utils/serverStartupConfig";
 
 interface UseCreateServerDefaultsOptions {
   sourcePath: Ref<string>;
@@ -13,6 +21,9 @@ interface UseCreateServerDefaultsOptions {
   port: Ref<string>;
   selectedJava: Ref<string>;
   javaList: Ref<JavaInfo[]>;
+  jvmArgsText: Ref<string>;
+  jvmPreset: Ref<JvmPresetConfig>;
+  cpuPolicy: Ref<CpuPolicyConfig>;
   isChildPathBlocked: (targetPath: string) => boolean;
   onInvalidRunPath: () => void;
 }
@@ -51,8 +62,14 @@ export function useCreateServerDefaults(options: UseCreateServerDefaultsOptions)
       options.runPath.value = defaults.suggested_run_path || defaults.default_run_path;
       options.javaList.value = defaults.cached_java_list || [];
       options.selectedJava.value = defaults.preferred_java_path || "";
+      options.jvmArgsText.value = deserializeJvmArgs(defaults.default_jvm_args);
+      options.jvmPreset.value = normalizeJvmPreset(defaults.default_jvm_preset);
+      options.cpuPolicy.value = normalizeCpuPolicy(defaults.default_cpu_policy);
     } catch (error) {
       console.error("Failed to load default settings:", error);
+      options.jvmArgsText.value = "";
+      options.jvmPreset.value = createDefaultJvmPreset();
+      options.cpuPolicy.value = createDefaultCpuPolicy();
     } finally {
       loadingDefaults.value = false;
     }

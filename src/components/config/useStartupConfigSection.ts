@@ -1,5 +1,14 @@
 import { onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { configApi, type SLStartupConfig } from "@api/config";
+import type { JvmPresetConfig } from "@type/server";
+import {
+  createDefaultCpuPolicy,
+  createDefaultJvmPreset,
+  deserializeJvmArgs,
+  normalizeCpuPolicy,
+  normalizeJvmPreset,
+  serializeJvmArgsText,
+} from "@utils/serverStartupConfig";
 
 interface UseStartupConfigSectionOptions {
   serverPath: Ref<string>;
@@ -13,9 +22,12 @@ const AUTO_SAVE_DELAY = 800;
 export function useStartupConfigSection(options: UseStartupConfigSectionOptions) {
   const maxMemory = ref(options.defaultMaxMemory.value);
   const minMemory = ref(options.defaultMinMemory.value);
+  const jvmArgsText = ref("");
+  const jvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
   const loading = ref(false);
   const saving = ref(false);
   const error = ref<string | null>(null);
+  const cpuPolicy = ref(createDefaultCpuPolicy());
 
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -41,6 +53,9 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
       const config = await configApi.readSLConfig(options.serverPath.value);
       maxMemory.value = config.max_memory ?? options.defaultMaxMemory.value;
       minMemory.value = config.min_memory ?? options.defaultMinMemory.value;
+      jvmArgsText.value = deserializeJvmArgs(config.jvm_args);
+      jvmPreset.value = normalizeJvmPreset(config.jvm_preset);
+      cpuPolicy.value = normalizeCpuPolicy(config.cpu_policy);
     } catch (e: any) {
       error.value = e?.toString() || "加载启动配置失败";
     } finally {
@@ -69,6 +84,9 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
       const config: SLStartupConfig = {
         max_memory: maxMemory.value,
         min_memory: minMemory.value,
+        jvm_args: serializeJvmArgsText(jvmArgsText.value),
+        cpu_policy: normalizeCpuPolicy(cpuPolicy.value),
+        jvm_preset: normalizeJvmPreset(jvmPreset.value),
       };
       await configApi.writeSLConfig(options.serverPath.value, config);
       options.onSaved?.(maxMemory.value, minMemory.value);
@@ -91,13 +109,16 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     void loadConfig();
   });
 
-  watch([maxMemory, minMemory], () => {
+  watch([maxMemory, minMemory, jvmArgsText, jvmPreset], () => {
     scheduleAutoSave();
   });
 
   return {
     maxMemory,
     minMemory,
+    jvmArgsText,
+    jvmPreset,
+    cpuPolicy,
     loading,
     saving,
     error,

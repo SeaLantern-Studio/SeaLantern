@@ -109,8 +109,8 @@ mod tests {
 
     use super::{build_docker_itzg_server, parse_memory_env_value};
     use crate::models::server::{
-        CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode,
-        DockerItzgRuntimeConfig, ServerRuntimeConfig,
+        CpuPolicyConfig, CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode,
+        DockerItzgRuntimeConfig, JvmPresetConfig, ServerRuntimeConfig,
     };
     use crate::services::server::manager::ServerManager;
 
@@ -138,6 +138,9 @@ mod tests {
                 docker_backend_kind: DockerBackendKind::Cli,
                 command_mode: DockerCommandMode::Rcon,
                 rcon: None,
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             },
         }
     }
