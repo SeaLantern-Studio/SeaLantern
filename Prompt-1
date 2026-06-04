@@ -1,47 +1,50 @@
 你是 Code Agent 1。
 
-这轮任务先处理“实例级启动配置文件落点”，把可编辑项稳定放到服务器目录内，前端页面先不要碰。
+这轮任务只收“实例配置驱动运行时”这条后端主线。目标不是再加新入口，而是保证实例目录里的配置一旦改了，真实启动详情和实际启动都会按这份配置走。
 
 调度说明：这是第一阶段任务，可与 `Prompt-2` 并行启动。
 
 唯一输出要求：正常修改代码，并把结果写入 `.cache1`，不要口述回复，不要 commit。
 
 必须遵守：
-- 允许编辑 Rust 后端、必要的 Tauri command、必要的 TS API 类型。
+- 允许编辑 Rust 后端和必要的测试。
 - 不要编辑 `.vue` 页面组件。
-- 不要改启动详情页面文案。
+- 不要扩前端展示文案。
 - 不要 commit。
 
 必须阅读：
 - `src-tauri/src/commands/server/config.rs`
-- `src/api/config.ts`
-- `src/components/config/useStartupConfigSection.ts`
-- `src-tauri/src/services/server/manager/provisioning/shared.rs`
-- `src-tauri/src/commands/server/manage/provisioning.rs`
+- `src-tauri/src/services/server/manager/startup_support.rs`
+- `src-tauri/src/services/server/manager/cpu_policy.rs`
+- `src-tauri/src/services/server/manager/runtime_start/local_launch_detail.rs`
+- `src-tauri/src/services/server/runtime/docker_itzg/helpers.rs`
+- `src-tauri/src/services/server/manager/runtime_start/launch/runner.rs`
 - `.cache1`
 
 本轮你应该实现的范围：
-1. 把服务器实例级启动配置从当前 `服务器目录/SL.json` 收敛到 `服务器目录/SeaLantern/config.toml`。
-2. 配置内容至少覆盖：
+1. 把本地启动链读取的这些值统一到实例配置优先：
    - `max_memory`
    - `min_memory`
    - `jvm_args`
    - `cpu_policy`
    - `jvm_preset`
-3. 读取逻辑要兼容旧的 `SL.json`：
-   - 已有旧文件时能继续读到
-   - 写回时统一落到新的实例配置文件
-4. 路径必须保证仍然限制在当前服务器目录内。
-5. 补最小测试，覆盖新文件读写和旧文件兼容。
+2. 把本地“真实启动详情”读取源也统一到同一份实例配置，不再只盯注册态 runtime 字段。
+3. 把 Docker 启动详情和 Docker 启动参数合成链里的这些值，也统一到实例配置优先。
+4. 需要时可以保留“实例配置缺值时回退 runtime/全局默认”的兜底，但优先级必须清楚稳定。
+5. 补最小测试，至少覆盖：
+   - 改实例配置后，本地 launch detail 会变
+   - 改实例配置后，本地实际 JVM 参数会变
+   - 改实例配置后，Docker 详情里的 cpuset/JVM 结果会变
 
 本轮不要做：
-- 不要改 `.vue` 页面。
-- 不要处理真实启动详情展示。
-- 不要改 CPU 亲和性表单。
+- 不要改前端组件。
+- 不要新增配置项。
+- 不要改设置页或建服页文案。
 
 完成后 `.cache1` 输出格式：
 - `已修改文件`
-- `实例配置现在落在哪`
-- `旧配置兼容情况`
+- `运行时现在优先读哪份配置`
+- `本地启动链改了什么`
+- `Docker 链改了什么`
 - `验证结果`
 - `遗留风险`

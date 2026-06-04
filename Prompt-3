@@ -1,49 +1,40 @@
 你是 Code Agent 3。
 
-这轮任务只补“CPU 亲和性可编辑入口”，让用户能在实例配置里改它，并把默认值入口补齐。不要处理实例配置文件迁移，不要重做启动详情展示。
+这轮任务是第二阶段收口，只做复核和最小补洞。请在 `.cache1` 和 `.cache2` 回来后再启动，不要抢前两条线的文件。
 
-调度说明：这是第二阶段任务。请在 `.cache1` 和 `.cache2` 回来后再启动。
+调度说明：这是第二阶段任务。
 
 唯一输出要求：正常修改代码，并把结果写入 `.cache3`，不要口述回复，不要 commit。
 
 必须遵守：
-- 允许编辑前端页面、组合式逻辑、TS API、必要的语言包。
-- 如保存链路缺字段，可做最小补齐，但不要重做后端配置文件迁移。
+- 允许做小范围修补和验证。
+- 不要重做大结构，不要开新能力。
+- 优先处理“实例配置写了但真实启动详情/实际启动没同步”的残留问题。
 - 不要 commit。
-- 文案保持自然，少解释，不要堆术语。
 
 必须阅读：
 - `.cache1`
 - `.cache2`
-- `src/components/config/ConfigStartupSection.vue`
 - `src/components/config/useStartupConfigSection.ts`
-- `src/components/views/create/ServerStartupConfigStep.vue`
-- `src/components/views/settings/ServerDefaultsCard.vue`
-- `src/views/SettingsView.vue`
-- `src/components/views/create/useCreateServerPage.ts`
-- `src/components/views/create/useCreateServerDefaults.ts`
-- `src/utils/serverStartupConfig.ts`
-- `src/language/zh-CN.json`
+- `src/components/config/ConfigStartupSection.vue`
+- `src-tauri/src/services/server/manager/startup_support.rs`
+- `src-tauri/src/services/server/runtime/docker_itzg/helpers.rs`
+- `src/components/views/create/useCreateServerSubmit.ts`
 
 本轮你应该实现的范围：
-1. 配置页补出 CPU 亲和性可编辑项：
-   - 关闭
-   - 按数量限制核心数
-   - 自定义核心列表
-2. 建服页补出相同能力，至少能把值带到实例配置里。
-3. 默认设置页补出默认 CPU 策略入口，新建服务器时可继承。
-4. 自动保存或保存链路要真正包含 `cpu_policy`，不要出现界面能改但不会落盘。
-5. 基础校验要补上：
-   - `count` 必须是 `> 0`
-   - `explicit` 为空时不给保存成有效策略
+1. 复核保存实例配置后，配置页重新拉取的真实启动详情是否已经能反映最新值。
+2. 如果前两条线留下了字段映射、保存后刷新、空态提示之类的小断口，只做最小补齐。
+3. 优先补测试或验证，再补代码；确实有断口再改。
+4. 只处理和本轮目标直接相关的问题，不顺手扩范围。
 
 本轮不要做：
-- 不要迁移实例配置文件。
-- 不要重做真实启动详情接口。
+- 不要新增新表单。
+- 不要再迁移配置文件。
+- 不要碰无关页面。
 
 完成后 `.cache3` 输出格式：
 - `已修改文件`
-- `CPU 亲和性现在在哪些页面可改`
-- `保存链路是否已接通`
+- `复核结论`
+- `补掉了哪些小断口`
 - `验证结果`
 - `遗留风险`

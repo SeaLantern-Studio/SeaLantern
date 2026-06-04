@@ -1,46 +1,48 @@
 你是 Code Agent 2。
 
-这轮任务只补“真实启动详情接口和配置页展示闭环”，不要改实例配置文件迁移，不要做 CPU 亲和性表单。
+这轮任务只收“前端所有建服/接入入口的实例配置透传”。目标不是再做新 UI，而是把已经有的 `cpu_policy + jvm_preset + jvm_args` 真正带到各条入口里，不只停在当前一条主路径。
 
 调度说明：这是第一阶段任务，可与 `Prompt-1` 并行启动。
 
 唯一输出要求：正常修改代码，并把结果写入 `.cache2`，不要口述回复，不要 commit。
 
 必须遵守：
-- 允许编辑前端 API、组合式逻辑、页面组件、必要的语言包。
-- 如接口字段不足，可最小补 TS 类型，但不要重做后端配置落点。
-- 不要提交 commit。
-- 文案不要写得像工程日志，不要假装近似概览就是最终命令。
+- 允许编辑前端 TS、组合式逻辑、必要的页面接线、必要的 API 层。
+- 如确有需要，可最小补后端请求字段对齐，但不要改运行时读取主线。
+- 不要重做配置页启动详情卡片。
+- 不要 commit。
 
 必须阅读：
+- `src/components/views/create/useCreateServerSubmit.ts`
+- `src/views/CreateServerView.vue`
+- `src/components/views/create/useCreateServerPage.ts`
+- `src/components/views/create/useCreateServerDefaults.ts`
 - `src/api/server.ts`
-- `src/components/config/ConfigStartupSection.vue`
-- `src/components/config/useStartupConfigSection.ts`
 - `src/types/server.ts`
-- `src/language/zh-CN.json`
+- `src/views/SettingsView.vue`
+- `src/components/views/settings/ServerDefaultsCard.vue`
 - `.cache2`
 
 本轮你应该实现的范围：
-1. 配置页优先接入真实启动详情接口：
-   - 本地服务器使用真实 launch detail
-   - Docker 服务器也显示真实启动详情，不再只显示镜像名
-2. 页面里要能看到：
-   - 启动方式
-   - 启动命令或命令概览
-   - 实际 JVM 参数或可直接展示的参数结果
-   - 预设应用状态
-3. 如果接口暂时取不到，空态和失败态要自然，不要硬说“会这样启动”。
-4. 建服页如果仍然只能前端拼概览，可以顺手把文案降级，但不要扩到 CPU 表单。
-5. 补最小验证，至少确认现有页面能消费这些返回值。
+1. 逐条核对并补齐这些入口对 `cpu_policy + jvm_preset + jvm_args` 的透传：
+   - 新建本地服务器
+   - 接入已有服务器
+   - 导入整合包/复制目录
+   - 其他当前建服页可触达的本地入口
+2. 默认设置页里的 `default_cpu_policy`、`default_jvm_preset`、`default_jvm_args` 要能稳定继承到建服页面状态。
+3. 入口侧校验要统一，别出现某条入口能保存非法 CPU 策略、另一条又拦住的情况。
+4. 如果某条入口当前 UI 根本没覆盖到，就把缺口写清楚，不要假装全通。
+5. 补最小验证，至少说明每条入口最后落到了哪一个 API 调用上。
 
 本轮不要做：
-- 不要迁移实例配置文件。
-- 不要新增 CPU 亲和性编辑表单。
-- 不要碰默认设置页。
+- 不要改运行时读取优先级。
+- 不要扩展示卡片文案。
+- 不要再新增新的设置项。
 
 完成后 `.cache2` 输出格式：
 - `已修改文件`
-- `配置页现在能看到什么`
-- `建服页概览怎么表述`
+- `已接通的入口`
+- `每条入口最后调用了什么`
+- `默认值继承情况`
 - `验证结果`
 - `遗留风险`
