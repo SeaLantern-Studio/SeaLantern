@@ -118,6 +118,13 @@ function clearRootThemeOverrides() {
   }
 }
 
+function removeThemeWidgetsSettings() {
+  const root = document.documentElement;
+  root.removeAttribute("data-glow-intensity");
+  root.removeAttribute("data-gradient-text");
+  root.removeAttribute("data-particles");
+}
+
 export function createPluginAppearanceThemeManager(options: PluginAppearanceManagerOptions) {
   function syncThemeProviderOverrides(explicitPluginIds?: string[]) {
     setThemeProviderOverrides(getEnabledThemeProviderIds(options, explicitPluginIds));
@@ -183,14 +190,6 @@ export function createPluginAppearanceThemeManager(options: PluginAppearanceMana
       pluginLogger.error("Appearance", `主题挂件设置应用失败: ${pluginId}`, error);
     }
   }
-
-  function removeThemeWidgetsSettings() {
-    const root = document.documentElement;
-    root.removeAttribute("data-glow-intensity");
-    root.removeAttribute("data-gradient-text");
-    root.removeAttribute("data-particles");
-  }
-
   return {
     syncThemeProviderOverrides,
     applyThemeProviderSettings,

@@ -10,22 +10,22 @@ interface PluginSettingsActions {
   logError: (message: string, details?: unknown) => void;
 }
 
+function getDefaultValue(type: string): string | number | boolean {
+  switch (type) {
+    case "boolean":
+      return false;
+    case "number":
+      return 0;
+    default:
+      return "";
+  }
+}
+
 export function usePluginSettingsDialog(actions: PluginSettingsActions) {
   const showSettingsModal = ref(false);
   const currentSettingsPlugin = ref<PluginInfo | null>(null);
   const settingsForm = reactive<Record<string, PluginSettingValue>>({});
   const savingSettings = ref(false);
-
-  function getDefaultValue(type: string): string | number | boolean {
-    switch (type) {
-      case "boolean":
-        return false;
-      case "number":
-        return 0;
-      default:
-        return "";
-    }
-  }
 
   async function openSettings(plugin: PluginInfo) {
     currentSettingsPlugin.value = plugin;

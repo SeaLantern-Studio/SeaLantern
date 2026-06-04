@@ -102,12 +102,8 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
       return;
     }
 
-    try {
-      const settingsToSave = applyPluginPreset(settingsForm, presetKey, presets[presetKey]);
-      await settingsPersistence.applyPreset(pluginId, presetKey, settingsToSave);
-    } catch (error) {
-      throw error;
-    }
+    const settingsToSave = applyPluginPreset(settingsForm, presetKey, presets[presetKey]);
+    await settingsPersistence.applyPreset(pluginId, presetKey, settingsToSave);
   }
 
   async function saveSettings() {

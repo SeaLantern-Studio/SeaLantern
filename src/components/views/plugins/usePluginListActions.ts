@@ -34,6 +34,30 @@ interface UsePluginListActionsOptions {
   exitBatchMode: () => void;
 }
 
+function getStatusColor(state: PluginState): string {
+  if (typeof state === "object" && "error" in state) {
+    return "var(--sl-error)";
+  }
+  switch (state) {
+    case "enabled":
+      return "var(--sl-success)";
+    case "disabled":
+      return "var(--sl-text-tertiary)";
+    case "loaded":
+      return "var(--sl-info)";
+    default:
+      return "var(--sl-text-secondary)";
+  }
+}
+
+function isPluginEnabled(state: PluginState): boolean {
+  return state === "enabled";
+}
+
+function hasSettings(plugin: PluginInfo): boolean {
+  return !!(plugin.manifest.settings && plugin.manifest.settings.length > 0);
+}
+
 export function usePluginListActions(options: UsePluginListActionsOptions) {
   const router = useRouter();
   const checkingUpdate = ref<string | null>(null);
@@ -175,22 +199,6 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
     }
   }
 
-  function getStatusColor(state: PluginState): string {
-    if (typeof state === "object" && "error" in state) {
-      return "var(--sl-error)";
-    }
-    switch (state) {
-      case "enabled":
-        return "var(--sl-success)";
-      case "disabled":
-        return "var(--sl-text-tertiary)";
-      case "loaded":
-        return "var(--sl-info)";
-      default:
-        return "var(--sl-text-secondary)";
-    }
-  }
-
   function getStatusLabel(state: PluginState): string {
     if (typeof state === "object" && "error" in state) {
       return i18n.t("plugins.status.error");
@@ -205,14 +213,6 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
       default:
         return String(state);
     }
-  }
-
-  function isPluginEnabled(state: PluginState): boolean {
-    return state === "enabled";
-  }
-
-  function hasSettings(plugin: PluginInfo): boolean {
-    return !!(plugin.manifest.settings && plugin.manifest.settings.length > 0);
   }
 
   function getPluginMenuItems(pluginId: string) {

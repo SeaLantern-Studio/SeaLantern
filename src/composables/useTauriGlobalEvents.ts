@@ -78,10 +78,14 @@ async function playNotificationSound() {
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.3);
 
-    oscillator.onended = () => {
-      oscillator.disconnect();
-      gainNode.disconnect();
-    };
+    oscillator.addEventListener(
+      "ended",
+      () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      },
+      { once: true },
+    );
   } catch (error) {
     console.warn("播放提示音失败:", error);
   }

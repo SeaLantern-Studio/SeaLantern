@@ -34,17 +34,19 @@ export async function replayPluginComponentSnapshot(deps: SnapshotReplayDependen
     }
 
     pluginLogger.info("Snapshot", "开始回放组件事件", { count: componentSnapshot.length });
-    for (const event of componentSnapshot) {
+    await componentSnapshot.reduce<Promise<void>>(async (previousReplay, event) => {
+      await previousReplay;
+
       const payload = parseComponentSnapshotPayload(event.payload_json);
       if (!payload) {
-        continue;
+        return;
       }
 
       await deps.handlePluginComponentEvent({
         ...payload,
         plugin_id: event.plugin_id,
       });
-    }
+    }, Promise.resolve());
   } catch (error) {
     pluginLogger.error("Snapshot", "组件快照回放失败", error);
   }

@@ -14,6 +14,29 @@ interface UsePropertiesSourceEditorOptions {
   onUpdateModelValue: (value: string) => void;
 }
 
+function getMatchRanges(text: string, query: string) {
+  if (!query) {
+    return [] as Array<{ from: number; to: number }>;
+  }
+
+  const ranges: Array<{ from: number; to: number }> = [];
+  const haystack = text.toLowerCase();
+  const needle = query.toLowerCase();
+  let index = 0;
+
+  while (index <= haystack.length - needle.length) {
+    const found = haystack.indexOf(needle, index);
+    if (found === -1) {
+      break;
+    }
+
+    ranges.push({ from: found, to: found + needle.length });
+    index = found + needle.length;
+  }
+
+  return ranges;
+}
+
 export function usePropertiesSourceEditor(options: UsePropertiesSourceEditorOptions) {
   const searchText = ref("");
   const totalMatches = ref(0);
@@ -38,30 +61,6 @@ export function usePropertiesSourceEditor(options: UsePropertiesSourceEditorOpti
   });
 
   const canNavigate = computed(() => totalMatches.value > 0);
-
-  function getMatchRanges(text: string, query: string) {
-    if (!query) {
-      return [] as Array<{ from: number; to: number }>;
-    }
-
-    const ranges: Array<{ from: number; to: number }> = [];
-    const haystack = text.toLowerCase();
-    const needle = query.toLowerCase();
-    let index = 0;
-
-    while (index <= haystack.length - needle.length) {
-      const found = haystack.indexOf(needle, index);
-      if (found === -1) {
-        break;
-      }
-
-      ranges.push({ from: found, to: found + needle.length });
-      index = found + needle.length;
-    }
-
-    return ranges;
-  }
-
   function updateMatchStats() {
     if (!editorView || !searchText.value) {
       totalMatches.value = 0;
