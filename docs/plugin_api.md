@@ -103,6 +103,7 @@
 
 - 默认调用 `sl.process.read_output(pid)` 时，保持旧契约：只返回 stdout 字符串；如果当前没有 stdout 可读，则返回 `nil`
 - 显式传入 `sl.process.read_output(pid, { include_stderr = false })` 时，行为与默认调用完全一致，不会切换到结构化结果
+- 默认模式和 `include_stderr = false` 模式都不会消费“只有 stderr 的待读缓冲”；这类输出只会在 `include_stderr = true` 的结构化读取里返回
 - 当调用 `sl.process.read_output(pid, { include_stderr = true })` 时，有输出则返回表，字段至少包括：`stdout`、`stderr`、`chunk_seq`、`updated_at_ms`
 - 在 `include_stderr = true` 模式下，`stdout` 和 `stderr` 任何一边当前有数据，都会一起返回；没有数据的一边返回空字符串
 - `chunk_seq` 是该后台进程结构化输出片段的递增序号；每成功返回一批 `stdout` / `stderr` 后自增一次，便于调用方按读取批次排序

@@ -550,6 +550,96 @@ fn test_process_read_output_default_call_returns_nil_until_stderr_is_opted_in() 
 }
 
 #[test]
+fn test_process_read_output_default_mode_does_not_consume_stderr_only_buffer() {
+    let (runtime, temp_dir) = create_test_runtime_with_root(vec!["execute_program"]);
+
+    let sl: Table = runtime.lua().globals().get("sl").unwrap();
+    let process: Table = sl.get("process").unwrap();
+    let read_output: Function = process.get("read_output").unwrap();
+
+    let pid = register_test_process_with_output(&runtime, |output| {
+        let mut state = output.lock().unwrap();
+        state.stderr_buf.extend_from_slice(b"stderr-only\n");
+        process::update_output_timestamp(&mut state, 42);
+    });
+
+    let default_read: mlua::Value = read_output.call((pid, Option::<Table>::None)).unwrap();
+    assert!(matches!(default_read, mlua::Value::Nil));
+
+    {
+        let procs = runtime.process_registry.lock().unwrap();
+        let entry = procs.get(&pid).unwrap();
+        let state = entry.output.lock().unwrap();
+
+        assert_eq!(state.next_chunk_seq, 0);
+        assert_eq!(state.last_update_unix_ms, Some(42));
+        assert_eq!(state.stderr_buf, b"stderr-only\n");
+    }
+
+    let structured: Table = read_output
+        .call((pid, background_output_options(runtime.lua())))
+        .unwrap();
+    let stdout: String = structured.get("stdout").unwrap();
+    let stderr: String = structured.get("stderr").unwrap();
+    let chunk_seq: u64 = structured.get("chunk_seq").unwrap();
+    let updated_at_ms: u64 = structured.get("updated_at_ms").unwrap();
+
+    assert_eq!(stdout, "");
+    assert!(stderr.contains("stderr-only"));
+    assert_eq!(chunk_seq, 0);
+    assert_eq!(updated_at_ms, 42);
+
+    cleanup_registered_process(&runtime.process_registry, pid);
+    cleanup_test_root(&temp_dir);
+}
+
+#[test]
+fn test_process_read_output_include_stderr_false_does_not_consume_stderr_only_buffer() {
+    let (runtime, temp_dir) = create_test_runtime_with_root(vec!["execute_program"]);
+
+    let sl: Table = runtime.lua().globals().get("sl").unwrap();
+    let process: Table = sl.get("process").unwrap();
+    let read_output: Function = process.get("read_output").unwrap();
+
+    let pid = register_test_process_with_output(&runtime, |output| {
+        let mut state = output.lock().unwrap();
+        state.stderr_buf.extend_from_slice(b"stderr-only\n");
+        process::update_output_timestamp(&mut state, 84);
+    });
+
+    let false_read: mlua::Value = read_output
+        .call((pid, stdout_only_output_options(runtime.lua())))
+        .unwrap();
+    assert!(matches!(false_read, mlua::Value::Nil));
+
+    {
+        let procs = runtime.process_registry.lock().unwrap();
+        let entry = procs.get(&pid).unwrap();
+        let state = entry.output.lock().unwrap();
+
+        assert_eq!(state.next_chunk_seq, 0);
+        assert_eq!(state.last_update_unix_ms, Some(84));
+        assert_eq!(state.stderr_buf, b"stderr-only\n");
+    }
+
+    let structured: Table = read_output
+        .call((pid, background_output_options(runtime.lua())))
+        .unwrap();
+    let stdout: String = structured.get("stdout").unwrap();
+    let stderr: String = structured.get("stderr").unwrap();
+    let chunk_seq: u64 = structured.get("chunk_seq").unwrap();
+    let updated_at_ms: u64 = structured.get("updated_at_ms").unwrap();
+
+    assert_eq!(stdout, "");
+    assert!(stderr.contains("stderr-only"));
+    assert_eq!(chunk_seq, 0);
+    assert_eq!(updated_at_ms, 84);
+
+    cleanup_registered_process(&runtime.process_registry, pid);
+    cleanup_test_root(&temp_dir);
+}
+
+#[test]
 fn test_process_read_output_structured_metadata_orders_multiple_background_chunks() {
     let (runtime, temp_dir) = create_test_runtime_with_root(vec!["execute_program"]);
     let (program, args) = prepare_background_multi_chunk_process_fixture(&temp_dir);
@@ -1165,4 +1255,30 @@ fn cleanup_registered_process(registry: &process::ProcessRegistry, pid: u32) {
         let _ = entry.child.kill();
         let _ = entry.child.wait();
     }
+}
+
+fn register_test_process_with_output<F>(runtime: &PluginRuntime, mutate: F) -> u32
+where
+    F: FnOnce(&process::SharedProcessOutput),
+{
+    let child = spawn_sleep_child();
+    let pid = child.id();
+    let output = process::new_process_output();
+    mutate(&output);
+
+    {
+        let mut procs = runtime.process_registry.lock().unwrap();
+        procs.insert(
+            pid,
+            process::ProcessEntry {
+                output,
+                owner_plugin_id: runtime.plugin_id.clone(),
+                program: "sleep-test".to_string(),
+                child,
+                started_at: Instant::now(),
+            },
+        );
+    }
+
+    pid
 }
