@@ -8,6 +8,7 @@ import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue"
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue";
+import { javaApi, type JavaInfo } from "@api/java";
 import { systemApi } from "@api/system";
 import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 import { i18n } from "@language";
@@ -21,6 +22,8 @@ const maxMem = ref("2048");
 const minMem = ref("512");
 const port = ref("25565");
 const defaultRunPath = ref("");
+const javaList = ref<JavaInfo[]>([]);
+const javaLoading = ref(false);
 
 const settingsDraft = useSettingsPageDraft({
   changedGroups: ["Appearance", "General", "ServerDefaults", "Console"],
@@ -29,6 +32,7 @@ const settingsDraft = useSettingsPageDraft({
     minMem.value = String(settings.default_min_memory);
     port.value = String(settings.default_port);
     defaultRunPath.value = settings.last_run_path || "";
+    javaList.value = settings.cached_java_list || [];
   },
   prepareForSave: (settings) => {
     settings.default_max_memory = parseInt(maxMem.value) || 2048;
@@ -70,6 +74,28 @@ function handleJavaInstalled(path: string) {
   if (settings.value) {
     settings.value.default_java_path = path;
     markChanged();
+  }
+}
+
+async function handleDetectJava() {
+  if (javaLoading.value) {
+    return;
+  }
+
+  javaLoading.value = true;
+
+  try {
+    const detected = await javaApi.detect();
+    javaList.value = detected;
+
+    if (settings.value) {
+      settings.value.cached_java_list = detected;
+      markChanged();
+    }
+  } catch (e) {
+    settingsDraft.setError(String(e));
+  } finally {
+    javaLoading.value = false;
   }
 }
 
@@ -118,7 +144,10 @@ async function handleBrowseRunPath() {
         v-model:defaultJavaPath="settings.default_java_path"
         v-model:defaultJvmArgs="settings.default_jvm_args"
         v-model:defaultRunPath="defaultRunPath"
+        :java-list="javaList"
+        :java-loading="javaLoading"
         @change="markChanged"
+        @detectJava="handleDetectJava"
         @javaInstalled="handleJavaInstalled"
         @browseJavaPath="handleBrowseJavaPath"
         @browseRunPath="handleBrowseRunPath"
