@@ -1022,10 +1022,7 @@ fn prepare_timeout_process_fixture(temp_dir: &Path, pid_file: &Path) -> (String,
     fs::copy("/bin/sh", &shell_dest).unwrap();
 
     let script_path = temp_dir.join("timeout-script.sh");
-    let script = format!(
-        "printf '%s' \"$$\" > '{}'\nexec sleep 5\n",
-        pid_file.display()
-    );
+    let script = format!("printf '%s' \"$$\" > '{}'\nexec sleep 5\n", pid_file.display());
     fs::write(&script_path, script).unwrap();
 
     ("sh".to_string(), vec!["timeout-script.sh".to_string()])
