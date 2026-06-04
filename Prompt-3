@@ -1,41 +1,41 @@
 你是 Code Agent 3。
 
-这轮任务只做 Docker `itzg` 运行时的补丁级实现方案，不做代码实现。你唯一允许写入的文件是仓库根目录下的 `.cache3`。
+这轮任务进入实现。你只负责“Docker 运行时 MVP”的代码修改，不要碰前端页面，不要碰本地运行时实现。
 
-调度说明：这是第二阶段任务。请在 `.cache1` 已经产出并可读取后再启动，不要与 `Prompt-1` 同时抢 schema 定义。
+调度说明：这是第二阶段任务。请在第一阶段的 `.cache1` 完成后再启动。你可以与 `Prompt-4` 并行启动。
 
-目标：基于上一轮分析，产出一份可以直接交给后续实现 Agent 的 Docker 运行时改造方案，精确到 `docker run` 参数层、JVM env 合成层、冲突处理与测试点。
+唯一输出要求：正常修改代码，并把你的过程结果直接写入 `.cache3`，不要口述回复，不要 commit。
 
 必须遵守：
-- 不要编辑除 `.cache3` 之外的任何文件。
+- 允许编辑 Docker 运行时、compose、inspect 相关文件。
+- 不要编辑前端页面文件。
+- 不要编辑本地运行时文件。
 - 不要 commit。
-- 不要口述回复，结果直接写入 `.cache3`。
-- 不要再给多个平行方案，这轮只给推荐落地方案。
 
 必须阅读：
 - `.cache1`
 - `.cache3`
-- `docs/server-cpu-affinity-jvm-flags-draft.md`
-- `docs/docker-runtime-itzg-design.md`
-- `src-tauri/src/utils/cli/server_docker.rs`
 - `src-tauri/src/services/server/runtime/docker_itzg.rs`
 - `src-tauri/src/services/server/runtime/docker_itzg/helpers.rs`
+- `src-tauri/src/utils/cli/compose_cli.rs`
+- `src-tauri/src/utils/cli/server_manage_render.rs`
+- `src-tauri/src/utils/cli/server_setup/docker_request_builder.rs`
 - `src-tauri/src/models/server.rs`
 
-你要输出到 `.cache3` 的内容：
-1. Docker MVP 最终拍板，`count` / `explicit` / `off` 分别怎么映射。
-2. 明确这轮是否不做 `--cpus`，以及原因。
-3. `JVM preset` 和 `ActiveProcessorCount` 的 env 合成策略，精确到推荐的 env key 和冲突规则。
-4. 需要改动的文件列表，每个文件做什么。
-5. Compose / inspect / status 层面是否需要同步考虑，哪些可以暂缓。
-6. 测试与日志补点清单。
+本轮你应该实现的范围：
+1. 实现 Docker `cpu_policy` 到 `--cpuset-cpus` 的映射，仅做 `off / count / explicit`。
+2. 明确不做 `--cpus`。
+3. 实现 Docker `jvm_preset + jvm_args + ActiveProcessorCount` 到 `JVM_OPTS/JVM_XX_OPTS` 的合成。
+4. 实现原始 `runtime.env` 接管冲突规则。
+5. 同步 compose 导出与 inspect 展示。
+6. 补 Docker 侧测试。
 
-输出格式：
-- 用中文。
-- 按下面顺序输出：
-  1. `Docker MVP 拍板`
-  2. `参数映射与冲突规则`
-  3. `代码改动列表`
-  4. `关键流程伪代码`
-  5. `测试点`
-- 重点说明与本地运行时故意保持一致和故意不一致的地方。
+本轮不要做：
+- 不要改本地 runtime。
+- 不要改任何 `.vue` 页面。
+
+完成后 `.cache3` 输出格式：
+- `已修改文件`
+- `完成内容`
+- `与共享 schema 对接情况`
+- `遗留风险`

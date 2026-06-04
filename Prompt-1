@@ -1,41 +1,54 @@
 你是 Code Agent 1。
 
-这轮任务只做收敛和定稿，不做代码实现。你唯一允许写入的文件是仓库根目录下的 `.cache1`。
+这轮任务进入实现。你只负责“共享 schema / DTO / settings 与 config 合同层”的代码修改，不要碰本地运行时实现，不要碰 Docker 运行时实现，不要碰前端页面组件。
 
 调度说明：这是第一阶段任务，可与 `Prompt-2` 并行启动。
 
-目标：基于上一轮四份 `.cache*` 输出，给出这项功能的唯一权威 schema / DTO / 默认值合同，解决冲突，不要再发散方案。
+唯一输出要求：正常修改代码，并把你的过程结果直接写入 `.cache1`，不要口述回复，不要 commit。
 
 必须遵守：
-- 不要编辑除 `.cache1` 之外的任何文件。
+- 允许编辑与你职责相关的源码文件。
+- 不要编辑前端页面组件 `.vue` 文件。
+- 不要编辑 `docker_itzg.rs`、`helpers.rs`、`runner.rs`、`startup_support.rs`。
 - 不要 commit。
-- 不要口述回复，结果直接写入 `.cache1`。
-- 你这轮的职责是“拍板合同”，不是继续列选项。
+- 做完后把你改了什么、还有什么风险，直接写到 `.cache1`。
+
+目标：把上一轮拍板的共享合同真正落到 Rust/TS 类型和 DTO 上。
 
 必须阅读：
 - `.cache1`
-- `.cache2`
-- `.cache3`
-- `.cache4`
-- `docs/server-cpu-affinity-jvm-flags-draft.md`
 - `src-tauri/src/models/server.rs`
-- `src/types/server.ts`
+- `src-tauri/src/models/settings_model/schema.rs`
+- `src-tauri/src/models/settings_model/schema/defaults.rs`
+- `src-tauri/src/models/settings_model/merge.rs`
+- `src-tauri/src/models/settings_model/groups.rs`
+- `src-tauri/src/models/config.rs`
 - `src/api/server.ts`
+- `src/types/server.ts`
+- `src/api/config.ts`
+- `src/api/settings.ts`
 
-你要解决并输出到 `.cache1` 的核心问题：
-1. 最终是否采用 `cpu_policy + jvm_preset + jvm_args`，还是别的结构。
-2. 明确否决或保留 `jvm_preset.extra_args`，不能模糊。
-3. Rust 持久化模型、前端类型、建服 DTO、编辑 DTO、默认设置 DTO 的最终字段名。
-4. 哪些字段应放 runtime 内，哪些不能升到 `ServerInstance` 顶层。
-5. 默认值和兼容迁移规则，要求能兼容旧记录。
+本轮你应该实现的范围：
+1. 在 Rust 端落 `CpuPolicyMode`、`CpuPolicyConfig`、`JvmPresetId`、`JvmPresetConfig`。
+2. 在 `LocalRuntimeConfig` 和 `DockerItzgRuntimeConfig` 中补 `cpu_policy`、`jvm_preset`、`jvm_args`（Docker 也要补）。
+3. 在 create/import 等请求 DTO 中补相应字段和默认值。
+4. 在 settings schema 中补：
+   - `default_jvm_args` 从 `String` 改成 `Vec<String>`
+   - `default_jvm_preset`
+   - `default_cpu_policy`
+5. 在 `SLStartupConfig` 对应 Rust/TS 合同里补：
+   - `jvm_args`
+   - `cpu_policy`
+   - `jvm_preset`
+6. 同步改 TypeScript 类型与 API 参数形状。
+7. 能补的模型层测试一起补上。
 
-输出格式：
-- 用中文。
-- 按下面顺序输出：
-  1. `最终拍板`
-  2. `明确否决项`
-  3. `Rust schema`
-  4. `TypeScript schema`
-  5. `请求/设置 DTO 方案`
-  6. `兼容迁移规则`
-- 不要给多个备选答案，只给你认为应该执行的一版。
+本轮不要做：
+- 不要实现本地 affinity 或 APC 注入逻辑。
+- 不要实现 Docker cpuset 或 JVM env 合成逻辑。
+- 不要动任何 `.vue` 页面。
+
+完成后 `.cache1` 输出格式：
+- `已修改文件`
+- `完成内容`
+- `遗留风险`
