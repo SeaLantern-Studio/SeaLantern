@@ -27,11 +27,17 @@ use std::ffi::OsString;
 use std::net::TcpListener;
 use std::process::Command;
 use std::time::Duration;
-use sysinfo::{ProcessesToUpdate, System};
+use sysinfo::{Pid, ProcessesToUpdate, System};
 
 pub fn cleanup_for_new_start(server: &ServerInstance) {
+    let current_exe = current_exe_lowercase();
+
     if let Some(state) = read_state(server) {
-        let helper_alive = is_process_alive(state.helper_pid);
+        let helper_alive = helper_process_matches_server_pid(
+            state.helper_pid,
+            &server.id,
+            current_exe.as_deref(),
+        );
         let child_alive = state.child_pid.is_some_and(is_process_alive);
         if helper_alive || child_alive {
             logger::log_warn(&format!(
@@ -47,32 +53,20 @@ pub fn cleanup_for_new_start(server: &ServerInstance) {
             ));
         }
 
-        cleanup_runtime_processes_from_state(server, &state);
+        cleanup_runtime_processes_from_state(server, &state, current_exe.as_deref());
     }
 
-    cleanup_orphan_helper_processes(server);
+    cleanup_orphan_helper_processes(server, current_exe.as_deref());
 
     remove_state_file(server);
 }
 
-fn cleanup_runtime_processes_from_state(server: &ServerInstance, state: &LocalRuntimeState) {
-    if let Some(child_pid) = state.child_pid.filter(|pid| is_process_alive(*pid)) {
-        match force_kill_process_tree_by_pid(child_pid) {
-            Ok(()) => logger::log_user_action(
-                "server.runtime.local.helper",
-                "cleanup_lingering_child",
-                &format!("server_id={} child_pid={}", server.id, child_pid),
-            ),
-            Err(err) => logger::log_user_action_error(
-                "server.runtime.local.helper",
-                "cleanup_lingering_child",
-                &format!("server_id={} child_pid={}", server.id, child_pid),
-                &err,
-            ),
-        }
-    }
-
-    if is_process_alive(state.helper_pid) {
+fn cleanup_runtime_processes_from_state(
+    server: &ServerInstance,
+    state: &LocalRuntimeState,
+    current_exe: Option<&str>,
+) {
+    if helper_process_matches_server_pid(state.helper_pid, &server.id, current_exe) {
         match force_kill_process_tree_by_pid(state.helper_pid) {
             Ok(()) => logger::log_user_action(
                 "server.runtime.local.helper",
@@ -86,30 +80,36 @@ fn cleanup_runtime_processes_from_state(server: &ServerInstance, state: &LocalRu
                 &err,
             ),
         }
+        return;
+    }
+
+    if is_process_alive(state.helper_pid) {
+        logger::log_warn(&format!(
+            "local runtime start cleanup skipped stale helper pid because identity no longer matches: server_id={} helper_pid={}",
+            server.id, state.helper_pid
+        ));
+    }
+
+    if let Some(child_pid) = state.child_pid.filter(|pid| is_process_alive(*pid)) {
+        logger::log_warn(&format!(
+            "local runtime start cleanup skipped lingering child without verified helper ownership: server_id={} child_pid={} helper_pid={}",
+            server.id, child_pid, state.helper_pid
+        ));
     }
 }
 
-fn cleanup_orphan_helper_processes(server: &ServerInstance) {
-    let current_exe = std::env::current_exe()
-        .ok()
-        .map(|path| path.to_string_lossy().to_ascii_lowercase());
+fn cleanup_orphan_helper_processes(server: &ServerInstance, current_exe: Option<&str>) {
     let mut system = System::new_all();
     system.refresh_processes(ProcessesToUpdate::All, true);
 
     for process in system.processes().values() {
-        let cmd = process.cmd();
-        if !looks_like_local_runtime_helper_command(cmd, &server.id) {
+        if !process_matches_server_helper_identity(
+            process.cmd(),
+            process.exe().map(|path| path.to_string_lossy().to_ascii_lowercase()),
+            &server.id,
+            current_exe,
+        ) {
             continue;
-        }
-
-        if let Some(current_exe) = current_exe.as_deref() {
-            let process_exe = process
-                .exe()
-                .map(|path| path.to_string_lossy().to_ascii_lowercase())
-                .unwrap_or_default();
-            if !process_exe.is_empty() && process_exe != current_exe {
-                continue;
-            }
         }
 
         let pid = process.pid().as_u32();
@@ -131,6 +131,52 @@ fn cleanup_orphan_helper_processes(server: &ServerInstance) {
             ),
         }
     }
+}
+
+fn current_exe_lowercase() -> Option<String> {
+    std::env::current_exe()
+        .ok()
+        .map(|path| path.to_string_lossy().to_ascii_lowercase())
+}
+
+fn helper_process_matches_server_pid(
+    pid: u32,
+    server_id: &str,
+    current_exe: Option<&str>,
+) -> bool {
+    let mut system = System::new_all();
+    system.refresh_processes(ProcessesToUpdate::All, true);
+
+    let Some(process) = system.process(Pid::from_u32(pid)) else {
+        return false;
+    };
+
+    process_matches_server_helper_identity(
+        process.cmd(),
+        process.exe().map(|path| path.to_string_lossy().to_ascii_lowercase()),
+        server_id,
+        current_exe,
+    )
+}
+
+fn process_matches_server_helper_identity(
+    cmd: &[OsString],
+    process_exe: Option<String>,
+    server_id: &str,
+    current_exe: Option<&str>,
+) -> bool {
+    if !looks_like_local_runtime_helper_command(cmd, server_id) {
+        return false;
+    }
+
+    if let Some(current_exe) = current_exe {
+        let process_exe = process_exe.unwrap_or_default();
+        if !process_exe.is_empty() && process_exe != current_exe {
+            return false;
+        }
+    }
+
+    true
 }
 
 fn looks_like_local_runtime_helper_command(cmd: &[OsString], server_id: &str) -> bool {
@@ -419,7 +465,9 @@ fn run_helper(server_id: &str) -> Result<(), String> {
 mod tests {
     use super::state::{state_file_path, write_state_file};
     use super::status_snapshot;
+    use super::{looks_like_local_runtime_helper_command, process_matches_server_helper_identity};
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use std::ffi::OsString;
     use tempfile::tempdir;
 
     fn test_server(path: String) -> ServerInstance {
@@ -486,5 +534,49 @@ mod tests {
             "runtime=local running=false source=state_file helper=exited exit_code=none"
         );
         assert_eq!(snapshot.error_message, None);
+    }
+
+    #[test]
+    fn helper_identity_match_requires_helper_marker_and_server_id() {
+        let cmd = vec![
+            OsString::from("sea-lantern.exe"),
+            OsString::from("__local-runtime-helper"),
+            OsString::from("server-1"),
+        ];
+
+        assert!(looks_like_local_runtime_helper_command(&cmd, "server-1"));
+        assert!(!looks_like_local_runtime_helper_command(&cmd, "server-2"));
+    }
+
+    #[test]
+    fn helper_identity_match_rejects_pid_reuse_with_different_executable() {
+        let cmd = vec![
+            OsString::from("other.exe"),
+            OsString::from("__local-runtime-helper"),
+            OsString::from("server-1"),
+        ];
+
+        assert!(!process_matches_server_helper_identity(
+            &cmd,
+            Some("c:/windows/system32/not-helper.exe".to_string()),
+            "server-1",
+            Some("e:/repo/sealantern/target/debug/sea-lantern.exe"),
+        ));
+    }
+
+    #[test]
+    fn helper_identity_match_accepts_same_executable_for_server_helper() {
+        let cmd = vec![
+            OsString::from("sea-lantern.exe"),
+            OsString::from("__local-runtime-helper"),
+            OsString::from("server-1"),
+        ];
+
+        assert!(process_matches_server_helper_identity(
+            &cmd,
+            Some("e:/repo/sealantern/target/debug/sea-lantern.exe".to_string()),
+            "server-1",
+            Some("e:/repo/sealantern/target/debug/sea-lantern.exe"),
+        ));
     }
 }

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import SLInput from "@components/common/SLInput.vue";
+import SLModal from "@components/common/SLModal.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import CpuPolicyEditor from "@components/startup/CpuPolicyEditor.vue";
 import { i18n } from "@language";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import {
   MVP_JVM_PRESET_IDS,
   getJvmPresetArgs,
@@ -54,7 +55,9 @@ const selectedJvmPresetOption = computed(
 
 const parsedJvmArgs = computed(() => serializeJvmArgsText(props.jvmArgsText));
 const jvmPresetPreviewArgs = computed(() => getJvmPresetPreviewArgs(props.jvmPreset));
+const fullJvmPresetArgs = computed(() => getJvmPresetArgs(props.jvmPreset));
 const jvmPresetArgCount = computed(() => getJvmPresetArgs(props.jvmPreset).length);
+const showPresetArgsModal = ref(false);
 
 const startupModeLabel = computed(() => {
   switch (props.startupMode) {
@@ -242,7 +245,12 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
               </span>
               <span
                 v-if="jvmPresetArgCount > jvmPresetPreviewArgs.length"
-                class="startup-preview-tag startup-preview-tag--muted"
+                class="startup-preview-tag startup-preview-tag--muted startup-preview-tag--button"
+                role="button"
+                tabindex="0"
+                @click="showPresetArgsModal = true"
+                @keydown.enter.prevent="showPresetArgsModal = true"
+                @keydown.space.prevent="showPresetArgsModal = true"
               >
                 {{
                   i18n.t("create.startup_preview_more_args", {
@@ -269,6 +277,27 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
         </div>
       </div>
     </div>
+
+    <SLModal
+      :visible="showPresetArgsModal"
+      :title="i18n.t('create.startup_preview_preset_args')"
+      width="720px"
+      @close="showPresetArgsModal = false"
+    >
+      <div class="startup-preview-modal-body">
+        <p class="startup-preview-modal-desc">
+          {{ selectedJvmPresetOption?.label || i18n.t("common.unknown") }}
+        </p>
+        <div v-if="fullJvmPresetArgs.length === 0" class="startup-preview-empty">
+          {{ i18n.t("create.startup_preview_none") }}
+        </div>
+        <div v-else class="startup-preview-modal-list">
+          <code v-for="arg in fullJvmPresetArgs" :key="arg" class="startup-preview-modal-code">
+            {{ arg }}
+          </code>
+        </div>
+      </div>
+    </SLModal>
   </div>
 </template>
 

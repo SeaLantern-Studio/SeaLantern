@@ -196,7 +196,7 @@ const jvmPresetArgCount = computed(
 
 <template>
   <div class="config-startup-section">
-    <div v-if="startupConfig.loading" class="loading-state">
+    <div v-if="startupConfig.loading.value" class="loading-state">
       <p class="text-caption">{{ i18n.t("common.loading") }}</p>
     </div>
     <template v-else>
