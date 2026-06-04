@@ -2,6 +2,26 @@ export type ServerRuntimeKind = "local" | "docker_itzg";
 
 export type LocalStartupMode = "starter" | "jar" | "bat" | "sh" | "ps1" | "custom";
 
+export type CpuPolicyMode = "off" | "count" | "explicit";
+
+export interface CpuPolicyConfig {
+  mode: CpuPolicyMode;
+  count?: number | null;
+  explicit_set?: string | null;
+  sync_active_processor_count: boolean;
+}
+
+export type JvmPresetId =
+  | "none"
+  | "g1_basic"
+  | "aikar_g1"
+  | "throughput_basic"
+  | "paper_recommended_lite";
+
+export interface JvmPresetConfig {
+  preset: JvmPresetId;
+}
+
 export interface LocalRuntimeConfig {
   kind: "local";
   jar_path: string;
@@ -9,6 +29,8 @@ export interface LocalRuntimeConfig {
   custom_command?: string | null;
   java_path: string;
   jvm_args: string[];
+  cpu_policy: CpuPolicyConfig;
+  jvm_preset: JvmPresetConfig;
 }
 
 export interface PublishedPort {
@@ -47,6 +69,9 @@ export interface DockerItzgRuntimeConfig {
   docker_backend_kind: DockerBackendKind;
   command_mode: DockerCommandMode;
   rcon?: RconConfig | null;
+  jvm_args: string[];
+  cpu_policy: CpuPolicyConfig;
+  jvm_preset: JvmPresetConfig;
 }
 
 export type ServerRuntimeConfig = LocalRuntimeConfig | DockerItzgRuntimeConfig;
@@ -94,4 +119,34 @@ export interface ServerCommand {
   id: string;
   name: string;
   command: string;
+}
+
+export interface LocalLaunchDetail {
+  startup_mode: LocalStartupMode;
+  java_path: string;
+  launch_target: string;
+  effective_jvm_args: string[];
+  command_preview: string;
+}
+
+export interface DockerLaunchDetail {
+  runtime_kind: "docker_itzg";
+  image: string;
+  image_tag: string;
+  container_name: string;
+  cpuset_applied: string | null;
+  jvm_preset: JvmPresetId | string;
+  jvm_opts_args_count: number;
+  jvm_xx_opts_args_count: number;
+  jvm_opts_overridden_by_runtime_env: boolean;
+  jvm_xx_opts_overridden_by_runtime_env: boolean;
+  active_processor_count_status:
+    | "disabled"
+    | "injected"
+    | "skipped_by_jvm_args"
+    | "skipped_by_runtime_env_override"
+    | string;
+  active_processor_count_value: number | null;
+  docker_args_preview: string[];
+  command_preview: string;
 }

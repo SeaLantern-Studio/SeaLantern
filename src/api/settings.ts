@@ -1,5 +1,6 @@
 import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import type { JavaInfo } from "@api/java";
+import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 
 export type WindowEffect = "off" | "auto" | "blur" | "acrylic" | "mica" | "vibrancy";
 
@@ -25,7 +26,9 @@ export interface AppSettings {
   default_min_memory: number;
   default_port: number;
   default_java_path: string;
-  default_jvm_args: string;
+  default_jvm_args: string[];
+  default_cpu_policy: CpuPolicyConfig;
+  default_jvm_preset: JvmPresetConfig;
   console_font_size: number;
   console_font_family: string;
   console_letter_spacing: number;
@@ -66,7 +69,9 @@ export interface PartialSettings {
   default_min_memory?: number;
   default_port?: number;
   default_java_path?: string;
-  default_jvm_args?: string;
+  default_jvm_args?: string[];
+  default_cpu_policy?: CpuPolicyConfig;
+  default_jvm_preset?: JvmPresetConfig;
   console_font_size?: number;
   console_font_family?: string;
   console_letter_spacing?: number;

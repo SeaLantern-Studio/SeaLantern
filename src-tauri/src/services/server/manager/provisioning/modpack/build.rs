@@ -45,7 +45,9 @@ pub(super) fn build_modpack_server_instance(
             startup_mode: startup.startup_mode,
             custom_command: startup.custom_command,
             java_path: req.java_path,
-            jvm_args: Vec::new(),
+            jvm_args: req.jvm_args,
+            cpu_policy: req.cpu_policy,
+            jvm_preset: req.jvm_preset,
         }),
     }
 }

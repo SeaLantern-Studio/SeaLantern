@@ -1,4 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
+import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 
 /**
  * 配置条目
@@ -26,6 +27,9 @@ export interface ServerProperties {
 export interface SLStartupConfig {
   max_memory: number | null;
   min_memory: number | null;
+  jvm_args: string[];
+  cpu_policy: CpuPolicyConfig;
+  jvm_preset: JvmPresetConfig;
 }
 
 /**

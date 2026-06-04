@@ -64,7 +64,16 @@ const defaultSettings: AppSettings = {
   default_min_memory: 1024,
   default_port: 25565,
   default_java_path: "",
-  default_jvm_args: "",
+  default_jvm_args: [],
+  default_cpu_policy: {
+    mode: "off",
+    count: null,
+    explicit_set: null,
+    sync_active_processor_count: true,
+  },
+  default_jvm_preset: {
+    preset: "none",
+  },
   console_font_size: 12,
   console_font_family: "",
   console_letter_spacing: 0,

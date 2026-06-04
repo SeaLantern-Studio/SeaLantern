@@ -55,7 +55,9 @@ pub(super) fn create_server(
             startup_mode: normalize_startup_mode(&req.startup_mode).to_string(),
             custom_command: req.custom_command,
             java_path: req.java_path,
-            jvm_args: Vec::new(),
+            jvm_args: req.jvm_args,
+            cpu_policy: req.cpu_policy,
+            jvm_preset: req.jvm_preset,
         }),
     };
 
@@ -97,6 +99,9 @@ mod tests {
             server_path: Some(server_dir.to_string_lossy().to_string()),
             startup_mode: "custom".to_string(),
             custom_command: Some("powershell -File start.ps1".to_string()),
+            jvm_args: Vec::new(),
+            cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+            jvm_preset: crate::models::server::JvmPresetConfig::default(),
         };
 
         let server = create_server(&manager, req).expect("server should be created");
@@ -124,6 +129,9 @@ mod tests {
             server_path: Some(server_dir.to_string_lossy().to_string()),
             startup_mode: "jar".to_string(),
             custom_command: None,
+            jvm_args: Vec::new(),
+            cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+            jvm_preset: crate::models::server::JvmPresetConfig::default(),
         };
 
         let server = create_server(&manager, req).expect("server should be created");

@@ -500,8 +500,8 @@ mod tests {
         DEFAULT_LOG_LINES,
     };
     use crate::models::server::{
-        DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig, LocalRuntimeConfig,
-        ServerInstance, ServerRuntimeConfig,
+        CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
+        JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
     use crate::utils::cli::server_args::{CliMode, WebMode};
     use crate::utils::cli::server_manage_render::redact_secret;
@@ -529,7 +529,9 @@ mod tests {
                 startup_mode: "jar".to_string(),
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
-                jvm_args: vec![],
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }
@@ -829,6 +831,9 @@ mod tests {
                 docker_backend_kind: DockerBackendKind::Cli,
                 command_mode: DockerCommandMode::Rcon,
                 rcon: None,
+                jvm_args: vec![],
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         };
 

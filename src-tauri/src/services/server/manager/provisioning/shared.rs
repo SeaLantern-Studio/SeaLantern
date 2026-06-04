@@ -61,6 +61,9 @@ pub(super) fn write_sl_startup_config(
     let config = crate::commands::server::config::SLStartupConfig {
         max_memory: Some(max_memory),
         min_memory: Some(min_memory),
+        jvm_args: Vec::new(),
+        cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+        jvm_preset: crate::models::server::JvmPresetConfig::default(),
     };
     let content =
         serde_json::to_string_pretty(&config).map_err(|e| format!("序列化 SL.json 失败: {}", e))?;

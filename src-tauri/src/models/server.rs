@@ -10,6 +10,10 @@ fn default_runtime_kind() -> String {
     "local".to_string()
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ServerStatus {
     Stopped,
@@ -29,6 +33,65 @@ impl ServerStatus {
             ServerStatus::Error => "error",
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CpuPolicyMode {
+    #[default]
+    Off,
+    Count,
+    Explicit,
+}
+
+impl CpuPolicyMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::Count => "count",
+            Self::Explicit => "explicit",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CpuPolicyConfig {
+    #[serde(default)]
+    pub mode: CpuPolicyMode,
+    #[serde(default)]
+    pub count: Option<u16>,
+    #[serde(default)]
+    pub explicit_set: Option<String>,
+    #[serde(default = "default_true")]
+    pub sync_active_processor_count: bool,
+}
+
+impl Default for CpuPolicyConfig {
+    fn default() -> Self {
+        Self {
+            mode: CpuPolicyMode::Off,
+            count: None,
+            explicit_set: None,
+            sync_active_processor_count: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum JvmPresetId {
+    #[default]
+    None,
+    G1Basic,
+    AikarG1,
+    ThroughputBasic,
+    PaperRecommendedLite,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct JvmPresetConfig {
+    #[serde(default)]
+    pub preset: JvmPresetId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,6 +134,10 @@ pub struct LocalRuntimeConfig {
     pub java_path: String,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,6 +159,12 @@ pub struct DockerItzgRuntimeConfig {
     pub command_mode: DockerCommandMode,
     #[serde(default)]
     pub rcon: Option<RconConfig>,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -209,6 +282,8 @@ impl Default for ServerRuntimeConfig {
             custom_command: None,
             java_path: String::new(),
             jvm_args: Vec::new(),
+            cpu_policy: CpuPolicyConfig::default(),
+            jvm_preset: JvmPresetConfig::default(),
         })
     }
 }
@@ -243,6 +318,12 @@ pub struct CreateServerRequest {
     pub startup_mode: String,
     #[serde(default)]
     pub custom_command: Option<String>,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -271,6 +352,12 @@ pub struct ImportServerRequest {
     pub min_memory: u32,
     pub port: u16,
     pub online_mode: bool,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -297,6 +384,12 @@ pub struct ImportModpackRequest {
     pub core_type: Option<String>,
     #[serde(default)]
     pub mc_version: Option<String>,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -317,6 +410,12 @@ pub struct AddExistingServerRequest {
     pub core_type: Option<String>,
     #[serde(default)]
     pub mc_version: Option<String>,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -362,9 +461,9 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::{
-        DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig, LocalRuntimeConfig,
-        PublishedPort, ServerInstance, ServerRuntimeConfig, ServerStatus, ServerStatusInfo,
-        VolumeMount,
+        CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
+        JvmPresetConfig, LocalRuntimeConfig, PublishedPort, ServerInstance, ServerRuntimeConfig,
+        ServerStatus, ServerStatusInfo, VolumeMount,
     };
 
     fn sample_local_server() -> ServerInstance {
@@ -388,6 +487,8 @@ mod tests {
                 custom_command: Some("java -jar server.jar nogui".to_string()),
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: vec!["-Xmx2G".to_string()],
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }
@@ -432,6 +533,9 @@ mod tests {
                 docker_backend_kind: DockerBackendKind::Cli,
                 command_mode: DockerCommandMode::Rcon,
                 rcon: None,
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }

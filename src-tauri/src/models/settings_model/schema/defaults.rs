@@ -1,4 +1,5 @@
 use super::AppSettings;
+use crate::models::server::{CpuPolicyConfig, JvmPresetConfig};
 
 /// 创建默认设置
 impl Default for AppSettings {
@@ -11,7 +12,9 @@ impl Default for AppSettings {
             default_min_memory: 512,
             default_port: 25565,
             default_java_path: String::new(),
-            default_jvm_args: String::new(),
+            default_jvm_args: Vec::new(),
+            default_cpu_policy: CpuPolicyConfig::default(),
+            default_jvm_preset: JvmPresetConfig::default(),
             console_font_size: 13,
             console_font_family: String::new(),
             console_letter_spacing: 0,

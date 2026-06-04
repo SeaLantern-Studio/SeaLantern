@@ -45,7 +45,9 @@ pub(super) fn resolve_server_reference_from_servers(
 #[cfg(test)]
 mod tests {
     use super::resolve_server_reference_from_servers;
-    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::models::server::{
+        CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+    };
 
     fn sample_local_server(name: &str, alias: &str) -> ServerInstance {
         ServerInstance {
@@ -67,7 +69,9 @@ mod tests {
                 startup_mode: "jar".to_string(),
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
-                jvm_args: vec![],
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }

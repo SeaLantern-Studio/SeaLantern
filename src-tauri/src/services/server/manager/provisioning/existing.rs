@@ -105,7 +105,9 @@ pub(super) fn add_existing_server(
             startup_mode,
             custom_command,
             java_path: req.java_path,
-            jvm_args: Vec::new(),
+            jvm_args: req.jvm_args,
+            cpu_policy: req.cpu_policy,
+            jvm_preset: req.jvm_preset,
         }),
     };
 
@@ -117,7 +119,7 @@ pub(super) fn add_existing_server(
 #[cfg(test)]
 mod tests {
     use super::add_existing_server;
-    use crate::models::server::AddExistingServerRequest;
+    use crate::models::server::{AddExistingServerRequest, CpuPolicyConfig, JvmPresetConfig};
     use crate::services::server::manager::ServerManager;
     use tempfile::tempdir;
 
@@ -142,6 +144,9 @@ mod tests {
             custom_command: None,
             core_type: Some("Paper".to_string()),
             mc_version: Some("1.21.1".to_string()),
+            jvm_args: Vec::new(),
+            cpu_policy: CpuPolicyConfig::default(),
+            jvm_preset: JvmPresetConfig::default(),
         };
 
         let server = add_existing_server(&manager, req).expect("existing server should be added");

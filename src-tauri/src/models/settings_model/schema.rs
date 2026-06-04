@@ -1,8 +1,9 @@
 #[path = "schema/defaults.rs"]
 mod defaults;
 
+use crate::models::server::{CpuPolicyConfig, JvmPresetConfig};
 use crate::services::java_detector::JavaInfo;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use defaults::{
     default_allowed_commands, default_bg_blur, default_bg_brightness, default_bg_opacity,
@@ -19,6 +20,45 @@ pub const WINDOW_EFFECT_BLUR: &str = "blur";
 pub const WINDOW_EFFECT_ACRYLIC: &str = "acrylic";
 pub const WINDOW_EFFECT_MICA: &str = "mica";
 pub const WINDOW_EFFECT_VIBRANCY: &str = "vibrancy";
+
+fn deserialize_jvm_args<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum JvmArgsRepr {
+        String(String),
+        Array(Vec<String>),
+    }
+
+    let value = Option::<JvmArgsRepr>::deserialize(deserializer)?;
+    Ok(match value {
+        Some(JvmArgsRepr::String(raw)) => {
+            raw.split_whitespace().map(|arg| arg.to_string()).collect()
+        }
+        Some(JvmArgsRepr::Array(values)) => values,
+        None => Vec::new(),
+    })
+}
+
+fn deserialize_optional_jvm_args<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum JvmArgsRepr {
+        String(String),
+        Array(Vec<String>),
+    }
+
+    let value = Option::<JvmArgsRepr>::deserialize(deserializer)?;
+    Ok(value.map(|repr| match repr {
+        JvmArgsRepr::String(raw) => raw.split_whitespace().map(|arg| arg.to_string()).collect(),
+        JvmArgsRepr::Array(values) => values,
+    }))
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct TextColorOverrides {
@@ -70,8 +110,14 @@ pub struct AppSettings {
     #[serde(default)]
     pub default_java_path: String,
 
+    #[serde(default, deserialize_with = "deserialize_jvm_args")]
+    pub default_jvm_args: Vec<String>,
+
     #[serde(default)]
-    pub default_jvm_args: String,
+    pub default_cpu_policy: CpuPolicyConfig,
+
+    #[serde(default)]
+    pub default_jvm_preset: JvmPresetConfig,
 
     #[serde(default = "default_console_font")]
     pub console_font_size: u32,
@@ -182,8 +228,15 @@ pub struct PartialSettings {
     pub default_port: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_java_path: Option<String>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_optional_jvm_args"
+    )]
+    pub default_jvm_args: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_jvm_args: Option<String>,
+    pub default_cpu_policy: Option<CpuPolicyConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_jvm_preset: Option<JvmPresetConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub console_font_size: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use crate::models::server::{AddExistingServerRequest, CreateServerRequest};
+use crate::models::server::{
+    AddExistingServerRequest, CpuPolicyConfig, CreateServerRequest, JvmPresetConfig,
+};
 use crate::services::server::installer::{detect_core_type, find_server_jar, CoreType};
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::PreparedPorts;
@@ -178,6 +180,9 @@ pub(super) fn build_local_create_request(
                 .clone()
                 .filter(|_| resolved_entry_path.is_none())
         },
+        jvm_args: Vec::new(),
+        cpu_policy: CpuPolicyConfig::default(),
+        jvm_preset: JvmPresetConfig::default(),
     })
 }
 
@@ -282,6 +287,9 @@ pub(super) fn build_local_attach_request(
                     infer_mc_version_from_folder(folder_path, executable_hint.as_deref())
                 })
             }),
+        jvm_args: Vec::new(),
+        cpu_policy: CpuPolicyConfig::default(),
+        jvm_preset: JvmPresetConfig::default(),
     })
 }
 

@@ -17,6 +17,8 @@ impl AppSettings {
             || self.default_port != other.default_port
             || self.default_java_path != other.default_java_path
             || self.default_jvm_args != other.default_jvm_args
+            || self.default_cpu_policy != other.default_cpu_policy
+            || self.default_jvm_preset != other.default_jvm_preset
             || self.cached_java_list != other.cached_java_list
         {
             changed.push(SettingsGroup::ServerDefaults);

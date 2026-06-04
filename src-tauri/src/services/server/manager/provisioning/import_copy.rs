@@ -77,7 +77,9 @@ pub(super) fn import_server(
             startup_mode,
             custom_command: req.custom_command,
             java_path: req.java_path,
-            jvm_args: Vec::new(),
+            jvm_args: req.jvm_args,
+            cpu_policy: req.cpu_policy,
+            jvm_preset: req.jvm_preset,
         }),
     };
 

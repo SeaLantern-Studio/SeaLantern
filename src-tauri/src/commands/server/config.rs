@@ -1,4 +1,5 @@
 use crate::models::config::ServerProperties;
+use crate::models::server::{CpuPolicyConfig, JvmPresetConfig};
 use crate::services::server::config as config_parser;
 use crate::utils::logger;
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,12 @@ pub struct SLStartupConfig {
     pub max_memory: Option<u32>,
     #[serde(default)]
     pub min_memory: Option<u32>,
+    #[serde(default)]
+    pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub cpu_policy: CpuPolicyConfig,
+    #[serde(default)]
+    pub jvm_preset: JvmPresetConfig,
 }
 
 fn validate_config_path(path: &str) -> Result<(), String> {
