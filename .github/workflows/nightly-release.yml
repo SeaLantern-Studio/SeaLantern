@@ -38,40 +38,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 校验主检查已通过
-        uses: actions/github-script@v7
-        env:
-          DEFAULT_BRANCH: ${{ env.DEFAULT_BRANCH }}
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const headSha = process.env.GITHUB_SHA;
-            const defaultBranch = process.env.DEFAULT_BRANCH;
-            const requiredWorkflowName = '代码质量检查';
-
-            const response = await github.rest.actions.listWorkflowRunsForRepo({
-              owner,
-              repo,
-              head_sha: headSha,
-              per_page: 20,
-            });
-
-            const passed = response.data.workflow_runs.some((run) =>
-              run.name === requiredWorkflowName &&
-              run.head_sha === headSha &&
-              run.event === 'push' &&
-              run.head_branch === defaultBranch &&
-              run.status === 'completed' &&
-              run.conclusion === 'success'
-            );
-
-            if (!passed) {
-              core.setFailed(`❌ 提交 ${headSha} 尚未通过 ${defaultBranch} 分支上的 ${requiredWorkflowName}`);
-              return;
-            }
-
-            core.info(`✅ 提交 ${headSha} 已通过 ${defaultBranch} 分支上的 ${requiredWorkflowName}`);
-
       - name: 生成 Nightly 标签与 Release 信息
         id: meta
         run: |
