@@ -60,7 +60,6 @@ pub(crate) fn start_local_runtime(
     let startup_filename = launch::context::startup_filename(startup_path.as_str());
     let starter_installer_url = launch::context::resolve_starter_installer_url(id, server)?;
     let launch_context = launch::context::LaunchContext {
-        manager,
         server,
         settings: &settings,
         startup_mode,

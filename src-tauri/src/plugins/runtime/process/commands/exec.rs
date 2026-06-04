@@ -288,7 +288,7 @@ fn join_pipe_reader(
 }
 
 fn timeout_error_message(timeout: Duration) -> String {
-    if timeout.as_millis() % 1000 == 0 {
+    if timeout.as_millis().is_multiple_of(1000) {
         format!("Process execution exceeded maximum duration of {} seconds", timeout.as_secs())
     } else {
         format!("Process execution exceeded maximum duration of {} ms", timeout.as_millis())

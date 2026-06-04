@@ -268,14 +268,12 @@ mod tests {
     }
 
     fn test_launch_context<'a>(
-        manager: &'a ServerManager,
         server: &'a ServerInstance,
         settings: &'a AppSettings,
         startup_mode: StartupMode,
         startup_filename: &str,
     ) -> LaunchContext<'a> {
         LaunchContext {
-            manager,
             server,
             settings,
             startup_mode,
@@ -316,11 +314,9 @@ mod tests {
     #[test]
     fn custom_command_keeps_user_shell_text_and_injects_java_via_process_envs() {
         let temp_dir = TempDir::new().expect("temp dir should exist");
-        let manager = ServerManager::new();
         let settings = test_settings();
         let server = test_server(temp_dir.path(), "custom", Some("echo launch ready"));
-        let context =
-            test_launch_context(&manager, &server, &settings, StartupMode::Custom, "ignored.bat");
+        let context = test_launch_context(&server, &settings, StartupMode::Custom, "ignored.bat");
 
         let command = build_custom_command(&context).expect("custom command should build");
         let args = command
@@ -346,11 +342,9 @@ mod tests {
     #[test]
     fn sh_command_prepares_user_jvm_args_and_injects_java_via_process_envs() {
         let temp_dir = TempDir::new().expect("temp dir should exist");
-        let manager = ServerManager::new();
         let settings = test_settings();
         let server = test_server(temp_dir.path(), "sh", None);
-        let context =
-            test_launch_context(&manager, &server, &settings, StartupMode::Sh, "start.sh");
+        let context = test_launch_context(&server, &settings, StartupMode::Sh, "start.sh");
 
         let command = build_sh_command(&context).expect("sh command should build");
         let args = command
@@ -369,11 +363,9 @@ mod tests {
     #[test]
     fn ps1_command_uses_process_env_injection_instead_of_inline_cmd_prefix() {
         let temp_dir = TempDir::new().expect("temp dir should exist");
-        let manager = ServerManager::new();
         let settings = test_settings();
         let server = test_server(temp_dir.path(), "ps1", None);
-        let context =
-            test_launch_context(&manager, &server, &settings, StartupMode::Ps1, "start.ps1");
+        let context = test_launch_context(&server, &settings, StartupMode::Ps1, "start.ps1");
 
         let command = build_ps1_command(&context).expect("ps1 command should build");
         let args = command
