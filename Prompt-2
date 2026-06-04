@@ -1,51 +1,46 @@
 你是 Code Agent 2。
 
-这轮任务进入实现。你只负责“本地运行时 MVP”的代码修改，不要碰共享 schema 定义，不要碰 Docker 运行时，不要碰前端页面。
+这轮任务只补“真实启动详情接口闭环”，不要碰前端页面，不要处理建服默认值。
 
 调度说明：这是第一阶段任务，可与 `Prompt-1` 并行启动。
 
-唯一输出要求：正常修改代码，并把你的过程结果直接写入 `.cache2`，不要口述回复，不要 commit。
+唯一输出要求：正常修改代码，并把结果写入 `.cache2`，不要口述回复，不要 commit。
 
 必须遵守：
-- 允许编辑与你职责相关的 Rust 文件。
-- 不要编辑 `src-tauri/src/models/server.rs` 里的结构定义，除非为编译对接必须最小引用；schema 主改动由 `Prompt-1` 负责。
-- 不要编辑 Docker 运行时文件。
-- 不要编辑任何前端文件。
+- 允许编辑 Rust 后端、必要的 Tauri command 注册、必要的 TS API 层。
+- 不要编辑 `.vue` 页面组件。
+- 不要改 schema 主结构，除非为了接口返回类型最小补充。
 - 不要 commit。
 
 必须阅读：
+- `src-tauri/src/commands/server/manage.rs`
+- `src-tauri/src/commands/server/manage/runtime.rs`
+- `src-tauri/src/runtime/command_catalog.rs`
+- `src-tauri/src/services/server/manager/runtime_start/local_launch_detail.rs`
+- `src-tauri/src/services/server/runtime/docker_itzg/helpers.rs`
+- `src/api/server.ts`
 - `.cache2`
-- `.cache1`
-- `src-tauri/src/services/server/manager/startup_support.rs`
-- `src-tauri/src/services/server/manager/runtime_start/launch/command_builder.rs`
-- `src-tauri/src/services/server/manager/runtime_start/launch/runner.rs`
-- `src-tauri/src/services/server/runtime/local.rs`
-- `src-tauri/src/services/server/manager/runtime_start/launch/context.rs`
+- `.cache3`
 
 本轮你应该实现的范围：
-1. 只对 `jar` / `starter` 两种模式实现本地 CPU policy 支持。
-2. 实现 `-XX:ActiveProcessorCount` 自动注入逻辑。
-3. 实现用户显式参数冲突时跳过自动注入。
-4. 在 `spawn` 后按 PID 应用本地 affinity。
-5. 为前端和 inspect 准备“本地启动详情”所需的后端信息，至少要能稳定拿到：
+1. 检查并补齐前端可直接调用的 API：
+   - `get_local_launch_detail`
+   - `get_docker_launch_detail`
+2. 如果 TS API 层还没暴露对应方法，补上它们。
+3. 返回类型要能让前端直接显示：
    - 启动方式
-   - Java 路径
-   - 启动目标
-   - 实际会带上的 JVM 参数列表
-   - 可展示的启动命令概览
-6. 补本地日志与测试。
+   - 启动命令概览
+   - 实际 JVM 参数或可展示的参数概览
+   - 预设应用状态
+4. 补上最小验证，确保这两条接口可用。
 
 本轮不要做：
-- 不要给 `bat/sh/ps1/custom` 加任何 CPU policy 支持。
-- 不要改 Docker 逻辑。
-- 不要改前端。
-- 不要扩写 schema 结构定义。
-
-如果因为 `Prompt-1` 还没落 schema 导致你无法编译，可以先按最小 stub 方式完成本地逻辑改造，并在 `.cache2` 里明确写出需要 `Prompt-1` 对接的编译点。
+- 不要改前端 UI。
+- 不要改建服默认值返回。
 
 完成后 `.cache2` 输出格式：
 - `已修改文件`
 - `完成内容`
-- `启动详情对外提供了什么`
-- `需要 schema 对接的点`
+- `前端现在可以直接调用什么`
+- `验证结果`
 - `遗留风险`
