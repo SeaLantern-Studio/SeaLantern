@@ -287,41 +287,19 @@ impl LocalServerRuntime {
             return Ok(None);
         };
 
-        let status = if manager.is_stopping(&server.id) {
-            ServerStatus::Stopping
-        } else if snapshot.running && manager.is_starting(&server.id) {
+        let is_starting = manager.is_starting(&server.id);
+        let status =
+            local_helper::helper_runtime_status(&snapshot, manager.is_stopping(&server.id));
+
+        if snapshot.running && is_starting {
             manager.clear_starting(&server.id);
-            ServerStatus::Running
-        } else if snapshot.running {
-            ServerStatus::Running
-        } else if snapshot.error_message.is_some() {
-            ServerStatus::Error
-        } else {
-            ServerStatus::Stopped
-        };
+        }
 
         if !snapshot.running {
             control::clear_runtime_flags(manager, &server.id);
         }
 
-        let detail_message = if snapshot.running {
-            snapshot.detail_message
-        } else {
-            format!(
-                "runtime=local running=false source=helper exit_code={}",
-                snapshot
-                    .exit_code
-                    .map(|value| value.to_string())
-                    .unwrap_or_else(|| "none".to_string())
-            )
-        };
-
-        Ok(Some(RuntimeStatusSnapshot {
-            status,
-            pid: snapshot.pid,
-            detail_message: Some(detail_message),
-            error_message: snapshot.error_message,
-        }))
+        Ok(Some(local_helper::runtime_snapshot_from_helper(snapshot, status)))
     }
 }
 
@@ -540,49 +518,13 @@ impl ServerRuntime for LocalServerRuntime {
     }
 
     fn status(&self, server: &ServerInstance) -> Result<RuntimeStatusSnapshot, String> {
-        match local_helper::read_state(server) {
-            Some(_) => Ok(local_helper::status_snapshot(server)?.map_or(
-                RuntimeStatusSnapshot {
-                    status: ServerStatus::Stopped,
-                    pid: None,
-                    detail_message: Some(
-                        "runtime=local is_running=false exit_code=none source=state_absent"
-                            .to_string(),
-                    ),
-                    error_message: None,
-                },
-                |snapshot| RuntimeStatusSnapshot {
-                    status: if snapshot.running {
-                        ServerStatus::Running
-                    } else if snapshot.error_message.is_some() {
-                        ServerStatus::Error
-                    } else {
-                        ServerStatus::Stopped
-                    },
-                    pid: snapshot.pid,
-                    detail_message: Some(if snapshot.running {
-                        snapshot.detail_message
-                    } else {
-                        format!(
-                            "runtime=local running=false source=helper exit_code={}",
-                            snapshot
-                                .exit_code
-                                .map(|value| value.to_string())
-                                .unwrap_or_else(|| "none".to_string())
-                        )
-                    }),
-                    error_message: snapshot.error_message,
-                },
-            )),
-            None => Ok(RuntimeStatusSnapshot {
-                status: ServerStatus::Stopped,
-                pid: None,
-                detail_message: Some(
-                    "runtime=local is_running=false exit_code=none source=state_absent".to_string(),
-                ),
-                error_message: None,
-            }),
-        }
+        Ok(local_helper::status_snapshot(server)?.map_or_else(
+            local_helper::stopped_runtime_snapshot,
+            |snapshot| {
+                let status = local_helper::helper_runtime_status(&snapshot, false);
+                local_helper::runtime_snapshot_from_helper(snapshot, status)
+            },
+        ))
     }
 
     fn status_with_manager(
@@ -625,14 +567,7 @@ impl ServerRuntime for LocalServerRuntime {
         }
 
         control::clear_runtime_flags(manager, &server.id);
-        Ok(RuntimeStatusSnapshot {
-            status: ServerStatus::Stopped,
-            pid: None,
-            detail_message: Some(
-                "runtime=local is_running=false exit_code=none source=state_absent".to_string(),
-            ),
-            error_message: None,
-        })
+        Ok(local_helper::stopped_runtime_snapshot())
     }
 }
 
@@ -651,10 +586,12 @@ mod tests {
         LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig, ServerStatus,
     };
     use crate::services::server::manager::ServerManager;
+    use crate::services::server::runtime::local_helper::{state_file_path, LocalRuntimeState};
     use crate::services::server::runtime::ServerRuntime;
     use std::process::Command;
+    use tempfile::tempdir;
 
-    fn local_server() -> ServerInstance {
+    fn local_server_at(path: String) -> ServerInstance {
         ServerInstance {
             id: "local-alpha".to_string(),
             name: "Local Alpha".to_string(),
@@ -662,7 +599,7 @@ mod tests {
             core_type: "fabric".to_string(),
             core_version: "fabric".to_string(),
             mc_version: "1.20.1".to_string(),
-            path: "E:/tmp/local-alpha".to_string(),
+            path,
             port: 25565,
             max_memory: 4096,
             min_memory: 2048,
@@ -677,6 +614,17 @@ mod tests {
                 jvm_args: Vec::new(),
             }),
         }
+    }
+
+    fn local_server() -> ServerInstance {
+        local_server_at("E:/tmp/local-alpha".to_string())
+    }
+
+    fn write_state_fixture(server: &ServerInstance, state: &LocalRuntimeState) {
+        let content =
+            serde_json::to_string_pretty(state).expect("test state should serialize successfully");
+        std::fs::write(state_file_path(server), content)
+            .expect("test state file should be written successfully");
     }
 
     #[test]
@@ -773,5 +721,68 @@ mod tests {
         } else {
             panic!("expected child process to remain tracked for pid={}", pid);
         }
+    }
+
+    #[test]
+    fn local_status_uses_state_file_fallback_when_helper_is_unavailable() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = local_server_at(temp_dir.path().to_string_lossy().to_string());
+        let state = LocalRuntimeState {
+            server_id: server.id.clone(),
+            helper_pid: u32::MAX,
+            child_pid: Some(u32::MAX),
+            control_port: Some(25570),
+            auth_token: "token".to_string(),
+            running: true,
+            exit_code: Some(7),
+            detail_message: "runtime=local running=true source=helper".to_string(),
+            error_message: Some("server crashed".to_string()),
+            updated_at: 123,
+        };
+        write_state_fixture(&server, &state);
+
+        let snapshot = LocalServerRuntime
+            .status(&server)
+            .expect("status should succeed");
+
+        assert_eq!(snapshot.status, ServerStatus::Error);
+        assert_eq!(snapshot.pid, None);
+        assert_eq!(
+            snapshot.detail_message.as_deref(),
+            Some("runtime=local running=false source=helper exit_code=7")
+        );
+        assert_eq!(snapshot.error_message.as_deref(), Some("server crashed"));
+    }
+
+    #[test]
+    fn local_status_with_manager_reports_error_from_state_file_fallback() {
+        let manager = ServerManager::new();
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = local_server_at(temp_dir.path().to_string_lossy().to_string());
+        let state = LocalRuntimeState {
+            server_id: server.id.clone(),
+            helper_pid: u32::MAX,
+            child_pid: Some(u32::MAX),
+            control_port: Some(25570),
+            auth_token: "token".to_string(),
+            running: true,
+            exit_code: Some(7),
+            detail_message: "runtime=local running=true source=helper".to_string(),
+            error_message: Some("server crashed".to_string()),
+            updated_at: 123,
+        };
+        write_state_fixture(&server, &state);
+
+        let snapshot = LocalServerRuntime
+            .status_with_manager(&manager, &server)
+            .expect("status should succeed");
+
+        assert_eq!(snapshot.status, ServerStatus::Error);
+        assert_eq!(snapshot.pid, None);
+        assert_eq!(
+            snapshot.detail_message.as_deref(),
+            Some("runtime=local running=false source=helper exit_code=7")
+        );
+        assert_eq!(snapshot.error_message.as_deref(), Some("server crashed"));
     }
 }

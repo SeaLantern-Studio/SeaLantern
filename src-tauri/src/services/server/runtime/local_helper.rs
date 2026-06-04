@@ -2,16 +2,21 @@ mod dispatch;
 mod protocol;
 mod snapshot;
 mod state;
+mod status;
 
-pub use state::{read_state, LocalHelperStatusSnapshot, LocalRuntimeState};
+pub use state::{read_state, state_file_path, LocalHelperStatusSnapshot, LocalRuntimeState};
+pub(crate) use status::{
+    helper_runtime_status, runtime_snapshot_from_helper, stopped_runtime_snapshot,
+};
 
 use self::dispatch::handle_connection;
 use self::protocol::{send_request, LocalHelperRequest};
 use self::snapshot::detect_terminal_snapshot;
 use self::state::{
     current_timestamp_secs, persist_terminal_state, remove_state_file, started_state,
-    state_file_path, state_from_requested_stop, state_from_terminal_snapshot, write_state_file,
+    state_from_requested_stop, state_from_terminal_snapshot, write_state_file,
 };
+use self::status::fallback_snapshot_from_state_file;
 use crate::models::server::ServerInstance;
 use crate::services::global;
 use crate::services::server::log_pipeline as server_log_pipeline;
@@ -201,52 +206,7 @@ pub fn status_snapshot(
         return Ok(response.snapshot);
     }
 
-    let child_running = if state.running {
-        state.child_pid.filter(|pid| is_process_alive(*pid))
-    } else {
-        None
-    };
-    let detail_message = if child_running.is_some() {
-        format!(
-            "runtime=local running=true source=state_file helper=unavailable exit_code={}",
-            state
-                .exit_code
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string())
-        )
-    } else if state.running {
-        format!(
-            "runtime=local running=false source=state_file helper=exited exit_code={}",
-            state
-                .exit_code
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string())
-        )
-    } else {
-        format!(
-            "runtime=local running=false source=state_file exit_code={}",
-            state
-                .exit_code
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string())
-        )
-    };
-    let error_message = if child_running.is_some() {
-        Some(
-            "本地 runtime helper 已退出，但 Java 进程仍在运行；当前无法继续发送命令，建议执行 force-stop 后重新启动"
-                .to_string(),
-        )
-    } else {
-        state.error_message.clone()
-    };
-
-    Ok(Some(LocalHelperStatusSnapshot {
-        running: child_running.is_some(),
-        pid: child_running,
-        exit_code: state.exit_code,
-        detail_message,
-        error_message,
-    }))
+    Ok(Some(fallback_snapshot_from_state_file(&state)))
 }
 
 pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String> {
@@ -446,4 +406,76 @@ fn run_helper(server_id: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::state::{state_file_path, write_state_file};
+    use super::status_snapshot;
+    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use tempfile::tempdir;
+
+    fn test_server(path: String) -> ServerInstance {
+        ServerInstance {
+            id: "local-helper".to_string(),
+            name: "Local Helper".to_string(),
+            aliases: Vec::new(),
+            core_type: "fabric".to_string(),
+            core_version: "fabric".to_string(),
+            mc_version: "1.20.1".to_string(),
+            path,
+            port: 25565,
+            max_memory: 4096,
+            min_memory: 2048,
+            created_at: 0,
+            last_started_at: None,
+            runtime_kind: "local".to_string(),
+            runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
+                jar_path: "server.jar".to_string(),
+                startup_mode: "jar".to_string(),
+                custom_command: None,
+                java_path: "java".to_string(),
+                jvm_args: Vec::new(),
+            }),
+        }
+    }
+
+    #[test]
+    fn helper_status_snapshot_falls_back_to_helper_exited_state_file_when_helper_is_unavailable() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let path = state_file_path(&server);
+
+        write_state_file(
+            &path,
+            &super::LocalRuntimeState {
+                server_id: server.id.clone(),
+                helper_pid: 999_999,
+                child_pid: None,
+                control_port: Some(25570),
+                auth_token: "token".to_string(),
+                running: true,
+                exit_code: None,
+                detail_message:
+                    "runtime=local running=true source=helper child_pid=none control_port=25570"
+                        .to_string(),
+                error_message: None,
+                updated_at: 123,
+            },
+        )
+        .expect("state file should be written");
+
+        let snapshot = status_snapshot(&server)
+            .expect("status should succeed")
+            .expect("fallback snapshot should exist");
+
+        assert!(!snapshot.running);
+        assert_eq!(snapshot.pid, None);
+        assert_eq!(snapshot.exit_code, None);
+        assert_eq!(
+            snapshot.detail_message,
+            "runtime=local running=false source=state_file helper=exited exit_code=none"
+        );
+        assert_eq!(snapshot.error_message, None);
+    }
 }

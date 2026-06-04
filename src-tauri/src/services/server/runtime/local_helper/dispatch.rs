@@ -24,12 +24,9 @@ pub(super) fn handle_connection(
         LocalHelperRequest::Status { .. } => DispatchOutcome::stay_running(status_response(
             snapshot_from_manager(manager, server.id.as_str())?,
         )),
-        LocalHelperRequest::Send { command, .. } => {
-            DispatchOutcome::stay_running(command_response(manager.send_command(
-                &server.id,
-                &command,
-            )))
-        }
+        LocalHelperRequest::Send { command, .. } => DispatchOutcome::stay_running(
+            command_response(manager.send_command(&server.id, &command)),
+        ),
         LocalHelperRequest::Stop { .. } => {
             DispatchOutcome::from_control_result(manager.stop_server(&server.id))
         }
@@ -68,7 +65,11 @@ fn auth_failed_response() -> LocalHelperResponse {
 }
 
 fn status_response(snapshot: super::LocalHelperStatusSnapshot) -> LocalHelperResponse {
-    LocalHelperResponse { ok: true, snapshot: Some(snapshot), error: None }
+    LocalHelperResponse {
+        ok: true,
+        snapshot: Some(snapshot),
+        error: None,
+    }
 }
 
 fn command_response(result: Result<(), String>) -> LocalHelperResponse {

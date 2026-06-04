@@ -227,14 +227,7 @@ mod tests {
 
     #[test]
     fn started_state_populates_initial_helper_control_plane_fields() {
-        let state = started_state(
-            "local-state",
-            11,
-            Some(22),
-            25570,
-            "token".to_string(),
-            456,
-        );
+        let state = started_state("local-state", 11, Some(22), 25570, "token".to_string(), 456);
 
         assert_eq!(state.server_id, "local-state");
         assert_eq!(state.helper_pid, 11);
@@ -284,14 +277,8 @@ mod tests {
         assert!(!next.running);
         assert_eq!(next.exit_code, Some(7));
         assert_eq!(next.updated_at, 789);
-        assert_eq!(
-            next.detail_message,
-            "runtime=local running=false source=helper exit_code=7"
-        );
-        assert_eq!(
-            next.error_message.as_deref(),
-            Some("服务器异常退出 (退出码：7)")
-        );
+        assert_eq!(next.detail_message, "runtime=local running=false source=helper exit_code=7");
+        assert_eq!(next.error_message.as_deref(), Some("服务器异常退出 (退出码：7)"));
     }
 
     #[test]
@@ -307,10 +294,7 @@ mod tests {
         assert_eq!(next.exit_code, None);
         assert_eq!(next.error_message, None);
         assert_eq!(next.updated_at, 999);
-        assert_eq!(
-            next.detail_message,
-            "runtime=local running=false source=helper requested_stop"
-        );
+        assert_eq!(next.detail_message, "runtime=local running=false source=helper requested_stop");
     }
 
     #[test]
@@ -321,10 +305,7 @@ mod tests {
         let next = state_from_requested_stop(&state, 1001);
 
         assert_eq!(next.exit_code, Some(0));
-        assert_eq!(
-            next.detail_message,
-            "runtime=local running=false source=helper exit_code=0"
-        );
+        assert_eq!(next.detail_message, "runtime=local running=false source=helper exit_code=0");
     }
 
     #[test]

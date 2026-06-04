@@ -130,10 +130,7 @@ mod tests {
         let snapshot = terminal_snapshot_from_exit(Some(7));
 
         assert_eq!(snapshot.exit_code, Some(7));
-        assert_eq!(
-            snapshot.error_message.as_deref(),
-            Some("服务器异常退出 (退出码：7)")
-        );
+        assert_eq!(snapshot.error_message.as_deref(), Some("服务器异常退出 (退出码：7)"));
     }
 
     #[test]
