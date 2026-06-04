@@ -1,34 +1,41 @@
 你是 Code Agent 4。
 
-这轮任务只做分析，不做代码实现，不要修改任何业务代码文件。你唯一允许写入的文件是仓库根目录下的 `.cache4`。
+这轮任务只做前端与验证方案收敛，不做代码实现。你唯一允许写入的文件是仓库根目录下的 `.cache4`。
 
-目标：梳理前端和交互层里，这组配置应该以什么形式暴露给用户，现有建服/编辑链路需要补哪些类型、API、表单与提示文案。
+目标：基于上一轮分析和其他方向的结论，产出一份前端 MVP 落地方案，并补一份验证清单，避免后续实现时 UI 字段和后端 schema 再次打架。
 
 必须遵守：
 - 不要编辑除 `.cache4` 之外的任何文件。
 - 不要 commit。
 - 不要口述回复，结果直接写入 `.cache4`。
-- 不要和其他 Agent 假设会同时编辑同一文件；你只负责前端与交互分析。
+- 不要继续发散成“很多可能”，这轮要收敛成一版前端执行方案。
 
-重点阅读范围：
+必须阅读：
+- `.cache1`
+- `.cache4`
+- `docs/server-cpu-affinity-jvm-flags-draft.md`
 - `src/types/server.ts`
 - `src/api/server.ts`
+- `src/api/config.ts`
+- `src/api/settings.ts`
 - `src/components/views/create/ServerStartupConfigStep.vue`
-- `src/components/views/create/startupTypes.ts`
-- `src/components/views/create/startupUtils.ts`
-- `src/views/SettingsView.vue`
+- `src/components/config/ConfigStartupSection.vue`
 - `src/components/views/settings/ServerDefaultsCard.vue`
 - `src/language/zh-CN.json`
-- `docs/server-cpu-affinity-jvm-flags-draft.md`
 
-你要产出到 `.cache4` 的内容：
-1. 当前前端哪几个页面或组件最可能承载这组配置。
-2. 用户输入模型怎么设计更不容易误解。
-3. 文案上哪些地方必须强调“这不是直接提升 MC 主线程性能”。
-4. 建服流程、编辑流程、默认设置流程是否应该共用一套字段。
-5. 前端 MVP 建议，包含字段、控件类型、校验方式、提示文案。
+你要输出到 `.cache4` 的内容：
+1. 前端最终采用的字段模型，必须和共享 schema 保持一致。
+2. 建服页、编辑页、默认设置页三处各自这轮该做到什么，不该做到什么。
+3. 哪些控件先做，哪些延后，避免 UI 先超前于后端支持边界。
+4. i18n key 建议，尽量给出成组 key 名。
+5. 一份验证清单：用户输入、展示、保存、回显、禁用态、错误态、文案提醒。
 
 输出格式：
 - 用中文。
-- 先给“前端落点结论”，再给“推荐交互结构”，再给“文案提醒”，最后给“MVP 建议”。
-- 尽量具体到组件名和语言 key 范围。
+- 按下面顺序输出：
+  1. `前端 MVP 拍板`
+  2. `页面落点与范围`
+  3. `字段与控件映射`
+  4. `i18n key 建议`
+  5. `验证清单`
+- 如果你认为默认设置页这轮不该承载 CPU policy，要直接写清楚。

@@ -1,32 +1,39 @@
 你是 Code Agent 2。
 
-这轮任务只做分析，不做代码实现，不要修改任何业务代码文件。你唯一允许写入的文件是仓库根目录下的 `.cache2`。
+这轮任务只做本地运行时的补丁级实现方案，不做代码实现。你唯一允许写入的文件是仓库根目录下的 `.cache2`。
 
-目标：梳理本地运行时下，CPU 亲和性和 `-XX:ActiveProcessorCount` 应该如何接入，重点看 `jar` / `starter` 与脚本模式的差异。
+目标：基于上一轮分析，产出一份可以直接交给后续实现 Agent 的本地运行时改造方案，精确到函数、分支、日志、测试点。
 
 必须遵守：
 - 不要编辑除 `.cache2` 之外的任何文件。
 - 不要 commit。
 - 不要口述回复，结果直接写入 `.cache2`。
-- 不要和其他 Agent 假设会同时编辑同一文件；你只负责本地运行时分析。
+- 不要再重复宏观讨论，直接给补丁级方案。
 
-重点阅读范围：
+必须阅读：
+- `.cache1`
+- `.cache2`
+- `docs/server-cpu-affinity-jvm-flags-draft.md`
+- `src-tauri/src/services/server/manager/startup_support.rs`
 - `src-tauri/src/services/server/manager/runtime_start/launch/command_builder.rs`
 - `src-tauri/src/services/server/manager/runtime_start/launch/runner.rs`
 - `src-tauri/src/services/server/runtime/local.rs`
-- `src-tauri/src/services/server/runtime/local_helper.rs`
-- `src-tauri/src/services/server/runtime/local_helper/dispatch.rs`
 - `src-tauri/src/models/server.rs`
-- `docs/server-cpu-affinity-jvm-flags-draft.md`
 
-你要产出到 `.cache2` 的内容：
-1. 当前本地启动链路摘要，参数在哪一层组装、在哪一层 `spawn`。
-2. `CPU affinity` 适合放在 `spawn` 前还是 `spawn` 后，分别有什么问题。
-3. `jar` / `starter` / `bat` / `sh` / `ps1` / `custom` 六种模式的支持性判断。
-4. `ActiveProcessorCount` 最适合注入到哪一层，如何避免和用户 `jvm_args` 冲突。
-5. 你建议的本地 MVP 边界。
+你要输出到 `.cache2` 的内容：
+1. 本地 MVP 支持边界最终建议，直接拍板哪些模式支持，哪些不支持。
+2. `ActiveProcessorCount` 的精确注入位置、合成顺序、冲突跳过逻辑。
+3. `CPU affinity` 的精确接入位置，按 Windows / Linux 分开说明。
+4. 需要改动的文件列表，每个文件做什么。
+5. 建议新增的辅助函数签名或模块边界。
+6. 测试与日志补点清单。
 
 输出格式：
 - 用中文。
-- 先给“本地链路结论”，再给“模式支持矩阵”，再给“推荐接入点”，最后给“风险与取舍”。
-- 如果你认为某些模式不该首期支持，要直说。
+- 按下面顺序输出：
+  1. `本地 MVP 拍板`
+  2. `代码改动列表`
+  3. `关键流程伪代码`
+  4. `日志与错误处理`
+  5. `测试点`
+- 如果你认为某个模式首期不该支持，要直接写成排除项。

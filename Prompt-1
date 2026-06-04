@@ -1,30 +1,39 @@
 你是 Code Agent 1。
 
-这轮任务只做分析，不做代码实现，不要修改任何业务代码文件。你唯一允许写入的文件是仓库根目录下的 `.cache1`。
+这轮任务只做收敛和定稿，不做代码实现。你唯一允许写入的文件是仓库根目录下的 `.cache1`。
 
-目标：围绕 Minecraft Server 的 CPU 亲和性、`-XX:ActiveProcessorCount`、JVM flags preset，梳理后端共享数据模型与序列化层应该怎么改。
+目标：基于上一轮四份 `.cache*` 输出，给出这项功能的唯一权威 schema / DTO / 默认值合同，解决冲突，不要再发散方案。
 
 必须遵守：
 - 不要编辑除 `.cache1` 之外的任何文件。
 - 不要 commit。
 - 不要口述回复，结果直接写入 `.cache1`。
-- 不要和其他 Agent 假设会同时编辑同一文件；你只负责分析共享模型层。
+- 你这轮的职责是“拍板合同”，不是继续列选项。
 
-重点阅读范围：
+必须阅读：
+- `.cache1`
+- `.cache2`
+- `.cache3`
+- `.cache4`
+- `docs/server-cpu-affinity-jvm-flags-draft.md`
 - `src-tauri/src/models/server.rs`
-- `src-tauri/src/models/mod.rs`
 - `src/types/server.ts`
 - `src/api/server.ts`
-- `docs/server-cpu-affinity-jvm-flags-draft.md`
 
-你要产出到 `.cache1` 的内容：
-1. 当前数据模型现状摘要。
-2. 建议新增的字段、枚举、默认值、serde 兼容策略。
-3. Rust 与前端 TypeScript 类型如何对齐。
-4. 迁移兼容风险，尤其是已有 `jvm_args`、已有服务器记录、默认值回填。
-5. 最终建议的 schema 草案，尽量具体到字段名。
+你要解决并输出到 `.cache1` 的核心问题：
+1. 最终是否采用 `cpu_policy + jvm_preset + jvm_args`，还是别的结构。
+2. 明确否决或保留 `jvm_preset.extra_args`，不能模糊。
+3. Rust 持久化模型、前端类型、建服 DTO、编辑 DTO、默认设置 DTO 的最终字段名。
+4. 哪些字段应放 runtime 内，哪些不能升到 `ServerInstance` 顶层。
+5. 默认值和兼容迁移规则，要求能兼容旧记录。
 
 输出格式：
 - 用中文。
-- 先给“结论”，再给“涉及文件”，再给“推荐 schema”，再给“风险点”。
-- 只写高价值内容，不要空话。
+- 按下面顺序输出：
+  1. `最终拍板`
+  2. `明确否决项`
+  3. `Rust schema`
+  4. `TypeScript schema`
+  5. `请求/设置 DTO 方案`
+  6. `兼容迁移规则`
+- 不要给多个备选答案，只给你认为应该执行的一版。
