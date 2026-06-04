@@ -9,8 +9,8 @@ use self::dispatch::handle_connection;
 use self::protocol::{send_request, LocalHelperRequest};
 use self::snapshot::detect_terminal_snapshot;
 use self::state::{
-    current_timestamp_secs, persist_terminal_state, remove_state_file, state_file_path,
-    write_state_file,
+    current_timestamp_secs, persist_terminal_state, remove_state_file, started_state,
+    state_file_path, state_from_requested_stop, state_from_terminal_snapshot, write_state_file,
 };
 use crate::models::server::ServerInstance;
 use crate::services::global;
@@ -391,24 +391,14 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         server_log_pipeline::spawn_server_output_reader(server_id.to_string(), stderr);
     }
 
-    let mut state = LocalRuntimeState {
-        server_id: server_id.to_string(),
+    let mut state = started_state(
+        server_id,
         helper_pid,
         child_pid,
-        control_port: Some(control_port),
+        control_port,
         auth_token,
-        running: true,
-        exit_code: None,
-        detail_message: format!(
-            "runtime=local running=true source=helper child_pid={} control_port={}",
-            child_pid
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "none".to_string()),
-            control_port
-        ),
-        error_message: None,
-        updated_at: current_timestamp_secs(),
-    };
+        current_timestamp_secs(),
+    );
 
     let state_path = state_file_path(&server);
     write_state_file(&state_path, &state)?;
@@ -428,12 +418,7 @@ fn run_helper(server_id: &str) -> Result<(), String> {
 
     loop {
         if let Some(snapshot) = detect_terminal_snapshot(manager, &server)? {
-            state.running = false;
-            state.control_port = None;
-            state.exit_code = snapshot.exit_code;
-            state.detail_message = snapshot.detail_message;
-            state.error_message = snapshot.error_message;
-            state.updated_at = current_timestamp_secs();
+            state = state_from_terminal_snapshot(&state, &snapshot, current_timestamp_secs());
             write_state_file(&state_path, &state)?;
             break;
         }
@@ -442,16 +427,7 @@ fn run_helper(server_id: &str) -> Result<(), String> {
             Ok((stream, _)) => {
                 let should_exit = handle_connection(manager, &server, &state, stream)?;
                 if should_exit {
-                    state.running = false;
-                    state.child_pid = None;
-                    state.control_port = None;
-                    state.detail_message = if state.exit_code == Some(0) {
-                        "runtime=local running=false source=helper exit_code=0".to_string()
-                    } else {
-                        "runtime=local running=false source=helper requested_stop".to_string()
-                    };
-                    state.error_message = None;
-                    state.updated_at = current_timestamp_secs();
+                    state = state_from_requested_stop(&state, current_timestamp_secs());
                     write_state_file(&state_path, &state)?;
                     break;
                 }
