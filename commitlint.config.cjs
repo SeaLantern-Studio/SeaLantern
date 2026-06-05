@@ -20,6 +20,7 @@ module.exports = {
         "types",
         "security",
         "i18n",
+        "spec",
       ],
     ],
     "type-case": [2, "always", "lower-case"],
