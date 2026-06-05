@@ -25,20 +25,24 @@
 
 ## 能干什么
 
-- 下载安装服务器核心
-- 控制台实时看日志，直接输命令
-- server.properties 图形化编辑，不用手改文件
-- 白名单、封禁、OP 一键管理
-- 关软件的时候自动帮你停服务器，不会丢存档
-- 检查更新，一键下载新版本
+- [x] 下载服务器核心
+- [x] 客制化开服器体验
+- [ ] Todo: JVM 预设与分享社区
+- [x] 方便直观的更改配置(目前仅支持原版的`server.properties`)
+- [x] 快捷控制台命令
+- [ ] Todo: Cli 模式下让服务器在 Docker 容器化环境下运行
 
 ## 快速开始
 
-> Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击[这里](https://docs.ideaflash.cn/zh/intro)跳转
+> Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击 [这里](https://docs.ideaflash.cn/zh/intro) 跳转
 
-下载 [release](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest) 版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
+下载 [正式版](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)
+
+下载 [开发预览版](https://github.com/SeaLantern-Studio/SeaLantern-Preview/releases/latest)
 
 ## 开发
+
+> 请注意! 我们正在讨论关于 branch 和 fork 变动相关的内容, 开发步骤部分可能随时会有所改变, 例如 Github 开发仓库的变动等内容!
 
 你需要 `Node.js 20+` 和 `Rust 1.70+`。
 
@@ -70,17 +74,9 @@ pnpm run tauri dev
 pnpm dev
 ```
 
-构建发布版：
-
-```bash
-pnpm run tauri build
-```
-
-产物在 `src-tauri/target/release/bundle/` 里。
-
 ### 代码质量检查
 
-提交代码前，我们建议运行以下命令来检查代码质量：
+提交代码前，我们**建议**运行以下命令来检查代码质量：
 
 <details><summary>前端检查</summary>
 
@@ -134,10 +130,10 @@ cargo fmt --all
 
 ## 技术栈
 
-- **前端**: Vue 3 + TypeScript + Vite + Pinia
+- **前端**: Vue 3 + TypeScript + Vite
 - **后端**: Rust + Tauri 2
-- **样式**: 纯 CSS
-- **通信**: Tauri invoke（前端调 Rust 函数，直接拿返回值）
+- **通信**: Tauri invoke
+- **Docker**: itzg/minecraft-server
 
 没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
 
@@ -182,37 +178,7 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 3. 提 Pull Request
 4. 你的名字会出现在关于页面的贡献者墙上
 
-我们对AI编程，即`Vibe Coding`有一定限制：仅修复，不重构，不大改，人工审。
-
-- 仅修复：由于目前大部分 AI 的能力局限性，如果要完全依赖 AI 是很不现实的。
-
-- 不重构：AI 的上下文和抽象理解能力都不足以让AI重构已有内容，当然也许会有比较幸运的重构完还能用，但那只是个例。
-
-- 不大改：**不要让 AI 擅自改动任何一个影响巨大内容**。
-
-- 人工审：使用完 AI 一定要人工审查一遍是否有误，如果不会审，可以去群里找管理，要记得有礼貌的提问而不是骚扰管理。
-
 不会写代码也行。说你想要什么功能，或者画个 UI 草图发出来，只要核实有用，都算贡献。
-
-### 添加新功能
-
-假设你要加一个「备份管理」功能：
-
-#### 后端
-
-1. `src-tauri/src/services/` 下建 `backup_manager.rs`，写逻辑
-2. `src-tauri/src/commands/` 下建 `backup.rs`，写 Tauri 命令
-3. 在 `commands/mod.rs` 里加 `pub mod backup`
-4. 在 `lib.rs` 的 `generate_handler!` 宏里注册命令
-
-#### 前端
-
-1. `src/api/` 下建 `backup.ts`，封装 invoke 调用
-2. `src/views/` 下建 `BackupView.vue`，画页面
-3. `src/router/index.ts` 里加路由
-4. `AppSidebar.vue` 的 `navItems` 数组里加一项
-
-前后端各三个文件，路由和侧栏各改一行。
 
 ### i18n 国际化支持指南
 

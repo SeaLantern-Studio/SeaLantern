@@ -10,8 +10,7 @@
 
 对于非项目组织成员，你的PR可贡献范围如下
 
-1. 对于已获得accepted标签的issue，你可以提交PR
-2. 文档、i18n方向且改动极小的
+1. 文档、i18n方向且改动极小的
 
 ⛔对于在可贡献范围以外的PR，项目组**有权直接拒绝**
 
@@ -37,8 +36,8 @@
 
 - **Node.js**: 20+
 - **Rust**: 1.70+
-- **pnpm**: 9.15.9（推荐使用项目指定的包管理器）
-- **Git**: 最新版本
+- **pnpm**: 9.15.9+（推荐使用项目指定的包管理器）
+- **Git**: 建议最新版本
 
 ## 代码规范
 
@@ -47,14 +46,14 @@
 1. **格式化**
 
    ```bash
-   # 提交前必须运行
+   # 提交前最好运行
    cargo fmt --all
    ```
 
 2. **代码检查**
 
    ```bash
-   # 必须通过所有 clippy 检查
+   # 建议通过所有 clippy 检查
    cargo clippy --workspace -- -D warnings
    ```
 
@@ -65,9 +64,10 @@
    - 常量：使用 `SCREAMING_SNAKE_CASE`（如 `MAX_MEMORY`）
 
 4. **注释规范**
-   - 公共 API 必须有文档注释（`///`）
-   - 复杂逻辑需要添加行内注释（`//`）
+   - 公共 API 建议留有文档注释（`///`）
+   - 复杂逻辑建议添加行内注释（`//`）
    - 避免无意义的注释
+   - 避免出现 `Fuck the fmt` 类似的语句
 
 5. **错误处理**
    - 使用 `Result<T, String>` 返回错误
@@ -184,6 +184,7 @@ docs(contributing): 更新提交规范说明
 1. 看到 `commit-msg script failed`：说明提交信息不符合规范，按提示改为 `type: 描述` 或 `type(scope): 描述`。
 2. 看到 `pre-commit` 执行后有文件变化：重新 `git add` 后再次提交（因为格式化可能修改了暂存文件）。
 3. 想提前自检：运行 `pnpm run fmt:check && pnpm run lint`，再执行 `git commit`。
+4. 特殊情况请联系开发组, 我们会视情况强制通过提交审查
 
 ### Pull Request 流程
 
@@ -223,7 +224,7 @@ docs(contributing): 更新提交规范说明
 
 ## 代码审查标准
 
-### 必须满足
+### 建议满足
 
 - ✅ 通过所有 CI 检查
 - ✅ 代码格式正确（cargo fmt / oxfmt）
@@ -232,7 +233,7 @@ docs(contributing): 更新提交规范说明
 - ✅ 功能完整且可用
 - ✅ 无明显的性能问题
 
-### 建议满足
+### 推荐满足
 
 - 有适当的注释
 - 有相关测试（如适用）
@@ -254,6 +255,8 @@ pnpm run tauri dev
 pnpm run tauri build
 ```
 
+但我们不推荐本地构建用来发布到 Release 中
+
 ### Clippy 检查失败怎么办？
 
 1. 查看具体警告信息
@@ -262,6 +265,8 @@ pnpm run tauri build
 4. 如果某些警告不合理，可以使用 `#[allow(clippy::...)]` 标记
 
 ### 格式化检查失败怎么办？
+
+尝试:
 
 ```bash
 cargo fmt --all

@@ -9,14 +9,13 @@
 **技术栈**: Tauri 2 + Rust + Vue 3 + TypeScript + Pinia
 **当前版本**: 0.6.5
 **Gitee仓库**: https://gitee.com/fps_z/SeaLantern (master 分支)
-**Github仓库**: https://github.com/FPSZ/SeaLantern (main 分支)
+**Github仓库**: https://github.com/SeaLantern-Studio/SeaLantern (main 分支)
+**Preview版本**: https://github.com/SeaLantern-Studio/SeaLantern-Preview
 
 ### 核心特点
 
 - 前端使用 Vue 3 Composition API + TypeScript
 - 后端使用 Rust，通过 Tauri invoke 与前端通信
-- 无 Electron，无 Node 后端，体积小，性能好
-- 毛玻璃 UI 风格，纯 CSS 实现
 
 ---
 
