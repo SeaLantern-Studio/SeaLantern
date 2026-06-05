@@ -1440,10 +1440,14 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let server = docker_server(runtime.clone());
         let settings = crate::models::settings::AppSettings::default();
-        let effective = crate::services::server::manager::startup_support::resolve_effective_startup_config(
-            &ServerInstance { path: temp_dir.path().to_string_lossy().to_string(), ..server.clone() },
-            &settings,
-        );
+        let effective =
+            crate::services::server::manager::startup_support::resolve_effective_startup_config(
+                &ServerInstance {
+                    path: temp_dir.path().to_string_lossy().to_string(),
+                    ..server.clone()
+                },
+                &settings,
+            );
         let (env, _) = build_effective_env(&runtime, &effective).unwrap();
 
         assert!(env

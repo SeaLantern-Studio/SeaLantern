@@ -28,6 +28,19 @@ interface UseCreateServerDefaultsOptions {
   onInvalidRunPath: () => void;
 }
 
+function sameJvmPreset(left: JvmPresetConfig, right: JvmPresetConfig): boolean {
+  return left.preset === right.preset;
+}
+
+function sameCpuPolicy(left: CpuPolicyConfig, right: CpuPolicyConfig): boolean {
+  return (
+    left.mode === right.mode &&
+    (left.count ?? null) === (right.count ?? null) &&
+    (left.explicit_set ?? null) === (right.explicit_set ?? null) &&
+    left.sync_active_processor_count === right.sync_active_processor_count
+  );
+}
+
 export function useCreateServerDefaults(options: UseCreateServerDefaultsOptions) {
   const settingsStore = useSettingsStore();
   const loadingDefaults = ref(false);
@@ -35,19 +48,6 @@ export function useCreateServerDefaults(options: UseCreateServerDefaultsOptions)
   const lastAppliedJvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
   const lastAppliedCpuPolicy = ref<CpuPolicyConfig>(createDefaultCpuPolicy());
   const advancedDefaultsInitialized = ref(false);
-
-  function sameJvmPreset(left: JvmPresetConfig, right: JvmPresetConfig): boolean {
-    return left.preset === right.preset;
-  }
-
-  function sameCpuPolicy(left: CpuPolicyConfig, right: CpuPolicyConfig): boolean {
-    return (
-      left.mode === right.mode &&
-      (left.count ?? null) === (right.count ?? null) &&
-      (left.explicit_set ?? null) === (right.explicit_set ?? null) &&
-      left.sync_active_processor_count === right.sync_active_processor_count
-    );
-  }
 
   function syncAdvancedDefaults(
     nextJvmArgsText: string,

@@ -248,7 +248,6 @@ impl ServerInstance {
         self.local_runtime()
             .and_then(|runtime| runtime.custom_command.as_deref())
     }
-
 }
 
 impl DockerBackendKind {

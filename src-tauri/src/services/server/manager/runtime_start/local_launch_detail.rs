@@ -292,9 +292,7 @@ mod tests {
                 explicit_set: None,
                 sync_active_processor_count: true,
             };
-            runtime.jvm_preset = JvmPresetConfig {
-                preset: JvmPresetId::None,
-            };
+            runtime.jvm_preset = JvmPresetConfig { preset: JvmPresetId::None };
         }
 
         let detail_before = build_local_launch_detail(&server, &test_settings())

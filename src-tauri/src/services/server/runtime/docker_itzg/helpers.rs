@@ -283,8 +283,7 @@ pub(crate) fn resolve_runtime_cpuset(
 pub(crate) fn resolve_active_processor_count(
     cpu_policy: &crate::models::server::CpuPolicyConfig,
 ) -> Result<Option<u16>, String> {
-    if cpu_policy.mode == CpuPolicyMode::Off || !cpu_policy.sync_active_processor_count
-    {
+    if cpu_policy.mode == CpuPolicyMode::Off || !cpu_policy.sync_active_processor_count {
         return Ok(None);
     }
 
@@ -328,7 +327,7 @@ fn preset_args(preset: &JvmPresetId) -> &'static [&'static str] {
 }
 
 fn format_memory_env_value(memory_mb: u32) -> String {
-    if memory_mb > 0 && memory_mb % 1024 == 0 {
+    if memory_mb > 0 && memory_mb.is_multiple_of(1024) {
         format!("{}G", memory_mb / 1024)
     } else {
         format!("{}M", memory_mb)
@@ -914,7 +913,10 @@ mod tests {
             sync_active_processor_count: true,
         };
 
-        assert_eq!(resolve_runtime_cpuset(&runtime.cpu_policy).unwrap(), Some("0-3,6-7".to_string()));
+        assert_eq!(
+            resolve_runtime_cpuset(&runtime.cpu_policy).unwrap(),
+            Some("0-3,6-7".to_string())
+        );
         assert_eq!(resolve_active_processor_count(&runtime.cpu_policy).unwrap(), Some(6));
     }
 
@@ -1151,7 +1153,10 @@ mod tests {
         assert_eq!(detail.cpuset_applied.as_deref(), Some("0,2"));
         assert_eq!(detail.jvm_preset, "paper_recommended_lite");
         assert_eq!(detail.active_processor_count_value, Some(2));
-        assert_eq!(detail.jvm_opts_preview.as_deref(), Some("-Dusing.aikars.flags=https://mcflags.emc.gs -Dinstance.flag=true"));
+        assert_eq!(
+            detail.jvm_opts_preview.as_deref(),
+            Some("-Dusing.aikars.flags=https://mcflags.emc.gs -Dinstance.flag=true")
+        );
         assert!(detail
             .jvm_xx_opts_preview
             .as_deref()
@@ -1182,7 +1187,8 @@ mod tests {
         runtime.jvm_args = vec!["-Druntime.flag=true".to_string()];
         let server = docker_server(temp_dir.path().to_string_lossy().to_string(), runtime.clone());
 
-        let detail_before = build_docker_launch_detail(&server, &runtime, &test_settings()).unwrap();
+        let detail_before =
+            build_docker_launch_detail(&server, &runtime, &test_settings()).unwrap();
         assert_eq!(detail_before.effective_max_memory, 4096);
         assert_eq!(detail_before.cpuset_applied, None);
         assert_eq!(detail_before.jvm_preset, "none");

@@ -63,7 +63,9 @@ pub(crate) fn build_docker_launch_detail_for_server(
     let runtime = server
         .docker_itzg_runtime()
         .ok_or_else(|| format!("当前服务器运行时暂未实现: {}", server.runtime_kind))?;
-    crate::services::server::runtime::docker_itzg::build_docker_launch_detail(server, runtime, &settings)
+    crate::services::server::runtime::docker_itzg::build_docker_launch_detail(
+        server, runtime, &settings,
+    )
 }
 
 /// 强停前返回给前端的确认信息

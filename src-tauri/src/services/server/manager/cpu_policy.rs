@@ -324,7 +324,9 @@ mod tests {
             },
         );
 
-        let resolved = resolve_local_cpu_policy(&server, &test_settings()).unwrap().unwrap();
+        let resolved = resolve_local_cpu_policy(&server, &test_settings())
+            .unwrap()
+            .unwrap();
         assert_eq!(resolved.cpu_indices, vec![0, 1]);
         assert_eq!(resolved.cpuset_display, "0-1");
         assert_eq!(resolved.active_processor_count, 2);
@@ -342,9 +344,10 @@ mod tests {
             },
         );
 
-        let arg = compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Starter)
-            .unwrap()
-            .unwrap();
+        let arg =
+            compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Starter)
+                .unwrap()
+                .unwrap();
         assert_eq!(arg, "-XX:ActiveProcessorCount=3");
     }
 
@@ -377,7 +380,8 @@ mod tests {
             },
         );
 
-        let arg = compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Jar).unwrap();
+        let arg = compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Jar)
+            .unwrap();
         assert_eq!(arg, None);
     }
 

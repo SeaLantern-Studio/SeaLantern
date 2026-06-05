@@ -68,27 +68,45 @@ pub(crate) fn resolve_effective_startup_config(
     let runtime_jvm_args = server
         .local_runtime()
         .map(|runtime| runtime.jvm_args.clone())
-        .or_else(|| server.docker_itzg_runtime().map(|runtime| runtime.jvm_args.clone()))
+        .or_else(|| {
+            server
+                .docker_itzg_runtime()
+                .map(|runtime| runtime.jvm_args.clone())
+        })
         .unwrap_or_default();
     let runtime_cpu_policy = server
         .local_runtime()
         .map(|runtime| runtime.cpu_policy.clone())
-        .or_else(|| server.docker_itzg_runtime().map(|runtime| runtime.cpu_policy.clone()))
+        .or_else(|| {
+            server
+                .docker_itzg_runtime()
+                .map(|runtime| runtime.cpu_policy.clone())
+        })
         .unwrap_or_default();
     let runtime_jvm_preset = server
         .local_runtime()
         .map(|runtime| runtime.jvm_preset.clone())
-        .or_else(|| server.docker_itzg_runtime().map(|runtime| runtime.jvm_preset.clone()))
+        .or_else(|| {
+            server
+                .docker_itzg_runtime()
+                .map(|runtime| runtime.jvm_preset.clone())
+        })
         .unwrap_or_default();
 
     EffectiveStartupConfig {
         max_memory: if startup.presence.max_memory {
-            startup.config.max_memory.unwrap_or(settings.default_max_memory)
+            startup
+                .config
+                .max_memory
+                .unwrap_or(settings.default_max_memory)
         } else {
             server.max_memory
         },
         min_memory: if startup.presence.min_memory {
-            startup.config.min_memory.unwrap_or(settings.default_min_memory)
+            startup
+                .config
+                .min_memory
+                .unwrap_or(settings.default_min_memory)
         } else {
             server.min_memory
         },
@@ -180,9 +198,7 @@ pub(crate) fn read_startup_document(server: &ServerInstance) -> ServerStartupCon
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        build_managed_jvm_args, resolve_effective_startup_config, write_user_jvm_args,
-    };
+    use super::{build_managed_jvm_args, resolve_effective_startup_config, write_user_jvm_args};
     use crate::models::server::{
         CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId, LocalRuntimeConfig,
         ServerInstance, ServerRuntimeConfig,
@@ -246,11 +262,8 @@ mod tests {
         let server = test_server(temp_dir.path().to_string_lossy().to_string());
         let config_dir = temp_dir.path().join("SeaLantern");
         std::fs::create_dir_all(&config_dir).expect("config dir should be created");
-        std::fs::write(
-            config_dir.join("config.toml"),
-            "max_memory = 3072\nmin_memory = 1536\n",
-        )
-        .expect("config.toml should be written");
+        std::fs::write(config_dir.join("config.toml"), "max_memory = 3072\nmin_memory = 1536\n")
+            .expect("config.toml should be written");
 
         let args = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
             .expect("managed args should build");
@@ -282,9 +295,7 @@ mod tests {
                 explicit_set: Some("4,6".to_string()),
                 sync_active_processor_count: true,
             };
-            runtime.jvm_preset = JvmPresetConfig {
-                preset: JvmPresetId::ThroughputBasic,
-            };
+            runtime.jvm_preset = JvmPresetConfig { preset: JvmPresetId::ThroughputBasic };
         }
 
         let config_dir = temp_dir.path().join("SeaLantern");

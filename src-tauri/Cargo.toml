@@ -76,7 +76,11 @@ default = ["docker"]
 docker = ["axum", "tower", "tower-http", "tokio-stream", "mime_guess"]
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = ["Win32_System_Performance", "Win32_Foundation", "Win32_System_Threading"] }
+windows = { version = "0.58", features = [
+    "Win32_System_Performance",
+    "Win32_Foundation",
+    "Win32_System_Threading",
+] }
 winreg = "0.52"
 
 [target.'cfg(unix)'.dependencies]

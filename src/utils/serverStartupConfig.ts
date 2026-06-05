@@ -87,7 +87,7 @@ export function normalizeCpuPolicy(cpuPolicy: CpuPolicyConfig | null | undefined
 
   return {
     ...createDefaultCpuPolicy(),
-    ...(cpuPolicy ?? {}),
+    ...cpuPolicy,
     mode,
     count: mode === "count" && Number.isFinite(count) ? Math.trunc(Number(count)) : null,
     explicit_set: mode === "explicit" ? (explicitSet.length > 0 ? explicitSet : null) : null,

@@ -33,11 +33,8 @@ pub fn cleanup_for_new_start(server: &ServerInstance) {
     let current_exe = current_exe_lowercase();
 
     if let Some(state) = read_state(server) {
-        let helper_alive = helper_process_matches_server_pid(
-            state.helper_pid,
-            &server.id,
-            current_exe.as_deref(),
-        );
+        let helper_alive =
+            helper_process_matches_server_pid(state.helper_pid, &server.id, current_exe.as_deref());
         let child_alive = state.child_pid.is_some_and(is_process_alive);
         if helper_alive || child_alive {
             logger::log_warn(&format!(
@@ -105,7 +102,9 @@ fn cleanup_orphan_helper_processes(server: &ServerInstance, current_exe: Option<
     for process in system.processes().values() {
         if !process_matches_server_helper_identity(
             process.cmd(),
-            process.exe().map(|path| path.to_string_lossy().to_ascii_lowercase()),
+            process
+                .exe()
+                .map(|path| path.to_string_lossy().to_ascii_lowercase()),
             &server.id,
             current_exe,
         ) {
@@ -139,11 +138,7 @@ fn current_exe_lowercase() -> Option<String> {
         .map(|path| path.to_string_lossy().to_ascii_lowercase())
 }
 
-fn helper_process_matches_server_pid(
-    pid: u32,
-    server_id: &str,
-    current_exe: Option<&str>,
-) -> bool {
+fn helper_process_matches_server_pid(pid: u32, server_id: &str, current_exe: Option<&str>) -> bool {
     let mut system = System::new_all();
     system.refresh_processes(ProcessesToUpdate::All, true);
 
@@ -153,7 +148,9 @@ fn helper_process_matches_server_pid(
 
     process_matches_server_helper_identity(
         process.cmd(),
-        process.exe().map(|path| path.to_string_lossy().to_ascii_lowercase()),
+        process
+            .exe()
+            .map(|path| path.to_string_lossy().to_ascii_lowercase()),
         server_id,
         current_exe,
     )

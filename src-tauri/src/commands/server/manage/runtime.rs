@@ -158,6 +158,13 @@ pub(super) fn update_server_name(id: String, name: String) -> Result<(), String>
     manager().update_server_name(&id, &name)
 }
 
+pub(super) fn update_server_java_path(
+    id: String,
+    java_path: String,
+) -> Result<ServerInstance, String> {
+    manager().update_server_java_path(&id, &java_path)
+}
+
 pub(super) fn update_server_path(
     id: String,
     new_path: String,

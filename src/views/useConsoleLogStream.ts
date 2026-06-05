@@ -18,6 +18,41 @@ interface UseConsoleLogStreamOptions {
   doScroll: () => void;
 }
 
+function arraysEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((line, index) => line === right[index]);
+}
+
+function isPrefixOf(full: string[], prefix: string[]): boolean {
+  if (prefix.length > full.length) {
+    return false;
+  }
+
+  return prefix.every((line, index) => full[index] === line);
+}
+
+function findOverlapSuffix(existing: string[], next: string[]): number {
+  const maxOverlap = Math.min(existing.length, next.length);
+  for (let size = maxOverlap; size > 0; size -= 1) {
+    let matches = true;
+    for (let index = 0; index < size; index += 1) {
+      if (existing[existing.length - size + index] !== next[index]) {
+        matches = false;
+        break;
+      }
+    }
+
+    if (matches) {
+      return size;
+    }
+  }
+
+  return 0;
+}
+
 export function useConsoleLogStream(options: UseConsoleLogStreamOptions) {
   const consoleStore = useConsoleStore();
   const LOG_SYNC_INTERVAL_MS = 1200;
@@ -66,41 +101,6 @@ export function useConsoleLogStream(options: UseConsoleLogStreamOptions) {
     }
 
     recentSystemLogByServer.delete(serverId);
-  }
-
-  function arraysEqual(left: string[], right: string[]): boolean {
-    if (left.length !== right.length) {
-      return false;
-    }
-
-    return left.every((line, index) => line === right[index]);
-  }
-
-  function isPrefixOf(full: string[], prefix: string[]): boolean {
-    if (prefix.length > full.length) {
-      return false;
-    }
-
-    return prefix.every((line, index) => full[index] === line);
-  }
-
-  function findOverlapSuffix(existing: string[], next: string[]): number {
-    const maxOverlap = Math.min(existing.length, next.length);
-    for (let size = maxOverlap; size > 0; size -= 1) {
-      let matches = true;
-      for (let index = 0; index < size; index += 1) {
-        if (existing[existing.length - size + index] !== next[index]) {
-          matches = false;
-          break;
-        }
-      }
-
-      if (matches) {
-        return size;
-      }
-    }
-
-    return 0;
   }
 
   async function syncRecentLogs(serverId: string) {

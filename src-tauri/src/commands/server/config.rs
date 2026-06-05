@@ -90,8 +90,7 @@ fn build_legacy_sl_config_path(server_path: &str) -> Result<PathBuf, String> {
 }
 
 fn read_startup_document_from_toml(path: &Path) -> Result<ServerStartupConfigDocument, String> {
-    let content =
-        std::fs::read_to_string(path).map_err(|e| format!("读取实例配置失败: {}", e))?;
+    let content = std::fs::read_to_string(path).map_err(|e| format!("读取实例配置失败: {}", e))?;
     let config = toml::from_str(&content).map_err(|e| format!("解析实例配置失败: {}", e))?;
     let value: toml::Value =
         toml::from_str(&content).map_err(|e| format!("解析实例配置失败: {}", e))?;
@@ -105,8 +104,7 @@ fn read_startup_document_from_legacy_json(
     path: &Path,
 ) -> Result<ServerStartupConfigDocument, String> {
     let content = std::fs::read_to_string(path).map_err(|e| format!("读取 SL.json 失败: {}", e))?;
-    let config =
-        serde_json::from_str(&content).map_err(|e| format!("解析 SL.json 失败: {}", e))?;
+    let config = serde_json::from_str(&content).map_err(|e| format!("解析 SL.json 失败: {}", e))?;
     let value: serde_json::Value =
         serde_json::from_str(&content).map_err(|e| format!("解析 SL.json 失败: {}", e))?;
     Ok(ServerStartupConfigDocument {
@@ -169,8 +167,7 @@ pub(crate) fn write_server_startup_config(
     let content =
         toml::to_string_pretty(config).map_err(|e| format!("序列化实例配置失败: {}", e))?;
 
-    std::fs::write(&instance_config_path, content)
-        .map_err(|e| format!("写入实例配置失败: {}", e))
+    std::fs::write(&instance_config_path, content).map_err(|e| format!("写入实例配置失败: {}", e))
 }
 
 fn validate_path_within_server(server_path: &str, file_path: &str) -> Result<(), String> {
@@ -345,9 +342,7 @@ mod tests {
                 explicit_set: None,
                 sync_active_processor_count: true,
             },
-            jvm_preset: JvmPresetConfig {
-                preset: JvmPresetId::AikarG1,
-            },
+            jvm_preset: JvmPresetConfig { preset: JvmPresetId::AikarG1 },
         };
 
         write_sl_config(server_path.clone(), config.clone()).unwrap();
