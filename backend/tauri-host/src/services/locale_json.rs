@@ -1,6 +1,6 @@
-//! 后端内置文案：`src-tauri/locales/<locale>.json`（扁平 `key -> string`），编译期嵌入。
+//! 后端内置文案：`backend/tauri-host/locales/<locale>.json`（扁平 `key -> string`），编译期嵌入。
 //! 与 `utils/constants::SUPPORTED_LOCALES`、前端 `src/language/*.json` 语言代码对齐。
-//! 部分语言仅含 `tunnel.*` 等增量键，其余键由 `I18nService::t` 回退到 zh-CN。
+//! 部分语言仅含 `tunnel.*` 等增量键，其余键由 `I18nService::t` 回退到 `zh-CN`。
 
 use std::collections::HashMap;
 

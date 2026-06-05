@@ -5,8 +5,8 @@ import { i18n } from "@language";
  * 应用版本号管理
  *
  * 版本号从 Tauri 后端读取，后端版本号来自：
- * - src-tauri/Cargo.toml - version
- * - src-tauri/tauri.conf.json - version
+ * - backend/tauri-host/Cargo.toml - version
+ * - backend/tauri-host/tauri.conf.json - version
  *
  * 修改版本时只需要更新这两个文件，前端会自动同步
  */

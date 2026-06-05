@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-// 把常量搬到 src-tauri/locales/ 里面
+// 把常量搬到 backend/tauri-host/locales/ 里面
 use crate::services::locale_json;
 use crate::utils::constants::SUPPORTED_LOCALES;
 
@@ -103,7 +103,7 @@ impl I18nService {
             .unwrap_or_else(|| key.to_string())
     }
 
-    #[allow(dead_code)] // 预留调用
+    #[allow(dead_code)]
     pub fn t_for_locale(&self, locale: &str, key: &str) -> String {
         self.translate_for_locale(locale, key)
             .unwrap_or_else(|| key.to_string())
@@ -117,7 +117,7 @@ impl I18nService {
         result
     }
 
-    #[allow(dead_code)] // 预留调用
+    #[allow(dead_code)]
     pub fn t_with_options_for_locale(
         &self,
         locale: &str,
@@ -148,14 +148,13 @@ impl I18nService {
     }
 
     fn translate_for_locale(&self, locale: &str, key: &str) -> Option<String> {
-        self.resolve_translation_for_locale(locale, key)
-            .or_else(|| {
-                if locale != "zh-CN" {
-                    self.resolve_translation_for_locale("zh-CN", key)
-                } else {
-                    None
-                }
-            })
+        self.resolve_translation_for_locale(locale, key).or_else(|| {
+            if locale != "zh-CN" {
+                self.resolve_translation_for_locale("zh-CN", key)
+            } else {
+                None
+            }
+        })
     }
 
     fn resolve_translation_for_locale(&self, locale: &str, key: &str) -> Option<String> {
@@ -223,7 +222,7 @@ impl I18nService {
         locales
     }
 
-    #[allow(dead_code)] // 预留调用
+    #[allow(dead_code)]
     pub fn get_locale_display_name(&self, locale: &str) -> Option<String> {
         self.plugin_locale_names
             .read()

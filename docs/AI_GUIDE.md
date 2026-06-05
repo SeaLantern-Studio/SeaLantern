@@ -37,7 +37,7 @@
 **自动生成文件**（运行命令后自动更新）：
 
 - `Cargo.lock` - 运行 `cargo update -p sea-lantern` 自动更新
-- `package-lock.json` - 运行 `npm install` 自动更新
+- `frontend/pnpm-lock.yaml` - 运行 `pnpm --dir frontend install` 自动更新
 
 **版本号读取方式**：
 
@@ -204,7 +204,7 @@ export async function someFunction(param: string): Promise<ReturnType> {
 #### 1. 命令定义规范
 
 ```rust
-// src-tauri/src/commands/example.rs
+// backend/tauri-host/src/commands/example.rs
 use tauri::command;
 
 #[command]
@@ -216,8 +216,8 @@ pub async fn command_name(param: String) -> Result<ReturnType, String> {
 
 #### 2. 命令注册流程
 
-1. 在 `src-tauri/src/commands/mod.rs` 中添加 `pub mod example;`
-2. 在 `src-tauri/src/lib.rs` 的 `generate_handler!` 宏中添加命令名
+1. 在 `backend/tauri-host/src/commands/mod.rs` 中添加 `pub mod example;`
+2. 在 `backend/tauri-host/src/lib.rs` 的 `generate_handler!` 宏中添加命令名
 
 #### 3. 错误处理规范
 
@@ -237,17 +237,17 @@ pub async fn command_name(param: String) -> Result<ReturnType, String> {
 
 **步骤**：
 
-1. 在 `src-tauri/src/commands/` 创建或修改对应的 `.rs` 文件
+1. 在 `backend/tauri-host/src/commands/` 创建或修改对应的 `.rs` 文件
 2. 定义命令函数，添加 `#[command]` 宏
-3. 在 `src-tauri/src/commands/mod.rs` 中导出模块
-4. 在 `src-tauri/src/lib.rs` 的 `generate_handler!` 中注册命令
+3. 在 `backend/tauri-host/src/commands/mod.rs` 中导出模块
+4. 在 `backend/tauri-host/src/lib.rs` 的 `generate_handler!` 中注册命令
 5. 在 `src/api/` 创建或修改对应的 `.ts` 文件，封装 invoke 调用
 6. 在 Vue 组件中调用 API 函数
 
 **示例**：添加 `get_system_info` 命令
 
 ```rust
-// src-tauri/src/commands/system.rs
+// backend/tauri-host/src/commands/system.rs
 #[command]
 pub async fn get_system_info() -> Result<SystemInfo, String> {
     // 实现
@@ -274,9 +274,9 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 
 **必须同步修改的核心文件**（3 个）：
 
-1. `package.json` - `"version": "x.x.x"`
-2. `src-tauri/Cargo.toml` - `version = "x.x.x"`
-3. `src-tauri/tauri.conf.json` - `"version": "x.x.x"`
+1. `frontend/package.json` - `"version": "x.x.x"`
+2. `backend/tauri-host/Cargo.toml` - `version = "x.x.x"`
+3. `backend/tauri-host/tauri.conf.json` - `"version": "x.x.x"`
 
 **如果发布到 AUR，还需要修改**（2 个）：
 
@@ -289,8 +289,8 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 # 更新 Cargo.lock
 cargo update -p sea-lantern
 
-# 更新 package-lock.json
-npm install
+# 更新 frontend/pnpm-lock.yaml
+pnpm --dir frontend install
 ```
 
 **完整版本更新流程**：
@@ -299,10 +299,9 @@ npm install
 # 1. 手动修改上述 5 个文件的版本号
 
 # 2. 更新依赖锁定文件
-cd src-tauri
+# 在仓库根目录执行
 cargo update -p sea-lantern
-cd ..
-npm install
+pnpm --dir frontend install
 
 # 3. 提交更改
 git add .
@@ -322,7 +321,7 @@ git push origin sea-lantern-vx.x.x
 
 ### 场景 4: 添加 Tauri 插件权限
 
-在 `src-tauri/capabilities/default.json` 的 `permissions` 数组中添加权限。
+在 `backend/tauri-host/capabilities/default.json` 的 `permissions` 数组中添加权限。
 
 **示例**：添加 opener 插件的 openUrl 权限
 
@@ -336,7 +335,7 @@ git push origin sea-lantern-vx.x.x
 
 ### 场景 5: 修改窗口配置
 
-在 `src-tauri/tauri.conf.json` 的 `windows` 数组中修改：
+在 `backend/tauri-host/tauri.conf.json` 的 `windows` 数组中修改：
 
 - `width` / `height` - 窗口大小
 - `title` - 窗口标题
@@ -379,7 +378,7 @@ const file = await open({
 
 ### 2. 版本比较逻辑
 
-在 `src-tauri/src/commands/update.rs` 中实现了语义化版本比较：
+在 `backend/tauri-host/src/commands/update.rs` 中实现了语义化版本比较：
 
 ```rust
 fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
@@ -454,15 +453,15 @@ const servers = serverStore.servers;
 **修改位置**：
 
 - `vite.config.ts` - `server.port`
-- `src-tauri/tauri.conf.json` - `devUrl`
+- `backend/tauri-host/tauri.conf.json` - `devUrl`
 
 ### 问题 4: 构建失败
 
 **常见原因**：
 
 1. Rust 依赖未安装：运行 `cargo build`
-2. Node 依赖未安装：运行 `npm install`
-3. Tauri CLI 未安装：运行 `npm install -g @tauri-apps/cli`
+2. Node 依赖未安装：运行 `pnpm --dir frontend install`
+3. Tauri CLI 缺失：运行 `pnpm --dir frontend install`
 
 ---
 
@@ -470,22 +469,22 @@ const servers = serverStore.servers;
 
 ```bash
 # 开发模式（热重载）
-npm run tauri dev
+pnpm --dir frontend run tauri:dev
 
 # 构建发布版
-npm run tauri build
+pnpm --dir frontend run tauri:build
 
 # 仅构建前端
-npm run build
+pnpm --dir frontend run build
 
 # 类型检查 + 前端构建检查
-npm run build:check
+pnpm --dir frontend run build:check
 
 # Rust 编译检查
-cd src-tauri && cargo check
+cargo check -p sea-lantern
 
 # Rust 测试
-cd src-tauri && cargo test
+cargo test -p sea-lantern
 ```
 
 ---
@@ -499,7 +498,7 @@ cd src-tauri && cargo test
 3. 创建标签：`git tag vx.x.x`
 4. 推送代码：`git push origin main`
 5. 推送标签：`git push origin vx.x.x`
-6. 构建发布版：`npm run tauri build`
+6. 构建发布版：`pnpm --dir frontend run tauri:build`
 7. 在 Gitee 创建 Release，上传构建产物
 
 ---
@@ -532,24 +531,24 @@ cd src-tauri && cargo test
 ### 1. 不要修改的文件
 
 - `node_modules/` - 自动生成
-- `src-tauri/target/` - 构建产物
+- `backend/tauri-host/target/` - 构建产物
 - `dist/` - 前端构建产物
-- `package-lock.json` - 自动生成
+- `frontend/pnpm-lock.yaml` - 自动生成
 - `Cargo.lock` - 自动生成
 
 ### 2. 修改时需要同步的文件
 
 **版本号更新**（5 个文件 + 2 个自动生成）：
 
-- 核心：`package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`
+- 核心：`frontend/package.json`, `backend/tauri-host/Cargo.toml`, `backend/tauri-host/tauri.conf.json`
 - AUR：`PKGBUILD`, `.SRCINFO`
-- 自动：`Cargo.lock`（cargo update）, `package-lock.json`（npm install）
+- 自动：`Cargo.lock`（cargo update）, `frontend/pnpm-lock.yaml`（pnpm --dir frontend install）
 
 **添加 Tauri 命令**（4 个文件）：
 
-- `src-tauri/src/commands/*.rs` - 定义命令函数
-- `src-tauri/src/commands/mod.rs` - 导出模块
-- `src-tauri/src/lib.rs` - 注册到 `generate_handler!`
+- `backend/tauri-host/src/commands/*.rs` - 定义命令函数
+- `backend/tauri-host/src/commands/mod.rs` - 导出模块
+- `backend/tauri-host/src/lib.rs` - 注册到 `generate_handler!`
 - `src/api/*.ts` - 前端 API 封装
 
 **添加新页面**（2 个文件）：

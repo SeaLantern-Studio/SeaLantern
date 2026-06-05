@@ -1,8 +1,8 @@
 //! debug.rs
-//! 仅在 debug 构建（`pnpm run tauri dev`）下编译的调试专用命令。
+//! 仅在 debug 构建（`pnpm --dir frontend run tauri:dev`）下编译的调试专用命令。
 //!
 //! 所有命令均使用 `#[cfg(debug_assertions)]` 守卫，
-//! 在执行 `pnpm run tauri build` 生成发布包时不会被编译，
+//! 在执行 `pnpm --dir frontend run tauri:build` 生成发布包时不会被编译，
 //! 因此不会向最终用户暴露任何调试接口。
 
 /// 主动触发一个 panic，用于测试 `init_panic_hook` 注册的崩溃日志功能是否正常工作。
