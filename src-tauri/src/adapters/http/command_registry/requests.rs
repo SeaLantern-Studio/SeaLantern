@@ -161,6 +161,13 @@ pub(super) struct UpdateNameRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(super) struct UpdateJavaPathRequest {
+    pub id: String,
+    pub java_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct ScanStartupCandidatesRequest {
     pub source_path: String,
     pub source_type: String,

@@ -1,6 +1,8 @@
 import { onUnmounted, ref, watch, type Ref } from "vue";
 import { configApi, type SLStartupConfig } from "@api/config";
+import { javaApi, type JavaInfo } from "@api/java";
 import { serverApi } from "@api/server";
+import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import type {
   DockerLaunchDetail,
@@ -36,9 +38,12 @@ const AUTO_SAVE_DELAY = 800;
 export function useStartupConfigSection(options: UseStartupConfigSectionOptions) {
   const maxMemory = ref(options.defaultMaxMemory.value);
   const minMemory = ref(options.defaultMinMemory.value);
+  const selectedJava = ref("");
+  const javaList = ref<JavaInfo[]>([]);
   const jvmArgsText = ref("");
   const jvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
   const loading = ref(false);
+  const javaLoading = ref(false);
   const saving = ref(false);
   const error = ref<string | null>(null);
   const cpuPolicy = ref(createDefaultCpuPolicy());
@@ -74,10 +79,51 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
       jvmArgsText.value = deserializeJvmArgs(config.jvm_args);
       jvmPreset.value = normalizeJvmPreset(config.jvm_preset);
       cpuPolicy.value = normalizeCpuPolicy(config.cpu_policy);
+
+      const serverId = options.serverId.value;
+      if (serverId) {
+        const servers = await serverApi.getList();
+        const currentServer = servers.find((server) => server.id === serverId);
+        selectedJava.value =
+          currentServer?.runtime.kind === "local" ? currentServer.runtime.java_path : "";
+      }
     } catch (e: any) {
       error.value = e?.toString() || "加载启动配置失败";
     } finally {
       loading.value = false;
+    }
+  }
+
+  async function loadJavaChoices() {
+    javaLoading.value = true;
+    try {
+      const defaults = await systemApi.getCreateServerDefaults();
+      javaList.value = defaults.cached_java_list || [];
+      if (!selectedJava.value.trim()) {
+        selectedJava.value = defaults.preferred_java_path || "";
+      }
+    } catch (e: any) {
+      error.value = e?.toString() || "加载 Java 列表失败";
+    } finally {
+      javaLoading.value = false;
+    }
+  }
+
+  async function detectJava() {
+    javaLoading.value = true;
+    error.value = null;
+    try {
+      const detected = await javaApi.detect();
+      javaList.value = detected;
+
+      if (!selectedJava.value.trim() && detected.length > 0) {
+        const preferredJava = detected.find((java) => java.is_64bit && java.major_version >= 17);
+        selectedJava.value = preferredJava ? preferredJava.path : detected[0].path;
+      }
+    } catch (e: any) {
+      error.value = e?.toString() || "扫描 Java 失败";
+    } finally {
+      javaLoading.value = false;
     }
   }
 
@@ -146,6 +192,10 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
       error.value = i18n.t(`config.cpu_policy_invalid_${cpuPolicyError}`);
       return;
     }
+    if (options.runtimeKind.value === "local" && !selectedJava.value.trim()) {
+      error.value = i18n.t("common.select_java_path");
+      return;
+    }
 
     saving.value = true;
     error.value = null;
@@ -158,6 +208,13 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
         jvm_preset: normalizeJvmPreset(jvmPreset.value),
       };
       await configApi.writeSLConfig(options.serverPath.value, config);
+      if (options.runtimeKind.value === "local") {
+        const serverId = options.serverId.value;
+        if (!serverId) {
+          throw new Error("当前服务器缺少 ID，无法保存 Java 路径");
+        }
+        await serverApi.updateServerJavaPath(serverId, selectedJava.value.trim());
+      }
       options.onSaved?.(maxMemory.value, minMemory.value);
       void loadLaunchDetail();
     } catch (e: any) {
@@ -175,6 +232,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     options.serverPath,
     () => {
       void loadConfig();
+      void loadJavaChoices();
     },
     { immediate: true },
   );
@@ -187,23 +245,28 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     { immediate: true },
   );
 
-  watch([maxMemory, minMemory, jvmArgsText, jvmPreset, cpuPolicy], () => {
+  watch([maxMemory, minMemory, selectedJava, jvmArgsText, jvmPreset, cpuPolicy], () => {
     scheduleAutoSave();
   });
 
   return {
     maxMemory,
     minMemory,
+    selectedJava,
+    javaList,
     jvmArgsText,
     jvmPreset,
     cpuPolicy,
     loading,
+    javaLoading,
     saving,
     error,
     launchDetail,
     launchDetailLoading,
     launchDetailError,
     loadConfig,
+    loadJavaChoices,
+    detectJava,
     loadLaunchDetail,
     saveConfig,
   };

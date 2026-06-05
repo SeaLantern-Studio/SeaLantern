@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { RefreshCw } from "lucide-vue-next";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
 import SLTooltip from "@components/common/SLTooltip.vue";
 import CpuPolicyEditor from "@components/startup/CpuPolicyEditor.vue";
+import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { useStartupConfigSection } from "@components/config/useStartupConfigSection";
 import {
@@ -51,6 +53,33 @@ const jvmPresetOptions = computed(() =>
     subLabel: i18n.t(`common.jvm_preset_${preset}_desc`),
   })),
 );
+
+const javaOptions = computed(() => {
+  return startupConfig.javaList.value.map((java) => {
+    const arch = java.is_64bit ? i18n.t("common.java_64bit") : i18n.t("common.java_32bit");
+
+    let vendor = java.vendor;
+    if (vendor.includes("Oracle") || vendor.includes("Sun")) {
+      vendor = "Oracle";
+    } else if (vendor.includes("Temurin") || vendor.includes("Adopt")) {
+      vendor = "Eclipse Temurin";
+    } else if (vendor.includes("Amazon")) {
+      vendor = "Amazon Corretto";
+    } else if (vendor.includes("Microsoft")) {
+      vendor = "Microsoft";
+    } else if (vendor.includes("Zulu") || vendor.includes("Azul")) {
+      vendor = "Azul Zulu";
+    } else if (vendor.includes("Liberica") || vendor.includes("BellSoft")) {
+      vendor = "Liberica";
+    }
+
+    return {
+      label: `Java ${java.major_version} ${vendor} ${arch}`,
+      subLabel: java.path,
+      value: java.path,
+    };
+  });
+});
 
 function formatStartupModeLabel(mode?: LocalStartupMode) {
   switch (mode) {
@@ -208,6 +237,13 @@ const realLaunchTargetDisplay = computed(() => {
 });
 
 const configLaunchTargetDisplay = computed(() => compactPathMiddle(startupTargetSummary.value, 64));
+
+async function pickJavaFile() {
+  const selected = await systemApi.pickJavaFile();
+  if (selected) {
+    startupConfig.selectedJava.value = selected;
+  }
+}
 </script>
 
 <template>
@@ -258,6 +294,67 @@ const configLaunchTargetDisplay = computed(() => compactPathMiddle(startupTarget
               :min="128"
               :step="128"
             />
+          </div>
+        </div>
+        <div class="config-entry glass-card config-entry--stacked">
+          <div class="entry-header">
+            <div class="entry-key-row">
+              <span class="entry-key">{{ i18n.t("create.java_path") }}</span>
+            </div>
+            <p class="entry-desc text-caption">{{ i18n.t("settings.default_java_desc") }}</p>
+          </div>
+          <div class="entry-control entry-control--full java-config-control">
+            <div v-if="startupConfig.javaLoading.value" class="java-config-loading text-caption">
+              {{ i18n.t("create.scanning") }}
+            </div>
+            <div v-else-if="startupConfig.javaList.value.length > 0" class="java-config-select-row">
+              <SLSelect
+                :model-value="startupConfig.selectedJava.value"
+                :options="javaOptions"
+                :placeholder="i18n.t('create.select_java')"
+                :disabled="startupConfig.saving.value"
+                searchable
+                maxHeight="240px"
+                @update:model-value="startupConfig.selectedJava.value = String($event)"
+              />
+              <button
+                type="button"
+                class="java-config-rescan"
+                :disabled="startupConfig.saving.value"
+                @click="startupConfig.detectJava()"
+              >
+                <RefreshCw :size="14" />
+                {{ i18n.t("create.rescan") }}
+              </button>
+            </div>
+            <div v-else class="java-config-empty text-caption">
+              <span>{{ i18n.t("create.no_java") }}</span>
+              <button
+                type="button"
+                class="java-config-rescan"
+                :disabled="startupConfig.saving.value"
+                @click="startupConfig.detectJava()"
+              >
+                {{ i18n.t("create.scan") }}
+              </button>
+            </div>
+            <SLInput
+              :model-value="startupConfig.selectedJava.value"
+              :placeholder="i18n.t('create.java_manual')"
+              :disabled="startupConfig.saving.value"
+              @update:model-value="startupConfig.selectedJava.value = $event"
+            >
+              <template #suffix>
+                <button
+                  type="button"
+                  class="sl-input-action"
+                  :disabled="startupConfig.saving.value"
+                  @click="pickJavaFile"
+                >
+                  {{ i18n.t("create.browse") }}
+                </button>
+              </template>
+            </SLInput>
           </div>
         </div>
         <div class="config-entry glass-card config-entry--stacked">
@@ -618,6 +715,48 @@ const configLaunchTargetDisplay = computed(() => compactPathMiddle(startupTarget
 .entry-control--full {
   width: 100%;
   min-width: 0;
+}
+
+.java-config-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+
+.java-config-select-row,
+.java-config-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+}
+
+.java-config-select-row :deep(.sl-select) {
+  flex: 1;
+}
+
+.java-config-rescan {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--sl-radius-sm);
+  color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+  font-size: var(--sl-font-size-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--sl-transition-fast),
+    color var(--sl-transition-fast);
+}
+
+.java-config-rescan:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sl-primary) 16%, var(--sl-primary-bg));
+}
+
+.java-config-rescan:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .entry-control--full :deep(.sl-textarea) {

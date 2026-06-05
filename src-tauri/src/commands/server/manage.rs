@@ -259,6 +259,14 @@ pub fn update_server_name(id: String, name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn update_server_java_path(
+    id: String,
+    java_path: String,
+) -> Result<crate::models::server::ServerInstance, String> {
+    runtime::update_server_java_path(id, java_path)
+}
+
+#[tauri::command]
 pub fn validate_server_path(
     new_path: String,
 ) -> Result<crate::models::server::ValidateServerPathResult, String> {

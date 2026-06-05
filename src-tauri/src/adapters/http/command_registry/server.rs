@@ -3,7 +3,7 @@ use super::requests::{
     AddExistingServerRequest, CollectCopyConflictsRequest, CopyDirectoryContentsRequest,
     CreateServerRequest, GetLogsRequest, GetServerStatusRequest, ImportModpackRequest,
     ImportServerRequest, ParseServerCoreTypeRequest, ScanStartupCandidatesRequest,
-    SendCommandRequest, ServerIdRequest, UpdateNameRequest,
+    SendCommandRequest, ServerIdRequest, UpdateJavaPathRequest, UpdateNameRequest,
 };
 use crate::commands::server::manage as server_commands;
 use serde_json::Value;
@@ -21,6 +21,10 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
     handlers.insert("delete_server".to_string(), handle_delete_server as CommandHandler);
     handlers.insert("get_server_logs".to_string(), handle_get_server_logs as CommandHandler);
     handlers.insert("update_server_name".to_string(), handle_update_server_name as CommandHandler);
+    handlers.insert(
+        "update_server_java_path".to_string(),
+        handle_update_server_java_path as CommandHandler,
+    );
     handlers.insert(
         "scan_startup_candidates".to_string(),
         handle_scan_startup_candidates as CommandHandler,
@@ -190,6 +194,16 @@ fn handle_update_server_name(
         let req: UpdateNameRequest = parse_params(params)?;
         server_commands::update_server_name(req.id, req.name)?;
         Ok(Value::Null)
+    })
+}
+
+fn handle_update_server_java_path(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: UpdateJavaPathRequest = parse_params(params)?;
+        let result = server_commands::update_server_java_path(req.id, req.java_path)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
 

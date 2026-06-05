@@ -583,6 +583,30 @@ impl ServerManager {
         }
     }
 
+    pub fn update_server_java_path(
+        &self,
+        id: &str,
+        new_java_path: &str,
+    ) -> Result<ServerInstance, String> {
+        let validated_java = crate::services::java_detector::validate_java(new_java_path)
+            .map_err(|e| format!("Java 路径校验失败: {}", e))?;
+
+        let mut servers = self.lock_servers()?;
+        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
+            let runtime = server
+                .local_runtime_mut()
+                .ok_or_else(|| "当前运行时不支持修改 Java 路径".to_string())?;
+            runtime.java_path = validated_java.path;
+
+            let updated_server = server.clone();
+            drop(servers);
+            self.save()?;
+            Ok(updated_server)
+        } else {
+            Err("未找到服务器".to_string())
+        }
+    }
+
     /// 更新服务器路径和启动信息
     ///
     /// # Parameters

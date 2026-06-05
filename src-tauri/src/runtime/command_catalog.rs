@@ -49,6 +49,7 @@ pub(crate) fn desktop_handler(
         server_commands::get_local_launch_detail,
         server_commands::get_docker_launch_detail,
         server_commands::update_server_name,
+        server_commands::update_server_java_path,
         server_commands::validate_server_path,
         server_commands::update_server_path,
         java_commands::detect_java,

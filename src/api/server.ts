@@ -505,6 +505,10 @@ export const serverApi = {
     return tauriInvoke("update_server_name", { id, name });
   },
 
+  async updateServerJavaPath(id: string, javaPath: string): Promise<ServerInstance> {
+    return tauriInvoke("update_server_java_path", { id, javaPath });
+  },
+
   async validateServerPath(newPath: string): Promise<{
     valid: boolean;
     message: string;
