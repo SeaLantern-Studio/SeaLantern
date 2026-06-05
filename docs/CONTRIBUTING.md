@@ -95,16 +95,16 @@
 
    ```bash
    # 格式化代码
-   pnpm run fmt
+   pnpm --dir frontend run fmt
 
    # 检查格式
-   pnpm run fmt:check
+   pnpm --dir frontend run fmt:check
 
    # Lint 检查
-   pnpm run lint
+   pnpm --dir frontend run lint
 
    # 自动修复 Lint 问题
-   pnpm run lint:fix
+   pnpm --dir frontend run lint:fix
    ```
 
 5. **变量引用检查**
@@ -159,32 +159,7 @@ Co-Authored-By: 贡献者名 <email>
 - `revert`: 回滚以前的提交
 - `security`: 解决安全问题
 
-提交前会自动执行以下检查：
-
-- `pre-commit`：运行 `lint-staged`，自动格式化暂存区前端文件（`oxfmt`）
-- `commit-msg`：运行 `commitlint`，校验提交信息格式
-- CI：再次校验提交信息，避免 `--no-verify` 绕过本地检查
-
-**示例（符合规范）**：
-
-```
-build(deps): 升级 webpack 到 5.0
-ci(pipelines): 添加 Windows build agent
-feat(plugin): 增加插件下载重试机制
-fix(server): 修复开服路径识别异常
-perf(ui): 优化列表渲染速度
-types(api): 更新返回类型
-i18n(zh-CN): 翻译新增界面文本
-chore(ci): 调整工作流缓存策略
-docs(contributing): 更新提交规范说明
-```
-
-### 提交被拦截时如何处理
-
-1. 看到 `commit-msg script failed`：说明提交信息不符合规范，按提示改为 `type: 描述` 或 `type(scope): 描述`。
-2. 看到 `pre-commit` 执行后有文件变化：重新 `git add` 后再次提交（因为格式化可能修改了暂存文件）。
-3. 想提前自检：运行 `pnpm run fmt:check && pnpm run lint`，再执行 `git commit`。
-4. 特殊情况请联系开发组, 我们会视情况强制通过提交审查
+提交前建议自行运行必要检查，CI 会在 PR/推送时再次校验。
 
 ### Pull Request 流程
 
@@ -200,11 +175,11 @@ docs(contributing): 更新提交规范说明
    # 确保代码通过检查
    cargo fmt --all -- --check
    cargo clippy --workspace -- -D warnings
-   pnpm run fmt:check
-   pnpm run lint
-   pnpm run build
+   pnpm --dir frontend run fmt:check
+   pnpm --dir frontend run lint
+   pnpm --dir frontend run build
 
-   # 提交变更（commit-msg 会自动校验）
+   # 提交变更
    git add .
    git commit -m "feat(scope): 你的功能描述"
    ```
@@ -245,14 +220,14 @@ docs(contributing): 更新提交规范说明
 ### 如何运行开发环境？
 
 ```bash
-pnpm install
-pnpm run tauri dev
+pnpm --dir frontend install
+pnpm --dir frontend run tauri:dev
 ```
 
 ### 如何构建发布版本？
 
 ```bash
-pnpm run tauri build
+pnpm --dir frontend run tauri:build
 ```
 
 但我们不推荐本地构建用来发布到 Release 中

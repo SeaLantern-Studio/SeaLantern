@@ -61,22 +61,22 @@ The project's package manager was voted to switch from `npm` to `pnpm`.
 Frontend and Backend:
 
 ```bash
-pnpm install
-pnpm run tauri dev
+pnpm --dir frontend install
+pnpm --dir frontend run tauri:dev
 ```
 
-On some Linux distributions, such as Arch, running `pnpm run tauri dev` directly may not compile successfully. Please check if your dependency libraries are complete. It is recommended to use your package manager to install `Tauri` dependencies beforehand when running the above command to avoid missing dependency issues. [Click here to go to "Tauri | Prerequisites"](https://tauri.app/start/prerequisites/#linux)
+On some Linux distributions, such as Arch, running `pnpm --dir frontend run tauri:dev` directly may not compile successfully. Please check if your dependency libraries are complete. It is recommended to use your package manager to install `Tauri` dependencies beforehand when running the above command to avoid missing dependency issues. [Click here to go to "Tauri | Prerequisites"](https://tauri.app/start/prerequisites/#linux)
 
 Only Frontend:
 
 ```bash
-pnpm dev
+pnpm --dir frontend run dev
 ```
 
 Build release:
 
 ```bash
-pnpm run tauri build
+pnpm --dir frontend run tauri:build
 ```
 
 Built binaries are in `backend/tauri-host/target/release/bundle/`.
@@ -89,16 +89,16 @@ Before your PR, we encourage you to run the commands below to check the code's q
 
 ```bash
 # Code Quality Check
-pnpm run lint
+pnpm --dir frontend run lint
 
 # Fix fixable problems
-pnpm run lint:fix
+pnpm --dir frontend run lint:fix
 
 # Format code
-pnpm run fmt
+pnpm --dir frontend run fmt
 
 # Check format
-pnpm run fmt:check
+pnpm --dir frontend run fmt:check
 ```
 
 </details>
@@ -120,14 +120,9 @@ cargo fmt --all
 
 CI automated checks are set up to ensure that all submitted code meets the standards.
 
-### Commit Gatekeeping (Enabled)
+### Commit Checks
 
-- Local `pre-commit`: auto-formats staged frontend files via `lint-staged` + `oxfmt`
-- Local `commit-msg`: enforces Conventional Commits format
-- CI: re-validates commit messages and code quality on PR/push
-
-Allowed commit types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `revert`, `security`  
-Example: `feat(plugin): add retry logic for plugin downloads`
+CI validates code quality and related rules on PRs and pushes.
 
 ## Tech Stack
 
@@ -194,8 +189,8 @@ If you are going to add a "Backup Management":
 
 #### Backend
 
-1. Create `backup_manager.rs` under `src-tauri/src/services/`, code the logic
-2. Create `backup.rs` under `src-tauri/src/commands/`, code with Tauri
+1. Create `backup_manager.rs` under `backend/tauri-host/src/services/`, code the logic
+2. Create `backup.rs` under `backend/tauri-host/src/commands/`, code with Tauri
 3. Add `pub mod backup` in `commands/mod.rs`
 4. Register the command in the `generate_handler!` macro under `lib.rs`
 

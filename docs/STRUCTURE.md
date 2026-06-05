@@ -33,7 +33,7 @@ sea-lantern/
 ├── LICENSE                       # GPLv3 许可证
 ├── NOTICE                        # 第三方声明
 ├── frontend/package.json         # 前端依赖与脚本定义
-├── pnpm-lock.yaml                # pnpm 锁文件
+├── frontend/pnpm-lock.yaml       # pnpm 锁文件
 ├── README.md                     # 中文说明文档
 ├── README-en.md                  # 英文说明文档
 ├── rustfmt.toml                  # Rust 格式化配置
@@ -130,10 +130,10 @@ frontend/
 - `sunset.ts`
 - `index.ts`
 
-## 后端结构 `src-tauri/`
+## 后端结构 `backend/tauri-host/`
 
 ```text
-src-tauri/
+backend/tauri-host/
 ├── capabilities/                 # Tauri capability 配置
 ├── icons/                        # 应用图标资源
 ├── locales/                      # 后端本地化资源
@@ -145,10 +145,10 @@ src-tauri/
 └── tauri.conf.json               # Tauri 应用配置
 ```
 
-### `src-tauri/src/`
+### `backend/tauri-host/src/`
 
 ```text
-src-tauri/src/
+backend/tauri-host/src/
 ├── commands/                     # Tauri 命令层，直接暴露给前端 invoke
 ├── models/                       # 序列化数据结构与领域模型
 ├── services/                     # 业务服务层
@@ -157,7 +157,7 @@ src-tauri/src/
 └── main.rs                       # 桌面程序入口
 ```
 
-### `src-tauri/src/commands/`
+### `backend/tauri-host/src/commands/`
 
 当前命令模块包括：
 
@@ -181,10 +181,10 @@ src-tauri/src/
 
 其中：
 
-- [`src-tauri/src/commands/plugin.rs`](src-tauri/src/commands/plugin.rs) 负责 Sea Lantern Lua 插件系统的安装、启停、市场、UI 快照、上下文菜单回调与权限日志读取。
-- [`src-tauri/src/commands/mcs_plugin.rs`](src-tauri/src/commands/mcs_plugin.rs) 负责指定 Minecraft 服务器目录下的插件文件扫描、启停、删除与安装。
+- [`backend/tauri-host/src/commands/plugin.rs`](../backend/tauri-host/src/commands/plugin.rs) 负责 Sea Lantern Lua 插件系统的安装、启停、市场、UI 快照、上下文菜单回调与权限日志读取。
+- [`backend/tauri-host/src/commands/mcs_plugin.rs`](../backend/tauri-host/src/commands/mcs_plugin.rs) 负责指定 Minecraft 服务器目录下的插件文件扫描、启停、删除与安装。
 
-### `src-tauri/src/models/`
+### `backend/tauri-host/src/models/`
 
 当前模型文件包括：
 
@@ -196,9 +196,9 @@ src-tauri/src/
 - `settings.rs`
 - `mod.rs`
 
-其中 [`src-tauri/src/models/plugin.rs`](src-tauri/src/models/plugin.rs) 既定义插件清单结构，也定义权限元数据、依赖描述、插件市场信息、侧边栏配置、UI 页面配置等核心类型。
+其中 [`backend/tauri-host/src/models/plugin.rs`](../backend/tauri-host/src/models/plugin.rs) 既定义插件清单结构，也定义权限元数据、依赖描述、插件市场信息、侧边栏配置、UI 页面配置等核心类型。
 
-### `src-tauri/src/services/`
+### `backend/tauri-host/src/services/`
 
 当前可见服务模块包括：
 
@@ -207,7 +207,7 @@ src-tauri/src/
 
 从命令层引用关系还能看出，项目内还存在若干全局服务/管理器，例如服务器管理器、MCS 插件管理器、插件管理器与国际化服务等，它们承担底层业务逻辑并被命令层复用。
 
-### `src-tauri/src/utils/`
+### `backend/tauri-host/src/utils/`
 
 当前工具模块包括：
 
@@ -220,10 +220,10 @@ src-tauri/src/
 
 ## Lua 插件运行时结构
 
-Sea Lantern 的插件系统核心位于 `src-tauri/src/plugins/runtime/`。虽然当前工作区文件列表未完整展开该目录，但从命令调用与源码引用可确认其主要结构与职责如下：
+Sea Lantern 的插件系统核心位于 `backend/tauri-host/src/plugins/runtime/`。虽然当前工作区文件列表未完整展开该目录，但从命令调用与源码引用可确认其主要结构与职责如下：
 
 ```text
-src-tauri/src/plugins/runtime/
+backend/tauri-host/src/plugins/runtime/
 ├── core/                         # 运行时创建、沙箱与 `sl` 命名空间挂载
 ├── filesystem/                   # `sl.fs` 文件系统 API
 ├── plugins_api/                  # `sl.plugins` 插件目录访问 API
@@ -308,10 +308,10 @@ src-tauri/src/plugins/runtime/
 如果你准备继续扩展功能，可按以下路径定位：
 
 - 新增前端调用封装：`src/api/`
-- 新增 Tauri 命令：`src-tauri/src/commands/`
-- 新增领域模型：`src-tauri/src/models/`
-- 新增后端业务逻辑：`src-tauri/src/services/`
-- 扩展 Lua 插件 API：`src-tauri/src/plugins/runtime/`
+- 新增 Tauri 命令：`backend/tauri-host/src/commands/`
+- 新增领域模型：`backend/tauri-host/src/models/`
+- 新增后端业务逻辑：`backend/tauri-host/src/services/`
+- 扩展 Lua 插件 API：`backend/tauri-host/src/plugins/runtime/`
 - 更新项目文档：`docs/`
 
 对于插件相关开发，建议先明确你操作的是：
