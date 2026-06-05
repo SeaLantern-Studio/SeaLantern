@@ -15,17 +15,21 @@ WORKDIR /app
 RUN npm install -g pnpm@9.15.9
 
 # 复制前端依赖文件
-COPY package.json pnpm-lock.yaml ./
+COPY frontend/package.json ./package.json
+COPY frontend/pnpm-lock.yaml ./pnpm-lock.yaml
 
 # 安装依赖
 RUN pnpm install --frozen-lockfile
 
 # 复制前端构建所需文件（精准 COPY，只复制必要的文件）
-COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
-COPY src/ ./src/
+COPY frontend/index.html ./index.html
+COPY frontend/vite.config.ts ./vite.config.ts
+COPY frontend/tsconfig.json ./tsconfig.json
+COPY frontend/tsconfig.node.json ./tsconfig.node.json
+COPY frontend/src/ ./src/
 
 # 复制 Tauri 图标（前端构建需要引用）
-COPY src-tauri/icons/ ./src-tauri/icons/
+COPY backend/tauri-host/icons/ ./backend/tauri-host/icons/
 
 # 构建前端 (vite)
 RUN npm run build
@@ -57,12 +61,12 @@ WORKDIR /app
 
 # 只复制 Rust 项目相关文件（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
-COPY src-tauri/Cargo.toml ./src-tauri/
-COPY src-tauri/build.rs ./src-tauri/
-COPY src-tauri/src/ ./src-tauri/src/
-COPY src-tauri/icons/ ./src-tauri/icons/
-COPY src-tauri/tauri.conf.json ./src-tauri/
-COPY src-tauri/locales/ ./src-tauri/locales/
+COPY backend/tauri-host/Cargo.toml ./backend/tauri-host/
+COPY backend/tauri-host/build.rs ./backend/tauri-host/
+COPY backend/tauri-host/src/ ./backend/tauri-host/src/
+COPY backend/tauri-host/icons/ ./backend/tauri-host/icons/
+COPY backend/tauri-host/tauri.conf.json ./backend/tauri-host/
+COPY backend/tauri-host/locales/ ./backend/tauri-host/locales/
 COPY vendor/sculk/ ./vendor/sculk/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
@@ -101,12 +105,12 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # 只复制 Rust 源代码（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
-COPY src-tauri/Cargo.toml ./src-tauri/
-COPY src-tauri/build.rs ./src-tauri/
-COPY src-tauri/src/ ./src-tauri/src/
-COPY src-tauri/icons/ ./src-tauri/icons/
-COPY src-tauri/tauri.conf.json ./src-tauri/
-COPY src-tauri/locales/ ./src-tauri/locales/
+COPY backend/tauri-host/Cargo.toml ./backend/tauri-host/
+COPY backend/tauri-host/build.rs ./backend/tauri-host/
+COPY backend/tauri-host/src/ ./backend/tauri-host/src/
+COPY backend/tauri-host/icons/ ./backend/tauri-host/icons/
+COPY backend/tauri-host/tauri.conf.json ./backend/tauri-host/
+COPY backend/tauri-host/locales/ ./backend/tauri-host/locales/
 COPY vendor/sculk/ ./vendor/sculk/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/

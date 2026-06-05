@@ -48,7 +48,7 @@ jobs:
               - 'frontend/**'
               - 'scripts/**'
               - 'frontend/package.json'
-              - 'pnpm-lock.yaml'
+              - 'frontend/pnpm-lock.yaml'
               - 'frontend/vite.config.ts'
               - 'frontend/tsconfig*.json'
               - 'frontend/index.html'
@@ -122,7 +122,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
