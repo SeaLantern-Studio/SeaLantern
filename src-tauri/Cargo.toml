@@ -69,7 +69,7 @@ chrono = "0.4"
 lazy_static = "1.4"
 shlex = "1.3.0"
 rcon = { version = "0.6", features = ["rt-tokio"] }
-sculk = { path = "../vendor/sculk", features = ["persist", "clipboard"] }
+sculk = { version = "0.3.0-rc.1", features = ["persist", "clipboard"] }
 
 [features]
 default = ["docker"]
