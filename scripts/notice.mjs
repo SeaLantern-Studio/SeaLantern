@@ -54,7 +54,7 @@ async function ensureCargoLicense() {
 async function generateFrontedLicenseJson() {
   const { stdout } = await execAsync(
     "npx license-checker-rseidelsohn --start . --json --production",
-    { cwd: rootDir },
+    { cwd: path.join(rootDir, "frontend") },
   );
   await writeFile(noticeFiles.frontendLicenseJson, stdout, "utf8");
   return JSON.parse(stdout);
