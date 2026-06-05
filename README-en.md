@@ -1,5 +1,5 @@
 <div align="center">
-	<img src="src/assets/logo.svg" alt="logo" width="200" height="200">
+	<img src="frontend/src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # Sea Lantern (海晶灯)
 
@@ -79,7 +79,7 @@ Build release:
 pnpm run tauri build
 ```
 
-Built binaries are in `src-tauri/target/release/bundle/`.
+Built binaries are in `backend/tauri-host/target/release/bundle/`.
 
 ### Code Quality Check
 
@@ -210,7 +210,7 @@ The frontend and backend each have 3 files, plus one line each for the router an
 
 ### i18n — Internationalization Guide
 
-Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [src/language/README.md](src/language/README.md)
+Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [docs/language-system.md](docs/language-system.md)
 
 If you want to add additional languages besides the commonly used ones, please create plugins.
 

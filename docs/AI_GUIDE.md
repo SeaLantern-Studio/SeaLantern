@@ -25,9 +25,9 @@
 
 **核心版本文件**（必须修改）：
 
-- `package.json` - 前端版本号，格式：`"version": "x.x.x"`
-- `src-tauri/Cargo.toml` - Rust 后端版本号，格式：`version = "x.x.x"`
-- `src-tauri/tauri.conf.json` - Tauri 配置版本号，格式：`"version": "x.x.x"`
+- `frontend/package.json` - 前端版本号，格式：`"version": "x.x.x"`
+- `backend/tauri-host/Cargo.toml` - Rust 后端版本号，格式：`version = "x.x.x"`
+- `backend/tauri-host/tauri.conf.json` - Tauri 配置版本号，格式：`"version": "x.x.x"`
 
 **Arch Linux 打包文件**（如果发布到 AUR 需要修改）：
 
@@ -46,16 +46,16 @@
 
 ### 配置文件
 
-- `vite.config.ts` - Vite 构建配置，开发服务器端口 5173
-- `tsconfig.json` - TypeScript 编译配置
-- `src-tauri/tauri.conf.json` - Tauri 应用配置（窗口大小、标题、权限等）
-- `src-tauri/capabilities/default.json` - Tauri 权限配置
+- `frontend/vite.config.ts` - Vite 构建配置，开发服务器端口 5173
+- `frontend/tsconfig.json` - TypeScript 编译配置
+- `backend/tauri-host/tauri.conf.json` - Tauri 应用配置（窗口大小、标题、权限等）
+- `backend/tauri-host/capabilities/default.json` - Tauri 权限配置
 
 ### 入口文件
 
-- `src/main.ts` - 前端入口，初始化 Vue、Pinia、Router
-- `src-tauri/src/main.rs` - Rust 应用入口
-- `src-tauri/src/lib.rs` - Tauri 库入口，注册命令和插件
+- `frontend/src/main.ts` - 前端入口，初始化 Vue、Pinia、Router
+- `backend/tauri-host/src/main.rs` - Rust 应用入口
+- `backend/tauri-host/src/lib.rs` - Tauri 库入口，注册命令和插件
 
 ---
 
@@ -66,25 +66,25 @@
 ```
 前端 Vue 组件
     ↓ 调用
-src/api/*.ts (封装层)
+frontend/src/api/*.ts (封装层)
     ↓ invoke
-src-tauri/src/commands/*.rs (命令层)
+backend/tauri-host/src/commands/*.rs (命令层)
     ↓ 调用
-src-tauri/src/services/*.rs (业务逻辑层)
+backend/tauri-host/src/services/*.rs (业务逻辑层)
     ↓ 返回
-src-tauri/src/models/*.rs (数据结构)
+backend/tauri-host/src/models/*.rs (数据结构)
 ```
 
 **示例**：检查软件更新
 
 1. 前端: `AboutView.vue` 调用 `checkUpdate()`
-2. API 层: `src/api/update.ts` 的 `checkUpdate()` 调用 `tauriInvoke('check_update', ...)`
-3. 命令层: `src-tauri/src/commands/update.rs` 的 `#[command] check_update()` 处理请求
+2. API 层: `frontend/src/api/update.ts` 的 `checkUpdate()` 调用 `tauriInvoke('check_update', ...)`
+3. 命令层: `backend/tauri-host/src/commands/update.rs` 的 `#[command] check_update()` 处理请求
 4. 返回: 返回 `UpdateInfo` 结构体给前端
 
 ### 目录结构详解
 
-#### 前端 (`src/`)
+#### 前端 (`frontend/src/`)
 
 **api/** - 与 Rust 后端通信的封装层
 
@@ -127,7 +127,7 @@ src-tauri/src/models/*.rs (数据结构)
 - `animations.css` - 动画关键帧
 - `glass.css` - 毛玻璃效果样式
 
-#### 后端 (`src-tauri/src/`)
+#### 后端 (`backend/tauri-host/src/`)
 
 **commands/** - Tauri 命令（前端 invoke 调用的 API）
 

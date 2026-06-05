@@ -192,7 +192,7 @@ jobs:
       - name: 安装前端依赖 (pnpm)
         run: |
           corepack prepare pnpm@9.15.9 --activate
-          pnpm install --frozen-lockfile
+          pnpm --dir frontend install --frozen-lockfile
 
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0
@@ -215,7 +215,7 @@ jobs:
           VERSION: ${{ needs.validate-tag.outputs.version }}
           ASSET_ARCH: ${{ matrix.asset_arch }}
         run: |
-          $releaseDir = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
+          $releaseDir = Get-ChildItem -Path "target", "backend/tauri-host/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match '\\release\\sea-lantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
             Select-Object -First 1 -ExpandProperty DirectoryName
 
@@ -255,7 +255,7 @@ jobs:
           set -euo pipefail
 
           SEARCH_ROOTS=()
-          for dir in target src-tauri/target; do
+          for dir in target backend/tauri-host/target; do
             if [ -d "$dir" ]; then
               SEARCH_ROOTS+=("$dir")
             fi

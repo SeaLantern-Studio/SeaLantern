@@ -1,6 +1,6 @@
 <div align="center">
   
-<img src="src/assets/logo.svg" alt="logo" width="200" height="200">
+<img src="frontend/src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # 海晶灯（Sea Lantern）
 
@@ -182,7 +182,7 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 
 ### i18n 国际化支持指南
 
-Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](src/language/README.md)
+Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](docs/language-system.md)
 
 除了当前已有的常见语言，想要加额外语言，请制作插件。
 

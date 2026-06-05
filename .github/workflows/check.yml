@@ -37,7 +37,7 @@ jobs:
         with:
           filters: |
             backend:
-              - 'src-tauri/**'
+              - 'backend/tauri-host/**'
               - 'docker-entry/**'
               - '.cargo/**'
               - 'Cargo.toml'
@@ -45,14 +45,13 @@ jobs:
               - 'rustfmt.toml'
               - '.github/workflows/check.yml'
             frontend:
-              - 'src/**'
+              - 'frontend/**'
               - 'scripts/**'
-              - 'package.json'
+              - 'frontend/package.json'
               - 'pnpm-lock.yaml'
-              - 'vite.config.ts'
-              - 'tsconfig*.json'
-              - 'index.html'
-              - 'public/**'
+              - 'frontend/vite.config.ts'
+              - 'frontend/tsconfig*.json'
+              - 'frontend/index.html'
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
               - '.github/workflows/check.yml'
@@ -129,11 +128,11 @@ jobs:
 
       - name: 安装前端依赖
         run: |
-          pnpm install --frozen-lockfile
+          pnpm --dir frontend install --frozen-lockfile
 
       - name: 运行格式化并检查前端 Lint
         run: |
-          pnpm run fmt:check && pnpm run lint
+          pnpm --dir frontend run fmt:check && pnpm --dir frontend run lint
 
       - name: 检查前端构建
-        run: pnpm run build
+        run: pnpm --dir frontend run build

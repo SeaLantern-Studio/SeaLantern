@@ -19,8 +19,8 @@ sea-lantern/
 ├── packaging/                    # Arch Linux 打包脚本与桌面文件
 ├── panic-log/                    # 崩溃日志目录占位
 ├── scripts/                      # 构建、版本、版权等辅助脚本
-├── src/                          # 前端源码（Vue 3 + TypeScript）
-├── src-tauri/                    # Tauri / Rust 后端源码
+├── frontend/                     # 前端工程根目录（Vue 3 + TypeScript）
+├── backend/                      # Tauri / Rust 后端目录
 ├── .editorconfig                 # 编辑器基础格式规范
 ├── .gitattributes                # Git 属性配置
 ├── .gitignore                    # Git 忽略规则
@@ -29,30 +29,35 @@ sea-lantern/
 ├── Cargo.lock                    # Rust 依赖锁文件（workspace）
 ├── Cargo.toml                    # Rust workspace 清单
 ├── commitlint.config.cjs         # Conventional Commits 校验配置
-├── index.html                    # 前端 HTML 入口
+├── frontend/index.html           # 前端 HTML 入口
 ├── LICENSE                       # GPLv3 许可证
 ├── NOTICE                        # 第三方声明
-├── package.json                  # 前端依赖与脚本定义
+├── frontend/package.json         # 前端依赖与脚本定义
 ├── pnpm-lock.yaml                # pnpm 锁文件
 ├── README.md                     # 中文说明文档
 ├── README-en.md                  # 英文说明文档
 ├── rustfmt.toml                  # Rust 格式化配置
 ```
 
-## 前端结构 `src/`
+## 前端结构 `frontend/`
 
 ```text
-src/
-├── api/                          # 前端到 Tauri 命令的调用封装
-├── assets/                       # 静态资源
-├── language/                     # 前端国际化资源
-├── stores/                       # Pinia 状态管理
-├── styles/                       # 全局与页面样式
-├── themes/                       # 主题定义
-├── utils/                        # 前端工具函数
-├── App.vue                       # Vue 根组件
-├── main.ts                       # 应用入口
-└── style.css                     # 样式总入口
+frontend/
+├── index.html                    # 前端 HTML 入口
+├── package.json                  # 前端依赖与脚本定义
+├── vite.config.ts                # Vite 配置
+├── tsconfig.json                 # TypeScript 配置
+└── src/
+    ├── api/                      # 前端到 Tauri 命令的调用封装
+    ├── assets/                   # 静态资源
+    ├── language/                 # 前端国际化资源
+    ├── stores/                   # Pinia 状态管理
+    ├── styles/                   # 全局与页面样式
+    ├── themes/                   # 主题定义
+    ├── utils/                    # 前端工具函数
+    ├── App.vue                   # Vue 根组件
+    ├── main.ts                   # 应用入口
+    └── style.css                 # 样式总入口
 ```
 
 ### `src/api/`
