@@ -3,7 +3,7 @@ use super::requests::{
     AddExistingServerRequest, CollectCopyConflictsRequest, CopyDirectoryContentsRequest,
     CreateServerRequest, GetLogsRequest, GetServerStatusRequest, ImportModpackRequest,
     ImportServerRequest, ParseServerCoreTypeRequest, ScanStartupCandidatesRequest,
-    SendCommandRequest, ServerIdRequest, UpdateNameRequest,
+    SendCommandRequest, ServerIdRequest, UpdateJavaPathRequest, UpdateNameRequest,
 };
 use crate::commands::server::manage as server_commands;
 use serde_json::Value;
@@ -21,6 +21,10 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
     handlers.insert("delete_server".to_string(), handle_delete_server as CommandHandler);
     handlers.insert("get_server_logs".to_string(), handle_get_server_logs as CommandHandler);
     handlers.insert("update_server_name".to_string(), handle_update_server_name as CommandHandler);
+    handlers.insert(
+        "update_server_java_path".to_string(),
+        handle_update_server_java_path as CommandHandler,
+    );
     handlers.insert(
         "scan_startup_candidates".to_string(),
         handle_scan_startup_candidates as CommandHandler,
@@ -59,6 +63,9 @@ fn handle_create_server(
             req.server_path,
             req.startup_mode,
             req.custom_command,
+            req.jvm_args,
+            req.cpu_policy,
+            req.jvm_preset,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -78,6 +85,9 @@ fn handle_import_server(
             req.min_memory,
             req.port,
             req.online_mode,
+            req.jvm_args,
+            req.cpu_policy,
+            req.jvm_preset,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -102,6 +112,9 @@ fn handle_import_modpack(
             req.startup_file_path,
             req.core_type,
             req.mc_version,
+            req.jvm_args,
+            req.cpu_policy,
+            req.jvm_preset,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -184,6 +197,16 @@ fn handle_update_server_name(
     })
 }
 
+fn handle_update_server_java_path(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: UpdateJavaPathRequest = parse_params(params)?;
+        let result = server_commands::update_server_java_path(req.id, req.java_path)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
 fn handle_scan_startup_candidates(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
@@ -245,6 +268,9 @@ fn handle_add_existing_server(
             req.custom_command,
             req.core_type,
             req.mc_version,
+            req.jvm_args,
+            req.cpu_policy,
+            req.jvm_preset,
         )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })

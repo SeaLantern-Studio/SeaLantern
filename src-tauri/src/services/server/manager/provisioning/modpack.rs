@@ -33,7 +33,14 @@ pub(super) fn import_modpack(
 
     let port =
         properties::ensure_server_properties_for_import(&run_dir, req.port, req.online_mode)?;
-    write_sl_startup_config(&run_dir, req.max_memory, req.min_memory)?;
+    write_sl_startup_config(
+        &run_dir,
+        req.max_memory,
+        req.min_memory,
+        req.jvm_args.clone(),
+        req.cpu_policy.clone(),
+        req.jvm_preset.clone(),
+    )?;
     let server =
         build::build_modpack_server_instance(id, server_name, req, &run_dir, startup, port);
 

@@ -250,7 +250,10 @@ fn test_process_exec_returns_stderr_for_failed_foreground_process() {
     let result: Table = exec.call((program, args, Option::<Table>::None)).unwrap();
 
     let success: bool = result.get("success").unwrap();
-    let exit_code: i32 = result.get("exit_code").unwrap();
+    let exit_code: i32 = result
+        .get::<Option<i32>>("exit_code")
+        .unwrap()
+        .expect("failed foreground process should report exit code");
     let stdout: String = result.get("stdout").unwrap();
     let stderr: String = result.get("stderr").unwrap();
 

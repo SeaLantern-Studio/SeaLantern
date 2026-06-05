@@ -5,16 +5,21 @@ import SLCard from "@components/common/SLCard.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLTextarea from "@components/common/SLTextarea.vue";
+import CpuPolicyEditor from "@components/startup/CpuPolicyEditor.vue";
 import JavaDownloader from "@components/JavaDownloader.vue";
 import type { JavaInfo } from "@api/java";
 import { i18n } from "@language";
+import type { CpuPolicyConfig, JvmPresetConfig, JvmPresetId } from "@type/server";
+import { MVP_JVM_PRESET_IDS } from "@utils/serverStartupConfig";
 
 const props = defineProps<{
   maxMemory: string;
   minMemory: string;
   port: string;
   defaultJavaPath: string;
-  defaultJvmArgs: string;
+  defaultJvmArgsText: string;
+  defaultJvmPreset: JvmPresetConfig;
+  defaultCpuPolicy: CpuPolicyConfig;
   defaultRunPath: string;
   javaList: JavaInfo[];
   javaLoading: boolean;
@@ -25,7 +30,9 @@ const emit = defineEmits<{
   (e: "update:minMemory", value: string): void;
   (e: "update:port", value: string): void;
   (e: "update:defaultJavaPath", value: string): void;
-  (e: "update:defaultJvmArgs", value: string): void;
+  (e: "update:defaultJvmArgsText", value: string): void;
+  (e: "update:defaultJvmPreset", value: JvmPresetConfig): void;
+  (e: "update:defaultCpuPolicy", value: CpuPolicyConfig): void;
   (e: "update:defaultRunPath", value: string): void;
   (e: "change"): void;
   (e: "detectJava"): void;
@@ -69,6 +76,14 @@ const javaOptions = computed(() => {
     };
   });
 });
+
+const jvmPresetOptions = computed(() =>
+  MVP_JVM_PRESET_IDS.map((preset) => ({
+    value: preset,
+    label: i18n.t(`common.jvm_preset_${preset}_label`),
+    subLabel: i18n.t(`common.jvm_preset_${preset}_desc`),
+  })),
+);
 </script>
 
 <template>
@@ -235,16 +250,57 @@ const javaOptions = computed(() => {
 
       <div class="sl-setting-row full-width">
         <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.jvm_args") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
+          <span class="sl-setting-label">{{ i18n.t("settings.default_jvm_preset_label") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.default_jvm_preset_desc") }}</span>
+        </div>
+        <SLSelect
+          :model-value="defaultJvmPreset.preset"
+          :options="jvmPresetOptions"
+          :placeholder="i18n.t('settings.default_jvm_preset_placeholder')"
+          @update:model-value="
+            (value) => {
+              emit('update:defaultJvmPreset', { preset: value as JvmPresetId });
+              emit('change');
+            }
+          "
+        />
+      </div>
+
+      <div class="sl-setting-row full-width startup-notice-row">
+        <p class="sl-startup-notice">
+          {{ i18n.t("settings.startup_notice_not_main_thread_boost") }}
+        </p>
+      </div>
+
+      <div class="sl-setting-row full-width">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.default_cpu_policy_label") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.default_cpu_policy_desc") }}</span>
+        </div>
+        <CpuPolicyEditor
+          :model-value="defaultCpuPolicy"
+          scope="settings"
+          @update:modelValue="
+            (value) => {
+              emit('update:defaultCpuPolicy', value);
+              emit('change');
+            }
+          "
+        />
+      </div>
+
+      <div class="sl-setting-row full-width">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.default_jvm_args_label") }}</span>
+          <span class="sl-setting-desc">{{ i18n.t("settings.default_jvm_args_desc") }}</span>
         </div>
         <SLTextarea
-          :model-value="defaultJvmArgs"
-          :placeholder="i18n.t('settings.jvm_args_placeholder')"
+          :model-value="defaultJvmArgsText"
+          :placeholder="i18n.t('settings.default_jvm_args_placeholder')"
           :rows="3"
           @update:model-value="
             (v) => {
-              emit('update:defaultJvmArgs', v);
+              emit('update:defaultJvmArgsText', v);
               emit('change');
             }
           "
@@ -344,6 +400,17 @@ const javaOptions = computed(() => {
   font-family: var(--sl-font-mono);
   font-size: 0.8125rem;
   line-height: 1.6;
+}
+
+.startup-notice-row {
+  padding-top: 0;
+}
+
+.sl-startup-notice {
+  margin: 0;
+  color: var(--sl-warning, #b45309);
+  font-size: var(--sl-font-size-sm);
+  line-height: 1.5;
 }
 
 @keyframes sl-spin {

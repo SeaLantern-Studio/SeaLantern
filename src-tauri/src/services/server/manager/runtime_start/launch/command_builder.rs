@@ -9,7 +9,7 @@ use std::path::Path;
 use std::process::Command;
 
 /// 优先寻找可直接运行的 JAR 文件
-pub(super) fn find_preferred_jar_path(context: &LaunchContext<'_>) -> Option<String> {
+pub(crate) fn find_preferred_jar_path(context: &LaunchContext<'_>) -> Option<String> {
     let startup_path_obj = Path::new(context.server.jar_path()?);
     let jar_preferred_mode = context.startup_mode.prefers_direct_jar();
 
@@ -30,11 +30,11 @@ pub(super) fn find_preferred_jar_path(context: &LaunchContext<'_>) -> Option<Str
 }
 
 /// 构建直接运行 JAR 的命令
-pub(super) fn build_direct_jar_command(
+pub(crate) fn build_direct_jar_command(
     context: &LaunchContext<'_>,
     jar_path: &str,
     installer_url: Option<&str>,
-) -> Command {
+) -> Result<Command, String> {
     let launch_target = resolve_direct_jar_launch_target(&context.server.path, jar_path);
 
     let mut java_cmd = Command::new(
@@ -47,7 +47,7 @@ pub(super) fn build_direct_jar_command(
         context.server,
         context.settings,
         context.managed_console_encoding,
-    ) {
+    )? {
         java_cmd.arg(arg);
     }
     java_cmd.arg("-jar");
@@ -57,7 +57,7 @@ pub(super) fn build_direct_jar_command(
         java_cmd.arg("--installer");
         java_cmd.arg(url);
     }
-    java_cmd
+    Ok(java_cmd)
 }
 
 fn resolve_direct_jar_launch_target(server_path: &str, jar_path: &str) -> String {
@@ -75,7 +75,7 @@ fn resolve_direct_jar_launch_target(server_path: &str, jar_path: &str) -> String
 }
 
 /// 按启动方式构建最终命令
-pub(super) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Command, String> {
+pub(crate) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Command, String> {
     match context.startup_mode {
         StartupMode::Custom => build_custom_command(context),
         StartupMode::Bat => build_bat_command(context),
@@ -86,23 +86,23 @@ pub(super) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Co
                 .starter_installer_url
                 .as_deref()
                 .ok_or_else(|| "Starter 安装器下载链接为空".to_string())?;
-            Ok(build_direct_jar_command(
+            build_direct_jar_command(
                 context,
                 context
                     .server
                     .jar_path()
                     .expect("starter launch requires jar_path"),
                 Some(installer_url),
-            ))
+            )
         }
-        StartupMode::Jar => Ok(build_direct_jar_command(
+        StartupMode::Jar => build_direct_jar_command(
             context,
             context
                 .server
                 .jar_path()
                 .expect("jar launch requires jar_path"),
             None,
-        )),
+        ),
     }
 }
 
@@ -196,11 +196,12 @@ mod tests {
     use super::{
         build_custom_command, build_ps1_command, build_sh_command, resolve_direct_jar_launch_target,
     };
-    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::models::server::{
+        CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+    };
     use crate::models::settings::AppSettings;
     use crate::services::server::manager::common::{ManagedConsoleEncoding, StartupMode};
     use crate::services::server::manager::runtime_start::launch::context::LaunchContext;
-    use crate::services::server::manager::ServerManager;
     use std::path::Path;
     use std::process::Command;
     use tempfile::TempDir;
@@ -233,7 +234,7 @@ mod tests {
         AppSettings {
             default_max_memory: 4096,
             default_min_memory: 1024,
-            default_jvm_args: "-Dlaunch.test=true".to_string(),
+            default_jvm_args: vec!["-Dlaunch.test=true".to_string()],
             ..AppSettings::default()
         }
     }
@@ -263,6 +264,8 @@ mod tests {
                 custom_command: custom_command.map(str::to_string),
                 java_path: fake_java_probe_command(),
                 jvm_args: vec!["-Dserver.test=true".to_string()],
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }

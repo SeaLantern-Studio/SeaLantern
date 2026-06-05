@@ -3,13 +3,14 @@
 //! 这里负责把建服、启停、路径更新和进程状态整理到同一个管理器里
 
 mod common;
+mod cpu_policy;
 mod fs;
 pub(crate) mod process;
 mod provisioning;
 mod registry;
 mod runtime_control;
 mod runtime_start;
-mod startup_support;
+pub(crate) mod startup_support;
 
 use std::collections::{HashMap, HashSet};
 use std::process::Child;
@@ -25,12 +26,14 @@ use super::installer;
 use super::log_pipeline as server_log_pipeline;
 use super::manager::process::force_kill_process_tree;
 use super::runtime::local::LocalServerRuntime;
+pub(crate) use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
 use common::{get_data_dir, normalize_startup_mode, validate_server_name};
 use fs::{load_servers, remove_run_path_mapping, save_servers, update_run_path_mapping};
 #[allow(unused_imports)]
 pub use registry::{
     DuplicateServerRecordEntry, DuplicateServerRecordGroup, ServerRegistryDedupeReport,
 };
+pub use runtime_start::LocalLaunchDetail;
 
 fn log_manager_result<T>(
     action: &str,
@@ -44,6 +47,25 @@ fn log_manager_result<T>(
             Err(err)
         }
     }
+}
+
+pub(crate) fn build_local_launch_detail_for_server(
+    server: &ServerInstance,
+) -> Result<LocalLaunchDetail, String> {
+    let settings = crate::services::global::settings_manager().get();
+    runtime_start::get_local_launch_detail(server, &settings)
+}
+
+pub(crate) fn build_docker_launch_detail_for_server(
+    server: &ServerInstance,
+) -> Result<DockerLaunchDetail, String> {
+    let settings = crate::services::global::settings_manager().get();
+    let runtime = server
+        .docker_itzg_runtime()
+        .ok_or_else(|| format!("当前服务器运行时暂未实现: {}", server.runtime_kind))?;
+    crate::services::server::runtime::docker_itzg::build_docker_launch_detail(
+        server, runtime, &settings,
+    )
 }
 
 /// 强停前返回给前端的确认信息
@@ -461,6 +483,16 @@ impl ServerManager {
         runtime_control::get_server_status(self, id)
     }
 
+    pub fn get_local_launch_detail(&self, id: &str) -> Result<LocalLaunchDetail, String> {
+        let server = self.find_server_clone(id)?;
+        build_local_launch_detail_for_server(&server)
+    }
+
+    pub fn get_docker_launch_detail(&self, id: &str) -> Result<DockerLaunchDetail, String> {
+        let server = self.find_server_clone(id)?;
+        build_docker_launch_detail_for_server(&server)
+    }
+
     pub fn audit_duplicate_server_records(&self) -> Result<ServerRegistryDedupeReport, String> {
         logger::log_user_action("server.manager", "audit_duplicate_records", "");
         log_manager_result(
@@ -548,6 +580,30 @@ impl ServerManager {
             drop(servers);
             self.save()?;
             Ok(())
+        } else {
+            Err("未找到服务器".to_string())
+        }
+    }
+
+    pub fn update_server_java_path(
+        &self,
+        id: &str,
+        new_java_path: &str,
+    ) -> Result<ServerInstance, String> {
+        let validated_java = crate::services::java_detector::validate_java(new_java_path)
+            .map_err(|e| format!("Java 路径校验失败: {}", e))?;
+
+        let mut servers = self.lock_servers()?;
+        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
+            let runtime = server
+                .local_runtime_mut()
+                .ok_or_else(|| "当前运行时不支持修改 Java 路径".to_string())?;
+            runtime.java_path = validated_java.path;
+
+            let updated_server = server.clone();
+            drop(servers);
+            self.save()?;
+            Ok(updated_server)
         } else {
             Err("未找到服务器".to_string())
         }

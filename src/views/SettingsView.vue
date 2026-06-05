@@ -14,6 +14,16 @@ import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 import { i18n } from "@language";
 import { useGlobalMessage } from "@composables/useMessage";
 import { useSettingsStore } from "@stores/settingsStore";
+import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
+import {
+  createDefaultCpuPolicy,
+  createDefaultJvmPreset,
+  deserializeJvmArgs,
+  getCpuPolicyValidationError,
+  normalizeCpuPolicy,
+  normalizeJvmPreset,
+  serializeJvmArgsText,
+} from "@utils/serverStartupConfig";
 
 const { success: globalSuccess } = useGlobalMessage();
 const settingsStore = useSettingsStore();
@@ -22,6 +32,9 @@ const maxMem = ref("2048");
 const minMem = ref("512");
 const port = ref("25565");
 const defaultRunPath = ref("");
+const defaultJvmArgsText = ref("");
+const defaultJvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
+const defaultCpuPolicy = ref<CpuPolicyConfig>(createDefaultCpuPolicy());
 const javaList = ref<JavaInfo[]>([]);
 const javaLoading = ref(false);
 
@@ -32,13 +45,24 @@ const settingsDraft = useSettingsPageDraft({
     minMem.value = String(settings.default_min_memory);
     port.value = String(settings.default_port);
     defaultRunPath.value = settings.last_run_path || "";
+    defaultJvmArgsText.value = deserializeJvmArgs(settings.default_jvm_args);
+    defaultJvmPreset.value = normalizeJvmPreset(settings.default_jvm_preset);
+    defaultCpuPolicy.value = normalizeCpuPolicy(settings.default_cpu_policy);
     javaList.value = settings.cached_java_list || [];
   },
   prepareForSave: (settings) => {
+    const cpuPolicyError = getCpuPolicyValidationError(defaultCpuPolicy.value);
+    if (cpuPolicyError) {
+      throw new Error(i18n.t(`settings.cpu_policy_invalid_${cpuPolicyError}`));
+    }
+
     settings.default_max_memory = parseInt(maxMem.value) || 2048;
     settings.default_min_memory = parseInt(minMem.value) || 512;
     settings.default_port = parseInt(port.value) || 25565;
     settings.last_run_path = defaultRunPath.value;
+    settings.default_jvm_args = serializeJvmArgsText(defaultJvmArgsText.value);
+    settings.default_jvm_preset = normalizeJvmPreset(defaultJvmPreset.value);
+    settings.default_cpu_policy = normalizeCpuPolicy(defaultCpuPolicy.value);
     settings.color = settings.color || "default";
     settings.developer_mode = settings.developer_mode || false;
   },
@@ -142,7 +166,9 @@ async function handleBrowseRunPath() {
         v-model:minMemory="minMem"
         v-model:port="port"
         v-model:defaultJavaPath="settings.default_java_path"
-        v-model:defaultJvmArgs="settings.default_jvm_args"
+        v-model:defaultJvmArgsText="defaultJvmArgsText"
+        v-model:defaultJvmPreset="defaultJvmPreset"
+        v-model:defaultCpuPolicy="defaultCpuPolicy"
         v-model:defaultRunPath="defaultRunPath"
         :java-list="javaList"
         :java-loading="javaLoading"

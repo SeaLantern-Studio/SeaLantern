@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::models::server::{
-    CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
+    CpuPolicyConfig, CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode,
+    DockerItzgRuntimeConfig, JvmPresetConfig,
 };
 use crate::services::server::installer::CoreType;
 use crate::utils::cli::server_args::CliServerCommand;
@@ -117,6 +118,9 @@ pub(crate) fn build_docker_create_request(
             docker_backend_kind,
             command_mode,
             rcon,
+            jvm_args: Vec::new(),
+            cpu_policy: CpuPolicyConfig::default(),
+            jvm_preset: JvmPresetConfig::default(),
         },
     })
 }

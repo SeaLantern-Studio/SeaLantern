@@ -612,6 +612,8 @@ mod tests {
                 custom_command: None,
                 java_path: "java".to_string(),
                 jvm_args: Vec::new(),
+                cpu_policy: crate::models::server::CpuPolicyConfig::default(),
+                jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
         }
     }
@@ -730,7 +732,7 @@ mod tests {
         let state = LocalRuntimeState {
             server_id: server.id.clone(),
             helper_pid: u32::MAX,
-            child_pid: Some(u32::MAX),
+            child_pid: None,
             control_port: Some(25570),
             auth_token: "token".to_string(),
             running: true,
@@ -762,7 +764,7 @@ mod tests {
         let state = LocalRuntimeState {
             server_id: server.id.clone(),
             helper_pid: u32::MAX,
-            child_pid: Some(u32::MAX),
+            child_pid: None,
             control_port: Some(25570),
             auth_token: "token".to_string(),
             running: true,

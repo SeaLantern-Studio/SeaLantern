@@ -57,6 +57,12 @@ impl AppSettings {
         if let Some(ref v) = partial.default_jvm_args {
             self.default_jvm_args = v.clone();
         }
+        if let Some(ref v) = partial.default_cpu_policy {
+            self.default_cpu_policy = v.clone();
+        }
+        if let Some(ref v) = partial.default_jvm_preset {
+            self.default_jvm_preset = v.clone();
+        }
         if let Some(v) = partial.console_font_size {
             self.console_font_size = v;
         }

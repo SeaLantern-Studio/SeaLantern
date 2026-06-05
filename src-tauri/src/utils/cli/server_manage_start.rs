@@ -238,7 +238,9 @@ mod tests {
         args_are_transport_only, parse_manage_start_options, prepare_manage_start_ports_with,
         ManageStartOptions,
     };
-    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::models::server::{
+        CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+    };
     use crate::utils::cli::server_args::{CliMode, WebMode};
     use crate::utils::cli::server_ports::PreparedPorts;
 
@@ -262,7 +264,9 @@ mod tests {
                 startup_mode: "jar".to_string(),
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
-                jvm_args: vec![],
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }

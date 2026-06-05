@@ -201,8 +201,8 @@ fn render_follow_up_lines(server: &ServerInstance, web_port: Option<u16>) -> Vec
 mod tests {
     use super::{render_created_server_lines, CliServerRuntimeKind};
     use crate::models::server::{
-        DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig, LocalRuntimeConfig,
-        RconConfig, ServerInstance, ServerRuntimeConfig,
+        CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
+        JvmPresetConfig, LocalRuntimeConfig, RconConfig, ServerInstance, ServerRuntimeConfig,
     };
     use once_cell::sync::Lazy;
     use std::collections::BTreeMap;
@@ -253,7 +253,9 @@ mod tests {
                 startup_mode: "jar".to_string(),
                 custom_command: Some("java -jar server.jar nogui".to_string()),
                 java_path: "C:/Java/bin/java.exe".to_string(),
-                jvm_args: vec![],
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }
@@ -291,6 +293,9 @@ mod tests {
                     port: 25575,
                     password: "secret-pass".to_string(),
                 }),
+                jvm_args: vec![],
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }

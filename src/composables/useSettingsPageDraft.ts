@@ -65,9 +65,9 @@ export function useSettingsPageDraft(options: UseSettingsPageDraftOptions) {
     }
 
     clearError();
-    options.prepareForSave?.(settings.value);
 
     try {
+      options.prepareForSave?.(settings.value);
       await settingsStore.saveSettingsWithDiff(settings.value);
       applyStoreSnapshot();
     } catch (cause) {

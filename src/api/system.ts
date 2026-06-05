@@ -1,5 +1,6 @@
 import { tauriInvoke } from "@api/tauri";
 import type { JavaInfo } from "@api/java";
+import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 
 export interface CreateServerDefaults {
   default_run_path: string;
@@ -9,6 +10,9 @@ export interface CreateServerDefaults {
   default_port: number;
   cached_java_list: JavaInfo[];
   preferred_java_path: string;
+  default_jvm_args: string[];
+  default_cpu_policy: CpuPolicyConfig;
+  default_jvm_preset: JvmPresetConfig;
 }
 import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 

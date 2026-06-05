@@ -2,6 +2,9 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use crate::models::server::{DockerItzgRuntimeConfig, ServerInstance, VolumeMount};
+use crate::services::server::runtime::docker_itzg::{
+    resolve_docker_launch_spec, resolve_runtime_cpuset,
+};
 
 use super::server_ref::resolve_server_reference;
 use super::server_shared::{trace_compose_action, trace_compose_error};
@@ -273,12 +276,16 @@ fn build_compose_yaml(
         lines.push("      - sealantern".to_string());
     }
 
-    let environment = build_compose_environment(runtime);
+    let environment = build_compose_environment(server, runtime)?;
     if !environment.is_empty() {
         lines.push("    environment:".to_string());
         for (key, value) in environment {
             lines.push(format!("      {}: \"{}\"", key, escape_yaml_double_quoted(&value)));
         }
+    }
+
+    if let Some(cpuset) = resolve_runtime_cpuset(&runtime.cpu_policy)? {
+        lines.push(format!("    cpuset: \"{}\"", escape_yaml_double_quoted(&cpuset)));
     }
 
     let ports = build_compose_ports(runtime);
@@ -367,15 +374,13 @@ fn append_sealantern_service(
     Ok(())
 }
 
-fn build_compose_environment(runtime: &DockerItzgRuntimeConfig) -> BTreeMap<String, String> {
-    let mut env = runtime.env.clone();
-    if !env.contains_key("TYPE") {
-        env.insert("TYPE".to_string(), runtime.type_value.clone());
-    }
-    if !env.contains_key("VERSION") {
-        env.insert("VERSION".to_string(), runtime.version.clone());
-    }
-    env
+fn build_compose_environment(
+    server: &ServerInstance,
+    runtime: &DockerItzgRuntimeConfig,
+) -> Result<BTreeMap<String, String>, String> {
+    let settings = crate::models::settings::AppSettings::default();
+    let launch_spec = resolve_docker_launch_spec(server, runtime, &settings)?;
+    Ok(launch_spec.environment.into_iter().collect())
 }
 
 fn build_compose_ports(runtime: &DockerItzgRuntimeConfig) -> Vec<String> {
@@ -448,8 +453,9 @@ mod tests {
         DEFAULT_SEALANTERN_IMAGE,
     };
     use crate::models::server::{
-        DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig, PublishedPort,
-        ServerInstance, ServerRuntimeConfig, VolumeMount,
+        CpuPolicyConfig, CpuPolicyMode, DockerBackendKind, DockerCommandMode,
+        DockerItzgRuntimeConfig, JvmPresetConfig, JvmPresetId, PublishedPort, ServerInstance,
+        ServerRuntimeConfig, VolumeMount,
     };
     use std::collections::BTreeMap;
 
@@ -496,6 +502,14 @@ mod tests {
                 docker_backend_kind: DockerBackendKind::Cli,
                 command_mode: DockerCommandMode::Rcon,
                 rcon: None,
+                jvm_args: vec!["-Dfoo=bar".to_string()],
+                cpu_policy: CpuPolicyConfig {
+                    mode: CpuPolicyMode::Count,
+                    count: Some(2),
+                    explicit_set: None,
+                    sync_active_processor_count: true,
+                },
+                jvm_preset: JvmPresetConfig { preset: JvmPresetId::G1Basic },
             }),
         }
     }
@@ -584,6 +598,42 @@ mod tests {
         assert!(yaml.contains("VERSION: \"1.21.1\""));
         assert!(yaml.contains("GUI: \"FALSE\""));
         assert!(yaml.contains("CONSOLE: \"TRUE\""));
+        assert!(yaml.contains("cpuset: \"0-1\""));
+        assert!(yaml.contains("JVM_OPTS: \"-Dfoo=bar\""));
+        assert!(yaml.contains("JVM_XX_OPTS:"));
+        assert!(yaml.contains("-XX:ActiveProcessorCount=2"));
+    }
+
+    #[test]
+    fn build_compose_yaml_respects_runtime_env_jvm_takeover() {
+        let mut server = sample_server();
+        let runtime = match &mut server.runtime {
+            ServerRuntimeConfig::DockerItzg(runtime) => runtime,
+            ServerRuntimeConfig::Local(_) => panic!("expected docker runtime"),
+        };
+        runtime
+            .env
+            .insert("JVM_OPTS".to_string(), "-Dmanual=true".to_string());
+        runtime
+            .env
+            .insert("JVM_XX_OPTS".to_string(), "-XX:ActiveProcessorCount=99".to_string());
+
+        let options = ComposeGenerateOptions {
+            output: None,
+            full_stack: false,
+            sealantern_image: DEFAULT_SEALANTERN_IMAGE.to_string(),
+            sealantern_http_port: DEFAULT_SEALANTERN_HTTP_PORT,
+            static_dir: None,
+            sealantern_data_dir: None,
+            docker_socket: DEFAULT_DOCKER_SOCKET.to_string(),
+        };
+
+        let runtime = server.docker_itzg_runtime().unwrap();
+        let yaml = build_compose_yaml(&server, runtime, &options).unwrap();
+
+        assert!(yaml.contains("JVM_OPTS: \"-Dmanual=true\""));
+        assert!(yaml.contains("JVM_XX_OPTS: \"-XX:ActiveProcessorCount=99\""));
+        assert!(!yaml.contains("-XX:ActiveProcessorCount=2\""));
     }
 
     #[test]

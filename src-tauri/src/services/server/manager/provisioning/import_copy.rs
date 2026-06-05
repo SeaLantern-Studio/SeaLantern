@@ -52,7 +52,14 @@ pub(super) fn import_server(
 
     create_server_properties_if_missing(&server_dir, req.port, req.online_mode)?;
     let port = read_server_port(&server_dir, req.port);
-    write_sl_startup_config(&server_dir, req.max_memory, req.min_memory)?;
+    write_sl_startup_config(
+        &server_dir,
+        req.max_memory,
+        req.min_memory,
+        req.jvm_args.clone(),
+        req.cpu_policy.clone(),
+        req.jvm_preset.clone(),
+    )?;
 
     let now = current_timestamp_secs();
     let core_type = installer::detect_core_type(&dest_startup.to_string_lossy());
@@ -77,7 +84,9 @@ pub(super) fn import_server(
             startup_mode,
             custom_command: req.custom_command,
             java_path: req.java_path,
-            jvm_args: Vec::new(),
+            jvm_args: req.jvm_args,
+            cpu_policy: req.cpu_policy,
+            jvm_preset: req.jvm_preset,
         }),
     };
 

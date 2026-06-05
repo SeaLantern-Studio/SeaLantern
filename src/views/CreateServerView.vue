@@ -36,6 +36,7 @@ const {
   startupCandidates,
   selectedStartupId,
   customStartupCommand,
+  selectedStartup,
   starterSelected,
   detectedCoreTypeKey,
   coreTypeOptions,
@@ -51,6 +52,9 @@ const {
   port,
   selectedJava,
   onlineMode,
+  jvmArgsText,
+  jvmPreset,
+  cpuPolicy,
   javaList,
   activeStep,
   stepItems,
@@ -165,11 +169,21 @@ const { isDragging } = useCreateServerWindowDrop();
                   :min-memory="minMemory"
                   :port="port"
                   :online-mode="onlineMode"
+                  :jvm-args-text="jvmArgsText"
+                  :jvm-preset="jvmPreset.preset"
+                  :cpu-policy="cpuPolicy"
+                  :startup-mode="selectedStartup?.mode"
+                  :startup-target="selectedStartup?.path"
+                  :custom-command-preview="customStartupCommand"
+                  :disabled="creating"
                   @update:server-name="serverName = $event"
                   @update:max-memory="maxMemory = $event"
                   @update:min-memory="minMemory = $event"
                   @update:port="port = $event"
                   @update:online-mode="onlineMode = $event"
+                  @update:jvm-args-text="jvmArgsText = $event"
+                  @update:jvm-preset="jvmPreset = { preset: $event }"
+                  @update:cpu-policy="cpuPolicy = $event"
                 />
               </div>
             </template>

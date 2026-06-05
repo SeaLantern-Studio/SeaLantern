@@ -1,6 +1,12 @@
 import { tauriInvoke, isBrowserEnv, HTTP_API_BASE } from "@api/tauri";
 import type { ServerStatus } from "@type/common";
-import type { ServerInstance } from "@type/server";
+import type {
+  CpuPolicyConfig,
+  DockerLaunchDetail,
+  JvmPresetConfig,
+  LocalLaunchDetail,
+  ServerInstance,
+} from "@type/server";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { isActiveServerStatus } from "@utils/serverStatus";
 
@@ -104,6 +110,33 @@ interface StartupScanResultRaw {
   mc_version_detection_failed: boolean;
 }
 
+interface LocalLaunchDetailRaw {
+  startupMode: LocalLaunchDetail["startup_mode"];
+  javaPath: string;
+  launchTarget: string;
+  effectiveJvmArgs: string[];
+  commandPreview: string;
+}
+
+interface DockerLaunchDetailRaw {
+  runtimeKind: DockerLaunchDetail["runtime_kind"];
+  image: string;
+  imageTag: string;
+  containerName: string;
+  cpusetApplied: string | null;
+  jvmPreset: DockerLaunchDetail["jvm_preset"];
+  jvmOptsPreview: string | null;
+  jvmXxOptsPreview: string | null;
+  jvmOptsArgsCount: number;
+  jvmXxOptsArgsCount: number;
+  jvmOptsOverriddenByRuntimeEnv: boolean;
+  jvmXxOptsOverriddenByRuntimeEnv: boolean;
+  activeProcessorCountStatus: DockerLaunchDetail["active_processor_count_status"];
+  activeProcessorCountValue: number | null;
+  dockerArgsPreview: string[];
+  commandPreview: string;
+}
+
 export const serverApi = {
   async create(params: {
     name: string;
@@ -115,6 +148,9 @@ export const serverApi = {
     javaPath: string;
     jarPath: string;
     startupMode?: "jar" | "bat" | "sh" | "ps1";
+    jvmArgs?: string[];
+    cpuPolicy?: CpuPolicyConfig;
+    jvmPreset?: JvmPresetConfig;
   }): Promise<ServerInstance> {
     return tauriInvoke("create_server", {
       name: params.name,
@@ -126,6 +162,9 @@ export const serverApi = {
       javaPath: params.javaPath,
       jarPath: params.jarPath,
       startupMode: params.startupMode ?? "jar",
+      jvmArgs: params.jvmArgs ?? [],
+      cpuPolicy: params.cpuPolicy,
+      jvmPreset: params.jvmPreset,
     });
   },
 
@@ -138,6 +177,9 @@ export const serverApi = {
     minMemory: number;
     port: number;
     onlineMode: boolean;
+    jvmArgs?: string[];
+    cpuPolicy?: CpuPolicyConfig;
+    jvmPreset?: JvmPresetConfig;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_server", {
       name: params.name,
@@ -148,6 +190,9 @@ export const serverApi = {
       minMemory: params.minMemory,
       port: params.port,
       onlineMode: params.onlineMode,
+      jvmArgs: params.jvmArgs ?? [],
+      cpuPolicy: params.cpuPolicy,
+      jvmPreset: params.jvmPreset,
     });
   },
 
@@ -165,6 +210,9 @@ export const serverApi = {
     startupFilePath?: string;
     coreType?: string;
     mcVersion?: string;
+    jvmArgs?: string[];
+    cpuPolicy?: CpuPolicyConfig;
+    jvmPreset?: JvmPresetConfig;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_modpack", {
       name: params.name,
@@ -180,6 +228,9 @@ export const serverApi = {
       startupFilePath: params.startupFilePath,
       coreType: params.coreType,
       mcVersion: params.mcVersion,
+      jvmArgs: params.jvmArgs ?? [],
+      cpuPolicy: params.cpuPolicy,
+      jvmPreset: params.jvmPreset,
     });
   },
 
@@ -242,6 +293,9 @@ export const serverApi = {
     port: number;
     startupMode: "jar" | "bat" | "sh" | "ps1";
     executablePath?: string;
+    jvmArgs?: string[];
+    cpuPolicy?: CpuPolicyConfig;
+    jvmPreset?: JvmPresetConfig;
   }): Promise<ServerInstance> {
     return tauriInvoke("add_existing_server", {
       name: params.name,
@@ -252,6 +306,9 @@ export const serverApi = {
       port: params.port,
       startupMode: params.startupMode,
       executablePath: params.executablePath,
+      jvmArgs: params.jvmArgs ?? [],
+      cpuPolicy: params.cpuPolicy,
+      jvmPreset: params.jvmPreset,
     });
   },
 
@@ -339,6 +396,39 @@ export const serverApi = {
     return tauriInvoke("get_server_logs", { id, since, maxLines });
   },
 
+  async getLocalLaunchDetail(id: string): Promise<LocalLaunchDetail> {
+    const result = await tauriInvoke<LocalLaunchDetailRaw>("get_local_launch_detail", { id });
+    return {
+      startup_mode: result.startupMode,
+      java_path: result.javaPath,
+      launch_target: result.launchTarget,
+      effective_jvm_args: result.effectiveJvmArgs,
+      command_preview: result.commandPreview,
+    };
+  },
+
+  async getDockerLaunchDetail(id: string): Promise<DockerLaunchDetail> {
+    const result = await tauriInvoke<DockerLaunchDetailRaw>("get_docker_launch_detail", { id });
+    return {
+      runtime_kind: result.runtimeKind,
+      image: result.image,
+      image_tag: result.imageTag,
+      container_name: result.containerName,
+      cpuset_applied: result.cpusetApplied,
+      jvm_preset: result.jvmPreset,
+      jvm_opts_preview: result.jvmOptsPreview,
+      jvm_xx_opts_preview: result.jvmXxOptsPreview,
+      jvm_opts_args_count: result.jvmOptsArgsCount,
+      jvm_xx_opts_args_count: result.jvmXxOptsArgsCount,
+      jvm_opts_overridden_by_runtime_env: result.jvmOptsOverriddenByRuntimeEnv,
+      jvm_xx_opts_overridden_by_runtime_env: result.jvmXxOptsOverriddenByRuntimeEnv,
+      active_processor_count_status: result.activeProcessorCountStatus,
+      active_processor_count_value: result.activeProcessorCountValue,
+      docker_args_preview: result.dockerArgsPreview,
+      command_preview: result.commandPreview,
+    };
+  },
+
   onLogLine(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
     // 浏览器环境使用 SSE
     if (isBrowserEnv()) {
@@ -413,6 +503,10 @@ export const serverApi = {
 
   async updateServerName(id: string, name: string): Promise<void> {
     return tauriInvoke("update_server_name", { id, name });
+  },
+
+  async updateServerJavaPath(id: string, javaPath: string): Promise<ServerInstance> {
+    return tauriInvoke("update_server_java_path", { id, javaPath });
   },
 
   async validateServerPath(newPath: string): Promise<{
