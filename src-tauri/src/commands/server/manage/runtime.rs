@@ -1,7 +1,34 @@
 use super::common::{manager, ForceStopPreparationResponse, ServerStartFallbackEvent};
 use crate::models::server::{ServerInstance, ServerStatusInfo};
 use crate::services::server::manager::{DockerLaunchDetail, LocalLaunchDetail};
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 use tauri::Emitter;
+
+fn server_error_cache() -> &'static Mutex<HashMap<String, String>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn should_emit_server_error(server_id: &str, error_message: Option<&str>) -> bool {
+    let Ok(mut cache) = server_error_cache().lock() else {
+        return error_message.is_some();
+    };
+
+    match error_message {
+        Some(message) => {
+            let should_emit = cache
+                .get(server_id)
+                .is_none_or(|previous| previous != message);
+            cache.insert(server_id.to_string(), message.to_string());
+            should_emit
+        }
+        None => {
+            cache.remove(server_id);
+            false
+        }
+    }
+}
 
 /// 生成强制停止确认信息
 pub(super) fn prepare_force_stop_server(
@@ -39,7 +66,7 @@ pub(super) fn start_server(app: tauri::AppHandle, id: String) -> Result<(), Stri
 
 /// 请求停止服务器
 pub(super) fn stop_server(id: String) -> Result<(), String> {
-    manager().request_stop_server(&id)
+    manager().stop_server(&id)
 }
 
 /// 发送控制台命令
@@ -57,6 +84,10 @@ pub(super) fn get_server_list() -> Vec<ServerInstance> {
 /// 发现错误时会顺手发系统通知和前端事件
 pub(super) fn get_server_status(app: tauri::AppHandle, id: String) -> ServerStatusInfo {
     let status = manager().get_server_status(&id);
+
+    if !should_emit_server_error(&id, status.error_message.as_deref()) {
+        return status;
+    }
 
     if let Some(error_msg) = &status.error_message {
         use tauri_plugin_notification::NotificationExt;
@@ -79,6 +110,30 @@ pub(super) fn get_server_status(app: tauri::AppHandle, id: String) -> ServerStat
     }
 
     status
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_emit_server_error;
+
+    #[test]
+    fn server_error_notification_only_emits_once_per_message() {
+        let server_id = "runtime-manage-notify-alpha";
+
+        assert!(should_emit_server_error(server_id, Some("server crashed")));
+        assert!(!should_emit_server_error(server_id, Some("server crashed")));
+        assert!(should_emit_server_error(server_id, Some("disk full")));
+        assert!(!should_emit_server_error(server_id, Some("disk full")));
+    }
+
+    #[test]
+    fn clearing_server_error_allows_future_notification_again() {
+        let server_id = "runtime-manage-notify-beta";
+
+        assert!(should_emit_server_error(server_id, Some("server crashed")));
+        assert!(!should_emit_server_error(server_id, None));
+        assert!(should_emit_server_error(server_id, Some("server crashed")));
+    }
 }
 
 /// 删除服务器
