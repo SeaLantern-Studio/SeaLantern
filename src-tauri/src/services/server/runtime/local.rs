@@ -732,7 +732,7 @@ mod tests {
         let state = LocalRuntimeState {
             server_id: server.id.clone(),
             helper_pid: u32::MAX,
-            child_pid: Some(u32::MAX),
+            child_pid: None,
             control_port: Some(25570),
             auth_token: "token".to_string(),
             running: true,
@@ -764,7 +764,7 @@ mod tests {
         let state = LocalRuntimeState {
             server_id: server.id.clone(),
             helper_pid: u32::MAX,
-            child_pid: Some(u32::MAX),
+            child_pid: None,
             control_port: Some(25570),
             auth_token: "token".to_string(),
             running: true,

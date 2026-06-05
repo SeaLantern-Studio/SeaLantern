@@ -294,6 +294,21 @@ mod tests {
         AppSettings::default()
     }
 
+    fn test_explicit_cpu_set() -> String {
+        let logical_count = super::logical_cpu_count();
+        if logical_count >= 6 {
+            "1,3,5".to_string()
+        } else if logical_count >= 4 {
+            "0,1,3".to_string()
+        } else if logical_count >= 3 {
+            "0,1,2".to_string()
+        } else if logical_count >= 2 {
+            "0,1".to_string()
+        } else {
+            "0".to_string()
+        }
+    }
+
     #[test]
     fn parse_cpu_set_supports_ranges_and_lists() {
         assert_eq!(parse_cpu_set("0-3,6,7").unwrap(), vec![0, 1, 2, 3, 6, 7]);
@@ -334,12 +349,25 @@ mod tests {
 
     #[test]
     fn explicit_policy_resolves_count_from_cpu_set() {
+        let explicit_set = test_explicit_cpu_set();
+        let expected_count = explicit_set
+            .split(',')
+            .flat_map(|chunk| {
+                if let Some((start, end)) = chunk.split_once('-') {
+                    let start = start.parse::<usize>().unwrap();
+                    let end = end.parse::<usize>().unwrap();
+                    (start..=end).collect::<Vec<_>>()
+                } else {
+                    vec![chunk.parse::<usize>().unwrap()]
+                }
+            })
+            .count();
         let server = test_server(
             "starter",
             CpuPolicyConfig {
                 mode: CpuPolicyMode::Explicit,
                 count: None,
-                explicit_set: Some("1,3,5".to_string()),
+                explicit_set: Some(explicit_set),
                 sync_active_processor_count: true,
             },
         );
@@ -348,7 +376,7 @@ mod tests {
             compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Starter)
                 .unwrap()
                 .unwrap();
-        assert_eq!(arg, "-XX:ActiveProcessorCount=3");
+        assert_eq!(arg, format!("-XX:ActiveProcessorCount={}", expected_count));
     }
 
     #[test]
