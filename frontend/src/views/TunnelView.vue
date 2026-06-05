@@ -10,7 +10,7 @@ import { useTunnelStatusPolling } from "@views/useTunnelStatusPolling";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { i18n } from "@language";
 import { useGlobalMessage } from "@composables/useMessage";
-import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "@lucide/vue";
+import { Copy, Eye, EyeOff, GitBranch, Info, RefreshCw, X } from "@lucide/vue";
 import SLModal from "@components/common/SLModal.vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useSettingsStore } from "@stores/settingsStore";
@@ -620,7 +620,7 @@ onUnmounted(() => {
       <div class="tunnel-info-content">
         <p>{{ i18n.t("tunnel.info_desc") }}</p>
         <button class="tunnel-info-github" @click="openUrl('https://github.com/KercyDing/sculk')">
-          <Github :size="16" />
+          <GitBranch :size="16" />
           <span>{{ i18n.t("tunnel.info_github") }}</span>
         </button>
       </div>

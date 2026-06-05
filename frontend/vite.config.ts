@@ -24,7 +24,7 @@ export default defineConfig({
       "@stores": path.resolve(frontendDir, "src/stores"),
       "@styles": path.resolve(frontendDir, "src/styles"),
       "@themes": path.resolve(frontendDir, "src/themes"),
-      "@src-tauri": path.resolve(rootDir, "backend/tauri-host"),
+      "@tauri-host": path.resolve(rootDir, "backend/tauri-host"),
       "@type": path.resolve(frontendDir, "src/types"),
       "@utils": path.resolve(frontendDir, "src/utils"),
       "@views": path.resolve(frontendDir, "src/views"),

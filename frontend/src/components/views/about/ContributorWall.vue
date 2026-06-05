@@ -6,7 +6,7 @@ import SLButton from "@components/common/SLButton.vue";
 import BrandIcon from "@components/common/BrandIcon.vue";
 import { contributors as contributorsList, type SocialLinks } from "@data/contributors";
 import { i18n } from "@language";
-import tauriIcon64 from "@src-tauri/icons/64x64.png";
+import tauriIcon64 from "@tauri-host/icons/64x64.png";
 import { useAboutLinks } from "@composables/useAboutLinks";
 
 const contributors = ref(contributorsList);

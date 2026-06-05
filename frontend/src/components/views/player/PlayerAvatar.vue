@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AvatarRoot, AvatarImage, AvatarFallback } from "reka-ui";
-import tauriIcon64 from "@src-tauri/icons/64x64.png";
+import tauriIcon64 from "@tauri-host/icons/64x64.png";
 
 defineProps<{
   name: string;

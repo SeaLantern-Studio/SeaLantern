@@ -7,7 +7,7 @@ import SLSwitch from "@components/common/SLSwitch.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import { i18n } from "@language";
 import type { PluginInfo, PluginState, PluginUpdateInfo } from "@type/plugin";
-import { Github, Layers, MoreVertical, Settings, ShieldAlert } from "@lucide/vue";
+import { GitBranch, Layers, MoreVertical, Settings, ShieldAlert } from "@lucide/vue";
 import type { PluginMenuItem } from "./pluginListShared";
 
 defineProps<{
@@ -106,7 +106,7 @@ const emit = defineEmits<{
                 :title="i18n.t('plugins.open_repository')"
                 @click.stop="emit('open-repository', plugin.manifest.repository)"
               >
-                <Github :size="14" />
+                <GitBranch :size="14" />
               </SLButton>
             </div>
           </div>

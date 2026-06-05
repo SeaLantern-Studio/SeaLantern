@@ -164,7 +164,7 @@ backend/tauri-host/src/models/*.rs (数据结构)
 #### 1. API 调用规范
 
 ```typescript
-// src/api/example.ts
+// frontend/src/api/example.ts
 import { tauriInvoke } from "./tauri";
 
 export async function someFunction(param: string): Promise<ReturnType> {
@@ -182,12 +182,12 @@ export async function someFunction(param: string): Promise<ReturnType> {
 #### 3. 样式规范
 
 - 使用 scoped CSS
-- 使用 CSS 变量（定义在 `src/styles/variables.css`）
+- 使用 CSS 变量（定义在 `frontend/src/styles/variables.css`）
 - 毛玻璃效果使用 `backdrop-filter: blur(10px)`
 
 #### 4. 路由规范
 
-路由定义在 `src/router/index.ts`，格式：
+路由定义在 `frontend/src/router/index.ts`，格式：
 
 ```typescript
 {
@@ -197,7 +197,7 @@ export async function someFunction(param: string): Promise<ReturnType> {
 }
 ```
 
-添加新页面后，需要在 `src/components/layout/AppSidebar.vue` 的 `navItems` 数组中添加导航项。
+添加新页面后，需要在 `frontend/src/components/layout/AppSidebar.vue` 的 `navItems` 数组中添加导航项。
 
 ### 后端规范
 
@@ -241,7 +241,7 @@ pub async fn command_name(param: String) -> Result<ReturnType, String> {
 2. 定义命令函数，添加 `#[command]` 宏
 3. 在 `backend/tauri-host/src/commands/mod.rs` 中导出模块
 4. 在 `backend/tauri-host/src/lib.rs` 的 `generate_handler!` 中注册命令
-5. 在 `src/api/` 创建或修改对应的 `.ts` 文件，封装 invoke 调用
+5. 在 `frontend/src/api/` 创建或修改对应的 `.ts` 文件，封装 invoke 调用
 6. 在 Vue 组件中调用 API 函数
 
 **示例**：添加 `get_system_info` 命令
@@ -255,7 +255,7 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
 ```
 
 ```typescript
-// src/api/system.ts
+// frontend/src/api/system.ts
 export async function getSystemInfo(): Promise<SystemInfo> {
   return tauriInvoke<SystemInfo>("get_system_info");
 }
@@ -265,10 +265,10 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 
 **步骤**：
 
-1. 在 `src/views/` 创建新的 `.vue` 文件
-2. 在 `src/router/index.ts` 添加路由
-3. 在 `src/components/layout/AppSidebar.vue` 的 `navItems` 添加导航项
-4. 如果需要新的 API，在 `src/api/` 创建对应文件
+1. 在 `frontend/src/views/` 创建新的 `.vue` 文件
+2. 在 `frontend/src/router/index.ts` 添加路由
+3. 在 `frontend/src/components/layout/AppSidebar.vue` 的 `navItems` 添加导航项
+4. 如果需要新的 API，在 `frontend/src/api/` 创建对应文件
 
 ### 场景 3: 修改版本号
 
@@ -345,7 +345,7 @@ git push origin sea-lantern-vx.x.x
 
 ### 场景 6: 添加新的 CSS 变量
 
-在 `src/styles/variables.css` 的 `:root` 中添加变量，然后在组件中使用 `var(--variable-name)`。
+在 `frontend/src/styles/variables.css` 的 `:root` 中添加变量，然后在组件中使用 `var(--variable-name)`。
 
 ---
 
@@ -391,7 +391,7 @@ fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
 前端每 800ms 轮询一次后端获取新日志：
 
 ```typescript
-// src/stores/consoleStore.ts
+// frontend/src/stores/consoleStore.ts
 setInterval(async () => {
   const logs = await getServerLogs(serverId);
   // 更新 store
@@ -410,7 +410,7 @@ setInterval(async () => {
 
 ### 5. 全局状态管理
 
-使用 Pinia，状态定义在 `src/stores/` 中。
+使用 Pinia，状态定义在 `frontend/src/stores/` 中。
 
 **示例**：访问 serverStore
 
@@ -549,12 +549,12 @@ cargo test -p sea-lantern
 - `backend/tauri-host/src/commands/*.rs` - 定义命令函数
 - `backend/tauri-host/src/commands/mod.rs` - 导出模块
 - `backend/tauri-host/src/lib.rs` - 注册到 `generate_handler!`
-- `src/api/*.ts` - 前端 API 封装
+- `frontend/src/api/*.ts` - 前端 API 封装
 
 **添加新页面**（2 个文件）：
 
-- `src/router/index.ts` - 添加路由
-- `src/components/layout/AppSidebar.vue` - 添加导航项
+- `frontend/src/router/index.ts` - 添加路由
+- `frontend/src/components/layout/AppSidebar.vue` - 添加导航项
 
 ### 3. 代码风格和注释规范
 

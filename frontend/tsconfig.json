@@ -14,7 +14,6 @@
     "jsx": "preserve",
     /* Linting */
     "strict": true,
-    "ignoreDeprecations": "6.0",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
@@ -35,8 +34,8 @@
       "@styles/*": ["src/styles/*"],
       "@themes": ["src/themes"],
       "@themes/*": ["src/themes/*"],
-      "@src-tauri": ["../backend/tauri-host"],
-      "@src-tauri/*": ["../backend/tauri-host/*"],
+      "@tauri-host": ["../backend/tauri-host"],
+      "@tauri-host/*": ["../backend/tauri-host/*"],
       "@type/*": ["src/types/*"],
       "@utils/*": ["src/utils/*"],
       "@views/*": ["src/views/*"]

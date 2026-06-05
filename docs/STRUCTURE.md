@@ -10,7 +10,6 @@ Sea Lantern（海晶灯）是一个基于 Tauri 2、Rust 与 Vue 3 的 Minecraft
 sea-lantern/
 ├── .example_plugin/              # 示例插件目录，用于参考 manifest、脚本与资源组织方式
 ├── .github/                      # GitHub Issue、PR 模板与 CI 工作流
-├── .husky/                       # Git Hook 配置
 ├── .vscode/                      # VS Code 工作区设置
 ├── .zed/                         # Zed 编辑器配置
 ├── docker/                       # Docker 构建相关文件
@@ -28,7 +27,7 @@ sea-lantern/
 ├── .oxlintrc.json                # Oxlint 配置
 ├── Cargo.lock                    # Rust 依赖锁文件（workspace）
 ├── Cargo.toml                    # Rust workspace 清单
-├── commitlint.config.cjs         # Conventional Commits 校验配置
+├── commitlint.config.cjs         # CI 中使用的 Commit Message 规则配置
 ├── frontend/index.html           # 前端 HTML 入口
 ├── LICENSE                       # GPLv3 许可证
 ├── NOTICE                        # 第三方声明
@@ -60,7 +59,7 @@ frontend/
     └── style.css                 # 样式总入口
 ```
 
-### `src/api/`
+### `frontend/src/api/`
 
 当前仓库中的前端 API 封装主要包括：
 
@@ -78,19 +77,19 @@ frontend/
 - `update.ts`：应用更新
 - `upload.ts`：上传相关接口
 
-其中 [`src/api/plugin.ts`](src/api/plugin.ts) 与 [`src/api/mcs_plugins.ts`](src/api/mcs_plugins.ts) 分别对应两套不同插件体系：
+其中 [`frontend/src/api/plugin.ts`](../frontend/src/api/plugin.ts) 与 [`frontend/src/api/mcs_plugins.ts`](../frontend/src/api/mcs_plugins.ts) 分别对应两套不同插件体系：
 
 1. Sea Lantern 的 Lua 插件系统
 2. Minecraft 服务端自身的插件文件管理
 
-### `src/language/`
+### `frontend/src/language/`
 
 该目录存放前端语言包：
 
 - `index.ts`：语言加载入口
 - 多个 `*.json`：具体语言资源，如 `zh-CN.json`、`en-US.json`、`ja-JP.json` 等
 
-### `src/stores/`
+### `frontend/src/stores/`
 
 当前已存在的状态模块包括：
 
@@ -105,7 +104,7 @@ frontend/
 - `updateStore.ts`：更新状态
 - `index.ts`：Pinia 入口
 
-### `src/styles/`
+### `frontend/src/styles/`
 
 样式目录已按“全局基础样式 + 页面样式”拆分：
 
@@ -119,7 +118,7 @@ frontend/
 - `variables.css`
 - `views/`：各页面专用样式，如 `ConfigView.css`、`ConsoleView.css`、`CreateServerView.css`、`TunnelView.css`
 
-### `src/themes/`
+### `frontend/src/themes/`
 
 主题目录包含：
 
@@ -307,7 +306,7 @@ backend/tauri-host/src/plugins/runtime/
 
 如果你准备继续扩展功能，可按以下路径定位：
 
-- 新增前端调用封装：`src/api/`
+- 新增前端调用封装：`frontend/src/api/`
 - 新增 Tauri 命令：`backend/tauri-host/src/commands/`
 - 新增领域模型：`backend/tauri-host/src/models/`
 - 新增后端业务逻辑：`backend/tauri-host/src/services/`
