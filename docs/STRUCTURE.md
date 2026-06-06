@@ -299,7 +299,7 @@ backend/tauri-host/src/plugins/runtime/
 当前文档目录包括：
 
 - `Agents-Example-Module.md`
-- `AI_GUIDE.md`
+- `Agents.md`
 - `CONTRIBUTING.md`
 - `docker-runtime-itzg-design.md` # Java 版 Minecraft 容器运行时（itzg）设计草案
 - `STRUCTURE.md`
