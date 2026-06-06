@@ -109,7 +109,7 @@ impl ModManager {
         let game_version = game_version.to_string();
         let loader = loader.to_string();
 
-        let results = stream::iter(data.hits.into_iter().map(|hit| {
+        let mut results_stream = stream::iter(data.hits.into_iter().map(|hit| {
             let game_version = game_version.clone();
             let loader = loader.clone();
 
@@ -133,10 +133,14 @@ impl ModManager {
                 }
             }
         }))
-        .buffer_unordered(MODRINTH_VERSION_FETCH_CONCURRENCY)
-        .filter_map(async |item| item)
-        .collect::<Vec<_>>()
-        .await;
+        .buffer_unordered(MODRINTH_VERSION_FETCH_CONCURRENCY);
+
+        let mut results = Vec::new();
+        while let Some(item) = results_stream.next().await {
+            if let Some(mod_info) = item {
+                results.push(mod_info);
+            }
+        }
 
         Ok(results)
     }
