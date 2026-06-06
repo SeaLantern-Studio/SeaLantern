@@ -214,8 +214,24 @@ pub async fn install_from_market(
         '_,
         std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
     >,
-    req: market::InstallFromMarketRequest,
+    plugin_id: String,
+    download_url: Option<String>,
+    repo: Option<String>,
+    download_type: Option<String>,
+    release_asset: Option<String>,
+    branch: Option<String>,
+    version: Option<String>,
 ) -> Result<crate::models::plugin::PluginInstallResult, String> {
+    let req = market::InstallFromMarketRequest {
+        plugin_id,
+        download_url,
+        repo,
+        download_type,
+        release_asset,
+        branch,
+        version,
+    };
+
     market::install_from_market(manager, req).await
 }
 

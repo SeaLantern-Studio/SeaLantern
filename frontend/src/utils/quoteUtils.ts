@@ -19,6 +19,10 @@ interface Quote {
   author: string;
 }
 
+function createDefaultQuote(): Quote {
+  return { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
+}
+
 // 引用相关的响应式数据
 const currentQuote = ref<Quote>({ text: "", author: "" });
 const displayText = ref("");
@@ -26,6 +30,14 @@ const isTyping = ref(false);
 const quoteCache = ref<Quote[]>([]);
 let typeTimer: ReturnType<typeof setInterval> | null = null;
 let quoteTimer: ReturnType<typeof setInterval> | null = null;
+
+function isSameQuote(left: Quote, right: Quote): boolean {
+  return left.text === right.text && left.author === right.author;
+}
+
+function isCurrentQuote(quote: Quote): boolean {
+  return !!currentQuote.value.text && isSameQuote(currentQuote.value, quote);
+}
 
 function stopTypeTimer() {
   if (typeTimer) {
@@ -95,7 +107,11 @@ function typeWriterOut(callback?: () => void) {
  * @returns 是否在缓存中
  */
 function isQuoteInCache(quote: Quote): boolean {
-  return quoteCache.value.some((cachedQuote) => cachedQuote.text === quote.text);
+  return quoteCache.value.some((cachedQuote) => isSameQuote(cachedQuote, quote));
+}
+
+function shouldCacheQuote(quote: Quote): boolean {
+  return !isCurrentQuote(quote) && !isQuoteInCache(quote);
 }
 
 /**
@@ -115,20 +131,32 @@ async function requestHitokoto(): Promise<Quote> {
 }
 
 async function fetchHitokoto(): Promise<Quote> {
-  if (quoteCache.value.length > 0) {
+  while (quoteCache.value.length > 0) {
     const quote = quoteCache.value.shift();
+    if (!quote) {
+      break;
+    }
+
+    if (isCurrentQuote(quote)) {
+      continue;
+    }
+
     void replenishCache();
-    return quote!;
+    return quote;
   }
 
   try {
-    const quote = await requestHitokoto();
+    let quote = await requestHitokoto();
+    let retryCount = 0;
+    while (isCurrentQuote(quote) && retryCount < 3) {
+      quote = await requestHitokoto();
+      retryCount++;
+    }
     void replenishCache();
     return quote;
   } catch (error) {
     console.error("Error fetching hitokoto:", error);
-    const defaultQuote = { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
-    return defaultQuote;
+    return createDefaultQuote();
   }
 }
 
@@ -147,7 +175,7 @@ async function replenishCache() {
     );
     for (const result of results) {
       if (result.status === "fulfilled") {
-        if (!isQuoteInCache(result.value)) {
+        if (shouldCacheQuote(result.value)) {
           quoteCache.value.push(result.value);
         }
         continue;
@@ -182,9 +210,24 @@ async function updateQuote() {
  * 初始化引用
  */
 async function initQuote() {
+  if (currentQuote.value.text) {
+    restoreCurrentQuoteDisplay();
+    void replenishCache();
+    return;
+  }
+
   try {
-    await replenishCache();
+    const initialFallback = createDefaultQuote();
+    currentQuote.value = initialFallback;
+    restoreCurrentQuoteDisplay();
+
+    void replenishCache();
+
     const initialQuote = await fetchHitokoto();
+    if (isCurrentQuote(initialQuote)) {
+      return;
+    }
+
     currentQuote.value = initialQuote;
     typeWriter(initialQuote.text);
   } catch (error) {
