@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { tauriInvoke } from "@api/tauri";
 import App from "@src/App.vue";
 import router from "@src/router";
 import pinia from "@src/stores";
@@ -18,7 +19,7 @@ const HEARTBEAT_INTERVAL = 5000;
 function startHeartbeat() {
   // 在普通浏览器环境下，Tauri 后端不存在，调用会直接失败，这里静默忽略错误
   setInterval(() => {
-    invoke("frontend_heartbeat").catch(() => {
+    tauriInvoke("frontend_heartbeat", undefined, { silent: true }).catch(() => {
       // 后端可能已退出或当前不在 Tauri 环境中
     });
   }, HEARTBEAT_INTERVAL);

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 use crate::utils::logger::log_warn;
 use mlua::{Lua, Table};
 
@@ -68,7 +69,7 @@ pub(super) fn read_manifest_json(
     plugin_dir: &Path,
     warn_context: Option<&str>,
 ) -> Result<Option<serde_json::Value>, mlua::Error> {
-    let manifest_path = plugin_dir.join("manifest.json");
+    let manifest_path = plugin_dir.join(PLUGIN_MANIFEST_FILE_NAME);
     if !manifest_path.exists() {
         return Ok(None);
     }

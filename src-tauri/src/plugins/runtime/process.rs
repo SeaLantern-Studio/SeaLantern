@@ -13,6 +13,16 @@ pub use common::{
 };
 
 impl PluginRuntime {
+    /// 安装 `sl.process` 命名空间
+    ///
+    /// # Parameters
+    ///
+    /// - `sl`: Lua 里的 `sl` 根表
+    /// - `process_registry`: 当前插件系统共用的进程注册表
+    ///
+    /// # Returns
+    ///
+    /// 安装成功时返回 `Ok(())`
     pub(super) fn setup_process_namespace(
         &self,
         sl: &Table,

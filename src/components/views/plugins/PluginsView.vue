@@ -25,6 +25,8 @@ import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue"
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { systemApi } from "@api/system";
+import { isUploadSupported } from "@api/upload";
+import { pickAndInstallPluginFiles, pickAndInstallPluginFolderLikeFile } from "@api/plugin";
 import { i18n } from "@language";
 import type { PluginState, PluginInfo, MissingDependency, BatchInstallResult } from "@type/plugin";
 import {
@@ -210,6 +212,16 @@ function openChooser() {
 
 async function pickFile() {
   chooserOpen.value = false;
+
+  if (isUploadSupported()) {
+    const result = await pickAndInstallPluginFiles();
+    if (result) {
+      batchInstallResult.value = result;
+      showBatchResultModal.value = true;
+    }
+    return;
+  }
+
   const selected = await open({
     multiple: true,
     filters: [
@@ -230,6 +242,12 @@ async function pickFile() {
 
 async function pickFolder() {
   chooserOpen.value = false;
+
+  if (isUploadSupported()) {
+    await pickAndInstallPluginFolderLikeFile();
+    return;
+  }
+
   const selected = await open({
     directory: true,
     multiple: true,

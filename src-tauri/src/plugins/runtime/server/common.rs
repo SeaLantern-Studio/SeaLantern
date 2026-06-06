@@ -150,7 +150,7 @@ pub(super) fn checked_file_metadata(
 pub(super) fn running_log_pairs(count: usize) -> Vec<(String, Vec<String>)> {
     let running_ids = server_manager().get_running_server_ids();
     let running_set: HashSet<String> = running_ids.into_iter().collect();
-    let logs_pairs = crate::services::server_log_pipeline::get_all_logs();
+    let logs_pairs = crate::services::server::log_pipeline::get_all_logs();
 
     logs_pairs
         .into_iter()

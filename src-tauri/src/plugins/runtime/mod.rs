@@ -4,6 +4,7 @@ pub(crate) mod core;
 mod element;
 mod filesystem;
 #[cfg(test)]
+#[path = "../../../tests/unit/plugins_runtime_filesystem_test.rs"]
 mod filesystem_test;
 mod http;
 mod i18n;
@@ -11,6 +12,7 @@ mod log;
 mod plugins_api;
 mod process;
 #[cfg(test)]
+#[path = "../../../tests/unit/plugins_runtime_security_test.rs"]
 mod security_test;
 mod server;
 pub(crate) mod shared;

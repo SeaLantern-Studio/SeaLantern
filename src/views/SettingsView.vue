@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
 import ServerDefaultsCard from "@components/views/settings/ServerDefaultsCard.vue";
+import NetworkSettingsCard from "@components/views/settings/NetworkSettingsCard.vue";
 import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue";
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
@@ -269,6 +270,8 @@ async function handleBrowseRunPath() {
         @browseJavaPath="handleBrowseJavaPath"
         @browseRunPath="handleBrowseRunPath"
       />
+
+      <NetworkSettingsCard />
 
       <DeveloperModeCard v-model:developerMode="settings.developer_mode" @change="markChanged" />
 

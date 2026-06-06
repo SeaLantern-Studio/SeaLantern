@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
+import { contextMenuCallback, contextMenuHideNotify, contextMenuShowNotify } from "@api/plugin";
 
 export interface ContextMenuItem {
   id: string;
@@ -132,12 +132,9 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
     y.value = posY;
     visible.value = true;
 
-    invoke("context_menu_show_notify", {
-      context: ctx,
-      targetData: data || null,
-      x: posX,
-      y: posY,
-    }).catch((e) => console.error("[ContextMenu] Failed to notify show:", e));
+    contextMenuShowNotify(ctx, data || null, posX, posY).catch((e) =>
+      console.error("[ContextMenu] Failed to notify show:", e),
+    );
   }
 
   function hideContextMenu() {
@@ -145,17 +142,12 @@ export const useContextMenuStore = defineStore("contextMenu", () => {
     items.value = [];
     context.value = "";
     targetData.value = "";
-    invoke("context_menu_hide_notify").catch(() => {});
+    contextMenuHideNotify().catch(() => {});
   }
 
   async function handleItemClick(item: ContextMenuItem) {
     try {
-      await invoke("context_menu_callback", {
-        pluginId: item.pluginId,
-        context: context.value,
-        itemId: item.id,
-        targetData: targetData.value,
-      });
+      await contextMenuCallback(item.pluginId, context.value, item.id, targetData.value);
       console.log(
         `[ContextMenu] Callback sent: plugin=${item.pluginId}, context=${context.value}, item=${item.id}`,
       );

@@ -2,6 +2,8 @@ use super::{
     common::{emit_plugins_log, resolve_plugin_path, PluginsContext},
     fs, MAX_FILE_SIZE,
 };
+use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
+use crate::hardcode_data::plugin_manifest::writing_manifest_not_allowed_message;
 use crate::utils::logger::log_warn;
 use mlua::Lua;
 
@@ -19,8 +21,8 @@ pub(super) fn write_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Functi
         }
 
         let full_path = resolve_plugin_path(&ctx.plugins_root, &target_id, &relative_path)?;
-        if relative_path.eq_ignore_ascii_case("manifest.json") {
-            return Err(mlua::Error::runtime("Writing manifest.json is not allowed"));
+        if relative_path.eq_ignore_ascii_case(PLUGIN_MANIFEST_FILE_NAME) {
+            return Err(mlua::Error::runtime(writing_manifest_not_allowed_message()));
         }
 
         if full_path.exists() {

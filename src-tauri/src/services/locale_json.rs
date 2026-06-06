@@ -16,7 +16,17 @@ pub fn embedded_table(locale_id: &str) -> HashMap<String, String> {
         "ko-KR" => include_str!("../../locales/ko-KR.json"),
         "ru-RU" => include_str!("../../locales/ru-RU.json"),
         "vi-VN" => include_str!("../../locales/vi-VN.json"),
-        _ => panic!("unsupported embedded locale: {locale_id}"),
+        _ => {
+            eprintln!("[i18n] 不支持的内置语言: {}，回退到 zh-CN", locale_id);
+            include_str!("../../locales/zh-CN.json")
+        }
     };
-    serde_json::from_str(json).unwrap_or_else(|e| panic!("locale {locale_id} json: {e}"))
+
+    match serde_json::from_str::<HashMap<String, String>>(json) {
+        Ok(table) => table,
+        Err(error) => {
+            eprintln!("[i18n] 内置语言解析失败: {}: {}", locale_id, error);
+            HashMap::new()
+        }
+    }
 }

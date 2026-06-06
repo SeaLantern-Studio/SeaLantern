@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use mlua::{Lua, Result as LuaResult, Table, Value};
 use serde_json::Value as JsonValue;
 use std::path::{Path, PathBuf};

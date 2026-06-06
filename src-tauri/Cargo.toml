@@ -8,11 +8,10 @@ default-run = "sea-lantern"
 
 [lib]
 name = "sea_lantern_lib"
-crate-type = ["lib", "cdylib", "staticlib"]
+crate-type = ["lib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset", "tray-icon", "macos-private-api"] }
@@ -69,7 +68,6 @@ chrono = "0.4"
 lazy_static = "1.4"
 shlex = "1.3.0"
 sculk = { version = "0.2.0", features = ["persist", "clipboard"] }
-
 
 [features]
 docker = ["axum", "tower", "tower-http", "tokio-stream", "mime_guess"]

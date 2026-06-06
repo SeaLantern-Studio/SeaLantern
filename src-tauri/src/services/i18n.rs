@@ -1,7 +1,6 @@
-//! i18n 服务：集中管理内置与插件的多语言文案。
+//! i18n 服务：集中管理内置与插件的多语言文案
 //!
-//! 内部使用 `std::sync::RwLock` 维护当前语言与翻译表，目前通过 `unwrap()` 处理锁毒化，
-//! 若后续需要进一步去 panic 化，可以改为显式错误返回或回退到默认语言。
+//! 内部使用 `std::sync::RwLock` 维护当前语言与翻译表
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -47,14 +46,24 @@ impl I18nService {
     }
 
     pub fn get_locale(&self) -> String {
-        self.locale.read().unwrap().clone()
+        self.locale
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     pub fn set_locale(&self, locale: &str) {
-        let old_locale = self.locale.read().unwrap().clone();
-        *self.locale.write().unwrap() = locale.to_string();
+        let old_locale = self
+            .locale
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        *self.locale.write().unwrap_or_else(|e| e.into_inner()) = locale.to_string();
 
-        let callbacks = self.change_callbacks.read().unwrap();
+        let callbacks = self
+            .change_callbacks
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         for callback in callbacks.values() {
             callback(&old_locale, locale);
         }
@@ -65,7 +74,10 @@ impl I18nService {
         F: Fn(&str, &str) + Send + Sync + 'static,
     {
         let id = {
-            let mut next_id = self.next_callback_id.write().unwrap();
+            let mut next_id = self
+                .next_callback_id
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             let id = *next_id;
             *next_id += 1;
             id
@@ -73,14 +85,17 @@ impl I18nService {
 
         self.change_callbacks
             .write()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(id, Box::new(callback));
 
         LocaleCallbackToken(id)
     }
 
     pub fn remove_locale_callback(&self, token: &LocaleCallbackToken) {
-        self.change_callbacks.write().unwrap().remove(&token.0);
+        self.change_callbacks
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&token.0);
     }
 
     pub fn t(&self, key: &str) -> String {
@@ -88,7 +103,7 @@ impl I18nService {
             .unwrap_or_else(|| key.to_string())
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 预留调用
     pub fn t_for_locale(&self, locale: &str, key: &str) -> String {
         self.translate_for_locale(locale, key)
             .unwrap_or_else(|| key.to_string())
@@ -102,7 +117,7 @@ impl I18nService {
         result
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 预留调用
     pub fn t_with_options_for_locale(
         &self,
         locale: &str,
@@ -144,13 +159,21 @@ impl I18nService {
     }
 
     fn resolve_translation_for_locale(&self, locale: &str, key: &str) -> Option<String> {
-        if let Some(locale_translations) = self.translations.read().unwrap().get(locale) {
+        if let Some(locale_translations) = self
+            .translations
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(locale)
+        {
             if let Some(value) = locale_translations.get(key) {
                 return Some(value.clone());
             }
         }
 
-        let plugin_trans = self.plugin_translations.read().unwrap();
+        let plugin_trans = self
+            .plugin_translations
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         for plugin_map in plugin_trans.values() {
             if let Some(locale_map) = plugin_map.get(locale) {
                 if let Some(value) = locale_map.get(key) {
@@ -166,12 +189,15 @@ impl I18nService {
         let mut merged = self
             .translations
             .read()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .get(locale)
             .cloned()
             .unwrap_or_default();
 
-        let plugin_trans = self.plugin_translations.read().unwrap();
+        let plugin_trans = self
+            .plugin_translations
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         for plugin_map in plugin_trans.values() {
             if let Some(locale_map) = plugin_map.get(locale) {
                 for (k, v) in locale_map {
@@ -185,7 +211,10 @@ impl I18nService {
 
     pub fn get_available_locales(&self) -> Vec<String> {
         let mut locales: Vec<String> = SUPPORTED_LOCALES.iter().map(|s| s.to_string()).collect();
-        let owners = self.plugin_locale_owners.read().unwrap();
+        let owners = self
+            .plugin_locale_owners
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         for locale in owners.keys() {
             if !locales.contains(locale) {
                 locales.push(locale.clone());
@@ -194,11 +223,11 @@ impl I18nService {
         locales
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 预留调用
     pub fn get_locale_display_name(&self, locale: &str) -> Option<String> {
         self.plugin_locale_names
             .read()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .get(locale)
             .cloned()
     }
@@ -206,11 +235,11 @@ impl I18nService {
     pub fn register_locale(&self, plugin_id: &str, locale: &str, display_name: &str) {
         self.plugin_locale_owners
             .write()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(locale.to_string(), plugin_id.to_string());
         self.plugin_locale_names
             .write()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(locale.to_string(), display_name.to_string());
     }
 
@@ -220,7 +249,10 @@ impl I18nService {
         locale: &str,
         entries: HashMap<String, String>,
     ) {
-        let mut plugin_trans = self.plugin_translations.write().unwrap();
+        let mut plugin_trans = self
+            .plugin_translations
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let plugin_map = plugin_trans.entry(plugin_id.to_string()).or_default();
         let locale_map = plugin_map.entry(locale.to_string()).or_default();
         locale_map.extend(entries);
@@ -229,27 +261,36 @@ impl I18nService {
     pub fn plugin_translation_entry_count(&self, plugin_id: &str) -> usize {
         self.plugin_translations
             .read()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .get(plugin_id)
             .map(|locale_map| locale_map.values().map(HashMap::len).sum())
             .unwrap_or(0)
     }
 
     pub fn remove_plugin_translations(&self, plugin_id: &str) {
-        self.plugin_translations.write().unwrap().remove(plugin_id);
+        self.plugin_translations
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(plugin_id);
 
         let locales_to_remove: Vec<String> = self
             .plugin_locale_owners
             .read()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .iter()
             .filter(|(_, owner)| owner.as_str() == plugin_id)
             .map(|(locale, _)| locale.clone())
             .collect();
 
         {
-            let mut owners = self.plugin_locale_owners.write().unwrap();
-            let mut names = self.plugin_locale_names.write().unwrap();
+            let mut owners = self
+                .plugin_locale_owners
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            let mut names = self
+                .plugin_locale_names
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             for locale in &locales_to_remove {
                 owners.remove(locale);
                 names.remove(locale);

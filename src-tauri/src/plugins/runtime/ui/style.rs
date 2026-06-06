@@ -1,7 +1,7 @@
 use super::super::PluginRuntime;
 use super::common::{
-    emit_ui_action, json_to_string, lua_str, map_create_err, map_set_err, UiLogSpec,
-    VALID_INSERT_PLACEMENTS,
+    emit_ui_action, json_to_string, lua_str, map_create_err, map_set_err,
+    register_single_string_ui_action, UiLogSpec, VALID_INSERT_PLACEMENTS,
 };
 use mlua::Table;
 
@@ -31,125 +31,51 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
     )?;
     map_set_err(ui_table.set("inject_css", inject_css_fn), "ui.inject_css")?;
 
-    // sl.ui.remove_css(style_id)
-    let pid = runtime.plugin_id.clone();
-    let remove_css_fn = map_create_err(
-        runtime
-            .lua
-            .create_function(move |lua, style_id: mlua::String| {
-                let style_id = lua_str(style_id);
-                emit_ui_action(
-                    lua,
-                    &pid,
-                    "remove_css",
-                    "remove_css",
-                    &style_id,
-                    "",
-                    Some(UiLogSpec {
-                        api_name: "sl.ui.remove_css",
-                        target: &style_id,
-                    }),
-                )
-            }),
-        "ui.remove_css",
+    register_single_string_ui_action(
+        &runtime.lua,
+        ui_table,
+        &runtime.plugin_id,
+        "remove_css",
+        "remove_css",
+        "remove_css",
+        "sl.ui.remove_css",
     )?;
-    map_set_err(ui_table.set("remove_css", remove_css_fn), "ui.remove_css")?;
-
-    // sl.ui.hide(selector)
-    let pid = runtime.plugin_id.clone();
-    let hide_fn = map_create_err(
-        runtime
-            .lua
-            .create_function(move |lua, selector: mlua::String| {
-                let selector = lua_str(selector);
-                emit_ui_action(
-                    lua,
-                    &pid,
-                    "hide",
-                    "hide",
-                    &selector,
-                    "",
-                    Some(UiLogSpec {
-                        api_name: "sl.ui.hide",
-                        target: &selector,
-                    }),
-                )
-            }),
-        "ui.hide",
+    register_single_string_ui_action(
+        &runtime.lua,
+        ui_table,
+        &runtime.plugin_id,
+        "hide",
+        "hide",
+        "hide",
+        "sl.ui.hide",
     )?;
-    map_set_err(ui_table.set("hide", hide_fn), "ui.hide")?;
-
-    // sl.ui.show(selector)
-    let pid = runtime.plugin_id.clone();
-    let show_fn = map_create_err(
-        runtime
-            .lua
-            .create_function(move |lua, selector: mlua::String| {
-                let selector = lua_str(selector);
-                emit_ui_action(
-                    lua,
-                    &pid,
-                    "show",
-                    "show",
-                    &selector,
-                    "",
-                    Some(UiLogSpec {
-                        api_name: "sl.ui.show",
-                        target: &selector,
-                    }),
-                )
-            }),
-        "ui.show",
+    register_single_string_ui_action(
+        &runtime.lua,
+        ui_table,
+        &runtime.plugin_id,
+        "show",
+        "show",
+        "show",
+        "sl.ui.show",
     )?;
-    map_set_err(ui_table.set("show", show_fn), "ui.show")?;
-
-    // sl.ui.disable(selector)
-    let pid = runtime.plugin_id.clone();
-    let disable_fn = map_create_err(
-        runtime
-            .lua
-            .create_function(move |lua, selector: mlua::String| {
-                let selector = lua_str(selector);
-                emit_ui_action(
-                    lua,
-                    &pid,
-                    "disable",
-                    "disable",
-                    &selector,
-                    "",
-                    Some(UiLogSpec {
-                        api_name: "sl.ui.disable",
-                        target: &selector,
-                    }),
-                )
-            }),
-        "ui.disable",
+    register_single_string_ui_action(
+        &runtime.lua,
+        ui_table,
+        &runtime.plugin_id,
+        "disable",
+        "disable",
+        "disable",
+        "sl.ui.disable",
     )?;
-    map_set_err(ui_table.set("disable", disable_fn), "ui.disable")?;
-
-    // sl.ui.enable(selector)
-    let pid = runtime.plugin_id.clone();
-    let enable_fn = map_create_err(
-        runtime
-            .lua
-            .create_function(move |lua, selector: mlua::String| {
-                let selector = lua_str(selector);
-                emit_ui_action(
-                    lua,
-                    &pid,
-                    "enable",
-                    "enable",
-                    &selector,
-                    "",
-                    Some(UiLogSpec {
-                        api_name: "sl.ui.enable",
-                        target: &selector,
-                    }),
-                )
-            }),
-        "ui.enable",
+    register_single_string_ui_action(
+        &runtime.lua,
+        ui_table,
+        &runtime.plugin_id,
+        "enable",
+        "enable",
+        "enable",
+        "sl.ui.enable",
     )?;
-    map_set_err(ui_table.set("enable", enable_fn), "ui.enable")?;
 
     // sl.ui.insert(placement, selector, html)
     let pid = runtime.plugin_id.clone();
