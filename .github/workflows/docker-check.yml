@@ -6,26 +6,24 @@ on:
     paths:
       - "docker/Dockerfile"
       - "docker/docker-compose.yml"
-      - "src-tauri/**"
-      - "src/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
+      - "backend/**"
+      - "frontend/**"
+      - "frontend/package.json"
+      - "frontend/pnpm-lock.yaml"
       - "Cargo.toml"
       - "Cargo.lock"
-      - "docker-entry/**"
       - ".github/workflows/docker-check.yml"
   push:
     branches: [main, dev]
     paths:
       - "docker/Dockerfile"
       - "docker/docker-compose.yml"
-      - "src-tauri/**"
-      - "src/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
+      - "backend/**"
+      - "frontend/**"
+      - "frontend/package.json"
+      - "frontend/pnpm-lock.yaml"
       - "Cargo.toml"
       - "Cargo.lock"
-      - "docker-entry/**"
       - ".github/workflows/docker-check.yml"
 
 concurrency:

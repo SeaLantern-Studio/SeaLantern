@@ -43,9 +43,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          VERSION="$(grep -m 1 -oP '"version"\s*:\s*"\K[^"]+' package.json)"
+          VERSION="$(grep -m 1 -oP '"version"\s*:\s*"\K[^"]+' frontend/package.json)"
           if [ -z "$VERSION" ]; then
-            echo "❌ 无法从 package.json 提取版本号"
+            echo "❌ 无法从 frontend/package.json 提取版本号"
             exit 1
           fi
 
@@ -151,7 +151,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
@@ -173,7 +173,7 @@ jobs:
       - name: 安装前端依赖 (pnpm)
         run: |
           corepack prepare pnpm@9.15.9 --activate
-          pnpm install --frozen-lockfile
+          pnpm --dir frontend install --frozen-lockfile
 
       - name: 构建并上传 Nightly 产物
         uses: tauri-apps/tauri-action@v0
@@ -185,7 +185,7 @@ jobs:
           releaseBody: ${{ needs.validate-nightly.outputs.release_body }}
           releaseDraft: false
           prerelease: true
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} -c backend/tauri-host/tauri.conf.json
 
       - name: 打包 Windows 免安装版
         if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'
@@ -196,7 +196,7 @@ jobs:
           VERSION: ${{ needs.validate-nightly.outputs.version }}
           ASSET_ARCH: ${{ matrix.asset_arch }}
         run: |
-          $releaseDir = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
+          $releaseDir = Get-ChildItem -Path "target", "backend/tauri-host/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match '\\release\\sea-lantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
             Select-Object -First 1 -ExpandProperty DirectoryName
 
@@ -236,7 +236,7 @@ jobs:
           set -euo pipefail
 
           SEARCH_ROOTS=()
-          for dir in target src-tauri/target; do
+          for dir in target backend/tauri-host/target; do
             if [ -d "$dir" ]; then
               SEARCH_ROOTS+=("$dir")
             fi

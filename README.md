@@ -1,6 +1,6 @@
 <div align="center">
   
-<img src="src/assets/logo.svg" alt="logo" width="200" height="200">
+<img src="frontend/src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # 海晶灯（Sea Lantern）
 
@@ -17,7 +17,7 @@
   <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
 </div>
 
-<kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
+<kbd>简体中文</kbd> <kbd>[English](docs/README/README-en.md)</kbd>
 
 ## 有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
@@ -62,16 +62,16 @@ cd SeaLantern
 前端与后端：
 
 ```bash
-pnpm install
-pnpm run tauri dev
+pnpm --dir frontend install
+pnpm --dir frontend run tauri:dev
 ```
 
-部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm run tauri dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
+部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm --dir frontend run tauri:dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
 
 仅前端：
 
 ```bash
-pnpm dev
+pnpm --dir frontend run dev
 ```
 
 ### 代码质量检查
@@ -82,19 +82,19 @@ pnpm dev
 
 ```bash
 # 代码质量检查
-pnpm run lint
+pnpm --dir frontend run lint
 
 # 类型检查并验证生产构建
-pnpm run build:check
+pnpm --dir frontend run build:check
 
 # 自动修复可修复问题
-pnpm run lint:fix
+pnpm --dir frontend run lint:fix
 
 # 格式化代码
-pnpm run fmt
+pnpm --dir frontend run fmt
 
 # 检查代码格式
-pnpm run fmt:check
+pnpm --dir frontend run fmt:check
 ```
 
 </details>
@@ -106,7 +106,7 @@ pnpm run fmt:check
 cargo fmt --all -- --check
 
 # 编译检查
-cargo check --manifest-path Cargo.toml
+cargo check --workspace
 
 # 运行 Clippy 检查
 cargo clippy --workspace -- -D warnings
@@ -119,14 +119,9 @@ cargo fmt --all
 
 项目已配置 CI 自动检查，确保所有提交的代码都符合规范。
 
-### 提交规范自动检查（已启用）
+### 提交检查
 
-- 本地 `pre-commit`：自动对暂存区前端文件执行 `oxfmt`（通过 `lint-staged`）
-- 本地 `commit-msg`：强制提交信息符合 Conventional Commits
-- CI：在 PR/推送时再次校验提交信息与代码质量
-
-允许的提交类型：`build`、`ci`、`feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`types`、`chore`、`revert`、`security`、`i18n`  
-示例：`feat(plugin): 增加插件下载重试机制`
+CI 会在 PR/推送时校验代码质量与相关规范。
 
 ## 技术栈
 
@@ -182,7 +177,7 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 
 ### i18n 国际化支持指南
 
-Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](src/language/README.md)
+Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](docs/language-system.md)
 
 除了当前已有的常见语言，想要加额外语言，请制作插件。
 

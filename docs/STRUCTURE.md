@@ -10,17 +10,15 @@ Sea Lantern（海晶灯）是一个基于 Tauri 2、Rust 与 Vue 3 的 Minecraft
 sea-lantern/
 ├── .example_plugin/              # 示例插件目录，用于参考 manifest、脚本与资源组织方式
 ├── .github/                      # GitHub Issue、PR 模板与 CI 工作流
-├── .husky/                       # Git Hook 配置
 ├── .vscode/                      # VS Code 工作区设置
 ├── .zed/                         # Zed 编辑器配置
 ├── docker/                       # Docker 构建相关文件
-├── docker-entry/                 # Docker 环境下的独立 Rust 入口程序
 ├── docs/                         # 项目文档
 ├── packaging/                    # Arch Linux 打包脚本与桌面文件
 ├── panic-log/                    # 崩溃日志目录占位
 ├── scripts/                      # 构建、版本、版权等辅助脚本
-├── src/                          # 前端源码（Vue 3 + TypeScript）
-├── src-tauri/                    # Tauri / Rust 后端源码
+├── frontend/                     # 前端工程根目录（Vue 3 + TypeScript）
+├── backend/                      # Tauri / Rust 后端目录
 ├── .editorconfig                 # 编辑器基础格式规范
 ├── .gitattributes                # Git 属性配置
 ├── .gitignore                    # Git 忽略规则
@@ -28,34 +26,38 @@ sea-lantern/
 ├── .oxlintrc.json                # Oxlint 配置
 ├── Cargo.lock                    # Rust 依赖锁文件（workspace）
 ├── Cargo.toml                    # Rust workspace 清单
-├── commitlint.config.cjs         # Conventional Commits 校验配置
-├── index.html                    # 前端 HTML 入口
+├── frontend/index.html           # 前端 HTML 入口
 ├── LICENSE                       # GPLv3 许可证
 ├── NOTICE                        # 第三方声明
-├── package.json                  # 前端依赖与脚本定义
-├── pnpm-lock.yaml                # pnpm 锁文件
+├── frontend/package.json         # 前端依赖与脚本定义
+├── frontend/pnpm-lock.yaml       # pnpm 锁文件
 ├── README.md                     # 中文说明文档
 ├── README-en.md                  # 英文说明文档
 ├── rustfmt.toml                  # Rust 格式化配置
 ```
 
-## 前端结构 `src/`
+## 前端结构 `frontend/`
 
 ```text
-src/
-├── api/                          # 前端到 Tauri 命令的调用封装
-├── assets/                       # 静态资源
-├── language/                     # 前端国际化资源
-├── stores/                       # Pinia 状态管理
-├── styles/                       # 全局与页面样式
-├── themes/                       # 主题定义
-├── utils/                        # 前端工具函数
-├── App.vue                       # Vue 根组件
-├── main.ts                       # 应用入口
-└── style.css                     # 样式总入口
+frontend/
+├── index.html                    # 前端 HTML 入口
+├── package.json                  # 前端依赖与脚本定义
+├── vite.config.ts                # Vite 配置
+├── tsconfig.json                 # TypeScript 配置
+└── src/
+    ├── api/                      # 前端到 Tauri 命令的调用封装
+    ├── assets/                   # 静态资源
+    ├── language/                 # 前端国际化资源
+    ├── stores/                   # Pinia 状态管理
+    ├── styles/                   # 全局与页面样式
+    ├── themes/                   # 主题定义
+    ├── utils/                    # 前端工具函数
+    ├── App.vue                   # Vue 根组件
+    ├── main.ts                   # 应用入口
+    └── style.css                 # 样式总入口
 ```
 
-### `src/api/`
+### `frontend/src/api/`
 
 当前仓库中的前端 API 封装主要包括：
 
@@ -73,19 +75,19 @@ src/
 - `update.ts`：应用更新
 - `upload.ts`：上传相关接口
 
-其中 [`src/api/plugin.ts`](src/api/plugin.ts) 与 [`src/api/mcs_plugins.ts`](src/api/mcs_plugins.ts) 分别对应两套不同插件体系：
+其中 [`frontend/src/api/plugin.ts`](../frontend/src/api/plugin.ts) 与 [`frontend/src/api/mcs_plugins.ts`](../frontend/src/api/mcs_plugins.ts) 分别对应两套不同插件体系：
 
 1. Sea Lantern 的 Lua 插件系统
 2. Minecraft 服务端自身的插件文件管理
 
-### `src/language/`
+### `frontend/src/language/`
 
 该目录存放前端语言包：
 
 - `index.ts`：语言加载入口
 - 多个 `*.json`：具体语言资源，如 `zh-CN.json`、`en-US.json`、`ja-JP.json` 等
 
-### `src/stores/`
+### `frontend/src/stores/`
 
 当前已存在的状态模块包括：
 
@@ -100,7 +102,7 @@ src/
 - `updateStore.ts`：更新状态
 - `index.ts`：Pinia 入口
 
-### `src/styles/`
+### `frontend/src/styles/`
 
 样式目录已按“全局基础样式 + 页面样式”拆分：
 
@@ -114,7 +116,7 @@ src/
 - `variables.css`
 - `views/`：各页面专用样式，如 `ConfigView.css`、`ConsoleView.css`、`CreateServerView.css`、`TunnelView.css`
 
-### `src/themes/`
+### `frontend/src/themes/`
 
 主题目录包含：
 
@@ -125,10 +127,33 @@ src/
 - `sunset.ts`
 - `index.ts`
 
-## 后端结构 `src-tauri/`
+## 后端结构 `backend/`
+
+当前后端不是单一 crate，而是“主宿主 crate + 多个共享 core crate”的结构。
 
 ```text
-src-tauri/
+backend/
+├── docker-core/                 # Docker 启动参数、预览、JVM env 合成等共享纯逻辑
+├── docker-entry/                # Docker / headless HTTP 模式下的独立可执行入口
+├── java-installer-core/         # Java 运行时下载、解压与安装逻辑
+├── runtime-core/                # 日志、headless HTTP、路径、状态、Tokio 运行时等共享工具
+├── server-config-core/          # 启动配置、JVM 参数、CPU policy、server.properties 共享规则
+├── server-download-links-core/  # 服务端下载链接解析
+├── server-installer-core/       # 服务端核心类型识别、压缩包解压、MC 版本推断
+├── server-local-setup-core/     # 本地建服、接入、启动前路径与元数据辅助
+├── server-plugin-core/          # Minecraft 服务端插件 JAR 与配置文件扫描
+├── server-startup-scan-core/    # 启动候选项扫描
+├── starter-links-core/          # Starter 下载链接缓存与解析
+├── tauri-host/                  # 主 Tauri 宿主 crate
+└── update-core/                 # 更新检查、下载、挂起安装与安装计划
+```
+
+每个 crate 根目录现在都应以 `Agents.md` 作为该模块的低上下文说明入口。需要快速判断模块职责时，优先阅读对应 crate 根目录下的 `Agents.md`。
+
+## 主宿主结构 `backend/tauri-host/`
+
+```text
+backend/tauri-host/
 ├── capabilities/                 # Tauri capability 配置
 ├── icons/                        # 应用图标资源
 ├── locales/                      # 后端本地化资源
@@ -140,10 +165,17 @@ src-tauri/
 └── tauri.conf.json               # Tauri 应用配置
 ```
 
-### `src-tauri/src/`
+```text
+backend/docker-entry/
+├── Cargo.toml                    # Docker 环境下的独立 Rust 入口 crate
+└── src/
+    └── main.rs                   # 容器启动入口，转调 sea-lantern 的 docker 运行模式
+```
+
+### `backend/tauri-host/src/`
 
 ```text
-src-tauri/src/
+backend/tauri-host/src/
 ├── commands/                     # Tauri 命令层，直接暴露给前端 invoke
 ├── models/                       # 序列化数据结构与领域模型
 ├── services/                     # 业务服务层
@@ -152,7 +184,7 @@ src-tauri/src/
 └── main.rs                       # 桌面程序入口
 ```
 
-### `src-tauri/src/commands/`
+### `backend/tauri-host/src/commands/`
 
 当前命令模块包括：
 
@@ -176,10 +208,10 @@ src-tauri/src/
 
 其中：
 
-- [`src-tauri/src/commands/plugin.rs`](src-tauri/src/commands/plugin.rs) 负责 Sea Lantern Lua 插件系统的安装、启停、市场、UI 快照、上下文菜单回调与权限日志读取。
-- [`src-tauri/src/commands/mcs_plugin.rs`](src-tauri/src/commands/mcs_plugin.rs) 负责指定 Minecraft 服务器目录下的插件文件扫描、启停、删除与安装。
+- [`backend/tauri-host/src/commands/plugin.rs`](../backend/tauri-host/src/commands/plugin.rs) 负责 Sea Lantern Lua 插件系统的安装、启停、市场、UI 快照、上下文菜单回调与权限日志读取。
+- [`backend/tauri-host/src/commands/mcs_plugin.rs`](../backend/tauri-host/src/commands/mcs_plugin.rs) 负责指定 Minecraft 服务器目录下的插件文件扫描、启停、删除与安装。
 
-### `src-tauri/src/models/`
+### `backend/tauri-host/src/models/`
 
 当前模型文件包括：
 
@@ -191,9 +223,9 @@ src-tauri/src/
 - `settings.rs`
 - `mod.rs`
 
-其中 [`src-tauri/src/models/plugin.rs`](src-tauri/src/models/plugin.rs) 既定义插件清单结构，也定义权限元数据、依赖描述、插件市场信息、侧边栏配置、UI 页面配置等核心类型。
+其中 [`backend/tauri-host/src/models/plugin.rs`](../backend/tauri-host/src/models/plugin.rs) 既定义插件清单结构，也定义权限元数据、依赖描述、插件市场信息、侧边栏配置、UI 页面配置等核心类型。
 
-### `src-tauri/src/services/`
+### `backend/tauri-host/src/services/`
 
 当前可见服务模块包括：
 
@@ -202,7 +234,7 @@ src-tauri/src/
 
 从命令层引用关系还能看出，项目内还存在若干全局服务/管理器，例如服务器管理器、MCS 插件管理器、插件管理器与国际化服务等，它们承担底层业务逻辑并被命令层复用。
 
-### `src-tauri/src/utils/`
+### `backend/tauri-host/src/utils/`
 
 当前工具模块包括：
 
@@ -215,10 +247,10 @@ src-tauri/src/
 
 ## Lua 插件运行时结构
 
-Sea Lantern 的插件系统核心位于 `src-tauri/src/plugins/runtime/`。虽然当前工作区文件列表未完整展开该目录，但从命令调用与源码引用可确认其主要结构与职责如下：
+Sea Lantern 的插件系统核心位于 `backend/tauri-host/src/plugins/runtime/`。虽然当前工作区文件列表未完整展开该目录，但从命令调用与源码引用可确认其主要结构与职责如下：
 
 ```text
-src-tauri/src/plugins/runtime/
+backend/tauri-host/src/plugins/runtime/
 ├── core/                         # 运行时创建、沙箱与 `sl` 命名空间挂载
 ├── filesystem/                   # `sl.fs` 文件系统 API
 ├── plugins_api/                  # `sl.plugins` 插件目录访问 API
@@ -266,7 +298,8 @@ src-tauri/src/plugins/runtime/
 
 当前文档目录包括：
 
-- `AI_GUIDE.md`
+- `Agents-Example-Module.md`
+- `Agents.md`
 - `CONTRIBUTING.md`
 - `docker-runtime-itzg-design.md` # Java 版 Minecraft 容器运行时（itzg）设计草案
 - `STRUCTURE.md`
@@ -275,15 +308,6 @@ src-tauri/src/plugins/runtime/
 - `theme-system.md` # 主题系统使用说明（原 src/themes/README.md）
 - `新手使用教程.html`
 - `lua-api/` # 插件运行时各模块 Lua API 文档（9 个模块）
-
-### `docker-entry/`
-
-该目录是一个独立 Rust crate：
-
-- `Cargo.toml`
-- `src/main.rs`
-
-通常用于容器环境入口逻辑，与桌面端主应用分离。
 
 ### `scripts/`
 
@@ -302,11 +326,11 @@ src-tauri/src/plugins/runtime/
 
 如果你准备继续扩展功能，可按以下路径定位：
 
-- 新增前端调用封装：`src/api/`
-- 新增 Tauri 命令：`src-tauri/src/commands/`
-- 新增领域模型：`src-tauri/src/models/`
-- 新增后端业务逻辑：`src-tauri/src/services/`
-- 扩展 Lua 插件 API：`src-tauri/src/plugins/runtime/`
+- 新增前端调用封装：`frontend/src/api/`
+- 新增 Tauri 命令：`backend/tauri-host/src/commands/`
+- 新增领域模型：`backend/tauri-host/src/models/`
+- 新增后端业务逻辑：`backend/tauri-host/src/services/`
+- 扩展 Lua 插件 API：`backend/tauri-host/src/plugins/runtime/`
 - 更新项目文档：`docs/`
 
 对于插件相关开发，建议先明确你操作的是：

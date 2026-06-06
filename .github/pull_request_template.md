@@ -22,7 +22,7 @@
 - [ ] 前端 Frontend
   - [ ] UI 样式/布局
   - [ ] 组件/状态/路由逻辑
-  - [ ] 依赖变更 (package.json)
+  - [ ] 依赖变更 (frontend/package.json)
 
 - [ ] 后端 Backend
   - [ ] API 接口变更
