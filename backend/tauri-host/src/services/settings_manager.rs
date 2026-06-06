@@ -64,6 +64,7 @@ impl SettingsManager {
     pub fn update(&self, new_settings: AppSettings) -> Result<(), String> {
         let mut new_settings = new_settings;
         new_settings.normalize_window_effect();
+        new_settings.normalize_memory_display_precision();
         log_settings_debug(
             "update",
             &format!("saving full settings agreed_to_terms={}", new_settings.agreed_to_terms),
@@ -87,6 +88,7 @@ impl SettingsManager {
     pub fn update_with_diff(&self, new_settings: AppSettings) -> Result<UpdateResult, String> {
         let mut new_settings = new_settings;
         new_settings.normalize_window_effect();
+        new_settings.normalize_memory_display_precision();
         let old_settings = self
             .settings
             .lock()
@@ -138,6 +140,7 @@ impl SettingsManager {
     pub fn reset(&self) -> Result<AppSettings, String> {
         let mut default = AppSettings::default();
         default.normalize_window_effect();
+        default.normalize_memory_display_precision();
         save_settings(&self.data_dir, &default)?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = default.clone();
         Ok(default)
@@ -177,6 +180,7 @@ fn load_settings_checked(data_dir: &str) -> Result<AppSettings, String> {
             match serde_json::from_str::<AppSettings>(&content) {
                 Ok(mut result) => {
                     result.normalize_window_effect();
+                    result.normalize_memory_display_precision();
                     log_settings_debug(
                         "load_settings_checked",
                         &format!("parsed agreed_to_terms={}", result.agreed_to_terms),

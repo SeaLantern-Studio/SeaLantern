@@ -125,7 +125,6 @@
     },
     "collapse_btn": "Contraer barra lateral"
   },
-
   "home": {
     "title": "Gestión de servidores",
     "no_servers": "No hay servidores",
@@ -628,6 +627,13 @@
     "minimal_mode_desc": "Desactiva todas las animaciones y efectos, manteniendo solo el renderizado e interacciones básicos",
     "color_options": {
       "custom": "Personalizado"
+    },
+    "memory_display_precision": "Precisión de memoria",
+    "memory_display_precision_desc": "Ajusta la precisión de memoria en el resumen del sistema",
+    "memory_display_precision_options": {
+      "0": "Entero",
+      "2": "2 decimales",
+      "4": "4 decimales"
     }
   },
   "developer": {
@@ -670,7 +676,9 @@
     "cpu": "Procesador",
     "memory": "Memoria",
     "process_count": "Cantidad de procesos",
-    "uptime": "Tiempo activo"
+    "uptime": "Tiempo activo del sistema",
+    "app_memory": "Memoria de SeaLantern",
+    "server_instances_memory": "Memoria de instancias del servidor"
   },
   "about": {
     "title": "Acerca de",

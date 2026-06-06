@@ -125,7 +125,6 @@
     },
     "collapse_btn": "사이드바 접기"
   },
-
   "home": {
     "title": "서버 관리",
     "no_servers": "서버 없음",
@@ -645,6 +644,13 @@
     "minimal_mode_desc": "모든 애니메이션과 효과를 끄고 기본 렌더링과 상호작용만 유지합니다",
     "color_options": {
       "custom": "사용자 정의"
+    },
+    "memory_display_precision": "메모리 표시 정밀도",
+    "memory_display_precision_desc": "시스템 개요의 메모리 표시 정밀도를 조정합니다",
+    "memory_display_precision_options": {
+      "0": "정수",
+      "2": "소수점 둘째 자리",
+      "4": "소수점 넷째 자리"
     }
   },
   "developer": {
@@ -687,7 +693,9 @@
     "cpu": "프로세서",
     "memory": "메모리",
     "process_count": "프로세스 수",
-    "uptime": "실행 시간"
+    "uptime": "시스템 실행 시간",
+    "app_memory": "SeaLantern 메모리 사용량",
+    "server_instances_memory": "서버 인스턴스 메모리 사용량"
   },
   "about": {
     "title": "정보",

@@ -11,6 +11,8 @@ defineProps<{
   theme: string;
   fontSize: string;
   fontFamily: string;
+  memoryDisplayPrecision: string;
+  memoryDisplayPrecisionOptions: { label: string; value: number }[];
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
   windowEffect: WindowEffect;
@@ -31,6 +33,7 @@ const emit = defineEmits<{
   (e: "update:theme", value: string): void;
   (e: "update:fontSize", value: string): void;
   (e: "update:fontFamily", value: string): void;
+  (e: "update:memoryDisplayPrecision", value: string): void;
   (e: "update:windowEffect", value: WindowEffect): void;
   (e: "update:bgSettingsExpanded", value: boolean): void;
   (e: "update:bgOpacity", value: string): void;
@@ -41,6 +44,7 @@ const emit = defineEmits<{
   (e: "themeChange"): void;
   (e: "fontSizeChange"): void;
   (e: "fontFamilyChange"): void;
+  (e: "memoryDisplayPrecisionChange"): void;
   (e: "windowEffectChange", value: WindowEffect): void;
   (e: "minimalModeChange", value: boolean): void;
   (e: "pickImage"): void;
@@ -67,6 +71,11 @@ function handleFontSizeChange(e: Event) {
 function handleFontFamilyChange(value: string | number) {
   emit("update:fontFamily", String(value));
   emit("fontFamilyChange");
+}
+
+function handleMemoryDisplayPrecisionChange(value: string | number) {
+  emit("update:memoryDisplayPrecision", String(value));
+  emit("memoryDisplayPrecisionChange");
 }
 
 function handleWindowEffectChange(value: string | number) {
@@ -137,6 +146,22 @@ function handleMinimalModeChange(value: boolean) {
             :previewFont="true"
             :placeholder="i18n.t('settings.search_font')"
             @update:model-value="handleFontFamilyChange"
+          />
+        </div>
+      </div>
+
+      <div class="sl-setting-row">
+        <div class="sl-setting-info">
+          <span class="sl-setting-label">{{ i18n.t("settings.memory_display_precision") }}</span>
+          <span class="sl-setting-desc">{{
+            i18n.t("settings.memory_display_precision_desc")
+          }}</span>
+        </div>
+        <div class="sl-input-lg">
+          <SLSelect
+            :model-value="memoryDisplayPrecision"
+            :options="memoryDisplayPrecisionOptions"
+            @update:model-value="handleMemoryDisplayPrecisionChange"
           />
         </div>
       </div>

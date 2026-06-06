@@ -5,6 +5,7 @@ import { systemApi, type SystemInfo } from "@api/system";
 import { useGlobalMessage } from "@composables/useMessage";
 import { useSerialPolling } from "@composables/useSerialPolling";
 import { i18n } from "@language";
+import { useSettingsStore } from "@stores/settingsStore";
 
 const LOG_POLL_INTERVAL = 1500;
 const SYSTEM_POLL_INTERVAL = 5000;
@@ -24,6 +25,7 @@ const ALL_LOG_MODULES = "__all_modules__";
 
 export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const globalMessage = useGlobalMessage();
+  const settingsStore = useSettingsStore();
 
   const logs = ref<LogLine[]>([]);
   const systemInfo = ref<SystemInfo | null>(null);
@@ -68,6 +70,32 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const filteredLogCount = computed(() => filteredLogs.value.length);
   const totalLogCount = computed(() => logs.value.length);
   const hasLogEntries = computed(() => logs.value.length > 0);
+  const memoryDisplayPrecision = computed(() => {
+    const value = settingsStore.settings.memory_display_precision;
+    return value === 0 || value === 2 || value === 4 ? value : 2;
+  });
+
+  function formatBytesToGb(value: number): string {
+    const gb = value / 1024 / 1024 / 1024;
+    return `${gb.toFixed(memoryDisplayPrecision.value)} GB`;
+  }
+
+  function formatUptime(totalSeconds: number): string {
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const parts: string[] = [];
+
+    if (days > 0) {
+      parts.push(`${days}d`);
+    }
+    if (hours > 0 || days > 0) {
+      parts.push(`${hours}h`);
+    }
+    parts.push(`${minutes}m`);
+    return parts.join(" ");
+  }
+
   const systemSummary = computed(() => {
     if (!systemInfo.value) return "";
 
@@ -77,9 +105,11 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
       `${i18n.t("developer.kernel")}: ${systemInfo.value.kernel_version}`,
       `${i18n.t("developer.host")}: ${systemInfo.value.host_name || "-"}`,
       `${i18n.t("developer.cpu")}: ${systemInfo.value.cpu.name} (${systemInfo.value.cpu.count})`,
-      `${i18n.t("developer.memory")}: ${Math.round(systemInfo.value.memory.used / 1024 / 1024 / 1024)} / ${Math.round(systemInfo.value.memory.total / 1024 / 1024 / 1024)} GB`,
+      `${i18n.t("developer.memory")}: ${formatBytesToGb(systemInfo.value.memory.used)} / ${formatBytesToGb(systemInfo.value.memory.total)}`,
+      `${i18n.t("developer.server_instances_memory")}: ${formatBytesToGb(systemInfo.value.memory.server_instances_used)}`,
+      `${i18n.t("developer.app_memory")}: ${formatBytesToGb(systemInfo.value.memory.app_used)}`,
       `${i18n.t("developer.process_count")}: ${systemInfo.value.process_count}`,
-      `${i18n.t("developer.uptime")}: ${Math.floor(systemInfo.value.uptime / 60)} min`,
+      `${i18n.t("developer.uptime")}: ${formatUptime(systemInfo.value.uptime)}`,
     ].join("\n");
   });
   const isBrowserMode = computed(() => isBrowserEnv());
@@ -295,6 +325,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     filteredLogCount,
     totalLogCount,
     hasLogEntries,
+    memoryDisplayPrecision,
     selectedLogLevel,
     selectedLogModule,
     logLevelOptions,

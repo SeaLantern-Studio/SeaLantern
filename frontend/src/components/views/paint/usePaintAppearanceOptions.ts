@@ -46,6 +46,12 @@ export function usePaintAppearanceOptions() {
     return [{ label: i18n.t("settings.window_effect_options.off"), value: "off" }];
   });
 
+  const memoryDisplayPrecisionOptions = computed<{ label: string; value: number }[]>(() => [
+    { label: i18n.t("settings.memory_display_precision_options.0"), value: 0 },
+    { label: i18n.t("settings.memory_display_precision_options.2"), value: 2 },
+    { label: i18n.t("settings.memory_display_precision_options.4"), value: 4 },
+  ]);
+
   async function loadSystemFonts() {
     fontsLoading.value = true;
     try {
@@ -71,5 +77,6 @@ export function usePaintAppearanceOptions() {
     isThemeProxied,
     themeProxyPluginName,
     windowEffectOptions,
+    memoryDisplayPrecisionOptions,
   };
 }

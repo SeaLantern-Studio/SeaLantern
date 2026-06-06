@@ -1415,5 +1415,19 @@
         "goCreatePage": "前往创建服务器"
       }
     }
+  },
+  "settings": {
+    "memory_display_precision": "内存显示精度",
+    "memory_display_precision_desc": "调整系统概览中的内存显示精度",
+    "memory_display_precision_options": {
+      "0": "整数",
+      "2": "两位小数",
+      "4": "四位小数"
+    }
+  },
+  "developer": {
+    "app_memory": "SeaLantern 内存占用",
+    "server_instances_memory": "服务器实例内存占用",
+    "uptime": "系统已运行时长"
   }
 }

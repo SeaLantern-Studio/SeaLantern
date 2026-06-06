@@ -125,7 +125,6 @@
     },
     "collapse_btn": "收起側欄"
   },
-
   "home": {
     "title": "伺服器管理",
     "no_servers": "暫無伺服器",
@@ -644,6 +643,13 @@
     "minimal_mode_desc": "關閉所有動畫與特效，僅保留最基本的渲染與互動",
     "color_options": {
       "custom": "自訂"
+    },
+    "memory_display_precision": "記憶體顯示精度",
+    "memory_display_precision_desc": "調整系統概覽中的記憶體顯示精度",
+    "memory_display_precision_options": {
+      "0": "整數",
+      "2": "兩位小數",
+      "4": "四位小數"
     }
   },
   "developer": {
@@ -686,7 +692,9 @@
     "cpu": "處理器",
     "memory": "記憶體",
     "process_count": "程序數",
-    "uptime": "已執行時長"
+    "uptime": "系統已執行時長",
+    "app_memory": "SeaLantern 記憶體占用",
+    "server_instances_memory": "伺服器實例記憶體占用"
   },
   "about": {
     "title": "關於",

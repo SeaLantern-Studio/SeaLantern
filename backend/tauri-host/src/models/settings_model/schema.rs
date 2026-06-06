@@ -10,8 +10,9 @@ use defaults::{
     default_bg_size, default_blocked_commands, default_close_action, default_color,
     default_console_font, default_console_font_family, default_console_letter_spacing,
     default_false, default_font_family, default_font_size, default_language, default_log_lines,
-    default_max_memory, default_min_memory, default_port, default_theme, default_true,
-    default_window_effect, default_window_height, default_window_width,
+    default_max_memory, default_memory_display_precision, default_min_memory, default_port,
+    default_theme, default_true, default_window_effect, default_window_height,
+    default_window_width,
 };
 
 pub const WINDOW_EFFECT_OFF: &str = "off";
@@ -178,6 +179,9 @@ pub struct AppSettings {
     #[serde(default = "default_font_family")]
     pub font_family: String,
 
+    #[serde(default = "default_memory_display_precision")]
+    pub memory_display_precision: u8,
+
     #[serde(default)]
     pub text_color_overrides: TextColorOverrides,
 
@@ -280,6 +284,8 @@ pub struct PartialSettings {
     pub font_size: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory_display_precision: Option<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text_color_overrides: Option<TextColorOverrides>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -27,6 +27,8 @@ export interface MemoryInfo {
   used: number;
   available: number;
   usage: number;
+  app_used: number;
+  server_instances_used: number;
 }
 
 export interface SwapInfo {

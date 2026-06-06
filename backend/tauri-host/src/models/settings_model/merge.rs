@@ -4,6 +4,13 @@ use super::schema::{
 };
 
 impl AppSettings {
+    pub fn normalize_memory_display_precision(&mut self) {
+        self.memory_display_precision = match self.memory_display_precision {
+            0 | 2 | 4 => self.memory_display_precision,
+            _ => 2,
+        };
+    }
+
     pub fn normalize_window_effect(&mut self) {
         let normalized = match self.window_effect.trim().to_ascii_lowercase().as_str() {
             "" => {
@@ -130,6 +137,9 @@ impl AppSettings {
         if let Some(ref v) = partial.font_family {
             self.font_family = v.clone();
         }
+        if let Some(v) = partial.memory_display_precision {
+            self.memory_display_precision = v;
+        }
         if let Some(ref v) = partial.text_color_overrides {
             self.text_color_overrides = v.clone();
         }
@@ -162,5 +172,6 @@ impl AppSettings {
         }
 
         self.normalize_window_effect();
+        self.normalize_memory_display_precision();
     }
 }

@@ -1,12 +1,30 @@
 use super::common::SYSTEM;
 use crate::commands::app::common::{app_t, app_t1, app_t2};
+use crate::services;
 use std::io::ErrorKind;
-use sysinfo::{Disks, Networks, System};
+use sysinfo::{Disks, Networks, Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 
 pub fn get_system_info() -> Result<serde_json::Value, String> {
+    let server_manager = services::global::server_manager();
+    let server_instance_pids: Vec<Pid> = server_manager
+        .get_server_list_checked()?
+        .into_iter()
+        .filter_map(|server| server_manager.get_server_status(&server.id).pid)
+        .map(Pid::from_u32)
+        .collect();
+    let app_pid = Pid::from_u32(std::process::id());
+    let mut tracked_pids = Vec::with_capacity(server_instance_pids.len() + 1);
+    tracked_pids.push(app_pid);
+    tracked_pids.extend(server_instance_pids.iter().copied());
+
     let mut sys = SYSTEM.lock().map_err(|e| e.to_string())?;
 
     sys.refresh_all();
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&tracked_pids),
+        true,
+        ProcessRefreshKind::new().with_memory(),
+    );
 
     let cpu_usage = sys.global_cpu_usage();
     let cpu_count = sys.cpus().len();
@@ -24,6 +42,14 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
     } else {
         0.0
     };
+    let app_used_memory = sys
+        .process(app_pid)
+        .map(|process| process.memory())
+        .unwrap_or(0);
+    let server_instances_used_memory: u64 = server_instance_pids
+        .iter()
+        .filter_map(|pid| sys.process(*pid).map(|process| process.memory()))
+        .sum();
 
     let total_swap = sys.total_swap();
     let used_swap = sys.used_swap();
@@ -108,6 +134,8 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
             "used": used_memory,
             "available": available_memory,
             "usage": memory_usage,
+            "app_used": app_used_memory,
+            "server_instances_used": server_instances_used_memory,
         },
         "swap": {
             "total": total_swap,

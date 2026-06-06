@@ -125,7 +125,6 @@
     },
     "collapse_btn": "Thu gọn thanh bên"
   },
-
   "home": {
     "title": "Quản lý máy chủ",
     "no_servers": "Chưa có máy chủ",
@@ -643,6 +642,13 @@
     "minimal_mode_desc": "Tắt toàn bộ hiệu ứng và hoạt ảnh, chỉ giữ lại hiển thị và tương tác cơ bản",
     "color_options": {
       "custom": "Tùy chỉnh"
+    },
+    "memory_display_precision": "Độ chính xác bộ nhớ",
+    "memory_display_precision_desc": "Điều chỉnh độ chính xác hiển thị bộ nhớ trong tổng quan hệ thống",
+    "memory_display_precision_options": {
+      "0": "Số nguyên",
+      "2": "2 chữ số thập phân",
+      "4": "4 chữ số thập phân"
     }
   },
   "developer": {
@@ -685,7 +691,9 @@
     "cpu": "Bộ xử lý",
     "memory": "Bộ nhớ",
     "process_count": "Số tiến trình",
-    "uptime": "Thời gian hoạt động"
+    "uptime": "Thời gian hoạt động của hệ thống",
+    "app_memory": "Bộ nhớ SeaLantern",
+    "server_instances_memory": "Bộ nhớ phiên máy chủ"
   },
   "about": {
     "title": "Giới thiệu",

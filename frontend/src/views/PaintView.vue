@@ -20,6 +20,7 @@ const fields = usePaintSettingsFields();
 const appearanceOptions = usePaintAppearanceOptions();
 const {
   fontSize,
+  memoryDisplayPrecision,
   consoleFontSize,
   consoleFontFamily,
   consoleLetterSpacing,
@@ -34,6 +35,7 @@ const {
   isThemeProxied,
   themeProxyPluginName,
   windowEffectOptions,
+  memoryDisplayPrecisionOptions,
 } = appearanceOptions;
 
 const windowEffectSummary = computed(() => {
@@ -77,6 +79,10 @@ function handleFontSizeChange() {
 }
 
 function handleFontFamilyChange() {
+  markChanged();
+}
+
+function handleMemoryDisplayPrecisionChange() {
   markChanged();
 }
 
@@ -134,6 +140,8 @@ async function handleImport(json: string) {
         :theme="settings.theme"
         :font-size="fontSize"
         :font-family="settings.font_family"
+        :memory-display-precision="memoryDisplayPrecision"
+        :memory-display-precision-options="memoryDisplayPrecisionOptions"
         :font-family-options="fontFamilyOptions"
         :fonts-loading="fontsLoading"
         :window-effect="settings.window_effect"
@@ -151,6 +159,7 @@ async function handleImport(json: string) {
         @update:theme="settings.theme = $event"
         @update:font-size="fontSize = $event"
         @update:font-family="settings.font_family = $event"
+        @update:memory-display-precision="memoryDisplayPrecision = $event"
         @update:window-effect="settings.window_effect = $event"
         @update:bg-settings-expanded="bgSettingsExpanded = $event"
         @update:bg-opacity="bgOpacity = $event"
@@ -161,6 +170,7 @@ async function handleImport(json: string) {
         @theme-change="handleThemeChange"
         @font-size-change="handleFontSizeChange"
         @font-family-change="handleFontFamilyChange"
+        @memory-display-precision-change="handleMemoryDisplayPrecisionChange"
         @window-effect-change="handleWindowEffectChange"
         @minimal-mode-change="handleMinimalModeChange"
         @pick-image="pickBackgroundImage"

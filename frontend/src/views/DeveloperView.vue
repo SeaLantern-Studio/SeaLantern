@@ -18,6 +18,7 @@ const {
   filteredLogCount,
   totalLogCount,
   hasLogEntries,
+  memoryDisplayPrecision,
   selectedLogLevel,
   selectedLogModule,
   logLevelOptions,
@@ -81,6 +82,7 @@ watch(
         :version="version"
         :loading="loadingSystem"
         :error="systemError"
+        :memory-display-precision="memoryDisplayPrecision"
         @refresh="refreshSystemInfo"
       />
 

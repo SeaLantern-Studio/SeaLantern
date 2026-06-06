@@ -125,7 +125,6 @@
     },
     "collapse_btn": "サイドバーを閉じる"
   },
-
   "home": {
     "title": "サーバー管理",
     "no_servers": "サーバーがありません",
@@ -644,6 +643,13 @@
     "minimal_mode_desc": "すべてのアニメーションと効果を無効にし、基本的な描画と操作のみを保持します",
     "color_options": {
       "custom": "カスタム"
+    },
+    "memory_display_precision": "メモリ表示精度",
+    "memory_display_precision_desc": "システム概要のメモリ表示精度を調整します",
+    "memory_display_precision_options": {
+      "0": "整数",
+      "2": "小数点以下2桁",
+      "4": "小数点以下4桁"
     }
   },
   "developer": {
@@ -686,7 +692,9 @@
     "cpu": "プロセッサ",
     "memory": "メモリ",
     "process_count": "プロセス数",
-    "uptime": "稼働時間"
+    "uptime": "システム稼働時間",
+    "app_memory": "SeaLantern メモリ使用量",
+    "server_instances_memory": "サーバーインスタンス メモリ使用量"
   },
   "about": {
     "title": "このソフトについて",

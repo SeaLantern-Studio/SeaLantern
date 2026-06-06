@@ -36,6 +36,7 @@ impl Default for AppSettings {
             color: "default".to_string(),
             font_size: 14,
             font_family: String::new(),
+            memory_display_precision: 2,
             text_color_overrides: Default::default(),
             app_display_name: String::new(),
             language: "zh-CN".to_string(),
@@ -128,6 +129,10 @@ pub(super) fn default_font_size() -> u32 {
 
 pub(super) fn default_font_family() -> String {
     String::new()
+}
+
+pub(super) fn default_memory_display_precision() -> u8 {
+    2
 }
 
 pub(super) fn default_language() -> String {

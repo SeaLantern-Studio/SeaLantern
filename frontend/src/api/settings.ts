@@ -49,6 +49,7 @@ export interface AppSettings {
   theme: string;
   font_size: number;
   font_family: string;
+  memory_display_precision: number;
   color: string;
   text_color_overrides: TextColorOverrides;
   app_display_name: string;
@@ -92,6 +93,7 @@ export interface PartialSettings {
   theme?: string;
   font_size?: number;
   font_family?: string;
+  memory_display_precision?: number;
   color?: string;
   text_color_overrides?: TextColorOverrides;
   app_display_name?: string;

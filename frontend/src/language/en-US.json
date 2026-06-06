@@ -1275,5 +1275,19 @@
         "goCreatePage": "Go to Create Server"
       }
     }
+  },
+  "settings": {
+    "memory_display_precision": "Memory Precision",
+    "memory_display_precision_desc": "Adjust memory precision in the system overview",
+    "memory_display_precision_options": {
+      "0": "Integer",
+      "2": "2 Decimals",
+      "4": "4 Decimals"
+    }
+  },
+  "developer": {
+    "app_memory": "SeaLantern Memory",
+    "server_instances_memory": "Server Instances Memory",
+    "uptime": "System Uptime"
   }
 }

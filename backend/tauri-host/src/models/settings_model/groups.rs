@@ -43,6 +43,7 @@ impl AppSettings {
             || self.color != other.color
             || self.font_size != other.font_size
             || self.font_family != other.font_family
+            || self.memory_display_precision != other.memory_display_precision
             || self.text_color_overrides != other.text_color_overrides
             || self.app_display_name != other.app_display_name
             || self.minimal_mode != other.minimal_mode

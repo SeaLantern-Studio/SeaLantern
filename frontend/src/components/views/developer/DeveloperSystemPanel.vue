@@ -10,14 +10,43 @@ const props = defineProps<{
   version: string;
   loading: boolean;
   error: string | null;
+  memoryDisplayPrecision: number;
 }>();
 
 const emit = defineEmits<{
   (e: "refresh"): void;
 }>();
 
+function normalizePrecision(value: number): number {
+  return value === 0 || value === 2 || value === 4 ? value : 2;
+}
+
+function formatBytesToGb(value: number, precision: number): string {
+  const normalizedPrecision = normalizePrecision(precision);
+  const gb = value / 1024 / 1024 / 1024;
+  return `${gb.toFixed(normalizedPrecision)} GB`;
+}
+
+function formatUptime(totalSeconds: number): string {
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const parts: string[] = [];
+
+  if (days > 0) {
+    parts.push(`${days}d`);
+  }
+  if (hours > 0 || days > 0) {
+    parts.push(`${hours}h`);
+  }
+  parts.push(`${minutes}m`);
+  return parts.join(" ");
+}
+
 const items = computed(() => {
   if (!props.systemInfo) return [];
+
+  const precision = normalizePrecision(props.memoryDisplayPrecision);
 
   return [
     { label: i18n.t("developer.app_version"), value: props.version },
@@ -33,10 +62,14 @@ const items = computed(() => {
     },
     {
       label: i18n.t("developer.memory"),
-      value: `${Math.round(props.systemInfo.memory.used / 1024 / 1024 / 1024)} / ${Math.round(props.systemInfo.memory.total / 1024 / 1024 / 1024)} GB`,
+      value: `${formatBytesToGb(props.systemInfo.memory.used, precision)} / ${formatBytesToGb(props.systemInfo.memory.total, precision)}`,
+      detail: [
+        `${i18n.t("developer.server_instances_memory")}: ${formatBytesToGb(props.systemInfo.memory.server_instances_used, precision)}`,
+        `${i18n.t("developer.app_memory")}: ${formatBytesToGb(props.systemInfo.memory.app_used, precision)}`,
+      ],
     },
     { label: i18n.t("developer.process_count"), value: String(props.systemInfo.process_count) },
-    { label: i18n.t("developer.uptime"), value: `${Math.floor(props.systemInfo.uptime / 60)} min` },
+    { label: i18n.t("developer.uptime"), value: formatUptime(props.systemInfo.uptime) },
   ];
 });
 </script>
@@ -57,6 +90,9 @@ const items = computed(() => {
       <div v-for="item in items" :key="item.label" class="developer-system-item">
         <span class="developer-system-label">{{ item.label }}</span>
         <span class="developer-system-value">{{ item.value }}</span>
+        <span v-for="detail in item.detail || []" :key="detail" class="developer-system-detail">
+          {{ detail }}
+        </span>
       </div>
     </div>
     <p v-else class="developer-panel-muted">{{ i18n.t("developer.system_empty") }}</p>
@@ -88,6 +124,12 @@ const items = computed(() => {
 .developer-system-value {
   color: var(--sl-text-primary);
   word-break: break-word;
+}
+
+.developer-system-detail {
+  color: var(--sl-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .developer-panel-muted {

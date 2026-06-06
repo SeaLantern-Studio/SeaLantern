@@ -42,6 +42,7 @@ struct PersonalizationSettings {
     color: String,
     font_size: u32,
     font_family: String,
+    memory_display_precision: u8,
     text_color_overrides: TextColorOverrides,
     app_display_name: String,
     minimal_mode: bool,
@@ -106,6 +107,7 @@ fn export_settings_from_app(settings: &AppSettings) -> PersonalizationSettings {
         color: settings.color.clone(),
         font_size: settings.font_size,
         font_family: settings.font_family.clone(),
+        memory_display_precision: settings.memory_display_precision,
         text_color_overrides: settings.text_color_overrides.clone(),
         app_display_name: settings.app_display_name.clone(),
         minimal_mode: settings.minimal_mode,
@@ -126,6 +128,7 @@ fn apply_personalization_settings(
     settings.color = personalization.color;
     settings.font_size = personalization.font_size;
     settings.font_family = personalization.font_family;
+    settings.memory_display_precision = personalization.memory_display_precision;
     settings.text_color_overrides = personalization.text_color_overrides;
     settings.app_display_name = personalization.app_display_name;
     settings.minimal_mode = personalization.minimal_mode;

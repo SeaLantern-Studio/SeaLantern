@@ -89,6 +89,7 @@ const defaultSettings: AppSettings = {
   theme: "auto",
   font_size: 14,
   font_family: "",
+  memory_display_precision: 2,
   color: "default",
   text_color_overrides: {
     title: "",

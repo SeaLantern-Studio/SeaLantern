@@ -125,7 +125,6 @@
     },
     "collapse_btn": "Seitenleiste einklappen"
   },
-
   "home": {
     "title": "Serververwaltung",
     "no_servers": "Noch keine Server",
@@ -643,6 +642,13 @@
     "minimal_mode_desc": "Alle Animationen und Effekte deaktivieren; nur grundlegendes Rendering und Interaktionen beibehalten",
     "color_options": {
       "custom": "Benutzerdefiniert"
+    },
+    "memory_display_precision": "Speicherpräzision",
+    "memory_display_precision_desc": "Passt die Speicheranzeige im Systemüberblick an",
+    "memory_display_precision_options": {
+      "0": "Ganzzahl",
+      "2": "2 Dezimalstellen",
+      "4": "4 Dezimalstellen"
     }
   },
   "developer": {
@@ -685,7 +691,9 @@
     "cpu": "Prozessor",
     "memory": "Arbeitsspeicher",
     "process_count": "Prozessanzahl",
-    "uptime": "Laufzeit"
+    "uptime": "Systemlaufzeit",
+    "app_memory": "SeaLantern-Speicher",
+    "server_instances_memory": "Serverspeicher"
   },
   "about": {
     "title": "Über",
