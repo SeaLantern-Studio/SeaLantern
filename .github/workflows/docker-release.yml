@@ -1,11 +1,19 @@
-name: Docker Release Build
+name: Docker Image Publish
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows:
+      - 发布
+      - Nightly 发布
+    types:
+      - completed
+
+permissions:
+  contents: read
+  packages: write
 
 concurrency:
-  group: docker-release-${{ github.event.release.tag_name }}
+  group: docker-publish-${{ github.event.workflow_run.id || github.ref }}
   cancel-in-progress: false
 
 env:
@@ -14,16 +22,81 @@ env:
 
 jobs:
   build-and-push:
-    if: ${{ !github.event.release.prerelease }}
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      (
+        (github.event.workflow_run.name == '发布' && github.event.workflow_run.event == 'push') ||
+        (github.event.workflow_run.name == 'Nightly 发布' && (github.event.workflow_run.event == 'schedule' || github.event.workflow_run.event == 'workflow_dispatch'))
+      )
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      packages: write
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Resolve image tags
+        id: image_meta
+        shell: bash
+        env:
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          IMAGE_BASE: ${{ env.REGISTRY }}/${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin
+
+          if [ "$WORKFLOW_NAME" = "发布" ]; then
+            TAG="$(git tag --points-at HEAD 'v*' 'sea-lantern-v*' | head -n 1)"
+            if [ -z "$TAG" ]; then
+              echo "❌ 未找到指向当前提交的正式版 tag" >&2
+              exit 1
+            fi
+
+            VERSION="$(printf '%s' "$TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
+            if [ -z "$VERSION" ]; then
+              echo "❌ 无法从 tag 提取正式版版本号: $TAG" >&2
+              exit 1
+            fi
+
+            {
+              echo "channel=release"
+              echo "tag=$TAG"
+              echo "version=$VERSION"
+              echo 'tags<<EOF'
+              echo "$IMAGE_BASE:$VERSION"
+              echo "$IMAGE_BASE:latest"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          else
+            TAG="$(git tag --points-at HEAD 'nightly-v*' | head -n 1)"
+            if [ -z "$TAG" ]; then
+              echo "❌ 未找到指向当前提交的 nightly tag" >&2
+              exit 1
+            fi
+
+            VERSION="$(printf '%s' "$TAG" | sed -E 's/^nightly-v([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+            if [ -z "$VERSION" ] || [ "$VERSION" = "$TAG" ]; then
+              echo "❌ 无法从 nightly tag 提取版本号: $TAG" >&2
+              exit 1
+            fi
+
+            {
+              echo "channel=nightly"
+              echo "tag=$TAG"
+              echo "version=$VERSION"
+              echo 'tags<<EOF'
+              echo "$IMAGE_BASE:$TAG"
+              echo "$IMAGE_BASE:nightly"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -35,23 +108,19 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PUSH_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
-
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./docker/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.image_meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=SeaLantern
+            org.opencontainers.image.description=SeaLantern headless Docker runtime
+            org.opencontainers.image.version=${{ steps.image_meta.outputs.version }}
+            org.opencontainers.image.ref.name=${{ steps.image_meta.outputs.tag }}
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max

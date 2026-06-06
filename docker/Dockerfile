@@ -89,7 +89,6 @@ COPY backend/tauri-host/src/ ./backend/tauri-host/src/
 COPY backend/tauri-host/icons/ ./backend/tauri-host/icons/
 COPY backend/tauri-host/tauri.conf.json ./backend/tauri-host/
 COPY backend/tauri-host/locales/ ./backend/tauri-host/locales/
-COPY vendor/sculk/ ./vendor/sculk/
 COPY backend/docker-entry/Cargo.toml ./backend/docker-entry/
 COPY backend/docker-entry/src/ ./backend/docker-entry/src/
 
@@ -155,7 +154,6 @@ COPY backend/tauri-host/src/ ./backend/tauri-host/src/
 COPY backend/tauri-host/icons/ ./backend/tauri-host/icons/
 COPY backend/tauri-host/tauri.conf.json ./backend/tauri-host/
 COPY backend/tauri-host/locales/ ./backend/tauri-host/locales/
-COPY vendor/sculk/ ./vendor/sculk/
 COPY backend/docker-entry/Cargo.toml ./backend/docker-entry/
 COPY backend/docker-entry/src/ ./backend/docker-entry/src/
 
