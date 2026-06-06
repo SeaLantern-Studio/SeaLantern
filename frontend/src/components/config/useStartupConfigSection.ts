@@ -50,6 +50,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
   const launchDetail = ref<StartupLaunchDetail | null>(null);
   const launchDetailLoading = ref(false);
   const launchDetailError = ref<string | null>(null);
+  const configLoadWarning = ref<string | null>(null);
 
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
   let launchDetailRequestToken = 0;
@@ -72,6 +73,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     if (!options.serverPath.value) return;
     loading.value = true;
     error.value = null;
+    configLoadWarning.value = null;
     try {
       const config = await configApi.readSLConfig(options.serverPath.value);
       maxMemory.value = config.max_memory ?? options.defaultMaxMemory.value;
@@ -82,10 +84,15 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
 
       const serverId = options.serverId.value;
       if (serverId) {
-        const servers = await serverApi.getList();
-        const currentServer = servers.find((server) => server.id === serverId);
-        selectedJava.value =
-          currentServer?.runtime.kind === "local" ? currentServer.runtime.java_path : "";
+        try {
+          const servers = await serverApi.getList();
+          const currentServer = servers.find((server) => server.id === serverId);
+          selectedJava.value =
+            currentServer?.runtime.kind === "local" ? currentServer.runtime.java_path : "";
+        } catch (e: any) {
+          configLoadWarning.value =
+            e?.toString() || i18n.t("config.startup_config_java_path_load_failed");
+        }
       }
     } catch (e: any) {
       error.value = e?.toString() || "加载启动配置失败";
@@ -264,6 +271,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     launchDetail,
     launchDetailLoading,
     launchDetailError,
+    configLoadWarning,
     loadConfig,
     loadJavaChoices,
     detectJava,

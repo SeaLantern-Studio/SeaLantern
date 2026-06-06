@@ -10,16 +10,16 @@ mod state;
 mod upload;
 
 use super::command_registry::CommandRegistry;
-use crate::utils::logger::capture_eprintln;
+use crate::utils::logger::log_error_ctx;
 use router::build_http_app;
 use sea_lantern_runtime::{
-    HeadlessHttpConfig, default_headless_http_config_checked, log_headless_http_ready,
-    prepare_headless_http_listener,
+    default_headless_http_config_checked, log_headless_http_ready, prepare_headless_http_listener,
+    HeadlessHttpConfig,
 };
 use state::AppState;
 use std::sync::Arc;
 
-pub use state::{LogEvent, get_log_sender};
+pub use state::{get_log_sender, LogEvent};
 
 #[cfg(test)]
 pub(crate) use router::build_test_http_app;
@@ -49,7 +49,7 @@ pub async fn run_http_server(
 
     if let Err(error) = axum::serve(listener, app).await {
         let message = format!("SeaLantern HTTP server error on {}: {}", addr, error);
-        capture_eprintln(message.clone());
+        log_error_ctx("http.server", "run_http_server", &message);
         return Err(message);
     }
 
@@ -59,8 +59,8 @@ pub async fn run_http_server(
 #[cfg(test)]
 mod tests {
     use super::{
-        ApiResponse, AppState, CommandRegistry, build_http_app, build_test_http_app,
-        default_http_server_config,
+        build_http_app, build_test_http_app, default_http_server_config, ApiResponse, AppState,
+        CommandRegistry,
     };
     use crate::test_support::{lock_env, EnvGuard};
     use crate::utils::logger::GLOBAL_LOG_COLLECTOR;
@@ -70,13 +70,13 @@ mod tests {
     };
     use sea_lantern_runtime::HeadlessHttpConfig;
     use serde_json::Value;
-    use std::{
-        path::PathBuf,
-        sync::Arc,
-    };
+    use std::{path::PathBuf, sync::Arc};
     use tower::ServiceExt;
 
-    use super::upload::{build_unique_saved_name, build_upload_target_path, sanitize_upload_basename};
+    use super::upload::{
+        build_unique_saved_name, build_upload_reference, build_upload_target_path,
+        sanitize_upload_basename,
+    };
 
     fn test_state(upload_dir: PathBuf) -> AppState {
         AppState {
@@ -203,6 +203,14 @@ mod tests {
             .await
             .expect("api response");
         assert_eq!(api.status(), StatusCode::UNAUTHORIZED);
+        let body = axum::body::to_bytes(api.into_body(), usize::MAX)
+            .await
+            .expect("response body");
+        let payload: ApiResponse = serde_json::from_slice(&body).expect("json payload");
+        assert_eq!(payload.error.as_deref(), Some("Unauthorized"));
+        let error_detail = payload.error_detail.expect("structured error detail");
+        assert_eq!(error_detail.code, "common.message_unauthorized");
+        assert_eq!(error_detail.error_kind.as_deref(), Some("unauthorized"));
 
         let upload = app
             .clone()
@@ -249,6 +257,19 @@ mod tests {
             .expect("api response");
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("response body");
+        let payload: ApiResponse = serde_json::from_slice(&body).expect("json payload");
+        assert_eq!(
+            payload.error.as_deref(),
+            Some(
+                "Command 'does-not-exist' not found. Use GET /api/list to see available commands."
+            )
+        );
+        let error_detail = payload.error_detail.expect("structured error detail");
+        assert_eq!(error_detail.code, "common.message_server_not_found");
+        assert_eq!(error_detail.error_kind.as_deref(), Some("not_found"));
     }
 
     #[test]
@@ -336,6 +357,44 @@ mod tests {
             .expect("upload response");
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("response body");
+        let payload: ApiResponse = serde_json::from_slice(&body).expect("json payload");
+        let error_detail = payload.error_detail.expect("structured error detail");
+        assert_eq!(error_detail.code, "common.message_unknown_error");
+        assert_eq!(error_detail.error_kind.as_deref(), Some("invalid_request"));
+    }
+
+    #[tokio::test]
+    async fn upload_internal_failures_are_classified_as_runtime_errors() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let blocked_root = upload_dir.path().join("blocked");
+        std::fs::write(&blocked_root, b"not-a-directory").expect("block upload dir with file");
+        let app = test_app(blocked_root);
+        let boundary = "runtime-boundary";
+        let body = multipart_body(&[("plugin.jar", b"plugin")], boundary);
+
+        let response = app
+            .oneshot(
+                bearer_request(Request::builder().method("POST").uri("/upload").header(
+                    header::CONTENT_TYPE,
+                    format!("multipart/form-data; boundary={}", boundary),
+                ))
+                .body(Body::from(body))
+                .unwrap(),
+            )
+            .await
+            .expect("upload response");
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("response body");
+        let payload: ApiResponse = serde_json::from_slice(&body).expect("json payload");
+        let error_detail = payload.error_detail.expect("structured error detail");
+        assert_eq!(error_detail.code, "common.message_unknown_error");
+        assert_eq!(error_detail.error_kind.as_deref(), Some("runtime"));
     }
 
     #[tokio::test]
@@ -463,6 +522,18 @@ mod tests {
             .expect("files array");
         assert_eq!(files.len(), 2);
         assert_ne!(files[0].get("saved_name"), files[1].get("saved_name"));
+        for file in files {
+            let saved_name = file
+                .get("saved_name")
+                .and_then(|value| value.as_str())
+                .expect("saved_name string");
+            let saved_path = file
+                .get("saved_path")
+                .and_then(|value| value.as_str())
+                .expect("saved_path string");
+            assert_eq!(saved_path, build_upload_reference(saved_name));
+            assert!(!saved_path.contains(upload_dir.path().to_string_lossy().as_ref()));
+        }
     }
 
     #[tokio::test]
@@ -495,10 +566,8 @@ mod tests {
 
         let app = {
             let _lock = lock_env();
-            let _cors_guard = EnvGuard::set(
-                sea_lantern_runtime::HTTP_CORS_ORIGINS_ENV,
-                "https://example.com",
-            );
+            let _cors_guard =
+                EnvGuard::set(sea_lantern_runtime::HTTP_CORS_ORIGINS_ENV, "https://example.com");
             build_http_app(
                 AppState {
                     command_registry: Arc::new(CommandRegistry::new()),

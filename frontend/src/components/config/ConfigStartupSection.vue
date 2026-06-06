@@ -256,6 +256,12 @@ async function pickJavaFile() {
         <span>{{ startupConfig.error.value }}</span>
         <button class="banner-close" @click="startupConfig.error.value = null">x</button>
       </div>
+      <div v-if="startupConfig.configLoadWarning.value" class="warning-banner">
+        <span>{{ startupConfig.configLoadWarning.value }}</span>
+        <button class="banner-close" @click="startupConfig.configLoadWarning.value = null">
+          x
+        </button>
+      </div>
       <div class="startup-notice glass-card">
         <p class="text-caption">{{ i18n.t("config.startup_notice_not_main_thread_boost") }}</p>
       </div>
@@ -532,7 +538,10 @@ async function pickJavaFile() {
               </template>
             </template>
             <div v-else class="startup-preview-empty">
-              {{ i18n.t("config.startup_preview_real_unavailable") }}
+              <p>{{ i18n.t("config.startup_preview_real_unavailable") }}</p>
+              <p v-if="startupConfig.launchDetailError.value" class="startup-preview-error">
+                {{ startupConfig.launchDetailError.value }}
+              </p>
             </div>
           </div>
           <div class="startup-preview-section">
@@ -638,6 +647,18 @@ async function pickJavaFile() {
   background: var(--sl-error-bg);
   border: 1px solid color-mix(in srgb, var(--sl-error) 30%, transparent);
   color: var(--sl-error);
+}
+
+.warning-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: var(--sl-radius-md);
+  font-size: var(--sl-font-size-base);
+  background: color-mix(in srgb, var(--sl-warning, #d97706) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sl-warning, #d97706) 30%, transparent);
+  color: var(--sl-warning, #b45309);
 }
 
 .banner-close {
@@ -846,6 +867,15 @@ async function pickJavaFile() {
 .startup-preview-empty {
   color: var(--sl-text-tertiary);
   font-size: var(--sl-font-size-sm);
+}
+
+.startup-preview-empty p {
+  margin: 0;
+}
+
+.startup-preview-error {
+  margin-top: 6px;
+  color: var(--sl-error);
 }
 
 .startup-preview-tags {

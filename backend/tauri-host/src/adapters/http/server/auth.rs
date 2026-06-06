@@ -1,13 +1,13 @@
-use super::state::ApiResponse;
+use super::state::{ApiErrorDetail, ApiResponse};
 use axum::{
-    Json,
     extract::{Request, State},
     http::{
-        HeaderMap, HeaderValue, Method, StatusCode,
         header::{AUTHORIZATION, CONTENT_TYPE},
+        HeaderMap, HeaderValue, Method, StatusCode,
     },
     middleware::Next,
     response::{IntoResponse, Response},
+    Json,
 };
 use sea_lantern_runtime::HeadlessHttpConfig;
 use std::sync::Arc;
@@ -30,9 +30,10 @@ pub(super) async fn require_bearer_auth(
     request: Request,
     next: Next,
 ) -> Response {
-    match extract_bearer_token(request.headers()) {
-        Some(token) if token == config.auth_token.as_str() => next.run(request).await,
-        _ => unauthorized_response(),
+    if extract_bearer_token_for_config(&config, request.headers()).is_some() {
+        next.run(request).await
+    } else {
+        unauthorized_response()
     }
 }
 
@@ -42,6 +43,25 @@ fn extract_bearer_token(headers: &HeaderMap) -> Option<&str> {
     (!token.is_empty()).then_some(token)
 }
 
+fn extract_bearer_token_for_config<'a>(
+    config: &'a HeadlessHttpConfig,
+    headers: &'a HeaderMap,
+) -> Option<&'a str> {
+    extract_bearer_token(headers).filter(|token| *token == config.auth_token.as_str())
+}
+
 fn unauthorized_response() -> Response {
-    (StatusCode::UNAUTHORIZED, Json(ApiResponse::error("Unauthorized".to_string()))).into_response()
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(ApiResponse::error_with_detail(
+            "Unauthorized".to_string(),
+            ApiErrorDetail {
+                code: "common.message_unauthorized".to_string(),
+                message: "Unauthorized".to_string(),
+                args: None,
+                error_kind: Some("unauthorized".to_string()),
+            },
+        )),
+    )
+        .into_response()
 }

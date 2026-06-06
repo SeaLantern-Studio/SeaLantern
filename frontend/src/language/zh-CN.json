@@ -531,6 +531,7 @@
       "startup_preview_desc": "优先展示当前可获取的真实启动详情；如果暂时取不到，会回退为页面配置概览。",
       "startup_preview_real_title": "真实启动详情",
       "startup_preview_real_desc": "这里展示的是当前接口能拿到的真实启动信息。",
+      "startup_config_java_path_load_failed": "启动配置已加载，但暂时无法补全当前 Java 路径。",
       "startup_preview_real_unavailable": "当前暂时无法获取真实启动详情，可先参考下方配置概览。",
       "startup_preview_config_title": "页面配置概览",
       "startup_preview_config_desc": "这是根据当前页面配置整理的概览，不等同于最终命令。",

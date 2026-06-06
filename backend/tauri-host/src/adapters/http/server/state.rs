@@ -5,6 +5,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct ApiErrorDetail {
+    pub code: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_kind: Option<String>,
+}
+
 /// HTTP 日志流里的单条日志事件
 #[derive(Clone, Serialize)]
 pub struct LogEvent {
@@ -56,6 +66,9 @@ pub(crate) struct ApiResponse {
     /// 失败时的错误信息
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// 失败时的结构化错误详情
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_detail: Option<ApiErrorDetail>,
 }
 
 impl ApiResponse {
@@ -65,16 +78,74 @@ impl ApiResponse {
             success: true,
             data: Some(data),
             error: None,
+            error_detail: None,
         }
     }
 
     /// 构建失败响应
     pub fn error(message: String) -> Self {
+        let detail = infer_error_detail(&message);
+        Self {
+            success: false,
+            data: None,
+            error: Some(message.clone()),
+            error_detail: Some(ApiErrorDetail {
+                code: detail.code.to_string(),
+                message,
+                args: None,
+                error_kind: Some(detail.error_kind.to_string()),
+            }),
+        }
+    }
+
+    pub fn error_with_detail(message: String, detail: ApiErrorDetail) -> Self {
         Self {
             success: false,
             data: None,
             error: Some(message),
+            error_detail: Some(detail),
         }
+    }
+}
+
+struct InferredErrorDetail {
+    code: &'static str,
+    error_kind: &'static str,
+}
+
+fn infer_error_detail(message: &str) -> InferredErrorDetail {
+    let lower = message.to_ascii_lowercase();
+
+    if lower.contains("unauthorized") {
+        return InferredErrorDetail {
+            code: "common.message_unauthorized",
+            error_kind: "unauthorized",
+        };
+    }
+
+    if message.contains("未找到服务器") || lower.contains("not found") {
+        return InferredErrorDetail {
+            code: "common.message_server_not_found",
+            error_kind: "not_found",
+        };
+    }
+
+    if lower.contains("invalid parameters")
+        || lower.contains("missing path")
+        || lower.contains("bad request")
+        || lower.contains("failed to parse multipart payload")
+        || lower.contains("invalid upload filename")
+        || lower.contains("uploaded file reference not found")
+    {
+        return InferredErrorDetail {
+            code: "common.message_unknown_error",
+            error_kind: "invalid_request",
+        };
+    }
+
+    InferredErrorDetail {
+        code: "common.message_unknown_error",
+        error_kind: "runtime",
     }
 }
 

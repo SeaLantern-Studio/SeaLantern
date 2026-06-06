@@ -1,10 +1,10 @@
-use super::state::{ApiResponse, AppState, UploadFailure};
-use crate::utils::logger::{capture_eprintln, capture_println};
+use super::state::{ApiErrorDetail, ApiResponse, AppState, UploadFailure};
+use crate::utils::logger::{log_error_ctx, log_info_ctx, log_warn_ctx};
 use axum::{
-    Json,
     extract::{Multipart, State},
     http::StatusCode,
     response::IntoResponse,
+    Json,
 };
 use serde_json::Value;
 use std::path::{Path as FsPath, PathBuf};
@@ -14,6 +14,28 @@ use tokio::{
 };
 use uuid::Uuid;
 
+const UPLOAD_REFERENCE_PREFIX: &str = "upload://";
+
+fn log_upload_info(function: &str, message: &str) {
+    log_info_ctx("http.server.upload", function, message);
+}
+
+fn log_upload_warn(function: &str, message: &str) {
+    log_warn_ctx("http.server.upload", function, message);
+}
+
+fn log_upload_error(function: &str, message: &str) {
+    log_error_ctx("http.server.upload", function, message);
+}
+
+fn upload_error_kind_for_status(status: StatusCode) -> &'static str {
+    if status.is_server_error() {
+        "runtime"
+    } else {
+        "invalid_request"
+    }
+}
+
 /// 处理文件上传请求
 pub(super) async fn handle_file_upload(
     State(state): State<AppState>,
@@ -21,10 +43,10 @@ pub(super) async fn handle_file_upload(
 ) -> impl IntoResponse {
     match save_uploaded_files(&state, &mut multipart).await {
         Ok(uploaded_files) => {
-            capture_println(format!(
-                "[Upload] Successfully uploaded {} file(s)",
-                uploaded_files.len()
-            ));
+            log_upload_info(
+                "handle_file_upload",
+                &format!("successfully uploaded {} file(s)", uploaded_files.len()),
+            );
             (
                 StatusCode::OK,
                 Json(ApiResponse::success(serde_json::json!({
@@ -35,8 +57,24 @@ pub(super) async fn handle_file_upload(
                 .into_response()
         }
         Err(error) => {
-            capture_eprintln(format!("[Upload] {}", error.message));
-            (error.status, Json(ApiResponse::error(error.message))).into_response()
+            if error.status.is_server_error() {
+                log_upload_error("handle_file_upload", &error.message);
+            } else {
+                log_upload_warn("handle_file_upload", &error.message);
+            }
+            (
+                error.status,
+                Json(ApiResponse::error_with_detail(
+                    error.message.clone(),
+                    ApiErrorDetail {
+                        code: "common.message_unknown_error".to_string(),
+                        message: error.message,
+                        args: None,
+                        error_kind: Some(upload_error_kind_for_status(error.status).to_string()),
+                    },
+                )),
+            )
+                .into_response()
         }
     }
 }
@@ -140,20 +178,21 @@ async fn save_uploaded_files(
             return Err(error);
         }
 
-        capture_println(format!(
-            "[Upload] File '{}' saved to '{}'",
-            original_name,
-            save_path.display()
-        ));
+        log_upload_info(
+            "save_uploaded_files",
+            &format!("file '{}' saved to '{}'", original_name, save_path.display()),
+        );
 
         committed_paths.push(save_path.clone());
+        let saved_name = save_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default()
+            .to_string();
         uploaded_files.push(serde_json::json!({
             "original_name": original_name,
-            "saved_name": save_path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or_default(),
-            "saved_path": save_path.to_string_lossy(),
+            "saved_name": saved_name,
+            "saved_path": build_upload_reference(&saved_name),
             "size": size
         }));
     }
@@ -163,6 +202,19 @@ async fn save_uploaded_files(
     }
 
     Ok(uploaded_files)
+}
+
+pub(super) async fn resolve_uploaded_value_references(
+    upload_dir: &FsPath,
+    params: Value,
+) -> Result<Value, UploadFailure> {
+    if !value_contains_upload_reference(&params) {
+        return Ok(params);
+    }
+
+    let upload_root = ensure_upload_root(upload_dir).await?;
+    rewrite_upload_references_in_value(params, &upload_root)
+        .map_err(|message| UploadFailure::new(StatusCode::BAD_REQUEST, message))
 }
 
 async fn ensure_upload_root(upload_dir: &FsPath) -> Result<PathBuf, UploadFailure> {
@@ -213,7 +265,10 @@ async fn open_unique_upload_file(
     ))
 }
 
-pub(super) fn build_upload_target_path(upload_root: &FsPath, raw_name: &str) -> Result<PathBuf, String> {
+pub(super) fn build_upload_target_path(
+    upload_root: &FsPath,
+    raw_name: &str,
+) -> Result<PathBuf, String> {
     let safe_name = sanitize_upload_basename(raw_name)?;
     let candidate = upload_root.join(&safe_name);
 
@@ -225,6 +280,61 @@ pub(super) fn build_upload_target_path(upload_root: &FsPath, raw_name: &str) -> 
             candidate.display(),
             upload_root.display()
         ))
+    }
+}
+
+pub(super) fn build_upload_reference(saved_name: &str) -> String {
+    format!("{}{}", UPLOAD_REFERENCE_PREFIX, saved_name)
+}
+
+pub(super) fn resolve_upload_reference(
+    upload_root: &FsPath,
+    raw_value: &str,
+) -> Result<Option<PathBuf>, String> {
+    let Some(saved_name) = raw_value.strip_prefix(UPLOAD_REFERENCE_PREFIX) else {
+        return Ok(None);
+    };
+
+    let safe_name = sanitize_upload_basename(saved_name)?;
+    let save_path = build_upload_target_path(upload_root, &safe_name)?;
+    if !save_path.is_file() {
+        return Err(format!("Uploaded file reference not found: {}", raw_value));
+    }
+
+    Ok(Some(save_path))
+}
+
+fn value_contains_upload_reference(value: &Value) -> bool {
+    match value {
+        Value::String(text) => text.starts_with(UPLOAD_REFERENCE_PREFIX),
+        Value::Array(items) => items.iter().any(value_contains_upload_reference),
+        Value::Object(entries) => entries.values().any(value_contains_upload_reference),
+        _ => false,
+    }
+}
+
+fn rewrite_upload_references_in_value(value: Value, upload_root: &FsPath) -> Result<Value, String> {
+    match value {
+        Value::String(text) => {
+            if let Some(path) = resolve_upload_reference(upload_root, &text)? {
+                Ok(Value::String(path.to_string_lossy().to_string()))
+            } else {
+                Ok(Value::String(text))
+            }
+        }
+        Value::Array(items) => items
+            .into_iter()
+            .map(|item| rewrite_upload_references_in_value(item, upload_root))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::Array),
+        Value::Object(entries) => entries
+            .into_iter()
+            .map(|(key, value)| {
+                rewrite_upload_references_in_value(value, upload_root).map(|value| (key, value))
+            })
+            .collect::<Result<serde_json::Map<String, Value>, _>>()
+            .map(Value::Object),
+        other => Ok(other),
     }
 }
 
@@ -309,11 +419,72 @@ pub(super) fn build_unique_saved_name(safe_name: &str) -> String {
 async fn cleanup_saved_files(paths: &[PathBuf]) {
     for path in paths {
         if let Err(error) = fs::remove_file(path).await {
-            capture_eprintln(format!(
-                "[Upload] Failed to clean up partial upload '{}': {}",
-                path.display(),
-                error
-            ));
+            log_upload_warn(
+                "cleanup_saved_files",
+                &format!("failed to clean up partial upload '{}' : {}", path.display(), error),
+            );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        build_upload_reference, build_upload_target_path, resolve_upload_reference,
+        rewrite_upload_references_in_value,
+    };
+    use serde_json::{json, Value};
+
+    #[test]
+    fn upload_reference_round_trips_to_saved_file_path() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let root = std::fs::canonicalize(upload_dir.path()).expect("canonical root");
+        let target = build_upload_target_path(&root, "plugin.jar").expect("upload target path");
+        std::fs::write(&target, b"plugin").expect("uploaded file should exist");
+
+        let resolved = resolve_upload_reference(&root, &build_upload_reference("plugin.jar"))
+            .expect("upload reference should resolve")
+            .expect("upload reference should map to a file path");
+
+        assert_eq!(resolved, target);
+    }
+
+    #[test]
+    fn nested_upload_references_are_rewritten_to_real_paths() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let root = std::fs::canonicalize(upload_dir.path()).expect("canonical root");
+        let target = build_upload_target_path(&root, "plugin.jar").expect("upload target path");
+        std::fs::write(&target, b"plugin").expect("uploaded file should exist");
+
+        let params = json!({
+            "path": build_upload_reference("plugin.jar"),
+            "nested": {
+                "paths": [build_upload_reference("plugin.jar")]
+            }
+        });
+
+        let rewritten = rewrite_upload_references_in_value(params, &root)
+            .expect("upload references should rewrite");
+
+        assert_eq!(rewritten["path"], Value::String(target.to_string_lossy().to_string()));
+        assert_eq!(
+            rewritten["nested"]["paths"][0],
+            Value::String(target.to_string_lossy().to_string())
+        );
+    }
+
+    #[test]
+    fn upload_reference_rejects_missing_files() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let root = std::fs::canonicalize(upload_dir.path()).expect("canonical root");
+
+        let error = resolve_upload_reference(&root, &build_upload_reference("missing.jar"))
+            .expect_err("missing upload reference should not resolve");
+
+        assert!(
+            error.contains("Uploaded file reference not found"),
+            "unexpected error: {}",
+            error
+        );
     }
 }

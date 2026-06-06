@@ -639,6 +639,7 @@
       "default_run_path": "Default Server Path",
       "default_run_path_desc": "Default storage path for creating servers",
       "browse": "Browse",
+      "startup_config_java_path_load_failed": "Startup config loaded, but the current Java path could not be refreshed right now.",
       "jvm_args_desc": "These parameters will be added to all server startups. Suitable for GC optimization parameters",
       "port_desc": "Minecraft default port is 25565. Multiple servers need different ports",
       "jvm_args_placeholder": "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC",
