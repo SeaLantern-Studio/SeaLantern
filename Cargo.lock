@@ -6073,7 +6073,7 @@ dependencies = [
  "trash",
  "url",
  "uuid",
- "window-vibrancy 0.7.1",
+ "window-vibrancy",
  "windows 0.58.0",
  "winreg 0.52.0",
  "zip",
@@ -7074,7 +7074,7 @@ dependencies = [
  "url",
  "webkit2gtk",
  "webview2-com",
- "window-vibrancy 0.6.0",
+ "window-vibrancy",
  "windows 0.61.3",
 ]
 
@@ -8564,21 +8564,6 @@ dependencies = [
  "objc2-foundation",
  "raw-window-handle",
  "windows-sys 0.59.0",
- "windows-version",
-]
-
-[[package]]
-name = "window-vibrancy"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "010797bd7c40396fbc59d3105089fed0885fe267a0ef4a0a4646df54e28647f6"
-dependencies = [
- "objc2",
- "objc2-app-kit",
- "objc2-core-foundation",
- "objc2-foundation",
- "raw-window-handle",
- "windows-sys 0.60.2",
  "windows-version",
 ]
 
