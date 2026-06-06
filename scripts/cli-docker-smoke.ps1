@@ -6,9 +6,14 @@ param(
     [string]$Core = "paper",
     [string]$Image = "itzg/minecraft-server",
     [string]$ImageTag = "latest",
+    [string]$SealanternImage = "",
     [string]$DataDir = "",
     [string]$ComposeOut = "",
     [int]$GamePort = 25565,
+    [int]$SealanternHttpPort = 3000,
+    [string]$SealanternDataDir = "/app/data/servers",
+    [string]$StaticDir = "",
+    [string]$DockerSocketMount = "/var/run/docker.sock:/var/run/docker.sock",
     [switch]$SkipStart,
     [switch]$FullStackCompose
 )
@@ -70,7 +75,7 @@ function Ensure-DockerReady {
         throw "Docker daemon is unavailable. Output: $($versionOutput -join [Environment]::NewLine)"
     }
 
-Write-Host "Docker daemon is reachable. Consider pre-pulling the target image first."
+    Write-Host "Docker daemon is reachable. Consider pre-pulling the target image first."
     Write-Host "Example: sealantern docker pull $($Image):$($ImageTag)"
 }
 
@@ -92,6 +97,9 @@ Write-Host "CliPath  : $cli"
 Write-Host "DataDir  : $DataDir"
 Write-Host "Compose  : $ComposeOut"
 Write-Host "Image    : $($Image):$($ImageTag)"
+if (-not [string]::IsNullOrWhiteSpace($SealanternImage)) {
+    Write-Host "SL Image : $SealanternImage"
+}
 
 Ensure-DockerReady
 
@@ -135,9 +143,24 @@ if (-not $SkipStart) {
 
 $composeArgs = @('compose', 'generate', $ServerName, '--output', $ComposeOut)
 if ($FullStackCompose) {
-    $composeArgs += @('--full-stack', '--sealantern-data', '/app/data/servers', '--http-port', '3000')
+    $composeArgs += @('--full-stack', '--sealantern-data', $SealanternDataDir, '--http-port', $SealanternHttpPort.ToString(), '--docker-socket', $DockerSocketMount)
+
+    if (-not [string]::IsNullOrWhiteSpace($SealanternImage)) {
+        $composeArgs += @('--sealantern-image', $SealanternImage)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($StaticDir)) {
+        $composeArgs += @('--static-dir', $StaticDir)
+    }
 }
 Invoke-CheckedCli -Cli $cli -Arguments $composeArgs
 
 Write-Host "Smoke verification completed."
 Write-Host "Compose output: $ComposeOut"
+if ($FullStackCompose) {
+    Write-Host "Full-stack compose HTTP port: $SealanternHttpPort"
+    Write-Host "Full-stack compose data root: $SealanternDataDir"
+    if (-not [string]::IsNullOrWhiteSpace($SealanternImage)) {
+        Write-Host "Full-stack compose SeaLantern image: $SealanternImage"
+    }
+}
