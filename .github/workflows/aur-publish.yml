@@ -10,6 +10,7 @@ permissions:
 jobs:
   aur-publish:
     name: 发布到 AUR
+    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-22.04
     container:
       image: archlinux:latest
