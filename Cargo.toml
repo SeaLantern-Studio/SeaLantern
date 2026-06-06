@@ -1,5 +1,5 @@
 [workspace]
-members = ["backend/tauri-host", "docker-entry"]
+members = ["backend/tauri-host", "backend/docker-entry", "backend/runtime-core", "backend/update-core", "backend/server-config-core", "backend/starter-links-core", "backend/java-installer-core", "backend/server-download-links-core", "backend/server-installer-core", "backend/server-plugin-core", "backend/server-startup-scan-core", "backend/server-local-setup-core", "backend/docker-core"]
 resolver = "2"
 
 # 优化配置（从 backend/tauri-host/Cargo.toml 移到这里统一管理）

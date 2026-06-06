@@ -25,9 +25,6 @@ use window_vibrancy::{
     apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
 };
 
-#[cfg(target_os = "windows")]
-type WindowColor = window_vibrancy::Color;
-
 const PERSONALIZATION_PACKAGE_VERSION: u32 = 1;
 const PERSONALIZATION_PACKAGE_FILE_STEM: &str = "sea-lantern-personalization";
 const PERSONALIZATION_SETTINGS_ENTRY: &str = "personalization/settings.json";
@@ -228,7 +225,10 @@ fn persist_personalization_background(source_path: &Path) -> Result<String, Stri
         return Err(format!("Background image not found: {}", source_path.display()));
     }
 
-    let app_data_dir = PathBuf::from(crate::utils::path::get_or_create_app_data_dir());
+    let app_data_dir = PathBuf::from(
+        crate::utils::path::get_or_create_app_data_dir_checked()
+            .map_err(|e| format!("Failed to resolve app data directory: {}", e))?,
+    );
     let target_dir = app_data_dir.join("personalization").join("backgrounds");
     std::fs::create_dir_all(&target_dir)
         .map_err(|e| format!("Failed to create personalization background directory: {}", e))?;
@@ -249,8 +249,13 @@ fn persist_personalization_background(source_path: &Path) -> Result<String, Stri
     Ok(target_path.to_string_lossy().to_string())
 }
 
+#[cfg(test)]
+pub(crate) fn persist_personalization_background_for_test(source_path: &Path) -> Result<String, String> {
+    persist_personalization_background(source_path)
+}
+
 #[cfg(target_os = "windows")]
-fn tint_from_dark(dark: Option<bool>, alpha: u8) -> Option<WindowColor> {
+fn tint_from_dark(dark: Option<bool>, alpha: u8) -> Option<window_vibrancy::Color> {
     dark.map(|is_dark| {
         if is_dark {
             (18, 18, 18, alpha)

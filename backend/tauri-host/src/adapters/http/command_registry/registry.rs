@@ -1,34 +1,36 @@
-use super::common::CommandHandler;
+use super::common::RegistryBuilder;
 use super::{config, java, player, plugin, server, settings, system, tunnel, update};
-use std::collections::HashMap;
+use sea_lantern_runtime::{
+    CommandRegistry as SharedCommandRegistry, DispatchResult, dispatch_http_command,
+};
 
 /// 对外暴露的 HTTP 命令表。
 pub struct CommandRegistry {
-    handlers: HashMap<String, CommandHandler>,
+    shared: SharedCommandRegistry,
 }
 
 impl CommandRegistry {
     pub fn new() -> Self {
-        let mut handlers: HashMap<String, CommandHandler> = HashMap::new();
+        let mut builder = RegistryBuilder::new();
 
-        server::register_handlers(&mut handlers);
-        java::register_handlers(&mut handlers);
-        config::register_handlers(&mut handlers);
-        system::register_handlers(&mut handlers);
-        player::register_handlers(&mut handlers);
-        plugin::register_handlers(&mut handlers);
-        settings::register_handlers(&mut handlers);
-        tunnel::register_handlers(&mut handlers);
-        update::register_handlers(&mut handlers);
-        Self { handlers }
-    }
-
-    pub fn get_handler(&self, command: &str) -> Option<&CommandHandler> {
-        self.handlers.get(command)
+        server::register_handlers(&mut builder);
+        java::register_handlers(&mut builder);
+        config::register_handlers(&mut builder);
+        system::register_handlers(&mut builder);
+        player::register_handlers(&mut builder);
+        plugin::register_handlers(&mut builder);
+        settings::register_handlers(&mut builder);
+        tunnel::register_handlers(&mut builder);
+        update::register_handlers(&mut builder);
+        Self { shared: builder.build() }
     }
 
     pub fn list_commands(&self) -> Vec<String> {
-        self.handlers.keys().cloned().collect()
+        self.shared.list_commands()
+    }
+
+    pub async fn dispatch(&self, command: &str, params: serde_json::Value) -> DispatchResult {
+        dispatch_http_command(&self.shared, command, params).await
     }
 }
 

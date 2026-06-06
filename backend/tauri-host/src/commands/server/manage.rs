@@ -8,8 +8,15 @@ mod provisioning;
 mod runtime;
 mod startup_scan;
 
+use serde::Serialize;
+
 /// 强制停止前给前端展示的确认信息
-pub use common::ForceStopPreparationResponse;
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForceStopPreparationResponse {
+    pub token: String,
+    pub expires_at: u64,
+}
 
 #[tauri::command]
 /// 准备强制停止服务器
@@ -249,7 +256,7 @@ pub fn get_local_launch_detail(
 #[tauri::command]
 pub fn get_docker_launch_detail(
     id: String,
-) -> Result<crate::services::server::manager::DockerLaunchDetail, String> {
+) -> Result<crate::services::server::runtime::docker_itzg::DockerLaunchDetail, String> {
     runtime::get_docker_launch_detail(id)
 }
 

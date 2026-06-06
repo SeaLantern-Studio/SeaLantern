@@ -5,6 +5,7 @@ use crate::plugins::runtime::permissions::{
 };
 use mlua::Table;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 impl PluginRuntime {
     pub fn new(
@@ -13,7 +14,7 @@ impl PluginRuntime {
         data_dir: &Path,
         server_dir: &Path,
         global_dir: &Path,
-        api_registry: crate::plugins::api::ApiRegistry,
+        api_registry: Arc<Mutex<std::collections::HashMap<String, std::collections::HashMap<String, String>>>>,
         permissions: Vec<String>,
     ) -> Result<Self, String> {
         let lua = mlua::Lua::new_with(

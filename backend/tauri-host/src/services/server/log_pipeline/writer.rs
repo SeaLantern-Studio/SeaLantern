@@ -5,12 +5,13 @@ use super::state::{
 use rusqlite::{params, Connection, TransactionBehavior};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::utils::constants::{LOG_BATCH_SIZE, LOG_FLUSH_INTERVAL_MS};
 
-pub fn set_server_log_event_handler(handler: ServerLogEventHandler) -> Result<(), String> {
+pub fn set_server_log_event_handler(handler: Arc<ServerLogEventHandler>) -> Result<(), String> {
     SERVER_LOG_EVENT_HANDLER
         .set(handler)
         .map_err(|_| "server log event handler already set".to_string())

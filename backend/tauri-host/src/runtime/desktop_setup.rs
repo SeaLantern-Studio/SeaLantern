@@ -1,16 +1,18 @@
-use crate::plugins::manager::{PluginManager, SharedRuntimes};
+use crate::plugins::manager::PluginManager;
+use crate::plugins::runtime::PluginRuntime;
 use crate::runtime::desktop_shell;
 use crate::services::global;
 
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
 use tauri::Manager;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
 
 pub(crate) struct PluginSetup {
     pub manager: Arc<Mutex<PluginManager>>,
-    pub shared_runtimes: SharedRuntimes,
-    pub api_registry: crate::plugins::api::ApiRegistry,
+    pub shared_runtimes: Arc<RwLock<HashMap<String, PluginRuntime>>>,
+    pub api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
 }
 
 fn is_safe_mode() -> bool {

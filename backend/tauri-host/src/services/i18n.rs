@@ -8,19 +8,20 @@ use std::sync::RwLock;
 use crate::services::locale_json;
 use crate::utils::constants::SUPPORTED_LOCALES;
 
-// 类型别名，简化复杂类型定义
-type LocaleCallback = Box<dyn Fn(&str, &str) + Send + Sync>;
-type TranslationsMap = HashMap<String, HashMap<String, String>>;
-type PluginTranslationsMap = HashMap<String, TranslationsMap>;
+type LocaleChangeCallback = dyn Fn(&str, &str) + Send + Sync;
+type LocaleChangeCallbackMap = HashMap<usize, Box<LocaleChangeCallback>>;
+type LocaleTranslations = HashMap<String, String>;
+type PluginLocaleTranslations = HashMap<String, LocaleTranslations>;
+type PluginTranslationStore = HashMap<String, PluginLocaleTranslations>;
 
 pub struct I18nService {
-    translations: RwLock<TranslationsMap>,
+    translations: RwLock<HashMap<String, HashMap<String, String>>>,
     locale: RwLock<String>,
-    change_callbacks: RwLock<HashMap<usize, LocaleCallback>>,
+    change_callbacks: RwLock<LocaleChangeCallbackMap>,
     next_callback_id: RwLock<usize>,
     plugin_locale_owners: RwLock<HashMap<String, String>>,
     plugin_locale_names: RwLock<HashMap<String, String>>,
-    plugin_translations: RwLock<PluginTranslationsMap>,
+    plugin_translations: RwLock<PluginTranslationStore>,
 }
 
 #[derive(Clone, Debug)]

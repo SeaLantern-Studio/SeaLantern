@@ -1,13 +1,11 @@
 use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, ServerInstance};
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::startup_support::resolve_effective_startup_config;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ResolvedCpuPolicy {
-    pub cpu_indices: Vec<usize>,
-    pub cpuset_display: String,
-    pub active_processor_count: u16,
-}
+use sea_lantern_server_config_core::{
+    resolve_active_processor_count as resolve_shared_active_processor_count,
+    resolve_local_cpu_policy as resolve_shared_local_cpu_policy,
+    ResolvedCpuPolicy,
+};
 
 pub(crate) fn mode_supports_local_cpu_policy(startup_mode: StartupMode) -> bool {
     matches!(startup_mode, StartupMode::Jar | StartupMode::Starter)
@@ -41,8 +39,9 @@ pub(crate) fn compute_active_processor_count_arg(
         return Ok(None);
     }
 
-    let resolved = resolve_local_cpu_policy(server, settings)?;
-    Ok(resolved.map(|value| format!("-XX:ActiveProcessorCount={}", value.active_processor_count)))
+    let logical_cpu_count = logical_cpu_count();
+    let resolved = resolve_shared_active_processor_count(&policy, logical_cpu_count)?;
+    Ok(resolved.map(|value| format!("-XX:ActiveProcessorCount={}", value)))
 }
 
 pub(crate) fn resolve_local_cpu_policy(
@@ -50,63 +49,7 @@ pub(crate) fn resolve_local_cpu_policy(
     settings: &crate::models::settings::AppSettings,
 ) -> Result<Option<ResolvedCpuPolicy>, String> {
     let policy = local_cpu_policy(server, settings);
-    match policy.mode {
-        CpuPolicyMode::Off => Ok(None),
-        CpuPolicyMode::Count => {
-            let count = policy
-                .count
-                .ok_or_else(|| "CPU 限制 count 模式缺少 count".to_string())?;
-            if count == 0 {
-                return Err("CPU 限制 count 模式必须大于 0".to_string());
-            }
-
-            let logical_count = logical_cpu_count();
-            if usize::from(count) > logical_count {
-                return Err(format!(
-                    "CPU 限制 count={} 超过当前主机逻辑 CPU 数 {}",
-                    count, logical_count
-                ));
-            }
-
-            let cpu_indices = (0..usize::from(count)).collect::<Vec<_>>();
-            Ok(Some(ResolvedCpuPolicy {
-                cpuset_display: format_range(&cpu_indices),
-                cpu_indices,
-                active_processor_count: count,
-            }))
-        }
-        CpuPolicyMode::Explicit => {
-            let raw = policy
-                .explicit_set
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .ok_or_else(|| "CPU 限制 explicit 模式缺少 explicit_set".to_string())?;
-
-            let mut cpu_indices = parse_cpu_set(raw)?;
-            let logical_count = logical_cpu_count();
-            if cpu_indices.iter().any(|index| *index >= logical_count) {
-                return Err(format!(
-                    "CPU 核心集合超出当前主机逻辑 CPU 数 {}: {}",
-                    logical_count, raw
-                ));
-            }
-
-            cpu_indices.sort_unstable();
-            cpu_indices.dedup();
-            if cpu_indices.is_empty() {
-                return Err("CPU 核心集合解析后为空".to_string());
-            }
-
-            let active_processor_count =
-                u16::try_from(cpu_indices.len()).map_err(|_| "CPU 核心集合数量过大".to_string())?;
-            Ok(Some(ResolvedCpuPolicy {
-                cpuset_display: format_range(&cpu_indices),
-                cpu_indices,
-                active_processor_count,
-            }))
-        }
-    }
+    resolve_shared_local_cpu_policy(&policy, logical_cpu_count())
 }
 
 pub(crate) fn apply_cpu_affinity_to_pid(
@@ -135,69 +78,6 @@ fn logical_cpu_count() -> usize {
     std::thread::available_parallelism()
         .map(|count| count.get())
         .unwrap_or(1)
-}
-
-fn parse_cpu_set(raw: &str) -> Result<Vec<usize>, String> {
-    let mut values = Vec::new();
-    for chunk in raw.split(',') {
-        let token = chunk.trim();
-        if token.is_empty() {
-            return Err(format!("CPU 核心集合格式无效: {}", raw));
-        }
-
-        if let Some((start_raw, end_raw)) = token.split_once('-') {
-            let start = parse_cpu_index(start_raw, raw)?;
-            let end = parse_cpu_index(end_raw, raw)?;
-            if end < start {
-                return Err(format!("CPU 核心区间无效: {}", raw));
-            }
-            values.extend(start..=end);
-        } else {
-            values.push(parse_cpu_index(token, raw)?);
-        }
-    }
-
-    values.sort_unstable();
-    values.dedup();
-    Ok(values)
-}
-
-fn parse_cpu_index(raw: &str, whole: &str) -> Result<usize, String> {
-    raw.trim()
-        .parse::<usize>()
-        .map_err(|_| format!("CPU 核心集合格式无效: {}", whole))
-}
-
-fn format_range(indices: &[usize]) -> String {
-    if indices.is_empty() {
-        return String::new();
-    }
-
-    let mut ranges = Vec::new();
-    let mut start = indices[0];
-    let mut prev = indices[0];
-
-    for &value in &indices[1..] {
-        if value == prev + 1 {
-            prev = value;
-            continue;
-        }
-
-        ranges.push(format_segment(start, prev));
-        start = value;
-        prev = value;
-    }
-
-    ranges.push(format_segment(start, prev));
-    ranges.join(",")
-}
-
-fn format_segment(start: usize, end: usize) -> String {
-    if start == end {
-        start.to_string()
-    } else {
-        format!("{}-{}", start, end)
-    }
 }
 
 #[cfg(target_os = "windows")]
@@ -253,9 +133,8 @@ fn apply_cpu_affinity_linux(pid: u32, resolved: &ResolvedCpuPolicy) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::{
-        compute_active_processor_count_arg, format_range, local_cpu_policy,
-        mode_supports_local_cpu_policy, parse_cpu_set, resolve_local_cpu_policy, CpuPolicyConfig,
-        CpuPolicyMode,
+        compute_active_processor_count_arg, local_cpu_policy, mode_supports_local_cpu_policy,
+        resolve_local_cpu_policy, CpuPolicyConfig, CpuPolicyMode,
     };
     use crate::models::server::{
         JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
@@ -307,16 +186,6 @@ mod tests {
         } else {
             "0".to_string()
         }
-    }
-
-    #[test]
-    fn parse_cpu_set_supports_ranges_and_lists() {
-        assert_eq!(parse_cpu_set("0-3,6,7").unwrap(), vec![0, 1, 2, 3, 6, 7]);
-    }
-
-    #[test]
-    fn format_range_compacts_consecutive_values() {
-        assert_eq!(format_range(&[0, 1, 2, 4, 6, 7]), "0-2,4,6-7");
     }
 
     #[test]

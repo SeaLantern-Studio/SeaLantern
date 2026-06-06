@@ -22,12 +22,6 @@ pub const MAX_BACKGROUND_PROCESSES_PER_PLUGIN: usize = 8;
 /// 前台执行最长时长
 pub const MAX_FOREGROUND_EXEC_DURATION: Duration = Duration::from_secs(30);
 
-/// 进程注册表
-pub type ProcessRegistry = Arc<Mutex<HashMap<u32, ProcessEntry>>>;
-
-/// 后台输出缓冲共享句柄
-pub type SharedProcessOutput = Arc<Mutex<ProcessOutputBuffers>>;
-
 /// 后台进程输出缓冲
 #[derive(Default)]
 pub struct ProcessOutputBuffers {
@@ -52,17 +46,17 @@ pub struct ProcessEntry {
     pub owner_plugin_id: String,
     pub program: String,
     pub child: Child,
-    pub output: SharedProcessOutput,
+    pub output: Arc<Mutex<ProcessOutputBuffers>>,
     pub started_at: Instant,
 }
 
 /// 创建新的进程注册表
-pub fn new_process_registry() -> ProcessRegistry {
+pub fn new_process_registry() -> Arc<Mutex<HashMap<u32, ProcessEntry>>> {
     Arc::new(Mutex::new(HashMap::new()))
 }
 
 /// 创建后台进程输出缓冲
-pub fn new_process_output() -> SharedProcessOutput {
+pub fn new_process_output() -> Arc<Mutex<ProcessOutputBuffers>> {
     Arc::new(Mutex::new(ProcessOutputBuffers::default()))
 }
 
@@ -112,7 +106,7 @@ pub fn truncate_output(buf: &mut Vec<u8>) -> bool {
 /// 为后台进程的单个输出流启动持续读取线程。
 pub fn spawn_background_pipe_reader<R>(
     mut reader: R,
-    output: SharedProcessOutput,
+    output: Arc<Mutex<ProcessOutputBuffers>>,
     stream: ProcessStream,
 ) where
     R: Read + Send + 'static,
@@ -221,7 +215,10 @@ pub fn plugin_process_count(procs: &mut HashMap<u32, ProcessEntry>, plugin_id: &
 }
 
 /// 杀掉某个插件名下的全部进程
-pub fn kill_plugin_processes(registry: &ProcessRegistry, plugin_id: &str) {
+pub fn kill_plugin_processes(
+    registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
+    plugin_id: &str,
+) {
     let mut procs = registry.lock().unwrap_or_else(|e| {
         eprintln!("[WARN] Process registry lock poisoned, recovering: {}", e);
         e.into_inner()
@@ -246,7 +243,7 @@ pub fn kill_plugin_processes(registry: &ProcessRegistry, plugin_id: &str) {
 }
 
 /// 杀掉注册表里的全部进程
-pub fn kill_all_processes(registry: &ProcessRegistry) {
+pub fn kill_all_processes(registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>) {
     let mut procs = registry.lock().unwrap_or_else(|e| {
         eprintln!("[WARN] Process registry lock poisoned, recovering: {}", e);
         e.into_inner()

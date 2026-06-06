@@ -3,12 +3,14 @@ use std::path::Path;
 use crate::models::server::{
     CreateServerRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
+use sea_lantern_server_config_core::startup::{
+    create_server_properties_if_missing, write_server_startup_config_for_dir,
+};
 
 use super::super::common::{
     current_timestamp_secs, ensure_server_identity_available, normalize_startup_mode,
     validate_server_name,
 };
-use super::shared::{create_server_properties_if_missing, write_sl_startup_config};
 use super::ServerManager;
 
 pub(super) fn create_server(
@@ -64,7 +66,7 @@ pub(super) fn create_server(
     std::fs::create_dir_all(&server_dir).map_err(|e| format!("无法创建服务器目录: {}", e))?;
     create_server_properties_if_missing(Path::new(&server_dir), req.port, true)?;
     if let Some(runtime) = server.local_runtime() {
-        write_sl_startup_config(
+        write_server_startup_config_for_dir(
             Path::new(&server_dir),
             req.max_memory,
             req.min_memory,
@@ -86,6 +88,10 @@ mod tests {
     use crate::services::server::manager::ServerManager;
     use tempfile::tempdir;
 
+    fn unique_name(prefix: &str) -> String {
+        format!("{}-{}", prefix, uuid::Uuid::new_v4())
+    }
+
     #[test]
     fn create_server_prefers_explicit_server_path_over_jar_parent() {
         let temp_dir = tempdir().expect("temp dir should exist");
@@ -96,7 +102,7 @@ mod tests {
 
         let manager = ServerManager::new();
         let req = CreateServerRequest {
-            name: "Custom Script".to_string(),
+            name: unique_name("Custom Script"),
             aliases: vec![],
             core_type: "Paper".to_string(),
             mc_version: "1.21.1".to_string(),
@@ -126,7 +132,7 @@ mod tests {
 
         let manager = ServerManager::new();
         let req = CreateServerRequest {
-            name: "Fresh Server".to_string(),
+            name: unique_name("Fresh Server"),
             aliases: vec![],
             core_type: "Fabric".to_string(),
             mc_version: "1.20.1".to_string(),

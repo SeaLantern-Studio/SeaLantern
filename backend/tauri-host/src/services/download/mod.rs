@@ -4,6 +4,6 @@
 //! - java_installer.rs：Java 运行时下载与安装（带进度与取消）。
 //! - starter_installer_links.rs：Starter 模式服务器核心下载链接的获取与缓存。
 
-pub mod download_manager;
-pub mod java_installer;
-pub mod starter_installer_links;
+pub(crate) mod download_manager;
+pub(crate) mod java_installer;
+pub(crate) mod starter_installer_links;

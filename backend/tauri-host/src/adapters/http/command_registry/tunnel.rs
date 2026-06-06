@@ -1,23 +1,18 @@
-use super::common::{parse_params, CommandHandler};
+use super::common::{CommandHandler, RegistryBuilder, parse_params};
 use super::requests::{TunnelHostRequest, TunnelJoinRequest};
 use crate::commands::online::tunnel as tunnel_commands;
 use serde_json::Value;
-use std::collections::HashMap;
-
-pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
-    handlers.insert("tunnel_host".to_string(), handle_tunnel_host as CommandHandler);
-    handlers.insert("tunnel_join".to_string(), handle_tunnel_join as CommandHandler);
-    handlers.insert("tunnel_stop".to_string(), handle_tunnel_stop as CommandHandler);
-    handlers.insert("tunnel_status".to_string(), handle_tunnel_status as CommandHandler);
-    handlers.insert("tunnel_copy_ticket".to_string(), handle_tunnel_copy_ticket as CommandHandler);
-    handlers.insert(
-        "tunnel_regenerate_ticket".to_string(),
+pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
+    builder.register("tunnel_host", handle_tunnel_host as CommandHandler);
+    builder.register("tunnel_join", handle_tunnel_join as CommandHandler);
+    builder.register("tunnel_stop", handle_tunnel_stop as CommandHandler);
+    builder.register("tunnel_status", handle_tunnel_status as CommandHandler);
+    builder.register("tunnel_copy_ticket", handle_tunnel_copy_ticket as CommandHandler);
+    builder.register(
+        "tunnel_regenerate_ticket",
         handle_tunnel_regenerate_ticket as CommandHandler,
     );
-    handlers.insert(
-        "tunnel_generate_ticket".to_string(),
-        handle_tunnel_generate_ticket as CommandHandler,
-    );
+    builder.register("tunnel_generate_ticket", handle_tunnel_generate_ticket as CommandHandler);
 }
 
 fn handle_tunnel_host(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {

@@ -1,186 +1,11 @@
-use std::path::Path;
-
-use crate::utils::cli::server_args::CliServerCommand;
-use crate::utils::path::is_windows_absolute_path;
-
-use super::local_folder_inspection::inspect_local_folder;
-
-pub(super) fn detect_startup_mode_from_folder(folder: &Path) -> String {
-    inspect_local_folder(folder)
-        .startup_mode
-        .unwrap_or_else(|| "jar".to_string())
-}
-
-pub(super) fn resolve_existing_attach_entry_path(folder: &Path, entry: &str) -> Option<String> {
-    let trimmed = entry.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let direct = Path::new(trimmed);
-    if direct.exists() {
-        return Some(direct.to_string_lossy().to_string());
-    }
-
-    let relative_to_folder = folder.join(trimmed);
-    if relative_to_folder.exists() {
-        return Some(relative_to_folder.to_string_lossy().to_string());
-    }
-
-    None
-}
-
-pub(super) fn resolve_existing_local_entry_path(
-    folder: Option<&Path>,
-    entry: &str,
-) -> Option<String> {
-    let trimmed = entry.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let path = Path::new(trimmed);
-    if path.exists() {
-        Some(path.to_string_lossy().to_string())
-    } else if let Some(folder) = folder {
-        let relative_to_folder = folder.join(path);
-        if relative_to_folder.exists() {
-            Some(relative_to_folder.to_string_lossy().to_string())
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-pub(super) fn resolve_custom_entry_hint_path(
-    entry: Option<&str>,
-    resolved_entry_path: Option<&str>,
-    folder: Option<&Path>,
-) -> Option<String> {
-    if let Some(path) = resolved_entry_path {
-        return Some(path.to_string());
-    }
-
-    let entry = entry?.trim();
-    if entry.is_empty() {
-        return None;
-    }
-
-    let tokens = shlex::split(entry)?;
-    if tokens.is_empty() {
-        return None;
-    }
-
-    for window in tokens.windows(2) {
-        if window[0].eq_ignore_ascii_case("-jar") {
-            return resolve_command_path_hint(&window[1], folder);
-        }
-    }
-
-    resolve_command_path_hint(&tokens[0], folder)
-}
-
-pub(super) fn resolve_command_path_hint(token: &str, folder: Option<&Path>) -> Option<String> {
-    let trimmed = token.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let path = Path::new(trimmed);
-    let extension = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_ascii_lowercase());
-    let is_absolute = path.is_absolute() || is_windows_absolute_path(trimmed);
-    let looks_like_launch_path = is_absolute
-        || trimmed.contains(['/', '\\'])
-        || trimmed.starts_with('.')
-        || matches!(extension.as_deref(), Some("jar" | "bat" | "sh" | "ps1" | "cmd"));
-
-    if !looks_like_launch_path {
-        return None;
-    }
-
-    if is_absolute {
-        Some(trimmed.to_string())
-    } else if let Some(folder) = folder {
-        Some(folder.join(path).to_string_lossy().to_string())
-    } else {
-        std::env::current_dir()
-            .ok()
-            .map(|current_dir| current_dir.join(path).to_string_lossy().to_string())
-            .or_else(|| Some(trimmed.to_string()))
-    }
-}
-
-pub(super) fn infer_local_create_startup_mode(
-    command: &CliServerCommand,
-    resolved_entry_path: Option<&str>,
-) -> String {
-    if let Some(entry_path) = resolved_entry_path {
-        return detect_startup_mode_from_path_like(entry_path);
-    }
-    if command.entry.is_some() {
-        return "custom".to_string();
-    }
-    "jar".to_string()
-}
-
-pub(super) fn validate_local_entry_startup_mode(
-    startup_mode: &str,
-    entry: Option<&str>,
-    resolved_entry_path: Option<&str>,
-) -> Result<(), String> {
-    let Some(entry) = entry.map(str::trim).filter(|value| !value.is_empty()) else {
-        return Ok(());
-    };
-
-    if startup_mode == "custom" {
-        return Ok(());
-    }
-
-    let Some(entry_path) = resolved_entry_path else {
-        return Err(format!(
-            "--startup {} 需要可解析的启动文件路径；当前 --entry 更像命令文本，请改用 --startup custom 或提供实际脚本/JAR 路径",
-            startup_mode
-        ));
-    };
-
-    let detected_mode = detect_startup_mode_from_path_like(entry_path);
-    if detected_mode != startup_mode {
-        return Err(format!(
-            "--startup {} 与 --entry={} 的文件类型不匹配，检测到的是 {}",
-            startup_mode, entry, detected_mode
-        ));
-    }
-
-    Ok(())
-}
-
-pub(super) fn detect_startup_mode_from_path_like(path: &str) -> String {
-    let extension = Path::new(path)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_ascii_lowercase())
-        .unwrap_or_default();
-
-    match extension.as_str() {
-        "bat" => "bat".to_string(),
-        "sh" => "sh".to_string(),
-        "ps1" => "ps1".to_string(),
-        _ => "jar".to_string(),
-    }
-}
-
-pub(super) fn normalize_cli_startup_mode(value: Option<&str>) -> Result<String, String> {
-    let raw = value.unwrap_or("jar").trim().to_ascii_lowercase();
-    match raw.as_str() {
-        "jar" | "bat" | "sh" | "ps1" | "starter" | "custom" => Ok(raw),
-        _ => Err(format!("不支持的 startup mode: {}", raw)),
-    }
-}
+pub(super) use sea_lantern_server_local_setup_core::{
+    detect_startup_mode_from_folder, infer_local_create_startup_mode,
+    normalize_cli_startup_mode, resolve_command_path_hint, resolve_custom_entry_hint_path,
+    resolve_existing_attach_entry_path, resolve_existing_local_entry_path,
+    validate_local_entry_startup_mode,
+};
+#[cfg(test)]
+pub(super) use sea_lantern_server_local_setup_core::detect_startup_mode_from_path_like;
 
 #[cfg(test)]
 mod tests {
@@ -190,7 +15,6 @@ mod tests {
         resolve_custom_entry_hint_path, resolve_existing_attach_entry_path,
         resolve_existing_local_entry_path, validate_local_entry_startup_mode,
     };
-    use crate::utils::cli::server_args::CliServerCommand;
     use crate::utils::cli::server_setup::local_folder_inspection::inspect_local_folder;
     use tempfile::tempdir;
 
@@ -301,17 +125,12 @@ mod tests {
 
     #[test]
     fn infer_local_create_startup_mode_prefers_existing_entry_path_extension() {
-        let command = CliServerCommand::default();
-        assert_eq!(infer_local_create_startup_mode(&command, Some("E:/srv/start.ps1")), "ps1");
+        assert_eq!(infer_local_create_startup_mode(false, Some("E:/srv/start.ps1")), "ps1");
     }
 
     #[test]
     fn infer_local_create_startup_mode_uses_custom_for_non_path_entry() {
-        let command = CliServerCommand {
-            entry: Some("java -jar server.jar nogui".to_string()),
-            ..Default::default()
-        };
-        assert_eq!(infer_local_create_startup_mode(&command, None), "custom");
+        assert_eq!(infer_local_create_startup_mode(true, None), "custom");
     }
 
     #[test]

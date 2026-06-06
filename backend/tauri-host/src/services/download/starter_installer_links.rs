@@ -2,19 +2,11 @@
 //!
 //! 这里只保留对外查询函数，缓存、解析和版本匹配逻辑拆到子模块里
 
-#[path = "starter_installer_links_core/cache.rs"]
-mod cache;
-#[path = "starter_installer_links_core/parser.rs"]
-mod parser;
-#[path = "starter_installer_links_core/version.rs"]
-mod version;
-
 use std::path::PathBuf;
-
-use parser::{resolve_installer_url_from_nested_json, StarterLinksPayload};
 
 ///此处常量见 utils/constants.rs
 use crate::utils::constants::STARTER_INSTALLER_LINKS_FILE;
+use crate::utils::constants::STARTER_INSTALLER_LINKS_URL;
 
 /// 按核心类型和 MC 版本查找 Starter 安装器下载地址
 ///
@@ -30,27 +22,42 @@ pub fn fetch_starter_installer_url(
     core_type_key: &str,
     mc_version: &str,
 ) -> Result<(String, Option<String>), String> {
-    let data_dir = PathBuf::from(crate::utils::path::get_or_create_app_data_dir());
+    let data_dir = PathBuf::from(
+        crate::utils::path::get_or_create_app_data_dir_checked()
+            .map_err(|e| format!("获取软件目录失败: {}", e))?,
+    );
     std::fs::create_dir_all(&data_dir).map_err(|e| format!("创建软件目录失败: {}", e))?;
     let links_file_path = data_dir.join(STARTER_INSTALLER_LINKS_FILE);
-    let body = cache::load_or_refresh_starter_links_json(&links_file_path)?;
+    sea_lantern_starter_links_core::load_or_refresh_starter_links_json(
+        &links_file_path,
+        STARTER_INSTALLER_LINKS_URL,
+    )?;
+    sea_lantern_starter_links_core::resolve_installer_url_from_cache_file(
+        &links_file_path,
+        core_type_key,
+        mc_version,
+    )
+}
 
-    let payload: StarterLinksPayload =
-        serde_json::from_slice(&body).map_err(|e| format!("解析 Starter 下载信息失败: {}", e))?;
-    let core_key = core_type_key.trim().to_ascii_lowercase();
-    let target_version = mc_version.trim().to_ascii_lowercase();
-    if core_key.is_empty() || target_version.is_empty() {
-        return Err("Starter 下载参数缺少核心类型或 MC 版本".to_string());
+#[cfg(test)]
+mod tests {
+    use super::fetch_starter_installer_url;
+    use crate::test_support::{lock_env, EnvGuard};
+    use std::fs;
+
+    #[test]
+    fn fetch_starter_installer_url_surfaces_app_data_dir_creation_failures() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let blocked_root = temp_dir.path().join("blocked-root");
+        fs::write(&blocked_root, b"not a directory").expect("file-backed app data root should exist");
+        let blocked_path = blocked_root.join("nested");
+        let _lock = lock_env();
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &blocked_path.to_string_lossy());
+
+        let error = fetch_starter_installer_url("forge", "1.20.1")
+            .expect_err("app data dir creation failure should not be silently downgraded");
+
+        assert!(error.contains("获取软件目录失败"), "unexpected error: {}", error);
+        assert!(error.contains("blocked-root"), "unexpected error: {}", error);
     }
-
-    if let Some(installer_url) =
-        resolve_installer_url_from_nested_json(&payload, &core_key, &target_version)
-    {
-        return Ok((installer_url, None));
-    }
-
-    Err(format!(
-        "未在 CNB 镜像中找到匹配下载链接：core={}, version={}",
-        core_type_key, mc_version
-    ))
 }

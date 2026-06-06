@@ -1,5 +1,8 @@
 use super::*;
+use crate::test_support::{lock_env, EnvGuard};
+use sea_lantern_runtime::find_root_startup_file;
 use std::fs;
+use std::path::PathBuf;
 
 #[test]
 fn test_get_app_data_dir_not_empty() {
@@ -20,11 +23,11 @@ fn test_get_or_create_app_data_dir() {
 #[test]
 fn test_get_app_data_dir_prefers_explicit_env_override() {
     let expected = std::env::temp_dir().join("sealantern-data-dir-override-test");
-    std::env::set_var("SEALANTERN_DATA_DIR", expected.to_string_lossy().to_string());
+    let _env_lock = lock_env();
+    let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &expected.to_string_lossy());
 
     let actual = get_app_data_dir();
 
-    std::env::remove_var("SEALANTERN_DATA_DIR");
     assert_eq!(actual, expected);
 }
 

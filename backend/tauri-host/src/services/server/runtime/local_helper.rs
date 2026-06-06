@@ -4,7 +4,32 @@ mod snapshot;
 mod state;
 mod status;
 
-pub use state::{read_state, state_file_path, LocalHelperStatusSnapshot, LocalRuntimeState};
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LocalRuntimeState {
+    pub server_id: String,
+    pub helper_pid: u32,
+    pub child_pid: Option<u32>,
+    pub control_port: Option<u16>,
+    pub auth_token: String,
+    pub running: bool,
+    pub exit_code: Option<i32>,
+    pub detail_message: String,
+    pub error_message: Option<String>,
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LocalHelperStatusSnapshot {
+    pub running: bool,
+    pub pid: Option<u32>,
+    pub exit_code: Option<i32>,
+    pub detail_message: String,
+    pub error_message: Option<String>,
+}
+
 pub(crate) use status::{
     helper_runtime_status, runtime_snapshot_from_helper, stopped_runtime_snapshot,
 };
@@ -28,6 +53,16 @@ use std::net::TcpListener;
 use std::process::Command;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessesToUpdate, System};
+
+pub fn state_file_path(server: &ServerInstance) -> PathBuf {
+    Path::new(&server.path).join(crate::utils::constants::LOCAL_RUNTIME_STATE_FILE)
+}
+
+pub fn read_state(server: &ServerInstance) -> Option<LocalRuntimeState> {
+    let path = state_file_path(server);
+    let content = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str::<LocalRuntimeState>(&content).ok()
+}
 
 pub fn cleanup_for_new_start(server: &ServerInstance) {
     let current_exe = current_exe_lowercase();
@@ -460,9 +495,12 @@ fn run_helper(server_id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::state::{state_file_path, write_state_file};
+    use super::state::write_state_file;
     use super::status_snapshot;
-    use super::{looks_like_local_runtime_helper_command, process_matches_server_helper_identity};
+    use super::{
+        looks_like_local_runtime_helper_command, process_matches_server_helper_identity,
+        state_file_path,
+    };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use std::ffi::OsString;
     use tempfile::tempdir;

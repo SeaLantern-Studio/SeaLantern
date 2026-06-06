@@ -254,45 +254,8 @@ mod tests {
     };
     use crate::services::java_detector;
     use crate::utils::cli::server_args::CliServerCommand;
-    use once_cell::sync::Lazy;
-    use std::sync::Mutex;
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
     use tempfile::tempdir;
-
-    static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
-
-    fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-        ENV_LOCK
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
-
-    struct EnvVarGuard {
-        key: String,
-        original: Option<String>,
-    }
-
-    impl EnvVarGuard {
-        fn set(key: &str, value: &str) -> Self {
-            let original = std::env::var(key).ok();
-            std::env::set_var(key, value);
-            Self { key: key.to_string(), original }
-        }
-
-        fn remove(key: &str) -> Self {
-            let original = std::env::var(key).ok();
-            std::env::remove_var(key);
-            Self { key: key.to_string(), original }
-        }
-    }
-
-    impl Drop for EnvVarGuard {
-        fn drop(&mut self) {
-            match &self.original {
-                Some(value) => std::env::set_var(&self.key, value),
-                None => std::env::remove_var(&self.key),
-            }
-        }
-    }
 
     #[test]
     fn find_java_from_env_is_safe_to_call_without_assumptions() {
@@ -315,7 +278,7 @@ mod tests {
         std::fs::create_dir_all(&java_bin_dir).expect("java bin dir should create");
         let java_path = java_bin_dir.join(if cfg!(windows) { "java.exe" } else { "java" });
         std::fs::write(&java_path, b"placeholder").expect("java placeholder should write");
-        let _java_home = EnvVarGuard::set("JAVA_HOME", temp_dir.path().to_string_lossy().as_ref());
+        let _java_home = EnvGuard::set("JAVA_HOME", temp_dir.path().to_string_lossy().as_ref());
 
         let resolved = resolve_explicit_java_path_with("%env:JAVA_HOME%", |candidate, _| {
             Ok(candidate.to_string())
@@ -342,7 +305,7 @@ mod tests {
                 std::env::var("PATH").unwrap_or_default()
             )
         };
-        let _path = EnvVarGuard::set("PATH", &path_value);
+        let _path = EnvGuard::set("PATH", &path_value);
 
         let resolved =
             resolve_explicit_java_path_with("%env:Path%", |candidate, _| Ok(candidate.to_string()))
@@ -392,11 +355,11 @@ mod tests {
     #[test]
     fn resolve_java_path_in_env_only_mode_fails_without_falling_back_to_defaults() {
         let _env_lock = lock_env();
-        let _java_home = EnvVarGuard::remove("JAVA_HOME");
+        let _java_home = EnvGuard::remove("JAVA_HOME");
         let _path = if cfg!(windows) {
-            EnvVarGuard::set("PATH", "C:/__sealantern_missing_java_path__")
+            EnvGuard::set("PATH", "C:/__sealantern_missing_java_path__")
         } else {
-            EnvVarGuard::set("PATH", "/__sealantern_missing_java_path__")
+            EnvGuard::set("PATH", "/__sealantern_missing_java_path__")
         };
 
         let command = CliServerCommand {
@@ -414,11 +377,11 @@ mod tests {
     #[test]
     fn find_java_from_env_skips_invalid_java_home_candidate() {
         let _env_lock = lock_env();
-        let _java_home = EnvVarGuard::remove("JAVA_HOME");
+        let _java_home = EnvGuard::remove("JAVA_HOME");
         let _path = if cfg!(windows) {
-            EnvVarGuard::set("PATH", "C:/__sealantern_missing_java_path__")
+            EnvGuard::set("PATH", "C:/__sealantern_missing_java_path__")
         } else {
-            EnvVarGuard::set("PATH", "/__sealantern_missing_java_path__")
+            EnvGuard::set("PATH", "/__sealantern_missing_java_path__")
         };
 
         let scan_root = tempdir().expect("temp dir should exist");
@@ -427,7 +390,7 @@ mod tests {
         std::fs::create_dir_all(&java_bin_dir).expect("java bin dir should create");
         let java_path = java_bin_dir.join(if cfg!(windows) { "java.exe" } else { "java" });
         std::fs::write(&java_path, b"placeholder").expect("java placeholder should write");
-        let _scan_java_home = EnvVarGuard::set("JAVA_HOME", java_home.to_string_lossy().as_ref());
+        let _scan_java_home = EnvGuard::set("JAVA_HOME", java_home.to_string_lossy().as_ref());
 
         assert!(find_java_from_env().is_none());
     }

@@ -1,8 +1,6 @@
 use sculk::persist::Profile;
 use sculk::tunnel::{IrohTunnel, Ticket};
 use sculk::types::SecretKey;
-use serde::Serialize;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 use tauri::async_runtime::JoinHandle;
 use tokio::sync::Mutex as AsyncMutex;
@@ -25,30 +23,6 @@ impl TunnelMode {
             TunnelMode::Join => "join",
         }
     }
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct TunnelConnection {
-    pub remote_id: String,
-    pub is_relay: bool,
-    pub rtt_ms: u64,
-    pub tx_bytes: u64,
-    pub rx_bytes: u64,
-    pub alive: bool,
-    pub elapsed_secs: u64,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct TunnelStatus {
-    pub running: bool,
-    pub mode: Option<String>,
-    pub ticket: Option<String>,
-    pub connections: Vec<TunnelConnection>,
-    pub logs: Vec<String>,
-    pub host_port: u16,
-    pub join_port: u16,
-    pub last_ticket: Option<String>,
-    pub relay_url: Option<String>,
 }
 
 #[derive(Default)]
@@ -99,16 +73,16 @@ pub(super) fn clear_running_state() {
     state.mode = None;
 }
 
-pub(super) fn tunnel_data_dir() -> PathBuf {
-    crate::utils::path::get_app_data_dir().join(ONLINE_DIR)
+pub(super) fn tunnel_profile_path() -> std::path::PathBuf {
+    crate::utils::path::get_app_data_dir()
+        .join(ONLINE_DIR)
+        .join(PROFILE_FILE)
 }
 
-pub(super) fn tunnel_profile_path() -> PathBuf {
-    tunnel_data_dir().join(PROFILE_FILE)
-}
-
-pub(super) fn tunnel_key_path() -> PathBuf {
-    tunnel_data_dir().join(SECRET_KEY_FILE)
+pub(super) fn tunnel_key_path() -> std::path::PathBuf {
+    crate::utils::path::get_app_data_dir()
+        .join(ONLINE_DIR)
+        .join(SECRET_KEY_FILE)
 }
 
 pub(super) fn derive_ticket_for_state(state: &TunnelRuntimeState) -> Option<String> {

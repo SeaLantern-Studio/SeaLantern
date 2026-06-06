@@ -36,7 +36,7 @@ pub(super) fn is_container_like_environment() -> bool {
 }
 
 pub(super) fn effective_cli_web_bind_host() -> String {
-    crate::adapters::http::resolve_http_bind_host(3000)
+    sea_lantern_runtime::resolve_http_bind_host(3000)
 }
 
 #[cfg(test)]
@@ -46,57 +46,25 @@ mod tests {
         effective_cli_web_bind_host, env_var_trimmed, has_docker_host_path_mapping,
         is_container_like_environment, is_headless_http_environment,
     };
-    use std::sync::Mutex;
-
-    static ENV_LOCK: once_cell::sync::Lazy<Mutex<()>> =
-        once_cell::sync::Lazy::new(|| Mutex::new(()));
-
-    struct EnvGuard {
-        name: &'static str,
-        original: Option<String>,
-    }
-
-    impl EnvGuard {
-        fn set(name: &'static str, value: &str) -> Self {
-            let original = std::env::var(name).ok();
-            std::env::set_var(name, value);
-            Self { name, original }
-        }
-
-        fn remove(name: &'static str) -> Self {
-            let original = std::env::var(name).ok();
-            std::env::remove_var(name);
-            Self { name, original }
-        }
-    }
-
-    impl Drop for EnvGuard {
-        fn drop(&mut self) {
-            if let Some(original) = &self.original {
-                std::env::set_var(self.name, original);
-            } else {
-                std::env::remove_var(self.name);
-            }
-        }
-    }
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
 
     #[test]
     fn env_var_trimmed_discards_blank_values() {
-        let _lock = ENV_LOCK.lock().expect("env lock");
+        let _lock = lock_env();
         let _guard = EnvGuard::set("SEALANTERN_TEST_TRIMMED", "   ");
         assert!(env_var_trimmed("SEALANTERN_TEST_TRIMMED").is_none());
     }
 
     #[test]
     fn configured_web_bind_host_returns_trimmed_value() {
-        let _lock = ENV_LOCK.lock().expect("env lock");
+        let _lock = lock_env();
         let _guard = EnvGuard::set("SEALANTERN_WEB_BIND", " 192.168.1.10 ");
         assert_eq!(configured_web_bind_host().as_deref(), Some("192.168.1.10"));
     }
 
     #[test]
     fn effective_web_bind_preserves_explicit_zero_bind_without_marking_headless() {
-        let _lock = ENV_LOCK.lock().expect("env lock");
+        let _lock = lock_env();
         let _headless_guard = EnvGuard::remove("SEALANTERN_HEADLESS_HTTP");
         let _bind_guard = EnvGuard::set("SEALANTERN_WEB_BIND", "0.0.0.0");
 
@@ -106,7 +74,7 @@ mod tests {
 
     #[test]
     fn effective_web_bind_defaults_to_loopback_even_in_headless_environment() {
-        let _lock = ENV_LOCK.lock().expect("env lock");
+        let _lock = lock_env();
         let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
         let _http_bind = EnvGuard::remove("SEALANTERN_HTTP_BIND");
         let _bind_guard = EnvGuard::remove("SEALANTERN_WEB_BIND");
@@ -117,15 +85,18 @@ mod tests {
 
     #[test]
     fn docker_host_path_mapping_requires_both_roots() {
-        let _lock = ENV_LOCK.lock().expect("env lock");
+        let _lock = lock_env();
         let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
         let _container_guard = EnvGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");
         assert!(!has_docker_host_path_mapping());
 
-        std::env::set_var("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
-        assert!(!has_docker_host_path_mapping());
+        {
+            let _host_guard = EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
+            assert!(!has_docker_host_path_mapping());
+        }
 
-        std::env::set_var("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
+        let _host_guard = EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
+        let _container_guard = EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
         assert!(has_docker_host_path_mapping());
         assert_eq!(
             configured_servers_host_root()
@@ -143,7 +114,7 @@ mod tests {
 
     #[test]
     fn headless_environment_detects_explicit_flag() {
-        let _lock = ENV_LOCK.lock().expect("env lock");
+        let _lock = lock_env();
         let _guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
         assert!(is_headless_http_environment());
         assert_eq!(effective_cli_web_bind_host(), "127.0.0.1");
@@ -151,7 +122,7 @@ mod tests {
 
     #[test]
     fn container_like_environment_detects_container_root_mapping() {
-        let _lock = ENV_LOCK.lock().expect("env lock");
+        let _lock = lock_env();
         let _guard = EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
         assert!(is_container_like_environment());
     }

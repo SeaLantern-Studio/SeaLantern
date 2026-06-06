@@ -47,10 +47,6 @@ pub const DOWNLOAD_LINK_LIST_URL: &str = SERVER_CORE_MIRROR_LINK_LIST_URL;
 pub const STARTER_INSTALLER_LINKS_FILE: &str = STARTER_INSTALLER_LINKS_FILE_NAME;
 pub const STARTER_INSTALLER_LINKS_URL: &str = DOWNLOAD_LINK_LIST_URL;
 
-/// services/download/java_installer.rs
-pub const JAVA_DOWNLOAD_TIMEOUT_SECS: u64 = 60;
-pub const JAVA_DOWNLOAD_RETRY_LIMIT: usize = 3;
-
 /// services/server/log_pipeline.rs
 pub const LATEST_LOG_DB_FILE: &str = "latest_log.db";
 pub const LOG_BATCH_SIZE: usize = 128;

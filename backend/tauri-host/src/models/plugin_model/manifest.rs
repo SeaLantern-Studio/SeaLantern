@@ -2,9 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use super::dependencies::PluginDependency;
 
-/// 插件权限名
-pub type PluginPermission = String;
-
 /// 插件清单
 ///
 /// 对应插件目录里的 `manifest.json`
@@ -25,7 +22,7 @@ pub struct PluginManifest {
     #[serde(default)]
     pub engines: Option<PluginEngines>,
     #[serde(default)]
-    pub permissions: Vec<PluginPermission>,
+    pub permissions: Vec<String>,
     #[serde(default)]
     pub ui: Option<PluginUiConfig>,
     #[serde(default)]

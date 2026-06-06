@@ -7,13 +7,15 @@ mod state;
 use crate::hardcode_data::external_services::COMMON_HTTP_BROWSER_USER_AGENT;
 use crate::models::download::TaskProgressResponse;
 use crate::utils::downloader::MultiThreadDownloader;
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// 下载任务总管理器
 pub struct DownloadManager {
     // 使用 RwLock 保证多线程下对任务 Map 的读写安全
-    tasks: state::SharedDownloadTasks,
+    tasks: Arc<RwLock<HashMap<Uuid, Arc<state::DownloadTaskState>>>>,
     downloader: Arc<MultiThreadDownloader>,
 }
 
@@ -21,7 +23,7 @@ impl DownloadManager {
     /// 创建下载管理器
     pub fn new() -> Self {
         Self {
-            tasks: state::new_shared_download_tasks(),
+            tasks: Arc::new(RwLock::new(HashMap::new())),
             downloader: Arc::new(MultiThreadDownloader::new(COMMON_HTTP_BROWSER_USER_AGENT)),
         }
     }
@@ -64,19 +66,109 @@ impl DownloadManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hardcode_data::dev_samples::SAMPLE_DOWNLOAD_MANAGER_URL;
     use crate::models::download::TaskStatus;
+    use axum::body::Body;
+    use axum::extract::State;
+    use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+    use axum::response::IntoResponse;
+    use axum::routing::get;
+    use axum::Router;
+    use std::ops::RangeInclusive;
+    use std::sync::Arc as StdArc;
     use std::time::Duration;
+    use tokio::net::TcpListener;
     use tokio;
+
+    #[derive(Clone)]
+    struct TestDownloadPayload {
+        bytes: StdArc<Vec<u8>>,
+    }
+
+    async fn serve_test_payload(
+        State(payload): State<TestDownloadPayload>,
+        headers: HeaderMap,
+    ) -> impl IntoResponse {
+        let total_len = payload.bytes.len();
+
+        if let Some(range_header) = headers.get(header::RANGE) {
+            let range_value = range_header
+                .to_str()
+                .expect("range header should be valid utf-8");
+            let range = parse_range_header(range_value, total_len)
+                .expect("range header should be parseable for test payload");
+
+            let start = *range.start();
+            let end = *range.end();
+            let bytes = payload.bytes[start..=end].to_vec();
+            let content_range = format!("bytes {}-{}/{}", start, end, total_len);
+
+            let mut response_headers = HeaderMap::new();
+            response_headers.insert(
+                header::CONTENT_RANGE,
+                HeaderValue::from_str(&content_range).expect("content-range should be valid"),
+            );
+            response_headers.insert(
+                header::CONTENT_LENGTH,
+                HeaderValue::from_str(&bytes.len().to_string())
+                    .expect("content-length should be valid"),
+            );
+
+            return (StatusCode::PARTIAL_CONTENT, response_headers, Body::from(bytes))
+                .into_response();
+        }
+
+        let mut response_headers = HeaderMap::new();
+        response_headers.insert(
+            header::CONTENT_LENGTH,
+            HeaderValue::from_str(&total_len.to_string()).expect("content-length should be valid"),
+        );
+
+        (StatusCode::OK, response_headers, Body::from((*payload.bytes).clone())).into_response()
+    }
+
+    fn parse_range_header(value: &str, total_len: usize) -> Option<RangeInclusive<usize>> {
+        let bytes = value.strip_prefix("bytes=")?;
+        let (start, end) = bytes.split_once('-')?;
+        let start = start.parse::<usize>().ok()?;
+        let end = if end.is_empty() {
+            total_len.checked_sub(1)?
+        } else {
+            end.parse::<usize>().ok()?
+        };
+
+        if start > end || end >= total_len {
+            return None;
+        }
+
+        Some(start..=end)
+    }
 
     #[tokio::test]
     async fn test_download_manager() {
         let manager = DownloadManager::new();
 
-        let url = SAMPLE_DOWNLOAD_MANAGER_URL;
-        let save_path = "test_manager_output.txt";
+        let payload = TestDownloadPayload {
+            bytes: StdArc::new(vec![b'x'; 512 * 1024]),
+        };
+        let app = Router::new()
+            .route("/download.bin", get(serve_test_payload))
+            .with_state(payload.clone());
+        let listener = TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("test listener should bind");
+        let addr = listener.local_addr().expect("listener should report local addr");
+        tokio::spawn(async move {
+            axum::serve(listener, app)
+                .await
+                .expect("test download server should run");
+        });
 
-        let task_id = manager.create_task(url, save_path, 32).await;
+        let url = format!("http://{}/download.bin", addr);
+        let temp_dir = tempfile::tempdir().expect("tempdir should exist");
+        let save_path = temp_dir.path().join("test_manager_output.bin");
+        let save_path_str = save_path.to_string_lossy().to_string();
+
+        let task_id = manager.create_task(&url, &save_path_str, 8).await;
         println!("任务已创建, ID: {}", task_id);
 
         let mut completed = false;
@@ -117,8 +209,8 @@ mod tests {
         assert!(final_check.is_none(), "测试失败：任务在清理后依然存在");
         println!("任务已成功从管理器中移除。");
 
-        if std::path::Path::new(save_path).exists() {
-            let _ = std::fs::remove_file(save_path);
+        if save_path.exists() {
+            let _ = std::fs::remove_file(&save_path);
             println!("测试残留文件已清理。");
         }
     }

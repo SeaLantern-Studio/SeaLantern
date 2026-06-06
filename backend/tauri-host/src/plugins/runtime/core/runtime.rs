@@ -1,6 +1,6 @@
-use crate::plugins::api::ApiRegistry;
-use crate::plugins::runtime::process::ProcessRegistry;
+use crate::plugins::runtime::process::ProcessEntry;
 use mlua::{Function, Table, Value};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{
@@ -19,11 +19,11 @@ pub struct PluginRuntime {
 
     pub(crate) permissions: Vec<String>,
 
-    pub(crate) api_registry: ApiRegistry,
+    pub(crate) api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
 
     pub(crate) storage_lock: Arc<Mutex<()>>,
 
-    pub(crate) process_registry: ProcessRegistry,
+    pub(crate) process_registry: Arc<Mutex<HashMap<u32, ProcessEntry>>>,
 
     #[allow(dead_code)] // 未来回调用
     pub(crate) element_callbacks: Arc<Mutex<std::collections::HashMap<u64, mlua::RegistryKey>>>,

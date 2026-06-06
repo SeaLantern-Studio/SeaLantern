@@ -14,6 +14,17 @@ crate-type = ["lib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+sea_lantern_runtime = { package = "sea-lantern-runtime", path = "../runtime-core" }
+sea_lantern_java_installer_core = { package = "sea-lantern-java-installer-core", path = "../java-installer-core" }
+sea_lantern_server_download_links_core = { package = "sea-lantern-server-download-links-core", path = "../server-download-links-core" }
+sea_lantern_server_installer_core = { package = "sea-lantern-server-installer-core", path = "../server-installer-core" }
+sea_lantern_server_plugin_core = { package = "sea-lantern-server-plugin-core", path = "../server-plugin-core" }
+sea_lantern_server_local_setup_core = { package = "sea-lantern-server-local-setup-core", path = "../server-local-setup-core" }
+sea_lantern_server_startup_scan_core = { package = "sea-lantern-server-startup-scan-core", path = "../server-startup-scan-core" }
+sea_lantern_server_config_core = { package = "sea-lantern-server-config-core", path = "../server-config-core" }
+sea_lantern_starter_links_core = { package = "sea-lantern-starter-links-core", path = "../starter-links-core" }
+sea_lantern_update_core = { package = "sea-lantern-update-core", path = "../update-core" }
+sea_lantern_docker_core = { package = "sea-lantern-docker-core", path = "../docker-core" }
 tauri = { version = "2", features = ["protocol-asset", "tray-icon", "macos-private-api"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
@@ -47,7 +58,6 @@ tokio-stream = { version = "0.1", features = ["sync"], optional = true }
 mime_guess = { version = "2.0", optional = true }
 regex = "1.10"
 futures = "0.3.32"
-sha2 = "0.10"
 encoding_rs = "0.8"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
 zip = "2.0"

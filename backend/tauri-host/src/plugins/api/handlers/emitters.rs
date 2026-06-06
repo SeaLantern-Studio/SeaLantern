@@ -8,7 +8,6 @@ use crate::plugins::api::context_menu::buffer_context_menu_event;
 use crate::plugins::api::permission_logs::buffer_permission_log;
 use crate::plugins::api::sidebar::buffer_sidebar_event;
 use crate::plugins::api::ui_snapshot::buffer_ui_event;
-use crate::services::server::log_pipeline::{add_server_log_processor, ServerLogProcessor};
 use serde_json::Value as JsonValue;
 
 pub fn call_api(
@@ -170,9 +169,4 @@ pub fn emit_i18n_event(
         Some(h) => h(plugin_id, action, locale, payload),
         None => Ok(()),
     }
-}
-
-#[allow(dead_code)] // 外部调用
-pub fn register_server_log_processor(processor: ServerLogProcessor) -> Result<(), String> {
-    add_server_log_processor(processor)
 }

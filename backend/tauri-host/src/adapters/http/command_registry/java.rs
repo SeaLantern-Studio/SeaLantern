@@ -1,14 +1,11 @@
-use super::common::{parse_params, CommandHandler};
+use super::common::{CommandHandler, RegistryBuilder, parse_params};
 use super::requests::ValidateJavaPathRequest;
 use crate::commands::downloads::java as java_commands;
 use serde_json::Value;
-use std::collections::HashMap;
-
-pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
-    handlers.insert("detect_java".to_string(), handle_detect_java as CommandHandler);
-    handlers.insert("validate_java_path".to_string(), handle_validate_java_path as CommandHandler);
-    handlers
-        .insert("cancel_java_install".to_string(), handle_cancel_java_install as CommandHandler);
+pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
+    builder.register("detect_java", handle_detect_java as CommandHandler);
+    builder.register("validate_java_path", handle_validate_java_path as CommandHandler);
+    builder.register("cancel_java_install", handle_cancel_java_install as CommandHandler);
 }
 
 fn handle_detect_java(

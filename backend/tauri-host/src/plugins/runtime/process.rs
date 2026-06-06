@@ -1,19 +1,18 @@
 use super::PluginRuntime;
 use mlua::Table;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 mod commands;
 mod common;
 mod lifecycle;
 
-use common::ProcessRegistry as InternalProcessRegistry;
+pub(crate) use common::ProcessEntry;
 #[cfg(test)]
 pub(crate) use common::{
-    collect_finished_processes, new_process_output, update_output_timestamp, ProcessEntry,
-    SharedProcessOutput,
+    collect_finished_processes, new_process_output, update_output_timestamp, ProcessOutputBuffers,
 };
-pub use common::{
-    kill_all_processes, kill_plugin_processes, new_process_registry, ProcessRegistry,
-};
+pub use common::{kill_all_processes, kill_plugin_processes, new_process_registry};
 
 impl PluginRuntime {
     /// 安装 `sl.process` 命名空间
@@ -29,7 +28,7 @@ impl PluginRuntime {
     pub(super) fn setup_process_namespace(
         &self,
         sl: &Table,
-        process_registry: InternalProcessRegistry,
+        process_registry: Arc<Mutex<HashMap<u32, common::ProcessEntry>>>,
     ) -> Result<(), String> {
         let process_table = self
             .lua

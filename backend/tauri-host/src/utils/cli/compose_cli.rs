@@ -2,9 +2,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use crate::models::server::{DockerItzgRuntimeConfig, ServerInstance, VolumeMount};
-use crate::services::server::runtime::docker_itzg::{
-    resolve_docker_launch_spec, resolve_runtime_cpuset,
-};
+use crate::services::server::runtime::docker_itzg::resolve_docker_launch_spec;
+use sea_lantern_docker_core::resolve_docker_cpuset;
 
 use super::server_ref::resolve_server_reference;
 use super::server_shared::{trace_compose_action, trace_compose_error};
@@ -284,7 +283,7 @@ fn build_compose_yaml(
         }
     }
 
-    if let Some(cpuset) = resolve_runtime_cpuset(&runtime.cpu_policy)? {
+    if let Some(cpuset) = resolve_docker_cpuset(&runtime.cpu_policy)? {
         lines.push(format!("    cpuset: \"{}\"", escape_yaml_double_quoted(&cpuset)));
     }
 

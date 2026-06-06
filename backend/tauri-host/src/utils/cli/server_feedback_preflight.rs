@@ -1,10 +1,8 @@
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_setup::{RuntimePreflightError, RuntimePreflightStage};
 use crate::utils::cli::server_shared::{resolve_cli_target_hint, CliServerRuntimeKind};
-use crate::utils::docker_cli::{
-    classify_docker_command_failure, format_docker_image_reference, resolve_docker_image_and_tag,
-    DockerCommandFailureKind,
-};
+use crate::utils::docker_cli::{classify_docker_command_failure, DockerCommandFailureKind};
+use sea_lantern_docker_core::{format_docker_image_reference, resolve_docker_image_and_tag};
 
 fn render_requested_docker_image_ref(command: &CliServerCommand) -> String {
     resolve_docker_image_and_tag(

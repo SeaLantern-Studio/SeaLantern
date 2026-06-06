@@ -1,0 +1,27 @@
+[package]
+name = "sea-lantern-update-core"
+version = "0.1.0"
+edition = "2021"
+description = "Shared update-check backend logic for Sea Lantern"
+
+[lib]
+name = "sea_lantern_update_core"
+path = "src/lib.rs"
+test = false
+
+[[test]]
+name = "core_release_checks"
+path = "tests/core_release_checks.rs"
+
+[dependencies]
+dirs-next = "2"
+futures = "0.3.32"
+regex = "1.10"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt", "net"] }

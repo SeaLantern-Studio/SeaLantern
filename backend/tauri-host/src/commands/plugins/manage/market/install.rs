@@ -1,4 +1,4 @@
-use super::super::common::{is_trusted_download_url, lock_manager, PluginManagerState};
+use super::super::common::{is_trusted_download_url, lock_manager};
 use super::github::resolve_plugin_download_url;
 use super::shared::{build_market_async_client, remove_download_temp_files};
 use crate::hardcode_data::app_files::PLUGIN_MARKET_TEMP_DIR_NAME;
@@ -7,6 +7,7 @@ use crate::hardcode_data::plugin_market::{
 };
 use crate::models::plugin::{MarketPluginInfo, PluginInstallResult};
 use crate::plugins::manager::PluginManager;
+use std::sync::{Arc, Mutex};
 use url::Url;
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -35,7 +36,7 @@ impl From<MarketPluginInfo> for InstallFromMarketRequest {
 }
 
 pub(super) async fn install_from_market(
-    manager: PluginManagerState<'_>,
+    manager: tauri::State<'_, Arc<Mutex<PluginManager>>>,
     req: InstallFromMarketRequest,
 ) -> Result<PluginInstallResult, String> {
     let InstallFromMarketRequest {

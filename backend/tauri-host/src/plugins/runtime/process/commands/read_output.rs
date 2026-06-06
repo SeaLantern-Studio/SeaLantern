@@ -1,9 +1,11 @@
 use super::shared::emit_process_log;
 use crate::plugins::runtime::process::common::{
-    collect_finished_processes, is_output_drained, is_process_owner, ProcessRegistry,
+    collect_finished_processes, is_output_drained, is_process_owner,
 };
+use crate::plugins::runtime::process::ProcessEntry;
 use mlua::{Function, Lua, Table, Value};
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// 注册 `sl.process.read_output`
 ///
@@ -31,7 +33,7 @@ use std::sync::Arc;
 pub(super) fn read_output(
     lua: &Lua,
     plugin_id: &str,
-    process_registry: &ProcessRegistry,
+    process_registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
 ) -> Result<Function, String> {
     let pid = plugin_id.to_string();
     let registry = Arc::clone(process_registry);

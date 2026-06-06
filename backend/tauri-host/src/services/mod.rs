@@ -9,6 +9,5 @@ pub mod java_detector;
 pub(crate) mod locale_json;
 pub mod mod_manager;
 pub mod online;
-pub mod panic_report;
 pub mod server;
 pub mod settings_manager;

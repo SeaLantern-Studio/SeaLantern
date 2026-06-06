@@ -4,35 +4,10 @@ use std::collections::{HashMap, HashSet};
 use crate::models::server::{ServerInstance, ServerStatus};
 
 use super::fs::remove_run_path_mapping;
-use super::ServerManager;
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DuplicateServerRecordEntry {
-    pub id: String,
-    pub name: String,
-    pub path: String,
-    pub runtime_kind: String,
-    pub created_at: u64,
-    pub last_started_at: Option<u64>,
-    pub active: bool,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DuplicateServerRecordGroup {
-    pub canonical_id: String,
-    pub canonical_name: String,
-    pub reasons: Vec<String>,
-    pub entries: Vec<DuplicateServerRecordEntry>,
-    pub removable_ids: Vec<String>,
-    pub blocked_ids: Vec<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ServerRegistryDedupeReport {
-    pub total_servers: usize,
-    pub duplicate_groups: Vec<DuplicateServerRecordGroup>,
-    pub removed_ids: Vec<String>,
-}
+use super::{
+    DuplicateServerRecordEntry, DuplicateServerRecordGroup, ServerManager,
+    ServerRegistryDedupeReport,
+};
 
 pub(super) fn audit_duplicate_server_records(
     manager: &ServerManager,

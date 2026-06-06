@@ -2,10 +2,6 @@ use crate::services::global;
 use crate::services::server::player as player_manager;
 use crate::services::server::player::{BanEntry, OpEntry, PlayerEntry};
 
-fn manager() -> &'static crate::services::server::manager::ServerManager {
-    global::server_manager()
-}
-
 fn validate_player_name(name: &str) -> Result<(), String> {
     if name.len() < 3 || name.len() > 16 {
         return Err("Player name must be 3-16 characters".to_string());
@@ -39,21 +35,23 @@ pub fn get_ops(server_path: String) -> Result<Vec<OpEntry>, String> {
 pub fn add_to_whitelist(server_id: String, name: String) -> Result<String, String> {
     validate_player_name(&name)?;
     let cmd = format!("whitelist add {}", name);
-    manager().send_command(&server_id, &cmd)?;
+    let manager = global::server_manager();
+    manager.send_command(&server_id, &cmd)?;
     // Force save whitelist to file and reload
-    let _ = manager().send_command(&server_id, "whitelist reload");
+    let _ = manager.send_command(&server_id, "whitelist reload");
     Ok(format!("Sent: {}", cmd))
 }
 
 #[tauri::command]
 pub fn remove_from_whitelist(server_id: String, name: String) -> Result<String, String> {
     validate_player_name(&name)?;
+    let manager = global::server_manager();
     // First, try to remove via command
     let cmd = format!("whitelist remove {}", name);
-    let _ = manager().send_command(&server_id, &cmd);
+    let _ = manager.send_command(&server_id, &cmd);
 
     // Also manually remove from file to ensure it's gone
-    let servers = manager().get_server_list();
+    let servers = manager.get_server_list();
     if let Some(server) = servers.iter().find(|s| s.id == server_id) {
         let whitelist_path = std::path::Path::new(&server.path).join("whitelist.json");
         if whitelist_path.exists() {
@@ -73,7 +71,7 @@ pub fn remove_from_whitelist(server_id: String, name: String) -> Result<String, 
     }
 
     // Reload whitelist
-    let _ = manager().send_command(&server_id, "whitelist reload");
+    let _ = manager.send_command(&server_id, "whitelist reload");
 
     Ok(format!("Removed: {}", name))
 }
@@ -86,7 +84,7 @@ pub fn ban_player(server_id: String, name: String, reason: String) -> Result<Str
     } else {
         format!("ban {} {}", name, reason)
     };
-    manager().send_command(&server_id, &cmd)?;
+    global::server_manager().send_command(&server_id, &cmd)?;
     Ok(format!("Sent: {}", cmd))
 }
 
@@ -94,7 +92,7 @@ pub fn ban_player(server_id: String, name: String, reason: String) -> Result<Str
 pub fn unban_player(server_id: String, name: String) -> Result<String, String> {
     validate_player_name(&name)?;
     let cmd = format!("pardon {}", name);
-    manager().send_command(&server_id, &cmd)?;
+    global::server_manager().send_command(&server_id, &cmd)?;
     Ok(format!("Sent: {}", cmd))
 }
 
@@ -102,7 +100,7 @@ pub fn unban_player(server_id: String, name: String) -> Result<String, String> {
 pub fn add_op(server_id: String, name: String) -> Result<String, String> {
     validate_player_name(&name)?;
     let cmd = format!("op {}", name);
-    manager().send_command(&server_id, &cmd)?;
+    global::server_manager().send_command(&server_id, &cmd)?;
     Ok(format!("Sent: {}", cmd))
 }
 
@@ -110,7 +108,7 @@ pub fn add_op(server_id: String, name: String) -> Result<String, String> {
 pub fn remove_op(server_id: String, name: String) -> Result<String, String> {
     validate_player_name(&name)?;
     let cmd = format!("deop {}", name);
-    manager().send_command(&server_id, &cmd)?;
+    global::server_manager().send_command(&server_id, &cmd)?;
     Ok(format!("Sent: {}", cmd))
 }
 
@@ -122,7 +120,7 @@ pub fn kick_player(server_id: String, name: String, reason: String) -> Result<St
     } else {
         format!("kick {} {}", name, reason)
     };
-    manager().send_command(&server_id, &cmd)?;
+    global::server_manager().send_command(&server_id, &cmd)?;
     Ok(format!("Sent: {}", cmd))
 }
 

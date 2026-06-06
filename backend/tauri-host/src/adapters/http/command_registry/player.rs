@@ -1,26 +1,24 @@
-use super::common::{parse_params, CommandHandler};
+use super::common::{CommandHandler, RegistryBuilder, parse_params};
 use super::requests::{
     BanPlayerRequest, ExportLogsRequest, KickPlayerRequest, PlayerActionRequest, ServerPathRequest,
 };
 use crate::commands::server::players as player_commands;
 use serde_json::Value;
-use std::collections::HashMap;
-
-pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
-    handlers.insert("get_whitelist".to_string(), handle_get_whitelist as CommandHandler);
-    handlers.insert("get_banned_players".to_string(), handle_get_banned_players as CommandHandler);
-    handlers.insert("get_ops".to_string(), handle_get_ops as CommandHandler);
-    handlers.insert("add_to_whitelist".to_string(), handle_add_to_whitelist as CommandHandler);
-    handlers.insert(
-        "remove_from_whitelist".to_string(),
+pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
+    builder.register("get_whitelist", handle_get_whitelist as CommandHandler);
+    builder.register("get_banned_players", handle_get_banned_players as CommandHandler);
+    builder.register("get_ops", handle_get_ops as CommandHandler);
+    builder.register("add_to_whitelist", handle_add_to_whitelist as CommandHandler);
+    builder.register(
+        "remove_from_whitelist",
         handle_remove_from_whitelist as CommandHandler,
     );
-    handlers.insert("ban_player".to_string(), handle_ban_player as CommandHandler);
-    handlers.insert("unban_player".to_string(), handle_unban_player as CommandHandler);
-    handlers.insert("add_op".to_string(), handle_add_op as CommandHandler);
-    handlers.insert("remove_op".to_string(), handle_remove_op as CommandHandler);
-    handlers.insert("kick_player".to_string(), handle_kick_player as CommandHandler);
-    handlers.insert("export_logs".to_string(), handle_export_logs as CommandHandler);
+    builder.register("ban_player", handle_ban_player as CommandHandler);
+    builder.register("unban_player", handle_unban_player as CommandHandler);
+    builder.register("add_op", handle_add_op as CommandHandler);
+    builder.register("remove_op", handle_remove_op as CommandHandler);
+    builder.register("kick_player", handle_kick_player as CommandHandler);
+    builder.register("export_logs", handle_export_logs as CommandHandler);
 }
 
 fn handle_get_whitelist(

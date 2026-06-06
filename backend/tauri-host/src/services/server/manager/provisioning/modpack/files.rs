@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use super::super::super::fs::{copy_dir_recursive, path_is_child_of, paths_equal};
-use crate::services::server::installer;
+use sea_lantern_server_installer_core::extract_modpack_archive;
 
 pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Result<(), String> {
     let source_file_name = source_path
@@ -21,7 +21,7 @@ pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Resul
             std::fs::copy(source_path, &target_jar)
                 .map_err(|e| format!("复制 JAR 文件失败: {}", e))?;
         } else {
-            installer::extract_modpack_archive(source_path, run_dir)?;
+            extract_modpack_archive(source_path, run_dir)?;
         }
         return Ok(());
     }

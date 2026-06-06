@@ -1,9 +1,8 @@
-use super::common::{parse_params, CommandHandler};
+use super::common::{CommandHandler, RegistryBuilder, parse_params};
 use crate::commands::plugins::manage as plugin_commands;
 use crate::services::global;
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::HashMap;
 
 #[derive(Deserialize)]
 struct PluginIdRequest {
@@ -95,94 +94,72 @@ struct PageChangedRequest {
     path: String,
 }
 
-pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
-    handlers.insert("list_plugins".to_string(), handle_list_plugins as CommandHandler);
-    handlers.insert("scan_plugins".to_string(), handle_scan_plugins as CommandHandler);
-    handlers.insert("enable_plugin".to_string(), handle_enable_plugin as CommandHandler);
-    handlers.insert("disable_plugin".to_string(), handle_disable_plugin as CommandHandler);
-    handlers.insert(
-        "get_plugin_nav_items".to_string(),
-        handle_get_plugin_nav_items as CommandHandler,
-    );
-    handlers.insert("install_plugin".to_string(), handle_install_plugin as CommandHandler);
-    handlers.insert(
-        "install_plugins_batch".to_string(),
-        handle_install_plugins_batch as CommandHandler,
-    );
-    handlers.insert("get_plugin_icon".to_string(), handle_get_plugin_icon as CommandHandler);
-    handlers
-        .insert("get_plugin_settings".to_string(), handle_get_plugin_settings as CommandHandler);
-    handlers
-        .insert("set_plugin_settings".to_string(), handle_set_plugin_settings as CommandHandler);
-    handlers.insert("get_plugin_css".to_string(), handle_get_plugin_css as CommandHandler);
-    handlers.insert("get_all_plugin_css".to_string(), handle_get_all_plugin_css as CommandHandler);
-    handlers
-        .insert("check_plugin_update".to_string(), handle_check_plugin_update as CommandHandler);
-    handlers.insert(
-        "check_all_plugin_updates".to_string(),
+pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
+    builder.register("list_plugins", handle_list_plugins as CommandHandler);
+    builder.register("scan_plugins", handle_scan_plugins as CommandHandler);
+    builder.register("enable_plugin", handle_enable_plugin as CommandHandler);
+    builder.register("disable_plugin", handle_disable_plugin as CommandHandler);
+    builder.register("get_plugin_nav_items", handle_get_plugin_nav_items as CommandHandler);
+    builder.register("install_plugin", handle_install_plugin as CommandHandler);
+    builder.register("install_plugins_batch", handle_install_plugins_batch as CommandHandler);
+    builder.register("get_plugin_icon", handle_get_plugin_icon as CommandHandler);
+    builder.register("get_plugin_settings", handle_get_plugin_settings as CommandHandler);
+    builder.register("set_plugin_settings", handle_set_plugin_settings as CommandHandler);
+    builder.register("get_plugin_css", handle_get_plugin_css as CommandHandler);
+    builder.register("get_all_plugin_css", handle_get_all_plugin_css as CommandHandler);
+    builder.register("check_plugin_update", handle_check_plugin_update as CommandHandler);
+    builder.register(
+        "check_all_plugin_updates",
         handle_check_all_plugin_updates as CommandHandler,
     );
-    handlers.insert("delete_plugin".to_string(), handle_delete_plugin as CommandHandler);
-    handlers.insert("delete_plugins".to_string(), handle_delete_plugins as CommandHandler);
-    handlers.insert(
-        "fetch_market_plugins".to_string(),
-        handle_fetch_market_plugins as CommandHandler,
-    );
-    handlers.insert(
-        "fetch_market_categories".to_string(),
+    builder.register("delete_plugin", handle_delete_plugin as CommandHandler);
+    builder.register("delete_plugins", handle_delete_plugins as CommandHandler);
+    builder.register("fetch_market_plugins", handle_fetch_market_plugins as CommandHandler);
+    builder.register(
+        "fetch_market_categories",
         handle_fetch_market_categories as CommandHandler,
     );
-    handlers.insert(
-        "fetch_market_plugin_detail".to_string(),
+    builder.register(
+        "fetch_market_plugin_detail",
         handle_fetch_market_plugin_detail as CommandHandler,
     );
-    handlers
-        .insert("install_from_market".to_string(), handle_install_from_market as CommandHandler);
-    handlers.insert(
-        "context_menu_callback".to_string(),
-        handle_context_menu_callback as CommandHandler,
-    );
-    handlers.insert(
-        "context_menu_show_notify".to_string(),
+    builder.register("install_from_market", handle_install_from_market as CommandHandler);
+    builder.register("context_menu_callback", handle_context_menu_callback as CommandHandler);
+    builder.register(
+        "context_menu_show_notify",
         handle_context_menu_show_notify as CommandHandler,
     );
-    handlers.insert(
-        "context_menu_hide_notify".to_string(),
+    builder.register(
+        "context_menu_hide_notify",
         handle_context_menu_hide_notify as CommandHandler,
     );
-    handlers.insert("on_locale_changed".to_string(), handle_on_locale_changed as CommandHandler);
-    handlers.insert("get_locale_bundle".to_string(), handle_get_locale_bundle as CommandHandler);
-    handlers.insert(
-        "component_mirror_register".to_string(),
+    builder.register("on_locale_changed", handle_on_locale_changed as CommandHandler);
+    builder.register("get_locale_bundle", handle_get_locale_bundle as CommandHandler);
+    builder.register(
+        "component_mirror_register",
         handle_component_mirror_register as CommandHandler,
     );
-    handlers.insert(
-        "component_mirror_unregister".to_string(),
+    builder.register(
+        "component_mirror_unregister",
         handle_component_mirror_unregister as CommandHandler,
     );
-    handlers.insert(
-        "component_mirror_clear".to_string(),
-        handle_component_mirror_clear as CommandHandler,
-    );
-    handlers.insert("on_page_changed".to_string(), handle_on_page_changed as CommandHandler);
-    handlers.insert(
-        "get_plugin_ui_snapshot".to_string(),
-        handle_get_plugin_ui_snapshot as CommandHandler,
-    );
-    handlers.insert(
-        "get_plugin_sidebar_snapshot".to_string(),
+    builder.register("component_mirror_clear", handle_component_mirror_clear as CommandHandler);
+    builder.register("on_page_changed", handle_on_page_changed as CommandHandler);
+    builder.register("get_plugin_ui_snapshot", handle_get_plugin_ui_snapshot as CommandHandler);
+    builder.register(
+        "get_plugin_sidebar_snapshot",
         handle_get_plugin_sidebar_snapshot as CommandHandler,
     );
-    handlers.insert(
-        "get_plugin_context_menu_snapshot".to_string(),
+    builder.register(
+        "get_plugin_context_menu_snapshot",
         handle_get_plugin_context_menu_snapshot as CommandHandler,
     );
-    handlers.insert(
-        "get_plugin_component_snapshot".to_string(),
+    builder.register(
+        "get_plugin_component_snapshot",
         handle_get_plugin_component_snapshot as CommandHandler,
     );
-    handlers.insert(
-        "get_plugin_permission_logs".to_string(),
+    builder.register(
+        "get_plugin_permission_logs",
         handle_get_plugin_permission_logs as CommandHandler,
     );
 }
@@ -375,8 +352,11 @@ fn handle_check_plugin_update(
             plugin_info.manifest.version.clone()
         };
 
-        let result =
-            plugin_commands::check_plugin_update_for_http(current_version, req.plugin_id).await?;
+        let result = plugin_commands::market::check_plugin_update_without_manager(
+            current_version,
+            req.plugin_id,
+        )
+        .await?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -395,7 +375,9 @@ fn handle_check_all_plugin_updates(
                 .collect::<Vec<_>>()
         };
 
-        let result = plugin_commands::check_all_plugin_updates_for_http(plugin_versions).await?;
+        let result =
+            plugin_commands::market::check_all_plugin_updates_without_manager(plugin_versions)
+                .await?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -432,7 +414,8 @@ fn handle_fetch_market_plugins(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: MarketUrlRequest = parse_params(params)?;
-        let result = plugin_commands::fetch_market_plugins_for_http(req.market_url).await?;
+        let result = plugin_commands::market::fetch_market_plugins_without_manager(req.market_url)
+            .await?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -442,7 +425,7 @@ fn handle_fetch_market_categories(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: MarketUrlRequest = parse_params(params)?;
-        plugin_commands::fetch_market_categories_for_http(req.market_url).await
+        plugin_commands::market::fetch_market_categories(req.market_url).await
     })
 }
 
@@ -451,7 +434,11 @@ fn handle_fetch_market_plugin_detail(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: MarketPluginDetailRequest = parse_params(params)?;
-        plugin_commands::fetch_market_plugin_detail_for_http(req.plugin_path, req.market_url).await
+        plugin_commands::market::fetch_market_plugin_detail_without_manager(
+            req.plugin_path,
+            req.market_url,
+        )
+        .await
     })
 }
 
@@ -459,8 +446,8 @@ fn handle_install_from_market(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let req: crate::commands::plugins::manage::InstallFromMarketRequest = parse_params(params)?;
-        let result = plugin_commands::install_from_market_for_http(req).await?;
+        let req: plugin_commands::market::InstallFromMarketRequest = parse_params(params)?;
+        let result = plugin_commands::market::install_from_market_for_http(req).await?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }

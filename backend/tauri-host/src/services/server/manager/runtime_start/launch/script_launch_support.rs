@@ -1,9 +1,19 @@
 #[cfg(target_os = "windows")]
-use super::super::super::common::{build_windows_cmd_command, escape_cmd_arg};
+use super::super::super::common::build_windows_cmd_command;
 use super::super::super::{common::detect_java_major_version, startup_support};
 use super::context::LaunchContext;
 #[cfg(target_os = "windows")]
 use crate::services::server::manager::common::ManagedConsoleEncoding;
+use sea_lantern_server_local_setup_core::{
+    build_java_launch_path_value as build_shared_java_launch_path_value,
+    ensure_supported_script_java_major_version as ensure_shared_script_java_compat,
+    prepend_path_entry as prepend_shared_path_entry,
+};
+#[cfg(target_os = "windows")]
+use sea_lantern_server_local_setup_core::{
+    build_windows_bat_command_text as build_shared_windows_bat_command_text,
+    build_windows_java_env_prefix as build_shared_windows_java_env_prefix,
+};
 use std::process::Command;
 
 pub(super) fn prepare_script_startup(context: &LaunchContext<'_>) -> Result<(), String> {
@@ -25,15 +35,12 @@ pub(super) fn apply_script_process_env(cmd: &mut Command, context: &LaunchContex
 }
 
 #[cfg(target_os = "windows")]
+#[cfg_attr(not(test), allow(dead_code))]
 pub(super) fn build_windows_java_env_prefix(
     java_home_dir_str: &str,
     java_bin_dir_str: &str,
 ) -> String {
-    format!(
-        "set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\"",
-        escape_cmd_arg(java_home_dir_str),
-        escape_cmd_arg(java_bin_dir_str)
-    )
+    build_shared_windows_java_env_prefix(java_home_dir_str, java_bin_dir_str)
 }
 
 #[cfg(target_os = "windows")]
@@ -58,11 +65,11 @@ fn build_windows_bat_command_text(
     java_home_dir_str: &str,
     java_bin_dir_str: &str,
 ) -> String {
-    format!(
-        "chcp {}>nul & {} & call \"{}\" nogui",
+    build_shared_windows_bat_command_text(
+        startup_filename,
         managed_console_encoding.cmd_code_page(),
-        build_windows_java_env_prefix(java_home_dir_str, java_bin_dir_str),
-        escape_cmd_arg(startup_filename)
+        java_home_dir_str,
+        java_bin_dir_str,
     )
 }
 
@@ -80,42 +87,16 @@ fn ensure_script_java_compat(java_path: &str) -> Result<(), String> {
 }
 
 fn ensure_supported_script_java_major_version(major_version: Option<u32>) -> Result<(), String> {
-    if let Some(major_version) = major_version {
-        if major_version < 9 {
-            return Err(format!(
-                "当前 Java 版本 {} 不支持 @user_jvm_args.txt 参数文件语法，请改用 Java 9+（NeoForge 建议 Java 21）",
-                major_version
-            ));
-        }
-    }
-
-    Ok(())
+    ensure_shared_script_java_compat(major_version)
 }
 
 fn build_java_launch_path_value(java_bin_dir_str: &str) -> String {
-    prepend_path_entry(
-        java_bin_dir_str,
-        &std::env::var("PATH").unwrap_or_default(),
-        path_separator(),
-    )
+    build_shared_java_launch_path_value(java_bin_dir_str, &std::env::var("PATH").unwrap_or_default())
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 fn prepend_path_entry(path_entry: &str, existing_path: &str, separator: &str) -> String {
-    if existing_path.is_empty() {
-        path_entry.to_string()
-    } else {
-        format!("{}{}{}", path_entry, separator, existing_path)
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn path_separator() -> &'static str {
-    ";"
-}
-
-#[cfg(not(target_os = "windows"))]
-fn path_separator() -> &'static str {
-    ":"
+    prepend_shared_path_entry(path_entry, existing_path, separator)
 }
 
 #[cfg(test)]

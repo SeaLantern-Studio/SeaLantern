@@ -22,7 +22,7 @@ mod system;
 mod ui;
 
 pub use core::PluginRuntime;
-pub use process::{kill_all_processes, new_process_registry, ProcessRegistry};
+pub use process::{kill_all_processes, new_process_registry};
 
 #[cfg(test)]
 mod tests {

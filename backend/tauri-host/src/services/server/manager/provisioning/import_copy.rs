@@ -3,14 +3,14 @@ use std::path::Path;
 use crate::models::server::{
     ImportServerRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
+use sea_lantern_server_config_core::startup::{
+    create_server_properties_if_missing, read_server_port, write_server_startup_config_for_dir,
+};
+use sea_lantern_server_installer_core::detect_core_type;
 
 use super::super::common::{current_timestamp_secs, normalize_startup_mode, validate_server_name};
 use super::super::fs::copy_dir_recursive;
 use super::super::ServerManager;
-use super::shared::{
-    create_server_properties_if_missing, read_server_port, write_sl_startup_config,
-};
-use crate::services::server::installer;
 
 pub(super) fn import_server(
     manager: &ServerManager,
@@ -52,7 +52,7 @@ pub(super) fn import_server(
 
     create_server_properties_if_missing(&server_dir, req.port, req.online_mode)?;
     let port = read_server_port(&server_dir, req.port);
-    write_sl_startup_config(
+    write_server_startup_config_for_dir(
         &server_dir,
         req.max_memory,
         req.min_memory,
@@ -62,7 +62,7 @@ pub(super) fn import_server(
     )?;
 
     let now = current_timestamp_secs();
-    let core_type = installer::detect_core_type(&dest_startup.to_string_lossy());
+    let core_type = detect_core_type(&dest_startup.to_string_lossy());
     println!("检测到核心类型: {}", core_type);
 
     let server = ServerInstance {

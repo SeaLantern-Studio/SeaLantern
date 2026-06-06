@@ -3,12 +3,18 @@ use super::config::{
 };
 use super::events::{map_connection, spawn_event_task};
 use super::i18n::{tunnel_t, tunnel_t1};
+use super::TunnelStatus;
 use super::state::{
     active_tunnel, clear_running_state, push_log, replace_with_active_tunnel, runtime_state,
-    set_started, stop_previous_for_restart, ActiveTunnel, TunnelMode, TunnelStatus,
+    set_started, stop_previous_for_restart, ActiveTunnel, TunnelMode,
 };
 use sculk::persist::generate_new_key;
 use sculk::tunnel::{HostConfig, IrohTunnel, JoinConfig, Ticket};
+
+async fn has_active_tunnel() -> bool {
+    let active = active_tunnel().lock().await;
+    active.is_some()
+}
 
 pub async fn host(
     port: u16,
@@ -107,11 +113,7 @@ pub async fn join(
 }
 
 pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
-    let active_running = {
-        let active = active_tunnel().lock().await;
-        active.is_some()
-    };
-    if active_running {
+    if has_active_tunnel().await {
         return Err(tunnel_t("tunnel.err.tunnel_running_generate"));
     }
 
@@ -136,11 +138,7 @@ pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
 }
 
 pub async fn generate_ticket() -> Result<TunnelStatus, String> {
-    let active_running = {
-        let active = active_tunnel().lock().await;
-        active.is_some()
-    };
-    if active_running {
+    if has_active_tunnel().await {
         return Err(tunnel_t("tunnel.err.tunnel_running_generate"));
     }
 

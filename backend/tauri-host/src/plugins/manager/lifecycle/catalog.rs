@@ -1,6 +1,6 @@
-use super::{PluginManager, PluginState};
+use crate::plugins::manager::{PluginManager, PluginState};
 
-pub(super) fn get_nav_items(manager: &PluginManager) -> Vec<serde_json::Value> {
+pub(in crate::plugins::manager) fn get_nav_items(manager: &PluginManager) -> Vec<serde_json::Value> {
     let mut nav_items = Vec::new();
 
     for (plugin_id, info) in &manager.plugins {

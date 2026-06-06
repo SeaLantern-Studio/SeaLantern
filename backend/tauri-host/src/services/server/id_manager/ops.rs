@@ -1,10 +1,12 @@
-use super::models::{CreateServerIdRequest, ServerIdEntry};
+use super::{CreateServerIdRequest, ServerIdEntry};
 use super::shared::{current_unix_secs, generate_id_from_name, validate_custom_id};
-use super::SharedServerIdEntries;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// 创建短 ID
 pub(super) async fn create_id(
-    entries: &SharedServerIdEntries,
+    entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>,
     req: CreateServerIdRequest,
 ) -> Result<ServerIdEntry, String> {
     let id = if let Some(custom_id) = req.id {
@@ -39,7 +41,7 @@ pub(super) async fn create_id(
 
 /// 解析短 ID 到地址
 pub(super) async fn resolve_id(
-    entries: &SharedServerIdEntries,
+    entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>,
     id: &str,
 ) -> Result<(String, u16), String> {
     let mut current_entries = entries.write().await;
@@ -58,7 +60,7 @@ pub(super) async fn resolve_id(
 
 /// 读取短 ID 详情
 pub(super) async fn get_id(
-    entries: &SharedServerIdEntries,
+    entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>,
     id: &str,
 ) -> Result<ServerIdEntry, String> {
     let current_entries = entries.read().await;
@@ -69,7 +71,7 @@ pub(super) async fn get_id(
 }
 
 /// 列出全部启用中的短 ID
-pub(super) async fn list_ids(entries: &SharedServerIdEntries) -> Vec<ServerIdEntry> {
+pub(super) async fn list_ids(entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>) -> Vec<ServerIdEntry> {
     let current_entries = entries.read().await;
     current_entries
         .values()
@@ -80,7 +82,7 @@ pub(super) async fn list_ids(entries: &SharedServerIdEntries) -> Vec<ServerIdEnt
 
 /// 更新短 ID
 pub(super) async fn update_id(
-    entries: &SharedServerIdEntries,
+    entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>,
     id: &str,
     name: Option<String>,
     address: Option<String>,
@@ -106,7 +108,7 @@ pub(super) async fn update_id(
 }
 
 /// 停用短 ID
-pub(super) async fn deactivate_id(entries: &SharedServerIdEntries, id: &str) -> Result<(), String> {
+pub(super) async fn deactivate_id(entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>, id: &str) -> Result<(), String> {
     let mut current_entries = entries.write().await;
 
     match current_entries.get_mut(id) {
@@ -119,7 +121,7 @@ pub(super) async fn deactivate_id(entries: &SharedServerIdEntries, id: &str) -> 
 }
 
 /// 删除短 ID
-pub(super) async fn delete_id(entries: &SharedServerIdEntries, id: &str) -> Result<(), String> {
+pub(super) async fn delete_id(entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>, id: &str) -> Result<(), String> {
     let mut current_entries = entries.write().await;
 
     if current_entries.remove(id).is_some() {
@@ -130,7 +132,7 @@ pub(super) async fn delete_id(entries: &SharedServerIdEntries, id: &str) -> Resu
 }
 
 /// 搜索短 ID
-pub(super) async fn search_ids(entries: &SharedServerIdEntries, query: &str) -> Vec<ServerIdEntry> {
+pub(super) async fn search_ids(entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>, query: &str) -> Vec<ServerIdEntry> {
     let current_entries = entries.read().await;
     let query_lower = query.to_lowercase();
 

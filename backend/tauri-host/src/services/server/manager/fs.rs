@@ -6,7 +6,7 @@ use crate::models::server::{
 };
 use crate::utils::constants::{DATA_FILE, RUN_PATH_MAP_FILE};
 use crate::utils::logger;
-use crate::utils::path::find_root_startup_file;
+use sea_lantern_server_local_setup_core::inspect_local_folder;
 use serde::{Deserialize, Serialize};
 
 use super::common::detect_startup_mode_from_path;
@@ -139,33 +139,16 @@ pub(super) fn path_is_child_of(candidate: &Path, parent: &Path) -> bool {
 }
 
 pub(super) fn find_server_executable(server_path: &Path) -> Result<(String, String), String> {
-    let preferred_scripts = [
-        "start.bat",
-        "run.bat",
-        "launch.bat",
-        "start.sh",
-        "run.sh",
-        "launch.sh",
-        "start.ps1",
-        "run.ps1",
-        "launch.ps1",
-    ];
+    let inspection = inspect_local_folder(server_path);
 
-    for script in preferred_scripts {
-        let script_path = server_path.join(script);
-        if script_path.exists() {
-            let mode = detect_startup_mode_from_path(&script_path);
-            return Ok((script_path.to_string_lossy().to_string(), mode));
-        }
-    }
-
-    if let Ok(jar_path) = crate::services::server::installer::find_server_jar(server_path) {
-        return Ok((jar_path, "jar".to_string()));
-    }
-
-    if let Some(path) = find_root_startup_file(server_path) {
-        let mode = detect_startup_mode_from_path(&path);
-        return Ok((path.to_string_lossy().to_string(), mode));
+    if let Some(path) = inspection.preferred_startup_path() {
+        return Ok((
+            path.to_string(),
+            inspection
+                .startup_mode
+                .clone()
+                .unwrap_or_else(|| detect_startup_mode_from_path(Path::new(path))),
+        ));
     }
 
     Err("未找到可用的启动文件（.jar/.bat/.sh/.ps1）".to_string())
@@ -387,7 +370,7 @@ pub(super) fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use super::{load_servers, save_servers};
+    use super::{find_server_executable, load_servers, save_servers};
     use crate::models::server::{
         CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
@@ -555,6 +538,29 @@ mod tests {
         assert_eq!(new_server.custom_command(), Some("java -jar server.jar nogui"));
         assert_eq!(new_server.java_path(), Some("C:/Java21/bin/java.exe"));
         assert_eq!(new_server.local_runtime().unwrap().jvm_args, ["-Xmx4G".to_string()]);
+    }
+
+    #[test]
+    fn find_server_executable_prefers_root_script_over_jar() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("start.sh"), "#!/bin/sh\n").unwrap();
+        std::fs::write(dir.path().join("server.jar"), "jar").unwrap();
+
+        let (path, mode) = find_server_executable(dir.path()).expect("startup file should be found");
+
+        assert!(path.ends_with("start.sh"));
+        assert_eq!(mode, "sh");
+    }
+
+    #[test]
+    fn find_server_executable_falls_back_to_detected_jar() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("fabric-server-launch.jar"), "jar").unwrap();
+
+        let (path, mode) = find_server_executable(dir.path()).expect("jar should be found");
+
+        assert!(path.ends_with("fabric-server-launch.jar"));
+        assert_eq!(mode, "jar");
     }
 
     #[test]

@@ -3,7 +3,7 @@ mod helpers;
 use self::helpers::*;
 pub(crate) use self::helpers::{
     build_docker_launch_detail, build_docker_run_args, resolve_docker_launch_spec,
-    resolve_runtime_cpuset, DockerLaunchDetail,
+    DockerLaunchDetail,
 };
 use super::{
     control, RuntimeForceStopPreparation, RuntimeStartRequest, RuntimeStartResult,
@@ -18,6 +18,10 @@ use crate::utils::docker_cli::{
     docker_executable_path, ensure_docker_command_success, render_docker_command_error,
 };
 use crate::utils::logger;
+use sea_lantern_docker_core::{
+    docker_image_ref, requested_stop_timeout_secs, runtime_env_value,
+    ActiveProcessorCountDecision,
+};
 use std::path::Path;
 use std::process::Command;
 use std::thread;
@@ -1448,7 +1452,17 @@ mod tests {
                 },
                 &settings,
             );
-        let (env, _) = build_effective_env(&runtime, &effective).unwrap();
+        let (env, _) = sea_lantern_docker_core::build_docker_effective_env(
+            &runtime,
+            &sea_lantern_docker_core::DockerEffectiveLaunchConfig {
+                max_memory: effective.max_memory,
+                min_memory: effective.min_memory,
+                jvm_args: effective.jvm_args.clone(),
+                cpu_policy: effective.cpu_policy.clone(),
+                jvm_preset: effective.jvm_preset.clone(),
+            },
+        )
+        .unwrap();
 
         assert!(env
             .iter()

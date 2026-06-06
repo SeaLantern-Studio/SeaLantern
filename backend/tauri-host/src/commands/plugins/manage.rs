@@ -4,58 +4,9 @@
 
 mod basic;
 mod common;
-mod market;
+pub(crate) mod market;
 mod permissions;
 mod ui_bridge;
-
-/// 前端显示用的权限信息
-pub type PermissionInfo = common::PermissionInfo;
-#[cfg(feature = "docker")]
-pub(crate) type InstallFromMarketRequest = market::InstallFromMarketRequest;
-
-#[cfg(feature = "docker")]
-pub(crate) async fn fetch_market_plugins_for_http(
-    market_url: Option<String>,
-) -> Result<Vec<crate::models::plugin::MarketPluginInfo>, String> {
-    market::fetch_market_plugins_without_manager(market_url).await
-}
-
-#[cfg(feature = "docker")]
-pub(crate) async fn fetch_market_plugin_detail_for_http(
-    plugin_path: String,
-    market_url: Option<String>,
-) -> Result<serde_json::Value, String> {
-    market::fetch_market_plugin_detail_without_manager(plugin_path, market_url).await
-}
-
-#[cfg(feature = "docker")]
-pub(crate) async fn fetch_market_categories_for_http(
-    market_url: Option<String>,
-) -> Result<serde_json::Value, String> {
-    market::fetch_market_categories(market_url).await
-}
-
-#[cfg(feature = "docker")]
-pub(crate) async fn check_plugin_update_for_http(
-    current_version: String,
-    plugin_id: String,
-) -> Result<Option<crate::models::plugin::PluginUpdateInfo>, String> {
-    market::check_plugin_update_without_manager(current_version, plugin_id).await
-}
-
-#[cfg(feature = "docker")]
-pub(crate) async fn check_all_plugin_updates_for_http(
-    plugin_versions: Vec<(String, String)>,
-) -> Result<Vec<crate::models::plugin::PluginUpdateInfo>, String> {
-    market::check_all_plugin_updates_without_manager(plugin_versions).await
-}
-
-#[cfg(feature = "docker")]
-pub(crate) async fn install_from_market_for_http(
-    req: InstallFromMarketRequest,
-) -> Result<crate::models::plugin::PluginInstallResult, String> {
-    market::install_from_market_for_http(req).await
-}
 
 #[tauri::command]
 /// 读取插件列表
@@ -232,7 +183,8 @@ pub async fn fetch_market_plugins(
     >,
     market_url: Option<String>,
 ) -> Result<Vec<crate::models::plugin::MarketPluginInfo>, String> {
-    market::fetch_market_plugins(manager, market_url).await
+    let _ = manager;
+    market::fetch_market_plugins_without_manager(market_url).await
 }
 
 #[tauri::command]
@@ -251,7 +203,8 @@ pub async fn fetch_market_plugin_detail(
     plugin_path: String,
     market_url: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    market::fetch_market_plugin_detail(manager, plugin_path, market_url).await
+    let _ = manager;
+    market::fetch_market_plugin_detail_without_manager(plugin_path, market_url).await
 }
 
 #[tauri::command]
@@ -328,17 +281,17 @@ pub fn on_locale_changed(
 
 #[tauri::command]
 pub fn component_mirror_register(id: String, component_type: String) {
-    ui_bridge::component_mirror_register(id, component_type)
+    crate::plugins::api::component_mirror_register(&id, &component_type)
 }
 
 #[tauri::command]
 pub fn component_mirror_unregister(id: String) {
-    ui_bridge::component_mirror_unregister(id)
+    crate::plugins::api::component_mirror_unregister(&id)
 }
 
 #[tauri::command]
 pub fn component_mirror_clear() {
-    ui_bridge::component_mirror_clear()
+    crate::plugins::api::component_mirror_clear()
 }
 
 #[tauri::command]
@@ -354,22 +307,22 @@ pub fn on_page_changed(
 
 #[tauri::command]
 pub fn get_plugin_component_snapshot() -> Vec<crate::plugins::api::BufferedComponentEvent> {
-    ui_bridge::get_plugin_component_snapshot()
+    crate::plugins::api::take_component_event_snapshot()
 }
 
 #[tauri::command]
 pub fn get_plugin_ui_snapshot() -> Vec<crate::plugins::api::BufferedUiEvent> {
-    ui_bridge::get_plugin_ui_snapshot()
+    crate::plugins::api::take_ui_event_snapshot()
 }
 
 #[tauri::command]
 pub fn get_plugin_sidebar_snapshot() -> Vec<crate::plugins::api::BufferedSidebarEvent> {
-    ui_bridge::get_plugin_sidebar_snapshot()
+    crate::plugins::api::take_sidebar_event_snapshot()
 }
 
 #[tauri::command]
 pub fn get_plugin_context_menu_snapshot() -> Vec<crate::plugins::api::BufferedContextMenuEvent> {
-    ui_bridge::get_plugin_context_menu_snapshot()
+    crate::plugins::api::take_context_menu_snapshot()
 }
 
 #[tauri::command]
@@ -380,8 +333,8 @@ pub fn get_plugin_permission_logs(
 }
 
 #[tauri::command]
-pub fn get_permission_list() -> Vec<PermissionInfo> {
-    permissions::get_permission_list()
+pub fn get_permission_list() -> Vec<crate::hardcode_data::plugin_permissions::PluginPermissionInfo> {
+    crate::hardcode_data::plugin_permissions::get_plugin_permission_list()
 }
 
 #[tauri::command]
@@ -391,6 +344,6 @@ pub fn get_plugin_permissions(
         '_,
         std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
     >,
-) -> Result<Vec<PermissionInfo>, String> {
+) -> Result<Vec<crate::hardcode_data::plugin_permissions::PluginPermissionInfo>, String> {
     permissions::get_plugin_permissions(plugin_id, manager)
 }

@@ -1,8 +1,8 @@
 //! 应用本身相关的命令。
 
 #[cfg(debug_assertions)]
-pub mod debug;
-pub mod host;
-pub mod i18n;
-pub mod logging;
-pub mod settings;
+pub(crate) mod debug;
+pub(crate) mod host;
+pub(crate) mod i18n;
+pub(crate) mod logging;
+pub(crate) mod settings;

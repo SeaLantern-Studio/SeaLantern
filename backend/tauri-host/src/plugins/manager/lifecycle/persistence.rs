@@ -1,7 +1,8 @@
-use super::PluginManager;
+use crate::plugins::manager::PluginManager;
+use crate::plugins::manager::lifecycle::runtime::{disable_plugin_internal, enable_plugin};
 use std::collections::HashSet;
 
-pub(super) fn save_enabled_plugins(manager: &PluginManager) {
+pub(in crate::plugins::manager::lifecycle) fn save_enabled_plugins(manager: &PluginManager) {
     let enabled: Vec<&str> = manager
         .plugins
         .iter()
@@ -27,7 +28,7 @@ pub(super) fn load_enabled_plugin_ids(manager: &PluginManager) -> Vec<String> {
     }
 }
 
-pub(super) fn auto_enable_plugins(manager: &mut PluginManager) {
+pub(in crate::plugins::manager) fn auto_enable_plugins(manager: &mut PluginManager) {
     let ids = load_enabled_plugin_ids(manager);
     if ids.is_empty() {
         return;
@@ -49,7 +50,7 @@ pub(super) fn auto_enable_plugins(manager: &mut PluginManager) {
                 false
             };
             if deps_ok {
-                if let Err(e) = super::enable_plugin(manager, &id) {
+                if let Err(e) = enable_plugin(manager, &id) {
                     eprintln!("[WARN] Auto-enable plugin '{}' failed: {}", id, e);
                 } else {
                     enabled_set.insert(id);
@@ -66,7 +67,7 @@ pub(super) fn auto_enable_plugins(manager: &mut PluginManager) {
     }
 }
 
-pub(super) fn disable_all_plugins_for_shutdown(manager: &mut PluginManager) {
+pub(in crate::plugins::manager) fn disable_all_plugins_for_shutdown(manager: &mut PluginManager) {
     let enabled_ids: Vec<String> = manager
         .plugins
         .iter()
@@ -75,7 +76,7 @@ pub(super) fn disable_all_plugins_for_shutdown(manager: &mut PluginManager) {
         .collect();
     for id in enabled_ids {
         let mut visited = HashSet::new();
-        if let Err(e) = super::disable_plugin_internal(manager, &id, &mut visited) {
+        if let Err(e) = disable_plugin_internal(manager, &id, &mut visited) {
             eprintln!("[WARN] Failed to disable plugin '{}' during shutdown: {}", id, e);
         }
     }

@@ -1,10 +1,14 @@
 use super::super::super::{PluginManager, PluginState};
+use crate::plugins::manager::lifecycle::dependencies::{
+    check_dependencies, update_all_missing_dependencies,
+};
+use crate::plugins::manager::lifecycle::persistence::save_enabled_plugins;
 use crate::plugins::api::emit_log_event;
 use crate::plugins::runtime::{kill_all_processes, PluginRuntime};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub(in crate::plugins::manager::lifecycle) fn enable_plugin(
+pub(in crate::plugins::manager) fn enable_plugin(
     manager: &mut PluginManager,
     plugin_id: &str,
 ) -> Result<(), String> {
@@ -21,8 +25,7 @@ pub(in crate::plugins::manager::lifecycle) fn enable_plugin(
         return Ok(());
     }
 
-    let missing_deps =
-        super::super::check_dependencies(manager, &plugin_info.manifest.dependencies);
+    let missing_deps = check_dependencies(manager, &plugin_info.manifest.dependencies);
     if !missing_deps.is_empty() {
         return Err(format!(
             "无法启用插件 '{}'：缺少必须依赖：{}",
@@ -31,8 +34,7 @@ pub(in crate::plugins::manager::lifecycle) fn enable_plugin(
         ));
     }
 
-    let missing_optional =
-        super::super::check_dependencies(manager, &plugin_info.manifest.optional_dependencies);
+    let missing_optional = check_dependencies(manager, &plugin_info.manifest.optional_dependencies);
     if !missing_optional.is_empty() {
         println!(
             "[PluginManager] 插件 '{}' 的可选依赖未满足：{}（部分功能可能受限）",
@@ -126,8 +128,8 @@ pub(in crate::plugins::manager::lifecycle) fn enable_plugin(
         info.state = PluginState::Enabled;
     }
 
-    super::super::update_all_missing_dependencies(manager);
-    super::super::save_enabled_plugins(manager);
+    update_all_missing_dependencies(manager);
+    save_enabled_plugins(manager);
 
     Ok(())
 }

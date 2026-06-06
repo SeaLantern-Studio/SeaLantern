@@ -1,5 +1,6 @@
 use super::common::manager;
 use crate::models::server::*;
+use sea_lantern_server_installer_core::parse_server_core_type as parse_shared_server_core_type;
 
 #[allow(clippy::too_many_arguments)]
 /// 创建服务器请求并交给服务层处理
@@ -160,7 +161,7 @@ pub(super) async fn parse_server_core_type(
     source_path: String,
 ) -> Result<ParsedServerCoreInfo, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        crate::services::server::installer::parse_server_core_type(&source_path)
+        parse_shared_server_core_type(&source_path)
     })
     .await
     .map_err(|e| format!("解析核心类型任务失败: {}", e))?

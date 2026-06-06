@@ -1,44 +1,10 @@
+use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
 use crate::models::server::ServerInstance;
-use crate::utils::constants::LOCAL_RUNTIME_STATE_FILE;
-use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct LocalRuntimeState {
-    pub server_id: String,
-    pub helper_pid: u32,
-    pub child_pid: Option<u32>,
-    pub control_port: Option<u16>,
-    pub auth_token: String,
-    pub running: bool,
-    pub exit_code: Option<i32>,
-    pub detail_message: String,
-    pub error_message: Option<String>,
-    pub updated_at: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct LocalHelperStatusSnapshot {
-    pub running: bool,
-    pub pid: Option<u32>,
-    pub exit_code: Option<i32>,
-    pub detail_message: String,
-    pub error_message: Option<String>,
-}
-
-pub fn state_file_path(server: &ServerInstance) -> PathBuf {
-    Path::new(&server.path).join(LOCAL_RUNTIME_STATE_FILE)
-}
-
-pub fn read_state(server: &ServerInstance) -> Option<LocalRuntimeState> {
-    let path = state_file_path(server);
-    let content = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str::<LocalRuntimeState>(&content).ok()
-}
-
 pub fn remove_state_file(server: &ServerInstance) {
-    let path = state_file_path(server);
+    let path = super::state_file_path(server);
     let _ = std::fs::remove_file(path);
 }
 
@@ -56,7 +22,7 @@ pub(super) fn persist_terminal_state(
     error_message: Option<String>,
 ) -> Result<(), String> {
     let next = terminal_state_from_exit(state, exit_code, error_message, current_timestamp_secs());
-    write_state_file(&state_file_path(server), &next)
+    write_state_file(&super::state_file_path(server), &next)
 }
 
 pub(super) fn started_state(
@@ -163,10 +129,11 @@ pub(super) fn current_timestamp_secs() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        read_state, started_state, state_file_path, state_from_requested_stop,
-        state_from_terminal_snapshot, terminal_state_from_exit, write_state_file,
-        LocalHelperStatusSnapshot, LocalRuntimeState,
+        started_state, state_from_requested_stop, state_from_terminal_snapshot,
+        terminal_state_from_exit, write_state_file, LocalHelperStatusSnapshot,
+        LocalRuntimeState,
     };
+    use crate::services::server::runtime::local_helper::{read_state, state_file_path};
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use tempfile::tempdir;
 

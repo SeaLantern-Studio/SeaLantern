@@ -1,10 +1,3 @@
-use futures::future::BoxFuture;
-use serde_json::Value;
-
-/// 非 docker 构建下的命令处理函数占位类型
-#[allow(dead_code)] // 非 docker 占位
-pub type CommandHandler = fn(Value) -> BoxFuture<'static, Result<Value, String>>;
-
 /// 非 docker 构建下的空命令表
 #[allow(dead_code)] // 非 docker 占位
 pub struct CommandRegistry;
@@ -15,7 +8,7 @@ impl CommandRegistry {
         Self
     }
 
-    pub fn get_handler(&self, _command: &str) -> Option<&CommandHandler> {
+    pub fn get_handler(&self, _command: &str) -> Option<&sea_lantern_runtime::CommandHandler> {
         None
     }
 

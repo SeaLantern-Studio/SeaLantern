@@ -1,15 +1,24 @@
 //! Java 检测服务
 
-mod models;
 mod probe;
 #[cfg(target_os = "windows")]
 mod registry;
 mod scan;
 
-pub use models::JavaInfo;
+use serde::{Deserialize, Serialize};
 
 use probe::check_java;
 use scan::get_candidate_paths;
+
+/// Java 安装信息
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct JavaInfo {
+    pub path: String,
+    pub version: String,
+    pub vendor: String,
+    pub is_64bit: bool,
+    pub major_version: u32,
+}
 
 /// 扫描本机可用的 Java 安装
 pub fn detect_java_installations() -> Vec<JavaInfo> {

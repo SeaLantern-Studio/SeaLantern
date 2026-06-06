@@ -4,13 +4,16 @@ use std::sync::atomic::Ordering;
 use crate::services;
 
 #[cfg(target_os = "linux")]
-use super::super::arch::{get_aur_helper, is_arch_linux};
-use super::paths::get_pending_update_file;
+use sea_lantern_update_core::arch::{get_aur_helper, is_arch_linux};
+use sea_lantern_update_core::install_support::{
+    build_install_launch_plan, get_pending_update_file, InstallLaunchPlan,
+};
+use sea_lantern_update_core::pending::write_pending_update;
 #[cfg(target_os = "windows")]
-use super::windows;
-use super::{PendingUpdate, INSTALL_IN_PROGRESS};
+use sea_lantern_update_core::windows_install;
+use super::INSTALL_IN_PROGRESS;
 
-pub(super) async fn execute_install(file_path: String, version: String) -> Result<(), String> {
+pub(crate) async fn execute_install(file_path: String, version: String) -> Result<(), String> {
     if INSTALL_IN_PROGRESS.swap(true, Ordering::SeqCst) {
         return Err("Install is already in progress".to_string());
     }
@@ -56,28 +59,6 @@ pub(super) async fn execute_install(file_path: String, version: String) -> Resul
     result
 }
 
-fn write_pending_update(
-    pending_file: &std::path::Path,
-    file_path: &str,
-    version: String,
-) -> Result<(), String> {
-    if let Some(parent) = pending_file.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create pending update directory: {}", e))?;
-    }
-
-    let pending = PendingUpdate {
-        file_path: file_path.to_string(),
-        version,
-    };
-    let json = serde_json::to_string(&pending)
-        .map_err(|e| format!("Failed to serialize pending update: {}", e))?;
-
-    std::fs::write(pending_file, json)
-        .map_err(|e| format!("Failed to write pending update file: {}", e))?;
-    Ok(())
-}
-
 fn launch_update_installer(
     path: &std::path::Path,
     file_path: &str,
@@ -86,25 +67,28 @@ fn launch_update_installer(
     #[cfg(target_os = "windows")]
     {
         let pending_file_path = pending_file.to_string_lossy().to_string();
-        let extension = path
-            .extension()
-            .and_then(|value| value.to_str())
-            .map(|value| value.to_lowercase());
-
-        match extension.as_deref() {
-            Some("msi") => windows::spawn_elevated_windows_process(
-                "msiexec.exe",
-                &["/i", file_path, "/passive", "/norestart"],
-                Some(file_path),
-                Some(pending_file_path.as_str()),
-            ),
-            Some("exe") => windows::spawn_elevated_windows_process(
-                file_path,
-                &["/S", "/norestart"],
-                Some(file_path),
-                Some(pending_file_path.as_str()),
-            ),
-            _ => opener::open(file_path).map_err(|e| format!("Failed to open update file: {}", e)),
+        match build_install_launch_plan(path, file_path) {
+            InstallLaunchPlan::ElevatedMsi { program, args } => {
+                let arg_refs = args.iter().map(String::as_str).collect::<Vec<_>>();
+                windows_install::spawn_elevated_windows_process(
+                    program,
+                    &arg_refs,
+                    Some(file_path),
+                    Some(pending_file_path.as_str()),
+                )
+            }
+            InstallLaunchPlan::ElevatedExe { program, args } => {
+                let arg_refs = args.iter().map(String::as_str).collect::<Vec<_>>();
+                windows_install::spawn_elevated_windows_process(
+                    &program,
+                    &arg_refs,
+                    Some(file_path),
+                    Some(pending_file_path.as_str()),
+                )
+            }
+            InstallLaunchPlan::OpenDirect => {
+                opener::open(file_path).map_err(|e| format!("Failed to open update file: {}", e))
+            }
         }
     }
 

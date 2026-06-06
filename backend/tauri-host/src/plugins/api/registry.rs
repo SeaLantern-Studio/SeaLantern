@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub type ApiRegistry = Arc<Mutex<HashMap<String, HashMap<String, String>>>>;
-
-pub fn new_api_registry() -> ApiRegistry {
+pub fn new_api_registry() -> Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
     Arc::new(Mutex::new(HashMap::new()))
 }
 
@@ -19,7 +17,7 @@ pub trait ApiRegistryOps {
     fn clear_plugin_apis(&self, plugin_id: &str);
 }
 
-impl ApiRegistryOps for ApiRegistry {
+impl ApiRegistryOps for Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
     fn register_api(&self, plugin_id: &str, api_name: &str, lua_fn_name: &str) {
         let mut registry = self.lock().unwrap_or_else(|e| {
             eprintln!("[WARN] Mutex poisoned, recovering: {}", e);

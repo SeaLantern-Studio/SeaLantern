@@ -1,9 +1,10 @@
 use super::state::{
     decode_console_bytes, server_log_processors, ServerLogProcessor, SERVER_LOG_EVENT_HANDLER,
 };
+use std::sync::Arc;
 use std::io::{BufRead, BufReader, Read};
 
-pub fn add_server_log_processor(processor: ServerLogProcessor) -> Result<(), String> {
+pub fn add_server_log_processor(processor: Arc<ServerLogProcessor>) -> Result<(), String> {
     let processors = server_log_processors();
     let mut guard = processors
         .lock()

@@ -1,10 +1,9 @@
 //! 服务器短 ID 管理
 
-mod models;
 mod ops;
 mod shared;
 
-pub use models::{CreateServerIdRequest, ServerIdEntry, ServerIdResponse};
+use serde::{Deserialize, Serialize};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,11 +13,34 @@ use ops::{
     create_id, deactivate_id, delete_id, get_id, list_ids, resolve_id, search_ids, update_id,
 };
 
-pub(crate) type SharedServerIdEntries = Arc<RwLock<HashMap<String, ServerIdEntry>>>;
+/// 服务器短 ID 条目
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerIdEntry {
+    pub id: String,
+    pub name: String,
+    pub address: String,
+    pub port: u16,
+    pub description: Option<String>,
+    pub created_at: u64,
+    pub last_accessed_at: Option<u64>,
+    pub is_active: bool,
+    pub tags: Vec<String>,
+}
+
+/// 创建短 ID 的请求
+#[derive(Debug, Deserialize)]
+pub struct CreateServerIdRequest {
+    pub id: Option<String>,
+    pub name: String,
+    pub address: String,
+    pub port: u16,
+    pub description: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
 
 /// 服务器短 ID 管理器
 pub struct ServerIdManager {
-    entries: SharedServerIdEntries,
+    entries: Arc<RwLock<HashMap<String, ServerIdEntry>>>,
 }
 
 impl ServerIdManager {

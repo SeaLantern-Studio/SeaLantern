@@ -4,28 +4,26 @@ mod install;
 mod lifecycle;
 mod notify;
 mod resource_copy;
-mod runtime_state;
 mod versioning;
 
 pub(crate) use crate::models::plugin::PluginState;
 use crate::models::plugin::{PluginInfo, PluginInstallResult};
-use crate::plugins::api::{new_api_registry, ApiRegistry};
-use runtime_state::new_shared_runtimes;
-pub(crate) use runtime_state::SharedRuntimes;
+use crate::plugins::api::new_api_registry;
+use crate::plugins::runtime::PluginRuntime;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 
 /// 插件管理器
 ///
 /// 负责插件扫描、启停、安装、资源读取和通知分发
 pub struct PluginManager {
     plugins: HashMap<String, PluginInfo>,
-    runtimes: SharedRuntimes,
+    runtimes: Arc<RwLock<HashMap<String, PluginRuntime>>>,
     plugins_dir: PathBuf,
     data_dir: PathBuf,
-    api_registry: ApiRegistry,
+    api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
 }
 
 impl PluginManager {
@@ -49,14 +47,14 @@ impl PluginManager {
 
         Self {
             plugins: HashMap::new(),
-            runtimes: new_shared_runtimes(),
+            runtimes: Arc::new(RwLock::new(HashMap::new())),
             plugins_dir,
             data_dir,
             api_registry: new_api_registry(),
         }
     }
 
-    pub(crate) fn get_shared_runtimes(&self) -> SharedRuntimes {
+    pub(crate) fn get_shared_runtimes(&self) -> Arc<RwLock<HashMap<String, PluginRuntime>>> {
         Arc::clone(&self.runtimes)
     }
 
@@ -65,7 +63,7 @@ impl PluginManager {
     /// # Returns
     ///
     /// 返回当前插件系统共用的 API 注册表
-    pub fn get_api_registry(&self) -> ApiRegistry {
+    pub fn get_api_registry(&self) -> Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
         Arc::clone(&self.api_registry)
     }
 
@@ -75,7 +73,7 @@ impl PluginManager {
     ///
     /// 返回刷新后的插件列表
     pub fn scan_plugins(&mut self) -> Result<Vec<PluginInfo>, String> {
-        lifecycle::scan_plugins(self)
+        lifecycle::scan::scan_plugins(self)
     }
 
     /// 启用一个插件
@@ -88,7 +86,7 @@ impl PluginManager {
     ///
     /// 启用成功时返回 `Ok(())`
     pub fn enable_plugin(&mut self, plugin_id: &str) -> Result<(), String> {
-        lifecycle::enable_plugin(self, plugin_id)
+        lifecycle::runtime::enable_plugin(self, plugin_id)
     }
 
     /// 禁用一个插件
@@ -101,7 +99,7 @@ impl PluginManager {
     ///
     /// 返回本次连带被禁用的插件 ID 列表
     pub fn disable_plugin(&mut self, plugin_id: &str) -> Result<Vec<String>, String> {
-        lifecycle::disable_plugin(self, plugin_id)
+        lifecycle::runtime::disable_plugin(self, plugin_id)
     }
 
     fn copy_included_resources(
@@ -118,12 +116,12 @@ impl PluginManager {
 
     /// 按保存记录自动启用插件
     pub fn auto_enable_plugins(&mut self) {
-        lifecycle::auto_enable_plugins(self);
+        lifecycle::persistence::auto_enable_plugins(self);
     }
 
     /// 应用退出前停用全部插件
     pub fn disable_all_plugins_for_shutdown(&mut self) {
-        lifecycle::disable_all_plugins_for_shutdown(self);
+        lifecycle::persistence::disable_all_plugins_for_shutdown(self);
     }
 
     /// 读取当前插件列表
@@ -132,7 +130,7 @@ impl PluginManager {
     ///
     /// 返回当前管理器中的插件信息列表
     pub fn get_plugin_list(&self) -> Vec<PluginInfo> {
-        lifecycle::get_plugin_list(self)
+        lifecycle::dependencies::get_plugin_list(self)
     }
 
     /// 读取插件侧边栏导航项
@@ -141,7 +139,7 @@ impl PluginManager {
     ///
     /// 返回前端可直接使用的导航项 JSON 列表
     pub fn get_nav_items(&self) -> Vec<serde_json::Value> {
-        lifecycle::get_nav_items(self)
+        lifecycle::catalog::get_nav_items(self)
     }
 
     /// 从文件或压缩包安装插件
@@ -162,19 +160,6 @@ impl PluginManager {
         manifest: &crate::models::plugin::PluginManifest,
     ) -> Vec<crate::models::plugin::MissingDependency> {
         dependency_state::get_missing_dependencies(self, manifest)
-    }
-
-    /// 从目录安装插件
-    ///
-    /// # Parameters
-    ///
-    /// - `source_dir`: 插件目录
-    ///
-    /// # Returns
-    ///
-    /// 返回安装后的插件信息
-    pub fn install_plugin_from_dir(&mut self, source_dir: &Path) -> Result<PluginInfo, String> {
-        install::install_plugin_from_dir(self, source_dir)
     }
 
     /// 读取插件设置

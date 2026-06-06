@@ -1,33 +1,26 @@
-use crate::models::server::DockerCommandMode;
 use crate::utils::cli::server_shared::{trace_cli_action, trace_cli_error};
 #[cfg(test)]
 use crate::utils::docker_cli::interpret_docker_image_inspect_outputs_for_tests;
 use crate::utils::docker_cli::{
-    docker_executable_path, format_docker_image_reference,
-    inspect_docker_image_reference_with_soft_failures, DockerImageAvailability,
-    DockerImageInspectOutcome,
+    docker_executable_path, inspect_docker_image_reference_with_soft_failures,
+    DockerImageAvailability, DockerImageInspectOutcome,
 };
 use crate::utils::logger;
+use sea_lantern_docker_core::{
+    format_docker_image_reference, validate_docker_itzg_image_compatibility, DockerCommandMode,
+};
 use std::process::Output;
 
-fn docker_itzg_image_looks_compatible(image: &str) -> bool {
-    let normalized = image.trim().trim_matches('/').to_ascii_lowercase();
-    if normalized.is_empty() {
-        return false;
+#[cfg(test)]
+fn exit_status_from_raw(code: i32) -> std::process::ExitStatus {
+    #[cfg(windows)]
+    {
+        std::os::windows::process::ExitStatusExt::from_raw(code as u32)
     }
-
-    normalized == "minecraft-server" || normalized.ends_with("/minecraft-server")
-}
-
-pub(crate) fn validate_docker_itzg_image_compatibility(image: &str) -> Result<(), String> {
-    if docker_itzg_image_looks_compatible(image) {
-        return Ok(());
+    #[cfg(unix)]
+    {
+        std::os::unix::process::ExitStatusExt::from_raw(code)
     }
-
-    Err(format!(
-        "当前 docker runtime 目标是 Minecraft server 容器，但镜像名看起来不兼容: {}。请使用 itzg/minecraft-server 或你自己的 */minecraft-server 镜像名；如果这是私有镜像/镜像代理，也请保持最终镜像名仍为 minecraft-server",
-        image.trim()
-    ))
 }
 
 pub(crate) fn ensure_docker_environment() -> Result<(), String> {
@@ -235,6 +228,45 @@ fn render_docker_stdio_probe_error(image_ref: &str, output: &Output) -> String {
     format!(
         "当前镜像不支持 --command-mode docker_stdio: image={} 未检测到 mc-send-to-console。请改用 --command-mode rcon，或改用兼容 itzg 语义且内置 mc-send-to-console 的镜像。原始输出: {}",
         image_ref, raw
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn preflight_docker_image_reference_from_outputs_for_tests(
+    image: &str,
+    image_tag: &str,
+    local_output: &Output,
+    manifest_output: &Output,
+) -> Result<(), String> {
+    preflight_docker_image_reference_with(image, image_tag, |image_ref| {
+        interpret_docker_image_inspect_outputs_for_tests(image_ref, local_output, manifest_output)
+    })
+}
+
+#[cfg(test)]
+pub(crate) fn preflight_docker_command_mode_support_from_outputs_for_tests<F>(
+    image: &str,
+    image_tag: &str,
+    command_mode: &DockerCommandMode,
+    local_output: &Output,
+    manifest_output: &Output,
+    ensure_stdio_support: F,
+) -> Result<(), String>
+where
+    F: FnOnce(&str) -> Result<(), String>,
+{
+    preflight_docker_command_mode_support_with(
+        image,
+        image_tag,
+        command_mode,
+        |image_ref| {
+            interpret_docker_image_inspect_outputs_for_tests(
+                image_ref,
+                local_output,
+                manifest_output,
+            )
+        },
+        ensure_stdio_support,
     )
 }
 
@@ -894,56 +926,5 @@ mod tests {
 
         assert!(err.contains("退出码"));
         assert!(err.contains("java21"));
-    }
-}
-
-#[cfg(test)]
-pub(crate) fn preflight_docker_image_reference_from_outputs_for_tests(
-    image: &str,
-    image_tag: &str,
-    local_output: &Output,
-    manifest_output: &Output,
-) -> Result<(), String> {
-    preflight_docker_image_reference_with(image, image_tag, |image_ref| {
-        interpret_docker_image_inspect_outputs_for_tests(image_ref, local_output, manifest_output)
-    })
-}
-
-#[cfg(test)]
-pub(crate) fn preflight_docker_command_mode_support_from_outputs_for_tests<F>(
-    image: &str,
-    image_tag: &str,
-    command_mode: &DockerCommandMode,
-    local_output: &Output,
-    manifest_output: &Output,
-    ensure_stdio_support: F,
-) -> Result<(), String>
-where
-    F: FnOnce(&str) -> Result<(), String>,
-{
-    preflight_docker_command_mode_support_with(
-        image,
-        image_tag,
-        command_mode,
-        |image_ref| {
-            interpret_docker_image_inspect_outputs_for_tests(
-                image_ref,
-                local_output,
-                manifest_output,
-            )
-        },
-        ensure_stdio_support,
-    )
-}
-
-#[cfg(test)]
-fn exit_status_from_raw(code: i32) -> std::process::ExitStatus {
-    #[cfg(windows)]
-    {
-        std::os::windows::process::ExitStatusExt::from_raw(code as u32)
-    }
-    #[cfg(unix)]
-    {
-        std::os::unix::process::ExitStatusExt::from_raw(code)
     }
 }

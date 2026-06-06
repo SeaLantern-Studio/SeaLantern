@@ -1,4 +1,4 @@
-use super::common::{parse_params, CommandHandler};
+use super::common::{CommandHandler, RegistryBuilder, parse_params};
 use super::requests::{
     ParseServerPropertiesSourceRequest, PreviewServerPropertiesWriteFromSourceRequest,
     PreviewServerPropertiesWriteRequest, ReadConfigRequest, ReadServerPropertiesRequest,
@@ -6,37 +6,29 @@ use super::requests::{
 };
 use crate::commands::server::config as config_commands;
 use serde_json::Value;
-use std::collections::HashMap;
-
-pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
-    handlers.insert("read_config".to_string(), handle_read_config as CommandHandler);
-    handlers.insert("write_config".to_string(), handle_write_config as CommandHandler);
-    handlers.insert(
-        "read_server_properties".to_string(),
-        handle_read_server_properties as CommandHandler,
-    );
-    handlers.insert(
-        "write_server_properties".to_string(),
-        handle_write_server_properties as CommandHandler,
-    );
-    handlers.insert(
-        "read_server_properties_source".to_string(),
+pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
+    builder.register("read_config", handle_read_config as CommandHandler);
+    builder.register("write_config", handle_write_config as CommandHandler);
+    builder.register("read_server_properties", handle_read_server_properties as CommandHandler);
+    builder.register("write_server_properties", handle_write_server_properties as CommandHandler);
+    builder.register(
+        "read_server_properties_source",
         handle_read_server_properties_source as CommandHandler,
     );
-    handlers.insert(
-        "write_server_properties_source".to_string(),
+    builder.register(
+        "write_server_properties_source",
         handle_write_server_properties_source as CommandHandler,
     );
-    handlers.insert(
-        "parse_server_properties_source".to_string(),
+    builder.register(
+        "parse_server_properties_source",
         handle_parse_server_properties_source as CommandHandler,
     );
-    handlers.insert(
-        "preview_server_properties_write".to_string(),
+    builder.register(
+        "preview_server_properties_write",
         handle_preview_server_properties_write as CommandHandler,
     );
-    handlers.insert(
-        "preview_server_properties_write_from_source".to_string(),
+    builder.register(
+        "preview_server_properties_write_from_source",
         handle_preview_server_properties_write_from_source as CommandHandler,
     );
 }

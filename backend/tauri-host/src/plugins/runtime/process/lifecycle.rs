@@ -1,6 +1,7 @@
-use super::common::{is_process_owner, ProcessRegistry};
+use super::common::{is_process_owner, ProcessEntry};
 use mlua::{Function, Lua, Table};
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 fn emit_process_log(plugin_id: &str, action: &str, detail: &str) {
     let _ = crate::plugins::api::emit_permission_log(plugin_id, "api_call", action, detail);
@@ -9,7 +10,7 @@ fn emit_process_log(plugin_id: &str, action: &str, detail: &str) {
 pub(super) fn kill(
     lua: &Lua,
     plugin_id: &str,
-    process_registry: &ProcessRegistry,
+    process_registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
 ) -> Result<Function, String> {
     let pid = plugin_id.to_string();
     let registry = Arc::clone(process_registry);
@@ -49,7 +50,7 @@ pub(super) fn register(
     lua: &Lua,
     process_table: &Table,
     plugin_id: &str,
-    process_registry: &ProcessRegistry,
+    process_registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
 ) -> Result<(), String> {
     process_table
         .set("kill", kill(lua, plugin_id, process_registry)?)

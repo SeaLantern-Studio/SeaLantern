@@ -2,19 +2,21 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::models::server::{
-    CpuPolicyConfig, CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode,
-    DockerItzgRuntimeConfig, JvmPresetConfig,
+    CpuPolicyConfig, CreateDockerItzgServerRequest, DockerItzgRuntimeConfig, JvmPresetConfig,
 };
-use crate::services::server::installer::CoreType;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_docker::{build_docker_command_transport, default_docker_env};
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::trace_cli_action;
-use crate::utils::docker_cli::resolve_docker_image_and_tag;
-
-use super::super::metadata_support::{
-    infer_core_type_from_local_inputs, infer_mc_version_from_folder, infer_mc_version_hint,
+use sea_lantern_docker_core::{
+    format_memory_env_value, parse_command_mode, parse_docker_backend,
+    resolve_docker_image_and_tag,
 };
+use sea_lantern_server_local_setup_core::{
+    infer_core_type_from_local_inputs, infer_mc_version_from_folder, infer_mc_version_hint,
+    normalize_core_type,
+};
+use sea_lantern_server_installer_core::CoreType;
 use super::docker_mounts::{parse_docker_volume_mounts, parse_extra_published_ports};
 use super::docker_paths::{resolve_docker_data_dir, sanitize_container_name};
 use super::{DockerCreateDefaults, DEFAULT_DOCKER_IMAGE, DEFAULT_DOCKER_IMAGE_TAG};
@@ -125,30 +127,6 @@ pub(crate) fn build_docker_create_request(
     })
 }
 
-pub(crate) fn parse_docker_backend(value: Option<&str>) -> Result<DockerBackendKind, String> {
-    match value.unwrap_or("cli").trim().to_ascii_lowercase().as_str() {
-        "cli" => Ok(DockerBackendKind::Cli),
-        "engine_api" | "engine-api" => Ok(DockerBackendKind::EngineApi),
-        other => Err(format!("不支持的 docker backend: {}", other)),
-    }
-}
-
-pub(crate) fn parse_command_mode(value: Option<&str>) -> Result<DockerCommandMode, String> {
-    match value.unwrap_or("rcon").trim().to_ascii_lowercase().as_str() {
-        "rcon" => Ok(DockerCommandMode::Rcon),
-        "docker_stdio" | "docker-stdio" | "stdio" => Ok(DockerCommandMode::DockerStdio),
-        other => Err(format!("不支持的 docker command mode: {}", other)),
-    }
-}
-
-pub(crate) fn format_memory_env_value(memory_mb: u32) -> String {
-    if memory_mb.is_multiple_of(1024) {
-        format!("{}G", memory_mb / 1024)
-    } else {
-        format!("{}M", memory_mb)
-    }
-}
-
 fn apply_docker_memory_env(
     command: &CliServerCommand,
     env: &mut BTreeMap<String, String>,
@@ -170,12 +148,4 @@ fn apply_custom_docker_env(command: &CliServerCommand, env: &mut BTreeMap<String
     for (key, value) in &command.docker_env {
         env.insert(key.clone(), value.clone());
     }
-}
-
-fn normalize_core_type(value: Option<&str>) -> Result<String, String> {
-    let raw = value.unwrap_or("paper").trim();
-    if raw.is_empty() {
-        return Err("--core 不能为空".to_string());
-    }
-    Ok(CoreType::normalize_to_api_core_key(raw).unwrap_or_else(|| raw.to_string()))
 }

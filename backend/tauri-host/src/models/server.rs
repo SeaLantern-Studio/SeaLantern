@@ -1,6 +1,14 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
+pub(crate) use sea_lantern_docker_core::{
+    CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode,
+    DockerItzgRuntimeConfig, PublishedPort, RconConfig, VolumeMount,
+};
+#[allow(unused_imports)]
+pub(crate) use sea_lantern_server_config_core::types::{
+    CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId,
+};
+pub(crate) use sea_lantern_server_installer_core::ParsedServerCoreInfo;
+pub(crate) use sea_lantern_server_startup_scan_core::StartupScanResult;
 
 fn default_startup_mode() -> String {
     "jar".to_string()
@@ -8,10 +16,6 @@ fn default_startup_mode() -> String {
 
 fn default_runtime_kind() -> String {
     "local".to_string()
-}
-
-fn default_true() -> bool {
-    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -33,65 +37,6 @@ impl ServerStatus {
             ServerStatus::Error => "error",
         }
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum CpuPolicyMode {
-    #[default]
-    Off,
-    Count,
-    Explicit,
-}
-
-impl CpuPolicyMode {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Off => "off",
-            Self::Count => "count",
-            Self::Explicit => "explicit",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CpuPolicyConfig {
-    #[serde(default)]
-    pub mode: CpuPolicyMode,
-    #[serde(default)]
-    pub count: Option<u16>,
-    #[serde(default)]
-    pub explicit_set: Option<String>,
-    #[serde(default = "default_true")]
-    pub sync_active_processor_count: bool,
-}
-
-impl Default for CpuPolicyConfig {
-    fn default() -> Self {
-        Self {
-            mode: CpuPolicyMode::Off,
-            count: None,
-            explicit_set: None,
-            sync_active_processor_count: true,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum JvmPresetId {
-    #[default]
-    None,
-    G1Basic,
-    AikarG1,
-    ThroughputBasic,
-    PaperRecommendedLite,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-pub struct JvmPresetConfig {
-    #[serde(default)]
-    pub preset: JvmPresetId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,72 +85,6 @@ pub struct LocalRuntimeConfig {
     pub jvm_preset: JvmPresetConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DockerItzgRuntimeConfig {
-    pub image: String,
-    pub image_tag: String,
-    pub container_name: String,
-    pub type_value: String,
-    pub version: String,
-    pub data_dir_mount: String,
-    pub published_game_port: u16,
-    #[serde(default)]
-    pub env: BTreeMap<String, String>,
-    #[serde(default)]
-    pub extra_ports: Vec<PublishedPort>,
-    #[serde(default)]
-    pub volume_mounts: Vec<VolumeMount>,
-    pub docker_backend_kind: DockerBackendKind,
-    pub command_mode: DockerCommandMode,
-    #[serde(default)]
-    pub rcon: Option<RconConfig>,
-    #[serde(default)]
-    pub jvm_args: Vec<String>,
-    #[serde(default)]
-    pub cpu_policy: CpuPolicyConfig,
-    #[serde(default)]
-    pub jvm_preset: JvmPresetConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PublishedPort {
-    pub host_port: u16,
-    pub container_port: u16,
-    #[serde(default)]
-    pub protocol: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VolumeMount {
-    pub source: String,
-    pub target: String,
-    #[serde(default)]
-    pub read_only: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum DockerBackendKind {
-    #[default]
-    Cli,
-    EngineApi,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum DockerCommandMode {
-    #[default]
-    Rcon,
-    DockerStdio,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RconConfig {
-    pub host: String,
-    pub port: u16,
-    pub password: String,
-}
-
 impl ServerInstance {
     pub fn local_runtime(&self) -> Option<&LocalRuntimeConfig> {
         match &self.runtime {
@@ -247,24 +126,6 @@ impl ServerInstance {
     pub fn custom_command(&self) -> Option<&str> {
         self.local_runtime()
             .and_then(|runtime| runtime.custom_command.as_deref())
-    }
-}
-
-impl DockerBackendKind {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Cli => "cli",
-            Self::EngineApi => "engine_api",
-        }
-    }
-}
-
-impl DockerCommandMode {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Rcon => "rcon",
-            Self::DockerStdio => "docker_stdio",
-        }
     }
 }
 
@@ -318,17 +179,6 @@ pub struct CreateServerRequest {
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
     pub jvm_preset: JvmPresetConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateDockerItzgServerRequest {
-    pub name: String,
-    #[serde(default)]
-    pub aliases: Vec<String>,
-    pub core_type: String,
-    pub mc_version: String,
-    pub port: u16,
-    pub runtime: DockerItzgRuntimeConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -410,34 +260,6 @@ pub struct AddExistingServerRequest {
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
     pub jvm_preset: JvmPresetConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ParsedServerCoreInfo {
-    pub core_type: String,
-    pub main_class: Option<String>,
-    pub jar_path: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StartupScanResult {
-    pub parsed_core: ParsedServerCoreInfo,
-    pub candidates: Vec<StartupCandidateItem>,
-    pub detected_core_type_key: Option<String>,
-    pub core_type_options: Vec<String>,
-    pub mc_version_options: Vec<String>,
-    pub detected_mc_version: Option<String>,
-    pub mc_version_detection_failed: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StartupCandidateItem {
-    pub id: String,
-    pub mode: String,
-    pub label: String,
-    pub detail: String,
-    pub path: String,
-    pub recommended: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

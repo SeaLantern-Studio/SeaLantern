@@ -75,21 +75,18 @@ pub(super) fn normalize_optional_string(value: Option<String>) -> Option<String>
     })
 }
 
-pub(super) fn parse_relay_url(value: Option<String>) -> Result<Option<RelayUrl>, String> {
-    let Some(raw) = normalize_optional_string(value) else {
-        return Ok(None);
-    };
-    raw.parse::<RelayUrl>()
-        .map(Some)
-        .map_err(|e| tunnel_t1("tunnel.err.invalid_relay_url", e.to_string()))
-}
-
 pub(super) fn apply_relay_preference(
     profile: &mut Profile,
     relay_input: Option<String>,
 ) -> Result<Option<RelayUrl>, String> {
     let normalized = normalize_optional_string(relay_input);
-    let parsed = parse_relay_url(normalized.clone())?;
+    let parsed = match normalized.clone() {
+        Some(raw) => raw
+            .parse::<RelayUrl>()
+            .map(Some)
+            .map_err(|e| tunnel_t1("tunnel.err.invalid_relay_url", e.to_string()))?,
+        None => None,
+    };
 
     if let Some(url) = normalized {
         profile.relay.custom = true;

@@ -204,34 +204,8 @@ mod tests {
         CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
         JvmPresetConfig, LocalRuntimeConfig, RconConfig, ServerInstance, ServerRuntimeConfig,
     };
-    use once_cell::sync::Lazy;
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
     use std::collections::BTreeMap;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
-
-    struct EnvGuard {
-        name: &'static str,
-        original: Option<String>,
-    }
-
-    impl EnvGuard {
-        fn set(name: &'static str, value: &str) -> Self {
-            let original = std::env::var(name).ok();
-            std::env::set_var(name, value);
-            Self { name, original }
-        }
-    }
-
-    impl Drop for EnvGuard {
-        fn drop(&mut self) {
-            if let Some(value) = &self.original {
-                std::env::set_var(self.name, value);
-            } else {
-                std::env::remove_var(self.name);
-            }
-        }
-    }
 
     fn sample_local_server() -> ServerInstance {
         ServerInstance {
@@ -302,7 +276,7 @@ mod tests {
 
     #[test]
     fn render_created_server_lines_include_local_runtime_summary() {
-        let _env_lock = ENV_LOCK.lock().expect("env lock");
+        let _env_lock = lock_env();
         let _bind_guard = EnvGuard::set("SEALANTERN_WEB_BIND", "127.0.0.1");
 
         let lines = render_created_server_lines(
@@ -329,7 +303,7 @@ mod tests {
 
     #[test]
     fn render_created_server_lines_include_headless_bind_hint_when_web_binds_all_interfaces() {
-        let _env_lock = ENV_LOCK.lock().expect("env lock");
+        let _env_lock = lock_env();
         let _bind_guard = EnvGuard::set("SEALANTERN_WEB_BIND", "0.0.0.0");
 
         let lines = render_created_server_lines(

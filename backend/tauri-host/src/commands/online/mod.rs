@@ -1,5 +1,5 @@
 //! 联机相关的命令。
 
-pub mod join;
-pub mod server_ids;
-pub mod tunnel;
+pub(crate) mod join;
+pub(crate) mod server_ids;
+pub(crate) mod tunnel;

@@ -3,30 +3,20 @@ use super::super::super::common::build_windows_cmd_command;
 use super::super::super::startup_support;
 use super::context::LaunchContext;
 use super::script_launch_support;
-use crate::services::server::installer;
 use crate::services::server::manager::common::StartupMode;
+use sea_lantern_server_local_setup_core::{
+    resolve_direct_jar_launch_target, resolve_local_preferred_jar_path,
+};
 use std::path::Path;
 use std::process::Command;
 
 /// 优先寻找可直接运行的 JAR 文件
 pub(crate) fn find_preferred_jar_path(context: &LaunchContext<'_>) -> Option<String> {
-    let startup_path_obj = Path::new(context.server.jar_path()?);
-    let jar_preferred_mode = context.startup_mode.prefers_direct_jar();
-
-    if !jar_preferred_mode {
-        return None;
-    }
-
-    if startup_path_obj
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.eq_ignore_ascii_case("jar"))
-        .unwrap_or(false)
-    {
-        Some(context.server.jar_path()?.to_string())
-    } else {
-        installer::find_server_jar(Path::new(&context.server.path)).ok()
-    }
+    resolve_local_preferred_jar_path(
+        context.startup_mode.as_str(),
+        context.server.jar_path(),
+        Path::new(&context.server.path),
+    )
 }
 
 /// 构建直接运行 JAR 的命令
@@ -58,20 +48,6 @@ pub(crate) fn build_direct_jar_command(
         java_cmd.arg(url);
     }
     Ok(java_cmd)
-}
-
-fn resolve_direct_jar_launch_target(server_path: &str, jar_path: &str) -> String {
-    let jar_path_obj = Path::new(jar_path);
-    let server_path_obj = Path::new(server_path);
-
-    if jar_path_obj.parent() == Some(server_path_obj) {
-        return jar_path_obj
-            .file_name()
-            .map(|name| name.to_string_lossy().to_string())
-            .unwrap_or_else(|| jar_path.to_string());
-    }
-
-    jar_path.to_string()
 }
 
 /// 按启动方式构建最终命令
@@ -194,7 +170,7 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_custom_command, build_ps1_command, build_sh_command, resolve_direct_jar_launch_target,
+        build_custom_command, build_ps1_command, build_sh_command,
     };
     use crate::models::server::{
         CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
@@ -202,6 +178,7 @@ mod tests {
     use crate::models::settings::AppSettings;
     use crate::services::server::manager::common::{ManagedConsoleEncoding, StartupMode};
     use crate::services::server::manager::runtime_start::launch::context::LaunchContext;
+    use sea_lantern_server_local_setup_core::resolve_direct_jar_launch_target;
     use std::path::Path;
     use std::process::Command;
     use tempfile::TempDir;

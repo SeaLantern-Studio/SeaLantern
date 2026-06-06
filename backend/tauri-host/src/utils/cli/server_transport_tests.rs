@@ -7,7 +7,7 @@ use crate::utils::cli::server_flow::{
     resolve_server_command_name, validate_transport_mode,
 };
 use crate::utils::cli::server_ports::PreparedPorts;
-use crate::utils::cli::server_test_support::{sample_server, EnvGuard, ENV_LOCK};
+use crate::utils::cli::server_test_support::{lock_env, sample_server, EnvGuard};
 use crate::utils::cli::server_transport::{
     open_browser_or_warn_with, orchestrate_transports_with, should_auto_open_browser,
 };
@@ -33,7 +33,7 @@ fn open_browser_helper_returns_false_on_failure_without_bubbling_error() {
 
 #[test]
 fn browser_url_maps_container_bind_to_loopback() {
-    let _env_lock = ENV_LOCK.lock().expect("env lock");
+    let _env_lock = lock_env();
     {
         let _bind_guard = EnvGuard::set("SEALANTERN_WEB_BIND", "0.0.0.0");
         assert_eq!(
@@ -59,17 +59,16 @@ fn auto_open_browser_is_disabled_for_headless_http_environments() {
 
 #[test]
 fn web_bind_host_prefers_explicit_env_override() {
-    std::env::set_var("SEALANTERN_WEB_BIND", "192.168.1.10");
+    let _env_lock = lock_env();
+    let _bind_guard = EnvGuard::set("SEALANTERN_WEB_BIND", "192.168.1.10");
 
     let bind_host = effective_cli_web_bind_host();
     assert_eq!(bind_host, "192.168.1.10");
-
-    std::env::remove_var("SEALANTERN_WEB_BIND");
 }
 
 #[test]
 fn cli_web_bind_defaults_to_loopback_even_in_headless_mode() {
-    let _env_lock = ENV_LOCK.lock().expect("env lock");
+    let _env_lock = lock_env();
     let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
     let _http_bind_guard = EnvGuard::remove("SEALANTERN_HTTP_BIND");
     let _web_bind_guard = EnvGuard::remove("SEALANTERN_WEB_BIND");
@@ -80,14 +79,16 @@ fn cli_web_bind_defaults_to_loopback_even_in_headless_mode() {
 
 #[tokio::test]
 async fn cli_resolved_bind_still_enforces_http_auth_and_default_cors() {
-    let _env_lock = ENV_LOCK.lock().expect("env lock");
-    let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
-    let _http_bind_guard = EnvGuard::remove("SEALANTERN_HTTP_BIND");
-    let _web_bind_guard = EnvGuard::remove("SEALANTERN_WEB_BIND");
-    let _cors_guard = EnvGuard::remove("SEALANTERN_HTTP_CORS_ORIGINS");
-    let _auth_guard = EnvGuard::remove("SEALANTERN_HTTP_AUTH_TOKEN");
+    let bind_addr = {
+        let _env_lock = lock_env();
+        let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
+        let _http_bind_guard = EnvGuard::remove("SEALANTERN_HTTP_BIND");
+        let _web_bind_guard = EnvGuard::remove("SEALANTERN_WEB_BIND");
+        let _cors_guard = EnvGuard::remove("SEALANTERN_HTTP_CORS_ORIGINS");
+        let _auth_guard = EnvGuard::remove("SEALANTERN_HTTP_AUTH_TOKEN");
+        format!("{}:{}", effective_cli_web_bind_host(), 3000)
+    };
 
-    let bind_addr = format!("{}:{}", effective_cli_web_bind_host(), 3000);
     assert_eq!(bind_addr, "127.0.0.1:3000");
 
     let app = crate::adapters::http::server::build_test_http_app(std::env::temp_dir());

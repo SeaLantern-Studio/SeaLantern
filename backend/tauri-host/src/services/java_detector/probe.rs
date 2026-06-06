@@ -1,4 +1,4 @@
-use super::models::JavaInfo;
+use super::JavaInfo;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fs;

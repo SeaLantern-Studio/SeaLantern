@@ -117,7 +117,7 @@ fn test_collect_finished_processes_removes_exited_children() {
 
 #[test]
 fn test_kill_plugin_processes_only_kills_owned_processes() {
-    let registry: process::ProcessRegistry = Arc::new(Mutex::new(HashMap::new()));
+    let registry: Arc<Mutex<HashMap<u32, process::ProcessEntry>>> = Arc::new(Mutex::new(HashMap::new()));
     let owned = spawn_sleep_child();
     let owned_pid = owned.id();
     let foreign = spawn_sleep_child();
@@ -213,7 +213,9 @@ fn test_process_exec_timeout_kills_and_reaps_foreground_process() {
     let process: Table = sl.get("process").unwrap();
     let exec: Function = process.get("exec").unwrap();
     let options = runtime.lua().create_table().unwrap();
-    options.set("timeout_ms", 400).unwrap();
+    // PowerShell process startup on Windows can be slow enough that a 400ms timeout
+    // kills the child before the fixture script persists its pid file.
+    options.set("timeout_ms", 1200).unwrap();
 
     let started_at = Instant::now();
     let result: mlua::Result<Table> = exec.call((program, args, Some(options)));
@@ -224,7 +226,7 @@ fn test_process_exec_timeout_kills_and_reaps_foreground_process() {
     assert!(
         error_message.contains("exceeded maximum duration") || error_message.contains("timeout")
     );
-    assert!(elapsed >= Duration::from_millis(250));
+    assert!(elapsed >= Duration::from_millis(800));
     assert!(elapsed < Duration::from_secs(10));
 
     let child_pid = wait_for_pid_file(&pid_file);
@@ -1164,7 +1166,7 @@ where
     P: Fn(&mlua::Value) -> bool,
 {
     let deadline = Instant::now() + Duration::from_secs(3);
-    let cloned_options = options.and_then(|table| Some(table.clone()));
+    let cloned_options = options.cloned();
 
     while Instant::now() < deadline {
         let value: mlua::Value = read_output.call((pid, cloned_options.clone())).unwrap();
@@ -1215,7 +1217,7 @@ fn wait_for_background_process_exit(get: &Function, pid: u32) -> Option<Table> {
 }
 
 fn wait_for_pid_file(pid_file: &Path) -> u32 {
-    let deadline = Instant::now() + Duration::from_secs(2);
+    let deadline = Instant::now() + Duration::from_secs(5);
 
     while Instant::now() < deadline {
         if let Ok(content) = fs::read_to_string(pid_file) {
@@ -1249,7 +1251,10 @@ fn process_exists(pid: u32) -> bool {
         .unwrap_or(false)
 }
 
-fn cleanup_registered_process(registry: &process::ProcessRegistry, pid: u32) {
+fn cleanup_registered_process(
+    registry: &Arc<Mutex<HashMap<u32, process::ProcessEntry>>>,
+    pid: u32,
+) {
     let mut procs = registry.lock().unwrap();
     if let Some(mut entry) = procs.remove(&pid) {
         let _ = entry.child.kill();
@@ -1259,7 +1264,7 @@ fn cleanup_registered_process(registry: &process::ProcessRegistry, pid: u32) {
 
 fn register_test_process_with_output<F>(runtime: &PluginRuntime, mutate: F) -> u32
 where
-    F: FnOnce(&process::SharedProcessOutput),
+    F: FnOnce(&std::sync::Arc<std::sync::Mutex<process::ProcessOutputBuffers>>),
 {
     let child = spawn_sleep_child();
     let pid = child.id();

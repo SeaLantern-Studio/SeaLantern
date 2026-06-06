@@ -1,9 +1,9 @@
 use super::shared::{emit_process_log, process_error};
-use crate::plugins::runtime::process::common::{
-    collect_finished_processes, is_process_owner, ProcessRegistry,
-};
+use crate::plugins::runtime::process::common::{collect_finished_processes, is_process_owner};
+use crate::plugins::runtime::process::ProcessEntry;
 use mlua::{Function, Lua, Value};
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// 注册 `sl.process.get`
 ///
@@ -19,7 +19,7 @@ use std::sync::Arc;
 pub(super) fn get(
     lua: &Lua,
     plugin_id: &str,
-    process_registry: &ProcessRegistry,
+    process_registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
 ) -> Result<Function, String> {
     let pid = plugin_id.to_string();
     let registry = Arc::clone(process_registry);
@@ -78,7 +78,7 @@ pub(super) fn get(
 pub(super) fn list(
     lua: &Lua,
     plugin_id: &str,
-    process_registry: &ProcessRegistry,
+    process_registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
 ) -> Result<Function, String> {
     let pid = plugin_id.to_string();
     let registry = Arc::clone(process_registry);

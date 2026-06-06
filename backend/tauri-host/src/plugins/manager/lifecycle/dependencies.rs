@@ -1,7 +1,7 @@
-use super::{PluginInfo, PluginManager, PluginState};
+use crate::plugins::manager::{PluginInfo, PluginManager, PluginState};
 use crate::models::plugin::PluginDependency;
 
-pub(super) fn update_all_missing_dependencies(manager: &mut PluginManager) {
+pub(in crate::plugins::manager) fn update_all_missing_dependencies(manager: &mut PluginManager) {
     let plugin_manifests: Vec<(String, crate::models::plugin::PluginManifest)> = manager
         .plugins
         .iter()
@@ -16,7 +16,7 @@ pub(super) fn update_all_missing_dependencies(manager: &mut PluginManager) {
     }
 }
 
-pub(super) fn check_dependencies(
+pub(in crate::plugins::manager::lifecycle) fn check_dependencies(
     manager: &PluginManager,
     dependencies: &[PluginDependency],
 ) -> Vec<String> {
@@ -47,7 +47,10 @@ pub(super) fn check_dependencies(
     missing
 }
 
-pub(super) fn get_dependent_plugin_ids(manager: &PluginManager, plugin_id: &str) -> Vec<String> {
+pub(in crate::plugins::manager::lifecycle) fn get_dependent_plugin_ids(
+    manager: &PluginManager,
+    plugin_id: &str,
+) -> Vec<String> {
     let mut dependents = Vec::new();
     for (id, info) in &manager.plugins {
         if !matches!(info.state, PluginState::Enabled) {
@@ -66,6 +69,6 @@ pub(super) fn get_dependent_plugin_ids(manager: &PluginManager, plugin_id: &str)
     dependents
 }
 
-pub(super) fn get_plugin_list(manager: &PluginManager) -> Vec<PluginInfo> {
+pub(in crate::plugins::manager) fn get_plugin_list(manager: &PluginManager) -> Vec<PluginInfo> {
     manager.plugins.values().cloned().collect()
 }

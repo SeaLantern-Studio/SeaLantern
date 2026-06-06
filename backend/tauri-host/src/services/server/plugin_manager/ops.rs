@@ -3,7 +3,7 @@ use std::fs;
 use super::common::{ensure_plugins_dir, validate_plugin_file_name};
 use tokio::io::AsyncWriteExt;
 
-pub(super) fn toggle_plugin(
+pub(crate) fn toggle_plugin(
     server_path: &str,
     file_name: &str,
     enabled: bool,
@@ -31,7 +31,7 @@ pub(super) fn toggle_plugin(
     Ok(())
 }
 
-pub(super) fn delete_plugin(server_path: &str, file_name: &str) -> Result<(), String> {
+pub(crate) fn delete_plugin(server_path: &str, file_name: &str) -> Result<(), String> {
     let plugins_dir = ensure_plugins_dir(server_path)?;
     let base_file_name = validate_plugin_file_name(file_name)?;
 
@@ -49,7 +49,7 @@ pub(super) fn delete_plugin(server_path: &str, file_name: &str) -> Result<(), St
     Ok(())
 }
 
-pub(super) async fn install_plugin(
+pub(crate) async fn install_plugin(
     server_path: &str,
     file_data: Vec<u8>,
     file_name: &str,

@@ -1,9 +1,21 @@
-use super::common::{manager, ForceStopPreparationResponse, ServerStartFallbackEvent};
+use super::common::manager;
+use super::ForceStopPreparationResponse;
 use crate::models::server::{ServerInstance, ServerStatusInfo};
-use crate::services::server::manager::{DockerLaunchDetail, LocalLaunchDetail};
+use crate::services::server::manager::LocalLaunchDetail;
+use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 use tauri::Emitter;
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ServerStartFallbackEvent {
+    server_id: String,
+    server_name: String,
+    from_mode: String,
+    to_mode: String,
+    reason: String,
+}
 
 fn server_error_cache() -> &'static Mutex<HashMap<String, String>> {
     static CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
@@ -112,30 +124,6 @@ pub(super) fn get_server_status(app: tauri::AppHandle, id: String) -> ServerStat
     status
 }
 
-#[cfg(test)]
-mod tests {
-    use super::should_emit_server_error;
-
-    #[test]
-    fn server_error_notification_only_emits_once_per_message() {
-        let server_id = "runtime-manage-notify-alpha";
-
-        assert!(should_emit_server_error(server_id, Some("server crashed")));
-        assert!(!should_emit_server_error(server_id, Some("server crashed")));
-        assert!(should_emit_server_error(server_id, Some("disk full")));
-        assert!(!should_emit_server_error(server_id, Some("disk full")));
-    }
-
-    #[test]
-    fn clearing_server_error_allows_future_notification_again() {
-        let server_id = "runtime-manage-notify-beta";
-
-        assert!(should_emit_server_error(server_id, Some("server crashed")));
-        assert!(!should_emit_server_error(server_id, None));
-        assert!(should_emit_server_error(server_id, Some("server crashed")));
-    }
-}
-
 /// 删除服务器
 pub(super) fn delete_server(id: String) -> Result<(), String> {
     manager().delete_server(&id)
@@ -177,4 +165,28 @@ pub(super) fn update_server_path(
         new_jar_path.as_deref(),
         new_startup_mode.as_deref(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_emit_server_error;
+
+    #[test]
+    fn server_error_notification_only_emits_once_per_message() {
+        let server_id = "runtime-manage-notify-alpha";
+
+        assert!(should_emit_server_error(server_id, Some("server crashed")));
+        assert!(!should_emit_server_error(server_id, Some("server crashed")));
+        assert!(should_emit_server_error(server_id, Some("disk full")));
+        assert!(!should_emit_server_error(server_id, Some("disk full")));
+    }
+
+    #[test]
+    fn clearing_server_error_allows_future_notification_again() {
+        let server_id = "runtime-manage-notify-beta";
+
+        assert!(should_emit_server_error(server_id, Some("server crashed")));
+        assert!(!should_emit_server_error(server_id, None));
+        assert!(should_emit_server_error(server_id, Some("server crashed")));
+    }
 }

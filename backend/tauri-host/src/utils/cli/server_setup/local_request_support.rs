@@ -1,25 +1,26 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::models::server::{
     AddExistingServerRequest, CpuPolicyConfig, CreateServerRequest, JvmPresetConfig,
 };
-use crate::services::server::installer::{detect_core_type, find_server_jar, CoreType};
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::trace_cli_action;
-use crate::utils::path::is_windows_absolute_path;
+use sea_lantern_server_local_setup_core::{
+    detect_startup_mode_from_folder, infer_core_type_from_local_inputs_checked,
+    infer_local_create_mc_version_checked,
+    infer_local_create_startup_mode as infer_shared_local_create_startup_mode,
+    infer_mc_version_from_folder_checked, infer_mc_version_hint,
+    normalize_cli_startup_mode,
+    normalize_core_type, resolve_command_path_hint, resolve_custom_entry_hint_path,
+    resolve_existing_attach_entry_path, resolve_existing_local_entry_path,
+    resolve_local_create_server_path, validate_local_create_folder, LocalFolderInspection,
+    validate_local_create_startup_exists, validate_local_create_startup_path_binding,
+    validate_local_entry_startup_mode,
+};
+use sea_lantern_server_installer_core::detect_core_type;
 
 use super::java_support::resolve_java_path;
-use super::local_folder_inspection::LocalFolderInspection;
-use super::local_startup_support::{
-    detect_startup_mode_from_folder, infer_local_create_startup_mode, normalize_cli_startup_mode,
-    resolve_command_path_hint, resolve_custom_entry_hint_path, resolve_existing_attach_entry_path,
-    resolve_existing_local_entry_path, validate_local_entry_startup_mode,
-};
-use super::metadata_support::{
-    infer_core_type_from_local_inputs, infer_local_create_mc_version, infer_mc_version_from_folder,
-    infer_mc_version_hint,
-};
 
 #[derive(Debug, Clone)]
 pub(super) struct LocalDefaults<'a> {
@@ -55,7 +56,7 @@ pub(super) fn build_local_create_request(
         .as_deref()
         .and_then(|entry| resolve_existing_local_entry_path(folder_path, entry));
     let normalized_startup_mode = explicit_startup_mode.unwrap_or_else(|| {
-        infer_local_create_startup_mode(command, resolved_entry_path.as_deref())
+        infer_shared_local_create_startup_mode(command.entry.is_some(), resolved_entry_path.as_deref())
     });
     let is_custom_startup_mode = normalized_startup_mode == "custom";
 
@@ -116,31 +117,25 @@ pub(super) fn build_local_create_request(
         .or_else(|| resolved_jar_path.clone())
         .or_else(|| custom_entry_hint_path.clone());
 
-    let core_type = command
-        .core_type
-        .clone()
-        .map(|value| normalize_core_type(Some(&value)))
-        .transpose()?
-        .unwrap_or_else(|| {
-            folder_path
-                .and_then(|folder| {
-                    infer_core_type_from_local_inputs(folder, executable_hint.as_deref())
-                })
-                .unwrap_or_else(|| detect_core_type(&jar_path))
-        });
+    let core_type = if let Some(value) = command.core_type.clone() {
+        normalize_core_type(Some(&value))?
+    } else if let Some(folder) = folder_path {
+        infer_core_type_from_local_inputs_checked(folder, executable_hint.as_deref())?
+            .unwrap_or_else(|| detect_core_type(&jar_path))
+    } else {
+        detect_core_type(&jar_path)
+    };
 
     let mc_version = command
         .mc_version
         .clone()
-        .or_else(|| {
-            infer_local_create_mc_version(
-                &jar_path,
-                resolved_name,
-                resolved_entry_path.as_deref(),
-                folder_path,
-                executable_hint.as_deref(),
-            )
-        })
+        .or(infer_local_create_mc_version_checked(
+            &jar_path,
+            resolved_name,
+            resolved_entry_path.as_deref(),
+            folder_path,
+            executable_hint.as_deref(),
+        )?)
         .ok_or_else(|| "local server 缺少 --mc，且无法从 --jar/名称推断版本".to_string())?;
 
     let server_path = folder_path
@@ -245,8 +240,7 @@ pub(super) fn build_local_attach_request(
         });
     let executable_hint = executable_path
         .clone()
-        .or_else(|| inspection.detected_jar_path.clone())
-        .or_else(|| find_server_jar(folder_path).ok());
+        .or_else(|| inspection.detected_jar_path.clone());
 
     Ok(AddExistingServerRequest {
         name: resolved_name.to_string(),
@@ -275,7 +269,9 @@ pub(super) fn build_local_attach_request(
         },
         core_type: command.core_type.clone().or_else(|| {
             inspection.inferred_core_type.clone().or_else(|| {
-                infer_core_type_from_local_inputs(folder_path, executable_hint.as_deref())
+                infer_core_type_from_local_inputs_checked(folder_path, executable_hint.as_deref())
+                    .ok()
+                    .flatten()
             })
         }),
         mc_version: command
@@ -284,7 +280,9 @@ pub(super) fn build_local_attach_request(
             .or_else(|| infer_mc_version_hint(&[folder, resolved_name]))
             .or_else(|| {
                 inspection.inferred_mc_version.clone().or_else(|| {
-                    infer_mc_version_from_folder(folder_path, executable_hint.as_deref())
+                    infer_mc_version_from_folder_checked(folder_path, executable_hint.as_deref())
+                        .ok()
+                        .flatten()
                 })
             }),
         jvm_args: Vec::new(),
@@ -329,150 +327,6 @@ pub(super) fn trace_local_attach_request(
             ports.game_port
         ),
     );
-}
-
-fn validate_local_create_folder(folder: Option<&str>) -> Result<Option<&Path>, String> {
-    let Some(folder) = folder.map(str::trim).filter(|value| !value.is_empty()) else {
-        return Ok(None);
-    };
-
-    let folder_path = Path::new(folder);
-    if folder_path.exists() && !folder_path.is_dir() {
-        return Err(format!("--folder 指定目录不存在或不是文件夹: {}", folder));
-    }
-
-    Ok(Some(folder_path))
-}
-
-fn validate_local_create_startup_path_binding(
-    folder_path: Option<&Path>,
-    startup_mode: &str,
-    jar_path: &str,
-    resolved_entry_path: Option<&str>,
-) -> Result<(), String> {
-    let Some(folder_path) = folder_path else {
-        return Ok(());
-    };
-
-    if startup_mode == "custom" {
-        return Ok(());
-    }
-
-    let startup_path = resolved_entry_path.unwrap_or(jar_path).trim();
-    if startup_path.is_empty() {
-        return Ok(());
-    }
-
-    let startup_path_obj = Path::new(startup_path);
-    let startup_parent = startup_path_obj.parent().ok_or_else(|| {
-        format!(
-            "--folder={} 下创建本地服务器时，启动文件必须位于该目录根下",
-            folder_path.display()
-        )
-    })?;
-
-    if !paths_refer_to_same_location(startup_parent, folder_path) {
-        return Err(format!(
-            "--folder={} 下创建本地服务器时，--jar/--entry 的启动文件必须位于该目录根下；当前路径为 {}",
-            folder_path.display(),
-            startup_path
-        ));
-    }
-
-    Ok(())
-}
-
-fn validate_local_create_startup_exists(
-    startup_mode: &str,
-    jar_path: &str,
-    resolved_entry_path: Option<&str>,
-) -> Result<(), String> {
-    if startup_mode == "custom" {
-        return Ok(());
-    }
-
-    let startup_path = resolved_entry_path.unwrap_or(jar_path).trim();
-    if startup_path.is_empty() {
-        return Err("本地服务器缺少可用的启动文件路径".to_string());
-    }
-
-    let startup_path_obj = Path::new(startup_path);
-    if startup_path_obj.exists() {
-        return Ok(());
-    }
-
-    Err(format!(
-        "本地服务器启动文件不存在，请先准备好对应 JAR/脚本后再创建: {}",
-        startup_path
-    ))
-}
-
-fn paths_refer_to_same_location(left: &Path, right: &Path) -> bool {
-    normalize_path_for_compare(left) == normalize_path_for_compare(right)
-}
-
-fn normalize_path_for_compare(path: &Path) -> String {
-    let absolute = if path.is_absolute() || is_windows_absolute_path(&path.to_string_lossy()) {
-        path.to_path_buf()
-    } else if let Ok(current_dir) = std::env::current_dir() {
-        current_dir.join(path)
-    } else {
-        path.to_path_buf()
-    };
-
-    let mut normalized = PathBuf::new();
-    for component in absolute.components() {
-        match component {
-            std::path::Component::CurDir => {}
-            std::path::Component::ParentDir => {
-                normalized.pop();
-            }
-            _ => normalized.push(component.as_os_str()),
-        }
-    }
-
-    let normalized = normalized
-        .to_string_lossy()
-        .replace('\\', "/")
-        .trim_end_matches('/')
-        .to_string();
-
-    if cfg!(windows) {
-        normalized.to_ascii_lowercase()
-    } else {
-        normalized
-    }
-}
-
-fn resolve_local_create_server_path(
-    jar_path: &str,
-    resolved_entry_path: Option<&str>,
-    custom_entry_hint_path: Option<&str>,
-) -> Option<String> {
-    resolved_entry_path
-        .and_then(path_parent_string)
-        .or_else(|| path_parent_string(jar_path))
-        .or_else(|| custom_entry_hint_path.and_then(path_parent_string))
-}
-
-fn path_parent_string(path: &str) -> Option<String> {
-    let trimmed = path.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    Path::new(trimmed)
-        .parent()
-        .map(|parent| parent.to_string_lossy().to_string())
-        .filter(|parent| !parent.trim().is_empty())
-}
-
-fn normalize_core_type(value: Option<&str>) -> Result<String, String> {
-    let raw = value.unwrap_or("paper").trim();
-    if raw.is_empty() {
-        return Err("--core 不能为空".to_string());
-    }
-    Ok(CoreType::normalize_to_api_core_key(raw).unwrap_or_else(|| raw.to_string()))
 }
 
 #[cfg(test)]
@@ -831,6 +685,34 @@ mod tests {
                 .expect_err("folder-backed create should reject external jar path");
 
         assert!(err.contains("启动文件必须位于该目录根下"));
+    }
+
+    #[test]
+    fn build_local_create_request_surfaces_folder_inspection_failures() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let folder = temp_dir.path().join("mystery-server");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+        std::fs::create_dir(folder.join("server.jar"))
+            .expect("directory-backed jar path should exist");
+        let script_path = folder.join("launch.sh");
+        std::fs::write(&script_path, b"#!/bin/sh\n").expect("script should write");
+
+        let command = CliServerCommand {
+            folder: Some(folder.to_string_lossy().to_string()),
+            entry: Some(script_path.to_string_lossy().to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+
+        let err = build_local_create_request(&command, "cache-server", &ports, &sample_defaults())
+            .expect_err("folder inspection failures should not be silently downgraded");
+
+        assert!(
+            err.contains("本地目录探测失败") || err.contains("检测到目录伪装成 JAR 文件"),
+            "unexpected error: {}",
+            err
+        );
+        assert!(err.contains("server.jar"), "unexpected error: {}", err);
     }
 
     #[test]

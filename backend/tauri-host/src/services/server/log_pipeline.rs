@@ -7,14 +7,16 @@ mod reader;
 mod state;
 mod writer;
 
-pub use state::{ServerLogEventHandler, ServerLogProcessor};
+use std::sync::Arc;
 
-pub fn set_server_log_event_handler(handler: ServerLogEventHandler) -> Result<(), String> {
+use self::state::{ServerLogEventHandler, ServerLogProcessor};
+
+pub fn set_server_log_event_handler(handler: Arc<ServerLogEventHandler>) -> Result<(), String> {
     writer::set_server_log_event_handler(handler)
 }
 
 #[allow(dead_code)] // 外部调用
-pub fn add_server_log_processor(processor: ServerLogProcessor) -> Result<(), String> {
+pub fn add_server_log_processor(processor: Arc<ServerLogProcessor>) -> Result<(), String> {
     output::add_server_log_processor(processor)
 }
 

@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::net::TcpListener;
 
-use crate::utils::port_usage::{is_tcp_port_listening, PortUsageKind};
+use sea_lantern_runtime::{is_tcp_port_listening_checked, PortUsageKind};
 
 use super::cli_env::effective_cli_web_bind_host;
 use super::server_shared::{trace_cli_action, trace_cli_error};
@@ -364,11 +364,29 @@ pub(super) fn is_port_available_for_binding(port: u16, binding: PortBindingKind)
         // Minecraft 端口既可能被本地进程绑定到回环地址，也可能被 Docker/其他服务发布到
         // 0.0.0.0。Windows 上单纯试绑端口对 Docker published port 不可靠，因此优先检查
         // 系统监听表，再补一次 bind 作为兜底。
-        PortBindingKind::MinecraftGame => {
-            !is_tcp_port_listening(port, PortUsageKind::WildcardOrSpecific)
-                && TcpListener::bind(("0.0.0.0", port)).is_ok()
-        }
+        PortBindingKind::MinecraftGame => minecraft_game_port_is_available(port, |port| {
+            is_tcp_port_listening_checked(port, PortUsageKind::WildcardOrSpecific)
+        }),
     }
+}
+
+fn minecraft_game_port_is_available<F>(port: u16, mut detect_listening: F) -> bool
+where
+    F: FnMut(u16) -> Result<bool, String>,
+{
+    let listening = match detect_listening(port) {
+        Ok(listening) => listening,
+        Err(error) => {
+            trace_cli_error(
+                "ports_detect_listening_failed",
+                &format!("port={} binding=minecraft_game", port),
+                &error,
+            );
+            return false;
+        }
+    };
+
+    !listening && TcpListener::bind(("0.0.0.0", port)).is_ok()
 }
 
 pub(super) fn prompt_yes_no(prompt: &str) -> Result<bool, String> {
@@ -483,10 +501,11 @@ fn sanitize_prompt_for_log(prompt: &str) -> String {
 mod tests {
     use super::{
         find_next_available_port, is_port_available, is_port_available_for_binding,
-        parse_yes_no_input, parse_yes_no_input_with_default, prepare_ports_with,
-        resolve_game_port_with, resolve_web_port_with, sanitize_prompt_for_log, PortBindingKind,
-        PreparedPorts,
+        minecraft_game_port_is_available, parse_yes_no_input, parse_yes_no_input_with_default,
+        prepare_ports_with, resolve_game_port_with, resolve_web_port_with,
+        sanitize_prompt_for_log, PortBindingKind, PreparedPorts,
     };
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
     use std::collections::{HashMap, VecDeque};
     use std::net::TcpListener;
     use std::sync::{Arc, Mutex};
@@ -498,8 +517,8 @@ mod tests {
 
     #[test]
     fn cli_web_port_availability_uses_effective_web_bind_host() {
-        let existing = std::env::var("SEALANTERN_WEB_BIND").ok();
-        std::env::set_var("SEALANTERN_WEB_BIND", "127.0.0.1");
+        let _env_lock = lock_env();
+        let _bind_guard = EnvGuard::set("SEALANTERN_WEB_BIND", "127.0.0.1");
 
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind should succeed");
         let occupied_port = listener
@@ -510,11 +529,6 @@ mod tests {
         assert!(!is_port_available_for_binding(occupied_port, PortBindingKind::CliWeb));
 
         drop(listener);
-        if let Some(value) = existing {
-            std::env::set_var("SEALANTERN_WEB_BIND", value);
-        } else {
-            std::env::remove_var("SEALANTERN_WEB_BIND");
-        }
     }
 
     #[test]
@@ -526,6 +540,20 @@ mod tests {
             .port();
 
         assert!(!is_port_available_for_binding(occupied_port, PortBindingKind::MinecraftGame));
+    }
+
+    #[test]
+    fn minecraft_game_port_availability_treats_detection_errors_as_unavailable() {
+        let available_listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind should succeed");
+        let candidate_port = available_listener
+            .local_addr()
+            .expect("local addr should resolve")
+            .port();
+        drop(available_listener);
+
+        assert!(!minecraft_game_port_is_available(candidate_port, |_| {
+            Err("netstat failed".to_string())
+        }));
     }
 
     #[test]

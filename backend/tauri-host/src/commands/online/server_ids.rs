@@ -1,5 +1,16 @@
 use crate::services::global::server_id_manager;
-use crate::services::server::id_manager::{CreateServerIdRequest, ServerIdEntry, ServerIdResponse};
+use crate::services::server::id_manager::{CreateServerIdRequest, ServerIdEntry};
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct ServerIdResponse {
+    pub id: String,
+    pub name: String,
+    pub address: String,
+    pub port: u16,
+    pub created_at: u64,
+    pub is_active: bool,
+}
 
 /// Create a new server ID
 #[tauri::command]

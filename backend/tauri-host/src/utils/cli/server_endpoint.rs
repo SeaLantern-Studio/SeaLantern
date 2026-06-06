@@ -40,43 +40,11 @@ mod tests {
         render_cli_web_binding_hint, render_cli_web_browser_url, render_docker_rcon_operator_hint,
     };
     use crate::models::server::RconConfig;
-    use once_cell::sync::Lazy;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
-
-    struct EnvGuard {
-        name: &'static str,
-        original: Option<String>,
-    }
-
-    impl EnvGuard {
-        fn set(name: &'static str, value: &str) -> Self {
-            let original = std::env::var(name).ok();
-            std::env::set_var(name, value);
-            Self { name, original }
-        }
-
-        fn remove(name: &'static str) -> Self {
-            let original = std::env::var(name).ok();
-            std::env::remove_var(name);
-            Self { name, original }
-        }
-    }
-
-    impl Drop for EnvGuard {
-        fn drop(&mut self) {
-            if let Some(value) = &self.original {
-                std::env::set_var(self.name, value);
-            } else {
-                std::env::remove_var(self.name);
-            }
-        }
-    }
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
 
     #[test]
     fn browser_url_maps_zero_bind_to_loopback_for_local_clickability() {
-        let _env_lock = ENV_LOCK.lock().expect("env lock");
+        let _env_lock = lock_env();
         let _bind_guard = EnvGuard::set("SEALANTERN_WEB_BIND", "0.0.0.0");
 
         let url = render_cli_web_browser_url(8000, "docker-1");
@@ -85,7 +53,7 @@ mod tests {
 
     #[test]
     fn binding_hint_only_exists_for_all_interface_bind() {
-        let _env_lock = ENV_LOCK.lock().expect("env lock");
+        let _env_lock = lock_env();
         let _bind_guard = EnvGuard::set("SEALANTERN_WEB_BIND", "0.0.0.0");
 
         let hint = render_cli_web_binding_hint(8000).expect("hint should exist");
@@ -94,7 +62,7 @@ mod tests {
 
     #[test]
     fn browser_url_defaults_to_loopback_without_explicit_bind_override() {
-        let _env_lock = ENV_LOCK.lock().expect("env lock");
+        let _env_lock = lock_env();
         let _http_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
         let _http_bind = EnvGuard::remove("SEALANTERN_HTTP_BIND");
         let _web_bind = EnvGuard::remove("SEALANTERN_WEB_BIND");

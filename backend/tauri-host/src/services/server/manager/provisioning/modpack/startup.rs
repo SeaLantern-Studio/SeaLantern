@@ -4,7 +4,6 @@ use crate::models::server::ImportModpackRequest;
 
 use super::super::super::common::StartupMode;
 use super::super::super::fs::resolve_startup_file_path;
-use super::super::shared::trim_optional_string;
 
 pub(super) struct ModpackStartupSelection {
     pub(super) startup_mode: String,
@@ -51,4 +50,10 @@ pub(super) fn resolve_modpack_startup_selection(
         selected_core_type,
         selected_mc_version,
     })
+}
+
+fn trim_optional_string(value: Option<&String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }

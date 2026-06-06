@@ -1,61 +1,7 @@
-use std::path::Path;
-
-use regex::Regex;
-
-use super::local_folder_inspection::inspect_local_folder;
-
-static MC_VERSION_PATTERN: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
-    Regex::new(r"(?i)(1\.\d{1,2}(?:\.\d{1,2})?)").expect("mc version regex should compile")
-});
-
-pub(super) fn infer_local_create_mc_version(
-    jar_path: &str,
-    resolved_name: &str,
-    resolved_entry_path: Option<&str>,
-    folder_path: Option<&Path>,
-    executable_hint: Option<&str>,
-) -> Option<String> {
-    infer_mc_version_hint(&[jar_path, resolved_name])
-        .or_else(|| {
-            resolved_entry_path.and_then(|entry_path| {
-                Path::new(entry_path)
-                    .parent()
-                    .and_then(|folder| infer_mc_version_from_folder(folder, Some(entry_path)))
-            })
-        })
-        .or_else(|| {
-            folder_path.and_then(|folder| infer_mc_version_from_folder(folder, executable_hint))
-        })
-}
-
-pub(super) fn infer_core_type_from_local_inputs(
-    folder: &Path,
-    executable_path: Option<&str>,
-) -> Option<String> {
-    executable_path
-        .map(crate::services::server::installer::detect_core_type)
-        .or_else(|| inspect_local_folder(folder).inferred_core_type)
-}
-
-pub(super) fn infer_mc_version_from_folder(
-    folder: &Path,
-    executable_path: Option<&str>,
-) -> Option<String> {
-    executable_path
-        .and_then(|path| infer_mc_version_hint(&[path]))
-        .or_else(|| inspect_local_folder(folder).inferred_mc_version)
-}
-
-pub(super) fn infer_mc_version_hint(inputs: &[&str]) -> Option<String> {
-    for input in inputs {
-        if let Some(capture) = MC_VERSION_PATTERN.captures(input) {
-            if let Some(value) = capture.get(1) {
-                return Some(value.as_str().to_string());
-            }
-        }
-    }
-    None
-}
+pub(super) use sea_lantern_server_local_setup_core::{
+    infer_core_type_from_local_inputs, infer_local_create_mc_version,
+    infer_mc_version_from_folder, infer_mc_version_hint,
+};
 
 #[cfg(test)]
 mod tests {

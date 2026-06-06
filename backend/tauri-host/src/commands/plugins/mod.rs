@@ -1,3 +1,3 @@
 //! 插件相关的命令。
 
-pub mod manage;
+pub(crate) mod manage;

@@ -3,15 +3,16 @@ use super::shared::{
 };
 use crate::plugins::runtime::process::common::{
     collect_finished_processes, new_process_output, plugin_process_count,
-    spawn_background_pipe_reader, truncate_output, ProcessEntry, ProcessRegistry, ProcessStream,
-    MAX_ARGS_COUNT, MAX_ARG_LENGTH, MAX_BACKGROUND_PROCESSES_PER_PLUGIN, MAX_ENV_KEY_LENGTH,
+    spawn_background_pipe_reader, truncate_output, ProcessEntry, ProcessStream, MAX_ARGS_COUNT,
+    MAX_ARG_LENGTH, MAX_BACKGROUND_PROCESSES_PER_PLUGIN, MAX_ENV_KEY_LENGTH,
     MAX_ENV_VALUE_LENGTH, MAX_ENV_VARS, MAX_FOREGROUND_EXEC_DURATION,
 };
 use crate::plugins::runtime::shared::validate_path_static;
 use mlua::{Function, Lua, Table};
 use std::io::Read;
+use std::collections::HashMap;
 use std::process::{Command, Stdio};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -44,7 +45,7 @@ pub(super) fn exec(
     plugin_dir: &std::path::Path,
     plugin_id: &str,
     permissions: &[String],
-    process_registry: &ProcessRegistry,
+    process_registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
 ) -> Result<Function, String> {
     let dir = plugin_dir.to_path_buf();
     let pid = plugin_id.to_string();

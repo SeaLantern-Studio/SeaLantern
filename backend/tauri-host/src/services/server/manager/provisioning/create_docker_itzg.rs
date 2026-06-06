@@ -1,31 +1,28 @@
 use crate::models::server::{CreateDockerItzgServerRequest, ServerInstance, ServerRuntimeConfig};
+use sea_lantern_docker_core::parse_memory_env_value_checked;
+use sea_lantern_server_config_core::startup::ensure_server_path_writable;
 
 use super::super::common::{
     current_timestamp_secs, ensure_server_identity_available, validate_server_name,
 };
-use super::shared::ensure_server_path_writable;
 use super::ServerManager;
 use std::path::Path;
 
-fn parse_memory_env_value(value: &str) -> Option<u32> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let upper = trimmed.to_ascii_uppercase();
-    if let Some(number) = upper.strip_suffix('G') {
-        return number
-            .trim()
-            .parse::<u32>()
-            .ok()
-            .map(|base| base.saturating_mul(1024));
-    }
-    if let Some(number) = upper.strip_suffix('M') {
-        return number.trim().parse::<u32>().ok();
-    }
-
-    upper.parse::<u32>().ok()
+fn resolve_memory_env_mb(
+    env: &std::collections::BTreeMap<String, String>,
+    key: &str,
+    default_mb: u32,
+) -> Result<u32, String> {
+    Ok(
+        env.get(key)
+            .map(|value| {
+                parse_memory_env_value_checked(value)
+                    .map_err(|err| format!("{} 配置无效: {}", key, err))
+                    .map(|parsed| parsed.unwrap_or(default_mb))
+            })
+            .transpose()?
+            .unwrap_or(default_mb),
+    )
 }
 
 fn build_docker_itzg_server(
@@ -39,18 +36,8 @@ fn build_docker_itzg_server(
         return Err("docker_itzg data_dir_mount 不能为空".to_string());
     }
 
-    let max_memory = req
-        .runtime
-        .env
-        .get("MAX_MEMORY")
-        .and_then(|value| parse_memory_env_value(value))
-        .unwrap_or(4096);
-    let min_memory = req
-        .runtime
-        .env
-        .get("INIT_MEMORY")
-        .and_then(|value| parse_memory_env_value(value))
-        .unwrap_or(1024);
+    let max_memory = resolve_memory_env_mb(&req.runtime.env, "MAX_MEMORY", 4096)?;
+    let min_memory = resolve_memory_env_mb(&req.runtime.env, "INIT_MEMORY", 1024)?;
     let runtime = req.runtime;
     let server_dir = data_dir_mount;
 
@@ -107,12 +94,24 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
-    use super::{build_docker_itzg_server, parse_memory_env_value};
+    use super::build_docker_itzg_server;
+    use sea_lantern_docker_core::{parse_memory_env_value, parse_memory_env_value_checked};
     use crate::models::server::{
         CpuPolicyConfig, CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode,
         DockerItzgRuntimeConfig, JvmPresetConfig, ServerRuntimeConfig,
     };
     use crate::services::server::manager::ServerManager;
+
+    fn isolated_manager(temp_dir: &std::path::Path) -> ServerManager {
+        let manager = ServerManager::new();
+        *manager.data_dir.lock().expect("data_dir lock should work") =
+            temp_dir.to_string_lossy().to_string();
+        manager
+            .lock_servers()
+            .expect("servers lock should work")
+            .clear();
+        manager
+    }
 
     fn sample_request() -> CreateDockerItzgServerRequest {
         CreateDockerItzgServerRequest {
@@ -195,6 +194,46 @@ mod tests {
         assert_eq!(parse_memory_env_value("4G"), Some(4096));
         assert_eq!(parse_memory_env_value("1536M"), Some(1536));
         assert_eq!(parse_memory_env_value("2048"), Some(2048));
+        assert_eq!(parse_memory_env_value_checked("4G").unwrap(), Some(4096));
+        assert_eq!(parse_memory_env_value_checked("1536M").unwrap(), Some(1536));
+        assert_eq!(parse_memory_env_value_checked("2048").unwrap(), Some(2048));
+    }
+
+    #[test]
+    fn build_docker_itzg_server_rejects_invalid_max_memory_env() {
+        let mut req = sample_request();
+        req.runtime
+            .env
+            .insert("MAX_MEMORY".to_string(), "4X".to_string());
+
+        let err = build_docker_itzg_server(
+            "docker-hidden-3".to_string(),
+            123,
+            "Docker Hidden".to_string(),
+            req,
+        )
+        .expect_err("invalid MAX_MEMORY should be rejected");
+
+        assert!(err.contains("MAX_MEMORY 配置无效"));
+        assert!(err.contains("内存值无效 '4X'"));
+    }
+
+    #[test]
+    fn build_docker_itzg_server_treats_blank_init_memory_as_absent() {
+        let mut req = sample_request();
+        req.runtime
+            .env
+            .insert("INIT_MEMORY".to_string(), "   ".to_string());
+
+        let server = build_docker_itzg_server(
+            "docker-hidden-4".to_string(),
+            123,
+            "Docker Hidden".to_string(),
+            req,
+        )
+        .expect("blank INIT_MEMORY should fall back to default");
+
+        assert_eq!(server.min_memory, 1024);
     }
 
     #[test]
@@ -202,7 +241,7 @@ mod tests {
         let temp_dir = tempdir().expect("temp dir should exist");
         let data_dir = temp_dir.path().join("docker-data").join("paper-prod");
 
-        let manager = ServerManager::new();
+        let manager = isolated_manager(temp_dir.path());
         let mut req = sample_request();
         req.name = "Docker Hidden Temp Create".to_string();
         req.aliases = vec!["docker_hidden_temp_create".to_string()];
@@ -223,7 +262,7 @@ mod tests {
         let data_file = temp_dir.path().join("docker-data-file");
         fs::write(&data_file, b"not a directory").expect("data file should exist");
 
-        let manager = ServerManager::new();
+        let manager = isolated_manager(temp_dir.path());
         let mut req = sample_request();
         req.name = "Docker Hidden Temp File".to_string();
         req.aliases = vec!["docker_hidden_temp_file".to_string()];

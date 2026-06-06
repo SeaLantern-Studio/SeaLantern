@@ -4,8 +4,8 @@ mod read_output;
 mod shared;
 
 use mlua::{Lua, Table};
-
-use super::common::ProcessRegistry;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// 注册 `sl.process` 下的命令接口
 ///
@@ -27,7 +27,7 @@ pub(super) fn register(
     plugin_dir: &std::path::Path,
     plugin_id: &str,
     permissions: &[String],
-    process_registry: &ProcessRegistry,
+    process_registry: &Arc<Mutex<HashMap<u32, super::common::ProcessEntry>>>,
 ) -> Result<(), String> {
     process_table
         .set("exec", exec::exec(lua, plugin_dir, plugin_id, permissions, process_registry)?)

@@ -1,10 +1,6 @@
-use crate::hardcode_data::plugin_permissions::PluginPermissionInfo;
 use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex, MutexGuard};
 use url::Url;
-
-pub(super) type PluginManagerState<'a> = tauri::State<'a, Arc<Mutex<PluginManager>>>;
-pub(super) type PermissionInfo = PluginPermissionInfo;
 
 pub(super) fn validate_plugin_id(id: &str) -> Result<(), String> {
     if id.is_empty() {
@@ -23,7 +19,7 @@ pub(super) fn validate_plugin_id(id: &str) -> Result<(), String> {
 }
 
 pub(super) fn lock_manager<'a>(
-    manager: &'a PluginManagerState<'a>,
+    manager: &'a tauri::State<'a, Arc<Mutex<PluginManager>>>,
 ) -> MutexGuard<'a, PluginManager> {
     manager.lock().unwrap_or_else(|e| e.into_inner())
 }

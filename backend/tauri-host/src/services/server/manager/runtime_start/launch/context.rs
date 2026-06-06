@@ -2,8 +2,12 @@ use super::super::super::common::{
     resolve_managed_console_encoding, ManagedConsoleEncoding, StartupMode,
 };
 use crate::models::server::ServerInstance;
-use crate::services::server::installer;
 use crate::services::server::log_pipeline as server_log_pipeline;
+use sea_lantern_server_local_setup_core::{
+    resolve_java_paths as resolve_shared_java_paths,
+    startup_filename as resolve_shared_startup_filename,
+};
+use sea_lantern_server_installer_core::{detect_core_type, CoreType};
 use std::path::Path;
 
 pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a> {
@@ -31,25 +35,13 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_managed_encod
 pub(in crate::services::server::manager::runtime_start) fn resolve_java_paths(
     java_path: &str,
 ) -> Result<(String, String), String> {
-    let java_path_obj = Path::new(java_path);
-    let java_bin_dir = java_path_obj
-        .parent()
-        .ok_or_else(|| format!("Java 路径无效，缺少 bin 目录: {}", java_path))?;
-    let java_home_dir = java_bin_dir.parent().unwrap_or(java_bin_dir);
-
-    Ok((
-        java_bin_dir.to_string_lossy().to_string(),
-        java_home_dir.to_string_lossy().to_string(),
-    ))
+    resolve_shared_java_paths(java_path)
 }
 
 pub(in crate::services::server::manager::runtime_start) fn startup_filename(
     startup_path: &str,
 ) -> String {
-    Path::new(startup_path)
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or_else(|| startup_path.to_string())
+    resolve_shared_startup_filename(startup_path)
 }
 
 pub(in crate::services::server::manager::runtime_start) fn resolve_starter_installer_url(
@@ -61,9 +53,9 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_starter_insta
         return Ok(None);
     }
 
-    let detected_core_type = installer::detect_core_type(server.jar_path().unwrap_or_default());
-    let core_key = installer::CoreType::normalize_to_api_core_key(&server.core_type)
-        .or_else(|| installer::CoreType::normalize_to_api_core_key(&detected_core_type))
+    let detected_core_type = detect_core_type(server.jar_path().unwrap_or_default());
+    let core_key = CoreType::normalize_to_api_core_key(&server.core_type)
+        .or_else(|| CoreType::normalize_to_api_core_key(&detected_core_type))
         .ok_or_else(|| {
             format!(
                 "无法识别 Starter 核心类型：{}",

@@ -1,15 +1,17 @@
 use crate::plugins;
+use crate::plugins::runtime::PluginRuntime;
 use crate::services;
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
 use tauri::{Emitter, Listener};
 
 /// 连接插件事件桥。
 pub(crate) fn install_plugin_bridge(
     app: &tauri::App,
-    shared_runtimes: crate::plugins::manager::SharedRuntimes,
-    shared_runtimes_for_server_ready: crate::plugins::manager::SharedRuntimes,
-    api_registry: crate::plugins::api::ApiRegistry,
+    shared_runtimes: Arc<RwLock<HashMap<String, PluginRuntime>>>,
+    shared_runtimes_for_server_ready: Arc<RwLock<HashMap<String, PluginRuntime>>>,
+    api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
 ) {
     plugins::api::set_api_call_handler(Arc::new(move |_source, target, api_name, args| {
         use crate::plugins::api::ApiRegistryOps;

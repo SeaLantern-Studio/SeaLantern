@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use crate::models::download::TaskStatus;
-use crate::utils::downloader::DownloadStatus;
 use uuid::Uuid;
 
-use super::state::{create_task_state, DownloadTaskState};
+use super::state::DownloadTaskState;
 use super::DownloadManager;
 
 pub(super) async fn create_task(
@@ -14,7 +13,12 @@ pub(super) async fn create_task(
     thread_count: usize,
 ) -> Uuid {
     let id = Uuid::new_v4();
-    let state = create_task_state(url, path);
+    let state = Arc::new(DownloadTaskState {
+        file_path: path.to_string(),
+        status_handle: tokio::sync::Mutex::new(None),
+        internal_status: tokio::sync::RwLock::new(TaskStatus::Pending),
+        join_handle: tokio::sync::Mutex::new(None),
+    });
 
     manager.tasks.write().await.insert(id, state.clone());
 
@@ -26,7 +30,14 @@ pub(super) async fn create_task(
     let handle = tokio::spawn(async move {
         match downloader.download(&url_str, &path_str, thread_count).await {
             Ok(handle) => {
-                bind_status_handle(&state_clone, handle).await;
+                {
+                    let mut status_handle = state_clone.status_handle.lock().await;
+                    *status_handle = Some(handle);
+                }
+                {
+                    let mut status = state_clone.internal_status.write().await;
+                    *status = TaskStatus::Downloading;
+                }
                 watch_download_finish(&state_clone).await;
             }
             Err(err) => {
@@ -85,14 +96,6 @@ pub(super) async fn cancel_task(manager: &DownloadManager, id: Uuid) -> Result<(
     }
 
     Ok(())
-}
-
-async fn bind_status_handle(state: &Arc<DownloadTaskState>, handle: Arc<DownloadStatus>) {
-    let mut status_handle = state.status_handle.lock().await;
-    *status_handle = Some(handle);
-
-    let mut status = state.internal_status.write().await;
-    *status = TaskStatus::Downloading;
 }
 
 async fn watch_download_finish(state: &Arc<DownloadTaskState>) {

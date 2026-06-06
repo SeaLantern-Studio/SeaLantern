@@ -2,6 +2,13 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::models::server::{ServerInstance, ServerRuntimeConfig};
+use sea_lantern_server_local_setup_core::{
+    decode_console_bytes as decode_shared_console_bytes,
+    detect_startup_mode_from_path_like,
+    parse_java_major_version as parse_shared_java_major_version,
+    preview_command as preview_shared_command,
+    script_bytes_prefer_utf8,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum StartupMode {
@@ -44,6 +51,7 @@ impl StartupMode {
         matches!(self, Self::Starter)
     }
 
+    #[cfg(test)]
     pub(super) fn prefers_direct_jar(self) -> bool {
         matches!(self, Self::Bat | Self::Sh | Self::Ps1)
     }
@@ -208,26 +216,6 @@ fn server_container_name_lower(server: &ServerInstance) -> Option<String> {
 }
 
 #[cfg(target_os = "windows")]
-pub(super) fn escape_cmd_arg(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 8);
-    for c in s.chars() {
-        match c {
-            '^' => out.push_str("^^"),
-            '&' => out.push_str("^&"),
-            '|' => out.push_str("^|"),
-            '<' => out.push_str("^<"),
-            '>' => out.push_str("^>"),
-            '(' => out.push_str("^("),
-            ')' => out.push_str("^)"),
-            '%' => out.push_str("%%"),
-            '"' => out.push_str("\"\""),
-            other => out.push(other),
-        }
-    }
-    out
-}
-
-#[cfg(target_os = "windows")]
 pub(super) fn build_windows_cmd_command(command_text: &str) -> Command {
     use std::os::windows::process::CommandExt;
 
@@ -261,18 +249,7 @@ pub(super) fn normalize_startup_mode(mode: &str) -> &str {
 }
 
 pub(super) fn detect_startup_mode_from_path(path: &Path) -> String {
-    let extension = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_ascii_lowercase())
-        .unwrap_or_default();
-
-    match extension.as_str() {
-        "bat" => "bat".to_string(),
-        "sh" => "sh".to_string(),
-        "ps1" => "ps1".to_string(),
-        _ => "jar".to_string(),
-    }
+    detect_startup_mode_from_path_like(&path.to_string_lossy())
 }
 
 pub(super) fn resolve_managed_console_encoding(
@@ -298,21 +275,10 @@ fn detect_windows_batch_encoding(startup_path: &Path) -> ManagedConsoleEncoding 
         Err(_) => return ManagedConsoleEncoding::Utf8,
     };
 
-    if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) || std::str::from_utf8(&bytes).is_ok() {
+    if script_bytes_prefer_utf8(&bytes) {
         ManagedConsoleEncoding::Utf8
     } else {
         ManagedConsoleEncoding::Gbk
-    }
-}
-
-fn parse_java_major_version(raw_version: &str) -> Option<u32> {
-    let version = raw_version.trim().trim_matches('"');
-    let mut parts = version.split('.');
-    let first = parts.next()?.parse::<u32>().ok()?;
-    if first == 1 {
-        parts.next()?.parse::<u32>().ok()
-    } else {
-        Some(first)
     }
 }
 
@@ -329,7 +295,7 @@ pub(super) fn detect_java_major_version(java_path: &str) -> Option<u32> {
             let mut segments = line.split('"');
             let _ = segments.next();
             if let Some(version_text) = segments.next() {
-                return parse_java_major_version(version_text);
+                return parse_shared_java_major_version(version_text);
             }
         }
     }
@@ -338,68 +304,11 @@ pub(super) fn detect_java_major_version(java_path: &str) -> Option<u32> {
 }
 
 pub(super) fn format_command_for_log(command: &Command) -> String {
-    let mut parts = Vec::new();
-
-    let env_parts = command
-        .get_envs()
-        .filter_map(|(key, value)| {
-            value.map(|v| {
-                format!(
-                    "{}={}",
-                    key.to_string_lossy(),
-                    quote_command_fragment(&v.to_string_lossy())
-                )
-            })
-        })
-        .collect::<Vec<String>>();
-    if !env_parts.is_empty() {
-        parts.push(format!("env {{{}}}", env_parts.join(", ")));
-    }
-
-    parts.push(quote_command_fragment(&command.get_program().to_string_lossy()));
-    parts.extend(
-        command
-            .get_args()
-            .map(|arg| quote_command_fragment(&arg.to_string_lossy())),
-    );
-
-    parts.join(" ")
-}
-
-fn quote_command_fragment(value: &str) -> String {
-    let requires_quotes = value.is_empty()
-        || value.chars().any(|ch| ch.is_whitespace())
-        || value.contains('"')
-        || value.contains('\'')
-        || value.contains(';')
-        || value.contains('&')
-        || value.contains('|');
-
-    if !requires_quotes {
-        return value.to_string();
-    }
-
-    if value.contains('"') && !value.contains('\'') {
-        return format!("'{}'", value);
-    }
-
-    format!("\"{}\"", value.replace('"', "\\\""))
+    preview_shared_command(command)
 }
 
 pub(super) fn decode_console_bytes(bytes: &[u8]) -> String {
-    if let Ok(text) = std::str::from_utf8(bytes) {
-        return text.to_string();
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        let (decoded, _, _) = encoding_rs::GBK.decode(bytes);
-        decoded.into_owned()
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        String::from_utf8_lossy(bytes).into_owned()
-    }
+    decode_shared_console_bytes(bytes)
 }
 
 #[cfg(test)]

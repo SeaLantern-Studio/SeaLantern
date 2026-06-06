@@ -1,43 +1,32 @@
-use super::common::CommandHandler;
+use super::common::{CommandHandler, RegistryBuilder};
 use crate::commands::app::settings as settings_commands;
 use crate::models::settings::{AppSettings, PartialSettings};
 use serde_json::Value;
-use std::collections::HashMap;
 
-pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
-    handlers.insert("get_settings".to_string(), handle_get_settings as CommandHandler);
-    handlers.insert("save_settings".to_string(), handle_save_settings as CommandHandler);
-    handlers.insert(
-        "save_settings_with_diff".to_string(),
-        handle_save_settings_with_diff as CommandHandler,
-    );
-    handlers.insert(
-        "update_settings_partial".to_string(),
-        handle_update_settings_partial as CommandHandler,
-    );
-    handlers.insert("reset_settings".to_string(), handle_reset_settings as CommandHandler);
-    handlers.insert("export_settings".to_string(), handle_export_settings as CommandHandler);
-    handlers.insert("import_settings".to_string(), handle_import_settings as CommandHandler);
-    handlers.insert(
-        "export_personalization_package".to_string(),
+pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
+    builder.register("get_settings", handle_get_settings as CommandHandler);
+    builder.register("save_settings", handle_save_settings as CommandHandler);
+    builder.register("save_settings_with_diff", handle_save_settings_with_diff as CommandHandler);
+    builder.register("update_settings_partial", handle_update_settings_partial as CommandHandler);
+    builder.register("reset_settings", handle_reset_settings as CommandHandler);
+    builder.register("export_settings", handle_export_settings as CommandHandler);
+    builder.register("import_settings", handle_import_settings as CommandHandler);
+    builder.register(
+        "export_personalization_package",
         handle_export_personalization_package as CommandHandler,
     );
-    handlers.insert(
-        "import_personalization_package".to_string(),
+    builder.register(
+        "import_personalization_package",
         handle_import_personalization_package as CommandHandler,
     );
-    handlers.insert(
-        "get_personalization_package_suggested_name".to_string(),
+    builder.register(
+        "get_personalization_package_suggested_name",
         handle_get_personalization_package_suggested_name as CommandHandler,
     );
-    handlers.insert(
-        "check_acrylic_support".to_string(),
-        handle_check_acrylic_support as CommandHandler,
-    );
-    handlers.insert("apply_acrylic".to_string(), handle_apply_acrylic as CommandHandler);
-    handlers
-        .insert("apply_window_effect".to_string(), handle_apply_window_effect as CommandHandler);
-    handlers.insert("get_system_fonts".to_string(), handle_get_system_fonts as CommandHandler);
+    builder.register("check_acrylic_support", handle_check_acrylic_support as CommandHandler);
+    builder.register("apply_acrylic", handle_apply_acrylic as CommandHandler);
+    builder.register("apply_window_effect", handle_apply_window_effect as CommandHandler);
+    builder.register("get_system_fonts", handle_get_system_fonts as CommandHandler);
 }
 
 fn handle_get_settings(

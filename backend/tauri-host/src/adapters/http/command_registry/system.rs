@@ -1,39 +1,25 @@
-use super::common::{handle_unsupported, CommandHandler};
+use super::common::{CommandHandler, RegistryBuilder, handle_unsupported};
 use crate::commands::app::host as system_commands;
 use crate::commands::app::logging as logging_commands;
 use serde_json::Value;
-use std::collections::HashMap;
-
-pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
-    handlers.insert("get_system_info".to_string(), handle_get_system_info as CommandHandler);
-    handlers.insert(
-        "get_default_run_path".to_string(),
-        handle_get_default_run_path as CommandHandler,
-    );
-    handlers.insert(
-        "get_server_resource_usage".to_string(),
+pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
+    builder.register("get_system_info", handle_get_system_info as CommandHandler);
+    builder.register("get_default_run_path", handle_get_default_run_path as CommandHandler);
+    builder.register(
+        "get_server_resource_usage",
         handle_get_server_resource_usage as CommandHandler,
     );
-    handlers.insert(
-        "get_safe_mode_status".to_string(),
-        handle_get_safe_mode_status as CommandHandler,
-    );
-    handlers.insert(
-        "test_ipv6_connectivity".to_string(),
-        handle_test_ipv6_connectivity as CommandHandler,
-    );
-    handlers.insert("frontend_heartbeat".to_string(), handle_frontend_heartbeat as CommandHandler);
-    handlers.insert("get_logs".to_string(), handle_get_logs as CommandHandler);
-    handlers.insert("clear_logs".to_string(), handle_clear_logs as CommandHandler);
-    handlers.insert(
-        "check_developer_mode".to_string(),
-        handle_check_developer_mode as CommandHandler,
-    );
-    handlers.insert("pick_jar_file".to_string(), handle_unsupported as CommandHandler);
-    handlers.insert("pick_startup_file".to_string(), handle_unsupported as CommandHandler);
-    handlers.insert("pick_java_file".to_string(), handle_unsupported as CommandHandler);
-    handlers.insert("pick_folder".to_string(), handle_unsupported as CommandHandler);
-    handlers.insert("pick_image_file".to_string(), handle_unsupported as CommandHandler);
+    builder.register("get_safe_mode_status", handle_get_safe_mode_status as CommandHandler);
+    builder.register("test_ipv6_connectivity", handle_test_ipv6_connectivity as CommandHandler);
+    builder.register("frontend_heartbeat", handle_frontend_heartbeat as CommandHandler);
+    builder.register("get_logs", handle_get_logs as CommandHandler);
+    builder.register("clear_logs", handle_clear_logs as CommandHandler);
+    builder.register("check_developer_mode", handle_check_developer_mode as CommandHandler);
+    builder.register("pick_jar_file", handle_unsupported as CommandHandler);
+    builder.register("pick_startup_file", handle_unsupported as CommandHandler);
+    builder.register("pick_java_file", handle_unsupported as CommandHandler);
+    builder.register("pick_folder", handle_unsupported as CommandHandler);
+    builder.register("pick_image_file", handle_unsupported as CommandHandler);
 }
 
 fn handle_get_system_info(

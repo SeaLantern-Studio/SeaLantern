@@ -209,7 +209,7 @@ mod tests {
         assert_eq!(ports[0].container_port, 25575);
         assert_eq!(env.get("ENABLE_RCON").map(String::as_str), Some("true"));
         assert_eq!(env.get("RCON_PORT").map(String::as_str), Some("25575"));
-        assert!(env.get("RCON_PASSWORD").is_some());
+        assert!(env.contains_key("RCON_PASSWORD"));
 
         let rcon = rcon.expect("rcon config should exist");
         assert!(!rcon.host.trim().is_empty());
@@ -288,7 +288,7 @@ mod tests {
         assert!(ports.is_empty());
         assert!(rcon.is_none());
         assert_eq!(env.get("CREATE_CONSOLE_IN_PIPE").map(String::as_str), Some("true"));
-        assert!(env.get("ENABLE_RCON").is_none());
+        assert!(!env.contains_key("ENABLE_RCON"));
     }
 
     #[test]

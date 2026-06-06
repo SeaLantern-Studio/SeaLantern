@@ -5,7 +5,6 @@ mod create_docker_itzg;
 mod existing;
 mod import_copy;
 mod modpack;
-mod shared;
 
 use crate::models::server::{
     AddExistingServerRequest, CreateDockerItzgServerRequest, CreateServerRequest,

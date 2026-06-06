@@ -2,6 +2,7 @@ mod launch;
 mod local_launch_detail;
 mod preload;
 
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use super::common::StartupMode;
@@ -11,7 +12,19 @@ use crate::services::server::runtime::{
     RuntimeProcessHandle, RuntimeStartRequest, RuntimeStartResult,
 };
 
-pub use local_launch_detail::LocalLaunchDetail;
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalLaunchDetail {
+    pub startup_mode: String,
+    pub java_path: String,
+    pub launch_target: String,
+    pub effective_max_memory: u32,
+    pub effective_min_memory: u32,
+    pub effective_cpu_policy_mode: String,
+    pub effective_jvm_preset: String,
+    pub effective_jvm_args: Vec<String>,
+    pub command_preview: String,
+}
 
 pub(crate) fn get_local_launch_detail(
     server: &crate::models::server::ServerInstance,

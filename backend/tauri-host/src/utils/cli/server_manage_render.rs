@@ -1,9 +1,10 @@
 use crate::models::server::{
-    DockerItzgRuntimeConfig, JvmPresetId, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+    DockerItzgRuntimeConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     ServerStatusInfo,
 };
 use crate::services::server::manager::ServerRegistryDedupeReport;
-use crate::services::server::manager::{DockerLaunchDetail, LocalLaunchDetail};
+use crate::services::server::manager::LocalLaunchDetail;
+use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
 use crate::utils::server_status::status_is_docker_command_ready;
 
 use super::server_endpoint::render_docker_rcon_operator_hint;
@@ -338,7 +339,7 @@ fn render_docker_runtime_detail_lines(
             "  docker.cpu_policy.sync_active_processor_count: {}",
             runtime.cpu_policy.sync_active_processor_count
         ),
-        format!("  docker.jvm_preset: {}", render_jvm_preset_id(&runtime.jvm_preset.preset)),
+        format!("  docker.jvm_preset: {}", runtime.jvm_preset.preset.as_str()),
         format!("  docker.extra_ports: {}", format_docker_extra_ports(runtime)),
         format!("  docker.volume_mounts: {}", format_docker_volume_mounts(runtime)),
         format!("  docker.env_count: {}", runtime.env.len()),
@@ -415,16 +416,6 @@ fn render_docker_launch_detail_lines(detail: &DockerLaunchDetail) -> Vec<String>
     }
 
     lines
-}
-
-fn render_jvm_preset_id(preset: &JvmPresetId) -> &'static str {
-    match preset {
-        JvmPresetId::None => "none",
-        JvmPresetId::G1Basic => "g1_basic",
-        JvmPresetId::AikarG1 => "aikar_g1",
-        JvmPresetId::ThroughputBasic => "throughput_basic",
-        JvmPresetId::PaperRecommendedLite => "paper_recommended_lite",
-    }
 }
 
 fn port_summary(server: &ServerInstance) -> String {

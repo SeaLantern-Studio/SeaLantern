@@ -3,6 +3,10 @@ use std::path::Path;
 use crate::models::server::{
     AddExistingServerRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
+use sea_lantern_server_config_core::startup::{
+    ensure_server_path_writable, read_server_port, write_server_startup_config_for_dir,
+};
+use sea_lantern_server_installer_core::detect_core_type;
 
 use super::super::common::{
     current_timestamp_secs, detect_startup_mode_from_path, ensure_server_identity_available,
@@ -10,8 +14,6 @@ use super::super::common::{
 };
 use super::super::fs::find_server_executable;
 use super::super::ServerManager;
-use super::shared::{ensure_server_path_writable, read_server_port, write_sl_startup_config};
-use crate::services::server::installer;
 
 pub(super) fn add_existing_server(
     manager: &ServerManager,
@@ -60,7 +62,7 @@ pub(super) fn add_existing_server(
     };
 
     let port = read_server_port(server_path, req.port);
-    write_sl_startup_config(
+    write_server_startup_config_for_dir(
         server_path,
         req.max_memory,
         req.min_memory,
@@ -78,7 +80,7 @@ pub(super) fn add_existing_server(
             if StartupMode::from_raw(&startup_mode).is_custom() {
                 "Unknown".to_string()
             } else {
-                installer::detect_core_type(&jar_path)
+                detect_core_type(&jar_path)
             }
         });
     let mc_version = req
@@ -130,6 +132,14 @@ mod tests {
     use crate::services::server::manager::ServerManager;
     use tempfile::tempdir;
 
+    fn unique_name(prefix: &str) -> String {
+        format!("{}-{}", prefix, uuid::Uuid::new_v4())
+    }
+
+    fn unique_alias(prefix: &str) -> String {
+        format!("{}-{}", prefix, uuid::Uuid::new_v4())
+    }
+
     #[test]
     fn add_existing_server_prefers_request_core_and_mc_version() {
         let temp_dir = tempdir().expect("temp dir should exist");
@@ -139,8 +149,8 @@ mod tests {
 
         let manager = ServerManager::new();
         let req = AddExistingServerRequest {
-            name: "Paper Existing".to_string(),
-            aliases: vec!["paper_prod".to_string()],
+            name: unique_name("Paper Existing"),
+            aliases: vec![unique_alias("paper_prod")],
             server_path: server_dir.to_string_lossy().to_string(),
             java_path: "C:/Java/bin/java.exe".to_string(),
             max_memory: 4096,
@@ -160,7 +170,8 @@ mod tests {
 
         assert_eq!(server.core_type, "Paper");
         assert_eq!(server.mc_version, "1.21.1");
-        assert_eq!(server.aliases, vec!["paper_prod"]);
+        assert_eq!(server.aliases.len(), 1);
+        assert!(server.aliases[0].starts_with("paper_prod-"));
         assert_eq!(server.startup_mode_str(), "sh");
     }
 }

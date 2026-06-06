@@ -10,11 +10,10 @@ mod docker_request_builder;
 pub(super) use docker_paths::resolve_docker_data_dir;
 pub(super) use docker_preflight::{
     ensure_docker_environment, preflight_docker_command_mode_support,
-    preflight_docker_image_reference, validate_docker_itzg_image_compatibility,
+    preflight_docker_image_reference,
 };
-pub(super) use docker_request_builder::{
-    build_docker_create_request, parse_command_mode, resolve_requested_docker_image,
-};
+pub(super) use docker_request_builder::{build_docker_create_request, resolve_requested_docker_image};
+pub(super) use sea_lantern_docker_core::{parse_command_mode, validate_docker_itzg_image_compatibility};
 
 #[cfg(test)]
 use crate::utils::cli::server_args::CliServerCommand;
@@ -30,7 +29,7 @@ use docker_preflight::{
     preflight_docker_image_reference_from_outputs_for_tests,
 };
 #[cfg(test)]
-use docker_request_builder::{format_memory_env_value, parse_docker_backend};
+use sea_lantern_docker_core::{format_memory_env_value, parse_docker_backend};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct DockerCreateDefaults {
@@ -40,6 +39,18 @@ pub(super) struct DockerCreateDefaults {
 
 const DEFAULT_DOCKER_IMAGE: &str = "itzg/minecraft-server";
 pub(super) const DEFAULT_DOCKER_IMAGE_TAG: &str = "latest";
+
+#[cfg(test)]
+fn exit_status_from_raw(code: i32) -> std::process::ExitStatus {
+    #[cfg(windows)]
+    {
+        std::os::windows::process::ExitStatusExt::from_raw(code as u32)
+    }
+    #[cfg(unix)]
+    {
+        std::os::unix::process::ExitStatusExt::from_raw(code)
+    }
+}
 
 #[cfg(test)]
 fn build_docker_request_after_preflight_for_tests(
@@ -133,19 +144,11 @@ mod tests {
     use crate::models::server::{DockerBackendKind, DockerCommandMode};
     use crate::utils::cli::server_args::CliServerCommand;
     use crate::utils::cli::server_ports::PreparedPorts;
-    use once_cell::sync::Lazy;
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
     use std::cell::Cell;
     use std::path::Path;
     use std::process::Output;
-    use std::sync::Mutex;
     use tempfile::tempdir;
-
-    static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
-
-    struct EnvVarGuard {
-        key: &'static str,
-        original: Option<std::ffi::OsString>,
-    }
 
     fn sample_defaults() -> DockerCreateDefaults {
         DockerCreateDefaults {
@@ -176,29 +179,6 @@ mod tests {
 
     fn failed_output_with_stdout(stdout: &str) -> Output {
         output_with_status(1, stdout, "")
-    }
-
-    impl EnvVarGuard {
-        fn set(key: &'static str, value: &str) -> Self {
-            let original = std::env::var_os(key);
-            std::env::set_var(key, value);
-            Self { key, original }
-        }
-
-        fn remove(key: &'static str) -> Self {
-            let original = std::env::var_os(key);
-            std::env::remove_var(key);
-            Self { key, original }
-        }
-    }
-
-    impl Drop for EnvVarGuard {
-        fn drop(&mut self) {
-            match &self.original {
-                Some(value) => std::env::set_var(self.key, value),
-                None => std::env::remove_var(self.key),
-            }
-        }
     }
 
     #[test]
@@ -272,7 +252,7 @@ mod tests {
         assert_eq!(request.runtime.env.get("INIT_MEMORY").map(String::as_str), Some("2G"));
         assert_eq!(request.runtime.env.get("ENABLE_RCON").map(String::as_str), Some("true"));
         assert_eq!(request.runtime.env.get("RCON_PORT").map(String::as_str), Some("25575"));
-        assert!(request.runtime.env.get("RCON_PASSWORD").is_some());
+        assert!(request.runtime.env.contains_key("RCON_PASSWORD"));
         assert_eq!(request.runtime.extra_ports.len(), 1);
         assert_eq!(request.runtime.extra_ports[0].container_port, 25575);
     }
@@ -448,8 +428,8 @@ mod tests {
         assert_eq!(request.runtime.env.get("MEMORY").map(String::as_str), Some("4G"));
         assert_eq!(request.runtime.env.get("MAX_MEMORY").map(String::as_str), Some("4G"));
         assert_eq!(request.runtime.env.get("INIT_MEMORY").map(String::as_str), Some("2G"));
-        assert!(request.runtime.env.get("ENABLE_RCON").is_none());
-        assert!(request.runtime.env.get("RCON_PASSWORD").is_none());
+        assert!(!request.runtime.env.contains_key("ENABLE_RCON"));
+        assert!(!request.runtime.env.contains_key("RCON_PASSWORD"));
         assert_eq!(
             request
                 .runtime
@@ -1014,10 +994,10 @@ mod tests {
 
     #[test]
     fn resolve_docker_data_dir_errors_for_container_like_default_without_mapping() {
-        let _env_lock = ENV_LOCK.lock().expect("env lock should acquire");
-        let _headless_guard = EnvVarGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
-        let _host_guard = EnvVarGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
-        let _container_guard = EnvVarGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");
+        let _env_lock = lock_env();
+        let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
+        let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
+        let _container_guard = EnvGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");
 
         let command = CliServerCommand::default();
         let err = resolve_docker_data_dir(&command, "paper-docker")
@@ -1030,12 +1010,12 @@ mod tests {
 
     #[test]
     fn resolve_docker_data_dir_uses_mapped_default_when_container_mapping_exists() {
-        let _env_lock = ENV_LOCK.lock().expect("env lock should acquire");
-        let _headless_guard = EnvVarGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
+        let _env_lock = lock_env();
+        let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
         let _host_guard =
-            EnvVarGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
+            EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
         let _container_guard =
-            EnvVarGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
+            EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
 
         let command = CliServerCommand::default();
         let resolved = resolve_docker_data_dir(&command, "paper-docker")
@@ -1054,8 +1034,11 @@ mod tests {
 
     #[test]
     fn map_container_visible_path_to_docker_host_path_translates_when_roots_match() {
-        std::env::set_var("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
-        std::env::set_var("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
+        let _env_lock = lock_env();
+        let _host_guard =
+            EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
+        let _container_guard =
+            EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
 
         let mapped = map_container_visible_path_to_docker_host_path(Path::new(
             "/app/data/servers/paper-docker",
@@ -1063,15 +1046,13 @@ mod tests {
         .expect("path should translate when roots match");
 
         assert_eq!(mapped.replace('\\', "/"), "E:/srv/sealantern/servers/paper-docker");
-
-        std::env::remove_var("SEALANTERN_SERVERS_HOST_ROOT");
-        std::env::remove_var("SEALANTERN_SERVERS_CONTAINER_ROOT");
     }
 
     #[test]
     fn map_container_visible_path_to_docker_host_path_returns_none_without_mapping() {
-        std::env::remove_var("SEALANTERN_SERVERS_HOST_ROOT");
-        std::env::remove_var("SEALANTERN_SERVERS_CONTAINER_ROOT");
+        let _env_lock = lock_env();
+        let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
+        let _container_guard = EnvGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");
 
         assert!(map_container_visible_path_to_docker_host_path(Path::new(
             "/app/data/servers/paper"
@@ -1109,17 +1090,5 @@ mod tests {
         assert_eq!(request.runtime.env.get("MEMORY").map(String::as_str), Some("3G"));
         assert_eq!(request.runtime.env.get("MAX_MEMORY").map(String::as_str), Some("3G"));
         assert_eq!(request.runtime.env.get("INIT_MEMORY").map(String::as_str), Some("1536M"));
-    }
-}
-
-#[cfg(test)]
-fn exit_status_from_raw(code: i32) -> std::process::ExitStatus {
-    #[cfg(windows)]
-    {
-        std::os::windows::process::ExitStatusExt::from_raw(code as u32)
-    }
-    #[cfg(unix)]
-    {
-        std::os::unix::process::ExitStatusExt::from_raw(code)
     }
 }

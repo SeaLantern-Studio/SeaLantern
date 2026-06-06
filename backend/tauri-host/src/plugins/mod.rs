@@ -1,4 +1,4 @@
 pub mod api;
-pub mod loader;
-pub mod manager;
+pub(crate) mod loader;
+pub(crate) mod manager;
 pub mod runtime;

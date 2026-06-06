@@ -2,20 +2,27 @@ use std::process::{Command, Output};
 use std::thread;
 use std::time::{Duration, Instant};
 
+pub(crate) use sea_lantern_docker_core::{
+    classify_docker_command_failure, docker_error_indicates_missing_container,
+    interpret_docker_image_inspect_outputs, DockerCommandFailureKind, DockerImageAvailability,
+    DockerImageInspectOutcome,
+};
+
 use crate::utils::logger;
 use crate::utils::path::find_executable_in_path;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DockerCommandFailureKind {
-    Network,
-    ImageNotFound,
-    Auth,
-    DaemonUnavailable,
-    Timeout,
-    Other,
-}
-
 const DOCKER_IMAGE_INSPECT_TIMEOUT_SECS: u64 = 5;
+
+fn exit_status_from_raw(code: i32) -> std::process::ExitStatus {
+    #[cfg(windows)]
+    {
+        std::os::windows::process::ExitStatusExt::from_raw(code as u32)
+    }
+    #[cfg(unix)]
+    {
+        std::os::unix::process::ExitStatusExt::from_raw(code)
+    }
+}
 
 fn failed_output_with_message(message: String) -> Output {
     Output {
@@ -23,21 +30,6 @@ fn failed_output_with_message(message: String) -> Output {
         stdout: Vec::new(),
         stderr: message.into_bytes(),
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DockerImageAvailability {
-    LocalCached,
-    RemoteResolvable,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum DockerImageInspectOutcome {
-    Available(DockerImageAvailability),
-    SoftFailure {
-        failure_kind: DockerCommandFailureKind,
-        message: String,
-    },
 }
 
 pub(crate) fn docker_executable_path() -> Result<String, String> {
@@ -49,75 +41,6 @@ pub(crate) fn docker_executable_path() -> Result<String, String> {
     find_executable_in_path(executable)
         .map(|path| path.to_string_lossy().to_string())
         .ok_or_else(|| "未找到 docker 命令，请先安装并加入 PATH".to_string())
-}
-
-pub(crate) fn split_docker_image_reference_tag(image_ref: &str) -> (&str, Option<&str>) {
-    let trimmed = image_ref.trim();
-    if trimmed.is_empty() || trimmed.contains('@') {
-        return (trimmed, None);
-    }
-
-    let last_slash = trimmed.rfind('/');
-    let last_colon = trimmed.rfind(':');
-
-    match (last_slash, last_colon) {
-        (_, None) => (trimmed, None),
-        (Some(slash), Some(colon)) if colon > slash => {
-            let tag = &trimmed[colon + 1..];
-            if tag.trim().is_empty() {
-                (trimmed, None)
-            } else {
-                (&trimmed[..colon], Some(tag))
-            }
-        }
-        (None, Some(colon)) => {
-            let tag = &trimmed[colon + 1..];
-            if tag.trim().is_empty() {
-                (trimmed, None)
-            } else {
-                (&trimmed[..colon], Some(tag))
-            }
-        }
-        _ => (trimmed, None),
-    }
-}
-
-pub(crate) fn resolve_docker_image_and_tag(
-    image: Option<&str>,
-    image_tag: Option<&str>,
-    default_image: &str,
-    default_tag: &str,
-) -> Result<(String, String), String> {
-    let raw_image = image
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .unwrap_or(default_image);
-
-    if raw_image.contains('@') {
-        return Err(
-            "当前 CLI 暂不支持使用 Docker digest 作为 --image；请改用仓库名 + --image-tag，或直接传带 tag 的镜像引用"
-                .to_string(),
-        );
-    }
-
-    let (image_name, embedded_tag) = split_docker_image_reference_tag(raw_image);
-    let resolved_image = image_name.trim();
-    if resolved_image.is_empty() {
-        return Err("Docker 镜像名不能为空".to_string());
-    }
-
-    let resolved_tag = image_tag
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-        .or_else(|| embedded_tag.map(str::to_string))
-        .unwrap_or_else(|| default_tag.to_string());
-
-    Ok((resolved_image.to_string(), resolved_tag))
-}
-
-pub(crate) fn format_docker_image_reference(image: &str, image_tag: &str) -> String {
-    format!("{}:{}", image, image_tag)
 }
 
 pub(crate) fn inspect_docker_image_reference_with_soft_failures(
@@ -164,45 +87,7 @@ where
     };
 
     interpret_docker_image_inspect_outputs(image_ref, &local_output, &manifest_output)
-}
 
-fn interpret_docker_image_inspect_outputs(
-    image_ref: &str,
-    local_output: &Output,
-    manifest_output: &Output,
-) -> Result<DockerImageInspectOutcome, String> {
-    if local_output.status.success() {
-        return Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::LocalCached));
-    }
-
-    if manifest_output.status.success() {
-        return Ok(DockerImageInspectOutcome::Available(DockerImageAvailability::RemoteResolvable));
-    }
-
-    classify_manifest_inspect_outcome(image_ref, manifest_output)
-}
-
-fn classify_manifest_inspect_outcome(
-    image_ref: &str,
-    manifest_output: &Output,
-) -> Result<DockerImageInspectOutcome, String> {
-    let message = render_docker_command_error(
-        "docker manifest inspect",
-        manifest_output,
-        Some(image_ref),
-        None,
-    );
-    let failure_kind = classify_docker_command_failure(&message);
-
-    match failure_kind {
-        DockerCommandFailureKind::ImageNotFound | DockerCommandFailureKind::Auth => Err(message),
-        DockerCommandFailureKind::Network
-        | DockerCommandFailureKind::Timeout
-        | DockerCommandFailureKind::DaemonUnavailable
-        | DockerCommandFailureKind::Other => {
-            Ok(DockerImageInspectOutcome::SoftFailure { failure_kind, message })
-        }
-    }
 }
 
 fn run_docker_command_with_timeout(
@@ -257,7 +142,12 @@ pub(crate) fn ensure_docker_command_success(
         return Ok(());
     }
 
-    Err(render_docker_command_error(action, &output, image_ref, container_name))
+    Err(render_docker_command_error(
+        action,
+        &output,
+        image_ref,
+        container_name,
+    ))
 }
 
 pub(crate) fn render_docker_command_error(
@@ -266,110 +156,23 @@ pub(crate) fn render_docker_command_error(
     image_ref: Option<&str>,
     container_name: Option<&str>,
 ) -> String {
-    let stderr = stderr_text(output);
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let raw = if !stderr.is_empty() {
-        stderr
-    } else if !stdout.is_empty() {
-        stdout
-    } else {
-        format!("退出码: {:?}", output.status.code())
-    };
-
-    let failure_kind = classify_docker_command_failure(&raw);
-    let image_detail = image_ref
-        .map(|value| format!(" image={}", value))
-        .unwrap_or_default();
-    let container_detail = container_name
-        .map(|value| format!(" container={}", value))
-        .unwrap_or_default();
-    let detail = format!("{}{}", image_detail, container_detail);
+    let message = sea_lantern_docker_core::render_docker_command_error(
+        action,
+        output,
+        image_ref,
+        container_name,
+    );
 
     logger::log_trace(&format!(
         "[utils.docker_cli] action=render_command_error action_name={} failure_kind={:?} image_ref={} container={} raw={}",
         action,
-        failure_kind,
+        classify_docker_command_failure(&message),
         image_ref.unwrap_or(""),
         container_name.unwrap_or(""),
-        raw.replace('\n', " ")
+        message.replace('\n', " ")
     ));
 
-    match failure_kind {
-        DockerCommandFailureKind::Network => format!(
-            "{} 失败:{} 镜像拉取网络不可达或超时。请检查 Docker Hub / 镜像仓库连通性、代理配置，或预先执行 `sealantern docker pull <image[:tag]>`。原始输出: {}",
-            action, detail, raw
-        ),
-        DockerCommandFailureKind::ImageNotFound => format!(
-            "{} 失败:{} 镜像或标签不存在。请检查 `--image` / `--image-tag`，例如可优先尝试 `itzg/minecraft-server:latest`。原始输出: {}",
-            action, detail, raw
-        ),
-        DockerCommandFailureKind::Auth => format!(
-            "{} 失败:{} 镜像仓库认证或访问被拒绝。请确认已登录对应 registry，且镜像可见。原始输出: {}",
-            action, detail, raw
-        ),
-        DockerCommandFailureKind::DaemonUnavailable => format!(
-            "{} 失败:{} Docker daemon 当前不可用。请先运行 `sealantern docker doctor` 或确认 Docker Desktop / Engine 已启动。原始输出: {}",
-            action, detail, raw
-        ),
-        DockerCommandFailureKind::Timeout => format!(
-            "{} 失败:{} Docker 镜像探测超时。不会阻断本地记录创建，但建议先执行 `sealantern docker pull <image[:tag]>` 或稍后重试。原始输出: {}",
-            action, detail, raw
-        ),
-        DockerCommandFailureKind::Other => format!("{} 失败:{} {}", action, detail, raw),
-    }
-}
-
-pub(crate) fn classify_docker_command_failure(message: &str) -> DockerCommandFailureKind {
-    let lower = message.to_ascii_lowercase();
-    if lower.contains("pull access denied")
-        || lower.contains("requested access to the resource is denied")
-        || lower.contains("unauthorized")
-        || lower.contains("authentication required")
-    {
-        return DockerCommandFailureKind::Auth;
-    }
-    if lower.contains("manifest unknown")
-        || lower.contains("not found") && lower.contains("manifest")
-        || lower.contains("failed to resolve reference") && lower.contains("not found")
-    {
-        return DockerCommandFailureKind::ImageNotFound;
-    }
-    if lower.contains("cannot connect to the docker daemon")
-        || lower.contains("failed to connect to the docker api")
-        || lower.contains("open //./pipe/docker")
-        || lower.contains("is the docker daemon running")
-    {
-        return DockerCommandFailureKind::DaemonUnavailable;
-    }
-    if lower.contains("connectex")
-        || lower.contains("dial tcp")
-        || lower.contains("i/o timeout")
-        || lower.contains("tls handshake timeout")
-        || lower.contains("no https proxy")
-        || lower.contains("context deadline exceeded")
-    {
-        return DockerCommandFailureKind::Network;
-    }
-    if lower.contains("超时")
-        || lower.contains("timed out")
-        || lower.contains("timeout")
-        || lower.contains("deadline exceeded")
-    {
-        return DockerCommandFailureKind::Timeout;
-    }
-
-    DockerCommandFailureKind::Other
-}
-
-pub(crate) fn docker_error_indicates_missing_container(message: &str) -> bool {
-    let lower = message.to_ascii_lowercase();
-    lower.contains("no such container")
-        || lower.contains("no such object")
-        || lower.contains("container") && lower.contains("not found")
-}
-
-fn stderr_text(output: &Output) -> String {
-    String::from_utf8_lossy(&output.stderr).trim().to_string()
+    message
 }
 
 #[cfg(test)]
@@ -378,18 +181,25 @@ pub(crate) fn interpret_docker_image_inspect_outputs_for_tests(
     local_output: &Output,
     manifest_output: &Output,
 ) -> Result<DockerImageInspectOutcome, String> {
-    interpret_docker_image_inspect_outputs(image_ref, local_output, manifest_output)
+    sea_lantern_docker_core::interpret_docker_image_inspect_outputs(
+        image_ref,
+        local_output,
+        manifest_output,
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        classify_docker_command_failure, classify_manifest_inspect_outcome,
         docker_error_indicates_missing_container, exit_status_from_raw,
-        format_docker_image_reference, inspect_docker_image_reference_with_runner,
-        interpret_docker_image_inspect_outputs, render_docker_command_error,
-        resolve_docker_image_and_tag, split_docker_image_reference_tag, DockerCommandFailureKind,
-        DockerImageAvailability, DockerImageInspectOutcome, DOCKER_IMAGE_INSPECT_TIMEOUT_SECS,
+        inspect_docker_image_reference_with_runner, render_docker_command_error,
+        DOCKER_IMAGE_INSPECT_TIMEOUT_SECS,
+    };
+    use sea_lantern_docker_core::{
+        classify_docker_command_failure, classify_manifest_inspect_outcome,
+        format_docker_image_reference, interpret_docker_image_inspect_outputs,
+        resolve_docker_image_and_tag, split_docker_image_reference_tag,
+        DockerCommandFailureKind, DockerImageAvailability, DockerImageInspectOutcome,
     };
     use std::process::Output;
 
@@ -811,16 +621,5 @@ mod tests {
             format_docker_image_reference("itzg/minecraft-server", "latest"),
             "itzg/minecraft-server:latest"
         );
-    }
-}
-
-fn exit_status_from_raw(code: i32) -> std::process::ExitStatus {
-    #[cfg(windows)]
-    {
-        std::os::windows::process::ExitStatusExt::from_raw(code as u32)
-    }
-    #[cfg(unix)]
-    {
-        std::os::unix::process::ExitStatusExt::from_raw(code)
     }
 }

@@ -1,9 +1,11 @@
-use serde::{Deserialize, Serialize};
-
 use crate::models::server::ServerInstance;
 use crate::services::server::manager::startup_support::resolve_effective_startup_config;
+use sea_lantern_server_local_setup_core::{
+    preview_command as preview_shared_command, resolve_local_launch_target,
+};
 
-use super::super::common::{format_command_for_log, StartupMode};
+use super::LocalLaunchDetail;
+use super::super::common::StartupMode;
 use super::super::startup_support::build_managed_jvm_args;
 use super::launch::command_builder::{
     build_configured_command, build_direct_jar_command, find_preferred_jar_path,
@@ -12,20 +14,6 @@ use super::launch::context::{
     resolve_java_paths, resolve_managed_encoding, resolve_starter_installer_url, startup_filename,
     LaunchContext,
 };
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct LocalLaunchDetail {
-    pub startup_mode: String,
-    pub java_path: String,
-    pub launch_target: String,
-    pub effective_max_memory: u32,
-    pub effective_min_memory: u32,
-    pub effective_cpu_policy_mode: String,
-    pub effective_jvm_preset: String,
-    pub effective_jvm_args: Vec<String>,
-    pub command_preview: String,
-}
 
 pub(crate) fn build_local_launch_detail(
     server: &ServerInstance,
@@ -60,8 +48,15 @@ pub(crate) fn build_local_launch_detail(
         Vec::new()
     };
 
-    let launch_target = resolve_launch_target(server, &context);
-    let command_preview = resolve_command_preview(&context)?;
+    let preferred_jar_path = find_preferred_jar_path(&context);
+    let launch_target = resolve_local_launch_target(
+        runtime.startup_mode.as_str(),
+        preferred_jar_path.as_deref(),
+        server.jar_path(),
+        server.custom_command(),
+        &context.startup_filename,
+    );
+    let command_preview = resolve_command_preview(&context, preferred_jar_path.as_deref())?;
 
     Ok(LocalLaunchDetail {
         startup_mode: runtime.startup_mode.clone(),
@@ -70,48 +65,29 @@ pub(crate) fn build_local_launch_detail(
         effective_max_memory: effective.max_memory,
         effective_min_memory: effective.min_memory,
         effective_cpu_policy_mode: effective.cpu_policy.mode.as_str().to_string(),
-        effective_jvm_preset: match effective.jvm_preset.preset {
-            crate::models::server::JvmPresetId::None => "none",
-            crate::models::server::JvmPresetId::G1Basic => "g1_basic",
-            crate::models::server::JvmPresetId::AikarG1 => "aikar_g1",
-            crate::models::server::JvmPresetId::ThroughputBasic => "throughput_basic",
-            crate::models::server::JvmPresetId::PaperRecommendedLite => "paper_recommended_lite",
-        }
-        .to_string(),
+        effective_jvm_preset: effective.jvm_preset.preset.as_str().to_string(),
         effective_jvm_args,
         command_preview,
     })
 }
 
-fn resolve_launch_target(server: &ServerInstance, context: &LaunchContext<'_>) -> String {
-    if let Some(preferred_jar_path) = find_preferred_jar_path(context) {
-        return preferred_jar_path;
-    }
-
-    if matches!(context.startup_mode, StartupMode::Jar | StartupMode::Starter) {
-        return server.jar_path().unwrap_or_default().to_string();
-    }
-
-    if matches!(context.startup_mode, StartupMode::Custom) {
-        return server.custom_command().unwrap_or_default().to_string();
-    }
-
-    context.startup_filename.clone()
-}
-
-fn resolve_command_preview(context: &LaunchContext<'_>) -> Result<String, String> {
-    let command = if let Some(preferred_jar_path) = find_preferred_jar_path(context) {
-        build_direct_jar_command(context, &preferred_jar_path, None)?
+fn resolve_command_preview(
+    context: &LaunchContext<'_>,
+    preferred_jar_path: Option<&str>,
+) -> Result<String, String> {
+    let command = if let Some(preferred_jar_path) = preferred_jar_path {
+        build_direct_jar_command(context, preferred_jar_path, None)?
     } else {
         build_configured_command(context)?
     };
 
-    Ok(format_command_for_log(&command))
+    Ok(preview_shared_command(&command))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{build_local_launch_detail, LocalLaunchDetail};
+    use super::build_local_launch_detail;
+    use crate::services::server::manager::runtime_start::LocalLaunchDetail;
     use crate::models::server::{
         CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId, LocalRuntimeConfig,
         ServerInstance, ServerRuntimeConfig,

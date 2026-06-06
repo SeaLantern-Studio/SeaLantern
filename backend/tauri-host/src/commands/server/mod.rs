@@ -1,6 +1,6 @@
 //! 服务器相关的命令。
 
-pub mod config;
-pub mod manage;
-pub mod players;
-pub mod plugins;
+pub(crate) mod config;
+pub(crate) mod manage;
+pub(crate) mod players;
+pub(crate) mod plugins;

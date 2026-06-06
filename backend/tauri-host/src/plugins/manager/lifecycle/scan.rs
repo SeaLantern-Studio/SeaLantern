@@ -1,8 +1,9 @@
-use super::{PluginInfo, PluginManager, PluginState};
+use crate::plugins::manager::{PluginInfo, PluginManager, PluginState};
 use crate::plugins::loader::PluginLoader;
 use crate::plugins::runtime::kill_all_processes;
+use crate::plugins::manager::lifecycle::dependencies::update_all_missing_dependencies;
 
-pub(super) fn scan_plugins(manager: &mut PluginManager) -> Result<Vec<PluginInfo>, String> {
+pub(in crate::plugins::manager) fn scan_plugins(manager: &mut PluginManager) -> Result<Vec<PluginInfo>, String> {
     println!("[PluginManager] 开始扫描插件目录: {}", manager.plugins_dir.display());
 
     {
@@ -70,7 +71,7 @@ pub(super) fn scan_plugins(manager: &mut PluginManager) -> Result<Vec<PluginInfo
         }
     }
 
-    super::update_all_missing_dependencies(manager);
+    update_all_missing_dependencies(manager);
     println!("[PluginManager] 插件扫描完成，共加载 {} 个插件", manager.plugins.len());
 
     Ok(manager.plugins.values().cloned().collect())

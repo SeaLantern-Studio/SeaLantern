@@ -6,6 +6,11 @@ use crate::models::server::ServerInstance;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::cpu_policy;
+use sea_lantern_server_local_setup_core::{
+    build_primary_jar_fallback_info, format_fallback_chain_error,
+    format_launch_fallback_log, format_primary_jar_early_exit_reason,
+    format_primary_jar_probe_error_reason, format_primary_jar_spawn_error_reason,
+};
 use std::process::{Command, Stdio};
 
 pub(in crate::services::server::manager::runtime_start) struct LaunchPlan {
@@ -35,10 +40,13 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                 match primary_child.try_wait() {
                     Ok(None) => primary_child,
                     Ok(Some(status)) => {
-                        let reason = format!("JAR 直启进程过早退出: {}", status);
+                        let fallback = build_primary_jar_fallback_info(
+                            &configured_mode,
+                            format_primary_jar_early_exit_reason(&status.to_string()),
+                        );
                         let _ = server_log_pipeline::append_sealantern_log(
                             id,
-                            &format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode),
+                            &format_launch_fallback_log(&fallback.reason, &fallback.to_mode),
                         );
                         let fallback_cmd = build_configured_command(&context)?;
                         let fallback_child = spawn_command(
@@ -49,17 +57,20 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                             context.startup_mode,
                         )?;
                         fallback_info = Some(super::super::super::StartFallbackInfo {
-                            from_mode: "jar".to_string(),
-                            to_mode: configured_mode.clone(),
-                            reason,
+                            from_mode: fallback.from_mode,
+                            to_mode: fallback.to_mode,
+                            reason: fallback.reason,
                         });
                         fallback_child
                     }
                     Err(error) => {
-                        let reason = format!("JAR 直启状态检查失败: {}", error);
+                        let fallback = build_primary_jar_fallback_info(
+                            &configured_mode,
+                            format_primary_jar_probe_error_reason(&error.to_string()),
+                        );
                         let _ = server_log_pipeline::append_sealantern_log(
                             id,
-                            &format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode),
+                            &format_launch_fallback_log(&fallback.reason, &fallback.to_mode),
                         );
                         let fallback_cmd = build_configured_command(&context)?;
                         let fallback_child = spawn_command(
@@ -70,19 +81,22 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                             context.startup_mode,
                         )?;
                         fallback_info = Some(super::super::super::StartFallbackInfo {
-                            from_mode: "jar".to_string(),
-                            to_mode: configured_mode.clone(),
-                            reason,
+                            from_mode: fallback.from_mode,
+                            to_mode: fallback.to_mode,
+                            reason: fallback.reason,
                         });
                         fallback_child
                     }
                 }
             }
             Err(primary_error) => {
-                let reason = format!("JAR 直启失败: {}", primary_error);
+                let fallback = build_primary_jar_fallback_info(
+                    &configured_mode,
+                    format_primary_jar_spawn_error_reason(&primary_error),
+                );
                 let _ = server_log_pipeline::append_sealantern_log(
                     id,
-                    &format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode),
+                    &format_launch_fallback_log(&fallback.reason, &fallback.to_mode),
                 );
                 let fallback_cmd = build_configured_command(&context)?;
                 let fallback_child = spawn_command(
@@ -92,11 +106,13 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                     "回退脚本/配置模式",
                     context.startup_mode,
                 )
-                .map_err(|fallback_error| format!("{}；回退也失败：{}", reason, fallback_error))?;
+                .map_err(|fallback_error| {
+                    format_fallback_chain_error(&fallback.reason, &fallback_error)
+                })?;
                 fallback_info = Some(super::super::super::StartFallbackInfo {
-                    from_mode: "jar".to_string(),
-                    to_mode: configured_mode,
-                    reason,
+                    from_mode: fallback.from_mode,
+                    to_mode: fallback.to_mode,
+                    reason: fallback.reason,
                 });
                 fallback_child
             }
@@ -172,4 +188,35 @@ fn apply_cpu_policy_after_spawn(
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use sea_lantern_server_local_setup_core::{
+        build_primary_jar_fallback_info, format_fallback_chain_error,
+        format_launch_fallback_log, format_primary_jar_early_exit_reason,
+        format_primary_jar_probe_error_reason, format_primary_jar_spawn_error_reason,
+    };
+
+    #[test]
+    fn primary_jar_fallback_reason_chain_is_stable() {
+        let early_exit = format_primary_jar_early_exit_reason("exit status: 1");
+        let probe_error = format_primary_jar_probe_error_reason("io error");
+        let spawn_error = format_primary_jar_spawn_error_reason("spawn failed");
+        let fallback = build_primary_jar_fallback_info("sh", early_exit.clone());
+
+        assert_eq!(early_exit, "JAR 直启进程过早退出: exit status: 1");
+        assert_eq!(probe_error, "JAR 直启状态检查失败: io error");
+        assert_eq!(spawn_error, "JAR 直启失败: spawn failed");
+        assert_eq!(fallback.from_mode, "jar");
+        assert_eq!(fallback.to_mode, "sh");
+        assert_eq!(
+            format_launch_fallback_log(&fallback.reason, &fallback.to_mode),
+            "[Sea Lantern] JAR 直启进程过早退出: exit status: 1，回退到 sh 启动"
+        );
+        assert_eq!(
+            format_fallback_chain_error(&spawn_error, "fallback failed"),
+            "JAR 直启失败: spawn failed；回退也失败：fallback failed"
+        );
+    }
 }

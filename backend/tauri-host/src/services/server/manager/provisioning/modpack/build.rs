@@ -3,9 +3,9 @@ use std::path::Path;
 use crate::models::server::{
     ImportModpackRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
+use sea_lantern_server_installer_core::detect_core_type;
 
 use super::startup::ModpackStartupSelection;
-use crate::services::server::installer;
 
 pub(super) fn build_modpack_server_instance(
     id: String,
@@ -19,7 +19,7 @@ pub(super) fn build_modpack_server_instance(
     let detected_core_type = if startup.startup_mode == "custom" {
         "modpack".to_string()
     } else {
-        installer::detect_core_type(&startup_path)
+        detect_core_type(&startup_path)
     };
     let core_type = startup.selected_core_type.unwrap_or(detected_core_type);
     let mc_version = startup

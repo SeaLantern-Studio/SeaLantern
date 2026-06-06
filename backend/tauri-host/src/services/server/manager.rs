@@ -20,20 +20,45 @@ use crate::models::server::*;
 use crate::services::server::runtime;
 use crate::utils::logger;
 use crate::utils::server_status::status_blocks_start;
+use sea_lantern_server_config_core::properties::read_properties;
+use sea_lantern_server_installer_core::detect_core_type;
 use serde::{Deserialize, Serialize};
 
-use super::installer;
 use super::log_pipeline as server_log_pipeline;
 use super::manager::process::force_kill_process_tree;
 use super::runtime::local::LocalServerRuntime;
 pub(crate) use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
 use common::{get_data_dir, normalize_startup_mode, validate_server_name};
 use fs::{load_servers, remove_run_path_mapping, save_servers, update_run_path_mapping};
-#[allow(unused_imports)]
-pub use registry::{
-    DuplicateServerRecordEntry, DuplicateServerRecordGroup, ServerRegistryDedupeReport,
-};
 pub use runtime_start::LocalLaunchDetail;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DuplicateServerRecordEntry {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub runtime_kind: String,
+    pub created_at: u64,
+    pub last_started_at: Option<u64>,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DuplicateServerRecordGroup {
+    pub canonical_id: String,
+    pub canonical_name: String,
+    pub reasons: Vec<String>,
+    pub entries: Vec<DuplicateServerRecordEntry>,
+    pub removable_ids: Vec<String>,
+    pub blocked_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerRegistryDedupeReport {
+    pub total_servers: usize,
+    pub duplicate_groups: Vec<DuplicateServerRecordGroup>,
+    pub removed_ids: Vec<String>,
+}
 
 fn log_manager_result<T>(
     action: &str,
@@ -656,7 +681,7 @@ impl ServerManager {
             // 尝试从新的路径检测核心类型
             if server.startup_mode_str() != "custom" {
                 let jar_path = server.jar_path().unwrap_or_default();
-                let detected_core = installer::detect_core_type(jar_path);
+                let detected_core = detect_core_type(jar_path);
                 if !detected_core.is_empty() && detected_core != "Unknown" {
                     server.core_type = detected_core;
                 }
@@ -665,9 +690,7 @@ impl ServerManager {
             // 尝试从 server.properties 读取端口
             let server_properties_path = std::path::Path::new(new_path).join("server.properties");
             if server_properties_path.exists() {
-                if let Ok(props) = crate::services::server::config::read_properties(
-                    server_properties_path.to_str().unwrap_or_default(),
-                ) {
+                if let Ok(props) = read_properties(server_properties_path.to_str().unwrap_or_default()) {
                     if let Some(port_str) = props.get("server-port") {
                         if let Ok(parsed_port) = port_str.parse::<u16>() {
                             server.port = parsed_port;

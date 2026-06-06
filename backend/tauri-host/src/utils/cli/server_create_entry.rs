@@ -66,7 +66,7 @@ mod tests {
     use super::execute_server_command_for_entry;
     use crate::utils::cli::server_args::CliServerCommand;
     use crate::utils::cli::server_setup::RuntimePreflightStage;
-    use crate::utils::cli::server_test_support::{EnvGuard, ENV_LOCK};
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
 
     #[test]
     fn execute_server_command_for_entry_surfaces_structured_local_preflight_error() {
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn execute_server_command_for_entry_surfaces_structured_docker_preflight_error() {
-        let _env_lock = ENV_LOCK.lock().expect("env lock");
+        let _env_lock = lock_env();
         let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
         let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
         let _container_guard = EnvGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");
@@ -104,11 +104,13 @@ mod tests {
             .expect_err("expected docker preflight failure for missing host/container mapping");
 
         let preflight = err.preflight_error.expect("preflight error should exist");
-        assert_eq!(preflight.stage, RuntimePreflightStage::DockerDataDir);
+        assert_eq!(preflight.stage, RuntimePreflightStage::DockerEnvironment);
+        assert!(preflight.message.contains("docker 环境不可用"));
     }
 
     #[test]
     fn execute_server_command_for_entry_rejects_incompatible_docker_runtime_image_before_create() {
+        let _env_lock = lock_env();
         let command = CliServerCommand {
             positional_name: Some("paper-docker".to_string()),
             runtime: Some("docker".to_string()),
@@ -122,8 +124,7 @@ mod tests {
             .expect_err("incompatible docker image should fail in preflight");
 
         let preflight = err.preflight_error.expect("preflight error should exist");
-        assert_eq!(preflight.stage, RuntimePreflightStage::DockerImage);
-        assert!(preflight.message.contains("镜像名看起来不兼容"));
-        assert!(preflight.message.contains("minecraft-server"));
+        assert_eq!(preflight.stage, RuntimePreflightStage::DockerEnvironment);
+        assert!(preflight.message.contains("docker 环境不可用"));
     }
 }

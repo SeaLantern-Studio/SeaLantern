@@ -1,67 +1,16 @@
 use super::{DockerContainerState, RuntimeStatusSnapshot, DOCKER_ITZG_RUNTIME_KIND};
-use crate::models::server::{
-    CpuPolicyMode, DockerCommandMode, DockerItzgRuntimeConfig, JvmPresetId, PublishedPort,
-    ServerInstance, ServerStatus, VolumeMount,
-};
+use crate::models::server::{DockerItzgRuntimeConfig, ServerInstance, ServerStatus};
 use crate::services::server::manager::startup_support::{
     resolve_effective_startup_config, EffectiveStartupConfig,
 };
 use crate::utils::docker_cli::docker_error_indicates_missing_container;
-use serde::{Deserialize, Serialize};
+pub(crate) use sea_lantern_docker_core::{build_docker_run_args, DockerLaunchDetail, DockerLaunchSpec};
+use sea_lantern_docker_core::{
+    build_docker_launch_detail as build_shared_docker_launch_detail,
+    build_docker_launch_spec as build_shared_docker_launch_spec, DockerEffectiveLaunchConfig,
+};
 use std::path::Path;
 use std::process::Output;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct DockerLaunchSpec {
-    pub cpuset_cpus: Option<String>,
-    pub environment: Vec<(String, String)>,
-    pub effective_max_memory: u32,
-    pub effective_min_memory: u32,
-    pub jvm_opts_args_count: usize,
-    pub jvm_xx_opts_args_count: usize,
-    pub jvm_synthesis: DockerJvmSynthesisMeta,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DockerLaunchDetail {
-    pub runtime_kind: String,
-    pub image: String,
-    pub image_tag: String,
-    pub container_name: String,
-    pub cpuset_applied: Option<String>,
-    pub effective_max_memory: u32,
-    pub effective_min_memory: u32,
-    pub jvm_preset: String,
-    pub jvm_opts_preview: Option<String>,
-    pub jvm_xx_opts_preview: Option<String>,
-    pub jvm_opts_args_count: usize,
-    pub jvm_xx_opts_args_count: usize,
-    pub jvm_opts_overridden_by_runtime_env: bool,
-    pub jvm_xx_opts_overridden_by_runtime_env: bool,
-    pub active_processor_count_status: String,
-    pub active_processor_count_value: Option<u16>,
-    pub docker_args_preview: Vec<String>,
-    pub command_preview: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum ActiveProcessorCountDecision {
-    Disabled,
-    Injected(u16),
-    SkippedByJvmArgs,
-    SkippedByRuntimeEnvOverride,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct DockerJvmSynthesisMeta {
-    pub preset: &'static str,
-    pub jvm_opts_args_count: usize,
-    pub jvm_xx_opts_args_count: usize,
-    pub jvm_opts_overridden_by_runtime_env: bool,
-    pub jvm_xx_opts_overridden_by_runtime_env: bool,
-    pub active_processor_count: ActiveProcessorCountDecision,
-}
 
 pub(crate) fn resolve_docker_launch_spec(
     server: &ServerInstance,
@@ -69,35 +18,7 @@ pub(crate) fn resolve_docker_launch_spec(
     settings: &crate::models::settings::AppSettings,
 ) -> Result<DockerLaunchSpec, String> {
     let effective = resolve_effective_startup_config(server, settings);
-    let cpuset_cpus = resolve_runtime_cpuset(&effective.cpu_policy)?;
-    let (environment, meta) = build_effective_env(runtime, &effective)?;
-    Ok(DockerLaunchSpec {
-        cpuset_cpus,
-        environment,
-        effective_max_memory: effective.max_memory,
-        effective_min_memory: effective.min_memory,
-        jvm_opts_args_count: meta.jvm_opts_args_count,
-        jvm_xx_opts_args_count: meta.jvm_xx_opts_args_count,
-        jvm_synthesis: meta,
-    })
-}
-
-impl ActiveProcessorCountDecision {
-    pub(crate) fn as_str(&self) -> &'static str {
-        match self {
-            Self::Disabled => "disabled",
-            Self::Injected(_) => "injected",
-            Self::SkippedByJvmArgs => "skipped_by_jvm_args",
-            Self::SkippedByRuntimeEnvOverride => "skipped_by_runtime_env_override",
-        }
-    }
-
-    pub(crate) fn value(&self) -> Option<u16> {
-        match self {
-            Self::Injected(value) => Some(*value),
-            Self::Disabled | Self::SkippedByJvmArgs | Self::SkippedByRuntimeEnvOverride => None,
-        }
-    }
+    build_shared_docker_launch_spec(runtime, &adapt_effective_launch_config(&effective))
 }
 
 pub(crate) fn build_docker_launch_detail(
@@ -106,445 +27,27 @@ pub(crate) fn build_docker_launch_detail(
     settings: &crate::models::settings::AppSettings,
 ) -> Result<DockerLaunchDetail, String> {
     let launch_spec = resolve_docker_launch_spec(server, runtime, settings)?;
-    let docker_args_preview =
-        sanitize_docker_args_preview(&build_docker_run_args(runtime, &launch_spec));
-    let command_preview = format_command_preview("docker", &docker_args_preview);
-
-    Ok(DockerLaunchDetail {
-        runtime_kind: DOCKER_ITZG_RUNTIME_KIND.to_string(),
-        image: runtime.image.clone(),
-        image_tag: runtime.image_tag.clone(),
-        container_name: runtime.container_name.clone(),
-        cpuset_applied: launch_spec.cpuset_cpus.clone(),
-        effective_max_memory: launch_spec.effective_max_memory,
-        effective_min_memory: launch_spec.effective_min_memory,
-        jvm_preset: launch_spec.jvm_synthesis.preset.to_string(),
-        jvm_opts_preview: preview_env_value(&launch_spec.environment, "JVM_OPTS"),
-        jvm_xx_opts_preview: preview_env_value(&launch_spec.environment, "JVM_XX_OPTS"),
-        jvm_opts_args_count: launch_spec.jvm_synthesis.jvm_opts_args_count,
-        jvm_xx_opts_args_count: launch_spec.jvm_synthesis.jvm_xx_opts_args_count,
-        jvm_opts_overridden_by_runtime_env: launch_spec
-            .jvm_synthesis
-            .jvm_opts_overridden_by_runtime_env,
-        jvm_xx_opts_overridden_by_runtime_env: launch_spec
-            .jvm_synthesis
-            .jvm_xx_opts_overridden_by_runtime_env,
-        active_processor_count_status: launch_spec
-            .jvm_synthesis
-            .active_processor_count
-            .as_str()
-            .to_string(),
-        active_processor_count_value: launch_spec.jvm_synthesis.active_processor_count.value(),
-        docker_args_preview,
-        command_preview,
-    })
+    Ok(build_shared_docker_launch_detail(
+        DOCKER_ITZG_RUNTIME_KIND,
+        runtime,
+        &launch_spec,
+    ))
 }
 
-pub(crate) fn build_docker_run_args(
-    runtime: &DockerItzgRuntimeConfig,
-    launch_spec: &DockerLaunchSpec,
-) -> Vec<String> {
-    let mut args = vec![
-        "run".to_string(),
-        "-d".to_string(),
-        "--name".to_string(),
-        runtime.container_name.clone(),
-    ];
-
-    if let Some(cpuset) = &launch_spec.cpuset_cpus {
-        args.push("--cpuset-cpus".to_string());
-        args.push(cpuset.clone());
+fn adapt_effective_launch_config(effective: &EffectiveStartupConfig) -> DockerEffectiveLaunchConfig {
+    DockerEffectiveLaunchConfig {
+        max_memory: effective.max_memory,
+        min_memory: effective.min_memory,
+        jvm_args: effective.jvm_args.clone(),
+        cpu_policy: effective.cpu_policy.clone(),
+        jvm_preset: effective.jvm_preset.clone(),
     }
-
-    args.push("-p".to_string());
-    args.push(format!("{}:25565/tcp", runtime.published_game_port));
-    for port in &runtime.extra_ports {
-        args.push("-p".to_string());
-        args.push(format_published_port(port));
-    }
-
-    args.push("-v".to_string());
-    args.push(format!("{}:/data", runtime.data_dir_mount));
-    for mount in &runtime.volume_mounts {
-        args.push("-v".to_string());
-        args.push(format_volume_mount(mount));
-    }
-
-    for (key, value) in &launch_spec.environment {
-        args.push("-e".to_string());
-        args.push(format!("{}={}", key, value));
-    }
-
-    args.push(format!("{}:{}", runtime.image, runtime.image_tag));
-    args
-}
-
-pub(crate) fn build_effective_env(
-    runtime: &DockerItzgRuntimeConfig,
-    effective: &EffectiveStartupConfig,
-) -> Result<(Vec<(String, String)>, DockerJvmSynthesisMeta), String> {
-    let mut env: Vec<(String, String)> = runtime
-        .env
-        .iter()
-        .map(|(key, value)| (key.clone(), value.clone()))
-        .collect();
-
-    let eula_value = env_value_or_default(&env, "EULA", "TRUE");
-    upsert_env(&mut env, "TYPE", runtime.type_value.clone());
-    upsert_env(&mut env, "VERSION", runtime.version.clone());
-    upsert_env(&mut env, "EULA", eula_value);
-    upsert_env(&mut env, "MEMORY", format_memory_env_value(effective.max_memory));
-    upsert_env(&mut env, "MAX_MEMORY", format_memory_env_value(effective.max_memory));
-    upsert_env(&mut env, "INIT_MEMORY", format_memory_env_value(effective.min_memory));
-    if runtime.command_mode == DockerCommandMode::DockerStdio {
-        upsert_env(&mut env, "CREATE_CONSOLE_IN_PIPE", "true".to_string());
-    }
-
-    let preset = preset_args(&effective.jvm_preset.preset);
-    let runtime_jvm_xx_override = env_contains_key(&env, "JVM_XX_OPTS");
-    let runtime_jvm_opts_override = env_contains_key(&env, "JVM_OPTS");
-    let user_has_apc = jvm_args_contain_active_processor_count(&effective.jvm_args);
-
-    let active_processor_count = match resolve_active_processor_count(&effective.cpu_policy)? {
-        Some(_) if runtime_jvm_xx_override => {
-            ActiveProcessorCountDecision::SkippedByRuntimeEnvOverride
-        }
-        Some(_) if user_has_apc => ActiveProcessorCountDecision::SkippedByJvmArgs,
-        Some(value) => ActiveProcessorCountDecision::Injected(value),
-        None => ActiveProcessorCountDecision::Disabled,
-    };
-
-    let mut managed_jvm_opts = Vec::new();
-    let mut managed_jvm_xx_opts = Vec::new();
-    extend_partitioned_args(
-        &mut managed_jvm_opts,
-        &mut managed_jvm_xx_opts,
-        preset.iter().map(|arg| (*arg).to_string()),
-    );
-    if let ActiveProcessorCountDecision::Injected(value) = active_processor_count {
-        managed_jvm_xx_opts.push(format!("-XX:ActiveProcessorCount={}", value));
-    }
-    extend_partitioned_args(
-        &mut managed_jvm_opts,
-        &mut managed_jvm_xx_opts,
-        effective.jvm_args.iter().cloned(),
-    );
-
-    if !runtime_jvm_xx_override && !managed_jvm_xx_opts.is_empty() {
-        upsert_env(&mut env, "JVM_XX_OPTS", managed_jvm_xx_opts.join(" "));
-    }
-    if !runtime_jvm_opts_override && !managed_jvm_opts.is_empty() {
-        upsert_env(&mut env, "JVM_OPTS", managed_jvm_opts.join(" "));
-    }
-
-    let meta = DockerJvmSynthesisMeta {
-        preset: runtime_jvm_preset_name(&effective.jvm_preset.preset),
-        jvm_opts_args_count: managed_jvm_opts.len(),
-        jvm_xx_opts_args_count: managed_jvm_xx_opts.len(),
-        jvm_opts_overridden_by_runtime_env: runtime_jvm_opts_override,
-        jvm_xx_opts_overridden_by_runtime_env: runtime_jvm_xx_override,
-        active_processor_count,
-    };
-
-    Ok((env, meta))
-}
-
-pub(crate) fn resolve_runtime_cpuset(
-    cpu_policy: &crate::models::server::CpuPolicyConfig,
-) -> Result<Option<String>, String> {
-    match cpu_policy.mode {
-        CpuPolicyMode::Off => Ok(None),
-        CpuPolicyMode::Count => {
-            let count = cpu_policy
-                .count
-                .ok_or_else(|| "Docker CPU policy count 模式缺少 count".to_string())?;
-            if count == 0 {
-                return Err("Docker CPU policy count 模式必须大于 0".to_string());
-            }
-
-            Ok(Some(format!("0-{}", count - 1)))
-        }
-        CpuPolicyMode::Explicit => {
-            let raw = cpu_policy
-                .explicit_set
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .ok_or_else(|| "Docker CPU policy explicit 模式缺少 explicit_set".to_string())?;
-            let indices = parse_cpu_set(raw)?;
-            if indices.is_empty() {
-                return Err("Docker CPU 核心集合解析后为空".to_string());
-            }
-            Ok(Some(format_range(&indices)))
-        }
-    }
-}
-
-pub(crate) fn resolve_active_processor_count(
-    cpu_policy: &crate::models::server::CpuPolicyConfig,
-) -> Result<Option<u16>, String> {
-    if cpu_policy.mode == CpuPolicyMode::Off || !cpu_policy.sync_active_processor_count {
-        return Ok(None);
-    }
-
-    match cpu_policy.mode {
-        CpuPolicyMode::Off => Ok(None),
-        CpuPolicyMode::Count => cpu_policy
-            .count
-            .filter(|value| *value > 0)
-            .map(Some)
-            .ok_or_else(|| "Docker CPU policy count 模式必须大于 0".to_string()),
-        CpuPolicyMode::Explicit => {
-            let raw = cpu_policy
-                .explicit_set
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .ok_or_else(|| "Docker CPU policy explicit 模式缺少 explicit_set".to_string())?;
-            let indices = parse_cpu_set(raw)?;
-            let count = u16::try_from(indices.len())
-                .map_err(|_| "Docker CPU 核心集合数量过大".to_string())?;
-            if count == 0 {
-                return Err("Docker CPU 核心集合解析后为空".to_string());
-            }
-            Ok(Some(count))
-        }
-    }
-}
-
-pub(crate) fn runtime_jvm_preset_name(preset: &JvmPresetId) -> &'static str {
-    match preset {
-        JvmPresetId::None => "none",
-        JvmPresetId::G1Basic => "g1_basic",
-        JvmPresetId::AikarG1 => "aikar_g1",
-        JvmPresetId::ThroughputBasic => "throughput_basic",
-        JvmPresetId::PaperRecommendedLite => "paper_recommended_lite",
-    }
-}
-
-fn preset_args(preset: &JvmPresetId) -> &'static [&'static str] {
-    crate::services::server::manager::startup_support::local_jvm_preset_args(preset)
-}
-
-fn format_memory_env_value(memory_mb: u32) -> String {
-    if memory_mb > 0 && memory_mb.is_multiple_of(1024) {
-        format!("{}G", memory_mb / 1024)
-    } else {
-        format!("{}M", memory_mb)
-    }
-}
-
-fn extend_partitioned_args<I>(jvm_opts: &mut Vec<String>, jvm_xx_opts: &mut Vec<String>, args: I)
-where
-    I: IntoIterator<Item = String>,
-{
-    for arg in args {
-        if arg.starts_with("-XX:") {
-            jvm_xx_opts.push(arg);
-        } else {
-            jvm_opts.push(arg);
-        }
-    }
-}
-
-fn jvm_args_contain_active_processor_count(args: &[String]) -> bool {
-    args.iter()
-        .any(|arg| arg.starts_with("-XX:ActiveProcessorCount="))
-}
-
-fn env_contains_key(env: &[(String, String)], key: &str) -> bool {
-    env.iter()
-        .any(|(existing_key, _)| existing_key.eq_ignore_ascii_case(key))
-}
-
-fn parse_cpu_set(raw: &str) -> Result<Vec<usize>, String> {
-    let mut values = Vec::new();
-    for chunk in raw.split(',') {
-        let token = chunk.trim();
-        if token.is_empty() {
-            return Err(format!("Docker CPU 核心集合格式无效: {}", raw));
-        }
-
-        if let Some((start_raw, end_raw)) = token.split_once('-') {
-            let start = parse_cpu_index(start_raw, raw)?;
-            let end = parse_cpu_index(end_raw, raw)?;
-            if end < start {
-                return Err(format!("Docker CPU 核心区间无效: {}", raw));
-            }
-            values.extend(start..=end);
-        } else {
-            values.push(parse_cpu_index(token, raw)?);
-        }
-    }
-
-    values.sort_unstable();
-    values.dedup();
-    Ok(values)
-}
-
-fn parse_cpu_index(raw: &str, whole: &str) -> Result<usize, String> {
-    raw.trim()
-        .parse::<usize>()
-        .map_err(|_| format!("Docker CPU 核心集合格式无效: {}", whole))
-}
-
-fn format_range(indices: &[usize]) -> String {
-    if indices.is_empty() {
-        return String::new();
-    }
-
-    let mut ranges = Vec::new();
-    let mut start = indices[0];
-    let mut prev = indices[0];
-
-    for &value in &indices[1..] {
-        if value == prev + 1 {
-            prev = value;
-            continue;
-        }
-
-        ranges.push(format_segment(start, prev));
-        start = value;
-        prev = value;
-    }
-
-    ranges.push(format_segment(start, prev));
-    ranges.join(",")
-}
-
-fn format_segment(start: usize, end: usize) -> String {
-    if start == end {
-        start.to_string()
-    } else {
-        format!("{}-{}", start, end)
-    }
-}
-
-fn sanitize_docker_args_preview(args: &[String]) -> Vec<String> {
-    let mut sanitized = Vec::with_capacity(args.len());
-    let mut index = 0;
-    while index < args.len() {
-        let current = &args[index];
-        if current == "-e" {
-            sanitized.push(current.clone());
-            if let Some(env_assignment) = args.get(index + 1) {
-                sanitized.push(sanitize_env_assignment_for_preview(env_assignment));
-                index += 2;
-                continue;
-            }
-        }
-
-        sanitized.push(current.clone());
-        index += 1;
-    }
-
-    sanitized
-}
-
-fn sanitize_env_assignment_for_preview(assignment: &str) -> String {
-    let Some((key, value)) = assignment.split_once('=') else {
-        return assignment.to_string();
-    };
-
-    if is_safe_preview_env_key(key) {
-        format!("{}={}", key, value)
-    } else {
-        format!("{}=<redacted>", key)
-    }
-}
-
-fn preview_env_value(env: &[(String, String)], key: &str) -> Option<String> {
-    env.iter()
-        .find(|(existing_key, _)| existing_key.eq_ignore_ascii_case(key))
-        .map(|(_, value)| value.clone())
-}
-
-fn is_safe_preview_env_key(key: &str) -> bool {
-    matches!(
-        key.to_ascii_uppercase().as_str(),
-        "TYPE"
-            | "VERSION"
-            | "EULA"
-            | "CREATE_CONSOLE_IN_PIPE"
-            | "MEMORY"
-            | "MAX_MEMORY"
-            | "INIT_MEMORY"
-            | "JVM_OPTS"
-            | "JVM_XX_OPTS"
-    )
-}
-
-fn format_command_preview(program: &str, args: &[String]) -> String {
-    let mut parts = Vec::with_capacity(args.len() + 1);
-    parts.push(quote_command_fragment(program));
-    parts.extend(args.iter().map(|arg| quote_command_fragment(arg)));
-    parts.join(" ")
-}
-
-fn quote_command_fragment(value: &str) -> String {
-    let requires_quotes = value.is_empty()
-        || value.chars().any(|ch| ch.is_whitespace())
-        || value.contains('"')
-        || value.contains('\'')
-        || value.contains(';')
-        || value.contains('&')
-        || value.contains('|');
-
-    if !requires_quotes {
-        return value.to_string();
-    }
-
-    if value.contains('"') && !value.contains('\'') {
-        return format!("'{}'", value);
-    }
-
-    format!("\"{}\"", value.replace('"', "\\\""))
 }
 
 pub(super) fn ensure_runtime_path_ready(server: &ServerInstance) -> Result<(), String> {
     let path = Path::new(&server.path);
     std::fs::create_dir_all(path)
         .map_err(|e| format!("创建 Docker 数据目录失败 ({}): {}", path.display(), e))
-}
-
-fn env_value_or_default(env: &[(String, String)], key: &str, default: &str) -> String {
-    env.iter()
-        .find(|(existing, _)| existing.eq_ignore_ascii_case(key))
-        .map(|(_, value)| value.clone())
-        .unwrap_or_else(|| default.to_string())
-}
-
-fn upsert_env(env: &mut Vec<(String, String)>, key: &str, value: String) {
-    if let Some((_, existing_value)) = env
-        .iter_mut()
-        .find(|(existing_key, _)| existing_key.eq_ignore_ascii_case(key))
-    {
-        *existing_value = value;
-        return;
-    }
-
-    env.push((key.to_string(), value));
-}
-
-pub(super) fn format_published_port(port: &PublishedPort) -> String {
-    let protocol = if port.protocol.trim().is_empty() {
-        "tcp"
-    } else {
-        port.protocol.trim()
-    };
-    format!("{}:{}/{}", port.host_port, port.container_port, protocol)
-}
-
-pub(super) fn format_volume_mount(mount: &VolumeMount) -> String {
-    if mount.read_only {
-        format!("{}:{}:ro", mount.source, mount.target)
-    } else {
-        format!("{}:{}", mount.source, mount.target)
-    }
-}
-
-pub(super) fn docker_image_ref(runtime: &DockerItzgRuntimeConfig) -> String {
-    format!("{}:{}", runtime.image, runtime.image_tag)
 }
 
 pub(super) fn container_should_clear_starting(state: &DockerContainerState) -> bool {
@@ -795,32 +298,9 @@ pub(super) fn docker_exec_requires_uid(stderr: &str) -> bool {
     lower.contains("exec needs to be run with user id")
 }
 
-pub(super) fn runtime_env_value<'a>(
-    runtime: &'a DockerItzgRuntimeConfig,
-    key: &str,
-) -> Option<&'a str> {
-    runtime
-        .env
-        .iter()
-        .find(|(existing_key, _)| existing_key.eq_ignore_ascii_case(key))
-        .map(|(_, value)| value.as_str())
-}
-
-pub(super) fn requested_stop_timeout_secs(runtime: &DockerItzgRuntimeConfig) -> Option<u64> {
-    runtime_env_value(runtime, "STOP_DURATION")
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .and_then(|value| value.parse::<u64>().ok())
-        .filter(|value| *value > 0)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{
-        build_docker_launch_detail, build_effective_env, format_range, parse_cpu_set,
-        resolve_active_processor_count, resolve_docker_launch_spec, resolve_runtime_cpuset,
-        runtime_jvm_preset_name, ActiveProcessorCountDecision,
-    };
+    use super::{build_docker_launch_detail, resolve_docker_launch_spec};
     use crate::models::server::{
         CpuPolicyConfig, CpuPolicyMode, DockerBackendKind, DockerCommandMode,
         DockerItzgRuntimeConfig, JvmPresetConfig, JvmPresetId, RconConfig, ServerInstance,
@@ -828,6 +308,10 @@ mod tests {
     };
     use crate::models::settings::AppSettings;
     use crate::services::server::manager::startup_support::resolve_effective_startup_config;
+    use sea_lantern_docker_core::{
+        build_docker_effective_env, resolve_docker_active_processor_count, resolve_docker_cpuset,
+        ActiveProcessorCountDecision,
+    };
     use std::collections::BTreeMap;
     use tempfile::tempdir;
 
@@ -880,16 +364,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_cpu_set_supports_ranges_and_lists() {
-        assert_eq!(parse_cpu_set("0-3,6,7").unwrap(), vec![0, 1, 2, 3, 6, 7]);
-    }
-
-    #[test]
-    fn format_range_compacts_consecutive_values() {
-        assert_eq!(format_range(&[0, 1, 2, 4, 6, 7]), "0-2,4,6-7");
-    }
-
-    #[test]
     fn resolve_runtime_cpuset_supports_count_mode() {
         let mut runtime = docker_runtime();
         runtime.cpu_policy = CpuPolicyConfig {
@@ -899,8 +373,8 @@ mod tests {
             sync_active_processor_count: true,
         };
 
-        assert_eq!(resolve_runtime_cpuset(&runtime.cpu_policy).unwrap(), Some("0-3".to_string()));
-        assert_eq!(resolve_active_processor_count(&runtime.cpu_policy).unwrap(), Some(4));
+        assert_eq!(resolve_docker_cpuset(&runtime.cpu_policy).unwrap(), Some("0-3".to_string()));
+        assert_eq!(resolve_docker_active_processor_count(&runtime.cpu_policy).unwrap(), Some(4));
     }
 
     #[test]
@@ -914,17 +388,17 @@ mod tests {
         };
 
         assert_eq!(
-            resolve_runtime_cpuset(&runtime.cpu_policy).unwrap(),
+            resolve_docker_cpuset(&runtime.cpu_policy).unwrap(),
             Some("0-3,6-7".to_string())
         );
-        assert_eq!(resolve_active_processor_count(&runtime.cpu_policy).unwrap(), Some(6));
+        assert_eq!(resolve_docker_active_processor_count(&runtime.cpu_policy).unwrap(), Some(6));
     }
 
     #[test]
     fn resolve_runtime_cpuset_skips_off_mode() {
         let runtime = docker_runtime();
-        assert_eq!(resolve_runtime_cpuset(&runtime.cpu_policy).unwrap(), None);
-        assert_eq!(resolve_active_processor_count(&runtime.cpu_policy).unwrap(), None);
+        assert_eq!(resolve_docker_cpuset(&runtime.cpu_policy).unwrap(), None);
+        assert_eq!(resolve_docker_active_processor_count(&runtime.cpu_policy).unwrap(), None);
     }
 
     #[test]
@@ -936,7 +410,7 @@ mod tests {
             explicit_set: None,
             sync_active_processor_count: true,
         };
-        assert!(resolve_runtime_cpuset(&count_zero.cpu_policy).is_err());
+        assert!(resolve_docker_cpuset(&count_zero.cpu_policy).is_err());
 
         let mut explicit_empty = docker_runtime();
         explicit_empty.cpu_policy = CpuPolicyConfig {
@@ -945,7 +419,7 @@ mod tests {
             explicit_set: Some(" ".to_string()),
             sync_active_processor_count: true,
         };
-        assert!(resolve_runtime_cpuset(&explicit_empty.cpu_policy).is_err());
+        assert!(resolve_docker_cpuset(&explicit_empty.cpu_policy).is_err());
 
         let mut explicit_invalid = docker_runtime();
         explicit_invalid.cpu_policy = CpuPolicyConfig {
@@ -954,7 +428,7 @@ mod tests {
             explicit_set: Some("3-1".to_string()),
             sync_active_processor_count: true,
         };
-        assert!(resolve_runtime_cpuset(&explicit_invalid.cpu_policy).is_err());
+        assert!(resolve_docker_cpuset(&explicit_invalid.cpu_policy).is_err());
     }
 
     #[test]
@@ -972,7 +446,9 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let server = docker_server(temp_dir.path().to_string_lossy().to_string(), runtime.clone());
         let effective = resolve_effective_startup_config(&server, &test_settings());
-        let (env, meta) = build_effective_env(&runtime, &effective).unwrap();
+        let (env, meta) =
+            build_docker_effective_env(&runtime, &super::adapt_effective_launch_config(&effective))
+                .unwrap();
         let jvm_opts = env.iter().find(|(k, _)| k == "JVM_OPTS").unwrap().1.clone();
         let jvm_xx_opts = env
             .iter()
@@ -1005,7 +481,9 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let server = docker_server(temp_dir.path().to_string_lossy().to_string(), runtime.clone());
         let effective = resolve_effective_startup_config(&server, &test_settings());
-        let (env, meta) = build_effective_env(&runtime, &effective).unwrap();
+        let (env, meta) =
+            build_docker_effective_env(&runtime, &super::adapt_effective_launch_config(&effective))
+                .unwrap();
         let jvm_xx_opts = env
             .iter()
             .find(|(k, _)| k == "JVM_XX_OPTS")
@@ -1038,7 +516,9 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let server = docker_server(temp_dir.path().to_string_lossy().to_string(), runtime.clone());
         let effective = resolve_effective_startup_config(&server, &test_settings());
-        let (env, meta) = build_effective_env(&runtime, &effective).unwrap();
+        let (env, meta) =
+            build_docker_effective_env(&runtime, &super::adapt_effective_launch_config(&effective))
+                .unwrap();
 
         assert_eq!(env.iter().find(|(k, _)| k == "JVM_OPTS").unwrap().1, "-Dmanual=true");
         assert_eq!(
@@ -1169,8 +649,8 @@ mod tests {
 
     #[test]
     fn runtime_jvm_preset_name_is_stable() {
-        assert_eq!(runtime_jvm_preset_name(&JvmPresetId::None), "none");
-        assert_eq!(runtime_jvm_preset_name(&JvmPresetId::AikarG1), "aikar_g1");
+        assert_eq!(JvmPresetId::None.as_str(), "none");
+        assert_eq!(JvmPresetId::AikarG1.as_str(), "aikar_g1");
     }
 
     #[test]

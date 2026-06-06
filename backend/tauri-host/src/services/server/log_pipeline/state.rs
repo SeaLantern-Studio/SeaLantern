@@ -1,14 +1,16 @@
 use rusqlite::Connection;
+use sea_lantern_server_local_setup_core::decode_console_bytes as decode_shared_console_bytes;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::thread;
 
-pub type ServerLogEventHandler = Arc<dyn Fn(&str, &str) -> Result<(), String> + Send + Sync>;
-pub type ServerLogProcessor = Arc<dyn Fn(&str, &str) -> String + Send + Sync>;
+pub type ServerLogEventHandler = dyn Fn(&str, &str) -> Result<(), String> + Send + Sync;
+pub type ServerLogProcessor = dyn Fn(&str, &str) -> String + Send + Sync;
+pub type ServerLogProcessorList = Arc<Mutex<Vec<Arc<ServerLogProcessor>>>>;
 
-pub static SERVER_LOG_EVENT_HANDLER: OnceLock<ServerLogEventHandler> = OnceLock::new();
-pub static SERVER_LOG_PROCESSORS: OnceLock<Arc<Mutex<Vec<ServerLogProcessor>>>> = OnceLock::new();
+pub static SERVER_LOG_EVENT_HANDLER: OnceLock<Arc<ServerLogEventHandler>> = OnceLock::new();
+pub static SERVER_LOG_PROCESSORS: OnceLock<ServerLogProcessorList> = OnceLock::new();
 pub static LOG_WRITERS: OnceLock<Mutex<HashMap<String, ServerLogWriter>>> = OnceLock::new();
 
 #[derive(Clone)]
@@ -43,7 +45,7 @@ impl LogSource {
     }
 }
 
-pub fn server_log_processors() -> &'static Arc<Mutex<Vec<ServerLogProcessor>>> {
+pub fn server_log_processors() -> &'static ServerLogProcessorList {
     SERVER_LOG_PROCESSORS.get_or_init(|| Arc::new(Mutex::new(Vec::new())))
 }
 
@@ -75,17 +77,5 @@ pub fn resolve_server_path(server_id: &str) -> Result<PathBuf, String> {
 }
 
 pub fn decode_console_bytes(bytes: &[u8]) -> String {
-    if let Ok(text) = std::str::from_utf8(bytes) {
-        return text.to_string();
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        let (decoded, _, _) = encoding_rs::GBK.decode(bytes);
-        decoded.into_owned()
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        String::from_utf8_lossy(bytes).into_owned()
-    }
+    decode_shared_console_bytes(bytes)
 }

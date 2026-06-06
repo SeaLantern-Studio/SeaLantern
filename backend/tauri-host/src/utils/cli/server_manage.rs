@@ -837,7 +837,7 @@ mod tests {
             }),
         };
 
-        let resolved = resolve_server_reference_from_servers(&[server.clone()], "paper-docker")
+        let resolved = resolve_server_reference_from_servers(std::slice::from_ref(&server), "paper-docker")
             .expect("docker runtime shape should still resolve by name");
         assert_eq!(resolved.runtime_kind, "docker_itzg");
     }

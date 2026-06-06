@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
-
-use super::super::shared::read_server_port;
+use sea_lantern_server_config_core::startup::read_server_port;
+use sea_lantern_server_config_core::properties::write_properties;
 
 pub(super) fn ensure_server_properties_for_import(
     run_dir: &Path,
@@ -13,10 +13,7 @@ pub(super) fn ensure_server_properties_for_import(
         let port = read_server_port(run_dir, requested_port);
         let mut updates = HashMap::new();
         updates.insert("online-mode".to_string(), online_mode.to_string());
-        crate::services::server::config::write_properties(
-            server_properties_path.to_str().unwrap_or_default(),
-            &updates,
-        )
+        write_properties(server_properties_path.to_str().unwrap_or_default(), &updates)
         .map_err(|e| format!("更新 server.properties 失败: {}", e))?;
         return Ok(port);
     }

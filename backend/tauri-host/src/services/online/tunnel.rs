@@ -4,7 +4,31 @@ mod i18n;
 mod runtime;
 mod state;
 
-pub use state::TunnelStatus;
+use serde::Serialize;
+
+#[derive(Debug, Serialize, Clone)]
+pub struct TunnelConnection {
+    pub remote_id: String,
+    pub is_relay: bool,
+    pub rtt_ms: u64,
+    pub tx_bytes: u64,
+    pub rx_bytes: u64,
+    pub alive: bool,
+    pub elapsed_secs: u64,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct TunnelStatus {
+    pub running: bool,
+    pub mode: Option<String>,
+    pub ticket: Option<String>,
+    pub connections: Vec<TunnelConnection>,
+    pub logs: Vec<String>,
+    pub host_port: u16,
+    pub join_port: u16,
+    pub last_ticket: Option<String>,
+    pub relay_url: Option<String>,
+}
 
 pub async fn host(
     port: u16,

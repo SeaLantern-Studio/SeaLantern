@@ -539,20 +539,19 @@ fn print_docker_doctor_report(report: &DockerDoctorReport, context: &DockerDocto
 #[cfg(test)]
 mod tests {
     use super::{build_docker_doctor_report, DockerDoctorContext, DoctorStatus};
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
     use crate::utils::docker_cli::{DockerCommandFailureKind, DockerImageInspectOutcome};
 
     fn render_docker_help_output() -> String {
-        let mut lines = Vec::new();
-        lines.push("用法: sealantern docker <子命令>".to_string());
-        lines
-            .push("  doctor    检查 Docker CLI、守护进程、RCON 宿主地址和容器路径映射".to_string());
-        lines.push(
-            "  image-check <image[:tag]>    检查目标镜像是否本地已缓存或可从远端解析".to_string(),
-        );
-        lines.push(
+        let lines = [
+            "用法: sealantern docker <子命令>".to_string(),
+            "  doctor    检查 Docker CLI、守护进程、RCON 宿主地址和容器路径映射"
+                .to_string(),
+            "  image-check <image[:tag]>    检查目标镜像是否本地已缓存或可从远端解析"
+                .to_string(),
             "  pull <image[:tag]>    主动拉取目标镜像，便于后续 server create/start 重试"
                 .to_string(),
-        );
+        ];
         lines.join("\n")
     }
 
@@ -572,8 +571,9 @@ mod tests {
 
     #[test]
     fn doctor_report_passes_desktop_mode_without_mapping() {
-        std::env::remove_var("SEALANTERN_SERVERS_HOST_ROOT");
-        std::env::remove_var("SEALANTERN_SERVERS_CONTAINER_ROOT");
+        let _env_lock = lock_env();
+        let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
+        let _container_guard = EnvGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");
 
         let report = build_docker_doctor_report(&sample_context());
 
@@ -587,8 +587,9 @@ mod tests {
 
     #[test]
     fn doctor_report_fails_when_container_like_mapping_is_missing() {
-        std::env::remove_var("SEALANTERN_SERVERS_HOST_ROOT");
-        std::env::remove_var("SEALANTERN_SERVERS_CONTAINER_ROOT");
+        let _env_lock = lock_env();
+        let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
+        let _container_guard = EnvGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");
 
         let mut context = sample_context();
         context.is_container_like = true;
@@ -606,8 +607,9 @@ mod tests {
 
     #[test]
     fn doctor_report_warns_when_container_like_rcon_host_is_implicit() {
-        std::env::set_var("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
-        std::env::set_var("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
+        let _env_lock = lock_env();
+        let _host_guard = EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
+        let _container_guard = EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
 
         let mut context = sample_context();
         context.is_container_like = true;
@@ -623,9 +625,6 @@ mod tests {
             .checks
             .iter()
             .any(|check| { check.name == "rcon_host" && check.status == DoctorStatus::Warn }));
-
-        std::env::remove_var("SEALANTERN_SERVERS_HOST_ROOT");
-        std::env::remove_var("SEALANTERN_SERVERS_CONTAINER_ROOT");
     }
 
     #[test]

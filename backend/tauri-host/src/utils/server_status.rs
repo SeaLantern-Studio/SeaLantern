@@ -1,64 +1,27 @@
 use crate::models::server::{ServerStatus, ServerStatusInfo};
+pub(crate) use sea_lantern_runtime::{
+    StatusLevel, StatusSnapshot, status_blocks_start, status_detail_health,
+    status_detail_indicates_running, status_detail_runtime_kind,
+    status_is_docker_command_ready, status_is_terminal_start_ready,
+};
 
-pub fn status_detail_indicates_running(detail: Option<&str>) -> bool {
-    detail.is_some_and(|value| {
-        value
-            .split_whitespace()
-            .any(|part| part.eq_ignore_ascii_case("running=true"))
-    })
-}
+#[cfg(test)]
+pub(crate) use sea_lantern_runtime::status_detail_field;
 
-pub fn status_detail_field<'a>(detail: Option<&'a str>, key: &str) -> Option<&'a str> {
-    detail?.split_whitespace().find_map(|part| {
-        let (field, value) = part.split_once('=')?;
-        if field == key {
-            Some(value)
-        } else {
-            None
+impl StatusSnapshot for ServerStatusInfo {
+    fn level(&self) -> StatusLevel {
+        match self.status {
+            ServerStatus::Stopped => StatusLevel::Stopped,
+            ServerStatus::Starting => StatusLevel::Starting,
+            ServerStatus::Running => StatusLevel::Running,
+            ServerStatus::Stopping => StatusLevel::Stopping,
+            ServerStatus::Error => StatusLevel::Error,
         }
-    })
-}
-
-pub fn status_detail_runtime_kind(detail: Option<&str>) -> Option<&str> {
-    status_detail_field(detail, "runtime")
-}
-
-pub fn status_detail_health(detail: Option<&str>) -> Option<&str> {
-    status_detail_field(detail, "health")
-        .filter(|value| !value.trim().is_empty() && !value.eq_ignore_ascii_case("none"))
-}
-
-pub fn status_is_docker_command_ready(status: &ServerStatusInfo) -> bool {
-    if status.status != ServerStatus::Running {
-        return false;
     }
 
-    let detail = status.detail_message.as_deref();
-    if !status_detail_runtime_kind(detail)
-        .is_some_and(|runtime| runtime.eq_ignore_ascii_case("docker_itzg"))
-    {
-        return true;
+    fn detail_message(&self) -> Option<&str> {
+        self.detail_message.as_deref()
     }
-
-    status_detail_health(detail)
-        .map(|health| health.eq_ignore_ascii_case("healthy"))
-        .unwrap_or(true)
-}
-
-pub fn status_is_terminal_start_ready(status: &ServerStatusInfo) -> bool {
-    match status.status {
-        ServerStatus::Error | ServerStatus::Stopped => true,
-        ServerStatus::Running => status_is_docker_command_ready(status),
-        ServerStatus::Starting | ServerStatus::Stopping => false,
-    }
-}
-
-pub fn status_blocks_start(status: &ServerStatusInfo) -> bool {
-    matches!(
-        status.status,
-        ServerStatus::Running | ServerStatus::Starting | ServerStatus::Stopping
-    ) || matches!(status.status, ServerStatus::Error)
-        && status_detail_indicates_running(status.detail_message.as_deref())
 }
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
 use crate::hardcode_data::app_files::SERVER_PATH_PERMISSION_TEST_FILE_NAME;
 use crate::models::server::ValidateServerPathResult;
+use sea_lantern_server_local_setup_core::{detect_startup_mode_from_path_like, inspect_local_folder};
 use std::path::Path;
 
 /// 收集目录复制时会发生覆盖的文件路径
@@ -118,66 +119,17 @@ fn copy_directory_recursive(source: &Path, target: &Path) -> Result<(), std::io:
 fn find_server_executable_for_validation(
     server_path: &std::path::Path,
 ) -> Result<(String, String), String> {
-    let preferred_scripts = [
-        "start.bat",
-        "run.bat",
-        "launch.bat",
-        "start.sh",
-        "run.sh",
-        "launch.sh",
-        "start.ps1",
-        "run.ps1",
-        "launch.ps1",
-    ];
+    let inspection = inspect_local_folder(server_path);
 
-    for script in preferred_scripts {
-        let script_path = server_path.join(script);
-        if script_path.exists() {
-            let mode = detect_startup_mode_from_path(&script_path);
-            return Ok((script_path.to_string_lossy().to_string(), mode));
-        }
-    }
-
-    let server_jar = server_path.join("server.jar");
-    if server_jar.exists() {
-        return Ok((server_jar.to_string_lossy().to_string(), "jar".to_string()));
-    }
-
-    let entries =
-        std::fs::read_dir(server_path).map_err(|e| format!("无法读取服务器目录: {}", e))?;
-
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-
-        let extension = path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .map(|ext| ext.to_ascii_lowercase())
-            .unwrap_or_default();
-
-        if extension == "jar" || extension == "bat" || extension == "sh" || extension == "ps1" {
-            let mode = detect_startup_mode_from_path(&path);
-            return Ok((path.to_string_lossy().to_string(), mode));
-        }
+    if let Some(path) = inspection.preferred_startup_path() {
+        return Ok((
+            path.to_string(),
+            inspection
+                .startup_mode
+                .clone()
+                .unwrap_or_else(|| detect_startup_mode_from_path_like(path)),
+        ));
     }
 
     Err("未找到可用的启动文件".to_string())
-}
-
-fn detect_startup_mode_from_path(path: &std::path::Path) -> String {
-    let extension = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_ascii_lowercase())
-        .unwrap_or_default();
-
-    match extension.as_str() {
-        "bat" => "bat".to_string(),
-        "sh" => "sh".to_string(),
-        "ps1" => "ps1".to_string(),
-        _ => "jar".to_string(),
-    }
 }

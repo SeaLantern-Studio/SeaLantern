@@ -1,8 +1,11 @@
 mod docker_support;
 mod java_support;
-mod local_folder_inspection;
 mod local_request_support;
+#[cfg(test)]
+mod local_folder_inspection;
+#[cfg(test)]
 mod local_startup_support;
+#[cfg(test)]
 mod metadata_support;
 
 use std::path::Path;
@@ -12,6 +15,9 @@ use crate::services::global;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::{trace_cli_action, CliServerRuntimeKind};
+use sea_lantern_server_local_setup_core::{
+    inspect_local_folder, inspect_local_folder_checked, LocalFolderInspection,
+};
 
 use self::docker_support::{
     build_docker_create_request, ensure_docker_environment, preflight_docker_command_mode_support,
@@ -19,7 +25,6 @@ use self::docker_support::{
     validate_docker_itzg_image_compatibility, DockerCreateDefaults,
 };
 use self::java_support::resolve_java_path;
-use self::local_folder_inspection::inspect_local_folder;
 use self::local_request_support::{
     build_local_attach_request, build_local_create_request, trace_local_attach_request,
     trace_local_create_request, LocalDefaults,
@@ -287,15 +292,6 @@ pub(super) fn preflight_runtime_requirements_detailed(
             Ok(())
         }
         CliServerRuntimeKind::Docker => {
-            ensure_docker_environment().map_err(|message| {
-                RuntimePreflightError::new(
-                    CliServerRuntimeKind::Docker,
-                    RuntimePreflightStage::DockerEnvironment,
-                    message,
-                    None,
-                )
-            })?;
-
             ensure_supported_docker_backend(command).map_err(|message| {
                 RuntimePreflightError::new(
                     CliServerRuntimeKind::Docker,
@@ -305,6 +301,15 @@ pub(super) fn preflight_runtime_requirements_detailed(
                         .docker_backend
                         .as_ref()
                         .map(|value| format!("requested_backend={}", value.trim())),
+                )
+            })?;
+
+            ensure_docker_environment().map_err(|message| {
+                RuntimePreflightError::new(
+                    CliServerRuntimeKind::Docker,
+                    RuntimePreflightStage::DockerEnvironment,
+                    message,
+                    None,
                 )
             })?;
 
@@ -447,7 +452,9 @@ pub(super) fn create_or_attach_local_server(
                 return Err(format!("--folder 指定目录不存在或不是文件夹: {}", folder));
             }
 
-            let inspection = inspect_local_folder(folder_path);
+            let inspection = inspect_local_folder_checked(folder_path).map_err(|error| {
+                format!("无法检查本地服务器目录 {}: {}", folder, error)
+            })?;
             trace_cli_action(
                 "local_folder_inspection",
                 &format!("name={} folder={} {}", resolved_name, folder, inspection.describe()),
@@ -506,7 +513,7 @@ fn attach_existing_local_server(
     ports: &PreparedPorts,
     folder: &str,
     defaults: &LocalDefaults<'_>,
-    inspection: &self::local_folder_inspection::LocalFolderInspection,
+    inspection: &LocalFolderInspection,
 ) -> Result<ServerInstance, String> {
     let request =
         build_local_attach_request(command, resolved_name, ports, folder, defaults, inspection)?;
@@ -523,6 +530,7 @@ mod tests {
     };
     use crate::utils::cli::server_args::{parse_server_command, CliServerCommand};
     use crate::utils::cli::server_shared::CliServerRuntimeKind;
+    use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
     use tempfile::tempdir;
 
     #[test]
@@ -748,9 +756,10 @@ mod tests {
 
     #[test]
     fn resolve_docker_data_dir_can_fail_before_build_request_in_container_like_env() {
-        std::env::set_var("SEALANTERN_HEADLESS_HTTP", "1");
-        std::env::remove_var("SEALANTERN_SERVERS_HOST_ROOT");
-        std::env::remove_var("SEALANTERN_SERVERS_CONTAINER_ROOT");
+        let _env_lock = lock_env();
+        let _headless_guard = EnvGuard::set("SEALANTERN_HEADLESS_HTTP", "1");
+        let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
+        let _container_guard = EnvGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");
 
         let command = CliServerCommand::default();
         let err = resolve_docker_data_dir(&command, "paper-docker")
@@ -758,8 +767,6 @@ mod tests {
 
         assert!(err.contains("SEALANTERN_SERVERS_CONTAINER_ROOT"));
         assert!(err.contains("--data-dir"));
-
-        std::env::remove_var("SEALANTERN_HEADLESS_HTTP");
     }
 
     #[test]

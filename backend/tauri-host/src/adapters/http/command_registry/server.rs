@@ -1,4 +1,4 @@
-use super::common::{parse_params, CommandHandler};
+use super::common::{CommandHandler, RegistryBuilder, parse_params};
 use super::requests::{
     AddExistingServerRequest, CollectCopyConflictsRequest, CopyDirectoryContentsRequest,
     CreateServerRequest, GetLogsRequest, GetServerStatusRequest, ImportModpackRequest,
@@ -7,42 +7,24 @@ use super::requests::{
 };
 use crate::commands::server::manage as server_commands;
 use serde_json::Value;
-use std::collections::HashMap;
-
-pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) {
-    handlers.insert("create_server".to_string(), handle_create_server as CommandHandler);
-    handlers.insert("import_server".to_string(), handle_import_server as CommandHandler);
-    handlers.insert("import_modpack".to_string(), handle_import_modpack as CommandHandler);
-    handlers.insert("start_server".to_string(), handle_start_server as CommandHandler);
-    handlers.insert("stop_server".to_string(), handle_stop_server as CommandHandler);
-    handlers.insert("send_command".to_string(), handle_send_command as CommandHandler);
-    handlers.insert("get_server_list".to_string(), handle_get_server_list as CommandHandler);
-    handlers.insert("get_server_status".to_string(), handle_get_server_status as CommandHandler);
-    handlers.insert("delete_server".to_string(), handle_delete_server as CommandHandler);
-    handlers.insert("get_server_logs".to_string(), handle_get_server_logs as CommandHandler);
-    handlers.insert("update_server_name".to_string(), handle_update_server_name as CommandHandler);
-    handlers.insert(
-        "update_server_java_path".to_string(),
-        handle_update_server_java_path as CommandHandler,
-    );
-    handlers.insert(
-        "scan_startup_candidates".to_string(),
-        handle_scan_startup_candidates as CommandHandler,
-    );
-    handlers.insert(
-        "parse_server_core_type".to_string(),
-        handle_parse_server_core_type as CommandHandler,
-    );
-    handlers.insert(
-        "collect_copy_conflicts".to_string(),
-        handle_collect_copy_conflicts as CommandHandler,
-    );
-    handlers.insert(
-        "copy_directory_contents".to_string(),
-        handle_copy_directory_contents as CommandHandler,
-    );
-    handlers
-        .insert("add_existing_server".to_string(), handle_add_existing_server as CommandHandler);
+pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
+    builder.register("create_server", handle_create_server as CommandHandler);
+    builder.register("import_server", handle_import_server as CommandHandler);
+    builder.register("import_modpack", handle_import_modpack as CommandHandler);
+    builder.register("start_server", handle_start_server as CommandHandler);
+    builder.register("stop_server", handle_stop_server as CommandHandler);
+    builder.register("send_command", handle_send_command as CommandHandler);
+    builder.register("get_server_list", handle_get_server_list as CommandHandler);
+    builder.register("get_server_status", handle_get_server_status as CommandHandler);
+    builder.register("delete_server", handle_delete_server as CommandHandler);
+    builder.register("get_server_logs", handle_get_server_logs as CommandHandler);
+    builder.register("update_server_name", handle_update_server_name as CommandHandler);
+    builder.register("update_server_java_path", handle_update_server_java_path as CommandHandler);
+    builder.register("scan_startup_candidates", handle_scan_startup_candidates as CommandHandler);
+    builder.register("parse_server_core_type", handle_parse_server_core_type as CommandHandler);
+    builder.register("collect_copy_conflicts", handle_collect_copy_conflicts as CommandHandler);
+    builder.register("copy_directory_contents", handle_copy_directory_contents as CommandHandler);
+    builder.register("add_existing_server", handle_add_existing_server as CommandHandler);
 }
 
 fn handle_create_server(

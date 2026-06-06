@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use crate::utils::cli::server_args::{parse_server_command, CliServerCommand, WebMode};
 use crate::utils::cli::server_entry::{
     run_server_command_with, ServerCommandError, ServerCommandErrorKind, ServerCommandOutcome,

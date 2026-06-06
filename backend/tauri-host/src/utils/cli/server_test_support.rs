@@ -1,39 +1,7 @@
 use crate::models::server::{
     CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
-
-pub(super) static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
-
-pub(super) struct EnvGuard {
-    name: &'static str,
-    original: Option<String>,
-}
-
-impl EnvGuard {
-    pub(super) fn set(name: &'static str, value: &str) -> Self {
-        let original = std::env::var(name).ok();
-        std::env::set_var(name, value);
-        Self { name, original }
-    }
-
-    pub(super) fn remove(name: &'static str) -> Self {
-        let original = std::env::var(name).ok();
-        std::env::remove_var(name);
-        Self { name, original }
-    }
-}
-
-impl Drop for EnvGuard {
-    fn drop(&mut self) {
-        if let Some(value) = &self.original {
-            std::env::set_var(self.name, value);
-        } else {
-            std::env::remove_var(self.name);
-        }
-    }
-}
+pub(super) use crate::test_support::{lock_env, EnvGuard};
 
 pub(super) fn sample_server() -> ServerInstance {
     ServerInstance {

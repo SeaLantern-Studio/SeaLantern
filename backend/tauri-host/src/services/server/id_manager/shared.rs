@@ -1,10 +1,5 @@
 use uuid::Uuid;
 
-/// 生成随机短 ID
-pub(super) fn generate_id() -> String {
-    format!("srv-{}", Uuid::new_v4().to_string()[..8].to_lowercase())
-}
-
 /// 按名称生成短 ID
 pub(super) fn generate_id_from_name(name: &str) -> String {
     let sanitized = name
@@ -15,7 +10,7 @@ pub(super) fn generate_id_from_name(name: &str) -> String {
         .collect::<String>();
 
     if sanitized.is_empty() {
-        return generate_id();
+        return format!("srv-{}", Uuid::new_v4().to_string()[..8].to_lowercase());
     }
 
     format!("{}-{}", sanitized, Uuid::new_v4().to_string()[..4].to_lowercase())

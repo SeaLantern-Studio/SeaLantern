@@ -6,7 +6,6 @@ use super::mod_manager::ModManager;
 use super::server::id_manager::ServerIdManager;
 use super::server::join::JoinManager;
 use super::server::manager::ServerManager;
-use super::server::plugin_manager::ServerPluginManager;
 use super::settings_manager::SettingsManager;
 use crate::plugins::manager::PluginManager;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -48,11 +47,6 @@ pub fn join_manager() -> &'static JoinManager {
 pub fn server_id_manager() -> &'static ServerIdManager {
     static INSTANCE: OnceLock<ServerIdManager> = OnceLock::new();
     INSTANCE.get_or_init(ServerIdManager::new)
-}
-
-pub fn server_plugin_manager() -> &'static ServerPluginManager {
-    static INSTANCE: OnceLock<ServerPluginManager> = OnceLock::new();
-    INSTANCE.get_or_init(ServerPluginManager::new)
 }
 
 pub fn plugin_manager() -> &'static Arc<Mutex<PluginManager>> {

@@ -3,9 +3,7 @@ use std::sync::Arc;
 use crate::models::download::TaskProgressResponse;
 use uuid::Uuid;
 
-use super::state::{
-    build_task_progress_response, collect_task_progress_responses, DownloadTaskState,
-};
+use super::state::{build_task_progress_response, DownloadTaskState};
 use super::DownloadManager;
 
 pub(super) async fn get_progress(
@@ -28,7 +26,16 @@ pub(super) async fn get_all_progress(manager: &DownloadManager) -> Vec<TaskProgr
             .map(|(id, state)| (*id, state.clone()))
             .collect()
     };
-    let (results, to_remove) = collect_task_progress_responses(task_entries).await;
+    let mut results = Vec::new();
+    let mut to_remove = Vec::new();
+
+    for (id, state) in task_entries {
+        let response = build_task_progress_response(id, &state).await;
+        if response.is_finished {
+            to_remove.push(id);
+        }
+        results.push(response);
+    }
 
     if !to_remove.is_empty() {
         let mut tasks_write = manager.tasks.write().await;

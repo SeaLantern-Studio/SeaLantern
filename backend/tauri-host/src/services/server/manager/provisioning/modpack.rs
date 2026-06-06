@@ -8,10 +8,10 @@ mod startup;
 use std::path::Path;
 
 use crate::models::server::{ImportModpackRequest, ServerInstance};
+use sea_lantern_server_config_core::startup::write_server_startup_config_for_dir;
 
 use super::super::common::validate_server_name;
 use super::super::ServerManager;
-use super::shared::write_sl_startup_config;
 
 pub(super) fn import_modpack(
     manager: &ServerManager,
@@ -33,7 +33,7 @@ pub(super) fn import_modpack(
 
     let port =
         properties::ensure_server_properties_for_import(&run_dir, req.port, req.online_mode)?;
-    write_sl_startup_config(
+    write_server_startup_config_for_dir(
         &run_dir,
         req.max_memory,
         req.min_memory,

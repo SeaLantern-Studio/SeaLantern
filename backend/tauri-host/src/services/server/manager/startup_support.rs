@@ -1,64 +1,20 @@
 use std::path::Path;
 
-use crate::commands::server::config::ServerStartupConfigDocument;
-use crate::models::server::{CpuPolicyConfig, JvmPresetConfig, JvmPresetId, ServerInstance};
+use crate::models::server::ServerInstance;
 use crate::models::settings::AppSettings;
+use sea_lantern_server_config_core::{
+    build_managed_jvm_args_from_input, resolve_effective_startup_config_from_document,
+    EffectiveStartupConfig as SharedEffectiveStartupConfig, StartupResolutionDefaults,
+    StartupRuntimeDefaults, ManagedJvmBuildInput,
+};
+use sea_lantern_server_config_core::startup::read_server_startup_config_document;
+use sea_lantern_server_config_core::types::ServerStartupConfigDocument;
 
 use super::common::ManagedConsoleEncoding;
 use super::common::StartupMode;
 use super::cpu_policy;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct EffectiveStartupConfig {
-    pub max_memory: u32,
-    pub min_memory: u32,
-    pub jvm_args: Vec<String>,
-    pub cpu_policy: CpuPolicyConfig,
-    pub jvm_preset: JvmPresetConfig,
-}
-
-pub(crate) fn local_jvm_preset_args(preset: &JvmPresetId) -> &'static [&'static str] {
-    match preset {
-        JvmPresetId::None => &[],
-        JvmPresetId::G1Basic => &[
-            "-XX:+UseG1GC",
-            "-XX:+ParallelRefProcEnabled",
-            "-XX:MaxGCPauseMillis=200",
-            "-XX:+UnlockExperimentalVMOptions",
-        ],
-        JvmPresetId::AikarG1 => &[
-            "-XX:+UseG1GC",
-            "-XX:+ParallelRefProcEnabled",
-            "-XX:MaxGCPauseMillis=200",
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+DisableExplicitGC",
-            "-XX:+AlwaysPreTouch",
-            "-XX:G1NewSizePercent=30",
-            "-XX:G1MaxNewSizePercent=40",
-            "-XX:G1HeapRegionSize=8M",
-            "-XX:G1ReservePercent=20",
-            "-XX:G1HeapWastePercent=5",
-            "-XX:G1MixedGCCountTarget=4",
-            "-XX:InitiatingHeapOccupancyPercent=15",
-            "-XX:G1MixedGCLiveThresholdPercent=90",
-            "-XX:G1RSetUpdatingPauseTimePercent=5",
-            "-XX:SurvivorRatio=32",
-            "-XX:+PerfDisableSharedMem",
-            "-XX:MaxTenuringThreshold=1",
-        ],
-        JvmPresetId::ThroughputBasic => {
-            &["-XX:+UseParallelGC", "-XX:+UseAdaptiveSizePolicy", "-XX:MaxGCPauseMillis=500"]
-        }
-        JvmPresetId::PaperRecommendedLite => &[
-            "-XX:+UseG1GC",
-            "-XX:+ParallelRefProcEnabled",
-            "-XX:MaxGCPauseMillis=150",
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+DisableExplicitGC",
-            "-Dusing.aikars.flags=https://mcflags.emc.gs",
-        ],
-    }
-}
+pub(crate) type EffectiveStartupConfig = SharedEffectiveStartupConfig;
 
 pub(crate) fn resolve_effective_startup_config(
     server: &ServerInstance,
@@ -93,39 +49,20 @@ pub(crate) fn resolve_effective_startup_config(
         })
         .unwrap_or_default();
 
-    EffectiveStartupConfig {
-        max_memory: if startup.presence.max_memory {
-            startup
-                .config
-                .max_memory
-                .unwrap_or(settings.default_max_memory)
-        } else {
-            server.max_memory
+    resolve_effective_startup_config_from_document(
+        &startup,
+        &StartupRuntimeDefaults {
+            max_memory: server.max_memory,
+            min_memory: server.min_memory,
+            jvm_args: runtime_jvm_args,
+            cpu_policy: runtime_cpu_policy,
+            jvm_preset: runtime_jvm_preset,
         },
-        min_memory: if startup.presence.min_memory {
-            startup
-                .config
-                .min_memory
-                .unwrap_or(settings.default_min_memory)
-        } else {
-            server.min_memory
+        &StartupResolutionDefaults {
+            default_max_memory: settings.default_max_memory,
+            default_min_memory: settings.default_min_memory,
         },
-        jvm_args: if startup.presence.jvm_args {
-            startup.config.jvm_args
-        } else {
-            runtime_jvm_args
-        },
-        cpu_policy: if startup.presence.cpu_policy {
-            startup.config.cpu_policy
-        } else {
-            runtime_cpu_policy
-        },
-        jvm_preset: if startup.presence.jvm_preset {
-            startup.config.jvm_preset
-        } else {
-            runtime_jvm_preset
-        },
-    }
+    )
 }
 
 pub(super) fn build_managed_jvm_args(
@@ -135,38 +72,16 @@ pub(super) fn build_managed_jvm_args(
 ) -> Result<Vec<String>, String> {
     let java_encoding = console_encoding.java_name();
     let effective = resolve_effective_startup_config(server, settings);
-    let mut args = vec![
-        format!("-Xmx{}M", effective.max_memory),
-        format!("-Xms{}M", effective.min_memory),
-        format!("-Dfile.encoding={}", java_encoding),
-        format!("-Dsun.stdout.encoding={}", java_encoding),
-        format!("-Dsun.stderr.encoding={}", java_encoding),
-    ];
-
     let startup_mode = StartupMode::from_raw(server.startup_mode_str());
-    let mut preset_args = local_jvm_preset_args(&effective.jvm_preset.preset)
-        .iter()
-        .map(|arg| (*arg).to_string())
-        .collect::<Vec<_>>();
-    let default_args = settings.default_jvm_args.clone();
-    let user_args = effective.jvm_args;
+    let active_processor_count_arg =
+        cpu_policy::compute_active_processor_count_arg(server, settings, startup_mode)?;
 
-    let user_already_set_apc = jvm_args_contain_active_processor_count(&default_args)
-        || jvm_args_contain_active_processor_count(&preset_args)
-        || jvm_args_contain_active_processor_count(&user_args);
-
-    if !user_already_set_apc {
-        if let Some(arg) =
-            cpu_policy::compute_active_processor_count_arg(server, settings, startup_mode)?
-        {
-            args.push(arg);
-        }
-    }
-
-    args.append(&mut preset_args);
-    args.extend(default_args);
-    args.extend(user_args);
-    Ok(args)
+    Ok(build_managed_jvm_args_from_input(ManagedJvmBuildInput {
+        effective,
+        java_encoding: java_encoding.to_string(),
+        default_jvm_args: settings.default_jvm_args.clone(),
+        active_processor_count_arg,
+    }))
 }
 
 pub(super) fn write_user_jvm_args(
@@ -186,14 +101,8 @@ pub(super) fn write_user_jvm_args(
         .map_err(|e| format!("写入 user_jvm_args.txt 失败: {}", e))
 }
 
-fn jvm_args_contain_active_processor_count(args: &[String]) -> bool {
-    args.iter()
-        .any(|arg| arg.starts_with("-XX:ActiveProcessorCount="))
-}
-
 pub(crate) fn read_startup_document(server: &ServerInstance) -> ServerStartupConfigDocument {
-    crate::commands::server::config::read_server_startup_config_document(&server.path)
-        .unwrap_or_default()
+    read_server_startup_config_document(&server.path).unwrap_or_default()
 }
 
 #[cfg(test)]
