@@ -10,20 +10,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  commit_message:
-    name: 提交信息检查 (Commitlint)
-    runs-on: ubuntu-22.04
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: 校验提交信息
-        uses: wagoid/commitlint-github-action@v6
-        with:
-          configFile: commitlint.config.cjs
-
   changes:
     runs-on: ubuntu-22.04
     outputs:
@@ -37,8 +23,7 @@ jobs:
         with:
           filters: |
             backend:
-              - 'backend/tauri-host/**'
-              - 'docker-entry/**'
+              - 'backend/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'

@@ -131,35 +131,19 @@
 - `chore/任务描述` - 杂项任务
 - `docs/文档说明` - 文档更新
 
-### Commit 规范
+### Commit 建议
 
-本仓库强制使用约定式提交（Conventional Commits），格式如下：
+提交信息当前不再由本地 Hook 或 CI 强制校验，但仍建议保持清晰、可读，方便后续审查与回溯。
+
+推荐使用简洁的约定式风格，例如：
 
 ```
-<type>: <subject>
-<type>(scope): <subject>
-
-Co-Authored-By: 贡献者名 <email>
+feat(scope): 新增某项能力
+fix: 修复某个具体问题
+chore: 调整构建或目录结构
 ```
 
-其中 `type` 必须是小写，并且只能使用：
-
-- `build`: 构建系统或依赖相关（例如 Docker、CI 配置）
-- `ci`: 持续集成配置或脚本变更
-- `feat`: 新功能
-- `fix`: Bug 修复
-- `docs`: 文档更新
-- `style`: 代码格式或空白，不影响功能
-- `refactor`: 重构（既不是修复也不是添加功能）
-- `perf`: 性能优化
-- `test`: 测试相关
-- `types`: 类型定义或声明修改
-- `i18n`: 国际化/本地化内容变更
-- `chore`: 其他杂务（构建、工具链、包升级等）
-- `revert`: 回滚以前的提交
-- `security`: 解决安全问题
-
-提交前建议自行运行必要检查，CI 会在 PR/推送时再次校验。
+提交前建议自行运行必要检查，CI 会在 PR/推送时继续校验代码质量。
 
 ### Pull Request 流程
 

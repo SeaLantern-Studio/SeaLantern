@@ -204,7 +204,7 @@ jobs:
           releaseBody: ${{ needs.validate-tag.outputs.release_body }}
           releaseDraft: true
           prerelease: ${{ needs.validate-tag.outputs.prerelease }}
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} -c backend/tauri-host/tauri.conf.json
 
       - name: 打包 Windows 免安装版
         if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'

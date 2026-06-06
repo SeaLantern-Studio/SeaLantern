@@ -13,7 +13,6 @@ sea-lantern/
 ├── .vscode/                      # VS Code 工作区设置
 ├── .zed/                         # Zed 编辑器配置
 ├── docker/                       # Docker 构建相关文件
-├── docker-entry/                 # Docker 环境下的独立 Rust 入口程序
 ├── docs/                         # 项目文档
 ├── packaging/                    # Arch Linux 打包脚本与桌面文件
 ├── panic-log/                    # 崩溃日志目录占位
@@ -27,7 +26,6 @@ sea-lantern/
 ├── .oxlintrc.json                # Oxlint 配置
 ├── Cargo.lock                    # Rust 依赖锁文件（workspace）
 ├── Cargo.toml                    # Rust workspace 清单
-├── commitlint.config.cjs         # CI 中使用的 Commit Message 规则配置
 ├── frontend/index.html           # 前端 HTML 入口
 ├── LICENSE                       # GPLv3 许可证
 ├── NOTICE                        # 第三方声明
@@ -129,7 +127,30 @@ frontend/
 - `sunset.ts`
 - `index.ts`
 
-## 后端结构 `backend/tauri-host/`
+## 后端结构 `backend/`
+
+当前后端不是单一 crate，而是“主宿主 crate + 多个共享 core crate”的结构。
+
+```text
+backend/
+├── docker-core/                 # Docker 启动参数、预览、JVM env 合成等共享纯逻辑
+├── docker-entry/                # Docker / headless HTTP 模式下的独立可执行入口
+├── java-installer-core/         # Java 运行时下载、解压与安装逻辑
+├── runtime-core/                # 日志、headless HTTP、路径、状态、Tokio 运行时等共享工具
+├── server-config-core/          # 启动配置、JVM 参数、CPU policy、server.properties 共享规则
+├── server-download-links-core/  # 服务端下载链接解析
+├── server-installer-core/       # 服务端核心类型识别、压缩包解压、MC 版本推断
+├── server-local-setup-core/     # 本地建服、接入、启动前路径与元数据辅助
+├── server-plugin-core/          # Minecraft 服务端插件 JAR 与配置文件扫描
+├── server-startup-scan-core/    # 启动候选项扫描
+├── starter-links-core/          # Starter 下载链接缓存与解析
+├── tauri-host/                  # 主 Tauri 宿主 crate
+└── update-core/                 # 更新检查、下载、挂起安装与安装计划
+```
+
+每个 crate 根目录现在都应以 `Agents.md` 作为该模块的低上下文说明入口。需要快速判断模块职责时，优先阅读对应 crate 根目录下的 `Agents.md`。
+
+## 主宿主结构 `backend/tauri-host/`
 
 ```text
 backend/tauri-host/
@@ -142,6 +163,13 @@ backend/tauri-host/
 ├── build.rs                      # 构建脚本
 ├── Cargo.toml                    # 后端依赖清单
 └── tauri.conf.json               # Tauri 应用配置
+```
+
+```text
+backend/docker-entry/
+├── Cargo.toml                    # Docker 环境下的独立 Rust 入口 crate
+└── src/
+    └── main.rs                   # 容器启动入口，转调 sea-lantern 的 docker 运行模式
 ```
 
 ### `backend/tauri-host/src/`
@@ -270,6 +298,7 @@ backend/tauri-host/src/plugins/runtime/
 
 当前文档目录包括：
 
+- `Agents-Example-Module.md`
 - `AI_GUIDE.md`
 - `CONTRIBUTING.md`
 - `docker-runtime-itzg-design.md` # Java 版 Minecraft 容器运行时（itzg）设计草案
@@ -279,15 +308,6 @@ backend/tauri-host/src/plugins/runtime/
 - `theme-system.md` # 主题系统使用说明（原 src/themes/README.md）
 - `新手使用教程.html`
 - `lua-api/` # 插件运行时各模块 Lua API 文档（9 个模块）
-
-### `docker-entry/`
-
-该目录是一个独立 Rust crate：
-
-- `Cargo.toml`
-- `src/main.rs`
-
-通常用于容器环境入口逻辑，与桌面端主应用分离。
 
 ### `scripts/`
 

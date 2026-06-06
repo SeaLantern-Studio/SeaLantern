@@ -7,7 +7,7 @@
 **项目名称**: 海晶灯 (Sea Lantern)
 **项目类型**: Minecraft 服务器管理工具
 **技术栈**: Tauri 2 + Rust + Vue 3 + TypeScript + Pinia
-**当前版本**: 0.6.5
+**当前版本**: 1.2.0
 **Gitee仓库**: https://gitee.com/fps_z/SeaLantern (master 分支)
 **Github仓库**: https://github.com/SeaLantern-Studio/SeaLantern (main 分支)
 **Preview版本**: https://github.com/SeaLantern-Studio/SeaLantern-Preview
@@ -16,6 +16,12 @@
 
 - 前端使用 Vue 3 Composition API + TypeScript
 - 后端使用 Rust，通过 Tauri invoke 与前端通信
+
+### 重要结构提醒
+
+- 当前后端不是只有 `backend/tauri-host` 一个 crate。
+- `backend/` 下已经拆分出多个共享 core crate，例如 `server-config-core`、`docker-core`、`runtime-core`、`server-local-setup-core`、`update-core` 等。
+- 当你需要快速理解某个模块职责时，优先阅读对应 crate 根目录的 `Agents.md`，而不是只依赖本指南里较早期的单体结构描述。
 
 ---
 
@@ -485,6 +491,9 @@ cargo check -p sea-lantern
 
 # Rust 测试
 cargo test -p sea-lantern
+
+# Docker 入口本地运行
+cargo run -p docker-entry
 ```
 
 ---
@@ -709,6 +718,6 @@ fn process_server(server: &ServerInstance) -> Result<(), String> {
 
 ---
 
-**最后更新**: 2026-02-22
+**最后更新**: 2026-06-06
 **文档版本**: 1.2
-**当前项目版本**: 0.6.5
+**当前项目版本**: 1.2.0
