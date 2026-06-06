@@ -404,7 +404,8 @@ mod tests {
         };
 
         assert!(
-            error.contains("Failed to resolve server manager data directory"),
+            error.contains("Failed to resolve server manager data directory")
+                || error.contains("无法解析服务器管理数据目录"),
             "unexpected error: {}",
             error
         );

@@ -505,6 +505,7 @@ mod tests {
         DuplicateServerRecordEntry, DuplicateServerRecordGroup, ServerRegistryDedupeReport,
     };
     use std::collections::BTreeMap;
+    use tempfile::tempdir;
 
     fn sample_status(status: ServerStatus) -> ServerStatusInfo {
         ServerStatusInfo {
@@ -518,6 +519,11 @@ mod tests {
     }
 
     fn sample_local_server() -> ServerInstance {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server_dir = temp_dir.keep();
+        std::fs::write(server_dir.join("server.jar"), b"placeholder")
+            .expect("server jar should exist");
+
         ServerInstance {
             id: "fabric-main-id".to_string(),
             name: "fabric-main".to_string(),
@@ -525,7 +531,7 @@ mod tests {
             core_type: "fabric".to_string(),
             core_version: "".to_string(),
             mc_version: "1.20.1".to_string(),
-            path: "E:/servers/fabric-main".to_string(),
+            path: server_dir.to_string_lossy().to_string(),
             port: 25565,
             max_memory: 4096,
             min_memory: 2048,
@@ -533,7 +539,7 @@ mod tests {
             last_started_at: Some(10),
             runtime_kind: "local".to_string(),
             runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
-                jar_path: "E:/servers/fabric-main/server.jar".to_string(),
+                jar_path: server_dir.join("server.jar").to_string_lossy().to_string(),
                 startup_mode: "jar".to_string(),
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
@@ -547,6 +553,10 @@ mod tests {
     fn sample_docker_server() -> ServerInstance {
         let mut env = BTreeMap::new();
         env.insert("TYPE".to_string(), "PAPER".to_string());
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server_dir = temp_dir.keep();
+        let plugins_dir = server_dir.join("plugins");
+        std::fs::create_dir_all(&plugins_dir).expect("plugins dir should exist");
 
         ServerInstance {
             id: "paper-docker-id".to_string(),
@@ -555,7 +565,7 @@ mod tests {
             core_type: "paper".to_string(),
             core_version: "".to_string(),
             mc_version: "1.21.1".to_string(),
-            path: "E:/docker/paper".to_string(),
+            path: server_dir.to_string_lossy().to_string(),
             port: 25565,
             max_memory: 4096,
             min_memory: 2048,
@@ -568,7 +578,7 @@ mod tests {
                 container_name: "sealantern-paper".to_string(),
                 type_value: "PAPER".to_string(),
                 version: "1.21.1".to_string(),
-                data_dir_mount: "E:/docker/paper".to_string(),
+                data_dir_mount: server_dir.to_string_lossy().to_string(),
                 published_game_port: 25565,
                 env,
                 extra_ports: vec![PublishedPort {
@@ -577,7 +587,7 @@ mod tests {
                     protocol: "udp".to_string(),
                 }],
                 volume_mounts: vec![VolumeMount {
-                    source: "E:/docker/paper/plugins".to_string(),
+                    source: plugins_dir.to_string_lossy().to_string(),
                     target: "/data/plugins".to_string(),
                     read_only: true,
                 }],
@@ -620,26 +630,26 @@ mod tests {
 
     #[test]
     fn render_server_status_lines_include_local_runtime_brief() {
-        let lines = render_server_status_lines(
-            &sample_local_server(),
-            &sample_status(ServerStatus::Running),
-        );
+        let server = sample_local_server();
+        let lines = render_server_status_lines(&server, &sample_status(ServerStatus::Running));
         let joined = lines.join("\n");
         assert!(joined.contains("runtime: local/jar"));
-        assert!(joined.contains("local.entry_path: E:/servers/fabric-main/server.jar"));
+        assert!(joined
+            .contains(&format!("local.entry_path: {}", server.local_runtime().unwrap().jar_path)));
         assert!(joined.contains("uptime: 88s"));
         assert!(joined.contains("detail: runtime=local/jar"));
     }
 
     #[test]
     fn render_server_inspect_lines_include_local_launch_detail() {
-        let lines = render_server_inspect_lines(
-            &sample_local_server(),
-            &sample_status(ServerStatus::Running),
-        );
+        let server = sample_local_server();
+        let lines = render_server_inspect_lines(&server, &sample_status(ServerStatus::Running));
         let joined = lines.join("\n");
 
-        assert!(joined.contains("local.launch_target: E:/servers/fabric-main/server.jar"));
+        assert!(joined.contains(&format!(
+            "local.launch_target: {}",
+            server.local_runtime().unwrap().jar_path
+        )));
         assert!(joined.contains("local.command_preview:"));
         assert!(joined.contains("-jar server.jar nogui"));
         assert!(joined.contains("local.effective_jvm_args:"));
@@ -720,13 +730,18 @@ mod tests {
 
     #[test]
     fn render_server_inspect_lines_include_docker_runtime_detail_and_redaction() {
+        let server = sample_docker_server();
+        let runtime = server.docker_itzg_runtime().unwrap();
         let mut status = sample_status(ServerStatus::Error);
         status.error_message = Some("rcon unavailable".to_string());
-        let lines = render_server_inspect_lines(&sample_docker_server(), &status);
+        let lines = render_server_inspect_lines(&server, &status);
         let joined = lines.join("\n");
         assert!(joined.contains("docker.container_name: sealantern-paper"));
         assert!(joined.contains("docker.extra_ports: [24454->24454/udp]"));
-        assert!(joined.contains("docker.volume_mounts: [E:/docker/paper/plugins:/data/plugins:ro]"));
+        assert!(joined.contains(&format!(
+            "docker.volume_mounts: [{}:/data/plugins:ro]",
+            runtime.volume_mounts[0].source
+        )));
         assert!(joined.contains("docker.cpu_policy.mode: explicit"));
         assert!(joined.contains("docker.cpu_policy.explicit_set: 0-3,6"));
         assert!(joined.contains("docker.cpu_policy.sync_active_processor_count: true"));

@@ -106,7 +106,7 @@ pnpm --dir frontend run fmt:check
 cargo fmt --all -- --check
 
 # 编译检查
-cargo check --manifest-path Cargo.toml
+cargo check --workspace
 
 # 运行 Clippy 检查
 cargo clippy --workspace -- -D warnings

@@ -189,7 +189,9 @@ watch(
         @update:model-value="emit('update:selectedLogModule', String($event))"
       />
       <p class="developer-log-filter-summary">
-        {{ i18n.t("developer.log_filter_summary", { shown: filteredLogCount, total: totalLogCount }) }}
+        {{
+          i18n.t("developer.log_filter_summary", { shown: filteredLogCount, total: totalLogCount })
+        }}
       </p>
     </div>
 

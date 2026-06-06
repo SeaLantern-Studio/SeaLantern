@@ -368,6 +368,8 @@ mod tests {
 
         let command = CliServerCommand {
             folder: Some(folder.to_string_lossy().to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -397,6 +399,8 @@ mod tests {
 
         let command = CliServerCommand {
             folder: Some(folder.to_string_lossy().to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -458,6 +462,8 @@ mod tests {
             entry: Some(script_path.to_string_lossy().to_string()),
             mc_version: Some("1.20.1".to_string()),
             core_type: Some("fabric".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -490,6 +496,8 @@ mod tests {
 
         let command = CliServerCommand {
             entry: Some(script_path.to_string_lossy().to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -518,6 +526,8 @@ mod tests {
         let command = CliServerCommand {
             startup_mode: Some("custom".to_string()),
             entry: Some(script_path.to_string_lossy().to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -543,6 +553,8 @@ mod tests {
             jar_path: Some("E:/servers/fabric/server.jar".to_string()),
             mc_version: Some("1.20.1".to_string()),
             core_type: Some("fabric".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -566,6 +578,8 @@ mod tests {
             entry: Some("java -Xmx4G -Xms4G -jar server.jar nogui".to_string()),
             mc_version: Some("1.20.1".to_string()),
             core_type: Some("fabric".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -605,6 +619,8 @@ mod tests {
             jar_path: Some("E:/servers/fabric/server.jar".to_string()),
             mc_version: Some("1.20.1".to_string()),
             core_type: Some("fabric".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -639,6 +655,8 @@ mod tests {
             jar_path: Some("fabric-server-mc.1.20.1-loader.0.15.11.jar".to_string()),
             mc_version: Some("1.20.1".to_string()),
             core_type: Some("fabric".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -668,6 +686,8 @@ mod tests {
             jar_path: Some("fabric-server-mc.1.20.1-loader.0.15.11.jar".to_string()),
             mc_version: Some("1.20.1".to_string()),
             core_type: Some("fabric".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -690,6 +710,8 @@ mod tests {
             jar_path: Some(external.to_string_lossy().to_string()),
             mc_version: Some("1.20.1".to_string()),
             core_type: Some("fabric".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -714,6 +736,8 @@ mod tests {
         let command = CliServerCommand {
             folder: Some(folder.to_string_lossy().to_string()),
             entry: Some(script_path.to_string_lossy().to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -743,6 +767,8 @@ mod tests {
 
         let command = CliServerCommand {
             folder: Some(temp_dir.path().to_string_lossy().to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -775,6 +801,8 @@ mod tests {
 
         let command = CliServerCommand {
             folder: Some(temp_dir.path().to_string_lossy().to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -804,6 +832,8 @@ mod tests {
         let command = CliServerCommand {
             folder: Some(temp_dir.path().to_string_lossy().to_string()),
             entry: Some("start.ps1".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -831,6 +861,8 @@ mod tests {
             folder: Some(temp_dir.path().to_string_lossy().to_string()),
             startup_mode: Some("custom".to_string()),
             entry: Some("launch-custom".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };
@@ -860,6 +892,8 @@ mod tests {
             folder: Some(temp_dir.path().to_string_lossy().to_string()),
             startup_mode: Some("custom".to_string()),
             entry: Some(script_path.to_string_lossy().to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
             ..Default::default()
         };
         let ports = PreparedPorts { game_port: 25565, web_port: None };

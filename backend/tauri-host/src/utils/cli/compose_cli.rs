@@ -465,6 +465,7 @@ mod tests {
         ServerRuntimeConfig, VolumeMount,
     };
     use std::collections::BTreeMap;
+    use tempfile::tempdir;
 
     fn sample_server() -> ServerInstance {
         let mut env = BTreeMap::new();
@@ -472,6 +473,10 @@ mod tests {
         env.insert("GUI".to_string(), "FALSE".to_string());
         env.insert("CONSOLE".to_string(), "TRUE".to_string());
         env.insert("MEMORY".to_string(), "4G".to_string());
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server_dir = temp_dir.keep();
+        let plugins_dir = server_dir.join("plugins");
+        std::fs::create_dir_all(&plugins_dir).expect("plugins dir should exist");
 
         ServerInstance {
             id: "docker-id".to_string(),
@@ -480,7 +485,7 @@ mod tests {
             core_type: "paper".to_string(),
             core_version: "".to_string(),
             mc_version: "1.21.1".to_string(),
-            path: "E:/docker/paper".to_string(),
+            path: server_dir.to_string_lossy().to_string(),
             port: 25565,
             max_memory: 4096,
             min_memory: 2048,
@@ -493,7 +498,7 @@ mod tests {
                 container_name: "sealantern-paper".to_string(),
                 type_value: "PAPER".to_string(),
                 version: "1.21.1".to_string(),
-                data_dir_mount: "E:/docker/paper".to_string(),
+                data_dir_mount: server_dir.to_string_lossy().to_string(),
                 published_game_port: 25565,
                 env,
                 extra_ports: vec![PublishedPort {
@@ -502,7 +507,7 @@ mod tests {
                     protocol: "tcp".to_string(),
                 }],
                 volume_mounts: vec![VolumeMount {
-                    source: "E:/docker/plugins".to_string(),
+                    source: plugins_dir.to_string_lossy().to_string(),
                     target: "/plugins".to_string(),
                     read_only: true,
                 }],
@@ -599,8 +604,11 @@ mod tests {
         assert!(yaml.contains("container_name: sealantern-paper"));
         assert!(yaml.contains("25565:25565/tcp"));
         assert!(yaml.contains("25575:25575/tcp"));
-        assert!(yaml.contains("E:/docker/paper:/data"));
-        assert!(yaml.contains("E:/docker/plugins:/plugins:ro"));
+        assert!(yaml.contains(&format!("{}:/data", server.path.replace('\\', "/"))));
+        assert!(yaml.contains(&format!(
+            "{}:/plugins:ro",
+            runtime.volume_mounts[0].source.replace('\\', "/")
+        )));
         assert!(yaml.contains("TYPE: \"PAPER\""));
         assert!(yaml.contains("VERSION: \"1.21.1\""));
         assert!(yaml.contains("GUI: \"FALSE\""));
@@ -662,7 +670,10 @@ mod tests {
         assert!(yaml.contains("SEALANTERN_HEADLESS_HTTP: \"1\""));
         assert!(yaml.contains("SEALANTERN_HTTP_BIND: \"127.0.0.1:3000\""));
         assert!(yaml.contains("SEALANTERN_SERVERS_CONTAINER_ROOT: \"/app/data/servers\""));
-        assert!(yaml.contains("SEALANTERN_SERVERS_HOST_ROOT: \"E:/docker/paper\""));
+        assert!(yaml.contains(&format!(
+            "SEALANTERN_SERVERS_HOST_ROOT: \"{}\"",
+            server.path.replace('\\', "/")
+        )));
         assert!(yaml.contains("STATIC_DIR: \"/app/dist\""));
         assert!(yaml.contains("- \"3000:3000/tcp\""));
         assert!(yaml.contains("depends_on:"));

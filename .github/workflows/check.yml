@@ -78,6 +78,9 @@ jobs:
       - name: 检查代码格式 (Rust)
         run: cargo fmt --all -- --check
 
+      - name: 编译检查 (Rust)
+        run: cargo check --workspace
+
       - name: 运行 Clippy 检查
         run: cargo clippy --workspace -- -D warnings
 
@@ -115,9 +118,11 @@ jobs:
         run: |
           pnpm --dir frontend install --frozen-lockfile
 
-      - name: 运行格式化并检查前端 Lint
-        run: |
-          pnpm --dir frontend run fmt:check && pnpm --dir frontend run lint
+      - name: 检查前端格式
+        run: pnpm --dir frontend run fmt:check
 
-      - name: 检查前端构建
-        run: pnpm --dir frontend run build
+      - name: 检查前端 Lint
+        run: pnpm --dir frontend run lint
+
+      - name: 检查前端类型与构建
+        run: pnpm --dir frontend run build:check

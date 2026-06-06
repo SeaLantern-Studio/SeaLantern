@@ -197,10 +197,13 @@ fn test_fs_remove_directory_requires_empty_dir() {
         .load(r#"sl.fs.remove("data", "test_dir")"#)
         .eval();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Refusing to recursively remove a non-empty directory"));
+    let error = result.unwrap_err().to_string();
+    assert!(
+        error.contains("Refusing to recursively remove a non-empty directory")
+            || error.contains("拒绝递归删除非空目录"),
+        "unexpected error: {}",
+        error
+    );
 
     runtime
         .lua
@@ -515,7 +518,12 @@ fn test_fs_invalid_scope() {
         .load(r#"return sl.fs.get_path("invalid")"#)
         .eval();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Invalid scope"));
+    let error = result.unwrap_err().to_string();
+    assert!(
+        error.contains("Invalid scope") || error.contains("无效的 scope"),
+        "unexpected error: {}",
+        error
+    );
 
     cleanup_test_runtime(&temp_dir);
 }
@@ -732,10 +740,12 @@ fn test_fs_copy_rejects_existing_destination() {
         .load(r#"sl.fs.copy("data", "source.txt", "dest.txt")"#)
         .eval();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Destination already exists"));
+    let error = result.unwrap_err().to_string();
+    assert!(
+        error.contains("Destination already exists") || error.contains("目标已存在"),
+        "unexpected error: {}",
+        error
+    );
 
     let content: LuaResult<String> = runtime
         .lua
@@ -752,10 +762,14 @@ fn test_fs_remove_rejects_sandbox_root() {
 
     let result: LuaResult<()> = runtime.lua.load(r#"sl.fs.remove("data", ".")"#).eval();
     assert!(result.is_err());
-    assert!(result
-        .unwrap_err()
-        .to_string()
-        .contains("Refusing to remove filesystem sandbox root"));
+    let error = result.unwrap_err().to_string();
+    assert!(
+        error.contains("Refusing to remove the filesystem sandbox root")
+            || error.contains("Refusing to remove filesystem sandbox root")
+            || error.contains("拒绝删除文件系统沙箱根目录"),
+        "unexpected error: {}",
+        error
+    );
 
     cleanup_test_runtime(&temp_dir);
 }

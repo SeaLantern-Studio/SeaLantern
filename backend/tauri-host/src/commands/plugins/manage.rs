@@ -209,6 +209,7 @@ pub async fn fetch_market_plugin_detail(
 
 #[tauri::command]
 /// 从插件市场安装插件
+#[allow(clippy::too_many_arguments)]
 pub async fn install_from_market(
     manager: tauri::State<
         '_,

@@ -1,4 +1,10 @@
-import { tauriInvoke, isBrowserEnv, HTTP_API_BASE, ensureBrowserSession, readBrowserAuthToken } from "@api/tauri";
+import {
+  tauriInvoke,
+  isBrowserEnv,
+  HTTP_API_BASE,
+  ensureBrowserSession,
+  readBrowserAuthToken,
+} from "@api/tauri";
 import type { ServerStatus } from "@type/common";
 import type {
   CpuPolicyConfig,
@@ -493,9 +499,7 @@ export const serverApi = {
                 throw new Error(`SSE stream failed with HTTP ${response.status}`);
               }
 
-              const reader = response.body
-                .pipeThrough(new TextDecoderStream())
-                .getReader();
+              const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
               let buffer = "";
 
               while (!disposed) {

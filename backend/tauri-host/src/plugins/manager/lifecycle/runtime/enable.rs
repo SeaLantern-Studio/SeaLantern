@@ -231,8 +231,8 @@ mod tests {
             b"function onLoad() end\nfunction onEnable() end\n",
         )
         .expect("plugin main file should exist");
-        std::fs::write(data_dir.join("enabled_plugins.json"), b"blocked by file")
-            .expect("file-backed enabled plugins path should exist");
+        std::fs::create_dir_all(data_dir.join("enabled_plugins.json"))
+            .expect("directory-backed enabled plugins path should exist");
 
         let _env_lock = lock_env();
         let _guard = EnvGuard::set(

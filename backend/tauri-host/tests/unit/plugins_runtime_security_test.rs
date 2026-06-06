@@ -225,7 +225,11 @@ fn test_process_exec_timeout_kills_and_reaps_foreground_process() {
     assert!(result.is_err());
     let error_message = result.unwrap_err().to_string();
     assert!(
-        error_message.contains("exceeded maximum duration") || error_message.contains("timeout")
+        error_message.contains("exceeded maximum duration")
+            || error_message.contains("timeout")
+            || error_message.contains("超时")
+            || error_message.contains("执行时间")
+            || error_message.contains("最大时长")
     );
     assert!(elapsed >= Duration::from_millis(800));
     assert!(elapsed < Duration::from_secs(10));

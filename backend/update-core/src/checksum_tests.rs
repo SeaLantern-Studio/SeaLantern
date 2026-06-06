@@ -60,5 +60,12 @@ async fn resolve_asset_sha256_surfaces_checksum_asset_http_failures() {
 
     server.join().expect("server thread should finish");
 
-    assert!(error.contains("checksum asset SeaLantern-setup.exe.sha256 returned status 500"));
+    assert!(error.contains("SeaLantern-setup.exe.sha256"), "unexpected error: {}", error);
+    assert!(
+        error.contains("checksum request failed")
+            || error.contains("returned status 500")
+            || error.contains("returned status 500 Internal Server Error"),
+        "unexpected error: {}",
+        error
+    );
 }

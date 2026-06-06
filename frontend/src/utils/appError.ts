@@ -37,7 +37,8 @@ export function normalizeAppError(error: unknown): NormalizedAppError {
     const payload = error as BackendErrorPayload;
     const code = payload.code || payload.error_kind || DEFAULT_ERROR_CODE;
     const rawMessage = payload.message || (typeof error === "string" ? error : "");
-    const message = code !== DEFAULT_ERROR_CODE ? resolveErrorMessage(code, payload.args) : rawMessage;
+    const message =
+      code !== DEFAULT_ERROR_CODE ? resolveErrorMessage(code, payload.args) : rawMessage;
     return {
       code,
       message: message || rawMessage || resolveErrorMessage(code, payload.args),

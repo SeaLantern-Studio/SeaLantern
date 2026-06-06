@@ -1029,6 +1029,8 @@ mod tests {
     }
 
     fn docker_server(runtime: DockerItzgRuntimeConfig) -> ServerInstance {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let server_dir = temp_dir.keep();
         ServerInstance {
             id: "server-1".to_string(),
             name: "Server 1".to_string(),
@@ -1036,7 +1038,7 @@ mod tests {
             core_type: "paper".to_string(),
             core_version: "latest".to_string(),
             mc_version: "1.20.6".to_string(),
-            path: "servers/server-1".to_string(),
+            path: server_dir.to_string_lossy().to_string(),
             port: 25565,
             max_memory: 4096,
             min_memory: 2048,

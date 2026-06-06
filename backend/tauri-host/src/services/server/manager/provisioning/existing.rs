@@ -140,6 +140,7 @@ mod tests {
     use super::add_existing_server;
     use crate::models::server::{AddExistingServerRequest, CpuPolicyConfig, JvmPresetConfig};
     use crate::services::server::manager::ServerManager;
+    use crate::test_support::{lock_env, EnvGuard};
     use tempfile::tempdir;
 
     fn unique_name(prefix: &str) -> String {
@@ -152,7 +153,9 @@ mod tests {
 
     #[test]
     fn add_existing_server_prefers_request_core_and_mc_version() {
+        let _env_lock = lock_env();
         let temp_dir = tempdir().expect("temp dir should exist");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
         let server_dir = temp_dir.path().join("paper-prod-1.21.1");
         std::fs::create_dir_all(&server_dir).expect("server dir should create");
         std::fs::write(server_dir.join("start.sh"), b"#!/bin/sh\n").expect("script should write");

@@ -302,7 +302,11 @@ mod tests {
         let error = parse_element_response_payload("{")
             .expect_err("invalid element response payload should not be silently ignored");
 
-        assert!(error.contains("payload"));
+        assert!(
+            error.contains("payload") || error.contains("负载"),
+            "unexpected error: {}",
+            error
+        );
     }
 
     #[test]

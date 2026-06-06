@@ -57,9 +57,14 @@ mod tests {
     use super::{clear_runtime_flags, clear_runtime_flags_if_terminal};
     use crate::models::server::ServerStatus;
     use crate::services::server::manager::ServerManager;
+    use crate::test_support::{lock_env, EnvGuard};
+    use tempfile::tempdir;
 
     #[test]
     fn clear_runtime_flags_removes_starting_and_stopping_markers() {
+        let _env_lock = lock_env();
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
         let manager = ServerManager::new();
         manager.mark_starting("alpha");
         manager.mark_stopping("alpha");
@@ -76,6 +81,9 @@ mod tests {
 
     #[test]
     fn clear_runtime_flags_if_terminal_only_clears_terminal_statuses() {
+        let _env_lock = lock_env();
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
         let manager = ServerManager::new();
         manager.mark_starting("alpha");
         manager.mark_stopping("alpha");

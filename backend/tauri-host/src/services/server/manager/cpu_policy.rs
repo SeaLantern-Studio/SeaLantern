@@ -160,8 +160,11 @@ mod tests {
     };
     use crate::models::settings::AppSettings;
     use crate::services::server::manager::common::StartupMode;
+    use tempfile::tempdir;
 
     fn test_server(startup_mode: &str, cpu_policy: CpuPolicyConfig) -> ServerInstance {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server_dir = temp_dir.keep();
         ServerInstance {
             id: "cpu-policy".to_string(),
             name: "CPU Policy".to_string(),
@@ -169,7 +172,7 @@ mod tests {
             core_type: "paper".to_string(),
             core_version: "paper".to_string(),
             mc_version: "1.21.1".to_string(),
-            path: "E:/servers/cpu-policy".to_string(),
+            path: server_dir.to_string_lossy().to_string(),
             port: 25565,
             max_memory: 4096,
             min_memory: 2048,
@@ -281,7 +284,11 @@ mod tests {
 
         let err = compute_active_processor_count_arg(&server, &test_settings(), StartupMode::Bat)
             .expect_err("unsupported mode should fail");
-        assert!(err.contains("暂不支持 CPU policy"));
+        assert!(
+            err.contains("暂不支持 CPU policy") || err.contains("does not support CPU policy yet"),
+            "unexpected error: {}",
+            err
+        );
     }
 
     #[test]

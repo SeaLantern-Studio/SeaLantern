@@ -949,5 +949,7 @@ mod tests {
             .count();
 
         assert_eq!(backup_count, 1);
+        drop(_guard);
+        drop(_env_lock);
     }
 }

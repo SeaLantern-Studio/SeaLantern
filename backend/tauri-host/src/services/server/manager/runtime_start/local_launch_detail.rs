@@ -106,6 +106,8 @@ mod tests {
     }
 
     fn test_server(path: String, startup_mode: &str) -> ServerInstance {
+        let startup_path = std::path::Path::new(&path).join("server.jar");
+        let _ = std::fs::write(&startup_path, b"placeholder");
         ServerInstance {
             id: format!("detail-{}", startup_mode),
             name: "Local Detail".to_string(),
@@ -121,7 +123,7 @@ mod tests {
             last_started_at: None,
             runtime_kind: "local".to_string(),
             runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
-                jar_path: "E:/servers/detail/server.jar".to_string(),
+                jar_path: startup_path.to_string_lossy().to_string(),
                 startup_mode: startup_mode.to_string(),
                 custom_command: Some("java -jar custom.jar nogui".to_string()),
                 java_path: "C:/Java/bin/java.exe".to_string(),
@@ -167,7 +169,7 @@ mod tests {
 
         assert_eq!(detail.startup_mode, "jar");
         assert_eq!(detail.java_path, "C:/Java/bin/java.exe");
-        assert_eq!(detail.launch_target, "E:/servers/detail/server.jar");
+        assert_eq!(detail.launch_target, server.local_runtime().unwrap().jar_path);
         assert_eq!(detail.effective_max_memory, 3072);
         assert_eq!(detail.effective_min_memory, 1536);
         assert_eq!(detail.effective_cpu_policy_mode, "count");
@@ -226,12 +228,12 @@ mod tests {
     fn build_local_launch_detail_uses_script_filename_for_sh_mode() {
         let temp_dir = tempdir().expect("temp dir should exist");
         let mut server = test_server(temp_dir.path().to_string_lossy().to_string(), "sh");
+        let server_jar_path = temp_dir.path().join("server.jar");
+        let _ = std::fs::remove_file(&server_jar_path);
+        let script_path = temp_dir.path().join("start.sh");
+        std::fs::write(&script_path, b"#!/bin/sh\nexit 0\n").expect("script fixture should exist");
         if let ServerRuntimeConfig::Local(runtime) = &mut server.runtime {
-            runtime.jar_path = temp_dir
-                .path()
-                .join("start.sh")
-                .to_string_lossy()
-                .to_string();
+            runtime.jar_path = script_path.to_string_lossy().to_string();
         }
 
         let detail = build_local_launch_detail(&server, &test_settings())

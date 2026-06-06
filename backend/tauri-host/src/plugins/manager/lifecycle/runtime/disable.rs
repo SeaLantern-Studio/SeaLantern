@@ -109,8 +109,8 @@ mod tests {
 
         let plugin_root = plugins_dir.join("example-plugin");
         std::fs::create_dir_all(&plugin_root).expect("plugin root should exist");
-        std::fs::write(data_dir.join("enabled_plugins.json"), b"blocked by file")
-            .expect("file-backed enabled plugins path should exist");
+        std::fs::create_dir_all(data_dir.join("enabled_plugins.json"))
+            .expect("directory-backed enabled plugins path should exist");
 
         let mut manager = PluginManager::new(plugins_dir, data_dir);
         manager

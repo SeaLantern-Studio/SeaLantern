@@ -550,9 +550,9 @@ mod tests {
     fn get_or_create_app_data_dir_checked_creates_explicit_env_dir() {
         let dir = TempDirGuard::new("app_data_create_checked");
         let target = dir.path().join("nested").join("app-data");
+        let _lock = crate::test_support::lock_env();
         let _guard =
             crate::test_support::EnvGuard::set("SEALANTERN_DATA_DIR", &target.to_string_lossy());
-        let _lock = crate::test_support::lock_env();
 
         let resolved = get_or_create_app_data_dir_checked()
             .expect("checked app data dir creation should succeed for writable target");
@@ -568,9 +568,9 @@ mod tests {
         let file_path = dir.path().join("data-root-file");
         fs::write(&file_path, b"not a directory").expect("file-backed app data root should exist");
         let blocked = file_path.join("nested");
+        let _lock = crate::test_support::lock_env();
         let _guard =
             crate::test_support::EnvGuard::set("SEALANTERN_DATA_DIR", &blocked.to_string_lossy());
-        let _lock = crate::test_support::lock_env();
 
         let error = get_or_create_app_data_dir_checked()
             .expect_err("checked app data dir creation should surface file-backed path failures");
