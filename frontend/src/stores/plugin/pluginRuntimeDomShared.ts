@@ -33,6 +33,7 @@ export const PLUGIN_RUNTIME_HOST_CLASS = "plugin-runtime-host";
 export const PLUGIN_RUNTIME_SURFACE_CLASS = "plugin-runtime-surface";
 export const PLUGIN_RUNTIME_CHROME_CLASS = "plugin-runtime-chrome";
 export const PLUGIN_RUNTIME_CONTENT_CLASS = "plugin-runtime-content";
+export const PLUGIN_RUNTIME_HOST_PLAIN_ATTR = "data-plugin-runtime-plain";
 
 function ensurePluginRuntimeStyles() {
   let style = document.getElementById("plugin-runtime-host-style") as HTMLStyleElement | null;
@@ -88,6 +89,40 @@ function ensurePluginRuntimeStyles() {
       box-shadow: none;
       box-sizing: border-box;
       isolation: isolate;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS}[${PLUGIN_RUNTIME_HOST_PLAIN_ATTR}="true"] {
+      width: 0;
+      max-width: 0;
+      max-height: 0;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS}[${PLUGIN_RUNTIME_HOST_PLAIN_ATTR}="true"] > .${PLUGIN_RUNTIME_SURFACE_CLASS} {
+      width: 0;
+      max-width: none;
+      max-height: none;
+      overflow: visible;
+      display: block;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS}[${PLUGIN_RUNTIME_HOST_PLAIN_ATTR}="true"] > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CHROME_CLASS} {
+      display: none;
+    }
+
+    #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS}[${PLUGIN_RUNTIME_HOST_PLAIN_ATTR}="true"] > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CONTENT_CLASS} {
+      min-height: 0;
+      overflow: visible;
+      padding: 0;
+      background: transparent;
+      font-size: inherit;
+      line-height: inherit;
+      contain: none;
     }
 
     #plugin-ui-container > .${PLUGIN_RUNTIME_HOST_CLASS} > .${PLUGIN_RUNTIME_SURFACE_CLASS} > .${PLUGIN_RUNTIME_CHROME_CLASS} {
@@ -241,6 +276,10 @@ export function createPluginRuntimeHost(pluginId: string, elementId: string): HT
   host.appendChild(surface);
 
   return host;
+}
+
+export function setPluginRuntimeHostPlain(host: HTMLElement, plain: boolean) {
+  host.setAttribute(PLUGIN_RUNTIME_HOST_PLAIN_ATTR, plain ? "true" : "false");
 }
 
 export function getPluginRuntimeSurface(host: Element | null): HTMLElement | null {

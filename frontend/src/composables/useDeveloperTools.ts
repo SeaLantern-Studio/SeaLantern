@@ -6,6 +6,7 @@ import { useGlobalMessage } from "@composables/useMessage";
 import { useSerialPolling } from "@composables/useSerialPolling";
 import { i18n } from "@language";
 import { useSettingsStore } from "@stores/settingsStore";
+import { formatBytes } from "@utils/formatters";
 
 const LOG_POLL_INTERVAL = 1500;
 const SYSTEM_POLL_INTERVAL = 5000;
@@ -80,6 +81,18 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     return `${gb.toFixed(memoryDisplayPrecision.value)} GB`;
   }
 
+  function formatBytesWithPrecision(value: number): string {
+    if (value <= 0) {
+      return formatBytes(0);
+    }
+
+    const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+    const base = 1024;
+    const unitIndex = Math.min(Math.floor(Math.log(value) / Math.log(base)), units.length - 1);
+    const scaled = value / Math.pow(base, unitIndex);
+    return `${scaled.toFixed(memoryDisplayPrecision.value)} ${units[unitIndex]}`;
+  }
+
   function formatUptime(totalSeconds: number): string {
     const days = Math.floor(totalSeconds / 86400);
     const hours = Math.floor((totalSeconds % 86400) / 3600);
@@ -106,8 +119,8 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
       `${i18n.t("developer.host")}: ${systemInfo.value.host_name || "-"}`,
       `${i18n.t("developer.cpu")}: ${systemInfo.value.cpu.name} (${systemInfo.value.cpu.count})`,
       `${i18n.t("developer.memory")}: ${formatBytesToGb(systemInfo.value.memory.used)} / ${formatBytesToGb(systemInfo.value.memory.total)}`,
-      `${i18n.t("developer.server_instances_memory")}: ${formatBytesToGb(systemInfo.value.memory.server_instances_used)}`,
-      `${i18n.t("developer.app_memory")}: ${formatBytesToGb(systemInfo.value.memory.app_used)}`,
+      `${i18n.t("developer.server_instances_memory")}: ${formatBytesWithPrecision(systemInfo.value.memory.server_instances_used)}`,
+      `${i18n.t("developer.app_memory")}: ${formatBytesWithPrecision(systemInfo.value.memory.app_used)}`,
       `${i18n.t("developer.process_count")}: ${systemInfo.value.process_count}`,
       `${i18n.t("developer.uptime")}: ${formatUptime(systemInfo.value.uptime)}`,
     ].join("\n");

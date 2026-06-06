@@ -3,7 +3,7 @@ import type { AppSettings } from "@api/settings";
 
 export function usePaintSettingsFields() {
   const fontSize = ref("14");
-  const memoryDisplayPrecision = ref("2");
+  const memoryDisplayPrecision = ref(2);
   const consoleFontSize = ref("13");
   const consoleFontFamily = ref("");
   const consoleLetterSpacing = ref("0");
@@ -14,7 +14,7 @@ export function usePaintSettingsFields() {
 
   function syncLocalValues(settings: AppSettings) {
     fontSize.value = String(settings.font_size);
-    memoryDisplayPrecision.value = String(settings.memory_display_precision ?? 2);
+    memoryDisplayPrecision.value = settings.memory_display_precision ?? 2;
     consoleFontSize.value = String(settings.console_font_size);
     consoleFontFamily.value = settings.console_font_family || "";
     consoleLetterSpacing.value = String(settings.console_letter_spacing ?? 0);
@@ -33,10 +33,8 @@ export function usePaintSettingsFields() {
     settings.background_blur = parseInt(bgBlur.value, 10) || 0;
     settings.background_brightness = parseFloat(bgBrightness.value) || 1.0;
     settings.font_size = parseInt(fontSize.value, 10) || 14;
-    settings.memory_display_precision = [0, 2, 4].includes(
-      parseInt(memoryDisplayPrecision.value, 10),
-    )
-      ? parseInt(memoryDisplayPrecision.value, 10)
+    settings.memory_display_precision = [0, 2, 4].includes(memoryDisplayPrecision.value)
+      ? memoryDisplayPrecision.value
       : 2;
     settings.color = settings.color || "default";
   }

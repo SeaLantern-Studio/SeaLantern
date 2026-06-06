@@ -201,9 +201,24 @@ export function scopeRuntimeCss(css: string, scopeSelector: string): string {
 }
 
 export function executePluginScripts(container: HTMLElement, rawHtml: string) {
-  if (/<script\b/i.test(rawHtml)) {
-    pluginLogger.warn("RuntimeUI", "已拦截插件脚本注入", {
+  const documentFragment = document.createElement("template");
+  documentFragment.innerHTML = rawHtml;
+  const scripts = Array.from(documentFragment.content.querySelectorAll("script"));
+
+  for (const script of scripts) {
+    const executable = document.createElement("script");
+    for (const attribute of Array.from(script.attributes)) {
+      executable.setAttribute(attribute.name, attribute.value);
+    }
+    executable.textContent = script.textContent || "";
+    container.appendChild(executable);
+    executable.remove();
+  }
+
+  if (scripts.length > 0) {
+    pluginLogger.info("RuntimeUI", "已执行插件脚本注入", {
       containerId: container.id,
+      count: scripts.length,
     });
   }
 }

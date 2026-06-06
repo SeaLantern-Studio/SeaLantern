@@ -4,6 +4,7 @@ import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import { i18n } from "@language";
 import type { SystemInfo } from "@api/system";
+import { formatBytes } from "@utils/formatters";
 
 const props = defineProps<{
   systemInfo: SystemInfo | null;
@@ -25,6 +26,19 @@ function formatBytesToGb(value: number, precision: number): string {
   const normalizedPrecision = normalizePrecision(precision);
   const gb = value / 1024 / 1024 / 1024;
   return `${gb.toFixed(normalizedPrecision)} GB`;
+}
+
+function formatBytesWithPrecision(value: number, precision: number): string {
+  const normalizedPrecision = normalizePrecision(precision);
+  if (value <= 0) {
+    return formatBytes(0);
+  }
+
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  const base = 1024;
+  const unitIndex = Math.min(Math.floor(Math.log(value) / Math.log(base)), units.length - 1);
+  const scaled = value / Math.pow(base, unitIndex);
+  return `${scaled.toFixed(normalizedPrecision)} ${units[unitIndex]}`;
 }
 
 function formatUptime(totalSeconds: number): string {
@@ -64,8 +78,8 @@ const items = computed(() => {
       label: i18n.t("developer.memory"),
       value: `${formatBytesToGb(props.systemInfo.memory.used, precision)} / ${formatBytesToGb(props.systemInfo.memory.total, precision)}`,
       detail: [
-        `${i18n.t("developer.server_instances_memory")}: ${formatBytesToGb(props.systemInfo.memory.server_instances_used, precision)}`,
-        `${i18n.t("developer.app_memory")}: ${formatBytesToGb(props.systemInfo.memory.app_used, precision)}`,
+        `${i18n.t("developer.server_instances_memory")}: ${formatBytesWithPrecision(props.systemInfo.memory.server_instances_used, precision)}`,
+        `${i18n.t("developer.app_memory")}: ${formatBytesWithPrecision(props.systemInfo.memory.app_used, precision)}`,
       ],
     },
     { label: i18n.t("developer.process_count"), value: String(props.systemInfo.process_count) },

@@ -3,7 +3,11 @@ import {
   cleanupPluginEventListeners,
   removePluginUiElements,
 } from "@stores/plugin/pluginRuntimeDomCleanup";
-import { scopeRuntimeCss, sanitizeHtml } from "@stores/plugin/pluginRuntimeDomSanitizer";
+import {
+  executePluginScripts,
+  scopeRuntimeCss,
+  sanitizeHtml,
+} from "@stores/plugin/pluginRuntimeDomSanitizer";
 import {
   createPluginRuntimeHost,
   getPluginUiContainer,
@@ -12,6 +16,7 @@ import {
   isAllowedStyleProperty,
   normalizeStyleProperty,
   resolveScopedTargets,
+  setPluginRuntimeHostPlain,
 } from "@stores/plugin/pluginRuntimeDomShared";
 import type {
   PluginRuntimeEventListenerRegistry,
@@ -59,8 +64,11 @@ export async function handlePluginRuntimeStructureAction(
       const container = getPluginUiContainer();
       const wrapper = createPluginRuntimeHost(plugin_id, element_id);
       const surface = getPluginRuntimeSurface(wrapper);
+      const containsScript = /<script\b/i.test(html);
+      setPluginRuntimeHostPlain(wrapper, containsScript);
       if (surface) {
         surface.innerHTML = sanitizeHtml(html);
+        executePluginScripts(surface, html);
       }
       container.appendChild(wrapper);
       return true;
@@ -75,7 +83,12 @@ export async function handlePluginRuntimeStructureAction(
       const element = document.getElementById(fullElementId);
       const surface = getPluginRuntimeSurface(element);
       if (surface) {
+        const containsScript = /<script\b/i.test(html);
+        if (element instanceof HTMLElement) {
+          setPluginRuntimeHostPlain(element, containsScript);
+        }
         surface.innerHTML = sanitizeHtml(html);
+        executePluginScripts(surface, html);
       } else {
         await options.handlePluginRuntimeDomEvent(
           { ...event, action: "inject" },

@@ -159,7 +159,7 @@ async function handleImport(json: string) {
         @update:theme="settings.theme = $event"
         @update:font-size="fontSize = $event"
         @update:font-family="settings.font_family = $event"
-        @update:memory-display-precision="memoryDisplayPrecision = $event"
+        @update:memory-display-precision="memoryDisplayPrecision = Number($event)"
         @update:window-effect="settings.window_effect = $event"
         @update:bg-settings-expanded="bgSettingsExpanded = $event"
         @update:bg-opacity="bgOpacity = $event"

@@ -11,7 +11,7 @@ defineProps<{
   theme: string;
   fontSize: string;
   fontFamily: string;
-  memoryDisplayPrecision: string;
+  memoryDisplayPrecision: number;
   memoryDisplayPrecisionOptions: { label: string; value: number }[];
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
@@ -33,7 +33,7 @@ const emit = defineEmits<{
   (e: "update:theme", value: string): void;
   (e: "update:fontSize", value: string): void;
   (e: "update:fontFamily", value: string): void;
-  (e: "update:memoryDisplayPrecision", value: string): void;
+  (e: "update:memoryDisplayPrecision", value: number): void;
   (e: "update:windowEffect", value: WindowEffect): void;
   (e: "update:bgSettingsExpanded", value: boolean): void;
   (e: "update:bgOpacity", value: string): void;
@@ -74,7 +74,7 @@ function handleFontFamilyChange(value: string | number) {
 }
 
 function handleMemoryDisplayPrecisionChange(value: string | number) {
-  emit("update:memoryDisplayPrecision", String(value));
+  emit("update:memoryDisplayPrecision", Number(value));
   emit("memoryDisplayPrecisionChange");
 }
 
