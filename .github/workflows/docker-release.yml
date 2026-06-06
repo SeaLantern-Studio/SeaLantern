@@ -24,10 +24,7 @@ jobs:
   build-and-push:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      (
-        (github.event.workflow_run.name == '发布' && github.event.workflow_run.event == 'push') ||
-        (github.event.workflow_run.name == 'Nightly 发布' && (github.event.workflow_run.event == 'schedule' || github.event.workflow_run.event == 'workflow_dispatch'))
-      )
+      contains(fromJson('["push","schedule","workflow_dispatch"]'), github.event.workflow_run.event)
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -42,15 +39,23 @@ jobs:
         id: image_meta
         shell: bash
         env:
-          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          WORKFLOW_EVENT: ${{ github.event.workflow_run.event }}
           IMAGE_BASE: ${{ env.REGISTRY }}/${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
         run: |
           set -euo pipefail
 
           git fetch --force --tags origin
 
-          if [ "$WORKFLOW_NAME" = "发布" ]; then
-            TAG="$(git tag --points-at HEAD 'v*' 'sea-lantern-v*' | head -n 1)"
+          pick_tag() {
+            local pattern="$1"
+            git tag --points-at HEAD --list "$pattern" | LC_ALL=C sort -r | head -n 1
+          }
+
+          if [ "$WORKFLOW_EVENT" = "push" ]; then
+            TAG="$(pick_tag 'sea-lantern-v*')"
+            if [ -z "$TAG" ]; then
+              TAG="$(pick_tag 'v*')"
+            fi
             if [ -z "$TAG" ]; then
               echo "❌ 未找到指向当前提交的正式版 tag" >&2
               exit 1
@@ -72,7 +77,7 @@ jobs:
               echo 'EOF'
             } >> "$GITHUB_OUTPUT"
           else
-            TAG="$(git tag --points-at HEAD 'nightly-v*' | head -n 1)"
+            TAG="$(pick_tag 'nightly-v*')"
             if [ -z "$TAG" ]; then
               echo "❌ 未找到指向当前提交的 nightly tag" >&2
               exit 1
