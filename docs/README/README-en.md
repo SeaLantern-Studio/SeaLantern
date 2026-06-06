@@ -1,5 +1,5 @@
 <div align="center">
-	<img src="frontend/src/assets/logo.svg" alt="logo" width="200" height="200">
+	<img src="../../frontend/src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # Sea Lantern (海晶灯)
 
@@ -16,7 +16,7 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
   <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
 </div>
 
-<kbd>[简体中文](README.md)</kbd> <kbd>English</kbd>
+<kbd>[简体中文](../../README.md)</kbd> <kbd>English</kbd>
 
 ## Any questions? Try→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
@@ -137,7 +137,7 @@ No Electron, no Node backend, no Webpack. Launch fast, size small, RAM saved.
 
 ### Project Structure
 
-See [Project Structure](docs/STRUCTURE-en.md).
+See [Project Structure](../STRUCTURE.md).
 
 ## Planned Features
 
@@ -151,16 +151,16 @@ skeletons—waiting for your contributions:
 
 ## Contributing
 
-Contributions are welcome! Before you start, please read the [Contributing Guidelines](docs/CONTRIBUTING-en.md) to understand code standards and development workflows.
+Contributions are welcome! Before you start, please read the [Contributing Guidelines](../CONTRIBUTING.md) to understand code standards and development workflows.
 
 GUI modifications are also OK!
 
-Colors are managed via CSS variables —
-components are modular —
+Colors are managed via CSS variables
+components are modular
 change any part you don't like.
 
-Want to create a theme/skin? Go for it;
-want to completely redesign the layout? That's fine!
+Want to create a theme or skin? Go for it.
+Want to completely redesign the layout? That's fine.
 
 Of course, the prerequisite for all of this is that you have sufficient reasons and abilities, and can only do it after discussing with everyone in the group, otherwise it is very likely that we will **reject the PR**
 
@@ -205,13 +205,13 @@ The frontend and backend each have 3 files, plus one line each for the router an
 
 ### i18n — Internationalization Guide
 
-Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [docs/language-system.md](docs/language-system.md)
+Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [../language-system.md](../language-system.md)
 
 If you want to add additional languages besides the commonly used ones, please create plugins.
 
 ## License
 
-[GNU General Public License v3.0](LICENSE)
+[GNU General Public License v3.0](../../LICENSE)
 
 ## Star History
 
@@ -225,7 +225,7 @@ If you want to add additional languages besides the commonly used ones, please c
 
 ## Contributors
 
-Thanks to everyone who contributed to Sea Lantern!
+Thanks to everyone who contributed to Sea Lantern.
 
 [![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/SeaLantern-Studio/SeaLantern/graphs/contributors)
 
@@ -236,4 +236,4 @@ Sea Lantern is an open source project under the GPLv3 license.
 Minecraft is a trademark of Mojang AB.
 This project is not approved or associated with Mojang or Microsoft.
 
-"We've built the framework — the soul is up to you."
+"We've built the framework - the soul is up to you."

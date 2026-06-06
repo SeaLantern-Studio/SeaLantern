@@ -17,7 +17,7 @@
   <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
 </div>
 
-<kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
+<kbd>简体中文</kbd> <kbd>[English](docs/README/README-en.md)</kbd>
 
 ## 有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
