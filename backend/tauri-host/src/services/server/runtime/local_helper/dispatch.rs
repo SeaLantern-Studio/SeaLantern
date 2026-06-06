@@ -3,6 +3,7 @@ use super::snapshot::snapshot_from_manager;
 use super::LocalRuntimeState;
 use crate::models::server::ServerInstance;
 use crate::services::server::manager::ServerManager;
+use crate::services::server::runtime::i18n::runtime_t;
 use crate::services::server::runtime::local::LocalServerRuntime;
 use crate::services::server::runtime::ServerRuntime;
 use std::net::TcpStream;
@@ -60,7 +61,7 @@ fn auth_failed_response() -> LocalHelperResponse {
     LocalHelperResponse {
         ok: false,
         snapshot: None,
-        error: Some("本地 runtime helper 鉴权失败".to_string()),
+        error: Some(runtime_t("server.runtime.local_helper.auth_failed")),
     }
 }
 
@@ -86,6 +87,7 @@ fn command_response(result: Result<(), String>) -> LocalHelperResponse {
 #[cfg(test)]
 mod tests {
     use super::{auth_failed_response, command_response, status_response, DispatchOutcome};
+    use crate::services::server::runtime::i18n::runtime_t;
     use crate::services::server::runtime::local_helper::LocalHelperStatusSnapshot;
 
     #[test]
@@ -94,7 +96,10 @@ mod tests {
 
         assert!(!response.ok);
         assert_eq!(response.snapshot, None);
-        assert_eq!(response.error.as_deref(), Some("本地 runtime helper 鉴权失败"));
+        assert_eq!(
+            response.error.as_deref(),
+            Some(runtime_t("server.runtime.local_helper.auth_failed").as_str())
+        );
     }
 
     #[test]

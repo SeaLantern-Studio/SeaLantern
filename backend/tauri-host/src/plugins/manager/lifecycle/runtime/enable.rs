@@ -1,9 +1,9 @@
 use super::super::super::{PluginManager, PluginState};
+use crate::plugins::api::emit_log_event;
 use crate::plugins::manager::lifecycle::dependencies::{
     check_dependencies, update_all_missing_dependencies,
 };
-use crate::plugins::manager::lifecycle::persistence::save_enabled_plugins;
-use crate::plugins::api::emit_log_event;
+use crate::plugins::manager::lifecycle::persistence::save_enabled_plugins_checked;
 use crate::plugins::runtime::{kill_all_processes, PluginRuntime};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -59,7 +59,10 @@ pub(in crate::plugins::manager) fn enable_plugin(
     let permissions = plugin_info.manifest.permissions.clone();
     println!("[PluginManager] 插件权限: {:?}", permissions);
 
-    let app_data_dir = std::path::PathBuf::from(crate::utils::path::get_or_create_app_data_dir());
+    let app_data_dir = std::path::PathBuf::from(
+        crate::utils::path::get_or_create_app_data_dir_checked()
+            .map_err(|e| format!("Failed to resolve app data directory: {}", e))?,
+    );
     let server_dir = app_data_dir.join("servers");
     let global_dir = app_data_dir;
 
@@ -129,7 +132,123 @@ pub(in crate::plugins::manager) fn enable_plugin(
     }
 
     update_all_missing_dependencies(manager);
-    save_enabled_plugins(manager);
+    save_enabled_plugins_checked(manager)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::enable_plugin;
+    use crate::models::plugin::{PluginAuthor, PluginInfo, PluginManifest, PluginState};
+    use crate::plugins::manager::PluginManager;
+    use crate::test_support::{lock_env, EnvGuard};
+
+    fn example_plugin_info(plugin_root: &std::path::Path) -> PluginInfo {
+        PluginInfo {
+            manifest: PluginManifest {
+                id: "example-plugin".to_string(),
+                name: "Example Plugin".to_string(),
+                version: "1.0.0".to_string(),
+                description: "test plugin".to_string(),
+                author: PluginAuthor {
+                    name: "tester".to_string(),
+                    email: None,
+                    url: None,
+                },
+                main: "main.lua".to_string(),
+                license: None,
+                homepage: None,
+                repository: None,
+                engines: None,
+                permissions: Vec::new(),
+                ui: None,
+                events: Vec::new(),
+                commands: Vec::new(),
+                dependencies: Vec::new(),
+                optional_dependencies: Vec::new(),
+                icon: None,
+                settings: None,
+                sidebar: None,
+                locales: None,
+                include: Vec::new(),
+                capabilities: Vec::new(),
+                theme_var_map: std::collections::HashMap::new(),
+                presets: std::collections::HashMap::new(),
+            },
+            state: PluginState::Disabled,
+            path: plugin_root.to_string_lossy().to_string(),
+            missing_dependencies: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn enable_plugin_surfaces_app_data_dir_creation_failures() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let plugins_dir = temp_dir.path().join("plugins");
+        let data_dir = temp_dir.path().join("plugin-data");
+        std::fs::create_dir_all(&plugins_dir).expect("plugins dir should exist");
+        std::fs::create_dir_all(&data_dir).expect("plugin data dir should exist");
+
+        let plugin_root = plugins_dir.join("example-plugin");
+        std::fs::create_dir_all(&plugin_root).expect("plugin root should exist");
+
+        let blocked_root = temp_dir.path().join("blocked-root");
+        std::fs::write(&blocked_root, b"not a directory")
+            .expect("file-backed app data root should exist");
+        let blocked_path = blocked_root.join("nested");
+        let _env_lock = lock_env();
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &blocked_path.to_string_lossy());
+
+        let mut manager = PluginManager::new(plugins_dir, data_dir);
+        manager
+            .plugins
+            .insert("example-plugin".to_string(), example_plugin_info(&plugin_root));
+
+        let error = enable_plugin(&mut manager, "example-plugin")
+            .expect_err("app data dir failure should not be silently downgraded");
+
+        assert!(
+            error.contains("Failed to resolve app data directory"),
+            "unexpected error: {}",
+            error
+        );
+        assert!(error.contains("blocked-root"), "unexpected error: {}", error);
+    }
+
+    #[test]
+    fn enable_plugin_surfaces_enabled_plugin_persistence_failures() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let plugins_dir = temp_dir.path().join("plugins");
+        let data_dir = temp_dir.path().join("plugin-data");
+        std::fs::create_dir_all(&plugins_dir).expect("plugins dir should exist");
+        std::fs::create_dir_all(&data_dir).expect("plugin data dir should exist");
+
+        let plugin_root = plugins_dir.join("example-plugin");
+        std::fs::create_dir_all(&plugin_root).expect("plugin root should exist");
+        std::fs::write(
+            plugin_root.join("main.lua"),
+            b"function onLoad() end\nfunction onEnable() end\n",
+        )
+        .expect("plugin main file should exist");
+        std::fs::write(data_dir.join("enabled_plugins.json"), b"blocked by file")
+            .expect("file-backed enabled plugins path should exist");
+
+        let _env_lock = lock_env();
+        let _guard = EnvGuard::set(
+            "SEALANTERN_DATA_DIR",
+            &temp_dir.path().join("app-data").to_string_lossy(),
+        );
+
+        let mut manager = PluginManager::new(plugins_dir, data_dir);
+        manager
+            .plugins
+            .insert("example-plugin".to_string(), example_plugin_info(&plugin_root));
+
+        let error = enable_plugin(&mut manager, "example-plugin")
+            .expect_err("enabled plugin persistence failure should not be silently downgraded");
+
+        assert!(error.contains("Failed to save enabled plugins"), "unexpected error: {}", error);
+        assert!(error.contains("enabled_plugins.json"), "unexpected error: {}", error);
+    }
 }

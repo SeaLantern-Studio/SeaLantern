@@ -1,4 +1,4 @@
-use crate::capture_eprintln;
+use crate::log_fatal_ctx;
 
 pub struct TokioRuntimeConfig<'a> {
     pub error_prefix: &'a str,
@@ -16,18 +16,16 @@ pub fn create_tokio_runtime_or_exit(config: TokioRuntimeConfig<'_>) -> tokio::ru
     match create_tokio_runtime(config) {
         Ok(runtime) => runtime,
         Err(message) => {
+            log_fatal_ctx("runtime.tokio", "create_tokio_runtime_or_exit", &message);
             for line in message.lines() {
-                capture_eprintln(line.to_string());
+                std::eprintln!("{}", line);
             }
             std::process::exit(1);
         }
     }
 }
 
-fn format_runtime_creation_message(
-    config: &TokioRuntimeConfig<'_>,
-    error_message: &str,
-) -> String {
+fn format_runtime_creation_message(config: &TokioRuntimeConfig<'_>, error_message: &str) -> String {
     let mut message = format!("{}: {}", config.error_prefix, error_message);
     if let Some(hint) = config.error_hint {
         message.push('\n');
@@ -38,7 +36,7 @@ fn format_runtime_creation_message(
 
 #[cfg(test)]
 mod tests {
-    use super::{TokioRuntimeConfig, format_runtime_creation_message};
+    use super::{format_runtime_creation_message, TokioRuntimeConfig};
 
     #[test]
     fn formats_runtime_creation_message_with_optional_hint() {
@@ -53,10 +51,7 @@ mod tests {
 
     #[test]
     fn formats_runtime_creation_message_without_hint() {
-        let config = TokioRuntimeConfig {
-            error_prefix: "prefix",
-            error_hint: None,
-        };
+        let config = TokioRuntimeConfig { error_prefix: "prefix", error_hint: None };
 
         let message = format_runtime_creation_message(&config, "boom");
         assert_eq!(message, "prefix: boom");

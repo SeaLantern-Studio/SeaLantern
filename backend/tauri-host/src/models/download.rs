@@ -1,10 +1,10 @@
 use crate::hardcode_data::external_services::COMMON_HTTP_BROWSER_USER_AGENT;
 use crate::utils::constants::DOWNLOAD_LINK_LIST_URL;
 use crate::utils::downloader::SingleThreadDownloader;
-use serde::{Deserialize, Serialize};
 pub(crate) use sea_lantern_server_download_links_core::{
     BaseDownloadLinks, DownloadLink, TypeDownloadLinks,
 };
+use serde::{Deserialize, Serialize};
 use tokio::sync::OnceCell;
 use uuid::Uuid;
 

@@ -1,3 +1,4 @@
+use super::common::downloader_t1;
 use reqwest::Client;
 use std::time::Duration;
 
@@ -34,16 +35,19 @@ impl SingleThreadDownloader {
             .get(url)
             .send()
             .await
-            .map_err(|e| format!("请求失败: {}", e))?;
+            .map_err(|e| downloader_t1("download.util.request_failed", e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(format!("服务器返回错误状态码: {}", response.status()));
+            return Err(downloader_t1(
+                "download.util.response_status_failed",
+                response.status().to_string(),
+            ));
         }
 
         let content = response
             .text()
             .await
-            .map_err(|e| format!("解析文本失败: {}", e))?;
+            .map_err(|e| downloader_t1("download.util.read_text_failed", e.to_string()))?;
 
         Ok(content)
     }

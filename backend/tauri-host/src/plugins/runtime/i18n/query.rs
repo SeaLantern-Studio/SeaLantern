@@ -1,4 +1,4 @@
-use super::common::plugin_i18n_namespace;
+use super::common::{i18n_err, i18n_err1, plugin_i18n_namespace};
 use crate::services::global::i18n_service;
 use mlua::{Lua, Table, Value, Variadic};
 use std::collections::HashMap;
@@ -9,24 +9,19 @@ pub(super) fn get_locale(_: &Lua, (): ()) -> mlua::Result<String> {
 
 pub(super) fn translate(_: &Lua, args: Variadic<Value>) -> mlua::Result<String> {
     let i18n = i18n_service();
-    let key = required_string_arg(&args, 0, "i18n.t requires a string key as first argument")?;
+    let key = required_string_arg(&args, 0, "plugins.runtime.i18n.translate_key_string_required")?;
 
     match args.get(1) {
         Some(Value::Table(options)) => Ok(i18n.t_with_options(&key, &table_to_options(options)?)),
         Some(Value::Nil) | None => Ok(i18n.t(&key)),
-        Some(_) => Err(mlua::Error::runtime(
-            "i18n.t expects the second argument to be a table when provided".to_string(),
-        )),
+        Some(_) => Err(i18n_err("plugins.runtime.i18n.translate_options_table_required")),
     }
 }
 
 pub(super) fn has_translation(_: &Lua, args: Variadic<Value>) -> mlua::Result<bool> {
     let i18n = i18n_service();
-    let key = required_string_arg(
-        &args,
-        0,
-        "i18n.hasTranslation requires a string key as first argument",
-    )?;
+    let key =
+        required_string_arg(&args, 0, "plugins.runtime.i18n.has_translation_key_string_required")?;
 
     match optional_string_arg(&args, 1)? {
         Some(locale) => Ok(i18n.has_translation_for_locale(&locale, &key)),
@@ -36,21 +31,23 @@ pub(super) fn has_translation(_: &Lua, args: Variadic<Value>) -> mlua::Result<bo
 
 pub(super) fn t_or_default(_: &Lua, args: Variadic<Value>) -> mlua::Result<String> {
     let i18n = i18n_service();
-    let key =
-        required_string_arg(&args, 0, "i18n.tOrDefault requires a string key as first argument")?;
+    let key = required_string_arg(
+        &args,
+        0,
+        "plugins.runtime.i18n.translate_or_default_key_string_required",
+    )?;
     let default_value = required_string_arg(
         &args,
         1,
-        "i18n.tOrDefault requires a string default value as second argument",
+        "plugins.runtime.i18n.translate_or_default_value_string_required",
     )?;
 
     let options = match args.get(2) {
         Some(Value::Table(options)) => Some(table_to_options(options)?),
         Some(Value::Nil) | None => None,
         Some(_) => {
-            return Err(mlua::Error::runtime(
-                "i18n.tOrDefault expects the third argument to be a table when provided"
-                    .to_string(),
+            return Err(i18n_err(
+                "plugins.runtime.i18n.translate_or_default_options_table_required",
             ));
         }
     };
@@ -89,13 +86,17 @@ pub(super) fn translate_plugin(
     Ok(i18n_service().t(&plugin_i18n_namespace(&plugin_id, &key)))
 }
 
-fn required_string_arg(args: &Variadic<Value>, index: usize, err: &str) -> mlua::Result<String> {
+fn required_string_arg(
+    args: &Variadic<Value>,
+    index: usize,
+    err_key: &str,
+) -> mlua::Result<String> {
     match args.get(index) {
         Some(Value::String(s)) => s
             .to_str()
             .map(|s| s.to_string())
-            .map_err(|_| mlua::Error::runtime("Failed to convert string to UTF-8")),
-        _ => Err(mlua::Error::runtime(err.to_string())),
+            .map_err(|_| i18n_err("plugins.runtime.i18n.invalid_utf8_string")),
+        _ => Err(i18n_err(err_key)),
     }
 }
 
@@ -104,12 +105,12 @@ fn optional_string_arg(args: &Variadic<Value>, index: usize) -> mlua::Result<Opt
         Some(Value::String(s)) => s
             .to_str()
             .map(|s| Some(s.to_string()))
-            .map_err(|_| mlua::Error::runtime("Failed to convert string to UTF-8")),
+            .map_err(|_| i18n_err("plugins.runtime.i18n.invalid_utf8_string")),
         Some(Value::Nil) | None => Ok(None),
-        Some(_) => Err(mlua::Error::runtime(format!(
-            "Expected string or nil at argument {}",
-            index + 1
-        ))),
+        Some(_) => Err(i18n_err1(
+            "plugins.runtime.i18n.string_or_nil_expected",
+            (index + 1).to_string(),
+        )),
     }
 }
 

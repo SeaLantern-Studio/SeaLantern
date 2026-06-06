@@ -213,6 +213,7 @@ pub struct AppSettings {
 ///
 /// 前端做增量保存时，只需要传入变动字段
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct PartialSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub close_servers_on_exit: Option<bool>,

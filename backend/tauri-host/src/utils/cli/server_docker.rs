@@ -1,12 +1,31 @@
 use std::collections::BTreeMap;
 
 use crate::models::server::{DockerCommandMode, PublishedPort, RconConfig};
+use crate::services::global::i18n_service;
 
 use super::cli_env::{configured_docker_rcon_host_override, is_headless_http_environment};
 use super::server_ports::{is_port_available_for_binding, PortBindingKind};
 use super::server_shared::{trace_cli_action, trace_cli_error};
+use std::collections::HashMap;
 
 const DEFAULT_RCON_PORT: u16 = 25575;
+
+fn cli_docker_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn cli_docker_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn cli_docker_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 pub(super) fn default_docker_env() -> BTreeMap<String, String> {
     let mut env = BTreeMap::new();
@@ -67,10 +86,7 @@ fn ensure_rcon_is_not_disabled(env: &BTreeMap<String, String>) -> Result<(), Str
     };
 
     if matches!(value.trim().to_ascii_lowercase().as_str(), "false" | "0" | "no") {
-        return Err(
-            "当前命令模式为 rcon，但 Docker env 显式设置了 ENABLE_RCON=false；请移除该 env、改回启用 RCON，或切换到 --command-mode docker_stdio"
-                .to_string(),
-        );
+        return Err(cli_docker_t("cli.server_setup.docker.rcon_disabled_by_env"));
     }
 
     Ok(())
@@ -86,7 +102,7 @@ fn resolve_rcon_container_port(env: &BTreeMap<String, String>) -> Result<u16, St
         .parse::<u16>()
         .ok()
         .filter(|port| *port > 0)
-        .ok_or_else(|| format!("RCON_PORT 需要是有效的非零端口号: {}", value.trim()))
+        .ok_or_else(|| cli_docker_t1("cli.server_setup.docker.rcon_port_invalid", value.trim()))
 }
 
 fn resolve_rcon_password(
@@ -95,16 +111,13 @@ fn resolve_rcon_password(
 ) -> Result<String, String> {
     if let Some(password) = env_get_case_insensitive(env, "RCON_PASSWORD") {
         if password.is_empty() {
-            return Err("RCON_PASSWORD 不能为空".to_string());
+            return Err(cli_docker_t("cli.server_setup.docker.rcon_password_empty"));
         }
         return Ok(password.to_string());
     }
 
     if env_get_case_insensitive(env, "RCON_PASSWORD_FILE").is_some() {
-        return Err(
-            "当前命令模式为 rcon，且指定了 RCON_PASSWORD_FILE，但 SeaLantern 无法从容器内 secret 文件反推密码；请同时提供 --env RCON_PASSWORD=<password>，或切换到 --command-mode docker_stdio"
-                .to_string(),
-        );
+        return Err(cli_docker_t("cli.server_setup.docker.rcon_password_file_requires_password"));
     }
 
     Ok(build_default_rcon_password(container_name))
@@ -149,15 +162,20 @@ fn resolve_rcon_port(requested_port: u16, reserved_ports: &[u16]) -> Result<u16,
     while port < u16::MAX {
         port = port.saturating_add(1);
         if !reserved_ports.contains(&port) && is_port_available(port) {
-            println!("Docker RCON 端口 {} 已被占用，已自动顺延到 {}", requested_port, port);
+            println!(
+                "{}",
+                cli_docker_t2(
+                    "cli.server_setup.docker.rcon_port_shifted",
+                    requested_port.to_string(),
+                    port.to_string(),
+                )
+            );
             return Ok(port);
         }
     }
 
-    let error = format!(
-        "Docker RCON 端口 {} 及其后续端口均不可用，请检查占用或切换 command mode",
-        requested_port
-    );
+    let error =
+        cli_docker_t1("cli.server_setup.docker.rcon_port_unavailable", requested_port.to_string());
     trace_cli_error("docker_rcon_port_unavailable", "", &error);
     Err(error)
 }

@@ -149,13 +149,14 @@ impl I18nService {
     }
 
     fn translate_for_locale(&self, locale: &str, key: &str) -> Option<String> {
-        self.resolve_translation_for_locale(locale, key).or_else(|| {
-            if locale != "zh-CN" {
-                self.resolve_translation_for_locale("zh-CN", key)
-            } else {
-                None
-            }
-        })
+        self.resolve_translation_for_locale(locale, key)
+            .or_else(|| {
+                if locale != "zh-CN" {
+                    self.resolve_translation_for_locale("zh-CN", key)
+                } else {
+                    None
+                }
+            })
     }
 
     fn resolve_translation_for_locale(&self, locale: &str, key: &str) -> Option<String> {

@@ -19,7 +19,9 @@ pub enum InstallLaunchPlan {
 
 pub fn get_update_cache_dir() -> PathBuf {
     let cache_dir = dirs_next::cache_dir().unwrap_or_else(std::env::temp_dir);
-    cache_dir.join(UPDATE_CACHE_APP_DIR).join(UPDATE_CACHE_DIR_NAME)
+    cache_dir
+        .join(UPDATE_CACHE_APP_DIR)
+        .join(UPDATE_CACHE_DIR_NAME)
 }
 
 pub fn get_pending_update_file() -> PathBuf {

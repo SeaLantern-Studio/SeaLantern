@@ -87,11 +87,11 @@ fn extract_bind_host(bind_addr: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_support::{lock_env, EnvGuard};
     use super::{
         extract_bind_host, resolve_http_bind_addr, resolve_http_bind_addr_checked,
         resolve_http_bind_host,
     };
+    use crate::test_support::{lock_env, EnvGuard};
 
     #[test]
     fn http_bind_defaults_to_loopback() {

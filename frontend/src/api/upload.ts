@@ -3,7 +3,13 @@
  * 用于在浏览器/Docker模式下替代原生文件选择器
  */
 
-import { HTTP_API_BASE } from "./tauri";
+import {
+  ensureBrowserSession,
+  HTTP_API_BASE,
+  parseHttpEnvelope,
+  readBrowserAuthToken,
+  toStructuredHttpError,
+} from "./tauri";
 
 export interface UploadedFile {
   original_name: string;
@@ -20,52 +26,58 @@ export interface UploadResult {
  * 上传单个文件
  */
 export async function uploadFile(file: File): Promise<UploadedFile> {
+  await ensureBrowserSession();
+  const token = readBrowserAuthToken();
+
   const formData = new FormData();
   formData.append("file", file);
 
   const response = await fetch(`${HTTP_API_BASE}/upload`, {
     method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
   });
 
+  const result = await parseHttpEnvelope<{ files: UploadedFile[] }>(response);
+
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Upload failed: ${errorText}`);
+    throw toStructuredHttpError(result, `Upload failed: HTTP ${response.status}`);
   }
 
-  const result = await response.json();
-
-  if (!result.success) {
-    throw new Error(result.error || "Upload failed");
+  if (!result?.success) {
+    throw toStructuredHttpError(result, "Upload failed");
   }
 
-  return result.data.files[0];
+  return result.data!.files[0];
 }
 
 /**
  * 上传多个文件
  */
 export async function uploadFiles(files: File[]): Promise<UploadResult> {
+  await ensureBrowserSession();
+  const token = readBrowserAuthToken();
+
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
 
   const response = await fetch(`${HTTP_API_BASE}/upload`, {
     method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
   });
 
+  const result = await parseHttpEnvelope<UploadResult>(response);
+
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Upload failed: ${errorText}`);
+    throw toStructuredHttpError(result, `Upload failed: HTTP ${response.status}`);
   }
 
-  const result = await response.json();
-
-  if (!result.success) {
-    throw new Error(result.error || "Upload failed");
+  if (!result?.success) {
+    throw toStructuredHttpError(result, "Upload failed");
   }
 
-  return result.data;
+  return result.data as UploadResult;
 }
 
 /**

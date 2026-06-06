@@ -1,6 +1,6 @@
 use super::i18n::tunnel_t1;
 use super::state::{
-    derive_ticket_for_state, tunnel_key_path, tunnel_profile_path, TunnelRuntimeState,
+    derive_ticket_for_state_checked, tunnel_key_path, tunnel_profile_path, TunnelRuntimeState,
 };
 use sculk::persist::{generate_new_key, Profile};
 use sculk::types::{RelayUrl, SecretKey};
@@ -52,15 +52,36 @@ pub(super) fn load_runtime_state() -> TunnelRuntimeState {
         profile,
         secret_key,
     };
-    state.ticket = derive_ticket_for_state(&state);
+    match derive_ticket_for_state_checked(&state) {
+        Ok(ticket) => state.ticket = ticket,
+        Err(error) => logs_push_ticket_derivation_failure(&mut state, error),
+    }
     state
 }
 
+pub(super) fn save_profile_checked(profile: &Profile) -> Result<(), String> {
+    profile
+        .save_to(&tunnel_profile_path())
+        .map_err(|e| tunnel_t1("tunnel.log.save_profile_failed", e.to_string()))
+}
+
+pub(super) fn persist_profile_update<T>(
+    state: &mut TunnelRuntimeState,
+    update: impl FnOnce(&mut Profile) -> Result<T, String>,
+) -> Result<T, String> {
+    let mut next_profile = state.profile.clone();
+    let result = update(&mut next_profile)?;
+    save_profile_checked(&next_profile)?;
+    state.profile = next_profile;
+    state.ticket = derive_ticket_for_state_checked(state)
+        .map_err(|error| tunnel_t1("tunnel.err.invalid_relay_url", error))?;
+    Ok(result)
+}
+
+#[allow(dead_code)]
 pub(super) fn save_profile_in_state(state: &mut TunnelRuntimeState) {
-    if let Err(e) = state.profile.save_to(&tunnel_profile_path()) {
-        state
-            .logs
-            .push(tunnel_t1("tunnel.log.save_profile_failed", e.to_string()));
+    if let Err(error) = save_profile_checked(&state.profile) {
+        state.logs.push(error);
     }
 }
 
@@ -104,11 +125,16 @@ pub(super) fn ensure_secret_key(state: &mut TunnelRuntimeState) -> Result<Secret
         let key = generate_new_key(&tunnel_key_path())
             .map_err(|e| tunnel_t1("tunnel.err.generate_key_failed", e.to_string()))?;
         state.secret_key = Some(key);
-        state.ticket = derive_ticket_for_state(state);
+        state.ticket = derive_ticket_for_state_checked(state)
+            .map_err(|error| tunnel_t1("tunnel.err.invalid_relay_url", error))?;
     }
 
     state
         .secret_key
         .clone()
         .ok_or_else(|| tunnel_t1("tunnel.err.generate_key_failed", "missing secret key"))
+}
+
+fn logs_push_ticket_derivation_failure(state: &mut TunnelRuntimeState, error: String) {
+    state.logs.push(tunnel_t1("tunnel.log.error_event", error));
 }

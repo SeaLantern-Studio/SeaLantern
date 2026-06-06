@@ -5,6 +5,7 @@
 mod common;
 mod cpu_policy;
 mod fs;
+mod i18n;
 pub(crate) mod process;
 mod provisioning;
 mod registry;
@@ -28,8 +29,11 @@ use super::log_pipeline as server_log_pipeline;
 use super::manager::process::force_kill_process_tree;
 use super::runtime::local::LocalServerRuntime;
 pub(crate) use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
-use common::{get_data_dir, normalize_startup_mode, validate_server_name};
-use fs::{load_servers, remove_run_path_mapping, save_servers, update_run_path_mapping};
+use common::{get_data_dir_checked, normalize_startup_mode, validate_server_name};
+use fs::{
+    load_servers_for_bootstrap, remove_run_path_mapping, save_servers, update_run_path_mapping,
+};
+use i18n::{manager_t, manager_t1};
 pub use runtime_start::LocalLaunchDetail;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,7 +70,10 @@ fn log_manager_result<T>(
     result: Result<T, String>,
 ) -> Result<T, String> {
     match result {
-        Ok(value) => Ok(value),
+        Ok(value) => {
+            logger::log_info_ctx("server.manager", action, &format!("success {}", detail));
+            Ok(value)
+        }
         Err(err) => {
             logger::log_user_action_error("server.manager", action, detail, &err);
             Err(err)
@@ -85,9 +92,9 @@ pub(crate) fn build_docker_launch_detail_for_server(
     server: &ServerInstance,
 ) -> Result<DockerLaunchDetail, String> {
     let settings = crate::services::global::settings_manager().get();
-    let runtime = server
-        .docker_itzg_runtime()
-        .ok_or_else(|| format!("当前服务器运行时暂未实现: {}", server.runtime_kind))?;
+    let runtime = server.docker_itzg_runtime().ok_or_else(|| {
+        manager_t1("server.manager.runtime_not_supported", server.runtime_kind.clone())
+    })?;
     crate::services::server::runtime::docker_itzg::build_docker_launch_detail(
         server, runtime, &settings,
     )
@@ -144,27 +151,29 @@ impl ServerManager {
         LocalServerRuntime::ensure_config(server)
     }
 
-    /// 创建服务器管理器
-    ///
-    /// 启动时会一并读入已经保存的服务器列表
+    #[cfg(test)]
     pub fn new() -> Self {
-        let data_dir = get_data_dir();
-        let servers = load_servers(&data_dir);
-        ServerManager {
+        Self::new_checked().expect("manager should initialize")
+    }
+
+    pub fn new_checked() -> Result<Self, String> {
+        let data_dir = get_data_dir_checked()?;
+        let servers = load_servers_for_bootstrap(&data_dir)?;
+        Ok(ServerManager {
             servers: Mutex::new(servers),
             processes: Mutex::new(HashMap::new()),
             stopping_servers: Mutex::new(HashSet::new()),
             starting_servers: Mutex::new(HashSet::new()),
             pending_force_stop_tokens: Mutex::new(HashMap::new()),
             data_dir: Mutex::new(data_dir),
-        }
+        })
     }
 
-    pub(crate) fn is_stopping(&self, id: &str) -> bool {
+    pub(crate) fn is_stopping_checked(&self, id: &str) -> Result<bool, String> {
         self.stopping_servers
             .lock()
             .map(|stopping| stopping.contains(id))
-            .unwrap_or(false)
+            .map_err(|_| "stopping_servers lock poisoned".to_string())
     }
 
     pub(crate) fn mark_stopping(&self, id: &str) {
@@ -179,11 +188,11 @@ impl ServerManager {
         }
     }
 
-    pub(crate) fn is_starting(&self, id: &str) -> bool {
+    pub(crate) fn is_starting_checked(&self, id: &str) -> Result<bool, String> {
         self.starting_servers
             .lock()
             .map(|s| s.contains(id))
-            .unwrap_or(false)
+            .map_err(|_| "starting_servers lock poisoned".to_string())
     }
 
     pub(crate) fn mark_starting(&self, id: &str) {
@@ -246,8 +255,7 @@ impl ServerManager {
     pub(crate) fn save(&self) -> Result<(), String> {
         let servers = self.lock_servers()?;
         let data_dir = self.data_dir_value()?;
-        save_servers(&data_dir, &servers);
-        Ok(())
+        save_servers(&data_dir, &servers)
     }
 
     pub(crate) fn get_app_settings(&self) -> crate::models::settings::AppSettings {
@@ -272,7 +280,7 @@ impl ServerManager {
 
     pub(crate) fn find_server_clone(&self, id: &str) -> Result<ServerInstance, String> {
         self.find_server_clone_optional(id)?
-            .ok_or_else(|| format!("未找到服务器: {}", id))
+            .ok_or_else(|| manager_t1("server.manager.server_not_found", id.to_string()))
     }
 
     pub(crate) fn find_server_clone_optional(
@@ -437,7 +445,9 @@ impl ServerManager {
                     s.last_started_at = Some(
                         std::time::SystemTime::now()
                             .duration_since(std::time::UNIX_EPOCH)
-                            .map_err(|e| format!("获取当前时间失败: {}", e))?
+                            .map_err(|e| {
+                                manager_t1("server.manager.current_time_failed", e.to_string())
+                            })?
                             .as_secs(),
                     );
                 }
@@ -493,10 +503,13 @@ impl ServerManager {
     }
 
     /// 读取全部服务器列表
+    #[allow(dead_code)]
     pub fn get_server_list(&self) -> Vec<ServerInstance> {
-        self.lock_servers()
-            .map(|servers| servers.clone())
-            .unwrap_or_default()
+        self.get_server_list_checked().unwrap_or_default()
+    }
+
+    pub fn get_server_list_checked(&self) -> Result<Vec<ServerInstance>, String> {
+        self.lock_servers().map(|servers| servers.clone())
     }
 
     /// 查询单个服务器运行状态
@@ -545,27 +558,25 @@ impl ServerManager {
         let detail = format!("server_id={}", id);
         logger::log_user_action("server.manager", "delete", &detail);
         let result = (|| {
-            let status = self.get_server_status(id).status;
-            if !matches!(status, ServerStatus::Stopped | ServerStatus::Error) {
-                let _ = self.stop_server(id);
+            let server = self.find_server_clone(id)?;
+            let status = self.get_server_status(id);
+            let has_tracked_process = self.lock_processes()?.contains_key(id);
+            if has_tracked_process || status_blocks_start(&status) {
+                self.stop_server(id)?;
             }
 
             server_log_pipeline::shutdown_writer(id);
 
-            let server_path = self
-                .find_server_clone_optional(id)?
-                .map(|server| server.path);
-            if let Some(path) = server_path {
-                let dir = std::path::Path::new(&path);
-                if dir.exists() {
-                    std::fs::remove_dir_all(dir)
-                        .map_err(|e| format!("删除服务器目录失败: {}", e))?;
-                }
+            let dir = std::path::Path::new(&server.path);
+            if dir.exists() {
+                std::fs::remove_dir_all(dir).map_err(|e| {
+                    manager_t1("server.manager.delete_server_dir_failed", e.to_string())
+                })?;
             }
 
             self.lock_servers()?.retain(|s| s.id != id);
             let data_dir = self.data_dir_value()?;
-            remove_run_path_mapping(&data_dir, id);
+            remove_run_path_mapping(&data_dir, id)?;
             self.save()?;
             Ok(())
         })();
@@ -574,8 +585,9 @@ impl ServerManager {
     }
 
     /// 读取当前正在运行的服务器 ID 列表
-    pub fn get_running_server_ids(&self) -> Vec<String> {
-        self.get_server_list()
+    pub fn get_running_server_ids_checked(&self) -> Result<Vec<String>, String> {
+        Ok(self
+            .get_server_list_checked()?
             .into_iter()
             .filter_map(|server| {
                 let status = self.get_server_status(&server.id).status;
@@ -588,7 +600,7 @@ impl ServerManager {
                     None
                 }
             })
-            .collect()
+            .collect())
     }
 
     /// 更新服务器名称
@@ -606,7 +618,7 @@ impl ServerManager {
             self.save()?;
             Ok(())
         } else {
-            Err("未找到服务器".to_string())
+            Err(manager_t("server.manager.server_not_found_short"))
         }
     }
 
@@ -616,13 +628,13 @@ impl ServerManager {
         new_java_path: &str,
     ) -> Result<ServerInstance, String> {
         let validated_java = crate::services::java_detector::validate_java(new_java_path)
-            .map_err(|e| format!("Java 路径校验失败: {}", e))?;
+            .map_err(|e| manager_t1("server.manager.java_path_validate_failed", e.to_string()))?;
 
         let mut servers = self.lock_servers()?;
         if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
             let runtime = server
                 .local_runtime_mut()
-                .ok_or_else(|| "当前运行时不支持修改 Java 路径".to_string())?;
+                .ok_or_else(|| manager_t("server.manager.update_java_path_unsupported"))?;
             runtime.java_path = validated_java.path;
 
             let updated_server = server.clone();
@@ -630,7 +642,7 @@ impl ServerManager {
             self.save()?;
             Ok(updated_server)
         } else {
-            Err("未找到服务器".to_string())
+            Err(manager_t("server.manager.server_not_found_short"))
         }
     }
 
@@ -653,7 +665,7 @@ impl ServerManager {
         {
             let procs = self.lock_processes()?;
             if procs.contains_key(id) {
-                return Err("服务器正在运行中，请先停止服务器再修改路径".to_string());
+                return Err(manager_t("server.manager.server_running_update_path_blocked"));
             }
         }
 
@@ -666,7 +678,7 @@ impl ServerManager {
             if let Some(jar_path) = new_jar_path {
                 let runtime = server
                     .local_runtime_mut()
-                    .ok_or_else(|| "当前运行时不支持修改启动文件路径".to_string())?;
+                    .ok_or_else(|| manager_t("server.manager.update_startup_file_unsupported"))?;
                 runtime.jar_path = jar_path.to_string();
             }
 
@@ -674,7 +686,7 @@ impl ServerManager {
             if let Some(startup_mode) = new_startup_mode {
                 let runtime = server
                     .local_runtime_mut()
-                    .ok_or_else(|| "当前运行时不支持修改启动方式".to_string())?;
+                    .ok_or_else(|| manager_t("server.manager.update_startup_mode_unsupported"))?;
                 runtime.startup_mode = normalize_startup_mode(startup_mode).to_string();
             }
 
@@ -690,7 +702,9 @@ impl ServerManager {
             // 尝试从 server.properties 读取端口
             let server_properties_path = std::path::Path::new(new_path).join("server.properties");
             if server_properties_path.exists() {
-                if let Ok(props) = read_properties(server_properties_path.to_str().unwrap_or_default()) {
+                if let Ok(props) =
+                    read_properties(server_properties_path.to_str().unwrap_or_default())
+                {
                     if let Some(port_str) = props.get("server-port") {
                         if let Ok(parsed_port) = port_str.parse::<u16>() {
                             server.port = parsed_port;
@@ -705,19 +719,235 @@ impl ServerManager {
 
             // 更新运行路径映射
             let data_dir = self.data_dir_value()?;
-            update_run_path_mapping(&data_dir, id, new_path);
+            update_run_path_mapping(&data_dir, id, new_path)?;
 
             Ok(updated_server)
         } else {
-            Err("未找到服务器".to_string())
+            Err(manager_t("server.manager.server_not_found_short"))
         }
     }
 
     /// 停止全部正在运行的服务器
+    #[allow(dead_code)]
     pub fn stop_all_servers(&self) {
-        let ids = self.get_running_server_ids();
+        let _ = self.stop_all_servers_checked();
+    }
+
+    pub fn stop_all_servers_checked(&self) -> Result<(), String> {
+        let ids = self.get_running_server_ids_checked()?;
         for id in ids {
-            let _ = self.stop_server(&id);
+            self.stop_server(&id)?;
         }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ServerManager;
+    use crate::models::server::{
+        CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
+        JvmPresetConfig, ServerInstance, ServerRuntimeConfig,
+    };
+    use crate::test_support::{lock_env, EnvGuard};
+    use std::collections::BTreeMap;
+    use std::process::{Child, Command};
+    use std::sync::Arc;
+
+    fn sample_mismatched_runtime_server(path: String) -> ServerInstance {
+        ServerInstance {
+            id: "delete-running-test".to_string(),
+            name: "Delete Running Test".to_string(),
+            aliases: Vec::new(),
+            core_type: "paper".to_string(),
+            core_version: "paper".to_string(),
+            mc_version: "1.21.1".to_string(),
+            path: path.clone(),
+            port: 25565,
+            max_memory: 4096,
+            min_memory: 2048,
+            created_at: 0,
+            last_started_at: None,
+            runtime_kind: "local".to_string(),
+            runtime: ServerRuntimeConfig::DockerItzg(DockerItzgRuntimeConfig {
+                image: "itzg/minecraft-server".to_string(),
+                image_tag: "java21".to_string(),
+                container_name: "delete-running-test".to_string(),
+                type_value: "PAPER".to_string(),
+                version: "1.21.1".to_string(),
+                data_dir_mount: path.clone(),
+                published_game_port: 25565,
+                env: BTreeMap::new(),
+                extra_ports: Vec::new(),
+                volume_mounts: Vec::new(),
+                docker_backend_kind: DockerBackendKind::Cli,
+                command_mode: DockerCommandMode::Rcon,
+                rcon: None,
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
+            }),
+        }
+    }
+
+    fn spawn_sleep_process() -> Child {
+        #[cfg(windows)]
+        {
+            Command::new("powershell")
+                .args(["-NoProfile", "-Command", "Start-Sleep -Seconds 30"])
+                .spawn()
+                .expect("sleep process should spawn")
+        }
+
+        #[cfg(not(windows))]
+        {
+            Command::new("sh")
+                .args(["-c", "sleep 30"])
+                .spawn()
+                .expect("sleep process should spawn")
+        }
+    }
+
+    #[test]
+    fn get_running_server_ids_checked_surfaces_server_list_lock_failures() {
+        let manager = Arc::new(ServerManager::new_checked().expect("manager should initialize"));
+        let cloned = Arc::clone(&manager);
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = cloned
+                .servers
+                .lock()
+                .expect("servers lock should be acquired");
+            panic!("poison server list lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = manager
+            .get_running_server_ids_checked()
+            .expect_err("lock failure should not be silently treated as no running servers");
+
+        assert_eq!(error, "servers lock poisoned");
+    }
+
+    #[test]
+    fn is_starting_checked_surfaces_starting_lock_failures() {
+        let manager = Arc::new(ServerManager::new_checked().expect("manager should initialize"));
+        let cloned = Arc::clone(&manager);
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = cloned
+                .starting_servers
+                .lock()
+                .expect("starting lock should be acquired");
+            panic!("poison starting lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = manager
+            .is_starting_checked("alpha")
+            .expect_err("lock failure should not be silently treated as not starting");
+
+        assert_eq!(error, "starting_servers lock poisoned");
+    }
+
+    #[test]
+    fn is_stopping_checked_surfaces_stopping_lock_failures() {
+        let manager = Arc::new(ServerManager::new_checked().expect("manager should initialize"));
+        let cloned = Arc::clone(&manager);
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = cloned
+                .stopping_servers
+                .lock()
+                .expect("stopping lock should be acquired");
+            panic!("poison stopping lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = manager
+            .is_stopping_checked("alpha")
+            .expect_err("lock failure should not be silently treated as not stopping");
+
+        assert_eq!(error, "stopping_servers lock poisoned");
+    }
+
+    #[test]
+    fn delete_server_surfaces_missing_server_instead_of_succeeding() {
+        let manager = ServerManager::new_checked().expect("manager should initialize");
+
+        let error = manager
+            .delete_server("missing-server")
+            .expect_err("missing server delete should not silently succeed");
+
+        assert_eq!(error, "未找到服务器: missing-server");
+    }
+
+    #[test]
+    fn delete_server_aborts_when_stop_fails_for_running_like_state() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let server_dir = temp_dir.path().join("server");
+        std::fs::create_dir_all(&server_dir).expect("server dir should exist");
+
+        let manager = ServerManager::new_checked().expect("manager should initialize");
+        manager
+            .lock_servers()
+            .expect("servers lock should succeed")
+            .push(sample_mismatched_runtime_server(server_dir.to_string_lossy().to_string()));
+        manager
+            .lock_processes()
+            .expect("processes lock should succeed")
+            .insert("delete-running-test".to_string(), spawn_sleep_process());
+
+        let error = manager
+            .delete_server("delete-running-test")
+            .expect_err("delete should stop when pre-delete stop fails");
+
+        assert!(error.contains("服务器运行时声明与配置不一致"), "unexpected error: {}", error);
+        assert!(server_dir.exists(), "server dir should remain when delete aborts");
+        assert!(manager
+            .find_server_clone_optional("delete-running-test")
+            .expect("server lookup should succeed")
+            .is_some());
+
+        let tracked_child = {
+            manager
+                .lock_processes()
+                .expect("processes lock should succeed")
+                .remove("delete-running-test")
+        };
+
+        if let Some(mut child) = tracked_child {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+
+    #[test]
+    fn new_checked_recovers_invalid_server_registry_instead_of_starting_empty() {
+        let _env_lock = lock_env();
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let data_file = temp_dir.path().join(crate::utils::constants::DATA_FILE);
+        std::fs::write(&data_file, "{").expect("broken server registry should be written");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+
+        let manager = ServerManager::new_checked()
+            .expect("invalid server registry should recover during bootstrap");
+        let servers = manager
+            .lock_servers()
+            .expect("servers lock should succeed after bootstrap recovery")
+            .clone();
+
+        assert!(servers.is_empty(), "recovered registry should start empty");
+
+        let backup_count = std::fs::read_dir(temp_dir.path())
+            .expect("read temp dir")
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .contains(&format!("{}.bak-corrupt-", crate::utils::constants::DATA_FILE))
+            })
+            .count();
+
+        assert_eq!(backup_count, 1);
     }
 }

@@ -1,5 +1,6 @@
-use super::shared::{emit_process_log, process_error};
+use super::shared::emit_process_log;
 use crate::plugins::runtime::process::common::{collect_finished_processes, is_process_owner};
+use crate::plugins::runtime::process::common::{process_err1, process_msg2};
 use crate::plugins::runtime::process::ProcessEntry;
 use mlua::{Function, Lua, Value};
 use std::collections::HashMap;
@@ -52,7 +53,10 @@ pub(super) fn get(
                     info.set("running", true)?;
                 }
                 Err(e) => {
-                    return Err(process_error("Failed to check process status", e));
+                    return Err(process_err1(
+                        "plugins.runtime.process.check_status_failed",
+                        e.to_string(),
+                    ));
                 }
             }
 
@@ -61,7 +65,9 @@ pub(super) fn get(
             Ok(Value::Nil)
         }
     })
-    .map_err(|e| format!("Failed to create process.get: {}", e))
+    .map_err(|e| {
+        process_msg2("plugins.runtime.process.create_api_failed", "process.get", e.to_string())
+    })
 }
 
 /// 注册 `sl.process.list`
@@ -121,5 +127,7 @@ pub(super) fn list(
 
         Ok(result)
     })
-    .map_err(|e| format!("Failed to create process.list: {}", e))
+    .map_err(|e| {
+        process_msg2("plugins.runtime.process.create_api_failed", "process.list", e.to_string())
+    })
 }

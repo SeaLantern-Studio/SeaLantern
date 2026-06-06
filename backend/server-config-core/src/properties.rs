@@ -62,7 +62,9 @@ fn split_property_line(line: &str) -> Option<(String, String, char)> {
     let separator_index = line.find(['=', ':'])?;
     let separator = line[separator_index..].chars().next()?;
     let key = line[..separator_index].trim().to_string();
-    let value = line[separator_index + separator.len_utf8()..].trim().to_string();
+    let value = line[separator_index + separator.len_utf8()..]
+        .trim()
+        .to_string();
     Some((key, value, separator))
 }
 
@@ -215,12 +217,15 @@ mod tests {
 
     #[test]
     fn parse_server_properties_from_source_sorts_entries_by_category_then_key() {
-        let parsed = parse_server_properties_from_source(
-            "view-distance=10\nmotd=Hello\nmax-players=20\n",
-        )
-        .unwrap();
+        let parsed =
+            parse_server_properties_from_source("view-distance=10\nmotd=Hello\nmax-players=20\n")
+                .unwrap();
 
-        let keys = parsed.entries.iter().map(|entry| entry.key.as_str()).collect::<Vec<_>>();
+        let keys = parsed
+            .entries
+            .iter()
+            .map(|entry| entry.key.as_str())
+            .collect::<Vec<_>>();
         assert_eq!(keys, vec!["motd", "view-distance", "max-players"]);
     }
 
@@ -249,10 +254,7 @@ mod tests {
 
         let rendered = render_properties_content("motd=Old\n", &values);
 
-        assert_eq!(
-            rendered,
-            "motd=Hello\nallow-flight=false\nwhite-list=true\n"
-        );
+        assert_eq!(rendered, "motd=Hello\nallow-flight=false\nwhite-list=true\n");
     }
 
     #[test]

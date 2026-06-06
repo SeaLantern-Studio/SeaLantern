@@ -53,8 +53,5 @@ fn normalize_release_tag_version_handles_plain_version_tag() {
 
 #[test]
 fn normalize_release_tag_version_handles_prerelease_tag() {
-    assert_eq!(
-        normalize_release_tag_version("SeaLantern_release-v1.2.3-rc.1"),
-        "1.2.3-rc.1"
-    );
+    assert_eq!(normalize_release_tag_version("SeaLantern_release-v1.2.3-rc.1"), "1.2.3-rc.1");
 }

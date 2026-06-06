@@ -3,9 +3,17 @@ use crate::plugins::runtime::filesystem::has_any_fs_permission;
 use crate::plugins::runtime::permissions::{
     has_plugin_folder_access_permission, normalize_permissions, PLUGIN_FOLDER_ACCESS_PERMISSION,
 };
+use crate::services::global::i18n_service;
 use mlua::Table;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+
+fn core_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 impl PluginRuntime {
     pub fn new(
@@ -14,7 +22,9 @@ impl PluginRuntime {
         data_dir: &Path,
         server_dir: &Path,
         global_dir: &Path,
-        api_registry: Arc<Mutex<std::collections::HashMap<String, std::collections::HashMap<String, String>>>>,
+        api_registry: Arc<
+            Mutex<std::collections::HashMap<String, std::collections::HashMap<String, String>>>,
+        >,
         permissions: Vec<String>,
     ) -> Result<Self, String> {
         let lua = mlua::Lua::new_with(
@@ -25,10 +35,10 @@ impl PluginRuntime {
                 | mlua::StdLib::COROUTINE,
             mlua::LuaOptions::default(),
         )
-        .map_err(|e| format!("Failed to create Lua instance: {}", e))?;
+        .map_err(|e| core_t1("plugins.runtime.core.create_lua_instance_failed", e.to_string()))?;
 
         std::fs::create_dir_all(data_dir)
-            .map_err(|e| format!("Failed to create data dir: {}", e))?;
+            .map_err(|e| core_t1("plugins.runtime.core.create_data_dir_failed", e.to_string()))?;
 
         let normalized_permissions = normalize_permissions(permissions);
 
@@ -61,7 +71,7 @@ impl PluginRuntime {
         let sl = self
             .lua
             .create_table()
-            .map_err(|e| format!("Failed to create sl table: {}", e))?;
+            .map_err(|e| core_t1("plugins.runtime.core.create_sl_table_failed", e.to_string()))?;
 
         let has_log_permission = self.permissions.iter().any(|p| p == "log");
         self.setup_log_namespace(&sl, has_log_permission)?;
@@ -140,7 +150,7 @@ impl PluginRuntime {
 
         globals
             .set("sl", sl)
-            .map_err(|e| format!("Failed to set sl global: {}", e))?;
+            .map_err(|e| core_t1("plugins.runtime.core.set_sl_global_failed", e.to_string()))?;
 
         Ok(())
     }

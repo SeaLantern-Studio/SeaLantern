@@ -32,11 +32,7 @@ pub(super) fn spawn_event_task(
                 TunnelEvent::Disconnected { reason } => {
                     tunnel_t1("tunnel.log.disconnected", reason.to_string())
                 }
-                TunnelEvent::PathChanged {
-                    remote_id,
-                    is_relay,
-                    rtt_ms,
-                } => {
+                TunnelEvent::PathChanged { remote_id, is_relay, rtt_ms } => {
                     let route_label = if *is_relay {
                         tunnel_t("tunnel.log.route_relay")
                     } else {

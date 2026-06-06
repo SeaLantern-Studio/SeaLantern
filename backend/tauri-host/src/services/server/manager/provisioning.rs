@@ -3,6 +3,7 @@
 mod create;
 mod create_docker_itzg;
 mod existing;
+mod i18n;
 mod import_copy;
 mod modpack;
 

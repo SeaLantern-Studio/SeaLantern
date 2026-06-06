@@ -1,7 +1,7 @@
 use chrono::Utc;
 use std::fs;
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
 
 static START_TIME: OnceLock<chrono::DateTime<Utc>> = OnceLock::new();
 static PANIC_HOOK_RUNNING: AtomicBool = AtomicBool::new(false);

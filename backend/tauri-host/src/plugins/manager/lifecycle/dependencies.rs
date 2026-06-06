@@ -1,5 +1,5 @@
-use crate::plugins::manager::{PluginInfo, PluginManager, PluginState};
 use crate::models::plugin::PluginDependency;
+use crate::plugins::manager::{PluginInfo, PluginManager, PluginState};
 
 pub(in crate::plugins::manager) fn update_all_missing_dependencies(manager: &mut PluginManager) {
     let plugin_manifests: Vec<(String, crate::models::plugin::PluginManifest)> = manager

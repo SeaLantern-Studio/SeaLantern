@@ -2,6 +2,7 @@
 //!
 //! 这里提供多线程文件下载、单线程文本读取和下载进度快照
 
+mod common;
 mod multi;
 mod single;
 mod status;
@@ -94,9 +95,7 @@ mod tests {
     async fn test_multi_thread_download() -> Result<(), String> {
         let downloader = MultiThreadDownloader::new(COMMON_HTTP_BROWSER_USER_AGENT);
 
-        let payload = TestDownloadPayload {
-            bytes: Arc::new(vec![b'x'; 512 * 1024]),
-        };
+        let payload = TestDownloadPayload { bytes: Arc::new(vec![b'x'; 512 * 1024]) };
         let app = Router::new()
             .route("/download.bin", get(serve_test_payload))
             .with_state(payload.clone());

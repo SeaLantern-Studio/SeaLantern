@@ -1,4 +1,5 @@
 use super::common::{is_process_owner, ProcessEntry};
+use crate::plugins::runtime::process::common::{process_err2, process_msg2};
 use mlua::{Function, Lua, Table};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -34,16 +35,19 @@ pub(super) fn kill(
                     let _ = entry.child.wait();
                     Ok(true)
                 }
-                Err(e) => Err(mlua::Error::runtime(format!(
-                    "Failed to kill process {}: {}",
-                    target_pid, e
-                ))),
+                Err(e) => Err(process_err2(
+                    "plugins.runtime.process.kill_failed",
+                    target_pid.to_string(),
+                    e.to_string(),
+                )),
             }
         } else {
             Ok(false)
         }
     })
-    .map_err(|e| format!("Failed to create process.kill: {}", e))
+    .map_err(|e| {
+        process_msg2("plugins.runtime.process.create_api_failed", "process.kill", e.to_string())
+    })
 }
 
 pub(super) fn register(
@@ -54,6 +58,8 @@ pub(super) fn register(
 ) -> Result<(), String> {
     process_table
         .set("kill", kill(lua, plugin_id, process_registry)?)
-        .map_err(|e| format!("Failed to set process.kill: {}", e))?;
+        .map_err(|e| {
+            process_msg2("plugins.runtime.process.set_api_failed", "process.kill", e.to_string())
+        })?;
     Ok(())
 }

@@ -1,6 +1,6 @@
 pub(super) use sea_lantern_server_local_setup_core::{
-    infer_core_type_from_local_inputs, infer_local_create_mc_version,
-    infer_mc_version_from_folder, infer_mc_version_hint,
+    infer_core_type_from_local_inputs, infer_local_create_mc_version, infer_mc_version_from_folder,
+    infer_mc_version_hint,
 };
 
 #[cfg(test)]

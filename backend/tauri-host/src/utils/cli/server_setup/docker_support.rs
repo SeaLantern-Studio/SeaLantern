@@ -12,8 +12,12 @@ pub(super) use docker_preflight::{
     ensure_docker_environment, preflight_docker_command_mode_support,
     preflight_docker_image_reference,
 };
-pub(super) use docker_request_builder::{build_docker_create_request, resolve_requested_docker_image};
-pub(super) use sea_lantern_docker_core::{parse_command_mode, validate_docker_itzg_image_compatibility};
+pub(super) use docker_request_builder::{
+    build_docker_create_request, resolve_requested_docker_image,
+};
+pub(super) use sea_lantern_docker_core::{
+    parse_command_mode, validate_docker_itzg_image_compatibility,
+};
 
 #[cfg(test)]
 use crate::utils::cli::server_args::CliServerCommand;

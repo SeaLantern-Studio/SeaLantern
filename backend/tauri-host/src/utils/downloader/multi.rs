@@ -2,6 +2,7 @@ mod chunk;
 mod probe;
 mod tasks;
 
+use super::common::downloader_t;
 use super::DownloadStatus;
 use reqwest::Client;
 use std::sync::Arc;
@@ -43,7 +44,7 @@ impl MultiThreadDownloader {
         thread_count: usize,
     ) -> Result<Arc<DownloadStatus>, String> {
         if thread_count == 0 {
-            return Err("Thread count must be positive".to_string());
+            return Err(downloader_t("download.util.thread_count_invalid"));
         }
 
         let remote = probe::probe_remote_file(&self.client, url).await?;

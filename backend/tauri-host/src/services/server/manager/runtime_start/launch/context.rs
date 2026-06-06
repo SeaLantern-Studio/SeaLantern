@@ -3,11 +3,12 @@ use super::super::super::common::{
 };
 use crate::models::server::ServerInstance;
 use crate::services::server::log_pipeline as server_log_pipeline;
+use crate::services::server::manager::i18n::{manager_t, manager_t1, manager_t3};
+use sea_lantern_server_installer_core::{detect_core_type, CoreType};
 use sea_lantern_server_local_setup_core::{
     resolve_java_paths as resolve_shared_java_paths,
     startup_filename as resolve_shared_startup_filename,
 };
-use sea_lantern_server_installer_core::{detect_core_type, CoreType};
 use std::path::Path;
 
 pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a> {
@@ -57,19 +58,19 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_starter_insta
     let core_key = CoreType::normalize_to_api_core_key(&server.core_type)
         .or_else(|| CoreType::normalize_to_api_core_key(&detected_core_type))
         .ok_or_else(|| {
-            format!(
-                "无法识别 Starter 核心类型：{}",
+            manager_t1(
+                "server.manager.starter_core_type_unrecognized",
                 if server.core_type.trim().is_empty() {
                     detected_core_type
                 } else {
                     server.core_type.clone()
-                }
+                },
             )
         })?;
 
     let mc_version = server.mc_version.trim();
     if mc_version.is_empty() || mc_version.eq_ignore_ascii_case("unknown") {
-        return Err("Starter 启动需要 MC 版本，请在步骤三中选择后再创建服务器".to_string());
+        return Err(manager_t("server.manager.starter_mc_version_required"));
     }
 
     let (installer_url, installer_sha256) =
@@ -79,9 +80,11 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_starter_insta
     if let Some(sha256) = installer_sha256 {
         let _ = server_log_pipeline::append_sealantern_log(
             id,
-            &format!(
-                "[Sea Lantern] Starter 安装器: core={}, version={}, sha256={}",
-                core_key, mc_version, sha256
+            &manager_t3(
+                "server.manager.starter_installer_log",
+                core_key.clone(),
+                mc_version.to_string(),
+                sha256,
             ),
         );
     }

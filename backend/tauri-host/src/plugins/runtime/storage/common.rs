@@ -7,6 +7,10 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+fn storage_t1(key: &str, a: impl Into<String>) -> String {
+    i18n_service().t_with_options(key, &crate::plugins::runtime::console::i18n_arg("0", &a.into()))
+}
+
 /// 存储限制常量
 pub(super) const MAX_KEY_LENGTH: usize = 256;
 pub(super) const MAX_VALUE_SIZE: usize = 1024 * 1024;
@@ -33,6 +37,10 @@ pub(super) fn map_storage_err(key: &str, e: mlua::Error) -> String {
 
 pub(super) fn storage_runtime_err(key: &str) -> mlua::Error {
     mlua::Error::runtime(i18n_service().t(key))
+}
+
+pub(super) fn storage_runtime_err1(key: &str, a: impl Into<String>) -> mlua::Error {
+    mlua::Error::runtime(storage_t1(key, a))
 }
 
 pub(super) fn with_storage_lock<T>(
@@ -68,37 +76,29 @@ pub(super) fn set_storage_table(sl: &Table, storage: Table) -> Result<(), String
 
 pub(super) fn read_storage(path: &Path) -> Result<Map<String, JsonValue>, mlua::Error> {
     match fs::read_to_string(path) {
-        Ok(content) => serde_json::from_str(&content).map_err(|e| {
-            mlua::Error::runtime(format!("{}: {}", i18n_service().t("storage.invalid_json"), e))
-        }),
+        Ok(content) => serde_json::from_str(&content)
+            .map_err(|e| mlua::Error::runtime(storage_t1("storage.invalid_json", e.to_string()))),
         Err(err) if err.kind() == ErrorKind::NotFound => Ok(Map::new()),
-        Err(err) => Err(mlua::Error::runtime(format!(
-            "{}: {}",
-            i18n_service().t("storage.read_failed"),
-            err
-        ))),
+        Err(err) => Err(mlua::Error::runtime(storage_t1("storage.read_failed", err.to_string()))),
     }
 }
 
 pub(super) fn write_storage(path: &Path, data: &Map<String, JsonValue>) -> Result<(), mlua::Error> {
-    let content = serde_json::to_vec_pretty(data).map_err(|e| {
-        mlua::Error::runtime(format!("{}: {}", i18n_service().t("storage.serialize_failed"), e))
-    })?;
+    let content = serde_json::to_vec_pretty(data)
+        .map_err(|e| mlua::Error::runtime(storage_t1("storage.serialize_failed", e.to_string())))?;
 
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            mlua::Error::runtime(format!("{}: {}", i18n_service().t("storage.write_failed"), e))
-        })?;
+        fs::create_dir_all(parent)
+            .map_err(|e| mlua::Error::runtime(storage_t1("storage.write_failed", e.to_string())))?;
     }
 
     let tmp_path = path.with_extension("json.tmp");
-    fs::write(&tmp_path, content).map_err(|e| {
-        mlua::Error::runtime(format!("{}: {}", i18n_service().t("storage.write_failed"), e))
-    })?;
+    fs::write(&tmp_path, content)
+        .map_err(|e| mlua::Error::runtime(storage_t1("storage.write_failed", e.to_string())))?;
 
     fs::rename(&tmp_path, path).map_err(|e| {
         let _ = fs::remove_file(&tmp_path);
-        mlua::Error::runtime(format!("{}: {}", i18n_service().t("storage.write_failed"), e))
+        mlua::Error::runtime(storage_t1("storage.write_failed", e.to_string()))
     })
 }
 

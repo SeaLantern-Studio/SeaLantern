@@ -13,8 +13,8 @@ use tokio::io::AsyncWriteExt;
 
 use archive::extract_downloaded_archive;
 use shared::{
-    bytes_to_mb, resolve_install_source, resolve_java_binary_path,
-    JAVA_DOWNLOAD_RETRY_LIMIT, JAVA_DOWNLOAD_TEMP_FILE_NAME, JAVA_DOWNLOAD_TIMEOUT_SECS,
+    bytes_to_mb, resolve_install_source, resolve_java_binary_path, JAVA_DOWNLOAD_RETRY_LIMIT,
+    JAVA_DOWNLOAD_TEMP_FILE_NAME, JAVA_DOWNLOAD_TIMEOUT_SECS,
 };
 
 struct TempInstallDir(PathBuf);

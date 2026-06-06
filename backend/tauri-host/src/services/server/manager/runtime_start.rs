@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use super::common::StartupMode;
+use super::i18n::{manager_t, manager_t1, manager_t5};
 use super::ServerManager;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::runtime::{
@@ -45,8 +46,15 @@ pub(crate) fn start_local_runtime(
     let java_path = server.java_path().unwrap_or_default().to_string();
 
     println!(
-        "准备启动服务器: id={}, name={}, startup_mode={}, startup_path={}, java_path={}",
-        server.id, server.name, startup_mode_raw, startup_path, java_path
+        "{}",
+        manager_t5(
+            "server.manager.start_prepare_details",
+            server.id.clone(),
+            server.name.clone(),
+            startup_mode_raw.clone(),
+            startup_path.clone(),
+            java_path.clone(),
+        )
     );
 
     {
@@ -57,7 +65,9 @@ pub(crate) fn start_local_runtime(
                     procs.remove(id);
                     server_log_pipeline::shutdown_writer(id);
                 }
-                Ok(None) => return Err(format!("服务器已在运行中: {}", id)),
+                Ok(None) => {
+                    return Err(manager_t1("server.manager.server_already_running", id.to_string()))
+                }
                 Err(_) => {
                     procs.remove(id);
                     server_log_pipeline::shutdown_writer(id);
@@ -95,6 +105,11 @@ pub(crate) fn start_local_runtime(
 
     server_log_pipeline::init_db(Path::new(&server.path))?;
     let launch_plan = launch::runner::launch_server_process(id, launch_context)?;
+
+    let _ = server_log_pipeline::append_sealantern_log(
+        id,
+        &manager_t("server.manager.server_starting_log"),
+    );
 
     Ok(RuntimeStartResult {
         process_handle: Some(RuntimeProcessHandle::LocalChild(launch_plan.child)),

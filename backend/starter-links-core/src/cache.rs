@@ -15,10 +15,7 @@ pub fn load_or_refresh_starter_links_json(
         .enable_all()
         .build()
         .map_err(|e| format!("创建 Starter 异步运行时失败: {}", e))?
-        .block_on(load_or_refresh_starter_links_json_inner(
-            links_file_path,
-            remote_url,
-        ))
+        .block_on(load_or_refresh_starter_links_json_inner(links_file_path, remote_url))
 }
 
 fn read_and_validate_cached_links_file(links_file_path: &Path) -> Result<Vec<u8>, String> {
@@ -35,14 +32,16 @@ async fn load_or_refresh_starter_links_json_inner(
     if should_use_cached_links_file(links_file_path)? {
         return match read_and_validate_cached_links_file(links_file_path) {
             Ok(body) => Ok(body),
-            Err(local_error) => fetch_and_cache_starter_links_json_async(links_file_path, remote_url)
-                .await
-                .map_err(|refresh_error| {
-                    format!(
+            Err(local_error) => {
+                fetch_and_cache_starter_links_json_async(links_file_path, remote_url)
+                    .await
+                    .map_err(|refresh_error| {
+                        format!(
                         "读取本地 Starter 下载信息失败: {}; 刷新远端 Starter 下载信息也失败: {}",
                         local_error, refresh_error
                     )
-                }),
+                    })
+            }
         };
     }
 
@@ -57,10 +56,9 @@ fn recover_from_refresh_failure(
     refresh_error: String,
 ) -> Result<Vec<u8>, String> {
     if links_file_path.exists() {
-        return read_and_validate_cached_links_file(links_file_path)
-            .map_err(|local_error| {
-                format!("{}；且本地 Starter 下载信息不可用: {}", refresh_error, local_error)
-            });
+        return read_and_validate_cached_links_file(links_file_path).map_err(|local_error| {
+            format!("{}；且本地 Starter 下载信息不可用: {}", refresh_error, local_error)
+        });
     }
 
     Err(refresh_error)
@@ -162,12 +160,12 @@ mod tests {
     fn set_file_mtime(path: &std::path::Path, system_time: SystemTime) {
         use std::ffi::OsStr;
         use std::os::windows::ffi::OsStrExt;
+        use windows::core::PCWSTR;
         use windows::Win32::Foundation::{CloseHandle, FILETIME, HANDLE, INVALID_HANDLE_VALUE};
         use windows::Win32::Storage::FileSystem::{
             CreateFileW, SetFileTime, FILE_ATTRIBUTE_NORMAL, FILE_FLAG_BACKUP_SEMANTICS,
             FILE_GENERIC_WRITE, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
         };
-        use windows::core::PCWSTR;
 
         let nanos_since_unix = system_time
             .duration_since(SystemTime::UNIX_EPOCH)

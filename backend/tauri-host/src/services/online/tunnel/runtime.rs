@@ -1,15 +1,29 @@
 use super::config::{
-    apply_relay_preference, ensure_secret_key, normalize_optional_string, save_profile_in_state,
+    apply_relay_preference, ensure_secret_key, normalize_optional_string, persist_profile_update,
 };
 use super::events::{map_connection, spawn_event_task};
 use super::i18n::{tunnel_t, tunnel_t1};
-use super::TunnelStatus;
 use super::state::{
     active_tunnel, clear_running_state, push_log, replace_with_active_tunnel, runtime_state,
     set_started, stop_previous_for_restart, ActiveTunnel, TunnelMode,
 };
+use super::{TunnelConnection, TunnelStatus};
 use sculk::persist::generate_new_key;
 use sculk::tunnel::{HostConfig, IrohTunnel, JoinConfig, Ticket};
+
+pub(super) fn map_connections_checked<T>(
+    query: Result<Vec<T>, impl std::fmt::Display>,
+    mapper: impl Fn(T) -> TunnelConnection,
+) -> Result<Vec<TunnelConnection>, String> {
+    query
+        .map(|items| items.into_iter().map(mapper).collect())
+        .map_err(|error| {
+            tunnel_t1(
+                "tunnel.log.error_event",
+                format!("failed to query tunnel connections: {error}"),
+            )
+        })
+}
 
 async fn has_active_tunnel() -> bool {
     let active = active_tunnel().lock().await;
@@ -28,10 +42,10 @@ pub async fn host(
 
     let relay = {
         let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
-        state.profile.host.port = port;
-        let relay = apply_relay_preference(&mut state.profile, relay_url)?;
-        save_profile_in_state(&mut state);
-        relay
+        persist_profile_update(&mut state, |profile| {
+            profile.host.port = port;
+            apply_relay_preference(profile, relay_url)
+        })?
     };
     let secret_key = {
         let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
@@ -66,7 +80,7 @@ pub async fn host(
         push_log(tunnel_t("tunnel.log.ticket_copy_failed_manual"));
     }
 
-    Ok(status().await)
+    status().await
 }
 
 pub async fn join(
@@ -93,6 +107,19 @@ pub async fn join(
         .await
         .map_err(|e| tunnel_t1("tunnel.err.join_failed", e.to_string()))?;
 
+    let persist_result = {
+        let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
+        persist_profile_update(&mut state, |profile| {
+            profile.join.port = local_port;
+            profile.join.last_ticket = Some(ticket_trimmed);
+            Ok(())
+        })
+    };
+    if let Err(error) = persist_result {
+        tunnel.close().await;
+        return Err(error);
+    }
+
     let active = ActiveTunnel {
         mode: TunnelMode::Join,
         tunnel: std::sync::Arc::new(tunnel),
@@ -101,15 +128,9 @@ pub async fn join(
 
     replace_with_active_tunnel(active).await;
     set_started(TunnelMode::Join, None);
-    {
-        let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
-        state.profile.join.port = local_port;
-        state.profile.join.last_ticket = Some(ticket_trimmed);
-        save_profile_in_state(&mut state);
-    }
     push_log(tunnel_t1("tunnel.log.join_started", format!("{local_port}")));
 
-    Ok(status().await)
+    status().await
 }
 
 pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
@@ -130,11 +151,12 @@ pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
     {
         let mut state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
         state.secret_key = Some(key);
-        state.ticket = super::state::derive_ticket_for_state(&state);
+        state.ticket = super::state::derive_ticket_for_state_checked(&state)
+            .map_err(|error| tunnel_t1("tunnel.err.invalid_relay_url", error))?;
     }
 
     push_log(tunnel_t("tunnel.log.ticket_regenerated"));
-    Ok(status().await)
+    status().await
 }
 
 pub async fn generate_ticket() -> Result<TunnelStatus, String> {
@@ -149,11 +171,12 @@ pub async fn generate_ticket() -> Result<TunnelStatus, String> {
                 .map_err(|e| tunnel_t1("tunnel.err.generate_key_failed", e.to_string()))?;
             state.secret_key = Some(key);
         }
-        state.ticket = super::state::derive_ticket_for_state(&state);
+        state.ticket = super::state::derive_ticket_for_state_checked(&state)
+            .map_err(|error| tunnel_t1("tunnel.err.invalid_relay_url", error))?;
     }
     push_log(tunnel_t("tunnel.log.ticket_generated"));
 
-    Ok(status().await)
+    status().await
 }
 
 pub async fn stop() -> Result<TunnelStatus, String> {
@@ -166,7 +189,7 @@ pub async fn stop() -> Result<TunnelStatus, String> {
         push_log(tunnel_t("tunnel.log.no_tunnel_running"));
     }
 
-    Ok(status().await)
+    status().await
 }
 
 pub async fn copy_ticket() -> Result<bool, String> {
@@ -186,7 +209,7 @@ pub async fn copy_ticket() -> Result<bool, String> {
     Ok(copied)
 }
 
-pub async fn status() -> TunnelStatus {
+pub async fn status() -> Result<TunnelStatus, String> {
     let (tunnel_ref, mode_from_active) = {
         let active = active_tunnel().lock().await;
         (
@@ -197,15 +220,16 @@ pub async fn status() -> TunnelStatus {
         )
     };
 
-    let connections = tunnel_ref
-        .as_ref()
-        .map(|tunnel| {
-            tunnel
-                .connections()
-                .map(|items| items.into_iter().map(map_connection).collect())
-                .unwrap_or_default()
-        })
-        .unwrap_or_default();
+    let connections = match tunnel_ref.as_ref() {
+        Some(tunnel) => match map_connections_checked(tunnel.connections(), map_connection) {
+            Ok(connections) => connections,
+            Err(error) => {
+                eprintln!("[WARN] {error}");
+                return Err(error);
+            }
+        },
+        None => Vec::new(),
+    };
 
     let state = runtime_state().lock().unwrap_or_else(|e| e.into_inner());
     let mode = mode_from_active
@@ -223,7 +247,7 @@ pub async fn status() -> TunnelStatus {
         None
     };
 
-    TunnelStatus {
+    Ok(TunnelStatus {
         running,
         mode,
         ticket,
@@ -233,5 +257,5 @@ pub async fn status() -> TunnelStatus {
         join_port,
         last_ticket,
         relay_url,
-    }
+    })
 }

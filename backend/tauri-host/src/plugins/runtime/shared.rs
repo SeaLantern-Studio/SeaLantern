@@ -1,16 +1,26 @@
 use mlua::{Lua, Result as LuaResult, Table, Value};
 use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::services::global::i18n_service;
 use crate::utils::path::is_windows_absolute_path;
-
-// 错误信息用英文, 中文容易出编码问题
 
 // 最大循环深度, 后来的改的别太大, 可以调
 pub(crate) const DEFAULT_MAX_RECURSION_DEPTH: usize = 64;
 // 上边的常量的结构体实现
 pub(crate) struct ConversionConfig {
     pub max_recursion_depth: usize,
+}
+
+fn shared_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn shared_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
 }
 
 impl Default for ConversionConfig {
@@ -27,14 +37,14 @@ pub(crate) fn json_value_from_lua(value: &Value, depth: usize) -> Result<JsonVal
 }
 
 fn unsupported_lua_value_error(value: &Value) -> mlua::Error {
-    mlua::Error::runtime(format!(
-        "Unsupported Lua value for JSON conversion: {}",
-        value.type_name()
+    mlua::Error::runtime(shared_t1(
+        "plugins.runtime.shared.unsupported_lua_json_value",
+        value.type_name(),
     ))
 }
 
 fn invalid_json_number_error(n: f64) -> mlua::Error {
-    mlua::Error::runtime(format!("Invalid JSON number: {}", n))
+    mlua::Error::runtime(shared_t1("plugins.runtime.shared.invalid_json_number", n.to_string()))
 }
 
 // 从 Lua 值转换为 JSON 值, 递归深度可配置
@@ -44,9 +54,9 @@ pub(crate) fn json_value_from_lua_with_config(
     config: &ConversionConfig,
 ) -> Result<JsonValue, mlua::Error> {
     if depth > config.max_recursion_depth {
-        return Err(mlua::Error::runtime(format!(
-            "Maximum recursion depth exceeded ({})",
-            config.max_recursion_depth
+        return Err(mlua::Error::runtime(shared_t1(
+            "plugins.runtime.shared.max_recursion_depth_exceeded",
+            config.max_recursion_depth.to_string(),
         )));
     }
 
@@ -57,11 +67,14 @@ pub(crate) fn json_value_from_lua_with_config(
         Value::Number(n) => serde_json::Number::from_f64(*n)
             .map(JsonValue::Number)
             .ok_or_else(|| invalid_json_number_error(*n)),
-        Value::String(s) => Ok(JsonValue::String(
-            s.to_str()
-                .map(|s| s.to_string())
-                .map_err(|e| mlua::Error::runtime(format!("Invalid UTF-8 string: {}", e)))?,
-        )),
+        Value::String(s) => {
+            Ok(JsonValue::String(s.to_str().map(|s| s.to_string()).map_err(|e| {
+                mlua::Error::runtime(shared_t1(
+                    "plugins.runtime.shared.invalid_utf8_string",
+                    e.to_string(),
+                ))
+            })?))
+        }
 
         // 处理数组和对象(后来的仔细看,别被绕进去了)
         Value::Table(t) => {
@@ -81,14 +94,17 @@ pub(crate) fn json_value_from_lua_with_config(
                         let (k, v) = pair?;
                         let key = match k {
                             Value::String(s) => s.to_str().map(|s| s.to_string()).map_err(|e| {
-                                mlua::Error::runtime(format!("Invalid UTF-8 object key: {}", e))
+                                mlua::Error::runtime(shared_t1(
+                                    "plugins.runtime.shared.invalid_utf8_object_key",
+                                    e.to_string(),
+                                ))
                             })?,
                             Value::Integer(i) => i.to_string(),
                             Value::Number(n) if n.is_finite() => n.to_string(),
                             _ => {
-                                return Err(mlua::Error::runtime(
-                                    "JSON object keys must be valid UTF-8 strings or finite numbers",
-                                ));
+                                return Err(mlua::Error::runtime(shared_t(
+                                    "plugins.runtime.shared.invalid_json_object_key",
+                                )));
                             }
                         };
                         map.insert(key, json_value_from_lua_with_config(&v, depth + 1, config)?);
@@ -141,9 +157,9 @@ pub(crate) fn lua_value_from_json_with_config(
     config: &ConversionConfig,
 ) -> LuaResult<Value> {
     if depth > config.max_recursion_depth {
-        return Err(mlua::Error::runtime(format!(
-            "Maximum recursion depth exceeded ({})",
-            config.max_recursion_depth
+        return Err(mlua::Error::runtime(shared_t1(
+            "plugins.runtime.shared.max_recursion_depth_exceeded",
+            config.max_recursion_depth.to_string(),
         )));
     }
 
@@ -156,7 +172,9 @@ pub(crate) fn lua_value_from_json_with_config(
             } else if let Some(f) = n.as_f64() {
                 Ok(Value::Number(f))
             } else {
-                Err(mlua::Error::runtime("Unsupported JSON number representation".to_string()))
+                Err(mlua::Error::runtime(shared_t(
+                    "plugins.runtime.shared.unsupported_json_number_repr",
+                )))
             }
         }
         JsonValue::String(s) => Ok(Value::String(lua.create_string(s)?)),
@@ -184,14 +202,14 @@ pub(crate) fn safe_canonicalize_check(
 ) -> Result<PathBuf, String> {
     let canonical_base = base_dir
         .canonicalize()
-        .map_err(|e| format!("Failed to resolve base directory: {}", e))?;
+        .map_err(|e| shared_t1("plugins.runtime.shared.resolve_base_dir_failed", e.to_string()))?;
 
     if full_path.exists() {
         let canonical = full_path
             .canonicalize()
-            .map_err(|e| format!("Failed to resolve path: {}", e))?;
+            .map_err(|e| shared_t1("plugins.runtime.shared.resolve_path_failed", e.to_string()))?;
         if !canonical.starts_with(&canonical_base) {
-            return Err("Path must be within allowed directory".to_string());
+            return Err(shared_t("plugins.runtime.shared.path_outside_allowed_dir"));
         }
         Ok(canonical)
     } else {
@@ -208,17 +226,17 @@ pub(crate) fn safe_canonicalize_check(
                     existing_ancestor.pop();
                 }
                 None => {
-                    return Err("Cannot find existing ancestor directory".to_string());
+                    return Err(shared_t("plugins.runtime.shared.existing_ancestor_not_found"));
                 }
             }
         }
 
-        let canonical_ancestor = existing_ancestor
-            .canonicalize()
-            .map_err(|e| format!("Failed to resolve ancestor directory: {}", e))?;
+        let canonical_ancestor = existing_ancestor.canonicalize().map_err(|e| {
+            shared_t1("plugins.runtime.shared.resolve_ancestor_dir_failed", e.to_string())
+        })?;
 
         if !canonical_ancestor.starts_with(&canonical_base) {
-            return Err("Path must be within allowed directory".to_string());
+            return Err(shared_t("plugins.runtime.shared.path_outside_allowed_dir"));
         }
 
         let mut result = canonical_ancestor;
@@ -247,12 +265,16 @@ fn validate_path(base_dir: &Path, relative_path: &str) -> Result<PathBuf, mlua::
     let path = PathBuf::from(relative_path);
 
     if path.is_absolute() || is_windows_absolute_path(relative_path) {
-        return Err(mlua::Error::runtime("Absolute paths are not allowed".to_string()));
+        return Err(mlua::Error::runtime(shared_t(
+            "plugins.runtime.shared.absolute_paths_not_allowed",
+        )));
     }
 
     for component in path.components() {
         if let std::path::Component::ParentDir = component {
-            return Err(mlua::Error::runtime("Path cannot contain '..'".to_string()));
+            return Err(mlua::Error::runtime(shared_t(
+                "plugins.runtime.shared.path_parent_not_allowed",
+            )));
         }
     }
 

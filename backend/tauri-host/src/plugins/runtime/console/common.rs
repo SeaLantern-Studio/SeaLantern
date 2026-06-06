@@ -1,4 +1,5 @@
 use crate::services::global::{i18n_service, server_manager, settings_manager};
+use crate::services::server::manager::ServerManager;
 use mlua::{Lua, Table};
 use std::collections::HashMap;
 
@@ -54,7 +55,14 @@ pub(super) fn set_console_table(sl: &Table, table: Table) -> Result<(), String> 
 }
 
 pub(super) fn validate_server_id(server_id: &str) -> Result<(), String> {
-    let servers = server_manager().get_server_list();
+    validate_server_id_in(server_manager(), server_id)
+}
+
+pub(super) fn validate_server_id_in(
+    manager: &ServerManager,
+    server_id: &str,
+) -> Result<(), String> {
+    let servers = manager.get_server_list_checked()?;
     if !servers.iter().any(|s| s.id == server_id) {
         return Err(
             i18n_service().t_with_options("console.server_not_found", &i18n_arg("0", server_id))
@@ -130,4 +138,30 @@ pub(super) fn is_command_allowed(command: &str) -> Result<String, String> {
 
 pub(super) fn emit_console_log(plugin_id: &str, category: &str, api_name: &str, resource: &str) {
     let _ = crate::plugins::api::emit_permission_log(plugin_id, category, api_name, resource);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_server_id_in;
+    use crate::services::server::manager::ServerManager;
+    use std::sync::Arc;
+
+    #[test]
+    fn validate_server_id_in_surfaces_server_list_lock_failures() {
+        let manager = Arc::new(ServerManager::new_checked().expect("manager should initialize"));
+        let cloned = Arc::clone(&manager);
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = cloned
+                .servers
+                .lock()
+                .expect("servers lock should be acquired");
+            panic!("poison server list lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = validate_server_id_in(&manager, "missing-server")
+            .expect_err("lock failure should not be flattened into server not found");
+
+        assert_eq!(error, "servers lock poisoned");
+    }
 }

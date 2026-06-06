@@ -68,7 +68,7 @@ pub fn open_or_create_log_db(server_path: &Path) -> Result<Connection, String> {
 
 pub fn resolve_server_path(server_id: &str) -> Result<PathBuf, String> {
     let manager = crate::services::global::server_manager();
-    let servers = manager.get_server_list();
+    let servers = manager.get_server_list_checked()?;
     servers
         .iter()
         .find(|server| server.id == server_id)

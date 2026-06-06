@@ -64,7 +64,10 @@ fn is_sha256_hex(value: &str) -> bool {
 }
 
 #[cfg_attr(debug_assertions, allow(dead_code))]
-pub(crate) fn find_sha256_assets<'a>(assets: &'a [ReleaseAsset], target_name: &str) -> Vec<&'a ReleaseAsset> {
+pub(crate) fn find_sha256_assets<'a>(
+    assets: &'a [ReleaseAsset],
+    target_name: &str,
+) -> Vec<&'a ReleaseAsset> {
     let target_lower = target_name.to_ascii_lowercase();
     let target_file_name = Path::new(target_name)
         .file_name()

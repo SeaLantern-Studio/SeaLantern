@@ -131,18 +131,20 @@ fn type_list_contains_core(types: &StarterTypes, core_key: &str) -> bool {
     }
 }
 
-fn select_best_url_from_file_map(files_obj: &HashMap<String, String>) -> Result<Option<String>, String> {
-    if let Some(url) =
-        select_url_by(
-            files_obj,
-            |file_name| file_name.contains("installer") && file_name.ends_with(".jar"),
-            "installer JAR",
-        )?
-    {
+fn select_best_url_from_file_map(
+    files_obj: &HashMap<String, String>,
+) -> Result<Option<String>, String> {
+    if let Some(url) = select_url_by(
+        files_obj,
+        |file_name| file_name.contains("installer") && file_name.ends_with(".jar"),
+        "installer JAR",
+    )? {
         return Ok(Some(url));
     }
 
-    if let Some(url) = select_url_by(files_obj, |file_name| file_name.contains("installer"), "installer")? {
+    if let Some(url) =
+        select_url_by(files_obj, |file_name| file_name.contains("installer"), "installer")?
+    {
         return Ok(Some(url));
     }
 

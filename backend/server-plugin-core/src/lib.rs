@@ -47,24 +47,28 @@ enum PluginJarParseError {
 }
 
 fn parse_plugin_jar(jar_path: &Path) -> Result<m_PluginConfig, PluginJarParseError> {
-    let file = fs::File::open(jar_path)
-        .map_err(|e| PluginJarParseError::InvalidJar(format!("Failed to open plugin jar: {}", e)))?;
-    let mut zip = ZipArchive::new(file)
-        .map_err(|e| PluginJarParseError::InvalidJar(format!("Failed to read plugin jar: {}", e)))?;
+    let file = fs::File::open(jar_path).map_err(|e| {
+        PluginJarParseError::InvalidJar(format!("Failed to open plugin jar: {}", e))
+    })?;
+    let mut zip = ZipArchive::new(file).map_err(|e| {
+        PluginJarParseError::InvalidJar(format!("Failed to read plugin jar: {}", e))
+    })?;
 
     for index in 0..zip.len() {
-        let mut file = zip
-            .by_index(index)
-            .map_err(|e| PluginJarParseError::InvalidJar(format!("Failed to read zip entry: {}", e)))?;
+        let mut file = zip.by_index(index).map_err(|e| {
+            PluginJarParseError::InvalidJar(format!("Failed to read zip entry: {}", e))
+        })?;
 
         let entry_name = file.name().to_ascii_lowercase();
         if entry_name == "plugin.yml" || entry_name == "bungee.yml" {
             let mut content = String::new();
-            file.read_to_string(&mut content)
-                .map_err(|e| PluginJarParseError::InvalidJar(format!("Failed to read config file: {}", e)))?;
+            file.read_to_string(&mut content).map_err(|e| {
+                PluginJarParseError::InvalidJar(format!("Failed to read config file: {}", e))
+            })?;
 
-            let config: m_PluginConfig = serde_yaml::from_str(&content)
-                .map_err(|e| PluginJarParseError::InvalidJar(format!("Failed to parse config file: {}", e)))?;
+            let config: m_PluginConfig = serde_yaml::from_str(&content).map_err(|e| {
+                PluginJarParseError::InvalidJar(format!("Failed to parse config file: {}", e))
+            })?;
             return Ok(config);
         }
     }
@@ -110,8 +114,8 @@ fn collect_plugins(server_path: &str, strict_jar_parse: bool) -> Result<Vec<m_Pl
     let plugins_dir = Path::new(server_path).join("plugins");
     let mut plugins = Vec::new();
 
-    let entries =
-        fs::read_dir(&plugins_dir).map_err(|e| format!("Failed to read plugins directory: {}", e))?;
+    let entries = fs::read_dir(&plugins_dir)
+        .map_err(|e| format!("Failed to read plugins directory: {}", e))?;
     for entry in entries {
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
         let path = entry.path();
@@ -140,36 +144,36 @@ fn collect_plugins(server_path: &str, strict_jar_parse: bool) -> Result<Vec<m_Pl
 
         match parse_plugin_jar(&path) {
             Ok(plugin_config) => {
-            let plugin_name = plugin_config
-                .name
-                .clone()
-                .unwrap_or_else(|| fallback_plugin_name.clone());
-            let config_folder_path = plugins_dir.join(&plugin_name);
-            let has_config_folder = config_folder_path.exists();
-            let file_size = path.metadata().map(|meta| meta.len()).unwrap_or(0);
-            let author = resolve_author(&plugin_config);
+                let plugin_name = plugin_config
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| fallback_plugin_name.clone());
+                let config_folder_path = plugins_dir.join(&plugin_name);
+                let has_config_folder = config_folder_path.exists();
+                let file_size = path.metadata().map(|meta| meta.len()).unwrap_or(0);
+                let author = resolve_author(&plugin_config);
 
-            plugins.push(m_PluginInfo {
-                m_id: format!(
-                    "{}-{}",
-                    plugin_name,
-                    plugin_config.version.as_deref().unwrap_or("unknown")
-                ),
-                name: plugin_name,
-                version: plugin_config
-                    .version
-                    .unwrap_or_else(|| "Unknown".to_string()),
-                description: plugin_config
-                    .description
-                    .unwrap_or_else(|| "No description".to_string()),
-                author,
-                file_name: base_file_name,
-                file_size,
-                enabled,
-                main_class: plugin_config.main.unwrap_or_else(|| "Unknown".to_string()),
-                has_config_folder,
-                config_files: Vec::new(),
-            });
+                plugins.push(m_PluginInfo {
+                    m_id: format!(
+                        "{}-{}",
+                        plugin_name,
+                        plugin_config.version.as_deref().unwrap_or("unknown")
+                    ),
+                    name: plugin_name,
+                    version: plugin_config
+                        .version
+                        .unwrap_or_else(|| "Unknown".to_string()),
+                    description: plugin_config
+                        .description
+                        .unwrap_or_else(|| "No description".to_string()),
+                    author,
+                    file_name: base_file_name,
+                    file_size,
+                    enabled,
+                    main_class: plugin_config.main.unwrap_or_else(|| "Unknown".to_string()),
+                    has_config_folder,
+                    config_files: Vec::new(),
+                });
             }
             Err(PluginJarParseError::MissingDescriptor) => {
                 plugins.push(fallback_plugin_info(&path, base_file_name, enabled));
@@ -221,20 +225,12 @@ fn scan_plugin_config_files(plugin_dir: &Path) -> Result<Vec<m_PluginConfigFile>
     }
 
     let entries = fs::read_dir(plugin_dir).map_err(|e| {
-        format!(
-            "Failed to read plugin config directory {}: {}",
-            plugin_dir.display(),
-            e
-        )
+        format!("Failed to read plugin config directory {}: {}", plugin_dir.display(), e)
     })?;
 
     for entry in entries {
         let entry = entry.map_err(|e| {
-            format!(
-                "Failed to read plugin config entry in {}: {}",
-                plugin_dir.display(),
-                e
-            )
+            format!("Failed to read plugin config entry in {}: {}", plugin_dir.display(), e)
         })?;
         let path = entry.path();
         let file_type = path
@@ -281,7 +277,9 @@ fn is_supported_config_extension(file_type: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{get_plugin_config_files, get_plugins, get_plugins_checked, resolve_author, m_PluginConfig};
+    use super::{
+        get_plugin_config_files, get_plugins, get_plugins_checked, m_PluginConfig, resolve_author,
+    };
     use std::fs;
     use std::io::Write;
     use zip::write::FileOptions;
@@ -350,18 +348,19 @@ mod tests {
             .expect("yaml config should write");
         fs::write(nested_dir.join("extra.json"), "{\"level\":2}")
             .expect("json config should write");
-        fs::write(plugin_dir.join("readme.txt"), "ignored")
-            .expect("unsupported file should write");
+        fs::write(plugin_dir.join("readme.txt"), "ignored").expect("unsupported file should write");
 
-        let files = get_plugin_config_files(
-            server_path.to_string_lossy().as_ref(),
-            "ExamplePlugin",
-        )
-        .expect("config scan should succeed");
+        let files =
+            get_plugin_config_files(server_path.to_string_lossy().as_ref(), "ExamplePlugin")
+                .expect("config scan should succeed");
 
         assert_eq!(files.len(), 2);
-        assert!(files.iter().any(|file| file.file_name == "config.yml" && file.file_type == "yml"));
-        assert!(files.iter().any(|file| file.file_name == "extra.json" && file.file_type == "json"));
+        assert!(files
+            .iter()
+            .any(|file| file.file_name == "config.yml" && file.file_type == "yml"));
+        assert!(files
+            .iter()
+            .any(|file| file.file_name == "extra.json" && file.file_type == "json"));
         assert!(files.iter().all(|file| !file.file_name.ends_with(".txt")));
     }
 
@@ -377,14 +376,16 @@ mod tests {
         fs::write(plugin_dir.join("extra.JSON"), "{\"level\":2}")
             .expect("uppercase json config should write");
 
-        let files = get_plugin_config_files(
-            server_path.to_string_lossy().as_ref(),
-            "ExamplePlugin",
-        )
-        .expect("config scan should succeed");
+        let files =
+            get_plugin_config_files(server_path.to_string_lossy().as_ref(), "ExamplePlugin")
+                .expect("config scan should succeed");
 
-        assert!(files.iter().any(|file| file.file_name == "CONFIG.YML" && file.file_type == "yml"));
-        assert!(files.iter().any(|file| file.file_name == "extra.JSON" && file.file_type == "json"));
+        assert!(files
+            .iter()
+            .any(|file| file.file_name == "CONFIG.YML" && file.file_type == "yml"));
+        assert!(files
+            .iter()
+            .any(|file| file.file_name == "extra.JSON" && file.file_type == "json"));
     }
 
     #[test]
@@ -395,11 +396,9 @@ mod tests {
         fs::create_dir_all(plugin_dir.join("broken.yml"))
             .expect("directory-backed supported path should exist");
 
-        let error = get_plugin_config_files(
-            server_path.to_string_lossy().as_ref(),
-            "ExamplePlugin",
-        )
-        .expect_err("supported config path read failures should not be silently ignored");
+        let error =
+            get_plugin_config_files(server_path.to_string_lossy().as_ref(), "ExamplePlugin")
+                .expect_err("supported config path read failures should not be silently ignored");
 
         assert!(error.contains("Expected plugin config file but found directory"));
         assert!(error.contains("broken.yml"));
@@ -424,7 +423,9 @@ mod tests {
             .expect("plugin listing should succeed");
 
         assert!(plugins.iter().any(|plugin| {
-            plugin.name == "ExamplePlugin" && plugin.enabled && plugin.file_name == "ExamplePlugin.JAR"
+            plugin.name == "ExamplePlugin"
+                && plugin.enabled
+                && plugin.file_name == "ExamplePlugin.JAR"
         }));
         assert!(plugins.iter().any(|plugin| {
             plugin.name == "DisabledPlugin"

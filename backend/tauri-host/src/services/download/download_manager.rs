@@ -76,8 +76,8 @@ mod tests {
     use std::ops::RangeInclusive;
     use std::sync::Arc as StdArc;
     use std::time::Duration;
-    use tokio::net::TcpListener;
     use tokio;
+    use tokio::net::TcpListener;
 
     #[derive(Clone)]
     struct TestDownloadPayload {
@@ -156,7 +156,9 @@ mod tests {
         let listener = TcpListener::bind(("127.0.0.1", 0))
             .await
             .expect("test listener should bind");
-        let addr = listener.local_addr().expect("listener should report local addr");
+        let addr = listener
+            .local_addr()
+            .expect("listener should report local addr");
         tokio::spawn(async move {
             axum::serve(listener, app)
                 .await

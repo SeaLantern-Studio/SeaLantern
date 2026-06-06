@@ -1,5 +1,6 @@
 mod assets;
 mod dependency_state;
+pub(crate) mod i18n;
 mod install;
 mod lifecycle;
 mod notify;
@@ -37,21 +38,27 @@ impl PluginManager {
     /// # Returns
     ///
     /// 返回新的插件管理器实例
+    #[allow(dead_code)]
     pub fn new(plugins_dir: PathBuf, data_dir: PathBuf) -> Self {
-        if let Err(e) = fs::create_dir_all(&plugins_dir) {
-            eprintln!("[ERROR] Failed to create plugins directory: {}", e);
-        }
-        if let Err(e) = fs::create_dir_all(&data_dir) {
-            eprintln!("[ERROR] Failed to create data directory: {}", e);
-        }
+        Self::new_checked(plugins_dir, data_dir)
+            .unwrap_or_else(|error| panic!("Failed to initialize PluginManager: {}", error))
+    }
 
-        Self {
+    pub fn new_checked(plugins_dir: PathBuf, data_dir: PathBuf) -> Result<Self, String> {
+        fs::create_dir_all(&plugins_dir).map_err(|e| {
+            format!("Failed to create plugins directory '{}': {}", plugins_dir.display(), e)
+        })?;
+        fs::create_dir_all(&data_dir).map_err(|e| {
+            format!("Failed to create data directory '{}': {}", data_dir.display(), e)
+        })?;
+
+        Ok(Self {
             plugins: HashMap::new(),
             runtimes: Arc::new(RwLock::new(HashMap::new())),
             plugins_dir,
             data_dir,
             api_registry: new_api_registry(),
-        }
+        })
     }
 
     pub(crate) fn get_shared_runtimes(&self) -> Arc<RwLock<HashMap<String, PluginRuntime>>> {
@@ -115,8 +122,13 @@ impl PluginManager {
     }
 
     /// 按保存记录自动启用插件
+    #[allow(dead_code)]
     pub fn auto_enable_plugins(&mut self) {
         lifecycle::persistence::auto_enable_plugins(self);
+    }
+
+    pub fn auto_enable_plugins_checked(&mut self) -> Result<(), String> {
+        lifecycle::persistence::auto_enable_plugins_checked(self)
     }
 
     /// 应用退出前停用全部插件
@@ -236,5 +248,30 @@ impl PluginManager {
     /// 通知插件当前语言已切换
     pub fn notify_locale_changed(&self, locale: &str) {
         notify::notify_locale_changed(self, locale);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PluginManager;
+
+    #[test]
+    fn new_checked_rejects_file_backed_plugins_dir() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let plugins_dir = temp_dir.path().join("plugins-file");
+        let data_dir = temp_dir.path().join("plugin-data");
+        std::fs::write(&plugins_dir, b"not a directory")
+            .expect("file-backed plugins dir should exist");
+
+        let error = PluginManager::new_checked(plugins_dir, data_dir)
+            .err()
+            .expect("file-backed plugins dir should not be silently downgraded");
+
+        assert!(
+            error.contains("Failed to create plugins directory"),
+            "unexpected error: {}",
+            error
+        );
+        assert!(error.contains("plugins-file"), "unexpected error: {}", error);
     }
 }

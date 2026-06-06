@@ -1,6 +1,4 @@
-pub(super) use sea_lantern_server_local_setup_core::{
-    inspect_local_folder,
-};
+pub(super) use sea_lantern_server_local_setup_core::inspect_local_folder;
 
 #[cfg(test)]
 mod tests {

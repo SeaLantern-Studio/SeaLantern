@@ -19,6 +19,7 @@ mod feedback;
 mod sidebar;
 mod style;
 
+use super::ui::common::ui_t2;
 use super::PluginRuntime;
 use mlua::Table;
 
@@ -27,7 +28,7 @@ impl PluginRuntime {
         let ui_table = self
             .lua
             .create_table()
-            .map_err(|e| format!("创建 UI 表 (sl.ui) 失败: {}", e))?;
+            .map_err(|e| ui_t2("plugins.runtime.ui.create_failed", "sl.ui", e.to_string()))?;
 
         // Register in a fixed, documented order to keep deterministic behavior
         config::register(self, &ui_table)?; // config first (e.g., set_error_mode)
@@ -39,7 +40,7 @@ impl PluginRuntime {
         component::register(self, &ui_table)?;
 
         sl.set("ui", ui_table)
-            .map_err(|e| format!("设置 UI 表 (sl.ui) 失败: {}", e))?;
+            .map_err(|e| ui_t2("plugins.runtime.ui.set_failed", "sl.ui", e.to_string()))?;
         Ok(())
     }
 }

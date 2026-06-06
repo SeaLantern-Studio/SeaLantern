@@ -1,4 +1,4 @@
-import { tauriInvoke, isBrowserEnv, HTTP_API_BASE } from "@api/tauri";
+import { tauriInvoke, isBrowserEnv, HTTP_API_BASE, ensureBrowserSession, readBrowserAuthToken } from "@api/tauri";
 import type { ServerStatus } from "@type/common";
 import type {
   CpuPolicyConfig,
@@ -445,59 +445,118 @@ export const serverApi = {
    * 返回取消订阅函数
    */
   subscribeLogStream(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
-    return new Promise((resolve) => {
-      const url = `${HTTP_API_BASE}/api/logs/stream`;
-      let eventSource: EventSource | null = null;
-      let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-      let disposed = false;
-
-      const clearReconnectTimer = () => {
-        if (reconnectTimer) {
-          clearTimeout(reconnectTimer);
-          reconnectTimer = null;
-        }
-      };
-
-      const connect = () => {
-        if (disposed) {
+    return new Promise((resolve, reject) => {
+      void (async () => {
+        try {
+          await ensureBrowserSession();
+        } catch (error) {
+          reject(error);
           return;
         }
 
-        eventSource = new EventSource(url);
+        const url = `${HTTP_API_BASE}/api/logs/stream`;
+        const token = readBrowserAuthToken();
+        if (!token) {
+          reject(new Error("Missing HTTP auth token for log stream"));
+          return;
+        }
 
-        eventSource.addEventListener("message", (event) => {
-          try {
-            const data = JSON.parse(event.data) as ServerLogLineEvent;
-            callback(data);
-          } catch (e) {
-            console.warn("[SSE] Failed to parse log event:", e);
+        let abortController: AbortController | null = null;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let disposed = false;
+
+        const clearReconnectTimer = () => {
+          if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
           }
-        });
+        };
 
-        eventSource.addEventListener("error", (e) => {
+        const connect = () => {
           if (disposed) {
             return;
           }
 
-          console.warn("[SSE] Connection error, reconnecting...", e);
-          eventSource?.close();
-          eventSource = null;
+          abortController = new AbortController();
+
+          void (async () => {
+            try {
+              const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+                signal: abortController?.signal,
+              });
+
+              if (!response.ok || !response.body) {
+                throw new Error(`SSE stream failed with HTTP ${response.status}`);
+              }
+
+              const reader = response.body
+                .pipeThrough(new TextDecoderStream())
+                .getReader();
+              let buffer = "";
+
+              while (!disposed) {
+                const { value, done } = await reader.read();
+                if (done) {
+                  break;
+                }
+
+                buffer += value;
+                const frames = buffer.split("\n\n");
+                buffer = frames.pop() || "";
+
+                for (const frame of frames) {
+                  const dataLines = frame
+                    .split("\n")
+                    .filter((line) => line.startsWith("data:"))
+                    .map((line) => line.slice(5).trim());
+
+                  if (dataLines.length === 0) {
+                    continue;
+                  }
+
+                  const raw = dataLines.join("\n");
+                  if (raw === "ping") {
+                    continue;
+                  }
+
+                  try {
+                    const data = JSON.parse(raw) as ServerLogLineEvent;
+                    callback(data);
+                  } catch (e) {
+                    console.warn("[SSE] Failed to parse log event:", e);
+                  }
+                }
+              }
+            } catch (e) {
+              if (disposed) {
+                return;
+              }
+
+              console.warn("[SSE] Connection error, reconnecting...", e);
+              abortController?.abort();
+              abortController = null;
+              clearReconnectTimer();
+              reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connect();
+              }, 3000);
+            }
+          })();
+        };
+
+        connect();
+
+        resolve(() => {
+          disposed = true;
           clearReconnectTimer();
-          reconnectTimer = setTimeout(() => {
-            reconnectTimer = null;
-            connect();
-          }, 3000);
+          abortController?.abort();
+          abortController = null;
         });
-      };
-
-      connect();
-
-      resolve(() => {
-        disposed = true;
-        clearReconnectTimer();
-        eventSource?.close();
-        eventSource = null;
-      });
+      })();
     });
   },
 

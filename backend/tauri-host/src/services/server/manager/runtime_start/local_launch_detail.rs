@@ -1,10 +1,10 @@
 use crate::models::server::ServerInstance;
-use crate::services::server::manager::startup_support::resolve_effective_startup_config;
+use crate::services::server::manager::i18n::manager_t1;
+use crate::services::server::manager::startup_support::resolve_effective_startup_config_checked;
 use sea_lantern_server_local_setup_core::{
     preview_command as preview_shared_command, resolve_local_launch_target,
 };
 
-use super::LocalLaunchDetail;
 use super::super::common::StartupMode;
 use super::super::startup_support::build_managed_jvm_args;
 use super::launch::command_builder::{
@@ -14,14 +14,15 @@ use super::launch::context::{
     resolve_java_paths, resolve_managed_encoding, resolve_starter_installer_url, startup_filename,
     LaunchContext,
 };
+use super::LocalLaunchDetail;
 
 pub(crate) fn build_local_launch_detail(
     server: &ServerInstance,
     settings: &crate::models::settings::AppSettings,
 ) -> Result<LocalLaunchDetail, String> {
-    let runtime = server
-        .local_runtime()
-        .ok_or_else(|| format!("当前服务器运行时暂未实现: {}", server.runtime_kind))?;
+    let runtime = server.local_runtime().ok_or_else(|| {
+        manager_t1("server.manager.runtime_not_supported", server.runtime_kind.clone())
+    })?;
 
     let startup_mode = StartupMode::from_raw(&runtime.startup_mode);
     let startup_path = runtime.jar_path.as_str();
@@ -40,7 +41,7 @@ pub(crate) fn build_local_launch_detail(
         startup_filename: startup_filename(startup_path),
         starter_installer_url,
     };
-    let effective = resolve_effective_startup_config(server, settings);
+    let effective = resolve_effective_startup_config_checked(server, settings)?;
 
     let effective_jvm_args = if matches!(startup_mode, StartupMode::Jar | StartupMode::Starter) {
         build_managed_jvm_args(server, settings, managed_console_encoding)?
@@ -87,12 +88,12 @@ fn resolve_command_preview(
 #[cfg(test)]
 mod tests {
     use super::build_local_launch_detail;
-    use crate::services::server::manager::runtime_start::LocalLaunchDetail;
     use crate::models::server::{
         CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId, LocalRuntimeConfig,
         ServerInstance, ServerRuntimeConfig,
     };
     use crate::models::settings::AppSettings;
+    use crate::services::server::manager::runtime_start::LocalLaunchDetail;
     use tempfile::tempdir;
 
     fn test_settings() -> AppSettings {
@@ -317,5 +318,20 @@ mod tests {
             .effective_jvm_args
             .iter()
             .any(|arg| arg == "-Druntime.flag=true"));
+    }
+
+    #[test]
+    fn build_local_launch_detail_surfaces_invalid_instance_config() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string(), "jar");
+        let config_dir = temp_dir.path().join("SeaLantern");
+        std::fs::create_dir_all(&config_dir).expect("config dir should exist");
+        std::fs::write(config_dir.join("config.toml"), "max_memory = [\n")
+            .expect("broken config should be written");
+
+        let err = build_local_launch_detail(&server, &test_settings())
+            .expect_err("invalid instance config should not silently downgrade launch detail");
+
+        assert!(err.contains("解析实例配置失败"));
     }
 }

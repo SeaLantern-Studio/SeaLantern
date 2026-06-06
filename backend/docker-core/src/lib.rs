@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::process::Output;
 
-use serde::{Deserialize, Serialize};
 pub use sea_lantern_server_config_core::types::{
     CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId,
 };
@@ -9,6 +8,7 @@ use sea_lantern_server_config_core::{
     resolve_cpu_policy as resolve_shared_cpu_policy,
     resolve_unbounded_active_processor_count as resolve_shared_active_processor_count,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DockerCommandFailureKind {
@@ -468,7 +468,8 @@ pub fn build_docker_launch_detail(
     runtime: &DockerItzgRuntimeConfig,
     launch_spec: &DockerLaunchSpec,
 ) -> DockerLaunchDetail {
-    let docker_args_preview = sanitize_docker_args_preview(&build_docker_run_args(runtime, launch_spec));
+    let docker_args_preview =
+        sanitize_docker_args_preview(&build_docker_run_args(runtime, launch_spec));
     let command_preview = format_command_preview("docker", &docker_args_preview);
 
     DockerLaunchDetail {
@@ -527,7 +528,8 @@ pub fn build_docker_effective_env(
     let runtime_jvm_opts_override = env_contains_key(&env, "JVM_OPTS");
     let user_has_apc = jvm_args_contain_active_processor_count(&effective.jvm_args);
 
-    let active_processor_count = match resolve_docker_active_processor_count(&effective.cpu_policy)? {
+    let active_processor_count = match resolve_docker_active_processor_count(&effective.cpu_policy)?
+    {
         Some(_) if runtime_jvm_xx_override => {
             ActiveProcessorCountDecision::SkippedByRuntimeEnvOverride
         }
@@ -912,23 +914,20 @@ mod tests {
     use super::{
         build_docker_effective_env, build_docker_launch_detail, build_docker_launch_spec,
         build_docker_run_args, classify_docker_command_failure, classify_manifest_inspect_outcome,
-        docker_error_indicates_missing_container, ensure_docker_command_success,
-        docker_image_ref,
-        exit_status_from_raw,
-        docker_itzg_image_looks_compatible, format_docker_image_reference,
-        format_memory_env_value, format_published_port, format_volume_mount,
-        interpret_docker_image_inspect_outputs, parse_command_mode, parse_docker_backend,
-        parse_memory_env_value, parse_memory_env_value_checked, render_docker_command_error,
-        requested_stop_timeout_secs,
-        requested_stop_timeout_secs_checked,
-        resolve_docker_active_processor_count, resolve_docker_cpuset,
-        resolve_docker_image_and_tag, runtime_env_value,
+        docker_error_indicates_missing_container, docker_image_ref,
+        docker_itzg_image_looks_compatible, ensure_docker_command_success, exit_status_from_raw,
+        format_docker_image_reference, format_memory_env_value, format_published_port,
+        format_volume_mount, interpret_docker_image_inspect_outputs, parse_command_mode,
+        parse_docker_backend, parse_memory_env_value, parse_memory_env_value_checked,
+        render_docker_command_error, requested_stop_timeout_secs,
+        requested_stop_timeout_secs_checked, resolve_docker_active_processor_count,
+        resolve_docker_cpuset, resolve_docker_image_and_tag, runtime_env_value,
         split_docker_image_reference_tag, validate_docker_itzg_image_compatibility,
         ActiveProcessorCountDecision, CpuPolicyConfig, CpuPolicyMode,
         CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandFailureKind,
-        DockerCommandMode, DockerEffectiveLaunchConfig, DockerItzgRuntimeConfig,
-        DockerImageAvailability, DockerImageInspectOutcome,
-        JvmPresetConfig, JvmPresetId, PublishedPort, RconConfig, VolumeMount,
+        DockerCommandMode, DockerEffectiveLaunchConfig, DockerImageAvailability,
+        DockerImageInspectOutcome, DockerItzgRuntimeConfig, JvmPresetConfig, JvmPresetId,
+        PublishedPort, RconConfig, VolumeMount,
     };
     use std::collections::BTreeMap;
     use std::process::Output;
@@ -966,7 +965,10 @@ mod tests {
     #[test]
     fn parse_command_mode_accepts_stdio_aliases() {
         assert_eq!(parse_command_mode(Some("stdio")).unwrap(), DockerCommandMode::DockerStdio);
-        assert_eq!(parse_command_mode(Some("docker-stdio")).unwrap(), DockerCommandMode::DockerStdio);
+        assert_eq!(
+            parse_command_mode(Some("docker-stdio")).unwrap(),
+            DockerCommandMode::DockerStdio
+        );
     }
 
     #[test]
@@ -1364,14 +1366,17 @@ mod tests {
                 explicit_set: None,
                 sync_active_processor_count: true,
             },
-            jvm_preset: JvmPresetConfig {
-                preset: JvmPresetId::G1Basic,
-            },
+            jvm_preset: JvmPresetConfig { preset: JvmPresetId::G1Basic },
         };
 
         let (env, meta) = build_docker_effective_env(&runtime, &effective).unwrap();
         let jvm_opts = env.iter().find(|(k, _)| k == "JVM_OPTS").unwrap().1.clone();
-        let jvm_xx_opts = env.iter().find(|(k, _)| k == "JVM_XX_OPTS").unwrap().1.clone();
+        let jvm_xx_opts = env
+            .iter()
+            .find(|(k, _)| k == "JVM_XX_OPTS")
+            .unwrap()
+            .1
+            .clone();
 
         assert_eq!(env.iter().find(|(k, _)| k == "MAX_MEMORY").unwrap().1, "4G");
         assert_eq!(env.iter().find(|(k, _)| k == "INIT_MEMORY").unwrap().1, "2G");
@@ -1398,10 +1403,7 @@ mod tests {
             published_game_port: 25565,
             env: BTreeMap::from([
                 ("JVM_OPTS".to_string(), "-Dmanual=true".to_string()),
-                (
-                    "JVM_XX_OPTS".to_string(),
-                    "-XX:ActiveProcessorCount=99".to_string(),
-                ),
+                ("JVM_XX_OPTS".to_string(), "-XX:ActiveProcessorCount=99".to_string()),
             ]),
             extra_ports: Vec::new(),
             volume_mounts: Vec::new(),
@@ -1422,9 +1424,7 @@ mod tests {
                 explicit_set: None,
                 sync_active_processor_count: true,
             },
-            jvm_preset: JvmPresetConfig {
-                preset: JvmPresetId::AikarG1,
-            },
+            jvm_preset: JvmPresetConfig { preset: JvmPresetId::AikarG1 },
         };
 
         let (env, meta) = build_docker_effective_env(&runtime, &effective).unwrap();
@@ -1513,9 +1513,7 @@ mod tests {
                 explicit_set: None,
                 sync_active_processor_count: true,
             },
-            jvm_preset: JvmPresetConfig {
-                preset: JvmPresetId::AikarG1,
-            },
+            jvm_preset: JvmPresetConfig { preset: JvmPresetId::AikarG1 },
         };
 
         let spec = build_docker_launch_spec(&runtime, &effective).unwrap();
@@ -1524,7 +1522,9 @@ mod tests {
 
         assert_eq!(detail.runtime_kind, "docker_itzg");
         assert_eq!(detail.cpuset_applied.as_deref(), Some("0-1"));
-        assert!(detail.command_preview.contains("docker run -d --name sea-test --cpuset-cpus 0-1"));
+        assert!(detail
+            .command_preview
+            .contains("docker run -d --name sea-test --cpuset-cpus 0-1"));
         assert!(joined.contains("RCON_PASSWORD=<redacted>"));
         assert!(joined.contains("JVM_OPTS=-Dfoo=bar"));
     }

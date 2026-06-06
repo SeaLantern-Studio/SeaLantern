@@ -26,7 +26,7 @@ pub async fn tunnel_stop() -> Result<tunnel::TunnelStatus, String> {
 
 #[tauri::command]
 pub async fn tunnel_status() -> Result<tunnel::TunnelStatus, String> {
-    Ok(tunnel::status().await)
+    tunnel::status().await
 }
 
 #[tauri::command]

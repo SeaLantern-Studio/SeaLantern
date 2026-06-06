@@ -3,16 +3,14 @@ use std::process::Command;
 
 use once_cell::sync::Lazy;
 use regex::Regex;
-use sea_lantern_runtime::{
-    find_root_startup_file_checked, is_windows_absolute_path,
-};
+use sea_lantern_runtime::{find_root_startup_file_checked, is_windows_absolute_path};
 use sea_lantern_server_installer_core::{
-    detect_core_type, detect_core_type_checked, find_server_jar, find_server_jar_checked,
-    CoreType,
+    detect_core_type, detect_core_type_checked, find_server_jar, find_server_jar_checked, CoreType,
 };
 
-static MC_VERSION_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)(1\.\d{1,2}(?:\.\d{1,2})?)").expect("mc version regex should compile"));
+static MC_VERSION_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)(1\.\d{1,2}(?:\.\d{1,2})?)").expect("mc version regex should compile")
+});
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LocalFolderInspection {
@@ -78,8 +76,8 @@ pub fn inspect_local_folder_checked(folder: &Path) -> Result<LocalFolderInspecti
     } else {
         detect_core_type(folder_display.as_ref())
     };
-    let inferred_core_type = (!inferred_core_type.eq_ignore_ascii_case("unknown"))
-        .then_some(inferred_core_type);
+    let inferred_core_type =
+        (!inferred_core_type.eq_ignore_ascii_case("unknown")).then_some(inferred_core_type);
     let inferred_mc_version = startup_entry_path
         .as_deref()
         .and_then(|value| infer_mc_version_hint(&[value]))
@@ -100,7 +98,9 @@ pub fn inspect_local_folder_checked(folder: &Path) -> Result<LocalFolderInspecti
 }
 
 pub fn resolve_attach_executable_path(folder: &Path) -> Option<PathBuf> {
-    resolve_attach_executable_path_checked(folder).ok().flatten()
+    resolve_attach_executable_path_checked(folder)
+        .ok()
+        .flatten()
 }
 
 pub fn resolve_attach_executable_path_checked(folder: &Path) -> Result<Option<PathBuf>, String> {
@@ -200,7 +200,10 @@ pub fn infer_core_type_from_local_inputs_checked(
     Ok(inspect_local_folder_checked(folder)?.inferred_core_type)
 }
 
-pub fn infer_mc_version_from_folder(folder: &Path, executable_path: Option<&str>) -> Option<String> {
+pub fn infer_mc_version_from_folder(
+    folder: &Path,
+    executable_path: Option<&str>,
+) -> Option<String> {
     infer_mc_version_from_folder_checked(folder, executable_path)
         .ok()
         .flatten()
@@ -633,7 +636,9 @@ pub fn startup_filename(startup_path: &str) -> String {
         .unwrap_or_else(|| startup_path.to_string())
 }
 
-pub fn ensure_supported_script_java_major_version(major_version: Option<u32>) -> Result<(), String> {
+pub fn ensure_supported_script_java_major_version(
+    major_version: Option<u32>,
+) -> Result<(), String> {
     if let Some(major_version) = major_version {
         if major_version < 9 {
             return Err(format!(
@@ -661,11 +666,7 @@ pub fn build_java_launch_path_value(java_bin_dir_str: &str, existing_path: &str)
     prepend_path_entry(java_bin_dir_str, existing_path, path_separator())
 }
 
-fn format_command_preview(
-    program: &str,
-    args: &[String],
-    env: &[(String, String)],
-) -> String {
+fn format_command_preview(program: &str, args: &[String], env: &[(String, String)]) -> String {
     let mut parts = Vec::new();
 
     if !env.is_empty() {
@@ -685,7 +686,9 @@ pub fn preview_command(command: &Command) -> String {
     let env = command
         .get_envs()
         .filter_map(|(key, value)| {
-            value.map(|value| (key.to_string_lossy().to_string(), value.to_string_lossy().to_string()))
+            value.map(|value| {
+                (key.to_string_lossy().to_string(), value.to_string_lossy().to_string())
+            })
         })
         .collect::<Vec<_>>();
     let args = command
@@ -878,22 +881,19 @@ fn startup_mode_prefers_direct_jar(startup_mode: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        detect_startup_mode_from_path_like, inspect_local_folder,
-        infer_core_type_from_local_inputs_checked, infer_mc_version_from_folder_checked,
-        inspect_local_folder_checked,
-        normalize_core_type, normalize_path_for_compare, path_parent_string,
-        build_java_launch_path_value, ensure_supported_script_java_major_version,
-        decode_console_bytes, format_command_preview, format_fallback_chain_error,
-        format_launch_fallback_log, format_primary_jar_early_exit_reason,
-        format_primary_jar_probe_error_reason, format_primary_jar_spawn_error_reason,
-        parse_java_major_version, resolve_command_path_hint_with, script_bytes_prefer_utf8,
-        preview_command,
-        prepend_path_entry, resolve_direct_jar_launch_target, resolve_local_create_server_path,
-        resolve_attach_executable_path_checked, resolve_local_launch_target,
-        resolve_local_preferred_jar_path,
-        resolve_local_preferred_jar_path_checked,
-        resolve_java_paths, startup_filename, validate_local_create_folder,
-        validate_local_create_startup_exists,
+        build_java_launch_path_value, decode_console_bytes, detect_startup_mode_from_path_like,
+        ensure_supported_script_java_major_version, format_command_preview,
+        format_fallback_chain_error, format_launch_fallback_log,
+        format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
+        format_primary_jar_spawn_error_reason, infer_core_type_from_local_inputs_checked,
+        infer_mc_version_from_folder_checked, inspect_local_folder, inspect_local_folder_checked,
+        normalize_core_type, normalize_path_for_compare, parse_java_major_version,
+        path_parent_string, prepend_path_entry, preview_command,
+        resolve_attach_executable_path_checked, resolve_command_path_hint_with,
+        resolve_direct_jar_launch_target, resolve_java_paths, resolve_local_create_server_path,
+        resolve_local_launch_target, resolve_local_preferred_jar_path,
+        resolve_local_preferred_jar_path_checked, script_bytes_prefer_utf8, startup_filename,
+        validate_local_create_folder, validate_local_create_startup_exists,
         validate_local_create_startup_path_binding,
     };
     use std::path::Path;
@@ -982,10 +982,7 @@ mod tests {
 
     #[test]
     fn detect_startup_mode_from_path_like_treats_cmd_as_bat() {
-        assert_eq!(
-            detect_startup_mode_from_path_like("E:/servers/paper/start.cmd"),
-            "bat"
-        );
+        assert_eq!(detect_startup_mode_from_path_like("E:/servers/paper/start.cmd"), "bat");
     }
 
     #[test]
@@ -1061,8 +1058,9 @@ mod tests {
         let dir = tempdir().expect("temp dir should exist");
         let missing = dir.path().join("missing");
 
-        let error = resolve_attach_executable_path_checked(&missing)
-            .expect_err("checked attach executable resolution should surface startup scan failures");
+        let error = resolve_attach_executable_path_checked(&missing).expect_err(
+            "checked attach executable resolution should surface startup scan failures",
+        );
 
         assert!(error.contains("读取启动目录失败"), "unexpected error: {}", error);
     }
@@ -1183,10 +1181,7 @@ mod tests {
         command.arg("-jar");
         command.arg("server.jar");
 
-        assert_eq!(
-            preview_command(&command),
-            "env {JAVA_HOME=C:/Java} java -jar server.jar"
-        );
+        assert_eq!(preview_command(&command), "env {JAVA_HOME=C:/Java} java -jar server.jar");
     }
 
     #[test]
@@ -1249,10 +1244,7 @@ mod tests {
     #[test]
     fn resolve_command_path_hint_rejects_relative_path_when_current_dir_is_unavailable() {
         let resolved = resolve_command_path_hint_with("server.jar", None, || {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "current dir unavailable",
-            ))
+            Err(std::io::Error::new(std::io::ErrorKind::NotFound, "current dir unavailable"))
         });
 
         assert_eq!(resolved, None);
@@ -1260,8 +1252,10 @@ mod tests {
 
     #[test]
     fn resolve_direct_jar_launch_target_uses_filename_for_root_jar() {
-        let target =
-            resolve_direct_jar_launch_target("E:/servers/fabric-1.20.1", "E:/servers/fabric-1.20.1/server.jar");
+        let target = resolve_direct_jar_launch_target(
+            "E:/servers/fabric-1.20.1",
+            "E:/servers/fabric-1.20.1/server.jar",
+        );
 
         assert_eq!(target, "server.jar");
     }

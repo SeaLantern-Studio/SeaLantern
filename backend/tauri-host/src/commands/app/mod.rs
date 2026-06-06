@@ -1,5 +1,6 @@
 //! 应用本身相关的命令。
 
+pub(crate) mod common;
 #[cfg(debug_assertions)]
 pub(crate) mod debug;
 pub(crate) mod host;

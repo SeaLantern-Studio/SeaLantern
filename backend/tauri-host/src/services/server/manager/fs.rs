@@ -10,6 +10,15 @@ use sea_lantern_server_local_setup_core::inspect_local_folder;
 use serde::{Deserialize, Serialize};
 
 use super::common::detect_startup_mode_from_path;
+use super::i18n::{manager_t, manager_t1};
+
+fn log_fs_trace(function: &str, message: &str) {
+    logger::log_trace_ctx("server.manager.fs", function, message);
+}
+
+fn log_fs_warn(function: &str, message: &str) {
+    logger::log_warn_ctx("server.manager.fs", function, message);
+}
 
 fn default_startup_mode() -> String {
     "jar".to_string()
@@ -151,7 +160,7 @@ pub(super) fn find_server_executable(server_path: &Path) -> Result<(String, Stri
         ));
     }
 
-    Err("未找到可用的启动文件（.jar/.bat/.sh/.ps1）".to_string())
+    Err(manager_t("server.manager.startup_executable_not_found"))
 }
 
 pub(super) fn resolve_startup_file_path(
@@ -182,19 +191,29 @@ pub(super) fn resolve_startup_file_path(
         }
     }
 
-    Err(format!("无法安全映射启动文件路径，请重新扫描后重试: {}", startup_file_path))
+    Err(manager_t1(
+        "server.manager.startup_file_map_failed",
+        startup_file_path.to_string(),
+    ))
 }
 
-pub(super) fn load_run_path_mappings(dir: &str) -> Vec<RunPathServerMapping> {
+pub(super) fn load_run_path_mappings_checked(
+    dir: &str,
+) -> Result<Vec<RunPathServerMapping>, String> {
     let path = Path::new(dir).join(RUN_PATH_MAP_FILE);
     if !path.exists() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
-    std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|content| serde_json::from_str::<Vec<RunPathServerMapping>>(&content).ok())
-        .unwrap_or_default()
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| manager_t1("server.manager.run_path_map_read_failed", e.to_string()))?;
+    serde_json::from_str::<Vec<RunPathServerMapping>>(&content)
+        .map_err(|e| manager_t1("server.manager.run_path_map_parse_failed", e.to_string()))
+}
+
+#[allow(dead_code)]
+pub(super) fn load_run_path_mappings(dir: &str) -> Vec<RunPathServerMapping> {
+    load_run_path_mappings_checked(dir).unwrap_or_default()
 }
 
 pub(super) fn save_run_path_mappings(
@@ -203,23 +222,28 @@ pub(super) fn save_run_path_mappings(
 ) -> Result<(), String> {
     let path = Path::new(dir).join(RUN_PATH_MAP_FILE);
     let json = serde_json::to_string_pretty(mappings)
-        .map_err(|e| format!("序列化运行路径映射失败: {}", e))?;
-    std::fs::write(path, json).map_err(|e| format!("写入运行路径映射失败: {}", e))
+        .map_err(|e| manager_t1("server.manager.run_path_map_serialize_failed", e.to_string()))?;
+    std::fs::write(path, json)
+        .map_err(|e| manager_t1("server.manager.run_path_map_write_failed", e.to_string()))
 }
 
 pub(super) fn upsert_run_path_mapping(
     dir: &str,
     mapping: RunPathServerMapping,
 ) -> Result<(), String> {
-    let mut mappings = load_run_path_mappings(dir);
+    let mut mappings = load_run_path_mappings_checked(dir)?;
     mappings
         .retain(|item| item.server_id != mapping.server_id && item.run_path != mapping.run_path);
     mappings.push(mapping);
     save_run_path_mappings(dir, &mappings)
 }
 
-pub(super) fn update_run_path_mapping(dir: &str, server_id: &str, new_path: &str) {
-    let mut mappings = load_run_path_mappings(dir);
+pub(super) fn update_run_path_mapping(
+    dir: &str,
+    server_id: &str,
+    new_path: &str,
+) -> Result<(), String> {
+    let mut mappings = load_run_path_mappings_checked(dir)?;
     let mut found = false;
 
     for mapping in mappings.iter_mut() {
@@ -235,59 +259,45 @@ pub(super) fn update_run_path_mapping(dir: &str, server_id: &str, new_path: &str
     }
 
     if found {
-        let _ = save_run_path_mappings(dir, &mappings);
+        save_run_path_mappings(dir, &mappings)?;
     }
+
+    Ok(())
 }
 
-pub(super) fn remove_run_path_mapping(dir: &str, server_id: &str) {
-    let mut mappings = load_run_path_mappings(dir);
+pub(super) fn remove_run_path_mapping(dir: &str, server_id: &str) -> Result<(), String> {
+    let mut mappings = load_run_path_mappings_checked(dir)?;
     let before = mappings.len();
     mappings.retain(|item| item.server_id != server_id);
     if mappings.len() == before {
-        return;
+        return Ok(());
     }
 
-    let _ = save_run_path_mappings(dir, &mappings);
+    save_run_path_mappings(dir, &mappings)
 }
 
+#[allow(dead_code)]
 pub(super) fn load_servers(dir: &str) -> Vec<ServerInstance> {
+    load_servers_checked(dir).unwrap_or_default()
+}
+
+pub(super) fn load_servers_checked(dir: &str) -> Result<Vec<ServerInstance>, String> {
     let path = Path::new(dir).join(DATA_FILE);
-    logger::log_trace(&format!(
-        "[server.manager.fs] action=load_servers_begin dir={} file={}",
-        dir,
-        path.display()
-    ));
+    log_fs_trace("load_servers_checked", &format!("begin dir={} file={}", dir, path.display()));
     if !path.exists() {
-        logger::log_trace(&format!(
-            "[server.manager.fs] action=load_servers_missing file={}",
-            path.display()
-        ));
-        return Vec::new();
+        log_fs_trace("load_servers_checked", &format!("missing file={}", path.display()));
+        return Ok(Vec::new());
     }
 
-    let content = match std::fs::read_to_string(&path) {
-        Ok(content) => content,
-        Err(err) => {
-            logger::log_warn(&format!(
-                "[server.manager.fs] action=load_servers_read_failed file={} error={}",
-                path.display(),
-                err
-            ));
-            return Vec::new();
-        }
-    };
+    let content = std::fs::read_to_string(&path).map_err(|err| {
+        log_fs_warn(
+            "load_servers_checked",
+            &format!("read failed file={} error={}", path.display(), err),
+        );
+        manager_t1("server.manager.server_list_read_failed", err.to_string())
+    })?;
 
-    let raw_servers = match serde_json::from_str::<Vec<serde_json::Value>>(&content) {
-        Ok(servers) => servers,
-        Err(err) => {
-            logger::log_warn(&format!(
-                "[server.manager.fs] action=load_servers_parse_failed file={} error={}",
-                path.display(),
-                err
-            ));
-            return Vec::new();
-        }
-    };
+    let raw_servers = parse_server_registry_entries(&path, &content)?;
 
     let total = raw_servers.len();
     let mut loaded = Vec::with_capacity(total);
@@ -301,11 +311,10 @@ pub(super) fn load_servers(dir: &str) -> Vec<ServerInstance> {
             match serde_json::from_value::<ServerInstance>(server) {
                 Ok(server) => Some(server),
                 Err(err) => {
-                    logger::log_warn(&format!(
-                        "[server.manager.fs] action=load_servers_entry_failed index={} shape=new error={}",
-                        index,
-                        err
-                    ));
+                    log_fs_warn(
+                        "load_servers_checked",
+                        &format!("entry failed index={} shape=new error={}", index, err),
+                    );
                     None
                 }
             }
@@ -313,11 +322,10 @@ pub(super) fn load_servers(dir: &str) -> Vec<ServerInstance> {
             match serde_json::from_value::<LegacyServerInstance>(server) {
                 Ok(server) => Some(ServerInstance::from(server)),
                 Err(err) => {
-                    logger::log_warn(&format!(
-                        "[server.manager.fs] action=load_servers_entry_failed index={} shape=legacy error={}",
-                        index,
-                        err
-                    ));
+                    log_fs_warn(
+                        "load_servers_checked",
+                        &format!("entry failed index={} shape=legacy error={}", index, err),
+                    );
                     None
                 }
             }
@@ -328,21 +336,106 @@ pub(super) fn load_servers(dir: &str) -> Vec<ServerInstance> {
         }
     }
 
-    logger::log_trace(&format!(
-        "[server.manager.fs] action=load_servers_end file={} total={} loaded={}",
-        path.display(),
-        total,
-        loaded.len()
-    ));
+    log_fs_trace(
+        "load_servers_checked",
+        &format!("end file={} total={} loaded={}", path.display(), total, loaded.len()),
+    );
 
-    loaded
+    Ok(loaded)
 }
 
-pub(super) fn save_servers(dir: &str, servers: &[ServerInstance]) {
-    let path = Path::new(dir).join(DATA_FILE);
-    if let Ok(json) = serde_json::to_string_pretty(servers) {
-        let _ = std::fs::write(&path, json);
+fn parse_server_registry_entries(
+    path: &Path,
+    content: &str,
+) -> Result<Vec<serde_json::Value>, String> {
+    match serde_json::from_str::<Vec<serde_json::Value>>(content) {
+        Ok(entries) => Ok(entries),
+        Err(array_error) => {
+            let fallback = serde_json::from_str::<serde_json::Value>(content)
+                .ok()
+                .and_then(extract_server_registry_entries_from_value);
+
+            if let Some(entries) = fallback {
+                log_fs_warn(
+                    "parse_server_registry_entries",
+                    &format!(
+                        "compat parse used file={} detail=wrapped_registry extracted_entries={}",
+                        path.display(),
+                        entries.len()
+                    ),
+                );
+                Ok(entries)
+            } else {
+                log_fs_warn(
+                    "parse_server_registry_entries",
+                    &format!("parse failed file={} error={}", path.display(), array_error),
+                );
+                Err(manager_t1("server.manager.server_list_parse_failed", array_error.to_string()))
+            }
+        }
     }
+}
+
+fn extract_server_registry_entries_from_value(
+    value: serde_json::Value,
+) -> Option<Vec<serde_json::Value>> {
+    match value {
+        serde_json::Value::Array(entries) => Some(entries),
+        serde_json::Value::Object(mut object) => match object.remove("servers") {
+            Some(serde_json::Value::Array(entries)) => Some(entries),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+pub(super) fn load_servers_for_bootstrap(dir: &str) -> Result<Vec<ServerInstance>, String> {
+    match load_servers_checked(dir) {
+        Ok(servers) => Ok(servers),
+        Err(error) if is_corrupt_server_registry_error(&error) => {
+            log_fs_warn(
+                "load_servers_for_bootstrap",
+                &format!("recovering corrupt registry dir={} error={}", dir, error),
+            );
+            backup_corrupt_server_registry_file(Path::new(dir).join(DATA_FILE).as_path());
+            save_servers(dir, &[])?;
+            Ok(Vec::new())
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn is_corrupt_server_registry_error(error: &str) -> bool {
+    error.contains("server.manager.server_list_parse_failed")
+        || error.contains("解析服务器列表失败")
+}
+
+fn backup_corrupt_server_registry_file(path: &Path) {
+    let timestamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+    let backup_path = path.with_extension(format!("json.bak-corrupt-{}", timestamp));
+
+    match std::fs::copy(path, &backup_path) {
+        Ok(_) => log_fs_warn(
+            "backup_corrupt_server_registry_file",
+            &format!(
+                "backed up corrupt registry file={} backup={}",
+                path.display(),
+                backup_path.display()
+            ),
+        ),
+        Err(error) => log_fs_warn(
+            "backup_corrupt_server_registry_file",
+            &format!("failed to back up corrupt registry file={} error={}", path.display(), error),
+        ),
+    }
+}
+
+pub(super) fn save_servers(dir: &str, servers: &[ServerInstance]) -> Result<(), String> {
+    let path = Path::new(dir).join(DATA_FILE);
+    let json = serde_json::to_string_pretty(servers)
+        .map_err(|e| manager_t1("server.manager.server_list_serialize_failed", e.to_string()))?;
+    std::fs::write(&path, json)
+        .map_err(|e| manager_t1("server.manager.server_list_write_failed", e.to_string()))
 }
 
 pub(super) fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -370,13 +463,34 @@ pub(super) fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use super::{find_server_executable, load_servers, save_servers};
+    use super::{
+        find_server_executable, load_run_path_mappings_checked, load_servers, load_servers_checked,
+        load_servers_for_bootstrap, remove_run_path_mapping, save_run_path_mappings, save_servers,
+        update_run_path_mapping, RunPathServerMapping,
+    };
     use crate::models::server::{
         CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
-    use crate::utils::constants::DATA_FILE;
+    use crate::utils::constants::{DATA_FILE, RUN_PATH_MAP_FILE};
     use serde_json::Value;
     use tempfile::tempdir;
+
+    fn restore_writable_permissions(path: &std::path::Path) {
+        let mut permissions = std::fs::metadata(path)
+            .expect("metadata should exist")
+            .permissions();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            permissions.set_mode(0o644);
+        }
+        #[cfg(windows)]
+        {
+            #[allow(clippy::permissions_set_readonly_false)]
+            permissions.set_readonly(false);
+        }
+        std::fs::set_permissions(path, permissions).expect("path should become writable again");
+    }
 
     fn sample_server() -> ServerInstance {
         ServerInstance {
@@ -452,7 +566,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let original = vec![sample_server()];
 
-        save_servers(dir.path().to_str().unwrap(), &original);
+        save_servers(dir.path().to_str().unwrap(), &original).expect("server list should save");
 
         let data_path = dir.path().join(DATA_FILE);
         let saved = std::fs::read_to_string(&data_path).unwrap();
@@ -546,7 +660,8 @@ mod tests {
         std::fs::write(dir.path().join("start.sh"), "#!/bin/sh\n").unwrap();
         std::fs::write(dir.path().join("server.jar"), "jar").unwrap();
 
-        let (path, mode) = find_server_executable(dir.path()).expect("startup file should be found");
+        let (path, mode) =
+            find_server_executable(dir.path()).expect("startup file should be found");
 
         assert!(path.ends_with("start.sh"));
         assert_eq!(mode, "sh");
@@ -598,5 +713,175 @@ mod tests {
         assert_eq!(runtime.jar_path, "");
         assert_eq!(runtime.java_path, "");
         assert!(runtime.jvm_args.is_empty());
+    }
+
+    #[test]
+    fn load_servers_checked_surfaces_top_level_parse_failures() {
+        let dir = tempdir().unwrap();
+        let data_path = dir.path().join(DATA_FILE);
+        std::fs::write(&data_path, "{").expect("broken server registry should be written");
+
+        let error = load_servers_checked(dir.path().to_str().unwrap())
+            .expect_err("invalid registry should not be silently downgraded to an empty list");
+
+        assert!(error.contains("解析服务器列表失败"), "unexpected error: {}", error);
+    }
+
+    #[test]
+    fn load_servers_for_bootstrap_recovers_top_level_parse_failures() {
+        let dir = tempdir().unwrap();
+        let data_path = dir.path().join(DATA_FILE);
+        std::fs::write(&data_path, "{").expect("broken server registry should be written");
+
+        let servers = load_servers_for_bootstrap(dir.path().to_str().unwrap())
+            .expect("bootstrap load should recover corrupted registry");
+
+        assert!(servers.is_empty(), "recovered registry should start empty");
+
+        let backup_count = std::fs::read_dir(dir.path())
+            .expect("read temp dir")
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .contains(&format!("{}.bak-corrupt-", DATA_FILE))
+            })
+            .count();
+
+        assert_eq!(backup_count, 1);
+    }
+
+    #[test]
+    fn load_servers_checked_accepts_wrapped_registry_and_skips_bad_entries() {
+        let dir = tempdir().unwrap();
+        let data_path = dir.path().join(DATA_FILE);
+        std::fs::write(
+            &data_path,
+            format!(
+                r#"{{
+  "servers": [
+    {},
+    {{"id":"broken-entry"}}
+  ]
+}}"#,
+                serde_json::to_string(&sample_server()).unwrap()
+            ),
+        )
+        .expect("wrapped registry should be written");
+
+        let servers = load_servers_checked(dir.path().to_str().unwrap())
+            .expect("wrapped registry should be accepted");
+
+        assert_eq!(servers.len(), 1);
+        assert_eq!(servers[0].id, sample_server().id);
+    }
+
+    #[test]
+    fn save_servers_surfaces_write_failures() {
+        let dir = tempdir().unwrap();
+        let blocked_root = dir.path().join("blocked-root");
+        std::fs::write(&blocked_root, b"not a directory").expect("blocked root should write");
+
+        let error = save_servers(blocked_root.to_string_lossy().as_ref(), &[sample_server()])
+            .expect_err("save failure should not be silently downgraded");
+
+        assert!(error.contains("写入服务器列表失败"), "unexpected error: {}", error);
+    }
+
+    #[test]
+    fn load_run_path_mappings_checked_returns_empty_for_missing_file() {
+        let dir = tempdir().unwrap();
+
+        let mappings = load_run_path_mappings_checked(dir.path().to_str().unwrap())
+            .expect("missing mapping file should be treated as empty");
+
+        assert!(mappings.is_empty());
+    }
+
+    #[test]
+    fn load_run_path_mappings_checked_surfaces_parse_failures() {
+        let dir = tempdir().unwrap();
+        let mapping_path = dir.path().join(RUN_PATH_MAP_FILE);
+        std::fs::write(&mapping_path, "{not json}").expect("invalid mapping should write");
+
+        let error = load_run_path_mappings_checked(dir.path().to_str().unwrap())
+            .expect_err("invalid mapping json should not be silently downgraded");
+
+        assert!(error.contains("解析运行路径映射失败"), "unexpected error: {}", error);
+    }
+
+    #[test]
+    fn update_run_path_mapping_surfaces_write_failures() {
+        let dir = tempdir().unwrap();
+        let real_dir = dir.path().join("real-dir");
+        std::fs::create_dir_all(&real_dir).expect("real dir should create");
+        save_run_path_mappings(
+            real_dir.to_string_lossy().as_ref(),
+            &[RunPathServerMapping {
+                run_path: "E:/servers/original".to_string(),
+                server_id: "server-1".to_string(),
+                server_name: "Test Server".to_string(),
+                startup_mode: "jar".to_string(),
+                startup_file_path: None,
+                custom_command: None,
+                source_modpack_path: String::new(),
+                updated_at: 1,
+            }],
+        )
+        .expect("mapping should save");
+
+        let mapping_path = real_dir.join(RUN_PATH_MAP_FILE);
+        let mut permissions = std::fs::metadata(&mapping_path)
+            .expect("mapping metadata should exist")
+            .permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&mapping_path, permissions)
+            .expect("mapping should become readonly");
+
+        let error = update_run_path_mapping(
+            real_dir.to_string_lossy().as_ref(),
+            "server-1",
+            "E:/servers/updated",
+        )
+        .expect_err("mapping save failure should not be silently downgraded");
+
+        assert!(error.contains("写入运行路径映射失败"), "unexpected error: {}", error);
+        restore_writable_permissions(&mapping_path);
+    }
+
+    #[test]
+    fn remove_run_path_mapping_surfaces_write_failures() {
+        let dir = tempdir().unwrap();
+        let real_dir = dir.path().join("real-dir");
+        std::fs::create_dir_all(&real_dir).expect("real dir should create");
+        save_run_path_mappings(
+            real_dir.to_string_lossy().as_ref(),
+            &[RunPathServerMapping {
+                run_path: "E:/servers/original".to_string(),
+                server_id: "server-1".to_string(),
+                server_name: "Test Server".to_string(),
+                startup_mode: "jar".to_string(),
+                startup_file_path: None,
+                custom_command: None,
+                source_modpack_path: String::new(),
+                updated_at: 1,
+            }],
+        )
+        .expect("mapping should save");
+
+        let mapping_path = real_dir.join(RUN_PATH_MAP_FILE);
+        let mut permissions = std::fs::metadata(&mapping_path)
+            .expect("mapping metadata should exist")
+            .permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&mapping_path, permissions)
+            .expect("mapping should become readonly");
+
+        let error = remove_run_path_mapping(real_dir.to_string_lossy().as_ref(), "server-1")
+            .expect_err("mapping remove save failure should not be silently downgraded");
+
+        assert!(error.contains("写入运行路径映射失败"), "unexpected error: {}", error);
+        restore_writable_permissions(&mapping_path);
     }
 }

@@ -14,19 +14,21 @@ pub trait StatusSnapshot {
 
 pub fn status_detail_indicates_running(detail: Option<&str>) -> bool {
     detail.is_some_and(|value| {
-        value
-            .split_whitespace()
-            .any(|part| {
-                part.eq_ignore_ascii_case("running=true")
-                    || part.eq_ignore_ascii_case("is_running=true")
-            })
+        value.split_whitespace().any(|part| {
+            part.eq_ignore_ascii_case("running=true")
+                || part.eq_ignore_ascii_case("is_running=true")
+        })
     })
 }
 
 pub fn status_detail_field<'a>(detail: Option<&'a str>, key: &str) -> Option<&'a str> {
     detail?.split_whitespace().find_map(|part| {
         let (field, value) = part.split_once('=')?;
-        if field == key { Some(value) } else { None }
+        if field == key {
+            Some(value)
+        } else {
+            None
+        }
     })
 }
 
@@ -75,7 +77,7 @@ pub fn status_blocks_start(status: &impl StatusSnapshot) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        StatusLevel, StatusSnapshot, status_blocks_start, status_detail_indicates_running,
+        status_blocks_start, status_detail_indicates_running, StatusLevel, StatusSnapshot,
     };
 
     #[derive(Clone, Copy)]

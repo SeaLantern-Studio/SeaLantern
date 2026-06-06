@@ -2,8 +2,8 @@ use crate::models::server::{
     DockerItzgRuntimeConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     ServerStatusInfo,
 };
-use crate::services::server::manager::ServerRegistryDedupeReport;
 use crate::services::server::manager::LocalLaunchDetail;
+use crate::services::server::manager::ServerRegistryDedupeReport;
 use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
 use crate::utils::server_status::status_is_docker_command_ready;
 

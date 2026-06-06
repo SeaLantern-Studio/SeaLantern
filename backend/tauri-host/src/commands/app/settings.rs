@@ -250,7 +250,9 @@ fn persist_personalization_background(source_path: &Path) -> Result<String, Stri
 }
 
 #[cfg(test)]
-pub(crate) fn persist_personalization_background_for_test(source_path: &Path) -> Result<String, String> {
+pub(crate) fn persist_personalization_background_for_test(
+    source_path: &Path,
+) -> Result<String, String> {
     persist_personalization_background(source_path)
 }
 

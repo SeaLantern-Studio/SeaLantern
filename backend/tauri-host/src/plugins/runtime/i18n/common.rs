@@ -1,5 +1,6 @@
 use crate::services::global::i18n_service;
 use mlua::{Function, Lua, Table};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub(super) struct I18nContext {
@@ -68,9 +69,30 @@ pub(super) fn plugin_i18n_namespace(plugin_id: &str, key: &str) -> String {
     format!("plugins.{}.{}", plugin_id, key)
 }
 
+pub(super) fn i18n_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+pub(super) fn i18n_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+pub(super) fn i18n_err(key: &str) -> mlua::Error {
+    mlua::Error::runtime(i18n_service().t(key))
+}
+
+pub(super) fn i18n_err1(key: &str, a: impl Into<String>) -> mlua::Error {
+    mlua::Error::runtime(i18n_t1(key, a))
+}
+
 pub(super) fn create_i18n_table(lua: &Lua) -> Result<Table, String> {
     lua.create_table()
-        .map_err(|e| format!("Failed to create i18n table: {}", e))
+        .map_err(|e| i18n_t1("plugins.runtime.i18n.create_table_failed", e.to_string()))
 }
 
 pub(super) fn set_i18n_function(
@@ -81,12 +103,12 @@ pub(super) fn set_i18n_function(
 ) -> Result<(), String> {
     table
         .set(name, function)
-        .map_err(|e| format!("Failed to set i18n.{}: {}", error_suffix, e))
+        .map_err(|e| i18n_t2("plugins.runtime.i18n.set_api_failed", error_suffix, e.to_string()))
 }
 
 pub(super) fn set_i18n_table(sl: &Table, table: Table) -> Result<(), String> {
     sl.set("i18n", table)
-        .map_err(|e| format!("Failed to set sl.i18n: {}", e))
+        .map_err(|e| i18n_t1("plugins.runtime.i18n.set_namespace_failed", e.to_string()))
 }
 
 pub(super) fn callbacks_table(lua: &Lua, registry_key: &str) -> mlua::Result<Table> {

@@ -1,3 +1,4 @@
+use super::i18n::plugin_t1;
 use super::{PluginManager, PluginState};
 use std::path::PathBuf;
 
@@ -8,7 +9,7 @@ pub(super) fn get_plugin_settings(
     let plugin_info = manager
         .plugins
         .get(plugin_id)
-        .ok_or_else(|| format!("Plugin not found: {}", plugin_id))?;
+        .ok_or_else(|| plugin_t1("plugin.common.not_found", plugin_id.to_string()))?;
 
     let plugin_path = PathBuf::from(&plugin_info.path);
     let settings_path = plugin_path.join("settings.json");
@@ -34,7 +35,7 @@ pub(super) fn set_plugin_settings(
     let plugin_info = manager
         .plugins
         .get(plugin_id)
-        .ok_or_else(|| format!("Plugin not found: {}", plugin_id))?;
+        .ok_or_else(|| plugin_t1("plugin.common.not_found", plugin_id.to_string()))?;
 
     let plugin_path = PathBuf::from(&plugin_info.path);
     let settings_path = plugin_path.join("settings.json");
@@ -52,7 +53,7 @@ pub(super) fn get_plugin_icon(manager: &PluginManager, plugin_id: &str) -> Resul
     let plugin_info = manager
         .plugins
         .get(plugin_id)
-        .ok_or_else(|| format!("Plugin not found: {}", plugin_id))?;
+        .ok_or_else(|| plugin_t1("plugin.common.not_found", plugin_id.to_string()))?;
 
     let plugin_path = PathBuf::from(&plugin_info.path);
 
@@ -116,7 +117,7 @@ pub(super) fn get_plugin_css(manager: &PluginManager, plugin_id: &str) -> Result
     let plugin_info = manager
         .plugins
         .get(plugin_id)
-        .ok_or_else(|| format!("Plugin not found: {}", plugin_id))?;
+        .ok_or_else(|| plugin_t1("plugin.common.not_found", plugin_id.to_string()))?;
 
     let plugin_path = PathBuf::from(&plugin_info.path);
     let css_path = plugin_path.join("style.css");

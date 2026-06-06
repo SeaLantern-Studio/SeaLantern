@@ -1,3 +1,3 @@
 pub(super) use sea_lantern_runtime::{
-    CommandHandler, RegistryBuilder, handle_unsupported, parse_params,
+    handle_unsupported, parse_params, CommandHandler, RegistryBuilder,
 };

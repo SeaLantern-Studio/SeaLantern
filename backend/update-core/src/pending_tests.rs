@@ -10,9 +10,12 @@ fn write_and_check_pending_update_round_trip() {
     std::fs::write(&update_file, b"payload").unwrap();
 
     let pending_file = dir.path().join("pending.json");
-    write_pending_update(&pending_file, &update_file.to_string_lossy(), "9.9.9".to_string()).unwrap();
+    write_pending_update(&pending_file, &update_file.to_string_lossy(), "9.9.9".to_string())
+        .unwrap();
 
-    let pending = check_pending_update(&pending_file, "1.0.0").unwrap().unwrap();
+    let pending = check_pending_update(&pending_file, "1.0.0")
+        .unwrap()
+        .unwrap();
     assert_eq!(pending.version, "9.9.9");
     assert_eq!(pending.file_path, update_file.to_string_lossy());
 }
@@ -23,7 +26,9 @@ fn check_pending_update_clears_missing_payload() {
     let pending_file = dir.path().join("pending.json");
     write_pending_update(&pending_file, "missing-file.exe", "9.9.9".to_string()).unwrap();
 
-    assert!(check_pending_update(&pending_file, "1.0.0").unwrap().is_none());
+    assert!(check_pending_update(&pending_file, "1.0.0")
+        .unwrap()
+        .is_none());
     assert!(!pending_file.exists());
 }
 
@@ -70,7 +75,8 @@ fn check_pending_update_rejects_invalid_pending_version_string() {
     std::fs::write(&update_file, b"payload").unwrap();
 
     let pending_file = dir.path().join("pending.json");
-    write_pending_update(&pending_file, &update_file.to_string_lossy(), "1.x.0".to_string()).unwrap();
+    write_pending_update(&pending_file, &update_file.to_string_lossy(), "1.x.0".to_string())
+        .unwrap();
 
     let error = check_pending_update(&pending_file, "1.0.0")
         .expect_err("invalid pending version should not be silently treated as non-pending");

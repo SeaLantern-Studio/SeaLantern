@@ -333,7 +333,8 @@ pub fn get_plugin_permission_logs(
 }
 
 #[tauri::command]
-pub fn get_permission_list() -> Vec<crate::hardcode_data::plugin_permissions::PluginPermissionInfo> {
+pub fn get_permission_list() -> Vec<crate::hardcode_data::plugin_permissions::PluginPermissionInfo>
+{
     crate::hardcode_data::plugin_permissions::get_plugin_permission_list()
 }
 

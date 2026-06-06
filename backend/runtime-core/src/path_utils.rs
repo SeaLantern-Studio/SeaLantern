@@ -48,19 +48,27 @@ fn is_msi_installation() -> bool {
 
 pub fn get_app_data_dir() -> PathBuf {
     if let Some(explicit) = explicit_app_data_dir_from_env() {
-        crate::log_trace(&format!(
-            "[utils.path] action=resolve_app_data_dir source=env path={}",
-            explicit.display()
-        ));
+        crate::log_trace_ctx(
+            "runtime.path",
+            "get_app_data_dir",
+            &format!(
+                "[utils.path] action=resolve_app_data_dir source=env path={}",
+                explicit.display()
+            ),
+        );
         return explicit;
     }
 
     if std::path::Path::new("/.dockerenv").exists() {
         let path = PathBuf::from(APP_DOCKER_DATA_DIR);
-        crate::log_trace(&format!(
-            "[utils.path] action=resolve_app_data_dir source=docker path={}",
-            path.display()
-        ));
+        crate::log_trace_ctx(
+            "runtime.path",
+            "get_app_data_dir",
+            &format!(
+                "[utils.path] action=resolve_app_data_dir source=docker path={}",
+                path.display()
+            ),
+        );
         return path;
     }
 
@@ -77,10 +85,14 @@ pub fn get_app_data_dir() -> PathBuf {
 
         if let Ok(exe_path) = std::env::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
-                crate::log_trace(&format!(
-                    "[utils.path] action=resolve_app_data_dir source=portable_exe path={}",
-                    exe_dir.display()
-                ));
+                crate::log_trace_ctx(
+                    "runtime.path",
+                    "get_app_data_dir",
+                    &format!(
+                        "[utils.path] action=resolve_app_data_dir source=portable_exe path={}",
+                        exe_dir.display()
+                    ),
+                );
                 return exe_dir.to_path_buf();
             }
         }
@@ -236,12 +248,8 @@ fn windows_path_extensions(pathext: Option<&OsStr>) -> Vec<String> {
         .unwrap_or_default();
 
     if extensions.is_empty() {
-        extensions = vec![
-            ".COM".to_string(),
-            ".EXE".to_string(),
-            ".BAT".to_string(),
-            ".CMD".to_string(),
-        ];
+        extensions =
+            vec![".COM".to_string(), ".EXE".to_string(), ".BAT".to_string(), ".CMD".to_string()];
     }
 
     let mut unique = Vec::new();
@@ -472,7 +480,9 @@ mod tests {
         let dir = TempDirGuard::new("non_exec_lookup");
         let java_path = dir.path().join("java");
         fs::write(&java_path, b"#!/bin/sh\nexit 0\n").expect("java file should be created");
-        let mut perms = fs::metadata(&java_path).expect("metadata should exist").permissions();
+        let mut perms = fs::metadata(&java_path)
+            .expect("metadata should exist")
+            .permissions();
         perms.set_mode(0o644);
         fs::set_permissions(&java_path, perms).expect("permissions should be updated");
 
@@ -490,7 +500,9 @@ mod tests {
         let dir = TempDirGuard::new("exec_lookup");
         let java_path = dir.path().join("java");
         fs::write(&java_path, b"#!/bin/sh\nexit 0\n").expect("java file should be created");
-        let mut perms = fs::metadata(&java_path).expect("metadata should exist").permissions();
+        let mut perms = fs::metadata(&java_path)
+            .expect("metadata should exist")
+            .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&java_path, perms).expect("permissions should be updated");
 
@@ -538,10 +550,8 @@ mod tests {
     fn get_or_create_app_data_dir_checked_creates_explicit_env_dir() {
         let dir = TempDirGuard::new("app_data_create_checked");
         let target = dir.path().join("nested").join("app-data");
-        let _guard = crate::test_support::EnvGuard::set(
-            "SEALANTERN_DATA_DIR",
-            &target.to_string_lossy(),
-        );
+        let _guard =
+            crate::test_support::EnvGuard::set("SEALANTERN_DATA_DIR", &target.to_string_lossy());
         let _lock = crate::test_support::lock_env();
 
         let resolved = get_or_create_app_data_dir_checked()
@@ -558,10 +568,8 @@ mod tests {
         let file_path = dir.path().join("data-root-file");
         fs::write(&file_path, b"not a directory").expect("file-backed app data root should exist");
         let blocked = file_path.join("nested");
-        let _guard = crate::test_support::EnvGuard::set(
-            "SEALANTERN_DATA_DIR",
-            &blocked.to_string_lossy(),
-        );
+        let _guard =
+            crate::test_support::EnvGuard::set("SEALANTERN_DATA_DIR", &blocked.to_string_lossy());
         let _lock = crate::test_support::lock_env();
 
         let error = get_or_create_app_data_dir_checked()

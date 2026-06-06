@@ -2,9 +2,7 @@ pub(super) fn emit_process_log(plugin_id: &str, action: &str, detail: &str) {
     let _ = crate::plugins::api::emit_permission_log(plugin_id, "api_call", action, detail);
 }
 
-pub(super) fn process_error(prefix: &str, error: impl std::fmt::Display) -> mlua::Error {
-    mlua::Error::runtime(format!("{}: {}", prefix, error))
-}
+use crate::plugins::runtime::process::common::process_err1;
 
 pub(super) fn mask_args_for_log(args: &[String]) -> String {
     if args.is_empty() {
@@ -19,11 +17,11 @@ pub(super) fn validate_program_path(
     program: &str,
 ) -> Result<(), mlua::Error> {
     if !program_path.exists() {
-        return Err(mlua::Error::runtime(format!("Program not found: {}", program)));
+        return Err(process_err1("plugins.runtime.process.program_not_found", program));
     }
 
     if !program_path.is_file() {
-        return Err(mlua::Error::runtime(format!("Program path is not a file: {}", program)));
+        return Err(process_err1("plugins.runtime.process.program_path_not_file", program));
     }
 
     Ok(())
@@ -35,18 +33,18 @@ pub(super) fn validate_args(
     max_arg_length: usize,
 ) -> Result<(), mlua::Error> {
     if args.len() > max_args_count {
-        return Err(mlua::Error::runtime(format!(
-            "Too many arguments: maximum {} allowed",
-            max_args_count
-        )));
+        return Err(process_err1(
+            "plugins.runtime.process.too_many_arguments",
+            max_args_count.to_string(),
+        ));
     }
 
     for arg in args {
         if arg.len() > max_arg_length {
-            return Err(mlua::Error::runtime(format!(
-                "Argument too long: maximum {} characters allowed",
-                max_arg_length
-            )));
+            return Err(process_err1(
+                "plugins.runtime.process.argument_too_long",
+                max_arg_length.to_string(),
+            ));
         }
     }
 
@@ -81,31 +79,28 @@ pub(super) fn collect_env_vars(
         let (k, v) = pair?;
 
         if env_vars.len() >= max_env_vars {
-            return Err(mlua::Error::runtime(format!(
-                "Too many environment variables: maximum {} allowed",
-                max_env_vars
-            )));
+            return Err(process_err1(
+                "plugins.runtime.process.too_many_env_vars",
+                max_env_vars.to_string(),
+            ));
         }
 
         if k.is_empty() || k.len() > max_env_key_length {
-            return Err(mlua::Error::runtime(format!(
-                "Invalid environment key length: maximum {} characters allowed",
-                max_env_key_length
-            )));
+            return Err(process_err1(
+                "plugins.runtime.process.env_key_length_invalid",
+                max_env_key_length.to_string(),
+            ));
         }
 
         if v.len() > max_env_value_length {
-            return Err(mlua::Error::runtime(format!(
-                "Environment value too long: maximum {} characters allowed",
-                max_env_value_length
-            )));
+            return Err(process_err1(
+                "plugins.runtime.process.env_value_too_long",
+                max_env_value_length.to_string(),
+            ));
         }
 
         if !is_allowed_env_key(&k) {
-            return Err(mlua::Error::runtime(format!(
-                "Environment variable is not allowed: {}",
-                k
-            )));
+            return Err(process_err1("plugins.runtime.process.env_var_not_allowed", k));
         }
 
         env_vars.push((k, v));

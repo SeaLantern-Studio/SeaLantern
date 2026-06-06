@@ -1,4 +1,4 @@
-use super::common::{CommandHandler, RegistryBuilder, parse_params};
+use super::common::{parse_params, CommandHandler, RegistryBuilder};
 use super::requests::{
     AddExistingServerRequest, CollectCopyConflictsRequest, CopyDirectoryContentsRequest,
     CreateServerRequest, GetLogsRequest, GetServerStatusRequest, ImportModpackRequest,
@@ -134,7 +134,7 @@ fn handle_get_server_list(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let result = server_commands::get_server_list();
+        let result = server_commands::get_server_list_checked()?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -164,7 +164,7 @@ fn handle_get_server_logs(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: GetLogsRequest = parse_params(params)?;
-        let result = server_commands::get_server_logs(req.id, req.since, None);
+        let result = server_commands::get_server_logs(req.id, req.since, None)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }

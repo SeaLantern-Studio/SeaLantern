@@ -7,6 +7,8 @@ use mlua::{Lua, Table};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use super::common::process_msg2;
+
 /// 注册 `sl.process` 下的命令接口
 ///
 /// # Parameters
@@ -31,16 +33,28 @@ pub(super) fn register(
 ) -> Result<(), String> {
     process_table
         .set("exec", exec::exec(lua, plugin_dir, plugin_id, permissions, process_registry)?)
-        .map_err(|e| format!("Failed to set process.exec: {}", e))?;
+        .map_err(|e| {
+            process_msg2("plugins.runtime.process.set_api_failed", "process.exec", e.to_string())
+        })?;
     process_table
         .set("get", query::get(lua, plugin_id, process_registry)?)
-        .map_err(|e| format!("Failed to set process.get: {}", e))?;
+        .map_err(|e| {
+            process_msg2("plugins.runtime.process.set_api_failed", "process.get", e.to_string())
+        })?;
     process_table
         .set("list", query::list(lua, plugin_id, process_registry)?)
-        .map_err(|e| format!("Failed to set process.list: {}", e))?;
+        .map_err(|e| {
+            process_msg2("plugins.runtime.process.set_api_failed", "process.list", e.to_string())
+        })?;
     process_table
         .set("read_output", read_output::read_output(lua, plugin_id, process_registry)?)
-        .map_err(|e| format!("Failed to set process.read_output: {}", e))?;
+        .map_err(|e| {
+            process_msg2(
+                "plugins.runtime.process.set_api_failed",
+                "process.read_output",
+                e.to_string(),
+            )
+        })?;
 
     Ok(())
 }

@@ -4,6 +4,7 @@ use super::super::super::startup_support;
 use super::context::LaunchContext;
 use super::script_launch_support;
 use crate::services::server::manager::common::StartupMode;
+use crate::services::server::manager::i18n::manager_t;
 use sea_lantern_server_local_setup_core::{
     resolve_direct_jar_launch_target, resolve_local_preferred_jar_path,
 };
@@ -61,7 +62,7 @@ pub(crate) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Co
             let installer_url = context
                 .starter_installer_url
                 .as_deref()
-                .ok_or_else(|| "Starter 安装器下载链接为空".to_string())?;
+                .ok_or_else(|| manager_t("server.manager.starter_installer_url_missing"))?;
             build_direct_jar_command(
                 context,
                 context
@@ -89,7 +90,7 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
         .custom_command()
         .map(|value| value.trim())
         .filter(|value| !value.is_empty())
-        .ok_or_else(|| "自定义启动命令为空".to_string())?;
+        .ok_or_else(|| manager_t("server.manager.launch_custom_command_empty"))?;
 
     #[cfg(target_os = "windows")]
     {
@@ -131,7 +132,7 @@ fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        Err("BAT 启动方式仅支持 Windows".to_string())
+        Err(manager_t("server.manager.launch_bat_only_windows"))
     }
 }
 
@@ -163,15 +164,13 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        Err("PS1 启动方式仅支持 Windows".to_string())
+        Err(manager_t("server.manager.launch_ps1_only_windows"))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        build_custom_command, build_ps1_command, build_sh_command,
-    };
+    use super::{build_custom_command, build_ps1_command, build_sh_command};
     use crate::models::server::{
         CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };

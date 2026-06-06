@@ -1,3 +1,4 @@
+use super::process::common::process_msg1;
 use super::PluginRuntime;
 use mlua::Table;
 use std::collections::HashMap;
@@ -30,10 +31,9 @@ impl PluginRuntime {
         sl: &Table,
         process_registry: Arc<Mutex<HashMap<u32, common::ProcessEntry>>>,
     ) -> Result<(), String> {
-        let process_table = self
-            .lua
-            .create_table()
-            .map_err(|e| format!("Failed to create process table: {}", e))?;
+        let process_table = self.lua.create_table().map_err(|e| {
+            process_msg1("plugins.runtime.process.create_table_failed", e.to_string())
+        })?;
 
         commands::register(
             &self.lua,
@@ -45,8 +45,9 @@ impl PluginRuntime {
         )?;
         lifecycle::register(&self.lua, &process_table, &self.plugin_id, &process_registry)?;
 
-        sl.set("process", process_table)
-            .map_err(|e| format!("Failed to set sl.process: {}", e))?;
+        sl.set("process", process_table).map_err(|e| {
+            process_msg1("plugins.runtime.process.set_namespace_failed", e.to_string())
+        })?;
 
         Ok(())
     }

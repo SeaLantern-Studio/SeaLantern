@@ -1,7 +1,7 @@
 use super::super::PluginRuntime;
 use super::common::{
     emit_ui_action, json_to_string, lua_str, map_create_err, map_set_err,
-    register_single_string_ui_action, UiLogSpec, VALID_INSERT_PLACEMENTS,
+    register_single_string_ui_action, ui_t2, UiLogSpec, VALID_INSERT_PLACEMENTS,
 };
 use mlua::Table;
 
@@ -87,9 +87,10 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
                 let html = lua_str(html);
 
                 if !VALID_INSERT_PLACEMENTS.contains(&placement.as_str()) {
-                    return Err(mlua::Error::runtime(format!(
-                        "无效的 placement 参数: '{}', 必须是 {:?}",
-                        placement, VALID_INSERT_PLACEMENTS
+                    return Err(mlua::Error::runtime(ui_t2(
+                        "plugins.runtime.ui.style.invalid_placement",
+                        placement,
+                        format!("{:?}", VALID_INSERT_PLACEMENTS),
                     )));
                 }
 

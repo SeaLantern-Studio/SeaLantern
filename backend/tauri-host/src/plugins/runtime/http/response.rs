@@ -2,7 +2,7 @@ use std::io::Read;
 
 use mlua::{Lua, MultiValue, Result as LuaResult};
 
-use super::common::{lua_error, lua_success};
+use super::common::{http_t1, http_t2, lua_error, lua_success};
 
 pub(super) fn send_request(
     lua: &Lua,
@@ -35,8 +35,9 @@ fn build_response_table(
         }
     }
 
-    let body_bytes = read_response_body(resp, max_size)
-        .map_err(|e| mlua::Error::runtime(format!("Failed to read response body: {}", e)))?;
+    let body_bytes = read_response_body(resp, max_size).map_err(|e| {
+        mlua::Error::runtime(http_t1("plugins.runtime.http.read_response_body_failed", e))
+    })?;
     let body_str = String::from_utf8_lossy(&body_bytes).to_string();
 
     let response_table = lua.create_table()?;
@@ -50,24 +51,23 @@ fn build_response_table(
 fn read_response_body(
     mut resp: reqwest::blocking::Response,
     max_size: u64,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+) -> Result<Vec<u8>, String> {
     let mut body = Vec::new();
     let mut chunk = [0_u8; 8192];
 
     loop {
-        let read = resp.read(&mut chunk)?;
+        let read = resp.read(&mut chunk).map_err(|e| e.to_string())?;
         if read == 0 {
             break;
         }
 
         body.extend_from_slice(&chunk[..read]);
         if body.len() as u64 > max_size {
-            return Err(format!(
-                "Response body too large: {} bytes, limit is {} bytes",
-                body.len(),
-                max_size
-            )
-            .into());
+            return Err(http_t2(
+                "plugins.runtime.http.response_body_too_large",
+                body.len().to_string(),
+                max_size.to_string(),
+            ));
         }
     }
 

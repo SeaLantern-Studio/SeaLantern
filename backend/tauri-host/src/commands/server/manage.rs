@@ -224,8 +224,13 @@ pub fn send_command(id: String, command: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_server_list() -> Vec<crate::models::server::ServerInstance> {
-    runtime::get_server_list()
+pub fn get_server_list() -> Result<Vec<crate::models::server::ServerInstance>, String> {
+    runtime::get_server_list_checked()
+}
+
+pub(crate) fn get_server_list_checked() -> Result<Vec<crate::models::server::ServerInstance>, String>
+{
+    runtime::get_server_list_checked()
 }
 
 #[tauri::command]
@@ -242,7 +247,11 @@ pub fn delete_server(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_server_logs(id: String, since: usize, max_lines: Option<usize>) -> Vec<String> {
+pub fn get_server_logs(
+    id: String,
+    since: usize,
+    max_lines: Option<usize>,
+) -> Result<Vec<String>, String> {
     runtime::get_server_logs(id, since, max_lines)
 }
 
@@ -251,6 +260,31 @@ pub fn get_local_launch_detail(
     id: String,
 ) -> Result<crate::services::server::manager::LocalLaunchDetail, String> {
     runtime::get_local_launch_detail(id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::get_server_list;
+    use crate::services::global;
+
+    #[test]
+    fn get_server_list_surfaces_server_list_lock_failures() {
+        let manager = global::server_manager();
+
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = manager
+                .servers
+                .lock()
+                .expect("servers lock should be acquired");
+            panic!("poison server list lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = get_server_list()
+            .expect_err("lock failure should not be flattened into an empty server list");
+
+        assert_eq!(error, "servers lock poisoned");
+    }
 }
 
 #[tauri::command]

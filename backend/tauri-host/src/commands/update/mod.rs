@@ -1,8 +1,10 @@
 //! 应用更新相关的命令。
 
+mod common;
 pub mod download;
 pub mod install;
 
+use self::common::{update_t1, update_t2};
 use tauri::{command, AppHandle};
 
 use sea_lantern_update_core::constants::UPDATE_HTTP_USER_AGENT;
@@ -18,7 +20,7 @@ pub async fn check_update() -> Result<sea_lantern_update_core::types::UpdateInfo
 /// 打开下载链接
 #[command]
 pub async fn open_download_url(url: String) -> Result<(), String> {
-    opener::open(&url).map_err(|e| format!("open link failed: {}", e))
+    opener::open(&url).map_err(|e| update_t1("update.open_link_failed", e.to_string()))
 }
 
 /// 下载更新
@@ -35,7 +37,7 @@ pub async fn download_update(
     let client = reqwest::Client::builder()
         .user_agent(UPDATE_HTTP_USER_AGENT)
         .build()
-        .map_err(|e| format!("HTTP client init failed: {}", e))?;
+        .map_err(|e| update_t1("update.http_client_init_failed", e.to_string()))?;
 
     let cache_dir = get_update_cache_dir();
     let mut candidates: Vec<(String, Option<String>, &'static str)> = Vec::new();
@@ -72,7 +74,9 @@ pub async fn download_update(
         .await
         {
             Ok(path) => return Ok(path),
-            Err(error) => errors.push(format!("{} 下载失败: {}", source_name, error)),
+            Err(error) => {
+                errors.push(update_t2("update.download_source_failed", source_name, error))
+            }
         }
     }
 

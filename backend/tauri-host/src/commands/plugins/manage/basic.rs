@@ -7,6 +7,7 @@ use crate::hardcode_data::plugin_manifest::{
 use crate::models::plugin::{
     BatchInstallError, BatchInstallResult, PluginInfo, PluginInstallResult,
 };
+use crate::plugins::manager::i18n::plugin_t1;
 use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex};
 
@@ -70,7 +71,7 @@ pub(super) fn install_plugin(
         return Err(unsupported_plugin_source_message());
     }
     if (is_zip || is_manifest) && !file_path.is_file() {
-        return Err("插件路径不存在或不是文件".to_string());
+        return Err(plugin_t1("plugin.install.path_not_file", file_path.display().to_string()));
     }
 
     let mut manager = lock_manager(&manager);
@@ -189,7 +190,7 @@ pub(super) fn install_plugins_batch(
                 Err(missing_manifest_in_folder_message())
             }
         } else {
-            Err(format!("Path does not exist: {}", path_str))
+            Err(plugin_t1("plugin.install.path_not_exist", path_str.clone()))
         };
 
         match result {

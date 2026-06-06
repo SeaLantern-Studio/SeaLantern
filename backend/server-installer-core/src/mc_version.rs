@@ -75,10 +75,7 @@ fn collect_mod_filenames_checked(dir: &Path, output: &mut Vec<String>) -> Result
                 .and_then(|ext| ext.to_str())
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("jar"))
             {
-                return Err(format!(
-                    "检测到目录伪装成 mod JAR 文件: {}",
-                    path.to_string_lossy()
-                ));
+                return Err(format!("检测到目录伪装成 mod JAR 文件: {}", path.to_string_lossy()));
             }
             collect_mod_filenames_checked(&path, output)?;
             continue;

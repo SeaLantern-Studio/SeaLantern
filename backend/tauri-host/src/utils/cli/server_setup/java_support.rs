@@ -1,10 +1,29 @@
 use std::path::{Path, PathBuf};
 
+use crate::services::global::i18n_service;
 use crate::services::java_detector;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::prompt_yes_no;
 use crate::utils::cli::server_shared::{trace_cli_action, trace_cli_error};
 use crate::utils::path::find_executable_in_path;
+use std::collections::HashMap;
+
+fn cli_java_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn cli_java_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn cli_java_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 pub(super) fn resolve_java_path(
     command: &CliServerCommand,
@@ -26,9 +45,7 @@ pub(super) fn resolve_java_path(
     }
 
     if command.java_from_env_only {
-        return Err(
-            "--J 模式下未在 JAVA_HOME 或 PATH 中找到 Java，请改用 --java 显式指定路径".to_string()
-        );
+        return Err(cli_java_t("cli.server_setup.java.env_only_not_found"));
     }
 
     let trimmed_default = default_java_path.trim();
@@ -53,10 +70,10 @@ pub(super) fn resolve_java_path(
         return Ok(path);
     }
 
-    let should_scan = prompt_yes_no("未找到可用 Java，是否尝试全局扫描？ [Y/n] ")?;
+    let should_scan = prompt_yes_no(&cli_java_t("cli.server_setup.java.scan_prompt"))?;
     if !should_scan {
         trace_cli_error("java_scan_cancelled", "", "user cancelled java global scan");
-        return Err("未找到可用 Java，用户取消全局扫描".to_string());
+        return Err(cli_java_t("cli.server_setup.java.scan_cancelled"));
     }
 
     let found = java_detector::detect_java_installations();
@@ -76,45 +93,45 @@ where
 {
     match normalize_java_env_selector(java_path) {
         Some(JavaEnvSelector::JavaHome) => {
-            let candidate = find_java_from_java_home().ok_or_else(|| {
-                "--java %env:JAVA_HOME% 未解析到可用 Java，请确认 JAVA_HOME 指向有效 JDK/JRE"
-                    .to_string()
-            })?;
+            let candidate = find_java_from_java_home()
+                .ok_or_else(|| cli_java_t("cli.server_setup.java.explicit_java_home_not_found"))?;
             validate_candidate(
                 &candidate,
-                "--java %env:JAVA_HOME% 指向的目标不是可用 Java，请确认 JAVA_HOME 配置正确",
+                &cli_java_t("cli.server_setup.java.explicit_java_home_invalid"),
             )
         }
         Some(JavaEnvSelector::Path) => {
-            let candidate = find_java_in_path().map_err(|_| {
-                "--java %env:Path% 未在 PATH 中解析到可用 Java，请确认 PATH 已包含 java".to_string()
-            })?;
+            let candidate = find_java_in_path()
+                .map_err(|_| cli_java_t("cli.server_setup.java.explicit_path_env_not_found"))?;
             validate_candidate(
                 &candidate,
-                "--java %env:Path% 解析到的目标不是可用 Java，请确认 PATH 中的 java 可执行且有效",
+                &cli_java_t("cli.server_setup.java.explicit_path_env_invalid"),
             )
         }
         None => {
             let trimmed = java_path.trim();
             if trimmed.is_empty() {
-                return Err("--java 不能为空路径".to_string());
+                return Err(cli_java_t("cli.server_setup.java.explicit_empty"));
             }
 
             if Path::new(trimmed).exists() {
                 return validate_candidate(
                     trimmed,
-                    &format!("--java 指定路径不是可用 Java 运行时: {}", trimmed),
+                    &cli_java_t1("cli.server_setup.java.explicit_path_invalid_runtime", trimmed),
                 );
             }
 
             if let Some(resolved) = find_executable_in_path(trimmed) {
                 return validate_candidate(
                     resolved.to_string_lossy().as_ref(),
-                    &format!("--java 指定的可执行文件不是有效 Java 运行时: {}", trimmed),
+                    &cli_java_t1(
+                        "cli.server_setup.java.explicit_executable_invalid_runtime",
+                        trimmed,
+                    ),
                 );
             }
 
-            Err(format!("--java 指定路径不存在，且未在 PATH 中解析到可执行文件: {}", java_path))
+            Err(cli_java_t1("cli.server_setup.java.explicit_path_not_found", java_path))
         }
     }
 }
@@ -134,11 +151,11 @@ where
 {
     if found.is_empty() {
         trace_cli_error("java_scan_empty", "", "no java installation discovered");
-        return Err("全局扫描后仍未找到 Java，请使用 --java 或配置默认 Java 路径".to_string());
+        return Err(cli_java_t("cli.server_setup.java.scan_empty"));
     }
 
     trace_cli_action("java_scan_found", &format!("count={}", found.len()));
-    println!("全局扫描发现以下 Java 安装:");
+    println!("{}", cli_java_t("cli.server_setup.java.scan_found_header"));
     for (index, item) in found.iter().enumerate() {
         println!(
             "  [{}] Java {} | vendor={} | arch={} | path={}",
@@ -153,7 +170,10 @@ where
     if found.len() == 1 {
         let selected = &found[0];
         trace_cli_action("java_scan_auto_select", &format!("index=1 path={}", selected.path));
-        println!("仅检测到 1 个可用 Java，已自动选择: {}", selected.path);
+        println!(
+            "{}",
+            cli_java_t1("cli.server_setup.java.scan_auto_selected", selected.path.clone())
+        );
         return Ok(selected.path.clone());
     }
 
@@ -195,16 +215,16 @@ pub(super) fn find_java_from_env() -> Option<String> {
 
 fn prompt_java_scan_selection(count: usize) -> Result<usize, String> {
     loop {
-        print!("请选择要使用的 Java 编号 [1-{}，默认 1]: ", count);
+        print!("{}", cli_java_t1("cli.server_setup.java.scan_select_prompt", count.to_string()));
         use std::io::Write;
-        std::io::stdout()
-            .flush()
-            .map_err(|err| format!("输出 Java 选择提示失败: {}", err))?;
+        std::io::stdout().flush().map_err(|err| {
+            cli_java_t1("cli.server_setup.java.scan_prompt_flush_failed", err.to_string())
+        })?;
 
         let mut input = String::new();
-        std::io::stdin()
-            .read_line(&mut input)
-            .map_err(|err| format!("读取 Java 选择失败: {}", err))?;
+        std::io::stdin().read_line(&mut input).map_err(|err| {
+            cli_java_t1("cli.server_setup.java.scan_read_selection_failed", err.to_string())
+        })?;
 
         let trimmed = input.trim();
         if trimmed.is_empty() {
@@ -214,7 +234,14 @@ fn prompt_java_scan_selection(count: usize) -> Result<usize, String> {
         match trimmed.parse::<usize>() {
             Ok(value) if (1..=count).contains(&value) => return Ok(value - 1),
             _ => {
-                println!("无效选择: {}。请输入 1 到 {} 之间的编号。", trimmed, count);
+                println!(
+                    "{}",
+                    cli_java_t2(
+                        "cli.server_setup.java.scan_invalid_selection",
+                        trimmed,
+                        count.to_string(),
+                    )
+                );
             }
         }
     }
@@ -224,7 +251,7 @@ fn find_java_in_path() -> Result<String, String> {
     let executable = if cfg!(windows) { "java.exe" } else { "java" };
     find_executable_in_path(executable)
         .map(|path| path.to_string_lossy().to_string())
-        .ok_or_else(|| "PATH 中未找到 java".to_string())
+        .ok_or_else(|| cli_java_t("cli.server_setup.java.path_not_found"))
 }
 
 fn validate_java_candidate(candidate: &str, context_message: &str) -> Result<String, String> {

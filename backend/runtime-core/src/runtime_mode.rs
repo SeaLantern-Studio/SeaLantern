@@ -44,8 +44,8 @@ impl RuntimeMode {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_support::{lock_env, EnvGuard};
     use super::RuntimeMode;
+    use crate::test_support::{lock_env, EnvGuard};
     use std::path::Path;
 
     #[test]

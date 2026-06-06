@@ -1,5 +1,5 @@
 use super::common::{
-    map_storage_err, read_storage, set_storage_function, storage_runtime_err,
+    map_storage_err, read_storage, set_storage_function, storage_runtime_err, storage_runtime_err1,
     storage_value_from_lua, with_storage_lock, write_storage, StorageContext, MAX_KEY_LENGTH,
     MAX_TOTAL_SIZE, MAX_VALUE_SIZE,
 };
@@ -28,8 +28,8 @@ fn set(lua: &Lua, ctx: &StorageContext) -> Result<Function, String> {
         }
 
         let json_value = storage_value_from_lua(&value)?;
-        let value_bytes =
-            serde_json::to_vec(&json_value).map_err(|e| mlua::Error::runtime(e.to_string()))?;
+        let value_bytes = serde_json::to_vec(&json_value)
+            .map_err(|e| storage_runtime_err1("storage.serialize_failed", e.to_string()))?;
         if value_bytes.len() > MAX_VALUE_SIZE {
             return Err(storage_runtime_err("storage.value_too_large"));
         }
@@ -38,8 +38,8 @@ fn set(lua: &Lua, ctx: &StorageContext) -> Result<Function, String> {
             let mut data = read_storage(&path)?;
             data.insert(key, json_value);
 
-            let total_bytes =
-                serde_json::to_vec(&data).map_err(|e| mlua::Error::runtime(e.to_string()))?;
+            let total_bytes = serde_json::to_vec(&data)
+                .map_err(|e| storage_runtime_err1("storage.serialize_failed", e.to_string()))?;
             if total_bytes.len() > MAX_TOTAL_SIZE {
                 return Err(storage_runtime_err("storage.total_too_large"));
             }

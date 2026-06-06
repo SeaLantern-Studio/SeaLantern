@@ -1,49 +1,57 @@
 //! 插件清单相关的固定提示内容。
 
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
+use crate::plugins::manager::i18n::{plugin_t1, plugin_t2, plugin_t3};
 
 pub fn unsupported_plugin_source_message() -> String {
-    format!("不支持的文件格式，请提供 .zip 文件、{} 或插件目录", PLUGIN_MANIFEST_FILE_NAME)
-}
-
-pub fn unsupported_plugin_source_message_en() -> String {
-    format!(
-        "Unsupported file format. Please provide a .zip file or {}",
-        PLUGIN_MANIFEST_FILE_NAME
-    )
+    plugin_t1("plugin.install.unsupported_source", PLUGIN_MANIFEST_FILE_NAME)
 }
 
 pub fn invalid_manifest_path_message() -> String {
-    format!("Invalid {} path", PLUGIN_MANIFEST_FILE_NAME)
+    plugin_t1("plugin.install.invalid_manifest_path", PLUGIN_MANIFEST_FILE_NAME)
 }
 
 pub fn missing_manifest_in_folder_message() -> String {
-    format!("Folder does not contain {}", PLUGIN_MANIFEST_FILE_NAME)
+    plugin_t1("plugin.install.missing_manifest_in_folder", PLUGIN_MANIFEST_FILE_NAME)
 }
 
 pub fn manifest_not_found_in_dir_message(path: &std::path::Path) -> String {
-    format!("{} not found in {}", PLUGIN_MANIFEST_FILE_NAME, path.display())
+    plugin_t2(
+        "plugin.install.manifest_not_found_in_dir",
+        PLUGIN_MANIFEST_FILE_NAME,
+        path.display().to_string(),
+    )
 }
 
 pub fn manifest_not_found_in_zip_message() -> String {
-    format!("{} not found in ZIP archive", PLUGIN_MANIFEST_FILE_NAME)
+    plugin_t1("plugin.install.manifest_not_found_in_zip", PLUGIN_MANIFEST_FILE_NAME)
 }
 
 pub fn read_manifest_failed_message(error: &dyn std::fmt::Display) -> String {
-    format!("Failed to read {}: {}", PLUGIN_MANIFEST_FILE_NAME, error)
+    plugin_t2(
+        "plugin.install.read_manifest_failed",
+        PLUGIN_MANIFEST_FILE_NAME,
+        error.to_string(),
+    )
 }
 
 pub fn parse_manifest_failed_message(error: &dyn std::fmt::Display) -> String {
-    format!("Failed to parse {}: {}", PLUGIN_MANIFEST_FILE_NAME, error)
+    plugin_t2(
+        "plugin.install.parse_manifest_failed",
+        PLUGIN_MANIFEST_FILE_NAME,
+        error.to_string(),
+    )
 }
 
 pub fn writing_manifest_not_allowed_message() -> String {
-    format!("Writing {} is not allowed", PLUGIN_MANIFEST_FILE_NAME)
+    plugin_t1("plugin.install.write_manifest_not_allowed", PLUGIN_MANIFEST_FILE_NAME)
 }
 
 pub fn missing_permission_in_manifest_message(module_name: &str) -> String {
-    format!(
-        "权限不足: 使用 'sl.{}' 模块需要在 {} 中声明 '{}' 权限",
-        module_name, PLUGIN_MANIFEST_FILE_NAME, module_name
+    plugin_t3(
+        "plugin.permission.missing_in_manifest",
+        module_name,
+        PLUGIN_MANIFEST_FILE_NAME,
+        module_name,
     )
 }

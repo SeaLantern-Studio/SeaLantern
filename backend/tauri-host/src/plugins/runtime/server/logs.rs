@@ -1,6 +1,6 @@
 use super::common::{
-    check_server_permission, create_logs_table, find_server, map_lua_err, running_log_pairs,
-    set_logs_function, set_logs_table, ServerContext,
+    check_server_permission, create_logs_table, find_server, map_lua_err,
+    running_log_pairs_checked, set_logs_function, set_logs_table, ServerContext,
 };
 use mlua::{Lua, Table};
 
@@ -23,7 +23,9 @@ fn get(lua: &Lua, ctx: &ServerContext) -> Result<mlua::Function, String> {
         find_server(&server_id)?;
 
         let count = count.unwrap_or(100).min(1000);
-        let logs = crate::services::server::log_pipeline::get_logs(&server_id, 0, Some(count));
+        let logs =
+            crate::services::server::log_pipeline::get_logs_checked(&server_id, 0, Some(count))
+                .map_err(mlua::Error::runtime)?;
 
         let result = lua.create_table()?;
         for (i, line) in logs.iter().enumerate() {
@@ -40,7 +42,7 @@ fn get_all(lua: &Lua, ctx: &ServerContext) -> Result<mlua::Function, String> {
         check_server_permission(&ctx.permissions)?;
 
         let count = count.unwrap_or(100).min(1000);
-        let logs_pairs = running_log_pairs(count);
+        let logs_pairs = running_log_pairs_checked(count).map_err(mlua::Error::runtime)?;
 
         let result = lua.create_table()?;
         for (i, (server_id, logs)) in logs_pairs.into_iter().enumerate() {

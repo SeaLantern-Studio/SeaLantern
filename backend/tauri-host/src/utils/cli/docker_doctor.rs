@@ -545,10 +545,8 @@ mod tests {
     fn render_docker_help_output() -> String {
         let lines = [
             "用法: sealantern docker <子命令>".to_string(),
-            "  doctor    检查 Docker CLI、守护进程、RCON 宿主地址和容器路径映射"
-                .to_string(),
-            "  image-check <image[:tag]>    检查目标镜像是否本地已缓存或可从远端解析"
-                .to_string(),
+            "  doctor    检查 Docker CLI、守护进程、RCON 宿主地址和容器路径映射".to_string(),
+            "  image-check <image[:tag]>    检查目标镜像是否本地已缓存或可从远端解析".to_string(),
             "  pull <image[:tag]>    主动拉取目标镜像，便于后续 server create/start 重试"
                 .to_string(),
         ];
@@ -608,8 +606,10 @@ mod tests {
     #[test]
     fn doctor_report_warns_when_container_like_rcon_host_is_implicit() {
         let _env_lock = lock_env();
-        let _host_guard = EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
-        let _container_guard = EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
+        let _host_guard =
+            EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
+        let _container_guard =
+            EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
 
         let mut context = sample_context();
         context.is_container_like = true;

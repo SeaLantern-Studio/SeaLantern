@@ -15,7 +15,11 @@ where
     F: FnOnce() -> std::io::Result<PathBuf>,
 {
     let base_dir = option_env!("CARGO_MANIFEST_DIR")
-        .and_then(|manifest| PathBuf::from(manifest).parent().map(|path| path.to_path_buf()))
+        .and_then(|manifest| {
+            PathBuf::from(manifest)
+                .parent()
+                .map(|path| path.to_path_buf())
+        })
         .or_else(|| match current_exe() {
             Ok(path) => path.parent().map(|dir| dir.to_path_buf()),
             Err(_) => None,
@@ -38,13 +42,21 @@ mod tests {
     #[test]
     fn build_report_path_uses_manifest_parent_when_available() {
         let now = Utc::now();
-        let report_path = build_report_path_with(&now, || {
-            Err(std::io::Error::other("exe unavailable"))
-        })
-        .expect("manifest parent should provide a usable panic log directory");
+        let report_path =
+            build_report_path_with(&now, || Err(std::io::Error::other("exe unavailable")))
+                .expect("manifest parent should provide a usable panic log directory");
 
-        assert!(report_path.file_name().and_then(|name| name.to_str()).is_some());
-        assert_eq!(report_path.parent().and_then(|dir| dir.file_name()).and_then(|name| name.to_str()), Some("panic-log"));
+        assert!(report_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some());
+        assert_eq!(
+            report_path
+                .parent()
+                .and_then(|dir| dir.file_name())
+                .and_then(|name| name.to_str()),
+            Some("panic-log")
+        );
     }
 
     #[test]
@@ -53,7 +65,8 @@ mod tests {
         let report_path = build_report_path_with(&now, || Ok(PathBuf::from("runtime-core.exe")));
 
         if option_env!("CARGO_MANIFEST_DIR").is_none() {
-            let error = report_path.expect_err("missing manifest parent should surface current_exe failure path");
+            let error = report_path
+                .expect_err("missing manifest parent should surface current_exe failure path");
             assert!(error.to_string().contains("无法确定 panic 日志目录"));
         } else {
             assert!(report_path.is_ok());

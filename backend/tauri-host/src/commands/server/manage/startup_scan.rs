@@ -1,3 +1,4 @@
+use crate::commands::server::common::server_t1;
 use crate::models::server::StartupScanResult;
 
 /// 扫描启动候选项
@@ -15,5 +16,5 @@ pub(super) async fn scan_startup_candidates(
         )
     })
     .await
-    .map_err(|e| format!("扫描启动项任务失败: {}", e))?
+    .map_err(|e| server_t1("server.manage.scan_startup_task_failed", e.to_string()))?
 }

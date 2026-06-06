@@ -6,6 +6,7 @@ use crate::hardcode_data::plugin_market::{
     PLUGIN_MARKET_ALLOWED_DOWNLOAD_DOMAINS, PLUGIN_MARKET_HTTP_USER_AGENT,
 };
 use crate::models::plugin::{MarketPluginInfo, PluginInstallResult};
+use crate::plugins::manager::i18n::{plugin_t1, plugin_t2};
 use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex};
 use url::Url;
@@ -126,9 +127,9 @@ pub(crate) async fn install_from_market_for_http(
 fn ensure_plugin_not_enabled(manager: &PluginManager, plugin_id: &str) -> Result<(), String> {
     if let Some(existing) = manager.plugins().get(plugin_id) {
         if matches!(existing.state, crate::models::plugin::PluginState::Enabled) {
-            return Err(format!(
-                "插件 '{}' 正在运行中，请先禁用后再进行更新",
-                existing.manifest.name
+            return Err(plugin_t1(
+                "plugin.market.already_running_update",
+                existing.manifest.name.clone(),
             ));
         }
     }
@@ -160,7 +161,7 @@ async fn download_market_plugin(
 
     tokio::fs::create_dir_all(&temp_dir)
         .await
-        .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+        .map_err(|e| plugin_t1("plugin.market.create_temp_dir_failed", e.to_string()))?;
 
     let zip_path = temp_dir.join(format!("{}.zip", plugin_id));
     let final_download_url = resolve_plugin_download_url(
@@ -182,17 +183,21 @@ async fn download_market_plugin(
         .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await
-        .map_err(|e| format!("Failed to download plugin: {}", e))?;
+        .map_err(|e| plugin_t1("plugin.market.download_failed", e.to_string()))?;
 
     if !response.status().is_success() {
-        return Err(format!("Download failed with status: {}", response.status()));
+        return Err(plugin_t1(
+            "plugin.market.download_status_failed",
+            response.status().to_string(),
+        ));
     }
 
     if let Some(content_length) = response.content_length() {
         if content_length > MAX_DOWNLOAD_SIZE {
-            return Err(format!(
-                "Downloaded file exceeds max size ({}MB > 50MB)",
-                content_length / 1024 / 1024
+            return Err(plugin_t2(
+                "plugin.market.download_too_large",
+                (content_length / 1024 / 1024).to_string(),
+                (MAX_DOWNLOAD_SIZE / 1024 / 1024).to_string(),
             ));
         }
     }
@@ -200,18 +205,19 @@ async fn download_market_plugin(
     let bytes = response
         .bytes()
         .await
-        .map_err(|e| format!("Failed to read download response: {}", e))?;
+        .map_err(|e| plugin_t1("plugin.market.read_download_response_failed", e.to_string()))?;
 
     if bytes.len() as u64 > MAX_DOWNLOAD_SIZE {
-        return Err(format!(
-            "Downloaded file exceeds max size ({}MB > 50MB)",
-            bytes.len() / 1024 / 1024
+        return Err(plugin_t2(
+            "plugin.market.download_too_large",
+            (bytes.len() / 1024 / 1024).to_string(),
+            (MAX_DOWNLOAD_SIZE / 1024 / 1024).to_string(),
         ));
     }
 
     if let Err(error) = tokio::fs::write(&zip_path, &bytes).await {
         let _ = tokio::fs::remove_file(&zip_path).await;
-        return Err(format!("Failed to save downloaded file: {}", error));
+        return Err(plugin_t1("plugin.market.save_downloaded_file_failed", error.to_string()));
     }
 
     Ok((zip_path, untrusted_url))

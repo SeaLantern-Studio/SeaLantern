@@ -1,4 +1,5 @@
 use crate::plugins::runtime::process::ProcessEntry;
+use crate::services::global::i18n_service;
 use mlua::{Function, Table, Value};
 use std::collections::HashMap;
 use std::fs;
@@ -7,6 +8,19 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
+
+fn core_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn core_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 pub struct PluginRuntime {
     pub(crate) lua: mlua::Lua,
@@ -55,11 +69,17 @@ impl PluginRuntime {
         let globals = self.lua.globals();
         globals
             .set("plugin", table)
-            .map_err(|e| format!("Failed to set plugin global: {}", e))
+            .map_err(|e| core_t1("plugins.runtime.core.set_plugin_global_failed", e.to_string()))
     }
 
     pub(super) fn load_file_bytes(&self, path: &Path) -> Result<Vec<u8>, String> {
-        fs::read(path).map_err(|e| format!("Failed to read file {:?}: {}", path, e))
+        fs::read(path).map_err(|e| {
+            core_t2(
+                "plugins.runtime.core.read_file_failed",
+                path.display().to_string(),
+                e.to_string(),
+            )
+        })
     }
 
     pub(super) fn eval_lua_file(&self, path: &Path, content: &str) -> Result<Value, String> {
@@ -67,13 +87,20 @@ impl PluginRuntime {
             .load(content)
             .set_name(path.to_string_lossy())
             .eval()
-            .map_err(|e| format!("Failed to execute {:?}: {}", path, e))
+            .map_err(|e| {
+                core_t2(
+                    "plugins.runtime.core.execute_file_failed",
+                    path.display().to_string(),
+                    e.to_string(),
+                )
+            })
     }
 
     pub(super) fn call_table_function0(&self, table: &Table, event: &str) -> Result<bool, String> {
         if let Ok(func) = table.get::<Function>(event) {
-            func.call::<()>(())
-                .map_err(|e| format!("Failed to call plugin.{}: {}", event, e))?;
+            func.call::<()>(()).map_err(|e| {
+                core_t2("plugins.runtime.core.call_plugin_event_failed", event, e.to_string())
+            })?;
             return Ok(true);
         }
         Ok(false)
@@ -86,8 +113,9 @@ impl PluginRuntime {
         arg: &str,
     ) -> Result<bool, String> {
         if let Ok(func) = table.get::<Function>(event) {
-            func.call::<()>(arg.to_string())
-                .map_err(|e| format!("Failed to call plugin.{}: {}", event, e))?;
+            func.call::<()>(arg.to_string()).map_err(|e| {
+                core_t2("plugins.runtime.core.call_plugin_event_failed", event, e.to_string())
+            })?;
             return Ok(true);
         }
         Ok(false)
@@ -96,8 +124,9 @@ impl PluginRuntime {
     pub(super) fn call_global_function0(&self, event: &str) -> Result<bool, String> {
         let globals = self.lua.globals();
         if let Ok(func) = globals.get::<Function>(event) {
-            func.call::<()>(())
-                .map_err(|e| format!("Failed to call {}: {}", event, e))?;
+            func.call::<()>(()).map_err(|e| {
+                core_t2("plugins.runtime.core.call_global_event_failed", event, e.to_string())
+            })?;
             return Ok(true);
         }
         Ok(false)
@@ -106,8 +135,9 @@ impl PluginRuntime {
     pub(super) fn call_global_function1(&self, event: &str, arg: &str) -> Result<bool, String> {
         let globals = self.lua.globals();
         if let Ok(func) = globals.get::<Function>(event) {
-            func.call::<()>(arg.to_string())
-                .map_err(|e| format!("Failed to call {}: {}", event, e))?;
+            func.call::<()>(arg.to_string()).map_err(|e| {
+                core_t2("plugins.runtime.core.call_global_event_failed", event, e.to_string())
+            })?;
             return Ok(true);
         }
         Ok(false)

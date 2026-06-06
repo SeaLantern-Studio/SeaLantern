@@ -4,6 +4,7 @@ use crate::runtime::desktop_shell;
 use crate::runtime::plugin_bridge;
 
 use crate::services::download::download_manager::DownloadManager;
+use crate::utils::logger::log_fatal_ctx;
 
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
@@ -66,5 +67,12 @@ pub(crate) fn run_desktop() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Sea Lantern");
+        .unwrap_or_else(|error| {
+            log_fatal_ctx(
+                "runtime.bootstrap",
+                "run_desktop",
+                &format!("SeaLantern desktop runtime exited with error: {}", error),
+            );
+            std::process::exit(1);
+        });
 }

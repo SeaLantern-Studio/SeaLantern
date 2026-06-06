@@ -4,12 +4,12 @@ use crate::services::server::id_manager::CreateServerIdRequest;
 use super::runtime::run_async_cli_task;
 use super::server_control::{start_server_with_feedback, stop_server_with_feedback};
 
-pub(super) fn list_servers() {
+pub(super) fn list_servers() -> Result<(), String> {
     let manager = global::server_manager();
-    let servers = manager.get_server_list();
+    let servers = manager.get_server_list_checked()?;
     if servers.is_empty() {
         println!("暂无服务器。");
-        return;
+        return Ok(());
     }
 
     println!("{:<36} {:<20} {:<10} {:<10}", "ID", "名称", "版本", "端口");
@@ -20,6 +20,8 @@ pub(super) fn list_servers() {
             server.id, server.name, server.mc_version, server.port
         );
     }
+
+    Ok(())
 }
 
 pub(super) fn start_server(id: &str) {

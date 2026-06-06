@@ -10,7 +10,8 @@ mod request;
 mod response;
 
 use common::{
-    create_http_function, create_http_table, set_http_function, set_http_table, HttpContext,
+    create_http_function, create_http_table, http_t, http_t1, set_http_function, set_http_table,
+    HttpContext,
 };
 
 const MAX_RESPONSE_SIZE: u64 = 5 * 1024 * 1024;
@@ -24,49 +25,45 @@ fn is_blocked_host(host: &str) -> bool {
 
 pub(crate) fn validate_ssrf_url(url: &str) -> Result<(), mlua::Error> {
     let parsed = url::Url::parse(url)
-        .map_err(|_| mlua::Error::runtime("SSRF: only valid HTTP(S) URLs are allowed"))?;
+        .map_err(|_| mlua::Error::runtime(http_t("plugins.runtime.http.ssrf_http_only")))?;
 
     if !matches!(parsed.scheme(), "http" | "https") {
-        return Err(mlua::Error::runtime("SSRF: Access to non-HTTP(S) addresses is not allowed"));
+        return Err(mlua::Error::runtime(http_t("plugins.runtime.http.ssrf_non_http_blocked")));
     }
 
     let host = parsed
         .host_str()
-        .ok_or_else(|| mlua::Error::runtime("SSRF: URL must contain a host"))?;
+        .ok_or_else(|| mlua::Error::runtime(http_t("plugins.runtime.http.ssrf_host_required")))?;
 
     if is_blocked_host(host) {
-        return Err(mlua::Error::runtime("SSRF: Access to localhost is not allowed"));
+        return Err(mlua::Error::runtime(http_t("plugins.runtime.http.ssrf_localhost_blocked")));
     }
 
     if let Ok(addr) = host.parse::<IpAddr>() {
         if is_private_ip(addr) {
-            return Err(mlua::Error::runtime(
-                "SSRF: Access to internal network addresses is not allowed",
-            ));
+            return Err(mlua::Error::runtime(http_t("plugins.runtime.http.ssrf_internal_blocked")));
         }
         return Ok(());
     }
 
-    let port = parsed.port_or_known_default().ok_or_else(|| {
-        mlua::Error::runtime("SSRF: URL must use a known port for the selected scheme")
-    })?;
+    let port = parsed
+        .port_or_known_default()
+        .ok_or_else(|| mlua::Error::runtime(http_t("plugins.runtime.http.ssrf_port_required")))?;
 
-    let addrs = (host, port)
-        .to_socket_addrs()
-        .map_err(|e| mlua::Error::runtime(format!("SSRF: failed to resolve host: {}", e)))?;
+    let addrs = (host, port).to_socket_addrs().map_err(|e| {
+        mlua::Error::runtime(http_t1("plugins.runtime.http.ssrf_resolve_failed", e.to_string()))
+    })?;
 
     let mut resolved_any = false;
     for socket_addr in addrs {
         resolved_any = true;
         if is_private_ip(socket_addr.ip()) {
-            return Err(mlua::Error::runtime(
-                "SSRF: Access to internal network addresses is not allowed",
-            ));
+            return Err(mlua::Error::runtime(http_t("plugins.runtime.http.ssrf_internal_blocked")));
         }
     }
 
     if !resolved_any {
-        return Err(mlua::Error::runtime("SSRF: host resolution returned no usable addresses"));
+        return Err(mlua::Error::runtime(http_t("plugins.runtime.http.ssrf_no_usable_addresses")));
     }
 
     Ok(())
@@ -104,7 +101,12 @@ fn create_http_client(timeout: u64) -> Result<reqwest::blocking::Client, mlua::E
         .timeout(Duration::from_secs(timeout))
         .redirect(Policy::none())
         .build()
-        .map_err(|e| mlua::Error::runtime(format!("Failed to create HTTP client: {}", e)))
+        .map_err(|e| {
+            mlua::Error::runtime(http_t1(
+                "plugins.runtime.http.create_client_failed",
+                e.to_string(),
+            ))
+        })
 }
 
 fn run_blocking_http_request<F>(work: F) -> LuaResult<MultiValue>
@@ -123,7 +125,7 @@ fn execute_http_request(
     method: request::HttpMethod,
 ) -> LuaResult<MultiValue> {
     if !ctx.permissions.iter().any(|p| p == "network") {
-        return Err(mlua::Error::runtime("Permission denied: 'network' permission required"));
+        return Err(mlua::Error::runtime(http_t("plugins.runtime.http.permission_required")));
     }
 
     let args_vec: Vec<_> = args.into_vec();

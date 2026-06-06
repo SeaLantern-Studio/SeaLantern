@@ -91,12 +91,15 @@ mod tests {
         assert!(!has_docker_host_path_mapping());
 
         {
-            let _host_guard = EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
+            let _host_guard =
+                EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
             assert!(!has_docker_host_path_mapping());
         }
 
-        let _host_guard = EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
-        let _container_guard = EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
+        let _host_guard =
+            EnvGuard::set("SEALANTERN_SERVERS_HOST_ROOT", "E:/srv/sealantern/servers");
+        let _container_guard =
+            EnvGuard::set("SEALANTERN_SERVERS_CONTAINER_ROOT", "/app/data/servers");
         assert!(has_docker_host_path_mapping());
         assert_eq!(
             configured_servers_host_root()

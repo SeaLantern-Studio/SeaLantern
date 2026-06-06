@@ -2,6 +2,7 @@ use super::LocalHelperStatusSnapshot;
 use crate::models::server::ServerInstance;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::ServerManager;
+use crate::services::server::runtime::i18n::runtime_t1;
 
 pub(super) fn detect_terminal_snapshot(
     manager: &ServerManager,
@@ -23,7 +24,10 @@ pub(super) fn detect_terminal_snapshot(
         Err(err) => {
             procs.remove(&server.id);
             server_log_pipeline::shutdown_writer(&server.id);
-            Ok(Some(status_error_snapshot(format!("获取本地进程状态失败: {}", err))))
+            Ok(Some(status_error_snapshot(runtime_t1(
+                "server.runtime.local.process_status_read_failed",
+                err.to_string(),
+            ))))
         }
     }
 }
@@ -54,7 +58,10 @@ pub(super) fn snapshot_from_manager(
         Err(err) => {
             procs.remove(server_id);
             server_log_pipeline::shutdown_writer(server_id);
-            Ok(status_error_snapshot(format!("获取本地进程状态失败: {}", err)))
+            Ok(status_error_snapshot(runtime_t1(
+                "server.runtime.local.process_status_read_failed",
+                err.to_string(),
+            )))
         }
     }
 }
@@ -98,11 +105,11 @@ fn terminal_error_message(exit_code: Option<i32>) -> Option<String> {
     if matches!(exit_code, Some(0)) {
         None
     } else {
-        Some(format!(
-            "服务器异常退出 (退出码：{})",
+        Some(runtime_t1(
+            "server.runtime.local.exit_abnormal",
             exit_code
                 .map(|value| value.to_string())
-                .unwrap_or_else(|| "unknown".to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
         ))
     }
 }
@@ -110,6 +117,7 @@ fn terminal_error_message(exit_code: Option<i32>) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{process_missing_snapshot, terminal_snapshot_from_exit};
+    use crate::services::server::runtime::i18n::runtime_t1;
 
     #[test]
     fn terminal_snapshot_from_exit_reports_clean_exit_without_error() {
@@ -130,7 +138,10 @@ mod tests {
         let snapshot = terminal_snapshot_from_exit(Some(7));
 
         assert_eq!(snapshot.exit_code, Some(7));
-        assert_eq!(snapshot.error_message.as_deref(), Some("服务器异常退出 (退出码：7)"));
+        assert_eq!(
+            snapshot.error_message.as_deref(),
+            Some(runtime_t1("server.runtime.local.exit_abnormal", "7").as_str())
+        );
     }
 
     #[test]

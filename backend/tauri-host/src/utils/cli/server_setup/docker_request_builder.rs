@@ -1,25 +1,29 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use super::docker_mounts::{parse_docker_volume_mounts, parse_extra_published_ports};
+use super::docker_paths::{resolve_docker_data_dir, sanitize_container_name};
+use super::{DockerCreateDefaults, DEFAULT_DOCKER_IMAGE, DEFAULT_DOCKER_IMAGE_TAG};
 use crate::models::server::{
     CpuPolicyConfig, CreateDockerItzgServerRequest, DockerItzgRuntimeConfig, JvmPresetConfig,
 };
+use crate::services::global::i18n_service;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_docker::{build_docker_command_transport, default_docker_env};
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::trace_cli_action;
 use sea_lantern_docker_core::{
-    format_memory_env_value, parse_command_mode, parse_docker_backend,
-    resolve_docker_image_and_tag,
+    format_memory_env_value, parse_command_mode, parse_docker_backend, resolve_docker_image_and_tag,
 };
+use sea_lantern_server_installer_core::CoreType;
 use sea_lantern_server_local_setup_core::{
     infer_core_type_from_local_inputs, infer_mc_version_from_folder, infer_mc_version_hint,
     normalize_core_type,
 };
-use sea_lantern_server_installer_core::CoreType;
-use super::docker_mounts::{parse_docker_volume_mounts, parse_extra_published_ports};
-use super::docker_paths::{resolve_docker_data_dir, sanitize_container_name};
-use super::{DockerCreateDefaults, DEFAULT_DOCKER_IMAGE, DEFAULT_DOCKER_IMAGE_TAG};
+
+fn cli_docker_t(key: &str) -> String {
+    i18n_service().t(key)
+}
 
 pub(crate) fn resolve_requested_docker_image(
     command: &CliServerCommand,
@@ -52,7 +56,7 @@ pub(crate) fn build_docker_create_request(
                 .and_then(|folder| infer_mc_version_hint(&[folder]))
         })
         .or_else(|| infer_mc_version_hint(&[resolved_name]))
-        .ok_or_else(|| "docker server 缺少 --mc".to_string())?;
+        .ok_or_else(|| cli_docker_t("cli.server_setup.docker.create_missing_mc_version"))?;
     let core_type = command
         .core_type
         .clone()

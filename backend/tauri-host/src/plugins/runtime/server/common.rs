@@ -1,6 +1,7 @@
 use crate::models::server::ServerInstance;
 use crate::plugins::runtime::shared::validate_server_path;
 use crate::services::global::{i18n_service, server_manager};
+use crate::services::server::manager::ServerManager;
 use mlua::{Function, Lua, Table};
 use std::collections::HashSet;
 use std::fs;
@@ -27,8 +28,21 @@ pub(super) fn check_server_permission(perms: &[String]) -> Result<(), mlua::Erro
     Ok(())
 }
 
-pub(super) fn find_server(server_id: &str) -> Result<ServerInstance, mlua::Error> {
-    let servers = server_manager().get_server_list();
+pub(super) fn list_servers_in(manager: &ServerManager) -> Result<Vec<ServerInstance>, mlua::Error> {
+    manager
+        .get_server_list_checked()
+        .map_err(mlua::Error::runtime)
+}
+
+pub(super) fn list_servers_checked() -> Result<Vec<ServerInstance>, mlua::Error> {
+    list_servers_in(server_manager())
+}
+
+pub(super) fn find_server_in(
+    manager: &ServerManager,
+    server_id: &str,
+) -> Result<ServerInstance, mlua::Error> {
+    let servers = list_servers_in(manager)?;
     servers
         .into_iter()
         .find(|s| s.id == server_id)
@@ -38,6 +52,10 @@ pub(super) fn find_server(server_id: &str) -> Result<ServerInstance, mlua::Error
                 &crate::plugins::runtime::console::i18n_arg("0", server_id),
             ))
         })
+}
+
+pub(super) fn find_server(server_id: &str) -> Result<ServerInstance, mlua::Error> {
+    find_server_in(server_manager(), server_id)
 }
 
 pub(super) fn map_lua_err(key: &str, e: mlua::Error) -> String {
@@ -147,17 +165,48 @@ pub(super) fn checked_file_metadata(
     Ok(metadata)
 }
 
-pub(super) fn running_log_pairs(count: usize) -> Vec<(String, Vec<String>)> {
-    let running_ids = server_manager().get_running_server_ids();
+pub(super) fn running_log_pairs_checked(
+    count: usize,
+) -> Result<Vec<(String, Vec<String>)>, String> {
+    let running_ids = server_manager().get_running_server_ids_checked()?;
     let running_set: HashSet<String> = running_ids.into_iter().collect();
-    let logs_pairs = crate::services::server::log_pipeline::get_all_logs();
+    let logs_pairs = crate::services::server::log_pipeline::get_all_logs_checked()?;
 
-    logs_pairs
+    Ok(logs_pairs
         .into_iter()
         .filter(|(server_id, _)| running_set.contains(server_id))
         .map(|(server_id, logs)| {
             let start = logs.len().saturating_sub(count);
             (server_id, logs[start..].to_vec())
         })
-        .collect()
+        .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::find_server_in;
+    use crate::services::server::manager::ServerManager;
+    use std::sync::Arc;
+
+    #[test]
+    fn find_server_in_surfaces_server_list_lock_failures() {
+        let manager = Arc::new(ServerManager::new_checked().expect("manager should initialize"));
+        let cloned = Arc::clone(&manager);
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = cloned
+                .servers
+                .lock()
+                .expect("servers lock should be acquired");
+            panic!("poison server list lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = find_server_in(&manager, "missing-server")
+            .expect_err("lock failure should not be flattened into server not found");
+
+        match error {
+            mlua::Error::RuntimeError(message) => assert_eq!(message, "servers lock poisoned"),
+            other => panic!("expected runtime error, got {other:?}"),
+        }
+    }
 }

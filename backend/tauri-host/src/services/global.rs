@@ -8,19 +8,60 @@ use super::server::join::JoinManager;
 use super::server::manager::ServerManager;
 use super::settings_manager::SettingsManager;
 use crate::plugins::manager::PluginManager;
+use crate::utils::logger::{log_error_ctx, log_fatal_ctx, log_warn_ctx};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+fn exit_with_global_init_error(component: &str, error: impl AsRef<str>) -> ! {
+    log_fatal_ctx(
+        "services.global",
+        "exit_with_global_init_error",
+        &format!("component={} error={}", component, error.as_ref()),
+    );
+    std::process::exit(1);
+}
+
+fn init_settings_manager_or_exit() -> SettingsManager {
+    SettingsManager::new_checked()
+        .unwrap_or_else(|error| exit_with_global_init_error("SettingsManager", error))
+}
+
+fn init_server_manager_or_exit() -> ServerManager {
+    ServerManager::new_checked()
+        .unwrap_or_else(|error| exit_with_global_init_error("ServerManager", error))
+}
+
+fn init_plugin_manager_or_exit() -> Arc<Mutex<PluginManager>> {
+    let app_data_dir = crate::utils::path::get_or_create_app_data_dir_checked()
+        .map(PathBuf::from)
+        .unwrap_or_else(|error| exit_with_global_init_error("plugin app data directory", error));
+    let plugins_dir = app_data_dir.join("plugins");
+    let data_dir = app_data_dir.join("plugin_data");
+
+    let mut plugin_manager = PluginManager::new_checked(plugins_dir, data_dir)
+        .unwrap_or_else(|error| exit_with_global_init_error("PluginManager", error));
+    if let Err(error) = plugin_manager.scan_plugins() {
+        log_warn_ctx(
+            "services.global",
+            "init_plugin_manager_or_exit",
+            &format!("plugin scan failed during bootstrap: {}", error),
+        );
+    }
+
+    Arc::new(Mutex::new(plugin_manager))
+}
+
 pub fn server_manager() -> &'static ServerManager {
     static INSTANCE: OnceLock<ServerManager> = OnceLock::new();
-    INSTANCE.get_or_init(ServerManager::new)
+    INSTANCE.get_or_init(init_server_manager_or_exit)
 }
 
 pub fn settings_manager() -> &'static SettingsManager {
     static INSTANCE: OnceLock<SettingsManager> = OnceLock::new();
-    INSTANCE.get_or_init(SettingsManager::new)
+    INSTANCE.get_or_init(init_settings_manager_or_exit)
 }
 
 pub fn i18n_service() -> &'static I18nService {
@@ -33,7 +74,11 @@ pub fn mod_manager() -> &'static ModManager {
     INSTANCE.get_or_init(|| match ModManager::new() {
         Ok(manager) => manager,
         Err(error) => {
-            eprintln!("Failed to initialize ModManager: {}", error);
+            log_error_ctx(
+                "services.global",
+                "mod_manager",
+                &format!("failed to initialize ModManager: {}", error),
+            );
             ModManager::fallback()
         }
     })
@@ -51,18 +96,7 @@ pub fn server_id_manager() -> &'static ServerIdManager {
 
 pub fn plugin_manager() -> &'static Arc<Mutex<PluginManager>> {
     static INSTANCE: OnceLock<Arc<Mutex<PluginManager>>> = OnceLock::new();
-    INSTANCE.get_or_init(|| {
-        let app_data_dir = crate::utils::path::get_app_data_dir();
-        let plugins_dir = app_data_dir.join("plugins");
-        let data_dir = app_data_dir.join("plugin_data");
-
-        let mut plugin_manager = PluginManager::new(plugins_dir, data_dir);
-        if let Err(error) = plugin_manager.scan_plugins() {
-            eprintln!("Failed to scan plugins: {}", error);
-        }
-
-        Arc::new(Mutex::new(plugin_manager))
-    })
+    INSTANCE.get_or_init(init_plugin_manager_or_exit)
 }
 
 static FRONTEND_LAST_HEARTBEAT: OnceLock<AtomicU64> = OnceLock::new();

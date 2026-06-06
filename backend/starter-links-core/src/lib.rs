@@ -6,7 +6,9 @@ use std::path::Path;
 
 pub use cache::load_or_refresh_starter_links_json;
 
-use parser::{resolve_installer_url_from_nested_json, validate_starter_links_json, StarterLinksPayload};
+use parser::{
+    resolve_installer_url_from_nested_json, validate_starter_links_json, StarterLinksPayload,
+};
 
 pub fn resolve_installer_url_from_cache_file(
     links_file_path: &Path,
@@ -63,10 +65,7 @@ mod tests {
         let file = dir.path().join("jar_lfs_links.json");
 
         let result = resolve_installer_url_from_cache_file(&file, "forge", "1.20.1").unwrap();
-        assert_eq!(
-            result.0,
-            "https://example.com/forge-1.20.1-installer.jar"
-        );
+        assert_eq!(result.0, "https://example.com/forge-1.20.1-installer.jar");
         assert_eq!(result.1, None);
     }
 
@@ -138,7 +137,8 @@ mod tests {
     }
 
     #[test]
-    fn resolve_installer_url_from_cache_file_prefers_more_specific_installer_file_name_not_url_text() {
+    fn resolve_installer_url_from_cache_file_prefers_more_specific_installer_file_name_not_url_text(
+    ) {
         let dir = write_links_file(
             r#"{
   "types": ["forge"],
@@ -154,10 +154,7 @@ mod tests {
 
         let result = resolve_installer_url_from_cache_file(&file, "forge", "1.20.1").unwrap();
 
-        assert_eq!(
-            result.0,
-            "https://a.example.com/downloads/forge-1.20.1-installer.jar"
-        );
+        assert_eq!(result.0, "https://a.example.com/downloads/forge-1.20.1-installer.jar");
         assert_eq!(result.1, None);
     }
 

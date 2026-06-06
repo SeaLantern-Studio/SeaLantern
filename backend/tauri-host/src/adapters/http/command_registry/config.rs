@@ -1,4 +1,4 @@
-use super::common::{CommandHandler, RegistryBuilder, parse_params};
+use super::common::{parse_params, CommandHandler, RegistryBuilder};
 use super::requests::{
     ParseServerPropertiesSourceRequest, PreviewServerPropertiesWriteFromSourceRequest,
     PreviewServerPropertiesWriteRequest, ReadConfigRequest, ReadServerPropertiesRequest,

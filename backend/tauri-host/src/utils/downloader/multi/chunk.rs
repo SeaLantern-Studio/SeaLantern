@@ -1,3 +1,4 @@
+use super::super::common::{downloader_t, downloader_t1};
 use super::super::{DownloadError, DownloadStatus};
 use reqwest::{Client, Response, StatusCode};
 use std::sync::Arc;
@@ -25,7 +26,7 @@ pub(super) async fn download_chunk(
             let mut local_downloaded = 0u64;
             while let Some(chunk) = response.chunk().await? {
                 if status.cancelled() {
-                    return Err(DownloadError::Cancelled("任务已取消".to_string()));
+                    return Err(DownloadError::Cancelled(downloader_t("download.util.task_cancelled")));
                 }
 
                 let len = chunk.len() as u64;
@@ -51,7 +52,7 @@ pub(super) async fn download_chunk(
                 Ok(_) => Ok(()),
                 Err(err) => {
                     if status.cancelled() {
-                        Err(DownloadError::Cancelled("任务已取消".to_string()))
+                        Err(DownloadError::Cancelled(downloader_t("download.util.task_cancelled")))
                     } else {
                         Err(err)
                     }
@@ -59,7 +60,7 @@ pub(super) async fn download_chunk(
             }
         },
         _ = status.cancel_token.cancelled() => {
-            Err(DownloadError::Cancelled("任务已取消".to_string()))
+            Err(DownloadError::Cancelled(downloader_t("download.util.task_cancelled")))
         }
     }
 }
@@ -76,14 +77,17 @@ async fn request_chunk(
 
 fn validate_chunk_response(response: &Response, start: u64) -> Result<(), DownloadError> {
     if start > 0 && response.status() != StatusCode::PARTIAL_CONTENT {
-        return Err(DownloadError::Cancelled(format!(
-            "服务器未按 Range 返回 206，状态码: {}",
-            response.status()
+        return Err(DownloadError::Cancelled(downloader_t1(
+            "download.util.range_response_invalid",
+            response.status().to_string(),
         )));
     }
 
     if !response.status().is_success() && response.status() != StatusCode::PARTIAL_CONTENT {
-        return Err(DownloadError::Cancelled(format!("下载失败，状态码: {}", response.status())));
+        return Err(DownloadError::Cancelled(downloader_t1(
+            "download.util.download_status_failed",
+            response.status().to_string(),
+        )));
     }
 
     Ok(())

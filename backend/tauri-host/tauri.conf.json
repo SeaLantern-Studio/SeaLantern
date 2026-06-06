@@ -4,10 +4,10 @@
   "version": "1.2.0",
   "identifier": "com.fpsz.sea-lantern",
   "build": {
-    "beforeDevCommand": "pnpm --dir ../../frontend run dev",
+    "beforeDevCommand": "pnpm --dir ../frontend run dev",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "pnpm --dir ../../frontend run build",
-    "frontendDist": "../../dist"
+    "beforeBuildCommand": "pnpm --dir ../frontend run build",
+    "frontendDist": "../dist"
   },
   "app": {
     "windows": [

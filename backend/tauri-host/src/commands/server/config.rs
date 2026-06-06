@@ -1,22 +1,23 @@
 use crate::utils::logger;
-use std::collections::HashMap;
 use sea_lantern_server_config_core::properties::{
     parse_server_properties, parse_server_properties_from_source, preview_properties_write,
     preview_properties_write_from_source, read_properties, read_raw_text, write_properties,
     write_raw_text,
 };
-use sea_lantern_server_config_core::types::{SLStartupConfig, ServerProperties};
-use sea_lantern_server_config_core::startup::{
-    build_server_properties_path, read_server_startup_config,
-    validate_config_path, validate_path_within_server,
-};
 use sea_lantern_server_config_core::startup::write_server_startup_config;
+use sea_lantern_server_config_core::startup::{
+    build_server_properties_path, read_server_startup_config, validate_config_path,
+    validate_path_within_server,
+};
+use sea_lantern_server_config_core::types::{SLStartupConfig, ServerProperties};
+use std::collections::HashMap;
 
 fn trace_missing_server_properties(server_path: &str, action: &str) {
-    logger::log_trace(&format!(
-        "[server.config] action={} missing_server_properties path={}",
-        action, server_path
-    ));
+    logger::log_trace_ctx(
+        "server.config",
+        action,
+        &format!("missing server.properties path={}", server_path),
+    );
 }
 
 #[tauri::command]
@@ -116,7 +117,9 @@ pub fn write_sl_config(server_path: String, config: SLStartupConfig) -> Result<(
 
 #[cfg(test)]
 mod tests {
-    use super::{read_server_properties, read_server_properties_source, read_sl_config, write_sl_config};
+    use super::{
+        read_server_properties, read_server_properties_source, read_sl_config, write_sl_config,
+    };
     use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId};
     use sea_lantern_server_config_core::types::SLStartupConfig;
     use tempfile::tempdir;

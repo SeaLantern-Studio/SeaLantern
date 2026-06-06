@@ -14,6 +14,14 @@ interface UseDeveloperToolsOptions {
   enabled: () => boolean;
 }
 
+interface LogFilterOption {
+  label: string;
+  value: string;
+}
+
+const ALL_LOG_LEVELS = "__all_levels__";
+const ALL_LOG_MODULES = "__all_modules__";
+
 export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const globalMessage = useGlobalMessage();
 
@@ -29,9 +37,37 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const updateUrl = ref("");
   const logError = ref<string | null>(null);
   const systemError = ref<string | null>(null);
+  const selectedLogLevel = ref(ALL_LOG_LEVELS);
+  const selectedLogModule = ref(ALL_LOG_MODULES);
 
-  const logText = computed(() => logs.value.map((entry) => entry.formatted).join("\n"));
-  const logLines = computed(() => logs.value.map((entry) => entry.formatted));
+  const logLevelOptions = computed<LogFilterOption[]>(() => {
+    const levels = Array.from(new Set(logs.value.map((entry) => entry.level))).sort();
+    return [
+      { label: i18n.t("developer.all_log_levels"), value: ALL_LOG_LEVELS },
+      ...levels.map((level) => ({ label: level, value: level })),
+    ];
+  });
+  const logModuleOptions = computed<LogFilterOption[]>(() => {
+    const modules = Array.from(new Set(logs.value.map((entry) => entry.module))).sort();
+    return [
+      { label: i18n.t("developer.all_log_modules"), value: ALL_LOG_MODULES },
+      ...modules.map((module) => ({ label: module, value: module })),
+    ];
+  });
+  const filteredLogs = computed(() => {
+    return logs.value.filter((entry) => {
+      const levelMatches =
+        selectedLogLevel.value === ALL_LOG_LEVELS || entry.level === selectedLogLevel.value;
+      const moduleMatches =
+        selectedLogModule.value === ALL_LOG_MODULES || entry.module === selectedLogModule.value;
+      return levelMatches && moduleMatches;
+    });
+  });
+  const logText = computed(() => filteredLogs.value.map((entry) => entry.formatted).join("\n"));
+  const logLines = computed(() => filteredLogs.value.map((entry) => entry.formatted));
+  const filteredLogCount = computed(() => filteredLogs.value.length);
+  const totalLogCount = computed(() => logs.value.length);
+  const hasLogEntries = computed(() => logs.value.length > 0);
   const systemSummary = computed(() => {
     if (!systemInfo.value) return "";
 
@@ -77,6 +113,12 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     try {
       logs.value = await getLogs(LOG_LIMIT);
       logError.value = null;
+      if (!logLevelOptions.value.some((option) => option.value === selectedLogLevel.value)) {
+        selectedLogLevel.value = ALL_LOG_LEVELS;
+      }
+      if (!logModuleOptions.value.some((option) => option.value === selectedLogModule.value)) {
+        selectedLogModule.value = ALL_LOG_MODULES;
+      }
     } catch (error) {
       logError.value = error instanceof Error ? error.message : String(error);
     } finally {
@@ -107,7 +149,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   async function copyLogs() {
     try {
       await navigator.clipboard.writeText(logText.value);
-      globalMessage.success(i18n.t("developer.logs_copied", { count: logs.value.length }));
+      globalMessage.success(i18n.t("developer.logs_copied", { count: filteredLogCount.value }));
     } catch (error) {
       globalMessage.error(error instanceof Error ? error.message : String(error));
     }
@@ -223,6 +265,8 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
 
     stopPolling();
     logs.value = [];
+    selectedLogLevel.value = ALL_LOG_LEVELS;
+    selectedLogModule.value = ALL_LOG_MODULES;
     systemInfo.value = null;
     logError.value = null;
     systemError.value = null;
@@ -247,6 +291,14 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     systemError,
     logText,
     logLines,
+    filteredLogs,
+    filteredLogCount,
+    totalLogCount,
+    hasLogEntries,
+    selectedLogLevel,
+    selectedLogModule,
+    logLevelOptions,
+    logModuleOptions,
     systemSummary,
     isBrowserMode,
     canTriggerCrash,

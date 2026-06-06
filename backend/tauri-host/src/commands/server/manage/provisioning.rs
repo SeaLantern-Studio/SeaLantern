@@ -1,4 +1,5 @@
 use super::common::manager;
+use crate::commands::server::common::server_t1;
 use crate::models::server::*;
 use sea_lantern_server_installer_core::parse_server_core_type as parse_shared_server_core_type;
 
@@ -160,9 +161,7 @@ pub(super) fn import_modpack(
 pub(super) async fn parse_server_core_type(
     source_path: String,
 ) -> Result<ParsedServerCoreInfo, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        parse_shared_server_core_type(&source_path)
-    })
-    .await
-    .map_err(|e| format!("解析核心类型任务失败: {}", e))?
+    tauri::async_runtime::spawn_blocking(move || parse_shared_server_core_type(&source_path))
+        .await
+        .map_err(|e| server_t1("server.manage.parse_core_type_task_failed", e.to_string()))?
 }

@@ -17,7 +17,7 @@ pub(super) fn read_recent_server_logs(
     lines: usize,
 ) -> Result<Vec<String>, String> {
     read_recent_server_logs_with(server, lines, read_recent_docker_logs, |server_id, limit| {
-        log_pipeline::get_logs(server_id, 0, Some(limit))
+        log_pipeline::get_logs_checked(server_id, 0, Some(limit))
     })
 }
 
@@ -41,11 +41,11 @@ fn read_recent_server_logs_with<FDocker, FLocal>(
 ) -> Result<Vec<String>, String>
 where
     FDocker: FnMut(&DockerItzgRuntimeConfig, usize) -> Result<Vec<String>, String>,
-    FLocal: FnMut(&str, usize) -> Vec<String>,
+    FLocal: FnMut(&str, usize) -> Result<Vec<String>, String>,
 {
     match &server.runtime {
         ServerRuntimeConfig::DockerItzg(runtime) => {
-            let fallback = read_local(&server.id, lines);
+            let fallback = read_local(&server.id, lines)?;
             match read_docker(runtime, lines) {
                 Ok(logs) if !logs.is_empty() => Ok(logs),
                 Ok(_logs) if !fallback.is_empty() => Ok(fallback),
@@ -69,7 +69,7 @@ where
                 Err(err) => Err(err),
             }
         }
-        ServerRuntimeConfig::Local(_) => Ok(read_local(&server.id, lines)),
+        ServerRuntimeConfig::Local(_) => read_local(&server.id, lines),
     }
 }
 
@@ -79,9 +79,9 @@ fn follow_local_server_logs(server: &ServerInstance, interval_ms: u64) -> Result
         server.name, interval_ms
     );
 
-    let mut offset = log_pipeline::get_logs(&server.id, 0, None).len();
+    let mut offset = log_pipeline::get_logs_checked(&server.id, 0, None)?.len();
     loop {
-        let next_logs = log_pipeline::get_logs(&server.id, offset, None);
+        let next_logs = log_pipeline::get_logs_checked(&server.id, offset, None)?;
         if !next_logs.is_empty() {
             offset += next_logs.len();
             for line in next_logs {
@@ -324,7 +324,7 @@ mod tests {
             &sample_local_server(),
             20,
             |_, _| Err("docker should not be used".to_string()),
-            |_, _| vec!["local-line".to_string()],
+            |_, _| Ok(vec!["local-line".to_string()]),
         )
         .expect("local logs should resolve");
 
@@ -341,7 +341,7 @@ mod tests {
                 assert_eq!(lines, 20);
                 Ok(vec!["docker-line".to_string()])
             },
-            |_, _| vec!["cached-line".to_string()],
+            |_, _| Ok(vec!["cached-line".to_string()]),
         )
         .expect("docker logs should resolve");
 
@@ -354,7 +354,7 @@ mod tests {
             &sample_docker_server(),
             20,
             |_, _| Err("docker logs unavailable".to_string()),
-            |_, _| vec!["cached-line".to_string()],
+            |_, _| Ok(vec!["cached-line".to_string()]),
         )
         .expect("cached logs should resolve");
 
@@ -369,7 +369,7 @@ mod tests {
             &sample_docker_server(),
             20,
             |_, _| Err("docker logs 失败: container=sea-docker-one Error response from daemon: No such container: sea-docker-one".to_string()),
-            |_, _| vec![],
+            |_, _| Ok(vec![]),
         )
         .expect("missing container should become friendly output");
 
@@ -408,5 +408,18 @@ mod tests {
     #[test]
     fn read_recent_cli_logs_returns_without_panicking() {
         let _ = read_recent_cli_logs(&sample_local_server());
+    }
+
+    #[test]
+    fn read_recent_server_logs_surfaces_local_cache_failures() {
+        let error = read_recent_server_logs_with(
+            &sample_local_server(),
+            20,
+            |_, _| Err("docker should not be used".to_string()),
+            |_, _| Err("log db broken".to_string()),
+        )
+        .expect_err("local log cache failure should not be silently downgraded to empty output");
+
+        assert_eq!(error, "log db broken");
     }
 }

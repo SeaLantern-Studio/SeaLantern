@@ -3,6 +3,8 @@ import { tauriInvoke } from "@api/tauri";
 export interface LogLine {
   timestamp: string;
   level: string;
+  module: string;
+  function: string;
   message: string;
   formatted: string;
 }

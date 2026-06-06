@@ -1,11 +1,10 @@
-pub(super) use sea_lantern_server_local_setup_core::{
-    detect_startup_mode_from_folder, infer_local_create_startup_mode,
-    normalize_cli_startup_mode, resolve_command_path_hint, resolve_custom_entry_hint_path,
-    resolve_existing_attach_entry_path, resolve_existing_local_entry_path,
-    validate_local_entry_startup_mode,
-};
 #[cfg(test)]
 pub(super) use sea_lantern_server_local_setup_core::detect_startup_mode_from_path_like;
+pub(super) use sea_lantern_server_local_setup_core::{
+    detect_startup_mode_from_folder, infer_local_create_startup_mode, normalize_cli_startup_mode,
+    resolve_command_path_hint, resolve_custom_entry_hint_path, resolve_existing_attach_entry_path,
+    resolve_existing_local_entry_path, validate_local_entry_startup_mode,
+};
 
 #[cfg(test)]
 mod tests {

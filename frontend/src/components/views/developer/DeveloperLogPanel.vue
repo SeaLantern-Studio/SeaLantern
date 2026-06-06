@@ -2,16 +2,29 @@
 import { computed, nextTick, ref, watch } from "vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { i18n } from "@language";
 
+interface LogFilterOption {
+  label: string;
+  value: string;
+}
+
 const props = defineProps<{
   logLines: string[];
+  filteredLogCount: number;
+  totalLogCount: number;
+  hasLogEntries: boolean;
   loading: boolean;
   exporting: boolean;
   clearing: boolean;
   isBrowserMode: boolean;
   error: string | null;
+  selectedLogLevel: string;
+  selectedLogModule: string;
+  logLevelOptions: LogFilterOption[];
+  logModuleOptions: LogFilterOption[];
   consoleFontSize: number;
   consoleFontFamily: string;
   consoleLetterSpacing: number;
@@ -23,6 +36,8 @@ const emit = defineEmits<{
   (e: "copy"): void;
   (e: "export"): void;
   (e: "clear"): void;
+  (e: "update:selectedLogLevel", value: string): void;
+  (e: "update:selectedLogModule", value: string): void;
 }>();
 
 interface ConsoleOutputExpose {
@@ -138,7 +153,7 @@ watch(
           variant="secondary"
           size="sm"
           :loading="exporting"
-          :disabled="isBrowserMode || logLines.length === 0"
+          :disabled="isBrowserMode || !hasLogEntries"
           @click="emit('export')"
         >
           {{ i18n.t("developer.export_logs") }}
@@ -147,13 +162,36 @@ watch(
           variant="danger"
           size="sm"
           :loading="clearing"
-          :disabled="logLines.length === 0"
+          :disabled="!hasLogEntries"
           @click="emit('clear')"
         >
           {{ i18n.t("developer.clear_logs") }}
         </SLButton>
       </div>
     </template>
+
+    <div class="developer-log-filters">
+      <SLSelect
+        :model-value="selectedLogLevel"
+        :options="logLevelOptions"
+        :label="i18n.t('developer.log_level_filter')"
+        :placeholder="i18n.t('developer.all_log_levels')"
+        dropdown-width="220px"
+        @update:model-value="emit('update:selectedLogLevel', String($event))"
+      />
+      <SLSelect
+        :model-value="selectedLogModule"
+        :options="logModuleOptions"
+        :label="i18n.t('developer.log_module_filter')"
+        :placeholder="i18n.t('developer.all_log_modules')"
+        searchable
+        dropdown-width="260px"
+        @update:model-value="emit('update:selectedLogModule', String($event))"
+      />
+      <p class="developer-log-filter-summary">
+        {{ i18n.t("developer.log_filter_summary", { shown: filteredLogCount, total: totalLogCount }) }}
+      </p>
+    </div>
 
     <p v-if="error" class="developer-panel-error">{{ error }}</p>
     <div v-else class="developer-log-output" :style="{ height: panelHeight }">
@@ -173,8 +211,11 @@ watch(
       <div v-if="loading && logLines.length === 0" class="developer-log-overlay">
         {{ i18n.t("common.loading") }}
       </div>
-      <div v-else-if="logLines.length === 0" class="developer-log-overlay">
+      <div v-else-if="!hasLogEntries" class="developer-log-overlay">
         {{ i18n.t("developer.logs_empty") }}
+      </div>
+      <div v-else-if="logLines.length === 0" class="developer-log-overlay">
+        {{ i18n.t("developer.logs_filtered_empty") }}
       </div>
     </div>
   </SLCard>
@@ -196,6 +237,21 @@ watch(
   border: 1px solid var(--sl-border);
   background: var(--sl-bg-secondary);
   overflow: hidden;
+}
+
+.developer-log-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(220px, 320px) 1fr;
+  gap: var(--sl-space-sm);
+  align-items: end;
+  margin-bottom: var(--sl-space-md);
+}
+
+.developer-log-filter-summary {
+  margin: 0;
+  color: var(--sl-text-tertiary);
+  font-size: 0.92rem;
+  line-height: 1.4;
 }
 
 .developer-log-output :deep(.console-output) {
@@ -220,5 +276,12 @@ watch(
 .developer-panel-error {
   margin: 0;
   color: var(--sl-error);
+}
+
+@media (max-width: 860px) {
+  .developer-log-filters {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
 }
 </style>

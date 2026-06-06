@@ -1,19 +1,20 @@
+use crate::plugins::manager::i18n::{plugin_t, plugin_t1};
 use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex, MutexGuard};
 use url::Url;
 
 pub(super) fn validate_plugin_id(id: &str) -> Result<(), String> {
     if id.is_empty() {
-        return Err("Plugin ID cannot be empty".to_string());
+        return Err(plugin_t("plugin.common.id_empty"));
     }
     if id.contains("..") {
-        return Err(format!("Plugin ID '{}' contains invalid characters", id));
+        return Err(plugin_t1("plugin.common.id_invalid_chars", id));
     }
     if !id
         .chars()
         .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
     {
-        return Err(format!("Plugin ID '{}' contains invalid characters", id));
+        return Err(plugin_t1("plugin.common.id_invalid_chars", id));
     }
     Ok(())
 }

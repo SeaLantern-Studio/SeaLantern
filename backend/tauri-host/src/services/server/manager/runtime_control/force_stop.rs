@@ -1,6 +1,7 @@
 use super::super::common::{current_timestamp_millis, current_timestamp_secs};
 use super::{ForceStopPreparation, ServerManager};
 use crate::services::server::log_pipeline as server_log_pipeline;
+use crate::services::server::manager::i18n::{manager_t, manager_t1};
 use crate::services::server::runtime;
 
 /// 生成强停确认信息
@@ -13,7 +14,10 @@ pub(super) fn prepare_force_stop_server(
     let resolved_runtime = runtime::resolve_runtime(&server)?;
     let preparation = resolved_runtime.prepare_force_stop_with_manager(manager, &server)?;
     if !preparation.supported {
-        return Err(format!("当前服务器运行时暂未实现强停确认能力: {}", server.runtime_kind));
+        return Err(manager_t1(
+            "server.manager.force_stop_not_supported",
+            server.runtime_kind.clone(),
+        ));
     }
 
     if server.runtime_kind == "local" {
@@ -68,17 +72,17 @@ fn validate_force_stop_confirmation(
         .map_err(|_| "pending_force_stop_tokens lock poisoned".to_string())?;
 
     let Some((expected_token, expires_at)) = pending.get(id).cloned() else {
-        return Err("缺少强制关停确认，请重新发起操作".to_string());
+        return Err(manager_t("server.manager.force_stop_confirmation_missing"));
     };
 
     let now = current_timestamp_secs();
     if now > expires_at {
         pending.remove(id);
-        return Err("强制关停确认已过期，请重新发起操作".to_string());
+        return Err(manager_t("server.manager.force_stop_confirmation_expired"));
     }
 
     if expected_token != confirmation_token {
-        return Err("强制关停确认无效，已拒绝执行".to_string());
+        return Err(manager_t("server.manager.force_stop_confirmation_invalid"));
     }
 
     pending.remove(id);

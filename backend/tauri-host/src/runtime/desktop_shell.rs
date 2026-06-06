@@ -17,7 +17,9 @@ fn reveal_main_window<R: tauri::Runtime, M: Manager<R>>(manager: &M) {
 pub(crate) fn stop_servers_and_disable_plugins(app: &tauri::AppHandle) {
     let settings = services::global::settings_manager().get();
     if settings.close_servers_on_exit {
-        services::global::server_manager().stop_all_servers();
+        if let Err(error) = services::global::server_manager().stop_all_servers_checked() {
+            eprintln!("Failed to stop servers during app shutdown: {}", error);
+        }
     }
 
     if let Some(manager) =

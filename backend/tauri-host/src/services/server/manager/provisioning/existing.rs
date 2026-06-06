@@ -14,6 +14,7 @@ use super::super::common::{
 };
 use super::super::fs::find_server_executable;
 use super::super::ServerManager;
+use super::i18n::{provisioning_t, provisioning_t1};
 
 pub(super) fn add_existing_server(
     manager: &ServerManager,
@@ -22,10 +23,13 @@ pub(super) fn add_existing_server(
     let server_name = validate_server_name(&req.name)?;
     let server_path = Path::new(&req.server_path);
     if !server_path.exists() {
-        return Err(format!("服务器目录不存在: {}", req.server_path));
+        return Err(provisioning_t1(
+            "server.provisioning.server_dir_missing",
+            req.server_path.clone(),
+        ));
     }
     if !server_path.is_dir() {
-        return Err("所选路径不是文件夹".to_string());
+        return Err(provisioning_t("server.provisioning.selected_path_not_directory"));
     }
 
     {
@@ -48,12 +52,15 @@ pub(super) fn add_existing_server(
             .as_ref()
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
-            .ok_or_else(|| "自定义启动命令不能为空".to_string())?;
+            .ok_or_else(|| provisioning_t("server.provisioning.custom_command_empty"))?;
         (String::new(), requested_mode.as_str().to_string(), Some(command))
     } else if let Some(ref exec_path) = req.executable_path {
         let path = Path::new(exec_path);
         if !path.exists() {
-            return Err(format!("选择的可执行文件不存在: {}", exec_path));
+            return Err(provisioning_t1(
+                "server.provisioning.executable_missing",
+                exec_path.clone(),
+            ));
         }
         (exec_path.clone(), detect_startup_mode_from_path(path), None)
     } else {
@@ -90,7 +97,10 @@ pub(super) fn add_existing_server(
         .filter(|value| !value.is_empty())
         .map(str::to_string)
         .unwrap_or_else(|| "unknown".to_string());
-    println!("检测到核心类型: {}", core_type);
+    println!(
+        "{}",
+        provisioning_t1("server.provisioning.detected_core_type", core_type.clone())
+    );
 
     let now = current_timestamp_secs();
     let id = uuid::Uuid::new_v4().to_string();

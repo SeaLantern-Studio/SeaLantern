@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use crate::services::server::manager::provisioning::i18n::{provisioning_t, provisioning_t1};
+
 fn looks_like_existing_server_folder(path: &Path) -> bool {
     let Some(last_comp) = path.components().next_back() else {
         return false;
@@ -25,7 +27,7 @@ fn new_generated_server_dir(base_path: &str) -> PathBuf {
 pub(super) fn resolve_modpack_run_dir(base_path: &str) -> Result<PathBuf, String> {
     let trimmed = base_path.trim();
     if trimmed.is_empty() {
-        return Err("运行目录不能为空，请选择开服路径".to_string());
+        return Err(provisioning_t("server.provisioning.run_dir_empty"));
     }
 
     let run_dir = if trimmed.contains('/') || trimmed.contains('\\') {
@@ -40,9 +42,9 @@ pub(super) fn resolve_modpack_run_dir(base_path: &str) -> Result<PathBuf, String
     };
 
     if run_dir.exists() {
-        return Err(format!(
-            "目录已存在：{}，请更换启动项或选择其他路径",
-            run_dir.to_string_lossy()
+        return Err(provisioning_t1(
+            "server.provisioning.run_dir_exists",
+            run_dir.to_string_lossy().to_string(),
         ));
     }
 

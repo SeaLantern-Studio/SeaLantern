@@ -8,5 +8,7 @@ pub(crate) async fn check_pending_update() -> Result<Option<PendingUpdate>, Stri
 }
 
 pub(crate) async fn clear_pending_update() -> Result<(), String> {
-    pending::clear_pending_update(&sea_lantern_update_core::install_support::get_pending_update_file())
+    pending::clear_pending_update(
+        &sea_lantern_update_core::install_support::get_pending_update_file(),
+    )
 }

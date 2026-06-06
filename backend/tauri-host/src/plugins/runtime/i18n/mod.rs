@@ -6,7 +6,7 @@ mod events;
 mod query;
 mod write;
 
-use common::{create_i18n_table, set_i18n_function, set_i18n_table, I18nContext};
+use common::{create_i18n_table, i18n_t2, set_i18n_function, set_i18n_table, I18nContext};
 
 impl PluginRuntime {
     pub(super) fn setup_i18n_namespace(&self, sl: &Table) -> Result<(), String> {
@@ -16,18 +16,18 @@ impl PluginRuntime {
         set_i18n_function(
             &i18n_table,
             "getLocale",
-            self.lua
-                .create_function(query::get_locale)
-                .map_err(|e| format!("Failed to create i18n.getLocale: {}", e))?,
+            self.lua.create_function(query::get_locale).map_err(|e| {
+                i18n_t2("plugins.runtime.i18n.create_api_failed", "i18n.getLocale", e.to_string())
+            })?,
             "getLocale",
         )?;
 
         set_i18n_function(
             &i18n_table,
             "t",
-            self.lua
-                .create_function(query::translate)
-                .map_err(|e| format!("Failed to create i18n.t: {}", e))?,
+            self.lua.create_function(query::translate).map_err(|e| {
+                i18n_t2("plugins.runtime.i18n.create_api_failed", "i18n.t", e.to_string())
+            })?,
             "t",
         )?;
 
@@ -36,16 +36,22 @@ impl PluginRuntime {
             "hasTranslation",
             self.lua
                 .create_function(query::has_translation)
-                .map_err(|e| format!("Failed to create i18n.hasTranslation: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.hasTranslation",
+                        e.to_string(),
+                    )
+                })?,
             "hasTranslation",
         )?;
 
         set_i18n_function(
             &i18n_table,
             "tOrDefault",
-            self.lua
-                .create_function(query::t_or_default)
-                .map_err(|e| format!("Failed to create i18n.tOrDefault: {}", e))?,
+            self.lua.create_function(query::t_or_default).map_err(|e| {
+                i18n_t2("plugins.runtime.i18n.create_api_failed", "i18n.tOrDefault", e.to_string())
+            })?,
             "tOrDefault",
         )?;
 
@@ -57,7 +63,13 @@ impl PluginRuntime {
                     let ctx = ctx.clone();
                     move |_, callback| events::on_locale_change(&ctx, callback)
                 })
-                .map_err(|e| format!("Failed to create i18n.onLocaleChange: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.onLocaleChange",
+                        e.to_string(),
+                    )
+                })?,
             "onLocaleChange",
         )?;
 
@@ -69,7 +81,13 @@ impl PluginRuntime {
                     let ctx = ctx.clone();
                     move |_, callback_id| events::off_locale_change(&ctx, callback_id)
                 })
-                .map_err(|e| format!("Failed to create i18n.offLocaleChange: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.offLocaleChange",
+                        e.to_string(),
+                    )
+                })?,
             "offLocaleChange",
         )?;
 
@@ -78,7 +96,13 @@ impl PluginRuntime {
             "getAllTranslations",
             self.lua
                 .create_function(query::get_all_translations)
-                .map_err(|e| format!("Failed to create i18n.getAllTranslations: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.getAllTranslations",
+                        e.to_string(),
+                    )
+                })?,
             "getAllTranslations",
         )?;
 
@@ -87,7 +111,13 @@ impl PluginRuntime {
             "getTranslations",
             self.lua
                 .create_function(query::get_translations)
-                .map_err(|e| format!("Failed to create i18n.getTranslations: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.getTranslations",
+                        e.to_string(),
+                    )
+                })?,
             "getTranslations",
         )?;
 
@@ -96,7 +126,13 @@ impl PluginRuntime {
             "getAvailableLocales",
             self.lua
                 .create_function(query::get_available_locales)
-                .map_err(|e| format!("Failed to create i18n.getAvailableLocales: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.getAvailableLocales",
+                        e.to_string(),
+                    )
+                })?,
             "getAvailableLocales",
         )?;
 
@@ -105,7 +141,9 @@ impl PluginRuntime {
             "tp",
             self.lua
                 .create_function(query::translate_plugin)
-                .map_err(|e| format!("Failed to create i18n.tp: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2("plugins.runtime.i18n.create_api_failed", "i18n.tp", e.to_string())
+                })?,
             "tp",
         )?;
 
@@ -117,7 +155,13 @@ impl PluginRuntime {
                     let ctx = ctx.clone();
                     move |_, args| write::register_locale(&ctx, args)
                 })
-                .map_err(|e| format!("Failed to create i18n.registerLocale: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.registerLocale",
+                        e.to_string(),
+                    )
+                })?,
             "registerLocale",
         )?;
 
@@ -129,7 +173,13 @@ impl PluginRuntime {
                     let ctx = ctx.clone();
                     move |_, args| write::add_translations(&ctx, args)
                 })
-                .map_err(|e| format!("Failed to create i18n.addTranslations: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.addTranslations",
+                        e.to_string(),
+                    )
+                })?,
             "addTranslations",
         )?;
 
@@ -141,7 +191,13 @@ impl PluginRuntime {
                     let ctx = ctx.clone();
                     move |_, ()| write::remove_translations(&ctx)
                 })
-                .map_err(|e| format!("Failed to create i18n.removeTranslations: {}", e))?,
+                .map_err(|e| {
+                    i18n_t2(
+                        "plugins.runtime.i18n.create_api_failed",
+                        "i18n.removeTranslations",
+                        e.to_string(),
+                    )
+                })?,
             "removeTranslations",
         )?;
 

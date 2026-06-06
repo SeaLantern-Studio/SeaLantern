@@ -114,11 +114,9 @@ impl JvmPresetId {
                 "-XX:+PerfDisableSharedMem",
                 "-XX:MaxTenuringThreshold=1",
             ],
-            Self::ThroughputBasic => &[
-                "-XX:+UseParallelGC",
-                "-XX:+UseAdaptiveSizePolicy",
-                "-XX:MaxGCPauseMillis=500",
-            ],
+            Self::ThroughputBasic => {
+                &["-XX:+UseParallelGC", "-XX:+UseAdaptiveSizePolicy", "-XX:MaxGCPauseMillis=500"]
+            }
             Self::PaperRecommendedLite => &[
                 "-XX:+UseG1GC",
                 "-XX:+ParallelRefProcEnabled",

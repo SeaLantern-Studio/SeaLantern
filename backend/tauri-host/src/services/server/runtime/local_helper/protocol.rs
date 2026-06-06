@@ -1,4 +1,5 @@
 use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
+use crate::services::server::runtime::i18n::{runtime_t, runtime_t1, runtime_t2};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
@@ -31,25 +32,26 @@ impl LocalHelperRequest {
 }
 
 pub(in super::super) fn read_request(stream: &TcpStream) -> Result<LocalHelperRequest, String> {
-    let mut reader = BufReader::new(
-        stream
-            .try_clone()
-            .map_err(|e| format!("复制 helper 连接失败: {}", e))?,
-    );
+    let mut reader = BufReader::new(stream.try_clone().map_err(|e| {
+        runtime_t1("server.runtime.local_helper.stream_clone_failed", e.to_string())
+    })?);
     let mut line = String::new();
-    reader
-        .read_line(&mut line)
-        .map_err(|e| format!("读取 helper 请求失败: {}", e))?;
-    serde_json::from_str(&line).map_err(|e| format!("解析 helper 请求失败: {}", e))
+    reader.read_line(&mut line).map_err(|e| {
+        runtime_t1("server.runtime.local_helper.request_read_failed", e.to_string())
+    })?;
+    serde_json::from_str(&line)
+        .map_err(|e| runtime_t1("server.runtime.local_helper.request_parse_failed", e.to_string()))
 }
 
 pub(in super::super) fn write_response(
     stream: &mut TcpStream,
     response: &LocalHelperResponse,
 ) -> Result<(), String> {
-    let payload =
-        serde_json::to_string(response).map_err(|e| format!("序列化 helper 响应失败: {}", e))?;
-    writeln!(stream, "{}", payload).map_err(|e| format!("写入 helper 响应失败: {}", e))
+    let payload = serde_json::to_string(response).map_err(|e| {
+        runtime_t1("server.runtime.local_helper.response_serialize_failed", e.to_string())
+    })?;
+    writeln!(stream, "{}", payload)
+        .map_err(|e| runtime_t1("server.runtime.local_helper.response_write_failed", e.to_string()))
 }
 
 pub(super) fn send_request(
@@ -58,31 +60,40 @@ pub(super) fn send_request(
 ) -> Result<LocalHelperResponse, String> {
     let control_port = state
         .control_port
-        .ok_or_else(|| "本地 runtime helper 当前未暴露控制端口".to_string())?;
+        .ok_or_else(|| runtime_t("server.runtime.local_helper.control_port_missing"))?;
     let mut stream = TcpStream::connect(("127.0.0.1", control_port)).map_err(|e| {
-        format!(
-            "连接本地 runtime helper 失败: helper_pid={} port={} error={}",
-            state.helper_pid, control_port, e
+        runtime_t2(
+            "server.runtime.local_helper.connect_failed",
+            format!("helper_pid={} port={}", state.helper_pid, control_port),
+            e.to_string(),
         )
     })?;
     stream
         .set_read_timeout(Some(Duration::from_secs(5)))
-        .map_err(|e| format!("设置 helper 读取超时失败: {}", e))?;
+        .map_err(|e| {
+            runtime_t1("server.runtime.local_helper.read_timeout_set_failed", e.to_string())
+        })?;
     stream
         .set_write_timeout(Some(Duration::from_secs(5)))
-        .map_err(|e| format!("设置 helper 写入超时失败: {}", e))?;
+        .map_err(|e| {
+            runtime_t1("server.runtime.local_helper.write_timeout_set_failed", e.to_string())
+        })?;
 
-    let payload =
-        serde_json::to_string(&request).map_err(|e| format!("序列化 helper 请求失败: {}", e))?;
-    writeln!(stream, "{}", payload).map_err(|e| format!("写入 helper 请求失败: {}", e))?;
+    let payload = serde_json::to_string(&request).map_err(|e| {
+        runtime_t1("server.runtime.local_helper.request_serialize_failed", e.to_string())
+    })?;
+    writeln!(stream, "{}", payload).map_err(|e| {
+        runtime_t1("server.runtime.local_helper.request_write_failed", e.to_string())
+    })?;
 
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
-    reader
-        .read_line(&mut line)
-        .map_err(|e| format!("读取 helper 响应失败: {}", e))?;
+    reader.read_line(&mut line).map_err(|e| {
+        runtime_t1("server.runtime.local_helper.response_read_failed", e.to_string())
+    })?;
 
-    serde_json::from_str(&line).map_err(|e| format!("解析 helper 响应失败: {}", e))
+    serde_json::from_str(&line)
+        .map_err(|e| runtime_t1("server.runtime.local_helper.response_parse_failed", e.to_string()))
 }
 
 #[cfg(test)]

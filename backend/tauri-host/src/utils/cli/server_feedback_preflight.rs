@@ -1,8 +1,20 @@
+use crate::services::global::i18n_service;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_setup::{RuntimePreflightError, RuntimePreflightStage};
 use crate::utils::cli::server_shared::{resolve_cli_target_hint, CliServerRuntimeKind};
 use crate::utils::docker_cli::{classify_docker_command_failure, DockerCommandFailureKind};
 use sea_lantern_docker_core::{format_docker_image_reference, resolve_docker_image_and_tag};
+use std::collections::HashMap;
+
+fn preflight_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn preflight_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 fn render_requested_docker_image_ref(command: &CliServerCommand) -> String {
     resolve_docker_image_and_tag(
@@ -71,62 +83,52 @@ pub(super) fn render_runtime_preflight_failure_hint_lines_from_error(
     error: &RuntimePreflightError,
 ) -> Vec<String> {
     let target_hint = resolve_cli_target_hint(command);
-    let mut lines = vec![format!(
-        "可继续执行: sealantern server help    # 复查 {} runtime 参数",
-        error.runtime_kind.as_runtime_label()
+    let mut lines = vec![preflight_t1(
+        "cli.server_feedback.preflight.review_runtime_args",
+        error.runtime_kind.as_runtime_label(),
     )];
 
     match error.runtime_kind {
         CliServerRuntimeKind::Local => {
-            lines.push("本地建议: 可显式指定 --java <path>，或改用 --java %env:JAVA_HOME% / --java %env:Path%".to_string());
+            lines.push(preflight_t("cli.server_feedback.preflight.local_java_specify"));
             if command.java_from_env_only {
-                lines.push("本地建议: 当前使用 --J，仅允许从 JAVA_HOME/PATH 解析 Java；如环境未配置可改用 --java 显式指定".to_string());
+                lines.push(preflight_t("cli.server_feedback.preflight.local_java_env_only"));
             } else {
-                lines.push(
-                    "本地建议: 如环境变量和默认配置都未命中，CLI 会提示是否执行全局 Java 扫描"
-                        .to_string(),
-                );
+                lines.push(preflight_t("cli.server_feedback.preflight.local_java_scan_prompt"));
             }
             if matches!(error.stage, RuntimePreflightStage::LocalJava)
                 || error.message.to_ascii_lowercase().contains("java")
             {
-                lines.push(format!(
-                    "本地建议: 修复 Java 后可重试 sealantern server start {} 或重新执行 create flow",
-                    target_hint
+                lines.push(preflight_t1(
+                    "cli.server_feedback.preflight.local_java_retry_start",
+                    target_hint,
                 ));
             }
         }
         CliServerRuntimeKind::Docker => {
             let error_lower = error.message.to_ascii_lowercase();
             let failure_kind = classify_docker_command_failure(&error.message);
-            lines.push(format!(
-                "Docker 建议: 环境恢复后可重试 sealantern server {} --runtime docker ...",
-                target_hint
+            lines.push(preflight_t1(
+                "cli.server_feedback.preflight.docker_retry_runtime",
+                target_hint,
             ));
 
             match error.stage {
                 RuntimePreflightStage::DockerEnvironment => {
-                    lines.push("Docker 建议: 先执行 sealantern docker doctor".to_string());
-                    lines.push(
-                        "Docker 建议: 请确认 Docker Desktop / Engine 已启动，且当前用户可访问 daemon"
-                            .to_string(),
-                    );
+                    lines.push(preflight_t("cli.server_feedback.preflight.docker_doctor"));
+                    lines.push(preflight_t("cli.server_feedback.preflight.docker_daemon_running"));
                 }
                 RuntimePreflightStage::DockerBackend => {
-                    lines.push(
-                        "Docker 建议: 当前 CLI 主路径只接入了 docker CLI backend；请使用 --docker-backend cli 或直接省略该参数"
-                            .to_string(),
-                    );
-                    lines.push(
-                        "Docker 建议: 如需后续扩展 Engine API，可保留该记录格式，但当前版本不会实际运行 engine_api"
-                            .to_string(),
-                    );
+                    lines
+                        .push(preflight_t("cli.server_feedback.preflight.docker_backend_cli_only"));
+                    lines.push(preflight_t(
+                        "cli.server_feedback.preflight.docker_backend_engine_api_not_active",
+                    ));
                 }
                 RuntimePreflightStage::DockerDataDir => {
-                    lines.push(
-                        "Docker 建议: 当前更像容器路径映射缺失，请配置 SEALANTERN_SERVERS_CONTAINER_ROOT / SEALANTERN_SERVERS_HOST_ROOT，或显式传入 --data-dir"
-                            .to_string(),
-                    );
+                    lines.push(preflight_t(
+                        "cli.server_feedback.preflight.docker_data_dir_mapping_missing",
+                    ));
                 }
                 RuntimePreflightStage::DockerImage => {
                     let image_ref = render_requested_docker_image_ref(command);
@@ -134,75 +136,65 @@ pub(super) fn render_runtime_preflight_failure_hint_lines_from_error(
                     if error_lower.contains("镜像名看起来不兼容")
                         || error_lower.contains("minecraft server 容器")
                     {
-                        lines.push(
-                            "Docker 建议: 当前 docker_itzg runtime 只接受 Minecraft server 语义镜像；请改用 itzg/minecraft-server，或保持私有镜像最终名仍为 */minecraft-server"
-                                .to_string(),
-                        );
+                        lines.push(preflight_t(
+                            "cli.server_feedback.preflight.docker_image_minecraft_only",
+                        ));
                     }
 
                     if error_lower.contains("docker_stdio")
                         || error_lower.contains("mc-send-to-console")
                     {
-                        lines.push(
-                            "Docker 建议: 当前镜像不适合 --command-mode docker_stdio；如无强依赖，优先切回 --command-mode rcon"
-                                .to_string(),
-                        );
-                        lines.push(
-                            "Docker 建议: 若坚持使用 docker_stdio，请确认镜像内提供 mc-send-to-console，并遵循 itzg 的 CREATE_CONSOLE_IN_PIPE 语义"
-                                .to_string(),
-                        );
+                        lines.push(preflight_t(
+                            "cli.server_feedback.preflight.docker_image_stdio_incompatible",
+                        ));
+                        lines.push(preflight_t(
+                            "cli.server_feedback.preflight.docker_image_stdio_requirements",
+                        ));
                     }
 
-                    lines.push(format!(
-                        "Docker 建议: 若本地未缓存该镜像、且后续需要联网拉取，可在网络恢复后执行 sealantern docker pull {}",
-                        image_ref
+                    lines.push(preflight_t1(
+                        "cli.server_feedback.preflight.docker_image_pull_after_network",
+                        image_ref.clone(),
                     ));
-                    lines.push(
-                        "Docker 建议: 若你本地已缓存该镜像，或正在使用私有/离线镜像源，可直接继续 create/start/compose 流程"
-                            .to_string(),
-                    );
+                    lines.push(preflight_t(
+                        "cli.server_feedback.preflight.docker_image_cached_continue",
+                    ));
 
                     match failure_kind {
                         DockerCommandFailureKind::DaemonUnavailable => {
-                            lines.push("Docker 建议: 先执行 sealantern docker doctor".to_string());
-                            lines.push(
-                                "Docker 建议: 请确认 Docker Desktop / Engine 已启动，且当前用户可访问 daemon"
-                                    .to_string(),
-                            );
+                            lines.push(preflight_t("cli.server_feedback.preflight.docker_doctor"));
+                            lines.push(preflight_t(
+                                "cli.server_feedback.preflight.docker_daemon_running",
+                            ));
                         }
                         DockerCommandFailureKind::Network => {
-                            lines.push(
-                                "Docker 建议: 当前更像网络或代理问题，请检查镜像仓库连通性、代理配置和 TLS/证书环境"
-                                    .to_string(),
-                            );
+                            lines.push(preflight_t(
+                                "cli.server_feedback.preflight.docker_network_issue",
+                            ));
                         }
                         DockerCommandFailureKind::Timeout => {
-                            lines.push(
-                                "Docker 建议: 当前镜像探测命令超时，CLI 会按软失败继续；若宿主机还没有该镜像，建议待网络恢复后再执行 docker pull 预热"
-                                    .to_string(),
-                            );
-                            lines.push(
-                                "Docker 建议: 如网络较慢或 registry 响应不稳定，请稍后重试，或先用 sealantern docker doctor 检查宿主环境"
-                                    .to_string(),
-                            );
+                            lines.push(preflight_t(
+                                "cli.server_feedback.preflight.docker_timeout_soft_failure",
+                            ));
+                            lines.push(preflight_t(
+                                "cli.server_feedback.preflight.docker_timeout_retry",
+                            ));
                         }
                         DockerCommandFailureKind::Auth => {
-                            lines.push(
-                                "Docker 建议: 当前更像 registry 认证/权限问题，请先登录对应仓库并确认镜像可见性"
-                                    .to_string(),
-                            );
+                            lines.push(preflight_t(
+                                "cli.server_feedback.preflight.docker_auth_issue",
+                            ));
                         }
                         DockerCommandFailureKind::ImageNotFound => {
-                            lines.push(
-                                "Docker 建议: 当前更像镜像名或标签错误，请检查 --image / --image-tag 是否存在"
-                                    .to_string(),
-                            );
+                            lines.push(preflight_t(
+                                "cli.server_feedback.preflight.docker_image_not_found",
+                            ));
                         }
                         DockerCommandFailureKind::Other => {
                             if error_lower.contains("manifest") || error_lower.contains("pull") {
-                                lines.push(format!(
-                                    "Docker 建议: 如需联网验证镜像可用性，可执行 sealantern docker pull {}",
-                                    image_ref
+                                lines.push(preflight_t1(
+                                    "cli.server_feedback.preflight.docker_pull_validate",
+                                    image_ref,
                                 ));
                             }
                         }

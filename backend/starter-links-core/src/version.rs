@@ -82,8 +82,16 @@ fn next_version_token<'a>(value: &'a str, index: &mut usize) -> Option<VersionTo
 fn compare_numeric_token(left: &str, right: &str) -> Ordering {
     let left_trimmed = left.trim_start_matches('0');
     let right_trimmed = right.trim_start_matches('0');
-    let left_normalized = if left_trimmed.is_empty() { "0" } else { left_trimmed };
-    let right_normalized = if right_trimmed.is_empty() { "0" } else { right_trimmed };
+    let left_normalized = if left_trimmed.is_empty() {
+        "0"
+    } else {
+        left_trimmed
+    };
+    let right_normalized = if right_trimmed.is_empty() {
+        "0"
+    } else {
+        right_trimmed
+    };
 
     left_normalized
         .len()

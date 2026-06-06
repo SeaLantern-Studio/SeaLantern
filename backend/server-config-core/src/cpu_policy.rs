@@ -224,14 +224,12 @@ mod tests {
 
     #[test]
     fn resolve_cpu_policy_supports_unbounded_count_mode() {
-        let resolved = resolve_cpu_policy(
-            &CpuPolicyConfig {
-                mode: CpuPolicyMode::Count,
-                count: Some(32),
-                explicit_set: None,
-                sync_active_processor_count: true,
-            },
-        )
+        let resolved = resolve_cpu_policy(&CpuPolicyConfig {
+            mode: CpuPolicyMode::Count,
+            count: Some(32),
+            explicit_set: None,
+            sync_active_processor_count: true,
+        })
         .unwrap()
         .unwrap();
 

@@ -1,5 +1,5 @@
-use super::{CreateServerIdRequest, ServerIdEntry};
 use super::shared::{current_unix_secs, generate_id_from_name, validate_custom_id};
+use super::{CreateServerIdRequest, ServerIdEntry};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -71,7 +71,9 @@ pub(super) async fn get_id(
 }
 
 /// 列出全部启用中的短 ID
-pub(super) async fn list_ids(entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>) -> Vec<ServerIdEntry> {
+pub(super) async fn list_ids(
+    entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>,
+) -> Vec<ServerIdEntry> {
     let current_entries = entries.read().await;
     current_entries
         .values()
@@ -108,7 +110,10 @@ pub(super) async fn update_id(
 }
 
 /// 停用短 ID
-pub(super) async fn deactivate_id(entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>, id: &str) -> Result<(), String> {
+pub(super) async fn deactivate_id(
+    entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>,
+    id: &str,
+) -> Result<(), String> {
     let mut current_entries = entries.write().await;
 
     match current_entries.get_mut(id) {
@@ -121,7 +126,10 @@ pub(super) async fn deactivate_id(entries: &Arc<RwLock<HashMap<String, ServerIdE
 }
 
 /// 删除短 ID
-pub(super) async fn delete_id(entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>, id: &str) -> Result<(), String> {
+pub(super) async fn delete_id(
+    entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>,
+    id: &str,
+) -> Result<(), String> {
     let mut current_entries = entries.write().await;
 
     if current_entries.remove(id).is_some() {
@@ -132,7 +140,10 @@ pub(super) async fn delete_id(entries: &Arc<RwLock<HashMap<String, ServerIdEntry
 }
 
 /// 搜索短 ID
-pub(super) async fn search_ids(entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>, query: &str) -> Vec<ServerIdEntry> {
+pub(super) async fn search_ids(
+    entries: &Arc<RwLock<HashMap<String, ServerIdEntry>>>,
+    query: &str,
+) -> Vec<ServerIdEntry> {
     let current_entries = entries.read().await;
     let query_lower = query.to_lowercase();
 

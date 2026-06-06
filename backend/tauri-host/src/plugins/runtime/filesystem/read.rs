@@ -1,26 +1,31 @@
 use super::common::{
-    emit_permission_log_api, ensure_safe_path_for_access, resolve_scope_action, validate_fs_path,
-    FsContext,
+    emit_permission_log_api, ensure_safe_path_for_access, fs_t, fs_t1, fs_t2, resolve_scope_action,
+    validate_fs_path, FsContext,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use mlua::{Function, Lua};
 use std::fs;
 
+fn parse_scope_path_args(
+    lua: &Lua,
+    args: mlua::MultiValue,
+    usage_key: &str,
+) -> mlua::Result<(String, String)> {
+    match args.len() {
+        1 => {
+            let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
+            Ok(("data".to_string(), path))
+        }
+        2 => mlua::FromLuaMulti::from_lua_multi(args, lua),
+        _ => Err(mlua::Error::runtime(fs_t(usage_key))),
+    }
+}
+
 pub(super) fn read(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, args: mlua::MultiValue| {
-        let (scope, path) = match args.len() {
-            1 => {
-                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
-                ("data".to_string(), path)
-            }
-            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
-            _ => {
-                return Err(mlua::Error::runtime(
-                    "sl.fs.read expects (path) or (scope, path)".to_string(),
-                ));
-            }
-        };
+        let (scope, path) =
+            parse_scope_path_args(lua, args, "plugins.runtime.filesystem.read_usage")?;
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -34,27 +39,21 @@ pub(super) fn read(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
         emit_permission_log_api(&ctx.plugin_id, "sl.fs.read", &format!("{}:{}", scope, path));
 
-        fs::read_to_string(&full_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to read file: {}", e)))
+        fs::read_to_string(&full_path).map_err(|e| {
+            mlua::Error::runtime(fs_t1(
+                "plugins.runtime.filesystem.read_file_failed",
+                e.to_string(),
+            ))
+        })
     })
-    .map_err(|e| format!("Failed to create fs.read: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.read", e.to_string()))
 }
 
 pub(super) fn read_binary(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, args: mlua::MultiValue| {
-        let (scope, path) = match args.len() {
-            1 => {
-                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
-                ("data".to_string(), path)
-            }
-            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
-            _ => {
-                return Err(mlua::Error::runtime(
-                    "sl.fs.read_binary expects (path) or (scope, path)".to_string(),
-                ));
-            }
-        };
+        let (scope, path) =
+            parse_scope_path_args(lua, args, "plugins.runtime.filesystem.read_binary_usage")?;
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -72,28 +71,24 @@ pub(super) fn read_binary(lua: &Lua, ctx: &FsContext) -> Result<Function, String
             &format!("{}:{}", scope, path),
         );
 
-        let bytes = fs::read(&full_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to read file: {}", e)))?;
+        let bytes = fs::read(&full_path).map_err(|e| {
+            mlua::Error::runtime(fs_t1(
+                "plugins.runtime.filesystem.read_file_failed",
+                e.to_string(),
+            ))
+        })?;
         Ok(BASE64.encode(&bytes))
     })
-    .map_err(|e| format!("Failed to create fs.read_binary: {}", e))
+    .map_err(|e| {
+        fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.read_binary", e.to_string())
+    })
 }
 
 pub(super) fn exists(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, args: mlua::MultiValue| {
-        let (scope, path) = match args.len() {
-            1 => {
-                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
-                ("data".to_string(), path)
-            }
-            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
-            _ => {
-                return Err(mlua::Error::runtime(
-                    "sl.fs.exists expects (path) or (scope, path)".to_string(),
-                ));
-            }
-        };
+        let (scope, path) =
+            parse_scope_path_args(lua, args, "plugins.runtime.filesystem.exists_usage")?;
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -108,24 +103,14 @@ pub(super) fn exists(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
         emit_permission_log_api(&ctx.plugin_id, "sl.fs.exists", &format!("{}:{}", scope, path));
         Ok(full_path.exists())
     })
-    .map_err(|e| format!("Failed to create fs.exists: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.exists", e.to_string()))
 }
 
 pub(super) fn list(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, args: mlua::MultiValue| {
-        let (scope, path) = match args.len() {
-            1 => {
-                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
-                ("data".to_string(), path)
-            }
-            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
-            _ => {
-                return Err(mlua::Error::runtime(
-                    "sl.fs.list expects (path) or (scope, path)".to_string(),
-                ));
-            }
-        };
+        let (scope, path) =
+            parse_scope_path_args(lua, args, "plugins.runtime.filesystem.list_usage")?;
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -139,8 +124,9 @@ pub(super) fn list(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
         emit_permission_log_api(&ctx.plugin_id, "sl.fs.list", &format!("{}:{}", scope, path));
 
-        let entries = fs::read_dir(&full_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to read directory: {}", e)))?;
+        let entries = fs::read_dir(&full_path).map_err(|e| {
+            mlua::Error::runtime(fs_t1("plugins.runtime.filesystem.read_dir_failed", e.to_string()))
+        })?;
 
         let table = lua.create_table()?;
         let mut i = 1;
@@ -152,24 +138,14 @@ pub(super) fn list(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
         }
         Ok(table)
     })
-    .map_err(|e| format!("Failed to create fs.list: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.list", e.to_string()))
 }
 
 pub(super) fn info(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, args: mlua::MultiValue| {
-        let (scope, path) = match args.len() {
-            1 => {
-                let path: String = mlua::FromLuaMulti::from_lua_multi(args, lua)?;
-                ("data".to_string(), path)
-            }
-            2 => mlua::FromLuaMulti::from_lua_multi(args, lua)?,
-            _ => {
-                return Err(mlua::Error::runtime(
-                    "sl.fs.info expects (path) or (scope, path)".to_string(),
-                ));
-            }
-        };
+        let (scope, path) =
+            parse_scope_path_args(lua, args, "plugins.runtime.filesystem.info_usage")?;
         let (base_dir, _) = resolve_scope_action(
             &ctx.data_dir,
             &ctx.server_dir,
@@ -183,8 +159,12 @@ pub(super) fn info(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
         emit_permission_log_api(&ctx.plugin_id, "sl.fs.info", &format!("{}:{}", scope, path));
 
-        let metadata = fs::metadata(&full_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to get file metadata: {}", e)))?;
+        let metadata = fs::metadata(&full_path).map_err(|e| {
+            mlua::Error::runtime(fs_t1(
+                "plugins.runtime.filesystem.get_metadata_failed",
+                e.to_string(),
+            ))
+        })?;
 
         let table = lua.create_table()?;
         table.set("size", metadata.len())?;
@@ -198,7 +178,7 @@ pub(super) fn info(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
         Ok(table)
     })
-    .map_err(|e| format!("Failed to create fs.info: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.info", e.to_string()))
 }
 
 pub(super) fn get_path(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
@@ -223,5 +203,7 @@ pub(super) fn get_path(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
         Ok(path)
     })
-    .map_err(|e| format!("Failed to create fs.get_path: {}", e))
+    .map_err(|e| {
+        fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.get_path", e.to_string())
+    })
 }

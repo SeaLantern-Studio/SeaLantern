@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::models::server::ImportModpackRequest;
+use crate::services::server::manager::provisioning::i18n::{provisioning_t, provisioning_t1};
 
 use super::super::super::common::StartupMode;
 use super::super::super::fs::resolve_startup_file_path;
@@ -31,16 +32,16 @@ pub(super) fn resolve_modpack_startup_selection(
             .as_ref()
             .map(|value| value.trim())
             .filter(|value| !value.is_empty())
-            .ok_or_else(|| "未提供启动文件路径".to_string())?;
+            .ok_or_else(|| provisioning_t("server.provisioning.startup_file_path_missing"))?;
         Some(resolve_startup_file_path(source_path, run_dir, raw_path)?)
     };
 
     let startup_path = startup_file_path.clone().unwrap_or_default();
     if !startup_mode.is_custom() && !Path::new(&startup_path).exists() {
-        return Err(format!("启动文件不存在: {}", startup_path));
+        return Err(provisioning_t1("server.provisioning.startup_file_missing", startup_path));
     }
     if startup_mode.is_custom() && custom_command.is_none() {
-        return Err("自定义启动命令不能为空".to_string());
+        return Err(provisioning_t("server.provisioning.custom_command_empty"));
     }
 
     Ok(ModpackStartupSelection {

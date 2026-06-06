@@ -1,9 +1,9 @@
 use super::state::{
-    recover_lock, ApiCallHandler, API_CALL_HANDLER, ComponentEventHandler,
-    COMPONENT_EVENT_HANDLER, ContextMenuHandler, CONTEXT_MENU_HANDLER, I18nEventHandler,
-    I18N_EVENT_HANDLER, LogEventHandler, LOG_EVENT_HANDLER, PermissionLogHandler,
-    PERMISSION_LOG_HANDLER, ServerReadyHandler, SERVER_READY_HANDLER, SidebarEventHandler,
-    SIDEBAR_EVENT_HANDLER, UiEventHandler, UI_EVENT_HANDLER,
+    recover_lock, ApiCallHandler, ComponentEventHandler, ContextMenuHandler, I18nEventHandler,
+    LogEventHandler, PermissionLogHandler, ServerReadyHandler, SidebarEventHandler, UiEventHandler,
+    API_CALL_HANDLER, COMPONENT_EVENT_HANDLER, CONTEXT_MENU_HANDLER, I18N_EVENT_HANDLER,
+    LOG_EVENT_HANDLER, PERMISSION_LOG_HANDLER, SERVER_READY_HANDLER, SIDEBAR_EVENT_HANDLER,
+    UI_EVENT_HANDLER,
 };
 use crate::plugins::api::context_menu::take_context_menu_snapshot;
 use std::sync::Arc;

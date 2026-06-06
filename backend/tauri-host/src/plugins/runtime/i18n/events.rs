@@ -1,4 +1,4 @@
-use super::common::{callbacks_table, remove_locale_callback_token, I18nContext};
+use super::common::{callbacks_table, i18n_err1, remove_locale_callback_token, I18nContext};
 use crate::services::global::i18n_service;
 use mlua::{Function, Table, Value};
 
@@ -18,7 +18,7 @@ pub(super) fn on_locale_change(ctx: &I18nContext, callback: Function) -> mlua::R
 
     ctx.lua
         .set_named_registry_value(&registry_key, callbacks_table)
-        .map_err(|e| mlua::Error::runtime(format!("Failed to store callback function: {}", e)))?;
+        .map_err(|e| i18n_err1("plugins.runtime.i18n.store_callback_failed", e.to_string()))?;
 
     ensure_locale_listener_registered(ctx, &token_key)?;
 
@@ -46,7 +46,9 @@ pub(super) fn off_locale_change(ctx: &I18nContext, callback_id: usize) -> mlua::
     if has_registered_callbacks(&callbacks_table)? {
         ctx.lua
             .set_named_registry_value(&registry_key, callbacks_table)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to update callbacks: {}", e)))?;
+            .map_err(|e| {
+                i18n_err1("plugins.runtime.i18n.update_callbacks_failed", e.to_string())
+            })?;
     } else {
         let _ = ctx.lua.set_named_registry_value(&registry_key, Value::Nil);
         if let Ok(token_id) = ctx.lua.named_registry_value::<usize>(&token_key) {
@@ -93,7 +95,7 @@ fn ensure_locale_listener_registered(ctx: &I18nContext, token_key: &str) -> mlua
 
     ctx.lua
         .set_named_registry_value(token_key, token.0)
-        .map_err(|e| mlua::Error::runtime(format!("Failed to store token: {}", e)))
+        .map_err(|e| i18n_err1("plugins.runtime.i18n.store_token_failed", e.to_string()))
 }
 
 fn has_registered_callbacks(callbacks_table: &Table) -> mlua::Result<bool> {

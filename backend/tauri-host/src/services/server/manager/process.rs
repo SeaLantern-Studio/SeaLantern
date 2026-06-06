@@ -3,6 +3,8 @@ use std::process::{Child, Command};
 #[cfg(unix)]
 use std::collections::HashSet;
 
+use super::i18n::manager_t1;
+
 #[cfg(unix)]
 fn list_child_pids_unix(ppid: u32) -> Vec<u32> {
     let output = Command::new("pgrep")
@@ -88,7 +90,7 @@ pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
     let status = Command::new("taskkill")
         .args(["/PID", &pid_str, "/T", "/F"])
         .status()
-        .map_err(|e| format!("执行 taskkill 失败: {}", e))?;
+        .map_err(|e| manager_t1("server.manager.process_taskkill_failed", e.to_string()))?;
 
     if !status.success() {
         let _ = child.kill();
@@ -148,26 +150,31 @@ pub(crate) fn force_kill_process_tree_by_pid(pid: u32) -> Result<(), String> {
         let status = Command::new("taskkill")
             .args(["/PID", &pid_str, "/T", "/F"])
             .status()
-            .map_err(|e| format!("执行 taskkill 失败: {}", e))?;
+            .map_err(|e| manager_t1("server.manager.process_taskkill_failed", e.to_string()))?;
         if status.success() || !is_process_alive_windows(pid) {
             return Ok(());
         }
 
-        Err(format!("taskkill 未能终止 PID {}", pid))
+        Err(manager_t1(
+            "server.manager.process_taskkill_pid_not_terminated",
+            pid.to_string(),
+        ))
     }
 
     #[cfg(not(any(unix, windows)))]
     {
         let _ = pid;
-        Err("当前平台暂不支持按 PID 强制终止进程树".to_string())
+        Err(manager_t("server.manager.process_force_kill_platform_unsupported"))
     }
 }
 
 #[cfg(not(any(unix, windows)))]
 pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
-    child.kill().map_err(|e| format!("终止进程失败: {}", e))?;
+    child
+        .kill()
+        .map_err(|e| manager_t1("server.manager.process_kill_failed", e.to_string()))?;
     child
         .wait()
         .map(|_| ())
-        .map_err(|e| format!("等待进程退出失败: {}", e))
+        .map_err(|e| manager_t1("server.manager.process_wait_failed", e.to_string()))
 }

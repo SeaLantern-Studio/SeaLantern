@@ -346,6 +346,14 @@ fn append_sealantern_service(
         "      SEALANTERN_SERVERS_HOST_ROOT: \"{}\"",
         escape_yaml_double_quoted(&host_root)
     ));
+    lines.push(
+        "      # 浏览器前端访问 Headless HTTP 时，需要把同一 Bearer token 注入到前端构建环境"
+            .to_string(),
+    );
+    lines.push(
+        "      # 例如在前端构建阶段设置 VITE_HTTP_AUTH_TOKEN，并与 SEALANTERN_HTTP_AUTH_TOKEN 保持一致"
+            .to_string(),
+    );
 
     if let Some(static_dir) = &options.static_dir {
         lines.push(format!("      STATIC_DIR: \"{}\"", escape_yaml_double_quoted(static_dir)));

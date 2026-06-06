@@ -1,6 +1,6 @@
 use super::common::{
     copy_dir_recursive, emit_permission_log_api, ensure_safe_directory_tree,
-    ensure_safe_path_for_access, resolve_scope_action, validate_fs_path, FsContext,
+    ensure_safe_path_for_access, fs_t1, fs_t2, resolve_scope_action, validate_fs_path, FsContext,
 };
 use mlua::{Function, Lua};
 use std::fs;
@@ -30,18 +30,30 @@ pub(super) fn copy(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
         );
 
         if src_path.is_dir() {
-            copy_dir_recursive(&src_path, &dst_path)
-                .map_err(|e| mlua::Error::runtime(format!("Failed to copy directory: {}", e)))
+            copy_dir_recursive(&src_path, &dst_path).map_err(|e| {
+                mlua::Error::runtime(fs_t1(
+                    "plugins.runtime.filesystem.copy_dir_failed",
+                    e.to_string(),
+                ))
+            })
         } else {
             if dst_path.exists() {
-                return Err(mlua::Error::runtime(format!("Destination already exists: {}", dst)));
+                return Err(mlua::Error::runtime(fs_t1(
+                    "plugins.runtime.filesystem.destination_exists",
+                    dst,
+                )));
             }
             fs::copy(&src_path, &dst_path)
-                .map_err(|e| mlua::Error::runtime(format!("Failed to copy file: {}", e)))
+                .map_err(|e| {
+                    mlua::Error::runtime(fs_t1(
+                        "plugins.runtime.filesystem.copy_file_failed",
+                        e.to_string(),
+                    ))
+                })
                 .map(|_| ())
         }
     })
-    .map_err(|e| format!("Failed to create fs.copy: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.copy", e.to_string()))
 }
 
 pub(super) fn move_entry(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
@@ -68,10 +80,14 @@ pub(super) fn move_entry(lua: &Lua, ctx: &FsContext) -> Result<Function, String>
             &format!("{}:{}->{}", scope, src, dst),
         );
 
-        fs::rename(&src_path, &dst_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to move file/directory: {}", e)))
+        fs::rename(&src_path, &dst_path).map_err(|e| {
+            mlua::Error::runtime(fs_t1(
+                "plugins.runtime.filesystem.move_entry_failed",
+                e.to_string(),
+            ))
+        })
     })
-    .map_err(|e| format!("Failed to create fs.move: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.move", e.to_string()))
 }
 
 pub(super) fn rename_entry(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
@@ -98,8 +114,12 @@ pub(super) fn rename_entry(lua: &Lua, ctx: &FsContext) -> Result<Function, Strin
             &format!("{}:{}->{}", scope, old_path, new_path),
         );
 
-        fs::rename(&old_full_path, &new_full_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to rename file/directory: {}", e)))
+        fs::rename(&old_full_path, &new_full_path).map_err(|e| {
+            mlua::Error::runtime(fs_t1(
+                "plugins.runtime.filesystem.rename_entry_failed",
+                e.to_string(),
+            ))
+        })
     })
-    .map_err(|e| format!("Failed to create fs.rename: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.rename", e.to_string()))
 }

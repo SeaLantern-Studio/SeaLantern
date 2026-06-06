@@ -2,25 +2,22 @@ use std::path::Path;
 
 use crate::models::server::ServerInstance;
 use crate::models::settings::AppSettings;
-use sea_lantern_server_config_core::{
-    build_managed_jvm_args_from_input, resolve_effective_startup_config_from_document,
-    EffectiveStartupConfig as SharedEffectiveStartupConfig, StartupResolutionDefaults,
-    StartupRuntimeDefaults, ManagedJvmBuildInput,
-};
 use sea_lantern_server_config_core::startup::read_server_startup_config_document;
 use sea_lantern_server_config_core::types::ServerStartupConfigDocument;
+use sea_lantern_server_config_core::{
+    build_managed_jvm_args_from_input, resolve_effective_startup_config_from_document,
+    EffectiveStartupConfig as SharedEffectiveStartupConfig, ManagedJvmBuildInput,
+    StartupResolutionDefaults, StartupRuntimeDefaults,
+};
 
 use super::common::ManagedConsoleEncoding;
 use super::common::StartupMode;
 use super::cpu_policy;
+use super::i18n::manager_t1;
 
 pub(crate) type EffectiveStartupConfig = SharedEffectiveStartupConfig;
 
-pub(crate) fn resolve_effective_startup_config(
-    server: &ServerInstance,
-    settings: &AppSettings,
-) -> EffectiveStartupConfig {
-    let startup = read_startup_document(server);
+fn runtime_defaults(server: &ServerInstance) -> StartupRuntimeDefaults {
     let runtime_jvm_args = server
         .local_runtime()
         .map(|runtime| runtime.jvm_args.clone())
@@ -49,20 +46,47 @@ pub(crate) fn resolve_effective_startup_config(
         })
         .unwrap_or_default();
 
-    resolve_effective_startup_config_from_document(
+    StartupRuntimeDefaults {
+        max_memory: server.max_memory,
+        min_memory: server.min_memory,
+        jvm_args: runtime_jvm_args,
+        cpu_policy: runtime_cpu_policy,
+        jvm_preset: runtime_jvm_preset,
+    }
+}
+
+fn resolution_defaults(settings: &AppSettings) -> StartupResolutionDefaults {
+    StartupResolutionDefaults {
+        default_max_memory: settings.default_max_memory,
+        default_min_memory: settings.default_min_memory,
+    }
+}
+
+pub(crate) fn resolve_effective_startup_config_checked(
+    server: &ServerInstance,
+    settings: &AppSettings,
+) -> Result<EffectiveStartupConfig, String> {
+    let startup = read_startup_document_checked(server)?;
+
+    Ok(resolve_effective_startup_config_from_document(
         &startup,
-        &StartupRuntimeDefaults {
-            max_memory: server.max_memory,
-            min_memory: server.min_memory,
-            jvm_args: runtime_jvm_args,
-            cpu_policy: runtime_cpu_policy,
-            jvm_preset: runtime_jvm_preset,
-        },
-        &StartupResolutionDefaults {
-            default_max_memory: settings.default_max_memory,
-            default_min_memory: settings.default_min_memory,
-        },
-    )
+        &runtime_defaults(server),
+        &resolution_defaults(settings),
+    ))
+}
+
+#[cfg(test)]
+pub(crate) fn resolve_effective_startup_config(
+    server: &ServerInstance,
+    settings: &AppSettings,
+) -> EffectiveStartupConfig {
+    resolve_effective_startup_config_checked(server, settings).unwrap_or_else(|_| {
+        resolve_effective_startup_config_from_document(
+            &ServerStartupConfigDocument::default(),
+            &runtime_defaults(server),
+            &resolution_defaults(settings),
+        )
+    })
 }
 
 pub(super) fn build_managed_jvm_args(
@@ -71,7 +95,7 @@ pub(super) fn build_managed_jvm_args(
     console_encoding: ManagedConsoleEncoding,
 ) -> Result<Vec<String>, String> {
     let java_encoding = console_encoding.java_name();
-    let effective = resolve_effective_startup_config(server, settings);
+    let effective = resolve_effective_startup_config_checked(server, settings)?;
     let startup_mode = StartupMode::from_raw(server.startup_mode_str());
     let active_processor_count_arg =
         cpu_policy::compute_active_processor_count_arg(server, settings, startup_mode)?;
@@ -98,16 +122,21 @@ pub(super) fn write_user_jvm_args(
     };
 
     std::fs::write(&user_jvm_args_path, content)
-        .map_err(|e| format!("写入 user_jvm_args.txt 失败: {}", e))
+        .map_err(|e| manager_t1("server.manager.user_jvm_args_write_failed", e.to_string()))
 }
 
-pub(crate) fn read_startup_document(server: &ServerInstance) -> ServerStartupConfigDocument {
-    read_server_startup_config_document(&server.path).unwrap_or_default()
+pub(crate) fn read_startup_document_checked(
+    server: &ServerInstance,
+) -> Result<ServerStartupConfigDocument, String> {
+    read_server_startup_config_document(&server.path)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{build_managed_jvm_args, resolve_effective_startup_config, write_user_jvm_args};
+    use super::{
+        build_managed_jvm_args, read_startup_document_checked, resolve_effective_startup_config,
+        resolve_effective_startup_config_checked, write_user_jvm_args,
+    };
     use crate::models::server::{
         CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId, LocalRuntimeConfig,
         ServerInstance, ServerRuntimeConfig,
@@ -359,5 +388,50 @@ mod tests {
         let err = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
             .expect_err("unsupported mode should fail");
         assert!(err.contains("暂不支持 CPU policy"));
+    }
+
+    #[test]
+    fn read_startup_document_checked_surfaces_invalid_instance_config() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let config_dir = temp_dir.path().join("SeaLantern");
+        std::fs::create_dir_all(&config_dir).expect("config dir should be created");
+        std::fs::write(config_dir.join("config.toml"), "max_memory = [\n")
+            .expect("broken config.toml should be written");
+
+        let err = read_startup_document_checked(&server)
+            .expect_err("invalid config should surface an explicit error");
+
+        assert!(err.contains("解析实例配置失败"));
+    }
+
+    #[test]
+    fn resolve_effective_startup_config_checked_surfaces_invalid_instance_config() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let config_dir = temp_dir.path().join("SeaLantern");
+        std::fs::create_dir_all(&config_dir).expect("config dir should be created");
+        std::fs::write(config_dir.join("config.toml"), "max_memory = [\n")
+            .expect("broken config.toml should be written");
+
+        let err = resolve_effective_startup_config_checked(&server, &test_settings())
+            .expect_err("invalid config should not silently downgrade to runtime defaults");
+
+        assert!(err.contains("解析实例配置失败"));
+    }
+
+    #[test]
+    fn build_managed_jvm_args_surfaces_invalid_instance_config() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let config_dir = temp_dir.path().join("SeaLantern");
+        std::fs::create_dir_all(&config_dir).expect("config dir should be created");
+        std::fs::write(config_dir.join("config.toml"), "max_memory = [\n")
+            .expect("broken config.toml should be written");
+
+        let err = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
+            .expect_err("invalid config should abort managed JVM arg synthesis");
+
+        assert!(err.contains("解析实例配置失败"));
     }
 }

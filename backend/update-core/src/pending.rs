@@ -66,12 +66,8 @@ pub(crate) fn remove_stale_pending_update_file(
     pending_file: &Path,
     reason: &str,
 ) -> Result<(), String> {
-    std::fs::remove_file(pending_file).map_err(|e| {
-        format!(
-            "Failed to remove stale pending update file ({}): {}",
-            reason, e
-        )
-    })
+    std::fs::remove_file(pending_file)
+        .map_err(|e| format!("Failed to remove stale pending update file ({}): {}", reason, e))
 }
 
 #[cfg(test)]

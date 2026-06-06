@@ -1,7 +1,7 @@
-mod headless_runtime;
 mod headless_http;
-mod http_dispatch;
+mod headless_runtime;
 mod http_bind;
+mod http_dispatch;
 mod logging;
 mod panic_report;
 mod panic_report_pathing;
@@ -12,38 +12,40 @@ mod runtime_mode;
 mod server_status;
 mod tokio_runtime;
 
-pub use http_bind::{resolve_http_bind_addr, resolve_http_bind_addr_checked, resolve_http_bind_host};
-pub use logging::{
-    GLOBAL_LOG_COLLECTOR, LogLine, capture_eprintln, capture_println, format_log_entry,
-    log_debug, log_error, log_trace,
-    log_user_action, log_user_action_error, log_warn, to_log_line,
-};
-pub use headless_runtime::{TokioServiceConfig, run_tokio_service};
 pub use headless_http::{
-    HTTP_AUTH_TOKEN_ENV, HTTP_CORS_ORIGINS_ENV, HeadlessHttpConfig, default_headless_http_config,
-    default_headless_http_config_checked,
+    default_headless_http_config, default_headless_http_config_checked,
     describe_http_security_configuration, format_token_reference, log_headless_http_ready,
-    log_headless_http_static_dir, prepare_headless_http_listener,
+    log_headless_http_static_dir, prepare_headless_http_listener, HeadlessHttpConfig,
+    HTTP_AUTH_TOKEN_ENV, HTTP_CORS_ORIGINS_ENV,
+};
+pub use headless_runtime::{run_tokio_service, TokioServiceConfig};
+pub use http_bind::{
+    resolve_http_bind_addr, resolve_http_bind_addr_checked, resolve_http_bind_host,
 };
 pub use http_dispatch::{
-    CommandHandler, CommandRegistry, DispatchResult, RegistryBuilder, dispatch_http_command,
-    handle_unsupported, is_supported_http_command, parse_params,
+    dispatch_http_command, handle_unsupported, is_supported_http_command, parse_params,
+    CommandHandler, CommandRegistry, DispatchResult, RegistryBuilder,
+};
+pub use logging::{
+    capture_eprintln, capture_println, format_log_entry, log_debug, log_debug_ctx, log_error,
+    log_error_ctx, log_fatal, log_fatal_ctx, log_info, log_info_ctx, log_trace, log_trace_ctx,
+    log_user_action, log_user_action_error, log_warn, log_warn_ctx, to_log_line, LogFields,
+    LogLevel, LogLine, GLOBAL_LOG_COLLECTOR,
 };
 pub use panic_report::init_panic_hook;
 pub use path_utils::{
     find_executable_in_path, find_root_startup_file, find_root_startup_file_checked,
     get_app_data_dir, get_or_create_app_data_dir, get_or_create_app_data_dir_checked,
-    is_windows_absolute_path,
-    strip_path_prefix_for_compare, validate_file_name_only,
+    is_windows_absolute_path, strip_path_prefix_for_compare, validate_file_name_only,
 };
-pub use port_usage::{PortUsageKind, is_tcp_port_listening, is_tcp_port_listening_checked};
+pub use port_usage::{is_tcp_port_listening, is_tcp_port_listening_checked, PortUsageKind};
 pub use runtime_mode::RuntimeMode;
 pub use server_status::{
-    StatusLevel, StatusSnapshot, status_blocks_start, status_detail_field, status_detail_health,
-    status_detail_indicates_running, status_detail_runtime_kind,
-    status_is_docker_command_ready, status_is_terminal_start_ready,
+    status_blocks_start, status_detail_field, status_detail_health,
+    status_detail_indicates_running, status_detail_runtime_kind, status_is_docker_command_ready,
+    status_is_terminal_start_ready, StatusLevel, StatusSnapshot,
 };
-pub use tokio_runtime::{TokioRuntimeConfig, create_tokio_runtime, create_tokio_runtime_or_exit};
+pub use tokio_runtime::{create_tokio_runtime, create_tokio_runtime_or_exit, TokioRuntimeConfig};
 
 #[cfg(test)]
 pub(crate) mod test_support {

@@ -4,6 +4,7 @@ use crate::hardcode_data::plugin_manifest::{
     manifest_not_found_in_zip_message, parse_manifest_failed_message, read_manifest_failed_message,
 };
 use crate::plugins::loader::PluginLoader;
+use crate::plugins::manager::i18n::{plugin_t1, plugin_t2};
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::Path;
@@ -18,9 +19,10 @@ pub(super) fn install_plugin_from_zip(
     manager: &mut PluginManager,
     zip_path: &Path,
 ) -> Result<PluginInfo, String> {
-    let file = File::open(zip_path).map_err(|e| format!("Failed to open ZIP file: {}", e))?;
-    let mut archive =
-        zip::ZipArchive::new(file).map_err(|e| format!("Failed to read ZIP archive: {}", e))?;
+    let file = File::open(zip_path)
+        .map_err(|e| plugin_t1("plugin.install.open_zip_failed", e.to_string()))?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| plugin_t1("plugin.install.read_zip_failed", e.to_string()))?;
 
     let (manifest_content, prefix) = find_manifest_in_zip(&mut archive)?;
 
@@ -33,9 +35,9 @@ pub(super) fn install_plugin_from_zip(
 
     if let Some(existing) = manager.plugins.get(&plugin_id) {
         if matches!(existing.state, PluginState::Enabled) {
-            return Err(format!(
-                "插件 '{}' 正在运行中，请先禁用后再进行替换",
-                existing.manifest.name
+            return Err(plugin_t1(
+                "plugin.install.already_running_replace",
+                existing.manifest.name.clone(),
             ));
         }
     }
@@ -43,10 +45,10 @@ pub(super) fn install_plugin_from_zip(
     let target_dir = manager.plugins_dir.join(&plugin_id);
     if target_dir.exists() {
         fs::remove_dir_all(&target_dir)
-            .map_err(|e| format!("Failed to remove existing plugin directory: {}", e))?;
+            .map_err(|e| plugin_t1("plugin.install.remove_existing_dir_failed", e.to_string()))?;
     }
     fs::create_dir_all(&target_dir)
-        .map_err(|e| format!("Failed to create plugin directory: {}", e))?;
+        .map_err(|e| plugin_t1("plugin.install.create_plugin_dir_failed", e.to_string()))?;
 
     extract_zip_to_dir(&mut archive, &prefix, &target_dir)?;
 
@@ -80,7 +82,7 @@ fn find_manifest_in_zip(archive: &mut zip::ZipArchive<File>) -> Result<(String, 
     for i in 0..archive.len() {
         let file = archive
             .by_index(i)
-            .map_err(|e| format!("Failed to read ZIP entry: {}", e))?;
+            .map_err(|e| plugin_t1("plugin.install.read_zip_entry_failed", e.to_string()))?;
         let name = file.name();
 
         if name.ends_with(&format!("/{}", PLUGIN_MANIFEST_FILE_NAME)) {
@@ -94,12 +96,17 @@ fn find_manifest_in_zip(archive: &mut zip::ZipArchive<File>) -> Result<(String, 
 
     if let Some(prefix) = found_prefix {
         let manifest_path = format!("{}{}", prefix, PLUGIN_MANIFEST_FILE_NAME);
-        let mut file = archive
-            .by_name(&manifest_path)
-            .map_err(|e| format!("Failed to open {}: {}", manifest_path, e))?;
+        let mut file = archive.by_name(&manifest_path).map_err(|e| {
+            plugin_t2("plugin.install.open_zip_entry_failed", manifest_path.clone(), e.to_string())
+        })?;
         let mut content = String::new();
-        file.read_to_string(&mut content)
-            .map_err(|e| format!("Failed to read {}: {}", manifest_path, e))?;
+        file.read_to_string(&mut content).map_err(|e| {
+            plugin_t2(
+                "plugin.install.read_zip_entry_content_failed",
+                manifest_path.clone(),
+                e.to_string(),
+            )
+        })?;
         return Ok((content, prefix));
     }
 
@@ -119,9 +126,9 @@ fn extract_zip_to_dir(
     let mut total_extracted_size: u64 = 0;
 
     for i in 0..archive.len() {
-        let mut file = archive
-            .by_index(i)
-            .map_err(|e| format!("Failed to read ZIP entry {}: {}", i, e))?;
+        let mut file = archive.by_index(i).map_err(|e| {
+            plugin_t2("plugin.install.read_zip_entry_index_failed", i.to_string(), e.to_string())
+        })?;
 
         let name = file.name().to_string();
 
@@ -161,42 +168,59 @@ fn extract_zip_to_dir(
             .canonicalize()
             .unwrap_or_else(|_| target_dir.to_path_buf());
         if !canonical_target.starts_with(&canonical_base) {
-            return Err(format!(
-                "ZIP entry '{}' attempts path traversal outside target directory",
-                relative_path
-            ));
+            return Err(plugin_t1("plugin.install.zip_path_traversal", relative_path));
         }
 
         let file_size = file.size();
         if file_size > MAX_SINGLE_FILE_SIZE {
-            return Err(format!(
-                "ZIP entry '{}' exceeds max file size ({}MB > 50MB)",
-                file.name(),
-                file_size / 1024 / 1024
+            return Err(plugin_t2(
+                "plugin.install.zip_file_too_large",
+                file.name().to_string(),
+                (file_size / 1024 / 1024).to_string(),
             ));
         }
         total_extracted_size += file_size;
         if total_extracted_size > MAX_TOTAL_SIZE {
-            return Err(format!(
-                "ZIP total extracted size exceeds limit ({}MB > 200MB)",
-                total_extracted_size / 1024 / 1024
+            return Err(plugin_t2(
+                "plugin.install.zip_total_too_large",
+                (total_extracted_size / 1024 / 1024).to_string(),
+                (MAX_TOTAL_SIZE / 1024 / 1024).to_string(),
             ));
         }
 
         if file.is_dir() {
             fs::create_dir_all(&target_path).map_err(|e| {
-                format!("Failed to create directory {}: {}", target_path.display(), e)
+                plugin_t2(
+                    "plugin.install.create_directory_failed",
+                    target_path.display().to_string(),
+                    e.to_string(),
+                )
             })?;
         } else {
             if let Some(parent) = target_path.parent() {
-                fs::create_dir_all(parent)
-                    .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+                fs::create_dir_all(parent).map_err(|e| {
+                    plugin_t2(
+                        "plugin.install.create_parent_dir_failed",
+                        parent.display().to_string(),
+                        e.to_string(),
+                    )
+                })?;
             }
 
-            let mut outfile = File::create(&target_path)
-                .map_err(|e| format!("Failed to create file {}: {}", target_path.display(), e))?;
-            io::copy(&mut file, &mut outfile)
-                .map_err(|e| format!("Failed to write file {}: {}", target_path.display(), e))?;
+            let mut outfile = File::create(&target_path).map_err(|e| {
+                plugin_t2(
+                    "plugin.install.create_file_failed",
+                    target_path.display().to_string(),
+                    e.to_string(),
+                )
+            })?;
+            io::copy(&mut file, &mut outfile).map_err(|e| {
+                plugin_t2(
+                    "plugin.install.write_file_failed",
+                    target_path.display().to_string(),
+                    e.to_string(),
+                )
+            })?;
         }
     }
 

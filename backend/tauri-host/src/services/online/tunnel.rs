@@ -63,7 +63,7 @@ pub async fn copy_ticket() -> Result<bool, String> {
     runtime::copy_ticket().await
 }
 
-pub async fn status() -> TunnelStatus {
+pub async fn status() -> Result<TunnelStatus, String> {
     runtime::status().await
 }
 

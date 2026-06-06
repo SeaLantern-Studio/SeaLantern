@@ -66,8 +66,12 @@ mod tests {
 
         clear_runtime_flags(&manager, "alpha");
 
-        assert!(!manager.is_starting("alpha"));
-        assert!(!manager.is_stopping("alpha"));
+        assert!(!manager
+            .is_starting_checked("alpha")
+            .expect("starting flag should read"));
+        assert!(!manager
+            .is_stopping_checked("alpha")
+            .expect("stopping flag should read"));
     }
 
     #[test]
@@ -77,11 +81,19 @@ mod tests {
         manager.mark_stopping("alpha");
 
         clear_runtime_flags_if_terminal(&manager, "alpha", &ServerStatus::Running);
-        assert!(manager.is_starting("alpha"));
-        assert!(manager.is_stopping("alpha"));
+        assert!(manager
+            .is_starting_checked("alpha")
+            .expect("starting flag should read"));
+        assert!(manager
+            .is_stopping_checked("alpha")
+            .expect("stopping flag should read"));
 
         clear_runtime_flags_if_terminal(&manager, "alpha", &ServerStatus::Stopped);
-        assert!(!manager.is_starting("alpha"));
-        assert!(!manager.is_stopping("alpha"));
+        assert!(!manager
+            .is_starting_checked("alpha")
+            .expect("starting flag should read"));
+        assert!(!manager
+            .is_stopping_checked("alpha")
+            .expect("stopping flag should read"));
     }
 }

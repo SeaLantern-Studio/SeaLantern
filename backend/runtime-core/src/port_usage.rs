@@ -28,7 +28,8 @@ fn unix_is_tcp_port_listening(port: u16, kind: PortUsageKind) -> Result<bool, St
     resolve_port_probe_results([
         (
             "ss",
-            run_command("ss", &["-ltn"]).map(|output| parse_unix_ss_for_tcp_port(&output, port, kind)),
+            run_command("ss", &["-ltn"])
+                .map(|output| parse_unix_ss_for_tcp_port(&output, port, kind)),
         ),
         (
             "netstat",

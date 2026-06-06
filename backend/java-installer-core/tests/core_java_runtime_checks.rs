@@ -65,7 +65,9 @@ fn resolve_java_binary_path_points_to_platform_bin_location() {
 
 fn serve_single_response(status_line: &str, body: &[u8], content_type: &str) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").expect("test server should bind");
-    let addr = listener.local_addr().expect("test server addr should resolve");
+    let addr = listener
+        .local_addr()
+        .expect("test server addr should resolve");
     let body = body.to_vec();
     let status_line = status_line.to_string();
     let content_type = content_type.to_string();
@@ -93,17 +95,16 @@ async fn download_and_install_java_surfaces_http_status_before_archive_parse() {
     let cancel_flag = AtomicBool::new(false);
     let url = serve_single_response("404 Not Found", b"missing", "text/plain");
 
-    let error = download_and_install_java(
-        &url,
-        "jdk-test-http-404",
-        app_dir.path(),
-        &cancel_flag,
-        |_| {},
-    )
-    .await
-    .expect_err("404 response should fail");
+    let error =
+        download_and_install_java(&url, "jdk-test-http-404", app_dir.path(), &cancel_flag, |_| {})
+            .await
+            .expect_err("404 response should fail");
 
-    assert!(error.contains("下载请求失败（HTTP 404 Not Found）"), "unexpected error: {}", error);
+    assert!(
+        error.contains("下载请求失败（HTTP 404 Not Found）"),
+        "unexpected error: {}",
+        error
+    );
     assert!(!error.contains("ZIP"), "unexpected error: {}", error);
     assert!(!error.contains("tar.gz"), "unexpected error: {}", error);
 }
@@ -115,15 +116,9 @@ async fn download_and_install_java_cleans_temp_dir_after_invalid_archive_failure
     let version_name = "jdk-test-invalid-archive";
     let url = serve_single_response("200 OK", b"not an archive", "application/octet-stream");
 
-    let error = download_and_install_java(
-        &url,
-        version_name,
-        app_dir.path(),
-        &cancel_flag,
-        |_| {},
-    )
-    .await
-    .expect_err("invalid archive should fail");
+    let error = download_and_install_java(&url, version_name, app_dir.path(), &cancel_flag, |_| {})
+        .await
+        .expect_err("invalid archive should fail");
 
     let runtimes_dir = app_dir.path().join("runtimes");
     let temp_dir = runtimes_dir.join(format!("temp_{version_name}"));

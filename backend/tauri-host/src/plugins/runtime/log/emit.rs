@@ -1,6 +1,8 @@
 use super::common::{convert_lua_string, LogContext};
 use mlua::Function;
 
+use crate::utils::logger::{log_debug_ctx, log_error_ctx};
+
 pub(super) fn create_log_function(
     ctx: &LogContext,
     level: &str,
@@ -18,8 +20,21 @@ pub(super) fn create_log_function(
         }
 
         let message = convert_lua_string(&msg);
-        println!("[{}] [{}] {}", level_display, plugin_id, message);
-        let _ = emit_log_event(&plugin_id, &level, &message);
+        log_debug_ctx(
+            "plugins.runtime.log.emit",
+            "create_log_function",
+            &format!("plugin_id={} level={} message={}", plugin_id, level_display, message),
+        );
+        if let Err(error) = emit_log_event(&plugin_id, &level, &message) {
+            log_error_ctx(
+                "plugins.runtime.log.emit",
+                "create_log_function",
+                &format!(
+                    "plugin log emit failed: plugin_id={} level={} error={}",
+                    plugin_id, level, error
+                ),
+            );
+        }
         Ok(())
     })
 }

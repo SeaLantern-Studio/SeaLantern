@@ -1,5 +1,5 @@
 use super::super::PluginRuntime;
-use super::common::{emit_result, map_create_err, map_set_err};
+use super::common::{emit_result, map_create_err, map_set_err, ui_t1};
 use crate::plugins::api::emit_sidebar_event;
 use mlua::Table;
 
@@ -8,9 +8,12 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
     let pid = runtime.plugin_id.clone();
     let register_sidebar_fn = map_create_err(
         runtime.lua.create_function(move |lua, config: Table| {
-            let label: String = config
-                .get("label")
-                .map_err(|_| mlua::Error::runtime("侧边栏配置缺少必需的 'label' 字段"))?;
+            let label: String = config.get("label").map_err(|_| {
+                mlua::Error::runtime(ui_t1(
+                    "plugins.runtime.ui.sidebar.required_field_missing",
+                    "label",
+                ))
+            })?;
 
             let icon: String = config.get("icon").unwrap_or_default();
 

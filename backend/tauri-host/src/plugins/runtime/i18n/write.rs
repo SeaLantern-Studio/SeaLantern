@@ -1,5 +1,6 @@
 use super::common::{
-    plugin_i18n_namespace, validate_locale, validate_translation_key, I18nContext,
+    i18n_err, i18n_err1, i18n_t2, plugin_i18n_namespace, validate_locale, validate_translation_key,
+    I18nContext,
 };
 use crate::plugins::api::emit_i18n_event;
 use crate::services::global::i18n_service;
@@ -75,10 +76,10 @@ fn table_to_namespaced_map(
         map.insert(key, value);
 
         if map.len() > MAX_TRANSLATION_ENTRIES_PER_CALL {
-            return Err(mlua::Error::runtime(format!(
-                "i18n.addTranslations accepts at most {} entries per call",
-                MAX_TRANSLATION_ENTRIES_PER_CALL
-            )));
+            return Err(i18n_err1(
+                "plugins.runtime.i18n.max_entries_per_call_exceeded",
+                MAX_TRANSLATION_ENTRIES_PER_CALL.to_string(),
+            ));
         }
     }
 
@@ -87,16 +88,14 @@ fn table_to_namespaced_map(
 
 fn validate_locale_input(locale: &str) -> mlua::Result<()> {
     if locale.is_empty() || locale.len() > MAX_LOCALE_LEN {
-        return Err(mlua::Error::runtime(format!(
-            "Locale length must be between 1 and {} characters",
-            MAX_LOCALE_LEN
-        )));
+        return Err(i18n_err1(
+            "plugins.runtime.i18n.locale_length_invalid",
+            MAX_LOCALE_LEN.to_string(),
+        ));
     }
 
     if !validate_locale(locale) {
-        return Err(mlua::Error::runtime(
-            "Locale must match formats like en, en-US, zh-CN or sr-Latn".to_string(),
-        ));
+        return Err(i18n_err("plugins.runtime.i18n.locale_format_invalid"));
     }
 
     Ok(())
@@ -105,16 +104,14 @@ fn validate_locale_input(locale: &str) -> mlua::Result<()> {
 fn validate_display_name(display_name: &str) -> mlua::Result<()> {
     let trimmed = display_name.trim();
     if trimmed.is_empty() || trimmed.len() > MAX_DISPLAY_NAME_LEN {
-        return Err(mlua::Error::runtime(format!(
-            "Display name length must be between 1 and {} characters",
-            MAX_DISPLAY_NAME_LEN
-        )));
+        return Err(i18n_err1(
+            "plugins.runtime.i18n.display_name_length_invalid",
+            MAX_DISPLAY_NAME_LEN.to_string(),
+        ));
     }
 
     if trimmed.chars().any(|ch| ch.is_control()) {
-        return Err(mlua::Error::runtime(
-            "Display name must not contain control characters".to_string(),
-        ));
+        return Err(i18n_err("plugins.runtime.i18n.display_name_control_chars_forbidden"));
     }
 
     Ok(())
@@ -122,16 +119,14 @@ fn validate_display_name(display_name: &str) -> mlua::Result<()> {
 
 fn validate_translation_key_input(key: &str) -> mlua::Result<()> {
     if key.is_empty() || key.len() > MAX_TRANSLATION_KEY_LEN {
-        return Err(mlua::Error::runtime(format!(
-            "Translation key length must be between 1 and {} characters",
-            MAX_TRANSLATION_KEY_LEN
-        )));
+        return Err(i18n_err1(
+            "plugins.runtime.i18n.translation_key_length_invalid",
+            MAX_TRANSLATION_KEY_LEN.to_string(),
+        ));
     }
 
     if !validate_translation_key(key) {
-        return Err(mlua::Error::runtime(
-            "Translation key may only contain letters, digits, '.', '-', '_' or ':'".to_string(),
-        ));
+        return Err(i18n_err("plugins.runtime.i18n.translation_key_format_invalid"));
     }
 
     Ok(())
@@ -139,16 +134,14 @@ fn validate_translation_key_input(key: &str) -> mlua::Result<()> {
 
 fn validate_translation_value(value: &str) -> mlua::Result<()> {
     if value.len() > MAX_TRANSLATION_VALUE_LEN {
-        return Err(mlua::Error::runtime(format!(
-            "Translation value length must not exceed {} characters",
-            MAX_TRANSLATION_VALUE_LEN
-        )));
+        return Err(i18n_err1(
+            "plugins.runtime.i18n.translation_value_too_long",
+            MAX_TRANSLATION_VALUE_LEN.to_string(),
+        ));
     }
 
     if value.chars().any(|ch| ch == '\u{0000}') {
-        return Err(mlua::Error::runtime(
-            "Translation value must not contain null characters".to_string(),
-        ));
+        return Err(i18n_err("plugins.runtime.i18n.translation_value_null_forbidden"));
     }
 
     Ok(())
@@ -165,9 +158,10 @@ fn enforce_plugin_translation_quota(
         .saturating_add(incoming_entries);
 
     if total_entries > MAX_TRANSLATION_ENTRIES_PER_PLUGIN {
-        return Err(mlua::Error::runtime(format!(
-            "Plugin translation quota exceeded for locale '{}': limit is {} entries per plugin",
-            locale, MAX_TRANSLATION_ENTRIES_PER_PLUGIN
+        return Err(mlua::Error::runtime(i18n_t2(
+            "plugins.runtime.i18n.plugin_quota_exceeded",
+            locale,
+            MAX_TRANSLATION_ENTRIES_PER_PLUGIN.to_string(),
         )));
     }
 

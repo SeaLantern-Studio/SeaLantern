@@ -1,7 +1,10 @@
-use crate::{capture_eprintln, capture_println};
-use http::{HeaderValue, header::AUTHORIZATION};
+use crate::{log_error_ctx, log_info_ctx};
+use http::{header::AUTHORIZATION, HeaderValue};
 use sha2::{Digest, Sha256};
-use std::{path::{Path, PathBuf}, sync::mpsc::Sender};
+use std::{
+    path::{Path, PathBuf},
+    sync::mpsc::Sender,
+};
 use tokio::{fs, net::TcpListener};
 use uuid::Uuid;
 
@@ -11,6 +14,16 @@ pub(crate) const DEFAULT_MAX_UPLOAD_FILE_BYTES: usize = 100 * 1024 * 1024;
 pub(crate) const DEFAULT_MAX_UPLOAD_FILES: usize = 16;
 pub const HTTP_AUTH_TOKEN_ENV: &str = "SEALANTERN_HTTP_AUTH_TOKEN";
 pub const HTTP_CORS_ORIGINS_ENV: &str = "SEALANTERN_HTTP_CORS_ORIGINS";
+
+fn print_info(function: &str, message: &str) {
+    std::println!("{}", message);
+    log_info_ctx("runtime.headless_http", function, message);
+}
+
+fn print_error(function: &str, message: &str) {
+    std::eprintln!("{}", message);
+    log_error_ctx("runtime.headless_http", function, message);
+}
 
 #[derive(Clone, Debug)]
 pub struct HeadlessHttpConfig {
@@ -58,12 +71,12 @@ pub async fn prepare_headless_http_listener(
         if let Some(notifier) = startup_notifier {
             let _ = notifier.send(Err(message.clone()));
         }
-        capture_eprintln(message.clone());
+        print_error("prepare_headless_http_listener", &message);
         return Err(message);
     }
 
     for message in describe_http_security_configuration(config) {
-        capture_println(message);
+        print_info("prepare_headless_http_listener", &message);
     }
 
     let listener = match TcpListener::bind(addr).await {
@@ -73,7 +86,7 @@ pub async fn prepare_headless_http_listener(
             if let Some(notifier) = startup_notifier {
                 let _ = notifier.send(Err(message.clone()));
             }
-            capture_eprintln(message.clone());
+            print_error("prepare_headless_http_listener", &message);
             return Err(message);
         }
     };
@@ -87,12 +100,13 @@ pub async fn prepare_headless_http_listener(
 
 pub fn log_headless_http_ready(addr: &str) {
     for message in describe_http_ready_messages(addr) {
-        capture_println(message);
+        print_info("log_headless_http_ready", &message);
     }
 }
 
 pub fn log_headless_http_static_dir(dir: &str) {
-    capture_println(format!("Serving static files from: {} (SPA fallback enabled)", dir));
+    let message = format!("Serving static files from: {} (SPA fallback enabled)", dir);
+    print_info("log_headless_http_static_dir", &message);
 }
 
 pub fn describe_http_security_configuration(config: &HeadlessHttpConfig) -> Vec<String> {
@@ -199,15 +213,19 @@ fn token_prefix(token: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::{
-        DEFAULT_MAX_UPLOAD_BYTES, DEFAULT_MAX_UPLOAD_FILE_BYTES, DEFAULT_MAX_UPLOAD_FILES,
-        DEFAULT_UPLOAD_DIR, HTTP_AUTH_TOKEN_ENV, HTTP_CORS_ORIGINS_ENV,
         default_headless_http_config, default_headless_http_config_checked,
-        describe_http_security_configuration,
+        describe_http_ready_messages, describe_http_security_configuration, format_token_reference,
         parse_cors_allowed_origins_checked, prepare_headless_http_listener,
-        describe_http_ready_messages, format_token_reference,
+        DEFAULT_MAX_UPLOAD_BYTES, DEFAULT_MAX_UPLOAD_FILES, DEFAULT_MAX_UPLOAD_FILE_BYTES,
+        DEFAULT_UPLOAD_DIR, HTTP_AUTH_TOKEN_ENV, HTTP_CORS_ORIGINS_ENV,
     };
     use crate::test_support::{lock_env, EnvGuard};
-    use std::{fs as std_fs, path::PathBuf, sync::mpsc, time::{SystemTime, UNIX_EPOCH}};
+    use std::{
+        fs as std_fs,
+        path::PathBuf,
+        sync::mpsc,
+        time::{SystemTime, UNIX_EPOCH},
+    };
     use tokio::runtime::Runtime;
 
     #[test]
@@ -228,21 +246,13 @@ mod tests {
     #[test]
     fn cors_allowlist_parses_comma_separated_origins() {
         let _lock = lock_env();
-        let _cors_guard = EnvGuard::set(
-            HTTP_CORS_ORIGINS_ENV,
-            " https://example.com, ,https://second.example ",
-        );
+        let _cors_guard =
+            EnvGuard::set(HTTP_CORS_ORIGINS_ENV, " https://example.com, ,https://second.example ");
 
         let config = default_headless_http_config();
         assert_eq!(config.cors_allowed_origins.len(), 2);
-        assert_eq!(
-            config.cors_allowed_origins[0].to_str().unwrap(),
-            "https://example.com"
-        );
-        assert_eq!(
-            config.cors_allowed_origins[1].to_str().unwrap(),
-            "https://second.example"
-        );
+        assert_eq!(config.cors_allowed_origins[0].to_str().unwrap(), "https://example.com");
+        assert_eq!(config.cors_allowed_origins[1].to_str().unwrap(), "https://second.example");
     }
 
     #[test]
@@ -286,7 +296,9 @@ mod tests {
 
         let config = default_headless_http_config();
         let messages = describe_http_security_configuration(&config);
-        assert!(messages.iter().all(|message| !message.contains(&config.auth_token)));
+        assert!(messages
+            .iter()
+            .all(|message| !message.contains(&config.auth_token)));
         assert!(messages
             .iter()
             .any(|message| message.contains("process-local token prefix=")));
@@ -319,7 +331,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
-        let upload_path = std::env::temp_dir().join(format!("sealantern-upload-dir-test-{}.tmp", unique));
+        let upload_path =
+            std::env::temp_dir().join(format!("sealantern-upload-dir-test-{}.tmp", unique));
         std_fs::write(&upload_path, b"occupied by file").expect("create placeholder file");
         let (tx, rx) = mpsc::channel();
         let config = super::HeadlessHttpConfig {
@@ -336,8 +349,16 @@ mod tests {
             .block_on(prepare_headless_http_listener("127.0.0.1:0", &config, Some(tx)))
             .expect_err("upload dir preparation failure should abort startup");
 
-        assert!(error.contains("Failed to create upload directory"), "unexpected error: {}", error);
-        assert!(error.contains(upload_path.to_string_lossy().as_ref()), "unexpected error: {}", error);
+        assert!(
+            error.contains("Failed to create upload directory"),
+            "unexpected error: {}",
+            error
+        );
+        assert!(
+            error.contains(upload_path.to_string_lossy().as_ref()),
+            "unexpected error: {}",
+            error
+        );
 
         let startup = rx.recv().expect("startup result");
         let startup_error = startup.expect_err("startup notifier should receive failure");

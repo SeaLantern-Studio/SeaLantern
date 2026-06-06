@@ -46,17 +46,16 @@ pub(crate) fn sanitize_container_name(name: &str) -> String {
 
 fn default_docker_server_dir(name: &str) -> Result<String, String> {
     let path = default_container_visible_server_dir(name)?;
-    Ok(
-        map_container_visible_path_to_docker_host_path(&path)
-            .unwrap_or_else(|| path.to_string_lossy().to_string()),
-    )
+    Ok(map_container_visible_path_to_docker_host_path(&path)
+        .unwrap_or_else(|| path.to_string_lossy().to_string()))
 }
 
 fn default_container_visible_server_dir(name: &str) -> Result<PathBuf, String> {
     let mut path = if let Some(container_root) = configured_servers_container_root() {
         container_root
     } else {
-        let mut app_data_dir = PathBuf::from(crate::utils::path::get_or_create_app_data_dir_checked()?);
+        let mut app_data_dir =
+            PathBuf::from(crate::utils::path::get_or_create_app_data_dir_checked()?);
         app_data_dir.push("servers");
         app_data_dir
     };
@@ -79,8 +78,7 @@ mod tests {
         let blocked_path = blocked_root.join("nested");
 
         let _env_lock = lock_env();
-        let _data_dir_guard =
-            EnvGuard::set("SEALANTERN_DATA_DIR", &blocked_path.to_string_lossy());
+        let _data_dir_guard = EnvGuard::set("SEALANTERN_DATA_DIR", &blocked_path.to_string_lossy());
         let _headless_guard = EnvGuard::remove("SEALANTERN_HEADLESS_HTTP");
         let _host_guard = EnvGuard::remove("SEALANTERN_SERVERS_HOST_ROOT");
         let _container_guard = EnvGuard::remove("SEALANTERN_SERVERS_CONTAINER_ROOT");

@@ -1,3 +1,4 @@
+use crate::commands::app::common::{app_t, app_t1};
 use std::path::Path;
 use tauri_plugin_dialog::DialogExt;
 
@@ -6,15 +7,16 @@ pub async fn pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, Stri
 
     app.dialog()
         .file()
-        .set_title("Select server JAR file")
-        .add_filter("JAR Files", &["jar"])
-        .add_filter("All Files", &["*"])
+        .set_title(app_t("app.dialog.title_select_server_jar"))
+        .add_filter(app_t("app.dialog.filter_jar_files"), &["jar"])
+        .add_filter(app_t("app.dialog.filter_all_files"), &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
@@ -22,19 +24,20 @@ pub async fn pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, 
 
     app.dialog()
         .file()
-        .set_title("Select server file")
-        .add_filter("Server Files", &["jar", "zip", "tar", "tgz", "gz"])
-        .add_filter("JAR Files", &["jar"])
-        .add_filter("ZIP Files", &["zip"])
-        .add_filter("TAR Files", &["tar"])
-        .add_filter("Compressed TAR", &["tgz", "gz"])
-        .add_filter("All Files", &["*"])
+        .set_title(app_t("app.dialog.title_select_server_file"))
+        .add_filter(app_t("app.dialog.filter_server_files"), &["jar", "zip", "tar", "tgz", "gz"])
+        .add_filter(app_t("app.dialog.filter_jar_files"), &["jar"])
+        .add_filter(app_t("app.dialog.filter_zip_files"), &["zip"])
+        .add_filter(app_t("app.dialog.filter_tar_files"), &["tar"])
+        .add_filter(app_t("app.dialog.filter_compressed_tar"), &["tgz", "gz"])
+        .add_filter(app_t("app.dialog.filter_all_files"), &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_startup_file(
@@ -48,29 +51,30 @@ pub async fn pick_startup_file(
     match mode.as_str() {
         "bat" => {
             dialog = dialog
-                .set_title("Select server BAT file")
-                .add_filter("BAT Files", &["bat"]);
+                .set_title(app_t("app.dialog.title_select_server_bat"))
+                .add_filter(app_t("app.dialog.filter_bat_files"), &["bat"]);
         }
         "sh" => {
             dialog = dialog
-                .set_title("Select server SH file")
-                .add_filter("Shell Scripts", &["sh"]);
+                .set_title(app_t("app.dialog.title_select_server_sh"))
+                .add_filter(app_t("app.dialog.filter_shell_scripts"), &["sh"]);
         }
         _ => {
             dialog = dialog
-                .set_title("Select server JAR file")
-                .add_filter("JAR Files", &["jar"]);
+                .set_title(app_t("app.dialog.title_select_server_jar"))
+                .add_filter(app_t("app.dialog.filter_jar_files"), &["jar"]);
         }
     }
 
     dialog
-        .add_filter("All Files", &["*"])
+        .add_filter(app_t("app.dialog.filter_all_files"), &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_server_executable(
@@ -80,12 +84,12 @@ pub async fn pick_server_executable(
 
     app.dialog()
         .file()
-        .set_title("Select server executable")
-        .add_filter("Server Files", &["jar", "bat", "sh"])
-        .add_filter("JAR Files", &["jar"])
-        .add_filter("Batch Files", &["bat"])
-        .add_filter("Shell Scripts", &["sh"])
-        .add_filter("All Files", &["*"])
+        .set_title(app_t("app.dialog.title_select_server_executable"))
+        .add_filter(app_t("app.dialog.filter_server_files_short"), &["jar", "bat", "sh"])
+        .add_filter(app_t("app.dialog.filter_jar_files"), &["jar"])
+        .add_filter(app_t("app.dialog.filter_batch_files"), &["bat"])
+        .add_filter(app_t("app.dialog.filter_shell_scripts"), &["sh"])
+        .add_filter(app_t("app.dialog.filter_all_files"), &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| {
                 let path_str = p.to_string();
@@ -104,7 +108,8 @@ pub async fn pick_server_executable(
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
@@ -112,22 +117,23 @@ pub async fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 
     app.dialog()
         .file()
-        .set_title("Select Java executable")
+        .set_title(app_t("app.dialog.title_select_java_executable"))
         .add_filter(
             if cfg!(windows) {
-                "Java Executable"
+                app_t("app.dialog.filter_java_executable")
             } else {
-                "Java Binary"
+                app_t("app.dialog.filter_java_binary")
             },
             if cfg!(windows) { &["exe"] } else { &[""] },
         )
-        .add_filter("All Files", &["*"])
+        .add_filter(app_t("app.dialog.filter_all_files"), &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
@@ -135,13 +141,14 @@ pub async fn pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, Str
 
     app.dialog()
         .file()
-        .set_title("Save File")
+        .set_title(app_t("app.dialog.title_save_file"))
         .save_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_personalization_export_file(
@@ -152,15 +159,16 @@ pub async fn pick_personalization_export_file(
 
     app.dialog()
         .file()
-        .set_title("Export personalization package")
+        .set_title(app_t("app.dialog.title_export_personalization"))
         .set_file_name(&suggested_name)
-        .add_filter("Sea Lantern Personalization Package", &["zip"])
+        .add_filter(app_t("app.dialog.filter_personalization_package"), &["zip"])
         .save_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_personalization_import_file(
@@ -170,15 +178,16 @@ pub async fn pick_personalization_import_file(
 
     app.dialog()
         .file()
-        .set_title("Import personalization package")
-        .add_filter("Sea Lantern Personalization Package", &["zip"])
-        .add_filter("ZIP Files", &["zip"])
+        .set_title(app_t("app.dialog.title_import_personalization"))
+        .add_filter(app_t("app.dialog.filter_personalization_package"), &["zip"])
+        .add_filter(app_t("app.dialog.filter_zip_files"), &["zip"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
@@ -186,13 +195,14 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String
 
     app.dialog()
         .file()
-        .set_title("Select folder")
+        .set_title(app_t("app.dialog.title_select_folder"))
         .pick_folder(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
 pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
@@ -200,13 +210,17 @@ pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, St
 
     app.dialog()
         .file()
-        .set_title("Select image")
-        .add_filter("Images", &["png", "jpg", "jpeg", "gif", "webp", "bmp"])
-        .add_filter("All Files", &["*"])
+        .set_title(app_t("app.dialog.title_select_image"))
+        .add_filter(
+            app_t("app.dialog.filter_images"),
+            &["png", "jpg", "jpeg", "gif", "webp", "bmp"],
+        )
+        .add_filter(app_t("app.dialog.filter_all_files"), &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }

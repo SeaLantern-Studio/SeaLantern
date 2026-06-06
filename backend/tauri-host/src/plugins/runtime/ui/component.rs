@@ -1,7 +1,7 @@
 use super::super::PluginRuntime;
 use super::common::{
     emit_component_action, lua_opt_str, lua_str, lua_value_to_json, map_create_err, map_set_err,
-    table_to_json,
+    table_to_json, ui_t2,
 };
 use crate::plugins::api::component_mirror_list;
 use mlua::Table;
@@ -10,7 +10,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
     let component_table = runtime
         .lua
         .create_table()
-        .map_err(|e| format!("创建 ui.component 表失败: {}", e))?;
+        .map_err(|e| ui_t2("plugins.runtime.ui.create_failed", "ui.component", e.to_string()))?;
 
     register_list(runtime, &component_table)?;
     register_get(runtime, &component_table)?;
@@ -21,7 +21,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
 
     ui_table
         .set("component", component_table)
-        .map_err(|e| format!("设置 ui.component 失败: {}", e))?;
+        .map_err(|e| ui_t2("plugins.runtime.ui.set_failed", "ui.component", e.to_string()))?;
 
     Ok(())
 }
@@ -58,11 +58,13 @@ fn register_list(runtime: &PluginRuntime, component_table: &Table) -> Result<(),
             }
             Ok(result)
         })
-        .map_err(|e| format!("创建 ui.component.list 失败: {}", e))?;
+        .map_err(|e| {
+            ui_t2("plugins.runtime.ui.create_failed", "ui.component.list", e.to_string())
+        })?;
 
     component_table
         .set("list", list_fn)
-        .map_err(|e| format!("设置 ui.component.list 失败: {}", e))?;
+        .map_err(|e| ui_t2("plugins.runtime.ui.set_failed", "ui.component.list", e.to_string()))?;
 
     Ok(())
 }

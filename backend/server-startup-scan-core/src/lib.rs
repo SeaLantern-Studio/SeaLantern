@@ -129,12 +129,8 @@ fn scan_folder_source(
                 .unwrap_or(true);
 
             if should_replace {
-                detected_core = Some((
-                    recommended,
-                    detection_rank.1,
-                    detection_rank.2,
-                    parsed_info,
-                ));
+                detected_core =
+                    Some((recommended, detection_rank.1, detection_rank.2, parsed_info));
             }
 
             candidates.push(StartupCandidateItem {
@@ -234,10 +230,9 @@ fn scan_archive_source(
     let inspect_root = if source.is_file() {
         let temp_dir = TempExtractDir::new("sea_lantern_startup_scan")?;
         sea_lantern_server_installer_core::extract_modpack_archive(source, temp_dir.path())?;
-        let root_dir = sea_lantern_server_installer_core::resolve_extracted_root_checked(
-            temp_dir.path(),
-        )
-        .map_err(|error| format!("扫描启动候选失败: {}", error))?;
+        let root_dir =
+            sea_lantern_server_installer_core::resolve_extracted_root_checked(temp_dir.path())
+                .map_err(|error| format!("扫描启动候选失败: {}", error))?;
         temp_extract_dir = Some(temp_dir);
         root_dir
     } else if source.is_dir() {
@@ -246,9 +241,8 @@ fn scan_archive_source(
         return Err("archive 来源无效".to_string());
     };
 
-    let mut parsed = sea_lantern_server_installer_core::parse_server_core_type(
-        &inspect_root.to_string_lossy(),
-    )?;
+    let mut parsed =
+        sea_lantern_server_installer_core::parse_server_core_type(&inspect_root.to_string_lossy())?;
 
     if let (Some(temp_dir), Some(jar_path)) = (temp_extract_dir.as_ref(), parsed.jar_path.clone()) {
         parsed.jar_path = Some(to_relative_archive_path(temp_dir.path(), &jar_path)?);
@@ -350,7 +344,9 @@ fn build_result(
     mc_version_options: &[&str],
 ) -> StartupScanResult {
     let detected_core_type_key =
-        sea_lantern_server_installer_core::CoreType::normalize_to_api_core_key(&parsed_core.core_type);
+        sea_lantern_server_installer_core::CoreType::normalize_to_api_core_key(
+            &parsed_core.core_type,
+        );
 
     StartupScanResult {
         parsed_core,
@@ -399,7 +395,10 @@ mod tests {
     }
 
     fn candidate_modes(candidates: &[StartupCandidateItem]) -> Vec<String> {
-        candidates.iter().map(|candidate| candidate.mode.clone()).collect()
+        candidates
+            .iter()
+            .map(|candidate| candidate.mode.clone())
+            .collect()
     }
 
     fn write_manifest_jar(path: &std::path::Path, manifest: &str) {
@@ -423,12 +422,8 @@ mod tests {
     #[test]
     fn scan_startup_candidates_rejects_unknown_source_type() {
         let dir = tempfile::tempdir().expect("temp dir should exist");
-        let error = scan_startup_candidates(
-            dir.path().to_string_lossy().as_ref(),
-            "unknown",
-            &[],
-        )
-        .expect_err("unknown source type should fail");
+        let error = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "unknown", &[])
+            .expect_err("unknown source type should fail");
 
         assert!(error.contains("来源类型无效"));
     }
@@ -439,12 +434,8 @@ mod tests {
         fs::write(dir.path().join("run.sh"), "#!/bin/sh\n").expect("shell script should write");
         fs::write(dir.path().join("start.bat"), "@echo off\n").expect("bat script should write");
 
-        let result = scan_startup_candidates(
-            dir.path().to_string_lossy().as_ref(),
-            "folder",
-            &[],
-        )
-        .expect("folder scan should succeed");
+        let result = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
+            .expect("folder scan should succeed");
 
         assert_eq!(candidate_modes(&result.candidates), vec!["sh", "bat"]);
         assert_eq!(result.candidates[0].recommended, 2);
@@ -458,12 +449,8 @@ mod tests {
         fs::write(dir.path().join("launch.ps1"), "Write-Host boot\n")
             .expect("powershell script should write");
 
-        let result = scan_startup_candidates(
-            dir.path().to_string_lossy().as_ref(),
-            "folder",
-            &[],
-        )
-        .expect("folder scan should succeed");
+        let result = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
+            .expect("folder scan should succeed");
 
         assert_eq!(candidate_modes(&result.candidates), vec!["ps1"]);
         assert_eq!(result.candidates[0].recommended, 2);
@@ -472,15 +459,10 @@ mod tests {
     #[test]
     fn scan_startup_candidates_treats_cmd_as_bat_script_candidate() {
         let dir = tempfile::tempdir().expect("temp dir should exist");
-        fs::write(dir.path().join("start.cmd"), "@echo off\n")
-            .expect("cmd script should write");
+        fs::write(dir.path().join("start.cmd"), "@echo off\n").expect("cmd script should write");
 
-        let result = scan_startup_candidates(
-            dir.path().to_string_lossy().as_ref(),
-            "folder",
-            &[],
-        )
-        .expect("folder scan should succeed");
+        let result = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
+            .expect("folder scan should succeed");
 
         assert_eq!(candidate_modes(&result.candidates), vec!["bat"]);
         assert_eq!(result.candidates[0].label, "start.cmd");
@@ -496,12 +478,8 @@ mod tests {
             "Manifest-Version: 1.0\r\nMain-Class: io.papermc.paperclip.Main\r\n\r\n",
         );
 
-        let result = scan_startup_candidates(
-            jar_path.to_string_lossy().as_ref(),
-            "archive",
-            &[],
-        )
-        .expect("archive jar scan should succeed");
+        let result = scan_startup_candidates(jar_path.to_string_lossy().as_ref(), "archive", &[])
+            .expect("archive jar scan should succeed");
 
         assert_eq!(result.candidates.len(), 1);
         assert_eq!(result.candidates[0].id, "archive-jar");
@@ -509,7 +487,10 @@ mod tests {
         assert_eq!(result.candidates[0].label, "server.jar");
         assert_eq!(result.candidates[0].path, jar_path.to_string_lossy());
         assert_eq!(result.candidates[0].recommended, 3);
-        assert_eq!(result.parsed_core.jar_path.as_deref(), Some(jar_path.to_string_lossy().as_ref()));
+        assert_eq!(
+            result.parsed_core.jar_path.as_deref(),
+            Some(jar_path.to_string_lossy().as_ref())
+        );
         assert_eq!(result.detected_core_type_key.as_deref(), Some("paper"));
     }
 
@@ -519,12 +500,8 @@ mod tests {
         fs::write(dir.path().join("paper-server.jar"), b"not a real jar archive")
             .expect("broken jar should write");
 
-        let error = scan_startup_candidates(
-            dir.path().to_string_lossy().as_ref(),
-            "folder",
-            &[],
-        )
-        .expect_err("broken jar candidate should not be downgraded to unknown scan result");
+        let error = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
+            .expect_err("broken jar candidate should not be downgraded to unknown scan result");
 
         assert!(error.contains("扫描启动候选失败"), "unexpected error: {}", error);
         assert!(
@@ -546,12 +523,8 @@ mod tests {
             "Manifest-Version: 1.0\r\nMain-Class: io.papermc.paperclip.Main\r\n\r\n",
         );
 
-        let result = scan_startup_candidates(
-            dir.path().to_string_lossy().as_ref(),
-            "folder",
-            &[],
-        )
-        .expect("folder scan should succeed");
+        let result = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
+            .expect("folder scan should succeed");
 
         assert_eq!(result.parsed_core.core_type, "Paper");
         assert_eq!(result.detected_core_type_key.as_deref(), Some("paper"));
@@ -570,20 +543,13 @@ mod tests {
 
         let before = startup_scan_temp_dirs();
 
-        let error = scan_startup_candidates(
-            archive_path.to_string_lossy().as_ref(),
-            "archive",
-            &[],
-        )
-        .expect_err("invalid archive should fail");
+        let error =
+            scan_startup_candidates(archive_path.to_string_lossy().as_ref(), "archive", &[])
+                .expect_err("invalid archive should fail");
 
         let after = startup_scan_temp_dirs();
 
-        assert!(
-            error.contains("无法解析 ZIP 压缩包"),
-            "unexpected error: {}",
-            error
-        );
+        assert!(error.contains("无法解析 ZIP 压缩包"), "unexpected error: {}", error);
         assert_eq!(after, before);
     }
 }

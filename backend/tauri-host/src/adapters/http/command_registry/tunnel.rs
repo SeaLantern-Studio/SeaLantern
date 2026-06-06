@@ -1,4 +1,4 @@
-use super::common::{CommandHandler, RegistryBuilder, parse_params};
+use super::common::{parse_params, CommandHandler, RegistryBuilder};
 use super::requests::{TunnelHostRequest, TunnelJoinRequest};
 use crate::commands::online::tunnel as tunnel_commands;
 use serde_json::Value;
@@ -8,10 +8,7 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("tunnel_stop", handle_tunnel_stop as CommandHandler);
     builder.register("tunnel_status", handle_tunnel_status as CommandHandler);
     builder.register("tunnel_copy_ticket", handle_tunnel_copy_ticket as CommandHandler);
-    builder.register(
-        "tunnel_regenerate_ticket",
-        handle_tunnel_regenerate_ticket as CommandHandler,
-    );
+    builder.register("tunnel_regenerate_ticket", handle_tunnel_regenerate_ticket as CommandHandler);
     builder.register("tunnel_generate_ticket", handle_tunnel_generate_ticket as CommandHandler);
 }
 

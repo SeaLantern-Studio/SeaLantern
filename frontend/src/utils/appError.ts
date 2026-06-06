@@ -14,6 +14,18 @@ export interface NormalizedAppError {
   cause?: unknown;
 }
 
+export class AppError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+    public args?: Record<string, unknown>,
+    public cause?: unknown,
+  ) {
+    super(message);
+    this.name = "AppError";
+  }
+}
+
 const DEFAULT_ERROR_CODE = "common.message_unknown_error";
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -24,10 +36,11 @@ export function normalizeAppError(error: unknown): NormalizedAppError {
   if (isObject(error)) {
     const payload = error as BackendErrorPayload;
     const code = payload.code || payload.error_kind || DEFAULT_ERROR_CODE;
-    const message = payload.message || (typeof error === "string" ? error : "");
+    const rawMessage = payload.message || (typeof error === "string" ? error : "");
+    const message = code !== DEFAULT_ERROR_CODE ? resolveErrorMessage(code, payload.args) : rawMessage;
     return {
       code,
-      message: message || resolveErrorMessage(code, payload.args),
+      message: message || rawMessage || resolveErrorMessage(code, payload.args),
       args: payload.args,
       cause: error,
     };

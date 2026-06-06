@@ -1,5 +1,5 @@
 use crate::models::settings::{AppSettings, PartialSettings, SettingsGroup};
-use crate::utils::logger::log_debug;
+use crate::utils::logger::{log_debug_ctx, log_warn_ctx};
 use std::sync::Mutex;
 
 ///此处常量见 utils/constants.rs
@@ -19,22 +19,25 @@ pub struct UpdateResult {
     pub changed_groups: Vec<SettingsGroup>,
 }
 
+fn log_settings_debug(function: &str, message: &str) {
+    log_debug_ctx("services.settings_manager", function, message);
+}
+
+fn log_settings_warn(function: &str, message: &str) {
+    log_warn_ctx("services.settings_manager", function, message);
+}
+
 impl SettingsManager {
-    /// 创建设置管理器
-    ///
-    /// # Returns
-    ///
-    /// 返回已经完成本地设置加载的管理器实例
-    pub fn new() -> Self {
-        log_debug("SettingsManager::new() called");
-        let data_dir = get_data_dir();
-        log_debug(&format!("SettingsManager: data_dir = {}", data_dir));
-        let settings = load_settings(&data_dir);
-        log_debug(&format!(
-            "SettingsManager: loaded settings, agreed_to_terms = {}",
-            settings.agreed_to_terms
-        ));
-        SettingsManager { settings: Mutex::new(settings), data_dir }
+    pub fn new_checked() -> Result<Self, String> {
+        log_settings_debug("new_checked", "initializing settings manager");
+        let data_dir = get_data_dir_checked()?;
+        log_settings_debug("new_checked", &format!("resolved data_dir={}", data_dir));
+        let settings = load_settings_for_bootstrap(&data_dir)?;
+        log_settings_debug(
+            "new_checked",
+            &format!("loaded settings agreed_to_terms={}", settings.agreed_to_terms),
+        );
+        Ok(SettingsManager { settings: Mutex::new(settings), data_dir })
     }
 
     /// 读取当前完整设置
@@ -61,12 +64,12 @@ impl SettingsManager {
     pub fn update(&self, new_settings: AppSettings) -> Result<(), String> {
         let mut new_settings = new_settings;
         new_settings.normalize_window_effect();
-        log_debug(&format!(
-            "SettingsManager::update() called, agreed_to_terms = {}",
-            new_settings.agreed_to_terms
-        ));
+        log_settings_debug(
+            "update",
+            &format!("saving full settings agreed_to_terms={}", new_settings.agreed_to_terms),
+        );
         let result = save_settings(&self.data_dir, &new_settings);
-        log_debug(&format!("SettingsManager::update() save result: {:?}", result));
+        log_settings_debug("update", &format!("save result={:?}", result));
         result?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings;
         Ok(())
@@ -105,10 +108,10 @@ impl SettingsManager {
     ///
     /// 返回合并后的设置内容和变化分组
     pub fn update_partial(&self, partial: PartialSettings) -> Result<UpdateResult, String> {
-        log_debug(&format!(
-            "SettingsManager::update_partial() called, partial.agreed_to_terms = {:?}",
-            partial.agreed_to_terms
-        ));
+        log_settings_debug(
+            "update_partial",
+            &format!("partial agreed_to_terms={:?}", partial.agreed_to_terms),
+        );
         let old_settings = self
             .settings
             .lock()
@@ -116,14 +119,14 @@ impl SettingsManager {
             .clone();
         let mut new_settings = old_settings.clone();
         new_settings.merge_from(&partial);
-        log_debug(&format!(
-            "SettingsManager::update_partial() new_settings.agreed_to_terms = {}",
-            new_settings.agreed_to_terms
-        ));
+        log_settings_debug(
+            "update_partial",
+            &format!("merged agreed_to_terms={}", new_settings.agreed_to_terms),
+        );
         let changed_groups = old_settings.get_changed_groups(&new_settings);
         save_settings(&self.data_dir, &new_settings)?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings.clone();
-        log_debug("SettingsManager::update_partial() saved successfully");
+        log_settings_debug("update_partial", "saved partial settings successfully");
         Ok(UpdateResult { settings: new_settings, changed_groups })
     }
 
@@ -141,66 +144,147 @@ impl SettingsManager {
     }
 }
 
+#[allow(dead_code)]
 fn get_data_dir() -> String {
     // 使用统一的应用数据目录，确保 MSI 安装时数据存储在 %AppData%
     crate::utils::path::get_or_create_app_data_dir()
 }
 
+fn get_data_dir_checked() -> Result<String, String> {
+    crate::utils::path::get_or_create_app_data_dir_checked()
+        .map_err(|e| format!("Failed to resolve app data directory: {}", e))
+}
+
+#[allow(dead_code)]
 fn load_settings(data_dir: &str) -> AppSettings {
+    load_settings_checked(data_dir).unwrap_or_default()
+}
+
+fn load_settings_checked(data_dir: &str) -> Result<AppSettings, String> {
     let path = std::path::Path::new(data_dir).join(SETTINGS_FILE);
-    log_debug(&format!("load_settings: path = {:?}", path));
-    log_debug(&format!("load_settings: path.exists() = {}", path.exists()));
+    log_settings_debug("load_settings_checked", &format!("path={}", path.display()));
+    log_settings_debug("load_settings_checked", &format!("path_exists={}", path.exists()));
 
     if !path.exists() {
-        log_debug("load_settings: file not found, creating default settings");
+        log_settings_debug("load_settings_checked", "settings file missing; creating defaults");
         let default = AppSettings::default();
-        let _ = save_settings(data_dir, &default);
-        return default;
+        save_settings(data_dir, &default)?;
+        return Ok(default);
     }
     match std::fs::read_to_string(&path) {
         Ok(content) => {
-            log_debug(&format!("load_settings: file content length = {} bytes", content.len()));
+            log_settings_debug("load_settings_checked", &format!("read bytes={}", content.len()));
             match serde_json::from_str::<AppSettings>(&content) {
                 Ok(mut result) => {
                     result.normalize_window_effect();
-                    log_debug(&format!(
-                        "load_settings: parsed agreed_to_terms = {}",
-                        result.agreed_to_terms
-                    ));
-                    result
+                    log_settings_debug(
+                        "load_settings_checked",
+                        &format!("parsed agreed_to_terms={}", result.agreed_to_terms),
+                    );
+                    Ok(result)
                 }
                 Err(error) => {
-                    log_debug(&format!("load_settings: parse error: {}", error));
+                    log_settings_warn(
+                        "load_settings_checked",
+                        &format!("parse error path={} error={}", path.display(), error),
+                    );
                     backup_corrupt_settings_file(&path);
-                    AppSettings::default()
+                    Err(format!("Failed to parse settings '{}': {}", path.display(), error))
                 }
             }
         }
         Err(e) => {
-            log_debug(&format!("load_settings: failed to read file: {}", e));
-            AppSettings::default()
+            log_settings_warn(
+                "load_settings_checked",
+                &format!("read failed path={} error={}", path.display(), e),
+            );
+            Err(format!("Failed to read settings '{}': {}", path.display(), e))
         }
     }
 }
 
+fn load_settings_for_bootstrap(data_dir: &str) -> Result<AppSettings, String> {
+    match load_settings_checked(data_dir) {
+        Ok(settings) => Ok(settings),
+        Err(error) if is_corrupt_settings_error(&error) => {
+            log_settings_warn(
+                "load_settings_for_bootstrap",
+                &format!("recoverable corruption detected: {}", error),
+            );
+            let path = std::path::Path::new(data_dir).join(SETTINGS_FILE);
+            let repaired = try_salvage_settings_from_file(&path).unwrap_or_else(|| {
+                log_settings_warn(
+                    "load_settings_for_bootstrap",
+                    "unable to salvage structured fields; falling back to defaults",
+                );
+                AppSettings::default()
+            });
+            save_settings(data_dir, &repaired)?;
+            Ok(repaired)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn is_corrupt_settings_error(error: &str) -> bool {
+    error.contains("Failed to parse settings")
+}
+
+fn try_salvage_settings_from_file(path: &std::path::Path) -> Option<AppSettings> {
+    let content = std::fs::read_to_string(path).ok()?;
+    let value = serde_json::from_str::<serde_json::Value>(&content).ok()?;
+    let object = value.as_object()?;
+
+    let cleaned_map = object
+        .iter()
+        .filter_map(|(key, raw_value)| {
+            let candidate = serde_json::json!({ key: raw_value.clone() });
+            serde_json::from_value::<PartialSettings>(candidate)
+                .ok()
+                .filter(partial_settings_has_updates)
+                .map(|_| (key.clone(), raw_value.clone()))
+        })
+        .collect::<serde_json::Map<String, serde_json::Value>>();
+
+    if cleaned_map.is_empty() {
+        return None;
+    }
+
+    let partial =
+        serde_json::from_value::<PartialSettings>(serde_json::Value::Object(cleaned_map)).ok()?;
+    let mut settings = AppSettings::default();
+    settings.merge_from(&partial);
+    Some(settings)
+}
+
+fn partial_settings_has_updates(partial: &PartialSettings) -> bool {
+    serde_json::to_value(partial)
+        .ok()
+        .and_then(|value| value.as_object().map(|object| !object.is_empty()))
+        .unwrap_or(false)
+}
+
 fn save_settings(data_dir: &str, settings: &AppSettings) -> Result<(), String> {
     let path = std::path::Path::new(data_dir).join(SETTINGS_FILE);
-    log_debug(&format!("save_settings: path = {:?}", path));
-    log_debug(&format!("save_settings: agreed_to_terms = {}", settings.agreed_to_terms));
+    log_settings_debug("save_settings", &format!("path={}", path.display()));
+    log_settings_debug("save_settings", &format!("agreed_to_terms={}", settings.agreed_to_terms));
 
     let json = serde_json::to_string_pretty(settings).map_err(|e| {
-        log_debug(&format!("save_settings: serialize error: {}", e));
+        log_settings_warn("save_settings", &format!("serialize error={}", e));
         format!("Failed to serialize settings: {}", e)
     })?;
 
-    log_debug(&format!("save_settings: json length = {} bytes", json.len()));
+    log_settings_debug("save_settings", &format!("json_length={}", json.len()));
 
     std::fs::write(&path, json).map_err(|e| {
-        log_debug(&format!("save_settings: write error: {}", e));
+        log_settings_warn(
+            "save_settings",
+            &format!("write failed path={} error={}", path.display(), e),
+        );
         format!("Failed to save settings: {}", e)
     })?;
 
-    log_debug("save_settings: success!");
+    log_settings_debug("save_settings", "settings saved successfully");
     Ok(())
 }
 
@@ -209,8 +293,14 @@ fn backup_corrupt_settings_file(path: &std::path::Path) {
     let backup_path = path.with_extension(format!("json.bak-corrupt-{}", timestamp));
 
     match std::fs::copy(path, &backup_path) {
-        Ok(_) => log_debug(&format!("load_settings: 已备份损坏设置到 {:?}", backup_path)),
-        Err(error) => log_debug(&format!("load_settings: 备份损坏设置失败: {}", error)),
+        Ok(_) => log_settings_warn(
+            "backup_corrupt_settings_file",
+            &format!("backed up corrupt settings to {}", backup_path.display()),
+        ),
+        Err(error) => log_settings_warn(
+            "backup_corrupt_settings_file",
+            &format!("failed to back up corrupt settings: {}", error),
+        ),
     }
 }
 

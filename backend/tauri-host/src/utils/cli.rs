@@ -48,7 +48,9 @@ pub fn handle_cli() {
             std::process::exit(0);
         }
         "list" => {
-            commands::list_servers();
+            if let Err(err) = commands::list_servers() {
+                eprintln!("列出服务器失败: {}", err);
+            }
             std::process::exit(0);
         }
         "start" => {

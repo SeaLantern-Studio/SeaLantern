@@ -3,24 +3,35 @@ use std::path::Path;
 use crate::models::server::{
     AddExistingServerRequest, CpuPolicyConfig, CreateServerRequest, JvmPresetConfig,
 };
+use crate::services::global::i18n_service;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::trace_cli_action;
+use sea_lantern_server_installer_core::detect_core_type;
 use sea_lantern_server_local_setup_core::{
     detect_startup_mode_from_folder, infer_core_type_from_local_inputs_checked,
     infer_local_create_mc_version_checked,
     infer_local_create_startup_mode as infer_shared_local_create_startup_mode,
-    infer_mc_version_from_folder_checked, infer_mc_version_hint,
-    normalize_cli_startup_mode,
+    infer_mc_version_from_folder_checked, infer_mc_version_hint, normalize_cli_startup_mode,
     normalize_core_type, resolve_command_path_hint, resolve_custom_entry_hint_path,
     resolve_existing_attach_entry_path, resolve_existing_local_entry_path,
-    resolve_local_create_server_path, validate_local_create_folder, LocalFolderInspection,
+    resolve_local_create_server_path, validate_local_create_folder,
     validate_local_create_startup_exists, validate_local_create_startup_path_binding,
-    validate_local_entry_startup_mode,
+    validate_local_entry_startup_mode, LocalFolderInspection,
 };
-use sea_lantern_server_installer_core::detect_core_type;
+use std::collections::HashMap;
 
 use super::java_support::resolve_java_path;
+
+fn cli_local_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn cli_local_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 #[derive(Debug, Clone)]
 pub(super) struct LocalDefaults<'a> {
@@ -42,7 +53,7 @@ pub(super) fn build_local_create_request(
             .as_ref()
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
-            .ok_or_else(|| "runtime preflight 未保留已验证 Java 路径".to_string())?
+            .ok_or_else(|| cli_local_t("cli.server_setup.local.prevalidated_java_missing"))?
     } else {
         resolve_java_path(command, defaults.default_java_path)?
     };
@@ -56,7 +67,10 @@ pub(super) fn build_local_create_request(
         .as_deref()
         .and_then(|entry| resolve_existing_local_entry_path(folder_path, entry));
     let normalized_startup_mode = explicit_startup_mode.unwrap_or_else(|| {
-        infer_shared_local_create_startup_mode(command.entry.is_some(), resolved_entry_path.as_deref())
+        infer_shared_local_create_startup_mode(
+            command.entry.is_some(),
+            resolved_entry_path.as_deref(),
+        )
     });
     let is_custom_startup_mode = normalized_startup_mode == "custom";
 
@@ -93,9 +107,9 @@ pub(super) fn build_local_create_request(
             .or_else(|| command.jar_path.clone())
             .ok_or_else(|| {
                 if folder_path.is_some() {
-                    "local server 缺少 --jar 或 --entry；仅 --folder 不足以创建新服务器".to_string()
+                    cli_local_t("cli.server_setup.local.create_missing_jar_or_entry_with_folder")
                 } else {
-                    "local server 缺少 --jar 或 --entry 或 --folder".to_string()
+                    cli_local_t("cli.server_setup.local.create_missing_jar_or_entry_or_folder")
                 }
             })?
     };
@@ -136,7 +150,7 @@ pub(super) fn build_local_create_request(
             folder_path,
             executable_hint.as_deref(),
         )?)
-        .ok_or_else(|| "local server 缺少 --mc，且无法从 --jar/名称推断版本".to_string())?;
+        .ok_or_else(|| cli_local_t("cli.server_setup.local.create_missing_mc_version"))?;
 
     let server_path = folder_path
         .map(|path| path.to_string_lossy().to_string())
@@ -195,13 +209,13 @@ pub(super) fn build_local_attach_request(
             .as_ref()
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
-            .ok_or_else(|| "runtime preflight 未保留已验证 Java 路径".to_string())?
+            .ok_or_else(|| cli_local_t("cli.server_setup.local.prevalidated_java_missing"))?
     } else {
         resolve_java_path(command, defaults.default_java_path)?
     };
     let folder_path = Path::new(folder);
     if !folder_path.exists() || !folder_path.is_dir() {
-        return Err(format!("--folder 指定目录不存在或不是文件夹: {}", folder));
+        return Err(cli_local_t1("cli.server_setup.local.folder_not_dir", folder));
     }
 
     let resolved_entry_path = command

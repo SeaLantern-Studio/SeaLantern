@@ -1,6 +1,9 @@
+use crate::commands::server::common::{server_t, server_t1};
 use crate::hardcode_data::app_files::SERVER_PATH_PERMISSION_TEST_FILE_NAME;
 use crate::models::server::ValidateServerPathResult;
-use sea_lantern_server_local_setup_core::{detect_startup_mode_from_path_like, inspect_local_folder};
+use sea_lantern_server_local_setup_core::{
+    detect_startup_mode_from_path_like, inspect_local_folder,
+};
 use std::path::Path;
 
 /// 收集目录复制时会发生覆盖的文件路径
@@ -12,7 +15,7 @@ pub(super) fn collect_copy_conflicts(
     let target = Path::new(&target_dir);
 
     if !source.exists() || !source.is_dir() {
-        return Err(format!("源目录不存在或不可读: {}", source_dir));
+        return Err(server_t1("server.manage.source_dir_unreadable", source_dir));
     }
 
     // 只做冲突探测，不执行写入，避免误覆盖。
@@ -30,10 +33,11 @@ pub(super) fn copy_directory_contents(
     let target = Path::new(&target_dir);
 
     if !source.exists() || !source.is_dir() {
-        return Err(format!("源目录不存在或不可读: {}", source_dir));
+        return Err(server_t1("server.manage.source_dir_unreadable", source_dir));
     }
 
-    copy_directory_recursive(source, target).map_err(|e| format!("复制目录失败: {}", e))
+    copy_directory_recursive(source, target)
+        .map_err(|e| server_t1("server.manage.copy_directory_failed", e.to_string()))
 }
 
 /// 校验服务器目录是否可写，并尝试识别启动文件
@@ -44,7 +48,7 @@ pub(super) fn validate_server_path(new_path: String) -> Result<ValidateServerPat
     if std::fs::write(&test_file, "").is_err() {
         return Ok(ValidateServerPathResult {
             valid: false,
-            message: "无法写入服务器目录，请检查权限".to_string(),
+            message: server_t("server.manage.server_dir_write_denied"),
             jar_path: None,
             startup_mode: None,
         });
@@ -58,9 +62,9 @@ pub(super) fn validate_server_path(new_path: String) -> Result<ValidateServerPat
 
     let valid = jar_path.is_some();
     let message = if valid {
-        "路径验证成功，找到可执行文件".to_string()
+        server_t("server.manage.validate_path_success")
     } else {
-        "未找到可执行文件（.jar/.bat/.sh/.ps1），请确保路径正确".to_string()
+        server_t("server.manage.validate_executable_missing")
     };
 
     Ok(ValidateServerPathResult { valid, message, jar_path, startup_mode })
@@ -72,7 +76,8 @@ fn collect_copy_conflicts_recursive(
     relative_prefix: &str,
     conflicts: &mut Vec<String>,
 ) -> Result<(), String> {
-    let entries = std::fs::read_dir(source).map_err(|e| format!("读取目录失败: {}", e))?;
+    let entries = std::fs::read_dir(source)
+        .map_err(|e| server_t1("server.manage.read_dir_failed", e.to_string()))?;
 
     for entry in entries.flatten() {
         let file_name = entry.file_name().to_string_lossy().to_string();
@@ -131,5 +136,5 @@ fn find_server_executable_for_validation(
         ));
     }
 
-    Err("未找到可用的启动文件".to_string())
+    Err(server_t("server.manage.startup_file_unavailable"))
 }

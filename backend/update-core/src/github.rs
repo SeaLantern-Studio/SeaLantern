@@ -48,7 +48,8 @@ async fn build_update_info(
     release: &ReleaseResponse,
     current_version: &str,
 ) -> Result<UpdateInfo, String> {
-    let (latest_version, is_newer_version) = resolve_version_state(current_version, &release.tag_name)?;
+    let (latest_version, is_newer_version) =
+        resolve_version_state(current_version, &release.tag_name)?;
     let selected_asset = find_suitable_asset(&release.assets);
     let download_url = selected_asset.map(|asset| asset.browser_download_url.clone());
     let sha256 = if is_newer_version {
@@ -69,7 +70,10 @@ async fn build_update_info(
         current_version: current_version.to_string(),
         download_url,
         release_notes: release.body.clone(),
-        published_at: release.published_at.clone().or_else(|| release.created_at.clone()),
+        published_at: release
+            .published_at
+            .clone()
+            .or_else(|| release.created_at.clone()),
         source: Some("github".to_string()),
         sha256,
     })
@@ -84,7 +88,11 @@ mod tests {
         let error = resolve_version_state("1.0.0", "release-without-semver")
             .expect_err("invalid release tag should not be silently treated as no update");
 
-        assert!(error.contains("版本号无效") || error.contains("不能为空"), "unexpected error: {}", error);
+        assert!(
+            error.contains("版本号无效") || error.contains("不能为空"),
+            "unexpected error: {}",
+            error
+        );
         assert!(error.contains("release-without-semver"), "unexpected error: {}", error);
     }
 }

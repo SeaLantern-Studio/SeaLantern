@@ -38,7 +38,10 @@ pub fn detect_core_type_checked(input: &str) -> Result<String, String> {
     Ok(CoreType::detect_from_filename(&target_file).to_string())
 }
 
-pub fn detect_mc_version_from_mods(root_dir: &Path, known_versions: &[&str]) -> (Option<String>, bool) {
+pub fn detect_mc_version_from_mods(
+    root_dir: &Path,
+    known_versions: &[&str],
+) -> (Option<String>, bool) {
     mc_version::detect_mc_version_from_mods(root_dir, known_versions)
 }
 
@@ -90,10 +93,9 @@ fn core_type_from_main_class(main_class: &str) -> Option<CoreType> {
 }
 
 fn read_jar_main_class_checked(jar_path: &str) -> Result<Option<String>, String> {
-    let file = std::fs::File::open(jar_path)
-        .map_err(|e| format!("读取 JAR 文件失败: {}", e))?;
-    let mut archive = zip::ZipArchive::new(file)
-        .map_err(|e| format!("解析 JAR 压缩结构失败: {}", e))?;
+    let file = std::fs::File::open(jar_path).map_err(|e| format!("读取 JAR 文件失败: {}", e))?;
+    let mut archive =
+        zip::ZipArchive::new(file).map_err(|e| format!("解析 JAR 压缩结构失败: {}", e))?;
     let mut manifest = archive
         .by_name("META-INF/MANIFEST.MF")
         .map_err(|e| format!("读取 JAR manifest 失败: {}", e))?;

@@ -1,7 +1,22 @@
 use super::runtime::PluginRuntime;
 use crate::plugins::runtime::shared::{json_value_from_lua, lua_value_from_json};
+use crate::services::global::i18n_service;
 use mlua::{Function, MultiValue, Table, Value};
 use serde_json::Value as JsonValue;
+use std::collections::HashMap;
+
+fn core_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn core_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 impl PluginRuntime {
     pub fn call_registered_api(
@@ -13,35 +28,35 @@ impl PluginRuntime {
 
         let apis: Table = globals
             .get("_SL_APIS")
-            .map_err(|e| format!("获取 _SL_APIS 失败: {}", e))?;
+            .map_err(|e| core_t1("plugins.runtime.core.get_apis_failed", e.to_string()))?;
 
         let func: Function = apis
             .get(api_name.to_string())
-            .map_err(|e| format!("API '{}' 不存在: {}", api_name, e))?;
+            .map_err(|e| core_t2("plugins.runtime.core.api_not_found", api_name, e.to_string()))?;
 
         let mut lua_args = Vec::new();
         for arg in args {
             let lua_val = lua_value_from_json(&self.lua, &arg, 0)
-                .map_err(|e| format!("参数转换失败: {}", e))?;
+                .map_err(|e| core_t1("plugins.runtime.core.args_convert_failed", e.to_string()))?;
             lua_args.push(lua_val);
         }
 
-        let result: Value = func
-            .call(MultiValue::from_vec(lua_args))
-            .map_err(|e| format!("调用 API '{}' 失败: {}", api_name, e))?;
+        let result: Value = func.call(MultiValue::from_vec(lua_args)).map_err(|e| {
+            core_t2("plugins.runtime.core.call_api_failed", api_name, e.to_string())
+        })?;
 
-        json_value_from_lua(&result, 0).map_err(|e| format!("结果转换失败: {}", e))
+        json_value_from_lua(&result, 0)
+            .map_err(|e| core_t1("plugins.runtime.core.result_convert_failed", e.to_string()))
     }
 
     pub fn call_context_menu_hide_callback(&self) -> Result<(), String> {
         let registry_key = format!("_context_menu_hide_callback_{}", self.plugin_id);
-        let callback: Function = self
-            .lua
-            .named_registry_value(&registry_key)
-            .map_err(|e| format!("获取右键菜单隐藏回调函数失败: {}", e))?;
-        callback
-            .call::<()>(())
-            .map_err(|e| format!("调用右键菜单隐藏回调失败: {}", e))?;
+        let callback: Function = self.lua.named_registry_value(&registry_key).map_err(|e| {
+            core_t1("plugins.runtime.core.get_context_menu_hide_callback_failed", e.to_string())
+        })?;
+        callback.call::<()>(()).map_err(|e| {
+            core_t1("plugins.runtime.core.call_context_menu_hide_callback_failed", e.to_string())
+        })?;
         Ok(())
     }
 
@@ -54,17 +69,22 @@ impl PluginRuntime {
     ) -> Result<Vec<JsonValue>, String> {
         let registry_key = format!("_context_menu_show_callback_{}", self.plugin_id);
 
-        let callback: Function = self
-            .lua
-            .named_registry_value(&registry_key)
-            .map_err(|e| format!("获取右键菜单显示回调函数失败: {}", e))?;
+        let callback: Function = self.lua.named_registry_value(&registry_key).map_err(|e| {
+            core_t1("plugins.runtime.core.get_context_menu_show_callback_failed", e.to_string())
+        })?;
 
-        let target_lua = lua_value_from_json(&self.lua, &target_data, 0)
-            .map_err(|e| format!("转换 target_data 失败: {}", e))?;
+        let target_lua = lua_value_from_json(&self.lua, &target_data, 0).map_err(|e| {
+            core_t1("plugins.runtime.core.convert_target_data_failed", e.to_string())
+        })?;
 
         let result: Value = callback
             .call((context.to_string(), target_lua, x, y))
-            .map_err(|e| format!("调用右键菜单显示回调失败: {}", e))?;
+            .map_err(|e| {
+                core_t1(
+                    "plugins.runtime.core.call_context_menu_show_callback_failed",
+                    e.to_string(),
+                )
+            })?;
 
         let mut dynamic_items = Vec::new();
         if let Value::Table(tbl) = result {
@@ -87,17 +107,19 @@ impl PluginRuntime {
     ) -> Result<(), String> {
         let registry_key = format!("_context_menu_callback_{}", self.plugin_id);
 
-        let callback: Function = self
-            .lua
-            .named_registry_value(&registry_key)
-            .map_err(|e| format!("获取右键菜单回调函数失败: {}", e))?;
+        let callback: Function = self.lua.named_registry_value(&registry_key).map_err(|e| {
+            core_t1("plugins.runtime.core.get_context_menu_callback_failed", e.to_string())
+        })?;
 
-        let target_lua = lua_value_from_json(&self.lua, &target_data, 0)
-            .map_err(|e| format!("转换 target_data 失败: {}", e))?;
+        let target_lua = lua_value_from_json(&self.lua, &target_data, 0).map_err(|e| {
+            core_t1("plugins.runtime.core.convert_target_data_failed", e.to_string())
+        })?;
 
         callback
             .call::<()>((context.to_string(), item_id.to_string(), target_lua))
-            .map_err(|e| format!("调用右键菜单回调失败: {}", e))?;
+            .map_err(|e| {
+                core_t1("plugins.runtime.core.call_context_menu_callback_failed", e.to_string())
+            })?;
 
         Ok(())
     }

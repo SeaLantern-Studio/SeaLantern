@@ -3,12 +3,12 @@ use std::process::Command;
 
 use crate::models::server::{ServerInstance, ServerRuntimeConfig};
 use sea_lantern_server_local_setup_core::{
-    decode_console_bytes as decode_shared_console_bytes,
-    detect_startup_mode_from_path_like,
+    decode_console_bytes as decode_shared_console_bytes, detect_startup_mode_from_path_like,
     parse_java_major_version as parse_shared_java_major_version,
-    preview_command as preview_shared_command,
-    script_bytes_prefer_utf8,
+    preview_command as preview_shared_command, script_bytes_prefer_utf8,
 };
+
+use super::i18n::{manager_t, manager_t1, manager_t2, manager_t3};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum StartupMode {
@@ -91,21 +91,21 @@ impl ManagedConsoleEncoding {
 pub(super) fn validate_server_name(name: &str) -> Result<String, String> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
-        return Err("服务器名称不能为空".to_string());
+        return Err(manager_t("server.manager.name_empty"));
     }
     if trimmed.len() > 64 {
-        return Err("服务器名称不能超过64个字符".to_string());
+        return Err(manager_t("server.manager.name_too_long"));
     }
 
     let forbidden_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'];
     for c in forbidden_chars {
         if trimmed.contains(c) {
-            return Err(format!("服务器名称包含非法字符: '{}'", c));
+            return Err(manager_t1("server.manager.name_invalid_char", c.to_string()));
         }
     }
 
     if trimmed.starts_with('.') || trimmed.ends_with('.') || trimmed.ends_with(' ') {
-        return Err("服务器名称不能以点开头或结尾，也不能以空格结尾".to_string());
+        return Err(manager_t("server.manager.name_invalid_edge_chars"));
     }
 
     let reserved = [
@@ -115,7 +115,7 @@ pub(super) fn validate_server_name(name: &str) -> Result<String, String> {
     let upper = trimmed.to_uppercase();
     for r in reserved {
         if upper == r || upper.starts_with(&format!("{}.", r)) {
-            return Err(format!("服务器名称不能使用系统保留名称: {}", r));
+            return Err(manager_t1("server.manager.name_reserved", r.to_string()));
         }
     }
 
@@ -144,21 +144,29 @@ pub(super) fn ensure_server_identity_available(
 
     for server in existing {
         if server.name.trim().to_ascii_lowercase() == candidate_name_lower {
-            return Err(format!("服务器名称已存在: {} (id={})", server.name, server.id));
+            return Err(manager_t2(
+                "server.manager.name_conflict_existing",
+                server.name.clone(),
+                server.id.clone(),
+            ));
         }
 
         if normalize_server_identity_path(&server.path) == candidate_path_normalized {
-            return Err(format!(
-                "服务器路径已存在记录: {} (id={} name={})",
-                server.path, server.id, server.name
+            return Err(manager_t3(
+                "server.manager.path_conflict_existing",
+                server.path.clone(),
+                server.id.clone(),
+                server.name.clone(),
             ));
         }
 
         for (alias, alias_lower) in &alias_pairs {
             if server.name.trim().to_ascii_lowercase() == *alias_lower {
-                return Err(format!(
-                    "别名 '{}' 与现有服务器名称冲突: {} (id={})",
-                    alias, server.name, server.id
+                return Err(manager_t3(
+                    "server.manager.alias_conflict_with_name",
+                    alias.to_string(),
+                    server.name.clone(),
+                    server.id.clone(),
                 ));
             }
             if server
@@ -166,9 +174,11 @@ pub(super) fn ensure_server_identity_available(
                 .iter()
                 .any(|existing_alias| existing_alias.trim().to_ascii_lowercase() == *alias_lower)
             {
-                return Err(format!(
-                    "别名 '{}' 已存在于服务器 {} (id={})",
-                    alias, server.name, server.id
+                return Err(manager_t3(
+                    "server.manager.alias_conflict_existing_alias",
+                    alias.to_string(),
+                    server.name.clone(),
+                    server.id.clone(),
                 ));
             }
         }
@@ -176,19 +186,21 @@ pub(super) fn ensure_server_identity_available(
         if server.aliases.iter().any(|existing_alias| {
             existing_alias.trim().to_ascii_lowercase() == candidate_name_lower
         }) {
-            return Err(format!(
-                "服务器名称 '{}' 与现有别名冲突: {} (id={})",
-                candidate_name, server.name, server.id
+            return Err(manager_t3(
+                "server.manager.name_conflict_with_alias",
+                candidate_name.to_string(),
+                server.name.clone(),
+                server.id.clone(),
             ));
         }
 
         if let Some(candidate_container_lower) = candidate_container_lower.as_deref() {
             if server_container_name_lower(server).as_deref() == Some(candidate_container_lower) {
-                return Err(format!(
-                    "Docker 容器名已存在记录: {} (id={} name={})",
-                    candidate_container_name.unwrap_or_default(),
-                    server.id,
-                    server.name
+                return Err(manager_t3(
+                    "server.manager.docker_container_conflict",
+                    candidate_container_name.unwrap_or_default().to_string(),
+                    server.id.clone(),
+                    server.name.clone(),
                 ));
             }
         }
@@ -240,8 +252,9 @@ pub(super) fn current_timestamp_millis() -> u128 {
         .unwrap_or(0)
 }
 
-pub(super) fn get_data_dir() -> String {
-    crate::utils::path::get_or_create_app_data_dir()
+pub(super) fn get_data_dir_checked() -> Result<String, String> {
+    crate::utils::path::get_or_create_app_data_dir_checked()
+        .map_err(|e| manager_t1("server.manager.data_dir_resolve_failed", e.to_string()))
 }
 
 pub(super) fn normalize_startup_mode(mode: &str) -> &str {
@@ -314,6 +327,7 @@ pub(super) fn decode_console_bytes(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::{lock_env, EnvGuard};
     #[cfg(target_os = "windows")]
     use tempfile::TempDir;
 
@@ -370,5 +384,30 @@ mod tests {
         assert!(!StartupMode::Custom.prefers_direct_jar());
         assert!(StartupMode::Starter.is_starter());
         assert!(StartupMode::Custom.is_custom());
+    }
+
+    #[test]
+    fn get_data_dir_checked_surfaces_app_data_dir_creation_failures() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let blocked_root = temp_dir.path().join("blocked-root");
+        std::fs::write(&blocked_root, b"not a directory")
+            .expect("file-backed app data root should exist");
+        let blocked_path = blocked_root.join("nested");
+        let _env_lock = lock_env();
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &blocked_path.to_string_lossy());
+
+        let error = match get_data_dir_checked() {
+            Err(error) => error,
+            Ok(path) => {
+                panic!("app data dir failure should not be silently downgraded, got path: {}", path)
+            }
+        };
+
+        assert!(
+            error.contains("Failed to resolve server manager data directory"),
+            "unexpected error: {}",
+            error
+        );
+        assert!(error.contains("blocked-root"), "unexpected error: {}", error);
     }
 }

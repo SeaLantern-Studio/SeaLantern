@@ -1,7 +1,8 @@
 use mlua::Lua;
 
 use super::common::{
-    get_server_status_checked, map_console_err, ConsoleContext, DEFAULT_LOG_COUNT, MAX_LOG_COUNT,
+    get_server_status_checked, map_console_err, runtime_console_err, ConsoleContext,
+    DEFAULT_LOG_COUNT, MAX_LOG_COUNT,
 };
 
 pub(super) fn get_logs(lua: &Lua, _ctx: &ConsoleContext) -> Result<mlua::Function, String> {
@@ -10,8 +11,12 @@ pub(super) fn get_logs(lua: &Lua, _ctx: &ConsoleContext) -> Result<mlua::Functio
             let _ = get_server_status_checked(&server_id)?;
             let offset = offset.unwrap_or(0);
             let count = count.unwrap_or(DEFAULT_LOG_COUNT).min(MAX_LOG_COUNT);
-            let logs =
-                crate::services::server::log_pipeline::get_logs(&server_id, offset, Some(count));
+            let logs = crate::services::server::log_pipeline::get_logs_checked(
+                &server_id,
+                offset,
+                Some(count),
+            )
+            .map_err(|e| runtime_console_err("console.get_logs_failed", e))?;
 
             let result = lua.create_table()?;
             result.set("server_id", server_id.clone())?;

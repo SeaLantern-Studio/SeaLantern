@@ -1,5 +1,6 @@
-use super::common::{CommandHandler, RegistryBuilder, parse_params};
+use super::common::{parse_params, CommandHandler, RegistryBuilder};
 use crate::commands::plugins::manage as plugin_commands;
+use crate::plugins::manager::i18n::plugin_t1;
 use crate::services::global;
 use serde::Deserialize;
 use serde_json::Value;
@@ -108,37 +109,23 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_plugin_css", handle_get_plugin_css as CommandHandler);
     builder.register("get_all_plugin_css", handle_get_all_plugin_css as CommandHandler);
     builder.register("check_plugin_update", handle_check_plugin_update as CommandHandler);
-    builder.register(
-        "check_all_plugin_updates",
-        handle_check_all_plugin_updates as CommandHandler,
-    );
+    builder.register("check_all_plugin_updates", handle_check_all_plugin_updates as CommandHandler);
     builder.register("delete_plugin", handle_delete_plugin as CommandHandler);
     builder.register("delete_plugins", handle_delete_plugins as CommandHandler);
     builder.register("fetch_market_plugins", handle_fetch_market_plugins as CommandHandler);
-    builder.register(
-        "fetch_market_categories",
-        handle_fetch_market_categories as CommandHandler,
-    );
+    builder.register("fetch_market_categories", handle_fetch_market_categories as CommandHandler);
     builder.register(
         "fetch_market_plugin_detail",
         handle_fetch_market_plugin_detail as CommandHandler,
     );
     builder.register("install_from_market", handle_install_from_market as CommandHandler);
     builder.register("context_menu_callback", handle_context_menu_callback as CommandHandler);
-    builder.register(
-        "context_menu_show_notify",
-        handle_context_menu_show_notify as CommandHandler,
-    );
-    builder.register(
-        "context_menu_hide_notify",
-        handle_context_menu_hide_notify as CommandHandler,
-    );
+    builder.register("context_menu_show_notify", handle_context_menu_show_notify as CommandHandler);
+    builder.register("context_menu_hide_notify", handle_context_menu_hide_notify as CommandHandler);
     builder.register("on_locale_changed", handle_on_locale_changed as CommandHandler);
     builder.register("get_locale_bundle", handle_get_locale_bundle as CommandHandler);
-    builder.register(
-        "component_mirror_register",
-        handle_component_mirror_register as CommandHandler,
-    );
+    builder
+        .register("component_mirror_register", handle_component_mirror_register as CommandHandler);
     builder.register(
         "component_mirror_unregister",
         handle_component_mirror_unregister as CommandHandler,
@@ -348,7 +335,7 @@ fn handle_check_plugin_update(
             let plugin_info = manager
                 .plugins()
                 .get(&req.plugin_id)
-                .ok_or_else(|| format!("Plugin not found: {}", req.plugin_id))?;
+                .ok_or_else(|| plugin_t1("plugin.common.not_found", req.plugin_id.clone()))?;
             plugin_info.manifest.version.clone()
         };
 
@@ -414,8 +401,8 @@ fn handle_fetch_market_plugins(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: MarketUrlRequest = parse_params(params)?;
-        let result = plugin_commands::market::fetch_market_plugins_without_manager(req.market_url)
-            .await?;
+        let result =
+            plugin_commands::market::fetch_market_plugins_without_manager(req.market_url).await?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }

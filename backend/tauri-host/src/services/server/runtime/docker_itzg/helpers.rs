@@ -1,13 +1,15 @@
 use super::{DockerContainerState, RuntimeStatusSnapshot, DOCKER_ITZG_RUNTIME_KIND};
 use crate::models::server::{DockerItzgRuntimeConfig, ServerInstance, ServerStatus};
 use crate::services::server::manager::startup_support::{
-    resolve_effective_startup_config, EffectiveStartupConfig,
+    resolve_effective_startup_config_checked, EffectiveStartupConfig,
 };
 use crate::utils::docker_cli::docker_error_indicates_missing_container;
-pub(crate) use sea_lantern_docker_core::{build_docker_run_args, DockerLaunchDetail, DockerLaunchSpec};
 use sea_lantern_docker_core::{
     build_docker_launch_detail as build_shared_docker_launch_detail,
     build_docker_launch_spec as build_shared_docker_launch_spec, DockerEffectiveLaunchConfig,
+};
+pub(crate) use sea_lantern_docker_core::{
+    build_docker_run_args, DockerLaunchDetail, DockerLaunchSpec,
 };
 use std::path::Path;
 use std::process::Output;
@@ -17,7 +19,7 @@ pub(crate) fn resolve_docker_launch_spec(
     runtime: &DockerItzgRuntimeConfig,
     settings: &crate::models::settings::AppSettings,
 ) -> Result<DockerLaunchSpec, String> {
-    let effective = resolve_effective_startup_config(server, settings);
+    let effective = resolve_effective_startup_config_checked(server, settings)?;
     build_shared_docker_launch_spec(runtime, &adapt_effective_launch_config(&effective))
 }
 
@@ -34,7 +36,9 @@ pub(crate) fn build_docker_launch_detail(
     ))
 }
 
-fn adapt_effective_launch_config(effective: &EffectiveStartupConfig) -> DockerEffectiveLaunchConfig {
+fn adapt_effective_launch_config(
+    effective: &EffectiveStartupConfig,
+) -> DockerEffectiveLaunchConfig {
     DockerEffectiveLaunchConfig {
         max_memory: effective.max_memory,
         min_memory: effective.min_memory,
@@ -709,5 +713,21 @@ mod tests {
             .jvm_opts_preview
             .as_deref()
             .is_some_and(|value| value.contains("-Druntime.flag=true")));
+    }
+
+    #[test]
+    fn resolve_docker_launch_spec_surfaces_invalid_instance_config() {
+        let temp_dir = tempdir().unwrap();
+        let runtime = docker_runtime();
+        let server = docker_server(temp_dir.path().to_string_lossy().to_string(), runtime.clone());
+
+        let config_dir = temp_dir.path().join("SeaLantern");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(config_dir.join("config.toml"), "max_memory = [\n").unwrap();
+
+        let err = resolve_docker_launch_spec(&server, &runtime, &test_settings())
+            .expect_err("invalid instance config should block docker launch synthesis");
+
+        assert!(err.contains("解析实例配置失败"));
     }
 }

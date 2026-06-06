@@ -6,10 +6,10 @@ use super::{
     upload::handle_file_upload,
 };
 use axum::{
-    Router,
     extract::DefaultBodyLimit,
     middleware,
     routing::{get, post},
+    Router,
 };
 use sea_lantern_runtime::log_headless_http_static_dir;
 use tower_http::services::{ServeDir, ServeFile};

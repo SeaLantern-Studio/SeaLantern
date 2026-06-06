@@ -11,6 +11,7 @@ use sea_lantern_server_installer_core::detect_core_type;
 use super::super::common::{current_timestamp_secs, normalize_startup_mode, validate_server_name};
 use super::super::fs::copy_dir_recursive;
 use super::super::ServerManager;
+use super::i18n::{provisioning_t, provisioning_t1, provisioning_t2};
 
 pub(super) fn import_server(
     manager: &ServerManager,
@@ -20,7 +21,10 @@ pub(super) fn import_server(
     let startup_mode = normalize_startup_mode(&req.startup_mode).to_string();
     let source_startup_file = Path::new(&req.jar_path);
     if !source_startup_file.exists() {
-        return Err(format!("启动文件不存在: {}", req.jar_path));
+        return Err(provisioning_t1(
+            "server.provisioning.startup_file_missing",
+            req.jar_path.clone(),
+        ));
     }
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -28,26 +32,35 @@ pub(super) fn import_server(
     let servers_dir = Path::new(&data_dir).join("servers");
     let server_dir = servers_dir.join(&id);
 
-    std::fs::create_dir_all(&server_dir).map_err(|e| format!("无法创建服务器目录: {}", e))?;
+    std::fs::create_dir_all(&server_dir).map_err(|e| {
+        provisioning_t1("server.provisioning.create_server_dir_failed", e.to_string())
+    })?;
 
     let startup_filename = source_startup_file
         .file_name()
-        .ok_or_else(|| "无法获取启动文件名".to_string())?;
+        .ok_or_else(|| provisioning_t("server.provisioning.startup_filename_missing"))?;
     let source_server_dir = source_startup_file
         .parent()
-        .ok_or_else(|| "无法获取启动文件所在目录".to_string())?;
+        .ok_or_else(|| provisioning_t("server.provisioning.startup_parent_missing"))?;
 
     println!(
-        "导入服务器：复制源目录 {} -> {}",
-        source_server_dir.display(),
-        server_dir.display()
+        "{}",
+        provisioning_t2(
+            "server.provisioning.import_copying_source_dir",
+            source_server_dir.display().to_string(),
+            server_dir.display().to_string(),
+        )
     );
-    copy_dir_recursive(source_server_dir, &server_dir)
-        .map_err(|e| format!("复制服务端目录失败: {}", e))?;
+    copy_dir_recursive(source_server_dir, &server_dir).map_err(|e| {
+        provisioning_t1("server.provisioning.copy_server_dir_failed", e.to_string())
+    })?;
 
     let dest_startup = server_dir.join(startup_filename);
     if !dest_startup.exists() {
-        return Err(format!("复制后的启动文件不存在: {}", dest_startup.display()));
+        return Err(provisioning_t1(
+            "server.provisioning.copied_startup_missing",
+            dest_startup.display().to_string(),
+        ));
     }
 
     create_server_properties_if_missing(&server_dir, req.port, req.online_mode)?;
@@ -63,7 +76,10 @@ pub(super) fn import_server(
 
     let now = current_timestamp_secs();
     let core_type = detect_core_type(&dest_startup.to_string_lossy());
-    println!("检测到核心类型: {}", core_type);
+    println!(
+        "{}",
+        provisioning_t1("server.provisioning.detected_core_type", core_type.clone())
+    );
 
     let server = ServerInstance {
         id: id.clone(),

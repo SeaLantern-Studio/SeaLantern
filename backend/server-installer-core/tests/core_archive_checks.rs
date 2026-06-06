@@ -18,11 +18,7 @@ fn write_manifest_jar(path: &std::path::Path, manifest: &str) {
     zip.finish().expect("jar should finish");
 }
 
-fn write_nested_manifest_zip(
-    path: &std::path::Path,
-    jar_relative_path: &str,
-    manifest: &str,
-) {
+fn write_nested_manifest_zip(path: &std::path::Path, jar_relative_path: &str, manifest: &str) {
     let file = fs::File::create(path).expect("zip file should create");
     let mut zip = zip::ZipWriter::new(file);
 
@@ -94,8 +90,7 @@ fn detect_core_type_checked_surfaces_neighbor_jar_scan_failures() {
     let dir = tempfile::tempdir().expect("temp dir should exist");
     let server_dir = dir.path().join("broken-script-neighbor");
     fs::create_dir_all(&server_dir).expect("server dir should exist");
-    fs::create_dir(server_dir.join("server.jar"))
-        .expect("directory-backed jar path should exist");
+    fs::create_dir(server_dir.join("server.jar")).expect("directory-backed jar path should exist");
     fs::write(server_dir.join("start.sh"), b"#!/bin/sh\n").expect("script should write");
 
     let error = detect_core_type_checked(server_dir.join("start.sh").to_string_lossy().as_ref())
@@ -118,7 +113,8 @@ fn find_server_jar_prefers_named_server_candidate_over_first_jar() {
 #[test]
 fn find_server_jar_ignores_directory_named_like_preferred_server_jar() {
     let dir = tempfile::tempdir().expect("temp dir should exist");
-    fs::create_dir(dir.path().join("server.jar")).expect("directory-backed preferred name should exist");
+    fs::create_dir(dir.path().join("server.jar"))
+        .expect("directory-backed preferred name should exist");
     fs::write(dir.path().join("paper-server.jar"), b"server").expect("server jar should write");
 
     let jar = find_server_jar(dir.path()).expect("real jar file should still be found");
@@ -182,8 +178,7 @@ fn detect_mc_version_from_mods_checked_surfaces_mods_scan_failures() {
 #[test]
 fn find_server_jar_checked_surfaces_directory_entry_failures_when_no_valid_jar_exists() {
     let dir = tempfile::tempdir().expect("temp dir should exist");
-    fs::create_dir(dir.path().join("server.jar"))
-        .expect("directory-backed jar path should exist");
+    fs::create_dir(dir.path().join("server.jar")).expect("directory-backed jar path should exist");
 
     let error = find_server_jar_checked(dir.path())
         .expect_err("checked jar scan should surface invalid directory-backed jar entries");
@@ -227,7 +222,10 @@ fn parse_server_core_type_returns_relative_jar_path_for_archive_source() {
     assert_eq!(parsed.core_type, "Paper");
     assert_eq!(parsed.main_class.as_deref(), Some("io.papermc.paperclip.Main"));
     assert_eq!(
-        parsed.jar_path.as_deref().map(|path| path.replace('\\', "/")),
+        parsed
+            .jar_path
+            .as_deref()
+            .map(|path| path.replace('\\', "/")),
         Some("server/server.jar".to_string())
     );
 }
@@ -264,8 +262,7 @@ fn parse_server_core_type_surfaces_broken_jar_manifest_read_failures() {
 #[test]
 fn parse_server_core_type_surfaces_directory_scan_failures() {
     let dir = tempfile::tempdir().expect("temp dir should exist");
-    fs::create_dir(dir.path().join("server.jar"))
-        .expect("directory-backed jar path should exist");
+    fs::create_dir(dir.path().join("server.jar")).expect("directory-backed jar path should exist");
 
     let error = parse_server_core_type(dir.path().to_string_lossy().as_ref())
         .expect_err("directory scan failure should not be downgraded to unknown core type");

@@ -1,3 +1,4 @@
+use super::common::{http_t, http_t1, http_t2};
 use super::{json_value_from_lua, DEFAULT_TIMEOUT, MAX_TIMEOUT, MIN_TIMEOUT};
 use mlua::Value;
 
@@ -44,9 +45,11 @@ pub(super) fn extract_url(value: Option<&Value>) -> Result<String, mlua::Error> 
             Value::String(s) => s.to_str().ok().map(|s| s.to_string()),
             _ => None,
         })
-        .ok_or_else(|| mlua::Error::runtime("First argument must be a URL string"))?;
+        .ok_or_else(|| mlua::Error::runtime(http_t("plugins.runtime.http.arg_url_required")))?;
 
-    url::Url::parse(&url).map_err(|e| mlua::Error::runtime(format!("Invalid URL: {}", e)))?;
+    url::Url::parse(&url).map_err(|e| {
+        mlua::Error::runtime(http_t1("plugins.runtime.http.invalid_url", e.to_string()))
+    })?;
 
     Ok(url)
 }
@@ -68,7 +71,7 @@ pub(super) fn parse_http_options(options: Option<&Value>) -> Result<HttpOptions,
     };
 
     let Value::Table(opts) = options else {
-        return Err(mlua::Error::runtime("Options parameter must be a table when provided"));
+        return Err(mlua::Error::runtime(http_t("plugins.runtime.http.options_not_table")));
     };
 
     match opts.get::<Value>("headers")? {
@@ -76,15 +79,13 @@ pub(super) fn parse_http_options(options: Option<&Value>) -> Result<HttpOptions,
         Value::Table(h) => {
             for pair in h.pairs::<String, String>() {
                 let (key, value) = pair.map_err(|_| {
-                    mlua::Error::runtime(
-                        "Options.headers must be a table of string keys and string values",
-                    )
+                    mlua::Error::runtime(http_t("plugins.runtime.http.headers_string_map_required"))
                 })?;
                 headers.push((key, value));
             }
         }
         _ => {
-            return Err(mlua::Error::runtime("Options.headers must be a table when provided"));
+            return Err(mlua::Error::runtime(http_t("plugins.runtime.http.headers_not_table")));
         }
     }
 
@@ -94,13 +95,16 @@ pub(super) fn parse_http_options(options: Option<&Value>) -> Result<HttpOptions,
             timeout = t as u64;
         }
         Value::Integer(_) | Value::Number(_) => {
-            return Err(mlua::Error::runtime(format!(
-                "Options.timeout must be an integer between {} and {} seconds",
-                MIN_TIMEOUT, MAX_TIMEOUT
+            return Err(mlua::Error::runtime(http_t2(
+                "plugins.runtime.http.timeout_range_invalid",
+                MIN_TIMEOUT.to_string(),
+                MAX_TIMEOUT.to_string(),
             )));
         }
         _ => {
-            return Err(mlua::Error::runtime("Options.timeout must be an integer when provided"));
+            return Err(mlua::Error::runtime(http_t(
+                "plugins.runtime.http.timeout_integer_required",
+            )));
         }
     }
 
@@ -116,12 +120,15 @@ pub(super) fn lua_body_to_string(body: Option<&Value>) -> Result<(String, bool),
         Some(Value::Table(table)) => {
             let json_val = json_value_from_lua(&Value::Table(table.clone()), 0)?;
             let json_str = serde_json::to_string(&json_val).map_err(|e| {
-                mlua::Error::runtime(format!("Failed to serialize body to JSON: {}", e))
+                mlua::Error::runtime(http_t1(
+                    "plugins.runtime.http.serialize_body_failed",
+                    e.to_string(),
+                ))
             })?;
             Ok((json_str, true))
         }
         Some(Value::Nil) | None => Ok((String::new(), false)),
-        _ => Err(mlua::Error::runtime("Body parameter must be a string or table")),
+        _ => Err(mlua::Error::runtime(http_t("plugins.runtime.http.body_type_invalid"))),
     }
 }
 

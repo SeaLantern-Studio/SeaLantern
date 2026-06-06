@@ -12,6 +12,7 @@ use sea_lantern_server_config_core::startup::write_server_startup_config_for_dir
 
 use super::super::common::validate_server_name;
 use super::super::ServerManager;
+use super::i18n::{provisioning_t1, provisioning_t3};
 
 pub(super) fn import_modpack(
     manager: &ServerManager,
@@ -19,7 +20,10 @@ pub(super) fn import_modpack(
 ) -> Result<ServerInstance, String> {
     let source_path = Path::new(&req.modpack_path);
     if !source_path.exists() {
-        return Err(format!("整合包路径不存在: {}", req.modpack_path));
+        return Err(provisioning_t1(
+            "server.provisioning.modpack_path_missing",
+            req.modpack_path.clone(),
+        ));
     }
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -45,10 +49,13 @@ pub(super) fn import_modpack(
         build::build_modpack_server_instance(id, server_name, req, &run_dir, startup, port);
 
     println!(
-        "创建服务器实例: id={}, path={}, startup_path={}",
-        server.id,
-        server.path,
-        server.jar_path().unwrap_or_default()
+        "{}",
+        provisioning_t3(
+            "server.provisioning.created_server_instance",
+            server.id.clone(),
+            server.path.clone(),
+            server.jar_path().unwrap_or_default(),
+        )
     );
 
     manager.lock_servers()?.push(server.clone());

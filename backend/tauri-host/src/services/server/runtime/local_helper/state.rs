@@ -1,5 +1,6 @@
 use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
 use crate::models::server::ServerInstance;
+use crate::services::server::runtime::i18n::{runtime_t1, runtime_t2};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -9,10 +10,16 @@ pub fn remove_state_file(server: &ServerInstance) {
 }
 
 pub(super) fn write_state_file(path: &Path, state: &LocalRuntimeState) -> Result<(), String> {
-    let content = serde_json::to_string_pretty(state)
-        .map_err(|e| format!("序列化本地 runtime 状态失败: {}", e))?;
-    std::fs::write(path, content)
-        .map_err(|e| format!("写入本地 runtime 状态失败 ({}): {}", path.display(), e))
+    let content = serde_json::to_string_pretty(state).map_err(|e| {
+        runtime_t1("server.runtime.local_helper.state_serialize_failed", e.to_string())
+    })?;
+    std::fs::write(path, content).map_err(|e| {
+        runtime_t2(
+            "server.runtime.local_helper.state_write_failed",
+            path.display().to_string(),
+            e.to_string(),
+        )
+    })
 }
 
 pub(super) fn persist_terminal_state(
@@ -130,11 +137,11 @@ pub(super) fn current_timestamp_secs() -> u64 {
 mod tests {
     use super::{
         started_state, state_from_requested_stop, state_from_terminal_snapshot,
-        terminal_state_from_exit, write_state_file, LocalHelperStatusSnapshot,
-        LocalRuntimeState,
+        terminal_state_from_exit, write_state_file, LocalHelperStatusSnapshot, LocalRuntimeState,
     };
-    use crate::services::server::runtime::local_helper::{read_state, state_file_path};
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::services::server::runtime::i18n::runtime_t1;
+    use crate::services::server::runtime::local_helper::{read_state, state_file_path};
     use tempfile::tempdir;
 
     fn test_server(path: String) -> ServerInstance {
@@ -190,7 +197,8 @@ mod tests {
                     .map(|value| value.to_string())
                     .unwrap_or_else(|| "none".to_string())
             ),
-            error_message: exit_code.map(|code| format!("服务器异常退出 (退出码：{})", code)),
+            error_message: exit_code
+                .map(|code| runtime_t1("server.runtime.local.exit_abnormal", code.to_string())),
         }
     }
 
@@ -247,7 +255,10 @@ mod tests {
         assert_eq!(next.exit_code, Some(7));
         assert_eq!(next.updated_at, 789);
         assert_eq!(next.detail_message, "runtime=local running=false source=helper exit_code=7");
-        assert_eq!(next.error_message.as_deref(), Some("服务器异常退出 (退出码：7)"));
+        assert_eq!(
+            next.error_message.as_deref(),
+            Some(runtime_t1("server.runtime.local.exit_abnormal", "7").as_str())
+        );
     }
 
     #[test]

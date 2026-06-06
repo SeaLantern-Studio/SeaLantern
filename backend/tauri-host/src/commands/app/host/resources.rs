@@ -2,6 +2,7 @@ use super::common::{
     CachedDirectorySize, PROCESS_CPU_SAMPLE_INTERVAL, SERVER_DISK_USAGE_CACHE,
     SERVER_DISK_USAGE_CACHE_TTL, SYSTEM,
 };
+use crate::commands::app::common::app_t1;
 use crate::services;
 use std::path::Path;
 use std::time::Instant;
@@ -10,10 +11,10 @@ use sysinfo::{Disks, Pid, ProcessRefreshKind, ProcessesToUpdate};
 pub fn get_server_resource_usage(server_id: String) -> Result<serde_json::Value, String> {
     let manager = services::global::server_manager();
     let server = manager
-        .get_server_list()
+        .get_server_list_checked()?
         .into_iter()
         .find(|s| s.id == server_id)
-        .ok_or_else(|| format!("未找到服务器: {}", server_id))?;
+        .ok_or_else(|| app_t1("server.server_not_found", server_id.clone()))?;
 
     let status = manager.get_server_status(&server.id);
     let mut cpu_usage = 0.0_f32;

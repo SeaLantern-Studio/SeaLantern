@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 
+use crate::commands::update::common::{update_t, update_t1};
 use crate::services;
 
+use super::INSTALL_IN_PROGRESS;
 #[cfg(target_os = "linux")]
 use sea_lantern_update_core::arch::{get_aur_helper, is_arch_linux};
 use sea_lantern_update_core::install_support::{
@@ -11,37 +13,29 @@ use sea_lantern_update_core::install_support::{
 use sea_lantern_update_core::pending::write_pending_update;
 #[cfg(target_os = "windows")]
 use sea_lantern_update_core::windows_install;
-use super::INSTALL_IN_PROGRESS;
 
 pub(crate) async fn execute_install(file_path: String, version: String) -> Result<(), String> {
     if INSTALL_IN_PROGRESS.swap(true, Ordering::SeqCst) {
-        return Err("Install is already in progress".to_string());
+        return Err(update_t("update.install.in_progress"));
     }
 
     let result = (|| -> Result<(), String> {
         let path = PathBuf::from(&file_path);
         if !path.exists() {
-            return Err(format!("Update file not found: {}", file_path));
+            return Err(update_t1("update.install.file_not_found", file_path.clone()));
         }
 
         #[cfg(target_os = "linux")]
         {
             if is_arch_linux() {
                 let helper = get_aur_helper().unwrap_or_else(|| "yay".to_string());
-                return Err(format!(
-                    "您使用的是 Arch Linux\n\
-                     请使用包管理器更新 SeaLantern：\n\
-                     {} -S sealantern\n\
-                     \n\
-                     或使用其他 AUR 助手",
-                    helper
-                ));
+                return Err(update_t1("update.install.arch_linux_manual_upgrade", helper));
             }
         }
 
         let settings = services::global::settings_manager().get();
         if settings.close_servers_on_update {
-            services::global::server_manager().stop_all_servers();
+            services::global::server_manager().stop_all_servers_checked()?;
         }
 
         let pending_file = get_pending_update_file();
@@ -86,9 +80,8 @@ fn launch_update_installer(
                     Some(pending_file_path.as_str()),
                 )
             }
-            InstallLaunchPlan::OpenDirect => {
-                opener::open(file_path).map_err(|e| format!("Failed to open update file: {}", e))
-            }
+            InstallLaunchPlan::OpenDirect => opener::open(file_path)
+                .map_err(|e| update_t1("update.install.open_file_failed", e.to_string())),
         }
     }
 
@@ -96,13 +89,15 @@ fn launch_update_installer(
     {
         let _ = pending_file;
         let _ = path;
-        opener::open(file_path).map_err(|e| format!("Failed to open update file: {}", e))
+        opener::open(file_path)
+            .map_err(|e| update_t1("update.install.open_file_failed", e.to_string()))
     }
 
     #[cfg(all(target_os = "linux", not(target_os = "windows")))]
     {
         let _ = pending_file;
         let _ = path;
-        opener::open(file_path).map_err(|e| format!("Failed to open update file: {}", e))
+        opener::open(file_path)
+            .map_err(|e| update_t1("update.install.open_file_failed", e.to_string()))
     }
 }

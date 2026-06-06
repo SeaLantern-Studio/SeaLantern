@@ -91,7 +91,10 @@ fn ensure_supported_script_java_major_version(major_version: Option<u32>) -> Res
 }
 
 fn build_java_launch_path_value(java_bin_dir_str: &str) -> String {
-    build_shared_java_launch_path_value(java_bin_dir_str, &std::env::var("PATH").unwrap_or_default())
+    build_shared_java_launch_path_value(
+        java_bin_dir_str,
+        &std::env::var("PATH").unwrap_or_default(),
+    )
 }
 
 #[cfg_attr(not(test), allow(dead_code))]

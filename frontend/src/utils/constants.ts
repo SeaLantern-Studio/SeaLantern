@@ -90,6 +90,7 @@ export const MESSAGES = {
     SERVER_NOT_RUNNING: "common.message_server_not_running",
     SERVER_ALREADY_RUNNING: "common.message_server_already_running",
     SERVER_NOT_FOUND: "common.message_server_not_found",
+    UNAUTHORIZED: "common.message_unauthorized",
     INVALID_PLAYER_NAME: "common.message_invalid_player_name",
     NETWORK_ERROR: "common.message_network_error",
     UNKNOWN_ERROR: "common.message_unknown_error",

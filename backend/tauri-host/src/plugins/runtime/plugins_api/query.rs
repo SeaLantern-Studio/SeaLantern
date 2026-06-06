@@ -1,10 +1,11 @@
 use super::{
     common::{
-        emit_plugins_log, plugin_dir, read_manifest_json, resolve_plugin_path, PluginsContext,
+        emit_plugins_log, plugin_dir, plugins_t, plugins_t1, plugins_t2, read_manifest_json,
+        resolve_plugin_path, PluginsContext,
     },
     fs, MAX_FILE_SIZE,
 };
-use crate::utils::logger::log_warn;
+use crate::utils::logger::log_warn_ctx;
 use mlua::{Lua, Value};
 
 pub(super) fn list(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
@@ -16,18 +17,25 @@ pub(super) fn list(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, St
         let mut i = 1;
 
         let entries = fs::read_dir(&ctx.plugins_root).map_err(|e| {
-            mlua::Error::runtime(format!("Failed to read plugins directory: {}", e))
+            mlua::Error::runtime(plugins_t1(
+                "plugins.runtime.plugins_api.list_read_plugins_dir_failed",
+                e.to_string(),
+            ))
         })?;
 
         for entry in entries {
             let entry = match entry {
                 Ok(e) => e,
                 Err(e) => {
-                    log_warn(&format!(
-                        "[plugins.list] Failed to read plugin entry in '{}': {}",
-                        ctx.plugins_root.display(),
-                        e
-                    ));
+                    log_warn_ctx(
+                        "plugins.runtime.plugins_api.query",
+                        "list",
+                        &format!(
+                            "failed to read plugin entry in '{}' : {}",
+                            ctx.plugins_root.display(),
+                            e
+                        ),
+                    );
                     continue;
                 }
             };
@@ -69,7 +77,9 @@ pub(super) fn list(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, St
 
         Ok(result)
     })
-    .map_err(|e| format!("Failed to create plugins.list: {}", e))
+    .map_err(|e| {
+        plugins_t2("plugins.runtime.plugins_api.create_api_failed", "plugins.list", e.to_string())
+    })
 }
 
 pub(super) fn get_manifest(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
@@ -84,7 +94,13 @@ pub(super) fn get_manifest(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Func
 
         crate::plugins::runtime::shared::lua_value_from_json(lua, &manifest, 0)
     })
-    .map_err(|e| format!("Failed to create plugins.get_manifest: {}", e))
+    .map_err(|e| {
+        plugins_t2(
+            "plugins.runtime.plugins_api.create_api_failed",
+            "plugins.get_manifest",
+            e.to_string(),
+        )
+    })
 }
 
 pub(super) fn read_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
@@ -104,18 +120,33 @@ pub(super) fn read_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Functio
             return Ok(None);
         }
 
-        let metadata = fs::metadata(&full_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to get file metadata: {}", e)))?;
+        let metadata = fs::metadata(&full_path).map_err(|e| {
+            mlua::Error::runtime(plugins_t1(
+                "plugins.runtime.plugins_api.read_file_metadata_failed",
+                e.to_string(),
+            ))
+        })?;
         if metadata.len() > MAX_FILE_SIZE {
-            return Err(mlua::Error::runtime("File too large (max 10MB)"));
+            return Err(mlua::Error::runtime(plugins_t(
+                "plugins.runtime.plugins_api.file_too_large",
+            )));
         }
 
         match fs::read_to_string(&full_path) {
             Ok(content) => Ok(Some(content)),
-            Err(e) => Err(mlua::Error::runtime(format!("Failed to read file: {}", e))),
+            Err(e) => Err(mlua::Error::runtime(plugins_t1(
+                "plugins.runtime.plugins_api.read_file_failed",
+                e.to_string(),
+            ))),
         }
     })
-    .map_err(|e| format!("Failed to create plugins.read_file: {}", e))
+    .map_err(|e| {
+        plugins_t2(
+            "plugins.runtime.plugins_api.create_api_failed",
+            "plugins.read_file",
+            e.to_string(),
+        )
+    })
 }
 
 pub(super) fn file_exists(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
@@ -132,7 +163,13 @@ pub(super) fn file_exists(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Funct
             Err(_) => Ok(false),
         }
     })
-    .map_err(|e| format!("Failed to create plugins.file_exists: {}", e))
+    .map_err(|e| {
+        plugins_t2(
+            "plugins.runtime.plugins_api.create_api_failed",
+            "plugins.file_exists",
+            e.to_string(),
+        )
+    })
 }
 
 pub(super) fn list_files(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
@@ -145,8 +182,12 @@ pub(super) fn list_files(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Functi
         );
 
         let full_path = resolve_plugin_path(&ctx.plugins_root, &target_id, &relative_path)?;
-        let entries = fs::read_dir(&full_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to read directory: {}", e)))?;
+        let entries = fs::read_dir(&full_path).map_err(|e| {
+            mlua::Error::runtime(plugins_t1(
+                "plugins.runtime.plugins_api.list_read_dir_failed",
+                e.to_string(),
+            ))
+        })?;
 
         let mut items = Vec::new();
         for entry in entries.flatten() {
@@ -188,5 +229,11 @@ pub(super) fn list_files(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Functi
         }
         Ok(table)
     })
-    .map_err(|e| format!("Failed to create plugins.list_files: {}", e))
+    .map_err(|e| {
+        plugins_t2(
+            "plugins.runtime.plugins_api.create_api_failed",
+            "plugins.list_files",
+            e.to_string(),
+        )
+    })
 }

@@ -1,14 +1,12 @@
-use super::common::{CommandHandler, RegistryBuilder, handle_unsupported};
+use super::common::{handle_unsupported, CommandHandler, RegistryBuilder};
 use crate::commands::app::host as system_commands;
 use crate::commands::app::logging as logging_commands;
 use serde_json::Value;
 pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_system_info", handle_get_system_info as CommandHandler);
     builder.register("get_default_run_path", handle_get_default_run_path as CommandHandler);
-    builder.register(
-        "get_server_resource_usage",
-        handle_get_server_resource_usage as CommandHandler,
-    );
+    builder
+        .register("get_server_resource_usage", handle_get_server_resource_usage as CommandHandler);
     builder.register("get_safe_mode_status", handle_get_safe_mode_status as CommandHandler);
     builder.register("test_ipv6_connectivity", handle_test_ipv6_connectivity as CommandHandler);
     builder.register("frontend_heartbeat", handle_frontend_heartbeat as CommandHandler);

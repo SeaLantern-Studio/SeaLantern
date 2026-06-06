@@ -31,10 +31,7 @@ fn calculate_sha256_matches_known_content() {
 fn build_hash_mismatch_error_includes_expected_and_actual_hashes() {
     let error = build_hash_mismatch_error("expected", "actual");
 
-    assert_eq!(
-        error,
-        "Hash verification failed. Expected: expected, Got: actual"
-    );
+    assert_eq!(error, "Hash verification failed. Expected: expected, Got: actual");
 }
 
 #[test]
@@ -43,11 +40,9 @@ fn remove_corrupted_download_surfaces_cleanup_failures() {
     let bad_path = dir.path().join("payload.bin");
     std::fs::create_dir(&bad_path).unwrap();
 
-    let error = remove_corrupted_download(
-        &bad_path,
-        build_hash_mismatch_error("expected", "actual"),
-    )
-    .expect_err("directory-backed payload path should not be silently ignored");
+    let error =
+        remove_corrupted_download(&bad_path, build_hash_mismatch_error("expected", "actual"))
+            .expect_err("directory-backed payload path should not be silently ignored");
 
     assert!(error.contains("Hash verification failed. Expected: expected, Got: actual"));
     assert!(error.contains("failed to remove corrupted download"));

@@ -2,6 +2,7 @@ use super::common::manager;
 use super::ForceStopPreparationResponse;
 use crate::models::server::{ServerInstance, ServerStatusInfo};
 use crate::services::server::manager::LocalLaunchDetail;
+use crate::services::server::manager::ServerManager;
 use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -87,8 +88,17 @@ pub(super) fn send_command(id: String, command: String) -> Result<(), String> {
 }
 
 /// 读取服务器列表
+#[allow(dead_code)]
 pub(super) fn get_server_list() -> Vec<ServerInstance> {
-    manager().get_server_list()
+    get_server_list_checked().unwrap_or_default()
+}
+
+pub(super) fn get_server_list_in(manager: &ServerManager) -> Result<Vec<ServerInstance>, String> {
+    manager.get_server_list_checked()
+}
+
+pub(super) fn get_server_list_checked() -> Result<Vec<ServerInstance>, String> {
+    get_server_list_in(manager())
 }
 
 /// 读取服务器状态
@@ -130,8 +140,12 @@ pub(super) fn delete_server(id: String) -> Result<(), String> {
 }
 
 /// 读取服务器日志
-pub(super) fn get_server_logs(id: String, since: usize, max_lines: Option<usize>) -> Vec<String> {
-    crate::services::server::log_pipeline::get_logs(&id, since, max_lines)
+pub(super) fn get_server_logs(
+    id: String,
+    since: usize,
+    max_lines: Option<usize>,
+) -> Result<Vec<String>, String> {
+    crate::services::server::log_pipeline::get_logs_checked(&id, since, max_lines)
 }
 
 pub(super) fn get_local_launch_detail(id: String) -> Result<LocalLaunchDetail, String> {
@@ -169,7 +183,9 @@ pub(super) fn update_server_path(
 
 #[cfg(test)]
 mod tests {
-    use super::should_emit_server_error;
+    use super::{get_server_list_in, should_emit_server_error};
+    use crate::services::server::manager::ServerManager;
+    use std::sync::Arc;
 
     #[test]
     fn server_error_notification_only_emits_once_per_message() {
@@ -188,5 +204,24 @@ mod tests {
         assert!(should_emit_server_error(server_id, Some("server crashed")));
         assert!(!should_emit_server_error(server_id, None));
         assert!(should_emit_server_error(server_id, Some("server crashed")));
+    }
+
+    #[test]
+    fn get_server_list_in_surfaces_server_list_lock_failures() {
+        let manager = Arc::new(ServerManager::new_checked().expect("manager should initialize"));
+        let cloned = Arc::clone(&manager);
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = cloned
+                .servers
+                .lock()
+                .expect("servers lock should be acquired");
+            panic!("poison server list lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = get_server_list_in(&manager)
+            .expect_err("lock failure should not be flattened into an empty server list");
+
+        assert_eq!(error, "servers lock poisoned");
     }
 }

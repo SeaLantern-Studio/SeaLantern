@@ -2,15 +2,16 @@ use super::shared::{
     collect_env_vars, emit_process_log, mask_args_for_log, validate_args, validate_program_path,
 };
 use crate::plugins::runtime::process::common::{
-    collect_finished_processes, new_process_output, plugin_process_count,
-    spawn_background_pipe_reader, truncate_output, ProcessEntry, ProcessStream, MAX_ARGS_COUNT,
-    MAX_ARG_LENGTH, MAX_BACKGROUND_PROCESSES_PER_PLUGIN, MAX_ENV_KEY_LENGTH,
-    MAX_ENV_VALUE_LENGTH, MAX_ENV_VARS, MAX_FOREGROUND_EXEC_DURATION,
+    collect_finished_processes, new_process_output, plugin_process_count, process_err,
+    process_err1, process_err2, process_msg1, process_msg2, spawn_background_pipe_reader,
+    truncate_output, ProcessEntry, ProcessStream, MAX_ARGS_COUNT, MAX_ARG_LENGTH,
+    MAX_BACKGROUND_PROCESSES_PER_PLUGIN, MAX_ENV_KEY_LENGTH, MAX_ENV_VALUE_LENGTH, MAX_ENV_VARS,
+    MAX_FOREGROUND_EXEC_DURATION,
 };
 use crate::plugins::runtime::shared::validate_path_static;
 use mlua::{Function, Lua, Table};
-use std::io::Read;
 use std::collections::HashMap;
+use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -55,8 +56,8 @@ pub(super) fn exec(
     lua.create_function(
         move |lua, (program, args, options): (String, Option<Vec<String>>, Option<Table>)| {
             if !perms.iter().any(|p| p == "execute_program") {
-                return Err(mlua::Error::runtime(
-                    "Permission denied: 'execute_program' permission required",
+                return Err(process_err(
+                    "plugins.runtime.process.execute_permission_required",
                 ));
             }
 
@@ -94,8 +95,8 @@ pub(super) fn exec(
                 }
                 if let Ok(timeout_ms) = opts.get::<u64>("timeout_ms") {
                     if timeout_ms == 0 {
-                        return Err(mlua::Error::runtime(
-                            "Process timeout must be greater than 0 milliseconds",
+                        return Err(process_err(
+                            "plugins.runtime.process.timeout_must_be_positive",
                         ));
                     }
 
@@ -124,10 +125,10 @@ pub(super) fn exec(
                 collect_finished_processes(&mut procs);
 
                 if plugin_process_count(&mut procs, &pid) >= MAX_BACKGROUND_PROCESSES_PER_PLUGIN {
-                    return Err(mlua::Error::runtime(format!(
-                        "Too many background processes: maximum {} allowed per plugin",
-                        MAX_BACKGROUND_PROCESSES_PER_PLUGIN
-                    )));
+                    return Err(process_err1(
+                        "plugins.runtime.process.too_many_background_processes",
+                        MAX_BACKGROUND_PROCESSES_PER_PLUGIN.to_string(),
+                    ));
                 }
 
                 match cmd.spawn() {
@@ -187,35 +188,35 @@ pub(super) fn exec(
                                             match child.try_wait() {
                                                 Ok(Some(status)) => break status,
                                                 Ok(None) => {
-                                                    return Err(mlua::Error::runtime(format!(
-                                                        "Failed to terminate timed out process: {}",
-                                                        kill_error
-                                                    )));
+                                                    return Err(process_err1(
+                                                        "plugins.runtime.process.terminate_timed_out_failed",
+                                                        kill_error.to_string(),
+                                                    ));
                                                 }
                                                 Err(wait_error) => {
-                                                    return Err(mlua::Error::runtime(format!(
-                                                        "Failed to inspect timed out process after kill error: {}",
-                                                        wait_error
-                                                    )));
+                                                    return Err(process_err1(
+                                                        "plugins.runtime.process.inspect_timed_out_failed",
+                                                        wait_error.to_string(),
+                                                    ));
                                                 }
                                             }
                                         }
 
                                         break child.wait().map_err(|e| {
-                                            mlua::Error::runtime(format!(
-                                                "Failed to wait for timed out process: {}",
-                                                e
-                                            ))
+                                            process_err1(
+                                                "plugins.runtime.process.wait_timed_out_failed",
+                                                e.to_string(),
+                                            )
                                         })?;
                                     }
 
                                     thread::sleep(Duration::from_millis(25));
                                 }
                                 Err(e) => {
-                                    return Err(mlua::Error::runtime(format!(
-                                        "Failed to wait for process: {}",
-                                        e
-                                    )));
+                                    return Err(process_err1(
+                                        "plugins.runtime.process.wait_failed",
+                                        e.to_string(),
+                                    ));
                                 }
                             }
                         };
@@ -254,7 +255,7 @@ pub(super) fn exec(
             Ok(result_table)
         },
     )
-    .map_err(|e| format!("Failed to create process.exec: {}", e))
+    .map_err(|e| process_msg2("plugins.runtime.process.create_api_failed", "process.exec", e.to_string()))
 }
 
 fn spawn_pipe_reader<R>(mut reader: R) -> thread::JoinHandle<std::io::Result<Vec<u8>>>
@@ -278,20 +279,25 @@ fn join_pipe_reader(
 
     match handle.join() {
         Ok(Ok(buffer)) => Ok(buffer),
-        Ok(Err(error)) => Err(mlua::Error::runtime(format!(
-            "Failed to read process {}: {}",
-            stream_name, error
-        ))),
-        Err(_) => {
-            Err(mlua::Error::runtime(format!("Process {} reader thread panicked", stream_name)))
-        }
+        Ok(Err(error)) => Err(process_err2(
+            "plugins.runtime.process.read_stream_failed",
+            stream_name,
+            error.to_string(),
+        )),
+        Err(_) => Err(process_err1("plugins.runtime.process.reader_thread_panicked", stream_name)),
     }
 }
 
 fn timeout_error_message(timeout: Duration) -> String {
     if timeout.as_millis().is_multiple_of(1000) {
-        format!("Process execution exceeded maximum duration of {} seconds", timeout.as_secs())
+        process_msg1(
+            "plugins.runtime.process.execution_timeout_seconds",
+            timeout.as_secs().to_string(),
+        )
     } else {
-        format!("Process execution exceeded maximum duration of {} ms", timeout.as_millis())
+        process_msg1(
+            "plugins.runtime.process.execution_timeout_millis",
+            timeout.as_millis().to_string(),
+        )
     }
 }

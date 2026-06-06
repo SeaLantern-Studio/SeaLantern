@@ -1,6 +1,7 @@
 use super::super::PluginRuntime;
 use super::common::{
-    emit_result, map_create_err, map_set_err, register_callback, validate_context_menu_context,
+    emit_result, map_create_err, map_set_err, register_callback, ui_t1,
+    validate_context_menu_context,
 };
 use crate::plugins::api::emit_context_menu_event;
 use mlua::{Function, Table};
@@ -16,15 +17,25 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
 
                 let mut items_vec: Vec<serde_json::Value> = Vec::new();
                 for pair in items.pairs::<i64, Table>() {
-                    let (_, item) =
-                        pair.map_err(|e| mlua::Error::runtime(format!("读取菜单项失败: {}", e)))?;
+                    let (_, item) = pair.map_err(|e| {
+                        mlua::Error::runtime(ui_t1(
+                            "plugins.runtime.ui.context_menu.read_item_failed",
+                            e.to_string(),
+                        ))
+                    })?;
 
-                    let id: String = item
-                        .get("id")
-                        .map_err(|_| mlua::Error::runtime("菜单项缺少必需的 'id' 字段"))?;
-                    let label: String = item
-                        .get("label")
-                        .map_err(|_| mlua::Error::runtime("菜单项缺少必需的 'label' 字段"))?;
+                    let id: String = item.get("id").map_err(|_| {
+                        mlua::Error::runtime(ui_t1(
+                            "plugins.runtime.ui.context_menu.required_field_missing",
+                            "id",
+                        ))
+                    })?;
+                    let label: String = item.get("label").map_err(|_| {
+                        mlua::Error::runtime(ui_t1(
+                            "plugins.runtime.ui.context_menu.required_field_missing",
+                            "label",
+                        ))
+                    })?;
 
                     let icon: Option<String> = item.get("icon").ok();
 
@@ -40,8 +51,12 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
                     items_vec.push(item_obj);
                 }
 
-                let items_json = serde_json::to_string(&items_vec)
-                    .map_err(|e| mlua::Error::runtime(format!("序列化菜单项失败: {}", e)))?;
+                let items_json = serde_json::to_string(&items_vec).map_err(|e| {
+                    mlua::Error::runtime(ui_t1(
+                        "plugins.runtime.ui.context_menu.serialize_items_failed",
+                        e.to_string(),
+                    ))
+                })?;
 
                 emit_result(
                     lua,

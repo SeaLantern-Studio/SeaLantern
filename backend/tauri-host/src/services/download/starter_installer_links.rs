@@ -2,6 +2,7 @@
 //!
 //! 这里只保留对外查询函数，缓存、解析和版本匹配逻辑拆到子模块里
 
+use crate::services::download::common::download_t1;
 use std::path::PathBuf;
 
 ///此处常量见 utils/constants.rs
@@ -24,9 +25,10 @@ pub fn fetch_starter_installer_url(
 ) -> Result<(String, Option<String>), String> {
     let data_dir = PathBuf::from(
         crate::utils::path::get_or_create_app_data_dir_checked()
-            .map_err(|e| format!("获取软件目录失败: {}", e))?,
+            .map_err(|e| download_t1("download.starter.app_data_dir_failed", e.to_string()))?,
     );
-    std::fs::create_dir_all(&data_dir).map_err(|e| format!("创建软件目录失败: {}", e))?;
+    std::fs::create_dir_all(&data_dir)
+        .map_err(|e| download_t1("download.starter.app_data_dir_create_failed", e.to_string()))?;
     let links_file_path = data_dir.join(STARTER_INSTALLER_LINKS_FILE);
     sea_lantern_starter_links_core::load_or_refresh_starter_links_json(
         &links_file_path,
@@ -42,6 +44,7 @@ pub fn fetch_starter_installer_url(
 #[cfg(test)]
 mod tests {
     use super::fetch_starter_installer_url;
+    use crate::services::download::common::download_t;
     use crate::test_support::{lock_env, EnvGuard};
     use std::fs;
 
@@ -49,7 +52,8 @@ mod tests {
     fn fetch_starter_installer_url_surfaces_app_data_dir_creation_failures() {
         let temp_dir = tempfile::tempdir().expect("temp dir should exist");
         let blocked_root = temp_dir.path().join("blocked-root");
-        fs::write(&blocked_root, b"not a directory").expect("file-backed app data root should exist");
+        fs::write(&blocked_root, b"not a directory")
+            .expect("file-backed app data root should exist");
         let blocked_path = blocked_root.join("nested");
         let _lock = lock_env();
         let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &blocked_path.to_string_lossy());
@@ -57,7 +61,11 @@ mod tests {
         let error = fetch_starter_installer_url("forge", "1.20.1")
             .expect_err("app data dir creation failure should not be silently downgraded");
 
-        assert!(error.contains("获取软件目录失败"), "unexpected error: {}", error);
+        assert!(
+            error.contains(&download_t("download.starter.app_data_dir_failed_prefix")),
+            "unexpected error: {}",
+            error
+        );
         assert!(error.contains("blocked-root"), "unexpected error: {}", error);
     }
 }

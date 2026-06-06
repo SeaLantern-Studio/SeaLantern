@@ -1,4 +1,5 @@
 use super::common::SYSTEM;
+use crate::commands::app::common::{app_t, app_t1, app_t2};
 use std::io::ErrorKind;
 use sysinfo::{Disks, Networks, System};
 
@@ -157,15 +158,15 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
 
     while let Some(join_result) = tasks.join_next().await {
         let (addr, name, result) =
-            join_result.map_err(|error| format!("IPv6 测试任务失败: {}", error))?;
+            join_result.map_err(|error| app_t1("app.host.ipv6_task_failed", error.to_string()))?;
 
         match result {
             Ok(Ok(_stream)) => {
                 tasks.abort_all();
                 return Ok(serde_json::json!({
                     "supported": true,
-                    "message": format!("IPv6 连接成功（通过 {}）", name),
-                    "detail": format!("成功连接到 {} ({})", name, addr)
+                    "message": app_t1("app.host.ipv6_connected_via", name),
+                    "detail": app_t2("app.host.ipv6_connected_detail", name, addr)
                 }));
             }
             Ok(Err(error)) => {
@@ -182,29 +183,21 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
                 tested_targets.push(serde_json::json!({
                     "target": name,
                     "address": addr,
-                    "error": "连接超时",
+                    "error": app_t("app.host.ipv6_timeout"),
                     "kind": "TimedOut"
                 }));
-                last_error = "连接超时".to_string();
+                last_error = app_t("app.host.ipv6_timeout");
                 last_error_kind = Some(ErrorKind::TimedOut);
             }
         }
     }
 
     let summary = match last_error_kind {
-        Some(ErrorKind::AddrNotAvailable) => {
-            "系统未分配 IPv6 地址，请检查网络适配器是否启用了 IPv6".to_string()
-        }
-        Some(ErrorKind::NetworkUnreachable) => {
-            "IPv6 网络不可达，可能未启用 IPv6 或 ISP 不支持".to_string()
-        }
-        Some(ErrorKind::TimedOut) => {
-            "连接超时，您的网络可能不支持 IPv6 或防火墙阻止了连接".to_string()
-        }
-        Some(ErrorKind::ConnectionRefused) => {
-            "目标服务器拒绝连接，但 IPv6 网络可能可用".to_string()
-        }
-        _ => format!("IPv6 连接失败: {}", last_error),
+        Some(ErrorKind::AddrNotAvailable) => app_t("app.host.ipv6_addr_not_available"),
+        Some(ErrorKind::NetworkUnreachable) => app_t("app.host.ipv6_network_unreachable"),
+        Some(ErrorKind::TimedOut) => app_t("app.host.ipv6_connection_timed_out"),
+        Some(ErrorKind::ConnectionRefused) => app_t("app.host.ipv6_connection_refused"),
+        _ => app_t1("app.host.ipv6_connection_failed", last_error.clone()),
     };
 
     let error_kind = last_error_kind.map(|kind| format!("{:?}", kind));

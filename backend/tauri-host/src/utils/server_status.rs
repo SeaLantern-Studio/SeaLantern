@@ -1,8 +1,8 @@
 use crate::models::server::{ServerStatus, ServerStatusInfo};
 pub(crate) use sea_lantern_runtime::{
-    StatusLevel, StatusSnapshot, status_blocks_start, status_detail_health,
-    status_detail_indicates_running, status_detail_runtime_kind,
-    status_is_docker_command_ready, status_is_terminal_start_ready,
+    status_blocks_start, status_detail_health, status_detail_indicates_running,
+    status_detail_runtime_kind, status_is_docker_command_ready, status_is_terminal_start_ready,
+    StatusLevel, StatusSnapshot,
 };
 
 #[cfg(test)]

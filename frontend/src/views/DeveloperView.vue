@@ -15,6 +15,13 @@ const developerEnabled = computed(() => settingsStore.settings.developer_mode);
 
 const {
   logLines,
+  filteredLogCount,
+  totalLogCount,
+  hasLogEntries,
+  selectedLogLevel,
+  selectedLogModule,
+  logLevelOptions,
+  logModuleOptions,
   systemInfo,
   version,
   loadingLogs,
@@ -79,15 +86,24 @@ watch(
 
       <DeveloperLogPanel
         :log-lines="logLines"
+        :filtered-log-count="filteredLogCount"
+        :total-log-count="totalLogCount"
+        :has-log-entries="hasLogEntries"
         :loading="loadingLogs"
         :exporting="exportingLogs"
         :clearing="clearingLogs"
         :is-browser-mode="isBrowserMode"
         :error="logError"
+        :selected-log-level="selectedLogLevel"
+        :selected-log-module="selectedLogModule"
+        :log-level-options="logLevelOptions"
+        :log-module-options="logModuleOptions"
         :console-font-size="consoleFontSize"
         :console-font-family="consoleFontFamily"
         :console-letter-spacing="consoleLetterSpacing"
         :max-log-lines="maxLogLines"
+        @update:selected-log-level="selectedLogLevel = $event"
+        @update:selected-log-module="selectedLogModule = $event"
         @refresh="refreshLogs"
         @copy="copyLogs"
         @export="exportLogsToFile"

@@ -1,6 +1,6 @@
 use super::common::{
-    emit_permission_log_api, ensure_safe_directory_tree, ensure_safe_path_for_access,
-    reject_dangerous_remove_target, resolve_scope_action, validate_fs_path, FsContext,
+    emit_permission_log_api, ensure_safe_directory_tree, ensure_safe_path_for_access, fs_t, fs_t1,
+    fs_t2, reject_dangerous_remove_target, resolve_scope_action, validate_fs_path, FsContext,
 };
 use mlua::{Function, Lua};
 use std::fs;
@@ -25,14 +25,22 @@ pub(super) fn write(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
         emit_permission_log_api(&ctx.plugin_id, "sl.fs.write", &format!("{}:{}", scope, path));
 
         if let Some(parent) = full_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| mlua::Error::runtime(format!("Failed to create directory: {}", e)))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                mlua::Error::runtime(fs_t1(
+                    "plugins.runtime.filesystem.create_directory_failed",
+                    e.to_string(),
+                ))
+            })?;
         }
 
-        fs::write(&full_path, content)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to write file: {}", e)))
+        fs::write(&full_path, content).map_err(|e| {
+            mlua::Error::runtime(fs_t1(
+                "plugins.runtime.filesystem.write_file_failed",
+                e.to_string(),
+            ))
+        })
     })
-    .map_err(|e| format!("Failed to create fs.write: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.write", e.to_string()))
 }
 
 pub(super) fn mkdir(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
@@ -54,10 +62,14 @@ pub(super) fn mkdir(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
 
         emit_permission_log_api(&ctx.plugin_id, "sl.fs.mkdir", &format!("{}:{}", scope, path));
 
-        fs::create_dir_all(&full_path)
-            .map_err(|e| mlua::Error::runtime(format!("Failed to create directory: {}", e)))
+        fs::create_dir_all(&full_path).map_err(|e| {
+            mlua::Error::runtime(fs_t1(
+                "plugins.runtime.filesystem.create_directory_failed",
+                e.to_string(),
+            ))
+        })
     })
-    .map_err(|e| format!("Failed to create fs.mkdir: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.mkdir", e.to_string()))
 }
 
 pub(super) fn remove(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
@@ -78,19 +90,31 @@ pub(super) fn remove(lua: &Lua, ctx: &FsContext) -> Result<Function, String> {
         emit_permission_log_api(&ctx.plugin_id, "sl.fs.remove", &format!("{}:{}", scope, path));
 
         if full_path.is_dir() {
-            let mut entries = fs::read_dir(&full_path)
-                .map_err(|e| mlua::Error::runtime(format!("Failed to inspect directory: {}", e)))?;
+            let mut entries = fs::read_dir(&full_path).map_err(|e| {
+                mlua::Error::runtime(fs_t1(
+                    "plugins.runtime.filesystem.inspect_dir_failed",
+                    e.to_string(),
+                ))
+            })?;
             if entries.next().is_some() {
-                return Err(mlua::Error::runtime(
-                    "Refusing to recursively remove a non-empty directory".to_string(),
-                ));
+                return Err(mlua::Error::runtime(fs_t(
+                    "plugins.runtime.filesystem.remove_non_empty_dir_forbidden",
+                )));
             }
-            fs::remove_dir(&full_path)
-                .map_err(|e| mlua::Error::runtime(format!("Failed to remove directory: {}", e)))
+            fs::remove_dir(&full_path).map_err(|e| {
+                mlua::Error::runtime(fs_t1(
+                    "plugins.runtime.filesystem.remove_dir_failed",
+                    e.to_string(),
+                ))
+            })
         } else {
-            fs::remove_file(&full_path)
-                .map_err(|e| mlua::Error::runtime(format!("Failed to remove file: {}", e)))
+            fs::remove_file(&full_path).map_err(|e| {
+                mlua::Error::runtime(fs_t1(
+                    "plugins.runtime.filesystem.remove_file_failed",
+                    e.to_string(),
+                ))
+            })
         }
     })
-    .map_err(|e| format!("Failed to create fs.remove: {}", e))
+    .map_err(|e| fs_t2("plugins.runtime.filesystem.create_api_failed", "fs.remove", e.to_string()))
 }

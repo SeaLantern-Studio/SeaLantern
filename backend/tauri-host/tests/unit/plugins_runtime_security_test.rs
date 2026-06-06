@@ -117,7 +117,8 @@ fn test_collect_finished_processes_removes_exited_children() {
 
 #[test]
 fn test_kill_plugin_processes_only_kills_owned_processes() {
-    let registry: Arc<Mutex<HashMap<u32, process::ProcessEntry>>> = Arc::new(Mutex::new(HashMap::new()));
+    let registry: Arc<Mutex<HashMap<u32, process::ProcessEntry>>> =
+        Arc::new(Mutex::new(HashMap::new()));
     let owned = spawn_sleep_child();
     let owned_pid = owned.id();
     let foreign = spawn_sleep_child();

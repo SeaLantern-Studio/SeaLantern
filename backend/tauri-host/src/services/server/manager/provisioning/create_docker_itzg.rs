@@ -5,6 +5,7 @@ use sea_lantern_server_config_core::startup::ensure_server_path_writable;
 use super::super::common::{
     current_timestamp_secs, ensure_server_identity_available, validate_server_name,
 };
+use super::i18n::{provisioning_t, provisioning_t1, provisioning_t2};
 use super::ServerManager;
 use std::path::Path;
 
@@ -13,16 +14,21 @@ fn resolve_memory_env_mb(
     key: &str,
     default_mb: u32,
 ) -> Result<u32, String> {
-    Ok(
-        env.get(key)
-            .map(|value| {
-                parse_memory_env_value_checked(value)
-                    .map_err(|err| format!("{} 配置无效: {}", key, err))
-                    .map(|parsed| parsed.unwrap_or(default_mb))
-            })
-            .transpose()?
-            .unwrap_or(default_mb),
-    )
+    Ok(env
+        .get(key)
+        .map(|value| {
+            parse_memory_env_value_checked(value)
+                .map_err(|err| {
+                    provisioning_t2(
+                        "server.provisioning.memory_env_invalid",
+                        key.to_string(),
+                        err.to_string(),
+                    )
+                })
+                .map(|parsed| parsed.unwrap_or(default_mb))
+        })
+        .transpose()?
+        .unwrap_or(default_mb))
 }
 
 fn build_docker_itzg_server(
@@ -33,7 +39,7 @@ fn build_docker_itzg_server(
 ) -> Result<ServerInstance, String> {
     let data_dir_mount = req.runtime.data_dir_mount.trim().to_string();
     if data_dir_mount.is_empty() {
-        return Err("docker_itzg data_dir_mount 不能为空".to_string());
+        return Err(provisioning_t("server.provisioning.docker_data_dir_mount_empty"));
     }
 
     let max_memory = resolve_memory_env_mb(&req.runtime.env, "MAX_MEMORY", 4096)?;
@@ -80,7 +86,9 @@ pub(super) fn create_docker_itzg_server(
 
     let server = build_docker_itzg_server(id, now, server_name, req)?;
     let server_path = Path::new(&server.path);
-    std::fs::create_dir_all(server_path).map_err(|e| format!("无法创建 Docker 数据目录: {}", e))?;
+    std::fs::create_dir_all(server_path).map_err(|e| {
+        provisioning_t1("server.provisioning.create_docker_data_dir_failed", e.to_string())
+    })?;
     ensure_server_path_writable(server_path)?;
 
     manager.lock_servers()?.push(server.clone());
@@ -95,12 +103,12 @@ mod tests {
     use tempfile::tempdir;
 
     use super::build_docker_itzg_server;
-    use sea_lantern_docker_core::{parse_memory_env_value, parse_memory_env_value_checked};
     use crate::models::server::{
         CpuPolicyConfig, CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode,
         DockerItzgRuntimeConfig, JvmPresetConfig, ServerRuntimeConfig,
     };
     use crate::services::server::manager::ServerManager;
+    use sea_lantern_docker_core::{parse_memory_env_value, parse_memory_env_value_checked};
 
     fn isolated_manager(temp_dir: &std::path::Path) -> ServerManager {
         let manager = ServerManager::new();

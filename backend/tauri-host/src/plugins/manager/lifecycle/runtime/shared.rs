@@ -1,25 +1,47 @@
 use super::super::super::{PluginManager, PluginState};
 use crate::plugins::api::{emit_log_event, emit_ui_event, ApiRegistryOps};
 use crate::plugins::runtime::kill_all_processes;
+use crate::utils::logger::{log_error_ctx, log_warn_ctx};
 
 pub(super) fn call_on_disable(manager: &PluginManager, plugin_id: &str) {
     let runtimes = manager.runtimes.read().unwrap_or_else(|e| {
-        eprintln!("[WARN] RwLock poisoned, recovering: {}", e);
+        log_warn_ctx(
+            "plugins.manager.lifecycle.runtime.shared",
+            "call_on_disable",
+            &format!("RwLock poisoned; recovering: {}", e),
+        );
         e.into_inner()
     });
     if let Some(runtime) = runtimes.get(plugin_id) {
         if let Err(e) = runtime.call_lifecycle("onDisable") {
-            eprintln!("Error calling onDisable for '{}': {}", plugin_id, e);
+            log_warn_ctx(
+                "plugins.manager.lifecycle.runtime.shared",
+                "call_on_disable",
+                &format!("error calling onDisable for '{}': {}", plugin_id, e),
+            );
 
             let error_msg = format!("Failed to call onDisable: {}", e);
-            let _ = emit_log_event(plugin_id, "error", &error_msg);
+            if let Err(error) = emit_log_event(plugin_id, "error", &error_msg) {
+                log_error_ctx(
+                    "plugins.manager.lifecycle.runtime.shared",
+                    "call_on_disable",
+                    &format!(
+                        "plugin disable error log emit failed: plugin_id={} error={}",
+                        plugin_id, error
+                    ),
+                );
+            }
         }
     }
 }
 
 pub(super) fn clear_plugin_side_effects(manager: &mut PluginManager, plugin_id: &str) {
     if let Err(e) = emit_ui_event(plugin_id, "remove_all", "", "") {
-        eprintln!("[WARN] Failed to emit remove_all UI event for '{}': {}", plugin_id, e);
+        log_warn_ctx(
+            "plugins.manager.lifecycle.runtime.shared",
+            "clear_plugin_side_effects",
+            &format!("failed to emit remove_all UI event for '{}': {}", plugin_id, e),
+        );
     }
 
     crate::plugins::api::clear_plugin_sidebar_snapshot(plugin_id);
@@ -32,7 +54,11 @@ pub(super) fn clear_plugin_side_effects(manager: &mut PluginManager, plugin_id: 
 pub(super) fn cleanup_runtime_resources(manager: &mut PluginManager, plugin_id: &str) {
     {
         let runtimes = manager.runtimes.read().unwrap_or_else(|e| {
-            eprintln!("[WARN] RwLock poisoned, recovering: {}", e);
+            log_warn_ctx(
+                "plugins.manager.lifecycle.runtime.shared",
+                "cleanup_runtime_resources",
+                &format!("RwLock poisoned while reading; recovering: {}", e),
+            );
             e.into_inner()
         });
         if let Some(runtime) = runtimes.get(plugin_id) {
@@ -43,7 +69,11 @@ pub(super) fn cleanup_runtime_resources(manager: &mut PluginManager, plugin_id: 
 
     {
         let mut runtimes = manager.runtimes.write().unwrap_or_else(|e| {
-            eprintln!("[WARN] RwLock poisoned, recovering: {}", e);
+            log_warn_ctx(
+                "plugins.manager.lifecycle.runtime.shared",
+                "cleanup_runtime_resources",
+                &format!("RwLock poisoned while writing; recovering: {}", e),
+            );
             e.into_inner()
         });
         runtimes.remove(plugin_id);

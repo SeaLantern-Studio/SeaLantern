@@ -1,15 +1,24 @@
 use crate::services::server::log_pipeline as server_log_pipeline;
 #[cfg(target_os = "windows")]
 use crate::services::server::manager::common::build_windows_cmd_command;
+use crate::services::server::manager::i18n::{manager_t, manager_t1};
 
 pub(super) fn run_preload_script(id: &str, server_path: &str) {
     #[cfg(target_os = "windows")]
     {
         let preload_script = std::path::Path::new(server_path).join("preload.bat");
         if preload_script.exists() {
-            println!("发现预加载脚本: {:?}", preload_script);
-            let _ =
-                server_log_pipeline::append_sealantern_log(id, "[preload] 开始执行预加载脚本...");
+            println!(
+                "{}",
+                manager_t1(
+                    "server.manager.preload_script_found",
+                    preload_script.display().to_string(),
+                )
+            );
+            let _ = server_log_pipeline::append_sealantern_log(
+                id,
+                &manager_t("server.manager.preload_start_log"),
+            );
 
             let preload_script_name = preload_script
                 .file_name()
@@ -27,7 +36,7 @@ pub(super) fn run_preload_script(id: &str, server_path: &str) {
             match cmd.output() {
                 Ok(result) => {
                     if result.status.success() {
-                        println!("preload.bat 执行成功");
+                        println!("{}", manager_t("server.manager.preload_bat_success"));
                         if !result.stdout.is_empty() {
                             let output = String::from_utf8_lossy(&result.stdout);
                             for line in output.lines() {
@@ -39,23 +48,30 @@ pub(super) fn run_preload_script(id: &str, server_path: &str) {
                         }
                         let _ = server_log_pipeline::append_sealantern_log(
                             id,
-                            "[preload] 预加载脚本执行成功",
+                            &manager_t("server.manager.preload_success_log"),
                         );
                     } else {
                         let error = String::from_utf8_lossy(&result.stderr);
-                        println!("preload.bat 执行失败: {}", error);
+                        println!(
+                            "{}",
+                            manager_t1("server.manager.preload_bat_failed", error.to_string())
+                        );
                         let _ = server_log_pipeline::append_sealantern_log(
                             id,
-                            &format!("[preload] 执行失败: {}", error),
+                            &manager_t1(
+                                "server.manager.preload_exec_failed_log",
+                                error.to_string(),
+                            ),
                         );
                     }
                 }
                 Err(e) => {
-                    let error_msg = format!("执行 preload.bat 失败: {}", e);
+                    let error_msg =
+                        manager_t1("server.manager.preload_bat_exec_failed", e.to_string());
                     println!("{}", error_msg);
                     let _ = server_log_pipeline::append_sealantern_log(
                         id,
-                        &format!("[preload] {}", error_msg),
+                        &manager_t1("server.manager.preload_log_line", error_msg),
                     );
                 }
             }
@@ -66,9 +82,17 @@ pub(super) fn run_preload_script(id: &str, server_path: &str) {
     {
         let preload_script = std::path::Path::new(server_path).join("preload.sh");
         if preload_script.exists() {
-            println!("发现预加载脚本: {:?}", preload_script);
-            let _ =
-                server_log_pipeline::append_sealantern_log(id, "[preload] 开始执行预加载脚本...");
+            println!(
+                "{}",
+                manager_t1(
+                    "server.manager.preload_script_found",
+                    preload_script.display().to_string(),
+                )
+            );
+            let _ = server_log_pipeline::append_sealantern_log(
+                id,
+                &manager_t("server.manager.preload_start_log"),
+            );
 
             match std::process::Command::new("sh")
                 .arg(&preload_script)
@@ -77,7 +101,7 @@ pub(super) fn run_preload_script(id: &str, server_path: &str) {
             {
                 Ok(result) => {
                     if result.status.success() {
-                        println!("preload.sh 执行成功");
+                        println!("{}", manager_t("server.manager.preload_sh_success"));
                         if !result.stdout.is_empty() {
                             let output = String::from_utf8_lossy(&result.stdout);
                             for line in output.lines() {
@@ -89,23 +113,30 @@ pub(super) fn run_preload_script(id: &str, server_path: &str) {
                         }
                         let _ = server_log_pipeline::append_sealantern_log(
                             id,
-                            "[preload] 预加载脚本执行成功",
+                            &manager_t("server.manager.preload_success_log"),
                         );
                     } else {
                         let error = String::from_utf8_lossy(&result.stderr);
-                        println!("preload.sh 执行失败: {}", error);
+                        println!(
+                            "{}",
+                            manager_t1("server.manager.preload_sh_failed", error.to_string())
+                        );
                         let _ = server_log_pipeline::append_sealantern_log(
                             id,
-                            &format!("[preload] 执行失败: {}", error),
+                            &manager_t1(
+                                "server.manager.preload_exec_failed_log",
+                                error.to_string(),
+                            ),
                         );
                     }
                 }
                 Err(e) => {
-                    let error_msg = format!("执行 preload.sh 失败: {}", e);
+                    let error_msg =
+                        manager_t1("server.manager.preload_sh_exec_failed", e.to_string());
                     println!("{}", error_msg);
                     let _ = server_log_pipeline::append_sealantern_log(
                         id,
-                        &format!("[preload] {}", error_msg),
+                        &manager_t1("server.manager.preload_log_line", error_msg),
                     );
                 }
             }

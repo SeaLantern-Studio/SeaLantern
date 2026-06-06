@@ -14,13 +14,13 @@ use crate::models::server::{
 };
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::ServerManager;
+use crate::services::server::runtime::i18n::{runtime_t, runtime_t1, runtime_t2};
 use crate::utils::docker_cli::{
     docker_executable_path, ensure_docker_command_success, render_docker_command_error,
 };
 use crate::utils::logger;
 use sea_lantern_docker_core::{
-    docker_image_ref, requested_stop_timeout_secs, runtime_env_value,
-    ActiveProcessorCountDecision,
+    docker_image_ref, requested_stop_timeout_secs, runtime_env_value, ActiveProcessorCountDecision,
 };
 use std::path::Path;
 use std::process::Command;
@@ -191,7 +191,10 @@ impl ServerRuntime for DockerItzgRuntime {
         {
             let _ = server_log_pipeline::append_sealantern_log(
                 &request.server.id,
-                &format!("[Sea Lantern] Docker 日志跟随启动失败: {}", err),
+                &format!(
+                    "[Sea Lantern] {}",
+                    runtime_t1("server.runtime.docker.logs_follow_start_failed", err)
+                ),
             );
         }
 
@@ -223,7 +226,7 @@ impl ServerRuntime for DockerItzgRuntime {
     ) -> Result<(), String> {
         let runtime = self.ensure_cli_runtime(server, DockerItzgCapability::RequestStop)?;
 
-        if manager.is_stopping(&server.id) {
+        if manager.is_stopping_checked(&server.id)? {
             return Ok(());
         }
 
@@ -233,7 +236,10 @@ impl ServerRuntime for DockerItzgRuntime {
         control::spawn_stop_worker(
             "server.runtime.docker_itzg",
             sid.clone(),
-            format!("[Sea Lantern] Docker 停止失败 (container={})", container_name),
+            format!(
+                "[Sea Lantern] {}",
+                runtime_t1("server.runtime.docker.stop_failed", container_name)
+            ),
             move || {
                 let manager = crate::services::global::server_manager();
                 manager.stop_server(&sid)
@@ -260,9 +266,16 @@ impl ServerRuntime for DockerItzgRuntime {
             let _ = server_log_pipeline::append_sealantern_log(
                 &server.id,
                 &format!(
-                    "[Sea Lantern] Docker 容器已不在运行态: status={} detail={}",
-                    snapshot.status.as_str(),
-                    snapshot.detail_message.as_deref().unwrap_or("-")
+                    "[Sea Lantern] {}",
+                    runtime_t2(
+                        "server.runtime.docker.already_not_running",
+                        snapshot.status.as_str().to_string(),
+                        snapshot
+                            .detail_message
+                            .as_deref()
+                            .unwrap_or("-")
+                            .to_string(),
+                    )
                 ),
             );
             return Ok(());
@@ -270,20 +283,30 @@ impl ServerRuntime for DockerItzgRuntime {
 
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            &format!("[Sea Lantern] 正在停止 Docker 容器: {}", runtime.container_name),
+            &format!(
+                "[Sea Lantern] {}",
+                runtime_t1(
+                    "server.runtime.docker.stopping_container",
+                    runtime.container_name.clone()
+                )
+            ),
         );
         let graceful_stop_accepted = match self.cli_adapter.request_graceful_stop(server, runtime) {
             Ok(accepted) => accepted,
             Err(err) => {
-                logger::log_trace(&format!(
-                    "[server.runtime.docker_itzg] graceful_stop_request_failed server_id={} container={} error={}",
-                    server.id, runtime.container_name, err
-                ));
+                logger::log_trace_ctx(
+                    "server.runtime.docker_itzg",
+                    "request_stop_with_manager",
+                    &format!(
+                        "graceful_stop_request_failed server_id={} container={} error={}",
+                        server.id, runtime.container_name, err
+                    ),
+                );
                 let _ = server_log_pipeline::append_sealantern_log(
                     &server.id,
                     &format!(
-                        "[Sea Lantern] Docker 优雅停服命令发送失败，将回退到 docker stop: {}",
-                        err
+                        "[Sea Lantern] {}",
+                        runtime_t1("server.runtime.docker.graceful_stop_failed", err)
                     ),
                 );
                 false
@@ -298,7 +321,10 @@ impl ServerRuntime for DockerItzgRuntime {
                     control::clear_runtime_flags(manager, &server.id);
                     let _ = server_log_pipeline::append_sealantern_log(
                         &server.id,
-                        "[Sea Lantern] Docker 容器已通过服务端 stop 命令退出运行态",
+                        &format!(
+                            "[Sea Lantern] {}",
+                            runtime_t("server.runtime.docker.stopped_via_server_stop")
+                        ),
                     );
                     return Ok(());
                 }
@@ -306,7 +332,10 @@ impl ServerRuntime for DockerItzgRuntime {
 
             let _ = server_log_pipeline::append_sealantern_log(
                 &server.id,
-                "[Sea Lantern] Docker stop 命令已发送，但容器仍未退出；将回退到 docker stop",
+                &format!(
+                    "[Sea Lantern] {}",
+                    runtime_t("server.runtime.docker.stop_command_fallback")
+                ),
             );
         }
 
@@ -319,7 +348,10 @@ impl ServerRuntime for DockerItzgRuntime {
                 control::clear_runtime_flags(manager, &server.id);
                 let _ = server_log_pipeline::append_sealantern_log(
                     &server.id,
-                    "[Sea Lantern] Docker 容器已停止或已退出运行态",
+                    &format!(
+                        "[Sea Lantern] {}",
+                        runtime_t("server.runtime.docker.stopped_or_exited")
+                    ),
                 );
                 return Ok(());
             }
@@ -327,7 +359,10 @@ impl ServerRuntime for DockerItzgRuntime {
 
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            "[Sea Lantern] Docker 容器停止超时，将执行强制终止",
+            &format!(
+                "[Sea Lantern] {}",
+                runtime_t("server.runtime.docker.stop_timeout_force_stop")
+            ),
         );
         self.cli_adapter.force_stop(runtime)?;
         control::clear_runtime_flags(manager, &server.id);
@@ -364,7 +399,13 @@ impl ServerRuntime for DockerItzgRuntime {
         control::clear_runtime_flags(manager, &server.id);
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            &format!("[Sea Lantern] 已强制终止 Docker 容器: {}", runtime.container_name),
+            &format!(
+                "[Sea Lantern] {}",
+                runtime_t1(
+                    "server.runtime.docker.force_stopped_container",
+                    runtime.container_name.clone()
+                )
+            ),
         );
         Ok(())
     }
@@ -390,8 +431,8 @@ impl ServerRuntime for DockerItzgRuntime {
 
         snapshot.status = resolve_managed_status(
             snapshot.status,
-            manager.is_starting(&server.id),
-            manager.is_stopping(&server.id),
+            manager.is_starting_checked(&server.id)?,
+            manager.is_stopping_checked(&server.id)?,
         );
 
         control::clear_runtime_flags_if_terminal(manager, &server.id, &snapshot.status);
@@ -437,7 +478,10 @@ impl DockerCliAdapter {
         let existing = self.inspect_container_state(runtime)?;
         if let Some(state) = existing {
             if state.running {
-                return Err(format!("Docker 容器已在运行: {}", runtime.container_name));
+                return Err(runtime_t1(
+                    "server.runtime.docker.container_already_running",
+                    runtime.container_name.clone(),
+                ));
             }
 
             self.remove_container(runtime)?;
@@ -445,23 +489,31 @@ impl DockerCliAdapter {
 
         let settings = crate::services::global::settings_manager().get();
         let launch_spec = resolve_docker_launch_spec(server, runtime, &settings)?;
-        logger::log_trace(&format!(
-            "[server.runtime.docker_itzg] docker_jvm_env_synthesized server_id={} container={} preset={} jvm_opts_args={} jvm_xx_opts_args={}",
-            server.id,
-            runtime.container_name,
-            launch_spec.jvm_synthesis.preset,
-            launch_spec.jvm_opts_args_count,
-            launch_spec.jvm_xx_opts_args_count
-        ));
-        if let Some(cpuset) = launch_spec.cpuset_cpus.as_deref() {
-            logger::log_trace(&format!(
-                "[server.runtime.docker_itzg] docker_cpu_policy_applied server_id={} container={} mode={} cpuset={} sync_active_processor_count={}",
+        logger::log_trace_ctx(
+            "server.runtime.docker_itzg",
+            "start",
+            &format!(
+                "docker_jvm_env_synthesized server_id={} container={} preset={} jvm_opts_args={} jvm_xx_opts_args={}",
                 server.id,
                 runtime.container_name,
-                launch_spec.jvm_synthesis.active_processor_count.as_str(),
-                cpuset,
-                launch_spec.jvm_synthesis.active_processor_count != ActiveProcessorCountDecision::Disabled
-            ));
+                launch_spec.jvm_synthesis.preset,
+                launch_spec.jvm_opts_args_count,
+                launch_spec.jvm_xx_opts_args_count
+            ),
+        );
+        if let Some(cpuset) = launch_spec.cpuset_cpus.as_deref() {
+            logger::log_trace_ctx(
+                "server.runtime.docker_itzg",
+                "start",
+                &format!(
+                    "docker_cpu_policy_applied server_id={} container={} mode={} cpuset={} sync_active_processor_count={}",
+                    server.id,
+                    runtime.container_name,
+                    launch_spec.jvm_synthesis.active_processor_count.as_str(),
+                    cpuset,
+                    launch_spec.jvm_synthesis.active_processor_count != ActiveProcessorCountDecision::Disabled
+                ),
+            );
         }
 
         let docker_path = docker_executable_path()?;
@@ -472,7 +524,7 @@ impl DockerCliAdapter {
 
         let output = command
             .output()
-            .map_err(|e| format!("执行 docker run 失败: {}", e))?;
+            .map_err(|e| runtime_t1("server.runtime.docker.run_command_failed", e.to_string()))?;
         let image_ref = docker_image_ref(runtime);
         ensure_docker_command_success(
             output,
@@ -483,7 +535,13 @@ impl DockerCliAdapter {
 
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            &format!("[Sea Lantern] Docker 容器已创建并启动: {}", runtime.container_name),
+            &format!(
+                "[Sea Lantern] {}",
+                runtime_t1(
+                    "server.runtime.docker.container_started",
+                    runtime.container_name.clone()
+                )
+            ),
         );
 
         Ok(())
@@ -532,7 +590,10 @@ impl DockerCliAdapter {
 
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            &format!("[Sea Lantern] 已发送 Docker 控制台命令: {}", trimmed),
+            &format!(
+                "[Sea Lantern] {}",
+                runtime_t1("server.runtime.docker.command_sent", trimmed.to_string())
+            ),
         );
         logger::log_user_action(
             "server.runtime.docker_itzg",
@@ -570,7 +631,7 @@ impl DockerCliAdapter {
         let output = command
             .arg(&runtime.container_name)
             .output()
-            .map_err(|e| format!("执行 docker stop 失败: {}", e))?;
+            .map_err(|e| runtime_t1("server.runtime.docker.stop_command_failed", e.to_string()))?;
         if docker_output_indicates_missing_container(&output) {
             return Ok(());
         }
@@ -627,7 +688,9 @@ impl DockerCliAdapter {
             .arg("-f")
             .arg(&runtime.container_name)
             .output()
-            .map_err(|e| format!("执行 docker rm -f 失败: {}", e))?;
+            .map_err(|e| {
+                runtime_t1("server.runtime.docker.rm_force_command_failed", e.to_string())
+            })?;
         if docker_output_indicates_missing_container(&output) {
             return Ok(());
         }
@@ -680,7 +743,9 @@ impl DockerCliAdapter {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| format!("执行 docker logs -f 失败: {}", e))?;
+            .map_err(|e| {
+                runtime_t1("server.runtime.docker.logs_follow_command_failed", e.to_string())
+            })?;
 
         if let Some(stdout) = child.stdout.take() {
             server_log_pipeline::spawn_server_output_reader(server_id.to_string(), stdout);
@@ -707,7 +772,7 @@ impl DockerCliAdapter {
             .arg("--format")
             .arg("{{.State.Status}}|{{.State.Running}}|{{.State.Pid}}|{{.State.ExitCode}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}|{{.State.Error}}")
             .output()
-            .map_err(|e| format!("执行 docker inspect 失败: {}", e))?;
+            .map_err(|e| runtime_t1("server.runtime.docker.inspect_command_failed", e.to_string()))?;
 
         if !output.status.success() {
             let stderr = stderr_text(&output);
@@ -771,7 +836,9 @@ impl DockerCliAdapter {
             .arg("-f")
             .arg(&runtime.container_name)
             .output()
-            .map_err(|e| format!("执行 docker rm -f 失败: {}", e))?;
+            .map_err(|e| {
+                runtime_t1("server.runtime.docker.rm_force_command_failed", e.to_string())
+            })?;
         if docker_output_indicates_missing_container(&output) {
             return Ok(());
         }
@@ -805,35 +872,28 @@ impl DockerCliAdapter {
             .arg("mc-send-to-console")
             .arg(command_text)
             .output()
-            .map_err(|e| format!("执行 docker exec 发送命令失败: {}", e))?;
+            .map_err(|e| {
+                runtime_t1("server.runtime.docker.exec_send_command_failed", e.to_string())
+            })?;
         if output.status.success() {
             return Ok(());
         }
 
         let stderr = stderr_text(&output);
         if docker_exec_missing_mc_send_to_console(&stderr) {
-            return Err(
-                "当前 Docker 镜像内未提供 mc-send-to-console，docker_stdio command mode 不可用；请确认使用 itzg/minecraft-server，或切换到 --command-mode rcon"
-                    .to_string(),
-            );
+            return Err(runtime_t("server.runtime.docker.exec_missing_mc_send_to_console"));
         }
         if docker_exec_requires_console_pipe(&stderr) {
-            return Err(
-                "当前 Docker 镜像要求先开启 CREATE_CONSOLE_IN_PIPE=true 才能使用 docker_stdio；SeaLantern 已按 itzg 语义注入该变量。请检查现有容器是否由旧配置创建，必要时重建容器，或切换到 --command-mode rcon"
-                    .to_string(),
-            );
+            return Err(runtime_t("server.runtime.docker.exec_requires_console_pipe"));
         }
         if docker_exec_named_pipe_missing(&stderr) {
-            return Err(
-                "当前 Docker 容器内缺少 itzg 控制台 named pipe，docker_stdio 暂不可用；这通常意味着容器仍在启动、未按 CREATE_CONSOLE_IN_PIPE=true 创建，或镜像/入口脚本与 itzg 语义不兼容。请先查看日志，必要时重建容器，或切换到 --command-mode rcon"
-                    .to_string(),
-            );
+            return Err(runtime_t("server.runtime.docker.exec_named_pipe_missing"));
         }
         if docker_exec_requires_uid(&stderr) {
             let uid_hint = runtime_env_value(runtime, "UID").unwrap_or("1000");
-            return Err(format!(
-                "当前 Docker 镜像要求以 UID={} 执行 mc-send-to-console；SeaLantern 已优先读取 runtime.env.UID 注入 docker exec --user。请确认容器创建时的 UID 配置一致，或切换到 --command-mode rcon",
-                uid_hint
+            return Err(runtime_t1(
+                "server.runtime.docker.exec_requires_uid",
+                uid_hint.to_string(),
             ));
         }
 
@@ -844,9 +904,10 @@ impl DockerCliAdapter {
             Some(&image_ref),
             Some(&runtime.container_name),
         );
-        Err(format!(
-            "通过 docker_stdio 发送 Docker 命令失败: container={} command_mode=docker_stdio; {}；若镜像不兼容，可切换到 --command-mode rcon",
-            runtime.container_name, raw
+        Err(runtime_t2(
+            "server.runtime.docker.exec_send_command_runtime_failed",
+            runtime.container_name.clone(),
+            raw,
         ))
     }
 
@@ -858,14 +919,15 @@ impl DockerCliAdapter {
         let rcon = runtime
             .rcon
             .as_ref()
-            .ok_or_else(|| "RCON 配置缺失，无法通过 RCON 发送命令".to_string())?;
+            .ok_or_else(|| runtime_t("server.runtime.docker.rcon_config_missing"))?;
         let runtime_config = runtime;
         let address = format!("{}:{}", rcon.host.trim(), rcon.port);
         let password = rcon.password.clone();
         let command = command_text.to_string();
 
-        let tokio_runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| format!("创建 RCON Tokio runtime 失败: {}", e))?;
+        let tokio_runtime = tokio::runtime::Runtime::new().map_err(|e| {
+            runtime_t1("server.runtime.docker.rcon_runtime_create_failed", e.to_string())
+        })?;
 
         tokio_runtime.block_on(async move {
             let mut connection = rcon::Connection::<TcpStream>::builder()
@@ -1359,8 +1421,12 @@ mod tests {
 
         control::clear_runtime_flags_if_terminal(&manager, "docker-alpha", &ServerStatus::Error);
 
-        assert!(!manager.is_starting("docker-alpha"));
-        assert!(!manager.is_stopping("docker-alpha"));
+        assert!(!manager
+            .is_starting_checked("docker-alpha")
+            .expect("starting flag should read"));
+        assert!(!manager
+            .is_stopping_checked("docker-alpha")
+            .expect("stopping flag should read"));
     }
 
     #[test]

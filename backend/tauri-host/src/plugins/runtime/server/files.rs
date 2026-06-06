@@ -1,6 +1,6 @@
 use super::common::{
-    check_server_permission, checked_file_metadata, create_server_entry, map_lua_err, with_server,
-    with_server_path, ServerContext,
+    check_server_permission, checked_file_metadata, create_server_entry, list_servers_checked,
+    map_lua_err, with_server, with_server_path, ServerContext,
 };
 use mlua::{Function, Lua};
 use std::fs;
@@ -9,7 +9,7 @@ pub(super) fn list(lua: &Lua, ctx: &ServerContext) -> Result<Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, ()| {
         check_server_permission(&ctx.permissions)?;
-        let servers = crate::services::global::server_manager().get_server_list();
+        let servers = list_servers_checked()?;
         let result = lua.create_table()?;
         for (i, server) in servers.iter().enumerate() {
             result.set(i + 1, create_server_entry(lua, server)?)?;

@@ -11,6 +11,7 @@ use super::super::common::{
     current_timestamp_secs, ensure_server_identity_available, normalize_startup_mode,
     validate_server_name,
 };
+use super::i18n::provisioning_t1;
 use super::ServerManager;
 
 pub(super) fn create_server(
@@ -63,7 +64,9 @@ pub(super) fn create_server(
         }),
     };
 
-    std::fs::create_dir_all(&server_dir).map_err(|e| format!("无法创建服务器目录: {}", e))?;
+    std::fs::create_dir_all(&server_dir).map_err(|e| {
+        provisioning_t1("server.provisioning.create_server_dir_failed", e.to_string())
+    })?;
     create_server_properties_if_missing(Path::new(&server_dir), req.port, true)?;
     if let Some(runtime) = server.local_runtime() {
         write_server_startup_config_for_dir(

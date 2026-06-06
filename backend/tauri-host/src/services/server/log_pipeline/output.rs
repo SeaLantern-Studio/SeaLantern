@@ -1,8 +1,10 @@
 use super::state::{
     decode_console_bytes, server_log_processors, ServerLogProcessor, SERVER_LOG_EVENT_HANDLER,
 };
-use std::sync::Arc;
 use std::io::{BufRead, BufReader, Read};
+use std::sync::Arc;
+
+use crate::utils::logger;
 
 pub fn add_server_log_processor(processor: Arc<ServerLogProcessor>) -> Result<(), String> {
     let processors = server_log_processors();
@@ -41,14 +43,29 @@ where
                         continue;
                     }
 
-                    let _ = super::writer::append_server_log(&server_id, &line);
+                    if let Err(error) = super::writer::append_server_log(&server_id, &line) {
+                        logger::log_warn_ctx("server.log_pipeline", "spawn_server_output_reader", &format!(
+                            "server output reader failed to persist log line: server_id={} error={}",
+                            server_id, error
+                        ));
+                    }
 
                     if line.contains("Done (") && line.contains(")! For help") {
                         crate::services::global::server_manager().clear_starting(&server_id);
                         let _ = crate::plugins::api::emit_server_ready(&server_id);
                     }
                 }
-                Err(_) => break,
+                Err(error) => {
+                    logger::log_warn_ctx(
+                        "server.log_pipeline",
+                        "spawn_server_output_reader",
+                        &format!(
+                            "server output reader aborted on read failure: server_id={} error={}",
+                            server_id, error
+                        ),
+                    );
+                    break;
+                }
             }
         }
     });

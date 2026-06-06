@@ -247,7 +247,11 @@ mod tests {
         let error = resolve_version_state("1.0.0", "refs/tags/not-a-version")
             .expect_err("invalid CNB tag should not be silently treated as no update");
 
-        assert!(error.contains("版本号无效") || error.contains("不能为空"), "unexpected error: {}", error);
+        assert!(
+            error.contains("版本号无效") || error.contains("不能为空"),
+            "unexpected error: {}",
+            error
+        );
         assert!(error.contains("not-a-version"), "unexpected error: {}", error);
     }
 }

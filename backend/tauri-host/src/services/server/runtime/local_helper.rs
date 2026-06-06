@@ -41,11 +41,12 @@ use self::state::{
     current_timestamp_secs, persist_terminal_state, remove_state_file, started_state,
     state_from_requested_stop, state_from_terminal_snapshot, write_state_file,
 };
-use self::status::fallback_snapshot_from_state_file;
+use self::status::{fallback_snapshot_from_state_file, fallback_snapshot_from_unreachable_helper};
 use crate::models::server::ServerInstance;
 use crate::services::global;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::process::{force_kill_process_tree_by_pid, is_process_alive};
+use crate::services::server::runtime::i18n::{runtime_t, runtime_t1, runtime_t2};
 use crate::services::server::runtime::{RuntimeProcessHandle, RuntimeStartRequest};
 use crate::utils::logger;
 use std::ffi::OsString;
@@ -58,34 +59,72 @@ pub fn state_file_path(server: &ServerInstance) -> PathBuf {
     Path::new(&server.path).join(crate::utils::constants::LOCAL_RUNTIME_STATE_FILE)
 }
 
-pub fn read_state(server: &ServerInstance) -> Option<LocalRuntimeState> {
+pub fn read_state_checked(server: &ServerInstance) -> Result<Option<LocalRuntimeState>, String> {
     let path = state_file_path(server);
-    let content = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str::<LocalRuntimeState>(&content).ok()
+    let content = match std::fs::read_to_string(&path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(runtime_t2(
+                "server.runtime.local_helper.state_read_failed",
+                path.display().to_string(),
+                error.to_string(),
+            ));
+        }
+    };
+
+    let state = serde_json::from_str::<LocalRuntimeState>(&content).map_err(|error| {
+        runtime_t2(
+            "server.runtime.local_helper.state_parse_failed",
+            path.display().to_string(),
+            error.to_string(),
+        )
+    })?;
+
+    Ok(Some(state))
+}
+
+#[allow(dead_code)]
+pub fn read_state(server: &ServerInstance) -> Option<LocalRuntimeState> {
+    read_state_checked(server).ok().flatten()
 }
 
 pub fn cleanup_for_new_start(server: &ServerInstance) {
     let current_exe = current_exe_lowercase();
 
-    if let Some(state) = read_state(server) {
-        let helper_alive =
-            helper_process_matches_server_pid(state.helper_pid, &server.id, current_exe.as_deref());
-        let child_alive = state.child_pid.is_some_and(is_process_alive);
-        if helper_alive || child_alive {
-            logger::log_warn(&format!(
-                "local runtime start cleanup detected lingering state: server_id={} helper_alive={} child_alive={} helper_pid={} child_pid={}",
-                server.id,
-                helper_alive,
-                child_alive,
+    match read_state_checked(server) {
+        Ok(Some(state)) => {
+            let helper_alive = helper_process_matches_server_pid(
                 state.helper_pid,
-                state
-                    .child_pid
-                    .map(|value| value.to_string())
-                    .unwrap_or_else(|| "none".to_string())
-            ));
-        }
+                &server.id,
+                current_exe.as_deref(),
+            );
+            let child_alive = state.child_pid.is_some_and(is_process_alive);
+            if helper_alive || child_alive {
+                logger::log_warn_ctx("server.runtime.local_helper", "cleanup_for_new_start", &format!(
+                    "local runtime start cleanup detected lingering state: server_id={} helper_alive={} child_alive={} helper_pid={} child_pid={}",
+                    server.id,
+                    helper_alive,
+                    child_alive,
+                    state.helper_pid,
+                    state
+                        .child_pid
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "none".to_string())
+                ));
+            }
 
-        cleanup_runtime_processes_from_state(server, &state, current_exe.as_deref());
+            cleanup_runtime_processes_from_state(server, &state, current_exe.as_deref());
+        }
+        Ok(None) => {}
+        Err(error) => logger::log_warn_ctx(
+            "server.runtime.local_helper",
+            "cleanup_for_new_start",
+            &format!(
+                "local runtime start cleanup skipped unreadable state file: server_id={} error={}",
+                server.id, error
+            ),
+        ),
     }
 
     cleanup_orphan_helper_processes(server, current_exe.as_deref());
@@ -116,14 +155,14 @@ fn cleanup_runtime_processes_from_state(
     }
 
     if is_process_alive(state.helper_pid) {
-        logger::log_warn(&format!(
+        logger::log_warn_ctx("server.runtime.local_helper", "cleanup_runtime_processes_from_state", &format!(
             "local runtime start cleanup skipped stale helper pid because identity no longer matches: server_id={} helper_pid={}",
             server.id, state.helper_pid
         ));
     }
 
     if let Some(child_pid) = state.child_pid.filter(|pid| is_process_alive(*pid)) {
-        logger::log_warn(&format!(
+        logger::log_warn_ctx("server.runtime.local_helper", "cleanup_runtime_processes_from_state", &format!(
             "local runtime start cleanup skipped lingering child without verified helper ownership: server_id={} child_pid={} helper_pid={}",
             server.id, child_pid, state.helper_pid
         ));
@@ -229,8 +268,8 @@ fn looks_like_local_runtime_helper_command(cmd: &[OsString], server_id: &str) ->
 }
 
 pub fn spawn_helper_process(server: &ServerInstance) -> Result<(), String> {
-    let current_exe =
-        std::env::current_exe().map_err(|e| format!("获取当前可执行文件路径失败: {}", e))?;
+    let current_exe = std::env::current_exe()
+        .map_err(|e| runtime_t1("server.runtime.local_helper.current_exe_failed", e.to_string()))?;
     let mut command = Command::new(current_exe);
     command.arg("__local-runtime-helper").arg(&server.id);
 
@@ -244,7 +283,7 @@ pub fn spawn_helper_process(server: &ServerInstance) -> Result<(), String> {
     command
         .spawn()
         .map(|_| ())
-        .map_err(|e| format!("启动本地 runtime helper 失败: {}", e))
+        .map_err(|e| runtime_t1("server.runtime.local_helper.spawn_failed", e.to_string()))
 }
 
 pub fn wait_for_helper_ready(
@@ -253,7 +292,7 @@ pub fn wait_for_helper_ready(
 ) -> Result<LocalRuntimeState, String> {
     let deadline = std::time::Instant::now() + timeout;
     while std::time::Instant::now() < deadline {
-        if let Some(state) = read_state(server) {
+        if let Some(state) = read_state_checked(server)? {
             if state.control_port.is_some() || !state.running {
                 return Ok(state);
             }
@@ -262,17 +301,17 @@ pub fn wait_for_helper_ready(
         std::thread::sleep(Duration::from_millis(100));
     }
 
-    Err(format!(
-        "等待本地 runtime helper 就绪超时: server_id={} state_file={}",
-        server.id,
-        state_file_path(server).display()
+    Err(runtime_t2(
+        "server.runtime.local_helper.ready_timeout",
+        server.id.clone(),
+        state_file_path(server).display().to_string(),
     ))
 }
 
 pub fn status_snapshot(
     server: &ServerInstance,
 ) -> Result<Option<LocalHelperStatusSnapshot>, String> {
-    let Some(state) = read_state(server) else {
+    let Some(state) = read_state_checked(server)? else {
         return Ok(None);
     };
 
@@ -283,10 +322,16 @@ pub fn status_snapshot(
         ) {
             Ok(response) => return Ok(response.snapshot),
             Err(error) => {
-                logger::log_warn(&format!(
-                    "local runtime helper status probe failed, falling back to state file: server_id={} helper_pid={} error={}",
-                    server.id, state.helper_pid, error
-                ));
+                logger::log_warn_ctx(
+                    "server.runtime.local_helper",
+                    "status_snapshot",
+                    &format!(
+                        "status probe failed; falling back to state file: server_id={} helper_pid={} error={}",
+                        server.id, state.helper_pid, error
+                    ),
+                );
+
+                return Ok(Some(fallback_snapshot_from_unreachable_helper(&state)));
             }
         }
     }
@@ -295,12 +340,15 @@ pub fn status_snapshot(
 }
 
 pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String> {
-    let state = read_state(server).ok_or_else(|| {
-        format!("本地 runtime helper 状态不存在: {}", state_file_path(server).display())
+    let state = read_state_checked(server)?.ok_or_else(|| {
+        runtime_t1(
+            "server.runtime.local_helper.state_missing",
+            state_file_path(server).display().to_string(),
+        )
     })?;
 
     if !is_process_alive(state.helper_pid) {
-        return Err("本地 runtime helper 不可用，当前无法跨命令发送本地控制台命令；请改用 force-stop 后重启，或在同一 CLI/Web 会话内操作".to_string());
+        return Err(runtime_t("server.runtime.local_helper.send_unavailable"));
     }
 
     let response = send_request(
@@ -320,8 +368,11 @@ pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String
 }
 
 pub fn request_stop(server: &ServerInstance) -> Result<(), String> {
-    let state = read_state(server).ok_or_else(|| {
-        format!("本地 runtime helper 状态不存在: {}", state_file_path(server).display())
+    let state = read_state_checked(server)?.ok_or_else(|| {
+        runtime_t1(
+            "server.runtime.local_helper.state_missing",
+            state_file_path(server).display().to_string(),
+        )
     })?;
 
     if is_process_alive(state.helper_pid) {
@@ -332,28 +383,31 @@ pub fn request_stop(server: &ServerInstance) -> Result<(), String> {
         if response.ok {
             return Ok(());
         }
-        return Err(response
+        let error = response
             .error
-            .unwrap_or_else(|| "helper stop failed".to_string()));
+            .unwrap_or_else(|| "helper stop failed".to_string());
+
+        if state.child_pid.is_some_and(is_process_alive) {
+            return Err(runtime_t1("server.runtime.local_helper.stop_failed_child_running", error));
+        }
+
+        return Err(error);
     }
 
     if let Some(pid) = state.child_pid.filter(|pid| is_process_alive(*pid)) {
-        force_kill_process_tree_by_pid(pid)?;
-        persist_terminal_state(
-            server,
-            &state,
-            None,
-            Some("本地 runtime helper 不可用，已回退为按 PID 强制终止".to_string()),
-        )?;
-        return Ok(());
+        let _ = pid;
+        return Err(runtime_t("server.runtime.local_helper.stop_unavailable_child_running"));
     }
 
     Ok(())
 }
 
 pub fn force_stop(server: &ServerInstance) -> Result<(), String> {
-    let state = read_state(server).ok_or_else(|| {
-        format!("本地 runtime helper 状态不存在: {}", state_file_path(server).display())
+    let state = read_state_checked(server)?.ok_or_else(|| {
+        runtime_t1(
+            "server.runtime.local_helper.state_missing",
+            state_file_path(server).display().to_string(),
+        )
     })?;
 
     if is_process_alive(state.helper_pid) {
@@ -364,9 +418,25 @@ pub fn force_stop(server: &ServerInstance) -> Result<(), String> {
         if response.ok {
             return Ok(());
         }
-        return Err(response
+        let error = response
             .error
-            .unwrap_or_else(|| "helper force stop failed".to_string()));
+            .unwrap_or_else(|| "helper force stop failed".to_string());
+
+        if let Some(pid) = state.child_pid.filter(|pid| is_process_alive(*pid)) {
+            force_kill_process_tree_by_pid(pid)?;
+            persist_terminal_state(
+                server,
+                &state,
+                None,
+                Some(runtime_t1(
+                    "server.runtime.local_helper.force_stop_fallback_with_error",
+                    error,
+                )),
+            )?;
+            return Ok(());
+        }
+
+        return Err(error);
     }
 
     if let Some(pid) = state.child_pid.filter(|pid| is_process_alive(*pid)) {
@@ -375,7 +445,7 @@ pub fn force_stop(server: &ServerInstance) -> Result<(), String> {
             server,
             &state,
             None,
-            Some("本地 runtime helper 不可用，已回退为按 PID 强制终止".to_string()),
+            Some(runtime_t("server.runtime.local_helper.force_stop_fallback")),
         )?;
     }
 
@@ -384,14 +454,14 @@ pub fn force_stop(server: &ServerInstance) -> Result<(), String> {
 
 pub fn handle_helper_command(args: &[String]) -> i32 {
     let Some(server_id) = args.first().map(String::as_str) else {
-        eprintln!("local runtime helper 缺少 server_id");
+        eprintln!("{}", runtime_t("server.runtime.local_helper.server_id_missing"));
         return 2;
     };
 
     match run_helper(server_id) {
         Ok(()) => 0,
         Err(err) => {
-            eprintln!("local runtime helper 失败: {}", err);
+            eprintln!("{}", runtime_t1("server.runtime.local_helper.run_failed", err));
             2
         }
     }
@@ -403,13 +473,13 @@ fn run_helper(server_id: &str) -> Result<(), String> {
     let helper_pid = std::process::id();
     let auth_token = uuid::Uuid::new_v4().to_string();
     let listener = TcpListener::bind(("127.0.0.1", 0))
-        .map_err(|e| format!("绑定本地 runtime helper 控制端口失败: {}", e))?;
+        .map_err(|e| runtime_t1("server.runtime.local_helper.bind_failed", e.to_string()))?;
     listener
         .set_nonblocking(true)
-        .map_err(|e| format!("设置本地 runtime helper 非阻塞失败: {}", e))?;
+        .map_err(|e| runtime_t1("server.runtime.local_helper.nonblocking_failed", e.to_string()))?;
     let control_port = listener
         .local_addr()
-        .map_err(|e| format!("读取本地 runtime helper 端口失败: {}", e))?
+        .map_err(|e| runtime_t1("server.runtime.local_helper.local_addr_failed", e.to_string()))?
         .port();
 
     let start_result =
@@ -418,7 +488,7 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         .process_handle
         .and_then(RuntimeProcessHandle::into_local_child)
     else {
-        return Err("本地 runtime helper 未收到有效的 Java 子进程句柄".to_string());
+        return Err(runtime_t("server.runtime.local_helper.child_handle_missing"));
     };
 
     let child_pid = Some(child.id());
@@ -481,10 +551,11 @@ fn run_helper(server_id: &str) -> Result<(), String> {
                 std::thread::sleep(Duration::from_millis(100));
             }
             Err(err) => {
-                logger::log_warn(&format!(
-                    "local runtime helper accept failed: server_id={} error={}",
-                    server_id, err
-                ));
+                logger::log_warn_ctx(
+                    "server.runtime.local_helper",
+                    "run_helper",
+                    &format!("accept failed server_id={} error={}", server_id, err),
+                );
                 std::thread::sleep(Duration::from_millis(200));
             }
         }
@@ -499,9 +570,10 @@ mod tests {
     use super::status_snapshot;
     use super::{
         looks_like_local_runtime_helper_command, process_matches_server_helper_identity,
-        state_file_path,
+        read_state_checked, send_command, state_file_path,
     };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::services::server::runtime::i18n::runtime_t;
     use std::ffi::OsString;
     use tempfile::tempdir;
 
@@ -613,5 +685,46 @@ mod tests {
             "server-1",
             Some("e:/repo/sealantern/target/debug/sea-lantern.exe"),
         ));
+    }
+
+    #[test]
+    fn read_state_checked_surfaces_invalid_state_file_json() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let path = state_file_path(&server);
+
+        std::fs::write(&path, "{").expect("broken state file should be written");
+
+        let error = read_state_checked(&server)
+            .expect_err("invalid local helper state should not be treated as absent");
+
+        assert!(error.contains(&runtime_t("server.runtime.local_helper.state_parse_failed_prefix")));
+        assert!(error.contains(path.to_string_lossy().as_ref()));
+    }
+
+    #[test]
+    fn status_snapshot_surfaces_invalid_state_file_json() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+
+        std::fs::write(state_file_path(&server), "{").expect("broken state file should be written");
+
+        let error = status_snapshot(&server)
+            .expect_err("invalid local helper state should abort status snapshot");
+
+        assert!(error.contains(&runtime_t("server.runtime.local_helper.state_parse_failed_prefix")));
+    }
+
+    #[test]
+    fn send_command_surfaces_invalid_state_file_json() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+
+        std::fs::write(state_file_path(&server), "{").expect("broken state file should be written");
+
+        let error = send_command(&server, "say hi")
+            .expect_err("invalid local helper state should abort send command");
+
+        assert!(error.contains(&runtime_t("server.runtime.local_helper.state_parse_failed_prefix")));
     }
 }

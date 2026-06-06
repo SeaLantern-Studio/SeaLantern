@@ -82,10 +82,7 @@ pub fn compare_versions_checked(current: &str, latest: &str) -> Result<bool, Str
 
 #[cfg(test)]
 fn parse_version(input: &str) -> ParsedVersion {
-    parse_version_checked(input).unwrap_or(ParsedVersion {
-        core: [0, 0, 0],
-        pre: None,
-    })
+    parse_version_checked(input).unwrap_or(ParsedVersion { core: [0, 0, 0], pre: None })
 }
 
 fn parse_version_checked(input: &str) -> Result<ParsedVersion, String> {
@@ -111,9 +108,9 @@ fn parse_version_checked(input: &str) -> Result<ParsedVersion, String> {
             return Err(format!("版本号无效 '{}': 包含空的核心版本段", input));
         }
 
-        core[idx] = trimmed
-            .parse::<u64>()
-            .map_err(|e| format!("版本号无效 '{}': 核心版本段 '{}' 解析失败: {}", input, trimmed, e))?;
+        core[idx] = trimmed.parse::<u64>().map_err(|e| {
+            format!("版本号无效 '{}': 核心版本段 '{}' 解析失败: {}", input, trimmed, e)
+        })?;
     }
 
     let pre = pre_part.and_then(|p| {

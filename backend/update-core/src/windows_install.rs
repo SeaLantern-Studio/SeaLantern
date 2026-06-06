@@ -175,15 +175,16 @@ mod imp {
         let path = std::env::current_exe()
             .map_err(|e| format!("Failed to locate current executable for relaunch: {}", e))?;
 
-        path.to_str()
-            .map(|value| value.to_string())
-            .ok_or_else(|| "Failed to locate current executable for relaunch: path is not valid UTF-8"
-                .to_string())
+        path.to_str().map(|value| value.to_string()).ok_or_else(|| {
+            "Failed to locate current executable for relaunch: path is not valid UTF-8".to_string()
+        })
     }
 
     #[cfg(test)]
     mod tests {
-        use super::{current_exe_string_checked, decode_powershell_output, escape_powershell_single_quoted};
+        use super::{
+            current_exe_string_checked, decode_powershell_output, escape_powershell_single_quoted,
+        };
 
         #[test]
         fn escape_powershell_single_quoted_duplicates_single_quotes() {
@@ -201,7 +202,8 @@ mod imp {
 
         #[test]
         fn current_exe_string_checked_returns_non_empty_path() {
-            let exe = current_exe_string_checked().expect("current exe path should resolve in tests");
+            let exe =
+                current_exe_string_checked().expect("current exe path should resolve in tests");
             assert!(!exe.trim().is_empty());
         }
     }

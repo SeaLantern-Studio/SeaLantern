@@ -1,10 +1,45 @@
 use crate::plugins;
 use crate::plugins::runtime::PluginRuntime;
 use crate::services;
+use crate::services::global::i18n_service;
+use crate::utils::logger::{log_debug_ctx, log_warn_ctx};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use tauri::{Emitter, Listener};
+
+fn plugin_bridge_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn plugin_bridge_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn plugin_bridge_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn parse_element_response_payload(payload_json: &str) -> Result<(u64, String), String> {
+    let payload = serde_json::from_str::<serde_json::Value>(payload_json).map_err(|error| {
+        plugin_bridge_t1("plugin.bridge.element_response_parse_failed", error.to_string())
+    })?;
+    let request_id = payload
+        .get("request_id")
+        .and_then(|value| value.as_u64())
+        .ok_or_else(|| plugin_bridge_t("plugin.bridge.element_response_request_id_missing"))?;
+    let data = payload
+        .get("data")
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| plugin_bridge_t("plugin.bridge.element_response_data_missing"))?;
+
+    Ok((request_id, data.to_string()))
+}
 
 /// 连接插件事件桥。
 pub(crate) fn install_plugin_bridge(
@@ -18,12 +53,14 @@ pub(crate) fn install_plugin_bridge(
 
         let lua_fn_name = api_registry
             .get_api_fn_name(target, api_name)
-            .ok_or_else(|| format!("插件 '{}' 没有注册 API '{}'", target, api_name))?;
+            .ok_or_else(|| {
+                plugin_bridge_t2("plugin.bridge.api_not_registered", target, api_name)
+            })?;
 
         let runtimes = shared_runtimes.read().unwrap_or_else(|e| e.into_inner());
         let runtime = runtimes
             .get(target)
-            .ok_or_else(|| format!("插件 '{}' 的运行时不存在", target))?;
+            .ok_or_else(|| plugin_bridge_t1("plugin.bridge.runtime_missing", target))?;
         runtime.call_registered_api(&lua_fn_name, args)
     }));
 
@@ -48,7 +85,7 @@ pub(crate) fn install_plugin_bridge(
 
         app_handle
             .emit("plugin-ui-event", event)
-            .map_err(|e| format!("Failed to emit UI event: {}", e))
+            .map_err(|e| plugin_bridge_t1("plugin.bridge.emit_ui_failed", e.to_string()))
     }));
 
     let app_handle = app.handle().clone();
@@ -70,7 +107,7 @@ pub(crate) fn install_plugin_bridge(
 
         app_handle
             .emit("plugin-log-event", event)
-            .map_err(|e| format!("Failed to emit log event: {}", e))
+            .map_err(|e| plugin_bridge_t1("plugin.bridge.emit_log_failed", e.to_string()))
     }));
 
     let app_handle = app.handle().clone();
@@ -95,7 +132,9 @@ pub(crate) fn install_plugin_bridge(
 
             app_handle
                 .emit("plugin-context-menu-event", event)
-                .map_err(|e| format!("Failed to emit context menu event: {}", e))
+                .map_err(|e| {
+                    plugin_bridge_t1("plugin.bridge.emit_context_menu_failed", e.to_string())
+                })
         },
     ));
 
@@ -120,7 +159,7 @@ pub(crate) fn install_plugin_bridge(
 
         app_handle
             .emit("plugin-sidebar-event", event)
-            .map_err(|e| format!("Failed to emit sidebar event: {}", e))
+            .map_err(|e| plugin_bridge_t1("plugin.bridge.emit_sidebar_failed", e.to_string()))
     }));
 
     let app_handle = app.handle().clone();
@@ -147,17 +186,24 @@ pub(crate) fn install_plugin_bridge(
 
             app_handle
                 .emit("plugin-permission-log", event)
-                .map_err(|e| format!("Failed to emit permission log: {}", e))
+                .map_err(|e| {
+                    plugin_bridge_t1("plugin.bridge.emit_permission_log_failed", e.to_string())
+                })
         },
     ));
 
     let app_handle = app.handle().clone();
-    plugins::api::set_component_event_handler(Arc::new(move |_plugin_id, payload_json| {
-        let val: serde_json::Value =
-            serde_json::from_str(payload_json).unwrap_or(serde_json::Value::Null);
+    plugins::api::set_component_event_handler(Arc::new(move |plugin_id, payload_json| {
+        let val: serde_json::Value = serde_json::from_str(payload_json).map_err(|error| {
+            plugin_bridge_t2(
+                "plugin.bridge.component_event_parse_failed",
+                plugin_id,
+                error.to_string(),
+            )
+        })?;
         app_handle
             .emit("plugin:ui:component", val)
-            .map_err(|e| format!("Failed to emit component event: {}", e))
+            .map_err(|e| plugin_bridge_t1("plugin.bridge.emit_component_failed", e.to_string()))
     }));
 
     let app_handle = app.handle().clone();
@@ -181,7 +227,7 @@ pub(crate) fn install_plugin_bridge(
 
         app_handle
             .emit("plugin-i18n-event", event)
-            .map_err(|e| format!("Failed to emit i18n event: {}", e))
+            .map_err(|e| plugin_bridge_t1("plugin.bridge.emit_i18n_failed", e.to_string()))
     }));
 
     plugins::api::set_server_ready_handler(Arc::new(move |server_id| {
@@ -190,7 +236,11 @@ pub(crate) fn install_plugin_bridge(
             .unwrap_or_else(|e| e.into_inner());
         for (plugin_id, runtime) in runtimes.iter() {
             if let Err(e) = runtime.call_lifecycle_with_arg("onServerReady", server_id) {
-                eprintln!("[WARN] plugin '{}' onServerReady failed: {}", plugin_id, e);
+                log_warn_ctx(
+                    "runtime.plugin_bridge",
+                    "set_server_ready_handler",
+                    &format!("plugin '{}' onServerReady failed: {}", plugin_id, e),
+                );
             }
         }
         Ok(())
@@ -199,13 +249,21 @@ pub(crate) fn install_plugin_bridge(
     {
         let app_handle = app.handle().clone();
         app_handle.listen("plugin-element-response", |event| {
-            eprintln!("[Element] Received response event");
-            if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload()) {
-                if let (Some(request_id), Some(data)) = (
-                    payload.get("request_id").and_then(|v| v.as_u64()),
-                    payload.get("data").and_then(|v| v.as_str()),
-                ) {
-                    plugins::api::element_response_resolve(request_id, data.to_string());
+            log_debug_ctx(
+                "runtime.plugin_bridge",
+                "plugin_element_response",
+                "received response event",
+            );
+            match parse_element_response_payload(event.payload()) {
+                Ok((request_id, data)) => {
+                    plugins::api::element_response_resolve(request_id, data);
+                }
+                Err(error) => {
+                    log_warn_ctx(
+                        "runtime.plugin_bridge",
+                        "plugin_element_response",
+                        &format!("{} payload={}", error, event.payload()),
+                    );
                 }
             }
         });
@@ -227,10 +285,31 @@ pub(crate) fn install_plugin_bridge(
                     server_id: server_id.to_string(),
                     line: line.to_string(),
                 };
-                app_handle
-                    .emit("server-log-line", event)
-                    .map_err(|e| format!("Failed to emit server log line event: {}", e))
+                app_handle.emit("server-log-line", event).map_err(|e| {
+                    plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
+                })
             },
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_element_response_payload;
+
+    #[test]
+    fn parse_element_response_payload_rejects_invalid_json() {
+        let error = parse_element_response_payload("{")
+            .expect_err("invalid element response payload should not be silently ignored");
+
+        assert!(error.contains("payload"));
+    }
+
+    #[test]
+    fn parse_element_response_payload_rejects_missing_fields() {
+        let error = parse_element_response_payload(r#"{"request_id":1}"#)
+            .expect_err("missing data field should be surfaced");
+
+        assert!(error.contains("data"));
     }
 }

@@ -1,8 +1,8 @@
 mod docker_support;
 mod java_support;
-mod local_request_support;
 #[cfg(test)]
 mod local_folder_inspection;
+mod local_request_support;
 #[cfg(test)]
 mod local_startup_support;
 #[cfg(test)]
@@ -452,9 +452,8 @@ pub(super) fn create_or_attach_local_server(
                 return Err(format!("--folder 指定目录不存在或不是文件夹: {}", folder));
             }
 
-            let inspection = inspect_local_folder_checked(folder_path).map_err(|error| {
-                format!("无法检查本地服务器目录 {}: {}", folder, error)
-            })?;
+            let inspection = inspect_local_folder_checked(folder_path)
+                .map_err(|error| format!("无法检查本地服务器目录 {}: {}", folder, error))?;
             trace_cli_action(
                 "local_folder_inspection",
                 &format!("name={} folder={} {}", resolved_name, folder, inspection.describe()),

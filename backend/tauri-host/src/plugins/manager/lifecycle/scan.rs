@@ -1,9 +1,11 @@
-use crate::plugins::manager::{PluginInfo, PluginManager, PluginState};
 use crate::plugins::loader::PluginLoader;
-use crate::plugins::runtime::kill_all_processes;
 use crate::plugins::manager::lifecycle::dependencies::update_all_missing_dependencies;
+use crate::plugins::manager::{PluginInfo, PluginManager, PluginState};
+use crate::plugins::runtime::kill_all_processes;
 
-pub(in crate::plugins::manager) fn scan_plugins(manager: &mut PluginManager) -> Result<Vec<PluginInfo>, String> {
+pub(in crate::plugins::manager) fn scan_plugins(
+    manager: &mut PluginManager,
+) -> Result<Vec<PluginInfo>, String> {
     println!("[PluginManager] 开始扫描插件目录: {}", manager.plugins_dir.display());
 
     {

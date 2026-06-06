@@ -6,10 +6,11 @@ use crate::models::server::ServerInstance;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::cpu_policy;
+use crate::services::server::manager::i18n::{manager_t, manager_t2, manager_t3};
 use sea_lantern_server_local_setup_core::{
-    build_primary_jar_fallback_info, format_fallback_chain_error,
-    format_launch_fallback_log, format_primary_jar_early_exit_reason,
-    format_primary_jar_probe_error_reason, format_primary_jar_spawn_error_reason,
+    build_primary_jar_fallback_info, format_fallback_chain_error, format_launch_fallback_log,
+    format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
+    format_primary_jar_spawn_error_reason,
 };
 use std::process::{Command, Stdio};
 
@@ -27,11 +28,13 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
     let mut fallback_info: Option<super::super::super::StartFallbackInfo> = None;
 
     let child = if let Some(jar_path) = preferred_jar_path {
+        let preferred_phase = manager_t("server.manager.launch_phase_preferred_direct_jar");
+        let fallback_phase = manager_t("server.manager.launch_phase_fallback_configured");
         match spawn_command(
             id,
             context.server,
             build_direct_jar_command(&context, &jar_path, None)?,
-            "优先 JAR 直启",
+            &preferred_phase,
             StartupMode::Jar,
         ) {
             Ok(mut primary_child) => {
@@ -53,7 +56,7 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                             id,
                             context.server,
                             fallback_cmd,
-                            "回退脚本/配置模式",
+                            &fallback_phase,
                             context.startup_mode,
                         )?;
                         fallback_info = Some(super::super::super::StartFallbackInfo {
@@ -77,7 +80,7 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                             id,
                             context.server,
                             fallback_cmd,
-                            "回退脚本/配置模式",
+                            &fallback_phase,
                             context.startup_mode,
                         )?;
                         fallback_info = Some(super::super::super::StartFallbackInfo {
@@ -103,7 +106,7 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                     id,
                     context.server,
                     fallback_cmd,
-                    "回退脚本/配置模式",
+                    &fallback_phase,
                     context.startup_mode,
                 )
                 .map_err(|fallback_error| {
@@ -119,7 +122,8 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
         }
     } else {
         let command = build_configured_command(&context)?;
-        spawn_command(id, context.server, command, "配置模式", context.startup_mode)?
+        let configured_phase = manager_t("server.manager.launch_phase_configured");
+        spawn_command(id, context.server, command, &configured_phase, context.startup_mode)?
     };
 
     Ok(LaunchPlan { child, fallback_info })
@@ -135,7 +139,7 @@ fn spawn_command(
     let command_for_log = super::super::super::common::format_command_for_log(&cmd);
     let _ = server_log_pipeline::append_sealantern_log(
         id,
-        &format!("[Sea Lantern] {}启动命令: {}", phase, command_for_log),
+        &manager_t2("server.manager.launch_command_log", phase.to_string(), command_for_log),
     );
 
     cmd.current_dir(&server.path);
@@ -150,9 +154,14 @@ fn spawn_command(
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
-    let child = cmd
-        .spawn()
-        .map_err(|e| format!("启动失败（id={}, path={}）: {}", id, server.path, e))?;
+    let child = cmd.spawn().map_err(|e| {
+        manager_t3(
+            "server.manager.launch_spawn_failed",
+            id.to_string(),
+            server.path.clone(),
+            e.to_string(),
+        )
+    })?;
 
     let settings = crate::services::global::settings_manager().get();
     apply_cpu_policy_after_spawn(id, server, &settings, startup_mode, child.id())?;
@@ -173,17 +182,19 @@ fn apply_cpu_policy_after_spawn(
     let Some(resolved) = cpu_policy::resolve_local_cpu_policy(server, settings)? else {
         return Ok(());
     };
+    let policy = cpu_policy::local_cpu_policy_checked(server, settings)?;
 
-    cpu_policy::apply_cpu_affinity_to_pid(pid, &resolved)
-        .map_err(|e| format!("启动成功但应用 CPU affinity 失败（pid={}）: {}", pid, e))?;
+    cpu_policy::apply_cpu_affinity_to_pid(pid, &resolved).map_err(|e| {
+        manager_t2("server.manager.launch_cpu_affinity_apply_failed", pid.to_string(), e)
+    })?;
 
     let _ = server_log_pipeline::append_sealantern_log(
         id,
-        &format!(
-            "[Sea Lantern] CPU affinity applied: mode={} cpuset={} pid={}",
-            cpu_policy::local_cpu_policy(server, settings).mode.as_str(),
-            resolved.cpuset_display,
-            pid
+        &manager_t3(
+            "server.manager.launch_cpu_affinity_applied_log",
+            policy.mode.as_str().to_string(),
+            resolved.cpuset_display.clone(),
+            pid.to_string(),
         ),
     );
 
@@ -193,9 +204,9 @@ fn apply_cpu_policy_after_spawn(
 #[cfg(test)]
 mod tests {
     use sea_lantern_server_local_setup_core::{
-        build_primary_jar_fallback_info, format_fallback_chain_error,
-        format_launch_fallback_log, format_primary_jar_early_exit_reason,
-        format_primary_jar_probe_error_reason, format_primary_jar_spawn_error_reason,
+        build_primary_jar_fallback_info, format_fallback_chain_error, format_launch_fallback_log,
+        format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
+        format_primary_jar_spawn_error_reason,
     };
 
     #[test]

@@ -121,10 +121,7 @@ pub fn find_server_jar_checked(modpack_path: &Path) -> Result<String, String> {
     let selected = if let Some(path) = select_best_server_jar_path(jar_files) {
         path
     } else if let Some(path) = invalid_jar_dirs.into_iter().next() {
-        return Err(format!(
-            "检测到目录伪装成 JAR 文件: {}",
-            path.to_string_lossy()
-        ));
+        return Err(format!("检测到目录伪装成 JAR 文件: {}", path.to_string_lossy()));
     } else {
         return Err("整合包文件夹中未找到JAR文件".to_string());
     };

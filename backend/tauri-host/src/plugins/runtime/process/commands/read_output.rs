@@ -1,4 +1,5 @@
 use super::shared::emit_process_log;
+use crate::plugins::runtime::process::common::process_msg2;
 use crate::plugins::runtime::process::common::{
     collect_finished_processes, is_output_drained, is_process_owner,
 };
@@ -127,5 +128,11 @@ pub(super) fn read_output(
             Ok(Value::Nil)
         }
     })
-    .map_err(|e| format!("Failed to create process.read_output: {}", e))
+    .map_err(|e| {
+        process_msg2(
+            "plugins.runtime.process.create_api_failed",
+            "process.read_output",
+            e.to_string(),
+        )
+    })
 }

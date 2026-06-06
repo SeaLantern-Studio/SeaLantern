@@ -1,4 +1,4 @@
-use super::common::{CommandHandler, RegistryBuilder, parse_params};
+use super::common::{parse_params, CommandHandler, RegistryBuilder};
 use super::requests::{
     BanPlayerRequest, ExportLogsRequest, KickPlayerRequest, PlayerActionRequest, ServerPathRequest,
 };
@@ -9,10 +9,7 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_banned_players", handle_get_banned_players as CommandHandler);
     builder.register("get_ops", handle_get_ops as CommandHandler);
     builder.register("add_to_whitelist", handle_add_to_whitelist as CommandHandler);
-    builder.register(
-        "remove_from_whitelist",
-        handle_remove_from_whitelist as CommandHandler,
-    );
+    builder.register("remove_from_whitelist", handle_remove_from_whitelist as CommandHandler);
     builder.register("ban_player", handle_ban_player as CommandHandler);
     builder.register("unban_player", handle_unban_player as CommandHandler);
     builder.register("add_op", handle_add_op as CommandHandler);

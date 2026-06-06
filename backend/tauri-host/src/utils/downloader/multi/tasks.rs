@@ -1,3 +1,4 @@
+use super::super::common::downloader_t1;
 use super::super::{DownloadError, DownloadStatus};
 use super::chunk::download_chunk;
 use reqwest::Client;
@@ -53,7 +54,7 @@ pub(super) fn spawn_task_monitor(
                 }
                 Err(err) => {
                     status_for_monitor
-                        .set_error(format!("线程崩溃: {}", err))
+                        .set_error(downloader_t1("download.util.thread_crashed", err.to_string()))
                         .await;
                 }
             }

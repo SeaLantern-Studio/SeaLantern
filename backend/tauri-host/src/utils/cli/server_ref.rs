@@ -2,7 +2,7 @@ use crate::models::server::ServerInstance;
 use crate::services::global;
 
 pub(super) fn resolve_server_reference(target: &str) -> Result<ServerInstance, String> {
-    let servers = global::server_manager().get_server_list();
+    let servers = global::server_manager().get_server_list_checked()?;
     resolve_server_reference_from_servers(&servers, target)
 }
 

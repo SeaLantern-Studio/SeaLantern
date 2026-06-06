@@ -33,7 +33,9 @@ fn parse_sha256_rejects_multi_hash_without_target_match() {
 #[tokio::test(flavor = "current_thread")]
 async fn resolve_asset_sha256_surfaces_checksum_asset_http_failures() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("test server should bind");
-    let addr = listener.local_addr().expect("test server addr should resolve");
+    let addr = listener
+        .local_addr()
+        .expect("test server addr should resolve");
 
     let server = std::thread::spawn(move || {
         let (mut stream, _) = listener.accept().expect("test server should accept");

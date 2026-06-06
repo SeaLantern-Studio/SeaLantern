@@ -502,8 +502,8 @@ mod tests {
     use super::{
         find_next_available_port, is_port_available, is_port_available_for_binding,
         minecraft_game_port_is_available, parse_yes_no_input, parse_yes_no_input_with_default,
-        prepare_ports_with, resolve_game_port_with, resolve_web_port_with,
-        sanitize_prompt_for_log, PortBindingKind, PreparedPorts,
+        prepare_ports_with, resolve_game_port_with, resolve_web_port_with, sanitize_prompt_for_log,
+        PortBindingKind, PreparedPorts,
     };
     use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
     use std::collections::{HashMap, VecDeque};

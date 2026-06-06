@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use super::super::super::fs::{copy_dir_recursive, path_is_child_of, paths_equal};
+use crate::services::server::manager::provisioning::i18n::{provisioning_t, provisioning_t1};
 use sea_lantern_server_installer_core::extract_modpack_archive;
 
 pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Result<(), String> {
@@ -15,11 +16,14 @@ pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Resul
         .unwrap_or_default();
 
     if source_path.is_file() {
-        std::fs::create_dir_all(run_dir).map_err(|e| format!("无法创建运行目录: {}", e))?;
+        std::fs::create_dir_all(run_dir).map_err(|e| {
+            provisioning_t1("server.provisioning.run_dir_create_failed", e.to_string())
+        })?;
         if source_extension == "jar" {
             let target_jar = run_dir.join(source_file_name);
-            std::fs::copy(source_path, &target_jar)
-                .map_err(|e| format!("复制 JAR 文件失败: {}", e))?;
+            std::fs::copy(source_path, &target_jar).map_err(|e| {
+                provisioning_t1("server.provisioning.copy_jar_failed", e.to_string())
+            })?;
         } else {
             extract_modpack_archive(source_path, run_dir)?;
         }
@@ -29,14 +33,17 @@ pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Resul
     if source_path.is_dir() {
         if !paths_equal(source_path, run_dir) {
             if path_is_child_of(run_dir, source_path) {
-                return Err("运行目录不能位于整合包源目录内部，请选择其他目录".to_string());
+                return Err(provisioning_t("server.provisioning.run_dir_inside_source"));
             }
-            std::fs::create_dir_all(run_dir).map_err(|e| format!("无法创建运行目录: {}", e))?;
-            copy_dir_recursive(source_path, run_dir)
-                .map_err(|e| format!("复制整合包文件失败: {}", e))?;
+            std::fs::create_dir_all(run_dir).map_err(|e| {
+                provisioning_t1("server.provisioning.run_dir_create_failed", e.to_string())
+            })?;
+            copy_dir_recursive(source_path, run_dir).map_err(|e| {
+                provisioning_t1("server.provisioning.copy_modpack_files_failed", e.to_string())
+            })?;
         }
         return Ok(());
     }
 
-    Err("无效的整合包路径".to_string())
+    Err(provisioning_t("server.provisioning.invalid_modpack_path"))
 }

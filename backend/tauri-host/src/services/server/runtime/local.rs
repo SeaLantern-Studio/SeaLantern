@@ -5,6 +5,7 @@ use super::{
 use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerStatus};
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::ServerManager;
+use crate::services::server::runtime::i18n::{runtime_t, runtime_t1};
 use std::io::Write;
 use std::time::Duration;
 
@@ -12,9 +13,9 @@ pub struct LocalServerRuntime;
 
 impl LocalServerRuntime {
     pub fn ensure_config(server: &ServerInstance) -> Result<&LocalRuntimeConfig, String> {
-        server
-            .local_runtime()
-            .ok_or_else(|| format!("当前服务器运行时暂未实现: {}", server.runtime_kind))
+        server.local_runtime().ok_or_else(|| {
+            runtime_t1("server.manager.runtime_not_supported", server.runtime_kind.clone())
+        })
     }
 
     fn is_running(manager: &ServerManager, server_id: &str) -> Result<bool, String> {
@@ -49,8 +50,7 @@ impl LocalServerRuntime {
         };
 
         let stdin = child.stdin.as_mut().ok_or_else(|| {
-            let message =
-                format!("本地服务端 stdin 不可用，当前进程无法再接收控制台命令: {}", server.id);
+            let message = runtime_t1("server.runtime.local.stdin_unavailable", server.id.clone());
             let _ = server_log_pipeline::append_sealantern_log(
                 &server.id,
                 &format!("[Sea Lantern] {}", message),
@@ -58,11 +58,18 @@ impl LocalServerRuntime {
             message
         })?;
 
-        writeln!(stdin, "{}", command)
-            .map_err(|e| format!("本地服务端 stdin 写入失败（id={}）: {}", server.id, e))?;
-        stdin
-            .flush()
-            .map_err(|e| format!("本地服务端 stdin 刷新失败（id={}）: {}", server.id, e))?;
+        writeln!(stdin, "{}", command).map_err(|e| {
+            runtime_t1(
+                "server.runtime.local.stdin_write_failed",
+                format!("id={} error={}", server.id, e),
+            )
+        })?;
+        stdin.flush().map_err(|e| {
+            runtime_t1(
+                "server.runtime.local.stdin_flush_failed",
+                format!("id={} error={}", server.id, e),
+            )
+        })?;
         Ok(true)
     }
 
@@ -78,7 +85,7 @@ impl LocalServerRuntime {
 
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            "[Sea Lantern] 正在发送停止命令...",
+            &format!("[Sea Lantern] {}", runtime_t("server.runtime.local.stopping_log")),
         );
         let _ = self.send_command_with_manager(manager, server, "stop");
 
@@ -92,7 +99,10 @@ impl LocalServerRuntime {
                         control::clear_runtime_flags(manager, &server.id);
                         let _ = server_log_pipeline::append_sealantern_log(
                             &server.id,
-                            "[Sea Lantern] 服务器已正常停止",
+                            &format!(
+                                "[Sea Lantern] {}",
+                                runtime_t("server.runtime.local.stopped_cleanly_log")
+                            ),
                         );
                         server_log_pipeline::shutdown_writer(&server.id);
                         return Ok(true);
@@ -109,7 +119,7 @@ impl LocalServerRuntime {
                 control::clear_runtime_flags(manager, &server.id);
                 let _ = server_log_pipeline::append_sealantern_log(
                     &server.id,
-                    "[Sea Lantern] 服务器已停止",
+                    &format!("[Sea Lantern] {}", runtime_t("server.runtime.local.stopped_log")),
                 );
                 server_log_pipeline::shutdown_writer(&server.id);
                 return Ok(true);
@@ -121,7 +131,10 @@ impl LocalServerRuntime {
             let _ = manager.force_kill_local_process(&mut child);
             let _ = server_log_pipeline::append_sealantern_log(
                 &server.id,
-                "[Sea Lantern] 服务器超时，已强制终止",
+                &format!(
+                    "[Sea Lantern] {}",
+                    runtime_t("server.runtime.local.stop_timeout_force_killed_log")
+                ),
             );
         }
         server_log_pipeline::shutdown_writer(&server.id);
@@ -148,13 +161,16 @@ impl LocalServerRuntime {
             Ok(_) => {
                 let _ = server_log_pipeline::append_sealantern_log(
                     &server.id,
-                    "[Sea Lantern] 已按用户确认强制终止服务器进程",
+                    &format!(
+                        "[Sea Lantern] {}",
+                        runtime_t("server.runtime.local.force_stopped_by_confirmation_log")
+                    ),
                 );
                 server_log_pipeline::shutdown_writer(&server.id);
                 Ok(true)
             }
             Err(err) => {
-                let message = format!("强制终止服务器失败: {}", err);
+                let message = runtime_t1("server.runtime.local.force_stop_failed", err);
                 let _ = server_log_pipeline::append_sealantern_log(
                     &server.id,
                     &format!("[Sea Lantern] {}", message),
@@ -173,88 +189,100 @@ impl LocalServerRuntime {
         let mut error_message: Option<String> = None;
         let mut terminated_abnormally = false;
 
-        let has_tracked_process = manager
-            .lock_processes()
-            .ok()
-            .map(|procs| procs.contains_key(&server.id))
-            .unwrap_or(false);
+        let has_tracked_process = manager.lock_processes()?.contains_key(&server.id);
 
         if !has_tracked_process {
             return Ok(None);
         }
 
-        let is_running = manager
-            .lock_processes()
-            .ok()
-            .map(|mut procs| {
-                if let Some(child) = procs.get_mut(&server.id) {
-                    match child.try_wait() {
-                        Ok(Some(status)) => {
-                            exit_code = status.code();
-                            match &exit_code {
-                                Some(0) => {
-                                    let _ = server_log_pipeline::append_sealantern_log(
-                                        &server.id,
-                                        "[Sea Lantern] 服务器已正常退出",
-                                    );
-                                }
-                                Some(code) => {
-                                    terminated_abnormally = true;
-                                    error_message =
-                                        Some(format!("服务器异常退出 (退出码：{})", code));
-                                    let _ = server_log_pipeline::append_sealantern_log(
-                                        &server.id,
-                                        &format!("[Sea Lantern] 服务器异常退出 (退出码：{})", code),
-                                    );
-                                }
-                                None => {
-                                    terminated_abnormally = true;
-                                    error_message = Some("服务器被强制终止".to_string());
-                                    let _ = server_log_pipeline::append_sealantern_log(
-                                        &server.id,
-                                        "[Sea Lantern] 服务器被强制终止",
-                                    );
-                                }
+        let is_running = {
+            let mut procs = manager.lock_processes()?;
+            if let Some(child) = procs.get_mut(&server.id) {
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        exit_code = status.code();
+                        match &exit_code {
+                            Some(0) => {
+                                let _ = server_log_pipeline::append_sealantern_log(
+                                    &server.id,
+                                    &format!(
+                                        "[Sea Lantern] {}",
+                                        runtime_t("server.runtime.local.exited_cleanly_log")
+                                    ),
+                                );
                             }
+                            Some(code) => {
+                                terminated_abnormally = true;
+                                error_message = Some(runtime_t1(
+                                    "server.runtime.local.exit_abnormal",
+                                    code.to_string(),
+                                ));
+                                let _ = server_log_pipeline::append_sealantern_log(
+                                    &server.id,
+                                    &format!(
+                                        "[Sea Lantern] {}",
+                                        runtime_t1(
+                                            "server.runtime.local.exit_abnormal",
+                                            code.to_string()
+                                        )
+                                    ),
+                                );
+                            }
+                            None => {
+                                terminated_abnormally = true;
+                                error_message = Some(runtime_t("server.runtime.local.killed"));
+                                let _ = server_log_pipeline::append_sealantern_log(
+                                    &server.id,
+                                    &format!(
+                                        "[Sea Lantern] {}",
+                                        runtime_t("server.runtime.local.killed")
+                                    ),
+                                );
+                            }
+                        }
 
-                            procs.remove(&server.id);
-                            server_log_pipeline::shutdown_writer(&server.id);
-                            control::clear_runtime_flags(manager, &server.id);
-                            false
-                        }
-                        Ok(None) => true,
-                        Err(_) => {
-                            terminated_abnormally = true;
-                            error_message = Some("获取服务器状态失败".to_string());
-                            let _ = server_log_pipeline::append_sealantern_log(
-                                &server.id,
-                                "[Sea Lantern] 获取服务器状态失败",
-                            );
-                            procs.remove(&server.id);
-                            server_log_pipeline::shutdown_writer(&server.id);
-                            control::clear_runtime_flags(manager, &server.id);
-                            false
-                        }
+                        procs.remove(&server.id);
+                        server_log_pipeline::shutdown_writer(&server.id);
+                        control::clear_runtime_flags(manager, &server.id);
+                        false
                     }
-                } else {
-                    control::clear_runtime_flags(manager, &server.id);
-                    false
+                    Ok(None) => true,
+                    Err(_) => {
+                        terminated_abnormally = true;
+                        error_message =
+                            Some(runtime_t("server.runtime.local.status_read_failed_short"));
+                        let _ = server_log_pipeline::append_sealantern_log(
+                            &server.id,
+                            &format!(
+                                "[Sea Lantern] {}",
+                                runtime_t("server.runtime.local.status_read_failed_short")
+                            ),
+                        );
+                        procs.remove(&server.id);
+                        server_log_pipeline::shutdown_writer(&server.id);
+                        control::clear_runtime_flags(manager, &server.id);
+                        false
+                    }
                 }
-            })
-            .unwrap_or(false);
+            } else {
+                control::clear_runtime_flags(manager, &server.id);
+                false
+            }
+        };
 
         let pid = if is_running {
-            manager
-                .lock_processes()
-                .ok()
-                .and_then(|mut procs| procs.get_mut(&server.id).map(|child| child.id()))
+            let mut procs = manager.lock_processes()?;
+            procs.get_mut(&server.id).map(|child| child.id())
         } else {
             None
         };
 
-        let status = if manager.is_stopping(&server.id) {
+        let is_stopping = manager.is_stopping_checked(&server.id)?;
+        let is_starting = manager.is_starting_checked(&server.id)?;
+
+        let status = if is_stopping {
             ServerStatus::Stopping
-        } else if is_running && manager.is_starting(&server.id) {
+        } else if is_running && is_starting {
             manager.clear_starting(&server.id);
             ServerStatus::Running
         } else if !is_running && terminated_abnormally {
@@ -287,9 +315,9 @@ impl LocalServerRuntime {
             return Ok(None);
         };
 
-        let is_starting = manager.is_starting(&server.id);
-        let status =
-            local_helper::helper_runtime_status(&snapshot, manager.is_stopping(&server.id));
+        let is_starting = manager.is_starting_checked(&server.id)?;
+        let is_stopping = manager.is_stopping_checked(&server.id)?;
+        let status = local_helper::helper_runtime_status(&snapshot, is_stopping);
 
         if snapshot.running && is_starting {
             manager.clear_starting(&server.id);
@@ -305,7 +333,7 @@ impl LocalServerRuntime {
 
 impl ServerRuntime for LocalServerRuntime {
     fn start(&self, _request: RuntimeStartRequest<'_>) -> Result<RuntimeStartResult, String> {
-        Err("local runtime adapter is not wired yet".to_string())
+        Err(runtime_t("server.runtime.local.adapter_not_wired"))
     }
 
     fn start_with_manager(
@@ -339,7 +367,7 @@ impl ServerRuntime for LocalServerRuntime {
     }
 
     fn send_command(&self, _server: &ServerInstance, _command: &str) -> Result<(), String> {
-        Err("local runtime adapter is not wired yet".to_string())
+        Err(runtime_t("server.runtime.local.adapter_not_wired"))
     }
 
     fn send_command_with_manager(
@@ -369,7 +397,7 @@ impl ServerRuntime for LocalServerRuntime {
     }
 
     fn request_stop(&self, _server: &ServerInstance) -> Result<(), String> {
-        Err("local runtime adapter is not wired yet".to_string())
+        Err(runtime_t("server.runtime.local.adapter_not_wired"))
     }
 
     fn request_stop_with_manager(
@@ -387,7 +415,7 @@ impl ServerRuntime for LocalServerRuntime {
             ),
         );
 
-        if manager.is_stopping(&server.id) {
+        if manager.is_stopping_checked(&server.id)? {
             return Ok(());
         }
 
@@ -396,7 +424,7 @@ impl ServerRuntime for LocalServerRuntime {
         control::spawn_stop_worker(
             "server.runtime.local",
             sid.clone(),
-            "[Sea Lantern] 停止失败".to_string(),
+            format!("[Sea Lantern] {}", runtime_t("server.runtime.local.stop_failed_short")),
             move || {
                 let manager = crate::services::global::server_manager();
                 manager.stop_server(&sid)
@@ -407,7 +435,7 @@ impl ServerRuntime for LocalServerRuntime {
     }
 
     fn stop(&self, _server: &ServerInstance) -> Result<(), String> {
-        Err("local runtime adapter is not wired yet".to_string())
+        Err(runtime_t("server.runtime.local.adapter_not_wired"))
     }
 
     fn stop_with_manager(
@@ -437,7 +465,7 @@ impl ServerRuntime for LocalServerRuntime {
             control::clear_runtime_flags(manager, &server.id);
             let _ = server_log_pipeline::append_sealantern_log(
                 &server.id,
-                "[Sea Lantern] 服务器未运行",
+                &format!("[Sea Lantern] {}", runtime_t("server.runtime.local.not_running_log")),
             );
             server_log_pipeline::shutdown_writer(&server.id);
             return Ok(());
@@ -445,7 +473,10 @@ impl ServerRuntime for LocalServerRuntime {
 
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            "[Sea Lantern] 正在请求本地 runtime helper 停止服务器...",
+            &format!(
+                "[Sea Lantern] {}",
+                runtime_t("server.runtime.local.requesting_helper_stop_log")
+            ),
         );
         local_helper::request_stop(server)?;
 
@@ -457,7 +488,7 @@ impl ServerRuntime for LocalServerRuntime {
                     control::clear_runtime_flags(manager, &server.id);
                     let _ = server_log_pipeline::append_sealantern_log(
                         &server.id,
-                        "[Sea Lantern] 服务器已停止",
+                        &format!("[Sea Lantern] {}", runtime_t("server.runtime.local.stopped_log")),
                     );
                     server_log_pipeline::shutdown_writer(&server.id);
                     return Ok(());
@@ -470,7 +501,10 @@ impl ServerRuntime for LocalServerRuntime {
         control::clear_runtime_flags(manager, &server.id);
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            "[Sea Lantern] 服务器超时，已强制终止",
+            &format!(
+                "[Sea Lantern] {}",
+                runtime_t("server.runtime.local.stop_timeout_force_killed_log")
+            ),
         );
         Ok(())
     }
@@ -483,7 +517,7 @@ impl ServerRuntime for LocalServerRuntime {
     }
 
     fn force_stop(&self, _server: &ServerInstance) -> Result<(), String> {
-        Err("local runtime adapter is not wired yet".to_string())
+        Err(runtime_t("server.runtime.local.adapter_not_wired"))
     }
 
     fn force_stop_with_manager(
@@ -511,7 +545,10 @@ impl ServerRuntime for LocalServerRuntime {
         control::clear_runtime_flags(manager, &server.id);
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
-            "[Sea Lantern] 已按用户确认强制终止服务器进程",
+            &format!(
+                "[Sea Lantern] {}",
+                runtime_t("server.runtime.local.force_stopped_by_confirmation_log")
+            ),
         );
         server_log_pipeline::shutdown_writer(&server.id);
         Ok(())
@@ -586,6 +623,7 @@ mod tests {
         LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig, ServerStatus,
     };
     use crate::services::server::manager::ServerManager;
+    use crate::services::server::runtime::i18n::{runtime_t, runtime_t1};
     use crate::services::server::runtime::local_helper::{state_file_path, LocalRuntimeState};
     use crate::services::server::runtime::ServerRuntime;
     use std::process::Command;
@@ -641,8 +679,12 @@ mod tests {
             .expect("status should succeed");
 
         assert_eq!(snapshot.status, ServerStatus::Stopped);
-        assert!(!manager.is_starting("local-alpha"));
-        assert!(!manager.is_stopping("local-alpha"));
+        assert!(!manager
+            .is_starting_checked("local-alpha")
+            .expect("starting flag should read"));
+        assert!(!manager
+            .is_stopping_checked("local-alpha")
+            .expect("stopping flag should read"));
     }
 
     #[test]
@@ -673,10 +715,9 @@ mod tests {
             .expect("status should succeed");
 
         assert_eq!(snapshot.status, ServerStatus::Error);
-        assert!(snapshot
-            .error_message
-            .as_deref()
-            .is_some_and(|message| message.contains("退出码：7")));
+        assert!(snapshot.error_message.as_deref().is_some_and(
+            |message| message == runtime_t1("server.runtime.local.exit_abnormal", "7")
+        ));
     }
 
     #[test]
@@ -708,7 +749,7 @@ mod tests {
             .send_command_with_manager(&manager, &server, "say hello")
             .expect_err("missing stdin should be reported");
 
-        assert!(err.contains("stdin 不可用"));
+        assert!(err.contains(&runtime_t("server.runtime.local.stdin_unavailable_prefix")));
 
         let removed_child = {
             manager
@@ -786,5 +827,29 @@ mod tests {
             Some("runtime=local running=false source=helper exit_code=7")
         );
         assert_eq!(snapshot.error_message.as_deref(), Some("server crashed"));
+    }
+
+    #[test]
+    fn local_status_with_manager_surfaces_process_lock_failures() {
+        let manager = std::sync::Arc::new(ServerManager::new());
+        let poison_manager = manager.clone();
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = poison_manager
+                .processes
+                .lock()
+                .expect("process map lock should be acquired for poisoning");
+            panic!("poison process lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = match LocalServerRuntime.status_with_manager(&manager, &local_server()) {
+            Err(error) => error,
+            Ok(snapshot) => panic!(
+                "lock failure should not be downgraded to stopped status, got: {}",
+                snapshot.status.as_str()
+            ),
+        };
+
+        assert_eq!(error, "processes lock poisoned");
     }
 }

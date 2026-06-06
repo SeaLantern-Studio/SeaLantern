@@ -21,7 +21,11 @@ pub(super) fn run_interactive_cli() {
         }
 
         match parts[0] {
-            "list" => commands::list_servers(),
+            "list" => {
+                if let Err(err) = commands::list_servers() {
+                    println!("列出服务器失败: {}", err);
+                }
+            }
             "start" => {
                 if parts.len() > 1 {
                     commands::start_server(parts[1]);

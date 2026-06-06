@@ -1,4 +1,4 @@
-use crate::{TokioRuntimeConfig, capture_eprintln, create_tokio_runtime_or_exit};
+use crate::{create_tokio_runtime_or_exit, log_fatal_ctx, log_info_ctx, TokioRuntimeConfig};
 use std::future::Future;
 
 pub struct TokioServiceConfig<'a> {
@@ -13,7 +13,8 @@ where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<(), String>>,
 {
-    capture_eprintln(config.startup_message.clone());
+    std::eprintln!("{}", config.startup_message);
+    log_info_ctx("runtime.headless_runtime", "run_tokio_service", &config.startup_message);
 
     let rt = create_tokio_runtime_or_exit(TokioRuntimeConfig {
         error_prefix: config.runtime_creation_error_prefix,
@@ -21,7 +22,11 @@ where
     });
 
     if let Err(error) = rt.block_on(run()) {
-        capture_eprintln(format!("{}: {}", config.service_error_prefix, error));
+        log_fatal_ctx(
+            "runtime.headless_runtime",
+            "run_tokio_service",
+            &format!("{}: {}", config.service_error_prefix, error),
+        );
         std::process::exit(1);
     }
 }

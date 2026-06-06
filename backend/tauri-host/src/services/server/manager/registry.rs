@@ -12,14 +12,14 @@ use super::{
 pub(super) fn audit_duplicate_server_records(
     manager: &ServerManager,
 ) -> Result<ServerRegistryDedupeReport, String> {
-    let servers = manager.get_server_list();
+    let servers = manager.get_server_list_checked()?;
     Ok(build_registry_dedupe_report(manager, &servers, Vec::new()))
 }
 
 pub(super) fn dedupe_duplicate_server_records(
     manager: &ServerManager,
 ) -> Result<ServerRegistryDedupeReport, String> {
-    let servers = manager.get_server_list();
+    let servers = manager.get_server_list_checked()?;
     let report = build_registry_dedupe_report(manager, &servers, Vec::new());
     let removable_ids = report
         .duplicate_groups
@@ -39,11 +39,12 @@ pub(super) fn dedupe_duplicate_server_records(
 
     let data_dir = manager.data_dir_value()?;
     for id in &removable_ids {
-        remove_run_path_mapping(&data_dir, id);
+        remove_run_path_mapping(&data_dir, id)?;
     }
     manager.save()?;
 
-    Ok(build_registry_dedupe_report(manager, &manager.get_server_list(), removable_ids))
+    let updated_servers = manager.get_server_list_checked()?;
+    Ok(build_registry_dedupe_report(manager, &updated_servers, removable_ids))
 }
 
 fn build_registry_dedupe_report(
@@ -281,14 +282,17 @@ fn docker_container_name(server: &ServerInstance) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use std::collections::{BTreeMap, HashMap};
+    use std::sync::Arc;
 
     use crate::models::server::{
         CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
         JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
+    use crate::services::server::manager::ServerManager;
 
     use super::{
-        build_connected_duplicate_groups, collect_group_reasons, summarize_duplicate_group,
+        audit_duplicate_server_records, build_connected_duplicate_groups, collect_group_reasons,
+        summarize_duplicate_group,
     };
 
     fn sample_local(id: &str, name: &str, path: &str, created_at: u64) -> ServerInstance {
@@ -387,5 +391,24 @@ mod tests {
         let group = summarize_duplicate_group(vec![&older, &newer], &statuses);
         assert_eq!(group.canonical_id, "new");
         assert_eq!(group.removable_ids, vec!["old".to_string()]);
+    }
+
+    #[test]
+    fn audit_duplicate_server_records_surfaces_server_list_lock_failures() {
+        let manager = Arc::new(ServerManager::new());
+        let cloned = Arc::clone(&manager);
+        let poison_thread = std::thread::spawn(move || {
+            let _guard = cloned
+                .servers
+                .lock()
+                .expect("servers lock should be acquired");
+            panic!("poison server list lock");
+        });
+        assert!(poison_thread.join().is_err(), "poison thread should panic");
+
+        let error = audit_duplicate_server_records(&manager)
+            .expect_err("lock failure should not be silently treated as an empty server list");
+
+        assert_eq!(error, "servers lock poisoned");
     }
 }

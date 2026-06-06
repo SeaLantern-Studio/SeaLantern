@@ -85,10 +85,17 @@ pub(super) fn tunnel_key_path() -> std::path::PathBuf {
         .join(SECRET_KEY_FILE)
 }
 
-pub(super) fn derive_ticket_for_state(state: &TunnelRuntimeState) -> Option<String> {
-    let key = state.secret_key.as_ref()?;
-    let relay = state.profile.resolve_relay_url(None).ok().flatten();
-    Some(Ticket::new(key.public(), relay).to_string())
+pub(super) fn derive_ticket_for_state_checked(
+    state: &TunnelRuntimeState,
+) -> Result<Option<String>, String> {
+    let Some(key) = state.secret_key.as_ref() else {
+        return Ok(None);
+    };
+    let relay = state
+        .profile
+        .resolve_relay_url(None)
+        .map_err(|error| format!("failed to derive tunnel ticket relay: {error}"))?;
+    Ok(Some(Ticket::new(key.public(), relay).to_string()))
 }
 
 pub(super) async fn take_active_tunnel() -> Option<ActiveTunnel> {

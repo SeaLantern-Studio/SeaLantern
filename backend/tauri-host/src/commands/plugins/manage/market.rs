@@ -6,9 +6,10 @@ mod shared;
 use super::common::{lock_manager, trim_market_base_url, validate_plugin_id};
 use crate::hardcode_data::plugin_market::PLUGIN_MARKET_BASE_URL;
 use crate::models::plugin::{PluginInstallResult, PluginUpdateInfo};
+use crate::plugins::manager::i18n::plugin_t1;
 use crate::plugins::manager::PluginManager;
-use std::sync::{Arc, Mutex};
 pub(crate) use install::InstallFromMarketRequest;
+use std::sync::{Arc, Mutex};
 
 /// 检查单个插件更新
 pub(super) async fn check_plugin_update(
@@ -22,7 +23,7 @@ pub(super) async fn check_plugin_update(
         let plugin_info = manager
             .plugins()
             .get(&plugin_id)
-            .ok_or_else(|| format!("Plugin not found: {}", plugin_id))?;
+            .ok_or_else(|| plugin_t1("plugin.common.not_found", plugin_id.clone()))?;
         plugin_info.manifest.version.clone()
     };
 

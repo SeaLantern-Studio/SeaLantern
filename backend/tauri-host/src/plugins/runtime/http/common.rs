@@ -1,4 +1,6 @@
+use crate::services::global::i18n_service;
 use mlua::{Lua, MultiValue, Result as LuaResult, Table, Value};
+use std::collections::HashMap;
 
 use super::request::HttpMethod;
 
@@ -14,9 +16,26 @@ impl HttpContext {
     }
 }
 
+pub(super) fn http_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+pub(super) fn http_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+pub(super) fn http_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
+
 pub(super) fn create_http_table(lua: &Lua) -> Result<Table, String> {
     lua.create_table()
-        .map_err(|e| format!("Failed to create http table: {}", e))
+        .map_err(|e| http_t1("plugins.runtime.http.create_table_failed", e.to_string()))
 }
 
 pub(super) fn set_http_function(
@@ -27,12 +46,12 @@ pub(super) fn set_http_function(
 ) -> Result<(), String> {
     table
         .set(name, function)
-        .map_err(|e| format!("Failed to set {}: {}", api_name, e))
+        .map_err(|e| http_t2("plugins.runtime.http.set_api_failed", api_name, e.to_string()))
 }
 
 pub(super) fn set_http_table(sl: &Table, table: Table) -> Result<(), String> {
     sl.set("http", table)
-        .map_err(|e| format!("Failed to set sl.http: {}", e))
+        .map_err(|e| http_t1("plugins.runtime.http.set_namespace_failed", e.to_string()))
 }
 
 pub(super) fn lua_error(lua: &Lua, msg: &str) -> LuaResult<MultiValue> {
@@ -52,5 +71,11 @@ pub(super) fn create_http_function(
     lua.create_function(move |lua, args: MultiValue| {
         super::execute_http_request(lua, &ctx, args, method)
     })
-    .map_err(|e| format!("Failed to create http.{}: {}", method.as_str(), e))
+    .map_err(|e| {
+        http_t2(
+            "plugins.runtime.http.create_api_failed",
+            format!("http.{}", method.as_str()),
+            e.to_string(),
+        )
+    })
 }

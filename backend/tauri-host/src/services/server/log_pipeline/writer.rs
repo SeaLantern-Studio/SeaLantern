@@ -97,7 +97,13 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
             Ok(cmd) => cmd,
             Err(_) => {
                 if !batch.is_empty() {
-                    let _ = flush_batch(&mut conn, &batch);
+                    flush_batch_or_log(
+                        &mut conn,
+                        &batch,
+                        &server_id,
+                        &server_path,
+                        "channel_closed",
+                    );
                 }
                 break;
             }
@@ -115,12 +121,24 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
                     match rx.recv_timeout(remain) {
                         Ok(WriterCommand::Append(entry)) => batch.push(entry),
                         Ok(WriterCommand::Shutdown) => {
-                            let _ = flush_batch(&mut conn, &batch);
+                            flush_batch_or_log(
+                                &mut conn,
+                                &batch,
+                                &server_id,
+                                &server_path,
+                                "shutdown_during_batch",
+                            );
                             return;
                         }
                         Err(mpsc::RecvTimeoutError::Timeout) => break,
                         Err(mpsc::RecvTimeoutError::Disconnected) => {
-                            let _ = flush_batch(&mut conn, &batch);
+                            flush_batch_or_log(
+                                &mut conn,
+                                &batch,
+                                &server_id,
+                                &server_path,
+                                "channel_disconnected_during_batch",
+                            );
                             return;
                         }
                     }
@@ -138,11 +156,29 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
             }
             WriterCommand::Shutdown => {
                 if !batch.is_empty() {
-                    let _ = flush_batch(&mut conn, &batch);
+                    flush_batch_or_log(&mut conn, &batch, &server_id, &server_path, "shutdown");
                 }
                 break;
             }
         }
+    }
+}
+
+fn flush_batch_or_log(
+    conn: &mut Connection,
+    batch: &[LogWriteEntry],
+    server_id: &str,
+    server_path: &Path,
+    phase: &str,
+) {
+    if let Err(err) = flush_batch(conn, batch) {
+        eprintln!(
+            "[server_log_pipeline] flush batch failed id={} path={} phase={} err={}",
+            server_id,
+            server_path.display(),
+            phase,
+            err
+        );
     }
 }
 

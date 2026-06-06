@@ -1,9 +1,27 @@
+use crate::services::global::i18n_service;
 use std::collections::HashMap;
 use std::io::Read;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+fn process_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn process_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn process_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 /// 单次输出缓冲上限
 pub const MAX_STDOUT_BUFFER_BYTES: usize = 1024 * 1024;
@@ -215,10 +233,7 @@ pub fn plugin_process_count(procs: &mut HashMap<u32, ProcessEntry>, plugin_id: &
 }
 
 /// 杀掉某个插件名下的全部进程
-pub fn kill_plugin_processes(
-    registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
-    plugin_id: &str,
-) {
+pub fn kill_plugin_processes(registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>, plugin_id: &str) {
     let mut procs = registry.lock().unwrap_or_else(|e| {
         eprintln!("[WARN] Process registry lock poisoned, recovering: {}", e);
         e.into_inner()
@@ -255,4 +270,24 @@ pub fn kill_all_processes(registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>) {
         let _ = entry.child.wait();
     }
     procs.clear();
+}
+
+pub(super) fn process_err(key: &str) -> mlua::Error {
+    mlua::Error::runtime(process_t(key))
+}
+
+pub(super) fn process_err1(key: &str, a: impl Into<String>) -> mlua::Error {
+    mlua::Error::runtime(process_t1(key, a))
+}
+
+pub(super) fn process_err2(key: &str, a: impl Into<String>, b: impl Into<String>) -> mlua::Error {
+    mlua::Error::runtime(process_t2(key, a, b))
+}
+
+pub(super) fn process_msg1(key: &str, a: impl Into<String>) -> String {
+    process_t1(key, a)
+}
+
+pub(super) fn process_msg2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    process_t2(key, a, b)
 }

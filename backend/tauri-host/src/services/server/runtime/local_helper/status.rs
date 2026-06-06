@@ -1,17 +1,19 @@
 use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
 use crate::models::server::ServerStatus;
 use crate::services::server::manager::process::is_process_alive;
+use crate::services::server::runtime::i18n::runtime_t;
 use crate::services::server::runtime::RuntimeStatusSnapshot;
 
 pub(super) fn fallback_snapshot_from_state_file(
     state: &LocalRuntimeState,
 ) -> LocalHelperStatusSnapshot {
-    fallback_snapshot_from_state_file_with(state, is_process_alive)
+    fallback_snapshot_from_state_file_with(state, is_process_alive, false)
 }
 
 fn fallback_snapshot_from_state_file_with<F>(
     state: &LocalRuntimeState,
     is_alive: F,
+    helper_unreachable: bool,
 ) -> LocalHelperStatusSnapshot
 where
     F: Fn(u32) -> bool,
@@ -26,9 +28,15 @@ where
         running: child_running.is_some(),
         pid: child_running,
         exit_code: state.exit_code,
-        detail_message: fallback_detail_message(state, child_running),
-        error_message: fallback_error_message(state, child_running),
+        detail_message: fallback_detail_message(state, child_running, helper_unreachable),
+        error_message: fallback_error_message(state, child_running, helper_unreachable),
     }
+}
+
+pub(super) fn fallback_snapshot_from_unreachable_helper(
+    state: &LocalRuntimeState,
+) -> LocalHelperStatusSnapshot {
+    fallback_snapshot_from_state_file_with(state, is_process_alive, true)
 }
 
 pub(crate) fn helper_runtime_status(
@@ -75,10 +83,19 @@ pub(crate) fn stopped_runtime_snapshot() -> RuntimeStatusSnapshot {
     }
 }
 
-fn fallback_detail_message(state: &LocalRuntimeState, child_running: Option<u32>) -> String {
+fn fallback_detail_message(
+    state: &LocalRuntimeState,
+    child_running: Option<u32>,
+    helper_unreachable: bool,
+) -> String {
     if child_running.is_some() {
         format!(
             "runtime=local running=true source=state_file helper=unavailable exit_code={}",
+            format_exit_code(state.exit_code)
+        )
+    } else if helper_unreachable {
+        format!(
+            "runtime=local running=false source=state_file helper=unreachable exit_code={}",
             format_exit_code(state.exit_code)
         )
     } else if state.running {
@@ -94,12 +111,15 @@ fn fallback_detail_message(state: &LocalRuntimeState, child_running: Option<u32>
     }
 }
 
-fn fallback_error_message(state: &LocalRuntimeState, child_running: Option<u32>) -> Option<String> {
+fn fallback_error_message(
+    state: &LocalRuntimeState,
+    child_running: Option<u32>,
+    helper_unreachable: bool,
+) -> Option<String> {
     if child_running.is_some() {
-        Some(
-            "本地 runtime helper 已退出，但 Java 进程仍在运行；当前无法继续发送命令，建议执行 force-stop 后重新启动"
-                .to_string(),
-        )
+        Some(runtime_t("server.runtime.local_helper.child_running_after_helper_exit"))
+    } else if helper_unreachable {
+        Some(runtime_t("server.runtime.local_helper.status_probe_failed"))
     } else {
         state.error_message.clone()
     }
@@ -122,9 +142,11 @@ fn format_exit_code(exit_code: Option<i32>) -> String {
 mod tests {
     use super::{
         fallback_snapshot_from_state_file, fallback_snapshot_from_state_file_with,
-        helper_runtime_status, runtime_snapshot_from_helper, stopped_runtime_snapshot,
+        fallback_snapshot_from_unreachable_helper, helper_runtime_status,
+        runtime_snapshot_from_helper, stopped_runtime_snapshot,
     };
     use crate::models::server::ServerStatus;
+    use crate::services::server::runtime::i18n::runtime_t;
     use crate::services::server::runtime::local_helper::LocalRuntimeState;
 
     fn sample_state() -> LocalRuntimeState {
@@ -144,7 +166,8 @@ mod tests {
 
     #[test]
     fn fallback_snapshot_from_state_file_reports_running_child_when_helper_is_unavailable() {
-        let snapshot = fallback_snapshot_from_state_file_with(&sample_state(), |pid| pid == 42);
+        let snapshot =
+            fallback_snapshot_from_state_file_with(&sample_state(), |pid| pid == 42, false);
 
         assert!(snapshot.running);
         assert_eq!(snapshot.pid, Some(42));
@@ -156,7 +179,8 @@ mod tests {
         assert!(snapshot
             .error_message
             .as_deref()
-            .is_some_and(|message| message.contains("helper 已退出")));
+            .is_some_and(|message| message
+                == runtime_t("server.runtime.local_helper.child_running_after_helper_exit")));
     }
 
     #[test]
@@ -165,7 +189,7 @@ mod tests {
         state.exit_code = Some(7);
         state.error_message = Some("server crashed".to_string());
 
-        let snapshot = fallback_snapshot_from_state_file_with(&state, |_| false);
+        let snapshot = fallback_snapshot_from_state_file_with(&state, |_| false, false);
 
         assert!(!snapshot.running);
         assert_eq!(snapshot.pid, None);
@@ -187,6 +211,21 @@ mod tests {
             snapshot.detail_message,
             "runtime=local running=false source=state_file helper=exited exit_code=none"
         );
+    }
+
+    #[test]
+    fn fallback_snapshot_from_unreachable_helper_marks_control_plane_failure() {
+        let snapshot = fallback_snapshot_from_unreachable_helper(&sample_state());
+
+        assert!(!snapshot.running);
+        assert_eq!(snapshot.pid, None);
+        assert_eq!(
+            snapshot.detail_message,
+            "runtime=local running=false source=state_file helper=unreachable exit_code=none"
+        );
+        assert!(snapshot.error_message.as_deref().is_some_and(
+            |message| message == runtime_t("server.runtime.local_helper.status_probe_failed")
+        ));
     }
 
     #[test]

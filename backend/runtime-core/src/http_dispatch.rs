@@ -89,8 +89,8 @@ pub async fn dispatch_http_command(
 #[cfg(test)]
 mod tests {
     use super::{
-        CommandRegistry, DispatchResult, CommandHandler, RegistryBuilder, dispatch_http_command,
-        handle_unsupported, is_supported_http_command,
+        dispatch_http_command, handle_unsupported, is_supported_http_command, CommandHandler,
+        CommandRegistry, DispatchResult, RegistryBuilder,
     };
     use serde_json::Value;
     use std::collections::HashMap;

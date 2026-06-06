@@ -92,12 +92,18 @@ pub(crate) fn initialize_plugins() -> PluginSetup {
                 let mut plugin_manager = manager_for_auto_enable
                     .lock()
                     .unwrap_or_else(|e| e.into_inner());
-                plugin_manager.auto_enable_plugins();
+                plugin_manager.auto_enable_plugins_checked()
             })
             .await;
 
-            if let Err(e) = result {
-                eprintln!("[WARN] Failed to auto-enable plugins in background: {}", e);
+            match result {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => {
+                    eprintln!("[WARN] Failed to auto-enable plugins: {}", error);
+                }
+                Err(error) => {
+                    eprintln!("[WARN] Failed to auto-enable plugins in background: {}", error);
+                }
             }
         });
     }

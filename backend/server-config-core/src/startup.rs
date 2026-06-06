@@ -281,7 +281,8 @@ pub fn write_server_startup_config(
         std::fs::create_dir_all(parent).map_err(|e| format!("创建实例配置目录失败: {}", e))?;
     }
 
-    let content = toml::to_string_pretty(config).map_err(|e| format!("序列化实例配置失败: {}", e))?;
+    let content =
+        toml::to_string_pretty(config).map_err(|e| format!("序列化实例配置失败: {}", e))?;
 
     std::fs::write(&instance_config_path, content).map_err(|e| format!("写入实例配置失败: {}", e))
 }
@@ -377,10 +378,9 @@ mod tests {
     use super::{
         build_managed_jvm_args_from_input, build_server_properties_path,
         create_server_properties_if_missing, ensure_server_path_writable, read_server_port,
-        read_server_port_checked,
-        resolve_effective_startup_config_from_document, write_server_startup_config_for_dir,
-        validate_config_path, EffectiveStartupConfig, ManagedJvmBuildInput,
-        StartupResolutionDefaults, StartupRuntimeDefaults,
+        read_server_port_checked, resolve_effective_startup_config_from_document,
+        validate_config_path, write_server_startup_config_for_dir, EffectiveStartupConfig,
+        ManagedJvmBuildInput, StartupResolutionDefaults, StartupRuntimeDefaults,
     };
     use crate::types::{
         CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId, ServerStartupConfigDocument,
@@ -515,9 +515,7 @@ mod tests {
                     explicit_set: None,
                     sync_active_processor_count: true,
                 },
-                jvm_preset: JvmPresetConfig {
-                    preset: JvmPresetId::AikarG1,
-                },
+                jvm_preset: JvmPresetConfig { preset: JvmPresetId::AikarG1 },
             },
             presence: StartupConfigPresence {
                 max_memory: true,
@@ -539,7 +537,8 @@ mod tests {
             default_min_memory: 1024,
         };
 
-        let effective = resolve_effective_startup_config_from_document(&startup, &runtime, &defaults);
+        let effective =
+            resolve_effective_startup_config_from_document(&startup, &runtime, &defaults);
 
         assert_eq!(
             effective,
@@ -553,9 +552,7 @@ mod tests {
                     explicit_set: None,
                     sync_active_processor_count: true,
                 },
-                jvm_preset: JvmPresetConfig {
-                    preset: JvmPresetId::AikarG1,
-                },
+                jvm_preset: JvmPresetConfig { preset: JvmPresetId::AikarG1 },
             }
         );
     }
@@ -582,7 +579,8 @@ mod tests {
             default_min_memory: 1024,
         };
 
-        let effective = resolve_effective_startup_config_from_document(&startup, &runtime, &defaults);
+        let effective =
+            resolve_effective_startup_config_from_document(&startup, &runtime, &defaults);
 
         assert_eq!(effective.max_memory, 4096);
         assert_eq!(effective.min_memory, 2048);
@@ -622,7 +620,8 @@ mod tests {
             default_min_memory: 1536,
         };
 
-        let effective = resolve_effective_startup_config_from_document(&startup, &runtime, &defaults);
+        let effective =
+            resolve_effective_startup_config_from_document(&startup, &runtime, &defaults);
 
         assert_eq!(effective.max_memory, 6144);
         assert_eq!(effective.min_memory, 1536);
@@ -672,7 +671,9 @@ mod tests {
             default_jvm_args: vec!["-Dglobal.flag=true".to_string()],
             active_processor_count_arg: Some("-XX:ActiveProcessorCount=2".to_string()),
         });
-        assert!(injected.iter().any(|arg| arg == "-XX:ActiveProcessorCount=2"));
+        assert!(injected
+            .iter()
+            .any(|arg| arg == "-XX:ActiveProcessorCount=2"));
 
         let skipped = build_managed_jvm_args_from_input(ManagedJvmBuildInput {
             effective: EffectiveStartupConfig {
@@ -693,7 +694,9 @@ mod tests {
                 .count(),
             1
         );
-        assert!(skipped.iter().any(|arg| arg == "-XX:ActiveProcessorCount=6"));
+        assert!(skipped
+            .iter()
+            .any(|arg| arg == "-XX:ActiveProcessorCount=6"));
     }
 
     #[test]
@@ -719,6 +722,8 @@ mod tests {
         let props_path = build_server_properties_path(server_dir.to_string_lossy().as_ref())
             .expect("server dir names containing double dots should be accepted");
 
-        assert!(props_path.replace('\\', "/").ends_with("server..prod/server.properties"));
+        assert!(props_path
+            .replace('\\', "/")
+            .ends_with("server..prod/server.properties"));
     }
 }

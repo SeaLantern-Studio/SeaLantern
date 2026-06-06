@@ -1,3 +1,4 @@
+use crate::services::global::i18n_service;
 use crate::utils::cli::server_shared::{trace_cli_action, trace_cli_error};
 #[cfg(test)]
 use crate::utils::docker_cli::interpret_docker_image_inspect_outputs_for_tests;
@@ -9,7 +10,25 @@ use crate::utils::logger;
 use sea_lantern_docker_core::{
     format_docker_image_reference, validate_docker_itzg_image_compatibility, DockerCommandMode,
 };
+use std::collections::HashMap;
 use std::process::Output;
+
+fn cli_docker_t(key: &str) -> String {
+    i18n_service().t(key)
+}
+
+fn cli_docker_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+fn cli_docker_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 #[cfg(test)]
 fn exit_status_from_raw(code: i32) -> std::process::ExitStatus {
@@ -28,7 +47,7 @@ pub(crate) fn ensure_docker_environment() -> Result<(), String> {
     let output = std::process::Command::new(docker_path)
         .arg("info")
         .output()
-        .map_err(|e| format!("执行 docker info 失败: {}", e))?;
+        .map_err(|e| cli_docker_t1("cli.server_setup.docker.info_failed", e.to_string()))?;
 
     ensure_docker_environment_with_output(&output)
 }
@@ -47,9 +66,9 @@ fn ensure_docker_environment_with_output(output: &Output) -> Result<(), String> 
 fn render_docker_environment_error(output: &Output) -> String {
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if stderr.is_empty() {
-        "docker 环境不可用，请确认 Docker Desktop 或 Docker Engine 已启动".to_string()
+        cli_docker_t("cli.server_setup.docker.environment_unavailable_default")
     } else {
-        format!("docker 环境不可用: {}", stderr)
+        cli_docker_t1("cli.server_setup.docker.environment_unavailable", stderr)
     }
 }
 
@@ -101,13 +120,17 @@ fn handle_docker_image_preflight_outcome(
                 "docker_image_preflight_soft_failure",
                 &format!("image_ref={} failure_kind={:?}", image_ref, failure_kind),
             );
-            logger::log_warn(&format!(
-                "Docker 镜像预检已降级为软失败，将继续创建服务器记录: image_ref={} failure_kind={:?} detail={}",
-                image_ref, failure_kind, message
-            ));
+            logger::log_warn_ctx(
+                "cli.server_setup.docker_preflight",
+                "handle_docker_image_preflight_outcome",
+                &format!(
+                    "soft failure downgraded; continuing server creation: image_ref={} failure_kind={:?} detail={}",
+                    image_ref, failure_kind, message
+                ),
+            );
             println!(
-                "Docker 镜像预检未确认远端可用性，但已继续创建；若本地已缓存该镜像可直接忽略，否则待网络恢复后再执行 `sealantern docker pull {}`。",
-                image_ref,
+                "{}",
+                cli_docker_t1("cli.server_setup.docker.image_preflight_soft_failure", image_ref),
             );
             Ok(())
         }
@@ -166,10 +189,14 @@ where
                 "docker_stdio_preflight_remote_only",
                 &format!("image_ref={}", image_ref),
             );
-            logger::log_warn(&format!(
-                "docker_stdio 预检跳过镜像内部探测: image_ref={} availability=remote_resolvable",
-                image_ref
-            ));
+            logger::log_warn_ctx(
+                "cli.server_setup.docker_preflight",
+                "handle_docker_stdio_preflight_outcome",
+                &format!(
+                    "skipping image internal probe: image_ref={} availability=remote_resolvable",
+                    image_ref
+                ),
+            );
             Ok(())
         }
         DockerImageInspectOutcome::SoftFailure { failure_kind, message } => {
@@ -177,10 +204,14 @@ where
                 "docker_stdio_preflight_soft_failure",
                 &format!("image_ref={} failure_kind={:?}", image_ref, failure_kind),
             );
-            logger::log_warn(&format!(
-                "docker_stdio 预检未确认镜像缓存状态，将跳过内部命令探测: image_ref={} failure_kind={:?} detail={}",
-                image_ref, failure_kind, message
-            ));
+            logger::log_warn_ctx(
+                "cli.server_setup.docker_preflight",
+                "handle_docker_stdio_preflight_outcome",
+                &format!(
+                    "image cache status unresolved; skipping internal command probe: image_ref={} failure_kind={:?} detail={}",
+                    image_ref, failure_kind, message
+                ),
+            );
             Ok(())
         }
     }
@@ -197,7 +228,9 @@ fn ensure_docker_stdio_image_support(image_ref: &str) -> Result<(), String> {
         .arg("-lc")
         .arg("command -v mc-send-to-console >/dev/null 2>&1")
         .output()
-        .map_err(|err| format!("执行 docker run 检查 docker_stdio 镜像能力失败: {}", err))?;
+        .map_err(|err| {
+            cli_docker_t1("cli.server_setup.docker.stdio_probe_failed", err.to_string())
+        })?;
 
     ensure_docker_stdio_image_support_with_output(image_ref, &output)
 }
@@ -222,13 +255,13 @@ fn render_docker_stdio_probe_error(image_ref: &str, output: &Output) -> String {
     } else if !stdout.is_empty() {
         stdout
     } else {
-        format!("退出码: {:?}", output.status.code())
+        cli_docker_t1(
+            "cli.server_setup.docker.command_exit_code",
+            format!("{:?}", output.status.code()),
+        )
     };
 
-    format!(
-        "当前镜像不支持 --command-mode docker_stdio: image={} 未检测到 mc-send-to-console。请改用 --command-mode rcon，或改用兼容 itzg 语义且内置 mc-send-to-console 的镜像。原始输出: {}",
-        image_ref, raw
-    )
+    cli_docker_t2("cli.server_setup.docker.stdio_image_unsupported", image_ref, raw)
 }
 
 #[cfg(test)]

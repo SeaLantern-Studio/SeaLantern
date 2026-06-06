@@ -1,16 +1,20 @@
 use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, ServerInstance};
 use crate::services::server::manager::common::StartupMode;
-use crate::services::server::manager::startup_support::resolve_effective_startup_config;
+use crate::services::server::manager::i18n::manager_t1;
+use crate::services::server::manager::startup_support::resolve_effective_startup_config_checked;
 use sea_lantern_server_config_core::{
     resolve_active_processor_count as resolve_shared_active_processor_count,
-    resolve_local_cpu_policy as resolve_shared_local_cpu_policy,
-    ResolvedCpuPolicy,
+    resolve_local_cpu_policy as resolve_shared_local_cpu_policy, ResolvedCpuPolicy,
 };
+
+#[cfg(test)]
+use crate::services::server::manager::startup_support::resolve_effective_startup_config;
 
 pub(crate) fn mode_supports_local_cpu_policy(startup_mode: StartupMode) -> bool {
     matches!(startup_mode, StartupMode::Jar | StartupMode::Starter)
 }
 
+#[cfg(test)]
 pub(crate) fn local_cpu_policy(
     server: &ServerInstance,
     settings: &crate::models::settings::AppSettings,
@@ -18,18 +22,25 @@ pub(crate) fn local_cpu_policy(
     resolve_effective_startup_config(server, settings).cpu_policy
 }
 
+pub(crate) fn local_cpu_policy_checked(
+    server: &ServerInstance,
+    settings: &crate::models::settings::AppSettings,
+) -> Result<CpuPolicyConfig, String> {
+    Ok(resolve_effective_startup_config_checked(server, settings)?.cpu_policy)
+}
+
 pub(crate) fn compute_active_processor_count_arg(
     server: &ServerInstance,
     settings: &crate::models::settings::AppSettings,
     startup_mode: StartupMode,
 ) -> Result<Option<String>, String> {
-    let policy = local_cpu_policy(server, settings);
+    let policy = local_cpu_policy_checked(server, settings)?;
 
     if !mode_supports_local_cpu_policy(startup_mode) {
         if policy.mode != CpuPolicyMode::Off {
-            return Err(format!(
-                "当前本地启动模式 {} 暂不支持 CPU policy，请改用 jar/starter 或关闭 CPU 限制",
-                startup_mode.as_str()
+            return Err(manager_t1(
+                "server.manager.cpu_policy_mode_unsupported",
+                startup_mode.as_str().to_string(),
             ));
         }
         return Ok(None);
@@ -48,7 +59,7 @@ pub(crate) fn resolve_local_cpu_policy(
     server: &ServerInstance,
     settings: &crate::models::settings::AppSettings,
 ) -> Result<Option<ResolvedCpuPolicy>, String> {
-    let policy = local_cpu_policy(server, settings);
+    let policy = local_cpu_policy_checked(server, settings)?;
     resolve_shared_local_cpu_policy(&policy, logical_cpu_count())
 }
 
@@ -70,7 +81,7 @@ pub(crate) fn apply_cpu_affinity_to_pid(
     {
         let _ = pid;
         let _ = resolved;
-        Err("当前平台暂不支持本地 CPU affinity".to_string())
+        Err(manager_t("server.manager.cpu_affinity_platform_unsupported"))
     }
 }
 
@@ -89,7 +100,10 @@ fn apply_cpu_affinity_windows(pid: u32, resolved: &ResolvedCpuPolicy) -> Result<
 
     let max_bits = usize::BITS as usize;
     if resolved.cpu_indices.iter().any(|index| *index >= max_bits) {
-        return Err(format!("当前 Windows affinity 实现仅支持 {} 个逻辑 CPU 以内的掩码", max_bits));
+        return Err(manager_t1(
+            "server.manager.cpu_affinity_windows_mask_limit",
+            max_bits.to_string(),
+        ));
     }
 
     let mut mask: usize = 0;
@@ -99,10 +113,12 @@ fn apply_cpu_affinity_windows(pid: u32, resolved: &ResolvedCpuPolicy) -> Result<
 
     unsafe {
         let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_SET_INFORMATION, false, pid)
-            .map_err(|e| format!("打开进程句柄失败: {}", e))?;
+            .map_err(|e| {
+            manager_t1("server.manager.cpu_affinity_open_process_failed", e.to_string())
+        })?;
 
         let result = SetProcessAffinityMask(handle, mask)
-            .map_err(|e| format!("设置 CPU affinity 失败: {}", e));
+            .map_err(|e| manager_t1("server.manager.cpu_affinity_apply_failed", e.to_string()));
         let _ = CloseHandle(handle);
         result
     }
@@ -123,7 +139,10 @@ fn apply_cpu_affinity_linux(pid: u32, resolved: &ResolvedCpuPolicy) -> Result<()
             &cpu_set,
         );
         if result != 0 {
-            return Err(format!("设置 CPU affinity 失败: {}", std::io::Error::last_os_error()));
+            return Err(manager_t1(
+                "server.manager.cpu_affinity_apply_failed",
+                std::io::Error::last_os_error().to_string(),
+            ));
         }
     }
 

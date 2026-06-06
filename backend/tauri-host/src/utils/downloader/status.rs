@@ -1,3 +1,4 @@
+use super::common::downloader_t1;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
@@ -16,9 +17,15 @@ pub enum DownloadError {
 impl std::fmt::Display for DownloadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DownloadError::Reqwest(e) => write!(f, "Request error: {}", e),
-            DownloadError::Io(e) => write!(f, "IO error: {}", e),
-            DownloadError::Cancelled(msg) => write!(f, "Download cancelled: {}", msg),
+            DownloadError::Reqwest(e) => {
+                write!(f, "{}", downloader_t1("download.util.request_error", e.to_string()))
+            }
+            DownloadError::Io(e) => {
+                write!(f, "{}", downloader_t1("download.util.io_error", e.to_string()))
+            }
+            DownloadError::Cancelled(msg) => {
+                write!(f, "{}", downloader_t1("download.util.cancelled", msg.clone()))
+            }
         }
     }
 }

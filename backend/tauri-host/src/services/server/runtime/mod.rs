@@ -1,5 +1,6 @@
 mod control;
 pub mod docker_itzg;
+pub(crate) mod i18n;
 pub mod local;
 pub mod local_helper;
 
@@ -8,6 +9,7 @@ use std::process::Child;
 
 use crate::models::server::{ServerInstance, ServerRuntimeConfig, ServerStatus};
 use crate::services::server::manager::ServerManager;
+use crate::services::server::runtime::i18n::runtime_t2;
 
 pub struct RuntimeStartRequest<'a> {
     pub server_id: &'a str,
@@ -118,13 +120,11 @@ pub fn resolve_runtime(server: &ServerInstance) -> Result<&'static dyn ServerRun
     match (server.runtime_kind.as_str(), &server.runtime) {
         ("local", ServerRuntimeConfig::Local(_)) => Ok(&LOCAL_RUNTIME),
         ("docker_itzg", ServerRuntimeConfig::DockerItzg(_)) => Ok(&*DOCKER_ITZG_RUNTIME),
-        (kind, ServerRuntimeConfig::Local(_)) => Err(format!(
-            "服务器运行时声明与配置不一致: runtime_kind={}, runtime.kind=local",
-            kind
-        )),
-        (kind, ServerRuntimeConfig::DockerItzg(_)) => Err(format!(
-            "服务器运行时声明与配置不一致: runtime_kind={}, runtime.kind=docker_itzg",
-            kind
-        )),
+        (kind, ServerRuntimeConfig::Local(_)) => {
+            Err(runtime_t2("server.runtime.config_mismatch", kind, "local"))
+        }
+        (kind, ServerRuntimeConfig::DockerItzg(_)) => {
+            Err(runtime_t2("server.runtime.config_mismatch", kind, "docker_itzg"))
+        }
     }
 }

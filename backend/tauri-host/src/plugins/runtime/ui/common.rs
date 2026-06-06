@@ -1,13 +1,28 @@
 // 公共助手函数
 
 use crate::plugins::api::{emit_component_event, emit_permission_log, emit_ui_event};
-use crate::utils::logger::log_error;
+use crate::services::global::i18n_service;
+use crate::utils::logger::log_error_ctx;
 use mlua::{Function, Lua, String as LuaString, Table, Value};
 use serde_json::{Map, Value as JsonValue};
+use std::collections::HashMap;
 
 pub(super) const VALID_INSERT_PLACEMENTS: &[&str] = &["before", "after", "prepend", "append"];
 pub(super) const VALID_CONTEXT_MENU_CONTEXTS: &[&str] =
     &["server-list", "console", "plugin-list", "player-list", "global"];
+
+pub(super) fn ui_t1(key: &str, a: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    i18n_service().t_with_options(key, &m)
+}
+
+pub(super) fn ui_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
+    let mut m = HashMap::new();
+    m.insert("0".to_string(), a.into());
+    m.insert("1".to_string(), b.into());
+    i18n_service().t_with_options(key, &m)
+}
 
 pub(super) fn lua_str(s: LuaString) -> String {
     String::from_utf8_lossy(&s.as_bytes()).into_owned()
@@ -38,8 +53,9 @@ pub(super) fn table_to_json(table: Table) -> JsonValue {
 }
 
 pub(super) fn json_to_string(value: &JsonValue, ctx: &str) -> mlua::Result<String> {
-    serde_json::to_string(value)
-        .map_err(|e| mlua::Error::runtime(format!("序列化 {} 失败: {}", ctx, e)))
+    serde_json::to_string(value).map_err(|e| {
+        mlua::Error::runtime(ui_t2("plugins.runtime.ui.serialize_failed", ctx, e.to_string()))
+    })
 }
 
 pub(super) fn emit_component_action(
@@ -77,9 +93,10 @@ pub(super) fn validate_context_menu_context(context: &str) -> mlua::Result<()> {
     if VALID_CONTEXT_MENU_CONTEXTS.contains(&context) {
         Ok(())
     } else {
-        Err(mlua::Error::runtime(format!(
-            "无效的上下文类型 '{}', 允许的值: {:?}",
-            context, VALID_CONTEXT_MENU_CONTEXTS
+        Err(mlua::Error::runtime(ui_t2(
+            "plugins.runtime.ui.invalid_context_type",
+            context,
+            format!("{:?}", VALID_CONTEXT_MENU_CONTEXTS),
         )))
     }
 }
@@ -90,7 +107,9 @@ pub(super) fn register_callback(
     callback: Function,
 ) -> mlua::Result<bool> {
     lua.set_named_registry_value(registry_key, callback)
-        .map_err(|e| mlua::Error::runtime(format!("存储回调函数失败: {}", e)))?;
+        .map_err(|e| {
+            mlua::Error::runtime(ui_t1("plugins.runtime.ui.store_callback_failed", e.to_string()))
+        })?;
     Ok(true)
 }
 
@@ -100,10 +119,7 @@ pub(super) fn set_error_mode(lua: &mlua::Lua, pid: &str, mode: &str) -> mlua::Re
     let mode = match mode {
         "compat" | "strict" => mode,
         other => {
-            return Err(mlua::Error::runtime(format!(
-                "无效的错误模式: {}（仅支持 'compat' 或 'strict'）",
-                other
-            )))
+            return Err(mlua::Error::runtime(ui_t1("plugins.runtime.ui.invalid_error_mode", other)))
         }
     };
     let key = format!("{}{}", REG_PREFIX, pid);
@@ -125,9 +141,13 @@ pub(super) fn emit_result(
     match result {
         Ok(()) => Ok(true),
         Err(e) => {
-            log_error(&format!("[UI] {} 错误: {}", ctx, e));
+            log_error_ctx(
+                "plugins.runtime.ui.common",
+                "emit_result",
+                &ui_t2("plugins.runtime.ui.error_log", ctx, e.clone()),
+            );
             if get_error_mode(lua, pid) == "strict" {
-                Err(mlua::Error::runtime(format!("UI {} 失败: {}", ctx, e)))
+                Err(mlua::Error::runtime(ui_t2("plugins.runtime.ui.action_failed", ctx, e)))
             } else {
                 Ok(false)
             }
@@ -136,11 +156,11 @@ pub(super) fn emit_result(
 }
 
 pub(super) fn map_create_err<T>(res: mlua::Result<T>, fullname: &str) -> Result<T, String> {
-    res.map_err(|e| format!("创建 {} 失败: {}", fullname, e))
+    res.map_err(|e| ui_t2("plugins.runtime.ui.create_failed", fullname, e.to_string()))
 }
 
 pub(super) fn map_set_err(res: mlua::Result<()>, fullname: &str) -> Result<(), String> {
-    res.map_err(|e| format!("设置 {} 失败: {}", fullname, e))
+    res.map_err(|e| ui_t2("plugins.runtime.ui.set_failed", fullname, e.to_string()))
 }
 
 pub(super) fn register_single_string_ui_action(

@@ -8,6 +8,7 @@ pub(crate) use sea_lantern_docker_core::{
     DockerImageInspectOutcome,
 };
 
+use crate::services::server::runtime::i18n::{runtime_t, runtime_t1};
 use crate::utils::logger;
 use crate::utils::path::find_executable_in_path;
 
@@ -40,7 +41,7 @@ pub(crate) fn docker_executable_path() -> Result<String, String> {
     };
     find_executable_in_path(executable)
         .map(|path| path.to_string_lossy().to_string())
-        .ok_or_else(|| "未找到 docker 命令，请先安装并加入 PATH".to_string())
+        .ok_or_else(|| runtime_t("docker.executable_not_found"))
 }
 
 pub(crate) fn inspect_docker_image_reference_with_soft_failures(
@@ -87,7 +88,6 @@ where
     };
 
     interpret_docker_image_inspect_outputs(image_ref, &local_output, &manifest_output)
-
 }
 
 fn run_docker_command_with_timeout(
@@ -101,15 +101,15 @@ fn run_docker_command_with_timeout(
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
-        .map_err(|err| format!("执行 {} 失败: {}", action, err))?;
+        .map_err(|err| runtime_t1("docker.command_spawn_failed", format!("{}: {}", action, err)))?;
 
     let started = Instant::now();
     loop {
         match child.try_wait() {
             Ok(Some(_)) => {
-                return child
-                    .wait_with_output()
-                    .map_err(|err| format!("等待 {} 输出失败: {}", action, err));
+                return child.wait_with_output().map_err(|err| {
+                    runtime_t1("docker.command_wait_output_failed", format!("{}: {}", action, err))
+                });
             }
             Ok(None) => {
                 if started.elapsed() >= timeout {
@@ -126,7 +126,10 @@ fn run_docker_command_with_timeout(
             Err(err) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(format!("查询 {} 状态失败: {}", action, err));
+                return Err(runtime_t1(
+                    "docker.command_poll_failed",
+                    format!("{}: {}", action, err),
+                ));
             }
         }
     }
@@ -142,12 +145,7 @@ pub(crate) fn ensure_docker_command_success(
         return Ok(());
     }
 
-    Err(render_docker_command_error(
-        action,
-        &output,
-        image_ref,
-        container_name,
-    ))
+    Err(render_docker_command_error(action, &output, image_ref, container_name))
 }
 
 pub(crate) fn render_docker_command_error(
@@ -163,14 +161,18 @@ pub(crate) fn render_docker_command_error(
         container_name,
     );
 
-    logger::log_trace(&format!(
-        "[utils.docker_cli] action=render_command_error action_name={} failure_kind={:?} image_ref={} container={} raw={}",
-        action,
-        classify_docker_command_failure(&message),
-        image_ref.unwrap_or(""),
-        container_name.unwrap_or(""),
-        message.replace('\n', " ")
-    ));
+    logger::log_trace_ctx(
+        "utils.docker_cli",
+        "render_docker_command_error",
+        &format!(
+            "action_name={} failure_kind={:?} image_ref={} container={} raw={}",
+            action,
+            classify_docker_command_failure(&message),
+            image_ref.unwrap_or(""),
+            container_name.unwrap_or(""),
+            message.replace('\n', " ")
+        ),
+    );
 
     message
 }
@@ -198,8 +200,8 @@ mod tests {
     use sea_lantern_docker_core::{
         classify_docker_command_failure, classify_manifest_inspect_outcome,
         format_docker_image_reference, interpret_docker_image_inspect_outputs,
-        resolve_docker_image_and_tag, split_docker_image_reference_tag,
-        DockerCommandFailureKind, DockerImageAvailability, DockerImageInspectOutcome,
+        resolve_docker_image_and_tag, split_docker_image_reference_tag, DockerCommandFailureKind,
+        DockerImageAvailability, DockerImageInspectOutcome,
     };
     use std::process::Output;
 

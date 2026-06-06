@@ -42,12 +42,16 @@ pub fn append_server_log(server_id: &str, message: &str) -> Result<(), String> {
     writer::append_server_log(server_id, message)
 }
 
-pub fn get_logs(server_id: &str, since: usize, recent_limit: Option<usize>) -> Vec<String> {
-    reader::get_logs(server_id, since, recent_limit)
+pub fn get_logs_checked(
+    server_id: &str,
+    since: usize,
+    recent_limit: Option<usize>,
+) -> Result<Vec<String>, String> {
+    reader::get_logs_checked(server_id, since, recent_limit)
 }
 
-pub fn get_all_logs() -> Vec<(String, Vec<String>)> {
-    reader::get_all_logs()
+pub fn get_all_logs_checked() -> Result<Vec<(String, Vec<String>)>, String> {
+    reader::get_all_logs_checked()
 }
 
 pub fn spawn_server_output_reader<R>(server_id: String, reader: R)
