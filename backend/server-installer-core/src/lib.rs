@@ -4,6 +4,7 @@ mod mc_version;
 mod parser;
 
 use std::path::Path;
+use std::str::FromStr;
 
 pub use archive::{
     extract_modpack_archive, find_server_jar, find_server_jar_checked, resolve_extracted_root,
@@ -55,13 +56,31 @@ pub fn detect_mc_version_from_mods_checked(
 fn detect_core_type_with_main_class_checked(
     input: &str,
 ) -> Result<(String, Option<String>), String> {
+    let filename_core = detect_core_type_checked(input)?;
     let main_class = read_jar_main_class_checked(input)?;
     if let Some(ref class_name) = main_class {
         if let Some(core_type) = core_type_from_main_class(class_name) {
-            return Ok((core_type.to_string(), Some(class_name.clone())));
+            let resolved_core_type = reconcile_main_class_and_filename_core_type(
+                CoreType::from_str(&filename_core).unwrap_or(CoreType::Unknown),
+                core_type,
+            );
+            return Ok((resolved_core_type.to_string(), Some(class_name.clone())));
         }
     }
-    Ok((detect_core_type_checked(input)?, main_class))
+    Ok((filename_core, main_class))
+}
+
+fn reconcile_main_class_and_filename_core_type(
+    filename_core: CoreType,
+    main_class_core: CoreType,
+) -> CoreType {
+    match (filename_core, main_class_core) {
+        // NeoForge installers can still expose the legacy Forge SimpleInstaller main class.
+        (CoreType::Neoforge, CoreType::Forge) | (CoreType::ArclightNeoforge, CoreType::Forge) => {
+            filename_core
+        }
+        (_, main_class_core) => main_class_core,
+    }
 }
 
 fn core_type_from_main_class(main_class: &str) -> Option<CoreType> {

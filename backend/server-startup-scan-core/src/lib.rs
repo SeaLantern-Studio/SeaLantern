@@ -495,6 +495,25 @@ mod tests {
     }
 
     #[test]
+    fn scan_startup_candidates_keeps_neoforge_type_for_legacy_simpleinstaller_manifest() {
+        let dir = tempfile::tempdir().expect("temp dir should exist");
+        let jar_path = dir
+            .path()
+            .join("neoforge-26.1.0.0-alpha.1+snapshot-1-installer.jar");
+        write_manifest_jar(
+            &jar_path,
+            "Manifest-Version: 1.0\r\nMain-Class: net.minecraftforge.installer.SimpleInstaller\r\n\r\n",
+        );
+
+        let result = scan_startup_candidates(jar_path.to_string_lossy().as_ref(), "archive", &[])
+            .expect("archive jar scan should succeed");
+
+        assert_eq!(result.parsed_core.core_type, "Neoforge");
+        assert_eq!(result.detected_core_type_key.as_deref(), Some("neoforge"));
+        assert!(result.candidates[0].detail.contains("Neoforge"));
+    }
+
+    #[test]
     fn scan_startup_candidates_surfaces_broken_jar_candidates_in_folder_scan() {
         let dir = tempfile::tempdir().expect("temp dir should exist");
         fs::write(dir.path().join("paper-server.jar"), b"not a real jar archive")
