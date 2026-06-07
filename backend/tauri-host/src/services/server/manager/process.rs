@@ -3,7 +3,10 @@ use std::process::{Child, Command};
 #[cfg(unix)]
 use std::collections::HashSet;
 
+#[cfg(any(windows, not(any(unix, windows))))]
 use super::i18n::manager_t1;
+#[cfg(not(any(unix, windows)))]
+use super::i18n::manager_t;
 
 #[cfg(unix)]
 fn list_child_pids_unix(ppid: u32) -> Vec<u32> {
