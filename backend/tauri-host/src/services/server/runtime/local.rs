@@ -636,9 +636,7 @@ impl RuntimeProcessHandle {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        LocalServerRuntime, DEFAULT_HELPER_READY_TIMEOUT, STARTER_HELPER_READY_TIMEOUT,
-    };
+    use super::{LocalServerRuntime, DEFAULT_HELPER_READY_TIMEOUT, STARTER_HELPER_READY_TIMEOUT};
     use crate::models::server::{
         LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig, ServerStatus,
     };
