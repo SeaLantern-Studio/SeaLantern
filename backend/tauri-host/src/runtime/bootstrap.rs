@@ -25,9 +25,6 @@ pub(crate) fn run_desktop() {
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             desktop_shell::handle_single_instance(app, args, cwd.into());
         }))
-        .on_tray_icon_event(|app, event| {
-            desktop_shell::handle_builder_tray_click(app, &event);
-        })
         .invoke_handler(command_catalog::desktop_handler())
         .on_window_event(|window, event| {
             // 处理文件拖放事件，发送到前端
