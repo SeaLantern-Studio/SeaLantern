@@ -8,6 +8,8 @@ use tauri::{
 
 fn reveal_main_window<R: tauri::Runtime, M: Manager<R>>(manager: &M) {
     if let Some(window) = manager.get_webview_window("main") {
+        // Keep all main-window restore paths here so Windows taskbar visibility
+        // stays in sync after a tray minimize.
         #[cfg(target_os = "windows")]
         let _ = window.set_skip_taskbar(false);
 
@@ -49,6 +51,8 @@ pub(crate) fn handle_close_requested(window: &tauri::Window, api: &tauri::CloseR
     match settings.close_action.as_str() {
         "minimize" => {
             api.prevent_close();
+            // The tray icon menu and left-click handlers both route back through
+            // reveal_main_window(), which restores taskbar visibility on Windows.
             #[cfg(target_os = "windows")]
             let _ = window.set_skip_taskbar(true);
 
