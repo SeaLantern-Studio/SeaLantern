@@ -284,10 +284,12 @@ mod tests {
     }
 
     #[test]
-    fn script_modes_still_prefer_direct_jar() {
-        assert!(StartupMode::Bat.prefers_direct_jar());
-        assert!(StartupMode::Sh.prefers_direct_jar());
-        assert!(StartupMode::Ps1.prefers_direct_jar());
+    fn only_jar_like_modes_prefer_direct_jar() {
+        assert!(StartupMode::Jar.prefers_direct_jar());
+        assert!(StartupMode::Starter.prefers_direct_jar());
+        assert!(!StartupMode::Bat.prefers_direct_jar());
+        assert!(!StartupMode::Sh.prefers_direct_jar());
+        assert!(!StartupMode::Ps1.prefers_direct_jar());
     }
 
     #[test]

@@ -874,7 +874,7 @@ fn startup_mode_prefers_direct_jar(startup_mode: &str) -> bool {
         normalize_cli_startup_mode(Some(startup_mode))
             .unwrap_or_else(|_| "jar".to_string())
             .as_str(),
-        "bat" | "sh" | "ps1"
+        "jar" | "starter"
     )
 }
 
@@ -1185,9 +1185,9 @@ mod tests {
     }
 
     #[test]
-    fn resolve_local_preferred_jar_path_prefers_configured_jar_for_script_modes() {
+    fn resolve_local_preferred_jar_path_prefers_configured_jar_for_jar_mode() {
         let resolved = resolve_local_preferred_jar_path(
-            "sh",
+            "jar",
             Some("E:/servers/paper/server.jar"),
             Path::new("E:/servers/paper"),
         );
@@ -1196,9 +1196,9 @@ mod tests {
     }
 
     #[test]
-    fn resolve_local_preferred_jar_path_ignores_non_script_modes() {
+    fn resolve_local_preferred_jar_path_ignores_script_mode_even_when_jar_exists() {
         let resolved = resolve_local_preferred_jar_path(
-            "custom",
+            "sh",
             Some("E:/servers/paper/server.jar"),
             Path::new("E:/servers/paper"),
         );
@@ -1207,7 +1207,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_local_preferred_jar_path_checked_surfaces_server_scan_failures() {
+    fn resolve_local_preferred_jar_path_checked_surfaces_server_scan_failures_for_jar_mode() {
         let dir = tempdir().expect("temp dir should exist");
         let folder = dir.path().join("paper-server");
         std::fs::create_dir_all(&folder).expect("folder should create");
@@ -1215,7 +1215,7 @@ mod tests {
             .expect("directory-backed jar path should create");
 
         let error = resolve_local_preferred_jar_path_checked(
-            "sh",
+            "jar",
             Some(folder.join("start.sh").to_string_lossy().as_ref()),
             &folder,
         )
@@ -1233,7 +1233,7 @@ mod tests {
             .expect("directory-backed jar path should create");
 
         let resolved = resolve_local_preferred_jar_path(
-            "sh",
+            "jar",
             Some(folder.join("start.sh").to_string_lossy().as_ref()),
             &folder,
         );

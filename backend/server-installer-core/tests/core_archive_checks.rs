@@ -207,6 +207,49 @@ fn parse_server_core_type_reads_folded_manifest_main_class() {
 }
 
 #[test]
+fn parse_server_core_type_keeps_neoforge_filename_when_installer_main_class_is_legacy_forge() {
+    let dir = tempfile::tempdir().expect("temp dir should exist");
+    let jar_path = dir
+        .path()
+        .join("neoforge-26.1.0.0-alpha.1+snapshot-1-installer.jar");
+    write_manifest_jar(
+        &jar_path,
+        "Manifest-Version: 1.0\r\nMain-Class: net.minecraftforge.installer.SimpleInstaller\r\n\r\n",
+    );
+
+    let parsed = parse_server_core_type(jar_path.to_string_lossy().as_ref())
+        .expect("neoforge installer manifest should parse");
+
+    assert_eq!(parsed.core_type, "Neoforge");
+    assert_eq!(
+        parsed.main_class.as_deref(),
+        Some("net.minecraftforge.installer.SimpleInstaller")
+    );
+}
+
+#[test]
+fn parse_server_core_type_keeps_arclight_neoforge_filename_when_installer_main_class_is_legacy_forge(
+) {
+    let dir = tempfile::tempdir().expect("temp dir should exist");
+    let jar_path = dir
+        .path()
+        .join("arclight-neoforge-26.1.0.0-alpha.1+snapshot-1-installer.jar");
+    write_manifest_jar(
+        &jar_path,
+        "Manifest-Version: 1.0\r\nMain-Class: net.minecraftforge.installer.SimpleInstaller\r\n\r\n",
+    );
+
+    let parsed = parse_server_core_type(jar_path.to_string_lossy().as_ref())
+        .expect("arclight neoforge installer manifest should parse");
+
+    assert_eq!(parsed.core_type, "Arclight-Neoforge");
+    assert_eq!(
+        parsed.main_class.as_deref(),
+        Some("net.minecraftforge.installer.SimpleInstaller")
+    );
+}
+
+#[test]
 fn parse_server_core_type_returns_relative_jar_path_for_archive_source() {
     let dir = tempfile::tempdir().expect("temp dir should exist");
     let archive_path = dir.path().join("modpack.zip");
