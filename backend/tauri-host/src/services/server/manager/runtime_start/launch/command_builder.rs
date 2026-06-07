@@ -59,10 +59,10 @@ pub(crate) fn build_starter_install_command(
         .server
         .jar_path()
         .expect("starter launch requires jar_path");
-    let core_key = context
-        .starter_core_key
-        .as_deref()
-        .ok_or_else(|| manager_t("server.manager.starter_core_type_unrecognized"))?;
+    let core_key = context.starter_core_key.trim();
+    if core_key.is_empty() {
+        return Err(manager_t("server.manager.starter_core_type_unrecognized"));
+    }
 
     let mut java_cmd = Command::new(
         context
@@ -290,7 +290,7 @@ mod tests {
             java_bin_dir_str: "C:/Java/JDK 21/bin".to_string(),
             java_home_dir_str: "C:/Java/JDK 21".to_string(),
             startup_filename: startup_filename.to_string(),
-            starter_core_key: None,
+            starter_core_key: String::new(),
         }
     }
 
@@ -377,7 +377,7 @@ mod tests {
         let server = test_server(temp_dir.path(), "starter", None);
         let mut context =
             test_launch_context(&server, &settings, StartupMode::Starter, "installer.jar");
-        context.starter_core_key = Some("neoforge".to_string());
+        context.starter_core_key = "neoforge".to_string();
 
         let command =
             build_starter_install_command(&context).expect("starter install command should build");
@@ -397,7 +397,7 @@ mod tests {
         let server = test_server(temp_dir.path(), "starter", None);
         let mut context =
             test_launch_context(&server, &settings, StartupMode::Starter, "installer.jar");
-        context.starter_core_key = Some("forge".to_string());
+        context.starter_core_key = "forge".to_string();
 
         let command =
             build_starter_install_command(&context).expect("starter install command should build");

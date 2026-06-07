@@ -9,9 +9,22 @@ use crate::services::server::runtime::i18n::{runtime_t, runtime_t1};
 use std::io::Write;
 use std::time::Duration;
 
+// Starter installs may need to download libraries and generate launch scripts
+// before the helper can report a child pid, so their ready wait is longer.
+const STARTER_HELPER_READY_TIMEOUT: Duration = Duration::from_secs(300);
+const DEFAULT_HELPER_READY_TIMEOUT: Duration = Duration::from_secs(10);
+
 pub struct LocalServerRuntime;
 
 impl LocalServerRuntime {
+    fn helper_ready_timeout(startup_mode: &str) -> Duration {
+        if startup_mode.eq_ignore_ascii_case("starter") {
+            STARTER_HELPER_READY_TIMEOUT
+        } else {
+            DEFAULT_HELPER_READY_TIMEOUT
+        }
+    }
+
     pub fn ensure_config(server: &ServerInstance) -> Result<&LocalRuntimeConfig, String> {
         server.local_runtime().ok_or_else(|| {
             runtime_t1("server.manager.runtime_not_supported", server.runtime_kind.clone())
@@ -354,11 +367,7 @@ impl ServerRuntime for LocalServerRuntime {
         local_helper::cleanup_for_new_start(request.server);
         local_helper::spawn_helper_process(request.server)?;
         manager.mark_starting(&request.server.id);
-        let helper_ready_timeout = if runtime.startup_mode.eq_ignore_ascii_case("starter") {
-            Duration::from_secs(300)
-        } else {
-            Duration::from_secs(10)
-        };
+        let helper_ready_timeout = Self::helper_ready_timeout(&runtime.startup_mode);
         let ready_state =
             local_helper::wait_for_helper_ready(request.server, helper_ready_timeout)?;
 
@@ -627,7 +636,9 @@ impl RuntimeProcessHandle {
 
 #[cfg(test)]
 mod tests {
-    use super::LocalServerRuntime;
+    use super::{
+        LocalServerRuntime, DEFAULT_HELPER_READY_TIMEOUT, STARTER_HELPER_READY_TIMEOUT,
+    };
     use crate::models::server::{
         LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig, ServerStatus,
     };
@@ -891,5 +902,14 @@ mod tests {
         };
 
         assert_eq!(error, "processes lock poisoned");
+    }
+
+    #[test]
+    fn helper_ready_timeout_uses_named_starter_budget() {
+        assert_eq!(
+            LocalServerRuntime::helper_ready_timeout("starter"),
+            STARTER_HELPER_READY_TIMEOUT
+        );
+        assert_eq!(LocalServerRuntime::helper_ready_timeout("jar"), DEFAULT_HELPER_READY_TIMEOUT);
     }
 }
