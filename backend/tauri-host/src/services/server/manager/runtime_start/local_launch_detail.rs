@@ -8,10 +8,11 @@ use sea_lantern_server_local_setup_core::{
 use super::super::common::StartupMode;
 use super::super::startup_support::build_managed_jvm_args;
 use super::launch::command_builder::{
-    build_configured_command, build_direct_jar_command, find_preferred_jar_path,
+    build_configured_command, build_direct_jar_command, build_starter_install_command,
+    find_preferred_jar_path,
 };
 use super::launch::context::{
-    resolve_java_paths, resolve_managed_encoding, resolve_starter_installer_url, startup_filename,
+    resolve_java_paths, resolve_managed_encoding, resolve_starter_core_key, startup_filename,
     LaunchContext,
 };
 use super::LocalLaunchDetail;
@@ -29,7 +30,7 @@ pub(crate) fn build_local_launch_detail(
     let startup_path_obj = std::path::Path::new(startup_path);
     let managed_console_encoding = resolve_managed_encoding(startup_mode, startup_path_obj);
     let (java_bin_dir_str, java_home_dir_str) = resolve_java_paths(runtime.java_path.as_str())?;
-    let starter_installer_url = resolve_starter_installer_url("inspect", server)?;
+    let starter_core_key = resolve_starter_core_key(server)?;
 
     let context = LaunchContext {
         server,
@@ -39,7 +40,7 @@ pub(crate) fn build_local_launch_detail(
         java_bin_dir_str,
         java_home_dir_str,
         startup_filename: startup_filename(startup_path),
-        starter_installer_url,
+        starter_core_key,
     };
     let effective = resolve_effective_startup_config_checked(server, settings)?;
 
@@ -50,13 +51,17 @@ pub(crate) fn build_local_launch_detail(
     };
 
     let preferred_jar_path = find_preferred_jar_path(&context);
-    let launch_target = resolve_local_launch_target(
-        runtime.startup_mode.as_str(),
-        preferred_jar_path.as_deref(),
-        server.jar_path(),
-        server.custom_command(),
-        &context.startup_filename,
-    );
+    let launch_target = if matches!(startup_mode, StartupMode::Starter) {
+        context.startup_filename.clone()
+    } else {
+        resolve_local_launch_target(
+            runtime.startup_mode.as_str(),
+            preferred_jar_path.as_deref(),
+            server.jar_path(),
+            server.custom_command(),
+            &context.startup_filename,
+        )
+    };
     let command_preview = resolve_command_preview(&context, preferred_jar_path.as_deref())?;
 
     Ok(LocalLaunchDetail {
@@ -76,7 +81,9 @@ fn resolve_command_preview(
     context: &LaunchContext<'_>,
     preferred_jar_path: Option<&str>,
 ) -> Result<String, String> {
-    let command = if let Some(preferred_jar_path) = preferred_jar_path {
+    let command = if matches!(context.startup_mode, StartupMode::Starter) {
+        build_starter_install_command(context)?
+    } else if let Some(preferred_jar_path) = preferred_jar_path {
         build_direct_jar_command(context, preferred_jar_path, None)?
     } else {
         build_configured_command(context)?
@@ -256,6 +263,28 @@ mod tests {
         assert_eq!(detail.launch_target, "java -jar custom.jar nogui");
         assert!(detail.effective_jvm_args.is_empty());
         assert!(detail.command_preview.contains("custom.jar"));
+    }
+
+    #[test]
+    fn build_local_launch_detail_uses_installer_jar_for_starter_preview() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let mut server = test_server(temp_dir.path().to_string_lossy().to_string(), "starter");
+        let installer_path = temp_dir
+            .path()
+            .join("neoforge-26.1.0.0-alpha.1+snapshot-1-installer.jar");
+        std::fs::write(&installer_path, b"placeholder").expect("installer fixture should exist");
+        server.core_type = "neoforge".to_string();
+        if let ServerRuntimeConfig::Local(runtime) = &mut server.runtime {
+            runtime.jar_path = installer_path.to_string_lossy().to_string();
+        }
+
+        let detail = build_local_launch_detail(&server, &test_settings())
+            .expect("starter launch detail should build");
+
+        assert_eq!(detail.startup_mode, "starter");
+        assert_eq!(detail.launch_target, "neoforge-26.1.0.0-alpha.1+snapshot-1-installer.jar");
+        assert!(detail.command_preview.contains("--install-server"));
+        assert!(detail.command_preview.contains("--server-starter"));
     }
 
     #[test]

@@ -305,6 +305,7 @@
       "server_name": "服务器名称",
       "server_path": "服务器路径",
       "create": "创建",
+      "created_but_start_failed": "服务器“{name}”已创建，但首次启动失败：{error}。请前往控制台查看详细日志。",
       "select_and_create": "选择并创建",
       "import_existing": "选择并导入",
       "max_memory": "最大内存 (MB)",

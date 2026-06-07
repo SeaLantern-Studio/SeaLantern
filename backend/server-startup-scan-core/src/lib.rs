@@ -44,6 +44,7 @@ pub struct StartupCandidateItem {
 }
 
 const STARTER_MAIN_CLASS_PREFIX: &str = "net.neoforged.serverstarterjar";
+const FORGE_SIMPLE_INSTALLER_MAIN_CLASS: &str = "net.minecraftforge.installer.SimpleInstaller";
 
 pub fn scan_startup_candidates(
     source_path: &str,
@@ -94,7 +95,8 @@ fn scan_folder_source(
             let parsed = sea_lantern_server_installer_core::parse_server_core_type(&full_path)
                 .map_err(|error| format!("扫描启动候选失败: {}", error))?;
 
-            let is_starter = is_starter_main_class(&parsed);
+            let is_starter = is_starter_candidate(&parsed);
+            let is_installer = is_forge_like_installer_main_class(&parsed);
             let is_server_jar = filename.eq_ignore_ascii_case("server.jar");
             let recommended = if is_starter {
                 1
@@ -103,7 +105,9 @@ fn scan_folder_source(
             } else {
                 4
             };
-            let label = if is_starter {
+            let label = if is_installer {
+                "Installer".to_string()
+            } else if is_starter {
                 "Starter".to_string()
             } else if is_server_jar {
                 "server.jar".to_string()
@@ -204,9 +208,16 @@ fn scan_archive_source(
 
         if extension == "jar" {
             let parsed = sea_lantern_server_installer_core::parse_server_core_type(source_path)?;
-            let is_starter = is_starter_main_class(&parsed);
+            let is_starter = is_starter_candidate(&parsed);
+            let is_installer = is_forge_like_installer_main_class(&parsed);
             let mode = if is_starter { "starter" } else { "jar" };
-            let label = if is_starter { "Starter" } else { "server.jar" };
+            let label = if is_installer {
+                "Installer"
+            } else if is_starter {
+                "Starter"
+            } else {
+                "server.jar"
+            };
 
             return Ok(build_result(
                 parsed.clone(),
@@ -257,9 +268,16 @@ fn scan_archive_source(
 
     let mut candidates = Vec::new();
     if let Some(jar_path) = parsed.jar_path.clone() {
-        let is_starter = is_starter_main_class(&parsed);
+        let is_starter = is_starter_candidate(&parsed);
+        let is_installer = is_forge_like_installer_main_class(&parsed);
         let mode = if is_starter { "starter" } else { "jar" };
-        let label = if is_starter { "Starter" } else { "server.jar" };
+        let label = if is_installer {
+            "Installer"
+        } else if is_starter {
+            "Starter"
+        } else {
+            "server.jar"
+        };
 
         candidates.push(StartupCandidateItem {
             id: format!("archive-{}", mode),
@@ -334,6 +352,14 @@ fn is_starter_main_class(parsed: &ParsedServerCoreInfo) -> bool {
         .as_deref()
         .map(|main| main.starts_with(STARTER_MAIN_CLASS_PREFIX))
         .unwrap_or(false)
+}
+
+fn is_forge_like_installer_main_class(parsed: &ParsedServerCoreInfo) -> bool {
+    parsed.main_class.as_deref() == Some(FORGE_SIMPLE_INSTALLER_MAIN_CLASS)
+}
+
+fn is_starter_candidate(parsed: &ParsedServerCoreInfo) -> bool {
+    is_starter_main_class(parsed) || is_forge_like_installer_main_class(parsed)
 }
 
 fn build_result(
@@ -510,6 +536,9 @@ mod tests {
 
         assert_eq!(result.parsed_core.core_type, "Neoforge");
         assert_eq!(result.detected_core_type_key.as_deref(), Some("neoforge"));
+        assert_eq!(result.candidates[0].mode, "starter");
+        assert_eq!(result.candidates[0].label, "Installer");
+        assert_eq!(result.candidates[0].recommended, 1);
         assert!(result.candidates[0].detail.contains("Neoforge"));
     }
 

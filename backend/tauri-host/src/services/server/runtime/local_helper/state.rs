@@ -60,6 +60,49 @@ pub(super) fn started_state(
     }
 }
 
+pub(super) fn helper_ready_state(
+    server_id: &str,
+    helper_pid: u32,
+    control_port: u16,
+    auth_token: String,
+    updated_at: u64,
+) -> LocalRuntimeState {
+    LocalRuntimeState {
+        server_id: server_id.to_string(),
+        helper_pid,
+        child_pid: None,
+        control_port: Some(control_port),
+        auth_token,
+        running: true,
+        exit_code: None,
+        detail_message: format!(
+            "runtime=local running=true source=helper helper_ready control_port={}",
+            control_port
+        ),
+        error_message: None,
+        updated_at,
+    }
+}
+
+pub(super) fn start_failed_state(
+    state: &LocalRuntimeState,
+    error_message: String,
+    updated_at: u64,
+) -> LocalRuntimeState {
+    LocalRuntimeState {
+        server_id: state.server_id.clone(),
+        helper_pid: state.helper_pid,
+        child_pid: None,
+        control_port: None,
+        auth_token: state.auth_token.clone(),
+        running: false,
+        exit_code: None,
+        detail_message: "runtime=local running=false source=helper startup=failed".to_string(),
+        error_message: Some(error_message),
+        updated_at,
+    }
+}
+
 pub(super) fn state_from_terminal_snapshot(
     state: &LocalRuntimeState,
     snapshot: &LocalHelperStatusSnapshot,
@@ -136,8 +179,9 @@ pub(super) fn current_timestamp_secs() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        started_state, state_from_requested_stop, state_from_terminal_snapshot,
-        terminal_state_from_exit, write_state_file, LocalHelperStatusSnapshot, LocalRuntimeState,
+        helper_ready_state, start_failed_state, started_state, state_from_requested_stop,
+        state_from_terminal_snapshot, terminal_state_from_exit, write_state_file,
+        LocalHelperStatusSnapshot, LocalRuntimeState,
     };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use crate::services::server::runtime::i18n::runtime_t1;
@@ -218,6 +262,41 @@ mod tests {
         assert_eq!(
             state.detail_message,
             "runtime=local running=true source=helper child_pid=22 control_port=25570"
+        );
+    }
+
+    #[test]
+    fn helper_ready_state_marks_control_plane_ready_before_child_spawn() {
+        let state = helper_ready_state("local-state", 11, 25570, "token".to_string(), 456);
+
+        assert_eq!(state.server_id, "local-state");
+        assert_eq!(state.helper_pid, 11);
+        assert_eq!(state.child_pid, None);
+        assert_eq!(state.control_port, Some(25570));
+        assert_eq!(state.auth_token, "token");
+        assert!(state.running);
+        assert_eq!(state.exit_code, None);
+        assert_eq!(state.error_message, None);
+        assert_eq!(
+            state.detail_message,
+            "runtime=local running=true source=helper helper_ready control_port=25570"
+        );
+    }
+
+    #[test]
+    fn start_failed_state_clears_control_port_and_persists_error() {
+        let ready = helper_ready_state("local-state", 11, 25570, "token".to_string(), 456);
+        let failed = start_failed_state(&ready, "start failed".to_string(), 789);
+
+        assert!(!failed.running);
+        assert_eq!(failed.child_pid, None);
+        assert_eq!(failed.control_port, None);
+        assert_eq!(failed.exit_code, None);
+        assert_eq!(failed.updated_at, 789);
+        assert_eq!(failed.error_message.as_deref(), Some("start failed"));
+        assert_eq!(
+            failed.detail_message,
+            "runtime=local running=false source=helper startup=failed"
         );
     }
 

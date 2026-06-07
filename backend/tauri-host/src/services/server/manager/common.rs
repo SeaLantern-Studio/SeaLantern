@@ -2,10 +2,12 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::models::server::{ServerInstance, ServerRuntimeConfig};
+#[cfg(target_os = "windows")]
+use sea_lantern_server_local_setup_core::script_bytes_prefer_utf8;
 use sea_lantern_server_local_setup_core::{
     decode_console_bytes as decode_shared_console_bytes, detect_startup_mode_from_path_like,
     parse_java_major_version as parse_shared_java_major_version,
-    preview_command as preview_shared_command, script_bytes_prefer_utf8,
+    preview_command as preview_shared_command,
 };
 
 use super::i18n::{manager_t, manager_t1, manager_t2, manager_t3};

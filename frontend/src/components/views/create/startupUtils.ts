@@ -39,6 +39,32 @@ export function getPathName(path: string): string {
   return segments.length > 0 ? segments[segments.length - 1] : path;
 }
 
+export function getParentPath(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const normalized = trimmed.replace(/[\\/]+$/, "");
+  const lastSeparator = Math.max(normalized.lastIndexOf("\\"), normalized.lastIndexOf("/"));
+  if (lastSeparator < 0) {
+    return "";
+  }
+
+  return normalized.slice(0, lastSeparator);
+}
+
+export function detectVersionCandidatesFromText(input: string, knownVersions: string[]): string[] {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const lowered = trimmed.toLowerCase();
+  const matches = knownVersions.filter((version) => lowered.includes(version.toLowerCase()));
+  return [...new Set(matches)].sort((left, right) => right.length - left.length);
+}
+
 export function containsIoRedirection(command: string): boolean {
   const stripped = command.replace(/"[^"]*"|'[^']*'/g, "");
   return /(>>?|<<|[0-9]?>|[0-9]?<|\|)/.test(stripped);

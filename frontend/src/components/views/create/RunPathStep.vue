@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import SLInput from "@components/common/SLInput.vue";
 import type { SourceType } from "@components/views/create/SourceIntakeField.vue";
-import { getPathName, normalizePathForCompare } from "@components/views/create/startupUtils";
+import { normalizePathForCompare } from "@components/views/create/startupUtils";
 import { i18n } from "@language";
 import { isBrowserEnv } from "@api/tauri";
 
@@ -76,7 +76,7 @@ const effectivePath = computed(() => {
     </p>
 
     <p v-if="sourceType === 'folder'" class="run-path-effective">
-      {{ i18n.t("create.path_effective_label") }} {{ getPathName(effectivePath) || "-" }}
+      {{ i18n.t("create.path_effective_label") }} {{ effectivePath || "-" }}
     </p>
 
     <p v-if="isDockerEnv" class="run-path-docker-hint">

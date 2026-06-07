@@ -304,15 +304,6 @@ pub(super) fn preflight_runtime_requirements_detailed(
                 )
             })?;
 
-            ensure_docker_environment().map_err(|message| {
-                RuntimePreflightError::new(
-                    CliServerRuntimeKind::Docker,
-                    RuntimePreflightStage::DockerEnvironment,
-                    message,
-                    None,
-                )
-            })?;
-
             let target_name = command
                 .name
                 .as_deref()
@@ -351,6 +342,14 @@ pub(super) fn preflight_runtime_requirements_detailed(
                     RuntimePreflightStage::DockerImage,
                     message,
                     Some(format!("image={}:{}", image, image_tag)),
+                )
+            })?;
+            ensure_docker_environment().map_err(|message| {
+                RuntimePreflightError::new(
+                    CliServerRuntimeKind::Docker,
+                    RuntimePreflightStage::DockerEnvironment,
+                    message,
+                    None,
                 )
             })?;
             preflight_docker_image_reference(&image, &image_tag).map_err(|message| {

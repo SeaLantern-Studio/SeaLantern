@@ -91,7 +91,7 @@ pub(crate) fn start_local_runtime(
     let (java_bin_dir_str, java_home_dir_str) =
         launch::context::resolve_java_paths(java_path.as_str())?;
     let startup_filename = launch::context::startup_filename(startup_path.as_str());
-    let starter_installer_url = launch::context::resolve_starter_installer_url(id, server)?;
+    let starter_core_key = launch::context::resolve_starter_core_key(server)?;
     let launch_context = launch::context::LaunchContext {
         server,
         settings: &settings,
@@ -100,7 +100,7 @@ pub(crate) fn start_local_runtime(
         java_bin_dir_str,
         java_home_dir_str,
         startup_filename,
-        starter_installer_url,
+        starter_core_key,
     };
 
     server_log_pipeline::init_db(Path::new(&server.path))?;

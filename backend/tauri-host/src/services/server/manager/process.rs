@@ -3,6 +3,9 @@ use std::process::{Child, Command};
 #[cfg(unix)]
 use std::collections::HashSet;
 
+#[cfg(not(any(unix, windows)))]
+use super::i18n::manager_t;
+#[cfg(any(windows, not(any(unix, windows))))]
 use super::i18n::manager_t1;
 
 #[cfg(unix)]
@@ -113,10 +116,24 @@ fn is_process_alive_windows(pid: u32) -> bool {
         return false;
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    tasklist_csv_has_pid(&String::from_utf8_lossy(&output.stdout), pid)
+}
+
+#[cfg(windows)]
+fn tasklist_csv_has_pid(stdout: &str, pid: u32) -> bool {
+    let expected_pid = pid.to_string();
+
     stdout.lines().any(|line| {
         let trimmed = line.trim();
-        !trimmed.is_empty() && !trimmed.contains("No tasks are running")
+        if trimmed.is_empty() || !trimmed.starts_with('"') {
+            return false;
+        }
+
+        let mut fields = trimmed.split("\",\"");
+        let _image_name = fields.next();
+        let pid_field = fields.next().map(|field| field.trim_matches('"'));
+
+        pid_field.is_some_and(|value| value == expected_pid)
     })
 }
 
@@ -177,4 +194,27 @@ pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
         .wait()
         .map(|_| ())
         .map_err(|e| manager_t1("server.manager.process_wait_failed", e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(windows)]
+    use super::tasklist_csv_has_pid;
+
+    #[cfg(windows)]
+    #[test]
+    fn tasklist_csv_has_pid_matches_actual_csv_rows() {
+        let stdout = "\"java.exe\",\"25212\",\"Console\",\"1\",\"512,000 K\"\r\n";
+
+        assert!(tasklist_csv_has_pid(stdout, 25212));
+        assert!(!tasklist_csv_has_pid(stdout, 99999));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn tasklist_csv_has_pid_rejects_localized_no_match_text() {
+        let stdout = "INFO: 没有运行的任务匹配指定标准。\r\n";
+
+        assert!(!tasklist_csv_has_pid(stdout, 25212));
+    }
 }

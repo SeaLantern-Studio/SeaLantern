@@ -279,6 +279,7 @@
       "server_name": "Server Name",
       "server_path": "Server Path",
       "create": "Create",
+      "created_but_start_failed": "Server \"{name}\" was created, but the first start failed: {error}. Open the console to inspect the detailed logs.",
       "select_and_create": "Select and Create",
       "import_existing": "Select and Import",
       "max_memory": "Max Memory (MB)",

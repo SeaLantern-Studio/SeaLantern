@@ -7,9 +7,9 @@ use crate::services;
 use super::INSTALL_IN_PROGRESS;
 #[cfg(target_os = "linux")]
 use sea_lantern_update_core::arch::{get_aur_helper, is_arch_linux};
-use sea_lantern_update_core::install_support::{
-    build_install_launch_plan, get_pending_update_file, InstallLaunchPlan,
-};
+use sea_lantern_update_core::install_support::get_pending_update_file;
+#[cfg(target_os = "windows")]
+use sea_lantern_update_core::install_support::{build_install_launch_plan, InstallLaunchPlan};
 use sea_lantern_update_core::pending::write_pending_update;
 #[cfg(target_os = "windows")]
 use sea_lantern_update_core::windows_install;

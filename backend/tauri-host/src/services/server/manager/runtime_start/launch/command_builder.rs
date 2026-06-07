@@ -8,6 +8,7 @@ use crate::services::server::manager::i18n::manager_t;
 use sea_lantern_server_local_setup_core::{
     resolve_direct_jar_launch_target, resolve_local_preferred_jar_path,
 };
+use std::ffi::OsString;
 use std::path::Path;
 use std::process::Command;
 
@@ -51,6 +52,46 @@ pub(crate) fn build_direct_jar_command(
     Ok(java_cmd)
 }
 
+pub(crate) fn build_starter_install_command(
+    context: &LaunchContext<'_>,
+) -> Result<Command, String> {
+    let jar_path = context
+        .server
+        .jar_path()
+        .expect("starter launch requires jar_path");
+    let core_key = context.starter_core_key.trim();
+    if core_key.is_empty() {
+        return Err(manager_t("server.manager.starter_core_type_unrecognized"));
+    }
+
+    let mut java_cmd = Command::new(
+        context
+            .server
+            .java_path()
+            .expect("local runtime launch requires java_path"),
+    );
+    java_cmd.arg("-jar");
+    java_cmd.arg(resolve_direct_jar_launch_target(&context.server.path, jar_path));
+
+    match core_key {
+        "neoforge" | "arclight-neoforge" => {
+            java_cmd.arg("--install-server");
+            java_cmd.arg(OsString::from("."));
+            java_cmd.arg("--server-starter");
+        }
+        "forge" | "arclight-forge" | "spongeforge" | "catserver" | "mohist" => {
+            java_cmd.arg("--installServer");
+            java_cmd.arg(OsString::from("."));
+        }
+        _ => {
+            java_cmd.arg("--install-server");
+            java_cmd.arg(OsString::from("."));
+        }
+    }
+
+    Ok(java_cmd)
+}
+
 /// 按启动方式构建最终命令
 pub(crate) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Command, String> {
     match context.startup_mode {
@@ -58,20 +99,7 @@ pub(crate) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Co
         StartupMode::Bat => build_bat_command(context),
         StartupMode::Sh => build_sh_command(context),
         StartupMode::Ps1 => build_ps1_command(context),
-        StartupMode::Starter => {
-            let installer_url = context
-                .starter_installer_url
-                .as_deref()
-                .ok_or_else(|| manager_t("server.manager.starter_installer_url_missing"))?;
-            build_direct_jar_command(
-                context,
-                context
-                    .server
-                    .jar_path()
-                    .expect("starter launch requires jar_path"),
-                Some(installer_url),
-            )
-        }
+        StartupMode::Starter => build_starter_install_command(context),
         StartupMode::Jar => build_direct_jar_command(
             context,
             context
@@ -170,7 +198,9 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_custom_command, build_ps1_command, build_sh_command};
+    use super::{
+        build_custom_command, build_ps1_command, build_sh_command, build_starter_install_command,
+    };
     use crate::models::server::{
         CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
@@ -260,7 +290,7 @@ mod tests {
             java_bin_dir_str: "C:/Java/JDK 21/bin".to_string(),
             java_home_dir_str: "C:/Java/JDK 21".to_string(),
             startup_filename: startup_filename.to_string(),
-            starter_installer_url: None,
+            starter_core_key: String::new(),
         }
     }
 
@@ -338,6 +368,46 @@ mod tests {
         assert_eq!(args, vec!["start.sh", "nogui"]);
         assert_java_process_env_is_injected(&command);
         assert!(user_jvm_args_path.exists());
+    }
+
+    #[test]
+    fn starter_install_command_uses_neoforge_cli_install_flow() {
+        let temp_dir = TempDir::new().expect("temp dir should exist");
+        let settings = test_settings();
+        let server = test_server(temp_dir.path(), "starter", None);
+        let mut context =
+            test_launch_context(&server, &settings, StartupMode::Starter, "installer.jar");
+        context.starter_core_key = "neoforge".to_string();
+
+        let command =
+            build_starter_install_command(&context).expect("starter install command should build");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(command.get_program().to_string_lossy(), fake_java_probe_command());
+        assert_eq!(args, vec!["-jar", "server.jar", "--install-server", ".", "--server-starter"]);
+    }
+
+    #[test]
+    fn starter_install_command_uses_forge_cli_install_flow() {
+        let temp_dir = TempDir::new().expect("temp dir should exist");
+        let settings = test_settings();
+        let server = test_server(temp_dir.path(), "starter", None);
+        let mut context =
+            test_launch_context(&server, &settings, StartupMode::Starter, "installer.jar");
+        context.starter_core_key = "forge".to_string();
+
+        let command =
+            build_starter_install_command(&context).expect("starter install command should build");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(command.get_program().to_string_lossy(), fake_java_probe_command());
+        assert_eq!(args, vec!["-jar", "server.jar", "--installServer", "."]);
     }
 
     #[cfg(target_os = "windows")]
