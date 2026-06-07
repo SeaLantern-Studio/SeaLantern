@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useAttrs } from "vue";
 import { Loader2 } from "@lucide/vue";
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 interface Props {
   variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
@@ -20,6 +24,12 @@ const props = withDefaults(defineProps<Props>(), {
   iconOnly: false,
 });
 
+const emit = defineEmits<{
+  (e: "click", event: MouseEvent): void;
+}>();
+
+const attrs = useAttrs();
+
 const buttonClasses = computed(() => [
   `sl-button--${props.variant}`,
   `sl-button--${props.size}`,
@@ -28,15 +38,21 @@ const buttonClasses = computed(() => [
     "sl-button--icon-only": props.iconOnly,
   },
 ]);
+
+function handleClick(event: MouseEvent) {
+  emit("click", event);
+}
 </script>
 
 <template>
   <button
+    v-bind="attrs"
     class="sl-button"
     :class="buttonClasses"
     :type="type"
     :disabled="disabled || loading"
     :aria-busy="loading"
+    @click="handleClick"
   >
     <Loader2 v-if="loading" class="sl-button-spinner" :size="16" />
     <slot v-else />

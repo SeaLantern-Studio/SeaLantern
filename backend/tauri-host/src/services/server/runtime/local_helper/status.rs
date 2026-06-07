@@ -120,6 +120,12 @@ fn fallback_error_message(
         Some(runtime_t("server.runtime.local_helper.child_running_after_helper_exit"))
     } else if helper_unreachable {
         Some(runtime_t("server.runtime.local_helper.status_probe_failed"))
+    } else if state.running
+        && state.child_pid.is_none()
+        && state.exit_code.is_none()
+        && state.error_message.is_none()
+    {
+        None
     } else {
         state.error_message.clone()
     }

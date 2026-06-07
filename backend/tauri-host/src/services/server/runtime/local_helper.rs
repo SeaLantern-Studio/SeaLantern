@@ -38,8 +38,9 @@ use self::dispatch::handle_connection;
 use self::protocol::{send_request, LocalHelperRequest};
 use self::snapshot::detect_terminal_snapshot;
 use self::state::{
-    current_timestamp_secs, persist_terminal_state, remove_state_file, started_state,
-    state_from_requested_stop, state_from_terminal_snapshot, write_state_file,
+    current_timestamp_secs, helper_ready_state, persist_terminal_state, remove_state_file,
+    start_failed_state, started_state, state_from_requested_stop, state_from_terminal_snapshot,
+    write_state_file,
 };
 use self::status::{fallback_snapshot_from_state_file, fallback_snapshot_from_unreachable_helper};
 use crate::models::server::ServerInstance;
@@ -212,6 +213,11 @@ fn current_exe_lowercase() -> Option<String> {
         .map(|path| path.to_string_lossy().to_ascii_lowercase())
 }
 
+fn helper_process_matches_server(server: &ServerInstance, pid: u32) -> bool {
+    let current_exe = current_exe_lowercase();
+    helper_process_matches_server_pid(pid, &server.id, current_exe.as_deref())
+}
+
 fn helper_process_matches_server_pid(pid: u32, server_id: &str, current_exe: Option<&str>) -> bool {
     let mut system = System::new_all();
     system.refresh_processes(ProcessesToUpdate::All, true);
@@ -293,7 +299,7 @@ pub fn wait_for_helper_ready(
     let deadline = std::time::Instant::now() + timeout;
     while std::time::Instant::now() < deadline {
         if let Some(state) = read_state_checked(server)? {
-            if state.control_port.is_some() || !state.running {
+            if state.child_pid.is_some() || !state.running {
                 return Ok(state);
             }
         }
@@ -315,7 +321,7 @@ pub fn status_snapshot(
         return Ok(None);
     };
 
-    if is_process_alive(state.helper_pid) {
+    if helper_process_matches_server(server, state.helper_pid) {
         match send_request(
             &state,
             LocalHelperRequest::Status { auth_token: state.auth_token.clone() },
@@ -347,7 +353,7 @@ pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String
         )
     })?;
 
-    if !is_process_alive(state.helper_pid) {
+    if !helper_process_matches_server(server, state.helper_pid) {
         return Err(runtime_t("server.runtime.local_helper.send_unavailable"));
     }
 
@@ -375,11 +381,23 @@ pub fn request_stop(server: &ServerInstance) -> Result<(), String> {
         )
     })?;
 
-    if is_process_alive(state.helper_pid) {
-        let response = send_request(
+    if helper_process_matches_server(server, state.helper_pid) {
+        let response = match send_request(
             &state,
             LocalHelperRequest::Stop { auth_token: state.auth_token.clone() },
-        )?;
+        ) {
+            Ok(response) => response,
+            Err(error) => {
+                if state.child_pid.is_some_and(is_process_alive) {
+                    return Err(runtime_t1(
+                        "server.runtime.local_helper.stop_failed_child_running",
+                        error,
+                    ));
+                }
+
+                return Err(error);
+            }
+        };
         if response.ok {
             return Ok(());
         }
@@ -410,11 +428,30 @@ pub fn force_stop(server: &ServerInstance) -> Result<(), String> {
         )
     })?;
 
-    if is_process_alive(state.helper_pid) {
-        let response = send_request(
+    if helper_process_matches_server(server, state.helper_pid) {
+        let response = match send_request(
             &state,
             LocalHelperRequest::ForceStop { auth_token: state.auth_token.clone() },
-        )?;
+        ) {
+            Ok(response) => response,
+            Err(error) => {
+                if let Some(pid) = state.child_pid.filter(|pid| is_process_alive(*pid)) {
+                    force_kill_process_tree_by_pid(pid)?;
+                    persist_terminal_state(
+                        server,
+                        &state,
+                        None,
+                        Some(runtime_t1(
+                            "server.runtime.local_helper.force_stop_fallback_with_error",
+                            error,
+                        )),
+                    )?;
+                    return Ok(());
+                }
+
+                return Err(error);
+            }
+        };
         if response.ok {
             return Ok(());
         }
@@ -482,8 +519,25 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         .map_err(|e| runtime_t1("server.runtime.local_helper.local_addr_failed", e.to_string()))?
         .port();
 
+    let state_path = state_file_path(&server);
+    let mut state = helper_ready_state(
+        server_id,
+        helper_pid,
+        control_port,
+        auth_token.clone(),
+        current_timestamp_secs(),
+    );
+    write_state_file(&state_path, &state)?;
+
     let start_result =
-        manager.start_local_runtime(RuntimeStartRequest { server_id, server: &server })?;
+        match manager.start_local_runtime(RuntimeStartRequest { server_id, server: &server }) {
+            Ok(result) => result,
+            Err(error) => {
+                state = start_failed_state(&state, error.clone(), current_timestamp_secs());
+                write_state_file(&state_path, &state)?;
+                return Err(error);
+            }
+        };
     let Some(mut child) = start_result
         .process_handle
         .and_then(RuntimeProcessHandle::into_local_child)
@@ -506,7 +560,7 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         server_log_pipeline::spawn_server_output_reader(server_id.to_string(), stderr);
     }
 
-    let mut state = started_state(
+    state = started_state(
         server_id,
         helper_pid,
         child_pid,
@@ -514,8 +568,6 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         auth_token,
         current_timestamp_secs(),
     );
-
-    let state_path = state_file_path(&server);
     write_state_file(&state_path, &state)?;
     logger::log_user_action(
         "server.runtime.local.helper",

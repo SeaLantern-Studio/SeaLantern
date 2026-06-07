@@ -149,6 +149,17 @@
   gap: var(--sl-space-md);
 }
 
+.create-submit-error {
+  margin-top: var(--sl-space-sm);
+  padding: 10px 12px;
+  border-radius: var(--sl-radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--sl-error);
+  font-size: var(--sl-font-size-sm);
+  line-height: 1.5;
+}
+
 .create-submit-actions :deep(.sl-button) {
   min-width: 128px;
 }

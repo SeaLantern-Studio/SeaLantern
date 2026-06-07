@@ -316,16 +316,16 @@ impl LocalServerRuntime {
         };
 
         let is_starting = manager.is_starting_checked(&server.id)?;
-        let is_stopping = manager.is_stopping_checked(&server.id)?;
-        let status = local_helper::helper_runtime_status(&snapshot, is_stopping);
-
-        if snapshot.running && is_starting {
+        if snapshot.running && snapshot.pid.is_some() && is_starting {
             manager.clear_starting(&server.id);
         }
 
         if !snapshot.running {
             control::clear_runtime_flags(manager, &server.id);
         }
+
+        let is_stopping = snapshot.running && manager.is_stopping_checked(&server.id)?;
+        let status = local_helper::helper_runtime_status(&snapshot, is_stopping);
 
         Ok(Some(local_helper::runtime_snapshot_from_helper(snapshot, status)))
     }
@@ -354,8 +354,13 @@ impl ServerRuntime for LocalServerRuntime {
         local_helper::cleanup_for_new_start(request.server);
         local_helper::spawn_helper_process(request.server)?;
         manager.mark_starting(&request.server.id);
+        let helper_ready_timeout = if runtime.startup_mode.eq_ignore_ascii_case("starter") {
+            Duration::from_secs(300)
+        } else {
+            Duration::from_secs(10)
+        };
         let ready_state =
-            local_helper::wait_for_helper_ready(request.server, Duration::from_secs(5))?;
+            local_helper::wait_for_helper_ready(request.server, helper_ready_timeout)?;
 
         if !ready_state.running {
             return Err(ready_state
@@ -541,7 +546,11 @@ impl ServerRuntime for LocalServerRuntime {
             return Ok(());
         }
 
-        local_helper::force_stop(server)?;
+        if let Err(err) = local_helper::force_stop(server) {
+            control::clear_runtime_flags(manager, &server.id);
+            server_log_pipeline::shutdown_writer(&server.id);
+            return Err(err);
+        }
         control::clear_runtime_flags(manager, &server.id);
         let _ = server_log_pipeline::append_sealantern_log(
             &server.id,
@@ -827,6 +836,37 @@ mod tests {
             Some("runtime=local running=false source=helper exit_code=7")
         );
         assert_eq!(snapshot.error_message.as_deref(), Some("server crashed"));
+    }
+
+    #[test]
+    fn local_status_with_manager_clears_stopping_for_stale_helper_state() {
+        let manager = ServerManager::new();
+        manager.mark_stopping("local-alpha");
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = local_server_at(temp_dir.path().to_string_lossy().to_string());
+        let state = LocalRuntimeState {
+            server_id: server.id.clone(),
+            helper_pid: u32::MAX,
+            child_pid: Some(u32::MAX),
+            control_port: Some(25570),
+            auth_token: "token".to_string(),
+            running: true,
+            exit_code: None,
+            detail_message: "runtime=local running=true source=helper".to_string(),
+            error_message: None,
+            updated_at: 123,
+        };
+        write_state_fixture(&server, &state);
+
+        let snapshot = LocalServerRuntime
+            .status_with_manager(&manager, &server)
+            .expect("status should succeed");
+
+        assert_eq!(snapshot.status, ServerStatus::Stopped);
+        assert_eq!(snapshot.pid, None);
+        assert!(!manager
+            .is_stopping_checked("local-alpha")
+            .expect("stopping flag should read"));
     }
 
     #[test]

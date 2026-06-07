@@ -1,11 +1,12 @@
 use super::protocol::{read_request, write_response, LocalHelperRequest, LocalHelperResponse};
 use super::snapshot::snapshot_from_manager;
-use super::LocalRuntimeState;
+use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
 use crate::models::server::ServerInstance;
 use crate::services::server::manager::ServerManager;
 use crate::services::server::runtime::i18n::runtime_t;
 use crate::services::server::runtime::local::LocalServerRuntime;
 use crate::services::server::runtime::ServerRuntime;
+use crate::utils::logger;
 use std::net::TcpStream;
 
 pub(super) fn handle_connection(
@@ -23,14 +24,12 @@ pub(super) fn handle_connection(
 
     let outcome = match request {
         LocalHelperRequest::Status { .. } => DispatchOutcome::stay_running(status_response(
-            snapshot_from_manager(manager, server.id.as_str())?,
+            helper_status_snapshot(manager, server, state)?,
         )),
         LocalHelperRequest::Send { command, .. } => DispatchOutcome::stay_running(
             command_response(manager.send_command(&server.id, &command)),
         ),
-        LocalHelperRequest::Stop { .. } => {
-            DispatchOutcome::from_control_result(manager.stop_server(&server.id))
-        }
+        LocalHelperRequest::Stop { .. } => DispatchOutcome::request_stop_async(server),
         LocalHelperRequest::ForceStop { .. } => DispatchOutcome::from_control_result(
             LocalServerRuntime.force_stop_with_manager(manager, server),
         ),
@@ -38,6 +37,25 @@ pub(super) fn handle_connection(
 
     write_response(&mut stream, &outcome.response)?;
     Ok(outcome.should_exit)
+}
+
+fn helper_status_snapshot(
+    manager: &ServerManager,
+    server: &ServerInstance,
+    state: &LocalRuntimeState,
+) -> Result<LocalHelperStatusSnapshot, String> {
+    if state.running && state.child_pid.is_none() {
+        return Ok(LocalHelperStatusSnapshot {
+            running: true,
+            pid: None,
+            exit_code: None,
+            detail_message: "runtime=local running=true source=helper startup=preparing"
+                .to_string(),
+            error_message: None,
+        });
+    }
+
+    snapshot_from_manager(manager, server.id.as_str())
 }
 
 struct DispatchOutcome {
@@ -48,6 +66,26 @@ struct DispatchOutcome {
 impl DispatchOutcome {
     fn stay_running(response: LocalHelperResponse) -> Self {
         Self { response, should_exit: false }
+    }
+
+    fn request_stop_async(server: &ServerInstance) -> Self {
+        let server_id = server.id.clone();
+        std::thread::spawn(move || {
+            let manager = crate::services::global::server_manager();
+            if let Err(error) = manager.stop_server(&server_id) {
+                logger::log_user_action_error(
+                    "server.runtime.local_helper",
+                    "stop_async",
+                    &format!("server_id={}", server_id),
+                    &error,
+                );
+            }
+        });
+
+        Self {
+            response: LocalHelperResponse { ok: true, snapshot: None, error: None },
+            should_exit: true,
+        }
     }
 
     fn from_control_result(result: Result<(), String>) -> Self {

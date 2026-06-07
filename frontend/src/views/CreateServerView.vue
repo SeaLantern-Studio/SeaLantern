@@ -203,6 +203,9 @@ const { isDragging } = useCreateServerWindowDrop();
                   {{ i18n.t("create.create") }}
                 </SLButton>
               </div>
+              <div v-if="errorMsg" class="create-submit-error">
+                {{ errorMsg }}
+              </div>
             </template>
           </div>
 

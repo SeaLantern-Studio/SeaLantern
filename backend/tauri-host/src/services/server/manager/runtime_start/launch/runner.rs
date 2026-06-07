@@ -16,6 +16,12 @@ use sea_lantern_server_local_setup_core::{
 };
 use std::process::{Command, Stdio};
 
+struct CompletedCommandOutput {
+    status: std::process::ExitStatus,
+    stdout: String,
+    stderr: String,
+}
+
 pub(in crate::services::server::manager::runtime_start) struct LaunchPlan {
     pub child: std::process::Child,
     pub fallback_info: Option<super::super::super::StartFallbackInfo>,
@@ -141,17 +147,20 @@ fn install_and_launch_starter(
     context: &LaunchContext<'_>,
 ) -> Result<std::process::Child, String> {
     let install_phase = manager_t("server.manager.launch_phase_starter_install");
-    let install_status = spawn_command_and_wait(
+    let install_result = spawn_command_and_capture(
         id,
         context.server,
         build_starter_install_command(context)?,
         &install_phase,
     )?;
 
-    if !install_status.success() {
+    append_captured_output_logs(id, &install_phase, &install_result);
+
+    if !install_result.status.success() {
         return Err(manager_t2(
             "server.manager.starter_install_failed_exit",
-            install_status
+            install_result
+                .status
                 .code()
                 .map(|code| code.to_string())
                 .unwrap_or_else(|| "terminated".to_string()),
@@ -274,12 +283,12 @@ fn spawn_command(
     Ok(child)
 }
 
-fn spawn_command_and_wait(
+fn spawn_command_and_capture(
     id: &str,
     server: &ServerInstance,
     mut cmd: Command,
     phase: &str,
-) -> Result<std::process::ExitStatus, String> {
+) -> Result<CompletedCommandOutput, String> {
     let command_for_log = super::super::super::common::format_command_for_log(&cmd);
     let _ = server_log_pipeline::append_sealantern_log(
         id,
@@ -287,8 +296,8 @@ fn spawn_command_and_wait(
     );
 
     cmd.current_dir(&server.path);
-    cmd.stdout(Stdio::inherit());
-    cmd.stderr(Stdio::inherit());
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
     cmd.stdin(Stdio::null());
 
     #[cfg(target_os = "windows")]
@@ -298,7 +307,7 @@ fn spawn_command_and_wait(
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
-    let mut child = cmd.spawn().map_err(|e| {
+    let output = cmd.output().map_err(|e| {
         manager_t3(
             "server.manager.launch_spawn_failed",
             id.to_string(),
@@ -307,14 +316,34 @@ fn spawn_command_and_wait(
         )
     })?;
 
-    child.wait().map_err(|e| {
-        manager_t3(
-            "server.manager.launch_spawn_failed",
-            id.to_string(),
-            server.path.clone(),
-            e.to_string(),
-        )
+    Ok(CompletedCommandOutput {
+        status: output.status,
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
     })
+}
+
+fn append_captured_output_logs(server_id: &str, phase: &str, output: &CompletedCommandOutput) {
+    append_output_block(server_id, phase, "stdout", &output.stdout);
+    append_output_block(server_id, phase, "stderr", &output.stderr);
+}
+
+fn append_output_block(server_id: &str, phase: &str, stream: &str, content: &str) {
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+
+    for line in format_output_block_lines(phase, stream, trimmed) {
+        let _ = server_log_pipeline::append_sealantern_log(server_id, &line);
+    }
+}
+
+fn format_output_block_lines(phase: &str, stream: &str, content: &str) -> Vec<String> {
+    content
+        .lines()
+        .map(|line| format!("[Sea Lantern] {} {}: {}", phase, stream, line.trim_end()))
+        .collect()
 }
 
 fn apply_cpu_policy_after_spawn(
@@ -352,11 +381,29 @@ fn apply_cpu_policy_after_spawn(
 
 #[cfg(test)]
 mod tests {
+    use super::format_output_block_lines;
     use sea_lantern_server_local_setup_core::{
         build_primary_jar_fallback_info, format_fallback_chain_error, format_launch_fallback_log,
         format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
         format_primary_jar_spawn_error_reason,
     };
+
+    #[test]
+    fn format_output_block_lines_preserves_each_installer_output_line() {
+        let lines = format_output_block_lines(
+            "先执行安装器",
+            "stdout",
+            "usage: installer --help\r\nsecond line",
+        );
+
+        assert_eq!(
+            lines,
+            vec![
+                "[Sea Lantern] 先执行安装器 stdout: usage: installer --help".to_string(),
+                "[Sea Lantern] 先执行安装器 stdout: second line".to_string(),
+            ]
+        );
+    }
 
     #[test]
     fn primary_jar_fallback_reason_chain_is_stable() {

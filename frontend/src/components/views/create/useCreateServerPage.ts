@@ -5,7 +5,11 @@ import {
 } from "@components/views/create/useCreateServerDropSource";
 import { useCreateServerScan } from "@components/views/create/useCreateServerScan";
 import { useCreateServerSubmit } from "@components/views/create/useCreateServerSubmit";
-import { isStrictChildPath, normalizePathForCompare } from "@components/views/create/startupUtils";
+import {
+  getParentPath,
+  isStrictChildPath,
+  normalizePathForCompare,
+} from "@components/views/create/startupUtils";
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
@@ -14,7 +18,7 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
-import { onActivated, onUnmounted, ref, watch } from "vue";
+import { computed, onActivated, onUnmounted, ref, watch } from "vue";
 import { createDefaultCpuPolicy, createDefaultJvmPreset } from "@utils/serverStartupConfig";
 
 export function useCreateServerPage() {
@@ -99,6 +103,37 @@ export function useCreateServerPage() {
     showError,
     clearError,
   });
+
+  const sourceSuggestedRunPath = computed(() => {
+    const currentSourcePath = sourcePath.value.trim();
+    if (!currentSourcePath) {
+      return "";
+    }
+
+    if (sourceType.value === "folder") {
+      return currentSourcePath;
+    }
+
+    return getParentPath(currentSourcePath);
+  });
+
+  const userEditedRunPath = ref(false);
+
+  watch(
+    [sourcePath, sourceType],
+    ([nextSourcePath, nextSourceType]) => {
+      const suggestedRunPath = sourceSuggestedRunPath.value.trim();
+      if (!nextSourcePath.trim() || nextSourceType === "" || !suggestedRunPath) {
+        return;
+      }
+
+      if (!userEditedRunPath.value || !runPath.value.trim()) {
+        defaults.applyRunPath(suggestedRunPath);
+        userEditedRunPath.value = false;
+      }
+    },
+    { immediate: false },
+  );
 
   onActivated(() => {
     loadFromDraft();
@@ -190,6 +225,7 @@ export function useCreateServerPage() {
   }
 
   function updateRunPath(nextPath: string) {
+    userEditedRunPath.value = true;
     defaults.applyRunPath(nextPath);
   }
 

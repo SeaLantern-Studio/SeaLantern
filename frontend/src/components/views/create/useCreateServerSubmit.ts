@@ -232,7 +232,7 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
           ? options.selectedMcVersion.value.trim() || options.detectedMcVersion.value.trim()
           : "";
 
-      await serverApi.importModpack({
+      const createdServer = await serverApi.importModpack({
         name: options.serverName.value.trim(),
         modpackPath: options.sourcePath.value,
         javaPath: options.selectedJava.value,
@@ -253,7 +253,24 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
       });
 
       await serverStore.refreshList();
-      router.push("/");
+      serverStore.setCurrentServer(createdServer.id);
+
+      try {
+        await serverApi.start(createdServer.id);
+        await serverStore.refreshStatus(createdServer.id);
+      } catch (error) {
+        await serverStore.refreshStatus(createdServer.id);
+        options.showError(
+          i18n.t("create.created_but_start_failed", {
+            name: createdServer.name,
+            error: String(error),
+          }),
+        );
+        router.push(`/console/${createdServer.id}`);
+        return;
+      }
+
+      router.push(`/console/${createdServer.id}`);
     } catch (error) {
       options.showError(String(error));
     } finally {

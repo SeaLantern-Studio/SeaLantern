@@ -209,8 +209,10 @@ pub fn copy_directory_contents(source_dir: String, target_dir: String) -> Result
 }
 
 #[tauri::command]
-pub fn start_server(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    runtime::start_server(app, id)
+pub async fn start_server(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || runtime::start_server(app, id))
+        .await
+        .map_err(|e| format!("start server task failed: {}", e))?
 }
 
 #[tauri::command]
