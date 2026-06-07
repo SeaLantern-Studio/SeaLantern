@@ -1,4 +1,6 @@
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
+#[cfg(target_os = "windows")]
+use std::ffi::OsString;
 use std::path::PathBuf;
 
 const APP_DOCKER_DATA_DIR: &str = "./data";
