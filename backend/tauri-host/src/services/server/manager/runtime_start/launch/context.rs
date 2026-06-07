@@ -2,8 +2,7 @@ use super::super::super::common::{
     resolve_managed_console_encoding, ManagedConsoleEncoding, StartupMode,
 };
 use crate::models::server::ServerInstance;
-use crate::services::server::log_pipeline as server_log_pipeline;
-use crate::services::server::manager::i18n::{manager_t, manager_t1, manager_t3};
+use crate::services::server::manager::i18n::manager_t1;
 use sea_lantern_server_installer_core::{detect_core_type, CoreType};
 use sea_lantern_server_local_setup_core::{
     resolve_java_paths as resolve_shared_java_paths,
@@ -19,7 +18,7 @@ pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a>
     pub java_bin_dir_str: String,
     pub java_home_dir_str: String,
     pub startup_filename: String,
-    pub starter_installer_url: Option<String>,
+    pub starter_core_key: Option<String>,
 }
 
 pub(in crate::services::server::manager::runtime_start) fn resolve_managed_encoding(
@@ -45,8 +44,7 @@ pub(in crate::services::server::manager::runtime_start) fn startup_filename(
     resolve_shared_startup_filename(startup_path)
 }
 
-pub(in crate::services::server::manager::runtime_start) fn resolve_starter_installer_url(
-    id: &str,
+pub(in crate::services::server::manager::runtime_start) fn resolve_starter_core_key(
     server: &ServerInstance,
 ) -> Result<Option<String>, String> {
     let startup_mode = StartupMode::from_raw(server.startup_mode_str());
@@ -55,8 +53,9 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_starter_insta
     }
 
     let detected_core_type = detect_core_type(server.jar_path().unwrap_or_default());
-    let core_key = CoreType::normalize_to_api_core_key(&server.core_type)
+    CoreType::normalize_to_api_core_key(&server.core_type)
         .or_else(|| CoreType::normalize_to_api_core_key(&detected_core_type))
+        .map(Some)
         .ok_or_else(|| {
             manager_t1(
                 "server.manager.starter_core_type_unrecognized",
@@ -66,28 +65,5 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_starter_insta
                     server.core_type.clone()
                 },
             )
-        })?;
-
-    let mc_version = server.mc_version.trim();
-    if mc_version.is_empty() || mc_version.eq_ignore_ascii_case("unknown") {
-        return Err(manager_t("server.manager.starter_mc_version_required"));
-    }
-
-    let (installer_url, installer_sha256) =
-        crate::services::download::starter_installer_links::fetch_starter_installer_url(
-            &core_key, mc_version,
-        )?;
-    if let Some(sha256) = installer_sha256 {
-        let _ = server_log_pipeline::append_sealantern_log(
-            id,
-            &manager_t3(
-                "server.manager.starter_installer_log",
-                core_key.clone(),
-                mc_version.to_string(),
-                sha256,
-            ),
-        );
-    }
-
-    Ok(Some(installer_url))
+        })
 }

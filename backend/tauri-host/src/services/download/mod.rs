@@ -7,4 +7,5 @@
 pub(crate) mod common;
 pub(crate) mod download_manager;
 pub(crate) mod java_installer;
+#[cfg(test)]
 pub(crate) mod starter_installer_links;

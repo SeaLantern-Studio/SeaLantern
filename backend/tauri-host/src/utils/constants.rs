@@ -2,9 +2,9 @@
 //! 为了便于快捷修改常量，在此处抽取了一部分后端使用的常量
 //! 插件相关常量未抽取
 
-use crate::hardcode_data::server_downloads::{
-    SERVER_CORE_MIRROR_LINK_LIST_URL, STARTER_INSTALLER_LINKS_FILE_NAME,
-};
+use crate::hardcode_data::server_downloads::SERVER_CORE_MIRROR_LINK_LIST_URL;
+#[cfg(test)]
+use crate::hardcode_data::server_downloads::STARTER_INSTALLER_LINKS_FILE_NAME;
 
 /// services/settings_manager.rs
 pub const SETTINGS_FILE: &str = "sea_lantern_settings.json";
@@ -44,7 +44,9 @@ pub const SUPPORTED_LOCALES: &[&str] = &[
 
 /// services/server/downloader.rs + services/download/starter_installer_links.rs
 pub const DOWNLOAD_LINK_LIST_URL: &str = SERVER_CORE_MIRROR_LINK_LIST_URL;
+#[cfg(test)]
 pub const STARTER_INSTALLER_LINKS_FILE: &str = STARTER_INSTALLER_LINKS_FILE_NAME;
+#[cfg(test)]
 pub const STARTER_INSTALLER_LINKS_URL: &str = DOWNLOAD_LINK_LIST_URL;
 
 /// services/server/log_pipeline.rs
