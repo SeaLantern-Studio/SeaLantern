@@ -53,7 +53,7 @@ impl StartupMode {
 
     #[cfg(test)]
     pub(super) fn prefers_direct_jar(self) -> bool {
-        matches!(self, Self::Bat | Self::Sh | Self::Ps1)
+        matches!(self, Self::Jar | Self::Starter)
     }
 
     #[cfg(target_os = "windows")]
@@ -379,8 +379,10 @@ mod tests {
     fn startup_mode_parsing_and_flags_match_runtime_expectations() {
         assert_eq!(StartupMode::from_raw("CUSTOM"), StartupMode::Custom);
         assert_eq!(StartupMode::from_raw("unknown"), StartupMode::Jar);
-        assert!(StartupMode::Bat.prefers_direct_jar());
-        assert!(StartupMode::Sh.prefers_direct_jar());
+        assert!(StartupMode::Jar.prefers_direct_jar());
+        assert!(StartupMode::Starter.prefers_direct_jar());
+        assert!(!StartupMode::Bat.prefers_direct_jar());
+        assert!(!StartupMode::Sh.prefers_direct_jar());
         assert!(!StartupMode::Custom.prefers_direct_jar());
         assert!(StartupMode::Starter.is_starter());
         assert!(StartupMode::Custom.is_custom());

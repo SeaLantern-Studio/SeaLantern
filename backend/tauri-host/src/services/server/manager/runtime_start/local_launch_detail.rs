@@ -228,8 +228,6 @@ mod tests {
     fn build_local_launch_detail_uses_script_filename_for_sh_mode() {
         let temp_dir = tempdir().expect("temp dir should exist");
         let mut server = test_server(temp_dir.path().to_string_lossy().to_string(), "sh");
-        let server_jar_path = temp_dir.path().join("server.jar");
-        let _ = std::fs::remove_file(&server_jar_path);
         let script_path = temp_dir.path().join("start.sh");
         std::fs::write(&script_path, b"#!/bin/sh\nexit 0\n").expect("script fixture should exist");
         if let ServerRuntimeConfig::Local(runtime) = &mut server.runtime {
@@ -243,6 +241,7 @@ mod tests {
         assert_eq!(detail.launch_target, "start.sh");
         assert!(detail.effective_jvm_args.is_empty());
         assert!(detail.command_preview.contains("start.sh"));
+        assert!(!detail.command_preview.contains("server.jar"));
     }
 
     #[test]
