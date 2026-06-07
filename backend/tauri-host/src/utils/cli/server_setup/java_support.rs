@@ -322,6 +322,17 @@ mod tests {
             .path()
             .join(if cfg!(windows) { "java.exe" } else { "java" });
         std::fs::write(&java_path, b"placeholder").expect("java placeholder should write");
+        #[cfg(not(windows))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let mut permissions = std::fs::metadata(&java_path)
+                .expect("java placeholder metadata should exist")
+                .permissions();
+            permissions.set_mode(0o755);
+            std::fs::set_permissions(&java_path, permissions)
+                .expect("java placeholder should become executable");
+        }
 
         let path_value = if cfg!(windows) {
             temp_dir.path().to_string_lossy().to_string()

@@ -104,8 +104,11 @@ mod tests {
             .expect_err("expected docker preflight failure for missing host/container mapping");
 
         let preflight = err.preflight_error.expect("preflight error should exist");
-        assert_eq!(preflight.stage, RuntimePreflightStage::DockerEnvironment);
-        assert!(preflight.message.contains("docker 环境不可用"));
+        assert_eq!(preflight.stage, RuntimePreflightStage::DockerDataDir);
+        assert!(preflight
+            .message
+            .contains("SEALANTERN_SERVERS_CONTAINER_ROOT"));
+        assert!(preflight.message.contains("--data-dir"));
     }
 
     #[test]
@@ -124,7 +127,8 @@ mod tests {
             .expect_err("incompatible docker image should fail in preflight");
 
         let preflight = err.preflight_error.expect("preflight error should exist");
-        assert_eq!(preflight.stage, RuntimePreflightStage::DockerEnvironment);
-        assert!(preflight.message.contains("docker 环境不可用"));
+        assert_eq!(preflight.stage, RuntimePreflightStage::DockerImage);
+        assert!(preflight.message.contains("liteyukibot-web"));
+        assert!(preflight.message.contains("minecraft-server"));
     }
 }
