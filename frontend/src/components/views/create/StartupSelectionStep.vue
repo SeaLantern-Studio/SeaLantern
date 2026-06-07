@@ -177,7 +177,11 @@ function getStartupIcon(mode: StartupMode) {
         <p class="startup-step-hint">
           <template v-if="coreDetecting">{{ i18n.t("create.source_detecting_core") }}</template>
           <template v-else-if="detectedCoreTypeKey">
-            {{ i18n.t("create.startup_core_type_detected", { core: formatCoreTypeLabel(detectedCoreTypeKey) }) }}
+            {{
+              i18n.t("create.startup_core_type_detected", {
+                core: formatCoreTypeLabel(detectedCoreTypeKey),
+              })
+            }}
           </template>
           <template v-else>{{ i18n.t("create.source_core_unknown") }}</template>
         </p>

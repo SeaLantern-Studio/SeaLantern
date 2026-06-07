@@ -106,7 +106,9 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
     );
   });
   const requiresJava = computed(() => selectedStartup.value?.mode !== "custom");
-  const hasJava = computed(() => !requiresJava.value || options.selectedJava.value.trim().length > 0);
+  const hasJava = computed(
+    () => !requiresJava.value || options.selectedJava.value.trim().length > 0,
+  );
   const hasServerConfig = computed(() => options.serverName.value.trim().length > 0);
 
   const step1Completed = computed(() => hasSource.value);

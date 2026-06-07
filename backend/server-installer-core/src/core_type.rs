@@ -260,18 +260,12 @@ mod tests {
 
     #[test]
     fn normalize_to_api_core_key_accepts_pumpkin_display_name() {
-        assert_eq!(
-            CoreType::normalize_to_api_core_key("Pumpkin").as_deref(),
-            Some("pumpkin")
-        );
+        assert_eq!(CoreType::normalize_to_api_core_key("Pumpkin").as_deref(), Some("pumpkin"));
     }
 
     #[test]
     fn detect_from_filename_recognizes_pumpkin_executable_name() {
-        assert_eq!(
-            CoreType::detect_from_filename("pumpkin-X64-Windows.exe"),
-            CoreType::Pumpkin
-        );
+        assert_eq!(CoreType::detect_from_filename("pumpkin-X64-Windows.exe"), CoreType::Pumpkin);
     }
 }
 

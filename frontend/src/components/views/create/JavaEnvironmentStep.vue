@@ -91,11 +91,21 @@ async function pickJavaFile() {
     </div>
 
     <div class="java-step-row java-step-row-manual">
-      <span class="java-step-label">{{ props.required === false ? i18n.t("create.java_path_optional") : i18n.t("create.java_path") }}</span>
+      <span class="java-step-label">
+        {{
+          props.required === false
+            ? i18n.t("create.java_path_optional")
+            : i18n.t("create.java_path")
+        }}
+      </span>
       <div class="java-step-control">
         <SLInput
           :model-value="selectedJava"
-          :placeholder="props.required === false ? i18n.t('create.java_optional_manual') : i18n.t('create.java_manual')"
+          :placeholder="
+            props.required === false
+              ? i18n.t('create.java_optional_manual')
+              : i18n.t('create.java_manual')
+          "
           @update:model-value="$emit('update:selectedJava', $event)"
         >
           <template #suffix>

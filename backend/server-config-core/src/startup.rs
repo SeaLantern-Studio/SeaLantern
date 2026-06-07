@@ -381,11 +381,7 @@ pub fn update_pumpkin_config_if_present(
 
     document["java_edition_address"] = value(format!("0.0.0.0:{}", requested_port));
     document["online_mode"] = value(online_mode);
-    if document["networking"]["query"]["address"].is_none() {
-        document["networking"]["query"]["address"] = value(format!("0.0.0.0:{}", requested_port));
-    } else {
-        document["networking"]["query"]["address"] = value(format!("0.0.0.0:{}", requested_port));
-    }
+    document["networking"]["query"]["address"] = value(format!("0.0.0.0:{}", requested_port));
 
     std::fs::write(&pumpkin_path, document.to_string())
         .map_err(|e| format!("写入 pumpkin.toml 失败: {}", e))?;
@@ -441,9 +437,9 @@ mod tests {
         build_managed_jvm_args_from_input, build_server_properties_path,
         create_server_properties_if_missing, ensure_server_path_writable, read_server_port,
         read_server_port_checked, resolve_effective_startup_config_from_document,
-        update_pumpkin_config_if_present, validate_config_path, write_server_startup_config_for_dir,
-        EffectiveStartupConfig,
-        ManagedJvmBuildInput, StartupResolutionDefaults, StartupRuntimeDefaults,
+        update_pumpkin_config_if_present, validate_config_path,
+        write_server_startup_config_for_dir, EffectiveStartupConfig, ManagedJvmBuildInput,
+        StartupResolutionDefaults, StartupRuntimeDefaults,
     };
     use crate::types::{
         CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId, ServerStartupConfigDocument,

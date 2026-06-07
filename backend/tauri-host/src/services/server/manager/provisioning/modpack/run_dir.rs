@@ -18,8 +18,8 @@ pub(super) fn resolve_modpack_run_dir(base_path: &str) -> Result<PathBuf, String
             ));
         }
 
-        let mut entries = std::fs::read_dir(&run_dir)
-            .map_err(|e| format!("读取运行目录失败: {}", e))?;
+        let mut entries =
+            std::fs::read_dir(&run_dir).map_err(|e| format!("读取运行目录失败: {}", e))?;
         if entries.next().is_none() {
             return Ok(run_dir);
         }

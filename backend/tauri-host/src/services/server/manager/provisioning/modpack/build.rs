@@ -28,7 +28,12 @@ pub(super) fn build_modpack_server_instance(
     };
     let core_type = startup
         .selected_core_type
-        .and_then(|value| CoreType::from_str(&value).ok().map(|core| core.to_string()).or(Some(value)))
+        .and_then(|value| {
+            CoreType::from_str(&value)
+                .ok()
+                .map(|core| core.to_string())
+                .or(Some(value))
+        })
         .unwrap_or(detected_core_type);
     let mc_version = startup
         .selected_mc_version
