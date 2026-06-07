@@ -46,6 +46,21 @@ pub struct StartupCandidateItem {
 const STARTER_MAIN_CLASS_PREFIX: &str = "net.neoforged.serverstarterjar";
 const FORGE_SIMPLE_INSTALLER_MAIN_CLASS: &str = "net.minecraftforge.installer.SimpleInstaller";
 
+fn is_pumpkin_executable(path: &Path) -> bool {
+    let filename = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+
+    filename.contains("pumpkin") && (extension == "exe" || extension.is_empty())
+}
+
 pub fn scan_startup_candidates(
     source_path: &str,
     source_type: &str,
@@ -90,6 +105,35 @@ fn scan_folder_source(
             .unwrap_or_default()
             .to_ascii_lowercase();
         let full_path = path.to_string_lossy().to_string();
+
+        if is_pumpkin_executable(&path) {
+            let parsed_info = ParsedServerCoreInfo {
+                core_type: "Pumpkin".to_string(),
+                main_class: None,
+                jar_path: Some(full_path.clone()),
+            };
+            let should_replace = detected_core
+                .as_ref()
+                .map(|(best_recommended, best_unknown, best_label, _)| {
+                    (1_u8, false, filename.to_ascii_lowercase())
+                        < (*best_recommended, *best_unknown, best_label.clone())
+                })
+                .unwrap_or(true);
+
+            if should_replace {
+                detected_core = Some((1, false, filename.to_ascii_lowercase(), parsed_info));
+            }
+
+            candidates.push(StartupCandidateItem {
+                id: format!("custom-{}", filename),
+                mode: "custom".to_string(),
+                label: "Pumpkin".to_string(),
+                detail: "Pumpkin executable".to_string(),
+                path: full_path,
+                recommended: 1,
+            });
+            continue;
+        }
 
         if extension == "jar" {
             let parsed = sea_lantern_server_installer_core::parse_server_core_type(&full_path)
@@ -228,6 +272,27 @@ fn scan_archive_source(
                     detail: startup_detail(&parsed),
                     path: source_path.to_string(),
                     recommended: if is_starter { 1 } else { 3 },
+                }],
+                None,
+                false,
+                mc_version_options,
+            ));
+        }
+
+        if is_pumpkin_executable(source) {
+            return Ok(build_result(
+                ParsedServerCoreInfo {
+                    core_type: "Pumpkin".to_string(),
+                    main_class: None,
+                    jar_path: Some(source_path.to_string()),
+                },
+                vec![StartupCandidateItem {
+                    id: "archive-custom-pumpkin".to_string(),
+                    mode: "custom".to_string(),
+                    label: "Pumpkin".to_string(),
+                    detail: "Pumpkin executable".to_string(),
+                    path: source_path.to_string(),
+                    recommended: 1,
                 }],
                 None,
                 false,
@@ -518,6 +583,41 @@ mod tests {
             Some(jar_path.to_string_lossy().as_ref())
         );
         assert_eq!(result.detected_core_type_key.as_deref(), Some("paper"));
+    }
+
+    #[test]
+    fn scan_startup_candidates_recognizes_pumpkin_executable_archive_source() {
+        let dir = tempfile::tempdir().expect("temp dir should exist");
+        let exe_path = dir.path().join("pumpkin-X64-Windows.exe");
+        fs::write(&exe_path, b"pumpkin").expect("pumpkin executable should write");
+
+        let result = scan_startup_candidates(exe_path.to_string_lossy().as_ref(), "archive", &[])
+            .expect("pumpkin archive scan should succeed");
+
+        assert_eq!(result.parsed_core.core_type, "Pumpkin");
+        assert_eq!(result.detected_core_type_key.as_deref(), Some("pumpkin"));
+        assert_eq!(result.candidates.len(), 1);
+        assert_eq!(result.candidates[0].mode, "custom");
+        assert_eq!(result.candidates[0].label, "Pumpkin");
+        assert_eq!(result.candidates[0].path, exe_path.to_string_lossy());
+        assert_eq!(result.candidates[0].recommended, 1);
+    }
+
+    #[test]
+    fn scan_startup_candidates_recognizes_pumpkin_executable_in_folder() {
+        let dir = tempfile::tempdir().expect("temp dir should exist");
+        let exe_path = dir.path().join("pumpkin-X64-Windows.exe");
+        fs::write(&exe_path, b"pumpkin").expect("pumpkin executable should write");
+        fs::write(dir.path().join("start.bat"), "@echo off\n").expect("bat script should write");
+
+        let result = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
+            .expect("pumpkin folder scan should succeed");
+
+        assert_eq!(result.parsed_core.core_type, "Pumpkin");
+        assert_eq!(result.detected_core_type_key.as_deref(), Some("pumpkin"));
+        assert_eq!(candidate_modes(&result.candidates), vec!["custom", "bat"]);
+        assert_eq!(result.candidates[0].label, "Pumpkin");
+        assert_eq!(result.candidates[0].path, exe_path.to_string_lossy());
     }
 
     #[test]

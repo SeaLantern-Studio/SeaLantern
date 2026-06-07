@@ -69,6 +69,18 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
       selectedStartup.value?.mode === "custom" &&
       containsIoRedirection(options.customStartupCommand.value),
   );
+  const selectedCustomStartupPath = computed(() => {
+    if (selectedStartup.value?.mode !== "custom") {
+      return "";
+    }
+    return selectedStartup.value.path.trim();
+  });
+  const hasExplicitCustomCommand = computed(
+    () => options.customStartupCommand.value.trim().length > 0,
+  );
+  const customStartupNeedsManualCommand = computed(
+    () => selectedStartup.value?.mode === "custom" && selectedCustomStartupPath.value.length === 0,
+  );
 
   const hasSource = computed(
     () => options.sourcePath.value.trim().length > 0 && options.sourceType.value !== "",
@@ -80,9 +92,11 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
     }
 
     if (selectedStartup.value.mode === "custom") {
-      return (
-        options.customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value
-      );
+      if (customCommandHasRedirect.value) {
+        return false;
+      }
+
+      return hasExplicitCustomCommand.value || selectedCustomStartupPath.value.length > 0;
     }
 
     return !(
@@ -91,7 +105,8 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
       options.selectedMcVersion.value.trim().length === 0
     );
   });
-  const hasJava = computed(() => options.selectedJava.value.trim().length > 0);
+  const requiresJava = computed(() => selectedStartup.value?.mode !== "custom");
+  const hasJava = computed(() => !requiresJava.value || options.selectedJava.value.trim().length > 0);
   const hasServerConfig = computed(() => options.serverName.value.trim().length > 0);
 
   const step1Completed = computed(() => hasSource.value);
@@ -179,7 +194,7 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
     }
 
     if (selectedStartup.value.mode === "custom") {
-      if (!options.customStartupCommand.value.trim()) {
+      if (customStartupNeedsManualCommand.value && !hasExplicitCustomCommand.value) {
         options.showError(i18n.t("create.startup_custom_required"));
         return false;
       }
@@ -198,7 +213,7 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
       return false;
     }
 
-    if (!options.selectedJava.value) {
+    if (requiresJava.value && !options.selectedJava.value) {
       options.showError(i18n.t("common.select_java_path"));
       return false;
     }
@@ -235,16 +250,18 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
       const createdServer = await serverApi.importModpack({
         name: options.serverName.value.trim(),
         modpackPath: options.sourcePath.value,
-        javaPath: options.selectedJava.value,
+        javaPath: requiresJava.value ? options.selectedJava.value : "",
         maxMemory: parseNumber(options.maxMemory.value, 2048),
         minMemory: parseNumber(options.minMemory.value, 512),
         port: parseNumber(options.port.value, 25565),
         startupMode,
         onlineMode: options.onlineMode.value,
         customCommand:
-          startupMode === "custom" ? options.customStartupCommand.value.trim() : undefined,
+          startupMode === "custom" && hasExplicitCustomCommand.value
+            ? options.customStartupCommand.value.trim()
+            : undefined,
         runPath: options.runPath.value.trim(),
-        startupFilePath: startupMode === "custom" ? undefined : startup?.path,
+        startupFilePath: startup?.path || undefined,
         coreType: resolvedCoreType || undefined,
         mcVersion: resolvedMcVersion || undefined,
         jvmArgs: serializeJvmArgsText(options.jvmArgsText.value),

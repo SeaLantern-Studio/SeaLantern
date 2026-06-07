@@ -18,6 +18,14 @@ const store = useServerStore();
 const homeServerActionsStore = useHomeServerActionsStore();
 const router = useRouter();
 
+function formatCoreTypeLabel(value: string) {
+  if (value.trim().toLowerCase() === "pumpkin") {
+    return i18n.t("create.core_type_pumpkin");
+  }
+
+  return value;
+}
+
 async function handlePathClick(path: string) {
   try {
     await systemApi.openFolder(path);
@@ -108,7 +116,7 @@ function getStatusClass(status: string | undefined): string {
         </template>
       </div>
       <div class="server-meta">
-        <span class="meta-tag core-type">{{ server.core_type }}</span>
+        <span class="meta-tag core-type">{{ formatCoreTypeLabel(server.core_type) }}</span>
         <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
         <span class="meta-tag" @click="handleStartupConfig">{{ server.max_memory }}MB</span>
       </div>

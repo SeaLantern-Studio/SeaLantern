@@ -40,7 +40,7 @@ const emit = defineEmits<{
 const coreTypeSelectOptions = computed(() =>
   props.coreTypeOptions.map((value) => ({
     value,
-    label: value,
+    label: formatCoreTypeLabel(value),
   })),
 );
 
@@ -64,6 +64,19 @@ function startupModeLabel(mode: StartupMode): string {
     default:
       return i18n.t("create.startup_mode_custom");
   }
+}
+
+function formatCoreTypeLabel(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "pumpkin") {
+    return i18n.t("create.core_type_pumpkin");
+  }
+
+  return value;
+}
+
+function candidateNeedsManualCommand(candidate: StartupCandidate): boolean {
+  return candidate.mode === "custom" && candidate.path.trim().length === 0;
 }
 
 function candidateRecommendedText(candidate: StartupCandidate): string {
@@ -142,7 +155,7 @@ function getStartupIcon(mode: StartupMode) {
           </div>
         </button>
 
-        <div v-if="candidate.mode === 'custom'" class="startup-inline-custom">
+        <div v-if="candidateNeedsManualCommand(candidate)" class="startup-inline-custom">
           <SLInput
             :label="i18n.t('create.startup_custom_label')"
             :model-value="customStartupCommand"
@@ -164,7 +177,7 @@ function getStartupIcon(mode: StartupMode) {
         <p class="startup-step-hint">
           <template v-if="coreDetecting">{{ i18n.t("create.source_detecting_core") }}</template>
           <template v-else-if="detectedCoreTypeKey">
-            {{ i18n.t("create.startup_core_type_detected", { core: detectedCoreTypeKey }) }}
+            {{ i18n.t("create.startup_core_type_detected", { core: formatCoreTypeLabel(detectedCoreTypeKey) }) }}
           </template>
           <template v-else>{{ i18n.t("create.source_core_unknown") }}</template>
         </p>

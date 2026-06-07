@@ -158,7 +158,7 @@ export const systemApi = {
 
   async pickArchiveFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      return this.pickAndUploadBrowserFile(".zip,.tar,.tar.gz,.tgz,.jar");
+      return this.pickAndUploadBrowserFile(".zip,.tar,.tar.gz,.tgz,.jar,.exe");
     }
     return tauriInvoke("pick_archive_file");
   },

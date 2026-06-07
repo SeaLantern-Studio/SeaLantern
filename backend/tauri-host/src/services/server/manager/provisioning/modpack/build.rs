@@ -1,9 +1,10 @@
 use std::path::Path;
+use std::str::FromStr;
 
 use crate::models::server::{
     ImportModpackRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
-use sea_lantern_server_installer_core::detect_core_type;
+use sea_lantern_server_installer_core::{detect_core_type, CoreType};
 
 use super::startup::ModpackStartupSelection;
 
@@ -17,11 +18,18 @@ pub(super) fn build_modpack_server_instance(
 ) -> ServerInstance {
     let startup_path = startup.startup_file_path.clone().unwrap_or_default();
     let detected_core_type = if startup.startup_mode == "custom" {
-        "modpack".to_string()
+        if startup_path.to_ascii_lowercase().contains("pumpkin") {
+            "Pumpkin".to_string()
+        } else {
+            "custom".to_string()
+        }
     } else {
         detect_core_type(&startup_path)
     };
-    let core_type = startup.selected_core_type.unwrap_or(detected_core_type);
+    let core_type = startup
+        .selected_core_type
+        .and_then(|value| CoreType::from_str(&value).ok().map(|core| core.to_string()).or(Some(value)))
+        .unwrap_or(detected_core_type);
     let mc_version = startup
         .selected_mc_version
         .unwrap_or_else(|| "unknown".to_string());

@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CoreType {
+    Pumpkin,
     ArclightForge,
     ArclightNeoforge,
     Youer,
@@ -36,7 +37,8 @@ pub enum CoreType {
 }
 
 impl CoreType {
-    pub const API_CORE_KEYS: [&'static str; 29] = [
+    pub const API_CORE_KEYS: [&'static str; 30] = [
+        "pumpkin",
         "paper",
         "purpur",
         "leaf",
@@ -74,6 +76,7 @@ impl CoreType {
 
     pub fn to_api_core_key(self) -> Option<&'static str> {
         match self {
+            CoreType::Pumpkin => Some("pumpkin"),
             CoreType::ArclightForge => Some("arclight-forge"),
             CoreType::ArclightNeoforge => Some("arclight-neoforge"),
             CoreType::Youer => Some("youer"),
@@ -125,6 +128,7 @@ impl CoreType {
 
     pub fn as_str(&self) -> &'static str {
         match self {
+            CoreType::Pumpkin => "Pumpkin",
             CoreType::ArclightForge => "Arclight-Forge",
             CoreType::ArclightNeoforge => "Arclight-Neoforge",
             CoreType::Youer => "Youer",
@@ -173,6 +177,7 @@ impl CoreType {
 
     fn detection_table() -> &'static [(CoreType, &'static [&'static str])] {
         &[
+            (CoreType::Pumpkin, &["pumpkin"]),
             (CoreType::ArclightForge, &["arclight-forge"]),
             (CoreType::ArclightNeoforge, &["arclight-neoforge"]),
             (CoreType::Youer, &["youer"]),
@@ -212,6 +217,7 @@ impl FromStr for CoreType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
+            "pumpkin" => Ok(CoreType::Pumpkin),
             "arclight-forge" => Ok(CoreType::ArclightForge),
             "arclight-neoforge" => Ok(CoreType::ArclightNeoforge),
             "youer" => Ok(CoreType::Youer),
@@ -245,6 +251,27 @@ impl FromStr for CoreType {
             "unknown" => Ok(CoreType::Unknown),
             _ => Err(format!("Unknown core type: {}", s)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CoreType;
+
+    #[test]
+    fn normalize_to_api_core_key_accepts_pumpkin_display_name() {
+        assert_eq!(
+            CoreType::normalize_to_api_core_key("Pumpkin").as_deref(),
+            Some("pumpkin")
+        );
+    }
+
+    #[test]
+    fn detect_from_filename_recognizes_pumpkin_executable_name() {
+        assert_eq!(
+            CoreType::detect_from_filename("pumpkin-X64-Windows.exe"),
+            CoreType::Pumpkin
+        );
     }
 }
 

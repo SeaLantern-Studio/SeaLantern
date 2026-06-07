@@ -1,5 +1,5 @@
 use sea_lantern_server_config_core::properties::write_properties;
-use sea_lantern_server_config_core::startup::read_server_port;
+use sea_lantern_server_config_core::startup::{read_server_port, update_pumpkin_config_if_present};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -10,6 +10,12 @@ pub(super) fn ensure_server_properties_for_import(
     requested_port: u16,
     online_mode: bool,
 ) -> Result<u16, String> {
+    if update_pumpkin_config_if_present(run_dir, requested_port, online_mode)
+        .map_err(|e| provisioning_t1("server.provisioning.update_server_properties_failed", e))?
+    {
+        return Ok(read_server_port(run_dir, requested_port));
+    }
+
     let server_properties_path = run_dir.join("server.properties");
     if server_properties_path.exists() {
         let port = read_server_port(run_dir, requested_port);

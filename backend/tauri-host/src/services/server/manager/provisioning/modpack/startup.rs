@@ -20,12 +20,30 @@ pub(super) fn resolve_modpack_startup_selection(
     run_dir: &Path,
 ) -> Result<ModpackStartupSelection, String> {
     let startup_mode = StartupMode::from_raw(&req.startup_mode);
-    let custom_command = trim_optional_string(req.custom_command.as_ref());
+    let requested_custom_command = trim_optional_string(req.custom_command.as_ref());
     let selected_core_type = trim_optional_string(req.core_type.as_ref());
     let selected_mc_version = trim_optional_string(req.mc_version.as_ref());
 
+    let resolved_startup_file_path = req
+        .startup_file_path
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|raw_path| resolve_startup_file_path(source_path, run_dir, raw_path))
+        .transpose()?;
+
+    let custom_command = if startup_mode.is_custom() {
+        requested_custom_command.or_else(|| {
+            resolved_startup_file_path
+                .as_ref()
+                .map(|path| format_native_startup_command(path))
+        })
+    } else {
+        requested_custom_command
+    };
+
     let startup_file_path = if startup_mode.is_custom() {
-        None
+        resolved_startup_file_path
     } else {
         let raw_path = req
             .startup_file_path
@@ -57,4 +75,12 @@ fn trim_optional_string(value: Option<&String>) -> Option<String> {
     value
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
+}
+
+fn format_native_startup_command(path: &str) -> String {
+    if path.contains(' ') {
+        format!("\"{}\"", path)
+    } else {
+        path.to_string()
+    }
 }

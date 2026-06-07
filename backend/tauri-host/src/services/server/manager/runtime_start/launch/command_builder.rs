@@ -119,15 +119,22 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
         .map(|value| value.trim())
         .filter(|value| !value.is_empty())
         .ok_or_else(|| manager_t("server.manager.launch_custom_command_empty"))?;
+    let has_java_path = context
+        .server
+        .java_path()
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false);
 
     #[cfg(target_os = "windows")]
     {
         let mut custom_cmd = build_windows_cmd_command(custom_command);
-        script_launch_support::apply_java_process_env(
-            &mut custom_cmd,
-            &context.java_home_dir_str,
-            &context.java_bin_dir_str,
-        );
+        if has_java_path {
+            script_launch_support::apply_java_process_env(
+                &mut custom_cmd,
+                &context.java_home_dir_str,
+                &context.java_bin_dir_str,
+            );
+        }
         Ok(custom_cmd)
     }
     #[cfg(not(target_os = "windows"))]
@@ -135,11 +142,13 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
         let mut custom_cmd = Command::new("sh");
         custom_cmd.arg("-c");
         custom_cmd.arg(custom_command);
-        script_launch_support::apply_java_process_env(
-            &mut custom_cmd,
-            &context.java_home_dir_str,
-            &context.java_bin_dir_str,
-        );
+        if has_java_path {
+            script_launch_support::apply_java_process_env(
+                &mut custom_cmd,
+                &context.java_home_dir_str,
+                &context.java_bin_dir_str,
+            );
+        }
         Ok(custom_cmd)
     }
 }

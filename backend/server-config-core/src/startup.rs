@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use toml_edit::{value, DocumentMut};
 
 use crate::properties;
 use crate::types::{
@@ -318,6 +319,11 @@ pub fn read_server_port(server_dir: &Path, fallback: u16) -> u16 {
 }
 
 pub fn read_server_port_checked(server_dir: &Path) -> Result<Option<u16>, String> {
+    let pumpkin_path = server_dir.join("pumpkin.toml");
+    if pumpkin_path.exists() {
+        return read_pumpkin_port_checked(&pumpkin_path);
+    }
+
     let server_properties_path = server_dir.join("server.properties");
     if !server_properties_path.exists() {
         return Ok(None);
@@ -334,11 +340,67 @@ pub fn read_server_port_checked(server_dir: &Path) -> Result<Option<u16>, String
         .map_err(|e| format!("server.properties 中的 server-port 无效: {}", e))
 }
 
+fn read_pumpkin_port_checked(pumpkin_path: &Path) -> Result<Option<u16>, String> {
+    let content = std::fs::read_to_string(pumpkin_path)
+        .map_err(|e| format!("读取 pumpkin.toml 失败: {}", e))?;
+    let document = content
+        .parse::<DocumentMut>()
+        .map_err(|e| format!("解析 pumpkin.toml 失败: {}", e))?;
+    let Some(address) = document
+        .get("java_edition_address")
+        .and_then(|item| item.as_str())
+    else {
+        return Ok(None);
+    };
+
+    let Some(port_text) = address.rsplit(':').next() else {
+        return Ok(None);
+    };
+
+    port_text
+        .parse::<u16>()
+        .map(Some)
+        .map_err(|e| format!("pumpkin.toml 中的 java_edition_address 端口无效: {}", e))
+}
+
+pub fn update_pumpkin_config_if_present(
+    server_dir: &Path,
+    requested_port: u16,
+    online_mode: bool,
+) -> Result<bool, String> {
+    let pumpkin_path = server_dir.join("pumpkin.toml");
+    if !pumpkin_path.exists() {
+        return Ok(false);
+    }
+
+    let content = std::fs::read_to_string(&pumpkin_path)
+        .map_err(|e| format!("读取 pumpkin.toml 失败: {}", e))?;
+    let mut document = content
+        .parse::<DocumentMut>()
+        .map_err(|e| format!("解析 pumpkin.toml 失败: {}", e))?;
+
+    document["java_edition_address"] = value(format!("0.0.0.0:{}", requested_port));
+    document["online_mode"] = value(online_mode);
+    if document["networking"]["query"]["address"].is_none() {
+        document["networking"]["query"]["address"] = value(format!("0.0.0.0:{}", requested_port));
+    } else {
+        document["networking"]["query"]["address"] = value(format!("0.0.0.0:{}", requested_port));
+    }
+
+    std::fs::write(&pumpkin_path, document.to_string())
+        .map_err(|e| format!("写入 pumpkin.toml 失败: {}", e))?;
+    Ok(true)
+}
+
 pub fn create_server_properties_if_missing(
     server_dir: &Path,
     requested_port: u16,
     online_mode: bool,
 ) -> Result<(), String> {
+    if update_pumpkin_config_if_present(server_dir, requested_port, online_mode)? {
+        return Ok(());
+    }
+
     let server_properties_path = server_dir.join("server.properties");
     if server_properties_path.exists() {
         return Ok(());
@@ -379,7 +441,8 @@ mod tests {
         build_managed_jvm_args_from_input, build_server_properties_path,
         create_server_properties_if_missing, ensure_server_path_writable, read_server_port,
         read_server_port_checked, resolve_effective_startup_config_from_document,
-        validate_config_path, write_server_startup_config_for_dir, EffectiveStartupConfig,
+        update_pumpkin_config_if_present, validate_config_path, write_server_startup_config_for_dir,
+        EffectiveStartupConfig,
         ManagedJvmBuildInput, StartupResolutionDefaults, StartupRuntimeDefaults,
     };
     use crate::types::{
@@ -398,11 +461,48 @@ mod tests {
     }
 
     #[test]
+    fn create_server_properties_if_missing_updates_existing_pumpkin_config() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("pumpkin.toml"),
+            "java_edition_address = \"0.0.0.0:25565\"\nonline_mode = true\n[networking.query]\naddress = \"0.0.0.0:25565\"\n",
+        )
+        .unwrap();
+
+        create_server_properties_if_missing(dir.path(), 25570, false).unwrap();
+
+        let content = std::fs::read_to_string(dir.path().join("pumpkin.toml")).unwrap();
+        assert!(content.contains("java_edition_address = \"0.0.0.0:25570\""));
+        assert!(content.contains("online_mode = false"));
+        assert!(content.contains("address = \"0.0.0.0:25570\""));
+        assert!(!dir.path().join("server.properties").exists());
+    }
+
+    #[test]
     fn read_server_port_prefers_server_properties_value() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("server.properties"), "server-port=25580\n").unwrap();
 
         assert_eq!(read_server_port(dir.path(), 25565), 25580);
+    }
+
+    #[test]
+    fn read_server_port_prefers_pumpkin_toml_when_present() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("pumpkin.toml"),
+            "java_edition_address = \"0.0.0.0:25581\"\n",
+        )
+        .unwrap();
+
+        assert_eq!(read_server_port(dir.path(), 25565), 25581);
+    }
+
+    #[test]
+    fn update_pumpkin_config_if_present_returns_false_when_missing() {
+        let dir = tempfile::tempdir().unwrap();
+
+        assert!(!update_pumpkin_config_if_present(dir.path(), 25570, true).unwrap());
     }
 
     #[test]

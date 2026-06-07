@@ -4,6 +4,20 @@ use super::super::super::fs::{copy_dir_recursive, path_is_child_of, paths_equal}
 use crate::services::server::manager::provisioning::i18n::{provisioning_t, provisioning_t1};
 use sea_lantern_server_installer_core::extract_modpack_archive;
 
+fn is_native_server_binary(source_path: &Path, source_extension: &str) -> bool {
+    if source_extension == "exe" {
+        return true;
+    }
+
+    source_extension.is_empty()
+        && source_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+            .contains("pumpkin")
+}
+
 pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Result<(), String> {
     let source_file_name = source_path
         .file_name()
@@ -22,6 +36,11 @@ pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Resul
         if source_extension == "jar" {
             let target_jar = run_dir.join(source_file_name);
             std::fs::copy(source_path, &target_jar).map_err(|e| {
+                provisioning_t1("server.provisioning.copy_jar_failed", e.to_string())
+            })?;
+        } else if is_native_server_binary(source_path, &source_extension) {
+            let target_file = run_dir.join(source_file_name);
+            std::fs::copy(source_path, &target_file).map_err(|e| {
                 provisioning_t1("server.provisioning.copy_jar_failed", e.to_string())
             })?;
         } else {
@@ -46,4 +65,22 @@ pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Resul
     }
 
     Err(provisioning_t("server.provisioning.invalid_modpack_path"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::prepare_modpack_files;
+
+    #[test]
+    fn prepare_modpack_files_copies_native_server_binary_without_extracting() {
+        let source_dir = tempfile::tempdir().expect("temp dir should exist");
+        let run_dir = tempfile::tempdir().expect("temp dir should exist");
+        let exe_path = source_dir.path().join("pumpkin-X64-Windows.exe");
+        std::fs::write(&exe_path, b"pumpkin").expect("pumpkin executable should write");
+        let target_dir = run_dir.path().join("server-root");
+
+        prepare_modpack_files(&exe_path, &target_dir).expect("pumpkin executable should copy");
+
+        assert!(target_dir.join("pumpkin-X64-Windows.exe").exists());
+    }
 }

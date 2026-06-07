@@ -158,6 +158,7 @@ const { isDragging } = useCreateServerWindowDrop();
                 <JavaEnvironmentStep
                   :java-list="javaList"
                   :loading="javaLoading"
+                  :required="selectedStartup?.mode !== 'custom'"
                   :selected-java="selectedJava"
                   @detect="detectJava"
                   @update:selected-java="selectedJava = $event"

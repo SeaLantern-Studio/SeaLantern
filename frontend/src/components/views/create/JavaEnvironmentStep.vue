@@ -8,11 +8,17 @@ import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import type { JavaInfo } from "@api/java";
 
-const props = defineProps<{
-  javaList: JavaInfo[];
-  selectedJava: string;
-  loading: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    javaList: JavaInfo[];
+    selectedJava: string;
+    loading: boolean;
+    required?: boolean;
+  }>(),
+  {
+    required: true,
+  },
+);
 
 const emit = defineEmits<{
   (e: "update:selectedJava", value: string): void;
@@ -85,11 +91,11 @@ async function pickJavaFile() {
     </div>
 
     <div class="java-step-row java-step-row-manual">
-      <span class="java-step-label">{{ i18n.t("create.java_path") }}</span>
+      <span class="java-step-label">{{ props.required === false ? i18n.t("create.java_path_optional") : i18n.t("create.java_path") }}</span>
       <div class="java-step-control">
         <SLInput
           :model-value="selectedJava"
-          :placeholder="i18n.t('create.java_manual')"
+          :placeholder="props.required === false ? i18n.t('create.java_optional_manual') : i18n.t('create.java_manual')"
           @update:model-value="$emit('update:selectedJava', $event)"
         >
           <template #suffix>

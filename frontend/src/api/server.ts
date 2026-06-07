@@ -74,7 +74,7 @@ function formatForceStopError(error: unknown): string {
 
 export interface StartupCandidateItem {
   id: string;
-  mode: "starter" | "jar" | "bat" | "sh" | "ps1";
+  mode: "starter" | "jar" | "bat" | "sh" | "ps1" | "custom";
   label: string;
   detail: string;
   path: string;

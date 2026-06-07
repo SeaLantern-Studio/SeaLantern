@@ -35,7 +35,7 @@ const emit = defineEmits<{
 
 const chooserOpen = ref(false);
 
-const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz", ".jar"];
+const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz", ".jar", ".exe"];
 
 const selectedName = computed(() => getPathName(props.sourcePath));
 const sourceTypeText = computed(() => {

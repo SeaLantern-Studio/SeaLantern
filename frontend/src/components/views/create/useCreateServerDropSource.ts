@@ -23,7 +23,8 @@ function inferSourceType(path: string): CreateServerSourceType {
     lowerPath.endsWith(".tar") ||
     lowerPath.endsWith(".tar.gz") ||
     lowerPath.endsWith(".tgz") ||
-    lowerPath.endsWith(".jar")
+    lowerPath.endsWith(".jar") ||
+    lowerPath.endsWith(".exe")
   ) {
     return "archive";
   }

@@ -25,11 +25,15 @@ pub async fn pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, 
     app.dialog()
         .file()
         .set_title(app_t("app.dialog.title_select_server_file"))
-        .add_filter(app_t("app.dialog.filter_server_files"), &["jar", "zip", "tar", "tgz", "gz"])
+        .add_filter(
+            app_t("app.dialog.filter_server_files"),
+            &["jar", "zip", "tar", "tgz", "gz", "exe"],
+        )
         .add_filter(app_t("app.dialog.filter_jar_files"), &["jar"])
         .add_filter(app_t("app.dialog.filter_zip_files"), &["zip"])
         .add_filter(app_t("app.dialog.filter_tar_files"), &["tar"])
         .add_filter(app_t("app.dialog.filter_compressed_tar"), &["tgz", "gz"])
+        .add_filter(app_t("app.dialog.filter_server_executables"), &["exe"])
         .add_filter(app_t("app.dialog.filter_all_files"), &["*"])
         .pick_file(move |path| {
             let result = path.map(|p| p.to_string());

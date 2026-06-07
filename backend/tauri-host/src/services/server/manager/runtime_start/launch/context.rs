@@ -35,6 +35,10 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_managed_encod
 pub(in crate::services::server::manager::runtime_start) fn resolve_java_paths(
     java_path: &str,
 ) -> Result<(String, String), String> {
+    if java_path.trim().is_empty() {
+        return Ok((String::new(), String::new()));
+    }
+
     resolve_shared_java_paths(java_path)
 }
 

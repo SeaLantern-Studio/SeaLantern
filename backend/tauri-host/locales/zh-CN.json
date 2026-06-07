@@ -35,6 +35,7 @@
   "app.dialog.filter_personalization_package": "Sea Lantern 个性化包",
   "app.dialog.filter_server_files": "服务端文件",
   "app.dialog.filter_server_files_short": "服务端文件",
+  "app.dialog.filter_server_executables": "服务端可执行文件",
   "app.dialog.filter_shell_scripts": "Shell 脚本",
   "app.dialog.filter_tar_files": "TAR 文件",
   "app.dialog.filter_zip_files": "ZIP 文件",
