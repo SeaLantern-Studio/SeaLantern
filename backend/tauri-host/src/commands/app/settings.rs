@@ -29,6 +29,8 @@ const PERSONALIZATION_PACKAGE_VERSION: u32 = 1;
 const PERSONALIZATION_PACKAGE_FILE_STEM: &str = "sea-lantern-personalization";
 const PERSONALIZATION_SETTINGS_ENTRY: &str = "personalization/settings.json";
 const PERSONALIZATION_BACKGROUND_ENTRY: &str = "personalization/background";
+#[cfg(target_os = "windows")]
+const WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED: bool = true;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct PersonalizationSettings {
@@ -277,6 +279,24 @@ fn clear_windows_effects(window: &WebviewWindow) {
     let _ = clear_blur(window);
 }
 
+#[cfg(target_os = "windows")]
+fn sync_windows_window_effect_fallback(
+    window: &WebviewWindow,
+    dark: Option<bool>,
+) -> Result<(), String> {
+    clear_windows_effects(window);
+
+    let color = match dark {
+        Some(true) => Color(15, 17, 23, 255),
+        Some(false) => Color(248, 250, 252, 255),
+        None => Color(248, 250, 252, 255),
+    };
+
+    window
+        .set_background_color(Some(color))
+        .map_err(|e| format!("Failed to set fallback Windows window background: {}", e))
+}
+
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 fn sync_window_background(window: &WebviewWindow, effect: &str) -> Result<(), String> {
     let use_transparent_background = !effect.trim().eq_ignore_ascii_case(WINDOW_EFFECT_OFF);
@@ -326,6 +346,11 @@ pub(crate) fn sync_native_window_effect(
 
     #[cfg(target_os = "windows")]
     {
+        if WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED {
+            let _ = effect;
+            return sync_windows_window_effect_fallback(window, dark);
+        }
+
         let normalized = effect.trim().to_ascii_lowercase();
         sync_window_background(window, &normalized)?;
         clear_windows_effects(window);
