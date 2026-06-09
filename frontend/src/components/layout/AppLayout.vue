@@ -6,9 +6,13 @@ import type { WindowEffect } from "@api/settings";
 import { useClientSettingsSync } from "@composables/useClientSettingsSync";
 import { useUiStore } from "@stores/uiStore";
 import { useSettingsStore } from "@stores/settingsStore";
+import { isWindowsPlatform } from "@utils/platform";
+
+const WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED = true;
 
 const ui = useUiStore();
 const settingsStore = useSettingsStore();
+const isWindows = isWindowsPlatform();
 
 useClientSettingsSync();
 
@@ -31,7 +35,9 @@ const backgroundStyle = computed(() => {
 });
 
 const hasTransparentWindowBackdrop = computed(
-  () => (settingsStore.windowEffect as WindowEffect) !== "off" || !backgroundImage.value,
+  () =>
+    !(isWindows && WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED) &&
+    ((settingsStore.windowEffect as WindowEffect) !== "off" || !backgroundImage.value),
 );
 
 const layoutClasses = computed(() => ({

@@ -23,6 +23,7 @@ import {
 } from "@utils/theme";
 
 const THEME_CACHE_KEY = "sl_theme_cache";
+const WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED = true;
 
 function getThemeCache(): { theme: string; fontSize: number } | null {
   try {
@@ -160,7 +161,11 @@ export const useSettingsStore = defineStore("settings", () => {
 
   function applyWindowEffectAttributes(nextSettings: AppSettings): void {
     const effect = (nextSettings.window_effect || "off") as WindowEffect;
-    const enabled = effect !== "off" || !nextSettings.background_image;
+    const nativeWindowEffectEnabled = !(isWindows && WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED);
+    const hasBackgroundImage = Boolean(nextSettings.background_image);
+    const enabled = nativeWindowEffectEnabled
+      ? effect !== "off" || !hasBackgroundImage
+      : effect !== "off" && hasBackgroundImage;
     document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
     document.documentElement.setAttribute("data-window-effect", effect);
   }
