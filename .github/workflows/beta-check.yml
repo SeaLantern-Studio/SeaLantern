@@ -130,7 +130,7 @@ jobs:
         continue-on-error: true
         run: |
           corepack enable
-          corepack prepare pnpm@9.15.9 --activate
+          corepack prepare pnpm@11.5.2 --activate
 
       - name: PNPM 缓存
         id: pnpm_cache
@@ -138,7 +138,7 @@ jobs:
         continue-on-error: true
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml', 'frontend/pnpm-workspace.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 

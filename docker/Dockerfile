@@ -7,16 +7,17 @@
 # ============================================
 
 # ---------- 阶段 1: 构建前端 ----------
-FROM docker.m.daocloud.io/node:20-alpine AS frontend-builder
+FROM docker.m.daocloud.io/node:24-alpine AS frontend-builder
 
 WORKDIR /app
 
 # 安装 pnpm
-RUN npm install -g pnpm@9.15.9
+RUN npm install -g pnpm@11.5.2
 
 # 复制前端依赖文件
 COPY frontend/package.json ./package.json
 COPY frontend/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY frontend/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
 # 安装依赖
 RUN pnpm install --frozen-lockfile

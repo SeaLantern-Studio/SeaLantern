@@ -43,7 +43,7 @@ Import a server .jar, choose a Java version, then click Start. It's that simple.
 
 ## Development
 
-You'll need Node.js 20+ and Rust 1.70+.
+You'll need Node.js 22+ and Rust 1.70+.
 
 Please also install `pnpm` and `cargo`.
 

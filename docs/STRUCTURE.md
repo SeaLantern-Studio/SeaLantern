@@ -31,6 +31,7 @@ sea-lantern/
 ├── NOTICE                        # 第三方声明
 ├── frontend/package.json         # 前端依赖与脚本定义
 ├── frontend/pnpm-lock.yaml       # pnpm 锁文件
+├── frontend/pnpm-workspace.yaml  # pnpm 工作区与安装脚本策略
 ├── README.md                     # 中文说明文档
 ├── README-en.md                  # 英文说明文档
 ├── rustfmt.toml                  # Rust 格式化配置

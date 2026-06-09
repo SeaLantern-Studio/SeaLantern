@@ -89,6 +89,11 @@ function handleClose(): void {
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === "Enter" && !isConfirmDisabled.value) {
     handleConfirm();
+    return;
+  }
+
+  if (event.key === "Escape") {
+    handleCancel();
   }
 }
 </script>
@@ -103,13 +108,7 @@ function handleKeydown(event: KeyboardEvent): void {
       <p v-if="message" class="confirm-message" v-html="safeMessage"></p>
 
       <div v-if="requireInput" class="confirm-input-group">
-        <SLInput
-          ref="inputRef"
-          v-model="inputValue"
-          :placeholder="inputPlaceholder"
-          @keyup.enter="handleConfirm"
-          @keyup.escape="handleCancel"
-        />
+        <SLInput ref="inputRef" v-model="inputValue" :placeholder="inputPlaceholder" />
         <p v-if="inputError" class="confirm-error">{{ inputError }}</p>
       </div>
     </div>
