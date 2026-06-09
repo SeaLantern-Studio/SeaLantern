@@ -302,13 +302,13 @@ backend/tauri-host/src/plugins/runtime/
 - `Agents-Example-Module.md`
 - `Agents.md`
 - `CONTRIBUTING.md`
-- `docker-runtime-itzg-design.md` # Java 版 Minecraft 容器运行时（itzg）设计草案
+- `design/` # 设计方案与设计草案目录
 - `STRUCTURE.md`
 - `language-system.md` # 前端 i18n 系统使用说明（原 src/language/README.md）
 - `plugin_api.md`
+- `plugin/` # 按命名空间和单个 API 拆分的插件 Lua API 文档
 - `theme-system.md` # 主题系统使用说明（原 src/themes/README.md）
-- `新手使用教程.html`
-- `lua-api/` # 插件运行时各模块 Lua API 文档（9 个模块）
+- `lua-api/` # 插件运行时各模块 Lua API 聚合文档，作为原始参考来源保留
 
 ### `scripts/`
 
