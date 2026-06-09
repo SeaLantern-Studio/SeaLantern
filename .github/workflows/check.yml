@@ -2,8 +2,9 @@ name: "代码质量检查"
 
 on:
   pull_request:
+    branches: [main]
   push:
-    branches: [main, dev]
+    branches: [main]
 
 concurrency:
   group: check-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

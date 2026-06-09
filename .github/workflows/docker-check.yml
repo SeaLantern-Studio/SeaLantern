@@ -2,7 +2,7 @@ name: "Docker 构建检查"
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - "docker/Dockerfile"
       - "docker/docker-compose.yml"
@@ -14,7 +14,7 @@ on:
       - "Cargo.lock"
       - ".github/workflows/docker-check.yml"
   push:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - "docker/Dockerfile"
       - "docker/docker-compose.yml"
