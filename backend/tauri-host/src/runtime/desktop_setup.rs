@@ -65,12 +65,15 @@ pub(crate) fn apply_platform_window_style(app: &tauri::App) {
             _ => None,
         };
 
+        // Windows native blur/acrylic/mica flickers while dragging a transparent
+        // window with no app background. Keep the startup entry disabled for now
+        // and let the shared sync path clear effects and restore a solid fallback.
         if let Err(e) = crate::commands::app::settings::sync_native_window_effect(
             &window,
-            &settings.window_effect,
+            crate::models::settings::WINDOW_EFFECT_OFF,
             theme_pref,
         ) {
-            eprintln!("Failed to sync native Windows window effect: {}", e);
+            eprintln!("Failed to apply fallback Windows window effect: {}", e);
         }
     }
 }
