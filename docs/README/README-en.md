@@ -36,7 +36,7 @@ You need `Node.js 22+` and `Rust 1.70+`.
 
 Please also install `pnpm` and `cargo`.
 
-**You need to fork the source repository's `Beta` branch first, then do development work in your own repository.**
+**You need to fork the source repository's `beta` branch first, then do development work in your own repository.**
 
 If you only want to check the latest progress, you can clone the upstream repository directly:
 
@@ -55,7 +55,7 @@ pnpm --dir frontend install
 pnpm --dir frontend run tauri:dev
 ```
 
-On some Linux distributions such as Arch, running `pnpm --dir frontend run tauri:dev` directly may fail if required dependencies are missing. Install Tauri prerequisites with your package manager before running the command. See [Tauri prerequisites for Linux](https://tauri.app/zh-cn/start/prerequisites/#linux).
+On some Linux distributions such as Arch, running `pnpm --dir frontend run tauri:dev` directly may fail if required dependencies are missing. Install Tauri prerequisites with your package manager before running the command. See [Tauri prerequisites for Linux](https://tauri.app/start/prerequisites/#linux).
 
 Frontend only:
 
@@ -159,7 +159,7 @@ That said, you need solid reasoning and enough implementation ability, and major
 
 ### How to Contribute
 
-1. Fork the `dev` branch of this repository
+1. Fork the `beta` branch of this repository
 2. Create a branch and write your code
 3. Submit a pull request
 4. Your name will appear on the contributor wall in the About page

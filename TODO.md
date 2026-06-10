@@ -1,7 +1,3 @@
-## High
-
-## Medium
-
 ## Low
 
 - [ ] JVM 预设保存
