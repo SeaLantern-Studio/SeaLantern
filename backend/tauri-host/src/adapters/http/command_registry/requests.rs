@@ -39,7 +39,7 @@ mod tests {
             r#"{
   "name": "custom-local",
   "aliases": ["cache_server", "test_server"],
-  "coreType": "Fabric",
+  "coreType": "fabric",
   "mcVersion": "1.20.1",
   "maxMemory": 4096,
   "minMemory": 2048,
@@ -64,7 +64,7 @@ mod tests {
         let req: CreateServerRequest = serde_json::from_str(
             r#"{
   "name": "legacy-local",
-  "coreType": "Paper",
+  "coreType": "paper",
   "mcVersion": "1.21.1",
   "maxMemory": 4096,
   "minMemory": 2048,
@@ -175,9 +175,11 @@ pub(super) struct ScanStartupCandidatesRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct ParseServerCoreTypeRequest {
+pub(super) struct ParseServerCoreKeyRequest {
     pub source_path: String,
 }
+
+pub(super) type ParseServerCoreTypeRequest = ParseServerCoreKeyRequest;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

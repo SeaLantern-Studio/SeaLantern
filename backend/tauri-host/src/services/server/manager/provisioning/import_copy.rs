@@ -6,9 +6,10 @@ use crate::models::server::{
 use sea_lantern_server_config_core::startup::{
     create_server_properties_if_missing, read_server_port, write_server_startup_config_for_dir,
 };
-use sea_lantern_server_installer_core::detect_core_type;
+use sea_lantern_server_installer_core::resolve_imported_server_core_key;
+use sea_lantern_server_local_setup_core::normalize_cli_startup_mode;
 
-use super::super::common::{current_timestamp_secs, normalize_startup_mode, validate_server_name};
+use super::super::common::{current_timestamp_secs, validate_server_name};
 use super::super::fs::copy_dir_recursive;
 use super::super::ServerManager;
 use super::i18n::{provisioning_t, provisioning_t1, provisioning_t2};
@@ -18,7 +19,8 @@ pub(super) fn import_server(
     req: ImportServerRequest,
 ) -> Result<ServerInstance, String> {
     let server_name = validate_server_name(&req.name)?;
-    let startup_mode = normalize_startup_mode(&req.startup_mode).to_string();
+    let startup_mode =
+        normalize_cli_startup_mode(Some(&req.startup_mode)).unwrap_or_else(|_| "jar".to_string());
     let source_startup_file = Path::new(&req.jar_path);
     if !source_startup_file.exists() {
         return Err(provisioning_t1(
@@ -75,7 +77,8 @@ pub(super) fn import_server(
     )?;
 
     let now = current_timestamp_secs();
-    let core_type = detect_core_type(&dest_startup.to_string_lossy());
+    let core_type =
+        resolve_imported_server_core_key(&startup_mode, &dest_startup.to_string_lossy());
     println!(
         "{}",
         provisioning_t1("server.provisioning.detected_core_type", core_type.clone())
@@ -109,4 +112,46 @@ pub(super) fn import_server(
     manager.lock_servers()?.push(server.clone());
     manager.save()?;
     Ok(server)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::import_server;
+    use crate::models::server::{CpuPolicyConfig, ImportServerRequest, JvmPresetConfig};
+    use crate::services::server::manager::ServerManager;
+    use crate::test_support::{lock_env, EnvGuard};
+    use tempfile::tempdir;
+
+    #[test]
+    fn import_server_reuses_shared_imported_core_resolution() {
+        let _env_lock = lock_env();
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+        let source_dir = temp_dir.path().join("source");
+        std::fs::create_dir_all(&source_dir).expect("source dir should create");
+        let startup_path = source_dir.join("pumpkin-launcher.exe");
+        std::fs::write(&startup_path, b"placeholder").expect("startup file should write");
+
+        let manager = ServerManager::new();
+        let req = ImportServerRequest {
+            name: "Pumpkin Import".to_string(),
+            aliases: Vec::new(),
+            jar_path: startup_path.to_string_lossy().to_string(),
+            java_path: "C:/Java/bin/java.exe".to_string(),
+            startup_mode: "custom".to_string(),
+            custom_command: Some(startup_path.to_string_lossy().to_string()),
+            max_memory: 4096,
+            min_memory: 2048,
+            port: 25565,
+            online_mode: false,
+            jvm_args: Vec::new(),
+            cpu_policy: CpuPolicyConfig::default(),
+            jvm_preset: JvmPresetConfig::default(),
+        };
+
+        let server = import_server(&manager, req).expect("import server should succeed");
+
+        assert_eq!(server.core_type, "pumpkin");
+        assert_eq!(server.startup_mode_str(), "custom");
+    }
 }

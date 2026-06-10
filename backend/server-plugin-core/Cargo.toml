@@ -12,6 +12,8 @@ path = "src/lib.rs"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 zip = "2.0"
+sea_lantern_server_installer_core = { package = "sea-lantern-server-installer-core", path = "../server-installer-core" }
+sl-server-flavor-core = "0.1.0"
 
 [dev-dependencies]
 tempfile = "3"

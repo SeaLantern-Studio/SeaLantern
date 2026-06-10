@@ -1,15 +1,34 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
+use crate::models::server::ServerInstance;
 use crate::utils::path::validate_file_name_only;
+use sea_lantern_server_plugin_core::{ensure_extension_target_dir, resolve_extension_relative_dir};
+use server_flavor_core::ServerExtensionKind;
 
-pub(crate) fn ensure_plugins_dir(server_path: &str) -> Result<PathBuf, String> {
-    let plugins_dir = Path::new(server_path).join("plugins");
-    if !plugins_dir.exists() {
-        fs::create_dir_all(&plugins_dir)
-            .map_err(|e| format!("Failed to create plugins directory: {}", e))?;
-    }
-    Ok(plugins_dir)
+pub(crate) fn ensure_plugin_target_dir_for_server(
+    server: &ServerInstance,
+) -> Result<PathBuf, String> {
+    ensure_extension_target_dir(
+        &server.path,
+        &server.core_type,
+        &server.runtime_kind,
+        server.startup_mode_str(),
+        ServerExtensionKind::Plugin,
+    )
+}
+
+pub(crate) fn plugin_relative_dir_for_server(
+    server: &ServerInstance,
+) -> Result<&'static str, String> {
+    resolve_extension_relative_dir(
+        &server.core_type,
+        &server.runtime_kind,
+        server.startup_mode_str(),
+        ServerExtensionKind::Plugin,
+    )
+    .ok_or_else(|| {
+        format!("Server core '{}' does not support plugin-style extensions", server.core_type)
+    })
 }
 
 pub(crate) fn validate_plugin_file_name(file_name: &str) -> Result<String, String> {

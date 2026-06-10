@@ -6,11 +6,13 @@ use crate::models::server::{
 use sea_lantern_server_config_core::startup::{
     ensure_server_path_writable, read_server_port, write_server_startup_config_for_dir,
 };
-use sea_lantern_server_installer_core::detect_core_type;
+use sea_lantern_server_local_setup_core::{
+    resolve_existing_server_core_type, resolve_existing_server_requested_startup,
+    ResolveExistingServerStartupError,
+};
 
 use super::super::common::{
-    current_timestamp_secs, detect_startup_mode_from_path, ensure_server_identity_available,
-    validate_server_name, StartupMode,
+    current_timestamp_secs, ensure_server_identity_available, validate_server_name,
 };
 use super::super::fs::find_server_executable;
 use super::super::ServerManager;
@@ -45,24 +47,21 @@ pub(super) fn add_existing_server(
 
     ensure_server_path_writable(server_path)?;
 
-    let requested_mode = StartupMode::from_raw(&req.startup_mode);
-    let (jar_path, startup_mode, custom_command) = if requested_mode.is_custom() {
-        let command = req
-            .custom_command
-            .as_ref()
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty())
-            .ok_or_else(|| provisioning_t("server.provisioning.custom_command_empty"))?;
-        (String::new(), requested_mode.as_str().to_string(), Some(command))
-    } else if let Some(ref exec_path) = req.executable_path {
-        let path = Path::new(exec_path);
-        if !path.exists() {
-            return Err(provisioning_t1(
-                "server.provisioning.executable_missing",
-                exec_path.clone(),
-            ));
-        }
-        (exec_path.clone(), detect_startup_mode_from_path(path), None)
+    let (jar_path, startup_mode, custom_command) = if let Some(selection) =
+        resolve_existing_server_requested_startup(
+            &req.startup_mode,
+            req.custom_command.as_deref(),
+            req.executable_path.as_deref(),
+        )
+        .map_err(|error| match error {
+            ResolveExistingServerStartupError::CustomCommandEmpty => {
+                provisioning_t("server.provisioning.custom_command_empty")
+            }
+            ResolveExistingServerStartupError::ExecutableMissing(path) => {
+                provisioning_t1("server.provisioning.executable_missing", path)
+            }
+        })? {
+        (selection.startup_target_path, selection.startup_mode, selection.custom_command)
     } else {
         let (path, mode) = find_server_executable(server_path)?;
         (path, mode, None)
@@ -77,19 +76,8 @@ pub(super) fn add_existing_server(
         req.cpu_policy.clone(),
         req.jvm_preset.clone(),
     )?;
-    let core_type = req
-        .core_type
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-        .unwrap_or_else(|| {
-            if StartupMode::from_raw(&startup_mode).is_custom() {
-                "Unknown".to_string()
-            } else {
-                detect_core_type(&jar_path)
-            }
-        });
+    let core_type =
+        resolve_existing_server_core_type(req.core_type.as_deref(), &startup_mode, &jar_path)?;
     let mc_version = req
         .mc_version
         .as_deref()
@@ -181,10 +169,45 @@ mod tests {
 
         let server = add_existing_server(&manager, req).expect("existing server should be added");
 
-        assert_eq!(server.core_type, "Paper");
+        assert_eq!(server.core_type, "paper");
         assert_eq!(server.mc_version, "1.21.1");
         assert_eq!(server.aliases.len(), 1);
         assert!(server.aliases[0].starts_with("paper_prod-"));
         assert_eq!(server.startup_mode_str(), "sh");
+    }
+
+    #[test]
+    fn add_existing_server_trims_custom_command_via_shared_resolution() {
+        let _env_lock = lock_env();
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+        let server_dir = temp_dir.path().join("custom-server");
+        std::fs::create_dir_all(&server_dir).expect("server dir should create");
+
+        let manager = ServerManager::new();
+        let req = AddExistingServerRequest {
+            name: unique_name("Custom Existing"),
+            aliases: vec![],
+            server_path: server_dir.to_string_lossy().to_string(),
+            java_path: "C:/Java/bin/java.exe".to_string(),
+            max_memory: 4096,
+            min_memory: 2048,
+            port: 25565,
+            startup_mode: "custom".to_string(),
+            executable_path: None,
+            custom_command: Some("  launch-paper  ".to_string()),
+            core_type: None,
+            mc_version: None,
+            jvm_args: Vec::new(),
+            cpu_policy: CpuPolicyConfig::default(),
+            jvm_preset: JvmPresetConfig::default(),
+        };
+
+        let server =
+            add_existing_server(&manager, req).expect("custom existing server should be added");
+
+        assert_eq!(server.startup_mode_str(), "custom");
+        assert_eq!(server.custom_command(), Some("launch-paper"));
+        assert_eq!(server.core_type, "Unknown");
     }
 }

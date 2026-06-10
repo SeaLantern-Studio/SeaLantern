@@ -244,8 +244,6 @@ export function useCreateServerPage() {
     runPath,
     runPathOverwriteRisk,
     coreDetecting: scan.coreDetecting,
-    detectedCoreType: scan.detectedCoreType,
-    detectedCoreMainClass: scan.detectedCoreMainClass,
     startupDetecting: scan.startupDetecting,
     startupCandidates: scan.startupCandidates,
     selectedStartupId: scan.selectedStartupId,

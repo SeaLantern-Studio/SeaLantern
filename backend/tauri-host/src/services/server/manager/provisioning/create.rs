@@ -6,10 +6,10 @@ use crate::models::server::{
 use sea_lantern_server_config_core::startup::{
     create_server_properties_if_missing, write_server_startup_config_for_dir,
 };
+use sea_lantern_server_local_setup_core::{canonical_core_type, normalize_cli_startup_mode};
 
 use super::super::common::{
-    current_timestamp_secs, ensure_server_identity_available, normalize_startup_mode,
-    validate_server_name,
+    current_timestamp_secs, ensure_server_identity_available, validate_server_name,
 };
 use super::i18n::provisioning_t1;
 use super::ServerManager;
@@ -43,7 +43,7 @@ pub(super) fn create_server(
         id: id.clone(),
         name: server_name,
         aliases: req.aliases,
-        core_type: req.core_type,
+        core_type: canonical_core_type(&req.core_type),
         core_version: String::new(),
         mc_version: req.mc_version,
         path: server_dir.clone(),
@@ -55,7 +55,8 @@ pub(super) fn create_server(
         runtime_kind: "local".to_string(),
         runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
             jar_path: req.jar_path,
-            startup_mode: normalize_startup_mode(&req.startup_mode).to_string(),
+            startup_mode: normalize_cli_startup_mode(Some(&req.startup_mode))
+                .unwrap_or_else(|_| "jar".to_string()),
             custom_command: req.custom_command,
             java_path: req.java_path,
             jvm_args: req.jvm_args,
@@ -125,6 +126,7 @@ mod tests {
         let server = create_server(&manager, req).expect("server should be created");
 
         assert_eq!(server.path, server_dir.to_string_lossy().to_string());
+        assert_eq!(server.core_type, "paper");
         assert!(server_dir.join("SeaLantern").join("config.toml").exists());
     }
 
@@ -155,6 +157,7 @@ mod tests {
         let server = create_server(&manager, req).expect("server should be created");
 
         assert_eq!(server.path, server_dir.to_string_lossy().to_string());
+        assert_eq!(server.core_type, "fabric");
         assert!(server_dir.exists());
         assert!(server_dir.join("SeaLantern").join("config.toml").exists());
         let server_properties = std::fs::read_to_string(server_dir.join("server.properties"))

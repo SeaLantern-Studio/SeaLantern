@@ -1,8 +1,10 @@
 use std::fs;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use sea_lantern_server_installer_core::CoreType;
 use serde::{Deserialize, Serialize};
+use server_flavor_core::{resolve_profile_from_parts, ServerExtensionKind};
 use zip::ZipArchive;
 
 #[allow(non_camel_case_types)]
@@ -102,16 +104,92 @@ fn plugin_name_from_file_name(file_name: &str) -> String {
         .to_string()
 }
 
+pub fn resolve_extension_relative_dir(
+    core_type: &str,
+    runtime_kind: &str,
+    startup_mode: &str,
+    kind: ServerExtensionKind,
+) -> Option<&'static str> {
+    let core_key = CoreType::normalize_to_api_core_key(core_type);
+    let profile = resolve_profile_from_parts(
+        core_key.as_deref(),
+        Some(runtime_kind),
+        Some(startup_mode),
+        None,
+        false,
+    );
+    if !profile.supports_extension_kind(kind) {
+        return None;
+    }
+
+    match kind {
+        ServerExtensionKind::Plugin | ServerExtensionKind::McdrPlugin => Some("plugins"),
+        ServerExtensionKind::Mod => Some("mods"),
+        ServerExtensionKind::Datapack => Some("world/datapacks"),
+        ServerExtensionKind::Addon => Some("behavior_packs"),
+    }
+}
+
+pub fn resolve_extension_target_dir(
+    server_path: &str,
+    core_type: &str,
+    runtime_kind: &str,
+    startup_mode: &str,
+    kind: ServerExtensionKind,
+) -> Option<PathBuf> {
+    let relative_dir = resolve_extension_relative_dir(core_type, runtime_kind, startup_mode, kind)?;
+    Some(Path::new(server_path).join(relative_dir))
+}
+
+pub fn ensure_extension_target_dir(
+    server_path: &str,
+    core_type: &str,
+    runtime_kind: &str,
+    startup_mode: &str,
+    kind: ServerExtensionKind,
+) -> Result<PathBuf, String> {
+    let target_dir =
+        resolve_extension_target_dir(server_path, core_type, runtime_kind, startup_mode, kind)
+            .ok_or_else(|| {
+                format!("Extension kind '{:?}' is not supported for core '{}'.", kind, core_type)
+            })?;
+
+    if !target_dir.exists() {
+        fs::create_dir_all(&target_dir)
+            .map_err(|e| format!("Failed to create extension directory: {}", e))?;
+    }
+
+    Ok(target_dir)
+}
+
 pub fn get_plugins(server_path: &str) -> Result<Vec<m_PluginInfo>, String> {
-    collect_plugins(server_path, false)
+    get_plugins_in_dir(server_path, "plugins")
 }
 
 pub fn get_plugins_checked(server_path: &str) -> Result<Vec<m_PluginInfo>, String> {
-    collect_plugins(server_path, true)
+    get_plugins_checked_in_dir(server_path, "plugins")
 }
 
-fn collect_plugins(server_path: &str, strict_jar_parse: bool) -> Result<Vec<m_PluginInfo>, String> {
-    let plugins_dir = Path::new(server_path).join("plugins");
+pub fn get_plugins_in_dir(
+    server_path: &str,
+    relative_dir: &str,
+) -> Result<Vec<m_PluginInfo>, String> {
+    collect_plugins(server_path, relative_dir, false)
+}
+
+pub fn get_plugins_checked_in_dir(
+    server_path: &str,
+    relative_dir: &str,
+) -> Result<Vec<m_PluginInfo>, String> {
+    collect_plugins(server_path, relative_dir, true)
+}
+
+fn collect_plugins(
+    server_path: &str,
+    relative_dir: &str,
+    strict_jar_parse: bool,
+) -> Result<Vec<m_PluginInfo>, String> {
+    let plugins_dir = Path::new(server_path).join(relative_dir);
     let mut plugins = Vec::new();
 
     let entries = fs::read_dir(&plugins_dir)
@@ -198,7 +276,15 @@ pub fn get_plugin_config_files(
     server_path: &str,
     plugin_name: &str,
 ) -> Result<Vec<m_PluginConfigFile>, String> {
-    let config_folder_path = Path::new(server_path).join("plugins").join(plugin_name);
+    get_plugin_config_files_in_dir(server_path, "plugins", plugin_name)
+}
+
+pub fn get_plugin_config_files_in_dir(
+    server_path: &str,
+    relative_dir: &str,
+    plugin_name: &str,
+) -> Result<Vec<m_PluginConfigFile>, String> {
+    let config_folder_path = Path::new(server_path).join(relative_dir).join(plugin_name);
 
     if config_folder_path.exists() {
         scan_plugin_config_files(&config_folder_path)
@@ -278,8 +364,11 @@ fn is_supported_config_extension(file_type: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        get_plugin_config_files, get_plugins, get_plugins_checked, m_PluginConfig, resolve_author,
+        ensure_extension_target_dir, get_plugin_config_files, get_plugin_config_files_in_dir,
+        get_plugins, get_plugins_checked, get_plugins_checked_in_dir, m_PluginConfig,
+        resolve_author, resolve_extension_relative_dir, resolve_extension_target_dir,
     };
+    use server_flavor_core::ServerExtensionKind;
     use std::fs;
     use std::io::Write;
     use zip::write::FileOptions;
@@ -362,6 +451,99 @@ mod tests {
             .iter()
             .any(|file| file.file_name == "extra.json" && file.file_type == "json"));
         assert!(files.iter().all(|file| !file.file_name.ends_with(".txt")));
+    }
+
+    #[test]
+    fn get_plugins_checked_in_dir_reads_non_default_extension_directory() {
+        let dir = tempfile::tempdir().expect("temp dir should exist");
+        let extensions_dir = dir.path().join("behavior_packs");
+        fs::create_dir_all(&extensions_dir).expect("extension dir should exist");
+
+        write_plugin_jar(
+            &extensions_dir.join("BedrockBridge.jar"),
+            "name: BedrockBridge\nversion: 1.0.0\nmain: bedrock.Bridge\n",
+        );
+
+        let plugins =
+            get_plugins_checked_in_dir(dir.path().to_string_lossy().as_ref(), "behavior_packs")
+                .expect("plugin listing should succeed in custom extension dir");
+
+        assert!(plugins.iter().any(|plugin| plugin.name == "BedrockBridge"));
+    }
+
+    #[test]
+    fn resolve_extension_relative_dir_follows_shared_flavor_contracts() {
+        assert_eq!(
+            resolve_extension_relative_dir("Paper", "local", "jar", ServerExtensionKind::Plugin),
+            Some("plugins")
+        );
+        assert_eq!(
+            resolve_extension_relative_dir("Fabric", "local", "jar", ServerExtensionKind::Mod),
+            Some("mods")
+        );
+        assert_eq!(
+            resolve_extension_relative_dir(
+                "bedrock",
+                "local",
+                "custom",
+                ServerExtensionKind::Addon
+            ),
+            Some("behavior_packs")
+        );
+        assert_eq!(
+            resolve_extension_relative_dir("Paper", "local", "jar", ServerExtensionKind::Mod),
+            None
+        );
+    }
+
+    #[test]
+    fn resolve_extension_target_dir_builds_expected_path() {
+        let target = resolve_extension_target_dir(
+            "E:/servers/fabric-main",
+            "Fabric",
+            "local",
+            "jar",
+            ServerExtensionKind::Mod,
+        )
+        .expect("fabric mod dir should resolve");
+
+        assert_eq!(target.to_string_lossy().replace('\\', "/"), "E:/servers/fabric-main/mods");
+    }
+
+    #[test]
+    fn ensure_extension_target_dir_creates_missing_directory() {
+        let dir = tempfile::tempdir().expect("temp dir should exist");
+
+        let target = ensure_extension_target_dir(
+            dir.path().to_string_lossy().as_ref(),
+            "bedrock",
+            "local",
+            "custom",
+            ServerExtensionKind::Addon,
+        )
+        .expect("bedrock addon dir should be created");
+
+        assert!(target.exists());
+        assert_eq!(target.file_name().and_then(|name| name.to_str()), Some("behavior_packs"));
+    }
+
+    #[test]
+    fn get_plugin_config_files_in_dir_reads_non_default_extension_directory() {
+        let dir = tempfile::tempdir().expect("temp dir should exist");
+        let plugin_dir = dir.path().join("behavior_packs").join("ExamplePlugin");
+        fs::create_dir_all(&plugin_dir).expect("plugin config dir should exist");
+        fs::write(plugin_dir.join("config.yml"), "enabled: true\n")
+            .expect("yaml config should write");
+
+        let files = get_plugin_config_files_in_dir(
+            dir.path().to_string_lossy().as_ref(),
+            "behavior_packs",
+            "ExamplePlugin",
+        )
+        .expect("config scan should succeed");
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].file_name, "config.yml");
     }
 
     #[test]

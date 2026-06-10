@@ -6,12 +6,13 @@ use sea_lantern_server_config_core::{
     resolve_active_processor_count as resolve_shared_active_processor_count,
     resolve_local_cpu_policy as resolve_shared_local_cpu_policy, ResolvedCpuPolicy,
 };
+use sea_lantern_server_local_setup_core::local_cpu_policy_supported_startup_mode;
 
 #[cfg(test)]
 use crate::services::server::manager::startup_support::resolve_effective_startup_config;
 
 pub(crate) fn mode_supports_local_cpu_policy(startup_mode: StartupMode) -> bool {
-    matches!(startup_mode, StartupMode::Jar | StartupMode::Starter)
+    local_cpu_policy_supported_startup_mode(startup_mode.as_str())
 }
 
 #[cfg(test)]

@@ -22,14 +22,16 @@ use crate::services::server::runtime;
 use crate::utils::logger;
 use crate::utils::server_status::status_blocks_start;
 use sea_lantern_server_config_core::properties::read_properties;
-use sea_lantern_server_installer_core::detect_core_type;
+use sea_lantern_server_local_setup_core::{
+    normalize_cli_startup_mode, refresh_local_server_core_type,
+};
 use serde::{Deserialize, Serialize};
 
 use super::log_pipeline as server_log_pipeline;
 use super::manager::process::force_kill_process_tree;
 use super::runtime::local::LocalServerRuntime;
 pub(crate) use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
-use common::{get_data_dir_checked, normalize_startup_mode, validate_server_name};
+use common::{get_data_dir_checked, validate_server_name};
 use fs::{
     load_servers_for_bootstrap, remove_run_path_mapping, save_servers, update_run_path_mapping,
 };
@@ -687,17 +689,16 @@ impl ServerManager {
                 let runtime = server
                     .local_runtime_mut()
                     .ok_or_else(|| manager_t("server.manager.update_startup_mode_unsupported"))?;
-                runtime.startup_mode = normalize_startup_mode(startup_mode).to_string();
+                runtime.startup_mode = normalize_cli_startup_mode(Some(startup_mode))
+                    .unwrap_or_else(|_| "jar".to_string());
             }
 
-            // 尝试从新的路径检测核心类型
-            if server.startup_mode_str() != "custom" {
-                let jar_path = server.jar_path().unwrap_or_default();
-                let detected_core = detect_core_type(jar_path);
-                if !detected_core.is_empty() && detected_core != "Unknown" {
-                    server.core_type = detected_core;
-                }
-            }
+            // 路径更新后按共享规则刷新核心类型，但 custom/unknown 情况保留现有值
+            server.core_type = refresh_local_server_core_type(
+                &server.core_type,
+                server.startup_mode_str(),
+                server.jar_path(),
+            );
 
             // 尝试从 server.properties 读取端口
             let server_properties_path = std::path::Path::new(new_path).join("server.properties");
@@ -748,7 +749,7 @@ mod tests {
     use super::ServerManager;
     use crate::models::server::{
         CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
-        JvmPresetConfig, ServerInstance, ServerRuntimeConfig,
+        JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
     use crate::test_support::{lock_env, EnvGuard};
     use std::collections::BTreeMap;
@@ -784,6 +785,33 @@ mod tests {
                 docker_backend_kind: DockerBackendKind::Cli,
                 command_mode: DockerCommandMode::Rcon,
                 rcon: None,
+                jvm_args: Vec::new(),
+                cpu_policy: CpuPolicyConfig::default(),
+                jvm_preset: JvmPresetConfig::default(),
+            }),
+        }
+    }
+
+    fn sample_local_server(path: String, jar_path: String, startup_mode: &str) -> ServerInstance {
+        ServerInstance {
+            id: "local-update-test".to_string(),
+            name: "Local Update Test".to_string(),
+            aliases: Vec::new(),
+            core_type: "paper".to_string(),
+            core_version: "paper".to_string(),
+            mc_version: "1.21.1".to_string(),
+            path,
+            port: 25565,
+            max_memory: 4096,
+            min_memory: 2048,
+            created_at: 0,
+            last_started_at: None,
+            runtime_kind: "local".to_string(),
+            runtime: ServerRuntimeConfig::Local(LocalRuntimeConfig {
+                jar_path,
+                startup_mode: startup_mode.to_string(),
+                custom_command: None,
+                java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
@@ -951,5 +979,69 @@ mod tests {
         assert_eq!(backup_count, 1);
         drop(_guard);
         drop(_env_lock);
+    }
+
+    #[test]
+    fn update_server_path_refreshes_local_core_type_via_shared_resolution() {
+        let _env_lock = lock_env();
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+        let source_dir = temp_dir.path().join("nukkit-dir");
+        std::fs::create_dir_all(&source_dir).expect("server dir should create");
+        let jar_path = source_dir.join("nukkit.jar");
+        std::fs::write(&jar_path, b"placeholder").expect("jar should write");
+
+        let manager = ServerManager::new();
+        manager
+            .lock_servers()
+            .expect("servers lock should succeed")
+            .push(sample_local_server(
+                source_dir.to_string_lossy().to_string(),
+                jar_path.to_string_lossy().to_string(),
+                "jar",
+            ));
+
+        let updated = manager
+            .update_server_path(
+                "local-update-test",
+                source_dir.to_string_lossy().as_ref(),
+                Some(jar_path.to_string_lossy().as_ref()),
+                Some("jar"),
+            )
+            .expect("update path should succeed");
+
+        assert_eq!(updated.core_type, "nukkit");
+    }
+
+    #[test]
+    fn update_server_path_preserves_local_core_type_for_custom_mode() {
+        let _env_lock = lock_env();
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+        let source_dir = temp_dir.path().join("custom-dir");
+        std::fs::create_dir_all(&source_dir).expect("server dir should create");
+        let script_path = source_dir.join("run.bat");
+        std::fs::write(&script_path, b"@echo off\r\n").expect("script should write");
+
+        let manager = ServerManager::new();
+        manager
+            .lock_servers()
+            .expect("servers lock should succeed")
+            .push(sample_local_server(
+                source_dir.to_string_lossy().to_string(),
+                script_path.to_string_lossy().to_string(),
+                "custom",
+            ));
+
+        let updated = manager
+            .update_server_path(
+                "local-update-test",
+                source_dir.to_string_lossy().as_ref(),
+                Some(script_path.to_string_lossy().as_ref()),
+                Some("custom"),
+            )
+            .expect("update path should succeed");
+
+        assert_eq!(updated.core_type, "paper");
     }
 }

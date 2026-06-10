@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::server::{
@@ -6,10 +6,11 @@ use crate::models::server::{
 };
 use crate::utils::constants::{DATA_FILE, RUN_PATH_MAP_FILE};
 use crate::utils::logger;
-use sea_lantern_server_local_setup_core::inspect_local_folder;
+use sea_lantern_server_local_setup_core::{
+    canonical_core_type, paths_equal, resolve_local_startup_entry_checked,
+};
 use serde::{Deserialize, Serialize};
 
-use super::common::detect_startup_mode_from_path;
 use super::i18n::{manager_t, manager_t1};
 
 fn log_fs_trace(function: &str, message: &str) {
@@ -60,7 +61,7 @@ impl From<LegacyServerInstance> for ServerInstance {
             id: value.id,
             name: value.name,
             aliases: value.aliases,
-            core_type: value.core_type,
+            core_type: canonical_core_type(&value.core_type),
             core_version: value.core_version,
             mc_version: value.mc_version,
             path: value.path,
@@ -83,6 +84,11 @@ impl From<LegacyServerInstance> for ServerInstance {
     }
 }
 
+fn normalize_loaded_server_instance(mut server: ServerInstance) -> ServerInstance {
+    server.core_type = canonical_core_type(&server.core_type);
+    server
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct RunPathServerMapping {
     pub(super) run_path: String,
@@ -95,106 +101,12 @@ pub(super) struct RunPathServerMapping {
     pub(super) updated_at: u64,
 }
 
-pub(super) fn normalize_path_for_compare(path: &Path) -> String {
-    path.to_string_lossy()
-        .replace('\\', "/")
-        .trim_end_matches('/')
-        .to_string()
-}
-
-pub(super) fn paths_equal(left: &Path, right: &Path) -> bool {
-    normalize_path_for_compare(left) == normalize_path_for_compare(right)
-}
-
-pub(super) fn normalize_absolute_path_for_compare(path: &Path) -> Option<String> {
-    let absolute_path = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        std::env::current_dir().ok()?.join(path)
-    };
-
-    let mut normalized = PathBuf::new();
-    for component in absolute_path.components() {
-        match component {
-            std::path::Component::CurDir => {}
-            std::path::Component::ParentDir => {
-                normalized.pop();
-            }
-            _ => normalized.push(component.as_os_str()),
-        }
-    }
-
-    let normalized = normalize_path_for_compare(&normalized);
-
-    #[cfg(target_os = "windows")]
-    {
-        Some(normalized.to_ascii_lowercase())
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        Some(normalized)
-    }
-}
-
-pub(super) fn path_is_child_of(candidate: &Path, parent: &Path) -> bool {
-    let Some(candidate_norm) = normalize_absolute_path_for_compare(candidate) else {
-        return false;
-    };
-    let Some(parent_norm) = normalize_absolute_path_for_compare(parent) else {
-        return false;
-    };
-
-    candidate_norm.starts_with(&(parent_norm + "/"))
-}
-
 pub(super) fn find_server_executable(server_path: &Path) -> Result<(String, String), String> {
-    let inspection = inspect_local_folder(server_path);
-
-    if let Some(path) = inspection.preferred_startup_path() {
-        return Ok((
-            path.to_string(),
-            inspection
-                .startup_mode
-                .clone()
-                .unwrap_or_else(|| detect_startup_mode_from_path(Path::new(path))),
-        ));
+    if let Some((path, mode)) = resolve_local_startup_entry_checked(server_path)? {
+        return Ok((path, mode));
     }
 
     Err(manager_t("server.manager.startup_executable_not_found"))
-}
-
-pub(super) fn resolve_startup_file_path(
-    source_path: &Path,
-    run_dir: &Path,
-    startup_file_path: &str,
-) -> Result<String, String> {
-    let startup_path = PathBuf::from(startup_file_path);
-    if startup_path.is_relative() {
-        return Ok(run_dir.join(&startup_path).to_string_lossy().to_string());
-    }
-
-    if source_path.is_file() {
-        let source_file_name = source_path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("server.jar");
-        return Ok(run_dir.join(source_file_name).to_string_lossy().to_string());
-    }
-
-    if source_path.is_dir() {
-        let source_norm = normalize_path_for_compare(source_path);
-        let startup_norm = normalize_path_for_compare(&startup_path);
-        if startup_norm.starts_with(&(source_norm.clone() + "/")) {
-            if let Ok(relative) = startup_path.strip_prefix(source_path) {
-                return Ok(run_dir.join(relative).to_string_lossy().to_string());
-            }
-        }
-    }
-
-    Err(manager_t1(
-        "server.manager.startup_file_map_failed",
-        startup_file_path.to_string(),
-    ))
 }
 
 pub(super) fn load_run_path_mappings_checked(
@@ -309,7 +221,7 @@ pub(super) fn load_servers_checked(dir: &str) -> Result<Vec<ServerInstance>, Str
 
         let loaded_server = if has_runtime_fields {
             match serde_json::from_value::<ServerInstance>(server) {
-                Ok(server) => Some(server),
+                Ok(server) => Some(normalize_loaded_server_instance(server)),
                 Err(err) => {
                     log_fs_warn(
                         "load_servers_checked",
@@ -320,7 +232,7 @@ pub(super) fn load_servers_checked(dir: &str) -> Result<Vec<ServerInstance>, Str
             }
         } else {
             match serde_json::from_value::<LegacyServerInstance>(server) {
-                Ok(server) => Some(ServerInstance::from(server)),
+                Ok(server) => Some(normalize_loaded_server_instance(ServerInstance::from(server))),
                 Err(err) => {
                     log_fs_warn(
                         "load_servers_checked",
@@ -562,6 +474,57 @@ mod tests {
     }
 
     #[test]
+    fn load_servers_canonicalizes_legacy_core_type_aliases() {
+        let dir = tempdir().unwrap();
+        let data_path = dir.path().join(DATA_FILE);
+        std::fs::write(
+            &data_path,
+            r#"[
+  {
+    "id": "legacy-paper",
+    "name": "Legacy Paper",
+    "core_type": "Paper",
+    "core_version": "",
+    "mc_version": "1.20.6",
+    "path": "E:/legacy/paper",
+    "jar_path": "E:/legacy/paper/server.jar",
+    "startup_mode": "jar",
+    "custom_command": null,
+    "java_path": "C:/Java/bin/java.exe",
+    "jvm_args": [],
+    "port": 25565,
+    "created_at": 100,
+    "last_started_at": 200
+  },
+  {
+    "id": "legacy-bedrock",
+    "name": "Legacy Bedrock",
+    "core_type": "bedrock",
+    "core_version": "",
+    "mc_version": "latest",
+    "path": "E:/legacy/bedrock",
+    "jar_path": "E:/legacy/bedrock/bedrock_server.exe",
+    "startup_mode": "custom",
+    "custom_command": "./bedrock_server.exe",
+    "java_path": "",
+    "jvm_args": [],
+    "port": 19132,
+    "created_at": 101,
+    "last_started_at": null
+  }
+]"#,
+        )
+        .unwrap();
+
+        let servers =
+            load_servers_checked(dir.path().to_str().unwrap()).expect("legacy records should load");
+
+        assert_eq!(servers.len(), 2);
+        assert_eq!(servers[0].core_type, "paper");
+        assert_eq!(servers[1].core_type, "bds");
+    }
+
+    #[test]
     fn save_servers_writes_new_runtime_shape_and_round_trips() {
         let dir = tempdir().unwrap();
         let original = vec![sample_server()];
@@ -652,6 +615,44 @@ mod tests {
         assert_eq!(new_server.custom_command(), Some("java -jar server.jar nogui"));
         assert_eq!(new_server.java_path(), Some("C:/Java21/bin/java.exe"));
         assert_eq!(new_server.local_runtime().unwrap().jvm_args, ["-Xmx4G".to_string()]);
+    }
+
+    #[test]
+    fn load_servers_canonicalizes_new_runtime_core_type_aliases() {
+        let dir = tempdir().unwrap();
+        let data_path = dir.path().join(DATA_FILE);
+        std::fs::write(
+            &data_path,
+            r#"[
+  {
+    "id": "new-bungee",
+    "name": "New Bungee",
+    "core_type": "BungeeCord",
+    "core_version": "",
+    "mc_version": "1.21.1",
+    "path": "E:/new/bungee",
+    "port": 25577,
+    "created_at": 300,
+    "last_started_at": null,
+    "runtime_kind": "local",
+    "runtime": {
+      "kind": "local",
+      "jar_path": "E:/new/bungee/proxy.jar",
+      "startup_mode": "jar",
+      "custom_command": null,
+      "java_path": "C:/Java21/bin/java.exe",
+      "jvm_args": []
+    }
+  }
+]"#,
+        )
+        .unwrap();
+
+        let servers = load_servers_checked(dir.path().to_str().unwrap())
+            .expect("new runtime records should load");
+
+        assert_eq!(servers.len(), 1);
+        assert_eq!(servers[0].core_type, "bungeecord");
     }
 
     #[test]

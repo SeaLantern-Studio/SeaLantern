@@ -8,7 +8,6 @@ use crate::services::server::manager::i18n::manager_t;
 use sea_lantern_server_local_setup_core::{
     resolve_direct_jar_launch_target, resolve_local_preferred_jar_path,
 };
-use std::ffi::OsString;
 use std::path::Path;
 use std::process::Command;
 
@@ -73,20 +72,10 @@ pub(crate) fn build_starter_install_command(
     java_cmd.arg("-jar");
     java_cmd.arg(resolve_direct_jar_launch_target(&context.server.path, jar_path));
 
-    match core_key {
-        "neoforge" | "arclight-neoforge" => {
-            java_cmd.arg("--install-server");
-            java_cmd.arg(OsString::from("."));
-            java_cmd.arg("--server-starter");
-        }
-        "forge" | "arclight-forge" | "spongeforge" | "catserver" | "mohist" => {
-            java_cmd.arg("--installServer");
-            java_cmd.arg(OsString::from("."));
-        }
-        _ => {
-            java_cmd.arg("--install-server");
-            java_cmd.arg(OsString::from("."));
-        }
+    let install_args = sea_lantern_server_installer_core::CoreType::starter_install_args(core_key)
+        .ok_or_else(|| manager_t("server.manager.starter_core_type_unrecognized"))?;
+    for arg in install_args.args {
+        java_cmd.arg(arg);
     }
 
     Ok(java_cmd)
@@ -214,9 +203,11 @@ mod tests {
         CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
     use crate::models::settings::AppSettings;
-    use crate::services::server::manager::common::{ManagedConsoleEncoding, StartupMode};
+    use crate::services::server::manager::common::StartupMode;
     use crate::services::server::manager::runtime_start::launch::context::LaunchContext;
-    use sea_lantern_server_local_setup_core::resolve_direct_jar_launch_target;
+    use sea_lantern_server_local_setup_core::{
+        resolve_direct_jar_launch_target, ManagedConsoleEncoding,
+    };
     use std::path::Path;
     use std::process::Command;
     use tempfile::TempDir;
@@ -407,6 +398,46 @@ mod tests {
         let mut context =
             test_launch_context(&server, &settings, StartupMode::Starter, "installer.jar");
         context.starter_core_key = "forge".to_string();
+
+        let command =
+            build_starter_install_command(&context).expect("starter install command should build");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(command.get_program().to_string_lossy(), fake_java_probe_command());
+        assert_eq!(args, vec!["-jar", "server.jar", "--installServer", "."]);
+    }
+
+    #[test]
+    fn starter_install_command_keeps_arclight_forge_on_forge_cli_install_flow() {
+        let temp_dir = TempDir::new().expect("temp dir should exist");
+        let settings = test_settings();
+        let server = test_server(temp_dir.path(), "starter", None);
+        let mut context =
+            test_launch_context(&server, &settings, StartupMode::Starter, "installer.jar");
+        context.starter_core_key = "arclight-forge".to_string();
+
+        let command =
+            build_starter_install_command(&context).expect("starter install command should build");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(command.get_program().to_string_lossy(), fake_java_probe_command());
+        assert_eq!(args, vec!["-jar", "server.jar", "--installServer", "."]);
+    }
+
+    #[test]
+    fn starter_install_command_reuses_shared_forge_like_classification_for_catserver() {
+        let temp_dir = TempDir::new().expect("temp dir should exist");
+        let settings = test_settings();
+        let server = test_server(temp_dir.path(), "starter", None);
+        let mut context =
+            test_launch_context(&server, &settings, StartupMode::Starter, "installer.jar");
+        context.starter_core_key = "catserver".to_string();
 
         let command =
             build_starter_install_command(&context).expect("starter install command should build");

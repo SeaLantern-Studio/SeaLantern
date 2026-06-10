@@ -2,7 +2,6 @@ import { ref, watch, type Ref } from "vue";
 import { appendCustomCandidate } from "@components/views/create/createServerWorkflow";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
 import { serverApi } from "@api/server";
-import { i18n } from "@language";
 import { detectVersionCandidatesFromText } from "@components/views/create/startupUtils";
 
 type SourceType = "archive" | "folder" | "";
@@ -15,8 +14,6 @@ interface UseCreateServerScanOptions {
 
 export function useCreateServerScan(options: UseCreateServerScanOptions) {
   const coreDetecting = ref(false);
-  const detectedCoreType = ref("");
-  const detectedCoreMainClass = ref("");
   const detectedCoreTypeKey = ref("");
   const coreTypeOptions = ref<string[]>([]);
   const selectedCoreType = ref("");
@@ -68,8 +65,6 @@ export function useCreateServerScan(options: UseCreateServerScanOptions) {
 
   function resetScanState() {
     coreDetecting.value = false;
-    detectedCoreType.value = "";
-    detectedCoreMainClass.value = "";
     startupDetecting.value = false;
     startupCandidates.value = [];
     selectedStartupId.value = "";
@@ -107,9 +102,6 @@ export function useCreateServerScan(options: UseCreateServerScanOptions) {
         return;
       }
 
-      detectedCoreType.value =
-        discovered.parsedCore.coreType || i18n.t("create.source_core_unknown");
-      detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
       const previousDetectedCoreKey = detectedCoreTypeKey.value;
       const previousDetectedMcVersion = detectedMcVersion.value;
       detectedCoreTypeKey.value = discovered.detectedCoreTypeKey ?? "";
@@ -157,8 +149,6 @@ export function useCreateServerScan(options: UseCreateServerScanOptions) {
         return;
       }
 
-      detectedCoreType.value = i18n.t("create.source_core_unknown");
-      detectedCoreMainClass.value = "";
       startupCandidates.value = appendCustomCandidate([]);
       selectedStartupId.value = startupCandidates.value[0]?.id ?? "";
       detectedCoreTypeKey.value = "";
@@ -219,8 +209,6 @@ export function useCreateServerScan(options: UseCreateServerScanOptions) {
 
   return {
     coreDetecting,
-    detectedCoreType,
-    detectedCoreMainClass,
     detectedCoreTypeKey,
     coreTypeOptions,
     selectedCoreType,

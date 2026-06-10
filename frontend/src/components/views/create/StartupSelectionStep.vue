@@ -5,6 +5,7 @@ import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import type { StartupCandidate, StartupMode } from "@components/views/create/startupTypes";
 import { i18n } from "@language";
+import { formatServerCoreTypeLabel } from "@utils/serverCoreLabel";
 
 const props = withDefaults(
   defineProps<{
@@ -67,12 +68,7 @@ function startupModeLabel(mode: StartupMode): string {
 }
 
 function formatCoreTypeLabel(value: string): string {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "pumpkin") {
-    return i18n.t("create.core_type_pumpkin");
-  }
-
-  return value;
+  return formatServerCoreTypeLabel(value);
 }
 
 function candidateNeedsManualCommand(candidate: StartupCandidate): boolean {

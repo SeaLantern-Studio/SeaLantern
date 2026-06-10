@@ -1,6 +1,48 @@
 use std::path::Path;
 
-use sea_lantern_server_installer_core::ParsedServerCoreInfo;
+use sea_lantern_server_installer_core::{CoreType, ParsedServerCoreInfo};
+
+const STARTUP_SCAN_CORE_TYPE_OPTIONS: &[&str] = &[
+    "pumpkin",
+    "paper",
+    "purpur",
+    "spigot",
+    "bukkit",
+    "folia",
+    "leaves",
+    "pufferfish",
+    "sponge",
+    "arclight-forge",
+    "arclight-neoforge",
+    "youer",
+    "mohist",
+    "catserver",
+    "neoforge",
+    "forge",
+    "fabric",
+    "quilt",
+    "vanilla",
+    "velocity",
+    "bungeecord",
+    "waterfall",
+    "lightfall",
+    "travertine",
+    "flamecord",
+    "tuinity",
+    "airplane",
+    "glowstone",
+    "cuberite",
+    "minestom",
+    "bds",
+    "liteloaderbds",
+    "levilamina",
+    "bdsx",
+    "allay",
+    "nukkit",
+    "powernukkitx",
+    "pocketmine",
+    "endstone",
+];
 
 struct TempExtractDir(std::path::PathBuf);
 
@@ -108,7 +150,7 @@ fn scan_folder_source(
 
         if is_pumpkin_executable(&path) {
             let parsed_info = ParsedServerCoreInfo {
-                core_type: "Pumpkin".to_string(),
+                core_type: "pumpkin".to_string(),
                 main_class: None,
                 jar_path: Some(full_path.clone()),
             };
@@ -136,7 +178,7 @@ fn scan_folder_source(
         }
 
         if extension == "jar" {
-            let parsed = sea_lantern_server_installer_core::parse_server_core_type(&full_path)
+            let parsed = sea_lantern_server_installer_core::parse_server_core_key(&full_path)
                 .map_err(|error| format!("扫描启动候选失败: {}", error))?;
 
             let is_starter = is_starter_candidate(&parsed);
@@ -251,7 +293,7 @@ fn scan_archive_source(
             .unwrap_or_default();
 
         if extension == "jar" {
-            let parsed = sea_lantern_server_installer_core::parse_server_core_type(source_path)?;
+            let parsed = sea_lantern_server_installer_core::parse_server_core_key(source_path)?;
             let is_starter = is_starter_candidate(&parsed);
             let is_installer = is_forge_like_installer_main_class(&parsed);
             let mode = if is_starter { "starter" } else { "jar" };
@@ -282,7 +324,7 @@ fn scan_archive_source(
         if is_pumpkin_executable(source) {
             return Ok(build_result(
                 ParsedServerCoreInfo {
-                    core_type: "Pumpkin".to_string(),
+                    core_type: "pumpkin".to_string(),
                     main_class: None,
                     jar_path: Some(source_path.to_string()),
                 },
@@ -318,7 +360,7 @@ fn scan_archive_source(
     };
 
     let mut parsed =
-        sea_lantern_server_installer_core::parse_server_core_type(&inspect_root.to_string_lossy())?;
+        sea_lantern_server_installer_core::parse_server_core_key(&inspect_root.to_string_lossy())?;
 
     if let (Some(temp_dir), Some(jar_path)) = (temp_extract_dir.as_ref(), parsed.jar_path.clone()) {
         parsed.jar_path = Some(to_relative_archive_path(temp_dir.path(), &jar_path)?);
@@ -365,7 +407,7 @@ fn scan_archive_source(
 
 fn unknown_parsed_core_info() -> ParsedServerCoreInfo {
     ParsedServerCoreInfo {
-        core_type: "Unknown".to_string(),
+        core_type: "unknown".to_string(),
         main_class: None,
         jar_path: None,
     }
@@ -403,8 +445,40 @@ fn to_relative_archive_path(base_dir: &Path, absolute_path: &str) -> Result<Stri
     Ok(relative.to_string_lossy().to_string())
 }
 
+fn format_core_type_label(core_type: &str) -> String {
+    match core_type.trim().to_ascii_lowercase().as_str() {
+        "allay" => "AllayMC".to_string(),
+        "airplane" => "Airplane".to_string(),
+        "arclight-fabric" => "Arclight-Fabric".to_string(),
+        "arclight-forge" => "Arclight-Forge".to_string(),
+        "arclight-neoforge" => "Arclight-NeoForge".to_string(),
+        "bds" => "BDS".to_string(),
+        "bdsx" => "BDSX".to_string(),
+        "bungeecord" => "BungeeCord".to_string(),
+        "cuberite" => "Cuberite".to_string(),
+        "endstone" => "Endstone".to_string(),
+        "flamecord" => "FlameCord".to_string(),
+        "glowstone" => "Glowstone".to_string(),
+        "levilamina" => "LeviLamina".to_string(),
+        "liteloaderbds" => "LiteLoaderBDS".to_string(),
+        "minestom" => "Minestom".to_string(),
+        "neoforge" => "NeoForge".to_string(),
+        "nukkit" => "Nukkit".to_string(),
+        "nukkitx" => "NukkitX".to_string(),
+        "pocketmine" => "PocketMine-MP".to_string(),
+        "powernukkitx" => "PowerNukkitX".to_string(),
+        "pufferfish_purpur" => "Pufferfish-Purpur".to_string(),
+        "pumpkin" => "Pumpkin".to_string(),
+        "sponge" => "Sponge".to_string(),
+        "vanilla-snapshot" => "Vanilla Snapshot".to_string(),
+        "unknown" => "Unknown".to_string(),
+        value if value.is_empty() => core_type.to_string(),
+        _ => core_type.to_string(),
+    }
+}
+
 fn startup_detail(parsed: &ParsedServerCoreInfo) -> String {
-    [Some(parsed.core_type.clone()), parsed.main_class.clone()]
+    [Some(format_core_type_label(&parsed.core_type)), parsed.main_class.clone()]
         .into_iter()
         .flatten()
         .collect::<Vec<String>>()
@@ -427,6 +501,10 @@ fn is_starter_candidate(parsed: &ParsedServerCoreInfo) -> bool {
     is_starter_main_class(parsed) || is_forge_like_installer_main_class(parsed)
 }
 
+fn normalize_startup_scan_core_key(input: &str) -> Option<String> {
+    CoreType::normalize_to_api_core_key(input)
+}
+
 fn build_result(
     parsed_core: ParsedServerCoreInfo,
     candidates: Vec<StartupCandidateItem>,
@@ -434,16 +512,13 @@ fn build_result(
     mc_version_detection_failed: bool,
     mc_version_options: &[&str],
 ) -> StartupScanResult {
-    let detected_core_type_key =
-        sea_lantern_server_installer_core::CoreType::normalize_to_api_core_key(
-            &parsed_core.core_type,
-        );
+    let detected_core_type_key = normalize_startup_scan_core_key(&parsed_core.core_type);
 
     StartupScanResult {
         parsed_core,
         candidates,
         detected_core_type_key,
-        core_type_options: sea_lantern_server_installer_core::CoreType::all_api_core_keys()
+        core_type_options: STARTUP_SCAN_CORE_TYPE_OPTIONS
             .iter()
             .map(|value| value.to_string())
             .collect(),
@@ -458,7 +533,10 @@ fn build_result(
 
 #[cfg(test)]
 mod tests {
-    use super::{scan_startup_candidates, StartupCandidateItem};
+    use super::{
+        normalize_startup_scan_core_key, scan_startup_candidates, StartupCandidateItem,
+        STARTUP_SCAN_CORE_TYPE_OPTIONS,
+    };
     use std::collections::HashSet;
     use std::fs;
     use std::io::Write;
@@ -531,7 +609,7 @@ mod tests {
         assert_eq!(candidate_modes(&result.candidates), vec!["sh", "bat"]);
         assert_eq!(result.candidates[0].recommended, 2);
         assert_eq!(result.detected_core_type_key, None);
-        assert_eq!(result.parsed_core.core_type, "Unknown");
+        assert_eq!(result.parsed_core.core_type, "unknown");
     }
 
     #[test]
@@ -594,7 +672,7 @@ mod tests {
         let result = scan_startup_candidates(exe_path.to_string_lossy().as_ref(), "archive", &[])
             .expect("pumpkin archive scan should succeed");
 
-        assert_eq!(result.parsed_core.core_type, "Pumpkin");
+        assert_eq!(result.parsed_core.core_type, "pumpkin");
         assert_eq!(result.detected_core_type_key.as_deref(), Some("pumpkin"));
         assert_eq!(result.candidates.len(), 1);
         assert_eq!(result.candidates[0].mode, "custom");
@@ -613,7 +691,7 @@ mod tests {
         let result = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
             .expect("pumpkin folder scan should succeed");
 
-        assert_eq!(result.parsed_core.core_type, "Pumpkin");
+        assert_eq!(result.parsed_core.core_type, "pumpkin");
         assert_eq!(result.detected_core_type_key.as_deref(), Some("pumpkin"));
         assert_eq!(candidate_modes(&result.candidates), vec!["custom", "bat"]);
         assert_eq!(result.candidates[0].label, "Pumpkin");
@@ -634,12 +712,12 @@ mod tests {
         let result = scan_startup_candidates(jar_path.to_string_lossy().as_ref(), "archive", &[])
             .expect("archive jar scan should succeed");
 
-        assert_eq!(result.parsed_core.core_type, "Neoforge");
+        assert_eq!(result.parsed_core.core_type, "neoforge");
         assert_eq!(result.detected_core_type_key.as_deref(), Some("neoforge"));
         assert_eq!(result.candidates[0].mode, "starter");
         assert_eq!(result.candidates[0].label, "Installer");
         assert_eq!(result.candidates[0].recommended, 1);
-        assert!(result.candidates[0].detail.contains("Neoforge"));
+        assert!(result.candidates[0].detail.contains("NeoForge"));
     }
 
     #[test]
@@ -674,7 +752,7 @@ mod tests {
         let result = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
             .expect("folder scan should succeed");
 
-        assert_eq!(result.parsed_core.core_type, "Paper");
+        assert_eq!(result.parsed_core.core_type, "paper");
         assert_eq!(result.detected_core_type_key.as_deref(), Some("paper"));
         assert!(result
             .parsed_core
@@ -699,5 +777,46 @@ mod tests {
 
         assert!(error.contains("无法解析 ZIP 压缩包"), "unexpected error: {}", error);
         assert_eq!(after, before);
+    }
+
+    #[test]
+    fn startup_scan_normalizes_published_taxonomy_aliases() {
+        assert_eq!(normalize_startup_scan_core_key("Waterfall").as_deref(), Some("waterfall"));
+        assert_eq!(normalize_startup_scan_core_key("AllayMC").as_deref(), Some("allay"));
+        assert_eq!(
+            normalize_startup_scan_core_key("bedrock-dedicated-server").as_deref(),
+            Some("bds")
+        );
+        assert_eq!(normalize_startup_scan_core_key("Leaf").as_deref(), Some("leaves"));
+        assert_eq!(normalize_startup_scan_core_key("nukkitx").as_deref(), Some("nukkit"));
+        assert_eq!(normalize_startup_scan_core_key("spongeforge").as_deref(), Some("forge"));
+    }
+
+    #[test]
+    fn startup_scan_options_include_new_shared_taxonomy_keys() {
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"waterfall"));
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"bds"));
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"allay"));
+    }
+
+    #[test]
+    fn startup_scan_options_expose_canonical_core_keys() {
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"leaves"));
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"pufferfish"));
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"sponge"));
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"forge"));
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"fabric"));
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"vanilla"));
+        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"nukkit"));
+
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"leaf"));
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"pufferfish_purpur"));
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"spongevanilla"));
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"spongeforge"));
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"arclight-fabric"));
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"banner"));
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"vanilla-snapshot"));
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"nukkitx"));
+        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"arclight"));
     }
 }

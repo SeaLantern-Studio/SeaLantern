@@ -2,8 +2,9 @@ use super::common::{parse_params, CommandHandler, RegistryBuilder};
 use super::requests::{
     AddExistingServerRequest, CollectCopyConflictsRequest, CopyDirectoryContentsRequest,
     CreateServerRequest, GetLogsRequest, GetServerStatusRequest, ImportModpackRequest,
-    ImportServerRequest, ParseServerCoreTypeRequest, ScanStartupCandidatesRequest,
-    SendCommandRequest, ServerIdRequest, UpdateJavaPathRequest, UpdateNameRequest,
+    ImportServerRequest, ParseServerCoreKeyRequest, ParseServerCoreTypeRequest,
+    ScanStartupCandidatesRequest, SendCommandRequest, ServerIdRequest, UpdateJavaPathRequest,
+    UpdateNameRequest,
 };
 use crate::commands::server::manage as server_commands;
 use serde_json::Value;
@@ -21,6 +22,7 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("update_server_name", handle_update_server_name as CommandHandler);
     builder.register("update_server_java_path", handle_update_server_java_path as CommandHandler);
     builder.register("scan_startup_candidates", handle_scan_startup_candidates as CommandHandler);
+    builder.register("parse_server_core_key", handle_parse_server_core_key as CommandHandler);
     builder.register("parse_server_core_type", handle_parse_server_core_type as CommandHandler);
     builder.register("collect_copy_conflicts", handle_collect_copy_conflicts as CommandHandler);
     builder.register("copy_directory_contents", handle_copy_directory_contents as CommandHandler);
@@ -197,6 +199,18 @@ fn handle_scan_startup_candidates(
         let result = server_commands::scan_startup_candidates(req.source_path, req.source_type)
             .await
             .map_err(|e| format!("Failed to scan startup candidates: {}", e))?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_parse_server_core_key(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ParseServerCoreKeyRequest = parse_params(params)?;
+        let result = server_commands::parse_server_core_key(req.source_path)
+            .await
+            .map_err(|e| format!("Failed to parse server core key: {}", e))?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }

@@ -9,22 +9,11 @@ use std::path::Path;
 
 use crate::models::server::{ImportModpackRequest, ServerInstance};
 use sea_lantern_server_config_core::startup::write_server_startup_config_for_dir;
+use sea_lantern_server_installer_core::should_delay_starter_runtime_file_writes;
 
 use super::super::common::validate_server_name;
 use super::super::ServerManager;
 use super::i18n::{provisioning_t1, provisioning_t3};
-
-fn should_delay_starter_runtime_file_writes(
-    req: &ImportModpackRequest,
-    source_path: &Path,
-) -> bool {
-    req.startup_mode.eq_ignore_ascii_case("starter")
-        && source_path.is_file()
-        && source_path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("jar"))
-}
 
 pub(super) fn import_modpack(
     manager: &ServerManager,
@@ -47,7 +36,8 @@ pub(super) fn import_modpack(
     let data_dir = manager.data_dir_value()?;
     mapping::save_modpack_run_mapping(&data_dir, &id, &server_name, &req, &run_dir, &startup)?;
 
-    let delay_runtime_file_writes = should_delay_starter_runtime_file_writes(&req, source_path);
+    let delay_runtime_file_writes =
+        should_delay_starter_runtime_file_writes(&req.startup_mode, source_path);
     let port = if delay_runtime_file_writes {
         req.port
     } else {
@@ -84,8 +74,8 @@ pub(super) fn import_modpack(
 
 #[cfg(test)]
 mod tests {
-    use super::should_delay_starter_runtime_file_writes;
     use crate::models::server::ImportModpackRequest;
+    use sea_lantern_server_installer_core::should_delay_starter_runtime_file_writes;
     use tempfile::tempdir;
 
     fn sample_request() -> ImportModpackRequest {
@@ -118,7 +108,7 @@ mod tests {
 
         let req = sample_request();
 
-        assert!(should_delay_starter_runtime_file_writes(&req, &jar_path));
+        assert!(should_delay_starter_runtime_file_writes(&req.startup_mode, &jar_path));
     }
 
     #[test]
@@ -130,6 +120,6 @@ mod tests {
         let mut req = sample_request();
         req.startup_mode = "jar".to_string();
 
-        assert!(!should_delay_starter_runtime_file_writes(&req, &jar_path));
+        assert!(!should_delay_starter_runtime_file_writes(&req.startup_mode, &jar_path));
     }
 }

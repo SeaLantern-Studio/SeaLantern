@@ -7,14 +7,13 @@ use crate::services::global::i18n_service;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::trace_cli_action;
-use sea_lantern_server_installer_core::detect_core_type;
 use sea_lantern_server_local_setup_core::{
-    detect_startup_mode_from_folder, infer_core_type_from_local_inputs_checked,
-    infer_local_create_mc_version_checked,
+    detect_startup_mode_from_folder,
     infer_local_create_startup_mode as infer_shared_local_create_startup_mode,
-    infer_mc_version_from_folder_checked, infer_mc_version_hint, normalize_cli_startup_mode,
-    normalize_core_type, resolve_command_path_hint, resolve_custom_entry_hint_path,
+    normalize_cli_startup_mode, resolve_command_path_hint, resolve_custom_entry_hint_path,
     resolve_existing_attach_entry_path, resolve_existing_local_entry_path,
+    resolve_local_attach_core_type, resolve_local_attach_mc_version,
+    resolve_local_create_core_type, resolve_local_create_mc_version,
     resolve_local_create_server_path, validate_local_create_folder,
     validate_local_create_startup_exists, validate_local_create_startup_path_binding,
     validate_local_entry_startup_mode, LocalFolderInspection,
@@ -131,26 +130,22 @@ pub(super) fn build_local_create_request(
         .or_else(|| resolved_jar_path.clone())
         .or_else(|| custom_entry_hint_path.clone());
 
-    let core_type = if let Some(value) = command.core_type.clone() {
-        normalize_core_type(Some(&value))?
-    } else if let Some(folder) = folder_path {
-        infer_core_type_from_local_inputs_checked(folder, executable_hint.as_deref())?
-            .unwrap_or_else(|| detect_core_type(&jar_path))
-    } else {
-        detect_core_type(&jar_path)
-    };
+    let core_type = resolve_local_create_core_type(
+        command.core_type.as_deref(),
+        folder_path,
+        &jar_path,
+        executable_hint.as_deref(),
+    )?;
 
-    let mc_version = command
-        .mc_version
-        .clone()
-        .or(infer_local_create_mc_version_checked(
-            &jar_path,
-            resolved_name,
-            resolved_entry_path.as_deref(),
-            folder_path,
-            executable_hint.as_deref(),
-        )?)
-        .ok_or_else(|| cli_local_t("cli.server_setup.local.create_missing_mc_version"))?;
+    let mc_version = resolve_local_create_mc_version(
+        command.mc_version.clone(),
+        &jar_path,
+        resolved_name,
+        resolved_entry_path.as_deref(),
+        folder_path,
+        executable_hint.as_deref(),
+    )
+    .map_err(|key| cli_local_t(&key))?;
 
     let server_path = folder_path
         .map(|path| path.to_string_lossy().to_string())
@@ -281,24 +276,20 @@ pub(super) fn build_local_attach_request(
                 .clone()
                 .filter(|_| resolved_entry_path.is_none())
         },
-        core_type: command.core_type.clone().or_else(|| {
-            inspection.inferred_core_type.clone().or_else(|| {
-                infer_core_type_from_local_inputs_checked(folder_path, executable_hint.as_deref())
-                    .ok()
-                    .flatten()
-            })
-        }),
-        mc_version: command
-            .mc_version
-            .clone()
-            .or_else(|| infer_mc_version_hint(&[folder, resolved_name]))
-            .or_else(|| {
-                inspection.inferred_mc_version.clone().or_else(|| {
-                    infer_mc_version_from_folder_checked(folder_path, executable_hint.as_deref())
-                        .ok()
-                        .flatten()
-                })
-            }),
+        core_type: resolve_local_attach_core_type(
+            command.core_type.as_deref(),
+            inspection.inferred_core_type.as_deref(),
+            folder_path,
+            executable_hint.as_deref(),
+        ),
+        mc_version: resolve_local_attach_mc_version(
+            command.mc_version.clone(),
+            folder,
+            resolved_name,
+            inspection.inferred_mc_version.as_deref(),
+            folder_path,
+            executable_hint.as_deref(),
+        ),
         jvm_args: Vec::new(),
         cpu_policy: CpuPolicyConfig::default(),
         jvm_preset: JvmPresetConfig::default(),
@@ -385,7 +376,7 @@ mod tests {
         .expect("local attach request should build");
 
         assert_eq!(build.startup_mode, "sh");
-        assert_eq!(build.core_type.as_deref(), Some("Paper"));
+        assert_eq!(build.core_type.as_deref(), Some("paper"));
         assert_eq!(build.mc_version.as_deref(), Some("1.21.1"));
     }
 
@@ -442,7 +433,7 @@ mod tests {
 
         assert_eq!(request.name, "fabric-1.20.1");
         assert_eq!(request.aliases, vec!["fabric_latest"]);
-        assert_eq!(request.core_type, "Fabric");
+        assert_eq!(request.core_type, "fabric");
         assert_eq!(request.mc_version, "1.20.1");
         assert_eq!(request.port, 25570);
         assert_eq!(request.max_memory, 4096);
@@ -507,7 +498,7 @@ mod tests {
                 .expect("local create should infer metadata from script folder");
 
         assert_eq!(request.startup_mode, "bat");
-        assert_eq!(request.core_type, "Fabric");
+        assert_eq!(request.core_type, "fabric");
         assert_eq!(request.mc_version, "1.20.1");
         assert_eq!(request.jar_path, script_path.to_string_lossy().to_string());
         assert_eq!(
@@ -537,7 +528,7 @@ mod tests {
                 .expect("custom script entry should still infer mc version from sibling jar");
 
         assert_eq!(request.startup_mode, "custom");
-        assert_eq!(request.core_type, "Paper");
+        assert_eq!(request.core_type, "paper");
         assert_eq!(request.mc_version, "1.21.1");
         assert_eq!(
             request.server_path.as_deref(),
@@ -788,7 +779,7 @@ mod tests {
             build.executable_path.as_deref(),
             Some(temp_dir.path().join("start.bat").to_string_lossy().as_ref())
         );
-        assert_eq!(build.core_type.as_deref(), Some("Fabric"));
+        assert_eq!(build.core_type.as_deref(), Some("fabric"));
         assert_eq!(build.mc_version.as_deref(), Some("1.20.1"));
     }
 
@@ -819,7 +810,7 @@ mod tests {
 
         assert_eq!(build.startup_mode, "ps1");
         assert_eq!(build.executable_path.as_deref(), Some(script_path.to_string_lossy().as_ref()));
-        assert_eq!(build.core_type.as_deref(), Some("Paper"));
+        assert_eq!(build.core_type.as_deref(), Some("paper"));
         assert_eq!(build.mc_version.as_deref(), Some("1.21.1"));
     }
 
@@ -913,5 +904,55 @@ mod tests {
         assert_eq!(build.startup_mode, "custom");
         assert_eq!(build.executable_path, None);
         assert_eq!(build.custom_command.as_deref(), Some(script_path.to_string_lossy().as_ref()));
+    }
+
+    #[test]
+    fn build_local_create_request_canonicalizes_explicit_legacy_core_alias() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let jar_path = temp_dir.path().join("server.jar");
+        std::fs::write(&jar_path, b"placeholder").expect("jar placeholder should write");
+
+        let command = CliServerCommand {
+            jar_path: Some(jar_path.to_string_lossy().to_string()),
+            mc_version: Some("1.20.1".to_string()),
+            core_type: Some("Leaf".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+
+        let request =
+            build_local_create_request(&command, "leaf-server", &ports, &sample_defaults())
+                .expect("explicit legacy core alias should normalize");
+
+        assert_eq!(request.core_type, "leaves");
+    }
+
+    #[test]
+    fn build_local_attach_request_canonicalizes_explicit_legacy_core_alias() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        std::fs::write(temp_dir.path().join("start.sh"), b"#!/bin/sh\n").unwrap();
+
+        let command = CliServerCommand {
+            folder: Some(temp_dir.path().to_string_lossy().to_string()),
+            core_type: Some("bedrock".to_string()),
+            java_path_prevalidated: true,
+            java_path: Some("C:/validated/java/bin/java.exe".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 19132, web_port: None };
+
+        let build = build_local_attach_request(
+            &command,
+            "bedrock-server",
+            &ports,
+            temp_dir.path().to_string_lossy().as_ref(),
+            &sample_defaults(),
+            &inspect_local_folder(temp_dir.path()),
+        )
+        .expect("explicit legacy core alias should normalize on attach");
+
+        assert_eq!(build.core_type.as_deref(), Some("bds"));
     }
 }

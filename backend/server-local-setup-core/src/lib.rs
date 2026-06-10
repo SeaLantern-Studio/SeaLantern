@@ -5,7 +5,8 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use sea_lantern_runtime::{find_root_startup_file_checked, is_windows_absolute_path};
 use sea_lantern_server_installer_core::{
-    detect_core_type, detect_core_type_checked, find_server_jar, find_server_jar_checked, CoreType,
+    detect_core_key, detect_core_key_checked, find_server_jar, find_server_jar_checked,
+    parse_server_core_key, CoreType,
 };
 
 static MC_VERSION_PATTERN: Lazy<Regex> = Lazy::new(|| {
@@ -19,6 +20,47 @@ pub struct LocalFolderInspection {
     pub detected_jar_path: Option<String>,
     pub inferred_core_type: Option<String>,
     pub inferred_mc_version: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExistingServerStartupSelection {
+    pub startup_target_path: String,
+    pub startup_mode: String,
+    pub custom_command: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModpackStartupSelection {
+    pub startup_mode: String,
+    pub custom_command: Option<String>,
+    pub startup_file_path: Option<String>,
+    pub selected_core_type: Option<String>,
+    pub selected_mc_version: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StarterInstallLaunchSelection {
+    pub startup_entry_path: String,
+    pub startup_mode: String,
+    pub startup_filename: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResolveExistingServerStartupError {
+    CustomCommandEmpty,
+    ExecutableMissing(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResolveModpackStartupError {
+    StartupFilePathMissing,
+    StartupFileMissing(String),
+    CustomCommandEmpty,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResolveStarterInstallLaunchError {
+    MissingScript,
 }
 
 impl LocalFolderInspection {
@@ -70,14 +112,13 @@ pub fn inspect_local_folder_checked(folder: &Path) -> Result<LocalFolderInspecti
 
     let folder_display = folder.to_string_lossy();
     let inferred_core_type = if let Some(path) = startup_entry_path.as_deref() {
-        detect_core_type_checked(path)?
+        detect_core_key_checked(path)?
     } else if let Some(path) = detected_jar_path.as_deref() {
-        detect_core_type_checked(path)?
+        detect_core_key_checked(path)?
     } else {
-        detect_core_type(folder_display.as_ref())
+        detect_core_key(folder_display.as_ref())
     };
-    let inferred_core_type =
-        (!inferred_core_type.eq_ignore_ascii_case("unknown")).then_some(inferred_core_type);
+    let inferred_core_type = normalize_inferred_core_type(inferred_core_type);
     let inferred_mc_version = startup_entry_path
         .as_deref()
         .and_then(|value| infer_mc_version_hint(&[value]))
@@ -101,6 +142,204 @@ pub fn resolve_attach_executable_path(folder: &Path) -> Option<PathBuf> {
     resolve_attach_executable_path_checked(folder)
         .ok()
         .flatten()
+}
+
+pub fn resolve_local_startup_entry_checked(
+    folder: &Path,
+) -> Result<Option<(String, String)>, String> {
+    let inspection = inspect_local_folder_checked(folder)?;
+
+    Ok(inspection.preferred_startup_path().map(|path| {
+        (
+            path.to_string(),
+            inspection
+                .startup_mode
+                .clone()
+                .unwrap_or_else(|| detect_startup_mode_from_path_like(path)),
+        )
+    }))
+}
+
+pub fn resolve_existing_server_requested_startup(
+    requested_startup_mode: &str,
+    custom_command: Option<&str>,
+    executable_path: Option<&str>,
+) -> Result<Option<ExistingServerStartupSelection>, ResolveExistingServerStartupError> {
+    if requested_startup_mode.to_ascii_lowercase() == "custom" {
+        let command = trim_optional_text(custom_command)
+            .ok_or(ResolveExistingServerStartupError::CustomCommandEmpty)?;
+        return Ok(Some(ExistingServerStartupSelection {
+            startup_target_path: String::new(),
+            startup_mode: "custom".to_string(),
+            custom_command: Some(command),
+        }));
+    }
+
+    if let Some(executable_path) = executable_path {
+        let path = Path::new(executable_path);
+        if !path.exists() {
+            return Err(ResolveExistingServerStartupError::ExecutableMissing(
+                executable_path.to_string(),
+            ));
+        }
+
+        return Ok(Some(ExistingServerStartupSelection {
+            startup_target_path: executable_path.to_string(),
+            startup_mode: detect_startup_mode_from_path_like(&path.to_string_lossy()),
+            custom_command: None,
+        }));
+    }
+
+    Ok(None)
+}
+
+pub fn resolve_run_dir_startup_file_path(
+    source_path: &Path,
+    run_dir: &Path,
+    startup_file_path: &str,
+) -> Result<String, String> {
+    let startup_path = PathBuf::from(startup_file_path);
+    if startup_path.is_relative() {
+        return Ok(run_dir.join(&startup_path).to_string_lossy().to_string());
+    }
+
+    if source_path.is_file() {
+        let source_file_name = source_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("server.jar");
+        return Ok(run_dir.join(source_file_name).to_string_lossy().to_string());
+    }
+
+    if source_path.is_dir() {
+        let source_norm = normalize_path_for_compare(source_path);
+        let startup_norm = normalize_path_for_compare(&startup_path);
+        if startup_norm.starts_with(&(source_norm.clone() + "/")) {
+            if let Ok(relative) = startup_path.strip_prefix(source_path) {
+                return Ok(run_dir.join(relative).to_string_lossy().to_string());
+            }
+        }
+    }
+
+    Err(startup_file_path.to_string())
+}
+
+pub fn resolve_starter_install_launch_selection(
+    server_path: &Path,
+) -> Result<StarterInstallLaunchSelection, ResolveStarterInstallLaunchError> {
+    let inspection = inspect_local_folder_checked(server_path)
+        .map_err(|_| ResolveStarterInstallLaunchError::MissingScript)?;
+    let startup_entry_path = inspection
+        .startup_entry_path
+        .ok_or(ResolveStarterInstallLaunchError::MissingScript)?;
+    let startup_mode = inspection
+        .startup_mode
+        .unwrap_or_else(|| detect_startup_mode_from_path_like(&startup_entry_path));
+
+    if startup_mode != "bat" && startup_mode != "sh" && startup_mode != "ps1" {
+        return Err(ResolveStarterInstallLaunchError::MissingScript);
+    }
+
+    let startup_filename = Path::new(&startup_entry_path)
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or(startup_entry_path.clone());
+
+    Ok(StarterInstallLaunchSelection {
+        startup_entry_path,
+        startup_mode,
+        startup_filename,
+    })
+}
+
+pub fn resolve_modpack_run_dir_startup_selection(
+    source_path: &Path,
+    run_dir: &Path,
+    requested_startup_mode: &str,
+    custom_command: Option<&str>,
+    startup_file_path: Option<&str>,
+    selected_core_type: Option<&str>,
+    selected_mc_version: Option<&str>,
+) -> Result<ModpackStartupSelection, ResolveModpackStartupError> {
+    let resolved_startup_file_path = startup_file_path
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|raw_path| resolve_run_dir_startup_file_path(source_path, run_dir, raw_path))
+        .transpose()
+        .map_err(ResolveModpackStartupError::StartupFileMissing)?;
+
+    resolve_modpack_startup_selection(
+        requested_startup_mode,
+        custom_command,
+        resolved_startup_file_path.as_deref(),
+        selected_core_type,
+        selected_mc_version,
+    )
+}
+
+pub fn resolve_modpack_startup_selection(
+    requested_startup_mode: &str,
+    custom_command: Option<&str>,
+    startup_file_path: Option<&str>,
+    selected_core_type: Option<&str>,
+    selected_mc_version: Option<&str>,
+) -> Result<ModpackStartupSelection, ResolveModpackStartupError> {
+    let startup_mode = normalize_cli_startup_mode(Some(requested_startup_mode))
+        .unwrap_or_else(|_| "jar".to_string());
+    let requested_custom_command = trim_optional_text(custom_command);
+    let startup_file_path = trim_optional_text(startup_file_path);
+    let selected_core_type = trim_optional_text(selected_core_type);
+    let selected_mc_version = trim_optional_text(selected_mc_version);
+
+    let custom_command = if startup_mode == "custom" {
+        requested_custom_command.or_else(|| {
+            startup_file_path
+                .as_ref()
+                .map(|path| format_native_startup_command(path))
+        })
+    } else {
+        requested_custom_command
+    };
+
+    let startup_file_path = if startup_mode == "custom" {
+        startup_file_path
+    } else {
+        Some(startup_file_path.ok_or(ResolveModpackStartupError::StartupFilePathMissing)?)
+    };
+
+    if startup_mode != "custom" {
+        let startup_path = startup_file_path.clone().unwrap_or_default();
+        if !Path::new(&startup_path).exists() {
+            return Err(ResolveModpackStartupError::StartupFileMissing(startup_path));
+        }
+    }
+
+    if startup_mode == "custom" && custom_command.is_none() {
+        return Err(ResolveModpackStartupError::CustomCommandEmpty);
+    }
+
+    Ok(ModpackStartupSelection {
+        startup_mode,
+        custom_command,
+        startup_file_path,
+        selected_core_type,
+        selected_mc_version,
+    })
+}
+
+pub fn trim_optional_text(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+pub fn format_native_startup_command(path: &str) -> String {
+    if path.contains(' ') {
+        format!("\"{}\"", path)
+    } else {
+        path.to_string()
+    }
 }
 
 pub fn resolve_attach_executable_path_checked(folder: &Path) -> Result<Option<PathBuf>, String> {
@@ -194,10 +433,236 @@ pub fn infer_core_type_from_local_inputs_checked(
     executable_path: Option<&str>,
 ) -> Result<Option<String>, String> {
     if let Some(path) = executable_path {
-        return Ok(Some(detect_core_type_checked(path)?));
+        return Ok(normalize_inferred_core_type(detect_core_key_checked(path)?));
     }
 
     Ok(inspect_local_folder_checked(folder)?.inferred_core_type)
+}
+
+pub fn resolve_existing_server_core_type(
+    explicit_core_type: Option<&str>,
+    startup_mode: &str,
+    startup_target_path: &str,
+) -> Result<String, String> {
+    if let Some(value) = explicit_core_type
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        return normalize_core_type(Some(value));
+    }
+
+    if startup_mode.trim().eq_ignore_ascii_case("custom") {
+        return Ok("Unknown".to_string());
+    }
+
+    Ok(canonical_detected_core_type(&detect_core_key(startup_target_path)))
+}
+
+pub fn resolve_local_create_core_type(
+    explicit_core_type: Option<&str>,
+    folder: Option<&Path>,
+    jar_path: &str,
+    executable_hint: Option<&str>,
+) -> Result<String, String> {
+    if let Some(value) = explicit_core_type {
+        return normalize_core_type(Some(value));
+    }
+
+    if let Some(folder) = folder {
+        if let Some(inferred) = infer_core_type_from_local_inputs_checked(folder, executable_hint)?
+        {
+            return Ok(inferred);
+        }
+    }
+
+    Ok(canonical_detected_core_type(&detect_core_key(jar_path)))
+}
+
+pub fn resolve_local_attach_core_type(
+    explicit_core_type: Option<&str>,
+    inspected_core_type: Option<&str>,
+    folder: &Path,
+    executable_hint: Option<&str>,
+) -> Option<String> {
+    if let Some(value) = explicit_core_type
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        return normalize_core_type(Some(value)).ok();
+    }
+
+    if let Some(value) = inspected_core_type
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        return Some(value.to_string());
+    }
+
+    infer_core_type_from_local_inputs_checked(folder, executable_hint)
+        .ok()
+        .flatten()
+}
+
+pub fn resolve_local_create_mc_version(
+    explicit_mc_version: Option<String>,
+    jar_path: &str,
+    resolved_name: &str,
+    resolved_entry_path: Option<&str>,
+    folder_path: Option<&Path>,
+    executable_hint: Option<&str>,
+) -> Result<String, String> {
+    explicit_mc_version
+        .or(infer_local_create_mc_version_checked(
+            jar_path,
+            resolved_name,
+            resolved_entry_path,
+            folder_path,
+            executable_hint,
+        )?)
+        .ok_or_else(|| "cli.server_setup.local.create_missing_mc_version".to_string())
+}
+
+pub fn resolve_local_attach_mc_version(
+    explicit_mc_version: Option<String>,
+    folder: &str,
+    resolved_name: &str,
+    inspected_mc_version: Option<&str>,
+    folder_path: &Path,
+    executable_hint: Option<&str>,
+) -> Option<String> {
+    explicit_mc_version
+        .or_else(|| infer_mc_version_hint(&[folder, resolved_name]))
+        .or_else(|| {
+            inspected_mc_version
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .or_else(|| {
+                    infer_mc_version_from_folder_checked(folder_path, executable_hint)
+                        .ok()
+                        .flatten()
+                })
+        })
+}
+
+pub fn resolve_docker_create_mc_version(
+    explicit_mc_version: Option<String>,
+    folder_path: Option<&Path>,
+    folder_hint: Option<&str>,
+    resolved_name: &str,
+) -> Result<String, String> {
+    explicit_mc_version
+        .or_else(|| folder_path.and_then(|folder| infer_mc_version_from_folder(folder, None)))
+        .or_else(|| folder_hint.and_then(|folder| infer_mc_version_hint(&[folder])))
+        .or_else(|| infer_mc_version_hint(&[resolved_name]))
+        .ok_or_else(|| "cli.server_setup.docker.create_missing_mc_version".to_string())
+}
+
+pub fn resolve_docker_create_core_type(
+    explicit_core_type: Option<&str>,
+    folder_path: Option<&Path>,
+    default_core_type: &str,
+) -> Result<String, String> {
+    explicit_core_type
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| normalize_core_type(Some(value)))
+        .transpose()?
+        .or_else(|| folder_path.and_then(|folder| infer_core_type_from_local_inputs(folder, None)))
+        .or_else(|| {
+            folder_path.and_then(|folder| {
+                folder
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .and_then(infer_core_type_hint)
+            })
+        })
+        .or_else(|| normalize_core_type(Some(default_core_type)).ok())
+        .ok_or_else(|| "cli.server_setup.docker.create_missing_core_type".to_string())
+}
+
+pub fn refresh_local_server_core_type(
+    current_core_type: &str,
+    startup_mode: &str,
+    startup_target_path: Option<&str>,
+) -> String {
+    let fallback_core_type = normalize_core_type(Some(current_core_type))
+        .unwrap_or_else(|_| current_core_type.trim().to_string());
+
+    if startup_mode.trim().eq_ignore_ascii_case("custom") {
+        return fallback_core_type;
+    }
+
+    let Some(startup_target_path) = startup_target_path
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return fallback_core_type;
+    };
+
+    let detected = canonical_detected_core_type(&detect_core_key(startup_target_path));
+    if detected.is_empty() || detected.eq_ignore_ascii_case("unknown") {
+        fallback_core_type
+    } else {
+        detected
+    }
+}
+
+fn normalize_inferred_core_type(raw: String) -> Option<String> {
+    let normalized = normalize_core_type(Some(&raw)).ok()?;
+    (!normalized.eq_ignore_ascii_case("unknown")).then_some(normalized)
+}
+
+fn canonical_detected_core_type(raw: &str) -> String {
+    normalize_core_type(Some(raw)).unwrap_or_else(|_| raw.trim().to_string())
+}
+
+fn infer_core_type_hint(input: &str) -> Option<String> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Ok(parsed) = parse_server_core_key(trimmed) {
+        if !parsed.core_type.eq_ignore_ascii_case("unknown") {
+            return Some(parsed.core_type);
+        }
+    }
+
+    let detected = canonical_detected_core_type(&detect_core_key(trimmed));
+    if !detected.eq_ignore_ascii_case("unknown") {
+        return Some(detected);
+    }
+
+    let stripped = strip_version_suffix(trimmed);
+    if stripped != trimmed {
+        if let Some(normalized) = CoreType::normalize_to_api_core_key(stripped) {
+            return Some(normalized);
+        }
+
+        let detected = canonical_detected_core_type(&detect_core_key(stripped));
+        if !detected.eq_ignore_ascii_case("unknown") {
+            return Some(detected);
+        }
+    }
+
+    None
+}
+
+fn strip_version_suffix(input: &str) -> &str {
+    let Some(capture) = MC_VERSION_PATTERN.captures(input) else {
+        return input;
+    };
+    let Some(version) = capture.get(1) else {
+        return input;
+    };
+
+    let prefix = input[..version.start()].trim_end_matches(['-', '_', ' ', '.']);
+    if prefix.is_empty() {
+        input
+    } else {
+        prefix
+    }
 }
 
 pub fn infer_mc_version_from_folder(
@@ -492,6 +957,93 @@ pub fn normalize_cli_startup_mode(value: Option<&str>) -> Result<String, String>
     }
 }
 
+pub fn startup_mode_is_custom(startup_mode: &str) -> bool {
+    normalize_cli_startup_mode(Some(startup_mode)).unwrap_or_else(|_| "jar".to_string()) == "custom"
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ManagedConsoleEncoding {
+    Utf8,
+    #[cfg(target_os = "windows")]
+    Gbk,
+}
+
+impl ManagedConsoleEncoding {
+    pub fn java_name(self) -> &'static str {
+        match self {
+            ManagedConsoleEncoding::Utf8 => "UTF-8",
+            #[cfg(target_os = "windows")]
+            ManagedConsoleEncoding::Gbk => "GBK",
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn cmd_code_page(self) -> &'static str {
+        match self {
+            ManagedConsoleEncoding::Utf8 => "65001",
+            ManagedConsoleEncoding::Gbk => "936",
+        }
+    }
+}
+
+pub fn startup_mode_is_starter(startup_mode: &str) -> bool {
+    normalize_cli_startup_mode(Some(startup_mode)).unwrap_or_else(|_| "jar".to_string())
+        == "starter"
+}
+
+pub fn startup_mode_uses_windows_script_encoding_detection(startup_mode: &str) -> bool {
+    matches!(
+        normalize_cli_startup_mode(Some(startup_mode))
+            .unwrap_or_else(|_| "jar".to_string())
+            .as_str(),
+        "bat" | "ps1"
+    )
+}
+
+pub fn windows_script_prefers_utf8(startup_mode: &str, startup_path: &Path) -> bool {
+    if !startup_mode_uses_windows_script_encoding_detection(startup_mode) {
+        return true;
+    }
+
+    let bytes = match std::fs::read(startup_path) {
+        Ok(bytes) => bytes,
+        Err(_) => return true,
+    };
+
+    script_bytes_prefer_utf8(&bytes)
+}
+
+pub fn resolve_managed_console_encoding(
+    startup_mode: &str,
+    startup_path: &Path,
+) -> ManagedConsoleEncoding {
+    if startup_mode_is_custom(startup_mode) {
+        return ManagedConsoleEncoding::Utf8;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if startup_mode_uses_windows_script_encoding_detection(startup_mode) {
+            return if windows_script_prefers_utf8(startup_mode, startup_path) {
+                ManagedConsoleEncoding::Utf8
+            } else {
+                ManagedConsoleEncoding::Gbk
+            };
+        }
+    }
+
+    ManagedConsoleEncoding::Utf8
+}
+
+pub fn local_cpu_policy_supported_startup_mode(startup_mode: &str) -> bool {
+    matches!(
+        normalize_cli_startup_mode(Some(startup_mode))
+            .unwrap_or_else(|_| "jar".to_string())
+            .as_str(),
+        "jar" | "starter"
+    )
+}
+
 pub fn validate_local_create_folder(folder: Option<&str>) -> Result<Option<&Path>, String> {
     let Some(folder) = folder.map(str::trim).filter(|value| !value.is_empty()) else {
         return Ok(None);
@@ -572,6 +1124,17 @@ fn paths_refer_to_same_location(left: &Path, right: &Path) -> bool {
     normalize_path_for_compare(left) == normalize_path_for_compare(right)
 }
 
+pub fn paths_equal(left: &Path, right: &Path) -> bool {
+    normalize_path_for_compare(left) == normalize_path_for_compare(right)
+}
+
+pub fn path_is_child_of(candidate: &Path, parent: &Path) -> bool {
+    let candidate_norm = normalize_path_for_compare(candidate);
+    let parent_norm = normalize_path_for_compare(parent);
+
+    candidate_norm.starts_with(&(parent_norm + "/"))
+}
+
 fn normalize_path_for_compare(path: &Path) -> String {
     let absolute = if path.is_absolute() || is_windows_absolute_path(&path.to_string_lossy()) {
         path.to_path_buf()
@@ -617,6 +1180,10 @@ pub fn resolve_local_create_server_path(
 }
 
 pub fn resolve_java_paths(java_path: &str) -> Result<(String, String), String> {
+    if java_path.trim().is_empty() {
+        return Ok((String::new(), String::new()));
+    }
+
     let java_path_obj = Path::new(java_path);
     let java_bin_dir = java_path_obj
         .parent()
@@ -660,6 +1227,17 @@ pub fn parse_java_major_version(raw_version: &str) -> Option<u32> {
     } else {
         Some(first)
     }
+}
+
+pub fn detect_java_major_version(java_path: &str) -> Option<u32> {
+    let output = Command::new(java_path).arg("-version").output().ok()?;
+    let text = if output.stderr.is_empty() {
+        decode_console_bytes(&output.stdout)
+    } else {
+        decode_console_bytes(&output.stderr)
+    };
+
+    parse_java_major_version_output(&text)
 }
 
 pub fn build_java_launch_path_value(java_bin_dir_str: &str, existing_path: &str) -> String {
@@ -717,6 +1295,20 @@ pub fn decode_console_bytes(bytes: &[u8]) -> String {
 
 pub fn script_bytes_prefer_utf8(bytes: &[u8]) -> bool {
     bytes.starts_with(&[0xEF, 0xBB, 0xBF]) || std::str::from_utf8(bytes).is_ok()
+}
+
+fn parse_java_major_version_output(text: &str) -> Option<u32> {
+    for line in text.lines() {
+        if line.contains("version") {
+            let mut segments = line.split('"');
+            let _ = segments.next();
+            if let Some(version_text) = segments.next() {
+                return parse_java_major_version(version_text);
+            }
+        }
+    }
+
+    None
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -851,12 +1443,18 @@ fn path_parent_string(path: &str) -> Option<String> {
         .filter(|parent| !parent.trim().is_empty())
 }
 
+pub fn canonical_core_type(input: &str) -> String {
+    let trimmed = input.trim();
+    CoreType::normalize_to_api_core_key(trimmed).unwrap_or_else(|| trimmed.to_string())
+}
+
 pub fn normalize_core_type(value: Option<&str>) -> Result<String, String> {
     let raw = value.unwrap_or("paper").trim();
     if raw.is_empty() {
         return Err("--core 不能为空".to_string());
     }
-    Ok(CoreType::normalize_to_api_core_key(raw).unwrap_or_else(|| raw.to_string()))
+
+    Ok(canonical_core_type(raw))
 }
 
 fn is_script_path(path: &Path) -> bool {
@@ -881,20 +1479,34 @@ fn startup_mode_prefers_direct_jar(startup_mode: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_java_launch_path_value, decode_console_bytes, detect_startup_mode_from_path_like,
-        ensure_supported_script_java_major_version, format_command_preview,
-        format_fallback_chain_error, format_launch_fallback_log,
-        format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
-        format_primary_jar_spawn_error_reason, infer_core_type_from_local_inputs_checked,
-        infer_mc_version_from_folder_checked, inspect_local_folder, inspect_local_folder_checked,
-        normalize_core_type, normalize_path_for_compare, parse_java_major_version,
-        path_parent_string, prepend_path_entry, preview_command,
-        resolve_attach_executable_path_checked, resolve_command_path_hint_with,
-        resolve_direct_jar_launch_target, resolve_java_paths, resolve_local_create_server_path,
-        resolve_local_launch_target, resolve_local_preferred_jar_path,
-        resolve_local_preferred_jar_path_checked, script_bytes_prefer_utf8, startup_filename,
+        build_java_launch_path_value, canonical_core_type, decode_console_bytes,
+        detect_startup_mode_from_path_like, ensure_supported_script_java_major_version,
+        format_command_preview, format_fallback_chain_error, format_launch_fallback_log,
+        format_native_startup_command, format_primary_jar_early_exit_reason,
+        format_primary_jar_probe_error_reason, format_primary_jar_spawn_error_reason,
+        infer_core_type_from_local_inputs_checked, infer_mc_version_from_folder_checked,
+        inspect_local_folder, inspect_local_folder_checked,
+        local_cpu_policy_supported_startup_mode, normalize_core_type, normalize_path_for_compare,
+        parse_java_major_version, parse_java_major_version_output, path_is_child_of,
+        path_parent_string, paths_equal, prepend_path_entry, preview_command,
+        refresh_local_server_core_type, resolve_attach_executable_path_checked,
+        resolve_command_path_hint_with, resolve_direct_jar_launch_target,
+        resolve_docker_create_core_type, resolve_docker_create_mc_version,
+        resolve_existing_server_core_type, resolve_existing_server_requested_startup,
+        resolve_java_paths, resolve_local_attach_core_type, resolve_local_attach_mc_version,
+        resolve_local_create_core_type, resolve_local_create_mc_version,
+        resolve_local_create_server_path, resolve_local_launch_target,
+        resolve_local_preferred_jar_path, resolve_local_preferred_jar_path_checked,
+        resolve_local_startup_entry_checked, resolve_modpack_run_dir_startup_selection,
+        resolve_modpack_startup_selection, resolve_run_dir_startup_file_path,
+        resolve_starter_install_launch_selection, script_bytes_prefer_utf8, startup_filename,
+        startup_mode_is_custom, startup_mode_is_starter,
+        startup_mode_uses_windows_script_encoding_detection, trim_optional_text,
         validate_local_create_folder, validate_local_create_startup_exists,
-        validate_local_create_startup_path_binding,
+        validate_local_create_startup_path_binding, windows_script_prefers_utf8,
+        ExistingServerStartupSelection, ModpackStartupSelection, ResolveExistingServerStartupError,
+        ResolveModpackStartupError, ResolveStarterInstallLaunchError,
+        StarterInstallLaunchSelection,
     };
     use std::path::Path;
     use std::process::Command;
@@ -944,6 +1556,30 @@ mod tests {
     }
 
     #[test]
+    fn paths_equal_normalizes_relative_segments_and_case() {
+        assert!(paths_equal(
+            Path::new("E:/servers/./paper/../paper"),
+            Path::new("e:/servers/paper/")
+        ));
+    }
+
+    #[test]
+    fn path_is_child_of_requires_real_child_path() {
+        assert!(path_is_child_of(
+            Path::new("E:/servers/source/run/server"),
+            Path::new("E:/servers/source")
+        ));
+        assert!(!path_is_child_of(
+            Path::new("E:/servers/source"),
+            Path::new("E:/servers/source")
+        ));
+        assert!(!path_is_child_of(
+            Path::new("E:/servers/source-sibling"),
+            Path::new("E:/servers/source")
+        ));
+    }
+
+    #[test]
     fn resolve_local_create_server_path_prefers_entry_parent() {
         let resolved = resolve_local_create_server_path(
             "E:/servers/paper/server.jar",
@@ -961,8 +1597,499 @@ mod tests {
 
     #[test]
     fn normalize_core_type_maps_known_aliases() {
+        assert_eq!(canonical_core_type("AllayMC"), "allay");
+        assert_eq!(canonical_core_type("Arclight-Neoforge"), "arclight-neoforge");
+
         let normalized = normalize_core_type(Some("fabric")).expect("fabric should normalize");
         assert_eq!(normalized, "fabric");
+
+        let waterfall = normalize_core_type(Some("Waterfall")).expect("waterfall should normalize");
+        assert_eq!(waterfall, "waterfall");
+
+        let bedrock = normalize_core_type(Some("bedrock-dedicated-server"))
+            .expect("bedrock alias should normalize");
+        assert_eq!(bedrock, "bds");
+
+        let legacy_leaf = normalize_core_type(Some("Leaf")).expect("leaf alias should normalize");
+        assert_eq!(legacy_leaf, "leaves");
+
+        let legacy_nukkitx =
+            normalize_core_type(Some("nukkitx")).expect("nukkitx alias should normalize");
+        assert_eq!(legacy_nukkitx, "nukkit");
+
+        let legacy_spongeforge =
+            normalize_core_type(Some("spongeforge")).expect("spongeforge alias should normalize");
+        assert_eq!(legacy_spongeforge, "forge");
+    }
+
+    #[test]
+    fn resolve_existing_server_core_type_preserves_custom_unknown_without_explicit_core() {
+        let core_type = resolve_existing_server_core_type(None, "custom", "E:/servers/run.bat")
+            .expect("custom attach should resolve");
+
+        assert_eq!(core_type, "Unknown");
+    }
+
+    #[test]
+    fn resolve_existing_server_core_type_canonicalizes_explicit_aliases() {
+        let core_type =
+            resolve_existing_server_core_type(Some("Leaf"), "jar", "E:/servers/server.jar")
+                .expect("explicit core type should normalize");
+
+        assert_eq!(core_type, "leaves");
+    }
+
+    #[test]
+    fn resolve_existing_server_requested_startup_handles_custom_and_explicit_executable() {
+        let custom =
+            resolve_existing_server_requested_startup("custom", Some("  launch-paper  "), None)
+                .expect("custom startup should resolve");
+
+        assert_eq!(
+            custom,
+            Some(ExistingServerStartupSelection {
+                startup_target_path: String::new(),
+                startup_mode: "custom".to_string(),
+                custom_command: Some("launch-paper".to_string()),
+            })
+        );
+
+        let dir = tempdir().expect("temp dir should exist");
+        let script_path = dir.path().join("start.cmd");
+        std::fs::write(&script_path, b"@echo off\r\n").expect("script should write");
+
+        let explicit = resolve_existing_server_requested_startup(
+            "jar",
+            None,
+            Some(script_path.to_string_lossy().as_ref()),
+        )
+        .expect("explicit executable should resolve")
+        .expect("selection should exist");
+
+        assert_eq!(explicit.startup_target_path, script_path.to_string_lossy());
+        assert_eq!(explicit.startup_mode, "bat");
+        assert_eq!(explicit.custom_command, None);
+    }
+
+    #[test]
+    fn resolve_existing_server_requested_startup_reports_validation_errors() {
+        let custom_err = resolve_existing_server_requested_startup("custom", Some("   "), None)
+            .expect_err("blank custom command should fail");
+        assert_eq!(custom_err, ResolveExistingServerStartupError::CustomCommandEmpty);
+
+        let missing = "E:/missing/start.sh";
+        let executable_err = resolve_existing_server_requested_startup("jar", None, Some(missing))
+            .expect_err("missing executable should fail");
+        assert_eq!(
+            executable_err,
+            ResolveExistingServerStartupError::ExecutableMissing(missing.to_string())
+        );
+    }
+
+    #[test]
+    fn resolve_local_create_core_type_prefers_folder_inference_before_jar_fallback() {
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("paper-prod-1.21.1");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+        let script_path = folder.join("start.sh");
+        std::fs::write(&script_path, b"#!/bin/sh\n").expect("script should write");
+
+        let core_type = resolve_local_create_core_type(
+            None,
+            Some(&folder),
+            "E:/servers/mystery-server.jar",
+            Some(script_path.to_string_lossy().as_ref()),
+        )
+        .expect("local create core type should resolve");
+
+        assert_eq!(core_type, "paper");
+    }
+
+    #[test]
+    fn resolve_local_attach_core_type_reuses_checked_folder_inference() {
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("paper-prod-1.21.1");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+        std::fs::write(folder.join("start.sh"), b"#!/bin/sh\n").expect("script should write");
+
+        let core_type = resolve_local_attach_core_type(None, None, &folder, None);
+
+        assert_eq!(core_type.as_deref(), Some("paper"));
+    }
+
+    #[test]
+    fn resolve_local_attach_core_type_preserves_attach_fallback_semantics() {
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("mystery-server");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+        std::fs::create_dir(folder.join("server.jar"))
+            .expect("directory-backed jar path should create");
+
+        let core_type = resolve_local_attach_core_type(None, None, &folder, None);
+
+        assert_eq!(core_type, None);
+    }
+
+    #[test]
+    fn resolve_local_startup_entry_checked_prefers_script_and_keeps_detected_mode() {
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("paper-prod-1.21.1");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+        let script_path = folder.join("start.sh");
+        std::fs::write(&script_path, b"#!/bin/sh\n").expect("script should write");
+
+        let resolved = resolve_local_startup_entry_checked(&folder)
+            .expect("startup entry resolution should succeed")
+            .expect("startup entry should exist");
+
+        assert_eq!(resolved.0, script_path.to_string_lossy().to_string());
+        assert_eq!(resolved.1, "sh");
+    }
+
+    #[test]
+    fn resolve_run_dir_startup_file_path_maps_relative_and_source_relative_paths() {
+        let dir = tempdir().expect("temp dir should exist");
+        let source_dir = dir.path().join("pack");
+        let run_dir = dir.path().join("run");
+        std::fs::create_dir_all(source_dir.join("bin")).expect("source dir should create");
+        std::fs::create_dir_all(&run_dir).expect("run dir should create");
+
+        let relative = resolve_run_dir_startup_file_path(&source_dir, &run_dir, "start.sh")
+            .expect("relative startup path should map into run dir");
+        let absolute = resolve_run_dir_startup_file_path(
+            &source_dir,
+            &run_dir,
+            source_dir
+                .join("bin")
+                .join("start.sh")
+                .to_string_lossy()
+                .as_ref(),
+        )
+        .expect("source-relative absolute path should map into run dir");
+
+        assert_eq!(relative, run_dir.join("start.sh").to_string_lossy().to_string());
+        assert_eq!(
+            absolute,
+            run_dir
+                .join("bin")
+                .join("start.sh")
+                .to_string_lossy()
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn resolve_modpack_startup_selection_derives_custom_command_from_startup_path() {
+        let dir = tempdir().expect("temp dir should exist");
+        let startup_path = dir.path().join("Paper 1.21").join("start.sh");
+        std::fs::create_dir_all(startup_path.parent().expect("parent should exist"))
+            .expect("parent dir should create");
+        std::fs::write(&startup_path, b"#!/bin/sh\n").expect("startup file should exist");
+
+        let resolved = resolve_modpack_startup_selection(
+            "custom",
+            None,
+            Some(startup_path.to_string_lossy().as_ref()),
+            Some(" AllayMC "),
+            Some(" 1.21.1 "),
+        )
+        .expect("custom modpack startup should resolve");
+
+        assert_eq!(
+            resolved,
+            ModpackStartupSelection {
+                startup_mode: "custom".to_string(),
+                custom_command: Some(format!("\"{}\"", startup_path.to_string_lossy())),
+                startup_file_path: Some(startup_path.to_string_lossy().to_string()),
+                selected_core_type: Some("AllayMC".to_string()),
+                selected_mc_version: Some("1.21.1".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn resolve_modpack_run_dir_startup_selection_maps_relative_path_before_resolution() {
+        let dir = tempdir().expect("temp dir should exist");
+        let source_dir = dir.path().join("pack");
+        let run_dir = dir.path().join("run");
+        std::fs::create_dir_all(&source_dir).expect("source dir should create");
+        std::fs::create_dir_all(&run_dir).expect("run dir should create");
+        let startup_path = run_dir.join("start.sh");
+        std::fs::write(&startup_path, b"#!/bin/sh\n").expect("startup file should exist");
+
+        let resolved = resolve_modpack_run_dir_startup_selection(
+            &source_dir,
+            &run_dir,
+            "jar",
+            None,
+            Some("start.sh"),
+            Some("paper"),
+            Some("1.21.1"),
+        )
+        .expect("run-dir startup selection should resolve");
+
+        assert_eq!(resolved.startup_mode, "jar");
+        assert_eq!(
+            resolved.startup_file_path.as_deref(),
+            Some(startup_path.to_string_lossy().as_ref())
+        );
+        assert_eq!(resolved.selected_core_type.as_deref(), Some("paper"));
+        assert_eq!(resolved.selected_mc_version.as_deref(), Some("1.21.1"));
+    }
+
+    #[test]
+    fn resolve_modpack_startup_selection_requires_non_custom_startup_file_and_existing_path() {
+        let missing = resolve_modpack_startup_selection("jar", None, None, None, None)
+            .expect_err("non-custom startup should require startup file path");
+        assert_eq!(missing, ResolveModpackStartupError::StartupFilePathMissing);
+
+        let nonexistent = resolve_modpack_startup_selection(
+            "jar",
+            None,
+            Some("E:/missing/server.jar"),
+            None,
+            None,
+        )
+        .expect_err("nonexistent startup path should fail");
+        assert_eq!(
+            nonexistent,
+            ResolveModpackStartupError::StartupFileMissing("E:/missing/server.jar".to_string())
+        );
+    }
+
+    #[test]
+    fn resolve_modpack_startup_selection_requires_custom_command_when_no_path_fallback_exists() {
+        let err = resolve_modpack_startup_selection("custom", Some("   "), None, None, None)
+            .expect_err("blank custom command without path fallback should fail");
+        assert_eq!(err, ResolveModpackStartupError::CustomCommandEmpty);
+    }
+
+    #[test]
+    fn trim_optional_text_discards_blank_values() {
+        assert_eq!(trim_optional_text(Some("  paper  ")), Some("paper".to_string()));
+        assert_eq!(trim_optional_text(Some("   ")), None);
+        assert_eq!(trim_optional_text(None), None);
+    }
+
+    #[test]
+    fn local_cpu_policy_supported_startup_mode_only_allows_jar_like_modes() {
+        assert!(local_cpu_policy_supported_startup_mode("jar"));
+        assert!(local_cpu_policy_supported_startup_mode("starter"));
+        assert!(!local_cpu_policy_supported_startup_mode("bat"));
+        assert!(!local_cpu_policy_supported_startup_mode("custom"));
+    }
+
+    #[test]
+    fn startup_mode_predicates_reuse_normalized_mode_values() {
+        assert!(startup_mode_is_custom("CUSTOM"));
+        assert!(!startup_mode_is_custom("jar"));
+        assert!(startup_mode_is_starter("starter"));
+        assert!(startup_mode_is_starter("STARTER"));
+        assert!(!startup_mode_is_starter("sh"));
+        assert!(startup_mode_uses_windows_script_encoding_detection("bat"));
+        assert!(startup_mode_uses_windows_script_encoding_detection("PS1"));
+        assert!(!startup_mode_uses_windows_script_encoding_detection("sh"));
+    }
+
+    #[test]
+    fn windows_script_prefers_utf8_only_for_supported_script_modes() {
+        let dir = tempdir().expect("temp dir should exist");
+        let batch = dir.path().join("start.bat");
+        std::fs::write(&batch, "你好".as_bytes()).expect("utf8 script should write");
+
+        assert!(windows_script_prefers_utf8("bat", &batch));
+        assert!(windows_script_prefers_utf8("jar", &batch));
+
+        let gbk = dir.path().join("start.ps1");
+        std::fs::write(&gbk, &[0xC4, 0xE3, 0xBA, 0xC3]).expect("gbk-like bytes should write");
+        assert!(!windows_script_prefers_utf8("ps1", &gbk));
+    }
+
+    #[test]
+    fn resolve_starter_install_launch_selection_requires_supported_script_entry() {
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("starter-paper");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+        let script_path = folder.join("start.ps1");
+        std::fs::write(&script_path, b"Write-Host start\n").expect("script should write");
+
+        let resolved = resolve_starter_install_launch_selection(&folder)
+            .expect("starter launch selection should resolve");
+
+        assert_eq!(
+            resolved,
+            StarterInstallLaunchSelection {
+                startup_entry_path: script_path.to_string_lossy().to_string(),
+                startup_mode: "ps1".to_string(),
+                startup_filename: "start.ps1".to_string(),
+            }
+        );
+
+        let empty = dir.path().join("empty-starter");
+        std::fs::create_dir_all(&empty).expect("empty folder should create");
+        let err = resolve_starter_install_launch_selection(&empty)
+            .expect_err("missing starter script should fail");
+        assert_eq!(err, ResolveStarterInstallLaunchError::MissingScript);
+    }
+
+    #[test]
+    fn format_native_startup_command_quotes_paths_with_spaces() {
+        assert_eq!(
+            format_native_startup_command("E:/Servers/Paper 1.21/start.bat"),
+            "\"E:/Servers/Paper 1.21/start.bat\""
+        );
+        assert_eq!(
+            format_native_startup_command("E:/Servers/Paper/start.bat"),
+            "E:/Servers/Paper/start.bat"
+        );
+    }
+
+    #[test]
+    fn refresh_local_server_core_type_prefers_detected_non_unknown_value() {
+        let refreshed =
+            refresh_local_server_core_type("paper", "jar", Some("E:/servers/nukkit.jar"));
+
+        assert_eq!(refreshed, "nukkit");
+    }
+
+    #[test]
+    fn refresh_local_server_core_type_preserves_current_for_custom_or_unknown_detection() {
+        assert_eq!(
+            refresh_local_server_core_type("Leaf", "custom", Some("E:/servers/run.bat")),
+            "leaves"
+        );
+        assert_eq!(
+            refresh_local_server_core_type("paper", "jar", Some("E:/servers/server.jar")),
+            "paper"
+        );
+    }
+
+    #[test]
+    fn resolve_local_create_mc_version_prefers_explicit_and_checked_inference() {
+        assert_eq!(
+            resolve_local_create_mc_version(
+                Some("1.20.1".to_string()),
+                "E:/servers/server.jar",
+                "fabric-cache",
+                None,
+                None,
+                None,
+            )
+            .expect("explicit mc version should win"),
+            "1.20.1"
+        );
+
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("paper-1.21.1");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+        let entry_path = folder.join("start.sh");
+        std::fs::write(&entry_path, b"#!/bin/sh\n").expect("entry should write");
+
+        assert_eq!(
+            resolve_local_create_mc_version(
+                None,
+                "server.jar",
+                "paper-cache",
+                Some(entry_path.to_string_lossy().as_ref()),
+                Some(&folder),
+                None,
+            )
+            .expect("checked inference should resolve mc version"),
+            "1.21.1"
+        );
+    }
+
+    #[test]
+    fn resolve_local_attach_mc_version_reuses_hint_and_swallowed_checked_fallback() {
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("paper-1.21.1");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+
+        assert_eq!(
+            resolve_local_attach_mc_version(
+                None,
+                folder.to_string_lossy().as_ref(),
+                "paper-prod",
+                None,
+                &folder,
+                None,
+            )
+            .as_deref(),
+            Some("1.21.1")
+        );
+
+        let broken = dir.path().join("broken-server");
+        std::fs::create_dir_all(&broken).expect("broken folder should create");
+        std::fs::create_dir(broken.join("server.jar"))
+            .expect("directory-backed jar path should create");
+
+        assert_eq!(
+            resolve_local_attach_mc_version(
+                None,
+                broken.to_string_lossy().as_ref(),
+                "mystery-server",
+                None,
+                &broken,
+                None,
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn resolve_docker_create_mc_version_prefers_explicit_then_folder_then_name_hint() {
+        assert_eq!(
+            resolve_docker_create_mc_version(
+                Some("latest".to_string()),
+                None,
+                None,
+                "paper-docker",
+            )
+            .expect("explicit mc version should win"),
+            "latest"
+        );
+
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("fabric-1.20.1");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+        std::fs::write(folder.join("fabric-server.jar"), b"placeholder").expect("jar should write");
+
+        assert_eq!(
+            resolve_docker_create_mc_version(None, Some(&folder), None, "docker-server")
+                .expect("folder inference should resolve mc version"),
+            "1.20.1"
+        );
+
+        assert_eq!(
+            resolve_docker_create_mc_version(None, None, None, "paper-1.21.1")
+                .expect("name hint should resolve mc version"),
+            "1.21.1"
+        );
+    }
+
+    #[test]
+    fn resolve_docker_create_core_type_prefers_explicit_then_folder_then_default() {
+        assert_eq!(
+            resolve_docker_create_core_type(Some("bedrock"), None, "paper")
+                .expect("explicit core type should normalize"),
+            "bds"
+        );
+
+        let dir = tempdir().expect("temp dir should exist");
+        let folder = dir.path().join("allay-1.21.1");
+        std::fs::create_dir_all(&folder).expect("folder should create");
+
+        assert_eq!(
+            resolve_docker_create_core_type(None, Some(&folder), "paper")
+                .expect("folder inference should resolve core type"),
+            "allay"
+        );
+
+        assert_eq!(
+            resolve_docker_create_core_type(None, None, "paper")
+                .expect("default core type should be used"),
+            "paper"
+        );
     }
 
     #[test]
@@ -972,6 +2099,14 @@ mod tests {
 
         assert_eq!(bin_dir, "C:/Java/JDK 21/bin");
         assert_eq!(home_dir, "C:/Java/JDK 21");
+    }
+
+    #[test]
+    fn resolve_java_paths_accepts_blank_java_path_as_empty_pair() {
+        assert_eq!(
+            resolve_java_paths("   ").expect("blank java path should resolve"),
+            (String::new(), String::new())
+        );
     }
 
     #[test]
@@ -1013,7 +2148,7 @@ mod tests {
 
         assert!(inspection.is_attachable());
         assert_eq!(inspection.startup_mode.as_deref(), Some("sh"));
-        assert_eq!(inspection.inferred_core_type.as_deref(), Some("Paper"));
+        assert_eq!(inspection.inferred_core_type.as_deref(), Some("paper"));
     }
 
     #[test]
@@ -1093,6 +2228,27 @@ mod tests {
     fn parse_java_major_version_rejects_unparseable_input() {
         assert_eq!(parse_java_major_version(""), None);
         assert_eq!(parse_java_major_version("not-a-version"), None);
+    }
+
+    #[test]
+    fn detect_java_major_version_reads_quoted_version_output() {
+        let output = "openjdk version \"21.0.3\" 2024-04-16\nOpenJDK Runtime Environment";
+
+        assert_eq!(parse_java_major_version_output(output), Some(21));
+    }
+
+    #[test]
+    fn detect_java_major_version_handles_legacy_version_output() {
+        let output = "java version \"1.8.0_412\"\nJava(TM) SE Runtime Environment";
+
+        assert_eq!(parse_java_major_version_output(output), Some(8));
+    }
+
+    #[test]
+    fn detect_java_major_version_returns_none_without_quoted_version_line() {
+        let output = "openjdk full version 21.0.3 without quotes";
+
+        assert_eq!(parse_java_major_version_output(output), None);
     }
 
     #[test]

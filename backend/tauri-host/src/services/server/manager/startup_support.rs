@@ -9,8 +9,8 @@ use sea_lantern_server_config_core::{
     EffectiveStartupConfig as SharedEffectiveStartupConfig, ManagedJvmBuildInput,
     StartupResolutionDefaults, StartupRuntimeDefaults,
 };
+use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
 
-use super::common::ManagedConsoleEncoding;
 use super::common::StartupMode;
 use super::cpu_policy;
 use super::i18n::manager_t1;
@@ -142,7 +142,7 @@ mod tests {
         ServerInstance, ServerRuntimeConfig,
     };
     use crate::models::settings::AppSettings;
-    use crate::services::server::manager::common::ManagedConsoleEncoding;
+    use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
     use tempfile::tempdir;
 
     fn test_server(path: String) -> ServerInstance {

@@ -1,14 +1,15 @@
 use std::fs;
 
-use super::common::{ensure_plugins_dir, validate_plugin_file_name};
+use super::common::{ensure_plugin_target_dir_for_server, validate_plugin_file_name};
+use crate::models::server::ServerInstance;
 use tokio::io::AsyncWriteExt;
 
 pub(crate) fn toggle_plugin(
-    server_path: &str,
+    server: &ServerInstance,
     file_name: &str,
     enabled: bool,
 ) -> Result<(), String> {
-    let plugins_dir = ensure_plugins_dir(server_path)?;
+    let plugins_dir = ensure_plugin_target_dir_for_server(server)?;
     let base_file_name = validate_plugin_file_name(file_name)?;
 
     let current_path = if enabled {
@@ -31,8 +32,8 @@ pub(crate) fn toggle_plugin(
     Ok(())
 }
 
-pub(crate) fn delete_plugin(server_path: &str, file_name: &str) -> Result<(), String> {
-    let plugins_dir = ensure_plugins_dir(server_path)?;
+pub(crate) fn delete_plugin(server: &ServerInstance, file_name: &str) -> Result<(), String> {
+    let plugins_dir = ensure_plugin_target_dir_for_server(server)?;
     let base_file_name = validate_plugin_file_name(file_name)?;
 
     let enabled_path = plugins_dir.join(&base_file_name);
@@ -50,11 +51,11 @@ pub(crate) fn delete_plugin(server_path: &str, file_name: &str) -> Result<(), St
 }
 
 pub(crate) async fn install_plugin(
-    server_path: &str,
+    server: &ServerInstance,
     file_data: Vec<u8>,
     file_name: &str,
 ) -> Result<(), String> {
-    let plugins_dir = ensure_plugins_dir(server_path)?;
+    let plugins_dir = ensure_plugin_target_dir_for_server(server)?;
     let base_file_name = validate_plugin_file_name(file_name)?;
     let plugin_path = plugins_dir.join(base_file_name);
 

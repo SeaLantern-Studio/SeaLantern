@@ -4,9 +4,10 @@ import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { useHomeServerActionsStore } from "@stores/homeServerActionsStore";
 import type { ServerInstance } from "@type/server";
-import { i18n } from "@language";
 import { systemApi } from "@api/system";
 import { formatServerPath } from "@utils/formatters";
+import { formatServerCoreTypeLabel } from "@utils/serverCoreLabel";
+import { i18n } from "@language";
 import { useRouter } from "vue-router";
 import { useServerStore } from "@stores/serverStore";
 
@@ -19,11 +20,7 @@ const homeServerActionsStore = useHomeServerActionsStore();
 const router = useRouter();
 
 function formatCoreTypeLabel(value: string) {
-  if (value.trim().toLowerCase() === "pumpkin") {
-    return i18n.t("create.core_type_pumpkin");
-  }
-
-  return value;
+  return formatServerCoreTypeLabel(value);
 }
 
 async function handlePathClick(path: string) {

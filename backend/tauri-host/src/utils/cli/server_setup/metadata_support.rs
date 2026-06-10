@@ -30,7 +30,7 @@ mod tests {
         let mc_version = infer_mc_version_from_folder(temp_dir.path(), None)
             .expect("mc version should infer from jar filename");
 
-        assert_eq!(core_type, "Fabric");
+        assert_eq!(core_type, "fabric");
         assert_eq!(mc_version, "1.20.1");
     }
 
@@ -45,7 +45,7 @@ mod tests {
         let mc_version = infer_mc_version_from_folder(&named_dir, None)
             .expect("mc version should infer from folder name");
 
-        assert_eq!(core_type, "Fabric");
+        assert_eq!(core_type, "fabric");
         assert_eq!(mc_version, "1.20.1");
     }
 
