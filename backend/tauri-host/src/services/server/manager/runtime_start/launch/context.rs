@@ -1,14 +1,8 @@
-use super::super::super::common::{
-    resolve_managed_console_encoding, ManagedConsoleEncoding, StartupMode,
-};
+use super::super::super::common::StartupMode;
 use crate::models::server::ServerInstance;
 use crate::services::server::manager::i18n::manager_t1;
-use sea_lantern_server_installer_core::{detect_core_type, CoreType};
-use sea_lantern_server_local_setup_core::{
-    resolve_java_paths as resolve_shared_java_paths,
-    startup_filename as resolve_shared_startup_filename,
-};
-use std::path::Path;
+use sea_lantern_server_installer_core::resolve_starter_core_key_checked as resolve_shared_starter_core_key;
+use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
 
 pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a> {
     pub server: &'a ServerInstance,
@@ -21,54 +15,22 @@ pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a>
     pub starter_core_key: String,
 }
 
-pub(in crate::services::server::manager::runtime_start) fn resolve_managed_encoding(
-    startup_mode: StartupMode,
-    startup_path: &Path,
-) -> ManagedConsoleEncoding {
-    if startup_mode.is_custom() {
-        ManagedConsoleEncoding::Utf8
-    } else {
-        resolve_managed_console_encoding(startup_mode, startup_path)
-    }
-}
-
-pub(in crate::services::server::manager::runtime_start) fn resolve_java_paths(
-    java_path: &str,
-) -> Result<(String, String), String> {
-    if java_path.trim().is_empty() {
-        return Ok((String::new(), String::new()));
-    }
-
-    resolve_shared_java_paths(java_path)
-}
-
-pub(in crate::services::server::manager::runtime_start) fn startup_filename(
-    startup_path: &str,
-) -> String {
-    resolve_shared_startup_filename(startup_path)
-}
-
 pub(in crate::services::server::manager::runtime_start) fn resolve_starter_core_key(
     server: &ServerInstance,
 ) -> Result<String, String> {
-    let startup_mode = StartupMode::from_raw(server.startup_mode_str());
-    if !startup_mode.is_starter() {
-        return Ok(String::new());
+    let resolution = resolve_shared_starter_core_key(
+        server.startup_mode_str(),
+        Some(&server.core_type),
+        server.jar_path(),
+    );
+    if resolution.needs_unrecognized_error(server.startup_mode_str()) {
+        return Err(manager_t1(
+            "server.manager.starter_core_type_unrecognized",
+            resolution.unresolved_display_hint(Some(&server.core_type)),
+        ));
     }
 
-    let detected_core_type = detect_core_type(server.jar_path().unwrap_or_default());
-    CoreType::normalize_to_api_core_key(&server.core_type)
-        .or_else(|| CoreType::normalize_to_api_core_key(&detected_core_type))
-        .ok_or_else(|| {
-            manager_t1(
-                "server.manager.starter_core_type_unrecognized",
-                if server.core_type.trim().is_empty() {
-                    detected_core_type
-                } else {
-                    server.core_type.clone()
-                },
-            )
-        })
+    Ok(resolution.starter_core_key)
 }
 
 #[cfg(test)]
@@ -123,6 +85,20 @@ mod tests {
         );
 
         let core_key = resolve_starter_core_key(&server).expect("starter core type should resolve");
+
+        assert_eq!(core_key, "neoforge");
+    }
+
+    #[test]
+    fn resolve_starter_core_key_falls_back_to_detected_launch_target() {
+        let server = test_server(
+            "starter",
+            "   ",
+            "E:/minecraft/neoforge-26.1.0.0-alpha.1+snapshot-1-installer.jar",
+        );
+
+        let core_key = resolve_starter_core_key(&server)
+            .expect("starter core type should fall back to detected launch target");
 
         assert_eq!(core_key, "neoforge");
     }

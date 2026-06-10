@@ -1,28 +1,22 @@
 #[cfg(target_os = "windows")]
 use super::super::super::common::build_windows_cmd_command;
-use super::super::super::{common::detect_java_major_version, startup_support};
+use super::super::super::startup_support;
 use super::context::LaunchContext;
 #[cfg(target_os = "windows")]
-use crate::services::server::manager::common::ManagedConsoleEncoding;
+use sea_lantern_server_local_setup_core::build_windows_bat_command_text as build_shared_windows_bat_command_text;
 use sea_lantern_server_local_setup_core::{
     build_java_launch_path_value as build_shared_java_launch_path_value,
-    ensure_supported_script_java_major_version as ensure_shared_script_java_compat,
-    prepend_path_entry as prepend_shared_path_entry,
-};
-#[cfg(target_os = "windows")]
-use sea_lantern_server_local_setup_core::{
-    build_windows_bat_command_text as build_shared_windows_bat_command_text,
-    build_windows_java_env_prefix as build_shared_windows_java_env_prefix,
+    detect_java_major_version as detect_shared_java_major_version,
+    ensure_supported_script_java_major_version, ManagedConsoleEncoding,
 };
 use std::process::Command;
 
 pub(super) fn prepare_script_startup(context: &LaunchContext<'_>) -> Result<(), String> {
-    ensure_script_java_compat(
-        context
-            .server
-            .java_path()
-            .expect("script launch requires java_path"),
-    )?;
+    let java_path = context
+        .server
+        .java_path()
+        .expect("script launch requires java_path");
+    ensure_supported_script_java_major_version(detect_shared_java_major_version(java_path))?;
     startup_support::write_user_jvm_args(
         context.server,
         context.settings,
@@ -35,42 +29,18 @@ pub(super) fn apply_script_process_env(cmd: &mut Command, context: &LaunchContex
 }
 
 #[cfg(target_os = "windows")]
-#[cfg_attr(not(test), allow(dead_code))]
-pub(super) fn build_windows_java_env_prefix(
-    java_home_dir_str: &str,
-    java_bin_dir_str: &str,
-) -> String {
-    build_shared_windows_java_env_prefix(java_home_dir_str, java_bin_dir_str)
-}
-
-#[cfg(target_os = "windows")]
 pub(super) fn build_windows_bat_command(
     startup_filename: &str,
     managed_console_encoding: ManagedConsoleEncoding,
     java_home_dir_str: &str,
     java_bin_dir_str: &str,
 ) -> Command {
-    build_windows_cmd_command(&build_windows_bat_command_text(
-        startup_filename,
-        managed_console_encoding,
-        java_home_dir_str,
-        java_bin_dir_str,
-    ))
-}
-
-#[cfg(target_os = "windows")]
-fn build_windows_bat_command_text(
-    startup_filename: &str,
-    managed_console_encoding: ManagedConsoleEncoding,
-    java_home_dir_str: &str,
-    java_bin_dir_str: &str,
-) -> String {
-    build_shared_windows_bat_command_text(
+    build_windows_cmd_command(&build_shared_windows_bat_command_text(
         startup_filename,
         managed_console_encoding.cmd_code_page(),
         java_home_dir_str,
         java_bin_dir_str,
-    )
+    ))
 }
 
 pub(super) fn apply_java_process_env(
@@ -79,40 +49,25 @@ pub(super) fn apply_java_process_env(
     java_bin_dir_str: &str,
 ) {
     cmd.env("JAVA_HOME", java_home_dir_str);
-    cmd.env("PATH", build_java_launch_path_value(java_bin_dir_str));
-}
-
-fn ensure_script_java_compat(java_path: &str) -> Result<(), String> {
-    ensure_supported_script_java_major_version(detect_java_major_version(java_path))
-}
-
-fn ensure_supported_script_java_major_version(major_version: Option<u32>) -> Result<(), String> {
-    ensure_shared_script_java_compat(major_version)
-}
-
-fn build_java_launch_path_value(java_bin_dir_str: &str) -> String {
-    build_shared_java_launch_path_value(
-        java_bin_dir_str,
-        &std::env::var("PATH").unwrap_or_default(),
-    )
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-fn prepend_path_entry(path_entry: &str, existing_path: &str, separator: &str) -> String {
-    prepend_shared_path_entry(path_entry, existing_path, separator)
+    cmd.env(
+        "PATH",
+        build_shared_java_launch_path_value(
+            java_bin_dir_str,
+            &std::env::var("PATH").unwrap_or_default(),
+        ),
+    );
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        apply_java_process_env, ensure_supported_script_java_major_version, prepend_path_entry,
+    use super::{apply_java_process_env, ensure_supported_script_java_major_version};
+    use sea_lantern_server_local_setup_core::{
+        build_windows_java_env_prefix, prepend_path_entry, ManagedConsoleEncoding,
     };
     use std::process::Command;
 
     #[cfg(target_os = "windows")]
-    use super::{build_windows_bat_command, build_windows_java_env_prefix};
-    #[cfg(target_os = "windows")]
-    use crate::services::server::manager::common::ManagedConsoleEncoding;
+    use super::build_windows_bat_command;
 
     fn collect_envs(command: &Command) -> Vec<(String, Option<String>)> {
         command

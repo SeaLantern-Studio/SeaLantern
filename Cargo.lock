@@ -6111,6 +6111,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "shlex",
+ "sl-server-flavor-core",
  "sysinfo",
  "tar",
  "tauri",
@@ -6202,6 +6203,7 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "serde",
+ "sl-server-core-taxonomy",
  "tar",
  "tempfile",
  "uuid",
@@ -6218,6 +6220,7 @@ dependencies = [
  "sea-lantern-runtime",
  "sea-lantern-server-installer-core",
  "shlex",
+ "sl-server-core-taxonomy",
  "tempfile",
 ]
 
@@ -6225,8 +6228,10 @@ dependencies = [
 name = "sea-lantern-server-plugin-core"
 version = "0.1.0"
 dependencies = [
+ "sea-lantern-server-installer-core",
  "serde",
  "serde_yaml",
+ "sl-server-flavor-core",
  "tempfile",
  "zip",
 ]
@@ -6237,6 +6242,7 @@ version = "0.1.0"
 dependencies = [
  "sea-lantern-server-installer-core",
  "serde",
+ "sl-server-core-taxonomy",
  "tempfile",
  "uuid",
  "zip",
@@ -6707,6 +6713,21 @@ name = "siphasher"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
+
+[[package]]
+name = "sl-server-core-taxonomy"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85cf3c330a6fc1d8cb36e8069f4b2118bcbf622411d52eba57034e4499a9e0f6"
+
+[[package]]
+name = "sl-server-flavor-core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70bcc52d1040a884df468ef6f89ef9326bb85a3f3d2b52a039e92f81c879caca"
+dependencies = [
+ "sl-server-core-taxonomy",
+]
 
 [[package]]
 name = "slab"

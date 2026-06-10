@@ -33,6 +33,7 @@ pub(crate) fn desktop_handler(
         server_commands::import_server,
         server_commands::add_existing_server,
         server_commands::import_modpack,
+        server_commands::parse_server_core_key,
         server_commands::parse_server_core_type,
         server_commands::scan_startup_candidates,
         server_commands::collect_copy_conflicts,

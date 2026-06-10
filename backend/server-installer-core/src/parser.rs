@@ -4,7 +4,7 @@ use crate::archive::{
     extract_modpack_archive, find_server_jar_checked, resolve_extracted_root_checked,
 };
 use crate::core_type::CoreType;
-use crate::detect_core_type_with_main_class_checked;
+use crate::{detect_core_key_checked, detect_core_type_with_main_class_checked};
 
 struct TempExtractDir(PathBuf);
 
@@ -101,6 +101,25 @@ pub fn parse_server_core_type(source_path: &str) -> Result<ParsedServerCoreInfo,
     };
 
     Ok(result)
+}
+
+pub fn parse_server_core_key(source_path: &str) -> Result<ParsedServerCoreInfo, String> {
+    let mut parsed = parse_server_core_type(source_path)?;
+    if let Some(jar_path) = parsed.jar_path.as_deref() {
+        if let Ok(core_key) = detect_core_key_checked(jar_path) {
+            if core_key.eq_ignore_ascii_case("unknown") {
+                parsed.core_type = CoreType::normalize_to_api_core_key(&parsed.core_type)
+                    .unwrap_or(parsed.core_type);
+                return Ok(parsed);
+            }
+            parsed.core_type = core_key;
+            return Ok(parsed);
+        }
+    }
+
+    parsed.core_type =
+        CoreType::normalize_to_api_core_key(&parsed.core_type).unwrap_or(parsed.core_type);
+    Ok(parsed)
 }
 
 fn to_relative_archive_path(base_dir: &Path, absolute_path: &Path) -> Result<String, String> {

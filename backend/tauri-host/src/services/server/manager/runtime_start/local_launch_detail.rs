@@ -2,7 +2,8 @@ use crate::models::server::ServerInstance;
 use crate::services::server::manager::i18n::manager_t1;
 use crate::services::server::manager::startup_support::resolve_effective_startup_config_checked;
 use sea_lantern_server_local_setup_core::{
-    preview_command as preview_shared_command, resolve_local_launch_target,
+    preview_command as preview_shared_command, resolve_java_paths, resolve_local_launch_target,
+    resolve_managed_console_encoding, startup_filename, startup_mode_is_starter,
 };
 
 use super::super::common::StartupMode;
@@ -11,10 +12,7 @@ use super::launch::command_builder::{
     build_configured_command, build_direct_jar_command, build_starter_install_command,
     find_preferred_jar_path,
 };
-use super::launch::context::{
-    resolve_java_paths, resolve_managed_encoding, resolve_starter_core_key, startup_filename,
-    LaunchContext,
-};
+use super::launch::context::{resolve_starter_core_key, LaunchContext};
 use super::LocalLaunchDetail;
 
 pub(crate) fn build_local_launch_detail(
@@ -28,7 +26,8 @@ pub(crate) fn build_local_launch_detail(
     let startup_mode = StartupMode::from_raw(&runtime.startup_mode);
     let startup_path = runtime.jar_path.as_str();
     let startup_path_obj = std::path::Path::new(startup_path);
-    let managed_console_encoding = resolve_managed_encoding(startup_mode, startup_path_obj);
+    let managed_console_encoding =
+        resolve_managed_console_encoding(startup_mode.as_str(), startup_path_obj);
     let (java_bin_dir_str, java_home_dir_str) = resolve_java_paths(runtime.java_path.as_str())?;
     let starter_core_key = resolve_starter_core_key(server)?;
 
@@ -44,14 +43,16 @@ pub(crate) fn build_local_launch_detail(
     };
     let effective = resolve_effective_startup_config_checked(server, settings)?;
 
-    let effective_jvm_args = if matches!(startup_mode, StartupMode::Jar | StartupMode::Starter) {
+    let effective_jvm_args = if matches!(startup_mode, StartupMode::Jar)
+        || startup_mode_is_starter(startup_mode.as_str())
+    {
         build_managed_jvm_args(server, settings, managed_console_encoding)?
     } else {
         Vec::new()
     };
 
     let preferred_jar_path = find_preferred_jar_path(&context);
-    let launch_target = if matches!(startup_mode, StartupMode::Starter) {
+    let launch_target = if startup_mode_is_starter(startup_mode.as_str()) {
         context.startup_filename.clone()
     } else {
         resolve_local_launch_target(
@@ -81,7 +82,7 @@ fn resolve_command_preview(
     context: &LaunchContext<'_>,
     preferred_jar_path: Option<&str>,
 ) -> Result<String, String> {
-    let command = if matches!(context.startup_mode, StartupMode::Starter) {
+    let command = if startup_mode_is_starter(context.startup_mode.as_str()) {
         build_starter_install_command(context)?
     } else if let Some(preferred_jar_path) = preferred_jar_path {
         build_direct_jar_command(context, preferred_jar_path, None)?

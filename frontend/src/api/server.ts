@@ -240,6 +240,17 @@ export const serverApi = {
     });
   },
 
+  async parseServerCoreKey(sourcePath: string): Promise<ParsedServerCoreInfo> {
+    const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_key", {
+      sourcePath,
+    });
+    return {
+      coreType: result.core_type,
+      mainClass: result.main_class,
+      jarPath: result.jar_path,
+    };
+  },
+
   async parseServerCoreType(sourcePath: string): Promise<ParsedServerCoreInfo> {
     const result = await tauriInvoke<ParsedServerCoreInfoRaw>("parse_server_core_type", {
       sourcePath,

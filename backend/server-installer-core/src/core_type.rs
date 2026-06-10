@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use server_core_taxonomy::normalize_core_key as normalize_published_core_key;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CoreType {
     Pumpkin,
@@ -36,42 +38,69 @@ pub enum CoreType {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StarterInstallMode {
+    Standard,
+    ForgeLike,
+    NeoForgeLike,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DockerTypeResolution {
+    pub api_core_key: String,
+    pub docker_type_value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StarterInstallArgs {
+    pub args: Vec<&'static str>,
+}
+
 impl CoreType {
-    pub const API_CORE_KEYS: [&'static str; 30] = [
+    pub const API_CORE_KEYS: &'static [&'static str] = &[
         "pumpkin",
         "paper",
         "purpur",
-        "leaf",
         "spigot",
         "bukkit",
         "folia",
         "leaves",
         "pufferfish",
-        "pufferfish_purpur",
-        "spongevanilla",
+        "sponge",
         "arclight-forge",
         "arclight-neoforge",
         "youer",
         "mohist",
         "catserver",
-        "spongeforge",
-        "arclight-fabric",
-        "banner",
         "neoforge",
         "forge",
         "fabric",
         "quilt",
         "vanilla",
-        "vanilla-snapshot",
-        "nukkitx",
         "velocity",
         "bungeecord",
+        "waterfall",
         "lightfall",
         "travertine",
+        "flamecord",
+        "tuinity",
+        "airplane",
+        "glowstone",
+        "cuberite",
+        "minestom",
+        "bds",
+        "liteloaderbds",
+        "levilamina",
+        "bdsx",
+        "allay",
+        "nukkit",
+        "powernukkitx",
+        "pocketmine",
+        "endstone",
     ];
 
     pub fn all_api_core_keys() -> &'static [&'static str] {
-        &Self::API_CORE_KEYS
+        Self::API_CORE_KEYS
     }
 
     pub fn to_api_core_key(self) -> Option<&'static str> {
@@ -82,26 +111,27 @@ impl CoreType {
             CoreType::Youer => Some("youer"),
             CoreType::Mohist => Some("mohist"),
             CoreType::Catserver => Some("catserver"),
-            CoreType::Spongeforge => Some("spongeforge"),
-            CoreType::ArclightFabric => Some("arclight-fabric"),
-            CoreType::Banner => Some("banner"),
+            CoreType::Spongeforge => Some("forge"),
+            CoreType::ArclightFabric => Some("fabric"),
+            CoreType::Banner => Some("fabric"),
             CoreType::Neoforge => Some("neoforge"),
             CoreType::Forge => Some("forge"),
             CoreType::Quilt => Some("quilt"),
             CoreType::Fabric => Some("fabric"),
-            CoreType::PufferfishPurpur => Some("pufferfish_purpur"),
+            CoreType::PufferfishPurpur => Some("pufferfish"),
             CoreType::Pufferfish => Some("pufferfish"),
-            CoreType::Spongevanilla => Some("spongevanilla"),
+            CoreType::Spongevanilla => Some("sponge"),
             CoreType::Purpur => Some("purpur"),
             CoreType::Paper => Some("paper"),
             CoreType::Folia => Some("folia"),
             CoreType::Leaves => Some("leaves"),
-            CoreType::Leaf => Some("leaf"),
+            CoreType::Leaf => Some("leaves"),
             CoreType::Spigot => Some("spigot"),
             CoreType::Bukkit => Some("bukkit"),
-            CoreType::VanillaSnapshot => Some("vanilla-snapshot"),
+            CoreType::VanillaSnapshot => Some("vanilla"),
             CoreType::Vanilla => Some("vanilla"),
-            CoreType::Nukkitx | CoreType::Bedrock => Some("nukkitx"),
+            CoreType::Nukkitx => Some("nukkit"),
+            CoreType::Bedrock => Some("bds"),
             CoreType::Velocity => Some("velocity"),
             CoreType::Bungeecord => Some("bungeecord"),
             CoreType::Lightfall => Some("lightfall"),
@@ -111,6 +141,10 @@ impl CoreType {
     }
 
     pub fn normalize_to_api_core_key(input: &str) -> Option<String> {
+        if let Some(published_key) = normalize_published_api_core_key(input) {
+            return Some(published_key.to_string());
+        }
+
         Self::from_str(input)
             .ok()
             .and_then(|core_type| core_type.to_api_core_key().map(|value| value.to_string()))
@@ -124,6 +158,35 @@ impl CoreType {
                     .find(|candidate| **candidate == normalized)
                     .map(|value| (*value).to_string())
             })
+    }
+
+    pub fn starter_install_mode(input: &str) -> Option<StarterInstallMode> {
+        match Self::normalize_to_api_core_key(input)?.as_str() {
+            "neoforge" | "arclight-neoforge" => Some(StarterInstallMode::NeoForgeLike),
+            "forge" | "arclight-forge" | "catserver" | "mohist" => {
+                Some(StarterInstallMode::ForgeLike)
+            }
+            _ => Some(StarterInstallMode::Standard),
+        }
+    }
+
+    pub fn starter_install_args(input: &str) -> Option<StarterInstallArgs> {
+        let args = match Self::starter_install_mode(input)? {
+            StarterInstallMode::NeoForgeLike => {
+                vec!["--install-server", ".", "--server-starter"]
+            }
+            StarterInstallMode::ForgeLike => vec!["--installServer", "."],
+            StarterInstallMode::Standard => vec!["--install-server", "."],
+        };
+
+        Some(StarterInstallArgs { args })
+    }
+
+    pub fn docker_type_resolution(input: &str) -> Option<DockerTypeResolution> {
+        let api_core_key = Self::normalize_to_api_core_key(input)?;
+        let docker_type_value = api_core_key.to_ascii_uppercase().replace('-', "_");
+
+        Some(DockerTypeResolution { api_core_key, docker_type_value })
     }
 
     pub fn as_str(&self) -> &'static str {
@@ -212,6 +275,14 @@ impl CoreType {
     }
 }
 
+fn normalize_published_api_core_key(input: &str) -> Option<&'static str> {
+    match normalize_published_core_key(input)? {
+        "arclight_forge" => Some("arclight-forge"),
+        "arclight_neoforge" => Some("arclight-neoforge"),
+        other => Some(other),
+    }
+}
+
 impl FromStr for CoreType {
     type Err = String;
 
@@ -256,7 +327,7 @@ impl FromStr for CoreType {
 
 #[cfg(test)]
 mod tests {
-    use super::CoreType;
+    use super::{CoreType, StarterInstallArgs, StarterInstallMode};
 
     #[test]
     fn normalize_to_api_core_key_accepts_pumpkin_display_name() {
@@ -264,8 +335,82 @@ mod tests {
     }
 
     #[test]
+    fn normalize_to_api_core_key_accepts_published_taxonomy_aliases() {
+        assert_eq!(CoreType::normalize_to_api_core_key("Waterfall").as_deref(), Some("waterfall"));
+        assert_eq!(
+            CoreType::normalize_to_api_core_key("Arclight-Neoforge").as_deref(),
+            Some("arclight-neoforge")
+        );
+        assert_eq!(CoreType::normalize_to_api_core_key("AllayMC").as_deref(), Some("allay"));
+        assert_eq!(
+            CoreType::normalize_to_api_core_key("bedrock-dedicated-server").as_deref(),
+            Some("bds")
+        );
+    }
+
+    #[test]
+    fn normalize_to_api_core_key_canonicalizes_legacy_local_alias_outputs() {
+        assert_eq!(CoreType::normalize_to_api_core_key("leaf").as_deref(), Some("leaves"));
+        assert_eq!(
+            CoreType::normalize_to_api_core_key("pufferfish_purpur").as_deref(),
+            Some("pufferfish")
+        );
+        assert_eq!(CoreType::normalize_to_api_core_key("spongevanilla").as_deref(), Some("sponge"));
+        assert_eq!(CoreType::normalize_to_api_core_key("spongeforge").as_deref(), Some("forge"));
+        assert_eq!(
+            CoreType::normalize_to_api_core_key("arclight-fabric").as_deref(),
+            Some("fabric")
+        );
+        assert_eq!(CoreType::normalize_to_api_core_key("banner").as_deref(), Some("fabric"));
+        assert_eq!(
+            CoreType::normalize_to_api_core_key("vanilla-snapshot").as_deref(),
+            Some("vanilla")
+        );
+        assert_eq!(CoreType::normalize_to_api_core_key("nukkitx").as_deref(), Some("nukkit"));
+        assert_eq!(CoreType::normalize_to_api_core_key("bedrock").as_deref(), Some("bds"));
+    }
+
+    #[test]
     fn detect_from_filename_recognizes_pumpkin_executable_name() {
         assert_eq!(CoreType::detect_from_filename("pumpkin-X64-Windows.exe"), CoreType::Pumpkin);
+    }
+
+    #[test]
+    fn starter_install_mode_classifies_shared_installer_families() {
+        assert_eq!(
+            CoreType::starter_install_mode("neoforge"),
+            Some(StarterInstallMode::NeoForgeLike)
+        );
+        assert_eq!(
+            CoreType::starter_install_mode("Arclight-Neoforge"),
+            Some(StarterInstallMode::NeoForgeLike)
+        );
+        assert_eq!(CoreType::starter_install_mode("forge"), Some(StarterInstallMode::ForgeLike));
+        assert_eq!(
+            CoreType::starter_install_mode("spongeforge"),
+            Some(StarterInstallMode::ForgeLike)
+        );
+        assert_eq!(CoreType::starter_install_mode("Paper"), Some(StarterInstallMode::Standard));
+        assert_eq!(CoreType::starter_install_mode(""), None);
+    }
+
+    #[test]
+    fn starter_install_args_match_shared_family_cli_contracts() {
+        assert_eq!(
+            CoreType::starter_install_args("neoforge"),
+            Some(StarterInstallArgs {
+                args: vec!["--install-server", ".", "--server-starter"],
+            })
+        );
+        assert_eq!(
+            CoreType::starter_install_args("catserver"),
+            Some(StarterInstallArgs { args: vec!["--installServer", "."] })
+        );
+        assert_eq!(
+            CoreType::starter_install_args("paper"),
+            Some(StarterInstallArgs { args: vec!["--install-server", "."] })
+        );
+        assert_eq!(CoreType::starter_install_args("   "), None);
     }
 }
 

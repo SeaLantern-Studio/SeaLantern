@@ -1,10 +1,10 @@
 use std::path::Path;
 
 use crate::models::server::ImportModpackRequest;
+use sea_lantern_server_local_setup_core::ModpackStartupSelection;
 
 use super::super::super::common::current_timestamp_secs;
 use super::super::super::fs::{upsert_run_path_mapping, RunPathServerMapping};
-use super::startup::ModpackStartupSelection;
 
 pub(super) fn save_modpack_run_mapping(
     data_dir: &str,

@@ -8,11 +8,11 @@ use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::cpu_policy;
 use crate::services::server::manager::i18n::{manager_t, manager_t1, manager_t2, manager_t3};
-use sea_lantern_server_local_setup_core::inspect_local_folder_checked;
 use sea_lantern_server_local_setup_core::{
     build_primary_jar_fallback_info, format_fallback_chain_error, format_launch_fallback_log,
     format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
-    format_primary_jar_spawn_error_reason,
+    format_primary_jar_spawn_error_reason, preview_command,
+    resolve_starter_install_launch_selection, startup_mode_is_starter,
 };
 use std::process::{Command, Stdio};
 
@@ -31,7 +31,7 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
     id: &str,
     context: LaunchContext<'_>,
 ) -> Result<LaunchPlan, String> {
-    if matches!(context.startup_mode, StartupMode::Starter) {
+    if startup_mode_is_starter(context.startup_mode.as_str()) {
         let child = install_and_launch_starter(id, &context)?;
         return Ok(LaunchPlan { child, fallback_info: None });
     }
@@ -168,19 +168,16 @@ fn install_and_launch_starter(
         ));
     }
 
-    let inspection = inspect_local_folder_checked(std::path::Path::new(&context.server.path))?;
-    let startup_entry = inspection.startup_entry_path.ok_or_else(|| {
-        manager_t1("server.manager.starter_install_missing_script", context.server.path.clone())
-    })?;
-    let startup_mode = inspection
-        .startup_mode
-        .as_deref()
-        .map(StartupMode::from_raw)
-        .unwrap_or(StartupMode::Jar);
-    let startup_filename = std::path::Path::new(&startup_entry)
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or(startup_entry.clone());
+    let selection =
+        resolve_starter_install_launch_selection(std::path::Path::new(&context.server.path))
+            .map_err(|_| {
+                manager_t1(
+                    "server.manager.starter_install_missing_script",
+                    context.server.path.clone(),
+                )
+            })?;
+    let startup_mode = StartupMode::from_raw(&selection.startup_mode);
+    let startup_filename = selection.startup_filename;
 
     let launch_phase = manager_t("server.manager.launch_phase_starter_script");
     let command = match startup_mode {
@@ -251,7 +248,7 @@ fn spawn_command(
     phase: &str,
     startup_mode: StartupMode,
 ) -> Result<std::process::Child, String> {
-    let command_for_log = super::super::super::common::format_command_for_log(&cmd);
+    let command_for_log = preview_command(&cmd);
     let _ = server_log_pipeline::append_sealantern_log(
         id,
         &manager_t2("server.manager.launch_command_log", phase.to_string(), command_for_log),
@@ -289,7 +286,7 @@ fn spawn_command_and_capture(
     mut cmd: Command,
     phase: &str,
 ) -> Result<CompletedCommandOutput, String> {
-    let command_for_log = super::super::super::common::format_command_for_log(&cmd);
+    let command_for_log = preview_command(&cmd);
     let _ = server_log_pipeline::append_sealantern_log(
         id,
         &manager_t2("server.manager.launch_command_log", phase.to_string(), command_for_log),

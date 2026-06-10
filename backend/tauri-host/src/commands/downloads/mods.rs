@@ -1,7 +1,8 @@
 use crate::services::global;
 use crate::services::mod_manager::ModInfo;
 use crate::utils::path::validate_file_name_only;
-use std::path::PathBuf;
+use sea_lantern_server_plugin_core::ensure_extension_target_dir;
+use server_flavor_core::ServerExtensionKind;
 use tauri::command;
 
 #[command]
@@ -24,7 +25,7 @@ pub async fn install_mod(
 ) -> Result<(), String> {
     let safe_file_name = validate_file_name_only(&file_name)?;
 
-    let server_path = {
+    let server = {
         let server_manager = global::server_manager();
         let servers = server_manager
             .servers
@@ -34,10 +35,19 @@ pub async fn install_mod(
             .iter()
             .find(|s| s.id == server_id)
             .ok_or("Server not found")?;
-        server.path.clone()
+        server.clone()
     }; // MutexGuard 在这里被释放
 
-    let mods_dir = PathBuf::from(&server_path).join("mods");
+    let mods_dir = ensure_extension_target_dir(
+        &server.path,
+        &server.core_type,
+        &server.runtime_kind,
+        server.startup_mode_str(),
+        ServerExtensionKind::Mod,
+    )
+    .map_err(|_| {
+        format!("Server core '{}' does not support mod-style extensions", server.core_type)
+    })?;
     let target_path = mods_dir.join(safe_file_name);
 
     let mod_manager = global::mod_manager();

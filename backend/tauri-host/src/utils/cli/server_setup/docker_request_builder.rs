@@ -17,8 +17,7 @@ use sea_lantern_docker_core::{
 };
 use sea_lantern_server_installer_core::CoreType;
 use sea_lantern_server_local_setup_core::{
-    infer_core_type_from_local_inputs, infer_mc_version_from_folder, infer_mc_version_hint,
-    normalize_core_type,
+    resolve_docker_create_core_type, resolve_docker_create_mc_version,
 };
 
 fn cli_docker_t(key: &str) -> String {
@@ -43,30 +42,18 @@ pub(crate) fn build_docker_create_request(
     defaults: DockerCreateDefaults,
 ) -> Result<CreateDockerItzgServerRequest, String> {
     let docker_folder_path = command.folder.as_deref().map(Path::new);
-    let mc_version = command
-        .mc_version
-        .clone()
-        .or_else(|| {
-            docker_folder_path.and_then(|folder| infer_mc_version_from_folder(folder, None))
-        })
-        .or_else(|| {
-            command
-                .folder
-                .as_deref()
-                .and_then(|folder| infer_mc_version_hint(&[folder]))
-        })
-        .or_else(|| infer_mc_version_hint(&[resolved_name]))
-        .ok_or_else(|| cli_docker_t("cli.server_setup.docker.create_missing_mc_version"))?;
-    let core_type = command
-        .core_type
-        .clone()
-        .or_else(|| {
-            docker_folder_path.and_then(|folder| infer_core_type_from_local_inputs(folder, None))
-        })
-        .map(|value| normalize_core_type(Some(&value)))
-        .transpose()?
-        .unwrap_or_else(|| "paper".to_string());
-    let api_core = CoreType::normalize_to_api_core_key(&core_type).unwrap_or(core_type.clone());
+    let mc_version = resolve_docker_create_mc_version(
+        command.mc_version.clone(),
+        docker_folder_path,
+        command.folder.as_deref(),
+        resolved_name,
+    )
+    .map_err(|key| cli_docker_t(&key))?;
+    let core_type =
+        resolve_docker_create_core_type(command.core_type.as_deref(), docker_folder_path, "paper")
+            .map_err(|key| cli_docker_t(&key))?;
+    let docker_type = CoreType::docker_type_resolution(&core_type)
+        .ok_or_else(|| cli_docker_t("cli.server_setup.docker.create_missing_core_type"))?;
     let data_dir = resolve_docker_data_dir(command, resolved_name)?;
     let (image, image_tag) = resolve_requested_docker_image(command)?;
     let container_name = command
@@ -114,7 +101,7 @@ pub(crate) fn build_docker_create_request(
             image,
             image_tag,
             container_name,
-            type_value: api_core.to_ascii_uppercase().replace('-', "_"),
+            type_value: docker_type.docker_type_value,
             version: mc_version,
             data_dir_mount: data_dir,
             published_game_port: ports.game_port,
@@ -151,5 +138,59 @@ fn apply_docker_memory_env(
 fn apply_custom_docker_env(command: &CliServerCommand, env: &mut BTreeMap<String, String>) {
     for (key, value) in &command.docker_env {
         env.insert(key.clone(), value.clone());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_docker_create_request;
+    use crate::utils::cli::server_args::CliServerCommand;
+    use crate::utils::cli::server_ports::PreparedPorts;
+
+    fn sample_defaults() -> super::DockerCreateDefaults {
+        super::DockerCreateDefaults {
+            default_max_memory_mb: 4096,
+            default_min_memory_mb: 2048,
+        }
+    }
+
+    #[test]
+    fn build_docker_create_request_canonicalizes_explicit_legacy_core_alias() {
+        let command = CliServerCommand {
+            core_type: Some("bedrock".to_string()),
+            mc_version: Some("latest".to_string()),
+            data_dir: Some("E:/docker/bedrock".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 19132, web_port: None };
+
+        let request =
+            build_docker_create_request(&command, "bedrock-docker", &ports, sample_defaults())
+                .expect("explicit legacy core alias should normalize for docker create");
+
+        assert_eq!(request.core_type, "bds");
+        assert_eq!(request.runtime.type_value, "BDS");
+    }
+
+    #[test]
+    fn build_docker_create_request_reuses_shared_docker_type_resolution() {
+        let command = CliServerCommand {
+            core_type: Some("Arclight-Neoforge".to_string()),
+            mc_version: Some("1.20.1".to_string()),
+            data_dir: Some("E:/docker/arclight-neoforge".to_string()),
+            ..Default::default()
+        };
+        let ports = PreparedPorts { game_port: 25565, web_port: None };
+
+        let request = build_docker_create_request(
+            &command,
+            "arclight-neoforge-docker",
+            &ports,
+            sample_defaults(),
+        )
+        .expect("docker TYPE should come from shared resolution");
+
+        assert_eq!(request.core_type, "arclight-neoforge");
+        assert_eq!(request.runtime.type_value, "ARCLIGHT_NEOFORGE");
     }
 }

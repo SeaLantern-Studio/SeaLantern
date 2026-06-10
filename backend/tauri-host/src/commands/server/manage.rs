@@ -179,7 +179,15 @@ pub fn import_modpack(
 }
 
 #[tauri::command]
-/// 解析服务端核心类型
+/// 解析服务端核心 key，返回的 `core_type` 为 canonical key
+pub async fn parse_server_core_key(
+    source_path: String,
+) -> Result<crate::models::server::ParsedServerCoreInfo, String> {
+    provisioning::parse_server_core_key(source_path).await
+}
+
+#[tauri::command]
+/// 兼容旧命令名，返回 legacy display-style `core_type`
 pub async fn parse_server_core_type(
     source_path: String,
 ) -> Result<crate::models::server::ParsedServerCoreInfo, String> {

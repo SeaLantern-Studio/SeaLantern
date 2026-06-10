@@ -1,6 +1,7 @@
 use super::common::manager;
 use crate::commands::server::common::server_t1;
 use crate::models::server::*;
+use sea_lantern_server_installer_core::parse_server_core_key as parse_shared_server_core_key;
 use sea_lantern_server_installer_core::parse_server_core_type as parse_shared_server_core_type;
 
 #[allow(clippy::too_many_arguments)]
@@ -155,9 +156,20 @@ pub(super) fn import_modpack(
     manager().import_modpack(req)
 }
 
-/// 解析服务端核心类型
+/// 解析服务端核心 key
 ///
 /// 这里会切到阻塞线程里执行实际探测，避免卡住异步运行时
+pub(super) async fn parse_server_core_key(
+    source_path: String,
+) -> Result<ParsedServerCoreInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || parse_shared_server_core_key(&source_path))
+        .await
+        .map_err(|e| server_t1("server.manage.parse_core_type_task_failed", e.to_string()))?
+}
+
+/// 解析服务端核心 display type
+///
+/// 兼容旧命令语义，返回 `Paper` / `NeoForge` 这一类展示值。
 pub(super) async fn parse_server_core_type(
     source_path: String,
 ) -> Result<ParsedServerCoreInfo, String> {

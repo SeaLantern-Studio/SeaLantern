@@ -11,6 +11,8 @@
 //! 旧的顶层别名大多已经删掉了。
 //! 新代码直接使用 `services::server::*` 下的真实路径。
 
+#[cfg(test)]
+pub(crate) mod flavor_support;
 pub mod id_manager;
 pub mod join;
 pub mod log_pipeline;

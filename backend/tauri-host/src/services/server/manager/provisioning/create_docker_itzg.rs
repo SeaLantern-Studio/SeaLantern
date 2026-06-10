@@ -1,6 +1,8 @@
 use crate::models::server::{CreateDockerItzgServerRequest, ServerInstance, ServerRuntimeConfig};
 use sea_lantern_docker_core::parse_memory_env_value_checked;
 use sea_lantern_server_config_core::startup::ensure_server_path_writable;
+use sea_lantern_server_installer_core::CoreType;
+use sea_lantern_server_local_setup_core::canonical_core_type;
 
 use super::super::common::{
     current_timestamp_secs, ensure_server_identity_available, validate_server_name,
@@ -35,12 +37,17 @@ fn build_docker_itzg_server(
     id: String,
     now: u64,
     server_name: String,
-    req: CreateDockerItzgServerRequest,
+    mut req: CreateDockerItzgServerRequest,
 ) -> Result<ServerInstance, String> {
     let data_dir_mount = req.runtime.data_dir_mount.trim().to_string();
     if data_dir_mount.is_empty() {
         return Err(provisioning_t("server.provisioning.docker_data_dir_mount_empty"));
     }
+
+    let docker_type = CoreType::docker_type_resolution(&req.core_type)
+        .ok_or_else(|| provisioning_t("server.provisioning.core_type_required"))?;
+    req.core_type = docker_type.api_core_key;
+    req.runtime.type_value = docker_type.docker_type_value;
 
     let max_memory = resolve_memory_env_mb(&req.runtime.env, "MAX_MEMORY", 4096)?;
     let min_memory = resolve_memory_env_mb(&req.runtime.env, "INIT_MEMORY", 1024)?;
@@ -51,7 +58,7 @@ fn build_docker_itzg_server(
         id,
         name: server_name,
         aliases: req.aliases,
-        core_type: req.core_type,
+        core_type: canonical_core_type(&req.core_type),
         core_version: String::new(),
         mc_version: req.mc_version,
         path: server_dir.clone(),
@@ -164,6 +171,7 @@ mod tests {
 
         assert_eq!(server.runtime_kind, "docker_itzg");
         assert_eq!(server.aliases, vec!["docker_hidden"]);
+        assert_eq!(server.core_type, "paper");
         assert_eq!(server.path, "E:/servers/docker-hidden");
         assert_eq!(server.port, 25565);
         assert_eq!(server.max_memory, 4096);
@@ -174,6 +182,7 @@ mod tests {
                 assert_eq!(runtime.image, "itzg/minecraft-server");
                 assert_eq!(runtime.image_tag, "java21");
                 assert_eq!(runtime.container_name, "sea-hidden-docker");
+                assert_eq!(runtime.type_value, "PAPER");
                 assert_eq!(runtime.docker_backend_kind, DockerBackendKind::Cli);
                 assert_eq!(runtime.command_mode, DockerCommandMode::Rcon);
             }
@@ -242,6 +251,29 @@ mod tests {
         .expect("blank INIT_MEMORY should fall back to default");
 
         assert_eq!(server.min_memory, 1024);
+    }
+
+    #[test]
+    fn build_docker_itzg_server_recovers_runtime_type_value_from_shared_resolution() {
+        let mut req = sample_request();
+        req.core_type = "bedrock".to_string();
+        req.runtime.type_value = "BEDROCK".to_string();
+
+        let server = build_docker_itzg_server(
+            "docker-hidden-5".to_string(),
+            123,
+            "Docker Hidden".to_string(),
+            req,
+        )
+        .expect("docker runtime type should be canonicalized before persistence");
+
+        assert_eq!(server.core_type, "bds");
+        match server.runtime {
+            ServerRuntimeConfig::DockerItzg(runtime) => {
+                assert_eq!(runtime.type_value, "BDS");
+            }
+            ServerRuntimeConfig::Local(_) => panic!("expected docker runtime"),
+        }
     }
 
     #[test]

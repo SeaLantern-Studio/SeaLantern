@@ -1,14 +1,6 @@
-use std::path::Path;
 use std::process::Command;
 
 use crate::models::server::{ServerInstance, ServerRuntimeConfig};
-#[cfg(target_os = "windows")]
-use sea_lantern_server_local_setup_core::script_bytes_prefer_utf8;
-use sea_lantern_server_local_setup_core::{
-    decode_console_bytes as decode_shared_console_bytes, detect_startup_mode_from_path_like,
-    parse_java_major_version as parse_shared_java_major_version,
-    preview_command as preview_shared_command,
-};
 
 use super::i18n::{manager_t, manager_t1, manager_t2, manager_t3};
 
@@ -45,47 +37,9 @@ impl StartupMode {
         }
     }
 
-    pub(super) fn is_custom(self) -> bool {
-        matches!(self, Self::Custom)
-    }
-
-    pub(super) fn is_starter(self) -> bool {
-        matches!(self, Self::Starter)
-    }
-
     #[cfg(test)]
     pub(super) fn prefers_direct_jar(self) -> bool {
         matches!(self, Self::Jar | Self::Starter)
-    }
-
-    #[cfg(target_os = "windows")]
-    pub(super) fn uses_windows_script_encoding_detection(self) -> bool {
-        matches!(self, Self::Bat | Self::Ps1)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(super) enum ManagedConsoleEncoding {
-    Utf8,
-    #[cfg(target_os = "windows")]
-    Gbk,
-}
-
-impl ManagedConsoleEncoding {
-    pub(super) fn java_name(self) -> &'static str {
-        match self {
-            ManagedConsoleEncoding::Utf8 => "UTF-8",
-            #[cfg(target_os = "windows")]
-            ManagedConsoleEncoding::Gbk => "GBK",
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    pub(super) fn cmd_code_page(self) -> &'static str {
-        match self {
-            ManagedConsoleEncoding::Utf8 => "65001",
-            ManagedConsoleEncoding::Gbk => "936",
-        }
     }
 }
 
@@ -259,77 +213,11 @@ pub(super) fn get_data_dir_checked() -> Result<String, String> {
         .map_err(|e| manager_t1("server.manager.data_dir_resolve_failed", e.to_string()))
 }
 
-pub(super) fn normalize_startup_mode(mode: &str) -> &str {
-    StartupMode::from_raw(mode).as_str()
-}
-
-pub(super) fn detect_startup_mode_from_path(path: &Path) -> String {
-    detect_startup_mode_from_path_like(&path.to_string_lossy())
-}
-
-pub(super) fn resolve_managed_console_encoding(
-    startup_mode: StartupMode,
-    startup_path: &Path,
-) -> ManagedConsoleEncoding {
-    #[cfg(target_os = "windows")]
-    {
-        if startup_mode.uses_windows_script_encoding_detection() {
-            return detect_windows_batch_encoding(startup_path);
-        }
-    }
-
-    let _ = startup_mode;
-    let _ = startup_path;
-    ManagedConsoleEncoding::Utf8
-}
-
-#[cfg(target_os = "windows")]
-fn detect_windows_batch_encoding(startup_path: &Path) -> ManagedConsoleEncoding {
-    let bytes = match std::fs::read(startup_path) {
-        Ok(bytes) => bytes,
-        Err(_) => return ManagedConsoleEncoding::Utf8,
-    };
-
-    if script_bytes_prefer_utf8(&bytes) {
-        ManagedConsoleEncoding::Utf8
-    } else {
-        ManagedConsoleEncoding::Gbk
-    }
-}
-
-pub(super) fn detect_java_major_version(java_path: &str) -> Option<u32> {
-    let output = Command::new(java_path).arg("-version").output().ok()?;
-    let text = if output.stderr.is_empty() {
-        decode_console_bytes(&output.stdout)
-    } else {
-        decode_console_bytes(&output.stderr)
-    };
-
-    for line in text.lines() {
-        if line.contains("version") {
-            let mut segments = line.split('"');
-            let _ = segments.next();
-            if let Some(version_text) = segments.next() {
-                return parse_shared_java_major_version(version_text);
-            }
-        }
-    }
-
-    None
-}
-
-pub(super) fn format_command_for_log(command: &Command) -> String {
-    preview_shared_command(command)
-}
-
-pub(super) fn decode_console_bytes(bytes: &[u8]) -> String {
-    decode_shared_console_bytes(bytes)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_support::{lock_env, EnvGuard};
+    use sea_lantern_server_local_setup_core::preview_command;
     #[cfg(target_os = "windows")]
     use tempfile::TempDir;
 
@@ -369,7 +257,7 @@ mod tests {
         cmd.arg("/c");
         cmd.arg("\"C:\\Program Files\\Java\\jdk-21\\bin\\java.exe\" -jar paper.jar nogui");
 
-        let formatted = format_command_for_log(&cmd);
+        let formatted = preview_command(&cmd);
 
         assert_eq!(
             formatted,
@@ -386,8 +274,6 @@ mod tests {
         assert!(!StartupMode::Bat.prefers_direct_jar());
         assert!(!StartupMode::Sh.prefers_direct_jar());
         assert!(!StartupMode::Custom.prefers_direct_jar());
-        assert!(StartupMode::Starter.is_starter());
-        assert!(StartupMode::Custom.is_custom());
     }
 
     #[test]

@@ -1,22 +1,11 @@
 use std::path::Path;
 
-use super::super::super::fs::{copy_dir_recursive, path_is_child_of, paths_equal};
+use super::super::super::fs::copy_dir_recursive;
 use crate::services::server::manager::provisioning::i18n::{provisioning_t, provisioning_t1};
-use sea_lantern_server_installer_core::extract_modpack_archive;
-
-fn is_native_server_binary(source_path: &Path, source_extension: &str) -> bool {
-    if source_extension == "exe" {
-        return true;
-    }
-
-    source_extension.is_empty()
-        && source_path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-            .contains("pumpkin")
-}
+use sea_lantern_server_installer_core::{
+    extract_modpack_archive, should_copy_modpack_source_as_native_server_binary,
+};
+use sea_lantern_server_local_setup_core::{path_is_child_of, paths_equal};
 
 pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Result<(), String> {
     let source_file_name = source_path
@@ -38,7 +27,7 @@ pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Resul
             std::fs::copy(source_path, &target_jar).map_err(|e| {
                 provisioning_t1("server.provisioning.copy_jar_failed", e.to_string())
             })?;
-        } else if is_native_server_binary(source_path, &source_extension) {
+        } else if should_copy_modpack_source_as_native_server_binary(source_path) {
             let target_file = run_dir.join(source_file_name);
             std::fs::copy(source_path, &target_file).map_err(|e| {
                 provisioning_t1("server.provisioning.copy_jar_failed", e.to_string())

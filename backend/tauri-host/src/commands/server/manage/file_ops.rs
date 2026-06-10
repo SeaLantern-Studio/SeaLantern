@@ -1,9 +1,7 @@
 use crate::commands::server::common::{server_t, server_t1};
 use crate::hardcode_data::app_files::SERVER_PATH_PERMISSION_TEST_FILE_NAME;
 use crate::models::server::ValidateServerPathResult;
-use sea_lantern_server_local_setup_core::{
-    detect_startup_mode_from_path_like, inspect_local_folder,
-};
+use sea_lantern_server_local_setup_core::resolve_local_startup_entry_checked;
 use std::path::Path;
 
 /// 收集目录复制时会发生覆盖的文件路径
@@ -124,16 +122,8 @@ fn copy_directory_recursive(source: &Path, target: &Path) -> Result<(), std::io:
 fn find_server_executable_for_validation(
     server_path: &std::path::Path,
 ) -> Result<(String, String), String> {
-    let inspection = inspect_local_folder(server_path);
-
-    if let Some(path) = inspection.preferred_startup_path() {
-        return Ok((
-            path.to_string(),
-            inspection
-                .startup_mode
-                .clone()
-                .unwrap_or_else(|| detect_startup_mode_from_path_like(path)),
-        ));
+    if let Some((path, mode)) = resolve_local_startup_entry_checked(server_path)? {
+        return Ok((path, mode));
     }
 
     Err(server_t("server.manage.startup_file_unavailable"))

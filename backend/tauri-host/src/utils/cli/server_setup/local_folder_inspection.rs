@@ -15,7 +15,7 @@ mod tests {
         let inspection = inspect_local_folder(&folder);
         assert!(inspection.is_attachable());
         assert_eq!(inspection.startup_mode.as_deref(), Some("sh"));
-        assert_eq!(inspection.inferred_core_type.as_deref(), Some("Paper"));
+        assert_eq!(inspection.inferred_core_type.as_deref(), Some("paper"));
         assert_eq!(inspection.inferred_mc_version.as_deref(), Some("1.21.1"));
     }
 
@@ -31,7 +31,7 @@ mod tests {
         assert_eq!(inspection.startup_mode.as_deref(), Some("jar"));
         assert!(inspection.startup_entry_path.is_none());
         assert!(inspection.detected_jar_path.is_some());
-        assert_eq!(inspection.inferred_core_type.as_deref(), Some("Fabric"));
+        assert_eq!(inspection.inferred_core_type.as_deref(), Some("fabric"));
         assert_eq!(inspection.inferred_mc_version.as_deref(), Some("1.20.1"));
     }
 
