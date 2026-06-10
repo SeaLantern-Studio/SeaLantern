@@ -23,15 +23,6 @@
 
 </div>
 
-## 能干什么
-
-- [x] 下载服务器核心
-- [x] 客制化开服器体验
-- [ ] Todo: JVM 预设与分享社区
-- [x] 方便直观的更改配置(目前仅支持原版的`server.properties`)
-- [x] 快捷控制台命令
-- [ ] Todo: Cli 模式下让服务器在 Docker 容器化环境下运行
-
 ## 快速开始
 
 > Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击 [这里](https://docs.ideaflash.cn/zh/intro) 跳转
@@ -42,19 +33,18 @@
 
 ## 开发
 
-> 请注意! 我们正在讨论关于 branch 和 fork 变动相关的内容, 开发步骤部分可能随时会有所改变, 例如 GitHub 开发仓库的变动等内容!
-
 你需要 `Node.js 22+` 和 `Rust 1.70+`。
 
 同时请安装`pnpm`和`cargo`。
 
-**您需要先 Fork 源仓库，然后在你自己的仓库进行开发工作。**
+**你需要先 Fork 源仓库的 `beta` 分支，然后在你自己的仓库进行开发工作。**
 
 如果你只是想要查看最新进度，可以直接拉取源仓库：
 
 ```bash
 git clone https://github.com/SeaLantern-Studio/SeaLantern.git
 cd SeaLantern
+git switch beta
 ```
 
 项目的包管理器经过投票，从`npm`切换至`pnpm`。
@@ -168,7 +158,7 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 
 ### 怎么贡献
 
-1. Fork 这个仓库的`dev`分支
+1. Fork 这个仓库的`beta`分支
 2. 建分支写代码
 3. 提 Pull Request
 4. 你的名字会出现在关于页面的贡献者墙上

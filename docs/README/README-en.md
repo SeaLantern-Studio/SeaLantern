@@ -1,14 +1,14 @@
 <div align="center">
 	<img src="../../frontend/src/assets/logo.svg" alt="logo" width="200" height="200">
 
-# Sea Lantern (海晶灯)
+# Sea Lantern
 
-A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
+A lightweight Minecraft server management tool built with Tauri 2 + Rust + Vue 3
 
 <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
   <a href="https://github.com/SeaLantern-Studio/SeaLantern/stargazers"><img src="https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars" alt="GitHub Stars"></a>
   <a href="https://github.com/SeaLantern-Studio/SeaLantern/network/members"><img src="https://img.shields.io/github/forks/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Forks" alt="GitHub Forks"></a>
-  <a href="https://github.com/SeaLantern-Studio/SeaLantern/releases/latest"><img src="https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=latest" alt="GitHub Latest"></a>
+  <a href="https://github.com/SeaLantern-Studio/SeaLantern/releases/latest"><img src="https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Latest" alt="GitHub Latest"></a>
 </div>
 
 <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
@@ -16,100 +16,88 @@ A Minecraft Server Manager based on Tauri 2 + Rust + Vue 3
   <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
 </div>
 
-<kbd>[简体中文](../../README.md)</kbd> <kbd>English</kbd>
+<kbd>[Simplified Chinese](../../README.md)</kbd> <kbd>English</kbd>
 
-## Any questions? Try→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
+## Questions? Try → [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
 </div>
 
-## What can it do?
-
-- Download and install server core
-- Logs and load at the control panel in real time; send commands to the server directly
-- Edit server.properties graphically, without browsing directories
-- Manage whitelists, bans and OPs in switches
-- The server shuts down automatically when you close the app, so no saves are damaged.
-- Check for and download updates in one click
-
 ## Quick Start
 
-(Tips:Actually, we already have a documentation site!There you can view all kinds of documents more intuitively and conveniently.You can click here to go to the docs site.)
+> Tip: We also have a documentation site. It is a more convenient place to browse project docs. Visit [here](https://docs.ideaflash.cn/en/intro).
 
-[Jump to SL Official Doc Site](https://docs.ideaflash.cn/en/intro)
+Download the [stable release](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)
 
-Download the software from [Releases](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest);
-
-Import a server .jar, choose a Java version, then click Start. It's that simple.
+Download the [preview release](https://github.com/SeaLantern-Studio/SeaLantern-Preview/releases/latest)
 
 ## Development
 
-You'll need Node.js 22+ and Rust 1.70+.
+You need `Node.js 22+` and `Rust 1.70+`.
 
 Please also install `pnpm` and `cargo`.
 
-**You need to first Fork the source repository, then proceed with development work in your own repository.**
+**You need to fork the source repository's `beta` branch first, then do development work in your own repository.**
 
-If you only want to check the latest progress, you can directly fetch the source repository:
+If you only want to check the latest progress, you can clone the upstream repository directly:
 
 ```bash
 git clone https://github.com/SeaLantern-Studio/SeaLantern.git
 cd SeaLantern
+git switch beta
 ```
 
-The project's package manager was voted to switch from `npm` to `pnpm`.
+The project switched its package manager from `npm` to `pnpm` after a team vote.
 
-Frontend and Backend:
+Frontend and backend:
 
 ```bash
 pnpm --dir frontend install
 pnpm --dir frontend run tauri:dev
 ```
 
-On some Linux distributions, such as Arch, running `pnpm --dir frontend run tauri:dev` directly may not compile successfully. Please check if your dependency libraries are complete. It is recommended to use your package manager to install `Tauri` dependencies beforehand when running the above command to avoid missing dependency issues. [Click here to go to "Tauri | Prerequisites"](https://tauri.app/start/prerequisites/#linux)
+On some Linux distributions such as Arch, running `pnpm --dir frontend run tauri:dev` directly may fail if required dependencies are missing. Install Tauri prerequisites with your package manager before running the command. See [Tauri prerequisites for Linux](https://tauri.app/start/prerequisites/#linux).
 
-Only Frontend:
+Frontend only:
 
 ```bash
 pnpm --dir frontend run dev
 ```
 
-Build release:
+### Code Quality Checks
+
+Before submitting code, we recommend running these checks:
+
+<details><summary>Frontend checks</summary>
 
 ```bash
-pnpm --dir frontend run tauri:build
-```
-
-Built binaries are in `backend/tauri-host/target/release/bundle/`.
-
-### Code Quality Check
-
-Before your PR, we encourage you to run the commands below to check the code's quality:
-
-<details><summary>For frontend</summary>
-
-```bash
-# Code Quality Check
+# Code quality checks
 pnpm --dir frontend run lint
 
-# Fix fixable problems
+# Type check and validate the production build
+pnpm --dir frontend run build:check
+
+# Auto-fix problems that can be fixed
 pnpm --dir frontend run lint:fix
 
 # Format code
 pnpm --dir frontend run fmt
 
-# Check format
+# Check code formatting
 pnpm --dir frontend run fmt:check
 ```
 
 </details>
 
-<details><summary>For backend</summary>
+<details><summary>Backend checks</summary>
 
 ```bash
-# Check format
+# Check code formatting
 cargo fmt --all -- --check
 
-# Run Clippy check
+# Compile check
+cargo check --workspace
+
+# Run Clippy
 cargo clippy --workspace -- -D warnings
 
 # Format code
@@ -118,96 +106,71 @@ cargo fmt --all
 
 </details>
 
-CI automated checks are set up to ensure that all submitted code meets the standards.
+The project already has CI checks configured to ensure submitted code meets project standards.
 
 ### Commit Checks
 
-CI validates code quality and related rules on PRs and pushes.
+CI validates code quality and related rules on every PR and push.
 
 ## Tech Stack
 
-- **Frontend**: Vue 3 + TypeScript + Vite + Pinia
+- **Frontend**: Vue 3 + TypeScript + Vite
 - **Backend**: Rust + Tauri 2
-- **Style**: CSS
-- **Communicate**: Tauri invoke (The frontend calls Rust functions and receives the results)
+- **Communication**: Tauri invoke
+- **Docker**: itzg/minecraft-server
 
-No Electron, no Node backend, no Webpack. Launch fast, size small, RAM saved.
+No Electron, no Node backend, no Webpack. Faster startup, smaller size, lower memory use.
 
-> We use WebView as the frontend rendering component. WebView is a built-in application in modern computer systems, with frontend and backend memory usage generally not exceeding 70MiB
+> We use WebView for frontend rendering. WebView is built into modern operating systems, and combined frontend/backend memory usage usually stays under 70 MiB.
 
 ### Project Structure
 
 See [Project Structure](../STRUCTURE.md).
 
+### CLI Server Entry
+
+This repository now provides a unified `sealantern server ...` CLI entry that supports both local Java servers and `itzg/minecraft-server` Docker-based runs.
+
+See the [CLI server runtime guide](../cli-server-runtime-guide.md).
+
 ## Planned Features
 
-Placeholders have been reserved for these features with existing code
-skeletons—waiting for your contributions:
+These features already have reserved locations and code scaffolding. They are waiting for implementation:
 
-- Backup Management - Incremental backup and restore of save files
-- Intranet Penetration - FRP integration
-- Scheduled Tasks - Automatic restarts, scheduled backups, and scheduled commands
-- Resource Management - Search and install plugins/mods from Modrinth & CurseForge
+- Backup management: incremental backup and restore for world saves
+- Intranet tunneling: FRP integration
+- Scheduled tasks: automatic restarts, scheduled backups, and scheduled commands
+- Resource management: search and install plugins and mods from Modrinth and CurseForge
+
+## Community
+
+QQ group: **293748695**
 
 ## Contributing
 
-Contributions are welcome! Before you start, please read the [Contributing Guidelines](../CONTRIBUTING.md) to understand code standards and development workflows.
+Contributions are welcome. Before you start, read the [Contributing Guide](../CONTRIBUTING.md) for coding standards and development workflow.
 
-GUI modifications are also OK!
+The UI is included too. Colors live in CSS variables, and components are independent.
+If you do not like something, change it.
+Want to build a theme? Do it.
+Want to replace the whole layout? That is also possible.
 
-Colors are managed via CSS variables
-components are modular
-change any part you don't like.
-
-Want to create a theme or skin? Go for it.
-Want to completely redesign the layout? That's fine.
-
-Of course, the prerequisite for all of this is that you have sufficient reasons and abilities, and can only do it after discussing with everyone in the group, otherwise it is very likely that we will **reject the PR**
+That said, you need solid reasoning and enough implementation ability, and major changes should be discussed with the community first. Otherwise, your PR may be rejected.
 
 ### How to Contribute
 
-1. Fork the `dev` branch of repository
-2. Create a branch and implement your changes
-3. Submit a Pull Request
-4. Your name will be added to the contributor wall
+1. Fork the `beta` branch of this repository
+2. Create a branch and write your code
+3. Submit a pull request
+4. Your name will appear on the contributor wall in the About page
 
-We have certain limitations on AI programming, namely `Vibe Coding`: only fixing, not refactoring, not making significant changes, manual review.
+You do not need to be able to code to contribute. If you have a useful feature request or a UI sketch, that still counts.
 
-- Only fix: Due to the limitations of most current AI capabilities, it is unrealistic to rely entirely on AI.
+### i18n Internationalization Guide
 
-- Not Refactoring: AI's contextual and abstract understanding abilities are not sufficient for AI to refactor existing content. Of course, there may be lucky ones who can still use it after refactoring, but that is just an example.
+Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese, and English. See the [i18n guide](../language-system.md).
 
-- Not much changed: **Do not let AI make unauthorized changes to any content that has a huge impact**.
-
-- Manual review: After using AI, it is necessary to manually review whether there are any errors. If you do not know how to review, you can go to the group to find the management. Remember to politely ask questions instead of harassing the management.
-
-Not being able to write code is also acceptable. Say what feature you want, or draw a UI sketch and send it out. As long as it is verified to be useful, it is considered a contribution.
-
-### Add a new function
-
-If you are going to add a "Backup Management":
-
-#### Backend
-
-1. Create `backup_manager.rs` under `backend/tauri-host/src/services/`, code the logic
-2. Create `backup.rs` under `backend/tauri-host/src/commands/`, code with Tauri
-3. Add `pub mod backup` in `commands/mod.rs`
-4. Register the command in the `generate_handler!` macro under `lib.rs`
-
-#### Frontend
-
-1. Create `backup.ts` under `src/api/`, encapsulate invokes
-2. Create `BackupView.vue` under `src/views/`, make the page
-3. Add routes in `src/router/index.ts`
-4. Add an item to the `navItems` array in `AppSidebar.vue`
-
-The frontend and backend each have 3 files, plus one line each for the router and the sidebar.
-
-### i18n — Internationalization Guide
-
-Sea Lantern supports multiple languages, including Simplified Chinese, Traditional Chinese and English. See the i18n guide: [../language-system.md](../language-system.md)
-
-If you want to add additional languages besides the commonly used ones, please create plugins.
+If you want to add languages beyond the currently supported common ones, please do it through plugins.
 
 ## License
 
@@ -225,15 +188,15 @@ If you want to add additional languages besides the commonly used ones, please c
 
 ## Contributors
 
-Thanks to everyone who contributed to Sea Lantern.
+Thanks to everyone who has contributed to Sea Lantern.
 
 [![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/SeaLantern-Studio/SeaLantern/graphs/contributors)
 
 ## Acknowledgments
 
-Sea Lantern is an open source project under the GPLv3 license.
+Sea Lantern is an open source project licensed under GPLv3.
 
-Minecraft is a trademark of Mojang AB.
-This project is not approved or associated with Mojang or Microsoft.
+Minecraft is a registered trademark of Mojang AB.
+This project is not approved by, endorsed by, or affiliated with Mojang or Microsoft.
 
-"We've built the framework - the soul is up to you."
+"We built the framework. The soul belongs to you."

@@ -1,9 +1,5 @@
 # SeaLantern Agents Guide
 
-## Scope
-
-This file applies to work under `E:\repo\SeaLantern`.
-
 ## Working Defaults
 
 - Inspect the live repository before making claims about behavior, structure, or capabilities.
