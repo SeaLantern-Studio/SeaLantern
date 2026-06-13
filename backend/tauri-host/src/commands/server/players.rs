@@ -1,10 +1,11 @@
 use super::common::{server_t, server_t1};
 use crate::services::global;
+use crate::services::server::log_pipeline::map_domain_event;
 use crate::services::server::manager::ServerManager;
 use crate::services::server::player as player_manager;
 use crate::services::server::player::{BanEntry, OpEntry, PlayerEntry};
 use serde::Serialize;
-use sl_server_info::log::{parse_log_line, DomainEvent, LogLineInput, LogStream};
+use sl_server_info::log::{parse_log_line, LogLineInput, LogStream};
 use std::path::Path;
 
 #[derive(Debug, Clone, Serialize)]
@@ -64,30 +65,29 @@ pub fn get_ops(server_path: String) -> Result<Vec<OpEntry>, String> {
 }
 
 #[tauri::command]
+/// Parse historical player log lines into structured events.
+///
+/// Note:
+/// - Historical logs are treated as having an `Unknown` `LogStream`.
+/// - Live events from the log pipeline carry their actual stream (`Stdout` / `Stderr` / `Unknown`).
+/// If `parse_log_line` introduces stream-sensitive behavior in the future,
+/// callers must account for potential differences between historical and live parsing.
 pub fn parse_player_log_events(lines: Vec<String>) -> Vec<ParsedPlayerLogEvent> {
     lines
         .into_iter()
         .map(|line| {
-            let parsed = parse_log_line(
-                None,
-                LogLineInput {
-                    raw: line,
-                    stream: LogStream::Unknown,
-                },
-            );
+            // Historical log parsing does not know the original stream (stdout/stderr),
+            // so we explicitly mark it as `Unknown` to distinguish it from live events,
+            // which carry their actual stream information.
+            let parsed =
+                parse_log_line(None, LogLineInput { raw: line, stream: LogStream::Unknown });
 
-            let (event_kind, player) = match parsed.event {
-                Some(DomainEvent::ServerReady) => (Some("server_ready".to_string()), None),
-                Some(DomainEvent::PlayerJoin { player }) => {
-                    (Some("player_join".to_string()), Some(player))
-                }
-                Some(DomainEvent::PlayerLeave { player }) => {
-                    (Some("player_leave".to_string()), Some(player))
-                }
-                _ => (None, None),
-            };
+            let mapped = map_domain_event(parsed.event);
 
-            ParsedPlayerLogEvent { event_kind, player }
+            ParsedPlayerLogEvent {
+                event_kind: mapped.event_kind,
+                player: mapped.player,
+            }
         })
         .collect()
 }
@@ -203,7 +203,9 @@ pub fn export_logs(logs: Vec<String>, save_path: String) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_player_log_events, remove_from_whitelist_in, remove_player_from_whitelist_file};
+    use super::{
+        parse_player_log_events, remove_from_whitelist_in, remove_player_from_whitelist_file,
+    };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use crate::services::server::manager::ServerManager;
     use std::sync::Arc;

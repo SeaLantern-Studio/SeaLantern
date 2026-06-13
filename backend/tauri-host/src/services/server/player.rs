@@ -54,10 +54,7 @@ pub fn read_ops(server_path: &str) -> Result<Vec<OpEntry>, String> {
 fn map_whitelist_entries(entries: Vec<sl_libscv::state::WhitelistEntry>) -> Vec<PlayerEntry> {
     entries
         .into_iter()
-        .map(|entry| PlayerEntry {
-            uuid: entry.uuid,
-            name: entry.name,
-        })
+        .map(|entry| PlayerEntry { uuid: entry.uuid, name: entry.name })
         .collect()
 }
 
@@ -89,9 +86,8 @@ fn map_op_entries(entries: Vec<sl_libscv::state::OpEntry>) -> Vec<OpEntry> {
 
 fn render_state_error(error: sl_libscv::StateFileError) -> String {
     match error {
-        sl_libscv::StateFileError::Io(message) | sl_libscv::StateFileError::ParseFailed(message) => {
-            message
-        }
+        sl_libscv::StateFileError::Io(message)
+        | sl_libscv::StateFileError::ParseFailed(message) => message,
     }
 }
 
@@ -102,13 +98,11 @@ mod tests {
     #[test]
     fn whitelist_reader_uses_sl_libscv_conventions() {
         let temp_dir = tempfile::tempdir().expect("temp dir should exist");
-        std::fs::write(
-            temp_dir.path().join("whitelist.json"),
-            r#"[{"uuid":"1","name":"Alex"}]"#,
-        )
-        .expect("whitelist should write");
+        std::fs::write(temp_dir.path().join("whitelist.json"), r#"[{"uuid":"1","name":"Alex"}]"#)
+            .expect("whitelist should write");
 
-        let entries = read_whitelist(&temp_dir.path().to_string_lossy()).expect("whitelist should parse");
+        let entries =
+            read_whitelist(&temp_dir.path().to_string_lossy()).expect("whitelist should parse");
 
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].name, "Alex");

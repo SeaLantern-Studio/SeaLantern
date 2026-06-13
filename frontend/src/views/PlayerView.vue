@@ -41,6 +41,7 @@ const settingsStore = useSettingsStore();
 let unlistenLogLine: UnlistenFn | null = null;
 let unlistenStructuredLog: UnlistenFn | null = null;
 const structuredOnlinePlayers = ref<Record<string, string[]>>({});
+const structuredPlayerEventSupport = ref<Record<string, boolean>>({});
 
 const selectedServerId = computed(() => store.currentServerId || "");
 
@@ -107,6 +108,7 @@ watch(
       bannedPlayers.value = [];
       ops.value = [];
       structuredOnlinePlayers.value = {};
+      structuredPlayerEventSupport.value = {};
       return;
     }
 
@@ -141,11 +143,19 @@ async function hydrateStructuredOnlinePlayers(serverId: string) {
   const logs = consoleStore.logs[serverId] || [];
   if (logs.length === 0) {
     structuredOnlinePlayers.value[serverId] = [];
+    structuredPlayerEventSupport.value[serverId] = false;
     return;
   }
 
-  const events = await playerApi.parsePlayerLogEvents(logs);
-  structuredOnlinePlayers.value[serverId] = replayOnlinePlayers(events);
+  try {
+    const events = await playerApi.parsePlayerLogEvents(logs);
+    structuredOnlinePlayers.value[serverId] = replayOnlinePlayers(events);
+    structuredPlayerEventSupport.value[serverId] = hasStructuredPlayerEvents(events);
+  } catch (error) {
+    structuredOnlinePlayers.value[serverId] = [];
+    structuredPlayerEventSupport.value[serverId] = false;
+    console.warn("[PlayerView] structured player log hydration unavailable, falling back to legacy parsing", error);
+  }
 }
 
 async function startPlayerLogSubscription() {
@@ -158,9 +168,13 @@ async function startPlayerLogSubscription() {
     consoleStore.setLogCursor(server_id, (consoleStore.logs[server_id] || []).length);
   });
 
-  unlistenStructuredLog = await serverApi.onStructuredLogEvent((event) => {
-    applyStructuredPlayerEvent(event);
-  });
+  try {
+    unlistenStructuredLog = await serverApi.onStructuredLogEvent((event) => {
+      applyStructuredPlayerEvent(event);
+    });
+  } catch (error) {
+    console.warn("[PlayerView] structured log stream unavailable, falling back to legacy parsing", error);
+  }
 }
 
 function stopPlayerLogSubscription() {
@@ -175,11 +189,26 @@ function stopPlayerLogSubscription() {
 }
 
 function resolveOnlinePlayers(serverId: string): string[] {
+  if (!serverId) {
+    return [];
+  }
+
   const structured = structuredOnlinePlayers.value[serverId];
-  if (structured) {
+  if (structuredPlayerEventSupport.value[serverId] && structured) {
     return structured;
   }
-  return [];
+
+  return parseOnlinePlayers(consoleStore.logs[serverId] || []);
+}
+
+function isStructuredPlayerEventKind(
+  eventKind: ParsedPlayerLogEvent["event_kind"] | ServerLogStructuredEvent["event_kind"],
+): eventKind is "server_ready" | "player_join" | "player_leave" {
+  return eventKind === "server_ready" || eventKind === "player_join" || eventKind === "player_leave";
+}
+
+function hasStructuredPlayerEvents(events: ParsedPlayerLogEvent[]): boolean {
+  return events.some((event) => isStructuredPlayerEventKind(event.event_kind));
 }
 
 function ensureStructuredOnlinePlayerList(serverId: string): string[] {
@@ -191,9 +220,11 @@ function ensureStructuredOnlinePlayerList(serverId: string): string[] {
 
 function applyStructuredPlayerEvent(event: ServerLogStructuredEvent) {
   const { server_id, event_kind, player } = event;
-  if (!event_kind) {
+  if (!isStructuredPlayerEventKind(event_kind)) {
     return;
   }
+
+  structuredPlayerEventSupport.value[server_id] = true;
 
   if (event_kind === "server_ready") {
     structuredOnlinePlayers.value[server_id] = [];
@@ -242,6 +273,50 @@ function replayOnlinePlayers(events: ParsedPlayerLogEvent[]): string[] {
 
     if (event.event_kind === "player_leave") {
       const idx = players.indexOf(event.player);
+      if (idx > -1) {
+        players.splice(idx, 1);
+      }
+    }
+  }
+
+  return players;
+}
+
+function parseOnlinePlayers(logs: string[]): string[] {
+  const players: string[] = [];
+
+  let startIndex = 0;
+  for (let i = logs.length - 1; i >= 0; i -= 1) {
+    const line = logs[i];
+    if (/Done \([\d.]+s\)! For help/.test(line) || /Starting minecraft server/i.test(line)) {
+      startIndex = i;
+      break;
+    }
+  }
+
+  for (let i = startIndex; i < logs.length; i += 1) {
+    const line = logs[i];
+    const joinMatch = line.match(/\]: (\w+) joined the game/);
+    const loginMatch = line.match(/\]: UUID of player (\w+) is/);
+    const leftMatch = line.match(/\]: (\w+) left the game/);
+
+    if (joinMatch) {
+      const name = joinMatch[1];
+      if (!players.includes(name)) {
+        players.push(name);
+      }
+    }
+
+    if (loginMatch) {
+      const name = loginMatch[1];
+      if (!players.includes(name)) {
+        players.push(name);
+      }
+    }
+
+    if (leftMatch) {
+      const name = leftMatch[1];
+      const idx = players.indexOf(name);
       if (idx > -1) {
         players.splice(idx, 1);
       }

@@ -51,13 +51,7 @@ where
                         ));
                     }
 
-                    let parsed = parse_log_line(
-                        None,
-                        LogLineInput {
-                            raw: line.clone(),
-                            stream,
-                        },
-                    );
+                    let parsed = parse_log_line(None, LogLineInput { raw: line.clone(), stream });
 
                     if matches!(parsed.event, Some(DomainEvent::ServerReady)) {
                         crate::services::global::server_manager().clear_starting(&server_id);

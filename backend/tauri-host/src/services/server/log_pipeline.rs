@@ -10,7 +10,44 @@ mod writer;
 use std::sync::Arc;
 
 use self::state::{ServerLogEventHandler, ServerLogProcessor};
-use sl_server_info::log::LogStream;
+use sl_server_info::log::{DomainEvent, LogStream};
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct StructuredLogEventFields {
+    pub(crate) event_kind: Option<String>,
+    pub(crate) player: Option<String>,
+    pub(crate) message: Option<String>,
+}
+
+pub(crate) fn map_domain_event(event: Option<DomainEvent>) -> StructuredLogEventFields {
+    match event {
+        Some(DomainEvent::ServerReady) => StructuredLogEventFields {
+            event_kind: Some("server_ready".to_string()),
+            ..StructuredLogEventFields::default()
+        },
+        Some(DomainEvent::PlayerJoin { player }) => StructuredLogEventFields {
+            event_kind: Some("player_join".to_string()),
+            player: Some(player),
+            ..StructuredLogEventFields::default()
+        },
+        Some(DomainEvent::PlayerLeave { player }) => StructuredLogEventFields {
+            event_kind: Some("player_leave".to_string()),
+            player: Some(player),
+            ..StructuredLogEventFields::default()
+        },
+        Some(DomainEvent::Chat { player, message }) => StructuredLogEventFields {
+            event_kind: Some("chat".to_string()),
+            player: Some(player),
+            message: Some(message),
+        },
+        Some(DomainEvent::ErrorLike { message }) => StructuredLogEventFields {
+            event_kind: Some("error".to_string()),
+            message: Some(message),
+            ..StructuredLogEventFields::default()
+        },
+        None => StructuredLogEventFields::default(),
+    }
+}
 
 pub fn set_server_log_event_handler(handler: Arc<ServerLogEventHandler>) -> Result<(), String> {
     writer::set_server_log_event_handler(handler)
@@ -60,4 +97,51 @@ where
     R: std::io::Read + Send + 'static,
 {
     output::spawn_server_output_reader(server_id, stream, reader)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{map_domain_event, StructuredLogEventFields};
+    use sl_server_info::log::DomainEvent;
+
+    #[test]
+    fn map_domain_event_returns_consistent_structured_fields() {
+        assert_eq!(
+            map_domain_event(Some(DomainEvent::ServerReady)),
+            StructuredLogEventFields {
+                event_kind: Some("server_ready".to_string()),
+                ..StructuredLogEventFields::default()
+            }
+        );
+
+        assert_eq!(
+            map_domain_event(Some(DomainEvent::PlayerJoin { player: "Alex".to_string() })),
+            StructuredLogEventFields {
+                event_kind: Some("player_join".to_string()),
+                player: Some("Alex".to_string()),
+                ..StructuredLogEventFields::default()
+            }
+        );
+
+        assert_eq!(
+            map_domain_event(Some(DomainEvent::Chat {
+                player: "Alex".to_string(),
+                message: "Hello".to_string(),
+            })),
+            StructuredLogEventFields {
+                event_kind: Some("chat".to_string()),
+                player: Some("Alex".to_string()),
+                message: Some("Hello".to_string()),
+            }
+        );
+
+        assert_eq!(
+            map_domain_event(Some(DomainEvent::ErrorLike { message: "boom".to_string() })),
+            StructuredLogEventFields {
+                event_kind: Some("error".to_string()),
+                message: Some("boom".to_string()),
+                ..StructuredLogEventFields::default()
+            }
+        );
+    }
 }

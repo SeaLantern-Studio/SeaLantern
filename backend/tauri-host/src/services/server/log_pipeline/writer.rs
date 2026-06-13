@@ -2,8 +2,8 @@ use super::state::{
     log_writers, open_or_create_log_db, resolve_server_path, LogSource, LogWriteEntry,
     ServerLogEventHandler, ServerLogWriter, WriterCommand, SERVER_LOG_EVENT_HANDLER,
 };
-use sl_server_info::log::LogStream;
 use rusqlite::{params, Connection, TransactionBehavior};
+use sl_server_info::log::LogStream;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::sync::Arc;
