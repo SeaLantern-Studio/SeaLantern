@@ -16,7 +16,7 @@ path = "tests/core_archive_checks.rs"
 [dependencies]
 flate2 = "1.0"
 serde = { version = "1", features = ["derive"] }
-sl-server-core-taxonomy = "0.1.0"
+sl-server-core-taxonomy = "0.1.1"
 tar = "0.4"
 uuid = { version = "1", features = ["v4"] }
 zip = "2.0"

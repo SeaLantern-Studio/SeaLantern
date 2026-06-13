@@ -93,6 +93,7 @@ pub(crate) fn desktop_handler(
         player_commands::get_whitelist,
         player_commands::get_banned_players,
         player_commands::get_ops,
+        player_commands::parse_player_log_events,
         player_commands::add_to_whitelist,
         player_commands::remove_from_whitelist,
         player_commands::ban_player,

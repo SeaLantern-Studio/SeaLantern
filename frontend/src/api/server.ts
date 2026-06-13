@@ -36,6 +36,15 @@ export interface ServerLogLineEvent {
   line: string;
 }
 
+export interface ServerLogStructuredEvent {
+  server_id: string;
+  line: string;
+  stream: "stdout" | "stderr" | "unknown";
+  event_kind: "server_ready" | "player_join" | "player_leave" | "chat" | "error" | null;
+  player: string | null;
+  message: string | null;
+}
+
 export interface ForceStopPreparation {
   token: string;
   expiresAt: number;
@@ -453,6 +462,17 @@ export const serverApi = {
     }
     // Tauri 环境使用事件监听
     return listen<ServerLogLineEvent>("server-log-line", (event) => {
+      callback(event.payload);
+    });
+  },
+
+  onStructuredLogEvent(
+    callback: (payload: ServerLogStructuredEvent) => void,
+  ): Promise<UnlistenFn> {
+    if (isBrowserEnv()) {
+      return Promise.reject(new Error("Structured log events are only available in Tauri mode"));
+    }
+    return listen<ServerLogStructuredEvent>("server-log-structured", (event) => {
       callback(event.payload);
     });
   },

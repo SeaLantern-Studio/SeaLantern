@@ -10,6 +10,7 @@ mod writer;
 use std::sync::Arc;
 
 use self::state::{ServerLogEventHandler, ServerLogProcessor};
+use sl_server_info::log::LogStream;
 
 pub fn set_server_log_event_handler(handler: Arc<ServerLogEventHandler>) -> Result<(), String> {
     writer::set_server_log_event_handler(handler)
@@ -54,9 +55,9 @@ pub fn get_all_logs_checked() -> Result<Vec<(String, Vec<String>)>, String> {
     reader::get_all_logs_checked()
 }
 
-pub fn spawn_server_output_reader<R>(server_id: String, reader: R)
+pub fn spawn_server_output_reader<R>(server_id: String, stream: LogStream, reader: R)
 where
     R: std::io::Read + Send + 'static,
 {
-    output::spawn_server_output_reader(server_id, reader)
+    output::spawn_server_output_reader(server_id, stream, reader)
 }

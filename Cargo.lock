@@ -6111,7 +6111,9 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "shlex",
+ "sl-libscv",
  "sl-server-flavor-core",
+ "sl-server-info",
  "sysinfo",
  "tar",
  "tauri",
@@ -6715,18 +6717,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
 
 [[package]]
-name = "sl-server-core-taxonomy"
-version = "0.1.0"
+name = "sl-libscv"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85cf3c330a6fc1d8cb36e8069f4b2118bcbf622411d52eba57034e4499a9e0f6"
+checksum = "646c83fa33d75e56c3a8b6eba7c77dc5a5be51c0de8a4ebe35629fdaa2d99f85"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sl-server-core-taxonomy",
+ "sl-server-flavor-core",
+ "toml_edit 0.22.27",
+]
+
+[[package]]
+name = "sl-server-core-taxonomy"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62f7b9792a823e98d394008b91cd217aff789235c3b2f41a943240a05803c278"
 
 [[package]]
 name = "sl-server-flavor-core"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70bcc52d1040a884df468ef6f89ef9326bb85a3f3d2b52a039e92f81c879caca"
+checksum = "1922a226bd9624751d47064fd190276170e542c9df44f4f2d47c7919189202d8"
 dependencies = [
  "sl-server-core-taxonomy",
+]
+
+[[package]]
+name = "sl-server-info"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdb9dd8c517689d968a2cd760079beeb788b01627882628732e3c7765a9239ab"
+dependencies = [
+ "rcon",
+ "regex",
+ "sl-server-core-taxonomy",
+ "tokio",
 ]
 
 [[package]]

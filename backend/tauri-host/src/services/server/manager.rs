@@ -26,6 +26,7 @@ use sea_lantern_server_local_setup_core::{
     normalize_cli_startup_mode, refresh_local_server_core_type,
 };
 use serde::{Deserialize, Serialize};
+use sl_server_info::log::LogStream;
 
 use super::log_pipeline as server_log_pipeline;
 use super::manager::process::force_kill_process_tree;
@@ -433,10 +434,18 @@ impl ServerManager {
                     self.mark_starting(id);
 
                     if let Some(stdout) = stdout {
-                        server_log_pipeline::spawn_server_output_reader(id.to_string(), stdout);
+                        server_log_pipeline::spawn_server_output_reader(
+                            id.to_string(),
+                            LogStream::Stdout,
+                            stdout,
+                        );
                     }
                     if let Some(stderr) = stderr {
-                        server_log_pipeline::spawn_server_output_reader(id.to_string(), stderr);
+                        server_log_pipeline::spawn_server_output_reader(
+                            id.to_string(),
+                            LogStream::Stderr,
+                            stderr,
+                        );
                     }
                 }
             }

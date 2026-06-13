@@ -3,6 +3,7 @@ use crate::plugins::runtime::PluginRuntime;
 use crate::services;
 use crate::services::global::i18n_service;
 use crate::utils::logger::{log_debug_ctx, log_warn_ctx};
+use sl_server_info::log::{parse_log_line, DomainEvent, LogLineInput, LogStream};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -278,14 +279,66 @@ pub(crate) fn install_plugin_bridge(
             line: String,
         }
 
+        #[derive(Serialize, Clone)]
+        struct StructuredServerLogEvent {
+            server_id: String,
+            line: String,
+            stream: String,
+            event_kind: Option<String>,
+            player: Option<String>,
+            message: Option<String>,
+        }
+
         let app_handle = app.handle().clone();
         let _ = services::server::log_pipeline::set_server_log_event_handler(Arc::new(
-            move |server_id, line| {
+            move |server_id, line, stream| {
                 let event = ServerLogLineEvent {
                     server_id: server_id.to_string(),
                     line: line.to_string(),
                 };
                 app_handle.emit("server-log-line", event).map_err(|e| {
+                    plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
+                })?;
+
+                let parsed = parse_log_line(
+                    None,
+                    LogLineInput {
+                        raw: line.to_string(),
+                        stream,
+                    },
+                );
+
+                let (event_kind, player, message) = match parsed.event {
+                    Some(DomainEvent::ServerReady) => (Some("server_ready".to_string()), None, None),
+                    Some(DomainEvent::PlayerJoin { player }) => {
+                        (Some("player_join".to_string()), Some(player), None)
+                    }
+                    Some(DomainEvent::PlayerLeave { player }) => {
+                        (Some("player_leave".to_string()), Some(player), None)
+                    }
+                    Some(DomainEvent::Chat { player, message }) => {
+                        (Some("chat".to_string()), Some(player), Some(message))
+                    }
+                    Some(DomainEvent::ErrorLike { message }) => {
+                        (Some("error".to_string()), None, Some(message))
+                    }
+                    None => (None, None, None),
+                };
+
+                let structured_event = StructuredServerLogEvent {
+                    server_id: server_id.to_string(),
+                    line: line.to_string(),
+                    stream: match stream {
+                        LogStream::Stdout => "stdout".to_string(),
+                        LogStream::Stderr => "stderr".to_string(),
+                        LogStream::Unknown => "unknown".to_string(),
+                    },
+                    event_kind,
+                    player,
+                    message,
+                };
+
+                app_handle.emit("server-log-structured", structured_event).map_err(|e| {
                     plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
                 })
             },

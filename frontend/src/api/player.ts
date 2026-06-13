@@ -30,6 +30,11 @@ export interface OpEntry {
   bypasses_player_limit: boolean;
 }
 
+export interface ParsedPlayerLogEvent {
+  event_kind: "server_ready" | "player_join" | "player_leave" | null;
+  player: string | null;
+}
+
 /**
  * 玩家管理 API
  */
@@ -53,6 +58,13 @@ export const playerApi = {
    */
   async getOps(serverPath: string): Promise<OpEntry[]> {
     return tauriInvoke("get_ops", { serverPath });
+  },
+
+  /**
+   * 解析已有日志中的玩家相关事件
+   */
+  async parsePlayerLogEvents(lines: string[]): Promise<ParsedPlayerLogEvent[]> {
+    return tauriInvoke("parse_player_log_events", { lines });
   },
 
   /**
