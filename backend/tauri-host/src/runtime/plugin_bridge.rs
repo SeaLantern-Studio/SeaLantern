@@ -2,7 +2,9 @@ use crate::plugins;
 use crate::plugins::runtime::PluginRuntime;
 use crate::services;
 use crate::services::global::i18n_service;
+use crate::services::server::log_pipeline::map_domain_event;
 use crate::utils::logger::{log_debug_ctx, log_warn_ctx};
+use sl_server_info::log::{parse_log_line, LogLineInput, LogStream};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -278,16 +280,48 @@ pub(crate) fn install_plugin_bridge(
             line: String,
         }
 
+        #[derive(Serialize, Clone)]
+        struct StructuredServerLogEvent {
+            server_id: String,
+            line: String,
+            stream: String,
+            event_kind: Option<String>,
+            player: Option<String>,
+            message: Option<String>,
+        }
+
         let app_handle = app.handle().clone();
         let _ = services::server::log_pipeline::set_server_log_event_handler(Arc::new(
-            move |server_id, line| {
+            move |server_id, line, stream| {
                 let event = ServerLogLineEvent {
                     server_id: server_id.to_string(),
                     line: line.to_string(),
                 };
                 app_handle.emit("server-log-line", event).map_err(|e| {
                     plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
-                })
+                })?;
+
+                let parsed = parse_log_line(None, LogLineInput { raw: line.to_string(), stream });
+                let mapped = map_domain_event(parsed.event);
+
+                let structured_event = StructuredServerLogEvent {
+                    server_id: server_id.to_string(),
+                    line: line.to_string(),
+                    stream: match stream {
+                        LogStream::Stdout => "stdout".to_string(),
+                        LogStream::Stderr => "stderr".to_string(),
+                        LogStream::Unknown => "unknown".to_string(),
+                    },
+                    event_kind: mapped.event_kind,
+                    player: mapped.player,
+                    message: mapped.message,
+                };
+
+                app_handle
+                    .emit("server-log-structured", structured_event)
+                    .map_err(|e| {
+                        plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
+                    })
             },
         ));
     }

@@ -5,6 +5,7 @@ mod state;
 mod status;
 
 use serde::{Deserialize, Serialize};
+use sl_server_info::log::LogStream;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -554,10 +555,18 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         .insert(server_id.to_string(), child);
 
     if let Some(stdout) = stdout {
-        server_log_pipeline::spawn_server_output_reader(server_id.to_string(), stdout);
+        server_log_pipeline::spawn_server_output_reader(
+            server_id.to_string(),
+            LogStream::Stdout,
+            stdout,
+        );
     }
     if let Some(stderr) = stderr {
-        server_log_pipeline::spawn_server_output_reader(server_id.to_string(), stderr);
+        server_log_pipeline::spawn_server_output_reader(
+            server_id.to_string(),
+            LogStream::Stderr,
+            stderr,
+        );
     }
 
     state = started_state(

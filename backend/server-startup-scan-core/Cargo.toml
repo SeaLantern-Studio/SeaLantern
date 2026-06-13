@@ -11,7 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 sea_lantern_server_installer_core = { package = "sea-lantern-server-installer-core", path = "../server-installer-core" }
-sl-server-core-taxonomy = "0.1.0"
+sl-server-core-taxonomy = "0.1.1"
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]

@@ -25,7 +25,9 @@ sea_lantern_server_config_core = { package = "sea-lantern-server-config-core", p
 sea_lantern_starter_links_core = { package = "sea-lantern-starter-links-core", path = "../starter-links-core" }
 sea_lantern_update_core = { package = "sea-lantern-update-core", path = "../update-core" }
 sea_lantern_docker_core = { package = "sea-lantern-docker-core", path = "../docker-core" }
-sl-server-flavor-core = "0.1.0"
+sl-libscv = "0.1.2"
+sl-server-info = "0.1.0"
+sl-server-flavor-core = "0.2.1"
 tauri = { version = "2", features = ["protocol-asset", "tray-icon", "macos-private-api"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"

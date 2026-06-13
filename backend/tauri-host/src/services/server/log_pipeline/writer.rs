@@ -3,6 +3,7 @@ use super::state::{
     ServerLogEventHandler, ServerLogWriter, WriterCommand, SERVER_LOG_EVENT_HANDLER,
 };
 use rusqlite::{params, Connection, TransactionBehavior};
+use sl_server_info::log::LogStream;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -229,7 +230,7 @@ pub fn append_log(
             .send(WriterCommand::Append(entry))
             .map_err(|e| format!("提交日志写入队列失败: {}", e))?;
     }
-    super::output::emit_server_log_line(server_id, message);
+    super::output::emit_server_log_line_with_stream(server_id, message, LogStream::Unknown);
     Ok(())
 }
 

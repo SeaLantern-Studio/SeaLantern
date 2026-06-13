@@ -1,11 +1,12 @@
 use rusqlite::Connection;
 use sea_lantern_server_local_setup_core::decode_console_bytes as decode_shared_console_bytes;
+use sl_server_info::log::LogStream;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::thread;
 
-pub type ServerLogEventHandler = dyn Fn(&str, &str) -> Result<(), String> + Send + Sync;
+pub type ServerLogEventHandler = dyn Fn(&str, &str, LogStream) -> Result<(), String> + Send + Sync;
 pub type ServerLogProcessor = dyn Fn(&str, &str) -> String + Send + Sync;
 pub type ServerLogProcessorList = Arc<Mutex<Vec<Arc<ServerLogProcessor>>>>;
 

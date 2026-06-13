@@ -22,6 +22,7 @@ use crate::utils::logger;
 use sea_lantern_docker_core::{
     docker_image_ref, requested_stop_timeout_secs, runtime_env_value, ActiveProcessorCountDecision,
 };
+use sl_server_info::log::LogStream;
 use std::path::Path;
 use std::process::Command;
 use std::thread;
@@ -748,10 +749,18 @@ impl DockerCliAdapter {
             })?;
 
         if let Some(stdout) = child.stdout.take() {
-            server_log_pipeline::spawn_server_output_reader(server_id.to_string(), stdout);
+            server_log_pipeline::spawn_server_output_reader(
+                server_id.to_string(),
+                LogStream::Stdout,
+                stdout,
+            );
         }
         if let Some(stderr) = child.stderr.take() {
-            server_log_pipeline::spawn_server_output_reader(server_id.to_string(), stderr);
+            server_log_pipeline::spawn_server_output_reader(
+                server_id.to_string(),
+                LogStream::Stderr,
+                stderr,
+            );
         }
 
         std::thread::spawn(move || {

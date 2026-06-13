@@ -1,9 +1,18 @@
 use super::common::{server_t, server_t1};
 use crate::services::global;
+use crate::services::server::log_pipeline::map_domain_event;
 use crate::services::server::manager::ServerManager;
 use crate::services::server::player as player_manager;
 use crate::services::server::player::{BanEntry, OpEntry, PlayerEntry};
+use serde::Serialize;
+use sl_server_info::log::{parse_log_line, LogLineInput, LogStream};
 use std::path::Path;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ParsedPlayerLogEvent {
+    pub event_kind: Option<String>,
+    pub player: Option<String>,
+}
 
 fn validate_player_name(name: &str) -> Result<(), String> {
     if name.len() < 3 || name.len() > 16 {
@@ -53,6 +62,34 @@ pub fn get_banned_players(server_path: String) -> Result<Vec<BanEntry>, String> 
 #[tauri::command]
 pub fn get_ops(server_path: String) -> Result<Vec<OpEntry>, String> {
     player_manager::read_ops(&server_path)
+}
+
+#[tauri::command]
+/// Parse historical player log lines into structured events.
+///
+/// Note:
+/// - Historical logs are treated as having an `Unknown` `LogStream`.
+/// - Live events from the log pipeline carry their actual stream (`Stdout` / `Stderr` / `Unknown`).
+/// If `parse_log_line` introduces stream-sensitive behavior in the future,
+/// callers must account for potential differences between historical and live parsing.
+pub fn parse_player_log_events(lines: Vec<String>) -> Vec<ParsedPlayerLogEvent> {
+    lines
+        .into_iter()
+        .map(|line| {
+            // Historical log parsing does not know the original stream (stdout/stderr),
+            // so we explicitly mark it as `Unknown` to distinguish it from live events,
+            // which carry their actual stream information.
+            let parsed =
+                parse_log_line(None, LogLineInput { raw: line, stream: LogStream::Unknown });
+
+            let mapped = map_domain_event(parsed.event);
+
+            ParsedPlayerLogEvent {
+                event_kind: mapped.event_kind,
+                player: mapped.player,
+            }
+        })
+        .collect()
 }
 
 // ---- Modify via server console commands ----
@@ -166,7 +203,9 @@ pub fn export_logs(logs: Vec<String>, save_path: String) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{remove_from_whitelist_in, remove_player_from_whitelist_file};
+    use super::{
+        parse_player_log_events, remove_from_whitelist_in, remove_player_from_whitelist_file,
+    };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use crate::services::server::manager::ServerManager;
     use std::sync::Arc;
@@ -257,5 +296,22 @@ mod tests {
             .expect_err("lock failure should not be flattened into a fake server-not-found error");
 
         assert_eq!(error, "servers lock poisoned");
+    }
+
+    #[test]
+    fn parse_player_log_events_uses_shared_log_semantics() {
+        let events = parse_player_log_events(vec![
+            "[12:00:00] [Server thread/INFO]: Starting minecraft server".to_string(),
+            "[12:00:05] [Server thread/INFO]: Done (5.123s)! For help, type \"help\"".to_string(),
+            "[12:00:06] [Server thread/INFO]: Alex joined the game".to_string(),
+            "[12:00:07] [Server thread/INFO]: Alex left the game".to_string(),
+        ]);
+
+        assert_eq!(events[0].event_kind, None);
+        assert_eq!(events[1].event_kind.as_deref(), Some("server_ready"));
+        assert_eq!(events[2].event_kind.as_deref(), Some("player_join"));
+        assert_eq!(events[2].player.as_deref(), Some("Alex"));
+        assert_eq!(events[3].event_kind.as_deref(), Some("player_leave"));
+        assert_eq!(events[3].player.as_deref(), Some("Alex"));
     }
 }

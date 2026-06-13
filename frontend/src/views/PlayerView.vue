@@ -5,12 +5,13 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { useRoute } from "vue-router";
 import { useConsoleStore } from "@stores/consoleStore";
 import { serverApi } from "@api/server";
-import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
+import { playerApi, type PlayerEntry, type BanEntry, type OpEntry, type ParsedPlayerLogEvent } from "@api/player";
 import { TIME, MESSAGES, getMessage } from "@utils/constants";
 import { validatePlayerName, handleError } from "@utils/errorHandler";
 import { i18n } from "@language";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
+import type { ServerLogStructuredEvent } from "@api/server";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import PlayerTabs from "@components/views/player/PlayerTabs.vue";
 import PlayerActionBar from "@components/views/player/PlayerActionBar.vue";
@@ -38,6 +39,9 @@ const addBanReason = ref("");
 const addLoading = ref(false);
 const settingsStore = useSettingsStore();
 let unlistenLogLine: UnlistenFn | null = null;
+let unlistenStructuredLog: UnlistenFn | null = null;
+const structuredOnlinePlayers = ref<Record<string, string[]>>({});
+const structuredPlayerEventSupport = ref<Record<string, boolean>>({});
 
 const selectedServerId = computed(() => store.currentServerId || "");
 
@@ -51,7 +55,7 @@ const isRunning = computed(() => {
 });
 
 const onlinePlayers = computed(() =>
-  parseOnlinePlayers(consoleStore.logs[selectedServerId.value] || []),
+  resolveOnlinePlayers(selectedServerId.value),
 );
 
 function getAddLabel(): string {
@@ -103,11 +107,14 @@ watch(
       whitelist.value = [];
       bannedPlayers.value = [];
       ops.value = [];
+      structuredOnlinePlayers.value = {};
+      structuredPlayerEventSupport.value = {};
       return;
     }
 
     await store.refreshStatus(serverId);
     await Promise.all([loadAll(), ensureRecentLogsLoaded(serverId)]);
+    await hydrateStructuredOnlinePlayers(serverId);
   },
   { immediate: true },
 );
@@ -132,6 +139,25 @@ async function ensureRecentLogsLoaded(serverId: string) {
   consoleStore.setLogCursor(serverId, (consoleStore.logs[serverId] || []).length);
 }
 
+async function hydrateStructuredOnlinePlayers(serverId: string) {
+  const logs = consoleStore.logs[serverId] || [];
+  if (logs.length === 0) {
+    structuredOnlinePlayers.value[serverId] = [];
+    structuredPlayerEventSupport.value[serverId] = false;
+    return;
+  }
+
+  try {
+    const events = await playerApi.parsePlayerLogEvents(logs);
+    structuredOnlinePlayers.value[serverId] = replayOnlinePlayers(events);
+    structuredPlayerEventSupport.value[serverId] = hasStructuredPlayerEvents(events);
+  } catch (error) {
+    structuredOnlinePlayers.value[serverId] = [];
+    structuredPlayerEventSupport.value[serverId] = false;
+    console.warn("[PlayerView] structured player log hydration unavailable, falling back to legacy parsing", error);
+  }
+}
+
 async function startPlayerLogSubscription() {
   if (unlistenLogLine) {
     return;
@@ -141,6 +167,14 @@ async function startPlayerLogSubscription() {
     consoleStore.appendLocal(server_id, line);
     consoleStore.setLogCursor(server_id, (consoleStore.logs[server_id] || []).length);
   });
+
+  try {
+    unlistenStructuredLog = await serverApi.onStructuredLogEvent((event) => {
+      applyStructuredPlayerEvent(event);
+    });
+  } catch (error) {
+    console.warn("[PlayerView] structured log stream unavailable, falling back to legacy parsing", error);
+  }
 }
 
 function stopPlayerLogSubscription() {
@@ -148,13 +182,111 @@ function stopPlayerLogSubscription() {
     unlistenLogLine();
     unlistenLogLine = null;
   }
+  if (unlistenStructuredLog) {
+    unlistenStructuredLog();
+    unlistenStructuredLog = null;
+  }
+}
+
+function resolveOnlinePlayers(serverId: string): string[] {
+  if (!serverId) {
+    return [];
+  }
+
+  const structured = structuredOnlinePlayers.value[serverId];
+  if (structuredPlayerEventSupport.value[serverId] && structured) {
+    return structured;
+  }
+
+  return parseOnlinePlayers(consoleStore.logs[serverId] || []);
+}
+
+function isStructuredPlayerEventKind(
+  eventKind: ParsedPlayerLogEvent["event_kind"] | ServerLogStructuredEvent["event_kind"],
+): eventKind is "server_ready" | "player_join" | "player_leave" {
+  return eventKind === "server_ready" || eventKind === "player_join" || eventKind === "player_leave";
+}
+
+function hasStructuredPlayerEvents(events: ParsedPlayerLogEvent[]): boolean {
+  return events.some((event) => isStructuredPlayerEventKind(event.event_kind));
+}
+
+function ensureStructuredOnlinePlayerList(serverId: string): string[] {
+  if (!structuredOnlinePlayers.value[serverId]) {
+    structuredOnlinePlayers.value[serverId] = [];
+  }
+  return structuredOnlinePlayers.value[serverId];
+}
+
+function applyStructuredPlayerEvent(event: ServerLogStructuredEvent) {
+  const { server_id, event_kind, player } = event;
+  if (!isStructuredPlayerEventKind(event_kind)) {
+    return;
+  }
+
+  structuredPlayerEventSupport.value[server_id] = true;
+
+  if (event_kind === "server_ready") {
+    structuredOnlinePlayers.value[server_id] = [];
+    return;
+  }
+
+  if (!player) {
+    return;
+  }
+
+  const players = ensureStructuredOnlinePlayerList(server_id);
+  if (event_kind === "player_join") {
+    if (!players.includes(player)) {
+      players.push(player);
+    }
+    return;
+  }
+
+  if (event_kind === "player_leave") {
+    const index = players.indexOf(player);
+    if (index >= 0) {
+      players.splice(index, 1);
+    }
+  }
+}
+
+function replayOnlinePlayers(events: ParsedPlayerLogEvent[]): string[] {
+  const players: string[] = [];
+
+  for (const event of events) {
+    if (event.event_kind === "server_ready") {
+      players.length = 0;
+      continue;
+    }
+
+    if (!event.player) {
+      continue;
+    }
+
+    if (event.event_kind === "player_join") {
+      if (!players.includes(event.player)) {
+        players.push(event.player);
+      }
+      continue;
+    }
+
+    if (event.event_kind === "player_leave") {
+      const idx = players.indexOf(event.player);
+      if (idx > -1) {
+        players.splice(idx, 1);
+      }
+    }
+  }
+
+  return players;
 }
 
 function parseOnlinePlayers(logs: string[]): string[] {
   const players: string[] = [];
 
   let startIndex = 0;
-  for (let i = logs.length - 1; i >= 0; i--) {
+  for (let i = logs.length - 1; i >= 0; i -= 1) {
     const line = logs[i];
     if (/Done \([\d.]+s\)! For help/.test(line) || /Starting minecraft server/i.test(line)) {
       startIndex = i;
@@ -162,7 +294,7 @@ function parseOnlinePlayers(logs: string[]): string[] {
     }
   }
 
-  for (let i = startIndex; i < logs.length; i++) {
+  for (let i = startIndex; i < logs.length; i += 1) {
     const line = logs[i];
     const joinMatch = line.match(/\]: (\w+) joined the game/);
     const loginMatch = line.match(/\]: UUID of player (\w+) is/);
@@ -170,16 +302,24 @@ function parseOnlinePlayers(logs: string[]): string[] {
 
     if (joinMatch) {
       const name = joinMatch[1];
-      if (!players.includes(name)) players.push(name);
+      if (!players.includes(name)) {
+        players.push(name);
+      }
     }
+
     if (loginMatch) {
       const name = loginMatch[1];
-      if (!players.includes(name)) players.push(name);
+      if (!players.includes(name)) {
+        players.push(name);
+      }
     }
+
     if (leftMatch) {
       const name = leftMatch[1];
       const idx = players.indexOf(name);
-      if (idx > -1) players.splice(idx, 1);
+      if (idx > -1) {
+        players.splice(idx, 1);
+      }
     }
   }
 

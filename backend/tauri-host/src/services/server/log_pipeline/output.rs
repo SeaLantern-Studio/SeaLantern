@@ -5,6 +5,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::sync::Arc;
 
 use crate::utils::logger;
+use sl_server_info::log::{parse_log_line, DomainEvent, LogLineInput, LogStream};
 
 pub fn add_server_log_processor(processor: Arc<ServerLogProcessor>) -> Result<(), String> {
     let processors = server_log_processors();
@@ -24,7 +25,7 @@ pub fn clear_server_log_processors() -> Result<(), String> {
     Ok(())
 }
 
-pub fn spawn_server_output_reader<R>(server_id: String, reader: R)
+pub fn spawn_server_output_reader<R>(server_id: String, stream: LogStream, reader: R)
 where
     R: Read + Send + 'static,
 {
@@ -50,7 +51,9 @@ where
                         ));
                     }
 
-                    if line.contains("Done (") && line.contains(")! For help") {
+                    let parsed = parse_log_line(None, LogLineInput { raw: line.clone(), stream });
+
+                    if matches!(parsed.event, Some(DomainEvent::ServerReady)) {
                         crate::services::global::server_manager().clear_starting(&server_id);
                         let _ = crate::plugins::api::emit_server_ready(&server_id);
                     }
@@ -71,10 +74,15 @@ where
     });
 }
 
+#[allow(dead_code)] // compatibility entrypoint for existing callers
 pub fn emit_server_log_line(server_id: &str, line: &str) {
+    emit_server_log_line_with_stream(server_id, line, LogStream::Unknown)
+}
+
+pub fn emit_server_log_line_with_stream(server_id: &str, line: &str, stream: LogStream) {
     let processed_line = process_log_line(server_id, line);
     if let Some(handler) = SERVER_LOG_EVENT_HANDLER.get() {
-        let _ = handler(server_id, &processed_line);
+        let _ = handler(server_id, &processed_line, stream);
     }
 
     #[cfg(feature = "docker")]
