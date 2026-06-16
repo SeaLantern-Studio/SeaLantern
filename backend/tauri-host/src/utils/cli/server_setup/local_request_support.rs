@@ -2,6 +2,7 @@ use std::path::Path;
 
 use crate::models::server::{
     AddExistingServerRequest, CpuPolicyConfig, CreateServerRequest, JvmPresetConfig,
+    LocalTerminalMode,
 };
 use crate::services::global::i18n_service;
 use crate::utils::cli::server_args::CliServerCommand;
@@ -185,6 +186,7 @@ pub(super) fn build_local_create_request(
                 .filter(|_| resolved_entry_path.is_none())
         },
         jvm_args: Vec::new(),
+        terminal_mode: LocalTerminalMode::PipeManaged,
         cpu_policy: CpuPolicyConfig::default(),
         jvm_preset: JvmPresetConfig::default(),
     })
@@ -291,6 +293,7 @@ pub(super) fn build_local_attach_request(
             executable_hint.as_deref(),
         ),
         jvm_args: Vec::new(),
+        terminal_mode: LocalTerminalMode::PipeManaged,
         cpu_policy: CpuPolicyConfig::default(),
         jvm_preset: JvmPresetConfig::default(),
     })

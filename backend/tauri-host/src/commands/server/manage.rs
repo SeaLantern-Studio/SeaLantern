@@ -47,6 +47,7 @@ pub fn create_server(
     startup_mode: String,
     custom_command: Option<String>,
     jvm_args: Vec<String>,
+    terminal_mode: crate::models::server::LocalTerminalMode,
     cpu_policy: crate::models::server::CpuPolicyConfig,
     jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
@@ -64,6 +65,7 @@ pub fn create_server(
         startup_mode,
         custom_command,
         jvm_args,
+        terminal_mode,
         cpu_policy,
         jvm_preset,
     )
@@ -82,6 +84,7 @@ pub fn import_server(
     port: u16,
     online_mode: bool,
     jvm_args: Vec<String>,
+    terminal_mode: crate::models::server::LocalTerminalMode,
     cpu_policy: crate::models::server::CpuPolicyConfig,
     jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
@@ -95,6 +98,7 @@ pub fn import_server(
         port,
         online_mode,
         jvm_args,
+        terminal_mode,
         cpu_policy,
         jvm_preset,
     )
@@ -116,6 +120,7 @@ pub fn add_existing_server(
     core_type: Option<String>,
     mc_version: Option<String>,
     jvm_args: Vec<String>,
+    terminal_mode: crate::models::server::LocalTerminalMode,
     cpu_policy: crate::models::server::CpuPolicyConfig,
     jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
@@ -132,6 +137,7 @@ pub fn add_existing_server(
         core_type,
         mc_version,
         jvm_args,
+        terminal_mode,
         cpu_policy,
         jvm_preset,
     )
@@ -155,6 +161,7 @@ pub fn import_modpack(
     core_type: Option<String>,
     mc_version: Option<String>,
     jvm_args: Vec<String>,
+    terminal_mode: crate::models::server::LocalTerminalMode,
     cpu_policy: crate::models::server::CpuPolicyConfig,
     jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
@@ -173,6 +180,7 @@ pub fn import_modpack(
         core_type,
         mc_version,
         jvm_args,
+        terminal_mode,
         cpu_policy,
         jvm_preset,
     )
@@ -231,6 +239,25 @@ pub fn stop_server(id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn send_command(id: String, command: String) -> Result<(), String> {
     runtime::send_command(id, command)
+}
+
+#[tauri::command]
+pub fn get_terminal_transcript(
+    id: String,
+    cursor: u64,
+    max_bytes: Option<usize>,
+) -> Result<crate::services::server::terminal_transcript::TerminalTranscriptChunk, String> {
+    runtime::get_terminal_transcript(id, cursor, max_bytes)
+}
+
+#[tauri::command]
+pub fn send_terminal_input(id: String, input: String) -> Result<(), String> {
+    runtime::send_terminal_input(id, input)
+}
+
+#[tauri::command]
+pub fn resize_terminal(id: String, cols: u16, rows: u16) -> Result<(), String> {
+    runtime::resize_terminal(id, cols, rows)
 }
 
 #[tauri::command]
@@ -315,6 +342,14 @@ pub fn update_server_java_path(
     java_path: String,
 ) -> Result<crate::models::server::ServerInstance, String> {
     runtime::update_server_java_path(id, java_path)
+}
+
+#[tauri::command]
+pub fn update_server_terminal_mode(
+    id: String,
+    terminal_mode: crate::models::server::LocalTerminalMode,
+) -> Result<crate::models::server::ServerInstance, String> {
+    runtime::update_server_terminal_mode(id, terminal_mode)
 }
 
 #[tauri::command]

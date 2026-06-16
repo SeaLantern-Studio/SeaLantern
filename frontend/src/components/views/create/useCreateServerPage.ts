@@ -13,7 +13,7 @@ import {
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
-import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
+import type { CpuPolicyConfig, JvmPresetConfig, LocalTerminalMode } from "@type/server";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
@@ -45,6 +45,7 @@ export function useCreateServerPage() {
   const jvmArgsText = ref("");
   const jvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
   const cpuPolicy = ref<CpuPolicyConfig>(createDefaultCpuPolicy());
+  const terminalMode = ref<LocalTerminalMode>("pipe_managed");
 
   const defaults = useCreateServerDefaults({
     sourcePath,
@@ -98,6 +99,7 @@ export function useCreateServerPage() {
     jvmArgsText,
     jvmPreset,
     cpuPolicy,
+    terminalMode,
     startCreating,
     stopCreating,
     showError,
@@ -264,6 +266,7 @@ export function useCreateServerPage() {
     jvmArgsText,
     jvmPreset,
     cpuPolicy,
+    terminalMode,
     javaList,
     activeStep: submit.activeStep,
     stepItems: submit.stepItems,

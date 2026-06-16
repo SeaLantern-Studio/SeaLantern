@@ -60,6 +60,7 @@ pub(super) fn create_server(
             custom_command: req.custom_command,
             java_path: req.java_path,
             jvm_args: req.jvm_args,
+            terminal_mode: req.terminal_mode,
             cpu_policy: req.cpu_policy,
             jvm_preset: req.jvm_preset,
         }),
@@ -119,6 +120,7 @@ mod tests {
             startup_mode: "custom".to_string(),
             custom_command: Some("powershell -File start.ps1".to_string()),
             jvm_args: Vec::new(),
+            terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
             cpu_policy: crate::models::server::CpuPolicyConfig::default(),
             jvm_preset: crate::models::server::JvmPresetConfig::default(),
         };
@@ -150,6 +152,7 @@ mod tests {
             startup_mode: "jar".to_string(),
             custom_command: None,
             jvm_args: Vec::new(),
+            terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
             cpu_policy: crate::models::server::CpuPolicyConfig::default(),
             jvm_preset: crate::models::server::JvmPresetConfig::default(),
         };

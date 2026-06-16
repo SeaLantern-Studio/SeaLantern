@@ -717,6 +717,7 @@ impl DockerCliAdapter {
                 pid: state.pid,
                 detail_message: Some(render_container_detail(runtime, &state)),
                 error_message: render_container_error(runtime, &state),
+                terminal: None,
             }),
             None => Ok(RuntimeStatusSnapshot {
                 status: ServerStatus::Stopped,
@@ -726,6 +727,7 @@ impl DockerCliAdapter {
                     runtime.container_name
                 )),
                 error_message: None,
+                terminal: None,
             }),
         }
     }
@@ -1098,6 +1100,7 @@ mod tests {
                 custom_command: None,
                 java_path: "java".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
@@ -1449,6 +1452,7 @@ mod tests {
                 "runtime=docker_itzg container=sea-test state=missing".to_string(),
             ),
             error_message: None,
+            terminal: None,
         };
         let exited_error = RuntimeStatusSnapshot {
             status: ServerStatus::Error,
@@ -1458,6 +1462,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: Some("Docker 容器已退出".to_string()),
+            terminal: None,
         };
         let unhealthy_running = RuntimeStatusSnapshot {
             status: ServerStatus::Error,
@@ -1467,6 +1472,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: Some("Docker 容器健康检查失败".to_string()),
+            terminal: None,
         };
 
         assert!(docker_status_is_not_running(&stopped));

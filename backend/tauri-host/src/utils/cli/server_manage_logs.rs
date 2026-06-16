@@ -153,7 +153,11 @@ fn follow_docker_logs(
 
     let docker_path = docker_executable_path()?;
     let status = Command::new(docker_path)
-        .args(build_docker_logs_args(&runtime.container_name, DOCKER_FOLLOW_TAIL_LINES, true))
+        .args(build_docker_logs_args(
+            &runtime.container_name,
+            DOCKER_FOLLOW_TAIL_LINES,
+            true,
+        ))
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -245,7 +249,7 @@ mod tests {
     };
     use crate::models::server::{
         DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig, LocalRuntimeConfig,
-        ServerInstance, ServerRuntimeConfig,
+        LocalTerminalMode, ServerInstance, ServerRuntimeConfig,
     };
     use std::collections::BTreeMap;
 
@@ -270,6 +274,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),

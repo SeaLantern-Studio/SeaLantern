@@ -270,6 +270,7 @@ mod tests {
                 custom_command: custom_command.map(str::to_string),
                 java_path: fake_java_probe_command(),
                 jvm_args: vec!["-Dserver.test=true".to_string()],
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),

@@ -37,6 +37,10 @@ interface ServerStartFallbackEventPayload {
 
 function getStartupModeLabel(mode: string): string {
   switch (mode) {
+    case "pipe_managed":
+      return "Pipe Managed";
+    case "pty_managed":
+      return "PTY Managed";
     case "starter":
       return i18n.t("create.startup_mode_starter");
     case "jar":

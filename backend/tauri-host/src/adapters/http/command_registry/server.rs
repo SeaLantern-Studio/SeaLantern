@@ -48,6 +48,7 @@ fn handle_create_server(
             req.startup_mode,
             req.custom_command,
             req.jvm_args,
+            req.terminal_mode,
             req.cpu_policy,
             req.jvm_preset,
         )?;
@@ -70,6 +71,7 @@ fn handle_import_server(
             req.port,
             req.online_mode,
             req.jvm_args,
+            req.terminal_mode,
             req.cpu_policy,
             req.jvm_preset,
         )?;
@@ -97,6 +99,7 @@ fn handle_import_modpack(
             req.core_type,
             req.mc_version,
             req.jvm_args,
+            req.terminal_mode,
             req.cpu_policy,
             req.jvm_preset,
         )?;
@@ -265,6 +268,7 @@ fn handle_add_existing_server(
             req.core_type,
             req.mc_version,
             req.jvm_args,
+            req.terminal_mode,
             req.cpu_policy,
             req.jvm_preset,
         )?;

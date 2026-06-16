@@ -25,6 +25,8 @@ import { useRoute } from "vue-router";
 import { serverApi } from "@api/server";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
+import { useSerialPolling } from "@composables/useSerialPolling";
+import { getLocalRuntime } from "@type/server";
 
 const serverStore = useServerStore();
 const settingsStore = useSettingsStore();
@@ -33,6 +35,7 @@ const route = useRoute();
 interface ConsoleOutputExpose {
   doScroll: () => void;
   appendLines: (lines: string[]) => void;
+  writeText: (text: string) => void;
   clear: () => void;
   getAllPlainText: () => string;
 }
@@ -61,6 +64,9 @@ const editingCommand = ref<import("@type/server").ServerCommand | null>(null);
 const commandName = ref("");
 const commandText = ref("");
 const commandLoading = ref(false);
+const consoleViewMode = ref<"logs" | "terminal">("logs");
+const terminalCursor = ref(0);
+const terminalLoading = ref(false);
 
 const quickCommands = computed(() => [
   { label: i18n.t("common.command_day"), cmd: "time set day" },
@@ -94,6 +100,43 @@ const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "st
 });
 
 const serverStatus = computed(() => serverStore.statuses[serverId.value]?.status || "Stopped");
+const serverStatusInfo = computed(() => {
+  const sid = serverId.value;
+  return sid ? serverStore.statuses[sid] ?? null : null;
+});
+
+function detailField(detail: string | null | undefined, key: string): string | null {
+  if (!detail) return null;
+  for (const part of detail.split(/\s+/)) {
+    const separatorIndex = part.indexOf("=");
+    if (separatorIndex <= 0) continue;
+    if (part.slice(0, separatorIndex) !== key) continue;
+    return part.slice(separatorIndex + 1) || null;
+  }
+  return null;
+}
+
+function detailBool(detail: string | null | undefined, key: string): boolean | null {
+  const value = detailField(detail, key);
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return null;
+}
+
+const isInteractiveTerminal = computed(() => {
+  const structuredInteractive = serverStatusInfo.value?.terminal?.interactive_supported;
+  if (structuredInteractive !== undefined && structuredInteractive !== null) {
+    return structuredInteractive;
+  }
+
+  const actualInteractive = detailBool(serverStatusInfo.value?.detail_message, "interactive");
+  if (actualInteractive !== null) {
+    return actualInteractive;
+  }
+
+  const server = currentServer.value;
+  return server ? getLocalRuntime(server)?.terminal_mode === "pty_managed" : false;
+});
 
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopping = computed(() => serverStatus.value === "Stopping");
@@ -121,12 +164,27 @@ async function activateConsoleView() {
   if (serverId.value) {
     startStatsPolling();
   }
+
+  if (sid && isInteractiveTerminal.value && consoleViewMode.value === "terminal") {
+    await refreshTerminalTranscript(true);
+    terminalPolling.start();
+  }
 }
 
 function deactivateConsoleView() {
   stopStatsPolling();
   deactivateLogStream();
+  terminalPolling.stop();
 }
+
+watch(
+  isInteractiveTerminal,
+  (interactive) => {
+    consoleViewMode.value = interactive ? "terminal" : "logs";
+    terminalCursor.value = 0;
+  },
+  { immediate: true },
+);
 
 onMounted(async () => {
   await settingsStore.ensureLoaded();
@@ -180,13 +238,75 @@ watch(
     await syncAndFocus(sid);
     await activateLogStream(sid);
     startStatsPolling();
+    terminalCursor.value = 0;
+    if (isInteractiveTerminal.value && consoleViewMode.value === "terminal") {
+      await refreshTerminalTranscript(true);
+      terminalPolling.start();
+    }
   },
 );
+
+const terminalPolling = useSerialPolling({
+  intervalMs: 500,
+  task: async () => {
+    if (!serverId.value || !isInteractiveTerminal.value || consoleViewMode.value !== "terminal") {
+      return;
+    }
+
+    await refreshTerminalTranscript(false);
+  },
+});
+
+watch(
+  [serverId, isInteractiveTerminal, consoleViewMode],
+  async ([sid, interactive, mode]) => {
+    if (!sid || !interactive || mode !== "terminal") {
+      terminalPolling.stop();
+      return;
+    }
+
+    await refreshTerminalTranscript(true);
+    terminalPolling.start();
+  },
+);
+
+async function refreshTerminalTranscript(reset: boolean) {
+  const sid = serverId.value;
+  if (!sid || !isInteractiveTerminal.value) return;
+  if (terminalLoading.value) return;
+
+  terminalLoading.value = true;
+  try {
+    if (reset) {
+      terminalCursor.value = 0;
+      consoleOutputRef.value?.clear();
+    }
+
+    const chunk = await serverApi.getTerminalTranscript(sid, terminalCursor.value, 128 * 1024);
+    terminalCursor.value = chunk.next_cursor;
+    if (chunk.data) {
+      consoleOutputRef.value?.writeText(chunk.data);
+    }
+  } finally {
+    terminalLoading.value = false;
+  }
+}
 
 async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
+
+  if (isInteractiveTerminal.value && consoleViewMode.value === "terminal") {
+    try {
+      await serverApi.sendTerminalInput(sid, `${command}\r`);
+    } catch (e) {
+      consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
+    }
+    commandInput.value = "";
+    return;
+  }
+
   appendCommandEcho(sid, command);
   commandHistory.value.push(command);
   if (commandHistory.value.length > 500) {
@@ -201,6 +321,29 @@ async function sendCommand(cmd?: string) {
   commandInput.value = "";
   userScrolledUp.value = false;
   doScroll();
+}
+
+async function handleTerminalInput(data: string) {
+  const sid = serverId.value;
+  if (!sid || !isInteractiveTerminal.value || consoleViewMode.value !== "terminal") return;
+
+  try {
+    await serverApi.sendTerminalInput(sid, data);
+  } catch (e) {
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
+  }
+}
+
+async function handleTerminalResize(payload: { cols: number; rows: number }) {
+  const sid = serverId.value;
+  if (!sid || !isInteractiveTerminal.value || consoleViewMode.value !== "terminal") return;
+  if (payload.cols <= 0 || payload.rows <= 0) return;
+
+  try {
+    await serverApi.resizeTerminal(sid, payload.cols, payload.rows);
+  } catch {
+    // Ignore transient resize failures during runtime transitions.
+  }
 }
 
 function doScroll() {
@@ -395,6 +538,24 @@ function deleteCommand() {}
         <div class="console-terminal-section">
           <div class="console-terminal-toolbar">
             <div class="console-terminal-title">{{ i18n.t("console.title") }}</div>
+            <div v-if="isInteractiveTerminal" class="action-group secondary-actions">
+              <SLButton
+                variant="ghost"
+                size="sm"
+                :disabled="consoleViewMode === 'terminal'"
+                @click="consoleViewMode = 'terminal'"
+              >
+                Terminal
+              </SLButton>
+              <SLButton
+                variant="ghost"
+                size="sm"
+                :disabled="consoleViewMode === 'logs'"
+                @click="consoleViewMode = 'logs'"
+              >
+                Logs
+              </SLButton>
+            </div>
           </div>
 
           <ConsoleOutput
@@ -404,14 +565,17 @@ function deleteCommand() {}
             :consoleLetterSpacing="consoleLetterSpacing"
             :maxLogLines="maxLogLines"
             :userScrolledUp="userScrolledUp"
+            :interactive="isInteractiveTerminal && consoleViewMode === 'terminal'"
             @scroll="(value) => (userScrolledUp = value)"
+            @terminalInput="handleTerminalInput"
+            @terminalResize="handleTerminalResize"
             @scrollToBottom="
               userScrolledUp = false;
               doScroll();
             "
           />
 
-          <div class="console-input-float">
+          <div v-if="!(isInteractiveTerminal && consoleViewMode === 'terminal')" class="console-input-float">
             <ConsoleInput :consoleFontSize="consoleFontSize" @sendCommand="sendCommand" />
             <button
               v-if="userScrolledUp"

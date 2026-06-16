@@ -15,7 +15,12 @@ import {
   serializeJvmArgsText,
 } from "@utils/serverStartupConfig";
 import { compactPathMiddle } from "@utils/pathDisplay";
-import type { CpuPolicyConfig, JvmPresetId, LocalStartupMode } from "@type/server";
+import type {
+  CpuPolicyConfig,
+  JvmPresetId,
+  LocalStartupMode,
+  LocalTerminalMode,
+} from "@type/server";
 
 const props = defineProps<{
   serverName: string;
@@ -26,6 +31,7 @@ const props = defineProps<{
   jvmArgsText: string;
   jvmPreset: JvmPresetId;
   cpuPolicy: CpuPolicyConfig;
+  terminalMode: LocalTerminalMode;
   startupMode?: LocalStartupMode;
   startupTarget?: string;
   customCommandPreview?: string;
@@ -41,7 +47,21 @@ const emit = defineEmits<{
   (e: "update:jvmArgsText", value: string): void;
   (e: "update:jvmPreset", value: JvmPresetId): void;
   (e: "update:cpuPolicy", value: CpuPolicyConfig): void;
+  (e: "update:terminalMode", value: LocalTerminalMode): void;
 }>();
+
+const terminalModeOptions = computed(() => [
+  {
+    value: "pipe_managed",
+    label: "Pipe Managed",
+    subLabel: "Compatibility-first managed pipe console",
+  },
+  {
+    value: "pty_managed",
+    label: "PTY Managed",
+    subLabel: "Interactive managed terminal with native console features",
+  },
+]);
 
 const jvmPresetOptions = computed(() =>
   MVP_JVM_PRESET_IDS.map((preset) => ({
@@ -184,6 +204,19 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
             @update:modelValue="$emit('update:cpuPolicy', $event)"
           />
           <p class="startup-field-hint">{{ i18n.t("create.cpu_policy_desc") }}</p>
+        </div>
+
+        <div class="startup-advanced-field">
+          <span class="startup-row-label">Terminal Mode</span>
+          <SLSelect
+            :model-value="terminalMode"
+            :options="terminalModeOptions"
+            :disabled="disabled"
+            @update:model-value="$emit('update:terminalMode', $event as LocalTerminalMode)"
+          />
+          <p class="startup-field-hint">
+            PTY mode enables the server's native terminal features. Pipe mode keeps the legacy managed log console behavior.
+          </p>
         </div>
 
         <div class="startup-advanced-field">

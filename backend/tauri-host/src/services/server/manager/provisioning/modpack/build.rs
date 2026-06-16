@@ -45,6 +45,7 @@ pub(super) fn build_modpack_server_instance(
             custom_command: startup.custom_command,
             java_path: req.java_path,
             jvm_args: req.jvm_args,
+            terminal_mode: req.terminal_mode,
             cpu_policy: req.cpu_policy,
             jvm_preset: req.jvm_preset,
         }),
@@ -76,6 +77,7 @@ mod tests {
             core_type: None,
             mc_version: None,
             jvm_args: Vec::new(),
+            terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
             cpu_policy: CpuPolicyConfig::default(),
             jvm_preset: JvmPresetConfig::default(),
         }

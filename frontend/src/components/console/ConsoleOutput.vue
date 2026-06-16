@@ -13,16 +13,22 @@ interface Props {
   consoleLetterSpacing?: number;
   userScrolledUp: boolean;
   maxLogLines?: number;
+  interactive?: boolean;
+  cursorBlink?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   consoleLetterSpacing: 0,
   maxLogLines: 5000,
+  interactive: false,
+  cursorBlink: true,
 });
 
 const emit = defineEmits<{
   (e: "scroll", value: boolean): void;
   (e: "scrollToBottom"): void;
+  (e: "terminalInput", value: string): void;
+  (e: "terminalResize", value: { cols: number; rows: number }): void;
 }>();
 
 const terminalHost = ref<HTMLDivElement | null>(null);
@@ -83,6 +89,7 @@ function handleCopyEvent(event: ClipboardEvent) {
 }
 
 function keepDisplayOnlyFocus() {
+  if (props.interactive) return;
   terminal?.blur();
 }
 
@@ -137,6 +144,9 @@ function formatLine(line: string): string {
 
 function fitTerminal() {
   fitAddon?.fit();
+  if (props.interactive && terminal) {
+    emit("terminalResize", { cols: terminal.cols, rows: terminal.rows });
+  }
 }
 
 function renderEmptyState(renderId = emptyStateRenderId) {
@@ -168,6 +178,23 @@ function appendLines(lines: string[]) {
       terminal.write(`\r\n${formattedLine}`);
     }
   }
+
+  if (!props.userScrolledUp) {
+    doScroll();
+  }
+}
+
+function writeText(text: string) {
+  if (!terminal || !text) return;
+  emptyStateRenderId += 1;
+
+  if (!hasAnyLine) {
+    terminal.clear();
+    terminal.reset();
+    hasAnyLine = true;
+  }
+
+  terminal.write(text);
 
   if (!props.userScrolledUp) {
     doScroll();
@@ -240,9 +267,9 @@ onMounted(() => {
   terminal = new Terminal({
     convertEol: true,
     allowTransparency: true,
-    disableStdin: true,
-    cursorBlink: false,
-    cursorInactiveStyle: "none",
+    disableStdin: !props.interactive,
+    cursorBlink: props.interactive ? props.cursorBlink : false,
+    cursorInactiveStyle: props.interactive ? "outline" : "none",
     fontFamily: getConsoleFontFamily(props.consoleFontFamily),
     fontSize: props.consoleFontSize,
     letterSpacing: props.consoleLetterSpacing,
@@ -271,13 +298,22 @@ onMounted(() => {
   terminal.loadAddon(clipboardAddon);
   terminal.loadAddon(serializeAddon);
   terminal.open(terminalHost.value);
+  if (props.interactive) {
+    terminal.onData((data) => {
+      emit("terminalInput", data);
+    });
+  }
   terminalTextarea = terminal.textarea ?? null;
   if (terminalTextarea) {
-    terminalTextarea.tabIndex = -1;
-    terminalTextarea.readOnly = true;
-    terminalTextarea.addEventListener("focus", keepDisplayOnlyFocus);
+    if (!props.interactive) {
+      terminalTextarea.tabIndex = -1;
+      terminalTextarea.readOnly = true;
+      terminalTextarea.addEventListener("focus", keepDisplayOnlyFocus);
+    }
   }
-  terminalHost.value.addEventListener("mousedown", keepDisplayOnlyFocus);
+  if (!props.interactive) {
+    terminalHost.value.addEventListener("mousedown", keepDisplayOnlyFocus);
+  }
   terminalHost.value.addEventListener("wheel", handleWheelScroll, { passive: false });
   fitTerminal();
   setupScrollTracking();
@@ -291,7 +327,9 @@ onMounted(() => {
   window.addEventListener("resize", fitTerminal);
   window.addEventListener("keydown", handleCopyShortcut);
   document.addEventListener("copy", handleCopyEvent, true);
-  keepDisplayOnlyFocus();
+  if (!props.interactive) {
+    keepDisplayOnlyFocus();
+  }
 });
 
 onUnmounted(() => {
@@ -360,7 +398,7 @@ watch(
   },
 );
 
-defineExpose({ doScroll, appendLines, clear, getAllPlainText });
+defineExpose({ doScroll, appendLines, writeText, clear, getAllPlainText });
 </script>
 
 <template>

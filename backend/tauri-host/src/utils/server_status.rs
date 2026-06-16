@@ -2,11 +2,9 @@ use crate::models::server::{ServerStatus, ServerStatusInfo};
 pub(crate) use sea_lantern_runtime::{
     status_blocks_start, status_detail_health, status_detail_indicates_running,
     status_detail_runtime_kind, status_is_docker_command_ready, status_is_terminal_start_ready,
+    status_detail_field,
     StatusLevel, StatusSnapshot,
 };
-
-#[cfg(test)]
-pub(crate) use sea_lantern_runtime::status_detail_field;
 
 impl StatusSnapshot for ServerStatusInfo {
     fn level(&self) -> StatusLevel {
@@ -40,6 +38,7 @@ mod tests {
             uptime: Some(1),
             detail_message: Some(detail.to_string()),
             error_message: None,
+            terminal: None,
         }
     }
 

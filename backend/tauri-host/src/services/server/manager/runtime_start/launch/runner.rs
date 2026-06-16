@@ -3,11 +3,14 @@ use super::command_builder::{
     find_preferred_jar_path,
 };
 use super::context::LaunchContext;
-use crate::models::server::ServerInstance;
+use crate::models::server::{LocalTerminalMode, ServerInstance};
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::cpu_policy;
 use crate::services::server::manager::i18n::{manager_t, manager_t1, manager_t2, manager_t3};
+use crate::services::server::runtime::local_process::{
+    spawn_local_process, LocalProcessLaunch, LocalProcessSpawnError,
+};
 use sea_lantern_server_local_setup_core::{
     build_primary_jar_fallback_info, format_fallback_chain_error, format_launch_fallback_log,
     format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
@@ -23,7 +26,7 @@ struct CompletedCommandOutput {
 }
 
 pub(in crate::services::server::manager::runtime_start) struct LaunchPlan {
-    pub child: std::process::Child,
+    pub child: LocalProcessLaunch,
     pub fallback_info: Option<super::super::super::StartFallbackInfo>,
 }
 
@@ -50,10 +53,13 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
             &preferred_phase,
             StartupMode::Jar,
         ) {
-            Ok(mut primary_child) => {
+            Ok((mut primary_child, primary_fallback_info)) => {
+                if primary_fallback_info.is_some() {
+                    fallback_info = primary_fallback_info;
+                }
                 const PRIMARY_LAUNCH_PROBE_DELAY_MS: u64 = 800;
                 std::thread::sleep(std::time::Duration::from_millis(PRIMARY_LAUNCH_PROBE_DELAY_MS));
-                match primary_child.try_wait() {
+                match primary_child.process.try_wait() {
                     Ok(None) => primary_child,
                     Ok(Some(status)) => {
                         let fallback = build_primary_jar_fallback_info(
@@ -65,18 +71,18 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                             &format_launch_fallback_log(&fallback.reason, &fallback.to_mode),
                         );
                         let fallback_cmd = build_configured_command(&context)?;
-                        let fallback_child = spawn_command(
+                        let (fallback_child, transport_fallback_info) = spawn_command(
                             id,
                             context.server,
                             fallback_cmd,
                             &fallback_phase,
                             context.startup_mode,
                         )?;
-                        fallback_info = Some(super::super::super::StartFallbackInfo {
+                        fallback_info = transport_fallback_info.or(Some(super::super::super::StartFallbackInfo {
                             from_mode: fallback.from_mode,
                             to_mode: fallback.to_mode,
                             reason: fallback.reason,
-                        });
+                        }));
                         fallback_child
                     }
                     Err(error) => {
@@ -89,18 +95,18 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                             &format_launch_fallback_log(&fallback.reason, &fallback.to_mode),
                         );
                         let fallback_cmd = build_configured_command(&context)?;
-                        let fallback_child = spawn_command(
+                        let (fallback_child, transport_fallback_info) = spawn_command(
                             id,
                             context.server,
                             fallback_cmd,
                             &fallback_phase,
                             context.startup_mode,
                         )?;
-                        fallback_info = Some(super::super::super::StartFallbackInfo {
+                        fallback_info = transport_fallback_info.or(Some(super::super::super::StartFallbackInfo {
                             from_mode: fallback.from_mode,
                             to_mode: fallback.to_mode,
                             reason: fallback.reason,
-                        });
+                        }));
                         fallback_child
                     }
                 }
@@ -115,7 +121,7 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                     &format_launch_fallback_log(&fallback.reason, &fallback.to_mode),
                 );
                 let fallback_cmd = build_configured_command(&context)?;
-                let fallback_child = spawn_command(
+                let (fallback_child, transport_fallback_info) = spawn_command(
                     id,
                     context.server,
                     fallback_cmd,
@@ -125,18 +131,23 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
                 .map_err(|fallback_error| {
                     format_fallback_chain_error(&fallback.reason, &fallback_error)
                 })?;
-                fallback_info = Some(super::super::super::StartFallbackInfo {
+                fallback_info = transport_fallback_info.or(Some(super::super::super::StartFallbackInfo {
                     from_mode: fallback.from_mode,
                     to_mode: fallback.to_mode,
                     reason: fallback.reason,
-                });
+                }));
                 fallback_child
             }
         }
     } else {
         let command = build_configured_command(&context)?;
         let configured_phase = manager_t("server.manager.launch_phase_configured");
-        spawn_command(id, context.server, command, &configured_phase, context.startup_mode)?
+        let (child, transport_fallback_info) =
+            spawn_command(id, context.server, command, &configured_phase, context.startup_mode)?;
+        if transport_fallback_info.is_some() {
+            fallback_info = transport_fallback_info;
+        }
+        child
     };
 
     Ok(LaunchPlan { child, fallback_info })
@@ -145,7 +156,7 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
 fn install_and_launch_starter(
     id: &str,
     context: &LaunchContext<'_>,
-) -> Result<std::process::Child, String> {
+) -> Result<LocalProcessLaunch, String> {
     let install_phase = manager_t("server.manager.launch_phase_starter_install");
     let install_result = spawn_command_and_capture(
         id,
@@ -238,7 +249,7 @@ fn install_and_launch_starter(
         }
     };
 
-    spawn_command(id, context.server, command, &launch_phase, startup_mode)
+    spawn_command(id, context.server, command, &launch_phase, startup_mode).map(|(child, _)| child)
 }
 
 fn spawn_command(
@@ -247,7 +258,7 @@ fn spawn_command(
     mut cmd: Command,
     phase: &str,
     startup_mode: StartupMode,
-) -> Result<std::process::Child, String> {
+) -> Result<(LocalProcessLaunch, Option<super::super::super::StartFallbackInfo>), String> {
     let command_for_log = preview_command(&cmd);
     let _ = server_log_pipeline::append_sealantern_log(
         id,
@@ -255,29 +266,93 @@ fn spawn_command(
     );
 
     cmd.current_dir(&server.path);
-    cmd.stdout(Stdio::piped());
-    cmd.stderr(Stdio::piped());
-    cmd.stdin(Stdio::piped());
+    let terminal_mode = server
+        .local_runtime()
+        .map(|rt| rt.terminal_mode)
+        .unwrap_or_default();
+    let (launched, fallback_info) = match spawn_local_process(cmd, terminal_mode) {
+        Ok(launched) => (launched, None),
+        Err(error)
+            if terminal_mode == LocalTerminalMode::PtyManaged
+                && should_fallback_to_pipe(&error) =>
+        {
+            let fallback_reason = format!("PTY init failed: {}", error);
+            let _ = server_log_pipeline::append_sealantern_log(
+                id,
+                &format!(
+                    "[Sea Lantern] {}",
+                    format_launch_fallback_log(&fallback_reason, "pipe_managed")
+                ),
+            );
 
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
-
-    let child = cmd.spawn().map_err(|e| {
-        manager_t3(
-            "server.manager.launch_spawn_failed",
-            id.to_string(),
-            server.path.clone(),
-            e.to_string(),
-        )
-    })?;
+            let mut fallback_cmd = rebuild_command_for_fallback(server, startup_mode)?;
+            fallback_cmd.current_dir(&server.path);
+            let launched = spawn_local_process(fallback_cmd, LocalTerminalMode::PipeManaged)
+                .map_err(|fallback_error| {
+                    format_fallback_chain_error(&fallback_reason, &fallback_error.to_string())
+                })?;
+            (
+                launched,
+                Some(super::super::super::StartFallbackInfo {
+                    from_mode: "pty_managed".to_string(),
+                    to_mode: "pipe_managed".to_string(),
+                    reason: fallback_reason,
+                }),
+            )
+        }
+        Err(error) => {
+            return Err(manager_t3(
+                "server.manager.launch_spawn_failed",
+                id.to_string(),
+                server.path.clone(),
+                error.to_string(),
+            ));
+        }
+    };
 
     let settings = crate::services::global::settings_manager().get();
-    apply_cpu_policy_after_spawn(id, server, &settings, startup_mode, child.id())?;
-    Ok(child)
+    let pid = launched.process.id().ok_or_else(|| {
+        manager_t1(
+            "server.manager.process_taskkill_pid_not_terminated",
+            "unknown",
+        )
+    })?;
+    apply_cpu_policy_after_spawn(id, server, &settings, startup_mode, pid)?;
+    Ok((launched, fallback_info))
+}
+
+fn should_fallback_to_pipe(error: &LocalProcessSpawnError) -> bool {
+    error.is_pty_init_failure()
+}
+
+fn rebuild_command_for_fallback(
+    server: &ServerInstance,
+    startup_mode: StartupMode,
+) -> Result<Command, String> {
+    let settings = crate::services::global::settings_manager().get();
+    let startup_path = server.jar_path().unwrap_or_default().to_string();
+    let startup_path_obj = std::path::Path::new(startup_path.as_str());
+    let managed_console_encoding = sea_lantern_server_local_setup_core::resolve_managed_console_encoding(
+        startup_mode.as_str(),
+        startup_path_obj,
+    );
+    let java_path = server.java_path().unwrap_or_default().to_string();
+    let (java_bin_dir_str, java_home_dir_str) =
+        sea_lantern_server_local_setup_core::resolve_java_paths(java_path.as_str())?;
+    let startup_filename = sea_lantern_server_local_setup_core::startup_filename(startup_path.as_str());
+    let starter_core_key = super::context::resolve_starter_core_key(server)?;
+    let context = LaunchContext {
+        server,
+        settings: &settings,
+        startup_mode,
+        managed_console_encoding,
+        java_bin_dir_str,
+        java_home_dir_str,
+        startup_filename,
+        starter_core_key,
+    };
+
+    build_configured_command(&context)
 }
 
 fn spawn_command_and_capture(
@@ -378,7 +453,8 @@ fn apply_cpu_policy_after_spawn(
 
 #[cfg(test)]
 mod tests {
-    use super::format_output_block_lines;
+    use super::{format_output_block_lines, should_fallback_to_pipe};
+    use crate::services::server::runtime::local_process::LocalProcessSpawnError;
     use sea_lantern_server_local_setup_core::{
         build_primary_jar_fallback_info, format_fallback_chain_error, format_launch_fallback_log,
         format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
@@ -422,5 +498,18 @@ mod tests {
             format_fallback_chain_error(&spawn_error, "fallback failed"),
             "JAR 直启失败: spawn failed；回退也失败：fallback failed"
         );
+    }
+
+    #[test]
+    fn fallback_to_pipe_only_happens_for_pty_init_failures() {
+        assert!(should_fallback_to_pipe(&LocalProcessSpawnError::PtyInit(
+            "unsupported platform".to_string()
+        )));
+        assert!(!should_fallback_to_pipe(&LocalProcessSpawnError::PtySpawn(
+            "program not found".to_string()
+        )));
+        assert!(!should_fallback_to_pipe(&LocalProcessSpawnError::PipeSpawn(
+            "spawn failed".to_string()
+        )));
     }
 }

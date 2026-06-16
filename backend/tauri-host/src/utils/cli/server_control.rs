@@ -528,6 +528,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
@@ -582,6 +583,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: Some("Docker 容器健康检查失败".to_string()),
+            terminal: None,
         };
 
         assert!(status_requires_running_wait(&status));
@@ -599,6 +601,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: Some("Docker 容器已退出".to_string()),
+            terminal: None,
         };
 
         assert!(!status_requires_running_wait(&status));
@@ -616,6 +619,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: None,
+            terminal: None,
         };
         let docker_running_not_ready = ServerStatusInfo {
             id: "server-1".to_string(),
@@ -627,6 +631,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: None,
+            terminal: None,
         };
         let error = ServerStatusInfo {
             id: "server-1".to_string(),
@@ -635,6 +640,7 @@ mod tests {
             uptime: Some(1),
             detail_message: Some("runtime=docker_itzg running=false".to_string()),
             error_message: Some("startup failed".to_string()),
+            terminal: None,
         };
         let starting = ServerStatusInfo {
             id: "server-1".to_string(),
@@ -643,6 +649,7 @@ mod tests {
             uptime: Some(1),
             detail_message: None,
             error_message: None,
+            terminal: None,
         };
 
         assert!(start_observation_is_terminal(&running));
@@ -660,6 +667,7 @@ mod tests {
             uptime: Some(1),
             detail_message: Some("runtime=local is_running=true".to_string()),
             error_message: None,
+            terminal: None,
         };
         let changed = ServerStatusInfo {
             detail_message: Some("runtime=local is_running=true exit_code=none".to_string()),
@@ -679,6 +687,7 @@ mod tests {
             uptime: Some(1),
             detail_message: Some("runtime=local is_running=false exit_code=7".to_string()),
             error_message: Some("服务器异常退出 (退出码：7)".to_string()),
+            terminal: None,
         };
 
         let message = render_start_observation_terminal_error("server-1", &status)
@@ -697,6 +706,7 @@ mod tests {
             uptime: Some(1),
             detail_message: Some("runtime=local is_running=false exit_code=0".to_string()),
             error_message: None,
+            terminal: None,
         };
 
         let message = render_start_observation_terminal_error("server-1", &status)
@@ -718,6 +728,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: None,
+            terminal: None,
         };
 
         print_start_observation_follow_up("server-1", &status, 6);

@@ -28,10 +28,10 @@ pub(super) fn resolve_server_reference_from_servers(
     }
 
     match matches.len() {
-        0 => Err(format!("未找到服务器: {}", target)),
+        0 => Err(format!("鏈壘鍒版湇鍔″櫒: {}", target)),
         1 => Ok(matches.remove(0)),
         _ => Err(format!(
-            "服务器引用不唯一: {} -> {}",
+            "鏈嶅姟鍣ㄥ紩鐢ㄤ笉鍞竴: {} -> {}",
             target,
             matches
                 .iter()
@@ -70,6 +70,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),
@@ -90,6 +91,6 @@ mod tests {
             sample_local_server("fabric-b", "shared"),
         ];
         let err = resolve_server_reference_from_servers(&servers, "shared").unwrap_err();
-        assert!(err.contains("不唯一"));
+        assert!(err.contains("涓嶅敮涓€"));
     }
 }

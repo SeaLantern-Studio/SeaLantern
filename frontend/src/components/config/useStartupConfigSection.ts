@@ -7,6 +7,7 @@ import { i18n } from "@language";
 import type {
   DockerLaunchDetail,
   JvmPresetConfig,
+  LocalTerminalMode,
   LocalLaunchDetail,
   ServerRuntimeKind,
 } from "@type/server";
@@ -47,6 +48,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
   const saving = ref(false);
   const error = ref<string | null>(null);
   const cpuPolicy = ref(createDefaultCpuPolicy());
+  const terminalMode = ref<LocalTerminalMode>("pipe_managed");
   const launchDetail = ref<StartupLaunchDetail | null>(null);
   const launchDetailLoading = ref(false);
   const launchDetailError = ref<string | null>(null);
@@ -89,6 +91,10 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
           const currentServer = servers.find((server) => server.id === serverId);
           selectedJava.value =
             currentServer?.runtime.kind === "local" ? currentServer.runtime.java_path : "";
+          terminalMode.value =
+            currentServer?.runtime.kind === "local"
+              ? currentServer.runtime.terminal_mode
+              : "pipe_managed";
         } catch (e: any) {
           configLoadWarning.value =
             e?.toString() || i18n.t("config.startup_config_java_path_load_failed");
@@ -221,6 +227,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
           throw new Error("当前服务器缺少 ID，无法保存 Java 路径");
         }
         await serverApi.updateServerJavaPath(serverId, selectedJava.value.trim());
+        await serverApi.updateServerTerminalMode(serverId, terminalMode.value);
       }
       options.onSaved?.(maxMemory.value, minMemory.value);
       void loadLaunchDetail();
@@ -252,7 +259,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     { immediate: true },
   );
 
-  watch([maxMemory, minMemory, selectedJava, jvmArgsText, jvmPreset, cpuPolicy], () => {
+  watch([maxMemory, minMemory, selectedJava, jvmArgsText, jvmPreset, cpuPolicy, terminalMode], () => {
     scheduleAutoSave();
   });
 
@@ -264,6 +271,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
     jvmArgsText,
     jvmPreset,
     cpuPolicy,
+    terminalMode,
     loading,
     javaLoading,
     saving,

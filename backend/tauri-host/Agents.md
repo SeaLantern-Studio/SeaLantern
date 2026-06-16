@@ -1,6 +1,6 @@
 ---
 module-name: sea-lantern
-update-time: 2026-06-06
+update-time: 2026-06-16
 description: Main Tauri host crate for SeaLantern desktop runtime, command surface, plugins, services, and host integration.
 tag: ["tauri-host", "commands", "services", "plugins", "host-runtime"]
 ---
@@ -86,11 +86,38 @@ Preserve the current launch boundary unless the user explicitly asks to change b
 - bat writes managed JVM args to file and keeps its current inline-env path
 - sh, ps1, and custom use process-env Java injection
 
+## Important Slice: Local Runtime PTY Terminal
+
+This crate now also owns the local PTY-managed terminal path centered on:
+
+- `src/services/server/runtime/local.rs`
+- `src/services/server/runtime/local_helper.rs`
+- `src/services/server/runtime/local_process.rs`
+- `src/services/server/runtime/local_terminal_reader.rs`
+- `src/services/server/terminal_transcript.rs`
+- `src/utils/cli/server_session.rs`
+- `src/views` frontend consumers via Tauri commands and status payloads
+
+When touching local runtime terminal behavior, check these contracts together:
+
+- `LocalTerminalMode` config and PTY fallback behavior
+- transcript vs normalized log split
+- `ServerStatusInfo.terminal` payload stability
+- CLI attach and frontend terminal-mode detection
+- host/system logs staying on the normalized log side instead of polluting transcript
+
+Preserve the current compatibility defaults unless the user explicitly asks to change product behavior:
+
+- `pipe_managed` remains the default local terminal mode
+- PTY init failure must fall back to `pipe_managed` with explicit fallback reporting
+- `getLogs()` and `sl.console.*` stay on normalized logs instead of transcript semantics
+
 ## Change Guidance For Agents
 
 - Do not re-implement shared startup or Docker rules in this crate when a core crate already owns them.
 - Keep `src/main.rs` and `src/lib.rs` thin.
 - When changing local launch behavior, check both preview and actual runtime paths.
+- When changing PTY/local terminal behavior, verify helper state, runtime status payloads, frontend consumers, and CLI attach together.
 - When changing plugin-runtime or command-surface behavior, treat it as a host API change.
 
 ## Frontend Contract Notes
@@ -100,5 +127,5 @@ Preserve the current launch boundary unless the user explicitly asks to change b
 
 ## Validation Checklist
 
-- Run relevant `tauri-host` tests when command payloads, host orchestration, plugin runtime, startup preview, or Docker runtime behavior changes.
+- Run relevant `tauri-host` tests when command payloads, host orchestration, plugin runtime, startup preview, Docker runtime, or local PTY terminal behavior changes.
 - Re-check core crate tests too if a host change required moving or changing shared rules.

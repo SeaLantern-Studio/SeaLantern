@@ -166,6 +166,7 @@ mod tests {
                 custom_command: None,
                 java_path: "java".to_string(),
                 jvm_args: vec!["-Dserver.flag=true".to_string()],
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),
@@ -387,7 +388,7 @@ mod tests {
 
         let err = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
             .expect_err("unsupported mode should fail");
-        assert!(err.contains("暂不支持 CPU policy"));
+        assert!(err.contains("鏆備笉鏀寔 CPU policy"));
     }
 
     #[test]
@@ -402,7 +403,7 @@ mod tests {
         let err = read_startup_document_checked(&server)
             .expect_err("invalid config should surface an explicit error");
 
-        assert!(err.contains("解析实例配置失败"));
+        assert!(err.contains("瑙ｆ瀽瀹炰緥閰嶇疆澶辫触"));
     }
 
     #[test]
@@ -417,7 +418,7 @@ mod tests {
         let err = resolve_effective_startup_config_checked(&server, &test_settings())
             .expect_err("invalid config should not silently downgrade to runtime defaults");
 
-        assert!(err.contains("解析实例配置失败"));
+        assert!(err.contains("瑙ｆ瀽瀹炰緥閰嶇疆澶辫触"));
     }
 
     #[test]
@@ -432,6 +433,6 @@ mod tests {
         let err = build_managed_jvm_args(&server, &test_settings(), ManagedConsoleEncoding::Utf8)
             .expect_err("invalid config should abort managed JVM arg synthesis");
 
-        assert!(err.contains("解析实例配置失败"));
+        assert!(err.contains("瑙ｆ瀽瀹炰緥閰嶇疆澶辫触"));
     }
 }

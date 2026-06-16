@@ -316,6 +316,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),

@@ -1,4 +1,4 @@
-use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
+use super::{build_terminal_status, LocalHelperStatusSnapshot, LocalRuntimeState};
 use crate::models::server::ServerStatus;
 use crate::services::server::manager::process::is_process_alive;
 use crate::services::server::runtime::i18n::runtime_t;
@@ -30,6 +30,9 @@ where
         exit_code: state.exit_code,
         detail_message: fallback_detail_message(state, child_running, helper_unreachable),
         error_message: fallback_error_message(state, child_running, helper_unreachable),
+        terminal_mode: state.terminal_mode,
+        terminal_cols: state.terminal_cols,
+        terminal_rows: state.terminal_rows,
     }
 }
 
@@ -58,6 +61,7 @@ pub(crate) fn runtime_snapshot_from_helper(
     snapshot: LocalHelperStatusSnapshot,
     status: ServerStatus,
 ) -> RuntimeStatusSnapshot {
+    let terminal = snapshot_terminal_status(&snapshot);
     let detail_message = if snapshot.running {
         snapshot.detail_message
     } else {
@@ -69,6 +73,7 @@ pub(crate) fn runtime_snapshot_from_helper(
         pid: snapshot.pid,
         detail_message: Some(detail_message),
         error_message: snapshot.error_message,
+        terminal,
     }
 }
 
@@ -80,7 +85,16 @@ pub(crate) fn stopped_runtime_snapshot() -> RuntimeStatusSnapshot {
             "runtime=local is_running=false exit_code=none source=state_absent".to_string(),
         ),
         error_message: None,
+        terminal: None,
     }
+}
+
+fn snapshot_terminal_status(
+    snapshot: &LocalHelperStatusSnapshot,
+) -> Option<crate::models::server::TerminalStatusInfo> {
+    snapshot.terminal_mode.map(|terminal_mode| {
+        build_terminal_status(terminal_mode, snapshot.terminal_cols, snapshot.terminal_rows)
+    })
 }
 
 fn fallback_detail_message(
@@ -152,6 +166,7 @@ mod tests {
         runtime_snapshot_from_helper, stopped_runtime_snapshot,
     };
     use crate::models::server::ServerStatus;
+    use crate::models::server::LocalTerminalMode;
     use crate::services::server::runtime::i18n::runtime_t;
     use crate::services::server::runtime::local_helper::LocalRuntimeState;
 
@@ -166,6 +181,10 @@ mod tests {
             exit_code: None,
             detail_message: "runtime=local running=true source=helper".to_string(),
             error_message: None,
+            fallback: None,
+            terminal_mode: Some(LocalTerminalMode::PipeManaged),
+            terminal_cols: None,
+            terminal_rows: None,
             updated_at: 123,
         }
     }
@@ -255,9 +274,12 @@ mod tests {
             pid: None,
             exit_code: Some(7),
             detail_message:
-                "runtime=local running=false source=state_file helper=exited exit_code=7"
-                    .to_string(),
+                    "runtime=local running=false source=state_file helper=exited exit_code=7"
+                        .to_string(),
             error_message: Some("server crashed".to_string()),
+            terminal_mode: Some(LocalTerminalMode::PipeManaged),
+            terminal_cols: None,
+            terminal_rows: None,
         };
 
         let runtime = runtime_snapshot_from_helper(snapshot, ServerStatus::Error);

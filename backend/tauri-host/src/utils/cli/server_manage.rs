@@ -94,7 +94,12 @@ fn execute_server_manage_command(command: ServerManageCommand) -> Result<bool, S
             let status = global::server_manager().get_server_status(&server.id);
             print_server_status(&server, &status);
         }
-        ServerManageCommand::Logs { target, lines, follow, interval_ms } => {
+        ServerManageCommand::Logs {
+            target,
+            lines,
+            follow,
+            interval_ms,
+        } => {
             let server = resolve_server_reference(&target)?;
             print_server_logs(&server, lines, follow, interval_ms)?;
         }
@@ -178,9 +183,8 @@ fn parse_server_manage_command(args: &[String]) -> Result<Option<ServerManageCom
         "status" => parse_target_only(args, "status")
             .map(|target| Some(ServerManageCommand::Status { target })),
         "start" => parse_start_command(args).map(Some),
-        "stop" => {
-            parse_target_only(args, "stop").map(|target| Some(ServerManageCommand::Stop { target }))
-        }
+        "stop" => parse_target_only(args, "stop")
+            .map(|target| Some(ServerManageCommand::Stop { target })),
         "force-stop" | "forcestop" => parse_target_only(args, "force-stop")
             .map(|target| Some(ServerManageCommand::ForceStop { target })),
         "restart" => parse_target_only(args, "restart")
@@ -315,7 +319,10 @@ fn parse_implicit_existing_start_command(
         return Ok(None);
     }
 
-    Ok(Some(ServerManageCommand::Start { target: resolved.id, options }))
+    Ok(Some(ServerManageCommand::Start {
+        target: resolved.id,
+        options,
+    }))
 }
 
 fn looks_like_reserved_manage_subcommand(value: &str) -> bool {
@@ -390,7 +397,12 @@ fn parse_logs_command(args: &[String]) -> Result<ServerManageCommand, String> {
             other => return Err(format!("logs 不支持的参数: {}", other)),
         }
     }
-    Ok(ServerManageCommand::Logs { target, lines, follow, interval_ms })
+    Ok(ServerManageCommand::Logs {
+        target,
+        lines,
+        follow,
+        interval_ms,
+    })
 }
 
 fn parse_send_command(args: &[String]) -> Result<ServerManageCommand, String> {
@@ -467,7 +479,10 @@ fn force_stop_server(server: &ServerInstance) -> Result<(), String> {
     trace_cli_action("manage_force_stop_prepare", &format!("server_id={}", server.id));
     let preparation = global::server_manager().prepare_force_stop_server(&server.id)?;
 
-    println!("即将强制终止服务器 {}。这会直接中断运行时，不再等待优雅停服。", server.name);
+    println!(
+        "即将强制终止服务器 {}。这会直接中断运行时，不再等待优雅停服。",
+        server.name
+    );
     println!(
         "确认窗口约 15 秒，过期后需要重新执行 `sealantern server force-stop {}`。",
         server.id
@@ -501,7 +516,8 @@ mod tests {
     };
     use crate::models::server::{
         CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
-        JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+        JvmPresetConfig, LocalRuntimeConfig, LocalTerminalMode, ServerInstance,
+        ServerRuntimeConfig,
     };
     use crate::utils::cli::server_args::{CliMode, WebMode};
     use crate::utils::cli::server_manage_render::redact_secret;
@@ -530,6 +546,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),
@@ -634,7 +651,12 @@ mod tests {
     fn parse_restart_command_uses_target_only_shape() {
         let args = vec!["restart".to_string(), "paper".to_string()];
         let command = parse_server_manage_command(&args).unwrap();
-        assert_eq!(command, Some(ServerManageCommand::Restart { target: "paper".to_string() }));
+        assert_eq!(
+            command,
+            Some(ServerManageCommand::Restart {
+                target: "paper".to_string()
+            })
+        );
     }
 
     #[test]
@@ -764,7 +786,12 @@ mod tests {
     fn parse_force_stop_command_uses_target_only_shape() {
         let args = vec!["force-stop".to_string(), "paper".to_string()];
         let command = parse_server_manage_command(&args).unwrap();
-        assert_eq!(command, Some(ServerManageCommand::ForceStop { target: "paper".to_string() }));
+        assert_eq!(
+            command,
+            Some(ServerManageCommand::ForceStop {
+                target: "paper".to_string()
+            })
+        );
     }
 
     #[test]

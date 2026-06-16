@@ -9,6 +9,8 @@ use std::time::Duration;
 pub(in super::super) enum LocalHelperRequest {
     Status { auth_token: String },
     Send { auth_token: String, command: String },
+    TerminalInput { auth_token: String, input: String },
+    ResizeTerminal { auth_token: String, cols: u16, rows: u16 },
     Stop { auth_token: String },
     ForceStop { auth_token: String },
 }
@@ -25,6 +27,8 @@ impl LocalHelperRequest {
         match self {
             Self::Status { auth_token }
             | Self::Send { auth_token, .. }
+            | Self::TerminalInput { auth_token, .. }
+            | Self::ResizeTerminal { auth_token, .. }
             | Self::Stop { auth_token }
             | Self::ForceStop { auth_token } => auth_token,
         }
@@ -114,6 +118,19 @@ mod tests {
         };
         assert_eq!(send.auth_token(), "secret");
 
+        let terminal_input = LocalHelperRequest::TerminalInput {
+            auth_token: token.clone(),
+            input: "hi".to_string(),
+        };
+        assert_eq!(terminal_input.auth_token(), "secret");
+
+        let resize = LocalHelperRequest::ResizeTerminal {
+            auth_token: token.clone(),
+            cols: 80,
+            rows: 24,
+        };
+        assert_eq!(resize.auth_token(), "secret");
+
         let stop = LocalHelperRequest::Stop { auth_token: token.clone() };
         assert_eq!(stop.auth_token(), "secret");
 
@@ -131,6 +148,9 @@ mod tests {
                 exit_code: None,
                 detail_message: "runtime=local running=true source=helper pid=42".to_string(),
                 error_message: None,
+                terminal_mode: None,
+                terminal_cols: None,
+                terminal_rows: None,
             }),
             error: None,
         };

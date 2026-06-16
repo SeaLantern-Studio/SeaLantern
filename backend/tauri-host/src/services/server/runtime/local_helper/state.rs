@@ -1,5 +1,5 @@
-use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
-use crate::models::server::ServerInstance;
+use super::{LocalHelperStatusSnapshot, LocalRuntimeFallbackInfo, LocalRuntimeState};
+use crate::models::server::{LocalTerminalMode, ServerInstance};
 use crate::services::server::runtime::i18n::{runtime_t1, runtime_t2};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -38,6 +38,9 @@ pub(super) fn started_state(
     child_pid: Option<u32>,
     control_port: u16,
     auth_token: String,
+    fallback: Option<LocalRuntimeFallbackInfo>,
+    terminal_mode: LocalTerminalMode,
+    terminal_size: Option<(u16, u16)>,
     updated_at: u64,
 ) -> LocalRuntimeState {
     LocalRuntimeState {
@@ -56,6 +59,10 @@ pub(super) fn started_state(
             control_port
         ),
         error_message: None,
+        fallback,
+        terminal_mode: Some(terminal_mode),
+        terminal_cols: terminal_size.map(|(cols, _)| cols),
+        terminal_rows: terminal_size.map(|(_, rows)| rows),
         updated_at,
     }
 }
@@ -65,6 +72,7 @@ pub(super) fn helper_ready_state(
     helper_pid: u32,
     control_port: u16,
     auth_token: String,
+    terminal_mode: LocalTerminalMode,
     updated_at: u64,
 ) -> LocalRuntimeState {
     LocalRuntimeState {
@@ -80,6 +88,10 @@ pub(super) fn helper_ready_state(
             control_port
         ),
         error_message: None,
+        fallback: None,
+        terminal_mode: Some(terminal_mode),
+        terminal_cols: None,
+        terminal_rows: None,
         updated_at,
     }
 }
@@ -99,6 +111,10 @@ pub(super) fn start_failed_state(
         exit_code: None,
         detail_message: "runtime=local running=false source=helper startup=failed".to_string(),
         error_message: Some(error_message),
+        fallback: state.fallback.clone(),
+        terminal_mode: state.terminal_mode,
+        terminal_cols: state.terminal_cols,
+        terminal_rows: state.terminal_rows,
         updated_at,
     }
 }
@@ -118,6 +134,10 @@ pub(super) fn state_from_terminal_snapshot(
         exit_code: snapshot.exit_code,
         detail_message: snapshot.detail_message.clone(),
         error_message: snapshot.error_message.clone(),
+        fallback: state.fallback.clone(),
+        terminal_mode: snapshot.terminal_mode.or(state.terminal_mode),
+        terminal_cols: snapshot.terminal_cols.or(state.terminal_cols),
+        terminal_rows: snapshot.terminal_rows.or(state.terminal_rows),
         updated_at,
     }
 }
@@ -140,6 +160,10 @@ pub(super) fn state_from_requested_stop(
             "runtime=local running=false source=helper requested_stop".to_string()
         },
         error_message: None,
+        fallback: state.fallback.clone(),
+        terminal_mode: state.terminal_mode,
+        terminal_cols: state.terminal_cols,
+        terminal_rows: state.terminal_rows,
         updated_at,
     }
 }
@@ -165,6 +189,10 @@ pub(super) fn terminal_state_from_exit(
                 .unwrap_or_else(|| "none".to_string())
         ),
         error_message,
+        fallback: state.fallback.clone(),
+        terminal_mode: state.terminal_mode,
+        terminal_cols: state.terminal_cols,
+        terminal_rows: state.terminal_rows,
         updated_at,
     }
 }
@@ -181,9 +209,11 @@ mod tests {
     use super::{
         helper_ready_state, start_failed_state, started_state, state_from_requested_stop,
         state_from_terminal_snapshot, terminal_state_from_exit, write_state_file,
-        LocalHelperStatusSnapshot, LocalRuntimeState,
+        LocalHelperStatusSnapshot, LocalRuntimeFallbackInfo, LocalRuntimeState,
     };
-    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use crate::models::server::{
+        LocalRuntimeConfig, LocalTerminalMode, ServerInstance, ServerRuntimeConfig,
+    };
     use crate::services::server::runtime::i18n::runtime_t1;
     use crate::services::server::runtime::local_helper::{read_state, state_file_path};
     use tempfile::tempdir;
@@ -209,6 +239,7 @@ mod tests {
                 custom_command: None,
                 java_path: "java".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
@@ -226,6 +257,10 @@ mod tests {
             exit_code: None,
             detail_message: "runtime=local running=true source=helper pid=22".to_string(),
             error_message: None,
+            fallback: None,
+            terminal_mode: Some(LocalTerminalMode::PipeManaged),
+            terminal_cols: None,
+            terminal_rows: None,
             updated_at: 123,
         }
     }
@@ -243,12 +278,25 @@ mod tests {
             ),
             error_message: exit_code
                 .map(|code| runtime_t1("server.runtime.local.exit_abnormal", code.to_string())),
+            terminal_mode: Some(LocalTerminalMode::PipeManaged),
+            terminal_cols: None,
+            terminal_rows: None,
         }
     }
 
     #[test]
     fn started_state_populates_initial_helper_control_plane_fields() {
-        let state = started_state("local-state", 11, Some(22), 25570, "token".to_string(), 456);
+        let state = started_state(
+            "local-state",
+            11,
+            Some(22),
+            25570,
+            "token".to_string(),
+            None,
+            LocalTerminalMode::PipeManaged,
+            None,
+            456,
+        );
 
         assert_eq!(state.server_id, "local-state");
         assert_eq!(state.helper_pid, 11);
@@ -258,6 +306,7 @@ mod tests {
         assert!(state.running);
         assert_eq!(state.exit_code, None);
         assert_eq!(state.error_message, None);
+        assert_eq!(state.fallback, None);
         assert_eq!(state.updated_at, 456);
         assert_eq!(
             state.detail_message,
@@ -267,7 +316,14 @@ mod tests {
 
     #[test]
     fn helper_ready_state_marks_control_plane_ready_before_child_spawn() {
-        let state = helper_ready_state("local-state", 11, 25570, "token".to_string(), 456);
+        let state = helper_ready_state(
+            "local-state",
+            11,
+            25570,
+            "token".to_string(),
+            LocalTerminalMode::PipeManaged,
+            456,
+        );
 
         assert_eq!(state.server_id, "local-state");
         assert_eq!(state.helper_pid, 11);
@@ -284,8 +340,37 @@ mod tests {
     }
 
     #[test]
+    fn started_state_keeps_launch_fallback_info_when_present() {
+        let fallback = LocalRuntimeFallbackInfo {
+            from_mode: "pty_managed".to_string(),
+            to_mode: "pipe_managed".to_string(),
+            reason: "PTY init failed: unsupported".to_string(),
+        };
+        let state = started_state(
+            "local-state",
+            11,
+            Some(22),
+            25570,
+            "token".to_string(),
+            Some(fallback.clone()),
+            LocalTerminalMode::PipeManaged,
+            None,
+            456,
+        );
+
+        assert_eq!(state.fallback, Some(fallback));
+    }
+
+    #[test]
     fn start_failed_state_clears_control_port_and_persists_error() {
-        let ready = helper_ready_state("local-state", 11, 25570, "token".to_string(), 456);
+        let ready = helper_ready_state(
+            "local-state",
+            11,
+            25570,
+            "token".to_string(),
+            LocalTerminalMode::PipeManaged,
+            456,
+        );
         let failed = start_failed_state(&ready, "start failed".to_string(), 789);
 
         assert!(!failed.running);

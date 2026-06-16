@@ -19,7 +19,22 @@ pub struct LocalRuntimeState {
     pub exit_code: Option<i32>,
     pub detail_message: String,
     pub error_message: Option<String>,
+    #[serde(default)]
+    pub fallback: Option<LocalRuntimeFallbackInfo>,
+    #[serde(default)]
+    pub terminal_mode: Option<LocalTerminalMode>,
+    #[serde(default)]
+    pub terminal_cols: Option<u16>,
+    #[serde(default)]
+    pub terminal_rows: Option<u16>,
     pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LocalRuntimeFallbackInfo {
+    pub from_mode: String,
+    pub to_mode: String,
+    pub reason: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -29,6 +44,12 @@ pub struct LocalHelperStatusSnapshot {
     pub exit_code: Option<i32>,
     pub detail_message: String,
     pub error_message: Option<String>,
+    #[serde(default)]
+    pub terminal_mode: Option<LocalTerminalMode>,
+    #[serde(default)]
+    pub terminal_cols: Option<u16>,
+    #[serde(default)]
+    pub terminal_rows: Option<u16>,
 }
 
 pub(crate) use status::{
@@ -44,12 +65,13 @@ use self::state::{
     write_state_file,
 };
 use self::status::{fallback_snapshot_from_state_file, fallback_snapshot_from_unreachable_helper};
-use crate::models::server::ServerInstance;
+use crate::models::server::{LocalTerminalMode, ServerInstance, TerminalStatusInfo};
 use crate::services::global;
-use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::process::{force_kill_process_tree_by_pid, is_process_alive};
+use crate::services::server::runtime::local_terminal_reader::spawn_local_terminal_reader;
 use crate::services::server::runtime::i18n::{runtime_t, runtime_t1, runtime_t2};
 use crate::services::server::runtime::{RuntimeProcessHandle, RuntimeStartRequest};
+use crate::services::server::terminal_transcript;
 use crate::utils::logger;
 use std::ffi::OsString;
 use std::net::TcpListener;
@@ -346,6 +368,66 @@ pub fn status_snapshot(
     Ok(Some(fallback_snapshot_from_state_file(&state)))
 }
 
+pub(crate) fn build_terminal_status(
+    terminal_mode: LocalTerminalMode,
+    cols: Option<u16>,
+    rows: Option<u16>,
+) -> TerminalStatusInfo {
+    match terminal_mode {
+        LocalTerminalMode::PipeManaged => TerminalStatusInfo {
+            backend_kind: "pipe".to_string(),
+            interactive_supported: false,
+            transcript_supported: false,
+            attach_supported: false,
+            cols,
+            rows,
+        },
+        LocalTerminalMode::PtyManaged => TerminalStatusInfo {
+            backend_kind: "pty".to_string(),
+            interactive_supported: true,
+            transcript_supported: true,
+            attach_supported: true,
+            cols,
+            rows,
+        },
+    }
+}
+
+pub(crate) fn terminal_status_from_state(state: &LocalRuntimeState) -> Option<TerminalStatusInfo> {
+    state.terminal_mode.map(|terminal_mode| {
+        build_terminal_status(terminal_mode, state.terminal_cols, state.terminal_rows)
+    })
+}
+
+pub(crate) fn effective_terminal_mode(server: &ServerInstance) -> Result<LocalTerminalMode, String> {
+    let configured = server
+        .local_runtime()
+        .map(|runtime| runtime.terminal_mode)
+        .unwrap_or_default();
+
+    let Some(state) = read_state_checked(server)? else {
+        return Ok(configured);
+    };
+
+    Ok(state
+        .terminal_mode
+        .or_else(|| {
+            state
+                .fallback
+                .as_ref()
+                .and_then(|fallback| parse_terminal_mode_name(&fallback.to_mode))
+        })
+        .unwrap_or(configured))
+}
+
+fn parse_terminal_mode_name(mode: &str) -> Option<LocalTerminalMode> {
+    match mode {
+        "pipe_managed" => Some(LocalTerminalMode::PipeManaged),
+        "pty_managed" => Some(LocalTerminalMode::PtyManaged),
+        _ => None,
+    }
+}
+
 pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String> {
     let state = read_state_checked(server)?.ok_or_else(|| {
         runtime_t1(
@@ -371,6 +453,59 @@ pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String
         Err(response
             .error
             .unwrap_or_else(|| "helper send failed".to_string()))
+    }
+}
+
+pub fn send_terminal_input(server: &ServerInstance, input: &str) -> Result<(), String> {
+    let state = read_state_checked(server)?.ok_or_else(|| {
+        runtime_t1(
+            "server.runtime.local_helper.state_missing",
+            state_file_path(server).display().to_string(),
+        )
+    })?;
+
+    if !helper_process_matches_server(server, state.helper_pid) {
+        return Err(runtime_t("server.runtime.local_helper.send_unavailable"));
+    }
+
+    let response = send_request(
+        &state,
+        LocalHelperRequest::TerminalInput {
+            auth_token: state.auth_token.clone(),
+            input: input.to_string(),
+        },
+    )?;
+    if response.ok {
+        Ok(())
+    } else {
+        Err(response.error.unwrap_or_else(|| "helper terminal input failed".to_string()))
+    }
+}
+
+pub fn resize_terminal(server: &ServerInstance, cols: u16, rows: u16) -> Result<(), String> {
+    let state = read_state_checked(server)?.ok_or_else(|| {
+        runtime_t1(
+            "server.runtime.local_helper.state_missing",
+            state_file_path(server).display().to_string(),
+        )
+    })?;
+
+    if !helper_process_matches_server(server, state.helper_pid) {
+        return Err(runtime_t("server.runtime.local_helper.send_unavailable"));
+    }
+
+    let response = send_request(
+        &state,
+        LocalHelperRequest::ResizeTerminal {
+            auth_token: state.auth_token.clone(),
+            cols,
+            rows,
+        },
+    )?;
+    if response.ok {
+        Ok(())
+    } else {
+        Err(response.error.unwrap_or_else(|| "helper terminal resize failed".to_string()))
     }
 }
 
@@ -521,11 +656,16 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         .port();
 
     let state_path = state_file_path(&server);
+    let configured_terminal_mode = server
+        .local_runtime()
+        .map(|runtime| runtime.terminal_mode)
+        .unwrap_or_default();
     let mut state = helper_ready_state(
         server_id,
         helper_pid,
         control_port,
         auth_token.clone(),
+        configured_terminal_mode,
         current_timestamp_secs(),
     );
     write_state_file(&state_path, &state)?;
@@ -539,31 +679,36 @@ fn run_helper(server_id: &str) -> Result<(), String> {
                 return Err(error);
             }
         };
-    let Some(mut child) = start_result
-        .process_handle
-        .and_then(RuntimeProcessHandle::into_local_child)
+    let Some(RuntimeProcessHandle::LocalProcess {
+        process: child,
+        readers,
+    }) = start_result.process_handle
     else {
         return Err(runtime_t("server.runtime.local_helper.child_handle_missing"));
     };
 
-    let child_pid = Some(child.id());
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
+    let child_pid = child.id();
+    let actual_terminal_mode = child.terminal_mode();
+    let actual_terminal_size = child.terminal_size();
+
+    let _ = terminal_transcript::reset_transcript(&server);
 
     manager
         .lock_processes()?
         .insert(server_id.to_string(), child);
 
-    if let Some(stdout) = stdout {
-        server_log_pipeline::spawn_server_output_reader(
+    if let Some(stdout) = readers.stdout {
+        spawn_local_terminal_reader(
             server_id.to_string(),
+            std::path::PathBuf::from(&server.path),
             LogStream::Stdout,
             stdout,
         );
     }
-    if let Some(stderr) = stderr {
-        server_log_pipeline::spawn_server_output_reader(
+    if let Some(stderr) = readers.stderr {
+        spawn_local_terminal_reader(
             server_id.to_string(),
+            std::path::PathBuf::from(&server.path),
             LogStream::Stderr,
             stderr,
         );
@@ -575,6 +720,13 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         child_pid,
         control_port,
         auth_token,
+        start_result.fallback.map(|fallback| LocalRuntimeFallbackInfo {
+            from_mode: fallback.from_mode,
+            to_mode: fallback.to_mode,
+            reason: fallback.reason,
+        }),
+        actual_terminal_mode,
+        actual_terminal_size,
         current_timestamp_secs(),
     );
     write_state_file(&state_path, &state)?;
@@ -631,7 +783,7 @@ mod tests {
     use super::status_snapshot;
     use super::{
         looks_like_local_runtime_helper_command, process_matches_server_helper_identity,
-        read_state_checked, send_command, state_file_path,
+        read_state_checked, resize_terminal, send_command, send_terminal_input, state_file_path,
     };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use crate::services::server::runtime::i18n::runtime_t;
@@ -659,6 +811,7 @@ mod tests {
                 custom_command: None,
                 java_path: "java".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
@@ -685,6 +838,10 @@ mod tests {
                     "runtime=local running=true source=helper child_pid=none control_port=25570"
                         .to_string(),
                 error_message: None,
+                fallback: None,
+                terminal_mode: Some(crate::models::server::LocalTerminalMode::PipeManaged),
+                terminal_cols: None,
+                terminal_rows: None,
                 updated_at: 123,
             },
         )
@@ -787,5 +944,67 @@ mod tests {
             .expect_err("invalid local helper state should abort send command");
 
         assert!(error.contains(&runtime_t("server.runtime.local_helper.state_parse_failed_prefix")));
+    }
+
+    #[test]
+    fn send_terminal_input_surfaces_invalid_state_file_json() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+
+        std::fs::write(state_file_path(&server), "{").expect("broken state file should be written");
+
+        let error = send_terminal_input(&server, "hi")
+            .expect_err("invalid local helper state should abort terminal input");
+
+        assert!(error.contains(&runtime_t("server.runtime.local_helper.state_parse_failed_prefix")));
+    }
+
+    #[test]
+    fn resize_terminal_surfaces_invalid_state_file_json() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+
+        std::fs::write(state_file_path(&server), "{").expect("broken state file should be written");
+
+        let error = resize_terminal(&server, 80, 24)
+            .expect_err("invalid local helper state should abort terminal resize");
+
+        assert!(error.contains(&runtime_t("server.runtime.local_helper.state_parse_failed_prefix")));
+    }
+
+    #[test]
+    fn effective_terminal_mode_prefers_fallback_target_when_present() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+
+        write_state_file(
+            &state_file_path(&server),
+            &super::LocalRuntimeState {
+                server_id: server.id.clone(),
+                helper_pid: 1,
+                child_pid: Some(2),
+                control_port: Some(25570),
+                auth_token: "token".to_string(),
+                running: true,
+                exit_code: None,
+                detail_message: "runtime=local running=true source=helper".to_string(),
+                error_message: None,
+                fallback: Some(super::LocalRuntimeFallbackInfo {
+                    from_mode: "pty_managed".to_string(),
+                    to_mode: "pipe_managed".to_string(),
+                    reason: "PTY init failed".to_string(),
+                }),
+                terminal_mode: Some(crate::models::server::LocalTerminalMode::PipeManaged),
+                terminal_cols: None,
+                terminal_rows: None,
+                updated_at: 123,
+            },
+        )
+        .expect("state file should be written");
+
+        let actual_mode = super::effective_terminal_mode(&server)
+            .expect("effective terminal mode should resolve");
+
+        assert_eq!(actual_mode, crate::models::server::LocalTerminalMode::PipeManaged);
     }
 }

@@ -1,7 +1,13 @@
 use std::io::{self, Write};
+use std::time::Duration;
 
-use crate::models::server::ServerInstance;
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size};
+
+use crate::models::server::{LocalTerminalMode, ServerInstance, ServerStatus};
 use crate::services::global;
+use crate::services::server::terminal_transcript;
+use crate::utils::server_status::{status_detail_field, status_detail_indicates_running};
 
 use super::server_control::{
     request_stop_with_feedback, restart_server_with_wait, DEFAULT_RESTART_STOP_TIMEOUT_SECS,
@@ -12,6 +18,11 @@ use super::server_manage_render::{render_server_inspect_lines, render_server_sta
 use super::server_shared::{trace_cli_action, trace_cli_error};
 
 pub(super) fn attach_server_cli(server: &ServerInstance) {
+    if should_attach_interactive_terminal(server) {
+        attach_server_terminal_cli(server);
+        return;
+    }
+
     trace_cli_action("cli_session_enter", &format!("server_id={}", server.id));
     println!("已进入服务器 CLI 会话: {}", server.name);
     println!(
@@ -37,6 +48,177 @@ pub(super) fn attach_server_cli(server: &ServerInstance) {
             break;
         }
     }
+}
+
+fn should_attach_interactive_terminal(server: &ServerInstance) -> bool {
+    let status = global::server_manager().get_server_status(&server.id);
+    let detail = status.detail_message.as_deref();
+
+    let status_looks_running = matches!(
+        status.status,
+        ServerStatus::Running | ServerStatus::Starting | ServerStatus::Stopping
+    ) || status_detail_indicates_running(detail);
+
+    if !status_looks_running {
+        return false;
+    }
+
+    if let Some(terminal) = status.terminal.as_ref() {
+        return terminal.attach_supported || terminal.interactive_supported;
+    }
+
+    if let Some(attach) = status_detail_field(detail, "attach") {
+        return attach.eq_ignore_ascii_case("true");
+    }
+
+    if let Some(interactive) = status_detail_field(detail, "interactive") {
+        return interactive.eq_ignore_ascii_case("true");
+    }
+
+    if let Some(backend) = status_detail_field(detail, "terminal_backend") {
+        return backend.eq_ignore_ascii_case("pty");
+    }
+
+    server
+        .local_runtime()
+        .is_some_and(|runtime| runtime.terminal_mode == LocalTerminalMode::PtyManaged)
+}
+
+fn attach_server_terminal_cli(server: &ServerInstance) {
+    trace_cli_action("cli_terminal_session_enter", &format!("server_id={}", server.id));
+    println!("已连接 PTY 终端会话: {}", server.name);
+    println!("按 Ctrl+] 退出当前 attach；不会停止服务端。\n");
+
+    struct RawModeGuard;
+
+    impl Drop for RawModeGuard {
+        fn drop(&mut self) {
+            let _ = disable_raw_mode();
+        }
+    }
+
+    if let Err(error) = enable_raw_mode() {
+        eprintln!("启用终端 raw 模式失败: {}", error);
+        return;
+    }
+    let _raw_mode_guard = RawModeGuard;
+
+    let mut cursor = 0_u64;
+    let server_id = server.id.clone();
+
+    if let Ok((cols, rows)) = size() {
+        let _ = global::server_manager().resize_terminal(&server_id, cols, rows);
+    }
+
+    loop {
+        match terminal_transcript::read_transcript_checked(&server_id, cursor, Some(128 * 1024)) {
+            Ok(chunk) => {
+                cursor = chunk.next_cursor;
+                if !chunk.data.is_empty() {
+                    print!("{}", chunk.data);
+                    let _ = io::stdout().flush();
+                }
+            }
+            Err(error) => {
+                eprintln!("读取终端 transcript 失败: {}", error);
+                break;
+            }
+        }
+
+        match event::poll(Duration::from_millis(120)) {
+            Ok(true) => match event::read() {
+                Ok(Event::Key(key_event)) => {
+                    if !matches!(key_event.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
+                        continue;
+                    }
+
+                    if should_exit_terminal_attach(key_event) {
+                        break;
+                    }
+
+                    if let Some(input) = key_event_to_terminal_input(key_event) {
+                        if let Err(error) =
+                            global::server_manager().send_terminal_input(&server_id, &input)
+                        {
+                            eprintln!("发送终端输入失败: {}", error);
+                            break;
+                        }
+                    }
+                }
+                Ok(Event::Paste(text)) => {
+                    if let Err(error) = global::server_manager().send_terminal_input(&server_id, &text)
+                    {
+                        eprintln!("发送终端输入失败: {}", error);
+                        break;
+                    }
+                }
+                Ok(Event::Resize(cols, rows)) => {
+                    let _ = global::server_manager().resize_terminal(&server_id, cols, rows);
+                }
+                Ok(_) => {}
+                Err(error) => {
+                    eprintln!("读取终端输入事件失败: {}", error);
+                    break;
+                }
+            }
+            Ok(false) => {}
+            Err(error) => {
+                eprintln!("轮询终端输入事件失败: {}", error);
+                break;
+            }
+        }
+    }
+
+    println!();
+    trace_cli_action("cli_terminal_session_exit", &format!("server_id={}", server.id));
+}
+
+fn should_exit_terminal_attach(key_event: KeyEvent) -> bool {
+    key_event.modifiers.contains(KeyModifiers::CONTROL)
+        && matches!(key_event.code, KeyCode::Char(']'))
+}
+
+fn key_event_to_terminal_input(key_event: KeyEvent) -> Option<String> {
+    let mut prefix = String::new();
+    if key_event.modifiers.contains(KeyModifiers::ALT) {
+        prefix.push('\u{1b}');
+    }
+
+    let suffix = match key_event.code {
+        KeyCode::Backspace => "\u{7f}".to_string(),
+        KeyCode::Enter => "\r".to_string(),
+        KeyCode::Left => "\u{1b}[D".to_string(),
+        KeyCode::Right => "\u{1b}[C".to_string(),
+        KeyCode::Up => "\u{1b}[A".to_string(),
+        KeyCode::Down => "\u{1b}[B".to_string(),
+        KeyCode::Home => "\u{1b}[H".to_string(),
+        KeyCode::End => "\u{1b}[F".to_string(),
+        KeyCode::PageUp => "\u{1b}[5~".to_string(),
+        KeyCode::PageDown => "\u{1b}[6~".to_string(),
+        KeyCode::Tab => "\t".to_string(),
+        KeyCode::BackTab => "\u{1b}[Z".to_string(),
+        KeyCode::Delete => "\u{1b}[3~".to_string(),
+        KeyCode::Insert => "\u{1b}[2~".to_string(),
+        KeyCode::Esc => "\u{1b}".to_string(),
+        KeyCode::Char(character) => {
+            if key_event.modifiers.contains(KeyModifiers::CONTROL) {
+                let upper = character.to_ascii_uppercase();
+                if upper.is_ascii() && (('@'..='_').contains(&upper)) {
+                    char::from((upper as u8) & 0x1f_u8).to_string()
+                } else if character == ' ' {
+                    "\0".to_string()
+                } else {
+                    return None;
+                }
+            } else {
+                character.to_string()
+            }
+        }
+        _ => return None,
+    };
+
+    prefix.push_str(&suffix);
+    Some(prefix)
 }
 
 fn handle_cli_session_input(server: &ServerInstance, trimmed: &str) -> bool {
@@ -120,8 +302,11 @@ fn restart_server_interactive(server: &ServerInstance) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::handle_cli_session_input;
-    use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
+    use super::{handle_cli_session_input, key_event_to_terminal_input, should_exit_terminal_attach};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use crate::models::server::{
+        LocalRuntimeConfig, LocalTerminalMode, ServerInstance, ServerRuntimeConfig,
+    };
 
     fn sample_server() -> ServerInstance {
         ServerInstance {
@@ -144,6 +329,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
@@ -161,5 +347,23 @@ mod tests {
     fn handle_cli_session_input_returns_false_for_inspect_command() {
         let server = sample_server();
         assert!(!handle_cli_session_input(&server, "/inspect"));
+    }
+
+    #[test]
+    fn ctrl_right_bracket_exits_terminal_attach() {
+        let key_event = KeyEvent::new(KeyCode::Char(']'), KeyModifiers::CONTROL);
+        assert!(should_exit_terminal_attach(key_event));
+    }
+
+    #[test]
+    fn ctrl_c_maps_to_etx_for_terminal_attach() {
+        let key_event = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+        assert_eq!(key_event_to_terminal_input(key_event).as_deref(), Some("\u{3}"));
+    }
+
+    #[test]
+    fn arrow_keys_map_to_ansi_sequences() {
+        let key_event = KeyEvent::new(KeyCode::Up, KeyModifiers::NONE);
+        assert_eq!(key_event_to_terminal_input(key_event).as_deref(), Some("\u{1b}[A"));
     }
 }

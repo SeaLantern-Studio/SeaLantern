@@ -495,12 +495,12 @@ mod tests {
         redact_secret, render_server_dedupe_report_lines, render_server_inspect_lines,
         render_server_list_lines, render_server_management_help, render_server_status_lines,
     };
-    use crate::models::server::{
-        CpuPolicyConfig, CpuPolicyMode, DockerBackendKind, DockerCommandMode,
-        DockerItzgRuntimeConfig, JvmPresetConfig, JvmPresetId, LocalRuntimeConfig, PublishedPort,
-        RconConfig, ServerInstance, ServerRuntimeConfig, ServerStatus, ServerStatusInfo,
-        VolumeMount,
-    };
+use crate::models::server::{
+    CpuPolicyConfig, CpuPolicyMode, DockerBackendKind, DockerCommandMode,
+    DockerItzgRuntimeConfig, JvmPresetConfig, JvmPresetId, LocalRuntimeConfig,
+    LocalTerminalMode, PublishedPort, RconConfig, ServerInstance, ServerRuntimeConfig,
+    ServerStatus, ServerStatusInfo, VolumeMount,
+};
     use crate::services::server::manager::{
         DuplicateServerRecordEntry, DuplicateServerRecordGroup, ServerRegistryDedupeReport,
     };
@@ -515,6 +515,7 @@ mod tests {
             uptime: Some(88),
             detail_message: Some("runtime=local/jar".to_string()),
             error_message: None,
+            terminal: None,
         }
     }
 
@@ -544,6 +545,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
@@ -683,6 +685,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: None,
+            terminal: None,
         };
 
         let joined = render_server_status_lines(&server, &status).join("\n");
@@ -705,6 +708,7 @@ mod tests {
                 "runtime=docker_itzg container=sealantern-paper state=missing".to_string(),
             ),
             error_message: None,
+            terminal: None,
         };
         let missing_lines = render_server_status_lines(&server, &missing_status).join("\n");
         assert!(missing_lines
@@ -720,6 +724,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: Some("Docker 容器已退出: container=sealantern-paper, status=exited, exit_code=137".to_string()),
+            terminal: None,
         };
         let error_lines = render_server_status_lines(&server, &error_status).join("\n");
         assert!(error_lines.contains("hint: sealantern server logs paper-docker-id --lines 100"));

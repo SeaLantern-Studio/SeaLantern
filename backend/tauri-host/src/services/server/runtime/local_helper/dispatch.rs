@@ -29,6 +29,12 @@ pub(super) fn handle_connection(
         LocalHelperRequest::Send { command, .. } => DispatchOutcome::stay_running(
             command_response(manager.send_command(&server.id, &command)),
         ),
+        LocalHelperRequest::TerminalInput { input, .. } => DispatchOutcome::stay_running(
+            command_response(manager.send_terminal_input(&server.id, &input)),
+        ),
+        LocalHelperRequest::ResizeTerminal { cols, rows, .. } => DispatchOutcome::stay_running(
+            command_response(manager.resize_terminal(&server.id, cols, rows)),
+        ),
         LocalHelperRequest::Stop { .. } => DispatchOutcome::request_stop_async(server),
         LocalHelperRequest::ForceStop { .. } => DispatchOutcome::from_control_result(
             LocalServerRuntime.force_stop_with_manager(manager, server),
@@ -52,6 +58,9 @@ fn helper_status_snapshot(
             detail_message: "runtime=local running=true source=helper startup=preparing"
                 .to_string(),
             error_message: None,
+            terminal_mode: state.terminal_mode,
+            terminal_cols: state.terminal_cols,
+            terminal_rows: state.terminal_rows,
         });
     }
 
@@ -148,6 +157,9 @@ mod tests {
             exit_code: None,
             detail_message: "runtime=local running=true source=helper pid=42".to_string(),
             error_message: None,
+            terminal_mode: None,
+            terminal_cols: None,
+            terminal_rows: None,
         };
 
         let outcome = DispatchOutcome::stay_running(status_response(snapshot.clone()));

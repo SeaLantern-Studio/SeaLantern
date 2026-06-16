@@ -18,6 +18,10 @@ fn default_runtime_kind() -> String {
     "local".to_string()
 }
 
+fn default_local_terminal_mode() -> LocalTerminalMode {
+    LocalTerminalMode::PipeManaged
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ServerStatus {
     Stopped,
@@ -79,10 +83,25 @@ pub struct LocalRuntimeConfig {
     pub java_path: String,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default = "default_local_terminal_mode")]
+    pub terminal_mode: LocalTerminalMode,
     #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
     pub jvm_preset: JvmPresetConfig,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LocalTerminalMode {
+    PipeManaged,
+    PtyManaged,
+}
+
+impl Default for LocalTerminalMode {
+    fn default() -> Self {
+        Self::PipeManaged
+    }
 }
 
 impl ServerInstance {
@@ -137,6 +156,7 @@ impl Default for ServerRuntimeConfig {
             custom_command: None,
             java_path: String::new(),
             jvm_args: Vec::new(),
+            terminal_mode: default_local_terminal_mode(),
             cpu_policy: CpuPolicyConfig::default(),
             jvm_preset: JvmPresetConfig::default(),
         })
@@ -153,6 +173,20 @@ pub struct ServerStatusInfo {
     pub detail_message: Option<String>,
     #[serde(default)]
     pub error_message: Option<String>,
+    #[serde(default)]
+    pub terminal: Option<TerminalStatusInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TerminalStatusInfo {
+    pub backend_kind: String,
+    pub interactive_supported: bool,
+    pub transcript_supported: bool,
+    pub attach_supported: bool,
+    #[serde(default)]
+    pub cols: Option<u16>,
+    #[serde(default)]
+    pub rows: Option<u16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,6 +209,8 @@ pub struct CreateServerRequest {
     pub custom_command: Option<String>,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default = "default_local_terminal_mode")]
+    pub terminal_mode: LocalTerminalMode,
     #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
@@ -198,6 +234,8 @@ pub struct ImportServerRequest {
     pub online_mode: bool,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default = "default_local_terminal_mode")]
+    pub terminal_mode: LocalTerminalMode,
     #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
@@ -230,6 +268,8 @@ pub struct ImportModpackRequest {
     pub mc_version: Option<String>,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default = "default_local_terminal_mode")]
+    pub terminal_mode: LocalTerminalMode,
     #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
@@ -256,6 +296,8 @@ pub struct AddExistingServerRequest {
     pub mc_version: Option<String>,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default = "default_local_terminal_mode")]
+    pub terminal_mode: LocalTerminalMode,
     #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
@@ -303,6 +345,7 @@ mod tests {
                 custom_command: Some("java -jar server.jar nogui".to_string()),
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: vec!["-Xmx2G".to_string()],
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),
@@ -463,6 +506,7 @@ mod tests {
             uptime: Some(99),
             detail_message: Some("runtime=local/jar".to_string()),
             error_message: Some("runtime placeholder".to_string()),
+            terminal: None,
         })
         .unwrap();
 

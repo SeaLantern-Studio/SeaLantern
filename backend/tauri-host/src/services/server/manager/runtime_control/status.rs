@@ -17,6 +17,7 @@ pub(super) fn get_server_status(manager: &ServerManager, id: &str) -> ServerStat
                 uptime: None,
                 detail_message: None,
                 error_message: Some(err),
+                terminal: None,
             };
         }
     };
@@ -29,6 +30,7 @@ pub(super) fn get_server_status(manager: &ServerManager, id: &str) -> ServerStat
             uptime: None,
             detail_message: None,
             error_message: Some(manager_t1("server.manager.server_not_found", id.to_string())),
+            terminal: None,
         };
     };
 
@@ -42,6 +44,7 @@ pub(super) fn get_server_status(manager: &ServerManager, id: &str) -> ServerStat
                 uptime: None,
                 detail_message: None,
                 error_message: Some(err),
+                terminal: None,
             };
         }
     };
@@ -56,6 +59,7 @@ pub(super) fn get_server_status(manager: &ServerManager, id: &str) -> ServerStat
                 uptime: None,
                 detail_message: None,
                 error_message: Some(err),
+                terminal: None,
             };
         }
     };
@@ -71,6 +75,7 @@ pub(super) fn get_server_status(manager: &ServerManager, id: &str) -> ServerStat
         uptime,
         detail_message: snapshot.detail_message,
         error_message: snapshot.error_message,
+        terminal: snapshot.terminal,
     }
 }
 

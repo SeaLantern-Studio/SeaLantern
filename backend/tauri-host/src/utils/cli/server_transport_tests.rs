@@ -481,6 +481,7 @@ fn status_blocks_start_for_docker_error_snapshot_that_is_still_running() {
                 .to_string(),
         ),
         error_message: Some("Docker 容器健康检查失败".to_string()),
+        terminal: None,
     };
 
     assert!(status_blocks_start(&status));

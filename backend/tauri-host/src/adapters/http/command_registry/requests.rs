@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use crate::models::server::{CpuPolicyConfig, JvmPresetConfig};
+use crate::models::server::{CpuPolicyConfig, JvmPresetConfig, LocalTerminalMode};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +23,8 @@ pub(super) struct CreateServerRequest {
     pub custom_command: Option<String>,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub terminal_mode: LocalTerminalMode,
     #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
@@ -97,6 +99,8 @@ pub(super) struct ImportServerRequest {
     #[serde(default)]
     pub jvm_args: Vec<String>,
     #[serde(default)]
+    pub terminal_mode: LocalTerminalMode,
+    #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
     pub jvm_preset: JvmPresetConfig,
@@ -120,6 +124,8 @@ pub(super) struct ImportModpackRequest {
     pub mc_version: Option<String>,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub terminal_mode: LocalTerminalMode,
     #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]
@@ -211,6 +217,8 @@ pub(super) struct AddExistingServerRequest {
     pub mc_version: Option<String>,
     #[serde(default)]
     pub jvm_args: Vec<String>,
+    #[serde(default)]
+    pub terminal_mode: LocalTerminalMode,
     #[serde(default)]
     pub cpu_policy: CpuPolicyConfig,
     #[serde(default)]

@@ -1,6 +1,7 @@
 export type ServerRuntimeKind = "local" | "docker_itzg";
 
 export type LocalStartupMode = "starter" | "jar" | "bat" | "sh" | "ps1" | "custom";
+export type LocalTerminalMode = "pipe_managed" | "pty_managed";
 
 export type CpuPolicyMode = "off" | "count" | "explicit";
 
@@ -29,6 +30,7 @@ export interface LocalRuntimeConfig {
   custom_command?: string | null;
   java_path: string;
   jvm_args: string[];
+  terminal_mode: LocalTerminalMode;
   cpu_policy: CpuPolicyConfig;
   jvm_preset: JvmPresetConfig;
 }

@@ -14,7 +14,6 @@ mod runtime_start;
 pub(crate) mod startup_support;
 
 use std::collections::{HashMap, HashSet};
-use std::process::Child;
 use std::sync::Mutex;
 
 use crate::models::server::*;
@@ -31,6 +30,7 @@ use sl_server_info::log::LogStream;
 use super::log_pipeline as server_log_pipeline;
 use super::manager::process::force_kill_process_tree;
 use super::runtime::local::LocalServerRuntime;
+use super::runtime::local_process::ManagedLocalProcess;
 pub(crate) use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
 use common::{get_data_dir_checked, validate_server_name};
 use fs::{
@@ -139,7 +139,7 @@ pub struct StartServerReport {
 /// 服务器运行和配置管理器
 pub struct ServerManager {
     pub servers: Mutex<Vec<ServerInstance>>,
-    pub processes: Mutex<HashMap<String, Child>>,
+    pub processes: Mutex<HashMap<String, ManagedLocalProcess>>,
     pub stopping_servers: Mutex<HashSet<String>>,
     pub starting_servers: Mutex<HashSet<String>>,
     pub pending_force_stop_tokens: Mutex<HashMap<String, (String, u64)>>,
@@ -275,7 +275,7 @@ impl ServerManager {
 
     pub(crate) fn lock_processes(
         &self,
-    ) -> Result<std::sync::MutexGuard<'_, HashMap<String, Child>>, String> {
+    ) -> Result<std::sync::MutexGuard<'_, HashMap<String, ManagedLocalProcess>>, String> {
         self.processes
             .lock()
             .map_err(|_| "processes lock poisoned".to_string())
@@ -294,7 +294,10 @@ impl ServerManager {
         Ok(servers.iter().find(|s| s.id == id).cloned())
     }
 
-    pub(crate) fn force_kill_local_process(&self, child: &mut Child) -> Result<(), String> {
+    pub(crate) fn force_kill_local_process(
+        &self,
+        child: &mut ManagedLocalProcess,
+    ) -> Result<(), String> {
         force_kill_process_tree(child)
     }
 
@@ -424,29 +427,29 @@ impl ServerManager {
             )?;
 
             if let Some(process_handle) = start_result.process_handle {
-                if let Some(mut child) = process_handle.into_local_child() {
-                    println!("Java进程已启动，PID: {:?}", child.id());
+                let runtime::RuntimeProcessHandle::LocalProcess {
+                    process: child,
+                    readers,
+                } = process_handle;
 
-                    let stdout = child.stdout.take();
-                    let stderr = child.stderr.take();
+                println!("Java进程已启动，PID: {:?}", child.id());
 
-                    self.lock_processes()?.insert(id.to_string(), child);
-                    self.mark_starting(id);
+                self.lock_processes()?.insert(id.to_string(), child);
+                self.mark_starting(id);
 
-                    if let Some(stdout) = stdout {
-                        server_log_pipeline::spawn_server_output_reader(
-                            id.to_string(),
-                            LogStream::Stdout,
-                            stdout,
-                        );
-                    }
-                    if let Some(stderr) = stderr {
-                        server_log_pipeline::spawn_server_output_reader(
-                            id.to_string(),
-                            LogStream::Stderr,
-                            stderr,
-                        );
-                    }
+                if let Some(stdout) = readers.stdout {
+                    server_log_pipeline::spawn_server_output_reader(
+                        id.to_string(),
+                        LogStream::Stdout,
+                        stdout,
+                    );
+                }
+                if let Some(stderr) = readers.stderr {
+                    server_log_pipeline::spawn_server_output_reader(
+                        id.to_string(),
+                        LogStream::Stderr,
+                        stderr,
+                    );
                 }
             }
 
@@ -511,6 +514,28 @@ impl ServerManager {
         })();
 
         log_manager_result("send_command", &detail, result)
+    }
+
+    pub fn send_terminal_input(&self, id: &str, input: &str) -> Result<(), String> {
+        let detail = format!("server_id={} bytes={}", id, input.len());
+        logger::log_user_action("server.manager", "send_terminal_input", &detail);
+        let result = (|| {
+            let server = self.find_server_clone(id)?;
+            LocalServerRuntime.send_terminal_input_with_manager(self, &server, input)
+        })();
+
+        log_manager_result("send_terminal_input", &detail, result)
+    }
+
+    pub fn resize_terminal(&self, id: &str, cols: u16, rows: u16) -> Result<(), String> {
+        let detail = format!("server_id={} cols={} rows={}", id, cols, rows);
+        logger::log_user_action("server.manager", "resize_terminal", &detail);
+        let result = (|| {
+            let server = self.find_server_clone(id)?;
+            LocalServerRuntime.resize_terminal_with_manager(self, &server, cols, rows)
+        })();
+
+        log_manager_result("resize_terminal", &detail, result)
     }
 
     /// 读取全部服务器列表
@@ -657,6 +682,34 @@ impl ServerManager {
         }
     }
 
+    pub fn update_server_terminal_mode(
+        &self,
+        id: &str,
+        terminal_mode: crate::models::server::LocalTerminalMode,
+    ) -> Result<ServerInstance, String> {
+        {
+            let procs = self.lock_processes()?;
+            if procs.contains_key(id) {
+                return Err("server is running; stop it before changing terminal mode".to_string());
+            }
+        }
+
+        let mut servers = self.lock_servers()?;
+        if let Some(server) = servers.iter_mut().find(|s| s.id == id) {
+            let runtime = server
+                .local_runtime_mut()
+                .ok_or_else(|| "terminal mode update only supports local runtime".to_string())?;
+            runtime.terminal_mode = terminal_mode;
+
+            let updated_server = server.clone();
+            drop(servers);
+            self.save()?;
+            Ok(updated_server)
+        } else {
+            Err(manager_t("server.manager.server_not_found_short"))
+        }
+    }
+
     /// 更新服务器路径和启动信息
     ///
     /// # Parameters
@@ -760,9 +813,10 @@ mod tests {
         CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
         JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
+    use crate::services::server::runtime::local_process::ManagedLocalProcess;
     use crate::test_support::{lock_env, EnvGuard};
     use std::collections::BTreeMap;
-    use std::process::{Child, Command};
+    use std::process::Command;
     use std::sync::Arc;
 
     fn sample_mismatched_runtime_server(path: String) -> ServerInstance {
@@ -822,27 +876,30 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),
         }
     }
 
-    fn spawn_sleep_process() -> Child {
+    fn spawn_sleep_process() -> ManagedLocalProcess {
         #[cfg(windows)]
         {
-            Command::new("powershell")
+            let child = Command::new("powershell")
                 .args(["-NoProfile", "-Command", "Start-Sleep -Seconds 30"])
                 .spawn()
-                .expect("sleep process should spawn")
+                .expect("sleep process should spawn");
+            ManagedLocalProcess::from_pipe_child(child).process
         }
 
         #[cfg(not(windows))]
         {
-            Command::new("sh")
+            let child = Command::new("sh")
                 .args(["-c", "sleep 30"])
                 .spawn()
-                .expect("sleep process should spawn")
+                .expect("sleep process should spawn");
+            ManagedLocalProcess::from_pipe_child(child).process
         }
     }
 

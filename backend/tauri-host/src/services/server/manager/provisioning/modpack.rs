@@ -95,6 +95,7 @@ mod tests {
             core_type: None,
             mc_version: None,
             jvm_args: Vec::new(),
+            terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
             cpu_policy: crate::models::server::CpuPolicyConfig::default(),
             jvm_preset: crate::models::server::JvmPresetConfig::default(),
         }

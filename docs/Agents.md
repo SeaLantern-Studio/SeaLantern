@@ -1,6 +1,6 @@
 ---
 module-name: sealantern-docs-agents-guide
-update-time: 2026-06-06
+update-time: 2026-06-16
 description: Repo-level agent guide for SeaLantern, focused on module discovery, backend crate boundaries, documentation entrypoints, and common safe edit paths.
 tag: ["repo-guide", "agents", "docs", "architecture", "workflow"]
 ---
@@ -31,6 +31,9 @@ When work becomes module-specific, switch to that module's own `Agents.md` at th
   - `Agents-Example-Module.md`
   - `STRUCTURE.md`
   - `CONTRIBUTING.md`
+  - `design/`
+    - `README.md`
+    - `local-runtime-pty-terminal.md`
   - `cli-server-runtime-guide.md`
   - `language-system.md`
   - `README/`
@@ -45,6 +48,10 @@ When work becomes module-specific, switch to that module's own `Agents.md` at th
 [`docs/STRUCTURE.md`](./STRUCTURE.md): Human-readable project structure overview. | Use it to understand top-level layout and current backend crate composition.
 
 [`docs/CONTRIBUTING.md`](./CONTRIBUTING.md): Contributor workflow and collaboration expectations. | Read before changing contributor-facing workflows or contribution instructions.
+
+[`docs/design/README.md`](./design/README.md): Design-doc entry for architecture and phased implementation notes. | Read this before editing or adding design documents.
+
+[`docs/design/local-runtime-pty-terminal.md`](./design/local-runtime-pty-terminal.md): Local runtime PTY terminal design and rollout baseline. | Use when working on local terminal mode, transcript/log split, frontend terminal view, or CLI attach behavior.
 
 [`docs/cli-server-runtime-guide.md`](./cli-server-runtime-guide.md): Guide for the `sealantern server ...` CLI runtime flows. | Use when editing CLI server lifecycle, local runtime, or Docker runtime flows.
 
@@ -86,6 +93,8 @@ Use these routing rules before editing:
   go to `backend/server-local-setup-core/Agents.md`
 - Tauri commands, app services, plugin runtime, host orchestration:
   go to `backend/tauri-host/Agents.md`
+- local PTY terminal, transcript/log split, terminal status payloads:
+  read `docs/design/local-runtime-pty-terminal.md` and then go to `backend/tauri-host/Agents.md`
 - Headless HTTP, logging, path helpers, status parsing, Tokio setup:
   go to `backend/runtime-core/Agents.md`
 - README or docs navigation changes:

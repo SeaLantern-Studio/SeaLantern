@@ -3,13 +3,15 @@ pub mod docker_itzg;
 pub(crate) mod i18n;
 pub mod local;
 pub mod local_helper;
+pub mod local_terminal_reader;
+pub mod local_process;
 
 use once_cell::sync::Lazy;
-use std::process::Child;
 
-use crate::models::server::{ServerInstance, ServerRuntimeConfig, ServerStatus};
+use crate::models::server::{ServerInstance, ServerRuntimeConfig, ServerStatus, TerminalStatusInfo};
 use crate::services::server::manager::ServerManager;
 use crate::services::server::runtime::i18n::runtime_t2;
+use crate::services::server::runtime::local_process::{LocalProcessReaders, ManagedLocalProcess};
 
 pub struct RuntimeStartRequest<'a> {
     pub server_id: &'a str,
@@ -22,7 +24,10 @@ pub struct RuntimeStartResult {
 }
 
 pub enum RuntimeProcessHandle {
-    LocalChild(Child),
+    LocalProcess {
+        process: ManagedLocalProcess,
+        readers: LocalProcessReaders,
+    },
 }
 
 pub struct RuntimeStatusSnapshot {
@@ -30,6 +35,7 @@ pub struct RuntimeStatusSnapshot {
     pub pid: Option<u32>,
     pub detail_message: Option<String>,
     pub error_message: Option<String>,
+    pub terminal: Option<TerminalStatusInfo>,
 }
 
 pub struct RuntimeForceStopPreparation {

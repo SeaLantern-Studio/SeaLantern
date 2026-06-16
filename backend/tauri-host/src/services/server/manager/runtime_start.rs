@@ -114,7 +114,10 @@ pub(crate) fn start_local_runtime(
     );
 
     Ok(RuntimeStartResult {
-        process_handle: Some(RuntimeProcessHandle::LocalChild(launch_plan.child)),
+        process_handle: Some(RuntimeProcessHandle::LocalProcess {
+            process: launch_plan.child.process,
+            readers: launch_plan.child.readers,
+        }),
         fallback: launch_plan.fallback_info,
     })
 }

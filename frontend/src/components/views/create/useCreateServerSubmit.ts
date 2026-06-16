@@ -2,7 +2,7 @@ import { computed, type Ref } from "vue";
 import { useRouter } from "vue-router";
 import { serverApi } from "@api/server";
 import type { StartupCandidate } from "@components/views/create/startupTypes";
-import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
+import type { CpuPolicyConfig, JvmPresetConfig, LocalTerminalMode } from "@type/server";
 import {
   containsIoRedirection,
   isStrictChildPath,
@@ -42,6 +42,7 @@ interface UseCreateServerSubmitOptions {
   jvmArgsText: Ref<string>;
   jvmPreset: Ref<JvmPresetConfig>;
   cpuPolicy: Ref<CpuPolicyConfig>;
+  terminalMode: Ref<LocalTerminalMode>;
   startCreating: () => void;
   stopCreating: () => void;
   showError: (message: string) => void;
@@ -267,6 +268,7 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
         coreType: resolvedCoreType || undefined,
         mcVersion: resolvedMcVersion || undefined,
         jvmArgs: serializeJvmArgsText(options.jvmArgsText.value),
+        terminalMode: options.terminalMode.value,
         cpuPolicy: normalizeCpuPolicy(options.cpuPolicy.value),
         jvmPreset: normalizeJvmPreset(options.jvmPreset.value),
       });

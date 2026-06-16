@@ -16,7 +16,7 @@ import {
   serializeJvmArgsText,
 } from "@utils/serverStartupConfig";
 import { compactPathMiddle } from "@utils/pathDisplay";
-import type { JvmPresetId, LocalStartupMode } from "@type/server";
+import type { JvmPresetId, LocalStartupMode, LocalTerminalMode } from "@type/server";
 import { useServerStore } from "@stores/serverStore";
 
 const props = defineProps<{
@@ -53,6 +53,19 @@ const jvmPresetOptions = computed(() =>
     subLabel: i18n.t(`common.jvm_preset_${preset}_desc`),
   })),
 );
+
+const terminalModeOptions = computed(() => [
+  {
+    value: "pipe_managed",
+    label: "Pipe Managed",
+    subLabel: "Compatibility-first managed pipe console",
+  },
+  {
+    value: "pty_managed",
+    label: "PTY Managed",
+    subLabel: "Interactive managed terminal with native console features",
+  },
+]);
 
 const javaOptions = computed(() => {
   return startupConfig.javaList.value.map((java) => {
@@ -379,6 +392,25 @@ async function pickJavaFile() {
             />
           </div>
         </div>
+        <div class="config-entry glass-card config-entry--stacked">
+          <div class="entry-header">
+            <div class="entry-key-row">
+              <span class="entry-key">Terminal Mode</span>
+            </div>
+            <p class="entry-desc text-caption">
+              PTY mode enables the server's native terminal features. Pipe mode keeps the legacy managed log console behavior.
+            </p>
+          </div>
+          <div class="entry-control entry-control--full">
+            <SLSelect
+              :model-value="startupConfig.terminalMode.value"
+              :options="terminalModeOptions"
+              :disabled="startupConfig.saving.value"
+              @update:model-value="startupConfig.terminalMode.value = $event as LocalTerminalMode"
+            />
+          </div>
+        </div>
+
         <div class="config-entry glass-card config-entry--stacked">
           <div class="entry-header">
             <div class="entry-key-row">

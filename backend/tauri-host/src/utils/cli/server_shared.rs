@@ -202,7 +202,8 @@ mod tests {
     use super::{render_created_server_lines, CliServerRuntimeKind};
     use crate::models::server::{
         CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
-        JvmPresetConfig, LocalRuntimeConfig, RconConfig, ServerInstance, ServerRuntimeConfig,
+        JvmPresetConfig, LocalRuntimeConfig, LocalTerminalMode, RconConfig, ServerInstance,
+        ServerRuntimeConfig,
     };
     use crate::utils::cli::server_test_support::{lock_env, EnvGuard};
     use std::collections::BTreeMap;
@@ -228,6 +229,7 @@ mod tests {
                 custom_command: Some("java -jar server.jar nogui".to_string()),
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),

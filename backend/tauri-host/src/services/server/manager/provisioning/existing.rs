@@ -113,6 +113,7 @@ pub(super) fn add_existing_server(
             custom_command,
             java_path: req.java_path,
             jvm_args: req.jvm_args,
+            terminal_mode: req.terminal_mode,
             cpu_policy: req.cpu_policy,
             jvm_preset: req.jvm_preset,
         }),
@@ -163,6 +164,7 @@ mod tests {
             core_type: Some("Paper".to_string()),
             mc_version: Some("1.21.1".to_string()),
             jvm_args: Vec::new(),
+            terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
             cpu_policy: CpuPolicyConfig::default(),
             jvm_preset: JvmPresetConfig::default(),
         };
@@ -199,6 +201,7 @@ mod tests {
             core_type: None,
             mc_version: None,
             jvm_args: Vec::new(),
+            terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
             cpu_policy: CpuPolicyConfig::default(),
             jvm_preset: JvmPresetConfig::default(),
         };

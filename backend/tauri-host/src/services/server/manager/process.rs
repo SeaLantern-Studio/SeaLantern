@@ -1,4 +1,5 @@
-use std::process::{Child, Command};
+use crate::services::server::runtime::local_process::ManagedLocalProcess;
+use std::process::Command;
 
 #[cfg(unix)]
 use std::collections::HashSet;
@@ -80,7 +81,7 @@ fn force_kill_process_tree_by_pid_unix(root_pid: u32) -> Result<(), String> {
 }
 
 #[cfg(unix)]
-pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
+pub(super) fn force_kill_process_tree(child: &mut ManagedLocalProcess) -> Result<(), String> {
     let root_pid = child.id();
     force_kill_process_tree_by_pid_unix(root_pid)?;
     let _ = child.wait();
@@ -88,8 +89,11 @@ pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
 }
 
 #[cfg(windows)]
-pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
-    let pid_str = child.id().to_string();
+pub(super) fn force_kill_process_tree(child: &mut ManagedLocalProcess) -> Result<(), String> {
+    let pid_str = child
+        .id()
+        .ok_or_else(|| manager_t1("server.manager.process_taskkill_pid_not_terminated", "unknown"))?
+        .to_string();
     let status = Command::new("taskkill")
         .args(["/PID", &pid_str, "/T", "/F"])
         .status()
@@ -186,7 +190,7 @@ pub(crate) fn force_kill_process_tree_by_pid(pid: u32) -> Result<(), String> {
 }
 
 #[cfg(not(any(unix, windows)))]
-pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
+pub(super) fn force_kill_process_tree(child: &mut ManagedLocalProcess) -> Result<(), String> {
     child
         .kill()
         .map_err(|e| manager_t1("server.manager.process_kill_failed", e.to_string()))?;

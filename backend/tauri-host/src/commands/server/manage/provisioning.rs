@@ -20,6 +20,7 @@ pub(super) fn create_server(
     startup_mode: String,
     custom_command: Option<String>,
     jvm_args: Vec<String>,
+    terminal_mode: LocalTerminalMode,
     cpu_policy: CpuPolicyConfig,
     jvm_preset: JvmPresetConfig,
 ) -> Result<ServerInstance, String> {
@@ -37,6 +38,7 @@ pub(super) fn create_server(
         startup_mode,
         custom_command,
         jvm_args,
+        terminal_mode,
         cpu_policy,
         jvm_preset,
     };
@@ -55,6 +57,7 @@ pub(super) fn import_server(
     port: u16,
     online_mode: bool,
     jvm_args: Vec<String>,
+    terminal_mode: LocalTerminalMode,
     cpu_policy: CpuPolicyConfig,
     jvm_preset: JvmPresetConfig,
 ) -> Result<ServerInstance, String> {
@@ -70,6 +73,7 @@ pub(super) fn import_server(
         port,
         online_mode,
         jvm_args,
+        terminal_mode,
         cpu_policy,
         jvm_preset,
     };
@@ -91,6 +95,7 @@ pub(super) fn add_existing_server(
     core_type: Option<String>,
     mc_version: Option<String>,
     jvm_args: Vec<String>,
+    terminal_mode: LocalTerminalMode,
     cpu_policy: CpuPolicyConfig,
     jvm_preset: JvmPresetConfig,
 ) -> Result<ServerInstance, String> {
@@ -108,6 +113,7 @@ pub(super) fn add_existing_server(
         core_type,
         mc_version,
         jvm_args,
+        terminal_mode,
         cpu_policy,
         jvm_preset,
     };
@@ -131,6 +137,7 @@ pub(super) fn import_modpack(
     core_type: Option<String>,
     mc_version: Option<String>,
     jvm_args: Vec<String>,
+    terminal_mode: LocalTerminalMode,
     cpu_policy: CpuPolicyConfig,
     jvm_preset: JvmPresetConfig,
 ) -> Result<ServerInstance, String> {
@@ -150,6 +157,7 @@ pub(super) fn import_modpack(
         core_type,
         mc_version,
         jvm_args,
+        terminal_mode,
         cpu_policy,
         jvm_preset,
     };

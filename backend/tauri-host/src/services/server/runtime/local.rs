@@ -1,12 +1,11 @@
 use super::{
-    control, local_helper, RuntimeForceStopPreparation, RuntimeProcessHandle, RuntimeStartRequest,
-    RuntimeStartResult, RuntimeStatusSnapshot, ServerRuntime,
+    control, local_helper, RuntimeForceStopPreparation, RuntimeStartRequest, RuntimeStartResult,
+    RuntimeStatusSnapshot, ServerRuntime,
 };
-use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerStatus};
+use crate::models::server::{LocalRuntimeConfig, LocalTerminalMode, ServerInstance, ServerStatus};
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::ServerManager;
 use crate::services::server::runtime::i18n::{runtime_t, runtime_t1};
-use std::io::Write;
 use std::time::Duration;
 
 // Starter installs may need to download libraries and generate launch scripts
@@ -17,6 +16,63 @@ const DEFAULT_HELPER_READY_TIMEOUT: Duration = Duration::from_secs(10);
 pub struct LocalServerRuntime;
 
 impl LocalServerRuntime {
+    fn runtime_fallback_from_state(
+        state: &local_helper::LocalRuntimeState,
+    ) -> Option<crate::services::server::manager::StartFallbackInfo> {
+        state.fallback.as_ref().map(|fallback| {
+            crate::services::server::manager::StartFallbackInfo {
+                from_mode: fallback.from_mode.clone(),
+                to_mode: fallback.to_mode.clone(),
+                reason: fallback.reason.clone(),
+            }
+        })
+    }
+
+    fn terminal_detail_fields(terminal_mode: LocalTerminalMode) -> &'static str {
+        match terminal_mode {
+            LocalTerminalMode::PipeManaged => {
+                " terminal_backend=pipe interactive=false transcript=false attach=false"
+            }
+            LocalTerminalMode::PtyManaged => {
+                " terminal_backend=pty interactive=true transcript=true attach=true"
+            }
+        }
+    }
+
+    fn decorate_detail_with_terminal_mode(
+        detail_message: impl Into<String>,
+        terminal_mode: LocalTerminalMode,
+    ) -> String {
+        let mut detail_message = detail_message.into();
+        if detail_message.contains("terminal_backend=") {
+            return detail_message;
+        }
+
+        detail_message.push_str(Self::terminal_detail_fields(terminal_mode));
+        detail_message
+    }
+
+    fn decorate_snapshot_with_terminal(
+        mut snapshot: RuntimeStatusSnapshot,
+        terminal_mode: LocalTerminalMode,
+        terminal_size: Option<(u16, u16)>,
+    ) -> RuntimeStatusSnapshot {
+        snapshot.detail_message = snapshot
+            .detail_message
+            .take()
+            .map(|detail| Self::decorate_detail_with_terminal_mode(detail, terminal_mode));
+
+        if snapshot.terminal.is_none() {
+            snapshot.terminal = Some(local_helper::build_terminal_status(
+                terminal_mode,
+                terminal_size.map(|(cols, _)| cols),
+                terminal_size.map(|(_, rows)| rows),
+            ));
+        }
+
+        snapshot
+    }
+
     fn helper_ready_timeout(startup_mode: &str) -> Duration {
         if startup_mode.eq_ignore_ascii_case("starter") {
             STARTER_HELPER_READY_TIMEOUT
@@ -62,27 +118,57 @@ impl LocalServerRuntime {
             return Ok(false);
         };
 
-        let stdin = child.stdin.as_mut().ok_or_else(|| {
+        let send_result = child.write_line(command);
+        if let Err(err) = send_result {
             let message = runtime_t1("server.runtime.local.stdin_unavailable", server.id.clone());
             let _ = server_log_pipeline::append_sealantern_log(
                 &server.id,
                 &format!("[Sea Lantern] {}", message),
             );
-            message
-        })?;
-
-        writeln!(stdin, "{}", command).map_err(|e| {
-            runtime_t1(
+            return Err(runtime_t1(
                 "server.runtime.local.stdin_write_failed",
-                format!("id={} error={}", server.id, e),
-            )
-        })?;
-        stdin.flush().map_err(|e| {
-            runtime_t1(
-                "server.runtime.local.stdin_flush_failed",
-                format!("id={} error={}", server.id, e),
-            )
-        })?;
+                format!("id={} error={}", server.id, err),
+            ));
+        }
+
+        Ok(true)
+    }
+
+    fn send_terminal_input_to_tracked_child(
+        manager: &ServerManager,
+        server: &ServerInstance,
+        input: &str,
+    ) -> Result<bool, String> {
+        let mut procs = manager.lock_processes()?;
+        let Some(child) = procs.get_mut(&server.id) else {
+            return Ok(false);
+        };
+
+        let terminal_mode = child.terminal_mode();
+        if terminal_mode != crate::models::server::LocalTerminalMode::PtyManaged {
+            return Ok(false);
+        }
+
+        child.write_raw(input)?;
+        Ok(true)
+    }
+
+    fn resize_terminal_for_tracked_child(
+        manager: &ServerManager,
+        server: &ServerInstance,
+        cols: u16,
+        rows: u16,
+    ) -> Result<bool, String> {
+        let mut procs = manager.lock_processes()?;
+        let Some(child) = procs.get_mut(&server.id) else {
+            return Ok(false);
+        };
+
+        if child.terminal_mode() != crate::models::server::LocalTerminalMode::PtyManaged {
+            return Ok(false);
+        }
+
+        child.resize(cols, rows)?;
         Ok(true)
     }
 
@@ -283,11 +369,29 @@ impl LocalServerRuntime {
             }
         };
 
-        let pid = if is_running {
+        let (pid, terminal_mode, terminal_size) = if is_running {
             let mut procs = manager.lock_processes()?;
-            procs.get_mut(&server.id).map(|child| child.id())
+            if let Some(child) = procs.get_mut(&server.id) {
+                (child.id(), child.terminal_mode(), child.terminal_size())
+            } else {
+                (
+                    None,
+                    server
+                        .local_runtime()
+                        .map(|runtime| runtime.terminal_mode)
+                        .unwrap_or_default(),
+                    None,
+                )
+            }
         } else {
-            None
+            (
+                None,
+                server
+                    .local_runtime()
+                    .map(|runtime| runtime.terminal_mode)
+                    .unwrap_or_default(),
+                None,
+            )
         };
 
         let is_stopping = manager.is_stopping_checked(&server.id)?;
@@ -306,18 +410,26 @@ impl LocalServerRuntime {
             ServerStatus::Stopped
         };
 
-        Ok(Some(RuntimeStatusSnapshot {
-            status,
-            pid,
-            detail_message: Some(format!(
-                "runtime=local is_running={} exit_code={} source=tracked_child",
-                is_running,
-                exit_code
-                    .map(|value| value.to_string())
-                    .unwrap_or_else(|| "none".to_string())
-            )),
-            error_message,
-        }))
+        Ok(Some(Self::decorate_snapshot_with_terminal(
+            RuntimeStatusSnapshot {
+                status,
+                pid,
+                detail_message: Some(Self::decorate_detail_with_terminal_mode(
+                    format!(
+                        "runtime=local is_running={} exit_code={} source=tracked_child",
+                        is_running,
+                        exit_code
+                            .map(|value| value.to_string())
+                            .unwrap_or_else(|| "none".to_string())
+                    ),
+                    terminal_mode,
+                )),
+                error_message,
+                terminal: None,
+            },
+            terminal_mode,
+            terminal_size,
+        )))
     }
 
     fn helper_status_snapshot(
@@ -339,8 +451,45 @@ impl LocalServerRuntime {
 
         let is_stopping = snapshot.running && manager.is_stopping_checked(&server.id)?;
         let status = local_helper::helper_runtime_status(&snapshot, is_stopping);
+        let terminal_mode = snapshot
+            .terminal_mode
+            .unwrap_or(local_helper::effective_terminal_mode(server)?);
+        let terminal_size = snapshot.terminal_cols.zip(snapshot.terminal_rows);
 
-        Ok(Some(local_helper::runtime_snapshot_from_helper(snapshot, status)))
+        Ok(Some(Self::decorate_snapshot_with_terminal(
+            local_helper::runtime_snapshot_from_helper(snapshot, status),
+            terminal_mode,
+            terminal_size,
+        )))
+    }
+}
+
+impl LocalServerRuntime {
+    pub fn send_terminal_input_with_manager(
+        &self,
+        manager: &ServerManager,
+        server: &ServerInstance,
+        input: &str,
+    ) -> Result<(), String> {
+        if Self::send_terminal_input_to_tracked_child(manager, server, input)? {
+            return Ok(());
+        }
+
+        local_helper::send_terminal_input(server, input)
+    }
+
+    pub fn resize_terminal_with_manager(
+        &self,
+        manager: &ServerManager,
+        server: &ServerInstance,
+        cols: u16,
+        rows: u16,
+    ) -> Result<(), String> {
+        if Self::resize_terminal_for_tracked_child(manager, server, cols, rows)? {
+            return Ok(());
+        }
+
+        local_helper::resize_terminal(server, cols, rows)
     }
 }
 
@@ -377,7 +526,10 @@ impl ServerRuntime for LocalServerRuntime {
                 .unwrap_or(ready_state.detail_message));
         }
 
-        Ok(RuntimeStartResult { process_handle: None, fallback: None })
+        Ok(RuntimeStartResult {
+            process_handle: None,
+            fallback: Self::runtime_fallback_from_state(&ready_state),
+        })
     }
 
     fn send_command(&self, _server: &ServerInstance, _command: &str) -> Result<(), String> {
@@ -573,13 +725,62 @@ impl ServerRuntime for LocalServerRuntime {
     }
 
     fn status(&self, server: &ServerInstance) -> Result<RuntimeStatusSnapshot, String> {
-        Ok(local_helper::status_snapshot(server)?.map_or_else(
-            local_helper::stopped_runtime_snapshot,
-            |snapshot| {
-                let status = local_helper::helper_runtime_status(&snapshot, false);
-                local_helper::runtime_snapshot_from_helper(snapshot, status)
+        let state = local_helper::read_state_checked(server)?;
+        let runtime_snapshot = local_helper::status_snapshot(server)?.map_or_else(
+            || {
+                let terminal_mode = state
+                    .as_ref()
+                    .and_then(|value| value.terminal_mode)
+                    .unwrap_or_else(|| {
+                        server
+                            .local_runtime()
+                            .map(|runtime| runtime.terminal_mode)
+                            .unwrap_or_default()
+                    });
+                let terminal_size = state
+                    .as_ref()
+                    .and_then(|value| value.terminal_cols.zip(value.terminal_rows));
+                let terminal = state
+                    .as_ref()
+                    .and_then(local_helper::terminal_status_from_state);
+
+                Self::decorate_snapshot_with_terminal(
+                    RuntimeStatusSnapshot {
+                        terminal,
+                        ..local_helper::stopped_runtime_snapshot()
+                    },
+                    terminal_mode,
+                    terminal_size,
+                )
             },
-        ))
+            |snapshot| {
+                let terminal_mode = snapshot
+                    .terminal_mode
+                    .or_else(|| state.as_ref().and_then(|value| value.terminal_mode))
+                    .unwrap_or_else(|| {
+                        server
+                            .local_runtime()
+                            .map(|runtime| runtime.terminal_mode)
+                            .unwrap_or_default()
+                    });
+                let terminal_size = snapshot
+                    .terminal_cols
+                    .zip(snapshot.terminal_rows)
+                    .or_else(|| {
+                        state
+                            .as_ref()
+                            .and_then(|value| value.terminal_cols.zip(value.terminal_rows))
+                    });
+                let status = local_helper::helper_runtime_status(&snapshot, false);
+
+                Self::decorate_snapshot_with_terminal(
+                    local_helper::runtime_snapshot_from_helper(snapshot, status),
+                    terminal_mode,
+                    terminal_size,
+                )
+            },
+        );
+        Ok(runtime_snapshot)
     }
 
     fn status_with_manager(
@@ -626,23 +827,18 @@ impl ServerRuntime for LocalServerRuntime {
     }
 }
 
-impl RuntimeProcessHandle {
-    pub fn into_local_child(self) -> Option<std::process::Child> {
-        match self {
-            RuntimeProcessHandle::LocalChild(child) => Some(child),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{LocalServerRuntime, DEFAULT_HELPER_READY_TIMEOUT, STARTER_HELPER_READY_TIMEOUT};
     use crate::models::server::{
-        LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig, ServerStatus,
+        LocalRuntimeConfig, LocalTerminalMode, ServerInstance, ServerRuntimeConfig, ServerStatus,
     };
     use crate::services::server::manager::ServerManager;
     use crate::services::server::runtime::i18n::{runtime_t, runtime_t1};
-    use crate::services::server::runtime::local_helper::{state_file_path, LocalRuntimeState};
+    use crate::services::server::runtime::local_process::ManagedLocalProcess;
+    use crate::services::server::runtime::local_helper::{
+        state_file_path, LocalRuntimeFallbackInfo, LocalRuntimeState,
+    };
     use crate::services::server::runtime::ServerRuntime;
     use std::process::Command;
     use tempfile::tempdir;
@@ -668,10 +864,15 @@ mod tests {
                 custom_command: None,
                 java_path: "java".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
         }
+    }
+
+    fn managed_process_from_child(child: std::process::Child) -> ManagedLocalProcess {
+        ManagedLocalProcess::from_pipe_child(child).process
     }
 
     fn local_server() -> ServerInstance {
@@ -726,7 +927,7 @@ mod tests {
         manager
             .lock_processes()
             .expect("process map")
-            .insert(server.id.clone(), child);
+            .insert(server.id.clone(), managed_process_from_child(child));
 
         let snapshot = LocalServerRuntime
             .status_with_manager(&manager, &server)
@@ -761,7 +962,7 @@ mod tests {
         manager
             .lock_processes()
             .expect("process map")
-            .insert(server.id.clone(), child);
+            .insert(server.id.clone(), managed_process_from_child(child));
 
         let err = LocalServerRuntime
             .send_command_with_manager(&manager, &server, "say hello")
@@ -798,6 +999,10 @@ mod tests {
             exit_code: Some(7),
             detail_message: "runtime=local running=true source=helper".to_string(),
             error_message: Some("server crashed".to_string()),
+            fallback: None,
+            terminal_mode: Some(LocalTerminalMode::PipeManaged),
+            terminal_cols: None,
+            terminal_rows: None,
             updated_at: 123,
         };
         write_state_fixture(&server, &state);
@@ -830,6 +1035,10 @@ mod tests {
             exit_code: Some(7),
             detail_message: "runtime=local running=true source=helper".to_string(),
             error_message: Some("server crashed".to_string()),
+            fallback: None,
+            terminal_mode: Some(LocalTerminalMode::PipeManaged),
+            terminal_cols: None,
+            terminal_rows: None,
             updated_at: 123,
         };
         write_state_fixture(&server, &state);
@@ -863,6 +1072,10 @@ mod tests {
             exit_code: None,
             detail_message: "runtime=local running=true source=helper".to_string(),
             error_message: None,
+            fallback: None,
+            terminal_mode: Some(LocalTerminalMode::PipeManaged),
+            terminal_cols: None,
+            terminal_rows: None,
             updated_at: 123,
         };
         write_state_fixture(&server, &state);
@@ -909,5 +1122,49 @@ mod tests {
             STARTER_HELPER_READY_TIMEOUT
         );
         assert_eq!(LocalServerRuntime::helper_ready_timeout("jar"), DEFAULT_HELPER_READY_TIMEOUT);
+    }
+
+    #[test]
+    fn decorate_detail_with_terminal_mode_appends_runtime_terminal_metadata() {
+        let detail = LocalServerRuntime::decorate_detail_with_terminal_mode(
+            "runtime=local is_running=true exit_code=none source=tracked_child",
+            LocalTerminalMode::PtyManaged,
+        );
+
+        assert!(detail.contains("terminal_backend=pty"));
+        assert!(detail.contains("interactive=true"));
+        assert!(detail.contains("transcript=true"));
+        assert!(detail.contains("attach=true"));
+    }
+
+    #[test]
+    fn runtime_fallback_from_state_maps_helper_fallback_info() {
+        let state = LocalRuntimeState {
+            server_id: "local-alpha".to_string(),
+            helper_pid: 1,
+            child_pid: Some(2),
+            control_port: Some(25570),
+            auth_token: "token".to_string(),
+            running: true,
+            exit_code: None,
+            detail_message: "runtime=local running=true source=helper".to_string(),
+            error_message: None,
+            fallback: Some(LocalRuntimeFallbackInfo {
+                from_mode: "pty_managed".to_string(),
+                to_mode: "pipe_managed".to_string(),
+                reason: "PTY init failed: unsupported".to_string(),
+            }),
+            terminal_mode: Some(LocalTerminalMode::PipeManaged),
+            terminal_cols: None,
+            terminal_rows: None,
+            updated_at: 123,
+        };
+
+        let fallback = LocalServerRuntime::runtime_fallback_from_state(&state)
+            .expect("fallback should be present");
+
+        assert_eq!(fallback.from_mode, "pty_managed");
+        assert_eq!(fallback.to_mode, "pipe_managed");
+        assert_eq!(fallback.reason, "PTY init failed: unsupported");
     }
 }

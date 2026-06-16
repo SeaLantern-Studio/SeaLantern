@@ -196,7 +196,10 @@ where
             None
         };
 
-        let ports = PreparedPorts { game_port: server.port, web_port };
+        let ports = PreparedPorts {
+            game_port: server.port,
+            web_port,
+        };
 
         trace_cli_action(
             "manage_start_ports_existing_runtime",
@@ -221,6 +224,7 @@ where
         },
     )
 }
+
 fn build_manage_transport_command(
     options: &ManageStartOptions,
 ) -> super::server_args::CliServerCommand {
@@ -239,7 +243,8 @@ mod tests {
         ManageStartOptions,
     };
     use crate::models::server::{
-        CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+        CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, LocalTerminalMode, ServerInstance,
+        ServerRuntimeConfig,
     };
     use crate::utils::cli::server_args::{CliMode, WebMode};
     use crate::utils::cli::server_ports::PreparedPorts;
@@ -265,6 +270,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),

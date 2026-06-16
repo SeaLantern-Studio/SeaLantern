@@ -1,4 +1,5 @@
 use super::LocalHelperStatusSnapshot;
+use crate::models::server::LocalTerminalMode;
 use crate::models::server::ServerInstance;
 use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::ServerManager;
@@ -16,18 +17,27 @@ pub(super) fn detect_terminal_snapshot(
     match child.try_wait() {
         Ok(Some(status)) => {
             let exit_code = status.code();
+            let terminal_mode = Some(child.terminal_mode());
+            let terminal_size = child.terminal_size();
             procs.remove(&server.id);
             server_log_pipeline::shutdown_writer(&server.id);
-            Ok(Some(terminal_snapshot_from_exit(exit_code)))
+            Ok(Some(terminal_snapshot_from_exit(
+                exit_code,
+                terminal_mode,
+                terminal_size,
+            )))
         }
         Ok(None) => Ok(None),
         Err(err) => {
+            let terminal_mode = Some(child.terminal_mode());
+            let terminal_size = child.terminal_size();
             procs.remove(&server.id);
             server_log_pipeline::shutdown_writer(&server.id);
-            Ok(Some(status_error_snapshot(runtime_t1(
-                "server.runtime.local.process_status_read_failed",
-                err.to_string(),
-            ))))
+            Ok(Some(status_error_snapshot(
+                runtime_t1("server.runtime.local.process_status_read_failed", err.to_string()),
+                terminal_mode,
+                terminal_size,
+            )))
         }
     }
 }
@@ -44,24 +54,42 @@ pub(super) fn snapshot_from_manager(
     match child.try_wait() {
         Ok(Some(status)) => {
             let exit_code = status.code();
+            let terminal_mode = Some(child.terminal_mode());
+            let terminal_size = child.terminal_size();
             procs.remove(server_id);
             server_log_pipeline::shutdown_writer(server_id);
-            Ok(terminal_snapshot_from_exit(exit_code))
+            Ok(terminal_snapshot_from_exit(
+                exit_code,
+                terminal_mode,
+                terminal_size,
+            ))
         }
         Ok(None) => Ok(LocalHelperStatusSnapshot {
             running: true,
-            pid: Some(child.id()),
+            pid: child.id(),
             exit_code: None,
-            detail_message: format!("runtime=local running=true source=helper pid={}", child.id()),
+            detail_message: format!(
+                "runtime=local running=true source=helper pid={}",
+                child
+                    .id()
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "none".to_string())
+            ),
             error_message: None,
+            terminal_mode: Some(child.terminal_mode()),
+            terminal_cols: child.terminal_size().map(|(cols, _)| cols),
+            terminal_rows: child.terminal_size().map(|(_, rows)| rows),
         }),
         Err(err) => {
+            let terminal_mode = Some(child.terminal_mode());
+            let terminal_size = child.terminal_size();
             procs.remove(server_id);
             server_log_pipeline::shutdown_writer(server_id);
-            Ok(status_error_snapshot(runtime_t1(
-                "server.runtime.local.process_status_read_failed",
-                err.to_string(),
-            )))
+            Ok(status_error_snapshot(
+                runtime_t1("server.runtime.local.process_status_read_failed", err.to_string()),
+                terminal_mode,
+                terminal_size,
+            ))
         }
     }
 }
@@ -73,10 +101,17 @@ fn process_missing_snapshot() -> LocalHelperStatusSnapshot {
         exit_code: None,
         detail_message: "runtime=local running=false source=helper process=missing".to_string(),
         error_message: None,
+        terminal_mode: None,
+        terminal_cols: None,
+        terminal_rows: None,
     }
 }
 
-fn terminal_snapshot_from_exit(exit_code: Option<i32>) -> LocalHelperStatusSnapshot {
+fn terminal_snapshot_from_exit(
+    exit_code: Option<i32>,
+    terminal_mode: Option<LocalTerminalMode>,
+    terminal_size: Option<(u16, u16)>,
+) -> LocalHelperStatusSnapshot {
     LocalHelperStatusSnapshot {
         running: false,
         pid: None,
@@ -88,16 +123,26 @@ fn terminal_snapshot_from_exit(exit_code: Option<i32>) -> LocalHelperStatusSnaps
                 .unwrap_or_else(|| "none".to_string())
         ),
         error_message: terminal_error_message(exit_code),
+        terminal_mode,
+        terminal_cols: terminal_size.map(|(cols, _)| cols),
+        terminal_rows: terminal_size.map(|(_, rows)| rows),
     }
 }
 
-fn status_error_snapshot(error_message: String) -> LocalHelperStatusSnapshot {
+fn status_error_snapshot(
+    error_message: String,
+    terminal_mode: Option<LocalTerminalMode>,
+    terminal_size: Option<(u16, u16)>,
+) -> LocalHelperStatusSnapshot {
     LocalHelperStatusSnapshot {
         running: false,
         pid: None,
         exit_code: None,
         detail_message: "runtime=local running=false source=helper status=error".to_string(),
         error_message: Some(error_message),
+        terminal_mode,
+        terminal_cols: terminal_size.map(|(cols, _)| cols),
+        terminal_rows: terminal_size.map(|(_, rows)| rows),
     }
 }
 
@@ -117,11 +162,16 @@ fn terminal_error_message(exit_code: Option<i32>) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{process_missing_snapshot, terminal_snapshot_from_exit};
+    use crate::models::server::LocalTerminalMode;
     use crate::services::server::runtime::i18n::runtime_t1;
 
     #[test]
     fn terminal_snapshot_from_exit_reports_clean_exit_without_error() {
-        let snapshot = terminal_snapshot_from_exit(Some(0));
+        let snapshot = terminal_snapshot_from_exit(
+            Some(0),
+            Some(LocalTerminalMode::PipeManaged),
+            None,
+        );
 
         assert!(!snapshot.running);
         assert_eq!(snapshot.pid, None);
@@ -135,7 +185,11 @@ mod tests {
 
     #[test]
     fn terminal_snapshot_from_exit_reports_non_zero_exit_as_error() {
-        let snapshot = terminal_snapshot_from_exit(Some(7));
+        let snapshot = terminal_snapshot_from_exit(
+            Some(7),
+            Some(LocalTerminalMode::PtyManaged),
+            Some((80, 24)),
+        );
 
         assert_eq!(snapshot.exit_code, Some(7));
         assert_eq!(

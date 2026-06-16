@@ -136,6 +136,7 @@ mod tests {
                 custom_command: Some("java -jar custom.jar nogui".to_string()),
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: vec!["-Dserver.flag=true".to_string()],
+                terminal_mode: crate::models::server::LocalTerminalMode::PipeManaged,
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),
@@ -363,6 +364,6 @@ mod tests {
         let err = build_local_launch_detail(&server, &test_settings())
             .expect_err("invalid instance config should not silently downgrade launch detail");
 
-        assert!(err.contains("解析实例配置失败"));
+        assert!(err.contains("瑙ｆ瀽瀹炰緥閰嶇疆澶辫触"));
     }
 }

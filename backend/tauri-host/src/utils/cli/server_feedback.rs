@@ -431,7 +431,8 @@ mod tests {
     };
     use crate::models::server::{
         DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig, LocalRuntimeConfig,
-        RconConfig, ServerInstance, ServerRuntimeConfig, ServerStatus, ServerStatusInfo,
+        LocalTerminalMode, RconConfig, ServerInstance, ServerRuntimeConfig, ServerStatus,
+        ServerStatusInfo,
     };
     use std::collections::BTreeMap;
 
@@ -456,6 +457,7 @@ mod tests {
                 custom_command: None,
                 java_path: "C:/Java/bin/java.exe".to_string(),
                 jvm_args: Vec::new(),
+                terminal_mode: LocalTerminalMode::PipeManaged,
                 cpu_policy: crate::models::server::CpuPolicyConfig::default(),
                 jvm_preset: crate::models::server::JvmPresetConfig::default(),
             }),
@@ -522,6 +524,7 @@ mod tests {
             uptime: Some(3),
             detail_message: Some("runtime=local is_running=true exit_code=none".to_string()),
             error_message: None,
+            terminal: None,
         };
 
         let detail = render_status_detail_line(Some(&server), &status).expect("detail line");
@@ -541,6 +544,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: None,
+            terminal: None,
         };
 
         let lines = render_post_start_feedback_lines(Some(&server), &status).join("\n");
@@ -593,6 +597,7 @@ mod tests {
                     .to_string(),
             ),
             error_message: None,
+            terminal: None,
         };
 
         let lines = render_post_stop_feedback_lines(Some(&server), &status).join("\n");

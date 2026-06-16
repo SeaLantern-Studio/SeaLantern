@@ -20,3 +20,4 @@ pub mod manager;
 pub mod player;
 pub mod plugin_manager;
 pub mod runtime;
+pub mod terminal_transcript;

@@ -10,6 +10,7 @@ import type {
   CpuPolicyConfig,
   DockerLaunchDetail,
   JvmPresetConfig,
+  LocalTerminalMode,
   LocalLaunchDetail,
   ServerInstance,
 } from "@type/server";
@@ -23,6 +24,16 @@ export interface ServerStatusInfo {
   uptime: number | null;
   detail_message?: string | null;
   error_message?: string | null;
+  terminal?: TerminalStatusInfo | null;
+}
+
+export interface TerminalStatusInfo {
+  backend_kind: string;
+  interactive_supported: boolean;
+  transcript_supported: boolean;
+  attach_supported: boolean;
+  cols?: number | null;
+  rows?: number | null;
 }
 
 export interface ParsedServerCoreInfo {
@@ -43,6 +54,12 @@ export interface ServerLogStructuredEvent {
   event_kind: "server_ready" | "player_join" | "player_leave" | "chat" | "error" | null;
   player: string | null;
   message: string | null;
+}
+
+export interface TerminalTranscriptChunk {
+  cursor: number;
+  next_cursor: number;
+  data: string;
 }
 
 export interface ForceStopPreparation {
@@ -164,6 +181,7 @@ export const serverApi = {
     jarPath: string;
     startupMode?: "jar" | "bat" | "sh" | "ps1";
     jvmArgs?: string[];
+    terminalMode?: LocalTerminalMode;
     cpuPolicy?: CpuPolicyConfig;
     jvmPreset?: JvmPresetConfig;
   }): Promise<ServerInstance> {
@@ -178,6 +196,7 @@ export const serverApi = {
       jarPath: params.jarPath,
       startupMode: params.startupMode ?? "jar",
       jvmArgs: params.jvmArgs ?? [],
+      terminalMode: params.terminalMode ?? "pipe_managed",
       cpuPolicy: params.cpuPolicy,
       jvmPreset: params.jvmPreset,
     });
@@ -193,6 +212,7 @@ export const serverApi = {
     port: number;
     onlineMode: boolean;
     jvmArgs?: string[];
+    terminalMode?: LocalTerminalMode;
     cpuPolicy?: CpuPolicyConfig;
     jvmPreset?: JvmPresetConfig;
   }): Promise<ServerInstance> {
@@ -206,6 +226,7 @@ export const serverApi = {
       port: params.port,
       onlineMode: params.onlineMode,
       jvmArgs: params.jvmArgs ?? [],
+      terminalMode: params.terminalMode ?? "pipe_managed",
       cpuPolicy: params.cpuPolicy,
       jvmPreset: params.jvmPreset,
     });
@@ -226,6 +247,7 @@ export const serverApi = {
     coreType?: string;
     mcVersion?: string;
     jvmArgs?: string[];
+    terminalMode?: LocalTerminalMode;
     cpuPolicy?: CpuPolicyConfig;
     jvmPreset?: JvmPresetConfig;
   }): Promise<ServerInstance> {
@@ -244,6 +266,7 @@ export const serverApi = {
       coreType: params.coreType,
       mcVersion: params.mcVersion,
       jvmArgs: params.jvmArgs ?? [],
+      terminalMode: params.terminalMode ?? "pipe_managed",
       cpuPolicy: params.cpuPolicy,
       jvmPreset: params.jvmPreset,
     });
@@ -320,6 +343,7 @@ export const serverApi = {
     startupMode: "jar" | "bat" | "sh" | "ps1";
     executablePath?: string;
     jvmArgs?: string[];
+    terminalMode?: LocalTerminalMode;
     cpuPolicy?: CpuPolicyConfig;
     jvmPreset?: JvmPresetConfig;
   }): Promise<ServerInstance> {
@@ -333,6 +357,7 @@ export const serverApi = {
       startupMode: params.startupMode,
       executablePath: params.executablePath,
       jvmArgs: params.jvmArgs ?? [],
+      terminalMode: params.terminalMode ?? "pipe_managed",
       cpuPolicy: params.cpuPolicy,
       jvmPreset: params.jvmPreset,
     });
@@ -420,6 +445,22 @@ export const serverApi = {
 
   async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
     return tauriInvoke("get_server_logs", { id, since, maxLines });
+  },
+
+  async getTerminalTranscript(
+    id: string,
+    cursor: number,
+    maxBytes?: number,
+  ): Promise<TerminalTranscriptChunk> {
+    return tauriInvoke("get_terminal_transcript", { id, cursor, maxBytes });
+  },
+
+  async sendTerminalInput(id: string, input: string): Promise<void> {
+    return tauriInvoke("send_terminal_input", { id, input });
+  },
+
+  async resizeTerminal(id: string, cols: number, rows: number): Promise<void> {
+    return tauriInvoke("resize_terminal", { id, cols, rows });
   },
 
   async getLocalLaunchDetail(id: string): Promise<LocalLaunchDetail> {
@@ -601,6 +642,13 @@ export const serverApi = {
 
   async updateServerJavaPath(id: string, javaPath: string): Promise<ServerInstance> {
     return tauriInvoke("update_server_java_path", { id, javaPath });
+  },
+
+  async updateServerTerminalMode(
+    id: string,
+    terminalMode: LocalTerminalMode,
+  ): Promise<ServerInstance> {
+    return tauriInvoke("update_server_terminal_mode", { id, terminalMode });
   },
 
   async validateServerPath(newPath: string): Promise<{

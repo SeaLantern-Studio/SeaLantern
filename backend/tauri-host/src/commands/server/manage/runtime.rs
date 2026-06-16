@@ -1,6 +1,7 @@
 use super::common::manager;
 use super::ForceStopPreparationResponse;
 use crate::models::server::{ServerInstance, ServerStatusInfo};
+use crate::models::server::LocalTerminalMode;
 use crate::services::server::manager::LocalLaunchDetail;
 use crate::services::server::manager::ServerManager;
 use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
@@ -165,6 +166,29 @@ pub(super) fn update_server_java_path(
     java_path: String,
 ) -> Result<ServerInstance, String> {
     manager().update_server_java_path(&id, &java_path)
+}
+
+pub(super) fn update_server_terminal_mode(
+    id: String,
+    terminal_mode: LocalTerminalMode,
+) -> Result<ServerInstance, String> {
+    manager().update_server_terminal_mode(&id, terminal_mode)
+}
+
+pub(super) fn get_terminal_transcript(
+    id: String,
+    cursor: u64,
+    max_bytes: Option<usize>,
+) -> Result<crate::services::server::terminal_transcript::TerminalTranscriptChunk, String> {
+    crate::services::server::terminal_transcript::read_transcript_checked(&id, cursor, max_bytes)
+}
+
+pub(super) fn send_terminal_input(id: String, input: String) -> Result<(), String> {
+    manager().send_terminal_input(&id, &input)
+}
+
+pub(super) fn resize_terminal(id: String, cols: u16, rows: u16) -> Result<(), String> {
+    manager().resize_terminal(&id, cols, rows)
 }
 
 pub(super) fn update_server_path(
