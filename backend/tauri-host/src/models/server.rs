@@ -91,17 +91,12 @@ pub struct LocalRuntimeConfig {
     pub jvm_preset: JvmPresetConfig,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum LocalTerminalMode {
+    #[default]
     PipeManaged,
     PtyManaged,
-}
-
-impl Default for LocalTerminalMode {
-    fn default() -> Self {
-        Self::PipeManaged
-    }
 }
 
 impl ServerInstance {

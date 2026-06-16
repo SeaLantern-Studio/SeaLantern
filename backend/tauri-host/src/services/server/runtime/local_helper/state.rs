@@ -4,6 +4,18 @@ use crate::services::server::runtime::i18n::{runtime_t1, runtime_t2};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+pub(super) struct StartedStateArgs {
+    pub server_id: String,
+    pub helper_pid: u32,
+    pub child_pid: Option<u32>,
+    pub control_port: u16,
+    pub auth_token: String,
+    pub fallback: Option<LocalRuntimeFallbackInfo>,
+    pub terminal_mode: LocalTerminalMode,
+    pub terminal_size: Option<(u16, u16)>,
+    pub updated_at: u64,
+}
+
 pub fn remove_state_file(server: &ServerInstance) {
     let path = super::state_file_path(server);
     let _ = std::fs::remove_file(path);
@@ -32,19 +44,21 @@ pub(super) fn persist_terminal_state(
     write_state_file(&super::state_file_path(server), &next)
 }
 
-pub(super) fn started_state(
-    server_id: &str,
-    helper_pid: u32,
-    child_pid: Option<u32>,
-    control_port: u16,
-    auth_token: String,
-    fallback: Option<LocalRuntimeFallbackInfo>,
-    terminal_mode: LocalTerminalMode,
-    terminal_size: Option<(u16, u16)>,
-    updated_at: u64,
-) -> LocalRuntimeState {
+pub(super) fn started_state(args: StartedStateArgs) -> LocalRuntimeState {
+    let StartedStateArgs {
+        server_id,
+        helper_pid,
+        child_pid,
+        control_port,
+        auth_token,
+        fallback,
+        terminal_mode,
+        terminal_size,
+        updated_at,
+    } = args;
+
     LocalRuntimeState {
-        server_id: server_id.to_string(),
+        server_id,
         helper_pid,
         child_pid,
         control_port: Some(control_port),
@@ -209,7 +223,7 @@ mod tests {
     use super::{
         helper_ready_state, start_failed_state, started_state, state_from_requested_stop,
         state_from_terminal_snapshot, terminal_state_from_exit, write_state_file,
-        LocalHelperStatusSnapshot, LocalRuntimeFallbackInfo, LocalRuntimeState,
+        LocalHelperStatusSnapshot, LocalRuntimeFallbackInfo, LocalRuntimeState, StartedStateArgs,
     };
     use crate::models::server::{
         LocalRuntimeConfig, LocalTerminalMode, ServerInstance, ServerRuntimeConfig,
@@ -286,17 +300,17 @@ mod tests {
 
     #[test]
     fn started_state_populates_initial_helper_control_plane_fields() {
-        let state = started_state(
-            "local-state",
-            11,
-            Some(22),
-            25570,
-            "token".to_string(),
-            None,
-            LocalTerminalMode::PipeManaged,
-            None,
-            456,
-        );
+        let state = started_state(StartedStateArgs {
+            server_id: "local-state".to_string(),
+            helper_pid: 11,
+            child_pid: Some(22),
+            control_port: 25570,
+            auth_token: "token".to_string(),
+            fallback: None,
+            terminal_mode: LocalTerminalMode::PipeManaged,
+            terminal_size: None,
+            updated_at: 456,
+        });
 
         assert_eq!(state.server_id, "local-state");
         assert_eq!(state.helper_pid, 11);
@@ -346,17 +360,17 @@ mod tests {
             to_mode: "pipe_managed".to_string(),
             reason: "PTY init failed: unsupported".to_string(),
         };
-        let state = started_state(
-            "local-state",
-            11,
-            Some(22),
-            25570,
-            "token".to_string(),
-            Some(fallback.clone()),
-            LocalTerminalMode::PipeManaged,
-            None,
-            456,
-        );
+        let state = started_state(StartedStateArgs {
+            server_id: "local-state".to_string(),
+            helper_pid: 11,
+            child_pid: Some(22),
+            control_port: 25570,
+            auth_token: "token".to_string(),
+            fallback: Some(fallback.clone()),
+            terminal_mode: LocalTerminalMode::PipeManaged,
+            terminal_size: None,
+            updated_at: 456,
+        });
 
         assert_eq!(state.fallback, Some(fallback));
     }

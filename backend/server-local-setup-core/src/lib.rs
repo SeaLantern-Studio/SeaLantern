@@ -165,7 +165,7 @@ pub fn resolve_existing_server_requested_startup(
     custom_command: Option<&str>,
     executable_path: Option<&str>,
 ) -> Result<Option<ExistingServerStartupSelection>, ResolveExistingServerStartupError> {
-    if requested_startup_mode.to_ascii_lowercase() == "custom" {
+    if requested_startup_mode.eq_ignore_ascii_case("custom") {
         let command = trim_optional_text(custom_command)
             .ok_or(ResolveExistingServerStartupError::CustomCommandEmpty)?;
         return Ok(Some(ExistingServerStartupSelection {

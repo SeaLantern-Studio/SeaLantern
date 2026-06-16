@@ -472,7 +472,7 @@ fn format_core_type_label(core_type: &str) -> String {
         "sponge" => "Sponge".to_string(),
         "vanilla-snapshot" => "Vanilla Snapshot".to_string(),
         "unknown" => "Unknown".to_string(),
-        value if value.is_empty() => core_type.to_string(),
+        "" => core_type.to_string(),
         _ => core_type.to_string(),
     }
 }

@@ -41,7 +41,6 @@ pub struct LocalProcessLaunch {
 #[derive(Debug, Clone, Copy)]
 pub struct LocalProcessExitStatus {
     code: Option<i32>,
-    success: bool,
 }
 
 impl std::fmt::Display for LocalProcessExitStatus {
@@ -59,10 +58,6 @@ impl std::fmt::Display for LocalProcessExitStatus {
 impl LocalProcessExitStatus {
     pub fn code(&self) -> Option<i32> {
         self.code
-    }
-
-    pub fn success(&self) -> bool {
-        self.success
     }
 }
 
@@ -135,13 +130,11 @@ impl ManagedLocalProcess {
             ManagedLocalChild::Pipe(child) => child.try_wait().map(|status| {
                 status.map(|status| LocalProcessExitStatus {
                     code: status.code(),
-                    success: status.success(),
                 })
             }),
             ManagedLocalChild::Pty(child) => child.try_wait().map(|status| {
                 status.map(|status| LocalProcessExitStatus {
                     code: i32::try_from(status.exit_code()).ok(),
-                    success: status.success(),
                 })
             }),
         }
@@ -151,11 +144,9 @@ impl ManagedLocalProcess {
         match &mut self.child {
             ManagedLocalChild::Pipe(child) => child.wait().map(|status| LocalProcessExitStatus {
                 code: status.code(),
-                success: status.success(),
             }),
             ManagedLocalChild::Pty(child) => child.wait().map(|status| LocalProcessExitStatus {
                 code: i32::try_from(status.exit_code()).ok(),
-                success: status.success(),
             }),
         }
     }

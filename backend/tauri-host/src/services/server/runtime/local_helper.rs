@@ -62,7 +62,7 @@ use self::snapshot::detect_terminal_snapshot;
 use self::state::{
     current_timestamp_secs, helper_ready_state, persist_terminal_state, remove_state_file,
     start_failed_state, started_state, state_from_requested_stop, state_from_terminal_snapshot,
-    write_state_file,
+    write_state_file, StartedStateArgs,
 };
 use self::status::{fallback_snapshot_from_state_file, fallback_snapshot_from_unreachable_helper};
 use crate::models::server::{LocalTerminalMode, ServerInstance, TerminalStatusInfo};
@@ -714,21 +714,21 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         );
     }
 
-    state = started_state(
-        server_id,
+    state = started_state(StartedStateArgs {
+        server_id: server_id.to_string(),
         helper_pid,
         child_pid,
         control_port,
         auth_token,
-        start_result.fallback.map(|fallback| LocalRuntimeFallbackInfo {
+        fallback: start_result.fallback.map(|fallback| LocalRuntimeFallbackInfo {
             from_mode: fallback.from_mode,
             to_mode: fallback.to_mode,
             reason: fallback.reason,
         }),
-        actual_terminal_mode,
-        actual_terminal_size,
-        current_timestamp_secs(),
-    );
+        terminal_mode: actual_terminal_mode,
+        terminal_size: actual_terminal_size,
+        updated_at: current_timestamp_secs(),
+    });
     write_state_file(&state_path, &state)?;
     logger::log_user_action(
         "server.runtime.local.helper",
