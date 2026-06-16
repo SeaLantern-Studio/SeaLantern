@@ -67,6 +67,7 @@ const commandLoading = ref(false);
 const consoleViewMode = ref<"logs" | "terminal">("logs");
 const terminalCursor = ref(0);
 const terminalLoading = ref(false);
+const pendingTerminalResize = ref<{ cols: number; rows: number } | null>(null);
 
 const quickCommands = computed(() => [
   { label: i18n.t("common.command_day"), cmd: "time set day" },
@@ -141,6 +142,9 @@ const isInteractiveTerminal = computed(() => {
 const isRunning = computed(() => serverStatus.value === "Running");
 const isStopping = computed(() => serverStatus.value === "Stopping");
 const isStarting = computed(() => serverStatus.value === "Starting");
+const canResizeInteractiveTerminal = computed(
+  () => !!serverId.value && isInteractiveTerminal.value && consoleViewMode.value === "terminal" && isRunning.value,
+);
 const {
   activateLogStream,
   deactivateLogStream,
@@ -270,6 +274,29 @@ watch(
   },
 );
 
+watch(
+  canResizeInteractiveTerminal,
+  async (ready) => {
+    if (!ready || !pendingTerminalResize.value) {
+      return;
+    }
+
+    const sid = serverId.value;
+    if (!sid) {
+      return;
+    }
+
+    const { cols, rows } = pendingTerminalResize.value;
+    try {
+      await serverApi.resizeTerminal(sid, cols, rows);
+      pendingTerminalResize.value = null;
+    } catch {
+      // Ignore transient resize failures during runtime transitions.
+    }
+  },
+  { immediate: true },
+);
+
 async function refreshTerminalTranscript(reset: boolean) {
   const sid = serverId.value;
   if (!sid || !isInteractiveTerminal.value) return;
@@ -339,8 +366,14 @@ async function handleTerminalResize(payload: { cols: number; rows: number }) {
   if (!sid || !isInteractiveTerminal.value || consoleViewMode.value !== "terminal") return;
   if (payload.cols <= 0 || payload.rows <= 0) return;
 
+  pendingTerminalResize.value = payload;
+  if (!canResizeInteractiveTerminal.value) {
+    return;
+  }
+
   try {
     await serverApi.resizeTerminal(sid, payload.cols, payload.rows);
+    pendingTerminalResize.value = null;
   } catch {
     // Ignore transient resize failures during runtime transitions.
   }
@@ -439,8 +472,17 @@ function exportLogs() {
   URL.revokeObjectURL(url);
 }
 
-function handleClearLogs() {
-  clearActiveLogs(serverId.value);
+async function handleClearLogs() {
+  const sid = serverId.value;
+  if (!sid) return;
+
+  try {
+    await serverApi.clearLogs(sid);
+    terminalCursor.value = 0;
+    clearActiveLogs(sid);
+  } catch (e) {
+    consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
+  }
 }
 
 function getStatusText() {

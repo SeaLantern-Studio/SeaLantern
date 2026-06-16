@@ -50,6 +50,7 @@ pub(crate) fn desktop_handler(
         server_commands::get_server_status,
         server_commands::delete_server,
         server_commands::get_server_logs,
+        server_commands::clear_server_logs,
         server_commands::get_local_launch_detail,
         server_commands::get_docker_launch_detail,
         server_commands::update_server_name,

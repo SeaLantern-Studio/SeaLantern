@@ -19,6 +19,7 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_server_status", handle_get_server_status as CommandHandler);
     builder.register("delete_server", handle_delete_server as CommandHandler);
     builder.register("get_server_logs", handle_get_server_logs as CommandHandler);
+    builder.register("clear_server_logs", handle_clear_server_logs as CommandHandler);
     builder.register("update_server_name", handle_update_server_name as CommandHandler);
     builder.register("update_server_java_path", handle_update_server_java_path as CommandHandler);
     builder.register("scan_startup_candidates", handle_scan_startup_candidates as CommandHandler);
@@ -171,6 +172,16 @@ fn handle_get_server_logs(
         let req: GetLogsRequest = parse_params(params)?;
         let result = server_commands::get_server_logs(req.id, req.since, None)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_clear_server_logs(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ServerIdRequest = parse_params(params)?;
+        server_commands::clear_server_logs(req.id)?;
+        Ok(Value::Null)
     })
 }
 

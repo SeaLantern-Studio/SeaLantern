@@ -34,6 +34,19 @@ pub fn shutdown_writer(server_id: &str) {
     }
 }
 
+pub fn clear_logs_checked(server_id: &str) -> Result<(), String> {
+    shutdown_writer(server_id);
+
+    let server_path = resolve_server_path(server_id)?;
+    let conn = open_or_create_log_db(&server_path)?;
+    conn.execute("DELETE FROM log_lines", [])
+        .map_err(|e| format!("清空日志失败: {}", e))?;
+    conn.execute("DELETE FROM sqlite_sequence WHERE name = 'log_lines'", [])
+        .map_err(|e| format!("重置日志序号失败: {}", e))?;
+
+    Ok(())
+}
+
 pub fn append_sealantern_log(server_id: &str, message: &str) -> Result<(), String> {
     append_log_by_id(server_id, message, LogSource::SeaLantern)
 }

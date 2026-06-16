@@ -293,6 +293,11 @@ pub fn get_server_logs(
 }
 
 #[tauri::command]
+pub fn clear_server_logs(id: String) -> Result<(), String> {
+    runtime::clear_server_logs(id)
+}
+
+#[tauri::command]
 pub fn get_local_launch_detail(
     id: String,
 ) -> Result<crate::services::server::manager::LocalLaunchDetail, String> {

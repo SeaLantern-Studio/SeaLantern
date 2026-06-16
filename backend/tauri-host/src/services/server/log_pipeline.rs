@@ -92,6 +92,10 @@ pub fn get_all_logs_checked() -> Result<Vec<(String, Vec<String>)>, String> {
     reader::get_all_logs_checked()
 }
 
+pub fn clear_logs_checked(server_id: &str) -> Result<(), String> {
+    writer::clear_logs_checked(server_id)
+}
+
 pub fn spawn_server_output_reader<R>(server_id: String, stream: LogStream, reader: R)
 where
     R: std::io::Read + Send + 'static,

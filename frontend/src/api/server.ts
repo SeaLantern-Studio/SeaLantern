@@ -447,6 +447,10 @@ export const serverApi = {
     return tauriInvoke("get_server_logs", { id, since, maxLines });
   },
 
+  async clearLogs(id: string): Promise<void> {
+    return tauriInvoke("clear_server_logs", { id });
+  },
+
   async getTerminalTranscript(
     id: string,
     cursor: number,

@@ -785,6 +785,14 @@ pub fn resolve_direct_custom_command(
         return None;
     }
 
+    if !custom_command_text_is_shell_safe(trimmed) {
+        return None;
+    }
+
+    if let Some(program) = resolve_direct_program_only_command(trimmed, folder) {
+        return Some((program, Vec::new()));
+    }
+
     let tokens = shlex::split(trimmed)?;
     let (program_token, args) = tokens.split_first()?;
     if !custom_command_tokens_are_shell_safe(args) {
@@ -800,6 +808,37 @@ pub fn resolve_direct_custom_command(
     })?;
 
     Some((program, args.to_vec()))
+}
+
+fn custom_command_text_is_shell_safe(command_text: &str) -> bool {
+    !command_text.contains(['|', '&', ';', '<', '>', '\n', '\r'])
+        && !command_text.contains("&&")
+        && !command_text.contains("||")
+}
+
+fn resolve_direct_program_only_command(command_text: &str, folder: Option<&Path>) -> Option<String> {
+    if let Some(unquoted) = strip_matching_quotes(command_text) {
+        if let Some(program) = resolve_command_path_hint(unquoted, folder).or_else(|| {
+            let path = Path::new(unquoted);
+            if path.is_absolute() || is_windows_absolute_path(unquoted) {
+                Some(unquoted.to_string())
+            } else {
+                None
+            }
+        }) {
+            return Some(program);
+        }
+    }
+
+    resolve_command_path_hint(command_text, folder)
+}
+
+fn strip_matching_quotes(value: &str) -> Option<&str> {
+    if value.len() >= 2 && value.starts_with('"') && value.ends_with('"') {
+        return Some(&value[1..value.len() - 1]);
+    }
+
+    None
 }
 
 fn custom_command_tokens_are_shell_safe(tokens: &[String]) -> bool {
@@ -2473,6 +2512,36 @@ mod tests {
         let resolved = resolve_direct_custom_command("echo launch ready", None);
 
         assert_eq!(resolved, None);
+    }
+
+    #[test]
+    fn resolve_direct_custom_command_accepts_absolute_windows_path_without_quotes() {
+        let resolved = resolve_direct_custom_command(
+            "C:\\Users\\miaom\\Downloads\\cache\\test2\\pumpkin-X64-Windows.exe",
+            None,
+        )
+        .expect("absolute windows path should resolve as direct program");
+
+        assert_eq!(
+            resolved.0,
+            "C:\\Users\\miaom\\Downloads\\cache\\test2\\pumpkin-X64-Windows.exe"
+        );
+        assert!(resolved.1.is_empty());
+    }
+
+    #[test]
+    fn resolve_direct_custom_command_accepts_quoted_absolute_windows_path_without_args() {
+        let resolved = resolve_direct_custom_command(
+            "\"C:\\Users\\miaom\\Downloads\\cache\\test2\\pumpkin-X64-Windows.exe\"",
+            None,
+        )
+        .expect("quoted absolute windows path should resolve as direct program");
+
+        assert_eq!(
+            resolved.0,
+            "C:\\Users\\miaom\\Downloads\\cache\\test2\\pumpkin-X64-Windows.exe"
+        );
+        assert!(resolved.1.is_empty());
     }
 
     #[test]

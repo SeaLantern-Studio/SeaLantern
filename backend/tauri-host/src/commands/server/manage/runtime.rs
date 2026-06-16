@@ -149,6 +149,16 @@ pub(super) fn get_server_logs(
     crate::services::server::log_pipeline::get_logs_checked(&id, since, max_lines)
 }
 
+pub(super) fn clear_server_logs(id: String) -> Result<(), String> {
+    crate::services::server::log_pipeline::clear_logs_checked(&id)?;
+
+    let manager = crate::services::global::server_manager();
+    let server = manager.find_server_clone(&id)?;
+    crate::services::server::terminal_transcript::reset_transcript(&server)?;
+
+    Ok(())
+}
+
 pub(super) fn get_local_launch_detail(id: String) -> Result<LocalLaunchDetail, String> {
     manager().get_local_launch_detail(&id)
 }
