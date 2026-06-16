@@ -8,14 +8,14 @@ import { isBrowserEnv } from "@api/tauri";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getThemeColors, mapLegacyPlanName } from "@themes";
 
-let _themeProviderOverrides: string[] = [];
+let themeProviderOverrides: string[] = [];
 
 export function setThemeProviderOverrides(overrides: string[]): void {
-  _themeProviderOverrides = Array.isArray(overrides) ? overrides : [];
+  themeProviderOverrides = Array.isArray(overrides) ? overrides : [];
 }
 
 export function isThemeProviderActive(): boolean {
-  return _themeProviderOverrides.length > 0;
+  return themeProviderOverrides.length > 0;
 }
 
 /**
@@ -196,7 +196,7 @@ export function getDefaultTextColors(
 export function applyColors(settings: AppSettings): void {
   if (!settings) return;
 
-  if (_themeProviderOverrides.length > 0) {
+  if (themeProviderOverrides.length > 0) {
     return;
   }
 

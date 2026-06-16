@@ -14,7 +14,7 @@ declare global {
 // Tauri v2 默认不注入 window.__TAURI__（需要 withGlobalTauri: true 才有）
 // 但 window.__TAURI_INTERNALS__ 在 Tauri v2 中始终存在，用它来可靠判断
 export const isBrowserEnv = (): boolean => {
-  return typeof window !== "undefined" && !window.__TAURI_INTERNALS__;
+  return typeof window !== "undefined" && !Reflect.get(window, "__TAURI_INTERNALS__");
 };
 
 // HTTP API 基础 URL（Docker 模式下使用）

@@ -14,6 +14,18 @@ import { usePluginMarketViewState } from "@components/views/plugins/usePluginMar
 import { i18n } from "@language";
 import { usePluginStore } from "@stores/pluginStore";
 
+function getPermissionLabel(perm: string): string {
+  return i18n.t(`plugins.permission.${perm}`) !== `plugins.permission.${perm}`
+    ? i18n.t(`plugins.permission.${perm}`)
+    : perm;
+}
+
+function getPermissionDesc(perm: string): string {
+  return i18n.t(`plugins.permission.${perm}_desc`) !== `plugins.permission.${perm}_desc`
+    ? i18n.t(`plugins.permission.${perm}_desc`)
+    : "";
+}
+
 export function usePluginMarket() {
   const pluginStore = usePluginStore();
   const loading = ref(true);
@@ -107,18 +119,6 @@ export function usePluginMarket() {
       return i18n.t("market.installed");
     }
     return i18n.t("market.install");
-  }
-
-  function getPermissionLabel(perm: string): string {
-    return i18n.t(`plugins.permission.${perm}`) !== `plugins.permission.${perm}`
-      ? i18n.t(`plugins.permission.${perm}`)
-      : perm;
-  }
-
-  function getPermissionDesc(perm: string): string {
-    return i18n.t(`plugins.permission.${perm}_desc`) !== `plugins.permission.${perm}_desc`
-      ? i18n.t(`plugins.permission.${perm}_desc`)
-      : "";
   }
 
   onMounted(() => {

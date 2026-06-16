@@ -29,6 +29,12 @@ interface CompareContext {
 
 const COMPARE_DIFFERENCE_CATEGORY = "difference";
 
+function getTranslatedPropertyDescription(key: string) {
+  const translationKey = `config.properties.${key}`;
+  const translated = i18n.t(translationKey);
+  return translated === translationKey ? "" : translated;
+}
+
 interface UseConfigPropertiesEditorOptions {
   serverPath: Ref<string>;
   serverPropertiesPath: Ref<string>;
@@ -132,12 +138,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
   function bindCompareContext(context: CompareContext) {
     compareContext.value = context;
-  }
-
-  function getTranslatedPropertyDescription(key: string) {
-    const translationKey = `config.properties.${key}`;
-    const translated = i18n.t(translationKey);
-    return translated === translationKey ? "" : translated;
   }
 
   async function applyParsedSourceState(

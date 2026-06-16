@@ -23,6 +23,11 @@ export const MARKET_URL_KEY = "sealantern_market_url";
 const CRITICAL_PERMS = new Set(["execute_program", "plugin_folder_access"]);
 const DANGEROUS_PERMS = new Set(["fs", "network", "server", "console"]);
 
+function getOptionalStringProp(source: Record<string, unknown>, key: string): string | null {
+  const value = Reflect.get(source, key);
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 export function resolveMarketValue(value: Record<string, string> | string | undefined): string {
   if (!value) {
     return "";
@@ -45,6 +50,14 @@ export function getMarketPermissionLevel(perm: string): MarketPermissionLevel {
     return "dangerous";
   }
   return "normal";
+}
+
+export function getMarketPluginPath(plugin: MarketPlugin): string | null {
+  return getOptionalStringProp(plugin as Record<string, unknown>, "_path");
+}
+
+export function getMarketPluginDetailPath(plugin: MarketPlugin): string {
+  return getMarketPluginPath(plugin) ?? `plugins/${plugin.id}.json`;
 }
 
 export function validateMarketUrl(input: string): ValidatedMarketSource | null {

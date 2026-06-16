@@ -151,10 +151,10 @@ async function hydrateStructuredOnlinePlayers(serverId: string) {
     const events = await playerApi.parsePlayerLogEvents(logs);
     structuredOnlinePlayers.value[serverId] = replayOnlinePlayers(events);
     structuredPlayerEventSupport.value[serverId] = hasStructuredPlayerEvents(events);
-  } catch (error) {
+  } catch (hydrateError) {
     structuredOnlinePlayers.value[serverId] = [];
     structuredPlayerEventSupport.value[serverId] = false;
-    console.warn("[PlayerView] structured player log hydration unavailable, falling back to legacy parsing", error);
+    console.warn("[PlayerView] structured player log hydration unavailable, falling back to legacy parsing", hydrateError);
   }
 }
 
@@ -172,8 +172,8 @@ async function startPlayerLogSubscription() {
     unlistenStructuredLog = await serverApi.onStructuredLogEvent((event) => {
       applyStructuredPlayerEvent(event);
     });
-  } catch (error) {
-    console.warn("[PlayerView] structured log stream unavailable, falling back to legacy parsing", error);
+  } catch (subscriptionError) {
+    console.warn("[PlayerView] structured log stream unavailable, falling back to legacy parsing", subscriptionError);
   }
 }
 

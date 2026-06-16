@@ -19,11 +19,12 @@ export function useCreateServerWindowDrop() {
   let unlistenCreateViewDragDrop: UnlistenFn | null = null;
 
   onMounted(async () => {
+    const tauriInternals = Reflect.get(window, "__TAURI_INTERNALS__");
     logCreateServerWindowDrop("[useCreateServerWindowDrop] mounted", {
-      hasTauriInternals: !!window.__TAURI_INTERNALS__,
+      hasTauriInternals: Boolean(tauriInternals),
     });
 
-    if (!window.__TAURI_INTERNALS__) {
+    if (!tauriInternals) {
       logCreateServerWindowDrop(
         "[useCreateServerWindowDrop] Running outside Tauri, skip native drag-drop listener",
       );

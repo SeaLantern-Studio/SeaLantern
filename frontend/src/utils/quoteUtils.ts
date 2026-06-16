@@ -130,6 +130,15 @@ async function requestHitokoto(): Promise<Quote> {
   };
 }
 
+async function requestDistinctHitokoto(remainingRetries: number): Promise<Quote> {
+  const quote = await requestHitokoto();
+  if (!isCurrentQuote(quote) || remainingRetries <= 0) {
+    return quote;
+  }
+
+  return requestDistinctHitokoto(remainingRetries - 1);
+}
+
 async function fetchHitokoto(): Promise<Quote> {
   while (quoteCache.value.length > 0) {
     const quote = quoteCache.value.shift();
@@ -146,12 +155,7 @@ async function fetchHitokoto(): Promise<Quote> {
   }
 
   try {
-    let quote = await requestHitokoto();
-    let retryCount = 0;
-    while (isCurrentQuote(quote) && retryCount < 3) {
-      quote = await requestHitokoto();
-      retryCount++;
-    }
+    const quote = await requestDistinctHitokoto(3);
     void replenishCache();
     return quote;
   } catch (error) {

@@ -4,6 +4,28 @@ import { i18n } from "@language";
 import type { MissingDependency, PluginInfo } from "@type/plugin";
 import { getLocalizedPluginDescription, getLocalizedPluginName } from "@type/plugin";
 
+function getPermissionLabel(permission: string): string {
+  const key = `plugins.permission.${permission}`;
+  return i18n.t(key) !== key ? i18n.t(key) : permission;
+}
+
+function getPermissionDesc(permission: string): string {
+  const key = `plugins.permission.${permission}_desc`;
+  return i18n.t(key) !== key ? i18n.t(key) : "";
+}
+
+function openRepository(url: string) {
+  void openUrl(url);
+}
+
+function getPluginName(plugin: PluginInfo): string {
+  return getLocalizedPluginName(plugin.manifest, i18n.getLocale());
+}
+
+function getPluginDescription(plugin: PluginInfo): string {
+  return getLocalizedPluginDescription(plugin.manifest, i18n.getLocale());
+}
+
 interface UsePluginsViewPageOptions {
   plugins: () => PluginInfo[];
   searchQuery: () => string;
@@ -38,16 +60,6 @@ export function usePluginsViewPage(options: UsePluginsViewPageOptions) {
     void options.refreshPlugins();
   }
 
-  function getPermissionLabel(permission: string): string {
-    const key = `plugins.permission.${permission}`;
-    return i18n.t(key) !== key ? i18n.t(key) : permission;
-  }
-
-  function getPermissionDesc(permission: string): string {
-    const key = `plugins.permission.${permission}_desc`;
-    return i18n.t(key) !== key ? i18n.t(key) : "";
-  }
-
   function updateSettingsField(key: string, value: string | number | boolean) {
     options.settingsForm[key] = value;
   }
@@ -58,18 +70,6 @@ export function usePluginsViewPage(options: UsePluginsViewPageOptions) {
     const optional = options.getMissingOptionalDependencies(plugin);
     options.setMissingDependencies([...required, ...optional]);
     options.setShowDependencyModal(true);
-  }
-
-  function openRepository(url: string) {
-    void openUrl(url);
-  }
-
-  function getPluginName(plugin: PluginInfo): string {
-    return getLocalizedPluginName(plugin.manifest, i18n.getLocale());
-  }
-
-  function getPluginDescription(plugin: PluginInfo): string {
-    return getLocalizedPluginDescription(plugin.manifest, i18n.getLocale());
   }
 
   async function handleSaveSettings() {

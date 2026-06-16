@@ -1,6 +1,11 @@
 import { ref } from "vue";
 import { normalizeAppError, resolveErrorMessage } from "@utils/appError";
 
+function getPluginErrorMessage(error: unknown): string {
+  const normalized = normalizeAppError(error);
+  return normalized.message || resolveErrorMessage(normalized.code, normalized.args);
+}
+
 export function usePluginFeedback() {
   const alertDialog = ref({
     show: false,
@@ -40,11 +45,6 @@ export function usePluginFeedback() {
     permissionWarning.value.show = false;
   }
 
-  function getErrorMessage(error: unknown): string {
-    const normalized = normalizeAppError(error);
-    return normalized.message || resolveErrorMessage(normalized.code, normalized.args);
-  }
-
   return {
     alertDialog,
     permissionWarning,
@@ -52,6 +52,6 @@ export function usePluginFeedback() {
     closeAlertDialog,
     openPermissionWarning,
     closePermissionWarning,
-    getErrorMessage,
+    getErrorMessage: getPluginErrorMessage,
   };
 }

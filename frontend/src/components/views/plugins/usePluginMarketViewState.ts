@@ -2,6 +2,7 @@ import { computed, type Ref } from "vue";
 import { i18n } from "@language";
 import {
   MARKET_BASE_URL,
+  getMarketPluginPath,
   resolveMarketNetworkHint,
   resolveMarketValue,
   type MarketPlugin,
@@ -73,11 +74,12 @@ export function usePluginMarketViewState(options: UsePluginMarketViewStateOption
   ]);
 
   function getIconUrl(plugin: MarketPlugin): string | null {
-    if (!plugin.icon_url || !plugin._path) {
+    const pluginPath = getMarketPluginPath(plugin);
+    if (!plugin.icon_url || !pluginPath) {
       return null;
     }
 
-    const dir = plugin._path.replace(/\/[^/]+$/, "");
+    const dir = pluginPath.replace(/\/[^/]+$/, "");
     return `${options.activeMarketUrl.value.trim().replace(/\/$/, "")}/${dir}/${plugin.icon_url}`;
   }
 

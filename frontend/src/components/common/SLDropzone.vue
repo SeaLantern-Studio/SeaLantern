@@ -209,8 +209,9 @@ function getDroppedPaths(event: DragEvent): string[] {
 }
 
 onMounted(async () => {
+  const tauriInternals = Reflect.get(window, "__TAURI_INTERNALS__");
   logDropzone("[SLDropzone] mounted", {
-    hasTauriInternals: !!window.__TAURI_INTERNALS__,
+    hasTauriInternals: Boolean(tauriInternals),
     uploadSupported: isUploadSupported(),
   });
 

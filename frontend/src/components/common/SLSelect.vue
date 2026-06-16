@@ -41,8 +41,8 @@ const props = withDefaults(defineProps<Props>(), {
   variant: "default",
 });
 
-const _selectId = props.componentId ?? `sl-select-${Math.random().toString(36).slice(2, 8)}`;
-useRegisterComponent(_selectId, {
+const selectId = props.componentId ?? `sl-select-${Math.random().toString(36).slice(2, 8)}`;
+useRegisterComponent(selectId, {
   type: "SLSelect",
   get: (prop) => (prop === "value" ? props.modelValue : undefined),
   set: (prop, value) => {

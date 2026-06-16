@@ -25,6 +25,31 @@ import {
 const THEME_CACHE_KEY = "sl_theme_cache";
 const WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED = true;
 
+function cloneAppSettings(source: AppSettings): AppSettings {
+  const plainSource = toRaw(source) as AppSettings;
+
+  if (typeof structuredClone === "function") {
+    try {
+      return structuredClone(plainSource);
+    } catch (error) {
+      console.warn("Failed to structuredClone settings, falling back to JSON clone.", error);
+    }
+  }
+  return JSON.parse(JSON.stringify(plainSource)) as AppSettings;
+}
+
+function exportSettingsJson(): Promise<string> {
+  return settingsApi.exportJson();
+}
+
+function getPersonalizationPackageSuggestedName(): Promise<string> {
+  return settingsApi.getPersonalizationPackageSuggestedName();
+}
+
+function exportPersonalizationPackage(path: string): Promise<void> {
+  return settingsApi.exportPersonalizationPackage(path);
+}
+
 function getThemeCache(): { theme: string; fontSize: number } | null {
   try {
     const cached = localStorage.getItem(THEME_CACHE_KEY);
@@ -132,19 +157,6 @@ export const useSettingsStore = defineStore("settings", () => {
   const backgroundBrightness = computed(() => settings.value.background_brightness);
   const backgroundSize = computed(() => settings.value.background_size);
 
-  function cloneSettings(source: AppSettings = settings.value): AppSettings {
-    const plainSource = toRaw(source) as AppSettings;
-
-    if (typeof structuredClone === "function") {
-      try {
-        return structuredClone(plainSource);
-      } catch (error) {
-        console.warn("Failed to structuredClone settings, falling back to JSON clone.", error);
-      }
-    }
-    return JSON.parse(JSON.stringify(plainSource)) as AppSettings;
-  }
-
   function syncSettings(nextSettings: AppSettings): void {
     settings.value = nextSettings;
     isLoaded.value = true;
@@ -196,7 +208,7 @@ export const useSettingsStore = defineStore("settings", () => {
   }
 
   function queueClientSettingsApply(nextSettings: AppSettings = settings.value): Promise<void> {
-    const snapshot = cloneSettings(nextSettings);
+    const snapshot = cloneAppSettings(nextSettings);
     appearanceApplyQueue = appearanceApplyQueue.then(
       () => applyClientSettings(snapshot),
       () => applyClientSettings(snapshot),
@@ -226,7 +238,7 @@ export const useSettingsStore = defineStore("settings", () => {
       } catch (e) {
         console.error("Failed to load settings:", e);
         loadError.value = e instanceof Error ? e.message : String(e);
-        syncSettings(cloneSettings(defaultSettings));
+        syncSettings(cloneAppSettings(defaultSettings));
       } finally {
         isLoading.value = false;
         loadPromise = null;
@@ -286,18 +298,6 @@ export const useSettingsStore = defineStore("settings", () => {
     return replaceSettings(importedSettings, changedGroups);
   }
 
-  async function exportSettingsJson(): Promise<string> {
-    return settingsApi.exportJson();
-  }
-
-  async function getPersonalizationPackageSuggestedName(): Promise<string> {
-    return settingsApi.getPersonalizationPackageSuggestedName();
-  }
-
-  async function exportPersonalizationPackage(path: string): Promise<void> {
-    return settingsApi.exportPersonalizationPackage(path);
-  }
-
   async function importPersonalizationPackage(path: string): Promise<ImportPersonalizationResult> {
     const result = await settingsApi.importPersonalizationPackage(path);
     replaceSettings(result.settings, result.changed_groups);
@@ -349,7 +349,7 @@ export const useSettingsStore = defineStore("settings", () => {
     importPersonalizationPackage,
     importSettingsJson,
     updateSettings,
-    cloneSettings,
+    cloneSettings: cloneAppSettings,
     replaceSettings,
     applyClientSettings,
     queueClientSettingsApply,

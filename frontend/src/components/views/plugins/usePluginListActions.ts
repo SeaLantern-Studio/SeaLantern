@@ -58,6 +58,22 @@ function hasSettings(plugin: PluginInfo): boolean {
   return !!(plugin.manifest.settings && plugin.manifest.settings.length > 0);
 }
 
+function getStatusLabel(state: PluginState): string {
+  if (typeof state === "object" && "error" in state) {
+    return i18n.t("plugins.status.error");
+  }
+  switch (state) {
+    case "enabled":
+      return i18n.t("plugins.status.enabled");
+    case "disabled":
+      return i18n.t("plugins.status.disabled");
+    case "loaded":
+      return i18n.t("plugins.status.loaded");
+    default:
+      return String(state);
+  }
+}
+
 export function usePluginListActions(options: UsePluginListActionsOptions) {
   const router = useRouter();
   const checkingUpdate = ref<string | null>(null);
@@ -196,22 +212,6 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
       }
     } finally {
       checkingAllUpdates.value = false;
-    }
-  }
-
-  function getStatusLabel(state: PluginState): string {
-    if (typeof state === "object" && "error" in state) {
-      return i18n.t("plugins.status.error");
-    }
-    switch (state) {
-      case "enabled":
-        return i18n.t("plugins.status.enabled");
-      case "disabled":
-        return i18n.t("plugins.status.disabled");
-      case "loaded":
-        return i18n.t("plugins.status.loaded");
-      default:
-        return String(state);
     }
   }
 

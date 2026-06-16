@@ -572,17 +572,9 @@ export const serverApi = {
               }
 
               const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-              let buffer = "";
-
-              while (!disposed) {
-                const { value, done } = await reader.read();
-                if (done) {
-                  break;
-                }
-
-                buffer += value;
+              const processFrames = (buffer: string) => {
                 const frames = buffer.split("\n\n");
-                buffer = frames.pop() || "";
+                const remainingBuffer = frames.pop() || "";
 
                 for (const frame of frames) {
                   const dataLines = frame
@@ -606,7 +598,25 @@ export const serverApi = {
                     console.warn("[SSE] Failed to parse log event:", e);
                   }
                 }
-              }
+
+                return remainingBuffer;
+              };
+
+              const pump = async (buffer: string): Promise<void> => {
+                if (disposed) {
+                  return;
+                }
+
+                const { value, done } = await reader.read();
+                if (disposed || done) {
+                  return;
+                }
+
+                const nextBuffer = processFrames(buffer + value);
+                await pump(nextBuffer);
+              };
+
+              await pump("");
             } catch (e) {
               if (disposed) {
                 return;

@@ -32,7 +32,7 @@ if (import.meta.env.DEV) {
   // DEV 模式下将 invoke 挂载到 window，方便在浏览器控制台手动调用 Tauri 命令。
   // 例如触发崩溃报告测试：await window.__invoke("debug_panic")
   // 注意：此挂载仅在开发模式下存在，生产包中不会包含。
-  (window as any).__invoke = invoke;
+  Reflect.set(window, "__invoke", invoke);
 }
 
 app.use(pinia);

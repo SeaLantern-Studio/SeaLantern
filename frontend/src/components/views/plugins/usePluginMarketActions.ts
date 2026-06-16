@@ -5,7 +5,11 @@ import {
   installFromMarket,
   type MarketPluginInfo,
 } from "@api/plugin";
-import { MARKET_BASE_URL, type MarketPlugin } from "./pluginMarketShared";
+import {
+  MARKET_BASE_URL,
+  getMarketPluginDetailPath,
+  type MarketPlugin,
+} from "./pluginMarketShared";
 import { i18n } from "@language";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { normalizeAppError } from "@utils/appError";
@@ -69,7 +73,7 @@ export function usePluginMarketActions(options: UsePluginMarketActionsOptions) {
       const requestUrl = options.getMarketRequestUrl();
       const sourceUrl = options.getSourceUrl() || MARKET_BASE_URL;
       options.pluginDetail.value = await fetchMarketPluginDetail(
-        plugin._path || `plugins/${plugin.id}.json`,
+        getMarketPluginDetailPath(plugin),
         requestUrl,
       );
       pluginLogger.info("Market", "插件详情已读取", {

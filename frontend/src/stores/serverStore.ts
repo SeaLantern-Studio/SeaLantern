@@ -6,6 +6,23 @@ import { useAsyncByKey, useLoading } from "@composables/useAsync";
 import type { ServerInstance } from "@type/server";
 import type { ServerStatusInfo } from "@api/server";
 
+async function scanServerPort(server: ServerInstance) {
+  try {
+    const serverPath = server.path;
+    if (!serverPath) return;
+
+    const data = await configApi.readServerProperties(serverPath);
+    if (data.raw && data.raw["server-port"]) {
+      const port = parseInt(data.raw["server-port"]);
+      if (!isNaN(port)) {
+        server.port = port;
+      }
+    }
+  } catch (e) {
+    console.warn(`Failed to scan port for server ${server.id}:`, e);
+  }
+}
+
 /**
  * 服务器状态管理 Store
  * 管理服务器列表、当前选择、状态等
@@ -64,25 +81,6 @@ export const useServerStore = defineStore("server", () => {
   /**
    * 扫描单个服务器的端口信息
    */
-  async function scanServerPort(server: ServerInstance) {
-    try {
-      // 使用 configApi 读取 server.properties 文件
-      const serverPath = server.path;
-      if (!serverPath) return;
-
-      // 读取 server.properties 文件
-      const data = await configApi.readServerProperties(serverPath);
-      if (data.raw && data.raw["server-port"]) {
-        const port = parseInt(data.raw["server-port"]);
-        if (!isNaN(port)) {
-          server.port = port;
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed to scan port for server ${server.id}:`, e);
-    }
-  }
-
   /**
    * 刷新指定服务器的状态
    */

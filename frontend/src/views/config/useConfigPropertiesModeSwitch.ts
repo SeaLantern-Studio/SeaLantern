@@ -3,6 +3,10 @@ import { configApi } from "@api/config";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { i18n } from "@language";
 
+function applyParsedSourceToVisualState(sourceText: string) {
+  return configApi.parseServerPropertiesSource(sourceText);
+}
+
 interface ModeSwitchCompareContext {
   compareMode: Ref<boolean>;
   compareTargetSourceDraftText: Ref<string>;
@@ -32,11 +36,6 @@ export function useConfigPropertiesModeSwitch(options: UseConfigPropertiesModeSw
 
   function clearSourceParseError() {
     options.sourceParseError.value = null;
-  }
-
-  function applyParsedSourceToVisualState(sourceText: string) {
-    const parsed = configApi.parseServerPropertiesSource(sourceText);
-    return parsed;
   }
 
   async function handleEditorModeChange(mode: string | null) {

@@ -62,7 +62,7 @@ export function detectVersionCandidatesFromText(input: string, knownVersions: st
 
   const lowered = trimmed.toLowerCase();
   const matches = knownVersions.filter((version) => lowered.includes(version.toLowerCase()));
-  return [...new Set(matches)].sort((left, right) => right.length - left.length);
+  return [...new Set(matches)].toSorted((left, right) => right.length - left.length);
 }
 
 export function containsIoRedirection(command: string): boolean {
