@@ -776,6 +776,40 @@ pub fn resolve_command_path_hint(token: &str, folder: Option<&Path>) -> Option<S
     resolve_command_path_hint_with(token, folder, std::env::current_dir)
 }
 
+pub fn resolve_direct_custom_command(
+    command_text: &str,
+    folder: Option<&Path>,
+) -> Option<(String, Vec<String>)> {
+    let trimmed = command_text.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let tokens = shlex::split(trimmed)?;
+    let (program_token, args) = tokens.split_first()?;
+    if !custom_command_tokens_are_shell_safe(args) {
+        return None;
+    }
+
+    let program = resolve_command_path_hint(program_token, folder).or_else(|| {
+        if program_token.contains(['/', '\\']) || program_token.starts_with('.') {
+            Some(program_token.to_string())
+        } else {
+            None
+        }
+    })?;
+
+    Some((program, args.to_vec()))
+}
+
+fn custom_command_tokens_are_shell_safe(tokens: &[String]) -> bool {
+    tokens.iter().all(|token| {
+        !token.contains(['|', '&', ';', '<', '>', '\n', '\r'])
+            && token != "&&"
+            && token != "||"
+    })
+}
+
 fn resolve_command_path_hint_with<F>(
     token: &str,
     folder: Option<&Path>,
@@ -794,10 +828,12 @@ where
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.to_ascii_lowercase());
+    let folder_candidate_exists = folder.is_some_and(|folder| folder.join(path).exists());
     let is_absolute = path.is_absolute() || is_windows_absolute_path(trimmed);
     let looks_like_launch_path = is_absolute
         || trimmed.contains(['/', '\\'])
         || trimmed.starts_with('.')
+        || folder_candidate_exists
         || matches!(extension.as_deref(), Some("jar" | "bat" | "sh" | "ps1" | "cmd"));
 
     if !looks_like_launch_path {
@@ -1490,7 +1526,8 @@ mod tests {
         parse_java_major_version, parse_java_major_version_output, path_is_child_of,
         path_parent_string, paths_equal, prepend_path_entry, preview_command,
         refresh_local_server_core_type, resolve_attach_executable_path_checked,
-        resolve_command_path_hint_with, resolve_direct_jar_launch_target,
+        resolve_command_path_hint_with, resolve_direct_custom_command,
+        resolve_direct_jar_launch_target,
         resolve_docker_create_core_type, resolve_docker_create_mc_version,
         resolve_existing_server_core_type, resolve_existing_server_requested_startup,
         resolve_java_paths, resolve_local_attach_core_type, resolve_local_attach_mc_version,
@@ -2402,6 +2439,38 @@ mod tests {
         let resolved = resolve_command_path_hint_with("server.jar", None, || {
             Err(std::io::Error::new(std::io::ErrorKind::NotFound, "current dir unavailable"))
         });
+
+        assert_eq!(resolved, None);
+    }
+
+    #[test]
+    fn resolve_direct_custom_command_accepts_direct_program_with_args() {
+        let dir = tempdir().expect("temp dir should exist");
+        let server_dir = dir.path().join("pumpkin-server");
+        std::fs::create_dir_all(&server_dir).expect("server dir should create");
+        let exe_path = server_dir.join("pumpkin-X64-Windows.exe");
+        std::fs::write(&exe_path, b"pumpkin").expect("exe placeholder should write");
+
+        let resolved = resolve_direct_custom_command(
+            "pumpkin-X64-Windows.exe --no-gui",
+            Some(&server_dir),
+        )
+        .expect("direct custom command should resolve");
+
+        assert_eq!(resolved.0, exe_path.to_string_lossy().to_string());
+        assert_eq!(resolved.1, vec!["--no-gui".to_string()]);
+    }
+
+    #[test]
+    fn resolve_direct_custom_command_rejects_shell_operators() {
+        let resolved = resolve_direct_custom_command("pumpkin.exe && echo ready", None);
+
+        assert_eq!(resolved, None);
+    }
+
+    #[test]
+    fn resolve_direct_custom_command_rejects_plain_shell_builtins() {
+        let resolved = resolve_direct_custom_command("echo launch ready", None);
 
         assert_eq!(resolved, None);
     }

@@ -6,7 +6,8 @@ use super::script_launch_support;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::i18n::manager_t;
 use sea_lantern_server_local_setup_core::{
-    resolve_direct_jar_launch_target, resolve_local_preferred_jar_path,
+    resolve_direct_custom_command, resolve_direct_jar_launch_target,
+    resolve_local_preferred_jar_path,
 };
 use std::path::Path;
 use std::process::Command;
@@ -113,6 +114,21 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
         .java_path()
         .map(|value| !value.trim().is_empty())
         .unwrap_or(false);
+
+    if let Some((program, args)) =
+        resolve_direct_custom_command(custom_command, Some(Path::new(&context.server.path)))
+    {
+        let mut direct_cmd = Command::new(program);
+        direct_cmd.args(args);
+        if has_java_path {
+            script_launch_support::apply_java_process_env(
+                &mut direct_cmd,
+                &context.java_home_dir_str,
+                &context.java_bin_dir_str,
+            );
+        }
+        return Ok(direct_cmd);
+    }
 
     #[cfg(target_os = "windows")]
     {
@@ -348,6 +364,33 @@ mod tests {
             assert_eq!(args, vec!["-c", "echo launch ready"]);
         }
 
+        assert_java_process_env_is_injected(&command);
+    }
+
+    #[test]
+    fn custom_command_direct_program_bypasses_shell_wrapper_when_safe() {
+        let temp_dir = TempDir::new().expect("temp dir should exist");
+        let settings = test_settings();
+        let program_path = temp_dir.path().join("pumpkin-X64-Windows.exe");
+        std::fs::write(&program_path, b"pumpkin").expect("program placeholder should write");
+        let server = test_server(
+            temp_dir.path(),
+            "custom",
+            Some(&format!("\"{}\" --query", program_path.to_string_lossy())),
+        );
+        let context = test_launch_context(&server, &settings, StartupMode::Custom, "ignored");
+
+        let command = build_custom_command(&context).expect("custom command should build");
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            command.get_program().to_string_lossy().replace('\\', "/"),
+            program_path.to_string_lossy().replace('\\', "/")
+        );
+        assert_eq!(args, vec!["--query"]);
         assert_java_process_env_is_injected(&command);
     }
 
