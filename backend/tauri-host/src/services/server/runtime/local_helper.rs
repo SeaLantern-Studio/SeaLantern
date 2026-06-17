@@ -363,7 +363,7 @@ fn reconcile_terminal_state_after_fallback(
         server,
         state,
         snapshot.exit_code,
-        snapshot.error_message.clone(),
+        snapshot.error_message.as_ref().cloned(),
     ) {
         logger::log_warn_ctx(
             "server.runtime.local_helper",

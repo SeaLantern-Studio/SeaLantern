@@ -1,6 +1,10 @@
 use std::process::{Child, Command};
 
 #[cfg(windows)]
+use once_cell::sync::Lazy;
+#[cfg(windows)]
+use std::sync::Mutex;
+#[cfg(windows)]
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
 #[cfg(unix)]
@@ -10,6 +14,9 @@ use std::collections::HashSet;
 use super::i18n::manager_t;
 #[cfg(any(windows, not(any(unix, windows))))]
 use super::i18n::manager_t1;
+
+#[cfg(windows)]
+static PROCESS_SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new()));
 
 #[cfg(unix)]
 fn list_child_pids_unix(ppid: u32) -> Vec<u32> {
@@ -107,9 +114,14 @@ pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
 
 #[cfg(windows)]
 fn is_process_alive_windows(pid: u32) -> bool {
-    let mut system = System::new_all();
-    system.refresh_processes(ProcessesToUpdate::Some(&[Pid::from_u32(pid)]), true);
-    system.process(Pid::from_u32(pid)).is_some()
+    let pid = Pid::from_u32(pid);
+    let mut system = match PROCESS_SYSTEM.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    system.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    system.process(pid).is_some()
 }
 
 pub(crate) fn is_process_alive(pid: u32) -> bool {
