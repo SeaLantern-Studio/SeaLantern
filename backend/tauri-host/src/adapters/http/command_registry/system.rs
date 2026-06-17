@@ -5,6 +5,7 @@ use serde_json::Value;
 pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_system_info", handle_get_system_info as CommandHandler);
     builder.register("get_default_run_path", handle_get_default_run_path as CommandHandler);
+    builder.register("get_app_version", handle_get_app_version as CommandHandler);
     builder
         .register("get_server_resource_usage", handle_get_server_resource_usage as CommandHandler);
     builder.register("get_safe_mode_status", handle_get_safe_mode_status as CommandHandler);
@@ -34,6 +35,15 @@ fn handle_get_default_run_path(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let result = system_commands::get_default_run_path()?;
+        serde_json::to_value(result).map_err(|error| error.to_string())
+    })
+}
+
+fn handle_get_app_version(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = system_commands::get_app_version()?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }

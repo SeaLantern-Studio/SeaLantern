@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 env:
-  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+  BETA_BRANCH: beta
 
 jobs:
   validate-nightly:
@@ -24,18 +24,24 @@ jobs:
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       version: ${{ steps.meta.outputs.version }}
+      display_version: ${{ steps.meta.outputs.display_version }}
       release_name: ${{ steps.meta.outputs.release_name }}
       release_body: ${{ steps.meta.outputs.release_body }}
+      source_sha: ${{ steps.meta.outputs.source_sha }}
     steps:
-      - name: 校验仅允许从默认分支发布
-        if: github.ref != format('refs/heads/{0}', env.DEFAULT_BRANCH)
+      - name: 校验 Nightly 分支配置
         run: |
-          echo "❌ Nightly 发布仅允许从默认分支 ${DEFAULT_BRANCH} 触发，当前来源：${GITHUB_REF}"
-          exit 1
+          set -euo pipefail
 
-      - name: 检出代码
+          if [ -z "$BETA_BRANCH" ]; then
+            echo "❌ BETA_BRANCH 未配置，无法解析 Nightly 构建来源。"
+            exit 1
+          fi
+
+      - name: 检出 beta 分支代码
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.BETA_BRANCH }}
           fetch-depth: 0
 
       - name: 生成 Nightly 标签与 Release 信息
@@ -49,16 +55,22 @@ jobs:
             exit 1
           fi
 
+          SOURCE_BRANCH="$BETA_BRANCH"
+          SOURCE_SHA="$(git rev-parse HEAD)"
           DATE_UTC="$(date -u +%Y%m%d)"
+          DATETIME_UTC="$(date -u +%Y%m%dT%H%M%SZ)"
           DATE_LABEL="$(date -u +%Y-%m-%d)"
-          SHORT_SHA="$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
+          SHORT_SHA="$(printf '%s' "$SOURCE_SHA" | cut -c1-7)"
+          DISPLAY_VERSION="NightlyBuild-${SHORT_SHA}-${DATETIME_UTC}"
           TAG="nightly-v${VERSION}-${DATE_UTC}-${SHORT_SHA}"
-          RELEASE_NAME="Sea Lantern Nightly ${DATE_LABEL} (${SHORT_SHA})"
+          RELEASE_NAME="Sea Lantern Nightly ${DATE_LABEL} (${SOURCE_BRANCH}@${SHORT_SHA})"
 
           {
             echo "tag=$TAG"
             echo "version=$VERSION"
+            echo "display_version=$DISPLAY_VERSION"
             echo "release_name=$RELEASE_NAME"
+            echo "source_sha=$SOURCE_SHA"
             echo "release_body<<EOF"
             echo "## 下载说明"
             echo ""
@@ -75,7 +87,7 @@ jobs:
             echo "- \`*.AppImage\`：Linux 免安装版，给文件执行权限后即可直接运行。"
             echo "- \`*.deb\` / \`*.rpm\`：Linux 安装包。"
             echo ""
-            echo "本次构建基于 ${DEFAULT_BRANCH} 分支提交 ${SHORT_SHA}，仅发布在 GitHub Release。"
+            echo "本次构建基于 ${SOURCE_BRANCH} 分支提交 ${SHORT_SHA}，仅发布在 GitHub Release。"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -85,6 +97,7 @@ jobs:
           TAG: ${{ steps.meta.outputs.tag }}
           RELEASE_NAME: ${{ steps.meta.outputs.release_name }}
           RELEASE_BODY: ${{ steps.meta.outputs.release_body }}
+          SOURCE_SHA: ${{ steps.meta.outputs.source_sha }}
         run: |
           set -euo pipefail
 
@@ -94,7 +107,7 @@ jobs:
           fi
 
           gh release create "$TAG" \
-            --target "$GITHUB_SHA" \
+            --target "$SOURCE_SHA" \
             --title "$RELEASE_NAME" \
             --notes "$RELEASE_BODY" \
             --prerelease
@@ -130,8 +143,10 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - name: 检出代码
+      - name: 检出 beta Nightly 源码
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-nightly.outputs.source_sha }}
 
       - name: 安装系统依赖 (Ubuntu 专用)
         if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
@@ -179,6 +194,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SEA_LANTERN_BUILD_VERSION: ${{ needs.validate-nightly.outputs.display_version }}
         with:
           tagName: ${{ needs.validate-nightly.outputs.tag }}
           releaseName: ${{ needs.validate-nightly.outputs.release_name }}
@@ -285,3 +301,39 @@ jobs:
           tar -C "$STAGE_DIR" -czf "$ASSET_PATH" "$APP_BASENAME" LICENSE NOTICE
 
           gh release upload "$TAG" "$ASSET_PATH" --clobber
+
+  cleanup-old-nightly:
+    name: 清理旧 Nightly 发布
+    needs:
+      - validate-nightly
+      - publish-tauri-nightly
+    if: ${{ success() }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: 删除当前版本之外的旧 Nightly Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: ${{ needs.validate-nightly.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t NIGHTLY_TAGS < <(
+            gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --paginate --jq '.[] | select(.prerelease and (.tag_name | startswith("nightly-v"))) | .tag_name'
+          )
+
+          deleted=0
+          for tag in "${NIGHTLY_TAGS[@]}"; do
+            if [ "$tag" = "$CURRENT_TAG" ]; then
+              continue
+            fi
+
+            echo "删除旧 Nightly Release: $tag"
+            gh release delete "$tag" --cleanup-tag -y
+            deleted=1
+          done
+
+          if [ "$deleted" -eq 0 ]; then
+            echo "没有需要清理的旧 Nightly Release。"
+          fi

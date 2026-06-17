@@ -268,6 +268,10 @@ export const systemApi = {
     return tauriInvoke("get_default_run_path");
   },
 
+  async getAppVersion(): Promise<string> {
+    return tauriInvoke("get_app_version");
+  },
+
   async getCreateServerDefaults(): Promise<CreateServerDefaults> {
     return tauriInvoke("get_create_server_defaults");
   },

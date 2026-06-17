@@ -1,3 +1,4 @@
+pub(crate) mod app_version;
 pub(crate) mod cli;
 pub(crate) mod constants;
 pub(crate) mod docker_cli;

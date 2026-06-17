@@ -1,14 +1,11 @@
-import { getVersion } from "@tauri-apps/api/app";
+import { systemApi } from "@api/system";
 import { i18n } from "@language";
 
 /**
  * 应用版本号管理
  *
- * 版本号从 Tauri 后端读取，后端版本号来自：
- * - backend/tauri-host/Cargo.toml - version
- * - backend/tauri-host/tauri.conf.json - version
- *
- * 修改版本时只需要更新这两个文件，前端会自动同步
+ * 版本号从后端命令读取。
+ * 正式版默认展示底层 semver；nightly 构建可由后端注入自定义显示版本。
  */
 
 let cachedVersion: string | null = null;
@@ -22,7 +19,7 @@ export async function getAppVersion(): Promise<string> {
   }
 
   try {
-    cachedVersion = await getVersion();
+    cachedVersion = await systemApi.getAppVersion();
     return cachedVersion;
   } catch (error) {
     console.error(i18n.t("about.update_check_failed"), error);

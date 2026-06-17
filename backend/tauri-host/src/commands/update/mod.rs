@@ -11,10 +11,12 @@ use sea_lantern_update_core::constants::UPDATE_HTTP_USER_AGENT;
 use sea_lantern_update_core::install_support::get_update_cache_dir;
 use sea_lantern_update_core::types::PendingUpdate;
 
+use crate::utils::app_version;
+
 /// 检查更新
 #[command]
 pub async fn check_update() -> Result<sea_lantern_update_core::types::UpdateInfo, String> {
-    sea_lantern_update_core::check_update(env!("CARGO_PKG_VERSION")).await
+    sea_lantern_update_core::check_update(app_version::base_version()).await
 }
 
 /// 打开下载链接

@@ -14,9 +14,17 @@ const files = {
   srcinfo: path.join(rootDir, ".SRCINFO"),
 };
 
-// 校验输入版本号是否符合语义化版本格式。
+// 校验输入版本号是否符合支持的项目版本格式。
 function isValidVersion(version) {
+  return isValidSemver(version) || isValidNightlyBuildVersion(version);
+}
+
+function isValidSemver(version) {
   return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version);
+}
+
+function isValidNightlyBuildVersion(version) {
+  return /^NightlyBuild-[0-9A-Fa-f]{7,40}-\d{8}T\d{6}Z$/.test(version);
 }
 
 // 判断指定路径的文件是否存在且可访问。
@@ -175,7 +183,15 @@ async function main() {
     }
 
     if (!isValidVersion(value)) {
-      throw new Error(`无效版本号：${value}，请使用语义化版本，例如 1.2.3`);
+      throw new Error(
+        `无效版本号：${value}，请使用语义化版本（如 1.2.3）或 NightlyBuild-{SHORT_SHA}-{DateTime}（如 NightlyBuild-abcdef0-20260617T180000Z）`,
+      );
+    }
+
+    if (!isValidSemver(value)) {
+      throw new Error(
+        `当前 change 命令只能写入语义化版本到项目清单文件；NightlyBuild 版本请通过构建环境注入显示版本，例如 SEA_LANTERN_BUILD_VERSION=${value}`,
+      );
     }
 
     await updateVersion(value);

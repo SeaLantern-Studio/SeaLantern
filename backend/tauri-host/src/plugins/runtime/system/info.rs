@@ -1,6 +1,7 @@
 use mlua::Lua;
 
 use super::common::{emit_system_log, map_system_err, SystemContext};
+use crate::utils::app_version;
 
 pub(super) fn get_os(lua: &Lua, ctx: &SystemContext) -> Result<mlua::Function, String> {
     let ctx = ctx.clone();
@@ -24,7 +25,7 @@ pub(super) fn get_app_version(lua: &Lua, ctx: &SystemContext) -> Result<mlua::Fu
     let ctx = ctx.clone();
     lua.create_function(move |_, ()| {
         emit_system_log(&ctx.plugin_id, "sl.system.get_app_version");
-        Ok(env!("CARGO_PKG_VERSION").to_string())
+        Ok(app_version::display_version())
     })
     .map_err(|e| map_system_err("system.create_get_app_version_failed", e))
 }

@@ -131,13 +131,17 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
 
   async function loadVersion() {
     if (isBrowserMode.value) {
-      version.value = import.meta.env.VITE_APP_VERSION || "Web";
-      return;
+      try {
+        version.value = await systemApi.getAppVersion();
+        return;
+      } catch {
+        version.value = import.meta.env.VITE_APP_VERSION || "Web";
+        return;
+      }
     }
 
     try {
-      const { getVersion } = await import("@tauri-apps/api/app");
-      version.value = await getVersion();
+      version.value = await systemApi.getAppVersion();
     } catch {
       version.value = import.meta.env.VITE_APP_VERSION || "-";
     }

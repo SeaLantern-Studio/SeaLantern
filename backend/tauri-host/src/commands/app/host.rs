@@ -4,6 +4,8 @@ mod host_io;
 mod resources;
 mod system_info;
 
+use crate::utils::app_version;
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct CreateServerDefaults {
     pub default_run_path: String,
@@ -157,6 +159,11 @@ pub fn get_safe_mode_status() -> Result<bool, String> {
 #[tauri::command]
 pub fn frontend_heartbeat() -> Result<(), String> {
     host_io::frontend_heartbeat()
+}
+
+#[tauri::command]
+pub fn get_app_version() -> Result<String, String> {
+    Ok(app_version::display_version())
 }
 
 #[tauri::command]
