@@ -23,9 +23,11 @@ const props = withDefaults(
     mcVersionOptions: string[];
     selectedMcVersion: string;
     mcVersionDetectionFailed: boolean;
+    showAdvancedDetails?: boolean;
     disabled?: boolean;
   }>(),
   {
+    showAdvancedDetails: true,
     disabled: false,
   },
 );
@@ -167,7 +169,7 @@ function getStartupIcon(mode: StartupMode) {
       </div>
     </div>
 
-    <div class="startup-extra-grid">
+    <div v-if="showAdvancedDetails" class="startup-extra-grid">
       <div class="startup-extra-item">
         <p class="startup-extra-label">{{ i18n.t("create.startup_core_type_label") }}</p>
         <p class="startup-step-hint">

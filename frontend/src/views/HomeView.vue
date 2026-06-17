@@ -84,6 +84,10 @@ onUnmounted(() => {
 function handleCreate() {
   router.push("/create");
 }
+
+function handleAddExisting() {
+  router.push("/add-existing");
+}
 </script>
 
 <template>
@@ -94,7 +98,7 @@ function handleCreate() {
     />
 
     <div class="top-row">
-      <QuickStartCard @create="handleCreate" />
+      <QuickStartCard @create="handleCreate" @add-existing="handleAddExisting" />
       <SystemStatsCard />
     </div>
 

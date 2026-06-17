@@ -358,8 +358,9 @@ export const serverApi = {
     maxMemory: number;
     minMemory: number;
     port: number;
-    startupMode: "jar" | "bat" | "sh" | "ps1";
+    startupMode: "jar" | "bat" | "sh" | "ps1" | "custom";
     executablePath?: string;
+    customCommand?: string;
     jvmArgs?: string[];
     cpuPolicy?: CpuPolicyConfig;
     jvmPreset?: JvmPresetConfig;
@@ -373,6 +374,7 @@ export const serverApi = {
       port: params.port,
       startupMode: params.startupMode,
       executablePath: params.executablePath,
+      customCommand: params.customCommand,
       jvmArgs: params.jvmArgs ?? [],
       cpuPolicy: params.cpuPolicy,
       jvmPreset: params.jvmPreset,

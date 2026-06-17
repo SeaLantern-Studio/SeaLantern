@@ -1,7 +1,9 @@
 {
   "title": "添加已有服务器",
+  "page_subtitle": "把已经准备好的服务器目录接入 SeaLantern，后续就可以在这里统一管理。",
   "server_folder": "服务器目录",
   "server_folder_placeholder": "请选择服务器所在文件夹",
+  "server_folder_hint": "选择已经能正常启动的服务器文件夹，SeaLantern 会尝试识别常见启动方式。",
   "browse": "浏览",
   "server_name": "服务器名称",
   "server_name_placeholder": "输入服务器名称",
@@ -26,5 +28,19 @@
   "no_executable_selected": "未选择启动文件",
   "select_executable": "选择启动文件",
   "change_executable": "更改启动文件",
-  "files_found": "共 {{count}} 个文件"
+  "files_found": "共 {{count}} 个文件",
+  "step_folder_title": "步骤 1：选择服务器目录",
+  "step_folder_desc": "告诉 SeaLantern 现有服务器放在哪里",
+  "step_startup_title": "步骤 2：确认启动方式",
+  "step_startup_desc": "选择这个服务器平时用什么方式启动",
+  "step_config_title": "步骤 3：补充运行设置",
+  "step_config_desc": "确认名称、Java 和内存等基础信息",
+  "step_action_title": "步骤 4：完成导入",
+  "step_action_desc": "确认无误后把服务器接入列表",
+  "startup_mode_auto_label": "按目录内容自动识别",
+  "startup_mode_auto_desc": "先按常见启动文件进行识别，如果目录里有可用启动项就直接接入 {{folder}}",
+  "startup_mode_jar_label": "使用 server.jar 启动",
+  "startup_mode_bat_label": "使用 start.bat 启动",
+  "startup_mode_sh_label": "使用 start.sh 启动",
+  "startup_mode_ps1_label": "使用 start.ps1 启动"
 }

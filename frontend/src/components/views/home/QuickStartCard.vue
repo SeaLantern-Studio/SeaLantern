@@ -6,6 +6,7 @@ import { currentQuote, displayText, isTyping, updateQuote } from "@utils/quoteUt
 
 const emit = defineEmits<{
   (e: "create"): void;
+  (e: "add-existing"): void;
 }>();
 </script>
 
@@ -19,6 +20,9 @@ const emit = defineEmits<{
     <div class="quick-actions">
       <SLButton variant="primary" size="lg" @click="emit('create')">
         {{ i18n.t("common.create_server") }}
+      </SLButton>
+      <SLButton variant="secondary" size="lg" @click="emit('add-existing')">
+        {{ i18n.t("common.add_existing_server") }}
       </SLButton>
     </div>
     <div class="quote-display" @click="updateQuote" :title="i18n.t('common.click_to_refresh')">

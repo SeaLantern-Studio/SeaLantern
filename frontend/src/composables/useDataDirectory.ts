@@ -5,6 +5,10 @@ import { usePluginStore } from "@stores/pluginStore";
 import { useServerStore } from "@stores/serverStore";
 import { useSettingsStore } from "@stores/settingsStore";
 
+async function browseFolder(): Promise<string | null> {
+  return systemApi.pickFolder();
+}
+
 export function useDataDirectory() {
   const settingsStore = useSettingsStore();
   const pluginStore = usePluginStore();
@@ -18,10 +22,6 @@ export function useDataDirectory() {
   function clearFeedback() {
     error.value = null;
     infoMessage.value = null;
-  }
-
-  async function browseFolder(): Promise<string | null> {
-    return systemApi.pickFolder();
   }
 
   async function refreshStatus() {
