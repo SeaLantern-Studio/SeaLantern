@@ -187,7 +187,7 @@ jobs:
 
       - name: 安装前端依赖 (pnpm)
         run: |
-          corepack prepare pnpm@11.5.2 --activate
+          corepack prepare pnpm@11.5.3 --activate
           pnpm --dir frontend install --frozen-lockfile
 
       - name: 构建并上传 Nightly 产物

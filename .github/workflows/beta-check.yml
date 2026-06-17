@@ -130,7 +130,7 @@ jobs:
         continue-on-error: true
         run: |
           corepack enable
-          corepack prepare pnpm@11.5.2 --activate
+          corepack prepare pnpm@11.5.3 --activate
 
       - name: PNPM 缓存
         id: pnpm_cache
