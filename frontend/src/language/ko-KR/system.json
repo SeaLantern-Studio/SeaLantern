@@ -1,1 +1,8 @@
-{}
+{
+  "browser_only_method": "This method is only supported in browser/Docker mode",
+  "docker_native_picker_unsupported": "Native file pickers are not supported in Docker mode. Use the upload flow instead.",
+  "docker_personalization_export_unsupported": "Personalization package export is not supported in Docker mode. Use the desktop app for this feature.",
+  "docker_personalization_import_unsupported": "Personalization package import is not supported in Docker mode. Use the desktop app for this feature.",
+  "docker_open_file_unsupported": "Opening a local file directly from the browser is not supported in Docker mode",
+  "docker_open_folder_unsupported": "Opening a local folder directly from the browser is not supported in Docker mode"
+}

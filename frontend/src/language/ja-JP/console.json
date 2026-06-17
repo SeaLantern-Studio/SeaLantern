@@ -24,5 +24,10 @@
   "stopped": "停止済み",
   "no_server": "サーバーなし",
   "create_server_first": "先にサーバーを作成して選択してください",
-  "suggestion_hint": "Tab 補完 / Up Down 選択"
+  "suggestion_hint": "Tab 補完 / Up Down 選択",
+  "force_stop": "強制停止",
+  "force_stop_confirm": "強制停止するとサーバープロセスが直ちに終了し、データが失われる可能性があります。続行しますか？",
+  "force_stop_requested": "強制停止をリクエストしました",
+  "overview_title": "統合コンソール",
+  "overview_subtitle": "同じ画面でサーバーを切り替えながら、ホストの性能情報を確認できます"
 }

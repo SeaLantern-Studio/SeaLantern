@@ -28,5 +28,9 @@
   "confirm": "Confirmar",
   "server_not_running_hint": "⚠ El servidor no está en ejecución, no se pueden enviar comandos",
   "empty": "Vacío",
-  "level": "Nivel"
+  "level": "Nivel",
+  "add_whitelist": "Add to Whitelist",
+  "server_not_run": "Player management requires server to be running",
+  "reason": "Reason",
+  "status_online": "Online"
 }

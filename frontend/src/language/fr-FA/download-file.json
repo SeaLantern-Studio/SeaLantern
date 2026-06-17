@@ -18,5 +18,6 @@
   "downloading": "Téléchargement de la ressource...",
   "status-finished": "Téléchargement terminé",
   "failed": "Échec du téléchargement",
-  "completed": "Terminé"
+  "completed": "Terminé",
+  "filename_placeholder": "Please enter a file name, for example server.jar"
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { i18n } from "@language";
 
 export type BadgeVariant = "primary" | "success" | "warning" | "error" | "neutral" | "info";
 export type BadgeSize = "small" | "medium" | "large";
@@ -34,6 +35,8 @@ const badgeStyle = computed(() => {
   }
   return style;
 });
+
+const closeLabel = computed(() => i18n.t("common.close_tag"));
 
 const handleClose = (event: Event) => {
   event.preventDefault();
@@ -72,7 +75,7 @@ const handleClose = (event: Event) => {
       @keydown.enter="handleClose"
       @keydown.space.prevent="handleClose"
       type="button"
-      aria-label="关闭标签"
+      :aria-label="closeLabel"
       tabindex="0"
     >
       <span class="sl-badge__close-icon" aria-hidden="true">×</span>

@@ -24,5 +24,10 @@
   "stopped": "Detenido",
   "no_server": "Sin servidores",
   "create_server_first": "Por favor, crea y selecciona un servidor primero",
-  "suggestion_hint": "Tab autocompletar / Up Down seleccionar"
+  "suggestion_hint": "Tab autocompletar / Up Down seleccionar",
+  "force_stop": "Force Stop",
+  "force_stop_confirm": "Force stopping will kill the server process immediately and may cause data loss. Continue?",
+  "force_stop_requested": "Force stop requested",
+  "overview_title": "Unified Console",
+  "overview_subtitle": "Switch servers and view host performance data from one page"
 }

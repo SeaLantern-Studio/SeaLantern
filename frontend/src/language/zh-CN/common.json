@@ -22,6 +22,7 @@
   "search_options": "搜索选项",
   "no_match": "未找到匹配项",
   "close_modal": "关闭弹窗",
+  "close_tag": "关闭标签",
   "close_notification": "关闭通知",
   "server_status_stopped": "已停止",
   "server_status_starting": "启动中",

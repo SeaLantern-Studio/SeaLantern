@@ -101,5 +101,22 @@
   "close": "閉じる",
   "confirm_action": "アクションを確認",
   "confirm": "確認",
-  "cancel": "キャンセル"
+  "cancel": "キャンセル",
+  "message_unauthorized": "認証に失敗しました",
+  "server_start_fallback": "{name} は今回「{from}」方式で起動できなかったため、「{to}」で再試行しています。理由：{reason}",
+  "jvm_preset_none_label": "プリセットなし",
+  "jvm_preset_none_desc": "Sea Lantern のデフォルト引数と、手動で追加した引数のみを使用します。",
+  "jvm_preset_g1_basic_label": "G1 基本プリセット",
+  "jvm_preset_g1_basic_desc": "一般的な開始点として使いやすい G1 ガベージコレクションのプリセットです。",
+  "jvm_preset_aikar_g1_label": "Aikar G1 プリセット",
+  "jvm_preset_aikar_g1_desc": "Minecraft コミュニティで広く使われる調整方針をもとにした G1 プリセットです。",
+  "jvm_preset_throughput_basic_label": "スループット優先プリセット",
+  "jvm_preset_throughput_basic_desc": "将来用に予約されたスループット重視プリセットで、現時点の MVP 画面では公開していません。",
+  "jvm_preset_paper_recommended_lite_label": "Paper 軽量推奨プリセット",
+  "jvm_preset_paper_recommended_lite_desc": "将来用に予約された Paper 向け軽量推奨プリセットで、現時点の MVP 画面では公開していません。",
+  "restore": "元に戻す",
+  "ok": "确定",
+  "no_menu_items": "利用可能なメニュー項目がありません",
+  "by_author": "作者：{author}",
+  "close_tag": "タグを閉じる"
 }

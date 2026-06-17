@@ -1,1 +1,8 @@
-{}
+{
+  "browser_only_method": "仅在浏览器/Docker 模式中支持该方法",
+  "docker_native_picker_unsupported": "Docker 环境不支持原生文件选择器，请使用文件上传功能",
+  "docker_personalization_export_unsupported": "Docker 环境不支持个性化包导出，请在桌面端使用此功能",
+  "docker_personalization_import_unsupported": "Docker 环境不支持个性化包导入，请在桌面端使用此功能",
+  "docker_open_file_unsupported": "Docker 环境不支持从浏览器直接打开本地文件",
+  "docker_open_folder_unsupported": "Docker 环境不支持从浏览器直接打开本地文件夹"
+}

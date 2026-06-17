@@ -13,19 +13,6 @@ import { tryLoadLocaleBundle } from "@composables/useI18nBundles";
 import { useSettingsStore } from "@stores/settingsStore";
 import { normalizeAppError, resolveErrorMessage } from "@utils/appError";
 
-const LOCALE_LABEL_KEYS: Record<string, string> = {
-  "zh-CN": "header.chinese",
-  "en-US": "header.english",
-  "zh-TW": "header.chinese_tw",
-  "de-DE": "header.deutsch",
-  "es-ES": "header.spanish",
-  "ja-JP": "header.japanese",
-  "ru-RU": "header.russian",
-  "vi-VN": "header.vietnamese",
-  "ko-KR": "header.korean",
-  "fr-FA": "header.french",
-};
-
 export const useI18nStore = defineStore("i18n", () => {
   const localeRef = i18n.getLocaleRef();
   const supportedLocales = i18n.getAvailableLocales();
@@ -40,7 +27,7 @@ export const useI18nStore = defineStore("i18n", () => {
   const localeOptions = computed(() =>
     supportedLocales.map((code) => ({
       code,
-      labelKey: LOCALE_LABEL_KEYS[code],
+      label: i18n.getLocaleDisplayName(code) ?? code,
     })),
   );
   async function ensureLocaleReady(nextLocale: string): Promise<boolean> {

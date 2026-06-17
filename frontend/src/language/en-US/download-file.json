@@ -4,6 +4,7 @@
   "url_placeholder": "Please enter download URL (http/https)",
   "save_folder": "Save to",
   "save_path": "Save Path",
+  "filename_placeholder": "Please enter a file name, for example server.jar",
   "select_folder": "Please select a folder",
   "pick_folder": "Pick Folder",
   "filename": "File Name",

@@ -28,5 +28,9 @@
   "confirm": "Подтвердить",
   "server_not_running_hint": "⚠ Сервер не запущен, команды не работают",
   "empty": "Нет",
-  "level": "Уровень"
+  "level": "Уровень",
+  "add_whitelist": "Add to Whitelist",
+  "server_not_run": "Player management requires server to be running",
+  "reason": "Reason",
+  "status_online": "Online"
 }

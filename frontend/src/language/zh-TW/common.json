@@ -101,5 +101,22 @@
   "close": "關閉",
   "confirm_action": "確認操作",
   "confirm": "確認",
-  "cancel": "取消"
+  "cancel": "取消",
+  "message_unauthorized": "認證失敗",
+  "server_start_fallback": "{name} 這次沒有按「{from}」方式啟動，已改用「{to}」繼續嘗試。原因：{reason}",
+  "jvm_preset_none_label": "不使用預設",
+  "jvm_preset_none_desc": "只使用 Sea Lantern 預設參數和你手動追加的參數。",
+  "jvm_preset_g1_basic_label": "G1 基礎預設",
+  "jvm_preset_g1_basic_desc": "適合作為通用起點的 G1 垃圾回收預設。",
+  "jvm_preset_aikar_g1_label": "Aikar G1 預設",
+  "jvm_preset_aikar_g1_desc": "面向 Minecraft 社群常見調優方案的 G1 預設。",
+  "jvm_preset_throughput_basic_label": "吞吐優先預設",
+  "jvm_preset_throughput_basic_desc": "預留的吞吐優先預設，目前 MVP 不在頁面開放。",
+  "jvm_preset_paper_recommended_lite_label": "Paper 輕量推薦預設",
+  "jvm_preset_paper_recommended_lite_desc": "預留的 Paper 輕量推薦預設，目前 MVP 不在頁面開放。",
+  "restore": "還原",
+  "ok": "确定",
+  "no_menu_items": "沒有可用選單項目",
+  "by_author": "作者：{author}",
+  "close_tag": "關閉標籤"
 }

@@ -28,5 +28,9 @@
   "confirm": "Confirmer",
   "server_not_running_hint": "⚠ Le serveur ne tourne pas, impossible d'envoyer la commande",
   "empty": "Vide",
-  "level": "Niveau"
+  "level": "Niveau",
+  "add_whitelist": "Add to Whitelist",
+  "server_not_run": "Player management requires server to be running",
+  "reason": "Reason",
+  "status_online": "Online"
 }

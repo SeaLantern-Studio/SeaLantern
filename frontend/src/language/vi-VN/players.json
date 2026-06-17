@@ -28,5 +28,9 @@
   "confirm": "Xác nhận",
   "server_not_running_hint": "⚠ Máy chủ không chạy, không thể gửi lệnh",
   "empty": "Không có",
-  "level": "Cấp độ"
+  "level": "Cấp độ",
+  "add_whitelist": "Add to Whitelist",
+  "server_not_run": "Player management requires server to be running",
+  "reason": "Reason",
+  "status_online": "Online"
 }

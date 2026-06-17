@@ -28,5 +28,9 @@
   "confirm": "확인",
   "server_not_running_hint": "⚠ 서버가 실행 중이지 않아 명령어를 보낼 수 없습니다",
   "empty": "없음",
-  "level": "레벨"
+  "level": "레벨",
+  "add_whitelist": "Add to Whitelist",
+  "server_not_run": "Player management requires server to be running",
+  "reason": "Reason",
+  "status_online": "Online"
 }

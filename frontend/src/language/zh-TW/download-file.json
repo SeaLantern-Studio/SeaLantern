@@ -18,5 +18,6 @@
   "downloading": "正在下載資源...",
   "status-finished": "下載已完成",
   "failed": "下載失敗",
-  "completed": "已完成"
+  "completed": "已完成",
+  "filename_placeholder": "请输入文件名（如 server.jar）"
 }

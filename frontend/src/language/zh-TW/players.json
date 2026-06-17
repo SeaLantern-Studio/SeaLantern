@@ -28,5 +28,9 @@
   "confirm": "確認",
   "server_not_running_hint": "⚠ 伺服器未執行，無法傳送指令",
   "empty": "無",
-  "level": "等級"
+  "level": "等級",
+  "add_whitelist": "添加白名单",
+  "server_not_run": "玩家管理需要服务器运行中才能操作",
+  "reason": "原因",
+  "status_online": "在线"
 }

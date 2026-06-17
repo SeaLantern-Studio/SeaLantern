@@ -24,5 +24,10 @@
   "stopped": "중지됨",
   "no_server": "서버 없음",
   "create_server_first": "먼저 서버를 생성하고 선택하세요",
-  "suggestion_hint": "Tab 자동완성 / Up Down 선택"
+  "suggestion_hint": "Tab 자동완성 / Up Down 선택",
+  "force_stop": "Force Stop",
+  "force_stop_confirm": "Force stopping will kill the server process immediately and may cause data loss. Continue?",
+  "force_stop_requested": "Force stop requested",
+  "overview_title": "Unified Console",
+  "overview_subtitle": "Switch servers and view host performance data from one page"
 }

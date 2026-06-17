@@ -40,5 +40,11 @@
   "process_count": "프로세스 수",
   "uptime": "시스템 실행 시간",
   "app_memory": "SeaLantern 메모리 사용량",
-  "server_instances_memory": "서버 인스턴스 메모리 사용량"
+  "server_instances_memory": "서버 인스턴스 메모리 사용량",
+  "logs_filtered_empty": "No logs match the current filters.",
+  "log_level_filter": "Level",
+  "log_module_filter": "Module",
+  "all_log_levels": "All levels",
+  "all_log_modules": "All modules",
+  "log_filter_summary": "Showing {{shown}} / {{total}} log entries"
 }

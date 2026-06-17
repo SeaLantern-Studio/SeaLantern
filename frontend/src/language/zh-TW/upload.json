@@ -1,1 +1,12 @@
-{}
+{
+  "unsupported": "当前环境不支持文件上传",
+  "unsupported_detail": "当前环境不支持文件上传。请使用桌面版应用，或确保在支持上传的浏览器/Docker 模式下运行。",
+  "failed": "上传失败",
+  "drop_to_upload": "释放文件以上传",
+  "drag_or_click": "拖拽文件到此处，或点击选择文件",
+  "supported_formats": "支持的格式：{formats}",
+  "max_size_mb": "最大大小：{size} MB",
+  "uploading": "上传中...",
+  "file_too_large": "文件 {file} 超过大小限制（{size} 字节）",
+  "file_type_unsupported": "文件类型不支持：{file}"
+}

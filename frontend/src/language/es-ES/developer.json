@@ -40,5 +40,11 @@
   "process_count": "Cantidad de procesos",
   "uptime": "Tiempo activo del sistema",
   "app_memory": "Memoria de SeaLantern",
-  "server_instances_memory": "Memoria de instancias del servidor"
+  "server_instances_memory": "Memoria de instancias del servidor",
+  "logs_filtered_empty": "No logs match the current filters.",
+  "log_level_filter": "Level",
+  "log_module_filter": "Module",
+  "all_log_levels": "All levels",
+  "all_log_modules": "All modules",
+  "log_filter_summary": "Showing {{shown}} / {{total}} log entries"
 }

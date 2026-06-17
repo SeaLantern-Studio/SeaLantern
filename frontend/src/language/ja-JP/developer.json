@@ -40,5 +40,11 @@
   "process_count": "プロセス数",
   "uptime": "システム稼働時間",
   "app_memory": "SeaLantern メモリ使用量",
-  "server_instances_memory": "サーバーインスタンス メモリ使用量"
+  "server_instances_memory": "サーバーインスタンス メモリ使用量",
+  "logs_filtered_empty": "当前筛选条件下没有匹配的日志。",
+  "log_level_filter": "级别",
+  "log_module_filter": "模块",
+  "all_log_levels": "全部级别",
+  "all_log_modules": "全部模块",
+  "log_filter_summary": "当前显示 {{shown}} / {{total}} 条日志"
 }

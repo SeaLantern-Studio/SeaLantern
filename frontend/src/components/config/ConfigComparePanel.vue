@@ -70,7 +70,9 @@ const compareTransitionName = computed(() =>
 );
 
 const switchButtonTitle = computed(() =>
-  activeSide.value === "source" ? "切换到对照服务器" : "切换回当前服务器",
+  activeSide.value === "source"
+    ? i18n.t("config.compare.switch_to_target")
+    : i18n.t("config.compare.switch_to_source"),
 );
 
 const switchButtonStyle = computed(() => ({

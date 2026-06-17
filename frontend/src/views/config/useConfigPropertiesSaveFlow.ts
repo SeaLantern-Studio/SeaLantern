@@ -140,7 +140,9 @@ export function useConfigPropertiesSaveFlow(options: UseConfigPropertiesSaveFlow
         Object.keys(options.numericFieldErrors.value).length > 0
       ) {
         const invalidKeys = Object.keys(options.numericFieldErrors.value);
-        options.setError(`以下字段需要填写整数：${invalidKeys.join("、")}`);
+        options.setError(
+          i18n.t("config.invalid_integer_fields", { fields: invalidKeys.join(", ") }),
+        );
         return;
       }
 
@@ -151,7 +153,9 @@ export function useConfigPropertiesSaveFlow(options: UseConfigPropertiesSaveFlow
         Object.keys(context.compareTargetNumericFieldErrors.value).length > 0
       ) {
         const invalidKeys = Object.keys(context.compareTargetNumericFieldErrors.value);
-        options.setError(`以下字段需要填写整数：${invalidKeys.join("、")}`);
+        options.setError(
+          i18n.t("config.invalid_integer_fields", { fields: invalidKeys.join(", ") }),
+        );
         return;
       }
 

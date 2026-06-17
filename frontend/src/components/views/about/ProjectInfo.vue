@@ -8,8 +8,10 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { BUILD_YEAR } from "@utils/version";
 import { i18n } from "@language";
 import { useAboutLinks } from "@composables/useAboutLinks";
+import { useGlobalMessage } from "@composables/useMessage";
 
 const { openLink } = useAboutLinks();
+const globalMessage = useGlobalMessage();
 
 const props = defineProps<{
   version: string;
@@ -52,7 +54,7 @@ async function handleManualDownload() {
       await openUrl(updateInfo.value.download_url);
     } catch (error) {
       console.error("[ProjectInfo] 打开链接失败:", error);
-      alert(`打开链接失败: ${error}`);
+      globalMessage.error(`${i18n.t("about.open_link_failed")}: ${String(error)}`);
     }
   }
 }

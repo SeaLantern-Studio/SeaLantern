@@ -67,10 +67,10 @@ export function useConfigPropertiesReloadGuard(options: UseConfigPropertiesReloa
 
   const discardConfirmTitle = computed(() => {
     if (pendingReloadSide.value === "compare") {
-      return "丢弃对照侧修改";
+      return i18n.t("config.compare.discard_compare_title");
     }
     if (pendingReloadSide.value === "current") {
-      return "丢弃当前侧修改";
+      return i18n.t("config.compare.discard_current_title");
     }
     return i18n.t("config.discard_title");
   });
@@ -78,10 +78,14 @@ export function useConfigPropertiesReloadGuard(options: UseConfigPropertiesReloa
   const discardConfirmMessage = computed(() => {
     const context = options.getCompareContext();
     if (pendingReloadSide.value === "compare") {
-      return `重新载入将丢弃 ${context?.compareTargetServerName.value || i18n.t("config.compare.target_server")} 的未保存属性修改。`;
+      return i18n.t("config.compare.discard_compare_message", {
+        name: context?.compareTargetServerName.value || i18n.t("config.compare.target_server"),
+      });
     }
     if (pendingReloadSide.value === "current") {
-      return `重新载入将丢弃 ${options.currentServerName.value || i18n.t("config.current_server")} 的未保存属性修改。`;
+      return i18n.t("config.compare.discard_current_message", {
+        name: options.currentServerName.value || i18n.t("config.compare.source_server"),
+      });
     }
     return i18n.t("config.discard_message");
   });

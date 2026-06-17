@@ -153,7 +153,7 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
 
       const value = compareTargetDraftValues.value[entry.key]?.trim() ?? "";
       if (value.length === 0 || !/^-?\d+$/.test(value)) {
-        errors[entry.key] = `${entry.key} 需要填写整数`;
+        errors[entry.key] = i18n.t("config.invalid_integer_field", { field: entry.key });
       }
     }
 

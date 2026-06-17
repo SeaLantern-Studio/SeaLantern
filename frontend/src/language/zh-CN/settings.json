@@ -87,7 +87,7 @@
   "acrylic": "亚克力效果 (毛玻璃)",
   "acrylic_desc": "启用软高斯模糊毛玻璃效果，支持所有平台，与背景图片兼容",
   "window_effect": "窗口材质",
-  "window_effect_desc": "选择桌面窗口使用的原生系统材质。原生特效可以降低拖动、缩放和滚动时的 Web 渲染负担；显式选择的方案会按原样尝试启用，仅在系统本身不支持时回退。",
+  "window_effect_desc": "选择桌面窗口使用的原生系统材质。原生特效通常能让拖动、缩放和滚动时更顺畅；如果你手动指定某一种效果，只有系统本身不支持时才会改用别的方案。",
   "window_effect_options": {
     "off": "纯色表面",
     "auto": "自动",
@@ -207,7 +207,7 @@
   "color_lightness": "亮度",
   "color_alpha": "透明度",
   "developer_mode": "开发者模式",
-  "developer_mode_desc": "显示日志查看、问题排查和测试入口",
+  "developer_mode_desc": "显示日志查看、问题检查和测试功能",
   "developer_mode_toggle": "开启开发者模式",
   "developer_mode_toggle_desc": "开启后，侧边栏会显示“开发工具”页面。",
   "developer_mode_open": "打开开发工具",
@@ -228,5 +228,15 @@
   "minimal_mode_desc": "关闭所有动效和特效，只保留最基本的渲染和互动",
   "color_options": {
     "custom": "自定义"
-  }
+  },
+  "startup_config_java_path_load_failed": "启动配置已加载，但暂时无法刷新当前 Java 路径。",
+  "startup_config_load_failed": "加载启动配置失败",
+  "java_list_load_failed": "加载 Java 列表失败",
+  "java_scan_failed": "扫描 Java 失败",
+  "startup_launch_detail_load_failed": "加载实际启动详情失败",
+  "max_memory_too_small": "最大内存不能小于 128MB",
+  "min_memory_too_small": "最小内存不能小于 128MB",
+  "min_memory_gt_max_memory": "最小内存不能大于最大内存",
+  "server_id_missing_for_java_path_save": "当前服务器缺少 ID，无法保存 Java 路径",
+  "startup_config_save_failed": "保存启动配置失败"
 }

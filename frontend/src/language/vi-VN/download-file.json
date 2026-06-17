@@ -18,5 +18,6 @@
   "downloading": "Đang tải xuống tài nguyên...",
   "status-finished": "Tải xuống hoàn tất",
   "failed": "Tải xuống thất bại",
-  "completed": "Đã hoàn thành"
+  "completed": "Đã hoàn thành",
+  "filename_placeholder": "Please enter a file name, for example server.jar"
 }

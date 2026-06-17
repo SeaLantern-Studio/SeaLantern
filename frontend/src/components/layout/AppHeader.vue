@@ -44,25 +44,9 @@ const primaryLanguages = computed(() => {
   const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
 
   return primaryCodes.map((code) => {
-    const languageName = i18n.getLocaleDisplayName(code);
-
-    // 如果有 languageName，直接使用；否则使用原来的标签键
-    let label = "";
-    if (languageName) {
-      label = languageName;
-    } else {
-      const labelKey = {
-        "zh-CN": "header.chinese",
-        "en-US": "header.english",
-        "zh-TW": "header.chinese_tw",
-        "ja-JP": "header.japanese",
-      }[code];
-      label = i18n.t(labelKey || "header.english");
-    }
-
     return {
       code,
-      label,
+      label: i18n.getLocaleDisplayName(code) ?? code,
     };
   });
 });
@@ -74,27 +58,9 @@ const otherLanguages = computed(() => {
   return allLocales
     .filter((code) => !primaryCodes.has(code))
     .map((code) => {
-      const languageName = i18n.getLocaleDisplayName(code);
-
-      // 如果有 languageName，直接使用；否则使用原来的标签键
-      let label = "";
-      if (languageName) {
-        label = languageName;
-      } else {
-        const labelKey = {
-          "de-DE": "header.deutsch",
-          "es-ES": "header.spanish",
-          "ru-RU": "header.russian",
-          "vi-VN": "header.vietnamese",
-          "ko-KR": "header.korean",
-          "fr-FA": "header.french",
-        }[code];
-        label = i18n.t(labelKey || code);
-      }
-
       return {
         code,
-        label,
+        label: i18n.getLocaleDisplayName(code) ?? code,
       };
     });
 });

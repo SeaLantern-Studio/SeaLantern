@@ -85,7 +85,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
       const value = editValues.value[entry.key]?.trim() ?? "";
       if (value.length === 0 || !/^-?\d+$/.test(value)) {
-        errors[entry.key] = `${entry.key} 需要填写整数`;
+        errors[entry.key] = i18n.t("config.invalid_integer_field", { field: entry.key });
       }
     }
 
@@ -121,13 +121,17 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     hasUnsavedChanges.value ? i18n.t("config.status_unsaved") : i18n.t("config.status_loaded"),
   );
 
-  const reloadCurrentTooltipText = computed(
-    () => `重新载入${options.currentServerName.value || i18n.t("config.current_server")}属性`,
+  const reloadCurrentTooltipText = computed(() =>
+    i18n.t("config.reload_properties_tooltip", {
+      name: options.currentServerName.value || i18n.t("config.current_server"),
+    }),
   );
 
   const reloadCompareTooltipText = computed(() => {
     const context = compareContext.value;
-    return `重新载入${context?.compareTargetServerName.value || i18n.t("config.compare.target_server")}属性`;
+    return i18n.t("config.reload_properties_tooltip", {
+      name: context?.compareTargetServerName.value || i18n.t("config.compare.target_server"),
+    });
   });
 
   function bindCompareContext(context: CompareContext) {

@@ -28,5 +28,9 @@
   "confirm": "確認",
   "server_not_running_hint": "⚠ サーバーが実行されていません。コマンドを送信できません",
   "empty": "なし",
-  "level": "レベル"
+  "level": "レベル",
+  "add_whitelist": "添加白名单",
+  "server_not_run": "玩家管理需要服务器运行中才能操作",
+  "reason": "原因",
+  "status_online": "在线"
 }

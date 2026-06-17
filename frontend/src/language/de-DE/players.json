@@ -28,5 +28,9 @@
   "confirm": "Bestätigen",
   "server_not_running_hint": "⚠ Server läuft nicht, Befehle können nicht gesendet werden",
   "empty": "Leer",
-  "level": "Stufe"
+  "level": "Stufe",
+  "add_whitelist": "Add to Whitelist",
+  "server_not_run": "Player management requires server to be running",
+  "reason": "Reason",
+  "status_online": "Online"
 }

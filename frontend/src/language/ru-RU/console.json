@@ -24,5 +24,10 @@
   "stopped": "Остановлен",
   "no_server": "Нет серверов",
   "create_server_first": "Пожалуйста, сначала создайте и выберите сервер",
-  "suggestion_hint": "Tab автозавершение / Up Down выбор"
+  "suggestion_hint": "Tab автозавершение / Up Down выбор",
+  "force_stop": "Force Stop",
+  "force_stop_confirm": "Force stopping will kill the server process immediately and may cause data loss. Continue?",
+  "force_stop_requested": "Force stop requested",
+  "overview_title": "Unified Console",
+  "overview_subtitle": "Switch servers and view host performance data from one page"
 }

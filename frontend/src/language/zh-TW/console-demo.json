@@ -1,1 +1,34 @@
-{}
+{
+  "enable": {
+    "title": "========== Console Demo 插件已启用 ==========",
+    "no_servers": "没有找到任何服务器，请先在 SeaLantern 中添加服务器",
+    "demo_end": "========== Console Demo 演示结束 =========="
+  },
+  "console": {
+    "status": "[get_status] 获取服务器状态:",
+    "server_status": "  服务器状态: ",
+    "status_running": "服务器正在运行",
+    "status_stopped": "服务器已停止",
+    "status_starting": "服务器正在启动",
+    "status_stopping": "服务器正在停止",
+    "status_error": "服务器出错",
+    "status_unknown": "未知状态",
+    "status_desc": "  状态说明: ",
+    "status_failed": "  获取状态失败: ",
+    "logs": "[get_logs] 获取控制台日志 (最近 10 条):",
+    "no_logs": "(没有日志记录)",
+    "logs_failed": "  获取日志失败: ",
+    "send": "[send] 发送控制台命令:",
+    "trying_send": "  服务器正在运行，尝试发送命令...",
+    "send_success": "  命令发送成功: list",
+    "send_result_hint": "  提示: 命令结果会显示在服务器控制台日志中",
+    "send_failed": "  命令发送失败: ",
+    "other_commands": "  其他常用命令示例 (未执行):",
+    "not_running": "  服务器未运行 (状态: {{status}})，无法发送命令",
+    "not_running_hint": "  提示: 请先启动服务器，然后重新启用此插件以测试命令发送功能"
+  },
+  "demo_complete": "========== Console Demo 演示完成 ==========",
+  "disable": {
+    "complete": "Console Demo 插件已禁用"
+  }
+}

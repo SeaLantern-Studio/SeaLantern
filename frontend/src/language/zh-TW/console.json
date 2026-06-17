@@ -24,5 +24,10 @@
   "stopped": "已停止",
   "no_server": "暫無伺服器",
   "create_server_first": "請先建立並選擇一個伺服器",
-  "suggestion_hint": "Tab 補全 / Up Down 選擇"
+  "suggestion_hint": "Tab 補全 / Up Down 選擇",
+  "force_stop": "強制停止",
+  "force_stop_confirm": "強制停止會立即結束伺服器程序，可能造成資料遺失。確定要繼續嗎？",
+  "force_stop_requested": "已送出強制停止請求",
+  "overview_title": "集中控制台",
+  "overview_subtitle": "可在同一頁面切換伺服器並查看主機效能資料"
 }

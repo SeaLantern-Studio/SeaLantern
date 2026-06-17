@@ -1,1 +1,22 @@
-{}
+{
+  "enable": {
+    "title": "========== Log Demo Plugin Enabled =========="
+  },
+  "log": {
+    "debugMessage": "This is a debug log - only displayed with log permission",
+    "infoMessage": "This is an info log - for general information output",
+    "warnMessage": "This is a warning log - to indicate potential issues",
+    "errorMessage": "This is an error log - to report error conditions",
+    "debugModeEnabled": "Debug mode enabled, detailed logs will be output",
+    "currentPlayers": "Current players: {{current}}/{{max}}"
+  },
+  "plugin": {
+    "id": "Plugin ID: ",
+    "directory": "Plugin directory: "
+  },
+  "demoComplete": "========== Log Demo Demo Complete ==========",
+  "disable": {
+    "inProgress": "Log Demo plugin is being disabled...",
+    "complete": "Log Demo plugin disabled"
+  }
+}
