@@ -10,7 +10,7 @@ use crate::utils::constants::SETTINGS_FILE;
 /// 负责读取、保存、重置和增量更新应用设置
 pub struct SettingsManager {
     pub settings: Mutex<AppSettings>,
-    pub data_dir: String,
+    pub data_dir: Mutex<String>,
 }
 
 /// 一次设置更新的结果
@@ -37,7 +37,10 @@ impl SettingsManager {
             "new_checked",
             &format!("loaded settings agreed_to_terms={}", settings.agreed_to_terms),
         );
-        Ok(SettingsManager { settings: Mutex::new(settings), data_dir })
+        Ok(SettingsManager {
+            settings: Mutex::new(settings),
+            data_dir: Mutex::new(data_dir),
+        })
     }
 
     /// 读取当前完整设置
@@ -69,7 +72,8 @@ impl SettingsManager {
             "update",
             &format!("saving full settings agreed_to_terms={}", new_settings.agreed_to_terms),
         );
-        let result = save_settings(&self.data_dir, &new_settings);
+        let data_dir = self.data_dir_value()?;
+        let result = save_settings(&data_dir, &new_settings);
         log_settings_debug("update", &format!("save result={:?}", result));
         result?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings;
@@ -95,7 +99,8 @@ impl SettingsManager {
             .unwrap_or_else(|e| e.into_inner())
             .clone();
         let changed_groups = old_settings.get_changed_groups(&new_settings);
-        save_settings(&self.data_dir, &new_settings)?;
+        let data_dir = self.data_dir_value()?;
+        save_settings(&data_dir, &new_settings)?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings.clone();
         Ok(UpdateResult { settings: new_settings, changed_groups })
     }
@@ -126,7 +131,8 @@ impl SettingsManager {
             &format!("merged agreed_to_terms={}", new_settings.agreed_to_terms),
         );
         let changed_groups = old_settings.get_changed_groups(&new_settings);
-        save_settings(&self.data_dir, &new_settings)?;
+        let data_dir = self.data_dir_value()?;
+        save_settings(&data_dir, &new_settings)?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = new_settings.clone();
         log_settings_debug("update_partial", "saved partial settings successfully");
         Ok(UpdateResult { settings: new_settings, changed_groups })
@@ -141,9 +147,30 @@ impl SettingsManager {
         let mut default = AppSettings::default();
         default.normalize_window_effect();
         default.normalize_memory_display_precision();
-        save_settings(&self.data_dir, &default)?;
+        let data_dir = self.data_dir_value()?;
+        save_settings(&data_dir, &default)?;
         *self.settings.lock().unwrap_or_else(|e| e.into_inner()) = default.clone();
         Ok(default)
+    }
+
+    pub fn reload_from_data_dir(&self, data_dir: &str) -> Result<AppSettings, String> {
+        let settings = load_settings_for_bootstrap(data_dir)?;
+        {
+            let mut current = self.settings.lock().unwrap_or_else(|e| e.into_inner());
+            *current = settings.clone();
+        }
+        {
+            let mut dir = self.data_dir.lock().unwrap_or_else(|e| e.into_inner());
+            *dir = data_dir.to_string();
+        }
+        Ok(settings)
+    }
+
+    pub fn data_dir_value(&self) -> Result<String, String> {
+        self.data_dir
+            .lock()
+            .map(|dir| dir.clone())
+            .map_err(|_| "settings data_dir lock poisoned".to_string())
     }
 }
 

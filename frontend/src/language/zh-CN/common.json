@@ -3,6 +3,7 @@
   "easter_name": "Shit Lantern",
   "home": "首页",
   "create_server": "创建服务器",
+  "add_existing_server": "导入已有服务器",
   "console": "控制台",
   "config_edit": "配置编辑",
   "player_manage": "玩家管理",

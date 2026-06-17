@@ -117,9 +117,38 @@ export interface ImportPersonalizationResult {
   skipped_plugins: string[];
 }
 
+export interface DataDirStatus {
+  current_data_dir: string;
+  default_data_dir: string;
+  locator_path: string;
+  resolution_source: string;
+  locator_exists: boolean;
+  needs_initial_selection: boolean;
+  recommended_data_dir: string;
+}
+
+export interface DataDirChangeResult {
+  status: DataDirStatus;
+  migrated_entries: string[];
+}
+
 export const settingsApi = {
   async get(): Promise<AppSettings> {
     return tauriInvoke("get_settings");
+  },
+  async getDataDirStatus(): Promise<DataDirStatus> {
+    return tauriInvoke("get_data_dir_status");
+  },
+  async initializeDataDir(path: string): Promise<DataDirChangeResult> {
+    return tauriInvoke("initialize_data_dir", { path });
+  },
+  async changeDataDir(path: string, migrateExisting = true): Promise<DataDirChangeResult> {
+    return tauriInvoke("change_data_dir", {
+      request: {
+        path,
+        migrate_existing: migrateExisting,
+      },
+    });
   },
   async save(settings: AppSettings): Promise<void> {
     return tauriInvoke("save_settings", { settings });

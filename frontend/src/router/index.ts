@@ -16,6 +16,12 @@ const routes = [
     meta: { titleKey: "common.create_server", icon: "plus" },
   },
   {
+    path: "/add-existing",
+    name: "add-existing-server",
+    component: () => import("@views/AddExistingServerView.vue"),
+    meta: { titleKey: "common.add_existing_server", icon: "server-plus" },
+  },
+  {
     path: "/console/:id?",
     name: "console",
     component: () => import("@views/ConsoleView.vue"),

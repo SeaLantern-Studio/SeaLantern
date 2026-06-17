@@ -61,6 +61,25 @@ impl PluginManager {
         })
     }
 
+    pub fn reload_roots(&mut self, plugins_dir: PathBuf, data_dir: PathBuf) -> Result<(), String> {
+        fs::create_dir_all(&plugins_dir).map_err(|e| {
+            format!("Failed to create plugins directory '{}': {}", plugins_dir.display(), e)
+        })?;
+        fs::create_dir_all(&data_dir).map_err(|e| {
+            format!("Failed to create data directory '{}': {}", data_dir.display(), e)
+        })?;
+
+        self.disable_all_plugins_for_shutdown();
+        self.plugins.clear();
+        {
+            let mut runtimes = self.runtimes.write().unwrap_or_else(|e| e.into_inner());
+            runtimes.clear();
+        }
+        self.plugins_dir = plugins_dir;
+        self.data_dir = data_dir;
+        Ok(())
+    }
+
     pub(crate) fn get_shared_runtimes(&self) -> Arc<RwLock<HashMap<String, PluginRuntime>>> {
         Arc::clone(&self.runtimes)
     }
@@ -254,6 +273,7 @@ impl PluginManager {
 #[cfg(test)]
 mod tests {
     use super::PluginManager;
+    use std::sync::Arc;
 
     #[test]
     fn new_checked_rejects_file_backed_plugins_dir() {
@@ -273,5 +293,24 @@ mod tests {
             error
         );
         assert!(error.contains("plugins-file"), "unexpected error: {}", error);
+    }
+
+    #[test]
+    fn reload_roots_preserves_shared_runtime_and_api_registry_handles() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let plugins_dir = temp_dir.path().join("plugins-a");
+        let data_dir = temp_dir.path().join("plugin-data-a");
+        let mut manager = PluginManager::new_checked(plugins_dir, data_dir)
+            .expect("plugin manager should initialize");
+
+        let shared_runtimes = manager.get_shared_runtimes();
+        let api_registry = manager.get_api_registry();
+
+        manager
+            .reload_roots(temp_dir.path().join("plugins-b"), temp_dir.path().join("plugin-data-b"))
+            .expect("reload_roots should succeed");
+
+        assert!(Arc::ptr_eq(&shared_runtimes, &manager.get_shared_runtimes()));
+        assert!(Arc::ptr_eq(&api_registry, &manager.get_api_registry()));
     }
 }

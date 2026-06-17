@@ -3,6 +3,7 @@
   "easter_name": "Shit Lantern",
   "home": "Home",
   "create_server": "Create Server",
+  "add_existing_server": "Import Existing Server",
   "console": "Console",
   "config_edit": "Config Edit",
   "player_manage": "Player Manage",

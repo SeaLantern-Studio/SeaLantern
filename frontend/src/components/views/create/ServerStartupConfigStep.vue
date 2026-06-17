@@ -29,6 +29,7 @@ const props = defineProps<{
   startupMode?: LocalStartupMode;
   startupTarget?: string;
   customCommandPreview?: string;
+  showOnlineMode?: boolean;
   disabled?: boolean;
 }>();
 
@@ -151,7 +152,7 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
           />
         </div>
 
-        <div class="startup-pair-item">
+        <div v-if="showOnlineMode !== false" class="startup-pair-item">
           <span class="startup-row-label">{{ i18n.t("create.online_mode") }}</span>
           <div class="startup-row-control startup-online-box">
             <span class="startup-online-text">

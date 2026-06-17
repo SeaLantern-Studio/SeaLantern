@@ -4,13 +4,27 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 const APP_DOCKER_DATA_DIR: &str = "./data";
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 const APP_HIDDEN_DIRECTORY_NAME: &str = ".SeaLantern";
+const APP_DATA_LOCATOR_FILE_NAME: &str = "data_dir.json";
+const APP_DATA_LOCATOR_ENV: &str = "SEALANTERN_DATA_DIR";
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 const APP_DIRECTORY_NAME: &str = "Sea Lantern";
 
 #[cfg(target_os = "linux")]
 const APP_DIRECTORY_NAME_LOWERCASE: &str = "sea-lantern";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppDataResolution {
+    pub path: PathBuf,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct AppDataLocatorFile {
+    data_dir: String,
+}
 
 pub fn is_windows_absolute_path(path: &str) -> bool {
     let bytes = path.as_bytes();
@@ -26,7 +40,7 @@ pub fn is_windows_absolute_path(path: &str) -> bool {
 }
 
 fn explicit_app_data_dir_from_env() -> Option<PathBuf> {
-    let value = std::env::var("SEALANTERN_DATA_DIR").ok()?;
+    let value = std::env::var(APP_DATA_LOCATOR_ENV).ok()?;
     let trimmed = value.trim();
     if trimmed.is_empty() {
         return None;
@@ -35,70 +49,12 @@ fn explicit_app_data_dir_from_env() -> Option<PathBuf> {
     Some(PathBuf::from(trimmed))
 }
 
-#[cfg(target_os = "windows")]
-fn is_msi_installation() -> bool {
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(parent) = exe_path.parent() {
-            let exe_str = parent.to_string_lossy().to_lowercase();
-            if exe_str.contains(r"\program files\") {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-pub fn get_app_data_dir() -> PathBuf {
-    if let Some(explicit) = explicit_app_data_dir_from_env() {
-        crate::log_trace_ctx(
-            "runtime.path",
-            "get_app_data_dir",
-            &format!(
-                "[utils.path] action=resolve_app_data_dir source=env path={}",
-                explicit.display()
-            ),
-        );
-        return explicit;
-    }
-
-    if std::path::Path::new("/.dockerenv").exists() {
-        let path = PathBuf::from(APP_DOCKER_DATA_DIR);
-        crate::log_trace_ctx(
-            "runtime.path",
-            "get_app_data_dir",
-            &format!(
-                "[utils.path] action=resolve_app_data_dir source=docker path={}",
-                path.display()
-            ),
-        );
-        return path;
-    }
-
+pub fn default_data_dir_base() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        if is_msi_installation() {
-            if let Some(data_dir) = dirs_next::data_dir() {
-                return data_dir.join(APP_DIRECTORY_NAME);
-            }
-            if let Some(home_dir) = dirs_next::home_dir() {
-                return home_dir.join(APP_HIDDEN_DIRECTORY_NAME);
-            }
+        if let Some(data_dir) = dirs_next::data_dir() {
+            return data_dir.join(APP_DIRECTORY_NAME);
         }
-
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(exe_dir) = exe_path.parent() {
-                crate::log_trace_ctx(
-                    "runtime.path",
-                    "get_app_data_dir",
-                    &format!(
-                        "[utils.path] action=resolve_app_data_dir source=portable_exe path={}",
-                        exe_dir.display()
-                    ),
-                );
-                return exe_dir.to_path_buf();
-            }
-        }
-
         if let Some(home_dir) = dirs_next::home_dir() {
             return home_dir.join(APP_HIDDEN_DIRECTORY_NAME);
         }
@@ -129,6 +85,137 @@ pub fn get_app_data_dir() -> PathBuf {
         }
         PathBuf::from(".")
     }
+}
+
+pub fn get_app_data_locator_path() -> PathBuf {
+    default_data_dir_base().join(APP_DATA_LOCATOR_FILE_NAME)
+}
+
+fn resolve_portable_exe_dir() -> Option<PathBuf> {
+    let exe_path = std::env::current_exe().ok()?;
+    let exe_dir = exe_path.parent()?.to_path_buf();
+    crate::log_trace_ctx(
+        "runtime.path",
+        "resolve_portable_exe_dir",
+        &format!("[utils.path] action=resolve_portable_exe_dir path={}", exe_dir.display()),
+    );
+    Some(exe_dir)
+}
+
+fn load_locator_data_dir(locator_path: &std::path::Path) -> Option<PathBuf> {
+    let content = std::fs::read_to_string(locator_path).ok()?;
+    let locator = serde_json::from_str::<AppDataLocatorFile>(&content).ok()?;
+    let trimmed = locator.data_dir.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(PathBuf::from(trimmed))
+}
+
+fn resolve_existing_legacy_data_dir() -> Option<AppDataResolution> {
+    let portable_dir = resolve_portable_exe_dir()?;
+    let marker_files = [
+        "sea_lantern_settings.json",
+        "sea_lantern_servers.json",
+        "sea_lantern_run_path_map.json",
+        "plugins",
+        "plugin_data",
+        "online",
+    ];
+
+    if marker_files
+        .iter()
+        .any(|name| portable_dir.join(name).exists())
+    {
+        return Some(AppDataResolution {
+            path: portable_dir,
+            source: "legacy_portable".to_string(),
+        });
+    }
+
+    None
+}
+
+fn resolve_app_data_dir_internal() -> AppDataResolution {
+    if let Some(explicit) = explicit_app_data_dir_from_env() {
+        crate::log_trace_ctx(
+            "runtime.path",
+            "resolve_app_data_dir_internal",
+            &format!(
+                "[utils.path] action=resolve_app_data_dir source=env path={}",
+                explicit.display()
+            ),
+        );
+        return AppDataResolution {
+            path: explicit,
+            source: "env".to_string(),
+        };
+    }
+
+    if std::path::Path::new("/.dockerenv").exists() {
+        let path = PathBuf::from(APP_DOCKER_DATA_DIR);
+        crate::log_trace_ctx(
+            "runtime.path",
+            "resolve_app_data_dir_internal",
+            &format!(
+                "[utils.path] action=resolve_app_data_dir source=docker path={}",
+                path.display()
+            ),
+        );
+        return AppDataResolution { path, source: "docker".to_string() };
+    }
+
+    let locator_path = get_app_data_locator_path();
+    if let Some(locator_dir) = load_locator_data_dir(&locator_path) {
+        crate::log_trace_ctx(
+            "runtime.path",
+            "resolve_app_data_dir_internal",
+            &format!(
+                "[utils.path] action=resolve_app_data_dir source=locator path={} locator={}",
+                locator_dir.display(),
+                locator_path.display()
+            ),
+        );
+        return AppDataResolution {
+            path: locator_dir,
+            source: "locator".to_string(),
+        };
+    }
+
+    if let Some(legacy) = resolve_existing_legacy_data_dir() {
+        crate::log_trace_ctx(
+            "runtime.path",
+            "resolve_app_data_dir_internal",
+            &format!(
+                "[utils.path] action=resolve_app_data_dir source={} path={}",
+                legacy.source,
+                legacy.path.display()
+            ),
+        );
+        return legacy;
+    }
+
+    let default_path = default_data_dir_base();
+    crate::log_trace_ctx(
+        "runtime.path",
+        "resolve_app_data_dir_internal",
+        &format!(
+            "[utils.path] action=resolve_app_data_dir source=default path={}",
+            default_path.display()
+        ),
+    );
+    AppDataResolution {
+        path: default_path,
+        source: "default".to_string(),
+    }
+}
+
+pub fn describe_app_data_resolution() -> AppDataResolution {
+    resolve_app_data_dir_internal()
+}
+
+pub fn get_app_data_dir() -> PathBuf {
+    resolve_app_data_dir_internal().path
 }
 
 pub fn get_or_create_app_data_dir() -> String {
