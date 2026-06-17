@@ -338,12 +338,48 @@ pub fn status_snapshot(
                     ),
                 );
 
-                return Ok(Some(fallback_snapshot_from_unreachable_helper(&state)));
+                let snapshot = fallback_snapshot_from_unreachable_helper(&state);
+                reconcile_terminal_state_after_fallback(server, &state, &snapshot);
+                return Ok(Some(snapshot));
             }
         }
     }
 
-    Ok(Some(fallback_snapshot_from_state_file(&state)))
+    let snapshot = fallback_snapshot_from_state_file(&state);
+    reconcile_terminal_state_after_fallback(server, &state, &snapshot);
+    Ok(Some(snapshot))
+}
+
+fn reconcile_terminal_state_after_fallback(
+    server: &ServerInstance,
+    state: &LocalRuntimeState,
+    snapshot: &LocalHelperStatusSnapshot,
+) {
+    if !state.running || snapshot.running {
+        return;
+    }
+
+    if let Err(error) = persist_terminal_state(
+        server,
+        state,
+        snapshot.exit_code,
+        snapshot.error_message.clone(),
+    ) {
+        logger::log_warn_ctx(
+            "server.runtime.local_helper",
+            "reconcile_terminal_state_after_fallback",
+            &format!(
+                "failed to persist terminal fallback state: server_id={} helper_pid={} child_pid={} error={}",
+                server.id,
+                state.helper_pid,
+                state
+                    .child_pid
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "none".to_string()),
+                error
+            ),
+        );
+    }
 }
 
 pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String> {
@@ -702,6 +738,64 @@ mod tests {
             "runtime=local running=false source=state_file helper=exited exit_code=none"
         );
         assert_eq!(snapshot.error_message, None);
+
+        let reconciled = read_state_checked(&server)
+            .expect("reconciled state should read")
+            .expect("reconciled state should exist");
+        assert!(!reconciled.running);
+        assert_eq!(reconciled.control_port, None);
+        assert_eq!(reconciled.child_pid, None);
+        assert_eq!(
+            reconciled.detail_message,
+            "runtime=local running=false source=state_file exit_code=none"
+        );
+        assert_eq!(reconciled.error_message, None);
+    }
+
+    #[test]
+    fn status_snapshot_reconciles_dead_child_fallback_to_terminal_state() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let path = state_file_path(&server);
+
+        write_state_file(
+            &path,
+            &super::LocalRuntimeState {
+                server_id: server.id.clone(),
+                helper_pid: 999_999,
+                child_pid: Some(u32::MAX),
+                control_port: Some(25570),
+                auth_token: "token".to_string(),
+                running: true,
+                exit_code: None,
+                detail_message:
+                    "runtime=local running=true source=helper child_pid=4294967295 control_port=25570"
+                        .to_string(),
+                error_message: None,
+                updated_at: 123,
+            },
+        )
+        .expect("state file should be written");
+
+        let snapshot = status_snapshot(&server)
+            .expect("status should succeed")
+            .expect("fallback snapshot should exist");
+
+        assert!(!snapshot.running);
+        assert_eq!(snapshot.pid, None);
+        assert_eq!(snapshot.exit_code, None);
+
+        let reconciled = read_state_checked(&server)
+            .expect("reconciled state should read")
+            .expect("reconciled state should exist");
+        assert!(!reconciled.running);
+        assert_eq!(reconciled.control_port, None);
+        assert_eq!(reconciled.child_pid, Some(u32::MAX));
+        assert_eq!(
+            reconciled.detail_message,
+            "runtime=local running=false source=state_file exit_code=none"
+        );
+        assert_eq!(reconciled.error_message, None);
     }
 
     #[test]
